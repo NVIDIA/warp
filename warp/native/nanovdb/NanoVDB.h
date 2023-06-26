@@ -752,7 +752,7 @@ __hostdev__ inline T Abs(T x)
 template<>
 __hostdev__ inline float Abs(float x)
 {
-    return fabs(x);
+    return fabsf(x);
 }
 
 template<>

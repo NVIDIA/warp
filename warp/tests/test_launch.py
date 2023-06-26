@@ -254,7 +254,6 @@ def test_launch_cmd_set_dim(test, device):
 
 
 def test_launch_cmd_empty(test, device):
-
     n = 10
 
     ref = np.arange(0, n, dtype=int)
@@ -277,6 +276,7 @@ def test_launch_cmd_empty(test, device):
 
     # check the whole array was filled
     assert_np_equal(out.numpy(), ref)
+
 
 def register(parent):
     devices = get_test_devices()

@@ -52,6 +52,8 @@ from warp.context import get_device, set_device, synchronize_device
 from warp.context import (
     zeros,
     zeros_like,
+    full,
+    full_like,
     clone,
     empty,
     empty_like,
@@ -97,7 +99,7 @@ def min(x: Scalar, y: Scalar) -> Scalar:
 
 
 @over
-def min(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
+def min(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """
     Return the element wise minimum of two vectors.
     """
@@ -105,7 +107,7 @@ def min(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
 
 
 @over
-def min(v: Vector[Any,Scalar]) -> Scalar:
+def min(v: Vector[Any, Scalar]) -> Scalar:
     """
     Return the minimum element of a vector.
     """
@@ -121,7 +123,7 @@ def max(x: Scalar, y: Scalar) -> Scalar:
 
 
 @over
-def max(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
+def max(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """
     Return the element wise maximum of two vectors.
     """
@@ -129,7 +131,7 @@ def max(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
 
 
 @over
-def max(v: Vector[Any,Scalar]) -> Scalar:
+def max(v: Vector[Any, Scalar]) -> Scalar:
     """
     Return the maximum element of a vector.
     """
@@ -368,7 +370,7 @@ def ceil(x: Float) -> Float:
 
 
 @over
-def dot(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Scalar:
+def dot(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Scalar:
     """
     Compute the dot product between two vectors.
     """
@@ -384,7 +386,7 @@ def dot(x: Quaternion[Float], y: Quaternion[Float]) -> Scalar:
 
 
 @over
-def ddot(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Scalar:
+def ddot(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Scalar:
     """
     Compute the double dot product between two matrices.
     """
@@ -392,7 +394,7 @@ def ddot(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Scalar:
 
 
 @over
-def argmin(v: Vector[Any,Scalar]) -> uint32:
+def argmin(v: Vector[Any, Scalar]) -> uint32:
     """
     Return the index of the minimum element of a vector.
     """
@@ -400,7 +402,7 @@ def argmin(v: Vector[Any,Scalar]) -> uint32:
 
 
 @over
-def argmax(v: Vector[Any,Scalar]) -> uint32:
+def argmax(v: Vector[Any, Scalar]) -> uint32:
     """
     Return the index of the maximum element of a vector.
     """
@@ -408,7 +410,7 @@ def argmax(v: Vector[Any,Scalar]) -> uint32:
 
 
 @over
-def outer(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]:
+def outer(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """
     Compute the outer product x*y^T for two vec2 objects.
     """
@@ -416,7 +418,7 @@ def outer(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar
 
 
 @over
-def cross(x: Vector[3,Scalar], y: Vector[3,Scalar]) -> Vector[3,Scalar]:
+def cross(x: Vector[3, Scalar], y: Vector[3, Scalar]) -> Vector[3, Scalar]:
     """
     Compute the cross product of two 3d vectors.
     """
@@ -424,7 +426,7 @@ def cross(x: Vector[3,Scalar], y: Vector[3,Scalar]) -> Vector[3,Scalar]:
 
 
 @over
-def skew(x: Vector[3,Scalar]):
+def skew(x: Vector[3, Scalar]):
     """
     Compute the skew symmetric matrix for a 3d vector.
     """
@@ -432,7 +434,7 @@ def skew(x: Vector[3,Scalar]):
 
 
 @over
-def length(x: Vector[Any,Float]) -> Scalar:
+def length(x: Vector[Any, Float]) -> Scalar:
     """
     Compute the length of a vector.
     """
@@ -448,7 +450,7 @@ def length(x: Quaternion[Float]) -> Scalar:
 
 
 @over
-def length_sq(x: Vector[Any,Scalar]) -> Scalar:
+def length_sq(x: Vector[Any, Scalar]) -> Scalar:
     """
     Compute the squared length of a 2d vector.
     """
@@ -464,7 +466,7 @@ def length_sq(x: Quaternion[Scalar]) -> Scalar:
 
 
 @over
-def normalize(x: Vector[Any,Float]) -> Vector[Any,Scalar]:
+def normalize(x: Vector[Any, Float]) -> Vector[Any, Scalar]:
     """
     Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
     """
@@ -480,7 +482,7 @@ def normalize(x: Quaternion[Float]) -> Quaternion[Scalar]:
 
 
 @over
-def transpose(m: Matrix[Any,Any,Scalar]):
+def transpose(m: Matrix[Any, Any, Scalar]):
     """
     Return the transpose of the matrix m
     """
@@ -488,7 +490,7 @@ def transpose(m: Matrix[Any,Any,Scalar]):
 
 
 @over
-def inverse(m: Matrix[2,2,Float]) -> Matrix[Any,Any,Float]:
+def inverse(m: Matrix[2, 2, Float]) -> Matrix[Any, Any, Float]:
     """
     Return the inverse of a 2x2 matrix m
     """
@@ -496,7 +498,7 @@ def inverse(m: Matrix[2,2,Float]) -> Matrix[Any,Any,Float]:
 
 
 @over
-def inverse(m: Matrix[3,3,Float]) -> Matrix[Any,Any,Float]:
+def inverse(m: Matrix[3, 3, Float]) -> Matrix[Any, Any, Float]:
     """
     Return the inverse of a 3x3 matrix m
     """
@@ -504,7 +506,7 @@ def inverse(m: Matrix[3,3,Float]) -> Matrix[Any,Any,Float]:
 
 
 @over
-def inverse(m: Matrix[4,4,Float]) -> Matrix[Any,Any,Float]:
+def inverse(m: Matrix[4, 4, Float]) -> Matrix[Any, Any, Float]:
     """
     Return the inverse of a 4x4 matrix m
     """
@@ -512,7 +514,7 @@ def inverse(m: Matrix[4,4,Float]) -> Matrix[Any,Any,Float]:
 
 
 @over
-def determinant(m: Matrix[2,2,Float]) -> Scalar:
+def determinant(m: Matrix[2, 2, Float]) -> Scalar:
     """
     Return the determinant of a 2x2 matrix m
     """
@@ -520,7 +522,7 @@ def determinant(m: Matrix[2,2,Float]) -> Scalar:
 
 
 @over
-def determinant(m: Matrix[3,3,Float]) -> Scalar:
+def determinant(m: Matrix[3, 3, Float]) -> Scalar:
     """
     Return the determinant of a 3x3 matrix m
     """
@@ -528,7 +530,7 @@ def determinant(m: Matrix[3,3,Float]) -> Scalar:
 
 
 @over
-def determinant(m: Matrix[4,4,Float]) -> Scalar:
+def determinant(m: Matrix[4, 4, Float]) -> Scalar:
     """
     Return the determinant of a 4x4 matrix m
     """
@@ -536,7 +538,7 @@ def determinant(m: Matrix[4,4,Float]) -> Scalar:
 
 
 @over
-def trace(m: Matrix[Any,Any,Scalar]) -> Scalar:
+def trace(m: Matrix[Any, Any, Scalar]) -> Scalar:
     """
     Return the trace of the matrix m
     """
@@ -544,7 +546,7 @@ def trace(m: Matrix[Any,Any,Scalar]) -> Scalar:
 
 
 @over
-def diag(d: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]:
+def diag(d: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """
     Returns a matrix with the components of the vector d on the diagonal
     """
@@ -552,7 +554,7 @@ def diag(d: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]:
 
 
 @over
-def get_diag(m: Matrix[Any,Any,Scalar]) -> Vector[Any,Scalar]:
+def get_diag(m: Matrix[Any, Any, Scalar]) -> Vector[Any, Scalar]:
     """
     Returns a vector containing the diagonal elements of the square matrix.
     """
@@ -560,7 +562,7 @@ def get_diag(m: Matrix[Any,Any,Scalar]) -> Vector[Any,Scalar]:
 
 
 @over
-def cw_mul(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
+def cw_mul(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """
     Component wise multiply of two 2d vectors.
     """
@@ -568,7 +570,7 @@ def cw_mul(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
 
 
 @over
-def cw_mul(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
+def cw_mul(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """
     Component wise multiply of two 2d vectors.
     """
@@ -576,7 +578,7 @@ def cw_mul(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,A
 
 
 @over
-def cw_div(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
+def cw_div(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """
     Component wise division of two 2d vectors.
     """
@@ -584,7 +586,7 @@ def cw_div(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
 
 
 @over
-def cw_div(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
+def cw_div(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """
     Component wise division of two 2d vectors.
     """
@@ -600,7 +602,7 @@ def quat_identity() -> quatf:
 
 
 @over
-def quat_from_axis_angle(axis: Vector[3,Float], angle: Float) -> Quaternion[Scalar]:
+def quat_from_axis_angle(axis: Vector[3, Float], angle: Float) -> Quaternion[Scalar]:
     """
     Construct a quaternion representing a rotation of angle radians around the given axis.
     """
@@ -608,7 +610,7 @@ def quat_from_axis_angle(axis: Vector[3,Float], angle: Float) -> Quaternion[Scal
 
 
 @over
-def quat_to_axis_angle(q: Quaternion[Float], axis: Vector[3,Float], angle: Float):
+def quat_to_axis_angle(q: Quaternion[Float], axis: Vector[3, Float], angle: Float):
     """
     Extract the rotation axis and angle radians a quaternion represents.
     """
@@ -616,7 +618,7 @@ def quat_to_axis_angle(q: Quaternion[Float], axis: Vector[3,Float], angle: Float
 
 
 @over
-def quat_from_matrix(m: Matrix[3,3,Float]) -> Quaternion[Scalar]:
+def quat_from_matrix(m: Matrix[3, 3, Float]) -> Quaternion[Scalar]:
     """
     Construct a quaternion from a 3x3 matrix.
     """
@@ -640,7 +642,7 @@ def quat_inverse(q: Quaternion[Float]) -> Quaternion[Scalar]:
 
 
 @over
-def quat_rotate(q: Quaternion[Float], p: Vector[3,Float]) -> Vector[3,Scalar]:
+def quat_rotate(q: Quaternion[Float], p: Vector[3, Float]) -> Vector[3, Scalar]:
     """
     Rotate a vector by a quaternion.
     """
@@ -648,7 +650,7 @@ def quat_rotate(q: Quaternion[Float], p: Vector[3,Float]) -> Vector[3,Scalar]:
 
 
 @over
-def quat_rotate_inv(q: Quaternion[Float], p: Vector[3,Float]) -> Vector[3,Scalar]:
+def quat_rotate_inv(q: Quaternion[Float], p: Vector[3, Float]) -> Vector[3, Scalar]:
     """
     Rotate a vector the inverse of a quaternion.
     """
@@ -664,7 +666,7 @@ def quat_slerp(q0: Quaternion[Float], q1: Quaternion[Float], t: Float) -> Quater
 
 
 @over
-def quat_to_matrix(q: Quaternion[Float]) -> Matrix[3,3,Scalar]:
+def quat_to_matrix(q: Quaternion[Float]) -> Matrix[3, 3, Scalar]:
     """
     Convert a quaternion to a 3x3 rotation matrix.
     """
@@ -680,7 +682,7 @@ def transform_identity() -> transformf:
 
 
 @over
-def transform_get_translation(t: Transformation[Float]) -> Vector[3,Scalar]:
+def transform_get_translation(t: Transformation[Float]) -> Vector[3, Scalar]:
     """
     Return the translational part of a transform.
     """
@@ -704,7 +706,7 @@ def transform_multiply(a: Transformation[Float], b: Transformation[Float]) -> Tr
 
 
 @over
-def transform_point(t: Transformation[Scalar], p: Vector[3,Scalar]) -> Vector[3,Scalar]:
+def transform_point(t: Transformation[Scalar], p: Vector[3, Scalar]) -> Vector[3, Scalar]:
     """
     Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
     """
@@ -712,7 +714,7 @@ def transform_point(t: Transformation[Scalar], p: Vector[3,Scalar]) -> Vector[3,
 
 
 @over
-def transform_point(m: Matrix[4,4,Scalar], p: Vector[3,Scalar]) -> Vector[3,Scalar]:
+def transform_point(m: Matrix[4, 4, Scalar], p: Vector[3, Scalar]) -> Vector[3, Scalar]:
     """
     Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
        note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
@@ -722,7 +724,7 @@ def transform_point(m: Matrix[4,4,Scalar], p: Vector[3,Scalar]) -> Vector[3,Scal
 
 
 @over
-def transform_vector(t: Transformation[Scalar], v: Vector[3,Scalar]) -> Vector[3,Scalar]:
+def transform_vector(t: Transformation[Scalar], v: Vector[3, Scalar]) -> Vector[3, Scalar]:
     """
     Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
     """
@@ -730,7 +732,7 @@ def transform_vector(t: Transformation[Scalar], v: Vector[3,Scalar]) -> Vector[3
 
 
 @over
-def transform_vector(m: Matrix[4,4,Scalar], v: Vector[3,Scalar]) -> Vector[3,Scalar]:
+def transform_vector(m: Matrix[4, 4, Scalar], v: Vector[3, Scalar]) -> Vector[3, Scalar]:
     """
     Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
        note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
@@ -748,7 +750,7 @@ def transform_inverse(t: Transformation[Float]) -> Transformation[Float]:
 
 
 @over
-def spatial_dot(a: Vector[6,Float], b: Vector[6,Float]) -> Scalar:
+def spatial_dot(a: Vector[6, Float], b: Vector[6, Float]) -> Scalar:
     """
     Compute the dot product of two 6d screw vectors.
     """
@@ -756,7 +758,7 @@ def spatial_dot(a: Vector[6,Float], b: Vector[6,Float]) -> Scalar:
 
 
 @over
-def spatial_cross(a: Vector[6,Float], b: Vector[6,Float]) -> Vector[6,Float]:
+def spatial_cross(a: Vector[6, Float], b: Vector[6, Float]) -> Vector[6, Float]:
     """
     Compute the cross-product of two 6d screw vectors.
     """
@@ -764,7 +766,7 @@ def spatial_cross(a: Vector[6,Float], b: Vector[6,Float]) -> Vector[6,Float]:
 
 
 @over
-def spatial_cross_dual(a: Vector[6,Float], b: Vector[6,Float]) -> Vector[6,Float]:
+def spatial_cross_dual(a: Vector[6, Float], b: Vector[6, Float]) -> Vector[6, Float]:
     """
     Compute the dual cross-product of two 6d screw vectors.
     """
@@ -772,7 +774,7 @@ def spatial_cross_dual(a: Vector[6,Float], b: Vector[6,Float]) -> Vector[6,Float
 
 
 @over
-def spatial_top(a: Vector[6,Float]):
+def spatial_top(a: Vector[6, Float]):
     """
     Return the top (first) part of a 6d screw vector.
     """
@@ -780,7 +782,7 @@ def spatial_top(a: Vector[6,Float]):
 
 
 @over
-def spatial_bottom(a: Vector[6,Float]):
+def spatial_bottom(a: Vector[6, Float]):
     """
     Return the bottom (second) part of a 6d screw vector.
     """
@@ -788,25 +790,38 @@ def spatial_bottom(a: Vector[6,Float]):
 
 
 @over
-def spatial_jacobian(S: Array[Vector[6,Float]], joint_parents: Array[int32], joint_qd_start: Array[int32], joint_start: int32, joint_count: int32, J_start: int32, J_out: Array[Float]):
-    """
-
-    """
+def spatial_jacobian(
+    S: Array[Vector[6, Float]],
+    joint_parents: Array[int32],
+    joint_qd_start: Array[int32],
+    joint_start: int32,
+    joint_count: int32,
+    J_start: int32,
+    J_out: Array[Float],
+):
+    """ """
     ...
 
 
 @over
-def spatial_mass(I_s: Array[Matrix[6,6,Float]], joint_start: int32, joint_count: int32, M_start: int32, M: Array[Float]):
-    """
-
-    """
+def spatial_mass(
+    I_s: Array[Matrix[6, 6, Float]], joint_start: int32, joint_count: int32, M_start: int32, M: Array[Float]
+):
+    """ """
     ...
 
 
 @over
-def mlp(weights: Array[float32], bias: Array[float32], activation: Callable, index: int32, x: Array[float32], out: Array[float32]):
+def mlp(
+    weights: Array[float32],
+    bias: Array[float32],
+    activation: Callable,
+    index: int32,
+    x: Array[float32],
+    out: Array[float32],
+):
     """
-    Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``. 
+    Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``.
 
        :param weights: A layer's network weights with dimensions ``(m, n)``.
        :param bias: An array with dimensions ``(n)``.
@@ -825,7 +840,7 @@ def bvh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> bvh_query_t:
     """
     Construct an axis-aligned bounding box query against a bvh object. This query can be used to iterate over all bounds
        inside a bvh. Returns an object that is used to track state during bvh traversal.
-    
+
        :param id: The bvh identifier
        :param lower: The lower bound of the bounding box in bvh space
        :param upper: The upper bound of the bounding box in bvh space
@@ -838,7 +853,7 @@ def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> bvh_query_t:
     """
     Construct a ray query against a bvh object. This query can be used to iterate over all bounds
        that intersect the ray. Returns an object that is used to track state during bvh traversal.
-    
+
        :param id: The bvh identifier
        :param start: The start of the ray in bvh space
        :param dir: The direction of the ray in bvh space
@@ -856,7 +871,9 @@ def bvh_query_next(query: bvh_query_t, index: int32) -> bool:
 
 
 @over
-def mesh_query_point(id: uint64, point: vec3f, max_dist: float32, inside: float32, face: int32, bary_u: float32, bary_v: float32) -> bool:
+def mesh_query_point(
+    id: uint64, point: vec3f, max_dist: float32, inside: float32, face: int32, bary_u: float32, bary_v: float32
+) -> bool:
     """
     Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
 
@@ -875,7 +892,9 @@ def mesh_query_point(id: uint64, point: vec3f, max_dist: float32, inside: float3
 
 
 @over
-def mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32, face: int32, bary_u: float32, bary_v: float32) -> bool:
+def mesh_query_point_no_sign(
+    id: uint64, point: vec3f, max_dist: float32, face: int32, bary_u: float32, bary_v: float32
+) -> bool:
     """
     Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
 
@@ -892,10 +911,19 @@ def mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32, face: 
 
 
 @over
-def mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, inside: float32, face: int32, bary_u: float32, bary_v: float32, epsilon: float32) -> bool:
+def mesh_query_point_sign_normal(
+    id: uint64,
+    point: vec3f,
+    max_dist: float32,
+    inside: float32,
+    face: int32,
+    bary_u: float32,
+    bary_v: float32,
+    epsilon: float32,
+) -> bool:
     """
     Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
-    
+
        Identifies the sign of the distance (inside/outside) using the angle-weighted pseudo normal. This approach to sign determination is robust for well conditioned meshes
        that are watertight and non-self intersecting, it is also comparatively fast to compute.
 
@@ -912,14 +940,24 @@ def mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, in
 
 
 @over
-def mesh_query_point_sign_winding_number(id: uint64, point: vec3f, max_dist: float32, inside: float32, face: int32, bary_u: float32, bary_v: float32, accuracy: float32, threshold: float32) -> bool:
+def mesh_query_point_sign_winding_number(
+    id: uint64,
+    point: vec3f,
+    max_dist: float32,
+    inside: float32,
+    face: int32,
+    bary_u: float32,
+    bary_v: float32,
+    accuracy: float32,
+    threshold: float32,
+) -> bool:
     """
-    Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found. 
-    
+    Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
+
        Identifies the sign using the winding number of the mesh relative to the query point. This method of sign determination is robust for poorly conditioned meshes
        and provides a smooth approximation to sign even when the mesh is not watertight. This method is the most robust and accurate of the sign determination meshes
        but also the most expensive.
-     
+
         Note that the Mesh object must be constructed with ``suport_winding_number=True`` for this method to return correct results.
 
        :param id: The mesh identifier
@@ -936,7 +974,18 @@ def mesh_query_point_sign_winding_number(id: uint64, point: vec3f, max_dist: flo
 
 
 @over
-def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32, t: float32, bary_u: float32, bary_v: float32, sign: float32, normal: vec3f, face: int32) -> bool:
+def mesh_query_ray(
+    id: uint64,
+    start: vec3f,
+    dir: vec3f,
+    max_t: float32,
+    t: float32,
+    bary_u: float32,
+    bary_v: float32,
+    sign: float32,
+    normal: vec3f,
+    face: int32,
+) -> bool:
     """
     Computes the closest ray hit on the mesh with identifier `id`, returns ``True`` if a point < ``max_t`` is found.
 
@@ -959,7 +1008,7 @@ def mesh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> mesh_query_aabb_t
     """
     Construct an axis-aligned bounding box query against a mesh object. This query can be used to iterate over all triangles
        inside a volume. Returns an object that is used to track state during mesh traversal.
-    
+
        :param id: The mesh identifier
        :param lower: The lower bound of the bounding box in mesh space
        :param upper: The upper bound of the bounding box in mesh space
@@ -995,7 +1044,7 @@ def mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32
 @over
 def hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> hash_grid_query_t:
     """
-    Construct a point query against a hash grid. This query can be used to iterate over all neighboring points withing a 
+    Construct a point query against a hash grid. This query can be used to iterate over all neighboring points withing a
        fixed radius from the query point. Returns an object that is used to track state during neighbor traversal.
     """
     ...
@@ -1013,7 +1062,7 @@ def hash_grid_query_next(query: hash_grid_query_t, index: int32) -> bool:
 @over
 def hash_grid_point_id(id: uint64, index: int32) -> int:
     """
-    Return the index of a point in the grid, this can be used to re-order threads such that grid 
+    Return the index of a point in the grid, this can be used to re-order threads such that grid
        traversal occurs in a spatially coherent order.
     """
     ...
@@ -1133,7 +1182,7 @@ def volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec3f):
 @over
 def volume_sample_i(id: uint64, uvw: vec3f) -> int:
     """
-    Sample the int32 volume given by ``id`` at the volume local-space point ``uvw``. 
+    Sample the int32 volume given by ``id`` at the volume local-space point ``uvw``.
     """
     ...
 
@@ -1197,7 +1246,7 @@ def rand_init(seed: int32) -> uint32:
 @over
 def rand_init(seed: int32, offset: int32) -> uint32:
     """
-    Initialize a new random number generator given a user-defined seed and an offset. 
+    Initialize a new random number generator given a user-defined seed and an offset.
        This alternative constructor can be useful in parallel programs, where a kernel as a whole should share a seed,
        but each thread should generate uncorrelated values. In this case usage should be ``r = rand_init(seed, tid)``
     """
@@ -1328,7 +1377,7 @@ def sample_unit_cube(state: uint32) -> vec3f:
 def poisson(state: uint32, lam: float32) -> uint32:
     """
     Generate a random sample from a Poisson distribution.
-    
+
         :param state: RNG state
         :param lam: The expected value of the distribution
     """
@@ -1434,7 +1483,7 @@ def printf():
 @over
 def tid() -> int:
     """
-    Return the current thread index. Note that this is the *global* index of the thread in the range [0, dim) 
+    Return the current thread index. Note that this is the *global* index of the thread in the range [0, dim)
        where dim is the parameter passed to kernel launch.
     """
     ...
@@ -1681,7 +1730,7 @@ def lerp(a: Float, b: Float, t: Float) -> Float:
 
 
 @over
-def lerp(a: Vector[Any,Float], b: Vector[Any,Float], t: Float) -> Vector[Any,Float]:
+def lerp(a: Vector[Any, Float], b: Vector[Any, Float], t: Float) -> Vector[Any, Float]:
     """
     Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
     """
@@ -1689,7 +1738,7 @@ def lerp(a: Vector[Any,Float], b: Vector[Any,Float], t: Float) -> Vector[Any,Flo
 
 
 @over
-def lerp(a: Matrix[Any,Any,Float], b: Matrix[Any,Any,Float], t: Float) -> Matrix[Any,Any,Float]:
+def lerp(a: Matrix[Any, Any, Float], b: Matrix[Any, Any, Float], t: Float) -> Matrix[Any, Any, Float]:
     """
     Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
     """
@@ -1754,425 +1803,317 @@ def lower_bound(arr: Array[Scalar], arr_begin: int32, arr_end: int32, value: Sca
 
 @over
 def add(x: Scalar, y: Scalar) -> Scalar:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
-def add(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
-    """
-
-    """
+def add(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """ """
     ...
 
 
 @over
 def add(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
-def add(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
-    """
-
-    """
+def add(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """ """
     ...
 
 
 @over
 def add(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def sub(x: Scalar, y: Scalar) -> Scalar:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
-def sub(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
-    """
-
-    """
+def sub(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """ """
     ...
 
 
 @over
-def sub(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
-    """
-
-    """
+def sub(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """ """
     ...
 
 
 @over
 def sub(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def sub(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def bit_and(x: Int, y: Int) -> Int:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def bit_or(x: Int, y: Int) -> Int:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def bit_xor(x: Int, y: Int) -> Int:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def lshift(x: Int, y: Int) -> Int:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def rshift(x: Int, y: Int) -> Int:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def invert(x: Int) -> Int:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def mul(x: Scalar, y: Scalar) -> Scalar:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
-def mul(x: Vector[Any,Scalar], y: Scalar) -> Vector[Any,Scalar]:
-    """
-
-    """
+def mul(x: Vector[Any, Scalar], y: Scalar) -> Vector[Any, Scalar]:
+    """ """
     ...
 
 
 @over
-def mul(x: Scalar, y: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
-    """
-
-    """
+def mul(x: Scalar, y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """ """
     ...
 
 
 @over
 def mul(x: Quaternion[Scalar], y: Scalar) -> Quaternion[Scalar]:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def mul(x: Scalar, y: Quaternion[Scalar]) -> Quaternion[Scalar]:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def mul(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
-def mul(x: Scalar, y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
-    """
-
-    """
+def mul(x: Scalar, y: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """ """
     ...
 
 
 @over
-def mul(x: Matrix[Any,Any,Scalar], y: Scalar) -> Matrix[Any,Any,Scalar]:
-    """
-
-    """
+def mul(x: Matrix[Any, Any, Scalar], y: Scalar) -> Matrix[Any, Any, Scalar]:
+    """ """
     ...
 
 
 @over
-def mul(x: Matrix[Any,Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
-    """
-
-    """
+def mul(x: Matrix[Any, Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """ """
     ...
 
 
 @over
-def mul(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]):
-    """
-
-    """
+def mul(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]):
+    """ """
     ...
 
 
 @over
 def mul(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def mul(x: Scalar, y: Transformation[Scalar]) -> Transformation[Scalar]:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def mul(x: Transformation[Scalar], y: Scalar) -> Transformation[Scalar]:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def mod(x: Scalar, y: Scalar) -> Scalar:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def div(x: Scalar, y: Scalar) -> Scalar:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
-def div(x: Vector[Any,Scalar], y: Scalar) -> Vector[Any,Scalar]:
-    """
-
-    """
+def div(x: Vector[Any, Scalar], y: Scalar) -> Vector[Any, Scalar]:
+    """ """
     ...
 
 
 @over
-def div(x: Matrix[Any,Any,Scalar], y: Scalar) -> Matrix[Any,Any,Scalar]:
-    """
-
-    """
+def div(x: Matrix[Any, Any, Scalar], y: Scalar) -> Matrix[Any, Any, Scalar]:
+    """ """
     ...
 
 
 @over
 def div(x: Quaternion[Scalar], y: Scalar) -> Quaternion[Scalar]:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def floordiv(x: Scalar, y: Scalar) -> Scalar:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def pos(x: Scalar) -> Scalar:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
-def pos(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
-    """
-
-    """
+def pos(x: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """ """
     ...
 
 
 @over
 def pos(x: Quaternion[Scalar]) -> Quaternion[Scalar]:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
-def pos(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
-    """
-
-    """
+def pos(x: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """ """
     ...
 
 
 @over
 def neg(x: Scalar) -> Scalar:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
-def neg(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
-    """
-
-    """
+def neg(x: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """ """
     ...
 
 
 @over
 def neg(x: Quaternion[Scalar]) -> Quaternion[Scalar]:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
-def neg(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
-    """
-
-    """
+def neg(x: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """ """
     ...
 
 
 @over
 def unot(b: bool) -> bool:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def unot(b: int8) -> bool:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def unot(b: uint8) -> bool:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def unot(b: int16) -> bool:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def unot(b: uint16) -> bool:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def unot(b: int32) -> bool:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def unot(b: uint32) -> bool:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def unot(b: int64) -> bool:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def unot(b: uint64) -> bool:
-    """
-
-    """
+    """ """
     ...
 
 
 @over
 def unot(a: Array[Any]) -> bool:
-    """
-
-    """
+    """ """
     ...
-
-

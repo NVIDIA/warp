@@ -1,0 +1,6 @@
+{
+    "categoryDefinitions": {
+        "warp:samples": "Nodes dedicated to showcasing how to use Warp in OmniGraph",
+        "warp": "Nodes built on top of Warp"
+    }
+}

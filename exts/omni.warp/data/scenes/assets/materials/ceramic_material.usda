@@ -1,0 +1,78 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    upAxis = "Y"
+)
+
+def Xform "World"
+{
+    def Material "CeramicMaterial"
+    {
+        token outputs:mdl:displacement.connect = </World/CeramicMaterial/Shader.outputs:out>
+        token outputs:mdl:surface.connect = </World/CeramicMaterial/Shader.outputs:out>
+        token outputs:mdl:volume.connect = </World/CeramicMaterial/Shader.outputs:out>
+
+        def Shader "Shader"
+        {
+            uniform token info:implementationSource = "sourceAsset"
+            uniform asset info:mdl:sourceAsset = @OmniPBRBase.mdl@
+            uniform token info:mdl:sourceAsset:subIdentifier = "OmniPBRBase"
+            float inputs:coat_roughness = 0.15 (
+                customData = {
+                    float default = 0
+                }
+                displayGroup = "Clearcoat"
+                displayName = "Clearcoat Roughness"
+                doc = "Higher roughness values lead to more blurry reflections"
+                hidden = false
+            )
+            float inputs:coat_weight = 0.5 (
+                customData = {
+                    float default = 1
+                    dictionary range = {
+                        float max = 1
+                        float min = 0
+                    }
+                }
+                displayGroup = "Clearcoat"
+                displayName = "Clearcoat Weight"
+                doc = "Sets the weight for coat layer"
+                hidden = false
+            )
+            bool inputs:enable_coat = 1 (
+                customData = {
+                    bool default = 0
+                }
+                displayGroup = "Clearcoat"
+                displayName = "Enable Clearcoat Layer"
+                doc = "Adds a coat layer on top of the material when enabled"
+                hidden = false
+            )
+            float inputs:specular_level = 0 (
+                customData = {
+                    float default = 0.5
+                    dictionary soft_range = {
+                        float max = 1
+                        float min = 0
+                    }
+                }
+                displayGroup = "Reflectivity"
+                displayName = "Specular"
+                doc = "The specular level (intensity) of the material"
+                hidden = false
+            )
+            float inputs:specular_reflection_roughness = 0.5 (
+                customData = {
+                    float default = 0
+                }
+                displayGroup = "Reflectivity"
+                displayName = "Roughness"
+                doc = "Higher roughness values lead to more blurry reflections"
+                hidden = false
+            )
+            token outputs:out (
+                renderType = "material"
+            )
+        }
+    }
+}
