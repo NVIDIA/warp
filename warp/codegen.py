@@ -378,6 +378,7 @@ class Adjoint:
 
         # build AST and apply node transformers
         adj.tree = ast.parse(adj.source)
+        adj.transformers = transformers
         for transformer in transformers:
             adj.tree = transformer.visit(adj.tree)
 

@@ -469,7 +469,8 @@ class Function:
             template_func=f.template_func,
             skip_reverse_codegen=True,
             overwrite_func_name_by_key=True,
-            skip_adding_overload=True)
+            skip_adding_overload=True,
+            code_transformers=f.adj.transformers)
 
     def grad(self, func):
         """Defines a custom gradient function that replaces the default reverse-mode behavior for this function.
@@ -481,38 +482,77 @@ class Function:
 
         reverse_args = {}
         reverse_args.update(self.input_types)
-        self.adj.skip_reverse_codegen = True
 
-        self.custom_grad_func = Function(
+        # create temporary Adjoint instance to analyze the function signature
+        adj = warp.codegen.Adjoint(
             func,
-            key=self.key,
-            namespace=self.namespace,
-            input_types=reverse_args,
-            value_func=None,
-            module=self.module,
-            template_func=self.template_func,
             skip_forward_codegen=True,
-            overwrite_func_name_by_key=True,
-            custom_reverse_mode=True,
-            custom_reverse_num_input_args=len(self.input_types),
-            skip_adding_overload=True)
-
-        # resolve return variables
-        self.adj.build(None)
-
-        expected_args = list(self.input_types.items())
-        if self.adj.return_var is not None:
-            expected_args += [(f"adj_ret_{var.label}", var.type) for var in self.adj.return_var]
+            skip_reverse_codegen=False,
+            transformers=self.adj.transformers
+        )
 
         from warp.types import types_equal
 
-        grad_args = self.custom_grad_func.adj.args
-        if len(grad_args) != len(expected_args) or any(not types_equal(a.type, exp_type) for a, (_, exp_type) in zip(grad_args, expected_args)):
-            raise RuntimeError(
-                f"Gradient function {func.__qualname__} for function {self.key} has an incorrect signature. The arguments must match the "
-                "forward function arguments plus the adjoint variables corresponding to the return variables:"
-                f"\n{', '.join(map(lambda nt: f'{nt[0]}: {nt[1].__name__}', expected_args))}"
-            )
+        grad_args = adj.args
+        grad_sig = warp.types.get_signature([arg.type for arg in grad_args], func_name=self.key)
+
+        def match_function(f):
+            # check whether the function overload f matches the signature of the provided gradient function
+            if not hasattr(f.adj, "return_var"):
+                f.adj.build(None)
+            expected_args = list(f.input_types.items())
+            if f.adj.return_var is not None:
+                expected_args += [(f"adj_ret_{var.label}", var.type) for var in f.adj.return_var]
+            if len(grad_args) != len(expected_args):
+                return False
+            if any(not types_equal(a.type, exp_type) for a, (_, exp_type) in zip(grad_args, expected_args)):
+                return False
+            return True
+
+        def add_custom_grad(f: Function):
+            # register custom gradient function
+            f.custom_grad_func = Function(
+                func,
+                key=f.key,
+                namespace=f.namespace,
+                input_types=reverse_args,
+                value_func=None,
+                module=f.module,
+                template_func=f.template_func,
+                skip_forward_codegen=True,
+                overwrite_func_name_by_key=True,
+                custom_reverse_mode=True,
+                custom_reverse_num_input_args=len(f.input_types),
+                skip_adding_overload=False,
+                code_transformers=f.adj.transformers)
+            f.adj.skip_reverse_codegen = True
+
+        if hasattr(self, "user_overloads") and len(self.user_overloads):
+            # find matching overload for which this grad function is defined
+            for sig, f in self.user_overloads.items():
+                if not grad_sig.startswith(sig):
+                    continue
+                if match_function(f):
+                    add_custom_grad(f)
+                    return
+            raise RuntimeError(f"No function overload found for gradient function {func.__qualname__} for function {self.key}")
+        else:
+            # resolve return variables
+            self.adj.build(None)
+
+            expected_args = list(self.input_types.items())
+            if self.adj.return_var is not None:
+                expected_args += [(f"adj_ret_{var.label}", var.type) for var in self.adj.return_var]
+
+            # check if the signature matches this function
+            if match_function(self):
+                add_custom_grad(self)    
+            else:
+                raise RuntimeError(
+                    f"Gradient function {func.__qualname__} for function {self.key} has an incorrect signature. The arguments must match the "
+                    "forward function arguments plus the adjoint variables corresponding to the return variables:"
+                    f"\n{', '.join(map(lambda nt: f'{nt[0]}: {nt[1].__name__}', expected_args))}"
+                )
 
 
 class KernelHooks:
