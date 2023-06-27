@@ -38,6 +38,24 @@ def query_max_value_kernel(
 
 
 @wp.kernel(enable_backward=False)
+def compute_particles_inv_mass_kernel(
+    masses: wp.array(dtype=float),
+    out_inv_masses: wp.array(dtype=float),
+):
+    tid = wp.tid()
+    out_inv_masses[tid] = 1.0 / masses[tid]
+
+
+@wp.kernel(enable_backward=False)
+def compute_particles_radius_kernel(
+    widths: wp.array(dtype=float),
+    out_radii: wp.array(dtype=float),
+):
+    tid = wp.tid()
+    out_radii[tid] = widths[tid] * 0.5
+
+
+@wp.kernel(enable_backward=False)
 def transform_points_kernel(
     points: wp.array(dtype=wp.vec3),
     xform: wp.mat44,
@@ -91,7 +109,6 @@ class InternalState:
 
         self.sim_dt = None
         self.model = None
-        self.max_radius = None
         self.integrator = None
         self.state_0 = None
         self.state_1 = None
@@ -145,26 +162,8 @@ class InternalState:
         sim_rate = timeline.get_ticks_per_second()
         sim_dt = 1.0 / sim_rate
 
-        # Retrieve the radius of the largest particle.
-        widths = omni.warp.points_get_widths(db.inputs.particles)
-        max_width = wp.array((-inf,), dtype=float)
-        wp.launch(
-            query_max_value_kernel,
-            dim=len(widths),
-            inputs=[widths],
-            outputs=[max_width],
-        )
-        max_radius = float(max_width.numpy()[0]) * 0.5
-
         # Initialize Warp's simulation model builder.
         builder = wp.sim.ModelBuilder()
-
-        # Register the input particles to the system.
-        positions = omni.warp.points_get_points(db.inputs.particles).numpy()
-        velocities = omni.warp.points_get_velocities(db.inputs.particles).numpy()
-        masses = omni.warp.points_get_masses(db.inputs.particles).numpy()
-        for pos, vel, mass in zip(positions, velocities, masses):
-            builder.add_particle(pos=pos, vel=vel, mass=mass)
 
         if db.inputs.collider.valid:
             # Retrieve some data from the collider mesh.
@@ -238,6 +237,42 @@ class InternalState:
         # Build the simulation model.
         model = builder.finalize()
 
+        # Register the input particles into the system.
+        model.particle_count = omni.warp.points_get_point_count(db.inputs.particles)
+
+        model.particle_q = omni.warp.points_get_points(db.inputs.particles)
+        model.particle_qd = omni.warp.points_get_velocities(db.inputs.particles)
+        model.particle_mass = omni.warp.points_get_masses(db.inputs.particles)
+
+        model.particle_inv_mass = wp.empty_like(model.particle_mass)
+        wp.launch(
+            compute_particles_inv_mass_kernel,
+            dim=model.particle_count,
+            inputs=[model.particle_mass],
+            outputs=[model.particle_inv_mass],
+        )
+
+        widths = omni.warp.points_get_widths(db.inputs.particles)
+        model._particle_radius = wp.empty_like(widths)
+        wp.launch(
+            compute_particles_radius_kernel,
+            dim=model.particle_count,
+            inputs=[widths],
+            outputs=[model._particle_radius],
+        )
+
+        model.particle_flags = wp.empty(model.particle_count, dtype=wp.uint32)
+        model.particle_flags.fill_(warp.sim.model.PARTICLE_FLAG_ACTIVE.value)
+
+        max_width = wp.array((-inf,), dtype=float)
+        wp.launch(
+            query_max_value_kernel,
+            dim=model.particle_count,
+            inputs=[widths],
+            outputs=[max_width],
+        )
+        model.particle_max_radius = float(max_width.numpy()[0]) * 0.5
+
         # Allocate a single contact per particle.
         model.allocate_soft_contacts(model.particle_count)
 
@@ -247,7 +282,6 @@ class InternalState:
         # Set the model properties.
         model.ground = db.inputs.groundEnabled
         model.gravity = db.inputs.gravity
-        model.particle_radius = max_radius
         model.particle_adhesion = db.inputs.particlesContactAdhesion
         model.particle_cohesion = db.inputs.particlesContactCohesion
         model.particle_ke = db.inputs.contactElasticStiffness * db.inputs.globalScale
@@ -264,7 +298,6 @@ class InternalState:
         # Store the class members.
         self.sim_dt = sim_dt
         self.model = model
-        self.max_radius = max_radius
         self.integrator = integrator
         self.state_0 = model.state()
         self.state_1 = model.state()
@@ -372,7 +405,7 @@ def simulate(db: OgnParticlesSimulateDatabase) -> None:
 
     state.model.particle_grid.build(
         state.state_0.particle_q,
-        state.max_radius * db.inputs.particlesQueryRange,
+        state.model.particle_max_radius * db.inputs.particlesQueryRange,
     )
 
     if USE_GRAPH:
