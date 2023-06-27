@@ -182,8 +182,8 @@ class InternalState:
         point_count = omni.warp.mesh_get_point_count(db.outputs.mesh)
 
         # Initialize a double buffering for the height map.
-        height_map_0 = wp.empty(point_count, dtype=float)
-        height_map_1 = wp.empty(point_count, dtype=float)
+        height_map_0 = wp.zeros(point_count, dtype=float)
+        height_map_1 = wp.zeros(point_count, dtype=float)
 
         # Build the grid mesh.
         grid_create_launch_kernel(
