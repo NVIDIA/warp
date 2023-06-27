@@ -16,7 +16,7 @@ __all__ = [
     "get_world_xform",
     "get_world_xform_from_prim",
     "mesh_create_bundle",
-    "mesh_duplicate_bundle",
+    "mesh_copy_bundle",
     "mesh_get_face_count",
     "mesh_get_face_vertex_counts",
     "mesh_get_face_vertex_indices",
@@ -30,7 +30,7 @@ __all__ = [
     "mesh_get_vertex_count",
     "mesh_get_world_extent",
     "points_create_bundle",
-    "points_duplicate_bundle",
+    "points_copy_bundle",
     "points_get_local_extent",
     "points_get_masses",
     "points_get_point_count",
@@ -249,7 +249,7 @@ def points_create_bundle(
     )
 
 
-def points_duplicate_bundle(
+def points_copy_bundle(
     dst_bundle: og.BundleContents,
     src_bundle: og.BundleContents,
     deep_copy: bool = False,
@@ -454,7 +454,7 @@ def mesh_create_bundle(
     )
 
 
-def mesh_duplicate_bundle(
+def mesh_copy_bundle(
     dst_bundle: og.BundleContents,
     src_bundle: og.BundleContents,
     deep_copy: bool = False,

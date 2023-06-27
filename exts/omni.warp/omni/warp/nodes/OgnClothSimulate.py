@@ -411,7 +411,7 @@ def compute(db: OgnClothSimulateDatabase) -> None:
     if state.needs_initialization(db):
         # We want to use the input cloth geometry as the initial state
         # of the simulation so we copy its bundle to the output one.
-        omni.warp.mesh_duplicate_bundle(
+        omni.warp.mesh_copy_bundle(
             db.outputs.cloth,
             db.inputs.cloth,
             deep_copy=True,

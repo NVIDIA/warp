@@ -423,7 +423,7 @@ def compute(db: OgnParticlesSimulateDatabase) -> None:
 
     if not db.inputs.enabled:
         # Pass through the data.
-        omni.warp.points_duplicate_bundle(
+        omni.warp.points_copy_bundle(
             db.outputs.particles,
             db.inputs.particles,
             deep_copy=False,
@@ -437,7 +437,7 @@ def compute(db: OgnParticlesSimulateDatabase) -> None:
     if state.needs_initialization(db):
         # We want to use the input particles geometry as the initial state
         # of the simulation so we copy its bundle to the output one.
-        omni.warp.points_duplicate_bundle(
+        omni.warp.points_copy_bundle(
             db.outputs.particles,
             db.inputs.particles,
             deep_copy=True,
