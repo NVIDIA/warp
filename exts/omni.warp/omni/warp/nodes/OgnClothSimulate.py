@@ -403,8 +403,9 @@ def compute(db: OgnClothSimulateDatabase) -> None:
         state.enabled = False
         return
 
-    # Initialize the internal state if it hasn't been already.
     if state.needs_initialization(db):
+        # Initialize the internal state if it hasn't been already.
+
         # We want to use the input cloth geometry as the initial state
         # of the simulation so we copy its bundle to the output one.
         omni.warp.mesh_copy_bundle(
@@ -415,42 +416,44 @@ def compute(db: OgnClothSimulateDatabase) -> None:
 
         if not state.initialize(db):
             return
+    else:
+        # We skip the simulation if it has just been initialized.
 
-    if db.inputs.collider.valid and state.collider_mesh is not None:
-        with db.inputs.collider.changes() as bundle_changes:
-            geometry_changes = bundle_changes.get_change(db.inputs.collider)
-            if geometry_changes != og.BundleChangeType.NONE:
-                with omni.warp.NodeTimer("update_collider", db, active=PROFILING):
-                    # The collider might be animated so we need to update its state.
-                    collider_points = omni.warp.mesh_get_points(db.inputs.collider)
-                    collider_xform = omni.warp.get_world_xform(db.inputs.collider)
-                    update_collider(db, collider_points, collider_xform)
+        if db.inputs.collider.valid and state.collider_mesh is not None:
+            with db.inputs.collider.changes() as bundle_changes:
+                geometry_changes = bundle_changes.get_change(db.inputs.collider)
+                if geometry_changes != og.BundleChangeType.NONE:
+                    with omni.warp.NodeTimer("update_collider", db, active=PROFILING):
+                        # The collider might be animated so we need to update its state.
+                        collider_points = omni.warp.mesh_get_points(db.inputs.collider)
+                        collider_xform = omni.warp.get_world_xform(db.inputs.collider)
+                        update_collider(db, collider_points, collider_xform)
 
-                    # Update the state members.
-                    state.collider_xform = collider_xform.copy()
+                        # Update the state members.
+                        state.collider_xform = collider_xform.copy()
 
-    with omni.warp.NodeTimer("simulate", db, active=PROFILING):
-        # Run the cloth simulation at the current time.
-        simulate(db)
+        with omni.warp.NodeTimer("simulate", db, active=PROFILING):
+            # Run the cloth simulation at the current time.
+            simulate(db)
 
-    with omni.warp.NodeTimer("transform_points", db, active=PROFILING):
-        # Retrieve some data from the cloth mesh.
-        xform = omni.warp.get_world_xform(db.inputs.cloth)
+        with omni.warp.NodeTimer("transform_points", db, active=PROFILING):
+            # Retrieve some data from the cloth mesh.
+            xform = omni.warp.get_world_xform(db.inputs.cloth)
 
-        # Transform the cloth point positions back into local space
-        # and store them into the bundle.
-        out_points = omni.warp.points_get_points(db.outputs.cloth)
-        wp.launch(
-            kernel=transform_points_kernel,
-            dim=len(out_points),
-            inputs=[
-                state.state_0.particle_q,
-                np.linalg.inv(xform).T,
-            ],
-            outputs=[
-                out_points,
-            ],
-        )
+            # Transform the cloth point positions back into local space
+            # and store them into the bundle.
+            out_points = omni.warp.points_get_points(db.outputs.cloth)
+            wp.launch(
+                kernel=transform_points_kernel,
+                dim=len(out_points),
+                inputs=[
+                    state.state_0.particle_q,
+                    np.linalg.inv(xform).T,
+                ],
+                outputs=[
+                    out_points,
+                ],
+            )
 
     # Store whether the simulation was last enabled.
     state.enabled = True

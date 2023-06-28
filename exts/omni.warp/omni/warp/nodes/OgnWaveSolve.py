@@ -345,34 +345,36 @@ def compute(db: OgnWaveSolveDatabase) -> None:
         face_count,
     )
 
-    # Initialize the internal state if it hasn't been already.
     if state.needs_initialization(db):
+        # Initialize the internal state if it hasn't been already.
         if not state.initialize(db, dims):
             return
+    else:
+        # We skip the simulation if it has just been initialized.
 
-    # Retrieve the simulation's delta time.
-    timeline = omni.timeline.get_timeline_interface()
-    sim_rate = timeline.get_ticks_per_second()
-    sim_dt = 1.0 / sim_rate
+        # Retrieve the simulation's delta time.
+        timeline = omni.timeline.get_timeline_interface()
+        sim_rate = timeline.get_ticks_per_second()
+        sim_dt = 1.0 / sim_rate
 
-    # Infer the size of each cell from the overall grid size and the number
-    # of dimensions.
-    cell_size = db.inputs.size / dims
+        # Infer the size of each cell from the overall grid size and the number
+        # of dimensions.
+        cell_size = db.inputs.size / dims
 
-    if db.inputs.collider.valid:
-        with omni.warp.NodeTimer("displace", db, active=PROFILING):
-            # Deform the grid with a displacement value if the collider
-            # is in contact with it.
-            displace(db, dims, cell_size)
+        if db.inputs.collider.valid:
+            with omni.warp.NodeTimer("displace", db, active=PROFILING):
+                # Deform the grid with a displacement value if the collider
+                # is in contact with it.
+                displace(db, dims, cell_size)
 
-    with omni.warp.NodeTimer("simulate", db, active=PROFILING):
-        # Simulate the ripples using the wave equation.
-        simulate(db, dims, cell_size, sim_dt)
+        with omni.warp.NodeTimer("simulate", db, active=PROFILING):
+            # Simulate the ripples using the wave equation.
+            simulate(db, dims, cell_size, sim_dt)
 
-    with omni.warp.NodeTimer("update_mesh", db, active=PROFILING):
-        # Update the mesh points with the height map resulting from
-        # the displacement and simulation steps.
-        update_mesh(db)
+        with omni.warp.NodeTimer("update_mesh", db, active=PROFILING):
+            # Update the mesh points with the height map resulting from
+            # the displacement and simulation steps.
+            update_mesh(db)
 
     # Set the USD primitive path and type.
     omni.warp.define_prim_attrs(

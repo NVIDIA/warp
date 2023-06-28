@@ -60,7 +60,7 @@ def Xform "World"
             uniform float2 ui:nodegraph:node:pos = (-515, 974)
         }
 
-        def OmniGraphNode "onloaded" (
+        def OmniGraphNode "on_loaded" (
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
         {
@@ -184,7 +184,7 @@ def compute(inputs: Inputs, outputs: Outputs):\r
             custom token inputs:dimSource = "explicit"
             custom uint inputs:execIn
             prepend uint inputs:execIn.connect = [
-                </World/ActionGraph/onloaded.outputs:execOut>,
+                </World/ActionGraph/on_loaded.outputs:execOut>,
                 </World/ActionGraph/on_tick.outputs:tick>,
             ]
             custom float inputs:offsetU
