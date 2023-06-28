@@ -5,8 +5,9 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-"""Public API for the omni.warp.core extension"""
+"""Widgets used by the custom node UI templates.
 
-# Register the extension by importing its entry point class.
-from ._impl.extension import OmniWarpCoreExtension
-_ = OmniWarpCoreExtension
+These are built solely against the `omni.ui` framework and could in theory be
+reused outside of the context of node UIs, unlike the properties that are built
+on top of `omni.kit.property.usd`.
+"""

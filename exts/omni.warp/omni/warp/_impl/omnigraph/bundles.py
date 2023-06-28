@@ -5,7 +5,7 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-"""Generic helpers to manipulate OmniGraph bundles."""
+"""Generic helpers to author OmniGraph bundles."""
 
 from typing import Optional
 

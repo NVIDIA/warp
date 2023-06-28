@@ -5,8 +5,4 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-"""Public API for the omni.warp.core extension"""
-
-# Register the extension by importing its entry point class.
-from ._impl.extension import OmniWarpCoreExtension
-_ = OmniWarpCoreExtension
+"""OmniGraph nodes dedicated to specific example scenes."""
