@@ -5,6 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+"""Backend implementation for kernel node(s)."""
+
 from __future__ import annotations
 
 from enum import IntFlag
@@ -26,24 +28,20 @@ from typing import (
     Union,
 )
 
+import omni.graph.core as og
 import warp as wp
 
-import omni.graph.core as og
-
-from omni.warp.scripts.attributes import (
-    AttributeInfo,
-    OutputAttributeInfo,
-    OutputArrayShapeSource,
-    OutputBundleTypeSource,
-    cast_array_attr_value_to_warp,
-    convert_og_type_to_warp,
-    get_attr_base_name,
-    get_attr_name,
-    join_attr_name,
-)
 from omni.warp.scripts.common import (
     IntEnum,
+    convert_og_type_to_warp,
     get_warp_type_from_data_type_name,
+)
+from omni.warp.scripts.omnigraph.attributes import (
+    ATTR_BUNDLE_TYPE,
+    attr_cast_array_to_warp,
+    attr_get_base_name,
+    attr_get_name,
+    attr_join_name,
 )
 
 
@@ -52,7 +50,8 @@ _ATTR_PORT_TYPE_OUTPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_OUTPUT
 
 EXPLICIT_SOURCE = "explicit"
 
-#   User Attribute Events
+
+#   Enumerators
 # ------------------------------------------------------------------------------
 
 
@@ -64,8 +63,19 @@ class UserAttributesEvent(IntFlag):
     REMOVED = 1 << 1
 
 
-#   User Attributes Description
-# ------------------------------------------------------------------------------
+class OutputArrayShapeSource(IntEnum):
+    """Method to infer the shape of output attribute arrays."""
+
+    AS_INPUT_OR_AS_KERNEL = (0, "as input if any, or as kernel")
+    AS_KERNEL = (1, "as kernel")
+
+
+class OutputBundleTypeSource(IntEnum):
+    """Method to infer the type of output attribute bundles."""
+
+    AS_INPUT = (0, "as input if any")
+    AS_INPUT_OR_EXPLICIT = (1, "as input if any, or explicit")
+    EXPLICIT = (2, "explicit")
 
 
 class ArrayAttributeFormat(IntEnum):
@@ -73,6 +83,10 @@ class ArrayAttributeFormat(IntEnum):
 
     RAW = (0, "raw")
     BUNDLE = (1, "bundle")
+
+
+#   User Attributes Description
+# ------------------------------------------------------------------------------
 
 
 class UserAttributeDesc(NamedTuple):
@@ -140,7 +154,7 @@ class UserAttributeDesc(NamedTuple):
     @property
     def name(self) -> str:
         """Retrieves the attribute's name prefixed with its port type."""
-        return join_attr_name(self.port_type, self.base_name)
+        return attr_join_name(self.port_type, self.base_name)
 
     @property
     def type(self) -> og.Attribute:
@@ -166,7 +180,7 @@ def deserialize_user_attribute_descs(
     data: str,
 ) -> Mapping[str, UserAttributeDesc]:
     """Deserializes a string into a mapping of (name, desc)."""
-    descs = {join_attr_name(x["port_type"], x["base_name"]): UserAttributeDesc.deserialize(x) for x in json.loads(data)}
+    descs = {attr_join_name(x["port_type"], x["base_name"]): UserAttributeDesc.deserialize(x) for x in json.loads(data)}
 
     # Filter out any invalid description.
     return {k: v for k, v in descs.items() if v is not None}
@@ -183,6 +197,100 @@ def serialize_user_attribute_descs(
 # ------------------------------------------------------------------------------
 
 
+class OutputAttributeInfo(NamedTuple):
+    """Information relating to an output node attribute."""
+
+    array_shape_source: Optional[OutputArrayShapeSource]
+    bundle_type_source: Optional[OutputBundleTypeSource]
+    bundle_type_explicit: Optional[str] = None
+
+
+class AttributeInfo(NamedTuple):
+    """Information relating to a node attribute.
+
+    This struct contains all the metadata required by the node to initialize
+    and evaluate. This includes compiling the kernel and initializing the Inputs
+    and Outputs structs that are then passed to the kernel as parameters.
+
+    We don't directly store the array shape, if any, since it is possible that
+    it might vary between each evaluation of the node's compute. Instead,
+    we store which method to use to infer the array's shape and let the node
+    determine the actual shape during each compute step.
+
+    Note
+    ----
+
+    The `warp_type` member represents the type of the kernel parameter
+    corresdonding to that attribute. If the attribute is a bundle, then it is
+    expected to be a `wp.struct` holding the values of the bundle, unless
+    the bundle is of type :class:`Array`, in which case `warp_type` should be
+    a standard `wp.array`.
+    """
+
+    port_type: og.AttributePortType
+    base_name: str
+    og_type: og.Type
+    warp_type: type
+    output: Optional[OutputAttributeInfo] = None
+
+    @property
+    def name(self) -> str:
+        return attr_join_name(self.port_type, self.base_name)
+
+    @property
+    def og_data_type(self) -> og.Type:
+        return og.Type(
+            self.og_type.base_type,
+            tuple_count=self.og_type.tuple_count,
+            array_depth=0,
+            role=self.og_type.role,
+        )
+
+    @property
+    def is_array(self) -> bool:
+        return self.og_type.array_depth > 0
+
+    @property
+    def is_bundle(self) -> bool:
+        return self.og_type == ATTR_BUNDLE_TYPE
+
+    @property
+    def dim_count(self) -> int:
+        if self.is_array:
+            return self.warp_type.ndim
+
+        return 0
+
+    @property
+    def warp_data_type(self) -> type:
+        if self.is_array:
+            return self.warp_type.dtype
+
+        return self.warp_type
+
+    @property
+    def warp_type_name(self) -> str:
+        if self.is_bundle:
+            return self.warp_type.cls.__name__
+
+        return get_warp_type_from_data_type_name(
+            self.warp_data_type.__name__,
+            dim_count=self.dim_count,
+            as_str=True,
+        )
+
+    @property
+    def warp_data_type_name(self) -> str:
+        if self.is_bundle:
+            return self.warp_type.cls.__name__
+
+        return get_warp_type_from_data_type_name(
+            self.warp_data_type.__name__,
+            dim_count=0,
+            as_str=True,
+        )
+
+
 def gather_attribute_infos(
     node: og.Node,
     db_inputs: Any,
@@ -197,8 +305,8 @@ def gather_attribute_infos(
 
     def extract_partial_info_from_attr(attr: og.Attribute) -> Tuple[Any, ...]:
         """Extract a partial information set from an attribute."""
-        name = get_attr_name(attr)
-        base_name = get_attr_base_name(attr)
+        name = attr_get_name(attr)
+        base_name = attr_get_base_name(attr)
         og_type = attr.get_resolved_type()
         is_array = og_type.array_depth > 0
         return (name, base_name, og_type, is_array)
@@ -541,7 +649,7 @@ def get_kernel_args(
             # supports 1D arrays anyways.
             shape = value.shape[:1]
 
-            value = cast_array_attr_value_to_warp(
+            value = attr_cast_array_to_warp(
                 value,
                 info.warp_data_type,
                 shape,
@@ -573,7 +681,7 @@ def get_kernel_args(
             setattr(db_outputs, "{}_size".format(info.base_name), size)
 
             value = getattr(db_outputs, info.base_name)
-            value = cast_array_attr_value_to_warp(
+            value = attr_cast_array_to_warp(
                 value,
                 info.warp_data_type,
                 shape,

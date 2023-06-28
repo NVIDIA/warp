@@ -1,4 +1,4 @@
-# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2023 NVIDIA CORPORATION.  All rights reserved.
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
 # and any modifications thereto.  Any use, reproduction, disclosure or
@@ -17,19 +17,20 @@ from typing import (
 import omni.graph.core as og
 import omni.ui as ui
 
-from omni.warp.scripts.attributes import (
-    BUNDLE_ATTR_TYPE,
-    get_attr_name,
-)
 from omni.warp.scripts.nodes.kernel import (
     ArrayAttributeFormat,
     UserAttributeDesc,
     UserAttributesEvent,
     deserialize_user_attribute_descs,
-    join_attr_name,
     serialize_user_attribute_descs,
 )
+from omni.warp.scripts.omnigraph.attributes import (
+    ATTR_BUNDLE_TYPE,
+    attr_get_name,
+    attr_join_name,
+)
 from omni.warp.scripts.widgets.attributeeditor import AttributeEditor
+
 
 _BUTTON_WIDTH = 100
 
@@ -61,7 +62,7 @@ def _remove_user_attribute_desc(
     data = og.Controller.get(state.layout.user_attr_descs_attr)
     descs = deserialize_user_attribute_descs(data)
 
-    name = join_attr_name(port_type, base_name)
+    name = attr_join_name(port_type, base_name)
     descs.pop(name, None)
 
     data = serialize_user_attribute_descs(descs)
@@ -70,13 +71,13 @@ def _remove_user_attribute_desc(
 
 def _get_attribute_creation_handler(state: _State) -> Callable:
     def fn(attr_desc: UserAttributeDesc):
-        if any(get_attr_name(x) == attr_desc.name for x in state.layout.node.get_attributes()):
+        if any(attr_get_name(x) == attr_desc.name for x in state.layout.node.get_attributes()):
             raise RuntimeError("The attribute '{}' already exists on the node.".format(attr_desc.name))
 
         if attr_desc.array_format == ArrayAttributeFormat.RAW:
             attr_type = attr_desc.type
         elif attr_desc.array_format == ArrayAttributeFormat.BUNDLE:
-            attr_type = BUNDLE_ATTR_TYPE
+            attr_type = ATTR_BUNDLE_TYPE
         else:
             assert False, "Unexpected array attribute format '{}'.".format(
                 attr_desc.array_format,
@@ -110,7 +111,7 @@ def _get_attribute_creation_handler(state: _State) -> Callable:
 def _get_attribute_removal_handler(state: _State) -> Callable:
     def fn(attr):
         port_type = attr.get_port_type()
-        name = get_attr_name(attr)
+        name = attr_get_name(attr)
 
         if not og.Controller.remove_attribute(attr):
             return
@@ -156,7 +157,7 @@ def _get_remove_btn_clicked_handler(state: _State) -> Callable:
         with menu:
             for attr in attrs:
                 ui.MenuItem(
-                    get_attr_name(attr),
+                    attr_get_name(attr),
                     triggered_fn=partial(
                         _get_attribute_removal_handler(state),
                         attr,

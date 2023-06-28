@@ -1,4 +1,4 @@
-# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2023 NVIDIA CORPORATION.  All rights reserved.
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
 # and any modifications thereto.  Any use, reproduction, disclosure or
@@ -18,8 +18,7 @@ from omni.kit.property.usd.custom_layout_helper import (
     CustomLayoutProperty,
 )
 from omni.kit.property.usd.usd_property_widget import UsdPropertyUiEntry
-
-from omni.warp.scripts.nodes.common import MAX_DIMENSIONS
+import warp as wp
 
 
 def find_prop(
@@ -84,7 +83,7 @@ class CustomLayout:
                         og.Controller.get(self.dim_count_attr),
                         0,
                     ),
-                    MAX_DIMENSIONS,
+                    wp.types.ARRAY_MAX_DIMS,
                 )
                 for i in range(dim_count):
                     prop = find_prop(

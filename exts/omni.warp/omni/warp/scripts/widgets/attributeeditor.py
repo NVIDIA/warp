@@ -1,9 +1,11 @@
-# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2023 NVIDIA CORPORATION.  All rights reserved.
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
 # and any modifications thereto.  Any use, reproduction, disclosure or
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+"""Widget for a dialog window to author node attributes."""
 
 from functools import partial
 
@@ -16,6 +18,7 @@ from omni.warp.scripts.nodes.kernel import (
     OutputArrayShapeSource,
     UserAttributeDesc,
 )
+
 
 _DIALOG_TITLE = "Attribute Creator"
 _DIALOG_PADDING = 15

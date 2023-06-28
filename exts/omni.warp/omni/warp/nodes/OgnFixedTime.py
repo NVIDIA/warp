@@ -1,18 +1,11 @@
-# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2023 NVIDIA CORPORATION.  All rights reserved.
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
 # and any modifications thereto.  Any use, reproduction, disclosure or
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-"""
-Simple 2D wave-equation solver
-"""
-
-import math
-
-import numpy as np
-import warp as wp
+"""Node retrieving a time with a fixed time step."""
 
 import omni.timeline
 
@@ -24,7 +17,7 @@ class OgnFixedTimeState:
 
 
 class OgnFixedTime:
-    """ """
+    """Node."""
 
     @staticmethod
     def internal_state():

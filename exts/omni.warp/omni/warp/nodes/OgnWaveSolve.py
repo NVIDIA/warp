@@ -223,10 +223,10 @@ def displace(
     state = db.internal_state
 
     # Retrieve some data from the grid mesh.
-    xform = omni.warp.get_world_xform(db.outputs.mesh)
+    xform = omni.warp.bundle_get_world_xform(db.outputs.mesh)
 
     # Retrieve some data from the collider mesh.
-    collider_xform = omni.warp.get_world_xform(db.inputs.collider)
+    collider_xform = omni.warp.bundle_get_world_xform(db.inputs.collider)
     collider_extent = omni.warp.mesh_get_world_extent(
         db.inputs.collider,
         axis_aligned=True,
@@ -377,7 +377,7 @@ def compute(db: OgnWaveSolveDatabase) -> None:
             update_mesh(db)
 
     # Set the USD primitive path and type.
-    omni.warp.define_prim_attrs(
+    omni.warp.bundle_define_prim_attrs(
         db.outputs.mesh,
         "Mesh",
         xform_prim_path=db.inputs.xformPrimPath,

@@ -144,7 +144,7 @@ class InternalState:
 
         # Retrieve some data from the cloth mesh.
         points = omni.warp.mesh_get_points(db.inputs.cloth)
-        xform = omni.warp.get_world_xform(db.inputs.cloth)
+        xform = omni.warp.bundle_get_world_xform(db.inputs.cloth)
 
         # Transform the cloth point positions into world space.
         world_points = wp.empty(len(points), dtype=wp.vec3)
@@ -188,7 +188,7 @@ class InternalState:
         if db.inputs.collider.valid:
             # Retrieve some data from the collider mesh.
             collider_points = omni.warp.mesh_get_points(db.inputs.collider)
-            collider_xform = omni.warp.get_world_xform(db.inputs.collider)
+            collider_xform = omni.warp.bundle_get_world_xform(db.inputs.collider)
             collider_extent = omni.warp.mesh_get_local_extent(db.inputs.collider)
 
             # Transform the collider point position into world space.
@@ -426,7 +426,7 @@ def compute(db: OgnClothSimulateDatabase) -> None:
                     with omni.warp.NodeTimer("update_collider", db, active=PROFILING):
                         # The collider might be animated so we need to update its state.
                         collider_points = omni.warp.mesh_get_points(db.inputs.collider)
-                        collider_xform = omni.warp.get_world_xform(db.inputs.collider)
+                        collider_xform = omni.warp.bundle_get_world_xform(db.inputs.collider)
                         update_collider(db, collider_points, collider_xform)
 
                         # Update the state members.
@@ -438,7 +438,7 @@ def compute(db: OgnClothSimulateDatabase) -> None:
 
         with omni.warp.NodeTimer("transform_points", db, active=PROFILING):
             # Retrieve some data from the cloth mesh.
-            xform = omni.warp.get_world_xform(db.inputs.cloth)
+            xform = omni.warp.bundle_get_world_xform(db.inputs.cloth)
 
             # Transform the cloth point positions back into local space
             # and store them into the bundle.

@@ -5,21 +5,28 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+"""Entry point for the extension."""
+
 import asyncio
 from contextlib import suppress
-from typing import Sequence
-from .menu import WarpMenu
-from .common import log_info
-import warp as wp
-import os, sys, subprocess
-import webbrowser
 import importlib
+import os
+import subprocess
+import sys
+from typing import Sequence
+import webbrowser
+
 import carb
 import carb.dictionary
-import omni.graph.core as og
 import omni.ext
+import omni.graph.core as og
 import omni.kit.actions.core
 import omni.timeline
+import warp as wp
+
+from omni.warp.scripts.common import log_info
+from omni.warp.scripts.menu import WarpMenu
+
 
 SCENES_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../data/scenes"))
 

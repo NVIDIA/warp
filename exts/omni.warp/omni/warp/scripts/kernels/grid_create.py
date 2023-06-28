@@ -5,6 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+"""Warp kernel creating a grid mesh geometry."""
+
 from typing import Tuple
 
 import warp as wp

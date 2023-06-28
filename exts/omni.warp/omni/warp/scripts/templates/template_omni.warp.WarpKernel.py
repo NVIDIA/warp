@@ -1,4 +1,4 @@
-# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2023 NVIDIA CORPORATION.  All rights reserved.
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
 # and any modifications thereto.  Any use, reproduction, disclosure or
@@ -18,14 +18,14 @@ from omni.kit.property.usd.custom_layout_helper import (
     CustomLayoutProperty,
 )
 from omni.kit.property.usd.usd_property_widget import UsdPropertyUiEntry
+import warp as wp
 
-from omni.warp.scripts.attributes import (
-    SUPPORTED_SDF_DATA_TYPE_NAMES,
-    get_attr_base_name,
-    get_attr_name,
-)
-from omni.warp.scripts.nodes.common import MAX_DIMENSIONS
+from omni.warp.scripts.common import SUPPORTED_SDF_DATA_TYPE_NAMES
 from omni.warp.scripts.nodes.kernel import EXPLICIT_SOURCE
+from omni.warp.scripts.omnigraph.attributes import (
+    attr_get_base_name,
+    attr_get_name,
+)
 from omni.warp.scripts.props.codefile import get_code_file_prop_builder
 from omni.warp.scripts.props.codestr import get_code_str_prop_builder
 from omni.warp.scripts.props.editattrs import get_edit_attrs_prop_builder
@@ -85,7 +85,7 @@ class CustomLayout:
         attr_to: og.Attribute,
     ) -> None:
         """Callback for a node attribute having been disconnected."""
-        if get_attr_name(attr_to) == "inputs:codeStr":
+        if attr_get_name(attr_to) == "inputs:codeStr":
             # Redraw the UI to update the view/edit code button label.
             self.refresh()
 
@@ -95,7 +95,7 @@ class CustomLayout:
         attr_to: og.Attribute,
     ) -> None:
         """Callback for a node attribute having been disconnected."""
-        if get_attr_name(attr_to) == "inputs:codeStr":
+        if attr_get_name(attr_to) == "inputs:codeStr":
             # Redraw the UI to update the view/edit code button label.
             self.refresh()
 
@@ -132,7 +132,7 @@ class CustomLayout:
                 and x.get_resolved_type().array_depth > 0
             )
         )
-        dim_sources = (EXPLICIT_SOURCE,) + tuple(get_attr_base_name(x) for x in input_array_attrs)
+        dim_sources = (EXPLICIT_SOURCE,) + tuple(attr_get_base_name(x) for x in input_array_attrs)
 
         frame = CustomLayoutFrame(hide_extra=True)
 
@@ -183,7 +183,7 @@ class CustomLayout:
                             og.Controller.get(self.dim_count_attr),
                             0,
                         ),
-                        MAX_DIMENSIONS,
+                        wp.types.ARRAY_MAX_DIMS,
                     )
                     for i in range(dim_count):
                         prop = find_prop(props, "inputs:dim{}".format(i + 1))

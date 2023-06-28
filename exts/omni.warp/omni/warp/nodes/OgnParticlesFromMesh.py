@@ -149,7 +149,7 @@ class InternalState:
     def initialize(self, db: OgnParticlesFromMeshDatabase) -> bool:
         """Initializes the internal state."""
         point_count = omni.warp.mesh_get_point_count(db.inputs.mesh)
-        xform = omni.warp.get_world_xform(db.inputs.mesh)
+        xform = omni.warp.bundle_get_world_xform(db.inputs.mesh)
         extent = omni.warp.mesh_get_local_extent(db.inputs.mesh)
 
         # Transform the mesh's point positions into world space.
@@ -305,7 +305,7 @@ def compute(db: OgnParticlesFromMeshDatabase) -> None:
             velocities.fill_(0.0)
         else:
             # Retrieve the mesh's world transformation.
-            xform = omni.warp.get_world_xform(db.inputs.mesh)
+            xform = omni.warp.bundle_get_world_xform(db.inputs.mesh)
 
             # Retrieve the normalized velocity direction.
             vel = db.inputs.velocityDir
@@ -330,7 +330,7 @@ def compute(db: OgnParticlesFromMeshDatabase) -> None:
         masses.fill_(db.inputs.mass)
 
     # Set the USD primitive path and type.
-    omni.warp.define_prim_attrs(
+    omni.warp.bundle_define_prim_attrs(
         db.outputs.particles,
         "Points",
         xform_prim_path=db.inputs.xformPrimPath,

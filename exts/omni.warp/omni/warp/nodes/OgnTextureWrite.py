@@ -12,9 +12,10 @@ import traceback
 
 import omni.graph.core as og
 import omni.ui as ui
+import warp as wp
 
 from omni.warp.ogn.OgnTextureWriteDatabase import OgnTextureWriteDatabase
-from omni.warp.scripts.nodes.common import MAX_DIMENSIONS
+
 
 #   Compute
 # ------------------------------------------------------------------------------
@@ -29,7 +30,7 @@ def compute(db: OgnTextureWriteDatabase) -> None:
     if not uri.startswith("dynamic://"):
         return
 
-    dim_count = min(max(db.inputs.dimCount, 0), MAX_DIMENSIONS)
+    dim_count = min(max(db.inputs.dimCount, 0), wp.types.ARRAY_MAX_DIMS)
     resolution = tuple(max(getattr(db.inputs, "dim{}".format(i + 1)), 0) for i in range(dim_count))
 
     # We need to dereference OG's attribute pointer to get the actual pointer

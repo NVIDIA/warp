@@ -1,4 +1,4 @@
-# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2023 NVIDIA CORPORATION.  All rights reserved.
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
 # and any modifications thereto.  Any use, reproduction, disclosure or
@@ -18,6 +18,7 @@ from omni.kit.property.usd.usd_property_widget_builder import UsdPropertiesWidge
 from omni.kit.widget.text_editor import TextEditor
 from omni.kit.window.property.templates import HORIZONTAL_SPACING
 import omni.ui as ui
+
 
 _DIALOG_TITLE = "Kernel Editor"
 _DIALOG_WIDTH = 800

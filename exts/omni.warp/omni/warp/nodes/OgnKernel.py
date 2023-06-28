@@ -10,15 +10,12 @@
 import traceback
 from typing import Tuple
 
-import warp as wp
-
 import omni.graph.core as og
 import omni.graph.tools.ogn as ogn
 import omni.timeline
+import warp as wp
 
 from omni.warp.ogn.OgnKernelDatabase import OgnKernelDatabase
-from omni.warp.scripts.attributes import join_attr_name
-from omni.warp.scripts.nodes.common import MAX_DIMENSIONS
 from omni.warp.scripts.nodes.kernel import (
     EXPLICIT_SOURCE,
     InternalStateBase,
@@ -30,11 +27,14 @@ from omni.warp.scripts.nodes.kernel import (
     validate_input_arrays,
     write_output_attrs,
 )
+from omni.warp.scripts.omnigraph.attributes import attr_join_name
+
 
 QUIET_DEFAULT = wp.config.quiet
 
 ATTR_PORT_TYPE_INPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_INPUT
 ATTR_PORT_TYPE_OUTPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_OUTPUT
+
 
 #   Internal State
 # ------------------------------------------------------------------------------
@@ -117,7 +117,7 @@ def infer_kernel_shape(
     """Infers the shape of the kernel."""
     source = db.inputs.dimSource
     if source == EXPLICIT_SOURCE:
-        dim_count = min(max(db.inputs.dimCount, 0), MAX_DIMENSIONS)
+        dim_count = min(max(db.inputs.dimCount, 0), wp.types.ARRAY_MAX_DIMS)
         return tuple(max(getattr(db.inputs, "dim{}".format(i + 1)), 0) for i in range(dim_count))
 
     try:
@@ -125,7 +125,7 @@ def infer_kernel_shape(
     except AttributeError:
         raise RuntimeError(
             "The attribute '{}' used to source the dimension doesn't exist.".format(
-                join_attr_name(ATTR_PORT_TYPE_INPUT, source)
+                attr_join_name(ATTR_PORT_TYPE_INPUT, source)
             )
         )
 
@@ -134,7 +134,7 @@ def infer_kernel_shape(
     except AttributeError:
         raise RuntimeError(
             "The attribute '{}' used to source the dimension isn't an array.".format(
-                join_attr_name(ATTR_PORT_TYPE_INPUT, source)
+                attr_join_name(ATTR_PORT_TYPE_INPUT, source)
             )
         )
 
