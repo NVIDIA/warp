@@ -52,106 +52,6 @@ extern "C" WP_API int _wp_isfinite(double);
 
 #else
 
-#if defined(__CUDACC__)
-
-// stdio.h
-extern "C" __device__ int printf(const char* format, ... );
-
-#else
-
-extern "C" {
-
-// stdio.h
-int printf(const char * format, ... );
-
-// stdlib.h
-int abs(int);
-long long llabs(long long);
-
-// math.h
-float fmodf(float, float);
-double fmod(double, double);
-float logf(float);
-double log(double);
-float log2f(float);
-double log2(double);
-float log10f(float);
-double log10(double);
-float expf(float);
-double exp(double);
-float sqrtf(float);
-double sqrt(double);
-float powf(float, float);
-double pow(double, double);
-float floorf(float);
-double floor(double);
-float ceilf(float);
-double ceil(double);
-float fabsf(float);
-double fabs(double);
-float roundf(float);
-double round(double);
-float truncf(float);
-double trunc(double);
-float rintf(float);
-double rint(double);
-float acosf(float);
-double acos(double);
-float asinf(float);
-double asin(double);
-float atanf(float);
-double atan(double);
-float atan2f(float, float);
-double atan2(double, double);
-float cosf(float);
-double cos(double);
-float sinf(float);
-double sin(double);
-float tanf(float);
-double tan(double);
-float sinhf(float);
-double sinh(double);
-float coshf(float);
-double cosh(double);
-float tanhf(float);
-double tanh(double);
-float fmaf(float, float, float);
-
-// stddef.h
-#if defined(_WIN32)
-using size_t = unsigned __int64;
-#else
-using size_t = unsigned long;
-#endif
-
-// string.h
-void* memset(void*, int, size_t);
-void* memcpy(void*, const void*, size_t);
-
-// stdlib.h
-void* malloc(size_t);
-void free(void*);
-
-}  // extern "C"
-
-// cmath
-inline bool isfinite(double x)
-{
-    return _wp_isfinite(x);
-}
-
-// assert.h
-#ifdef NDEBUG
-    #define assert(expression) ((void)0)
-#else
-    #define assert(expression) (void)(                                    \
-            (!!(expression)) ||                                           \
-            (_wp_assert((#expression), (__FILE__), (unsigned)(__LINE__)), 0) \
-        )
-#endif
-
-#endif  // !__CUDACC__
-
 // These definitions are taken from Jitify: https://github.com/NVIDIA/jitify
 
 /// float.h
@@ -221,6 +121,9 @@ enum {
 #define LLONG_MIN  (-LLONG_MAX - 1LL)
 #define ULLONG_MAX 18446744073709551615ULL
 
+#define INFINITY   ((float)(DBL_MAX * DBL_MAX))
+#define HUGE_VAL   ((double)INFINITY)
+#define HUGE_VALF  ((float)INFINITY)
 
 /// stdint.h
 typedef signed char      int8_t;
@@ -324,5 +227,105 @@ typedef unsigned long long uint64_t;
 // #undef DEFINE_MATH_UNARY_FUNC_WRAPPER
 
 #define M_PI 3.14159265358979323846
+
+#if defined(__CUDACC__)
+
+// stdio.h
+extern "C" __device__ int printf(const char* format, ... );
+
+#else
+
+extern "C" {
+
+// stdio.h
+int printf(const char * format, ... );
+
+// stdlib.h
+int abs(int);
+long long llabs(long long);
+
+// math.h
+float fmodf(float, float);
+double fmod(double, double);
+float logf(float);
+double log(double);
+float log2f(float);
+double log2(double);
+float log10f(float);
+double log10(double);
+float expf(float);
+double exp(double);
+float sqrtf(float);
+double sqrt(double);
+float powf(float, float);
+double pow(double, double);
+float floorf(float);
+double floor(double);
+float ceilf(float);
+double ceil(double);
+float fabsf(float);
+double fabs(double);
+float roundf(float);
+double round(double);
+float truncf(float);
+double trunc(double);
+float rintf(float);
+double rint(double);
+float acosf(float);
+double acos(double);
+float asinf(float);
+double asin(double);
+float atanf(float);
+double atan(double);
+float atan2f(float, float);
+double atan2(double, double);
+float cosf(float);
+double cos(double);
+float sinf(float);
+double sin(double);
+float tanf(float);
+double tan(double);
+float sinhf(float);
+double sinh(double);
+float coshf(float);
+double cosh(double);
+float tanhf(float);
+double tanh(double);
+float fmaf(float, float, float);
+
+// stddef.h
+#if defined(_WIN32)
+using size_t = unsigned __int64;
+#else
+using size_t = unsigned long;
+#endif
+
+// string.h
+void* memset(void*, int, size_t);
+void* memcpy(void*, const void*, size_t);
+
+// stdlib.h
+void* malloc(size_t);
+void free(void*);
+
+}  // extern "C"
+
+// cmath
+inline bool isfinite(double x)
+{
+    return _wp_isfinite(x);
+}
+
+// assert.h
+#ifdef NDEBUG
+    #define assert(expression) ((void)0)
+#else
+    #define assert(expression) (void)(                                    \
+            (!!(expression)) ||                                           \
+            (_wp_assert((#expression), (__FILE__), (unsigned)(__LINE__)), 0) \
+        )
+#endif
+
+#endif  // !__CUDACC__
 
 #endif // WP_NO_CRT
