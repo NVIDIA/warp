@@ -15,8 +15,7 @@ import omni.graph.tools.ogn as ogn
 import omni.timeline
 import warp as wp
 
-from omni.warp.ogn.OgnKernelDatabase import OgnKernelDatabase
-from omni.warp.scripts.nodes.kernel import (
+from omni.warp._impl.nodes.kernel import (
     EXPLICIT_SOURCE,
     InternalStateBase,
     UserAttributesEvent,
@@ -27,7 +26,8 @@ from omni.warp.scripts.nodes.kernel import (
     validate_input_arrays,
     write_output_attrs,
 )
-from omni.warp.scripts.omnigraph.attributes import attr_join_name
+from omni.warp._impl.omnigraph.attributes import attr_join_name
+from omni.warp.ogn.OgnKernelDatabase import OgnKernelDatabase
 
 
 QUIET_DEFAULT = wp.config.quiet

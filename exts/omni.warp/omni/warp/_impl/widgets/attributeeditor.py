@@ -13,7 +13,7 @@ import omni.graph.core as og
 from omni.kit.widget.searchfield import SearchField
 import omni.ui as ui
 
-from omni.warp.scripts.nodes.kernel import (
+from omni.warp._impl.nodes.kernel import (
     ArrayAttributeFormat,
     OutputArrayShapeSource,
     UserAttributeDesc,

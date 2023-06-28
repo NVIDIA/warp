@@ -17,19 +17,19 @@ from typing import (
 import omni.graph.core as og
 import omni.ui as ui
 
-from omni.warp.scripts.nodes.kernel import (
+from omni.warp._impl.nodes.kernel import (
     ArrayAttributeFormat,
     UserAttributeDesc,
     UserAttributesEvent,
     deserialize_user_attribute_descs,
     serialize_user_attribute_descs,
 )
-from omni.warp.scripts.omnigraph.attributes import (
+from omni.warp._impl.omnigraph.attributes import (
     ATTR_BUNDLE_TYPE,
     attr_get_name,
     attr_join_name,
 )
-from omni.warp.scripts.widgets.attributeeditor import AttributeEditor
+from omni.warp._impl.widgets.attributeeditor import AttributeEditor
 
 
 _BUTTON_WIDTH = 100

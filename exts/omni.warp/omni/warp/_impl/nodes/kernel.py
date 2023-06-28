@@ -31,12 +31,12 @@ from typing import (
 import omni.graph.core as og
 import warp as wp
 
-from omni.warp.scripts.common import (
+from omni.warp._impl.common import (
     IntEnum,
     convert_og_type_to_warp,
     get_warp_type_from_data_type_name,
 )
-from omni.warp.scripts.omnigraph.attributes import (
+from omni.warp._impl.omnigraph.attributes import (
     ATTR_BUNDLE_TYPE,
     attr_cast_array_to_warp,
     attr_get_base_name,

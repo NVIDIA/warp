@@ -20,16 +20,16 @@ from omni.kit.property.usd.custom_layout_helper import (
 from omni.kit.property.usd.usd_property_widget import UsdPropertyUiEntry
 import warp as wp
 
-from omni.warp.scripts.common import SUPPORTED_SDF_DATA_TYPE_NAMES
-from omni.warp.scripts.nodes.kernel import EXPLICIT_SOURCE
-from omni.warp.scripts.omnigraph.attributes import (
+from omni.warp._impl.common import SUPPORTED_SDF_DATA_TYPE_NAMES
+from omni.warp._impl.nodes.kernel import EXPLICIT_SOURCE
+from omni.warp._impl.omnigraph.attributes import (
     attr_get_base_name,
     attr_get_name,
 )
-from omni.warp.scripts.props.codefile import get_code_file_prop_builder
-from omni.warp.scripts.props.codestr import get_code_str_prop_builder
-from omni.warp.scripts.props.editattrs import get_edit_attrs_prop_builder
-from omni.warp.scripts.props.sourcepicker import get_source_picker_prop_builder
+from omni.warp._impl.props.codefile import get_code_file_prop_builder
+from omni.warp._impl.props.codestr import get_code_str_prop_builder
+from omni.warp._impl.props.editattrs import get_edit_attrs_prop_builder
+from omni.warp._impl.props.sourcepicker import get_source_picker_prop_builder
 
 
 def find_prop(

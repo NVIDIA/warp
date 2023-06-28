@@ -16,8 +16,8 @@ import omni.timeline
 import warp as wp
 
 import omni.warp
+from omni.warp._impl.kernels.grid_create import grid_create_launch_kernel
 from omni.warp.ogn.OgnWaveSolveDatabase import OgnWaveSolveDatabase
-from omni.warp.scripts.kernels.grid_create import grid_create_launch_kernel
 
 
 PROFILING = False

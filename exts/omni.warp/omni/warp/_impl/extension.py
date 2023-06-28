@@ -24,8 +24,8 @@ import omni.kit.actions.core
 import omni.timeline
 import warp as wp
 
-from omni.warp.scripts.common import log_info
-from omni.warp.scripts.menu import WarpMenu
+from omni.warp._impl.common import log_info
+from omni.warp._impl.menu import WarpMenu
 
 
 SCENES_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../data/scenes"))

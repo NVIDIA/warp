@@ -56,18 +56,18 @@ from pxr import (
 )
 import warp as wp
 
-from .scripts.omnigraph.attributes import (
+from ._impl.omnigraph.attributes import (
     attr_set_cpu_array,
     attr_cast_array_to_warp,
 )
-from .scripts.omnigraph.bundles import (
+from ._impl.omnigraph.bundles import (
     bundle_create_attr,
     bundle_create_child,
     bundle_get_child_count,
     bundle_get_prim_type,
     bundle_get_world_xform,
 )
-from .scripts.omnigraph.mesh import (
+from ._impl.omnigraph.mesh import (
     mesh_create_bundle,
     mesh_copy_bundle,
     mesh_get_face_count,
@@ -83,7 +83,7 @@ from .scripts.omnigraph.mesh import (
     mesh_get_vertex_count,
     mesh_get_world_extent,
 )
-from .scripts.omnigraph.points import (
+from ._impl.omnigraph.points import (
     points_create_bundle,
     points_copy_bundle,
     points_get_local_extent,
@@ -96,7 +96,7 @@ from .scripts.omnigraph.points import (
 )
 
 # Register the extension by importing its entry point class.
-from .scripts.extension import OmniWarpExtension
+from ._impl.extension import OmniWarpExtension
 
 
 #   Timer
