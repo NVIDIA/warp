@@ -20,7 +20,10 @@ def run_cmd(cmd, capture=False):
     try:
         return subprocess.check_output(cmd, shell=True)
     except subprocess.CalledProcessError as e:
-        print(e.output.decode())
+        if e.stdout:
+            print(e.stdout.decode())
+        if e.stderr:
+            print(e.stderr.decode())
         raise (e)
 
 
