@@ -1772,7 +1772,7 @@ struct {name}
     {{
     }}
 
-    {name}& operator += (const {name}&) {{ return *this; }}
+    CUDA_CALLABLE {name}& operator += (const {name}&) {{ return *this; }}
 
 }};
 

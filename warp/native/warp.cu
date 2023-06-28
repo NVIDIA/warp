@@ -1266,8 +1266,7 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
 
     std::vector<const char*> opts;
     opts.push_back(arch_opt);
-    opts.push_back(include_opt);    
-    opts.push_back("--device-as-default-execution-space");
+    opts.push_back(include_opt);
     opts.push_back("--std=c++11");
     
     if (debug)

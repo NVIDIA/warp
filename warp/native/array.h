@@ -133,7 +133,7 @@ struct array_t
     CUDA_CALLABLE inline array_t() {}    
     CUDA_CALLABLE inline array_t(int) {} // for backward a = 0 initialization syntax
 
-    array_t(T* data, int size, T* grad=nullptr) : data(data), grad(grad) {
+    CUDA_CALLABLE array_t(T* data, int size, T* grad=nullptr) : data(data), grad(grad) {
         // constructor for 1d array
         shape.dims[0] = size;
         shape.dims[1] = 0;
@@ -145,7 +145,7 @@ struct array_t
         strides[2] = 0;
         strides[3] = 0;
     }
-    array_t(T* data, int dim0, int dim1, T* grad=nullptr) : data(data), grad(grad) {
+    CUDA_CALLABLE array_t(T* data, int dim0, int dim1, T* grad=nullptr) : data(data), grad(grad) {
         // constructor for 2d array
         shape.dims[0] = dim0;
         shape.dims[1] = dim1;
@@ -157,7 +157,7 @@ struct array_t
         strides[2] = 0;
         strides[3] = 0;
     }
-    array_t(T* data, int dim0, int dim1, int dim2, T* grad=nullptr) : data(data), grad(grad) {
+    CUDA_CALLABLE array_t(T* data, int dim0, int dim1, int dim2, T* grad=nullptr) : data(data), grad(grad) {
         // constructor for 3d array
         shape.dims[0] = dim0;
         shape.dims[1] = dim1;
@@ -169,7 +169,7 @@ struct array_t
         strides[2] = sizeof(T);
         strides[3] = 0;
     }
-    array_t(T* data, int dim0, int dim1, int dim2, int dim3, T* grad=nullptr) : data(data), grad(grad) {
+    CUDA_CALLABLE array_t(T* data, int dim0, int dim1, int dim2, int dim3, T* grad=nullptr) : data(data), grad(grad) {
         // constructor for 4d array
         shape.dims[0] = dim0;
         shape.dims[1] = dim1;
@@ -182,7 +182,7 @@ struct array_t
         strides[3] = sizeof(T);
     }
 
-    inline bool empty() const { return !data; }
+    CUDA_CALLABLE inline bool empty() const { return !data; }
 
     T* data{nullptr};
     T* grad{nullptr};
@@ -203,7 +203,7 @@ struct indexedarray_t
     CUDA_CALLABLE inline indexedarray_t() {}    
     CUDA_CALLABLE inline indexedarray_t(int) {} // for backward a = 0 initialization syntax
 
-    inline bool empty() const { return !arr.data; }
+    CUDA_CALLABLE inline bool empty() const { return !arr.data; }
 
     array_t<T> arr;
     int* indices[ARRAY_MAX_DIMS];  // index array per dimension (can be NULL)

@@ -30,15 +30,15 @@
     #define WP_API
 #endif
 
-extern "C" {
+#if !defined(__CUDA_ARCH__)
 
 // Helper for implementing assert() macro
-WP_API void _wp_assert(const char* message, const char* file, unsigned int line);
+extern "C" WP_API void _wp_assert(const char* message, const char* file, unsigned int line);
 
 // Helper for implementing isfinite()
-WP_API int _wp_isfinite(double);
+extern "C" WP_API int _wp_isfinite(double);
 
-}  // extern "C"
+#endif  // !__CUDA_ARCH__
 
 #if !defined(WP_NO_CRT)
 
