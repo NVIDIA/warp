@@ -102,7 +102,7 @@ def Xform "World"
             custom bool inputs:applySkelBinding = 0
             custom string inputs:attrNamesToImport = "*"
             custom bool inputs:computeBoundingBox = 0
-            custom bool inputs:enableBundleChangeTracking
+            custom bool inputs:enableBundleChangeTracking = 1
             custom bool inputs:enableChangeTracking
             custom string inputs:pathPattern = ""
             custom rel inputs:prims = </World/Collider> (

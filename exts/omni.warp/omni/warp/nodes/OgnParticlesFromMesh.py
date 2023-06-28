@@ -139,19 +139,10 @@ class InternalState:
         if not self.is_valid:
             return True
 
-        # To query whether the input geometry has changed, we could hash its
-        # attributes but instead we do a cheap approximation.
-        point_count = omni.warp.mesh_get_point_count(db.inputs.mesh)
-        xform = omni.warp.get_world_xform(db.inputs.mesh)
-        extent = omni.warp.mesh_get_local_extent(db.inputs.mesh)
-        has_geometry_changed = (
-            point_count != self._point_count
-            or not np.array_equal(xform, self._xform)
-            or not np.array_equal(extent, self._extent)
-        )
-
-        if has_geometry_changed:
-            return True
+        with db.inputs.mesh.changes() as bundle_changes:
+            geometry_changes = bundle_changes.get_change(db.inputs.mesh)
+            if geometry_changes != og.BundleChangeType.NONE:
+                return True
 
         return False
 

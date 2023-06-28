@@ -88,9 +88,7 @@ class InternalState:
         self.integrator = None
         self.state_0 = None
         self.state_1 = None
-        self.collider_point_count = None
         self.collider_xform = None
-        self.collider_extent = None
         self.collider_mesh = None
         self.collider_points_0 = None
         self.collider_points_1 = None
@@ -238,9 +236,7 @@ class InternalState:
             wp.copy(collider_points_1, collider_points)
 
             # Store the class members.
-            self.collider_point_count = len(collider_points)
             self.collider_xform = collider_xform.copy()
-            self.collider_extent = collider_extent.copy()
             self.collider_mesh = collider_mesh
             self.collider_points_0 = collider_points_0
             self.collider_points_1 = collider_points_1
@@ -421,26 +417,17 @@ def compute(db: OgnClothSimulateDatabase) -> None:
             return
 
     if db.inputs.collider.valid and state.collider_mesh is not None:
-        # To query whether the input collider has changed, we could hash its
-        # attributes but instead we do a cheap approximation.
-        collider_points = omni.warp.mesh_get_points(db.inputs.collider)
-        collider_xform = omni.warp.get_world_xform(db.inputs.collider)
-        collider_extent = omni.warp.mesh_get_local_extent(db.inputs.collider)
-        has_geometry_changed = (
-            len(collider_points) != state.collider_point_count
-            or not np.array_equal(collider_xform, state.collider_xform)
-            or not np.array_equal(collider_extent, state.collider_extent)
-        )
+        with db.inputs.collider.changes() as bundle_changes:
+            geometry_changes = bundle_changes.get_change(db.inputs.collider)
+            if geometry_changes != og.BundleChangeType.NONE:
+                with omni.warp.NodeTimer("update_collider", db, active=PROFILING):
+                    # The collider might be animated so we need to update its state.
+                    collider_points = omni.warp.mesh_get_points(db.inputs.collider)
+                    collider_xform = omni.warp.get_world_xform(db.inputs.collider)
+                    update_collider(db, collider_points, collider_xform)
 
-        if has_geometry_changed:
-            with omni.warp.NodeTimer("update_collider", db, active=PROFILING):
-                # The collider might be animated so we need to update its state.
-                update_collider(db, collider_points, collider_xform)
-
-            # Update the state members.
-            state.collider_point_count = len(collider_points)
-            state.collider_xform = collider_xform.copy()
-            state.collider_extent = collider_extent.copy()
+                    # Update the state members.
+                    state.collider_xform = collider_xform.copy()
 
     with omni.warp.NodeTimer("simulate", db, active=PROFILING):
         # Run the cloth simulation at the current time.
