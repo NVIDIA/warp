@@ -189,7 +189,6 @@ class InternalState:
             # Retrieve some data from the collider mesh.
             collider_points = omni.warp.mesh_get_points(db.inputs.collider)
             collider_xform = omni.warp.bundle_get_world_xform(db.inputs.collider)
-            collider_extent = omni.warp.mesh_get_local_extent(db.inputs.collider)
 
             # Transform the collider point position into world space.
             collider_world_points = wp.empty(

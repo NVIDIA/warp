@@ -588,29 +588,6 @@ def _infer_output_array_shape(
     assert False, "Unexpected array shape source method '{}'.".format(attr_info.output.array_shape_source)
 
 
-def _infer_output_bundle_type(
-    attr_info: AttributeInfo,
-    input_bundle_types: Mapping[str, str],
-) -> str:
-    if attr_info.output.bundle_type_source == OutputBundleTypeSource.AS_INPUT_OR_EXPLICIT:
-        return input_bundle_types.get(
-            attr_info.base_name,
-            attr_info.output.bundle_type_explicit,
-        )
-
-    if attr_info.output.bundle_type_source == OutputBundleTypeSource.AS_INPUT:
-        bundle_type = input_bundle_types.get(attr_info.base_name)
-        if bundle_type is None:
-            raise RuntimeError(
-                "Could not find a matching input attribute to infer " "the bundle type of '{}'.".format(attr_info.name)
-            )
-
-    if attr_info.output.bundle_type_source == OutputBundleTypeSource.EXPLICIT:
-        return attr_info.output.bundle_type_explicit
-
-    assert False, "Unexpected bundle type source method '{}'.".format(attr_info.output.bundle_type_source)
-
-
 class KernelArgsConfig(NamedTuple):
     """Configuration for resolving kernel arguments."""
 
@@ -635,7 +612,6 @@ def get_kernel_args(
         config = KernelArgsConfig()
 
     # Initialize the kernel's input data.
-    input_bundle_types = {}
     inputs = kernel_module.Inputs()
     for info in attr_infos[_ATTR_PORT_TYPE_INPUT]:
         # Retrieve the input attribute value and cast it to

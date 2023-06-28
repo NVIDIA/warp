@@ -114,10 +114,6 @@ class InternalState:
     """Internal state for the node."""
 
     def __init__(self) -> None:
-        self._point_count = None
-        self._xform = None
-        self._extent = None
-
         self.xform_prim_path = None
         self.seed = None
         self.min_sdf = None
@@ -150,7 +146,6 @@ class InternalState:
         """Initializes the internal state."""
         point_count = omni.warp.mesh_get_point_count(db.inputs.mesh)
         xform = omni.warp.bundle_get_world_xform(db.inputs.mesh)
-        extent = omni.warp.mesh_get_local_extent(db.inputs.mesh)
 
         # Transform the mesh's point positions into world space.
         world_point_positions = wp.empty(point_count, dtype=wp.vec3)
@@ -177,13 +172,6 @@ class InternalState:
 
         # Store the class members.
         self.mesh = mesh
-
-        # Cache the node attribute values relevant to this internal state.
-        # They're the ones used to check whether it needs to be reinitialized
-        # or not.
-        self._point_count = point_count
-        self._xform = xform.copy()
-        self._extent = extent.copy()
 
         return True
 
