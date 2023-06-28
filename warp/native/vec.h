@@ -974,11 +974,11 @@ inline CUDA_CALLABLE vec_t<Length, Type> atomic_max(vec_t<Length, Type> * addr, 
 template<unsigned Length, typename Type>
 CUDA_CALLABLE inline int longest_axis(const vec_t<Length, Type>& v)
 {
-    Type lmax = fabs(v[0]);
+    Type lmax = abs(v[0]);
     int ret(0);
     for( unsigned i=1; i < Length; ++i )
     {
-        Type l = fabs(v[i]);
+        Type l = abs(v[i]);
         if( l > lmax )
         {
             ret = i;
