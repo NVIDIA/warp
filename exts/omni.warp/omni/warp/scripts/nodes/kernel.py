@@ -31,7 +31,6 @@ import warp as wp
 import omni.graph.core as og
 
 from omni.warp.scripts.attributes import (
-    BUNDLE_ATTR_TYPE,
     AttributeInfo,
     OutputAttributeInfo,
     OutputArrayShapeSource,
@@ -43,15 +42,10 @@ from omni.warp.scripts.attributes import (
     join_attr_name,
 )
 from omni.warp.scripts.common import (
-    BUNDLE_TYPE_ATTR_NAME,
     IntEnum,
     get_warp_type_from_data_type_name,
 )
-from omni.warp.scripts.types.array import (
-    Accessor as ArrayAccessor,
-    create_bundle as array_create_bundle,
-    read_bundle as array_read_bundle,
-)
+
 
 _ATTR_PORT_TYPE_INPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_INPUT
 _ATTR_PORT_TYPE_OUTPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_OUTPUT
@@ -220,21 +214,6 @@ def gather_attribute_infos(
 
         (name, base_name, og_type, is_array) = extract_partial_info_from_attr(attr)
 
-        if og_type == BUNDLE_ATTR_TYPE:
-            bundle = getattr(db_inputs, base_name)
-            bundle_type_attr = bundle.attribute_by_name(BUNDLE_TYPE_ATTR_NAME)
-            if bundle_type_attr is not None and bundle_type_attr.cpu_value == ArrayAccessor.BUNDLE_TYPE:
-                # We make a special case for array bundles by interpreting them
-                # as standard arrays, so that they can then be exposed as
-                # `wp.array` within the kernel.
-                accessor = array_read_bundle(bundle)
-                og_type = accessor.data_attr.type
-                dim_count = len(accessor.shape)
-            else:
-                dim_count = 0
-        else:
-            dim_count = int(is_array)
-
         og_data_type = og.Type(
             og_type.base_type,
             tuple_count=og_type.tuple_count,
@@ -249,7 +228,7 @@ def gather_attribute_infos(
                 og_type=og_type,
                 warp_type=convert_og_type_to_warp(
                     og_data_type,
-                    dim_count=dim_count,
+                    dim_count=int(is_array),
                 ),
             )
         )
@@ -569,22 +548,7 @@ def get_kernel_args(
                 device,
             )
         elif info.is_bundle:
-            bundle = getattr(db_inputs, info.base_name)
-            bundle_type_attr = bundle.attribute_by_name(BUNDLE_TYPE_ATTR_NAME)
-            if bundle_type_attr is None:
-                raise RuntimeError("Unsupported bundle for the attribute '{}'.".format(info.name))
-
-            bundle_type = bundle_type_attr.cpu_value
-            if bundle_type == ArrayAccessor.BUNDLE_TYPE:
-                accessor = array_read_bundle(bundle)
-                value = accessor.data
-            elif config.input_bundle_handlers is not None and bundle_type in config.input_bundle_handlers:
-                value = config.input_bundle_handlers[bundle_type](bundle)
-            else:
-                raise RuntimeError(
-                    "Unsupported bundle type '{}' for the attribute '{}'.".format(bundle_type, info.name)
-                )
-            input_bundle_types[info.base_name] = bundle_type
+            raise NotImplementedError("Bundle attributes are not yet supported.")
         else:
             value = getattr(db_inputs, info.base_name)
 
@@ -616,24 +580,7 @@ def get_kernel_args(
                 device,
             )
         elif info.is_bundle:
-            bundle = getattr(db_outputs, info.base_name)
-
-            bundle_type = _infer_output_bundle_type(info, input_bundle_types)
-            if bundle_type == ArrayAccessor.BUNDLE_TYPE:
-                shape = _infer_output_array_shape(
-                    info,
-                    attr_infos[_ATTR_PORT_TYPE_INPUT],
-                    inputs,
-                    kernel_shape,
-                )
-                accessor = array_create_bundle(bundle, info.og_data_type, shape)
-                value = accessor.data
-            elif config.output_bundle_handlers is not None and bundle_type in config.output_bundle_handlers:
-                value = config.output_bundle_handlers[bundle_type](bundle)
-            else:
-                raise RuntimeError(
-                    "Unsupported bundle type '{}' for the attribute '{}'.".format(bundle_type, info.name)
-                )
+            raise NotImplementedError("Bundle attributes are not yet supported.")
         else:
             assert False, "Output attributes are expected to be arrays or bundles."
 

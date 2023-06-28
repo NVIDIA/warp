@@ -13,17 +13,7 @@ from typing import (
 )
 
 import carb
-import omni.graph.core as og
 import warp as wp
-
-BUNDLE_TYPE_ATTR_NAME = "bundleType"
-
-BUNDLE_TYPE_OG_TYPE = og.Type(
-    og.BaseDataType.UCHAR,
-    tuple_count=1,
-    array_depth=1,
-    role=og.AttributeRole.TEXT,
-)
 
 
 class IntEnum(int, Enum):
