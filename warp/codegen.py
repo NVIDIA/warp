@@ -1067,10 +1067,6 @@ class Adjoint:
             val = adj.eval(node.value)
 
             if isinstance(val, types.ModuleType) or isinstance(val, type):
-                if val is warp and node.attr == "adjoint":
-                    # handle adjoint of a variable
-                    raise ValueError("wp.adjoint has to be interpreted at an earlier codegen level")
-
                 out = getattr(val, node.attr)
 
                 if warp.types.is_value(out):
@@ -1146,7 +1142,7 @@ class Adjoint:
             var2 = adj.symbols[sym]
 
             if var1 != var2:
-                if warp.config.verbose:
+                if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
                     line = adj.source.splitlines()[adj.lineno]
                     msg = f'Warning: detected mutated variable {sym} during a dynamic for-loop in function "{adj.fun_name}" at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n'
@@ -1368,9 +1364,10 @@ class Adjoint:
 
     def emit_Subscript(adj, node):
         if hasattr(node.value, "attr") and node.value.attr == "adjoint":
-            # handle adjoint of a variable
-            var_name = node.slice.value.id
-            var = Var(f"adj_{var_name}", type=adj.symbols[var_name].type, constant=None, prefix=False, is_adjoint=True)
+            # handle adjoint of a variable, i.e. wp.adjoint[var]
+            var = adj.eval(node.slice.value)
+            var_name = var.label
+            var = Var(f"adj_{var_name}", type=var.type, constant=None, prefix=False, is_adjoint=True)
             adj.symbols[var.label] = var
             return var
 
@@ -1406,6 +1403,7 @@ class Adjoint:
             # handles non-array type indexing, e.g: vec3, mat33, etc
             out = adj.add_call(warp.context.builtin_functions["index"], [target, *indices])
 
+        out.is_adjoint = target.is_adjoint
         return out
 
     def emit_Assign(adj, node):
@@ -1455,9 +1453,9 @@ class Adjoint:
         # handles the case where we are assigning to an array index (e.g.: arr[i] = 2.0)
         elif isinstance(node.targets[0], ast.Subscript):
             if hasattr(node.targets[0].value, "attr") and node.targets[0].value.attr == "adjoint":
-                # handle adjoint of a variable
-                var_name = node.targets[0].slice.value.id
-                var = Var(f"adj_{var_name}", type=adj.symbols[var_name].type, constant=None, prefix=False)
+                # handle adjoint of a variable, i.e. wp.adjoint[var]
+                src_var = adj.eval(node.targets[0].slice.value)
+                var = Var(f"adj_{src_var.label}", type=src_var.type, constant=None, prefix=False)
                 adj.symbols[var.label] = var
                 value = adj.eval(node.value)
                 adj.add_forward(f"{var.emit()} = {value.emit()};")
@@ -1491,11 +1489,12 @@ class Adjoint:
             elif type_is_vector(target.type) or type_is_matrix(target.type):
                 adj.add_call(warp.context.builtin_functions["indexset"], [target, *indices, value])
 
-                if warp.config.verbose:
+                if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
                     line = adj.source.splitlines()[adj.lineno]
+                    node_source = adj.get_node_source(node.targets[0].value)
                     print(
-                        f"Warning: mutating {node.targets[0].value.id} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n"
+                        f"Warning: mutating {node_source} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n"
                     )
 
             else:
@@ -1535,7 +1534,7 @@ class Adjoint:
             attr = adj.emit_Attribute(node.targets[0])
             adj.add_call(warp.context.builtin_functions["copy"], [attr, rhs])
 
-            if warp.config.verbose:
+            if warp.config.verbose and not adj.custom_reverse_mode:
                 lineno = adj.lineno + adj.fun_lineno
                 line = adj.source.splitlines()[adj.lineno]
                 msg = f'Warning: detected mutated struct {attr.label} during function "{adj.fun_name}" at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n'
@@ -1567,24 +1566,17 @@ class Adjoint:
     def emit_AugAssign(adj, node):
         # convert inplace operations (+=, -=, etc) to ssa form, e.g.: c = a + b
         left = adj.eval(node.target)
+
+        if left.is_adjoint:
+            # replace augassign with assignment statement + binary op
+            new_node = ast.Assign(targets=[node.target], value=ast.BinOp(node.target, node.op, node.value))
+            adj.eval(new_node)
+            return
+
         right = adj.eval(node.value)
 
         # lookup
         name = builtin_operators[type(node.op)]
-
-        if left.is_adjoint:
-            # directly emit inplace operation for adjoint variables
-            op = {
-                "add": "+=",
-                "sub": "-=",
-                "mul": "*=",
-                "div": "/=",
-                "floordiv": "/=",
-                "mod": "%=",
-            }[name]
-            adj.add_forward(f"{left.emit()} {op} {right.emit()};")
-            return
-
         func = warp.context.builtin_functions[name]
 
         out = adj.add_call(func, [left, right])
@@ -1711,6 +1703,10 @@ class Adjoint:
             adj.add_forward(f"// {source}       <L {line}>")
             adj.add_reverse(f"// adj: {source}  <L {line}>")
         adj.lineno = lineno
+
+    def get_node_source(adj, node):
+        # return the Python code corresponding to the given AST node
+        return ast.get_source_segment("".join(adj.raw_source), node)
 
 
 # ----------------
