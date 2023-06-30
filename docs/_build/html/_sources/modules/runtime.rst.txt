@@ -814,6 +814,18 @@ When we run simulations independently in parallel, the Jacobian corresponding to
       tape.zero()
 
 
+Custom Gradient Functions
+#########################
+
+Warp supports custom gradient functions for user-defined Warp functions.
+Following reverse-mode automatic differentiation (i.e. chain rule), the backward pass of a function first 
+evaluates the function in forward mode (called "replay"). Next, the adjoint variables are computed given the
+forward-mode results by computing the reverse mode of the function.
+
+Consider the following example of a ``wp.func``-annoted function ``sqr`` for which the gradient function ``adj_sqr`` is `generated <../debugging.html#generated-code>`__ by default:
+
+
+
 Graphs
 -----------
 

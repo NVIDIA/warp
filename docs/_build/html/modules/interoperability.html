@@ -2,9 +2,10 @@
 <html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="prev" title="Simulation Reference" href="sim.html" />
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Sparse Linear Algebra Reference" href="sparse.html" /><link rel="prev" title="Simulation Reference" href="sim.html" />
 
-    <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 -->
+    <!-- Generated with Sphinx 6.1.3 and Furo 2023.03.27 -->
         <title>Interoperability - Warp 0.9.0</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
@@ -185,6 +186,7 @@
 <li class="toctree-l1"><a class="reference internal" href="functions.html">Kernel Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sim.html">Simulation Reference</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sparse.html">Sparse Linear Algebra Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Project Links</span></p>
@@ -225,10 +227,10 @@
           </label>
         </div>
         <article role="main">
-          <div class="section" id="interoperability">
+          <section id="interoperability">
 <h1>Interoperability<a class="headerlink" href="#interoperability" title="Permalink to this heading">#</a></h1>
 <p>Warp can interop with other Python-based frameworks such as NumPy through standard interface protocols.</p>
-<div class="section" id="numpy">
+<section id="numpy">
 <h2>NumPy<a class="headerlink" href="#numpy" title="Permalink to this heading">#</a></h2>
 <p>Warp arrays may be converted to a NumPy array through the <code class="docutils literal notranslate"><span class="pre">warp.array.numpy()</span></code> method. When the Warp array lives on
 the <code class="docutils literal notranslate"><span class="pre">cpu</span></code> device this will return a zero-copy view onto the underlying Warp allocation. If the array lives on a
@@ -241,8 +243,8 @@ directly:</p>
 <span class="o">&gt;</span> <span class="p">[</span><span class="mf">1.</span> <span class="mf">2.</span> <span class="mf">3.</span><span class="p">]</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="pytorch">
+</section>
+<section id="pytorch">
 <span id="pytorch-interop"></span><h2>PyTorch<a class="headerlink" href="#pytorch" title="Permalink to this heading">#</a></h2>
 <p>Warp provides helper functions to convert arrays to/from PyTorch. Please see the <code class="docutils literal notranslate"><span class="pre">warp.torch</span></code> module for more details. Example usage is shown below:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">warp.torch</span>
@@ -296,14 +298,14 @@ directly:</p>
 <span class="sig-prename descclassname"><span class="pre">warp.torch.</span></span><span class="sig-name descname"><span class="pre">stream_to_torch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stream_or_device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.torch.stream_to_torch" title="Permalink to this definition">#</a></dt>
 <dd></dd></dl>
 
-</div>
-<div class="section" id="cupy-numba">
+</section>
+<section id="cupy-numba">
 <h2>CuPy/Numba<a class="headerlink" href="#cupy-numba" title="Permalink to this heading">#</a></h2>
 <p>Warp GPU arrays support the <code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code> protocol for sharing data with other Python GPU frameworks.
 Currently this is one-directional, so that Warp arrays can be used as input to any framework that also supports the
 <code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code> protocol, but not the other way around.</p>
-</div>
-<div class="section" id="jax">
+</section>
+<section id="jax">
 <h2>JAX<a class="headerlink" href="#jax" title="Permalink to this heading">#</a></h2>
 <p>Interop with JAX arrays is not currently well supported, although it is possible to first convert arrays to a Torch
 tensor and then to JAX via. the dlpack mechanism.</p>
@@ -327,14 +329,14 @@ tensor and then to JAX via. the dlpack mechanism.</p>
 <span class="sig-prename descclassname"><span class="pre">warp.jax.</span></span><span class="sig-name descname"><span class="pre">from_jax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jax_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.jax.from_jax" title="Permalink to this definition">#</a></dt>
 <dd></dd></dl>
 
-</div>
-<div class="section" id="module-warp.dlpack">
+</section>
+<section id="module-warp.dlpack">
 <span id="dlpack"></span><h2>DLPack<a class="headerlink" href="#module-warp.dlpack" title="Permalink to this heading">#</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.dlpack.device_to_dlpack">
 <span class="sig-prename descclassname"><span class="pre">warp.dlpack.</span></span><span class="sig-name descname"><span class="pre">device_to_dlpack</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wp_device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.dlpack.device_to_dlpack" title="Permalink to this definition">#</a></dt>
 <dd><dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><em>DLDevice</em></p>
 </dd>
 </dl>
@@ -344,7 +346,7 @@ tensor and then to JAX via. the dlpack mechanism.</p>
 <dt class="sig sig-object py" id="warp.dlpack.dtype_to_dlpack">
 <span class="sig-prename descclassname"><span class="pre">warp.dlpack.</span></span><span class="sig-name descname"><span class="pre">dtype_to_dlpack</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wp_dtype</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.dlpack.dtype_to_dlpack" title="Permalink to this definition">#</a></dt>
 <dd><dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><em>DLDataType</em></p>
 </dd>
 </dl>
@@ -375,17 +377,17 @@ tensor and then to JAX via. the dlpack mechanism.</p>
 <span class="sig-prename descclassname"><span class="pre">warp.dlpack.</span></span><span class="sig-name descname"><span class="pre">to_dlpack</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wp_array</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.dlpack.to_dlpack" title="Permalink to this definition">#</a></dt>
 <dd><p>Convert a Warp array to another type of dlpack compatible array.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>np_array</strong> (<em>np.ndarray</em>) – The source numpy array that will be converted.</p></li>
 <li><p><strong>wp_array</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.types.array"><em>array</em></a>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><strong>pycapsule</strong> – A pycapsule containing a DLManagedTensor that can be converted
 to other array formats without copying the underlying memory.</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>PyCapsule</p>
 </dd>
 </dl>
@@ -401,28 +403,36 @@ to other array formats without copying the underlying memory.</p>
 <span class="sig-prename descclassname"><span class="pre">warp.dlpack.</span></span><span class="sig-name descname"><span class="pre">from_dlpack</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pycapsule</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.dlpack.from_dlpack" title="Permalink to this definition">#</a></dt>
 <dd><p>Convert a dlpack tensor into a numpy array without copying.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>pycapsule</strong> (<em>PyCapsule</em>) – A pycapsule wrapping a dlpack tensor that will be converted.</p>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><strong>np_array</strong> – A new numpy array that uses the same underlying memory as the input
 pycapsule.</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>np.ndarray</p>
 </dd>
 </dl>
 </dd></dl>
 
-</div>
-</div>
+</section>
+</section>
 
         </article>
       </div>
       <footer>
         
         <div class="related-pages">
-          
+          <a class="next-page" href="sparse.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Sparse Linear Algebra Reference</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
           <a class="prev-page" href="sim.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
@@ -515,9 +525,6 @@ pycapsule.</p>
     </aside>
   </div>
 </div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-    <script src="../_static/jquery.js"></script>
-    <script src="../_static/underscore.js"></script>
-    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../_static/doctools.js"></script>
     <script src="../_static/sphinx_highlight.js"></script>
     <script src="../_static/scripts/furo.js"></script>
