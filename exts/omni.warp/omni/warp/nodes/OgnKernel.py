@@ -15,7 +15,7 @@ import omni.graph.tools.ogn as ogn
 import omni.timeline
 import warp as wp
 
-from omni.warp._impl.nodes.kernel import (
+from omni.warp._impl.kernel import (
     EXPLICIT_SOURCE,
     InternalStateBase,
     UserAttributesEvent,

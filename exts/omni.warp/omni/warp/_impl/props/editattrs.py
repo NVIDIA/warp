@@ -17,7 +17,7 @@ from typing import (
 import omni.graph.core as og
 import omni.ui as ui
 
-from omni.warp._impl.nodes.kernel import (
+from omni.warp._impl.kernel import (
     ArrayAttributeFormat,
     UserAttributeDesc,
     UserAttributesEvent,

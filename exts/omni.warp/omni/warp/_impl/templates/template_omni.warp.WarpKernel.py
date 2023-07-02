@@ -21,7 +21,7 @@ from omni.kit.property.usd.usd_property_widget import UsdPropertyUiEntry
 import warp as wp
 
 from omni.warp._impl.common import SUPPORTED_SDF_DATA_TYPE_NAMES
-from omni.warp._impl.nodes.kernel import EXPLICIT_SOURCE
+from omni.warp._impl.kernel import EXPLICIT_SOURCE
 from omni.warp._impl.omnigraph.attributes import (
     attr_get_base_name,
     attr_get_name,
