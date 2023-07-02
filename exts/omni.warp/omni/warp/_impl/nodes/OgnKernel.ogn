@@ -1,7 +1,7 @@
 {
     "WarpKernel": {
         "version": 2,
-        "categoryDefinitions": "../../../config/warp_categories.json",
+        "categoryDefinitions": "../../../../config/warp_categories.json",
         "description": "Runs a single Warp kernel.",
         "categories": ["warp"],
         "language": "Python",

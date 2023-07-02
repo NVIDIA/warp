@@ -1,7 +1,7 @@
 {
     "WarpClothSimulate": {
         "version": 1,
-        "categoryDefinitions": "../../../config/warp_categories.json",
+        "categoryDefinitions": "../../../../config/warp_categories.json",
         "description": "Simulates cloth.",
         "categories": ["warp"],
         "language": "Python",

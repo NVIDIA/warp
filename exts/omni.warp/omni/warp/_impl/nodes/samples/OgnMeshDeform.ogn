@@ -1,7 +1,7 @@
 {
     "WarpSampleMeshDeform": {
         "version": 1,
-        "categoryDefinitions": "../../../../config/warp_categories.json",
+        "categoryDefinitions": "../../../../../config/warp_categories.json",
         "description": "Deforms a geometry mesh.",
         "categories": ["warp", "warp:samples"],
         "language": "Python",

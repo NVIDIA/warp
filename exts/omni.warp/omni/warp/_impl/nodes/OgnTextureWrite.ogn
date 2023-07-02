@@ -1,7 +1,7 @@
 {
     "WarpTextureWrite": {
         "version": 1,
-        "categoryDefinitions": "../../../config/warp_categories.json",
+        "categoryDefinitions": "../../../../config/warp_categories.json",
         "description": "Writes a texture.",
         "categories": ["warp"],
         "language": "Python",

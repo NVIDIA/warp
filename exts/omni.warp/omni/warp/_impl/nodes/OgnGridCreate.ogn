@@ -1,7 +1,7 @@
 {
     "WarpGridCreate": {
         "version": 1,
-        "categoryDefinitions": "../../../config/warp_categories.json",
+        "categoryDefinitions": "../../../../config/warp_categories.json",
         "description": "Creates a geometry mesh grid.",
         "categories": ["warp"],
         "language": "Python",

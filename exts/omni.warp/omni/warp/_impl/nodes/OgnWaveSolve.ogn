@@ -1,7 +1,7 @@
 {
     "WarpWaveSolve": {
         "version": 1,
-        "categoryDefinitions": "../../../config/warp_categories.json",
+        "categoryDefinitions": "../../../../config/warp_categories.json",
         "description": "Creates a grid geometry simulated with a wave equation solver.",
         "categories": ["warp"],
         "language": "Python",

@@ -1,7 +1,7 @@
 {
     "WarpMeshFromVolume": {
         "version": 1,
-        "categoryDefinitions": "../../../config/warp_categories.json",
+        "categoryDefinitions": "../../../../config/warp_categories.json",
         "description": "Converts a volume into a mesh.",
         "categories": ["warp"],
         "language": "Python",

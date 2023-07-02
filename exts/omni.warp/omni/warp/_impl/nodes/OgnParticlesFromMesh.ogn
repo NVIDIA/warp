@@ -1,7 +1,7 @@
 {
     "WarpParticlesFromMesh": {
         "version": 1,
-        "categoryDefinitions": "../../../config/warp_categories.json",
+        "categoryDefinitions": "../../../../config/warp_categories.json",
         "description": "Generates particles inside a mesh.",
         "categories": ["warp"],
         "language": "Python",
