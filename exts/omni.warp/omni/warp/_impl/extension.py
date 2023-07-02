@@ -24,7 +24,6 @@ import omni.kit.actions.core
 import omni.timeline
 import warp as wp
 
-from omni.warp._impl.common import log_info
 from omni.warp._impl.menu import WarpMenu
 
 
@@ -37,6 +36,18 @@ SETTING_ENABLE_BACKWARD = "/exts/omni.warp/enable_backward"
 SETTING_KERNEL_NODE_OPT_IN = "/app/omni.warp.kernel/opt_in"
 SETTING_KERNEL_NODE_ENABLE_OPT_IN = "/app/omni.warp.kernel/enable_opt_in"
 OMNIGRAPH_STAGEUPDATE_ORDER = 100  # We want our attach() to run after OG so that nodes have been instantiated
+
+
+def log_info(msg):
+    carb.log_info("[omni.warp] {}".format(msg))
+
+
+def log_warn(msg):
+    carb.log_warn("[omni.warp] {}".format(msg))
+
+
+def log_error(msg):
+    carb.log_error("[omni.warp] {}".format(msg))
 
 
 def open_file(filename):

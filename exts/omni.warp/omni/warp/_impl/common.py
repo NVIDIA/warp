@@ -14,7 +14,6 @@ from typing import (
     Union,
 )
 
-import carb
 import omni.graph.core as og
 import warp as wp
 
@@ -173,19 +172,3 @@ def convert_sdf_type_name_to_og(
         array_depth=int(is_array),
         role=role,
     )
-
-
-#   Logging
-# ------------------------------------------------------------------------------
-
-
-def log_info(msg):
-    carb.log_info("[omni.warp] {}".format(msg))
-
-
-def log_warn(msg):
-    carb.log_warn("[omni.warp] {}".format(msg))
-
-
-def log_error(msg):
-    carb.log_error("[omni.warp] {}".format(msg))
