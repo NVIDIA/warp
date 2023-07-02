@@ -18,6 +18,10 @@ import omni.graph.core as og
 import warp as wp
 
 
+#   General
+# ------------------------------------------------------------------------------
+
+
 class IntEnum(int, Enum):
     """Base class for integer enumerators with labels."""
 
@@ -26,6 +30,25 @@ class IntEnum(int, Enum):
         obj._value_ = value
         obj.label = label
         return obj
+
+
+#   Timer
+# ------------------------------------------------------------------------------
+
+
+class NodeTimer(object):
+    """Context wrapping Warp's scoped timer for use with nodes."""
+
+    def __init__(self, name: str, db: Any, active: bool = False) -> None:
+        name = "{}:{}".format(db.node.get_prim_path(), name)
+        self.timer = wp.ScopedTimer(name, active=active, synchronize=True)
+
+    def __enter__(self) -> None:
+        self.timer.__enter__()
+        return self
+
+    def __exit__(self, type: Any, value: Any, traceback: Any) -> None:
+        self.timer.__exit__(type, value, traceback)
 
 
 #   Types

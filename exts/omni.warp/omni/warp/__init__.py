@@ -40,29 +40,14 @@ __all__ = [
     "prim_get_world_xform",
 ]
 
-from typing import (
-    Any,
-    Optional,
-    Union,
-    Sequence,
+from ._impl.common import (
+    NodeTimer,
 )
-
-import numpy as np
-import omni.graph.core as og
-import omni.usd
-from pxr import (
-    Usd,
-    UsdGeom,
-)
-import warp as wp
-
 from ._impl.omnigraph.attributes import (
-    attr_set_cpu_array,
-    attr_cast_array_to_warp,
+    from_omni_graph,
 )
 from ._impl.omnigraph.bundles import (
-    bundle_create_attr,
-    bundle_create_child,
+    bundle_define_prim_attrs,
     bundle_get_child_count,
     bundle_get_prim_type,
     bundle_get_world_xform,
@@ -94,107 +79,7 @@ from ._impl.omnigraph.points import (
     points_get_widths,
     points_get_world_extent,
 )
+from ._impl.usd import prim_get_world_xform
 
 # Register the extension by importing its entry point class.
 from ._impl.extension import OmniWarpExtension
-
-
-#   Timer
-# ------------------------------------------------------------------------------
-
-
-class NodeTimer(object):
-    """Context wrapping Warp's scoped timer for use with nodes."""
-
-    def __init__(self, name: str, db: Any, active: bool = False) -> None:
-        name = "{}:{}".format(db.node.get_prim_path(), name)
-        self.timer = wp.ScopedTimer(name, active=active, synchronize=True)
-
-    def __enter__(self) -> None:
-        self.timer.__enter__()
-        return self
-
-    def __exit__(self, type: Any, value: Any, traceback: Any) -> None:
-        self.timer.__exit__(type, value, traceback)
-
-
-#   USD Primitives
-# ------------------------------------------------------------------------------
-
-
-def prim_get_world_xform(prim_path: Optional[str]) -> None:
-    """Retrieves the world transformation matrix from a USD primitive."""
-    if prim_path is not None:
-        stage = omni.usd.get_context().get_stage()
-        prim = stage.GetPrimAtPath(prim_path)
-        if prim.IsValid() and prim.IsA(UsdGeom.Xformable):
-            prim = UsdGeom.Xformable(prim)
-            return prim.ComputeLocalToWorldTransform(Usd.TimeCode.Default())
-
-    return np.identity(4)
-
-
-#   OmniGraph Attribute Values
-# ------------------------------------------------------------------------------
-
-
-def from_omni_graph(
-    value: Union[np.array, og.DataWrapper],
-    dtype: Optional[type] = None,
-    shape: Optional[Sequence[int]] = None,
-    device: Optional[wp.context.Device] = None,
-) -> wp.array:
-    """Converts an OmniGraph array value to its corresponding Warp type."""
-    if dtype is None:
-        dtype = float
-
-    if shape is None:
-        # The array value might define 2 dimensions when tuples such as
-        # wp.vec3 are used as data type, so we preserve only the first
-        # dimension to retrieve the actual shape since OmniGraph only
-        # supports 1D arrays anyways.
-        shape = value.shape[:1]
-
-    if device is None:
-        device = wp.get_device()
-
-    return attr_cast_array_to_warp(value, dtype, shape, device)
-
-
-#   OmniGraph Bundles
-# ------------------------------------------------------------------------------
-
-
-def bundle_define_prim_attrs(
-    bundle: og.BundleContents,
-    prim_type: str,
-    xform_prim_path: Optional[str] = None,
-    child_idx: int = 0,
-) -> None:
-    """Defines the primitive attributes."""
-    child_bundle = bundle_create_child(bundle, child_idx)
-    xform = prim_get_world_xform(xform_prim_path)
-
-    prim_type_attr = bundle_create_attr(
-        child_bundle,
-        "sourcePrimType",
-        og.Type(
-            og.BaseDataType.TOKEN,
-            tuple_count=1,
-            array_depth=0,
-            role=og.AttributeRole.NONE,
-        ),
-    )
-    attr_set_cpu_array(prim_type_attr, prim_type)
-
-    world_matrix_attr = bundle_create_attr(
-        child_bundle,
-        "worldMatrix",
-        og.Type(
-            og.BaseDataType.DOUBLE,
-            tuple_count=16,
-            array_depth=0,
-            role=og.AttributeRole.MATRIX,
-        ),
-    )
-    attr_set_cpu_array(world_matrix_attr, xform)

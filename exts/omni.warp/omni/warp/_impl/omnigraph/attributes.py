@@ -10,6 +10,7 @@
 import functools
 import operator
 from typing import (
+    Optional,
     Union,
     Sequence,
 )
@@ -155,3 +156,30 @@ def attr_cast_array_to_warp(
         )
 
     assert False, "Unexpected device '{}'.".format(device.alias)
+
+
+#   High-level Helper
+# ------------------------------------------------------------------------------
+
+
+def from_omni_graph(
+    value: Union[np.array, og.DataWrapper],
+    dtype: Optional[type] = None,
+    shape: Optional[Sequence[int]] = None,
+    device: Optional[wp.context.Device] = None,
+) -> wp.array:
+    """Converts an OmniGraph array value to its corresponding Warp type."""
+    if dtype is None:
+        dtype = float
+
+    if shape is None:
+        # The array value might define 2 dimensions when tuples such as
+        # wp.vec3 are used as data type, so we preserve only the first
+        # dimension to retrieve the actual shape since OmniGraph only
+        # supports 1D arrays anyways.
+        shape = value.shape[:1]
+
+    if device is None:
+        device = wp.get_device()
+
+    return attr_cast_array_to_warp(value, dtype, shape, device)

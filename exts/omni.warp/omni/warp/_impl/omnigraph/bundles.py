@@ -16,7 +16,9 @@ import warp as wp
 from omni.warp._impl.omnigraph.attributes import (
     attr_get_cpu_array,
     attr_get_gpu_array,
+    attr_set_cpu_array,
 )
+from omni.warp._impl.usd import prim_get_world_xform
 
 
 #   High-level Bundle API (og.BundleContents)
@@ -77,6 +79,41 @@ def bundle_get_attr(
         return None
 
     return attr
+
+
+def bundle_define_prim_attrs(
+    bundle: og.BundleContents,
+    prim_type: str,
+    xform_prim_path: Optional[str] = None,
+    child_idx: int = 0,
+) -> None:
+    """Defines the primitive attributes."""
+    child_bundle = bundle_create_child(bundle, child_idx)
+    xform = prim_get_world_xform(xform_prim_path)
+
+    prim_type_attr = bundle_create_attr(
+        child_bundle,
+        "sourcePrimType",
+        og.Type(
+            og.BaseDataType.TOKEN,
+            tuple_count=1,
+            array_depth=0,
+            role=og.AttributeRole.NONE,
+        ),
+    )
+    attr_set_cpu_array(prim_type_attr, prim_type)
+
+    world_matrix_attr = bundle_create_attr(
+        child_bundle,
+        "worldMatrix",
+        og.Type(
+            og.BaseDataType.DOUBLE,
+            tuple_count=16,
+            array_depth=0,
+            role=og.AttributeRole.MATRIX,
+        ),
+    )
+    attr_set_cpu_array(world_matrix_attr, xform)
 
 
 #   Low-level Bundle API (og.IBundle2)
