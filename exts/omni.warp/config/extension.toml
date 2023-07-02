@@ -36,12 +36,14 @@ exclude = ["Ogn*Database.py", "*/ogn*"]
 "omni.usd" = {}
 "omni.warp.core" = {}
 
-# Main python module this extension provides, it will be publicly available as "import omni.warp".
 [[python.module]]
-name = "omni.warp"
+name = "omni.warp._extension"
+
+[[python.module]]
+name = "omni.warp.nodes"
 
 [settings]
 exts."omni.warp".enable_backward = false
 
 [[test]]
-pythonTests.include = ["omni.warp.ogn.*"]
+pythonTests.include = ["omni.warp.nodes.ogn.*"]
