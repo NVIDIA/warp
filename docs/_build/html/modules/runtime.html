@@ -1510,11 +1510,212 @@ In Warp, instead of passing a scalar loss buffer to the <code class="docutils li
 </section>
 <section id="custom-gradient-functions">
 <h3>Custom Gradient Functions<a class="headerlink" href="#custom-gradient-functions" title="Permalink to this heading">#</a></h3>
-<p>Warp supports custom gradient functions for user-defined Warp functions.
-Following reverse-mode automatic differentiation (i.e. chain rule), the backward pass of a function first
-evaluates the function in forward mode (called “replay”). Next, the adjoint variables are computed given the
-forward-mode results by computing the reverse mode of the function.</p>
-<p>Consider the following example of a <code class="docutils literal notranslate"><span class="pre">wp.func</span></code>-annoted function <code class="docutils literal notranslate"><span class="pre">sqr</span></code> for which the gradient function <code class="docutils literal notranslate"><span class="pre">adj_sqr</span></code> is <a class="reference external" href="../debugging.html#generated-code">generated</a> by default:</p>
+<p>Warp supports custom gradient function definitions for user-defined Warp functions.
+This allows users to define code that should replace the automatically generated derivatives.</p>
+<p>To differentiate a function <span class="math notranslate nohighlight">\(h(x) = f(g(x))\)</span> that has a nested call to function <span class="math notranslate nohighlight">\(g(x)\)</span>, the chain rule is evaluated in the automatic differentiation of <span class="math notranslate nohighlight">\(h(x)\)</span>:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[h^\prime(x) = f^\prime({\color{green}{\underset{\textrm{replay}}{g(x)}}}) {\color{blue}{\underset{\textrm{grad}}{g^\prime(x)}}}\]</div>
+</div>
+<p>This implies that a function to be compatible with the autodiff engine needs to provide an implementation of its forward version
+<span class="math notranslate nohighlight">\(\color{green}{g(x)}\)</span>, which we refer to as “replay” function (that matches the original function definition by default),
+and its derivative <span class="math notranslate nohighlight">\(\color{blue}{g^\prime(x)}\)</span>, refered to as “grad”.</p>
+<p>Both the replay and the grad implementations can be customized by the user. They are defined as follows:</p>
+<div class="table-wrapper colwidths-given docutils container" id="id1">
+<table class="docutils align-default" id="id1">
+<caption><span class="caption-text">Customizing the replay and grad versions of function <code class="docutils literal notranslate"><span class="pre">myfunc</span></code></span><a class="headerlink" href="#id1" title="Permalink to this table">#</a></caption>
+<colgroup>
+<col style="width: 100.0%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>Forward Function</p></td>
+</tr>
+<tr class="row-even"><td><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span> <span class="nf">myfunc</span><span class="p">(</span><span class="n">in1</span><span class="p">:</span> <span class="n">InType1</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">inN</span><span class="p">:</span> <span class="n">InTypeN</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OutType1</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">OutTypeM</span><span class="p">:</span>
+   <span class="k">return</span> <span class="n">out1</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">outM</span>
+</pre></div>
+</div>
+</td>
+</tr>
+<tr class="row-odd"><td><p>Custom Replay Function</p></td>
+</tr>
+<tr class="row-even"><td><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@myfunc</span><span class="o">.</span><span class="n">replay</span>
+<span class="k">def</span> <span class="nf">replay_myfunc</span><span class="p">(</span><span class="n">in1</span><span class="p">:</span> <span class="n">InType1</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">inN</span><span class="p">:</span> <span class="n">InTypeN</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OutType1</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">OutTypeM</span><span class="p">:</span>
+   <span class="c1"># Custom forward computations to be executed in the backward pass of a</span>
+   <span class="c1"># function calling `myfunc` go here</span>
+   <span class="c1"># Ensure the output variables match the original forward definition</span>
+   <span class="k">return</span> <span class="n">out1</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">outM</span>
+</pre></div>
+</div>
+</td>
+</tr>
+<tr class="row-odd"><td><p>Custom Adjoint Function</p></td>
+</tr>
+<tr class="row-even"><td><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@myfunc</span><span class="o">.</span><span class="n">grad</span>
+<span class="k">def</span> <span class="nf">adj_myfunc</span><span class="p">(</span><span class="n">in1</span><span class="p">:</span> <span class="n">InType1</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">inN</span><span class="p">:</span> <span class="n">InTypeN</span><span class="p">,</span> <span class="n">adj_out1</span><span class="p">:</span> <span class="n">OutType1</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">adj_outM</span><span class="p">:</span> <span class="n">OutTypeM</span><span class="p">):</span>
+   <span class="c1"># Custom adjoint code goes here</span>
+   <span class="c1"># Update the partial derivatives for the inputs as follows:</span>
+   <span class="n">wp</span><span class="o">.</span><span class="n">adjoint</span><span class="p">[</span><span class="n">in1</span><span class="p">]</span> <span class="o">+=</span> <span class="o">...</span>
+   <span class="o">...</span>
+   <span class="n">wp</span><span class="o">.</span><span class="n">adjoint</span><span class="p">[</span><span class="n">inN</span><span class="p">]</span> <span class="o">+=</span> <span class="o">...</span>
+</pre></div>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<section id="example-1-custom-grad-function">
+<h4>Example 1: Custom Grad Function<a class="headerlink" href="#example-1-custom-grad-function" title="Permalink to this heading">#</a></h4>
+<p>In the following, we define a Warp function <code class="docutils literal notranslate"><span class="pre">safe_sqrt</span></code> that computes the square root of a number:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span> <span class="nf">safe_sqrt</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+   <span class="k">return</span> <span class="n">wp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To evaluate this function, we define a kernel that applies <code class="docutils literal notranslate"><span class="pre">safe_sqrt</span></code> to an array of input values:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span> <span class="nf">run_safe_sqrt</span><span class="p">(</span><span class="n">xs</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span> <span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+   <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+   <span class="n">output</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">safe_sqrt</span><span class="p">(</span><span class="n">xs</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Calling the kernel for an array of values <code class="docutils literal notranslate"><span class="pre">[1.0,</span> <span class="pre">2.0,</span> <span class="pre">0.0]</span></code> yields the expected outputs, the gradients are finite except for the zero input:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xs</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">ys</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span>
+<span class="n">tape</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span>
+<span class="k">with</span> <span class="n">tape</span><span class="p">:</span>
+   <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">run_safe_sqrt</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">xs</span><span class="p">),</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">xs</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">ys</span><span class="p">])</span>
+<span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">grads</span><span class="o">=</span><span class="p">{</span><span class="n">ys</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">xs</span><span class="p">)),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)})</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;ys     &quot;</span><span class="p">,</span> <span class="n">ys</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;xs.grad&quot;</span><span class="p">,</span> <span class="n">xs</span><span class="o">.</span><span class="n">grad</span><span class="p">)</span>
+
+<span class="c1"># ys      [1.   1.4142135   0. ]</span>
+<span class="c1"># xs.grad [0.5  0.35355338  inf]</span>
+</pre></div>
+</div>
+<p>It is often desired to catch nonfinite gradients in the computation graph as they may cause the entire gradient computation to be nonfinite.
+To do so, we can define a custom gradient function that replaces the adjoint function for <code class="docutils literal notranslate"><span class="pre">safe_sqrt</span></code> which is automatically generated by
+decorating the custom gradient code via <code class="docutils literal notranslate"><span class="pre">&#64;safe_sqrt.grad</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@safe_sqrt</span><span class="o">.</span><span class="n">grad</span>
+<span class="k">def</span> <span class="nf">adj_safe_sqrt</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">adj_ret</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+   <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+      <span class="n">wp</span><span class="o">.</span><span class="n">adjoint</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">+=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">wp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> <span class="o">*</span> <span class="n">adj_ret</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The function signature of the custom grad code consists of the input arguments of the forward function plus the adjoint variables of the
+forward function outputs. To access and modify the partial derivatives of the input arguments, we use the <code class="docutils literal notranslate"><span class="pre">wp.adjoint</span></code> dictionary.
+The keys of this dictionary are the input arguments of the forward function, and the values are the partial derivatives of the forward function
+output with respect to the input argument.</p>
+</div>
+</section>
+<section id="example-2-custom-replay-function">
+<h4>Example 2: Custom Replay Function<a class="headerlink" href="#example-2-custom-replay-function" title="Permalink to this heading">#</a></h4>
+<p>In the following, we increment an array index in each thread via <code class="docutils literal notranslate"><span class="pre">wp.atomic_add</span></code> and compute the square root of an input array at the incremented index.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span> <span class="nf">test_add</span><span class="p">(</span><span class="n">counter</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span> <span class="nb">input</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span> <span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+   <span class="n">idx</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">atomic_add</span><span class="p">(</span><span class="n">counter</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+   <span class="n">output</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">input</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+   <span class="n">dim</span> <span class="o">=</span> <span class="mi">16</span>
+   <span class="n">use_differentiable_atomic_add</span> <span class="o">=</span> <span class="kc">False</span>
+   <span class="nb">input</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dim</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+   <span class="n">counter</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+   <span class="n">thread_ids</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+   <span class="n">output</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+   <span class="n">tape</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span>
+   <span class="k">with</span> <span class="n">tape</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">use_differentiable_atomic_add</span><span class="p">:</span>
+         <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">test_add_diff</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">counter</span><span class="p">,</span> <span class="n">thread_ids</span><span class="p">,</span> <span class="nb">input</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">output</span><span class="p">])</span>
+      <span class="k">else</span><span class="p">:</span>
+         <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">test_add</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">counter</span><span class="p">,</span> <span class="nb">input</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">output</span><span class="p">])</span>
+
+   <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;counter:    &quot;</span><span class="p">,</span> <span class="n">counter</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;thread_ids: &quot;</span><span class="p">,</span> <span class="n">thread_ids</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;input:      &quot;</span><span class="p">,</span> <span class="nb">input</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;output:     &quot;</span><span class="p">,</span> <span class="n">output</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+
+   <span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">grads</span><span class="o">=</span><span class="p">{</span>
+      <span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">dim</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+   <span class="p">})</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;input.grad: &quot;</span><span class="p">,</span> <span class="nb">input</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+   <span class="n">main</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The output of the above code is:</p>
+<div class="highlight-js notranslate"><div class="highlight"><pre><span></span><span class="nx">counter</span><span class="o">:</span><span class="w">     </span><span class="p">[</span><span class="mf">8</span><span class="p">]</span>
+<span class="nx">thread_ids</span><span class="o">:</span><span class="w">  </span><span class="p">[</span><span class="mf">0</span><span class="w"> </span><span class="mf">0</span><span class="w"> </span><span class="mf">0</span><span class="w"> </span><span class="mf">0</span><span class="w"> </span><span class="mf">0</span><span class="w"> </span><span class="mf">0</span><span class="w"> </span><span class="mf">0</span><span class="w"> </span><span class="mf">0</span><span class="p">]</span>
+<span class="nx">input</span><span class="o">:</span><span class="w">       </span><span class="p">[</span><span class="mf">1.</span><span class="w"> </span><span class="mf">2.</span><span class="w"> </span><span class="mf">3.</span><span class="w"> </span><span class="mf">4.</span><span class="w"> </span><span class="mf">5.</span><span class="w"> </span><span class="mf">6.</span><span class="w"> </span><span class="mf">7.</span><span class="w"> </span><span class="mf">8.</span><span class="p">]</span>
+<span class="nx">output</span><span class="o">:</span><span class="w">      </span><span class="p">[</span><span class="mf">1.</span><span class="w">  </span><span class="mf">1.4142135</span><span class="w">  </span><span class="mf">1.7320508</span><span class="w">  </span><span class="mf">2.</span><span class="w">  </span><span class="mf">2.236068</span><span class="w">  </span><span class="mf">2.4494898</span><span class="w">  </span><span class="mf">2.6457512</span><span class="w">  </span><span class="mf">2.828427</span><span class="p">]</span>
+<span class="nx">input</span><span class="p">.</span><span class="nx">grad</span><span class="o">:</span><span class="w">  </span><span class="p">[</span><span class="mf">4.</span><span class="w"> </span><span class="mf">0.</span><span class="w"> </span><span class="mf">0.</span><span class="w"> </span><span class="mf">0.</span><span class="w"> </span><span class="mf">0.</span><span class="w"> </span><span class="mf">0.</span><span class="w"> </span><span class="mf">0.</span><span class="w"> </span><span class="mf">0.</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>The gradient of the input is incorrect because the backward pass involving the atomic operation <code class="docutils literal notranslate"><span class="pre">wp.atomic_add</span></code> does not know which thread ID corresponds
+to which input value.
+The index returned by the adjoint of <code class="docutils literal notranslate"><span class="pre">wp.atomic_add</span></code> is always zero so that the gradient the first entry of the input array,
+i.e. <span class="math notranslate nohighlight">\(\frac{1}{2\sqrt{1}} = 0.5\)</span>, is accumulated <code class="docutils literal notranslate"><span class="pre">dim</span></code> times (hence <code class="docutils literal notranslate"><span class="pre">input.grad[0]</span> <span class="pre">==</span> <span class="pre">4.0</span></code> and all other entries zero).</p>
+<p>To fix this, we define a new Warp function <code class="docutils literal notranslate"><span class="pre">differentiable_atomic_add</span></code> with a custom <em>replay</em> definition that stores the thread ID in a separate array:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span> <span class="nf">differentiable_atomic_add</span><span class="p">(</span>
+   <span class="n">buf</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
+   <span class="n">buf_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+   <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+   <span class="n">thread_values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
+   <span class="n">tid</span><span class="p">:</span> <span class="nb">int</span>
+<span class="p">):</span>
+   <span class="n">next_index</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">atomic_add</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">buf_index</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+   <span class="c1"># store which thread ID corresponds to which index for the backward pass</span>
+   <span class="n">thread_values</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">next_index</span>
+   <span class="k">return</span> <span class="n">next_index</span>
+
+
+<span class="nd">@differentiable_atomic_add</span><span class="o">.</span><span class="n">replay</span>
+<span class="k">def</span> <span class="nf">replay_differentiable_atomic_add</span><span class="p">(</span>
+   <span class="n">buf</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
+   <span class="n">buf_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+   <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+   <span class="n">thread_values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
+   <span class="n">tid</span><span class="p">:</span> <span class="nb">int</span>
+<span class="p">):</span>
+   <span class="k">return</span> <span class="n">thread_values</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Instead of running the <code class="docutils literal notranslate"><span class="pre">differentiable_atomic_add</span></code> function, the custom replay code in function <code class="docutils literal notranslate"><span class="pre">replay_differentiable_atomic_add</span></code> is now executed
+during forward phase in the backward pass of the function calling <code class="docutils literal notranslate"><span class="pre">differentiable_atomic_add</span></code>.
+We first stored the array index to each thread ID in the forward pass, and now we retrieve the array index for each thread ID in the backward pass.
+That way, the backward pass can reproduce the same addition operation as in the forward pass with exactly the same operands per thread.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The function signature of the custom replay code must match the forward function signature.</p>
+</div>
+<p>To use our function we write the following kernel:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span> <span class="nf">test_add_diff</span><span class="p">(</span>
+   <span class="n">counter</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
+   <span class="n">thread_ids</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
+   <span class="nb">input</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span>
+   <span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="p">):</span>
+   <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+   <span class="n">idx</span> <span class="o">=</span> <span class="n">differentiable_atomic_add</span><span class="p">(</span><span class="n">counter</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">thread_ids</span><span class="p">,</span> <span class="n">tid</span><span class="p">)</span>
+   <span class="n">output</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">input</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Running the <code class="docutils literal notranslate"><span class="pre">test_add_diff</span></code> kernel via the previous <code class="docutils literal notranslate"><span class="pre">main</span></code> function with <code class="docutils literal notranslate"><span class="pre">use_differentiable_atomic_add</span> <span class="pre">=</span> <span class="pre">True</span></code>, we now compute correct gradients
+for the input array:</p>
+<div class="highlight-js notranslate"><div class="highlight"><pre><span></span><span class="nx">counter</span><span class="o">:</span><span class="w">     </span><span class="p">[</span><span class="mf">8</span><span class="p">]</span>
+<span class="nx">thread_ids</span><span class="o">:</span><span class="w">  </span><span class="p">[</span><span class="mf">0</span><span class="w"> </span><span class="mf">1</span><span class="w"> </span><span class="mf">2</span><span class="w"> </span><span class="mf">3</span><span class="w"> </span><span class="mf">4</span><span class="w"> </span><span class="mf">5</span><span class="w"> </span><span class="mf">6</span><span class="w"> </span><span class="mf">7</span><span class="p">]</span>
+<span class="nx">input</span><span class="o">:</span><span class="w">       </span><span class="p">[</span><span class="mf">1.</span><span class="w"> </span><span class="mf">2.</span><span class="w"> </span><span class="mf">3.</span><span class="w"> </span><span class="mf">4.</span><span class="w"> </span><span class="mf">5.</span><span class="w"> </span><span class="mf">6.</span><span class="w"> </span><span class="mf">7.</span><span class="w"> </span><span class="mf">8.</span><span class="p">]</span>
+<span class="nx">output</span><span class="o">:</span><span class="w">      </span><span class="p">[</span><span class="mf">1.</span><span class="w">   </span><span class="mf">1.4142135</span><span class="w">   </span><span class="mf">1.7320508</span><span class="w">   </span><span class="mf">2.</span><span class="w">    </span><span class="mf">2.236068</span><span class="w">   </span><span class="mf">2.4494898</span><span class="w">   </span><span class="mf">2.6457512</span><span class="w">   </span><span class="mf">2.828427</span><span class="w">  </span><span class="p">]</span>
+<span class="nx">input</span><span class="p">.</span><span class="nx">grad</span><span class="o">:</span><span class="w">  </span><span class="p">[</span><span class="mf">0.5</span><span class="w">  </span><span class="mf">0.35355338</span><span class="w">  </span><span class="mf">0.28867513</span><span class="w">  </span><span class="mf">0.25</span><span class="w">  </span><span class="mf">0.2236068</span><span class="w">  </span><span class="mf">0.20412414</span><span class="w">  </span><span class="mf">0.18898225</span><span class="w">  </span><span class="mf">0.17677669</span><span class="p">]</span>
+</pre></div>
+</div>
+</section>
 </section>
 </section>
 <section id="graphs">
@@ -1728,7 +1929,11 @@ This can be used to record large numbers of kernels and replay them with low-ove
 </ul>
 </li>
 <li><a class="reference internal" href="#jacobians">Jacobians</a></li>
-<li><a class="reference internal" href="#custom-gradient-functions">Custom Gradient Functions</a></li>
+<li><a class="reference internal" href="#custom-gradient-functions">Custom Gradient Functions</a><ul>
+<li><a class="reference internal" href="#example-1-custom-grad-function">Example 1: Custom Grad Function</a></li>
+<li><a class="reference internal" href="#example-2-custom-replay-function">Example 2: Custom Replay Function</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a class="reference internal" href="#graphs">Graphs</a><ul>
