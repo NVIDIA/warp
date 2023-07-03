@@ -853,7 +853,7 @@ Both the replay and the grad implementations can be customized by the user. They
             # Ensure the output variables match the original forward definition
             return out1, ..., outM
 
-   * - Custom Adjoint Function
+   * - Custom Grad Function
    * - .. code-block:: python
 
          @myfunc.grad
@@ -863,6 +863,10 @@ Both the replay and the grad implementations can be customized by the user. They
             wp.adjoint[in1] += ...
             ...
             wp.adjoint[inN] += ...
+
+.. note:: It is currently not supported to define custom replay or grad functions for functions that
+   have generic arguments, e.g. ``Any`` or ``warp.array(dtype=Any)``. Replay or grad functions that
+   themselves use generic arguments are also not yet supported.
 
 Example 1: Custom Grad Function
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

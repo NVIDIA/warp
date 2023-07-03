@@ -1549,7 +1549,7 @@ and its derivative <span class="math notranslate nohighlight">\(\color{blue}{g^\
 </div>
 </td>
 </tr>
-<tr class="row-odd"><td><p>Custom Adjoint Function</p></td>
+<tr class="row-odd"><td><p>Custom Grad Function</p></td>
 </tr>
 <tr class="row-even"><td><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@myfunc</span><span class="o">.</span><span class="n">grad</span>
 <span class="k">def</span> <span class="nf">adj_myfunc</span><span class="p">(</span><span class="n">in1</span><span class="p">:</span> <span class="n">InType1</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">inN</span><span class="p">:</span> <span class="n">InTypeN</span><span class="p">,</span> <span class="n">adj_out1</span><span class="p">:</span> <span class="n">OutType1</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">adj_outM</span><span class="p">:</span> <span class="n">OutTypeM</span><span class="p">):</span>
@@ -1564,6 +1564,12 @@ and its derivative <span class="math notranslate nohighlight">\(\color{blue}{g^\
 </tr>
 </tbody>
 </table>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>It is currently not supported to define custom replay or grad functions for functions that
+have generic arguments, e.g. <code class="docutils literal notranslate"><span class="pre">Any</span></code> or <code class="docutils literal notranslate"><span class="pre">warp.array(dtype=Any)</span></code>. Replay or grad functions that
+themselves use generic arguments are also not yet supported.</p>
 </div>
 <section id="example-1-custom-grad-function">
 <h4>Example 1: Custom Grad Function<a class="headerlink" href="#example-1-custom-grad-function" title="Permalink to this heading">#</a></h4>
