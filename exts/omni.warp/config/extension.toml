@@ -10,6 +10,7 @@ repository="https://github.com/nvidia/warp"
 category = "graph"
 keywords = ["kit", "omnigraph", "warp", "simulation"]
 changelog="docs/CHANGELOG.md"
+python.import_mode = "ParallelThread"
 
 preview_image = "data/preview.png"
 icon = "data/icon.png"
