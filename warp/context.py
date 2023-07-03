@@ -447,17 +447,28 @@ class Function:
         return f"<Function {self.key}({inputs_str})>"
 
     def replay(self, func):
-        """Defines a custom function to be called in the forward call part of the backward pass (replay mode).
+        """Defines a custom function to be called in the forward call of this function inside the backward pass (replay mode).
         The provided function has to match the signature of one of the original function overloads."""
+
+        generic = any(warp.types.type_is_generic(x) for x in self.input_types.values())
+        if generic:
+            raise RuntimeError(
+                f"Cannot define custom replay definition for {self.key} since functions with generic input arguments are not yet supported."
+            )
 
         args = get_function_args(func)
         arg_types = list(args.values())
+        generic = any(warp.types.type_is_generic(x) for x in arg_types)
+        if generic:
+            raise RuntimeError(
+                f"Cannot define custom replay definition for {self.key} since the provided replay function has generic input arguments."
+            )
 
         f = self.get_overload(arg_types)
         if f is None:
             inputs_str = ", ".join([f"{k}: {v.__name__}" for k, v in args.items()])
             raise RuntimeError(
-                f"Could not find forward definition of function {self.key} that matches custom replay definition with arguments\n{inputs_str}"
+                f"Could not find forward definition of function {self.key} that matches custom replay definition with arguments:\n{inputs_str}"
             )
         f.custom_replay_func = Function(
             func,
@@ -480,6 +491,12 @@ class Function:
         adjoint variables of the output variables (if available) of the original function with the same types as the
         output variables. The function must not return anything."""
 
+        generic = any(warp.types.type_is_generic(x) for x in self.input_types.values())
+        if generic:
+            raise RuntimeError(
+                f"Cannot define custom grad definition for {self.key} since functions with generic input arguments are not yet supported."
+            )
+
         reverse_args = {}
         reverse_args.update(self.input_types)
 
@@ -495,6 +512,12 @@ class Function:
 
         grad_args = adj.args
         grad_sig = warp.types.get_signature([arg.type for arg in grad_args], func_name=self.key)
+
+        generic = any(warp.types.type_is_generic(x.type) for x in grad_args)
+        if generic:
+            raise RuntimeError(
+                f"Cannot define custom grad definition for {self.key} since the provided grad function has generic input arguments."
+            )
 
         def match_function(f):
             # check whether the function overload f matches the signature of the provided gradient function
