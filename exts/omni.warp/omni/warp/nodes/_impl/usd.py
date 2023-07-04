@@ -17,13 +17,14 @@ from pxr import (
 )
 
 
-def prim_get_world_xform(prim_path: Optional[str]) -> None:
+def prim_get_world_xform(prim_path: Optional[str]) -> np.ndarray:
     """Retrieves the world transformation matrix from a USD primitive."""
     if prim_path is not None:
         stage = omni.usd.get_context().get_stage()
         prim = stage.GetPrimAtPath(prim_path)
         if prim.IsValid() and prim.IsA(UsdGeom.Xformable):
             prim = UsdGeom.Xformable(prim)
-            return prim.ComputeLocalToWorldTransform(Usd.TimeCode.Default())
+            xform = prim.ComputeLocalToWorldTransform(Usd.TimeCode.Default())
+            return np.array(xform)
 
     return np.identity(4)

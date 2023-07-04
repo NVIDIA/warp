@@ -18,7 +18,6 @@ from omni.warp.nodes._impl.attributes import (
     attr_get_gpu_array,
     attr_set_cpu_array,
 )
-from omni.warp.nodes._impl.usd import prim_get_world_xform
 
 
 #   High-level Bundle API (og.BundleContents)
@@ -41,6 +40,26 @@ def bundle_get_prim_type(
     return attr_get_cpu_array(attr)
 
 
+def bundle_set_prim_type(
+    bundle: og.BundleContents,
+    prim_type: str,
+    child_idx: int = 0,
+) -> None:
+    """Sets the primitive type."""
+    child_bundle = bundle_create_child(bundle, child_idx)
+    attr = bundle_create_attr(
+        child_bundle,
+        "sourcePrimType",
+        og.Type(
+            og.BaseDataType.TOKEN,
+            tuple_count=1,
+            array_depth=0,
+            role=og.AttributeRole.NONE,
+        ),
+    )
+    attr_set_cpu_array(attr, prim_type)
+
+
 def bundle_get_world_xform(
     bundle: og.BundleContents,
     child_idx: int = 0,
@@ -51,6 +70,26 @@ def bundle_get_world_xform(
         return np.identity(4)
 
     return attr_get_cpu_array(attr).reshape(4, 4)
+
+
+def bundle_set_world_xform(
+    bundle: og.BundleContents,
+    xform: np.ndarray,
+    child_idx: int = 0,
+) -> None:
+    """Sets the bundle's world transformation matrix."""
+    child_bundle = bundle_create_child(bundle, child_idx)
+    attr = bundle_create_attr(
+        child_bundle,
+        "worldMatrix",
+        og.Type(
+            og.BaseDataType.DOUBLE,
+            tuple_count=16,
+            array_depth=0,
+            role=og.AttributeRole.MATRIX,
+        ),
+    )
+    attr_set_cpu_array(attr, xform)
 
 
 def bundle_create_child(
@@ -79,41 +118,6 @@ def bundle_get_attr(
         return None
 
     return attr
-
-
-def bundle_define_prim_attrs(
-    bundle: og.BundleContents,
-    prim_type: str,
-    xform_prim_path: Optional[str] = None,
-    child_idx: int = 0,
-) -> None:
-    """Defines the primitive attributes."""
-    child_bundle = bundle_create_child(bundle, child_idx)
-    xform = prim_get_world_xform(xform_prim_path)
-
-    prim_type_attr = bundle_create_attr(
-        child_bundle,
-        "sourcePrimType",
-        og.Type(
-            og.BaseDataType.TOKEN,
-            tuple_count=1,
-            array_depth=0,
-            role=og.AttributeRole.NONE,
-        ),
-    )
-    attr_set_cpu_array(prim_type_attr, prim_type)
-
-    world_matrix_attr = bundle_create_attr(
-        child_bundle,
-        "worldMatrix",
-        og.Type(
-            og.BaseDataType.DOUBLE,
-            tuple_count=16,
-            array_depth=0,
-            role=og.AttributeRole.MATRIX,
-        ),
-    )
-    attr_set_cpu_array(world_matrix_attr, xform)
 
 
 #   Low-level Bundle API (og.IBundle2)

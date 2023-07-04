@@ -77,6 +77,7 @@ def compute(db: OgnGridCreateDatabase) -> None:
         point_count,
         vertex_count,
         face_count,
+        xform=omni.warp.nodes.prim_get_world_xform(db.inputs.xformPrimPath),
     )
 
     with omni.warp.nodes.NodeTimer("grid_create", db, active=PROFILING):
@@ -90,13 +91,6 @@ def compute(db: OgnGridCreateDatabase) -> None:
             db.inputs.size.tolist(),
             db.inputs.dims.tolist(),
         )
-
-    # Set the USD primitive path and type.
-    omni.warp.nodes.bundle_define_prim_attrs(
-        db.outputs.mesh,
-        "Mesh",
-        xform_prim_path=db.inputs.xformPrimPath,
-    )
 
     state.store_setting_attrs(db)
 

@@ -278,7 +278,11 @@ def compute(db: OgnParticlesFromMeshDatabase) -> None:
         (points, point_count) = spawn_particles(db)
 
     # Create a new geometry points within the output bundle.
-    omni.warp.nodes.points_create_bundle(db.outputs.particles, point_count)
+    omni.warp.nodes.points_create_bundle(
+        db.outputs.particles,
+        point_count,
+        xform=omni.warp.nodes.prim_get_world_xform(db.inputs.xformPrimPath),
+    )
 
     # Copy the point positions onto the output bundle.
     wp.copy(
@@ -316,13 +320,6 @@ def compute(db: OgnParticlesFromMeshDatabase) -> None:
         # Store the mass in the output bundle.
         masses = omni.warp.nodes.points_get_masses(db.outputs.particles)
         masses.fill_(db.inputs.mass)
-
-    # Set the USD primitive path and type.
-    omni.warp.nodes.bundle_define_prim_attrs(
-        db.outputs.particles,
-        "Points",
-        xform_prim_path=db.inputs.xformPrimPath,
-    )
 
     state.store_setting_attrs(db)
 
