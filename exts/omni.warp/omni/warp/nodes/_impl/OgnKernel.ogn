@@ -1,0 +1,125 @@
+{
+    "WarpKernel": {
+        "version": 2,
+        "categoryDefinitions": "../../../../config/warp_categories.json",
+        "description": "Runs a single Warp kernel.",
+        "categories": ["warp"],
+        "language": "Python",
+        "uiName": "Warp Kernel",
+        "exclude": ["usd"],
+        "inputs": {
+            "execIn": {
+                "type": "execution",
+                "description": "Input execution."
+            },
+            "device": {
+                "type": "token",
+                "description": "Device to launch on.",
+                "uiName": "Device",
+                "default": "cuda:0"
+            },
+            "dimSource": {
+                "type": "token",
+                "description": "Where to read the dimensions from.",
+                "uiName": "Dim Source",
+                "default": "explicit"
+            },
+            "dimCount": {
+                "type": "int",
+                "description": "Number of kernel dimensions.",
+                "uiName": "Dim Count",
+                "default": 1,
+                "metadata": {
+                    "minimum": 1,
+                    "maximum": 4
+                }
+            },
+            "dim1": {
+                "type": "int",
+                "description": "Size of the first kernel dimension.",
+                "uiName": "Dim 1",
+                "default": 1,
+                "metadata": {
+                    "minimum": 0
+                }
+            },
+            "dim2": {
+                "type": "int",
+                "description": "Size of the second kernel dimension.",
+                "uiName": "Dim 2",
+                "default": 1,
+                "metadata": {
+                    "minimum": 0
+                }
+            },
+            "dim3": {
+                "type": "int",
+                "description": "Size of the third kernel dimension.",
+                "uiName": "Dim 3",
+                "default": 1,
+                "metadata": {
+                    "minimum": 0
+                }
+            },
+            "dim4": {
+                "type": "int",
+                "description": "Size of the fourth kernel dimension.",
+                "uiName": "Dim 4",
+                "default": 1,
+                "metadata": {
+                    "minimum": 0
+                }
+            },
+            "codeProvider": {
+                "type": "token",
+                "description": [
+                    "Where to read the code source from."
+                ],
+                "uiName": "Code Provider",
+                "metadata": {
+                    "allowedTokens": [
+                        "embedded",
+                        "file"
+                    ]
+                },
+                "default": "embedded"
+            },
+            "codeStr": {
+                "type": "string",
+                "description": "String defining the kernel function to launch.",
+                "uiName": "Code String",
+                "default": "import warp as wp\n\n@wp.kernel\ndef compute(inputs: Inputs, outputs: Outputs):\n    tid = wp.tid()\n"
+            },
+            "codeFile": {
+                "type": "token",
+                "description": "Path to a Python file defining the kernel function to launch.",
+                "uiName": "Code File",
+                "optional": true,
+                "metadata": {
+                    "uiType": "filePath",
+                    "fileExts": {
+                        "*.py": "Python scripts (*.py)"
+                    }
+                }
+            }
+        },
+        "outputs": {
+            "execOut": {
+                "type": "execution",
+                "description": "Output execution."
+            }
+        },
+        "state": {
+            "userAttrDescs": {
+                "type": "string",
+                "description": "Internal: user attribute descriptions.",
+                "default": "{}"
+            },
+            "userAttrsEvent": {
+                "type": "int",
+                "description": "Internal: user attributes event.",
+                "default": 0
+            }
+        }
+    }
+}

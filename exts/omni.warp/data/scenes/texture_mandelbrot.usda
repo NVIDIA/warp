@@ -60,18 +60,7 @@ def Xform "World"
             uniform float2 ui:nodegraph:node:pos = (-515, 974)
         }
 
-        def OmniGraphNode "zoom" (
-            prepend apiSchemas = ["NodeGraphNodeAPI"]
-        )
-        {
-            custom float inputs:value = 1
-            token node:type = "omni.graph.nodes.ConstantFloat"
-            int node:typeVersion = 1
-            uniform token ui:nodegraph:node:expansionState = "minimized"
-            uniform float2 ui:nodegraph:node:pos = (-510, 1082)
-        }
-
-        def OmniGraphNode "onloaded" (
+        def OmniGraphNode "on_loaded" (
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
         {
@@ -173,7 +162,7 @@ def compute(inputs: Inputs, outputs: Outputs):\r
         float(u) / float(inputs.dim) - 0.5,\r
         float(v) / float(inputs.dim) - 0.5,\r
     )\r
-    uv /= inputs.zoom\r
+    uv /= inputs.zoom + 1.0\r
     uv += wp.vec2(inputs.offsetU, inputs.offsetV)\r
 \r
     gradient = float(compute_mandelbrot_gradient(uv))\r
@@ -195,7 +184,7 @@ def compute(inputs: Inputs, outputs: Outputs):\r
             custom token inputs:dimSource = "explicit"
             custom uint inputs:execIn
             prepend uint inputs:execIn.connect = [
-                </World/ActionGraph/onloaded.outputs:execOut>,
+                </World/ActionGraph/on_loaded.outputs:execOut>,
                 </World/ActionGraph/on_tick.outputs:tick>,
             ]
             custom float inputs:offsetU
@@ -203,7 +192,7 @@ def compute(inputs: Inputs, outputs: Outputs):\r
             custom float inputs:offsetV
             prepend float inputs:offsetV.connect = </World/ActionGraph/offset_v.inputs:value>
             custom float inputs:zoom
-            prepend float inputs:zoom.connect = </World/ActionGraph/zoom.inputs:value>
+            prepend float inputs:zoom.connect = </World/ActionGraph/on_tick.outputs:time>
             token node:type = "omni.warp.WarpKernel"
             int node:typeVersion = 2
             custom uint outputs:execOut (

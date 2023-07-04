@@ -1,0 +1,45 @@
+{
+    "WarpOgnBundleInspectChanges": {
+        "version": 1,
+        "categoryDefinitions": "../../../../config/warp_categories.json",
+        "description": "Inspects the changes made to an attribute.",
+        "categories": ["warp"],
+        "language": "Python",
+        "uiName": "Bundle Inspect Changes",
+        "cudaPointers": "cpu",
+        "inputs": {
+            "execIn": {
+                "type": "execution",
+                "description": "Input execution."
+            },
+            "bundle": {
+                "type": "bundle",
+                "uiName": "Bundle",
+                "description": "Input bundle.",
+                "memoryType": "cuda"
+            }
+        },
+        "outputs": {
+            "execOut": {
+                "type": "execution",
+                "description": "Output execution."
+            },
+            "bundle": {
+                "type": "bundle",
+                "uiName": "Bundle",
+                "description": "Output bundle.",
+                "memoryType": "cuda"
+            },
+            "topologyChanged": {
+                "type": "bool",
+                "uiName": "Topology Changed",
+                "description": "Whether the topology of the attributes has changed."
+            },
+            "attrsChanged": {
+                "type": "string",
+                "uiName": "Attributes Changed",
+                "description": "List of space separated bundle attribute names that have changed."
+            }
+        }
+    }
+}

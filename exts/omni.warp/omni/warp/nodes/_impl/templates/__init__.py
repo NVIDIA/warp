@@ -5,7 +5,9 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-"""Public API for the omni.warp.core extension"""
+"""Templates defining custom node UIs.
 
-# Register the extension by importing its entry point class.
-from omni.warp.core._impl.extension import OmniWarpCoreExtension as _
+These override the default behaviour from OmniGraph where widgets are
+automatically generated based on the attributes defined in the node's
+`.ogn` file.
+"""

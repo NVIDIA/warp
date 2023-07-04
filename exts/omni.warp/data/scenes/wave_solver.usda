@@ -32,6 +32,21 @@ def Xform "World"
         int2 fileFormatVersion = (1, 7)
         token pipelineStage = "pipelineStageSimulation"
 
+        def OmniGraphNode "on_loaded" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            token node:type = "omni.graph.action.OnLoaded"
+            int node:typeVersion = 1
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            uniform token ui:nodegraph:node:expansionState = "open"
+            uniform float2 ui:nodegraph:node:pos = (70, -90)
+        }
+
         def OmniGraphNode "on_tick" (
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
@@ -109,7 +124,10 @@ def Xform "World"
             prepend rel inputs:collider = </World/ActionGraph/read_collider/outputs_primsBundle>
             custom float inputs:damping = 0.25
             custom uint inputs:execIn
-            prepend uint inputs:execIn.connect = </World/ActionGraph/on_tick.outputs:tick>
+            prepend uint inputs:execIn.connect = [
+                </World/ActionGraph/on_loaded.outputs:execOut>,
+                </World/ActionGraph/on_tick.outputs:tick>,
+            ]
             custom float2 inputs:size = (600, 300)
             custom float inputs:speed = 1000
             custom double inputs:time
