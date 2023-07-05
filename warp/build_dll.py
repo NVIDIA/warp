@@ -20,7 +20,10 @@ def run_cmd(cmd, capture=False):
     try:
         return subprocess.check_output(cmd, shell=True)
     except subprocess.CalledProcessError as e:
-        print(e.output.decode())
+        if e.stdout:
+            print(e.stdout.decode())
+        if e.stderr:
+            print(e.stderr.decode())
         raise (e)
 
 
@@ -125,7 +128,7 @@ def quote(path):
     return '"' + path + '"'
 
 
-def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=False, fast_math=False, quick=False):
+def build_dll_for_arch(dll_path, cpp_paths, cu_path, libs, mode, arch, verify_fp=False, fast_math=False, quick=False):
     cuda_home = warp.config.cuda_path
     cuda_cmd = None
 
@@ -217,8 +220,8 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
         else:
             raise RuntimeError("Warp build error: No host compiler was found")
 
-        cpp_includes = f' /I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}/include"'
-        cpp_includes += f' /I"{warp_home_path.parent}/_build/host-deps/llvm-project/include"'
+        cpp_includes = f' /I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}-{arch}/include"'
+        cpp_includes += f' /I"{warp_home_path.parent}/_build/host-deps/llvm-project/release-{arch}/include"'
         cuda_includes = f' /I"{cuda_home}/include"' if cu_path else ""
         includes = cpp_includes + cuda_includes
 
@@ -276,16 +279,21 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
             run_cmd(link_cmd)
 
     else:
-        cpp_includes = f' -I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}/include"'
-        cpp_includes += f' -I"{warp_home_path.parent}/_build/host-deps/llvm-project/include"'
+        cpp_includes = f' -I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}-{arch}/include"'
+        cpp_includes += f' -I"{warp_home_path.parent}/_build/host-deps/llvm-project/release-{arch}/include"'
         cuda_includes = f' -I"{cuda_home}/include"' if cu_path else ""
         includes = cpp_includes + cuda_includes
 
+        if sys.platform == "darwin":
+            target = f"--target={arch}-apple-macos11"
+        else:
+            target = ""
+
         if mode == "debug":
-            cpp_flags = f'-O0 -g -fno-rtti -D_DEBUG -DWP_ENABLE_DEBUG=1 -D{cuda_enabled} -D{cutlass_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden --std=c++14 -D_GLIBCXX_USE_CXX11_ABI=0 -fkeep-inline-functions -I"{native_dir}" {includes}'
+            cpp_flags = f'{target} -O0 -g -fno-rtti -D_DEBUG -DWP_ENABLE_DEBUG=1 -D{cuda_enabled} -D{cutlass_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden --std=c++14 -D_GLIBCXX_USE_CXX11_ABI=0 -fkeep-inline-functions -I"{native_dir}" {includes}'
 
         if mode == "release":
-            cpp_flags = f'-O3 -DNDEBUG -DWP_ENABLE_DEBUG=0 -D{cuda_enabled} -D{cutlass_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden --std=c++14 -D_GLIBCXX_USE_CXX11_ABI=0 -I"{native_dir}" {includes}'
+            cpp_flags = f'{target} -O3 -DNDEBUG -DWP_ENABLE_DEBUG=0 -D{cuda_enabled} -D{cutlass_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden --std=c++14 -D_GLIBCXX_USE_CXX11_ABI=0 -I"{native_dir}" {includes}'
 
         if verify_fp:
             cpp_flags += " -DWP_VERIFY_FP"
@@ -329,7 +337,7 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
 
         with ScopedTimer("link", active=warp.config.verbose):
             origin = "@loader_path" if (sys.platform == "darwin") else "$ORIGIN"
-            link_cmd = f"g++ -shared -Wl,-rpath,'{origin}' {opt_no_undefined} {opt_exclude_libs} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
+            link_cmd = f"g++ {target} -shared -Wl,-rpath,'{origin}' {opt_no_undefined} {opt_exclude_libs} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
             run_cmd(link_cmd)
 
             # Strip symbols to reduce the binary size
@@ -340,3 +348,17 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
                 run_cmd(
                     f"strip --strip-all --keep-symbol=__jit_debug_register_code --keep-symbol=__jit_debug_descriptor {dll_path}"
                 )
+
+
+def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=False, fast_math=False, quick=False):
+    if sys.platform == "darwin":
+        # create a universal binary by combining x86-64 and AArch64 builds
+        build_dll_for_arch(dll_path + "-x86_64", cpp_paths, cu_path, libs, mode, "x86_64", verify_fp, fast_math, quick)
+        build_dll_for_arch(dll_path + "-arm64", cpp_paths, cu_path, libs, mode, "arm64", verify_fp, fast_math, quick)
+
+        run_cmd(f"lipo -create -output {dll_path} {dll_path}-x86_64 {dll_path}-arm64")
+        os.remove(f"{dll_path}-x86_64")
+        os.remove(f"{dll_path}-arm64")
+
+    else:
+        build_dll_for_arch(dll_path, cpp_paths, cu_path, libs, mode, "x86_64", verify_fp, fast_math, quick)

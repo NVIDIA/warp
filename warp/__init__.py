@@ -42,6 +42,8 @@ from warp.context import get_device, set_device, synchronize_device
 from warp.context import (
     zeros,
     zeros_like,
+    full,
+    full_like,
     clone,
     empty,
     empty_like,
@@ -61,7 +63,7 @@ from warp.context import Event, record_event, wait_event, wait_stream
 from warp.context import RegisteredGLBuffer
 
 from warp.tape import Tape
-from warp.utils import ScopedTimer, ScopedCudaGuard, ScopedDevice, ScopedStream
+from warp.utils import ScopedTimer, ScopedDevice, ScopedStream
 from warp.utils import transform_expand
 
 from warp.torch import from_torch, to_torch

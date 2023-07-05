@@ -1,10 +1,10 @@
 import sys
 import os
 import subprocess
-import platform
 
 import warp
-from warp.build_dll import build_dll
+from warp.build_dll import build_dll_for_arch
+from warp.build_dll import run_cmd
 
 # set build output path off this file
 base_path = os.path.dirname(os.path.realpath(__file__))
@@ -13,36 +13,37 @@ build_path = os.path.join(base_path, "warp")
 llvm_project_dir = "external/llvm-project"
 llvm_project_path = os.path.join(base_path, llvm_project_dir)
 llvm_path = os.path.join(llvm_project_path, "llvm")
-llvm_build_path = os.path.join(llvm_project_path, f"out/build/{warp.config.mode}")
-llvm_install_path = os.path.join(llvm_project_path, f"out/install/{warp.config.mode}")
+llvm_build_path = os.path.join(llvm_project_path, "out/build/")
+llvm_install_path = os.path.join(llvm_project_path, "out/install/")
 
 # Fetch prebuilt Clang/LLVM libraries
 if os.name == "nt":
     packman = "tools\\packman\\packman.cmd"
-    package = "15.0.7-windows-x86_64-vs142"
+    packages = {"x86_64": "15.0.7-windows-x86_64-ptx-vs142"}
 else:
     packman = "./tools/packman/packman"
     if sys.platform == "darwin":
-        if platform.machine() == "arm64":
-            package = "15.0.7-darwin-aarch64-macos11"
-        else:
-            package = "15.0.7-darwin-x86_64-macos11"
+        packages = {
+            "arm64": "15.0.7-darwin-aarch64-macos11",
+            "x86_64": "15.0.7-darwin-x86_64-macos11",
+        }
     else:
-        package = "15.0.7-linux-x86_64-gcc7.5-cxx11abi0"
+        packages = {"x86_64": "15.0.7-linux-x86_64-ptx-gcc7.5-cxx11abi0"}
 
-subprocess.check_call(
-    [
-        packman,
-        "install",
-        "-l",
-        "./_build/host-deps/llvm-project",
-        "clang+llvm-warp",
-        package,
-    ]
-)
+for arch in packages:
+    subprocess.check_call(
+        [
+            packman,
+            "install",
+            "-l",
+            f"./_build/host-deps/llvm-project/release-{arch}",
+            "clang+llvm-warp",
+            packages[arch],
+        ]
+    )
 
 
-def build_from_source(args):
+def build_from_source_for_arch(args, arch):
     # Install dependencies
     subprocess.check_call([sys.executable, "-m", "pip", "install", "gitpython"])
     subprocess.check_call([sys.executable, "-m", "pip", "install", "cmake"])
@@ -84,24 +85,34 @@ def build_from_source(args):
     python_bin = "python/Scripts" if sys.platform == "win32" else "python/bin"
     os.environ["PATH"] = os.path.join(base_path, "_build/target-deps/" + python_bin) + os.pathsep + os.environ["PATH"]
 
-    if platform.machine() == "arm64":
-        target = "AArch64"
+    if arch == "arm64":
+        target_backend = "AArch64"
     else:
-        target = "X86"
+        target_backend = "X86"
+
+    if sys.platform == "darwin":
+        host_triple = f"{arch}-apple-macos11"
+    elif os.name == "nt":
+        host_triple = f"{arch}-pc-windows"
+    else:
+        host_triple = f"{arch}-pc-linux"
+
+    build_path = os.path.join(llvm_build_path, f"{warp.config.mode}-{ arch}")
+    install_path = os.path.join(llvm_install_path, f"{warp.config.mode}-{ arch}")
 
     # Build LLVM and Clang
     cmake_gen = [
         # fmt: off
         "cmake",
         "-S", llvm_path,
-        "-B", llvm_build_path,
+        "-B", build_path,
         "-G", "Ninja",
         "-D", f"CMAKE_BUILD_TYPE={cmake_build_type}",
         "-D", "LLVM_USE_CRT_RELEASE=MT",
         "-D", "LLVM_USE_CRT_MINSIZEREL=MT",
         "-D", "LLVM_USE_CRT_DEBUG=MTd",
         "-D", "LLVM_USE_CRT_RELWITHDEBINFO=MTd",
-        "-D", f"LLVM_TARGETS_TO_BUILD={target}",
+        "-D", f"LLVM_TARGETS_TO_BUILD={target_backend};NVPTX",
         "-D", "LLVM_ENABLE_PROJECTS=clang",
         "-D", "LLVM_ENABLE_ZLIB=FALSE",
         "-D", "LLVM_ENABLE_ZSTD=FALSE",
@@ -119,7 +130,9 @@ def build_from_source(args):
         "-D", "LLVM_INCLUDE_TOOLS=TRUE",  # Needed by Clang
         "-D", "LLVM_INCLUDE_UTILS=FALSE",
         "-D", "CMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0",  # The pre-C++11 ABI is still the default on the CentOS 7 toolchain
-        "-D", f"CMAKE_INSTALL_PREFIX={llvm_install_path}",
+        "-D", f"CMAKE_INSTALL_PREFIX={install_path}",
+        "-D", f"LLVM_HOST_TRIPLE={host_triple}",
+        "-D", f"CMAKE_OSX_ARCHITECTURES={ arch}",
 
         # Disable unused tools and features
         "-D", "CLANG_BUILD_TOOLS=FALSE",
@@ -256,15 +269,22 @@ def build_from_source(args):
     ]
     ret = subprocess.check_call(cmake_gen, stderr=subprocess.STDOUT)
 
-    cmake_build = ["cmake", "--build", llvm_build_path]
+    cmake_build = ["cmake", "--build", build_path]
     ret = subprocess.check_call(cmake_build, stderr=subprocess.STDOUT)
 
-    cmake_install = ["cmake", "--install", llvm_build_path]
+    cmake_install = ["cmake", "--install", build_path]
     ret = subprocess.check_call(cmake_install, stderr=subprocess.STDOUT)
 
 
+def build_from_source(args):
+    build_from_source_for_arch(args, "x86_64")
+
+    if sys.platform == "darwin":
+        build_from_source_for_arch(args, "arm64")
+
+
 # build warp-clang.dll
-def build_warp_clang(args, lib_name):
+def build_warp_clang_for_arch(args, lib_name, arch):
     try:
         cpp_sources = [
             "native/clang/clang.cpp",
@@ -276,11 +296,12 @@ def build_warp_clang(args, lib_name):
 
         if args.build_llvm:
             # obtain Clang and LLVM libraries from the local build
-            libpath = os.path.join(llvm_install_path, "lib")
+            install_path = os.path.join(llvm_install_path, f"{warp.config.mode}-{arch}")
+            libpath = os.path.join(install_path, "lib")
         else:
             # obtain Clang and LLVM libraries from packman
             assert os.path.exists("_build/host-deps/llvm-project"), "run build.bat / build.sh"
-            libpath = os.path.join(base_path, "_build/host-deps/llvm-project/lib")
+            libpath = os.path.join(base_path, f"_build/host-deps/llvm-project/release-{arch}/lib")
 
         for _, _, libs in os.walk(libpath):
             break  # just the top level contains library files
@@ -299,12 +320,13 @@ def build_warp_clang(args, lib_name):
             libs.append("-lpthread")
             libs.append("-ldl")
 
-        build_dll(
+        build_dll_for_arch(
             dll_path=clang_dll_path,
             cpp_paths=clang_cpp_paths,
             cu_path=None,
             libs=libs,
             mode=warp.config.mode if args.build_llvm else "release",
+            arch=arch,
             verify_fp=warp.config.verify_fp,
             fast_math=warp.config.fast_math,
         )
@@ -315,3 +337,18 @@ def build_warp_clang(args, lib_name):
 
         # report error
         sys.exit(1)
+
+
+def build_warp_clang(args, lib_name):
+    if sys.platform == "darwin":
+        # create a universal binary by combining x86-64 and AArch64 builds
+        build_warp_clang_for_arch(args, lib_name + "-x86_64", "x86_64")
+        build_warp_clang_for_arch(args, lib_name + "-arm64", "arm64")
+
+        dylib_path = os.path.join(build_path, f"bin/{lib_name}")
+        run_cmd(f"lipo -create -output {dylib_path} {dylib_path}-x86_64 {dylib_path}-arm64")
+        os.remove(f"{dylib_path}-x86_64")
+        os.remove(f"{dylib_path}-arm64")
+
+    else:
+        build_warp_clang_for_arch(args, lib_name, "x86_64")

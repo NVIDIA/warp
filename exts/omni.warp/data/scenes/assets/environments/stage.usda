@@ -1,0 +1,317 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    metersPerUnit = 0.01
+    upAxis = "Y"
+)
+
+def Xform "World"
+{
+    def Scope "Looks"
+    {
+        def Material "StageBackgroundMaterial"
+        {
+            token outputs:mdl:displacement.connect = </World/Looks/StageBackgroundMaterial/Shader.outputs:out>
+            token outputs:mdl:surface.connect = </World/Looks/StageBackgroundMaterial/Shader.outputs:out>
+            token outputs:mdl:volume.connect = </World/Looks/StageBackgroundMaterial/Shader.outputs:out>
+
+            def Shader "Shader"
+            {
+                uniform token info:implementationSource = "sourceAsset"
+                uniform asset info:mdl:sourceAsset = @OmniPBRBase.mdl@
+                uniform token info:mdl:sourceAsset:subIdentifier = "OmniPBRBase"
+                color3f inputs:diffuse_reflection_color = (0.5, 0.5, 0.5) (
+                    customData = {
+                        float3 default = (0.2, 0.2, 0.2)
+                    }
+                    displayGroup = "Albedo"
+                    displayName = "Albedo Color"
+                    doc = "This is the albedo base color"
+                    hidden = false
+                    renderType = "color"
+                )
+                float inputs:specular_level = 0 (
+                    customData = {
+                        float default = 0.5
+                        dictionary soft_range = {
+                            float max = 1
+                            float min = 0
+                        }
+                    }
+                    displayGroup = "Reflectivity"
+                    displayName = "Specular"
+                    doc = "The specular level (intensity) of the material"
+                    hidden = false
+                )
+                token outputs:out (
+                    renderType = "material"
+                )
+            }
+        }
+
+        def Material "PlatformBaseMaterial"
+        {
+            token outputs:mdl:displacement.connect = </World/Looks/PlatformBaseMaterial/Shader.outputs:out>
+            token outputs:mdl:surface.connect = </World/Looks/PlatformBaseMaterial/Shader.outputs:out>
+            token outputs:mdl:volume.connect = </World/Looks/PlatformBaseMaterial/Shader.outputs:out>
+
+            def Shader "Shader"
+            {
+                uniform token info:implementationSource = "sourceAsset"
+                uniform asset info:mdl:sourceAsset = @OmniPBRBase.mdl@
+                uniform token info:mdl:sourceAsset:subIdentifier = "OmniPBRBase"
+                color3f inputs:diffuse_reflection_color = (0.5, 0.5, 0.5) (
+                    customData = {
+                        float3 default = (0.2, 0.2, 0.2)
+                    }
+                    displayGroup = "Albedo"
+                    displayName = "Albedo Color"
+                    doc = "This is the albedo base color"
+                    hidden = false
+                    renderType = "color"
+                )
+                float inputs:specular_reflection_roughness = 0.4 (
+                    customData = {
+                        float default = 0
+                    }
+                    displayGroup = "Reflectivity"
+                    displayName = "Roughness"
+                    doc = "Higher roughness values lead to more blurry reflections"
+                    hidden = false
+                )
+                token outputs:out (
+                    renderType = "material"
+                )
+            }
+        }
+
+        def Material "PlatformTopMaterial"
+        {
+            token outputs:mdl:displacement.connect = </World/Looks/PlatformTopMaterial/Shader.outputs:out>
+            token outputs:mdl:surface.connect = </World/Looks/PlatformTopMaterial/Shader.outputs:out>
+            token outputs:mdl:volume.connect = </World/Looks/PlatformTopMaterial/Shader.outputs:out>
+
+            def Shader "Shader"
+            {
+                uniform token info:implementationSource = "sourceAsset"
+                uniform asset info:mdl:sourceAsset = @OmniPBRBase.mdl@
+                uniform token info:mdl:sourceAsset:subIdentifier = "OmniPBRBase"
+                color3f inputs:diffuse_reflection_color = (0.3, 0.3, 0.3) (
+                    customData = {
+                        float3 default = (0.2, 0.2, 0.2)
+                    }
+                    displayGroup = "Albedo"
+                    displayName = "Albedo Color"
+                    doc = "This is the albedo base color"
+                    hidden = false
+                    renderType = "color"
+                )
+                float inputs:metalness = 1 (
+                    customData = {
+                        float default = 0
+                        dictionary range = {
+                            float max = 1
+                            float min = 0
+                        }
+                    }
+                    displayGroup = "Reflectivity"
+                    displayName = "Metalness"
+                    doc = "Bias towards pure specular reflection"
+                    hidden = false
+                )
+                float inputs:specular_level = 0 (
+                    customData = {
+                        float default = 0.5
+                        dictionary soft_range = {
+                            float max = 1
+                            float min = 0
+                        }
+                    }
+                    displayGroup = "Reflectivity"
+                    displayName = "Specular"
+                    doc = "The specular level (intensity) of the material"
+                    hidden = false
+                )
+                float inputs:specular_reflection_roughness = 0.3 (
+                    customData = {
+                        float default = 0
+                    }
+                    displayGroup = "Reflectivity"
+                    displayName = "Roughness"
+                    doc = "Higher roughness values lead to more blurry reflections"
+                    hidden = false
+                )
+                token outputs:out (
+                    renderType = "material"
+                )
+            }
+        }
+    }
+
+    def Scope "Lights"
+    {
+        def RectLight "FrontLight" (
+            apiSchemas = ["ShapingAPI"]
+        )
+        {
+            float height = 200
+            float intensity = 3000
+            float shaping:cone:angle = 180
+            float shaping:cone:softness
+            float shaping:focus
+            color3f shaping:focusTint
+            asset shaping:ies:file
+            token visibility = "inherited"
+            float width = 300
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (1, 1, 1)
+            double3 xformOp:translate = (0, 40, 500)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def RectLight "LSideLight" (
+            apiSchemas = ["ShapingAPI"]
+        )
+        {
+            color3f color = (0.95, 0.65, 0.47)
+            float colorTemperature = 4500
+            float diffuse = 1
+            bool enableColorTemperature = 0
+            float height = 3000
+            float intensity = 8000
+            float shaping:cone:angle = 180
+            float shaping:cone:softness
+            float shaping:focus
+            color3f shaping:focusTint
+            asset shaping:ies:file
+            float specular = 1
+            token visibility = "inherited"
+            float width = 3500
+            double3 xformOp:rotateXYZ = (0, -57, 0)
+            double3 xformOp:scale = (1, 1, 1)
+            double3 xformOp:translate = (-4000, 1500, -750)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def RectLight "RSideLight" (
+            apiSchemas = ["ShapingAPI"]
+        )
+        {
+            color3f color = (0.4, 0.625, 0.9)
+            float colorTemperature = 12500
+            bool enableColorTemperature = 0
+            float height = 3000
+            float intensity = 8000
+            float shaping:cone:angle = 180
+            float shaping:cone:softness
+            float shaping:focus
+            color3f shaping:focusTint
+            asset shaping:ies:file
+            token visibility = "inherited"
+            float width = 3500
+            double3 xformOp:rotateXYZ = (0, 57.1, 0)
+            double3 xformOp:scale = (1, 1, 1)
+            double3 xformOp:translate = (4000, 1500, -750)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def SphereLight "FillLight" (
+            apiSchemas = ["ShapingAPI"]
+        )
+        {
+            color3f color = (1, 1, 1)
+            float intensity = 8000
+            bool normalize = 0
+            float radius = 550
+            float shaping:cone:angle = 180
+            float shaping:cone:softness
+            float shaping:focus = 0
+            color3f shaping:focusTint
+            asset shaping:ies:file
+            float specular = 1
+            bool treatAsPoint = 0
+            token visibility = "inherited"
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (1, 1, 1)
+            double3 xformOp:translate = (-400, 2500, -500)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+    }
+
+    def Scope "Geometries"
+    {
+        token visibility = "inherited"
+
+        def "StageBackground" (
+            prepend payload = @../geometries/stage_background.usd@
+        )
+        {
+            float3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (1, 1, 1)
+            double3 xformOp:translate = (0, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+            over "StageBackground" (
+                delete apiSchemas = ["OmniSceneVisualizationAPI"]
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </World/Looks/StageBackgroundMaterial> (
+                    bindMaterialAs = "weakerThanDescendants"
+                )
+            }
+        }
+
+        def Xform "Platform"
+        {
+            token visibility = "inherited"
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (1, 1, 1)
+            double3 xformOp:translate = (0, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+            def Mesh "Base" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                float3[] extent = [(-50, -50, -50), (50, 50, 50)]
+                int[] faceVertexCounts = [4, 4, 4, 4, 4, 4]
+                int[] faceVertexIndices = [0, 1, 3, 2, 0, 4, 5, 1, 1, 5, 6, 3, 2, 3, 6, 7, 0, 2, 7, 4, 4, 7, 6, 5]
+                rel material:binding = </World/Looks/PlatformBaseMaterial> (
+                    bindMaterialAs = "weakerThanDescendants"
+                )
+                normal3f[] normals = [(0, -1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0)] (
+                    interpolation = "faceVarying"
+                )
+                point3f[] points = [(-50, -50, -50), (50, -50, -50), (-50, -50, 50), (50, -50, 50), (-50, 50, -50), (50, 50, -50), (50, 50, 50), (-50, 50, 50)]
+                uniform token subdivisionScheme = "none"
+                double3 xformOp:rotateXYZ = (0, 0, 0)
+                double3 xformOp:scale = (2, 0.055, 2)
+                double3 xformOp:translate = (0, 3, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+            }
+
+            def Mesh "Top" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                float3[] extent = [(-50, -50, -50), (50, 50, 50)]
+                int[] faceVertexCounts = [4, 4, 4, 4, 4, 4]
+                int[] faceVertexIndices = [0, 1, 3, 2, 0, 4, 5, 1, 1, 5, 6, 3, 2, 3, 6, 7, 0, 2, 7, 4, 4, 7, 6, 5]
+                rel material:binding = </World/Looks/PlatformTopMaterial> (
+                    bindMaterialAs = "weakerThanDescendants"
+                )
+                normal3f[] normals = [(0, -1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0)] (
+                    interpolation = "faceVarying"
+                )
+                point3f[] points = [(-50, -50, -50), (50, -50, -50), (-50, -50, 50), (50, -50, 50), (-50, 50, -50), (50, 50, -50), (50, 50, 50), (-50, 50, 50)]
+                uniform token subdivisionScheme = "none"
+                double3 xformOp:rotateXYZ = (0, 0, 0)
+                double3 xformOp:scale = (2, 0.02, 2)
+                double3 xformOp:translate = (0, 7, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+            }
+        }
+    }
+}
+

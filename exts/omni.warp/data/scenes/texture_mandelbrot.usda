@@ -1,0 +1,326 @@
+#usda 1.0
+(
+    customLayerData = {
+        dictionary cameraSettings = {
+            string boundCamera = "/CameraRoot/Camera"
+        }
+        dictionary renderSettings = {
+            int "rtx:post:dlss:execMode" = 0
+            bool "rtx:translucency:enabled" = 0
+        }
+    }
+    defaultPrim = "World"
+    endTimeCode = 36000
+    metersPerUnit = 0.01
+    startTimeCode = 0
+    timeCodesPerSecond = 60
+    upAxis = "Y"
+)
+
+def Xform "World"
+{
+    def OmniGraph "ActionGraph"
+    {
+        token evaluationMode = "Automatic"
+        token evaluator:type = "execution"
+        token fabricCacheBacking = "Shared"
+        int2 fileFormatVersion = (1, 7)
+        token pipelineStage = "pipelineStageSimulation"
+
+        def OmniGraphNode "dimension" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom int inputs:value = 1024
+            token node:type = "omni.graph.nodes.ConstantInt"
+            int node:typeVersion = 1
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (-297, 1231)
+        }
+
+        def OmniGraphNode "offset_u" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom float inputs:value = -0.38
+            token node:type = "omni.graph.nodes.ConstantFloat"
+            int node:typeVersion = 1
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (-513, 879)
+        }
+
+        def OmniGraphNode "offset_v" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom float inputs:value = -0.6
+            token node:type = "omni.graph.nodes.ConstantFloat"
+            int node:typeVersion = 1
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (-515, 974)
+        }
+
+        def OmniGraphNode "on_loaded" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            token node:type = "omni.graph.action.OnLoaded"
+            int node:typeVersion = 1
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (-300, 648)
+        }
+
+        def OmniGraphNode "on_tick" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom uint inputs:framePeriod = 0
+            custom bool inputs:onlyPlayback = 1
+            token node:type = "omni.graph.action.OnTick"
+            int node:typeVersion = 1
+            custom double outputs:absoluteSimTime
+            custom double outputs:deltaSeconds
+            custom double outputs:frame
+            custom bool outputs:isPlaying
+            custom uint outputs:tick (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            custom double outputs:time
+            custom double outputs:timeSinceStart
+            custom double state:accumulatedSeconds = 0
+            custom uint state:frameCount = 0
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (-310, 752)
+        }
+
+        def OmniGraphNode "warp_kernel" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom token inputs:codeFile
+            custom token inputs:codeProvider = "embedded" (
+                allowedTokens = ["embedded", "file"]
+            )
+            custom string inputs:codeStr = """import warp as wp\r
+\r
+MAX_ITERATIONS = wp.constant(100)\r
+\r
+@wp.func\r
+def bourke_color_map(low: float, high: float, v: float):\r
+    r = 1.0\r
+    g = 1.0\r
+    b = 1.0\r
+\r
+    if v < low:\r
+        v = low\r
+    if v > high:\r
+        v = high\r
+\r
+    dv = high - low\r
+\r
+    if v < (low + 0.25 * dv):\r
+        r = 0.0\r
+        g = 4.0 * (v - low) / dv\r
+    elif v < (low + 0.5 * dv):\r
+        r = 0.0\r
+        b = 1.0 + 4.0 * (low + 0.25 * dv - v) / dv\r
+    elif v < (low + 0.75 * dv):\r
+        r = 4.0 * (v - low - 0.5 * dv) / dv\r
+        b = 0.0\r
+    else:\r
+        g = 1.0 + 4.0 * (low + 0.75 * dv - v) / dv\r
+        b = 0.0\r
+\r
+    return wp.vec3(r, g, b)\r
+\r
+@wp.func\r
+def compute_mandelbrot_gradient(uv: wp.vec2):\r
+    z = wp.vec2(0.0, 0.0)\r
+    for i in range(MAX_ITERATIONS):\r
+        z = wp.vec2(\r
+            z[0] * z[0] - z[1] * z[1],\r
+            z[0] * z[1] * 2.0,\r
+        )\r
+        z += uv\r
+        if wp.length_sq(z) > 4.0:\r
+            return float(i) / float(MAX_ITERATIONS)\r
+\r
+    return 1.0\r
+\r
+@wp.kernel\r
+def compute(inputs: Inputs, outputs: Outputs):\r
+    u, v = wp.tid()\r
+\r
+    uv = wp.vec2(\r
+        float(u) / float(inputs.dim) - 0.5,\r
+        float(v) / float(inputs.dim) - 0.5,\r
+    )\r
+    uv /= inputs.zoom + 1.0\r
+    uv += wp.vec2(inputs.offsetU, inputs.offsetV)\r
+\r
+    gradient = float(compute_mandelbrot_gradient(uv))\r
+    color = bourke_color_map(0.0, 1.0, gradient)\r
+    outputs.texture[u, v] = wp.vec4(color[0], color[1], color[2], 1.0)\r
+"""
+            custom token inputs:device = "cuda:0" (
+                allowedTokens = ["cpu", "cuda:0"]
+            )
+            custom int inputs:dim
+            prepend int inputs:dim.connect = </World/ActionGraph/dimension.inputs:value>
+            custom int inputs:dim1 = 1
+            prepend int inputs:dim1.connect = </World/ActionGraph/dimension.inputs:value>
+            custom int inputs:dim2 = 1
+            prepend int inputs:dim2.connect = </World/ActionGraph/dimension.inputs:value>
+            custom int inputs:dim3 = 1
+            custom int inputs:dim4 = 1
+            custom int inputs:dimCount = 2
+            custom token inputs:dimSource = "explicit"
+            custom uint inputs:execIn
+            prepend uint inputs:execIn.connect = [
+                </World/ActionGraph/on_loaded.outputs:execOut>,
+                </World/ActionGraph/on_tick.outputs:tick>,
+            ]
+            custom float inputs:offsetU
+            prepend float inputs:offsetU.connect = </World/ActionGraph/offset_u.inputs:value>
+            custom float inputs:offsetV
+            prepend float inputs:offsetV.connect = </World/ActionGraph/offset_v.inputs:value>
+            custom float inputs:zoom
+            prepend float inputs:zoom.connect = </World/ActionGraph/on_tick.outputs:time>
+            token node:type = "omni.warp.WarpKernel"
+            int node:typeVersion = 2
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            custom color4f[] outputs:texture
+            custom string state:userAttrDescs = '[{"port_type": 1, "base_name": "texture", "data_type_name": "color4f", "is_array": true, "array_format": 0, "array_shape_source": 0, "optional": false}, {"port_type": 0, "base_name": "time", "data_type_name": "double", "is_array": false, "array_format": 0, "array_shape_source": null, "optional": false}, {"port_type": 0, "base_name": "dim", "data_type_name": "int", "is_array": false, "array_format": 0, "array_shape_source": null, "optional": false}, {"port_type": 0, "base_name": "offsetX", "data_type_name": "float", "is_array": false, "array_format": 0, "array_shape_source": null, "optional": false}, {"port_type": 0, "base_name": "offsetY", "data_type_name": "float", "is_array": false, "array_format": 0, "array_shape_source": null, "optional": false}, {"port_type": 0, "base_name": "zoom", "data_type_name": "float", "is_array": false, "array_format": 0, "array_shape_source": null, "optional": false}, {"port_type": 0, "base_name": "offsetU", "data_type_name": "float", "is_array": false, "array_format": 0, "array_shape_source": null, "optional": false}, {"port_type": 0, "base_name": "offsetV", "data_type_name": "float", "is_array": false, "array_format": 0, "array_shape_source": null, "optional": false}]'
+            custom int state:userAttrsEvent = 0
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (96, 767)
+        }
+
+        def OmniGraphNode "texture_write" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom color4f[] inputs:data = []
+            prepend color4f[] inputs:data.connect = </World/ActionGraph/warp_kernel.outputs:texture>
+            custom int inputs:dim1 = 128
+            prepend int inputs:dim1.connect = </World/ActionGraph/dimension.inputs:value>
+            custom int inputs:dim2 = 128
+            prepend int inputs:dim2.connect = </World/ActionGraph/dimension.inputs:value>
+            custom int inputs:dim3 = 128
+            custom int inputs:dim4 = 1
+            custom int inputs:dimCount = 2
+            custom uint inputs:execIn
+            prepend uint inputs:execIn.connect = </World/ActionGraph/warp_kernel.outputs:execOut>
+            custom string inputs:uri = "dynamic://mandelbrot"
+            token node:type = "omni.warp.WarpTextureWrite"
+            int node:typeVersion = 1
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (498, 977)
+        }
+    }
+
+    def Mesh "Plane" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        float3[] extent = [(-50, 0, -50), (50, 0, 50)]
+        int[] faceVertexCounts = [4]
+        int[] faceVertexIndices = [0, 2, 3, 1]
+        rel material:binding = </World/Looks/Material> (
+            bindMaterialAs = "weakerThanDescendants"
+        )
+        normal3f[] normals = [(0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0)] (
+            interpolation = "faceVarying"
+        )
+        point3f[] points = [(-50, 0, -50), (50, 0, -50), (-50, 0, 50), (50, 0, 50)]
+        texCoord2f[] primvars:st = [(0, 0), (0, 1), (1, 1), (1, 0)] (
+            interpolation = "faceVarying"
+        )
+        uniform token subdivisionScheme = "none"
+        double3 xformOp:rotateXYZ = (0, 0, 0)
+        double3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (0, 25, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+    }
+
+    def Scope "Looks"
+    {
+        def Material "Material"
+        {
+            token outputs:mdl:displacement.connect = </World/Looks/Material/Shader.outputs:out>
+            token outputs:mdl:surface.connect = </World/Looks/Material/Shader.outputs:out>
+            token outputs:mdl:volume.connect = </World/Looks/Material/Shader.outputs:out>
+
+            def Shader "Shader"
+            {
+                uniform token info:implementationSource = "sourceAsset"
+                uniform asset info:mdl:sourceAsset = @OmniPBR.mdl@
+                uniform token info:mdl:sourceAsset:subIdentifier = "OmniPBR"
+                asset inputs:diffuse_texture = @dynamic://mandelbrot@ (
+                    colorSpace = "auto"
+                    customData = {
+                        asset default = @@
+                    }
+                    displayGroup = "Albedo"
+                    displayName = "Albedo Map"
+                    hidden = false
+                    renderType = "texture_2d"
+                )
+                token outputs:out (
+                    renderType = "material"
+                )
+            }
+        }
+    }
+}
+
+def Xform "Environment"
+{
+    double3 xformOp:rotateXYZ = (0, 0, 0)
+    double3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (0, 0, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+    def "Stage" (
+        prepend payload = @./assets/environments/stage.usda@
+    )
+    {
+    }
+}
+
+def Xform "CameraRoot"
+{
+    double3 xformOp:rotateXYZ = (-50, 30, 0)
+    double3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (0, 30, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+    def Camera "Camera"
+    {
+        float2 clippingRange = (1, 10000000)
+        float focalLength = 25
+        float focusDistance = 300
+        float fStop = 0
+        bool omni:kit:cameraLock = 0
+        double3 xformOp:rotateYXZ = (0, 0, 0)
+        double3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (0, 0, 300)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateYXZ", "xformOp:scale"]
+    }
+}

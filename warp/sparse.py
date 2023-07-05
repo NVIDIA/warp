@@ -61,7 +61,12 @@ def bsr_matrix_t(dtype: type):
         values: wp.array(dtype=dtype)
 
     module = wp.get_module(BsrMatrix.__module__)
-    key = f"{BsrMatrix.__qualname__}_{dtype.__name__}"
+
+    if hasattr(dtype, "_shape_"):
+        type_str = f"{warp.types.type_scalar_type(dtype).__name__}_{dtype._shape_[0]}_{dtype._shape_[1]}"
+    else:
+        type_str = dtype.__name__
+    key = f"{BsrMatrix.__qualname__}_{type_str}"
 
     if key not in _struct_cache:
         _struct_cache[key] = wp.codegen.Struct(
@@ -550,6 +555,17 @@ def _bsr_mm_compute_values(
             mm_values[mm_block] = mm_values[mm_block] + ax_val * y_values[y_block]
 
 
+_pinned_temp_count_buffer = {}
+
+
+def _get_pinned_temp_count_buffer(device):
+    device = str(device)
+    if device not in _pinned_temp_count_buffer:
+        _pinned_temp_count_buffer[device] = wp.empty(shape=(1,), dtype=int, pinned=True, device="cpu")
+
+    return _pinned_temp_count_buffer[device]
+
+
 def bsr_mm(x: BsrMatrix, y: BsrMatrix, z: BsrMatrix = None, alpha: float = 1.0, beta: float = 0.0):
     """
     Performs the operation `z := alpha * X * Y + beta * z` on BSR matrices `x`, `y` and `z`
@@ -592,11 +608,14 @@ def bsr_mm(x: BsrMatrix, y: BsrMatrix, z: BsrMatrix = None, alpha: float = 1.0, 
     warp.utils.array_scan(mm_row_counts, mm_row_counts)
 
     # Get back total counts on host
-    mm_tot_count = wp.empty(shape=(1,), dtype=int, pinned=True, device="cpu")
-    wp.copy(dest=mm_tot_count, src=mm_row_counts, src_offset=z.nrow, count=1)
-    wp.synchronize_stream(wp.get_stream())
+    if device.is_cuda:
+        mm_tot_count = _get_pinned_temp_count_buffer(device)
+        wp.copy(dest=mm_tot_count, src=mm_row_counts, src_offset=z.nrow, count=1)
+        wp.synchronize_stream(wp.get_stream())
+        mm_nnz = int(mm_tot_count.numpy()[0])
+    else:
+        mm_nnz = int(mm_row_counts.numpy()[z.nrow])
 
-    mm_nnz = int(mm_tot_count.numpy()[0])
     mm_rows = wp.empty(shape=(mm_nnz), dtype=int, device=device)
     mm_cols = wp.empty(shape=(mm_nnz), dtype=int, device=device)
 

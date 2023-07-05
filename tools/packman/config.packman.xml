@@ -1,6 +1,9 @@
-<config remotes="cloudfront">
+<config remotes="cloudfront urm">
     <remote2 name="cloudfront">
         <transport actions="download" protocol="https" packageLocation="d4i3qtqj3r0z5.cloudfront.net/${name}@${version}" />
-        <transport actions="list upload" protocol="s3" packageLocation="packages-for-cloudfront" />
+        <transport actions="list upload" configUrl="https://gitlab-master.nvidia.com/hfannar/packman-transports/raw/main/d4i3qtqj3r0z5.cloudfront.toml" />
+    </remote2>
+    <remote2 name="urm">
+        <transport actions="download" protocol="https" packageLocation="urm.nvidia.com/artifactory/ct-omniverse-generic/pkgs/${name}/${name}@${version}" />
     </remote2>
 </config>

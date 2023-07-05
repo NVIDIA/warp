@@ -1,7 +1,7 @@
 REM @echo off
-call "%~dp0repo" build --fetch-only %*
+call "%~dp0..\..\..\..\repo.bat" build --fetch-only %*
 
-SET PYTHON="%~dp0\_build\target-deps\python\python.exe"
+SET PYTHON="%~dp0..\..\..\..\_build\target-deps\python\python.exe"
 
 echo "Installing test dependencies"
 call %PYTHON% -m pip install matplotlib
@@ -11,7 +11,7 @@ call %PYTHON% -m pip install torch --extra-index-url https://download.pytorch.or
 ::call %PYTHON% -m pip install "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 echo "Installing Warp to Python"
-call %PYTHON% -m pip install -e .
+call %PYTHON% -m pip install -e "%~dp0..\..\..\..\."
 
 echo "Running tests"
-call %PYTHON% -m warp.tests.test_all
+call %PYTHON% "%~dp0..\..\..\..\warp\tests\test_all.py"

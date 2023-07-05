@@ -1,0 +1,82 @@
+{
+    "WarpSampleProceduralVolume": {
+        "version": 1,
+        "categoryDefinitions": "../../../../config/warp_categories.json",
+        "description": "Generates a procedural volume.",
+        "categories": ["warp", "warp:samples"],
+        "language": "Python",
+        "uiName": "Sample Procedural Volume",
+        "cudaPointers": "cpu",
+        "inputs": {
+            "execIn": {
+                "type": "execution",
+                "description": "Input execution."
+            },
+            "torusAltitude": {
+                "type": "float",
+                "uiName": "Torus Altitude",
+                "description": "Normalized position of the torus on the Y-axis.",
+                "default": -0.5,
+                "metadata": {
+                    "minimum": -1,
+                    "maximum": 1
+                }
+            },
+            "torusMajorRadius": {
+                "type": "float",
+                "uiName": "Torus Major Radius",
+                "description": "Normalized distance from the centre of the torus to the centre of the tube.",
+                "default": 0.75,
+                "metadata": {
+                    "minimum": 0,
+                    "maximum": 1
+                }
+            },
+            "torusMinorRadius": {
+                "type": "float",
+                "uiName": "Torus Minor Radius",
+                "description": "Normalized radius of the tube.",
+                "default": 0.1,
+                "metadata": {
+                    "minimum": 0,
+                    "maximum": 1
+                }
+            },
+            "smoothMinRadius": {
+                "type": "float",
+                "uiName": "Smooth Min Radius",
+                "description": "Smoothness radius used to blend SDF volumes.",
+                "default": 1,
+                "metadata": {
+                    "minimum": 0
+                }
+            },
+            "dim": {
+                "type": "int",
+                "uiName": "Dim",
+                "description": "Dimension for each side of the volume.",
+                "default": 64,
+                "metadata": {
+                    "minimum": 1
+                }
+            },
+            "time": {
+                "type": "double",
+                "description": "Time.",
+                "uiName": "Time"
+            }
+        },
+        "outputs": {
+            "execOut": {
+                "type": "execution",
+                "description": "Output execution."
+            },
+            "data": {
+                "type": "float[]",
+                "description": "Output volume data.",
+                "uiName": "Data",
+                "memoryType": "cuda"
+            }
+        }
+    }
+}

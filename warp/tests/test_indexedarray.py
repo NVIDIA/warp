@@ -11,6 +11,7 @@ from typing import Any
 
 import warp as wp
 from warp.tests.test_base import *
+from .test_array import FillStruct
 
 import unittest
 
@@ -557,6 +558,552 @@ def test_indexedarray_generics(test, device):
         assert_np_equal(ia4.numpy(), np.full((2, 2, 2, 2), 2, dtype=np.int32))
 
 
+def test_indexedarray_empty(test, device):
+    # Test whether common operations work with empty (zero-sized) indexed arrays
+    # without throwing exceptions.
+
+    def test_empty_ops(ndim, nrows, ncols, wptype, nptype):
+        data_shape = (1,) * ndim
+        dtype_shape = ()
+
+        if wptype in wp.types.scalar_types:
+            # scalar, vector, or matrix
+            if ncols > 0:
+                if nrows > 0:
+                    wptype = wp.types.matrix((nrows, ncols), wptype)
+                else:
+                    wptype = wp.types.vector(ncols, wptype)
+                dtype_shape = wptype._shape_
+            fill_value = wptype(42)
+        else:
+            # struct
+            fill_value = wptype()
+
+        # create a data array
+        data = wp.empty(data_shape, dtype=wptype, device=device, requires_grad=True)
+
+        # create a zero-sized array of indices
+        indices = wp.empty(0, dtype=int, device=device)
+
+        a = data[indices]
+
+        # we expect dim to be zero for the empty indexed array, unchanged otherwise
+        expected_shape = (0, *data_shape[1:])
+
+        test.assertEqual(a.size, 0)
+        test.assertEqual(a.shape, expected_shape)
+
+        # all of these methods should succeed with zero-sized arrays
+        a.zero_()
+        a.fill_(fill_value)
+        b = a.contiguous()
+
+        b = wp.empty_like(a)
+        b = wp.zeros_like(a)
+        b = wp.full_like(a, fill_value)
+        b = wp.clone(a)
+
+        wp.copy(a, b)
+        a.assign(b)
+
+        na = a.numpy()
+        test.assertEqual(na.size, 0)
+        test.assertEqual(na.shape, (*expected_shape, *dtype_shape))
+        test.assertEqual(na.dtype, nptype)
+
+        test.assertEqual(a.list(), [])
+
+    for ndim in range(1, 5):
+        # test with scalars, vectors, and matrices
+        for nptype, wptype in wp.types.np_dtype_to_warp_type.items():
+            # scalars
+            test_empty_ops(ndim, 0, 0, wptype, nptype)
+
+            for ncols in [2, 3, 4, 5]:
+                # vectors
+                test_empty_ops(ndim, 0, ncols, wptype, nptype)
+                # square matrices
+                test_empty_ops(ndim, ncols, ncols, wptype, nptype)
+
+            # non-square matrices
+            test_empty_ops(ndim, 2, 3, wptype, nptype)
+            test_empty_ops(ndim, 3, 2, wptype, nptype)
+            test_empty_ops(ndim, 3, 4, wptype, nptype)
+            test_empty_ops(ndim, 4, 3, wptype, nptype)
+
+        # test with structs
+        test_empty_ops(ndim, 0, 0, FillStruct, FillStruct.numpy_dtype())
+
+
+def test_indexedarray_fill_scalar(test, device):
+    dim_x = 4
+
+    for nptype, wptype in wp.types.np_dtype_to_warp_type.items():
+        data1 = wp.zeros(dim_x, dtype=wptype, device=device)
+        data2 = wp.zeros((dim_x, dim_x), dtype=wptype, device=device)
+        data3 = wp.zeros((dim_x, dim_x, dim_x), dtype=wptype, device=device)
+        data4 = wp.zeros((dim_x, dim_x, dim_x, dim_x), dtype=wptype, device=device)
+
+        indices = wp.array(np.arange(0, dim_x, 2, dtype=np.int32), device=device)
+
+        a1 = data1[indices]
+        a2 = data2[indices]
+        a3 = data3[indices]
+        a4 = data4[indices]
+
+        assert_np_equal(a1.numpy(), np.zeros(a1.shape, dtype=nptype))
+        assert_np_equal(a2.numpy(), np.zeros(a2.shape, dtype=nptype))
+        assert_np_equal(a3.numpy(), np.zeros(a3.shape, dtype=nptype))
+        assert_np_equal(a4.numpy(), np.zeros(a4.shape, dtype=nptype))
+
+        # fill with int value
+        fill_value = 42
+
+        a1.fill_(fill_value)
+        a2.fill_(fill_value)
+        a3.fill_(fill_value)
+        a4.fill_(fill_value)
+
+        assert_np_equal(a1.numpy(), np.full(a1.shape, fill_value, dtype=nptype))
+        assert_np_equal(a2.numpy(), np.full(a2.shape, fill_value, dtype=nptype))
+        assert_np_equal(a3.numpy(), np.full(a3.shape, fill_value, dtype=nptype))
+        assert_np_equal(a4.numpy(), np.full(a4.shape, fill_value, dtype=nptype))
+
+        a1.zero_()
+        a2.zero_()
+        a3.zero_()
+        a4.zero_()
+
+        assert_np_equal(a1.numpy(), np.zeros(a1.shape, dtype=nptype))
+        assert_np_equal(a2.numpy(), np.zeros(a2.shape, dtype=nptype))
+        assert_np_equal(a3.numpy(), np.zeros(a3.shape, dtype=nptype))
+        assert_np_equal(a4.numpy(), np.zeros(a4.shape, dtype=nptype))
+
+        if wptype in wp.types.float_types:
+            # fill with float value
+            fill_value = 13.37
+
+            a1.fill_(fill_value)
+            a2.fill_(fill_value)
+            a3.fill_(fill_value)
+            a4.fill_(fill_value)
+
+            assert_np_equal(a1.numpy(), np.full(a1.shape, fill_value, dtype=nptype))
+            assert_np_equal(a2.numpy(), np.full(a2.shape, fill_value, dtype=nptype))
+            assert_np_equal(a3.numpy(), np.full(a3.shape, fill_value, dtype=nptype))
+            assert_np_equal(a4.numpy(), np.full(a4.shape, fill_value, dtype=nptype))
+
+        # fill with Warp scalar value
+        fill_value = wptype(17)
+
+        a1.fill_(fill_value)
+        a2.fill_(fill_value)
+        a3.fill_(fill_value)
+        a4.fill_(fill_value)
+
+        assert_np_equal(a1.numpy(), np.full(a1.shape, fill_value.value, dtype=nptype))
+        assert_np_equal(a2.numpy(), np.full(a2.shape, fill_value.value, dtype=nptype))
+        assert_np_equal(a3.numpy(), np.full(a3.shape, fill_value.value, dtype=nptype))
+        assert_np_equal(a4.numpy(), np.full(a4.shape, fill_value.value, dtype=nptype))
+
+
+def test_indexedarray_fill_vector(test, device):
+    # test filling a vector array with scalar or vector values (vec_type, list, or numpy array)
+
+    dim_x = 4
+
+    for nptype, wptype in wp.types.np_dtype_to_warp_type.items():
+        # vector types
+        vector_types = [
+            wp.types.vector(2, wptype),
+            wp.types.vector(3, wptype),
+            wp.types.vector(4, wptype),
+            wp.types.vector(5, wptype),
+        ]
+
+        for vec_type in vector_types:
+            vec_len = vec_type._length_
+
+            data1 = wp.zeros(dim_x, dtype=vec_type, device=device)
+            data2 = wp.zeros((dim_x, dim_x), dtype=vec_type, device=device)
+            data3 = wp.zeros((dim_x, dim_x, dim_x), dtype=vec_type, device=device)
+            data4 = wp.zeros((dim_x, dim_x, dim_x, dim_x), dtype=vec_type, device=device)
+
+            indices = wp.array(np.arange(0, dim_x, 2, dtype=np.int32), device=device)
+
+            a1 = data1[indices]
+            a2 = data2[indices]
+            a3 = data3[indices]
+            a4 = data4[indices]
+
+            assert_np_equal(a1.numpy(), np.zeros((*a1.shape, vec_len), dtype=nptype))
+            assert_np_equal(a2.numpy(), np.zeros((*a2.shape, vec_len), dtype=nptype))
+            assert_np_equal(a3.numpy(), np.zeros((*a3.shape, vec_len), dtype=nptype))
+            assert_np_equal(a4.numpy(), np.zeros((*a4.shape, vec_len), dtype=nptype))
+
+            # fill with int scalar
+            fill_value = 42
+
+            a1.fill_(fill_value)
+            a2.fill_(fill_value)
+            a3.fill_(fill_value)
+            a4.fill_(fill_value)
+
+            assert_np_equal(a1.numpy(), np.full((*a1.shape, vec_len), fill_value, dtype=nptype))
+            assert_np_equal(a2.numpy(), np.full((*a2.shape, vec_len), fill_value, dtype=nptype))
+            assert_np_equal(a3.numpy(), np.full((*a3.shape, vec_len), fill_value, dtype=nptype))
+            assert_np_equal(a4.numpy(), np.full((*a4.shape, vec_len), fill_value, dtype=nptype))
+
+            # test zeroing
+            a1.zero_()
+            a2.zero_()
+            a3.zero_()
+            a4.zero_()
+
+            assert_np_equal(a1.numpy(), np.zeros((*a1.shape, vec_len), dtype=nptype))
+            assert_np_equal(a2.numpy(), np.zeros((*a2.shape, vec_len), dtype=nptype))
+            assert_np_equal(a3.numpy(), np.zeros((*a3.shape, vec_len), dtype=nptype))
+            assert_np_equal(a4.numpy(), np.zeros((*a4.shape, vec_len), dtype=nptype))
+
+            # vector values can be passed as a list, numpy array, or Warp vector instance
+            fill_list = [17, 42, 99, 101, 127][:vec_len]
+            fill_arr = np.array(fill_list, dtype=nptype)
+            fill_vec = vec_type(fill_list)
+
+            expected1 = np.tile(fill_arr, a1.size).reshape((*a1.shape, vec_len))
+            expected2 = np.tile(fill_arr, a2.size).reshape((*a2.shape, vec_len))
+            expected3 = np.tile(fill_arr, a3.size).reshape((*a3.shape, vec_len))
+            expected4 = np.tile(fill_arr, a4.size).reshape((*a4.shape, vec_len))
+
+            # fill with list of vector length
+            a1.fill_(fill_list)
+            a2.fill_(fill_list)
+            a3.fill_(fill_list)
+            a4.fill_(fill_list)
+
+            assert_np_equal(a1.numpy(), expected1)
+            assert_np_equal(a2.numpy(), expected2)
+            assert_np_equal(a3.numpy(), expected3)
+            assert_np_equal(a4.numpy(), expected4)
+
+            # clear
+            a1.zero_()
+            a2.zero_()
+            a3.zero_()
+            a4.zero_()
+
+            # fill with numpy array of vector length
+            a1.fill_(fill_arr)
+            a2.fill_(fill_arr)
+            a3.fill_(fill_arr)
+            a4.fill_(fill_arr)
+
+            assert_np_equal(a1.numpy(), expected1)
+            assert_np_equal(a2.numpy(), expected2)
+            assert_np_equal(a3.numpy(), expected3)
+            assert_np_equal(a4.numpy(), expected4)
+
+            # clear
+            a1.zero_()
+            a2.zero_()
+            a3.zero_()
+            a4.zero_()
+
+            # fill with vec instance
+            a1.fill_(fill_vec)
+            a2.fill_(fill_vec)
+            a3.fill_(fill_vec)
+            a4.fill_(fill_vec)
+
+            assert_np_equal(a1.numpy(), expected1)
+            assert_np_equal(a2.numpy(), expected2)
+            assert_np_equal(a3.numpy(), expected3)
+            assert_np_equal(a4.numpy(), expected4)
+
+            if wptype in wp.types.float_types:
+                # fill with float scalar
+                fill_value = 13.37
+
+                a1.fill_(fill_value)
+                a2.fill_(fill_value)
+                a3.fill_(fill_value)
+                a4.fill_(fill_value)
+
+                assert_np_equal(a1.numpy(), np.full((*a1.shape, vec_len), fill_value, dtype=nptype))
+                assert_np_equal(a2.numpy(), np.full((*a2.shape, vec_len), fill_value, dtype=nptype))
+                assert_np_equal(a3.numpy(), np.full((*a3.shape, vec_len), fill_value, dtype=nptype))
+                assert_np_equal(a4.numpy(), np.full((*a4.shape, vec_len), fill_value, dtype=nptype))
+
+                # fill with float list of vector length
+                fill_list = [-2.5, -1.25, 1.25, 2.5, 5.0][:vec_len]
+
+                a1.fill_(fill_list)
+                a2.fill_(fill_list)
+                a3.fill_(fill_list)
+                a4.fill_(fill_list)
+
+                expected1 = np.tile(np.array(fill_list, dtype=nptype), a1.size).reshape((*a1.shape, vec_len))
+                expected2 = np.tile(np.array(fill_list, dtype=nptype), a2.size).reshape((*a2.shape, vec_len))
+                expected3 = np.tile(np.array(fill_list, dtype=nptype), a3.size).reshape((*a3.shape, vec_len))
+                expected4 = np.tile(np.array(fill_list, dtype=nptype), a4.size).reshape((*a4.shape, vec_len))
+
+                assert_np_equal(a1.numpy(), expected1)
+                assert_np_equal(a2.numpy(), expected2)
+                assert_np_equal(a3.numpy(), expected3)
+                assert_np_equal(a4.numpy(), expected4)
+
+
+def test_indexedarray_fill_matrix(test, device):
+    # test filling a matrix array with scalar or matrix values (mat_type, nested list, or 2d numpy array)
+
+    dim_x = 4
+
+    for nptype, wptype in wp.types.np_dtype_to_warp_type.items():
+        # matrix types
+        matrix_types = [
+            # square matrices
+            wp.types.matrix((2, 2), wptype),
+            wp.types.matrix((3, 3), wptype),
+            wp.types.matrix((4, 4), wptype),
+            wp.types.matrix((5, 5), wptype),
+            # non-square matrices
+            wp.types.matrix((2, 3), wptype),
+            wp.types.matrix((3, 2), wptype),
+            wp.types.matrix((3, 4), wptype),
+            wp.types.matrix((4, 3), wptype),
+        ]
+
+        for mat_type in matrix_types:
+            mat_len = mat_type._length_
+            mat_shape = mat_type._shape_
+
+            data1 = wp.zeros(dim_x, dtype=mat_type, device=device)
+            data2 = wp.zeros((dim_x, dim_x), dtype=mat_type, device=device)
+            data3 = wp.zeros((dim_x, dim_x, dim_x), dtype=mat_type, device=device)
+            data4 = wp.zeros((dim_x, dim_x, dim_x, dim_x), dtype=mat_type, device=device)
+
+            indices = wp.array(np.arange(0, dim_x, 2, dtype=np.int32), device=device)
+
+            a1 = data1[indices]
+            a2 = data2[indices]
+            a3 = data3[indices]
+            a4 = data4[indices]
+
+            assert_np_equal(a1.numpy(), np.zeros((*a1.shape, *mat_shape), dtype=nptype))
+            assert_np_equal(a2.numpy(), np.zeros((*a2.shape, *mat_shape), dtype=nptype))
+            assert_np_equal(a3.numpy(), np.zeros((*a3.shape, *mat_shape), dtype=nptype))
+            assert_np_equal(a4.numpy(), np.zeros((*a4.shape, *mat_shape), dtype=nptype))
+
+            # fill with scalar
+            fill_value = 42
+
+            a1.fill_(fill_value)
+            a2.fill_(fill_value)
+            a3.fill_(fill_value)
+            a4.fill_(fill_value)
+
+            assert_np_equal(a1.numpy(), np.full((*a1.shape, *mat_shape), fill_value, dtype=nptype))
+            assert_np_equal(a2.numpy(), np.full((*a2.shape, *mat_shape), fill_value, dtype=nptype))
+            assert_np_equal(a3.numpy(), np.full((*a3.shape, *mat_shape), fill_value, dtype=nptype))
+            assert_np_equal(a4.numpy(), np.full((*a4.shape, *mat_shape), fill_value, dtype=nptype))
+
+            # test zeroing
+            a1.zero_()
+            a2.zero_()
+            a3.zero_()
+            a4.zero_()
+
+            assert_np_equal(a1.numpy(), np.zeros((*a1.shape, *mat_shape), dtype=nptype))
+            assert_np_equal(a2.numpy(), np.zeros((*a2.shape, *mat_shape), dtype=nptype))
+            assert_np_equal(a3.numpy(), np.zeros((*a3.shape, *mat_shape), dtype=nptype))
+            assert_np_equal(a4.numpy(), np.zeros((*a4.shape, *mat_shape), dtype=nptype))
+
+            # matrix values can be passed as a 1d numpy array, 2d numpy array, flat list, nested list, or Warp matrix instance
+            fill_arr1 = np.arange(mat_len, dtype=nptype)
+            fill_arr2 = fill_arr1.reshape(mat_shape)
+            fill_list1 = list(fill_arr1)
+            fill_list2 = [list(row) for row in fill_arr2]
+            fill_mat = mat_type(fill_arr1)
+
+            expected1 = np.tile(fill_arr1, a1.size).reshape((*a1.shape, *mat_shape))
+            expected2 = np.tile(fill_arr1, a2.size).reshape((*a2.shape, *mat_shape))
+            expected3 = np.tile(fill_arr1, a3.size).reshape((*a3.shape, *mat_shape))
+            expected4 = np.tile(fill_arr1, a4.size).reshape((*a4.shape, *mat_shape))
+
+            # fill with 1d numpy array
+            a1.fill_(fill_arr1)
+            a2.fill_(fill_arr1)
+            a3.fill_(fill_arr1)
+            a4.fill_(fill_arr1)
+
+            assert_np_equal(a1.numpy(), expected1)
+            assert_np_equal(a2.numpy(), expected2)
+            assert_np_equal(a3.numpy(), expected3)
+            assert_np_equal(a4.numpy(), expected4)
+
+            # clear
+            a1.zero_()
+            a2.zero_()
+            a3.zero_()
+            a4.zero_()
+
+            # fill with 2d numpy array
+            a1.fill_(fill_arr2)
+            a2.fill_(fill_arr2)
+            a3.fill_(fill_arr2)
+            a4.fill_(fill_arr2)
+
+            assert_np_equal(a1.numpy(), expected1)
+            assert_np_equal(a2.numpy(), expected2)
+            assert_np_equal(a3.numpy(), expected3)
+            assert_np_equal(a4.numpy(), expected4)
+
+            # clear
+            a1.zero_()
+            a2.zero_()
+            a3.zero_()
+            a4.zero_()
+
+            # fill with flat list
+            a1.fill_(fill_list1)
+            a2.fill_(fill_list1)
+            a3.fill_(fill_list1)
+            a4.fill_(fill_list1)
+
+            assert_np_equal(a1.numpy(), expected1)
+            assert_np_equal(a2.numpy(), expected2)
+            assert_np_equal(a3.numpy(), expected3)
+            assert_np_equal(a4.numpy(), expected4)
+
+            # clear
+            a1.zero_()
+            a2.zero_()
+            a3.zero_()
+            a4.zero_()
+
+            # fill with nested list
+            a1.fill_(fill_list2)
+            a2.fill_(fill_list2)
+            a3.fill_(fill_list2)
+            a4.fill_(fill_list2)
+
+            assert_np_equal(a1.numpy(), expected1)
+            assert_np_equal(a2.numpy(), expected2)
+            assert_np_equal(a3.numpy(), expected3)
+            assert_np_equal(a4.numpy(), expected4)
+
+            # clear
+            a1.zero_()
+            a2.zero_()
+            a3.zero_()
+            a4.zero_()
+
+            # fill with mat instance
+            a1.fill_(fill_mat)
+            a2.fill_(fill_mat)
+            a3.fill_(fill_mat)
+            a4.fill_(fill_mat)
+
+            assert_np_equal(a1.numpy(), expected1)
+            assert_np_equal(a2.numpy(), expected2)
+            assert_np_equal(a3.numpy(), expected3)
+            assert_np_equal(a4.numpy(), expected4)
+
+
+def test_indexedarray_fill_struct(test, device):
+    dim_x = 8
+
+    nptype = FillStruct.numpy_dtype()
+
+    data1 = wp.zeros(dim_x, dtype=FillStruct, device=device)
+    data2 = wp.zeros((dim_x, dim_x), dtype=FillStruct, device=device)
+    data3 = wp.zeros((dim_x, dim_x, dim_x), dtype=FillStruct, device=device)
+    data4 = wp.zeros((dim_x, dim_x, dim_x, dim_x), dtype=FillStruct, device=device)
+
+    indices = wp.array(np.arange(0, dim_x, 2, dtype=np.int32), device=device)
+
+    a1 = data1[indices]
+    a2 = data2[indices]
+    a3 = data3[indices]
+    a4 = data4[indices]
+
+    assert_np_equal(a1.numpy(), np.zeros(a1.shape, dtype=nptype))
+    assert_np_equal(a2.numpy(), np.zeros(a2.shape, dtype=nptype))
+    assert_np_equal(a3.numpy(), np.zeros(a3.shape, dtype=nptype))
+    assert_np_equal(a4.numpy(), np.zeros(a4.shape, dtype=nptype))
+
+    s = FillStruct()
+
+    # fill with default struct value (should be all zeros)
+    a1.fill_(s)
+    a2.fill_(s)
+    a3.fill_(s)
+    a4.fill_(s)
+
+    assert_np_equal(a1.numpy(), np.zeros(a1.shape, dtype=nptype))
+    assert_np_equal(a2.numpy(), np.zeros(a2.shape, dtype=nptype))
+    assert_np_equal(a3.numpy(), np.zeros(a3.shape, dtype=nptype))
+    assert_np_equal(a4.numpy(), np.zeros(a4.shape, dtype=nptype))
+
+    # scalars
+    s.i1 = -17
+    s.i2 = 42
+    s.i4 = 99
+    s.i8 = 101
+    s.f2 = -1.25
+    s.f4 = 13.37
+    s.f8 = 0.125
+    # vectors
+    s.v2 = [21, 22]
+    s.v3 = [31, 32, 33]
+    s.v4 = [41, 42, 43, 44]
+    s.v5 = [51, 52, 53, 54, 55]
+    # matrices
+    s.m2 = [[61, 62]] * 2
+    s.m3 = [[71, 72, 73]] * 3
+    s.m4 = [[81, 82, 83, 84]] * 4
+    s.m5 = [[91, 92, 93, 94, 95]] * 5
+    # arrays
+    s.a1 = wp.zeros((2,) * 1, dtype=float, device=device)
+    s.a2 = wp.zeros((2,) * 2, dtype=float, device=device)
+    s.a3 = wp.zeros((2,) * 3, dtype=float, device=device)
+    s.a4 = wp.zeros((2,) * 4, dtype=float, device=device)
+
+    # fill with custom struct value
+    a1.fill_(s)
+    a2.fill_(s)
+    a3.fill_(s)
+    a4.fill_(s)
+
+    ns = s.numpy_value()
+
+    expected1 = np.empty(a1.shape, dtype=nptype)
+    expected2 = np.empty(a2.shape, dtype=nptype)
+    expected3 = np.empty(a3.shape, dtype=nptype)
+    expected4 = np.empty(a4.shape, dtype=nptype)
+
+    expected1.fill(ns)
+    expected2.fill(ns)
+    expected3.fill(ns)
+    expected4.fill(ns)
+
+    assert_np_equal(a1.numpy(), expected1)
+    assert_np_equal(a2.numpy(), expected2)
+    assert_np_equal(a3.numpy(), expected3)
+    assert_np_equal(a4.numpy(), expected4)
+
+    # test clearing
+    a1.zero_()
+    a2.zero_()
+    a3.zero_()
+    a4.zero_()
+
+    assert_np_equal(a1.numpy(), np.zeros(a1.shape, dtype=nptype))
+    assert_np_equal(a2.numpy(), np.zeros(a2.shape, dtype=nptype))
+    assert_np_equal(a3.numpy(), np.zeros(a3.shape, dtype=nptype))
+    assert_np_equal(a4.numpy(), np.zeros(a4.shape, dtype=nptype))
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -572,6 +1119,11 @@ def register(parent):
     add_function_test(TestIndexedArray, "test_indexedarray_getitem", test_indexedarray_getitem, devices=devices)
     add_function_test(TestIndexedArray, "test_indexedarray_slicing", test_indexedarray_slicing, devices=devices)
     add_function_test(TestIndexedArray, "test_indexedarray_generics", test_indexedarray_generics, devices=devices)
+    add_function_test(TestIndexedArray, "test_indexedarray_empty", test_indexedarray_empty, devices=devices)
+    add_function_test(TestIndexedArray, "test_indexedarray_fill_scalar", test_indexedarray_fill_scalar, devices=devices)
+    add_function_test(TestIndexedArray, "test_indexedarray_fill_vector", test_indexedarray_fill_vector, devices=devices)
+    add_function_test(TestIndexedArray, "test_indexedarray_fill_matrix", test_indexedarray_fill_matrix, devices=devices)
+    add_function_test(TestIndexedArray, "test_indexedarray_fill_struct", test_indexedarray_fill_struct, devices=devices)
 
     return TestIndexedArray
 
