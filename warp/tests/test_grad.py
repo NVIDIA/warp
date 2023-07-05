@@ -9,7 +9,6 @@ import numpy as np
 import warp as wp
 from warp.tests.test_base import *
 
-wp.config.quiet = True
 wp.init()
 
 
