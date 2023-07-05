@@ -114,7 +114,7 @@ class InternalState:
     """Internal state for the node."""
 
     def __init__(self) -> None:
-        self.xform_prim_path = None
+        self.transform = None
         self.seed = None
         self.min_sdf = None
         self.max_sdf = None
@@ -178,7 +178,7 @@ class InternalState:
     def have_setting_attrs_changed(self, db: OgnParticlesFromMeshDatabase) -> bool:
         """Checks if the values of the attributes that set-up the node have changed."""
         return (
-            db.inputs.xformPrimPath != self.xform_prim_path
+            not np.array_equal(db.inputs.transform, self.transform)
             or db.inputs.seed != self.seed
             or db.inputs.minSdf != self.min_sdf
             or db.inputs.maxSdf != self.max_sdf
@@ -193,7 +193,7 @@ class InternalState:
 
     def store_setting_attrs(self, db: OgnParticlesFromMeshDatabase) -> None:
         """Stores the values of the attributes that set-up the node."""
-        self.xform_prim_path = db.inputs.xformPrimPath
+        self.transform = db.inputs.transform
         self.seed = db.inputs.seed
         self.min_sdf = db.inputs.minSdf
         self.max_sdf = db.inputs.maxSdf
@@ -281,7 +281,7 @@ def compute(db: OgnParticlesFromMeshDatabase) -> None:
     omni.warp.nodes.points_create_bundle(
         db.outputs.particles,
         point_count,
-        xform=omni.warp.nodes.prim_get_world_xform(db.inputs.xformPrimPath),
+        xform=db.inputs.transform,
     )
 
     # Copy the point positions onto the output bundle.

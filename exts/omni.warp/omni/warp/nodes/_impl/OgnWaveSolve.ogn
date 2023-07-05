@@ -12,10 +12,10 @@
                 "type": "execution",
                 "description": "Input execution."
             },
-            "xformPrimPath": {
-                "type": "token",
-                "uiName": "Xform Prim Path",
-                "description": "Path of a primitive on the USD stage to use as xform."
+            "transform": {
+                "type": "matrixd[4]",
+                "uiName": "Transform",
+                "description": "World transformation to store alongside the output geometry."
             },
             "size": {
                 "type": "float[2]",

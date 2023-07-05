@@ -38,7 +38,6 @@ __all__ = [
     "points_get_velocities",
     "points_get_widths",
     "points_get_world_extent",
-    "prim_get_world_xform",
 ]
 
 from omni.warp.nodes._impl.attributes import (
@@ -79,4 +78,3 @@ from omni.warp.nodes._impl.points import (
     points_get_widths,
     points_get_world_extent,
 )
-from omni.warp.nodes._impl.usd import prim_get_world_xform

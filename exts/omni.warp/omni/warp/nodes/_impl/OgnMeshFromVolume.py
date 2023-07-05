@@ -155,7 +155,7 @@ def compute(db: OgnMeshFromVolumeDatabase) -> None:
         point_count,
         vertex_count,
         face_count,
-        xform=omni.warp.nodes.prim_get_world_xform(db.inputs.xformPrimPath),
+        xform=db.inputs.transform,
     )
 
     out_points = omni.warp.nodes.mesh_get_points(db.outputs.mesh)

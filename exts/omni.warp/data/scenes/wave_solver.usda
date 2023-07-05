@@ -72,6 +72,28 @@ def Xform "World"
             uniform float2 ui:nodegraph:node:pos = (71, 19)
         }
 
+        def OmniGraphNode "read_xform" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom rel inputs:prim = </World/Mesh> (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            string relType = "target"
+                        }
+                    }
+                }
+            )
+            custom token inputs:primPath
+            custom bool inputs:usePath = 0
+            token node:type = "omni.graph.nodes.GetPrimLocalToWorldTransform"
+            int node:typeVersion = 2
+            custom matrix4d outputs:localToWorldTransform
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (0, 170)
+        }
+
         def OmniGraphNode "read_collider" (
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
@@ -107,7 +129,7 @@ def Xform "World"
             custom string state:typePattern
             custom timecode state:usdTimecode = -1
             uniform token ui:nodegraph:node:expansionState = "minimized"
-            uniform float2 ui:nodegraph:node:pos = (90, 210)
+            uniform float2 ui:nodegraph:node:pos = (90, 300)
 
             def Output "outputs_primsBundle"
             {
@@ -132,7 +154,8 @@ def Xform "World"
             custom float inputs:speed = 1000
             custom double inputs:time
             prepend double inputs:time.connect = </World/ActionGraph/on_tick.outputs:time>
-            custom token inputs:xformPrimPath = "/World/Mesh"
+            custom matrix4d inputs:transform
+            prepend matrix4d inputs:transform.connect = </World/ActionGraph/read_xform.outputs:localToWorldTransform>
             token node:type = "omni.warp.WarpWaveSolve"
             int node:typeVersion = 1
             custom uint outputs:execOut (

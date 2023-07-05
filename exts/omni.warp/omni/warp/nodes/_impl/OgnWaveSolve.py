@@ -343,7 +343,7 @@ def compute(db: OgnWaveSolveDatabase) -> None:
         point_count,
         vertex_count,
         face_count,
-        xform=omni.warp.nodes.prim_get_world_xform(db.inputs.xformPrimPath),
+        xform=db.inputs.transform,
     )
 
     if state.needs_initialization(db):

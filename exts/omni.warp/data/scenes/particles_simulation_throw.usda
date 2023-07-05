@@ -170,9 +170,9 @@ def Xform "World"
             custom int inputs:seed
             custom float inputs:spacing = 4
             custom float inputs:spacingJitter = 0
+            custom matrix4d inputs:transform
             custom float inputs:velocityAmount = 750
             custom vector3f inputs:velocityDir = (0, 0, 1)
-            custom token inputs:xformPrimPath = "/World/Points"
             token node:type = "omni.warp.WarpParticlesFromMesh"
             int node:typeVersion = 1
             custom uint outputs:execOut (

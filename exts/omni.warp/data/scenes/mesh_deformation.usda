@@ -78,7 +78,7 @@ def Xform "World"
                 </World/ActionGraph/on_tick.outputs:tick>,
             ]
             custom float2 inputs:size = (100, 100)
-            custom token inputs:xformPrimPath = "/World/Mesh"
+            custom matrix4d inputs:transform
             token node:type = "omni.warp.WarpGridCreate"
             int node:typeVersion = 1
             custom uint outputs:execOut (

@@ -67,6 +67,28 @@ def Xform "World"
             uniform float2 ui:nodegraph:node:pos = (490, 40)
         }
 
+        def OmniGraphNode "read_xform" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom rel inputs:prim = </World/Cloth> (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            string relType = "target"
+                        }
+                    }
+                }
+            )
+            custom token inputs:primPath = ""
+            custom bool inputs:usePath = 0
+            token node:type = "omni.graph.nodes.GetPrimLocalToWorldTransform"
+            int node:typeVersion = 2
+            custom matrix4d outputs:localToWorldTransform
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (500, -250)
+        }
+
         def OmniGraphNode "read_collider" (
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
@@ -120,7 +142,8 @@ def Xform "World"
                 </World/ActionGraph/on_tick.outputs:tick>,
             ]
             custom float2 inputs:size = (100, 100)
-            custom token inputs:xformPrimPath = "/World/Cloth"
+            custom matrix4d inputs:transform
+            prepend matrix4d inputs:transform.connect = </World/ActionGraph/read_xform.outputs:localToWorldTransform>
             token node:type = "omni.warp.WarpGridCreate"
             int node:typeVersion = 1
             custom uint outputs:execOut (
