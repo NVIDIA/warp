@@ -27,6 +27,21 @@ def Xform "World"
         int2 fileFormatVersion = (1, 7)
         token pipelineStage = "pipelineStageSimulation"
 
+        def OmniGraphNode "on_loaded" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            token node:type = "omni.graph.action.OnLoaded"
+            int node:typeVersion = 1
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            uniform token ui:nodegraph:node:expansionState = "open"
+            uniform float2 ui:nodegraph:node:pos = (0, -250)
+        }
+
         def OmniGraphNode "on_tick" (
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
@@ -102,7 +117,7 @@ def Xform "World"
             custom bool inputs:applySkelBinding = 0
             custom string inputs:attrNamesToImport = "*"
             custom bool inputs:computeBoundingBox = 0
-            custom bool inputs:enableBundleChangeTracking
+            custom bool inputs:enableBundleChangeTracking = 1
             custom bool inputs:enableChangeTracking
             custom string inputs:pathPattern = ""
             custom rel inputs:prims = </World/Collider> (
@@ -141,7 +156,10 @@ def Xform "World"
         )
         {
             custom uint inputs:execIn
-            prepend uint inputs:execIn.connect = </World/ActionGraph/on_tick.outputs:tick>
+            prepend uint inputs:execIn.connect = [
+                </World/ActionGraph/on_tick.outputs:tick>,
+                </World/ActionGraph/on_loaded.outputs:execOut>,
+            ]
             custom float inputs:mass = 1
             custom int inputs:maxPoints = 1000000
             custom float inputs:maxSdf = 0

@@ -38,6 +38,21 @@ def Xform "World"
             uniform float2 ui:nodegraph:node:pos = (84, 244)
         }
 
+        def OmniGraphNode "on_loaded" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            token node:type = "omni.graph.action.OnLoaded"
+            int node:typeVersion = 1
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            uniform token ui:nodegraph:node:expansionState = "open"
+            uniform float2 ui:nodegraph:node:pos = (45, -80)
+        }
+
         def OmniGraphNode "on_tick" (
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
@@ -70,7 +85,10 @@ def Xform "World"
             custom int inputs:dim = 64
             prepend int inputs:dim.connect = </World/ActionGraph/dimension.inputs:value>
             custom uint inputs:execIn
-            prepend uint inputs:execIn.connect = </World/ActionGraph/on_tick.outputs:tick>
+            prepend uint inputs:execIn.connect = [
+                </World/ActionGraph/on_loaded.outputs:execOut>,
+                </World/ActionGraph/on_tick.outputs:tick>,
+            ]
             custom float inputs:smoothMinRadius = 0.5
             custom double inputs:time = 0
             prepend double inputs:time.connect = </World/ActionGraph/on_tick.outputs:time>

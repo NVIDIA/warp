@@ -2257,12 +2257,9 @@ class Runtime:
                 self.set_default_device("cuda")
             else:
                 self.set_default_device("cuda:0")
-            # save the initial CUDA device for backward compatibility with ScopedCudaGuard
-            self.initial_cuda_device = self.default_device
         else:
             # CUDA not available
             self.set_default_device("cpu")
-            self.initial_cuda_device = None
 
         # initialize kernel cache
         warp.build.init_kernel_cache(warp.config.kernel_cache_dir)
@@ -2879,7 +2876,7 @@ def from_numpy(arr, dtype, device: Devicelike = None, requires_grad=False):
 
 # given a kernel destination argument type and a value convert
 #  to a c-type that can be passed to a kernel
-def pack_arg(arg_type, arg_name, value, device, adjoint=False):
+def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
     if warp.types.is_array(arg_type):
         if value is None:
             # allow for NULL arrays
@@ -2988,7 +2985,7 @@ class Launch:
                 elif isinstance(a.type, warp.codegen.Struct):
                     params.append(a.type().__ctype__())
                 else:
-                    params.append(pack_arg(a.type, a.label, 0, device, False))
+                    params.append(pack_arg(kernel, a.type, a.label, 0, device, False))
 
             kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
             kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
@@ -3017,7 +3014,7 @@ class Launch:
         arg_type = self.kernel.adj.args[index].type
         arg_name = self.kernel.adj.args[index].label
 
-        carg = pack_arg(arg_type, arg_name, value, self.device, False)
+        carg = pack_arg(self.kernel, arg_type, arg_name, value, self.device, False)
 
         self.params[index + 1] = carg
 
@@ -3130,7 +3127,7 @@ def launch(
                 arg_type = kernel.adj.args[i].type
                 arg_name = kernel.adj.args[i].label
 
-                params.append(pack_arg(arg_type, arg_name, a, device, adjoint))
+                params.append(pack_arg(kernel, arg_type, arg_name, a, device, adjoint))
 
         fwd_args = inputs + outputs
         adj_args = adj_inputs + adj_outputs

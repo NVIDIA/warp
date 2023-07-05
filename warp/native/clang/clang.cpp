@@ -45,6 +45,7 @@
 #elif defined(__APPLE__)
     extern "C" void __bzero(void*, size_t);
     extern "C" __double2 __sincos_stret(double);
+    extern "C" __float2 __sincosf_stret(float);
 #endif
 
 extern "C" {
@@ -267,6 +268,7 @@ WP_API int load_obj(const char* object_file, const char* module_name)
         #elif defined(__APPLE__)
             SYMBOL(__bzero),
             SYMBOL(__sincos_stret),
+            SYMBOL(__sincosf_stret),
         #else
             SYMBOL(sincosf), SYMBOL_T(sincos, void(*)(double,double*,double*)),
         #endif
