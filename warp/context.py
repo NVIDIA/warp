@@ -2257,12 +2257,9 @@ class Runtime:
                 self.set_default_device("cuda")
             else:
                 self.set_default_device("cuda:0")
-            # save the initial CUDA device for backward compatibility with ScopedCudaGuard
-            self.initial_cuda_device = self.default_device
         else:
             # CUDA not available
             self.set_default_device("cpu")
-            self.initial_cuda_device = None
 
         # initialize kernel cache
         warp.build.init_kernel_cache(warp.config.kernel_cache_dir)

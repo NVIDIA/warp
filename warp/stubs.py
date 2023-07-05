@@ -73,7 +73,7 @@ from warp.context import Event, record_event, wait_event, wait_stream
 from warp.context import RegisteredGLBuffer
 
 from warp.tape import Tape
-from warp.utils import ScopedTimer, ScopedCudaGuard, ScopedDevice, ScopedStream
+from warp.utils import ScopedTimer, ScopedDevice, ScopedStream
 from warp.utils import transform_expand
 
 from warp.torch import from_torch, to_torch
