@@ -9,9 +9,12 @@
 
 __all__ = [
     "NodeTimer",
+    "bundle_get_attr",
     "bundle_get_child_count",
     "bundle_get_prim_type",
     "bundle_get_world_xform",
+    "bundle_has_changed",
+    "bundle_have_attrs_changed",
     "bundle_set_prim_type",
     "bundle_set_world_xform",
     "from_omni_graph",
@@ -44,9 +47,12 @@ from omni.warp.nodes._impl.attributes import (
     from_omni_graph,
 )
 from omni.warp.nodes._impl.bundles import (
+    bundle_get_attr,
     bundle_get_child_count,
     bundle_get_prim_type,
     bundle_get_world_xform,
+    bundle_has_changed,
+    bundle_have_attrs_changed,
 )
 from omni.warp.nodes._impl.common import (
     NodeTimer,

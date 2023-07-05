@@ -135,10 +135,8 @@ class InternalState:
         if not self.is_valid:
             return True
 
-        with db.inputs.mesh.changes() as bundle_changes:
-            geometry_changes = bundle_changes.get_change(db.inputs.mesh)
-            if geometry_changes != og.BundleChangeType.NONE:
-                return True
+        if omni.warp.nodes.bundle_has_changed(db.inputs.mesh):
+            return True
 
         return False
 
@@ -193,7 +191,7 @@ class InternalState:
 
     def store_setting_attrs(self, db: OgnParticlesFromMeshDatabase) -> None:
         """Stores the values of the attributes that set-up the node."""
-        self.transform = db.inputs.transform
+        self.transform = db.inputs.transform.copy()
         self.seed = db.inputs.seed
         self.min_sdf = db.inputs.minSdf
         self.max_sdf = db.inputs.maxSdf

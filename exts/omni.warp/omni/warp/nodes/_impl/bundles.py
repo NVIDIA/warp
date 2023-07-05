@@ -7,7 +7,10 @@
 
 """Helpers to author OmniGraph bundles."""
 
-from typing import Optional
+from typing import (
+    Optional,
+    Sequence,
+)
 
 import numpy as np
 import omni.graph.core as og
@@ -94,7 +97,7 @@ def bundle_set_world_xform(
 
 def bundle_create_child(
     bundle: og.BundleContents,
-    child_idx: int,
+    child_idx: int = 0,
 ) -> og.IBundle2:
     """Creates a single child bundle if it doesn't already exist."""
     if child_idx < bundle.bundle.get_child_bundle_count():
@@ -106,7 +109,7 @@ def bundle_create_child(
 def bundle_get_attr(
     bundle: og.BundleContents,
     name: str,
-    child_idx: int,
+    child_idx: int = 0,
 ) -> Optional[og.AttributeData]:
     """Retrieves a bundle attribute from its name."""
     if bundle.bundle.get_child_bundle_count():
@@ -118,6 +121,32 @@ def bundle_get_attr(
         return None
 
     return attr
+
+
+def bundle_has_changed(
+    bundle: og.BundleContents,
+    child_idx: int = 0,
+) -> bool:
+    """Checks whether the contents of the bundle has changed."""
+    with bundle.changes() as bundle_changes:
+        child_bundle = bundle.bundle.get_child_bundle(child_idx)
+        return bundle_changes.get_change(child_bundle) != og.BundleChangeType.NONE
+
+
+def bundle_have_attrs_changed(
+    bundle: og.BundleContents,
+    attr_names: Sequence[str],
+    child_idx: int = 0,
+) -> bool:
+    """Checks whether the contents of a bundle's attributes hab changed."""
+    with bundle.changes() as bundle_changes:
+        child_bundle = bundle.bundle.get_child_bundle(child_idx)
+        for attr_name in attr_names:
+            attr = child_bundle.get_attribute_by_name(attr_name)
+            if bundle_changes.get_change(attr) != og.BundleChangeType.NONE:
+                return True
+
+    return False
 
 
 #   Low-level Bundle API (og.IBundle2)
