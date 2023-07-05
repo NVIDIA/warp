@@ -588,7 +588,7 @@ def overload_fn(x: MyStruct):
 
 @overload_fn.grad
 def overload_fn_grad(x: MyStruct, adj_ret0: float, adj_ret1: float, adj_ret2: float):
-    wp.adjoint[x.scalar] += adj_ret0 * 10.0
+    wp.adjoint[x.scalar] += x.scalar * adj_ret0 * 10.0
     wp.adjoint[x.vec][0] += adj_ret0 * x.vec[1] * x.vec[2] * 20.0
     wp.adjoint[x.vec][1] += adj_ret1 * x.vec[0] * x.vec[2] * 30.0
     wp.adjoint[x.vec][2] += adj_ret2 * x.vec[0] * x.vec[1] * 40.0
@@ -607,10 +607,11 @@ def run_overload_float_fn(
     output1[i] = out1
 
 
-# @wp.kernel
-# def run_overload_struct_fn(xs: wp.array(dtype=MyStruct), output: wp.array(dtype=float)):
-#     i = wp.tid()
-#     output[i] = overload_fn(xs[i])
+@wp.kernel
+def run_overload_struct_fn(xs: wp.array(dtype=MyStruct), output: wp.array(dtype=float)):
+    i = wp.tid()
+    out0, out1, out2 = overload_fn(xs[i])
+    output[i] = out0 + out1 + out2
 
 
 def test_custom_overload_grad(test, device):
@@ -631,23 +632,43 @@ def test_custom_overload_grad(test, device):
         out1_float: wp.array(np.ones(dim), dtype=wp.float32)})
     assert_np_equal(xs_float.grad.numpy(), xs_float.numpy() * 42.0 + ys_float.numpy() * 10.0)
     assert_np_equal(ys_float.grad.numpy(), ys_float.numpy() * 3.0)
-    # xs_int = wp.array(np.arange(1.0, dim + 1.0), dtype=wp.int32, requires_grad=True)
-    # eval_grad(run_overload_int_fn, xs_int)
-    # assert_np_equal(xs_int.grad.numpy(), xs_int.numpy() * 21)
-    # ys = wp.zeros(dim)
-    # tape = wp.Tape()
-    # with tape:
-    #     # wp.launch(run_sqr, dim=len(xs), inputs=[xs], outputs=[ys])
-    #     wp.launch(run_overload_struct_fn, dim=len(xs), inputs=[xs2], outputs=[ys])
-    # tape.backward(grads={ys: wp.array(np.ones(len(xs)), dtype=wp.float32)})
-    # # print("xs", xs)
-    # print("ys", ys)
-    # print("xs.grad", xs2.grad)
 
-    
-    # x = MyStruct()
-    # x.vec = wp.vec3(1., 2., 3.)
-    # xs2 = wp.array([x, x, x], dtype=MyStruct, requires_grad=True)
+    x0 = MyStruct()
+    x0.vec = wp.vec3(1., 2., 3.)
+    x0.scalar = 4.
+    x1 = MyStruct()
+    x1.vec = wp.vec3(5., 6., 7.)
+    x1.scalar = -1.0
+    x2 = MyStruct()
+    x2.vec = wp.vec3(8., 9., 10.)
+    x2.scalar = 19.0
+    xs_struct = wp.array([x0, x1, x2], dtype=MyStruct, requires_grad=True)
+    out_struct = wp.zeros(dim)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            run_overload_struct_fn,
+            dim=dim,
+            inputs=[xs_struct],
+            outputs=[out_struct])
+    tape.backward(grads={out_struct: wp.array(np.ones(dim), dtype=wp.float32)})
+    xs_struct_np = xs_struct.numpy()
+    struct_grads = xs_struct.grad.numpy()
+    # fmt: off
+    assert_np_equal(
+        np.array([g[0] for g in struct_grads]),
+        np.array([g[0] * 10.0 for g in xs_struct_np]))
+    assert_np_equal(
+        np.array([g[1][0] for g in struct_grads]),
+        np.array([g[1][1] * g[1][2] * 20.0 for g in xs_struct_np]))
+    assert_np_equal(
+        np.array([g[1][1] for g in struct_grads]),
+        np.array([g[1][0] * g[1][2] * 30.0 for g in xs_struct_np]))
+    assert_np_equal(
+        np.array([g[1][2] for g in struct_grads]),
+        np.array([g[1][0] * g[1][1] * 40.0 for g in xs_struct_np]))
+    # fmt: on
+
 
 def register(parent):
     devices = get_test_devices()
