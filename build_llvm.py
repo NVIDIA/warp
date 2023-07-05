@@ -19,7 +19,7 @@ llvm_install_path = os.path.join(llvm_project_path, "out/install/")
 # Fetch prebuilt Clang/LLVM libraries
 if os.name == "nt":
     packman = "tools\\packman\\packman.cmd"
-    packages = {"x86_64": "15.0.7-windows-x86_64-vs142"}
+    packages = {"x86_64": "15.0.7-windows-x86_64-ptx-vs142"}
 else:
     packman = "./tools/packman/packman"
     if sys.platform == "darwin":
@@ -28,7 +28,7 @@ else:
             "x86_64": "15.0.7-darwin-x86_64-macos11",
         }
     else:
-        packages = {"x86_64": "15.0.7-linux-x86_64-gcc7.5-cxx11abi0"}
+        packages = {"x86_64": "15.0.7-linux-x86_64-ptx-gcc7.5-cxx11abi0"}
 
 for arch in packages:
     subprocess.check_call(
@@ -112,7 +112,7 @@ def build_from_source_for_arch(args, arch):
         "-D", "LLVM_USE_CRT_MINSIZEREL=MT",
         "-D", "LLVM_USE_CRT_DEBUG=MTd",
         "-D", "LLVM_USE_CRT_RELWITHDEBINFO=MTd",
-        "-D", f"LLVM_TARGETS_TO_BUILD={target_backend}",
+        "-D", f"LLVM_TARGETS_TO_BUILD={target_backend};NVPTX",
         "-D", "LLVM_ENABLE_PROJECTS=clang",
         "-D", "LLVM_ENABLE_ZLIB=FALSE",
         "-D", "LLVM_ENABLE_ZSTD=FALSE",
