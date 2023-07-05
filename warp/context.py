@@ -685,25 +685,16 @@ class Kernel:
 
 
 # decorator to register function, @func
-def func(f=None, *, skip_reverse_codegen=False):
-    def wrapper(f, *args, **kwargs):
+def func(f):
+    name = warp.codegen.make_full_qualified_name(f)
 
-        name = warp.codegen.make_full_qualified_name(f)
+    m = get_module(f.__module__)
+    func = Function(
+        func=f, key=name, namespace="", module=m, value_func=None
+    )  # value_type not known yet, will be inferred during Adjoint.build()
 
-        m = get_module(f.__module__)
-        func = Function(
-            func=f, key=name, namespace="", module=m, value_func=None,
-            skip_reverse_codegen=skip_reverse_codegen
-        )  # value_type not known yet, will be inferred during Adjoint.build()
-
-        # return the top of the list of overloads for this key
-        return m.functions[name]
-
-    if f is None:
-        # Arguments were passed to the decorator.
-        return wrapper
-
-    return wrapper(f)
+    # return the top of the list of overloads for this key
+    return m.functions[name]
 
 
 # decorator to register kernel, @kernel, custom_name may be a string
