@@ -230,8 +230,10 @@ typedef unsigned long long uint64_t;
 
 #if defined(__CUDACC__)
 
-// stdio.h
-extern "C" __device__ int printf(const char* format, ... );
+#if defined(__clang__)
+// When compiling CUDA with barebones Clang we need to define its builtins and runtime functions ourselves.
+#include "cuda_crt.h"
+#endif
 
 #else
 
