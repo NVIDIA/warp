@@ -502,8 +502,6 @@ class Adjoint:
     def format_reverse_call_args(adj, args, args_out, non_adjoint_args, non_adjoint_outputs, use_initializer_list):
         formatted_var = adj.format_args("var", args)
         formatted_out = []
-        if len(args_out) > 1:
-            formatted_out = adj.format_args("var", args_out)
         formatted_var_adj = adj.format_args(
             "&adj" if use_initializer_list else "adj", [a for i, a in enumerate(args) if i not in non_adjoint_args]
         )
