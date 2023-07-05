@@ -9,6 +9,7 @@ import numpy as np
 import warp as wp
 from warp.tests.test_base import *
 
+wp.config.quiet = True
 wp.init()
 
 
@@ -418,6 +419,26 @@ def test_3d_math_grad(test, device):
         gradcheck(check_rot_quat_inv, "check_rot_quat_inv_3d", [x], device)
 
 
+def test_multi_valued_function_grad(test, device):
+    np.random.seed(123)
+
+    @wp.func
+    def multi_valued(x: float, y: float, z: float):
+        return wp.sin(x), wp.cos(y) * z, wp.sqrt(z) / wp.abs(x)
+
+    # test multi-valued functions
+    def check_multi_valued(vs: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
+        tid = wp.tid()
+        v = vs[tid]
+        a, b, c = multi_valued(v[0], v[1], v[2])
+        out[tid] = a + b + c
+
+    # run the tests with 5 different random inputs
+    for _ in range(5):
+        x = wp.array(np.random.randn(2, 3).astype(np.float32), dtype=wp.vec3, device=device, requires_grad=True)
+        gradcheck(check_multi_valued, "check_multi_valued_3d", [x], device)
+
+
 def test_mesh_grad(test, device):
     pos = wp.array(
         [
@@ -490,9 +511,9 @@ def test_mesh_grad(test, device):
     assert np.allclose(ad_grad, fd_grad, atol=1e-3)
 
 
-# atomic add function that remembers which thread incremented the counter
-# so that the correct counter value can be used in the replay phase of the
-# backward pass
+# atomic add function that memorizes which thread incremented the counter
+# so that the correct counter value per thread can be used in the replay
+# phase of the backward pass
 @wp.func
 def differentiable_atomic_add(
     counter: wp.array(dtype=int),
@@ -543,6 +564,91 @@ def test_custom_replay_grad(test, device):
     assert_np_equal(inputs.grad.numpy(), 2.0 * inputs.numpy(), tol=1e-4)
 
 
+@wp.func
+def overload_fn(x: float, y: float):
+    return x * 3.0 + y / 3.0, y ** 2.5
+
+
+@overload_fn.grad
+def overload_fn_grad(x: float, y: float, adj_ret0: float, adj_ret1: float):
+    wp.adjoint[x] += x * adj_ret0 * 42.0 + y * adj_ret1 * 10.0
+    wp.adjoint[y] += y * adj_ret1 * 3.0
+
+
+@wp.struct
+class MyStruct:
+    scalar: float
+    vec: wp.vec3
+
+
+@wp.func
+def overload_fn(x: MyStruct):
+    return x.vec[0] * x.vec[1] * x.vec[2] * 4.0, wp.length(x.vec), x.scalar ** 0.5
+
+
+@overload_fn.grad
+def overload_fn_grad(x: MyStruct, adj_ret0: float, adj_ret1: float, adj_ret2: float):
+    wp.adjoint[x.scalar] += adj_ret0 * 10.0
+    wp.adjoint[x.vec][0] += adj_ret0 * x.vec[1] * x.vec[2] * 20.0
+    wp.adjoint[x.vec][1] += adj_ret1 * x.vec[0] * x.vec[2] * 30.0
+    wp.adjoint[x.vec][2] += adj_ret2 * x.vec[0] * x.vec[1] * 40.0
+
+
+@wp.kernel
+def run_overload_float_fn(
+    xs: wp.array(dtype=float),
+    ys: wp.array(dtype=float),
+    output0: wp.array(dtype=float),
+    output1: wp.array(dtype=float)
+):
+    i = wp.tid()
+    out0, out1 = overload_fn(xs[i], ys[i])
+    output0[i] = out0
+    output1[i] = out1
+
+
+# @wp.kernel
+# def run_overload_struct_fn(xs: wp.array(dtype=MyStruct), output: wp.array(dtype=float)):
+#     i = wp.tid()
+#     output[i] = overload_fn(xs[i])
+
+
+def test_custom_overload_grad(test, device):
+    dim = 3
+    xs_float = wp.array(np.arange(1.0, dim + 1.0), dtype=wp.float32, requires_grad=True)
+    ys_float = wp.array(np.arange(10.0, dim + 10.0), dtype=wp.float32, requires_grad=True)
+    out0_float = wp.zeros(dim)
+    out1_float = wp.zeros(dim)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            run_overload_float_fn,
+            dim=dim,
+            inputs=[xs_float, ys_float],
+            outputs=[out0_float, out1_float])
+    tape.backward(grads={
+        out0_float: wp.array(np.ones(dim), dtype=wp.float32),
+        out1_float: wp.array(np.ones(dim), dtype=wp.float32)})
+    assert_np_equal(xs_float.grad.numpy(), xs_float.numpy() * 42.0 + ys_float.numpy() * 10.0)
+    assert_np_equal(ys_float.grad.numpy(), ys_float.numpy() * 3.0)
+    # xs_int = wp.array(np.arange(1.0, dim + 1.0), dtype=wp.int32, requires_grad=True)
+    # eval_grad(run_overload_int_fn, xs_int)
+    # assert_np_equal(xs_int.grad.numpy(), xs_int.numpy() * 21)
+    # ys = wp.zeros(dim)
+    # tape = wp.Tape()
+    # with tape:
+    #     # wp.launch(run_sqr, dim=len(xs), inputs=[xs], outputs=[ys])
+    #     wp.launch(run_overload_struct_fn, dim=len(xs), inputs=[xs2], outputs=[ys])
+    # tape.backward(grads={ys: wp.array(np.ones(len(xs)), dtype=wp.float32)})
+    # # print("xs", xs)
+    # print("ys", ys)
+    # print("xs.grad", xs2.grad)
+
+    
+    # x = MyStruct()
+    # x.vec = wp.vec3(1., 2., 3.)
+    # xs2 = wp.array([x, x, x], dtype=MyStruct, requires_grad=True)
+
 def register(parent):
     devices = get_test_devices()
 
@@ -559,8 +665,10 @@ def register(parent):
     add_function_test(TestGrad, "test_vector_math_grad", test_vector_math_grad, devices=devices)
     add_function_test(TestGrad, "test_matrix_math_grad", test_matrix_math_grad, devices=devices)
     add_function_test(TestGrad, "test_3d_math_grad", test_3d_math_grad, devices=devices)
+    add_function_test(TestGrad, "test_multi_valued_function_grad", test_multi_valued_function_grad, devices=devices)
     add_function_test(TestGrad, "test_mesh_grad", test_mesh_grad, devices=devices)
     add_function_test(TestGrad, "test_custom_replay_grad", test_custom_replay_grad, devices=devices)
+    add_function_test(TestGrad, "test_custom_overload_grad", test_custom_overload_grad, devices=devices)
 
     return TestGrad
 
