@@ -102,6 +102,7 @@ class Function:
         self.defaults = defaults
         # Function instance for a custom implementation of the replay pass
         self.custom_replay_func = custom_replay_func
+        self.custom_grad_func = None
 
         if initializer_list_func is None:
             self.initializer_list_func = lambda x, y: False

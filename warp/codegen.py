@@ -499,9 +499,11 @@ class Adjoint:
         return arg_str
 
     # generates argument string for a reverse function call
-    def format_reverse_call_args(adj, args, args_out, non_adjoint_args, non_adjoint_outputs, use_initializer_list):
+    def format_reverse_call_args(adj, args, args_out, non_adjoint_args, non_adjoint_outputs, use_initializer_list, has_output_args=True):
         formatted_var = adj.format_args("var", args)
         formatted_out = []
+        if has_output_args and len(args_out) > 1:
+            formatted_out = adj.format_args("var", args_out)
         formatted_var_adj = adj.format_args(
             "&adj" if use_initializer_list else "adj", [a for i, a in enumerate(args) if i not in non_adjoint_args]
         )
@@ -770,7 +772,7 @@ class Adjoint:
             adj.add_forward(forward_call)
 
             if not func.missing_grad and len(args):
-                arg_str = adj.format_reverse_call_args(args, output, {}, {}, use_initializer_list)
+                arg_str = adj.format_reverse_call_args(args, output, {}, {}, use_initializer_list, has_output_args=func.custom_grad_func is None)
                 if arg_str is not None:
                     reverse_call = "{}adj_{}({});".format(func.namespace, func.native_func, arg_str)
                     adj.add_reverse(reverse_call)
