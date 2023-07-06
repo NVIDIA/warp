@@ -1,0 +1,40 @@
+{
+    "WarpSampleMeshDeform": {
+        "version": 1,
+        "categoryDefinitions": "../../../../config/warp_categories.json",
+        "description": "Deforms a geometry mesh.",
+        "categories": ["warp", "warp:samples"],
+        "language": "Python",
+        "uiName": "Sample Mesh Deform",
+        "cudaPointers": "cpu",
+        "inputs": {
+            "execIn": {
+                "type": "execution",
+                "description": "Input execution."
+            },
+            "mesh": {
+                "type": "bundle",
+                "uiName": "Mesh",
+                "description": "Input mesh geometry.",
+                "memoryType": "cuda"
+            },
+            "time": {
+                "type": "double",
+                "uiName": "Time",
+                "description": "Time."
+            }
+        },
+        "outputs": {
+            "execOut": {
+                "type": "execution",
+                "description": "Output execution."
+            },
+            "mesh": {
+                "type": "bundle",
+                "uiName": "Mesh",
+                "description": "Output mesh geometry.",
+                "memoryType": "cuda"
+            }
+        }
+    }
+}

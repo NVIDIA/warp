@@ -486,12 +486,7 @@ def test_mesh_grad(test, device):
         requires_grad=True,
     )
     indices = wp.array(
-        [
-            0, 1, 2,
-            0, 2, 3,
-            0, 3, 1,
-            1, 3, 2
-        ],
+        [0, 1, 2, 0, 2, 3, 0, 3, 1, 1, 3, 2],
         dtype=wp.int32,
         device=device,
     )
@@ -501,7 +496,7 @@ def test_mesh_grad(test, device):
     @wp.func
     def compute_triangle_area(mesh_id: wp.uint64, tri_id: int):
         mesh = wp.mesh_get(mesh_id)
-        i, j, k = mesh.indices[tri_id*3+0], mesh.indices[tri_id*3+1], mesh.indices[tri_id*3+2]
+        i, j, k = mesh.indices[tri_id * 3 + 0], mesh.indices[tri_id * 3 + 1], mesh.indices[tri_id * 3 + 2]
         a = mesh.points[i]
         b = mesh.points[j]
         c = mesh.points[k]

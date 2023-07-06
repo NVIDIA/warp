@@ -1,6 +1,6 @@
 [package]
 # Semantic Versioning is used: https://semver.org/
-version = "0.9.0"
+version = "0.10.0"
 authors = ["NVIDIA"]
 title = "Warp"
 description="Provides the core Warp Python module for Omniverse"
@@ -16,9 +16,6 @@ icon = "data/icon.png"
 # Watch files for hot reloading (only works for Python files)
 [fswatcher.patterns]
 include = ["*.py"]
-
-[dependencies]
-"omni.kit.test" = {}
 
 # Core language module
 [[python.module]]

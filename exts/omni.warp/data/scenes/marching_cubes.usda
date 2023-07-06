@@ -1,0 +1,282 @@
+#usda 1.0
+(
+    customLayerData = {
+        dictionary cameraSettings = {
+            string boundCamera = "/CameraRoot/Camera"
+        }
+        dictionary renderSettings = {
+            int "rtx:post:dlss:execMode" = 0
+            bool "rtx:translucency:enabled" = 0
+        }
+    }
+    defaultPrim = "World"
+    endTimeCode = 36000
+    metersPerUnit = 0.01
+    startTimeCode = 0
+    timeCodesPerSecond = 60
+    upAxis = "Y"
+)
+
+def Xform "World"
+{
+    def OmniGraph "ActionGraph"
+    {
+        token evaluationMode = "Automatic"
+        token evaluator:type = "execution"
+        token fabricCacheBacking = "Shared"
+        int2 fileFormatVersion = (1, 7)
+        token pipelineStage = "pipelineStageSimulation"
+
+        def OmniGraphNode "dimension" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom int inputs:value = 64
+            token node:type = "omni.graph.nodes.ConstantInt"
+            int node:typeVersion = 1
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (84, 244)
+        }
+
+        def OmniGraphNode "on_loaded" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            token node:type = "omni.graph.action.OnLoaded"
+            int node:typeVersion = 1
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (45, -80)
+        }
+
+        def OmniGraphNode "on_tick" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom uint inputs:framePeriod = 0
+            custom bool inputs:onlyPlayback = 1
+            token node:type = "omni.graph.action.OnTick"
+            int node:typeVersion = 1
+            custom double outputs:absoluteSimTime
+            custom double outputs:deltaSeconds
+            custom double outputs:frame
+            custom bool outputs:isPlaying
+            custom uint outputs:tick (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            custom double outputs:time
+            custom double outputs:timeSinceStart
+            custom double state:accumulatedSeconds = 0
+            custom uint state:frameCount = 0
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (40, 40)
+        }
+
+        def OmniGraphNode "sample_procedural_volume" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom int inputs:dim = 64
+            prepend int inputs:dim.connect = </World/ActionGraph/dimension.inputs:value>
+            custom uint inputs:execIn
+            prepend uint inputs:execIn.connect = [
+                </World/ActionGraph/on_loaded.outputs:execOut>,
+                </World/ActionGraph/on_tick.outputs:tick>,
+            ]
+            custom float inputs:smoothMinRadius = 0.5
+            custom double inputs:time = 0
+            prepend double inputs:time.connect = </World/ActionGraph/on_tick.outputs:time>
+            custom float inputs:torusAltitude = -0.5
+            custom float inputs:torusMajorRadius = 0.5
+            custom float inputs:torusMinorRadius = 0.1
+            token node:type = "omni.warp.WarpSampleProceduralVolume"
+            int node:typeVersion = 1
+            custom float[] outputs:data
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (377, 22)
+        }
+
+        def OmniGraphNode "read_xform" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom rel inputs:prim = </World/Mesh> (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            string relType = "target"
+                        }
+                    }
+                }
+            )
+            custom token inputs:primPath
+            custom bool inputs:usePath = 0
+            token node:type = "omni.graph.nodes.GetPrimLocalToWorldTransform"
+            int node:typeVersion = 2
+            custom matrix4d outputs:localToWorldTransform
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (360, 360)
+        }
+
+        def OmniGraphNode "mesh_from_volume" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom float[] inputs:data = []
+            prepend float[] inputs:data.connect = </World/ActionGraph/sample_procedural_volume.outputs:data>
+            custom int inputs:dim1 = 64
+            prepend int inputs:dim1.connect = </World/ActionGraph/dimension.inputs:value>
+            custom int inputs:dim2 = 64
+            prepend int inputs:dim2.connect = </World/ActionGraph/dimension.inputs:value>
+            custom int inputs:dim3 = 64
+            prepend int inputs:dim3.connect = </World/ActionGraph/dimension.inputs:value>
+            custom uint inputs:execIn
+            prepend uint inputs:execIn.connect = </World/ActionGraph/sample_procedural_volume.outputs:execOut>
+            custom int inputs:maxPoints = 1000000
+            custom int inputs:maxTriangles = 1000000
+            custom float3 inputs:size = (100, 100, 100)
+            custom float inputs:threshold = 0
+            custom matrix4d inputs:transform
+            prepend matrix4d inputs:transform.connect = </World/ActionGraph/read_xform.outputs:localToWorldTransform>
+            token node:type = "omni.warp.WarpMeshFromVolume"
+            int node:typeVersion = 1
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (735, 152)
+
+            def Output "outputs_mesh"
+            {
+            }
+        }
+
+        def OmniGraphNode "write_prims" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom string inputs:attrNamesToExport = "*"
+            custom uint inputs:execIn
+            prepend uint inputs:execIn.connect = </World/ActionGraph/mesh_from_volume.outputs:execOut>
+            custom token inputs:layerIdentifier
+            custom string inputs:pathPattern = "*"
+            custom rel inputs:prims = </World/Mesh> (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            string relType = "target"
+                        }
+                    }
+                }
+            )
+            custom rel inputs:primsBundle
+            prepend rel inputs:primsBundle = </World/ActionGraph/mesh_from_volume/outputs_mesh>
+            custom bool inputs:scatterUnderTargets = 0
+            custom string inputs:typePattern = "*"
+            custom bool inputs:usdWriteBack = 1
+            token node:type = "omni.graph.nodes.WritePrimsV2"
+            int node:typeVersion = 1
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            custom string state:attrNamesToExport = "*"
+            custom token state:layerIdentifier
+            custom string state:pathPattern = "*"
+            custom uint64 state:primBundleDirtyId
+            custom uint64[] state:prims = []
+            custom bool state:scatterUnderTargets = 0
+            custom string state:typePattern = "*"
+            custom bool state:usdWriteBack = 1
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (1090, 223)
+        }
+    }
+
+    def Scope "Looks"
+    {
+        def "CeramicMaterial" (
+            prepend payload = @./assets/materials/ceramic_material.usda@
+        )
+        {
+            over "CeramicMaterial"
+            {
+                over "Shader"
+                {
+                    color3f inputs:diffuse_reflection_color = (0.75, 0.75, 0.75) (
+                        customData = {
+                            float3 default = (0.2, 0.2, 0.2)
+                        }
+                        displayGroup = "Albedo"
+                        displayName = "Albedo Color"
+                        doc = "This is the albedo base color"
+                        hidden = false
+                        renderType = "color"
+                    )
+                }
+            }
+        }
+    }
+
+    def Mesh "Mesh" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        rel material:binding = </World/Looks/CeramicMaterial/CeramicMaterial> (
+            bindMaterialAs = "weakerThanDescendants"
+        )
+        float3 xformOp:rotateXYZ = (0, 0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (0, 58, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+    }
+}
+
+def Xform "Environment"
+{
+    double3 xformOp:rotateXYZ = (0, 0, 0)
+    double3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (0, 0, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+    def "Stage" (
+        prepend payload = @./assets/environments/stage.usda@
+    )
+    {
+    }
+}
+
+def Xform "CameraRoot"
+{
+    double3 xformOp:rotateXYZ = (-20, 10, 0)
+    double3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (0, 30, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+    def Camera "Camera"
+    {
+        float2 clippingRange = (1, 10000000)
+        float focalLength = 25
+        float focusDistance = 400
+        float fStop = 0
+        bool omni:kit:cameraLock = 0
+        double3 xformOp:rotateYXZ = (0, 0, 0)
+        double3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (0, 0, 400)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateYXZ", "xformOp:scale"]
+    }
+}

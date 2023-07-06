@@ -1,0 +1,615 @@
+#usda 1.0
+(
+    customLayerData = {
+        dictionary cameraSettings = {
+            string boundCamera = "/CameraRoot/Camera"
+        }
+        dictionary renderSettings = {
+            bool "rtx:ambientOcclusion:enabled" = 0
+            bool "rtx:directLighting:domeLight:enabled" = 0
+            bool "rtx:indirectDiffuse:enabled" = 0
+            int "rtx:post:dlss:execMode" = 0
+            double "rtx:sceneDb:ambientLightIntensity" = 2
+            bool "rtx:shadows:enabled" = 0
+            bool "rtx:translucency:reflectAtAllBounce" = 1
+        }
+    }
+    defaultPrim = "World"
+    endTimeCode = 36000
+    metersPerUnit = 0.01
+    startTimeCode = 0
+    timeCodesPerSecond = 60
+    upAxis = "Y"
+)
+
+def Xform "World"
+{
+    def OmniGraph "ActionGraph"
+    {
+        token evaluationMode = "Automatic"
+        token evaluator:type = "execution"
+        token fabricCacheBacking = "Shared"
+        int2 fileFormatVersion = (1, 7)
+        token pipelineStage = "pipelineStageSimulation"
+
+        def OmniGraphNode "low_freq_noise_size" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom float inputs:value = 10
+            token node:type = "omni.graph.nodes.ConstantFloat"
+            int node:typeVersion = 1
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (-26, 619)
+        }
+
+        def OmniGraphNode "low_freq_noise_amplitude" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom float inputs:value = 2
+            token node:type = "omni.graph.nodes.ConstantFloat"
+            int node:typeVersion = 1
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (-30, 504)
+        }
+
+        def OmniGraphNode "high_freq_noise_amplitude" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom float inputs:value = 0.2
+            token node:type = "omni.graph.nodes.ConstantFloat"
+            int node:typeVersion = 1
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (470, -15)
+        }
+
+        def OmniGraphNode "high_freq_noise_size" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom float inputs:value = 2
+            token node:type = "omni.graph.nodes.ConstantFloat"
+            int node:typeVersion = 1
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (472, 117)
+        }
+
+        def OmniGraphNode "wave_curl_angle" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom float inputs:value = 400
+            token node:type = "omni.graph.nodes.ConstantFloat"
+            int node:typeVersion = 1
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (1180, -100)
+        }
+
+        def OmniGraphNode "on_tick" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom uint inputs:framePeriod = 0
+            custom bool inputs:onlyPlayback = 1
+            token node:type = "omni.graph.action.OnTick"
+            int node:typeVersion = 1
+            custom double outputs:absoluteSimTime
+            custom double outputs:deltaSeconds
+            custom double outputs:frame
+            custom bool outputs:isPlaying
+            custom uint outputs:tick (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            custom double outputs:time
+            custom double outputs:timeSinceStart
+            custom double state:accumulatedSeconds = 0
+            custom uint state:frameCount = 0
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (-194, 94)
+        }
+
+        def OmniGraphNode "in_ocean_points" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom bool inputs:forceUSDRead = 0
+            custom token inputs:name = "points"
+            custom rel inputs:prim = </World/OceanIn/Plane>
+            custom token inputs:primPath
+            custom timecode inputs:usdTimecode = nan
+            custom bool inputs:usePath = 0
+            token node:type = "omni.graph.nodes.ReadPrimAttribute"
+            int node:typeVersion = 2
+            custom token outputs:value
+            custom bool state:correctlySetup
+            custom uint64 state:importPath
+            custom uint64 state:srcAttrib
+            custom uint64 state:srcPath
+            custom uint64 state:srcPathAsToken
+            custom uint64 state:srcPathToken
+            custom double state:time
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (-27, 394)
+        }
+
+        def OmniGraphNode "low_freq_noise_kernel" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom float inputs:amplitude
+            prepend float inputs:amplitude.connect = </World/ActionGraph/low_freq_noise_amplitude.inputs:value>
+            custom token inputs:codeFile
+            custom token inputs:codeProvider = "embedded" (
+                allowedTokens = ["embedded", "file"]
+            )
+            custom string inputs:codeStr = """import warp as wp\r
+\r
+@wp.kernel\r
+def compute(inputs: Inputs, outputs: Outputs):\r
+    tid = wp.tid()\r
+\r
+    seed = wp.rand_init(42)\r
+    pos = inputs.points[tid] / max(inputs.size, 1e-6)\r
+    noise = wp.noise(\r
+        seed,\r
+        wp.vec4(\r
+            pos[0] + float(inputs.time),\r
+            pos[1],\r
+            pos[2],\r
+            float(inputs.time),\r
+        ),\r
+    )\r
+\r
+    outputs.points[tid] = wp.vec3(\r
+        inputs.points[tid][0],\r
+        inputs.points[tid][1] + noise * inputs.amplitude,\r
+        inputs.points[tid][2],\r
+    )\r
+"""
+            custom token inputs:device = "cuda:0" (
+                allowedTokens = ["cpu", "cuda:0"]
+            )
+            custom int inputs:dim1 = 1
+            custom int inputs:dim2 = 1
+            custom int inputs:dim3 = 1
+            custom int inputs:dim4 = 1
+            custom int inputs:dimCount = 1
+            custom token inputs:dimSource = "points"
+            custom uint inputs:execIn
+            prepend uint inputs:execIn.connect = </World/ActionGraph/on_tick.outputs:tick>
+            custom point3f[] inputs:points
+            prepend point3f[] inputs:points.connect = </World/ActionGraph/in_ocean_points.outputs:value>
+            custom float inputs:size
+            prepend float inputs:size.connect = </World/ActionGraph/low_freq_noise_size.inputs:value>
+            custom double inputs:time
+            prepend double inputs:time.connect = </World/ActionGraph/on_tick.outputs:time>
+            token node:type = "omni.warp.WarpKernel"
+            int node:typeVersion = 2
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            custom point3f[] outputs:points
+            custom string state:userAttrDescs = '[{"port_type": 0, "base_name": "points", "data_type_name": "point3f", "is_array": true, "array_format": 0, "array_shape_source": null, "optional": false}, {"port_type": 0, "base_name": "size", "data_type_name": "float", "is_array": false, "array_format": 0, "array_shape_source": null, "optional": false}, {"port_type": 0, "base_name": "amplitude", "data_type_name": "float", "is_array": false, "array_format": 0, "array_shape_source": null, "optional": false}, {"port_type": 0, "base_name": "time", "data_type_name": "double", "is_array": false, "array_format": 0, "array_shape_source": null, "optional": false}, {"port_type": 1, "base_name": "points", "data_type_name": "point3f", "is_array": true, "array_format": 0, "array_shape_source": 0, "optional": false}]'
+            custom int state:userAttrsEvent = 0
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (385, 355)
+        }
+
+        def OmniGraphNode "high_freq_noise_kernel" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom float inputs:amplitude
+            prepend float inputs:amplitude.connect = </World/ActionGraph/high_freq_noise_amplitude.inputs:value>
+            custom token inputs:codeFile
+            custom token inputs:codeProvider = "embedded" (
+                allowedTokens = ["embedded", "file"]
+            )
+            custom string inputs:codeStr = """import warp as wp\r
+\r
+@wp.kernel\r
+def compute(inputs: Inputs, outputs: Outputs):\r
+    tid = wp.tid()\r
+\r
+    seed = wp.rand_init(42)\r
+    pos = inputs.points[tid] / max(inputs.size, 1e-6)\r
+    noise = wp.noise(\r
+        seed,\r
+        wp.vec4(\r
+            pos[0] + float(inputs.time),\r
+            pos[1],\r
+            pos[2],\r
+            float(inputs.time) * 2.0,\r
+        ),\r
+    )\r
+\r
+    outputs.points[tid] = wp.vec3(\r
+        inputs.points[tid][0],\r
+        inputs.points[tid][1] + noise * inputs.amplitude,\r
+        inputs.points[tid][2],\r
+    )\r
+"""
+            custom token inputs:device = "cuda:0" (
+                allowedTokens = ["cpu", "cuda:0"]
+            )
+            custom int inputs:dim1 = 1
+            custom int inputs:dim2 = 1
+            custom int inputs:dim3 = 1
+            custom int inputs:dim4 = 1
+            custom int inputs:dimCount = 1
+            custom token inputs:dimSource = "points"
+            custom uint inputs:execIn
+            prepend uint inputs:execIn.connect = </World/ActionGraph/low_freq_noise_kernel.outputs:execOut>
+            custom point3f[] inputs:points
+            prepend point3f[] inputs:points.connect = </World/ActionGraph/low_freq_noise_kernel.outputs:points>
+            custom float inputs:size
+            prepend float inputs:size.connect = </World/ActionGraph/high_freq_noise_size.inputs:value>
+            custom double inputs:time
+            prepend double inputs:time.connect = </World/ActionGraph/on_tick.outputs:time>
+            token node:type = "omni.warp.WarpKernel"
+            int node:typeVersion = 2
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            custom point3f[] outputs:points
+            custom string state:userAttrDescs = '[{"port_type": 0, "base_name": "points", "data_type_name": "point3f", "is_array": true, "array_format": 0, "array_shape_source": null, "optional": false}, {"port_type": 0, "base_name": "size", "data_type_name": "float", "is_array": false, "array_format": 0, "array_shape_source": null, "optional": false}, {"port_type": 0, "base_name": "amplitude", "data_type_name": "float", "is_array": false, "array_format": 0, "array_shape_source": null, "optional": false}, {"port_type": 0, "base_name": "time", "data_type_name": "double", "is_array": false, "array_format": 0, "array_shape_source": null, "optional": false}, {"port_type": 1, "base_name": "points", "data_type_name": "point3f", "is_array": true, "array_format": 0, "array_shape_source": 0, "optional": false}]'
+            custom int state:userAttrsEvent = 0
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (856, 191)
+        }
+
+        def OmniGraphNode "read_xform" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom rel inputs:prim = </World/OceanOut/Plane> (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            string relType = "target"
+                        }
+                    }
+                }
+            )
+            custom token inputs:primPath
+            custom bool inputs:usePath = 0
+            token node:type = "omni.graph.nodes.GetPrimLocalToWorldTransform"
+            int node:typeVersion = 2
+            custom matrix4d outputs:localToWorldTransform
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (1092, 132)
+        }
+
+        def OmniGraphNode "read_manipulator_xform" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom rel inputs:prim = </World/Manipulator> (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            string relType = "target"
+                        }
+                    }
+                }
+            )
+            custom token inputs:primPath
+            custom bool inputs:usePath = 0
+            token node:type = "omni.graph.nodes.GetPrimLocalToWorldTransform"
+            int node:typeVersion = 2
+            custom matrix4d outputs:localToWorldTransform
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (1095, 8)
+        }
+
+        def OmniGraphNode "wave_curl_kernel" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom float inputs:angle
+            prepend float inputs:angle.connect = </World/ActionGraph/wave_curl_angle.inputs:value>
+            custom token inputs:codeFile
+            custom token inputs:codeProvider = "embedded" (
+                allowedTokens = ["embedded", "file"]
+            )
+            custom string inputs:codeStr = """import warp as wp\r
+\r
+@wp.kernel\r
+def compute(inputs: Inputs, outputs: Outputs):\r
+    tid = wp.tid()\r
+\r
+    angle = wp.max(inputs.angle, 0.0)\r
+    point = inputs.points[tid]\r
+    xform = wp.transpose(inputs.worldMatrix)\r
+    manipulator_xform = wp.transpose(inputs.manipulator)\r
+\r
+    # Move the point within the manipulator's transformation space.\r
+    point = wp.transform_point(wp.inverse(manipulator_xform) * xform, point)\r
+\r
+    # Compute the influence map.\r
+    influence = wp.exp(-wp.length(point))\r
+\r
+    # Compute the rotation to transform the point with.\r
+    rot = wp.quat_from_axis_angle(\r
+        wp.vec3(1.0, 0.0, 0.0),\r
+        wp.radians(influence * angle),\r
+    )\r
+\r
+    # Apply the rotation.\r
+    point = wp.quat_rotate(rot, point)\r
+\r
+    # Move the point back into its original transformation space.\r
+    point = wp.transform_point(wp.inverse(xform) * manipulator_xform, point)\r
+\r
+    # Store the result.\r
+    outputs.points[tid] = point\r
+"""
+            custom token inputs:device = "cuda:0" (
+                allowedTokens = ["cpu", "cuda:0"]
+            )
+            custom int inputs:dim1 = 1
+            custom int inputs:dim2 = 1
+            custom int inputs:dim3 = 1
+            custom int inputs:dim4 = 1
+            custom int inputs:dimCount = 1
+            custom token inputs:dimSource = "points"
+            custom uint inputs:execIn
+            prepend uint inputs:execIn.connect = </World/ActionGraph/high_freq_noise_kernel.outputs:execOut>
+            custom matrix4d inputs:manipulator
+            prepend matrix4d inputs:manipulator.connect = </World/ActionGraph/read_manipulator_xform.outputs:localToWorldTransform>
+            custom point3f[] inputs:points
+            prepend point3f[] inputs:points.connect = </World/ActionGraph/high_freq_noise_kernel.outputs:points>
+            custom matrix4d inputs:worldMatrix
+            prepend matrix4d inputs:worldMatrix.connect = </World/ActionGraph/read_xform.outputs:localToWorldTransform>
+            token node:type = "omni.warp.WarpKernel"
+            int node:typeVersion = 2
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            custom point3f[] outputs:points
+            custom string state:userAttrDescs = '[{"port_type": 0, "base_name": "points", "data_type_name": "point3f", "is_array": true, "array_format": 0, "array_shape_source": null, "optional": false}, {"port_type": 0, "base_name": "manipulator", "data_type_name": "matrix4d", "is_array": false, "array_format": 0, "array_shape_source": null, "optional": false}, {"port_type": 0, "base_name": "angle", "data_type_name": "float", "is_array": false, "array_format": 0, "array_shape_source": null, "optional": false}, {"port_type": 1, "base_name": "points", "data_type_name": "point3f", "is_array": true, "array_format": 0, "array_shape_source": 0, "optional": false}, {"port_type": 0, "base_name": "worldMatrix", "data_type_name": "matrix4d", "is_array": false, "array_format": 0, "array_shape_source": null, "optional": false}]'
+            custom int state:userAttrsEvent = 0
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (1600, 200)
+        }
+
+        def OmniGraphNode "out_ocean_points" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom uint inputs:execIn
+            prepend uint inputs:execIn.connect = </World/ActionGraph/wave_curl_kernel.outputs:execOut>
+            custom token inputs:name = "points"
+            custom rel inputs:prim = </World/OceanOut/Plane>
+            custom token inputs:primPath
+            custom bool inputs:usdWriteBack = 1
+            custom bool inputs:usePath = 0
+            custom token inputs:value (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            float3[] attrValue = []
+                            string resolvedType = "pointf[3][]"
+                        }
+                    }
+                }
+            )
+            prepend token inputs:value.connect = </World/ActionGraph/wave_curl_kernel.outputs:points>
+            token node:type = "omni.graph.nodes.WritePrimAttribute"
+            int node:typeVersion = 2
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            custom bool state:correctlySetup
+            custom uint64 state:destAttrib
+            custom uint64 state:destPath
+            custom uint64 state:destPathToken
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (2000, 300)
+        }
+    }
+
+    def Scope "Looks"
+    {
+        def "CeramicMaterial" (
+            prepend payload = @./assets/materials/ceramic_material.usda@
+        )
+        {
+            over "CeramicMaterial"
+            {
+                over "Shader"
+                {
+                    color3f inputs:diffuse_reflection_color = (0.5, 0.5, 0.5) (
+                        customData = {
+                            float3 default = (0.2, 0.2, 0.2)
+                        }
+                        displayGroup = "Albedo"
+                        displayName = "Albedo Color"
+                        doc = "This is the albedo base color"
+                        hidden = false
+                        renderType = "color"
+                    )
+                }
+            }
+        }
+
+        def "OceanMaterial" (
+            prepend payload = @./assets/materials/ocean_material.usda@
+        )
+        {
+            over "OceanMaterial"
+            {
+                over "Shader"
+                {
+                    color3f inputs:glass_color = (0.05, 0.175, 0.2) (
+                        customData = {
+                            float3 default = (1, 1, 1)
+                            dictionary range = {
+                                float3 max = (1, 1, 1)
+                                float3 min = (0, 0, 0)
+                            }
+                        }
+                        displayGroup = "Color"
+                        displayName = "Glass Color"
+                        doc = "Sets the color of the glass"
+                        hidden = false
+                        renderType = "color"
+                    )
+                }
+            }
+        }
+    }
+
+    def Cylinder "Manipulator" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        uniform token axis = "X"
+        float3[] extent = [(-0.5, -1, -1), (0.5, 1, 1)]
+        double height = 1
+        rel material:binding = </World/Looks/CeramicMaterial/CeramicMaterial> (
+            bindMaterialAs = "weakerThanDescendants"
+        )
+        bool primvars:doNotCastShadows = 1
+        double radius = 1
+        custom bool refinementEnableOverride = 1
+        custom int refinementLevel = 2
+        token visibility = "inherited"
+        double3 xformOp:rotateXYZ = (0, 0, 0)
+        double3 xformOp:scale = (1000, 100, 100)
+        double3 xformOp:translate = (5, 325, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+    }
+
+    def "OceanIn" (
+        prepend payload = @./assets/geometries/plane_256x256.usd@
+    )
+    {
+        token visibility = "invisible"
+        float3 xformOp:rotateXYZ = (0, 0, 0)
+        float3 xformOp:scale = (10, 10, 10)
+        double3 xformOp:translate = (0, 250, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+    }
+
+    def "OceanOut" (
+        prepend payload = @./assets/geometries/plane_256x256.usd@
+    )
+    {
+        token visibility = "inherited"
+        float3 xformOp:rotateXYZ = (0, 0, 0)
+        float3 xformOp:scale = (10, 10, 10)
+        double3 xformOp:translate = (0, 250, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        over "Plane" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </World/Looks/OceanMaterial/OceanMaterial> (
+                bindMaterialAs = "weakerThanDescendants"
+            )
+        }
+    }
+}
+
+def Xform "Environment"
+{
+    double3 xformOp:rotateXYZ = (0, 0, 0)
+    double3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (0, 0, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+    def "Stage" (
+        prepend payload = @./assets/environments/stage.usda@
+    )
+    {
+        over "Geometries"
+        {
+            over "Platform"
+            {
+                token visibility = "invisible"
+            }
+        }
+
+        over "Lights"
+        {
+            over "FrontLight"
+            {
+                float height = 4000
+                float width = 6000
+                double3 xformOp:rotateXYZ = (0, 0, 0)
+                double3 xformOp:scale = (1, 1, 1)
+                double3 xformOp:translate = (0, 2000, 1000)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+            }
+
+            def DomeLight "DomeLight" (
+                prepend apiSchemas = ["ShapingAPI"]
+            )
+            {
+                float inputs:intensity = 1000
+                float inputs:shaping:cone:angle = 180
+                float inputs:shaping:cone:softness
+                float inputs:shaping:focus
+                color3f inputs:shaping:focusTint
+                asset inputs:shaping:ies:file
+                asset inputs:texture:file = @https://omniverse-content-production.s3.us-west-2.amazonaws.com/Assets/Skies/2022_1/Skies/Evening/evening_road_01.hdr@
+                token inputs:texture:format = "latlong"
+                bool visibleInPrimaryRay = 0
+                double3 xformOp:rotateXYZ = (270, 0, 0)
+                double3 xformOp:scale = (1, 1, 1)
+                double3 xformOp:translate = (0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+            }
+        }
+
+        over "Looks"
+        {
+            over "StageBackgroundMaterial"
+            {
+                over "Shader"
+                {
+                    color3f inputs:diffuse_reflection_color = (0.2, 0.2, 0.2) (
+                        doc = "This is the albedo base color"
+                        hidden = false
+                        renderType = "color"
+                    )
+                }
+            }
+        }
+    }
+}
+
+def Xform "CameraRoot"
+{
+    double3 xformOp:rotateXYZ = (-25, 50, 0)
+    double3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (0, 200, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+    def Camera "Camera"
+    {
+        float2 clippingRange = (1, 10000000)
+        float focalLength = 25
+        float focusDistance = 2500
+        float fStop = 0
+        bool omni:kit:cameraLock = 0
+        double3 xformOp:rotateYXZ = (0, 0, 0)
+        double3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (0, 0, 2000)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateYXZ", "xformOp:scale"]
+    }
+}

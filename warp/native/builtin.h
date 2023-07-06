@@ -788,16 +788,16 @@ inline CUDA_CALLABLE double floordiv(double a, double b)
 inline CUDA_CALLABLE float leaky_min(float a, float b, float r) { return min(a, b); }
 inline CUDA_CALLABLE float leaky_max(float a, float b, float r) { return max(a, b); }
 
-inline CUDA_CALLABLE half abs(half x) { return ::fabs(float(x)); }
-inline CUDA_CALLABLE float abs(float x) { return ::fabs(x); }
+inline CUDA_CALLABLE half abs(half x) { return ::fabsf(float(x)); }
+inline CUDA_CALLABLE float abs(float x) { return ::fabsf(x); }
 inline CUDA_CALLABLE double abs(double x) { return ::fabs(x); }
 
-inline CUDA_CALLABLE float acos(float x){ return ::acos(min(max(x, -1.0f), 1.0f)); }
-inline CUDA_CALLABLE float asin(float x){ return ::asin(min(max(x, -1.0f), 1.0f)); }
-inline CUDA_CALLABLE float atan(float x) { return ::atan(x); }
-inline CUDA_CALLABLE float atan2(float y, float x) { return ::atan2(y, x); }
-inline CUDA_CALLABLE float sin(float x) { return ::sin(x); }
-inline CUDA_CALLABLE float cos(float x) { return ::cos(x); }
+inline CUDA_CALLABLE float acos(float x){ return ::acosf(min(max(x, -1.0f), 1.0f)); }
+inline CUDA_CALLABLE float asin(float x){ return ::asinf(min(max(x, -1.0f), 1.0f)); }
+inline CUDA_CALLABLE float atan(float x) { return ::atanf(x); }
+inline CUDA_CALLABLE float atan2(float y, float x) { return ::atan2f(y, x); }
+inline CUDA_CALLABLE float sin(float x) { return ::sinf(x); }
+inline CUDA_CALLABLE float cos(float x) { return ::cosf(x); }
 
 inline CUDA_CALLABLE double acos(double x){ return ::acos(min(max(x, -1.0), 1.0)); }
 inline CUDA_CALLABLE double asin(double x){ return ::asin(min(max(x, -1.0), 1.0)); }
@@ -806,12 +806,12 @@ inline CUDA_CALLABLE double atan2(double y, double x) { return ::atan2(y, x); }
 inline CUDA_CALLABLE double sin(double x) { return ::sin(x); }
 inline CUDA_CALLABLE double cos(double x) { return ::cos(x); }
 
-inline CUDA_CALLABLE half acos(half x){ return ::acos(min(max(float(x), -1.0f), 1.0f)); }
-inline CUDA_CALLABLE half asin(half x){ return ::asin(min(max(float(x), -1.0f), 1.0f)); }
-inline CUDA_CALLABLE half atan(half x) { return ::atan(float(x)); }
-inline CUDA_CALLABLE half atan2(half y, half x) { return ::atan2(float(y), float(x)); }
-inline CUDA_CALLABLE half sin(half x) { return ::sin(float(x)); }
-inline CUDA_CALLABLE half cos(half x) { return ::cos(float(x)); }
+inline CUDA_CALLABLE half acos(half x){ return ::acosf(min(max(float(x), -1.0f), 1.0f)); }
+inline CUDA_CALLABLE half asin(half x){ return ::asinf(min(max(float(x), -1.0f), 1.0f)); }
+inline CUDA_CALLABLE half atan(half x) { return ::atanf(float(x)); }
+inline CUDA_CALLABLE half atan2(half y, half x) { return ::atan2f(float(y), float(x)); }
+inline CUDA_CALLABLE half sin(half x) { return ::sinf(float(x)); }
+inline CUDA_CALLABLE half cos(half x) { return ::cosf(float(x)); }
 
 
 inline CUDA_CALLABLE float sqrt(float x)
@@ -823,7 +823,7 @@ inline CUDA_CALLABLE float sqrt(float x)
         assert(0);
     }
 #endif
-    return ::sqrt(x);
+    return ::sqrtf(x);
 }
 inline CUDA_CALLABLE double sqrt(double x)
 {
@@ -845,10 +845,10 @@ inline CUDA_CALLABLE half sqrt(half x)
         assert(0);
     }
 #endif
-    return ::sqrt(float(x));
+    return ::sqrtf(float(x));
 }
 
-inline CUDA_CALLABLE float tan(float x) { return ::tan(x); }
+inline CUDA_CALLABLE float tan(float x) { return ::tanf(x); }
 inline CUDA_CALLABLE float sinh(float x) { return ::sinhf(x);}
 inline CUDA_CALLABLE float cosh(float x) { return ::coshf(x);}
 inline CUDA_CALLABLE float tanh(float x) { return ::tanhf(x);}
@@ -862,7 +862,7 @@ inline CUDA_CALLABLE double tanh(double x) { return ::tanh(x);}
 inline CUDA_CALLABLE double degrees(double x) { return x * RAD_TO_DEG;}
 inline CUDA_CALLABLE double radians(double x) { return x * DEG_TO_RAD;}
 
-inline CUDA_CALLABLE half tan(half x) { return ::tan(float(x)); }
+inline CUDA_CALLABLE half tan(half x) { return ::tanf(float(x)); }
 inline CUDA_CALLABLE half sinh(half x) { return ::sinhf(float(x));}
 inline CUDA_CALLABLE half cosh(half x) { return ::coshf(float(x));}
 inline CUDA_CALLABLE half tanh(half x) { return ::tanhf(float(x));}
@@ -1203,11 +1203,11 @@ inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, int& l)
 template<typename T>
 inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 {
-#if defined(WP_CPU)
+#if !defined(__CUDA_ARCH__)
     T old = buf[0];
     buf[0] += value;
     return old;
-#elif defined(WP_CUDA)
+#else
     return atomicAdd(buf, value);
 #endif
 }
@@ -1215,11 +1215,11 @@ inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 template<>
 inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
 {
-#if defined(WP_CPU)
+#if !defined(__CUDA_ARCH__)
     float16 old = buf[0];
     buf[0] += value;
     return old;
-#elif defined(WP_CUDA)
+#else
     //return atomicAdd(buf, value);
     
     /* Define __PTR for atomicAdd prototypes below, undef after done */
@@ -1243,7 +1243,7 @@ inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
 
     #undef __PTR
 
-#endif // defined(WP_CUDA)
+#endif // defined(__CUDA_ARCH__)
 
 }
 

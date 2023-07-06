@@ -18,12 +18,12 @@ struct initializer_array
 {
     const Type storage[Length];
 
-    const Type operator[](unsigned i)
+    CUDA_CALLABLE const Type operator[](unsigned i)
     {
         return storage[i];
     }
 
-    const Type operator[](unsigned i) const
+    CUDA_CALLABLE const Type operator[](unsigned i) const
     {
         return storage[i];
     }

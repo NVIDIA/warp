@@ -279,6 +279,72 @@ void memset_device(void* context, void* dest, int value, size_t n)
     }
 }
 
+// fill memory buffer with a value: generic memtile kernel using memcpy for each element
+__global__ void memtile_kernel(void* dst, const void* src, size_t srcsize, size_t n)
+{
+    size_t tid = wp::grid_index();
+    if (tid < n)
+    {
+        memcpy((int8_t*)dst + srcsize * tid, src, srcsize);
+    }
+}
+
+// this should be faster than memtile_kernel, but requires proper alignment of dst
+template <typename T>
+__global__ void memtile_value_kernel(T* dst, T value, size_t n)
+{
+    size_t tid = wp::grid_index();
+    if (tid < n)
+    {
+        dst[tid] = value;
+    }
+}
+
+void memtile_device(void* context, void* dst, const void* src, size_t srcsize, size_t n)
+{
+    ContextGuard guard(context);
+
+    size_t dst_addr = reinterpret_cast<size_t>(dst);
+    size_t src_addr = reinterpret_cast<size_t>(src);
+
+    // try memtile_value first because it should be faster, but we need to ensure proper alignment
+    if (srcsize == 8 && (dst_addr & 7) == 0 && (src_addr & 7) == 0)
+    {
+        int64_t* p = reinterpret_cast<int64_t*>(dst);
+        int64_t value = *reinterpret_cast<const int64_t*>(src);
+        wp_launch_device(WP_CURRENT_CONTEXT, memtile_value_kernel, n, (p, value, n));
+    }
+    else if (srcsize == 4 && (dst_addr & 3) == 0 && (src_addr & 3) == 0)
+    {
+        int32_t* p = reinterpret_cast<int32_t*>(dst);
+        int32_t value = *reinterpret_cast<const int32_t*>(src);
+        wp_launch_device(WP_CURRENT_CONTEXT, memtile_value_kernel, n, (p, value, n));
+    }
+    else if (srcsize == 2 && (dst_addr & 1) == 0 && (src_addr & 1) == 0)
+    {
+        int16_t* p = reinterpret_cast<int16_t*>(dst);
+        int16_t value = *reinterpret_cast<const int16_t*>(src);
+        wp_launch_device(WP_CURRENT_CONTEXT, memtile_value_kernel, n, (p, value, n));
+    }
+    else if (srcsize == 1)
+    {
+        check_cuda(cudaMemset(dst, *reinterpret_cast<const int8_t*>(src), n));
+    }
+    else
+    {
+        // generic version
+
+        // TODO: use a persistent stream-local staging buffer to avoid allocs?
+        void* src_device;
+        check_cuda(cudaMalloc(&src_device, srcsize));
+        check_cuda(cudaMemcpyAsync(src_device, src, srcsize, cudaMemcpyHostToDevice, get_current_stream()));
+
+        wp_launch_device(WP_CURRENT_CONTEXT, memtile_kernel, n, (dst, src_device, srcsize, n));
+
+        check_cuda(cudaFree(src_device));
+    }
+}
+
 
 static __global__ void array_copy_1d_kernel(void* dst, const void* src,
                                         int dst_stride, int src_stride,
@@ -565,43 +631,179 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
 }
 
 
-__global__ void memtile_kernel(char* dest, char* src, size_t srcsize, size_t n)
+static __global__ void array_fill_1d_kernel(void* data,
+                                            int n,
+                                            int stride,
+                                            const int* indices,
+                                            const void* value,
+                                            int value_size)
 {
-    const size_t tid = wp::grid_index();
-    
-    if (tid < n)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n)
     {
-        char *d = dest + srcsize * tid;
-        char *s = src;
-        for( size_t i=0; i < srcsize; ++i,++d,++s )
-        {
-            *d = *s;
-        }
+        int idx = indices ? indices[i] : i;
+        char* p = (char*)data + idx * stride;
+        memcpy(p, value, value_size);
     }
 }
 
-void memtile_device(void* context, void* dest, void *src, size_t srcsize, size_t n)
+static __global__ void array_fill_2d_kernel(void* data,
+                                            wp::vec_t<2, int> shape,
+                                            wp::vec_t<2, int> strides,
+                                            wp::vec_t<2, const int*> indices,
+                                            const void* value,
+                                            int value_size)
 {
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    int n = shape[1];
+    int i = tid / n;
+    int j = tid % n;
+    if (i < shape[0] /*&& j < shape[1]*/)
+    {
+        int idx0 = indices[0] ? indices[0][i] : i;
+        int idx1 = indices[1] ? indices[1][j] : j;
+        char* p = (char*)data + idx0 * strides[0] + idx1 * strides[1];
+        memcpy(p, value, value_size);
+    }
+}
+
+static __global__ void array_fill_3d_kernel(void* data,
+                                            wp::vec_t<3, int> shape,
+                                            wp::vec_t<3, int> strides,
+                                            wp::vec_t<3, const int*> indices,
+                                            const void* value,
+                                            int value_size)
+{
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    int n = shape[1];
+    int o = shape[2];
+    int i = tid / (n * o);
+    int j = tid % (n * o) / o;
+    int k = tid % o;
+    if (i < shape[0] && j < shape[1] /*&& k < shape[2]*/)
+    {
+        int idx0 = indices[0] ? indices[0][i] : i;
+        int idx1 = indices[1] ? indices[1][j] : j;
+        int idx2 = indices[2] ? indices[2][k] : k;
+        char* p = (char*)data + idx0 * strides[0] + idx1 * strides[1] + idx2 * strides[2];
+        memcpy(p, value, value_size);
+    }
+}
+
+static __global__ void array_fill_4d_kernel(void* data,
+                                            wp::vec_t<4, int> shape,
+                                            wp::vec_t<4, int> strides,
+                                            wp::vec_t<4, const int*> indices,
+                                            const void* value,
+                                            int value_size)
+{
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    int n = shape[1];
+    int o = shape[2];
+    int p = shape[3];
+    int i = tid / (n * o * p);
+    int j = tid % (n * o * p) / (o * p);
+    int k = tid % (o * p) / p;
+    int l = tid % p;
+    if (i < shape[0] && j < shape[1] && k < shape[2] /*&& l < shape[3]*/)
+    {
+        int idx0 = indices[0] ? indices[0][i] : i;
+        int idx1 = indices[1] ? indices[1][j] : j;
+        int idx2 = indices[2] ? indices[2][k] : k;
+        int idx3 = indices[3] ? indices[3][l] : l;
+        char* p = (char*)data + idx0 * strides[0] + idx1 * strides[1] + idx2 * strides[2] + idx3 * strides[3];
+        memcpy(p, value, value_size);
+    }
+}
+
+
+WP_API void array_fill_device(void* context, void* arr_ptr, int arr_type, const void* value_ptr, int value_size)
+{
+    if (!arr_ptr || !value_ptr)
+        return;
+
+    void* data = NULL;
+    int ndim = 0;
+    const int* shape = NULL;
+    const int* strides = NULL;
+    const int*const* indices = NULL;
+
+    const int* null_indices[wp::ARRAY_MAX_DIMS] = { NULL };
+
+    if (arr_type == wp::ARRAY_TYPE_REGULAR)
+    {
+        wp::array_t<void>& arr = *static_cast<wp::array_t<void>*>(arr_ptr);
+        data = arr.data;
+        ndim = arr.ndim;
+        shape = arr.shape.dims;
+        strides = arr.strides;
+        indices = null_indices;
+    }
+    else if (arr_type == wp::ARRAY_TYPE_INDEXED)
+    {
+        wp::indexedarray_t<void>& ia = *static_cast<wp::indexedarray_t<void>*>(arr_ptr);
+        data = ia.arr.data;
+        ndim = ia.arr.ndim;
+        shape = ia.shape.dims;
+        strides = ia.arr.strides;
+        indices = ia.indices;
+    }
+    else
+    {
+        fprintf(stderr, "Warp error: Invalid array type id %d\n", arr_type);
+        return;
+    }
+
+    size_t n = 1;
+    for (int i = 0; i < ndim; i++)
+        n *= shape[i];
+
     ContextGuard guard(context);
 
-    void* src_device;
-    check_cuda(cudaMalloc(&src_device, srcsize));
-    check_cuda(cudaMemcpyAsync(src_device, src, srcsize, cudaMemcpyHostToDevice, get_current_stream()));
+    // copy value to device memory
+    void* value_devptr;
+    check_cuda(cudaMalloc(&value_devptr, value_size));
+    check_cuda(cudaMemcpyAsync(value_devptr, value_ptr, value_size, cudaMemcpyHostToDevice, get_current_stream()));
 
-    wp_launch_device(WP_CURRENT_CONTEXT, memtile_kernel, n, ((char *)dest,(char *)src_device,srcsize,n));
-
-    check_cuda(cudaFree(src_device));
-}
-
-
-void array_inner_device(uint64_t a, uint64_t b, uint64_t out, int len)
-{
-
-}
-
-void array_sum_device(uint64_t a, uint64_t out, int len)
-{
-    
+    switch (ndim)
+    {
+    case 1:
+    {
+        wp_launch_device(WP_CURRENT_CONTEXT, array_fill_1d_kernel, n,
+                         (data, shape[0], strides[0], indices[0], value_devptr, value_size));
+        break;
+    }
+    case 2:
+    {
+        wp::vec_t<2, int> shape_v(shape[0], shape[1]);
+        wp::vec_t<2, int> strides_v(strides[0], strides[1]);
+        wp::vec_t<2, const int*> indices_v(indices[0], indices[1]);
+        wp_launch_device(WP_CURRENT_CONTEXT, array_fill_2d_kernel, n,
+                         (data, shape_v, strides_v, indices_v, value_devptr, value_size));
+        break;
+    }
+    case 3:
+    {
+        wp::vec_t<3, int> shape_v(shape[0], shape[1], shape[2]);
+        wp::vec_t<3, int> strides_v(strides[0], strides[1], strides[2]);
+        wp::vec_t<3, const int*> indices_v(indices[0], indices[1], indices[2]);
+        wp_launch_device(WP_CURRENT_CONTEXT, array_fill_3d_kernel, n,
+                         (data, shape_v, strides_v, indices_v, value_devptr, value_size));
+        break;
+    }
+    case 4:
+    {
+        wp::vec_t<4, int> shape_v(shape[0], shape[1], shape[2], shape[3]);
+        wp::vec_t<4, int> strides_v(strides[0], strides[1], strides[2], strides[3]);
+        wp::vec_t<4, const int*> indices_v(indices[0], indices[1], indices[2], indices[3]);
+        wp_launch_device(WP_CURRENT_CONTEXT, array_fill_4d_kernel, n,
+                         (data, shape_v, strides_v, indices_v, value_devptr, value_size));
+        break;
+    }
+    default:
+        fprintf(stderr, "Warp error: invalid array dimensionality (%d)\n", ndim);
+        return;
+    }
 }
 
 void array_scan_int_device(uint64_t in, uint64_t out, int len, bool inclusive)
@@ -1064,10 +1266,8 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
 
     std::vector<const char*> opts;
     opts.push_back(arch_opt);
-    opts.push_back(include_opt);    
-    opts.push_back("--device-as-default-execution-space");
+    opts.push_back(include_opt);
     opts.push_back("--std=c++11");
-    opts.push_back("--define-macro=WP_CUDA");
     
     if (debug)
     {
@@ -1193,7 +1393,7 @@ void* cuda_load_module(void* context, const char* path)
         size_t length = ftell(file);
         fseek(file, 0, SEEK_SET);
 
-        input.resize(length);
+        input.resize(length + 1);
         if (fread(input.data(), 1, length, file) != length)
         {
             fprintf(stderr, "Warp error: Failed to read input file '%s'\n", path);
@@ -1201,6 +1401,8 @@ void* cuda_load_module(void* context, const char* path)
             return NULL;
         }
         fclose(file);
+
+        input[length] = '\0';
     }
     else
     {
@@ -1384,8 +1586,11 @@ void cuda_graphics_unregister_resource(void* context, void* resource)
 #include "mesh.cu"
 #include "sort.cu"
 #include "hashgrid.cu"
+#include "reduce.cu"
+#include "runlength_encode.cu"
 #include "scan.cu"
 #include "marching.cu"
+#include "sparse.cu"
 #include "volume.cu"
 #include "volume_builder.cu"
 #if WP_ENABLE_CUTLASS

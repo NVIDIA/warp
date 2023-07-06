@@ -1,0 +1,81 @@
+{
+    "WarpWaveSolve": {
+        "version": 1,
+        "categoryDefinitions": "../../../../config/warp_categories.json",
+        "description": "Creates a grid geometry simulated with a wave equation solver.",
+        "categories": ["warp"],
+        "language": "Python",
+        "uiName": "Wave Solve",
+        "cudaPointers": "cpu",
+        "inputs": {
+            "execIn": {
+                "type": "execution",
+                "description": "Input execution."
+            },
+            "transform": {
+                "type": "matrixd[4]",
+                "uiName": "Transform",
+                "description": "World transformation to store alongside the output geometry."
+            },
+            "size": {
+                "type": "float[2]",
+                "uiName": "Size",
+                "description": "Grid's size.",
+                "default": [100.0, 100.0],
+                "metadata": {
+                    "minimum": [0.0, 0.0]
+                }
+            },
+            "cellSize": {
+                "type": "float",
+                "uiName": "Cell Size",
+                "description": "Cell size for the grid.",
+                "default": 1.0,
+                "metadata": {
+                    "minimum": 0.0
+                }
+            },
+            "collider": {
+                "type": "bundle",
+                "uiName": "Collider",
+                "description": "Collider.",
+                "memoryType": "cuda"
+            },
+            "amplitude": {
+                "type": "float",
+                "uiName": "Amplitude",
+                "description": "Displacement amplitude.",
+                "default": 1.0
+            },
+            "speed": {
+                "type": "float",
+                "uiName": "Speed",
+                "description": "Simulation speed.",
+                "default": 100.0
+            },
+            "damping": {
+                "type": "float",
+                "uiName": "Damping",
+                "description": "Simulation damping.",
+                "default": 0.25
+            },
+            "time": {
+                "type": "double",
+                "uiName": "Time",
+                "description": "Time."
+            }
+        },
+        "outputs": {
+            "execOut": {
+                "type": "execution",
+                "description": "Output execution."
+            },
+            "mesh": {
+                "type": "bundle",
+                "uiName": "Mesh",
+                "description": "Output mesh geometry.",
+                "memoryType": "cuda"
+            }
+        }
+    }
+}

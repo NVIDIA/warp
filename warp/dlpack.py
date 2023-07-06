@@ -108,9 +108,6 @@ def dtype_to_dlpack(wp_dtype) -> DLDataType:
         return (DLDataTypeCode.kDLFloat, 32, 1)
     elif wp_dtype == warp.float64:
         return (DLDataTypeCode.kDLFloat, 64, 1)
-    elif wp_dtype in warp.types.vector_types:
-        # treat vector/matrix arrays as regular nd-arrays with one dtype lane
-        return (DLDataTypeCode.kDLFloat, 32, 1)
     else:
         raise RuntimeError(f"No conversion from Warp type {wp_dtype} to DLPack type")
 
@@ -196,7 +193,7 @@ def to_dlpack(wp_array: warp.array):
     # DLPack does not support structured arrays
     if isinstance(wp_array.dtype, warp.codegen.Struct):
         raise RuntimeError("Cannot convert structured Warp arrays to DLPack.")
-    
+
     holder = _Holder(wp_array)
 
     # allocate DLManagedTensor
@@ -204,12 +201,12 @@ def to_dlpack(wp_array: warp.array):
     dl_managed_tensor = DLManagedTensor.from_address(ctypes.pythonapi.PyMem_RawMalloc(size))
 
     # handle vector types
-    if wp_array.dtype in warp.types.vector_types:
+    if hasattr(wp_array.dtype, "_wp_scalar_type_"):
         # vector type, flatten the dimensions into one tuple
-        target_dtype = warp.float32
+        target_dtype = wp_array.dtype._wp_scalar_type_
         target_ndim = wp_array.ndim + len(wp_array.dtype._shape_)
         target_shape = (*wp_array.shape, *wp_array.dtype._shape_)
-        dtype_strides = warp.types.strides_from_shape(wp_array.dtype._shape_, warp.float32)
+        dtype_strides = warp.types.strides_from_shape(wp_array.dtype._shape_, wp_array.dtype._wp_scalar_type_)
         target_strides = (*wp_array.strides, *dtype_strides)
     else:
         # scalar type
@@ -255,7 +252,7 @@ def dtype_is_compatible(dl_dtype, wp_dtype):
         if dl_dtype.bits == 16:
             return wp_dtype == warp.float16
         elif dl_dtype.bits == 32:
-            return wp_dtype == warp.float32 or wp_dtype in warp.types.vector_types
+            return wp_dtype == warp.float32
         elif dl_dtype.bits == 64:
             return wp_dtype == warp.float64
     elif dl_dtype.type_code.value == DLDataTypeCode.kDLInt or dl_dtype.type_code.value == DLDataTypeCode.kDLUInt:
@@ -320,30 +317,33 @@ def from_dlpack(pycapsule, dtype=None) -> warp.array:
         # automatically detect dtype
         dtype = dtype_from_dlpack(dlt.dtype)
 
-    elif dtype_is_compatible(dlt.dtype, dtype):
-        # handle vector types
-        if dtype in warp.types.vector_types:
-            dtype_shape = dtype._shape_
-            dtype_dims = len(dtype._shape_)
-            if dtype_dims > len(shape) or dtype_shape != shape[-dtype_dims:]:
-                raise RuntimeError(
-                    f"Could not convert DLPack tensor with shape {shape} to Warp array with dtype={dtype}, ensure that source inner shape is {dtype_shape}"
-                )
+    elif hasattr(dtype, "_wp_scalar_type_"):
+        # handle vector/matrix types
 
-            if strides is not None:
-                # ensure the inner strides are contiguous
-                stride = 4
-                for i in range(dtype_dims):
-                    if strides[-i - 1] != stride:
-                        raise RuntimeError(
-                            f"Could not convert DLPack tensor with shape {shape} to Warp array with dtype={dtype}, because the source inner strides are not contiguous"
-                        )
-                    stride *= dtype_shape[-i - 1]
-                strides = tuple(strides[:-dtype_dims])
+        if not dtype_is_compatible(dlt.dtype, dtype._wp_scalar_type_):
+            raise RuntimeError(f"Incompatible data types: {dlt.dtype} and {dtype}")
 
-            shape = tuple(shape[:-dtype_dims])
+        dtype_shape = dtype._shape_
+        dtype_dims = len(dtype._shape_)
+        if dtype_dims > len(shape) or dtype_shape != shape[-dtype_dims:]:
+            raise RuntimeError(
+                f"Could not convert DLPack tensor with shape {shape} to Warp array with dtype={dtype}, ensure that source inner shape is {dtype_shape}"
+            )
 
-    else:
+        if strides is not None:
+            # ensure the inner strides are contiguous
+            stride = itemsize
+            for i in range(dtype_dims):
+                if strides[-i - 1] != stride:
+                    raise RuntimeError(
+                        f"Could not convert DLPack tensor with shape {shape} to Warp array with dtype={dtype}, because the source inner strides are not contiguous"
+                    )
+                stride *= dtype_shape[-i - 1]
+            strides = tuple(strides[:-dtype_dims]) or (itemsize,)
+
+        shape = tuple(shape[:-dtype_dims]) or (1,)
+
+    elif not dtype_is_compatible(dlt.dtype, dtype):
         # incompatible dtype requested
         raise RuntimeError(f"Incompatible data types: {dlt.dtype} and {dtype}")
 

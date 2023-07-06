@@ -1,0 +1,116 @@
+{
+    "WarpParticlesFromMesh": {
+        "version": 1,
+        "categoryDefinitions": "../../../../config/warp_categories.json",
+        "description": "Generates particles inside a mesh.",
+        "categories": ["warp"],
+        "language": "Python",
+        "uiName": "Particles From Mesh",
+        "cudaPointers": "cpu",
+        "inputs": {
+            "execIn": {
+                "type": "execution",
+                "description": "Input execution."
+            },
+            "transform": {
+                "type": "matrixd[4]",
+                "uiName": "Transform",
+                "description": "World transformation to store alongside the output geometry."
+            },
+            "seed": {
+                "type": "int",
+                "description": "Seed for the random number generator.",
+                "uiName": "Seed"
+            },
+            "mesh": {
+                "type": "bundle",
+                "description": "Mesh.",
+                "uiName": "Mesh",
+                "memoryType": "cuda"
+            },
+            "minSdf": {
+                "type": "float",
+                "description": "Minimum SDF value to consider.",
+                "uiName": "Min SDF",
+                "default": -100.0
+            },
+            "maxSdf": {
+                "type": "float",
+                "description": "Maximum SDF value to consider.",
+                "uiName": "Max SDF",
+                "default": 0.0
+            },
+            "radius": {
+                "type": "float",
+                "description": "Particles radius.",
+                "uiName": "Radius",
+                "default": 1.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "spacing": {
+                "type": "float",
+                "description": "Particles spacing.",
+                "uiName": "Spacing",
+                "default": 4.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "spacingJitter": {
+                "type": "float",
+                "description": "Amount by which to randomize the spacing between each particle.",
+                "uiName": "Spacing Jitter",
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "mass": {
+                "type": "float",
+                "description": "Particles mass.",
+                "uiName": "Mass",
+                "default": 1.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "velocityDir": {
+                "type": "vectorf[3]",
+                "description": "Direction for the velocity, in the input mesh's object space.",
+                "uiName": "Velocity Dir",
+                "default": [0.0, 0.0, 1.0]
+            },
+            "velocityAmount": {
+                "type": "float",
+                "description": "Amount for the velocity.",
+                "uiName": "Velocity Amount",
+                "default": 0.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "maxPoints": {
+                "type": "int",
+                "description": "Maximum number of points to generate.",
+                "uiName": "Max Points",
+                "default": 1000000,
+                "metadata": {
+                    "min": 0
+                }
+            }
+        },
+        "outputs": {
+            "execOut": {
+                "type": "execution",
+                "description": "Output execution."
+            },
+            "particles": {
+                "type": "bundle",
+                "uiName": "Particles",
+                "description": "Output particles geometry.",
+                "memoryType": "cuda"
+            }
+        }
+    }
+}

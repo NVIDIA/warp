@@ -106,6 +106,58 @@ def test_arrays(test, device, dtype):
     assert_np_equal(v4.numpy(), v4_np, tol=1.0e-6)
 
 
+def test_components(test, device, dtype):
+    # test accessing matrix components from Python - this is especially important
+    # for float16, which requires special handling internally
+
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    mat23 = wp.types.matrix(shape=(2, 3), dtype=wptype)
+
+    m = mat23(1, 2, 3, 4, 5, 6)
+
+    # test __getitem__ for row vectors
+    r0 = m[0]
+    r1 = m[1]
+    test.assertEqual(r0[0], 1)
+    test.assertEqual(r0[1], 2)
+    test.assertEqual(r0[2], 3)
+    test.assertEqual(r1[0], 4)
+    test.assertEqual(r1[1], 5)
+    test.assertEqual(r1[2], 6)
+
+    # test __getitem__ for individual components
+    test.assertEqual(m[0, 0], 1)
+    test.assertEqual(m[0, 1], 2)
+    test.assertEqual(m[0, 2], 3)
+    test.assertEqual(m[1, 0], 4)
+    test.assertEqual(m[1, 1], 5)
+    test.assertEqual(m[1, 2], 6)
+
+    # test __setitem__ for row vectors
+    m[0] = [7, 8, 9]
+    m[1] = [10, 11, 12]
+    test.assertEqual(m[0, 0], 7)
+    test.assertEqual(m[0, 1], 8)
+    test.assertEqual(m[0, 2], 9)
+    test.assertEqual(m[1, 0], 10)
+    test.assertEqual(m[1, 1], 11)
+    test.assertEqual(m[1, 2], 12)
+
+    # test __setitem__ for individual components
+    m[0, 0] = 13
+    m[0, 1] = 14
+    m[0, 2] = 15
+    m[1, 0] = 16
+    m[1, 1] = 17
+    m[1, 2] = 18
+    test.assertEqual(m[0, 0], 13)
+    test.assertEqual(m[0, 1], 14)
+    test.assertEqual(m[0, 2], 15)
+    test.assertEqual(m[1, 0], 16)
+    test.assertEqual(m[1, 1], 17)
+    test.assertEqual(m[1, 2], 18)
+
+
 def test_constants(test, device, dtype, register_kernels=False):
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
     mat22 = wp.types.matrix(shape=(2, 2), dtype=wptype)
@@ -2784,6 +2836,61 @@ def test_diag(test, device, dtype, register_kernels=False):
                 idx = idx + 1
 
 
+def test_get_diag(test, device, dtype, register_kernels=False):
+    np.random.seed(123)
+
+    tol = {
+        np.float16: 1.0e-3,
+        np.float32: 1.0e-6,
+        np.float64: 1.0e-8,
+    }.get(dtype, 0)
+
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    mat55 = wp.types.vector(shape=(5, 5), dtype=wptype)
+
+    output_select_kernel = get_select_kernel(wptype)
+
+    def check_mat_diag(
+        m55: wp.array(dtype=mat55),
+        outcomponents: wp.array(dtype=wptype),
+    ):
+        # multiply outputs by 2 so we've got something to backpropagate:
+        vec5result = wptype(2) * wp.get_diag(m55[0])
+
+        idx = 0
+        for i in range(5):
+            outcomponents[idx] = vec5result[i]
+            idx = idx + 1
+
+    kernel = getkernel(check_mat_diag, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    m55 = wp.array(randvals((1, 5, 5), dtype), dtype=mat55, requires_grad=True, device=device)
+    outcomponents = wp.zeros(5, dtype=wptype, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+
+    wp.launch(kernel, dim=1, inputs=[m55], outputs=[outcomponents], device=device)
+
+    assert_np_equal(outcomponents.numpy(), 2 * np.diag(m55.numpy()[0]), tol=tol)
+
+    if dtype in np_float_types:
+        idx = 0
+        for i in range(5):
+            tape = wp.Tape()
+            with tape:
+                wp.launch(kernel, dim=1, inputs=[m55], outputs=[outcomponents], device=device)
+                wp.launch(output_select_kernel, dim=1, inputs=[outcomponents, idx], outputs=[out], device=device)
+            tape.backward(loss=out)
+            expectedresult = np.zeros((5, 5), dtype=dtype)
+            expectedresult[i, i] = 2
+            assert_np_equal(tape.gradients[m55].numpy()[0], expectedresult, tol=10 * tol)
+            tape.zero()
+
+            idx = idx + 1
+
+
 def test_inverse(test, device, dtype, register_kernels=False):
     np.random.seed(123)
 
@@ -3993,6 +4100,7 @@ def register(parent):
 
     for dtype in np_scalar_types:
         add_function_test(TestMat, f"test_arrays_{dtype.__name__}", test_arrays, devices=devices, dtype=dtype)
+        add_function_test(TestMat, f"test_components_{dtype.__name__}", test_components, devices=None, dtype=dtype)
         add_function_test_register_kernel(
             TestMat, f"test_constructors_{dtype.__name__}", test_constructors, devices=devices, dtype=dtype
         )
@@ -4055,6 +4163,9 @@ def register(parent):
         )
         add_function_test_register_kernel(
             TestMat, f"test_diag_{dtype.__name__}", test_diag, devices=devices, dtype=dtype
+        )
+        add_function_test_register_kernel(
+            TestMat, f"test_get_diag_{dtype.__name__}", test_diag, devices=devices, dtype=dtype
         )
         add_function_test_register_kernel(
             TestMat, f"test_equivalent_types_{dtype.__name__}", test_equivalent_types, devices=devices, dtype=dtype

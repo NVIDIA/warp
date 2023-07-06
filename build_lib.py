@@ -11,7 +11,7 @@ import os
 import argparse
 
 import warp.config
-import warp.build
+from warp.build_dll import build_dll, set_msvc_compiler, find_host_compiler
 
 parser = argparse.ArgumentParser(description="Warp build script")
 parser.add_argument("--msvc_path", type=str, help="Path to MSVC compiler (optional if already on PATH)")
@@ -66,10 +66,10 @@ else:
 if os.name == "nt":
     if args.sdk_path and args.msvc_path:
         # user provided MSVC
-        warp.build.set_msvc_compiler(msvc_path=args.msvc_path, sdk_path=args.sdk_path)
+        set_msvc_compiler(msvc_path=args.msvc_path, sdk_path=args.sdk_path)
     else:
         # attempt to find MSVC in environment (will set vcvars)
-        warp.config.host_compiler = warp.build.find_host_compiler()
+        warp.config.host_compiler = find_host_compiler()
 
         if not warp.config.host_compiler:
             print("Warp build error: Could not find MSVC compiler")
@@ -94,7 +94,10 @@ try:
         "native/cuda_util.cpp",
         "native/mesh.cpp",
         "native/hashgrid.cpp",
+        "native/reduce.cpp",
+        "native/runlength_encode.cpp",
         "native/sort.cpp",
+        "native/sparse.cpp",
         "native/volume.cpp",
         "native/marching.cpp",
         "native/cutlass_gemm.cpp",
@@ -109,7 +112,7 @@ try:
 
     warp_dll_path = os.path.join(build_path, f"bin/{lib_name('warp')}")
 
-    warp.build.build_dll(
+    build_dll(
         dll_path=warp_dll_path,
         cpp_paths=warp_cpp_paths,
         cu_path=warp_cu_path,

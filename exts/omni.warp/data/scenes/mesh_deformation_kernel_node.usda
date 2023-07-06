@@ -1,0 +1,270 @@
+#usda 1.0
+(
+    customLayerData = {
+        dictionary cameraSettings = {
+            string boundCamera = "/CameraRoot/Camera"
+        }
+        dictionary renderSettings = {
+            int "rtx:post:dlss:execMode" = 0
+            bool "rtx:translucency:enabled" = 0
+        }
+    }
+    defaultPrim = "World"
+    endTimeCode = 36000
+    metersPerUnit = 0.01
+    startTimeCode = 0
+    timeCodesPerSecond = 60
+    upAxis = "Y"
+)
+
+def Xform "World"
+{
+    def OmniGraph "ActionGraph"
+    {
+        token evaluationMode = "Automatic"
+        token evaluator:type = "execution"
+        token fabricCacheBacking = "Shared"
+        int2 fileFormatVersion = (1, 7)
+        token pipelineStage = "pipelineStageSimulation"
+
+        def OmniGraphNode "on_tick" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom uint inputs:framePeriod = 0
+            custom bool inputs:onlyPlayback = 1
+            token node:type = "omni.graph.action.OnTick"
+            int node:typeVersion = 1
+            custom double outputs:absoluteSimTime
+            custom double outputs:deltaSeconds
+            custom double outputs:frame
+            custom bool outputs:isPlaying
+            custom uint outputs:tick (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            custom double outputs:time
+            custom double outputs:timeSinceStart
+            custom double state:accumulatedSeconds = 0
+            custom uint state:frameCount = 0
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (88, -26)
+        }
+
+        def OmniGraphNode "PlaneReadAttrib" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom token inputs:name = "points"
+            custom rel inputs:prim (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            string relType = "target"
+                        }
+                    }
+                }
+            )
+            prepend rel inputs:prim = </World/MeshIn/Plane>
+            custom token inputs:primPath
+            custom timecode inputs:usdTimecode = nan
+            custom bool inputs:usePath = 0
+            token node:type = "omni.graph.nodes.ReadPrimAttribute"
+            int node:typeVersion = 3
+            custom token outputs:value
+            custom bool state:correctlySetup = 0
+            custom uint64 state:importPath
+            custom uint64 state:srcAttrib
+            custom uint64 state:srcPath
+            custom uint64 state:srcPathAsToken
+            custom double state:time
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (113, 147)
+        }
+
+        def OmniGraphNode "warp_kernel" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom token inputs:codeFile
+            custom token inputs:codeProvider = "embedded" (
+                allowedTokens = ["embedded", "file"]
+            )
+            custom string inputs:codeStr = """import warp as wp\r
+\r
+@wp.kernel\r
+def compute(inputs: Inputs, outputs: Outputs):\r
+    tid = wp.tid()\r
+\r
+    pos = inputs.points[tid]\r
+    displacement = wp.vec3(0.0, wp.sin(inputs.time + pos[0] * 0.1) * 10.0, 0.0)\r
+    outputs.points[tid] = pos + displacement\r
+"""
+            custom token inputs:device = "cuda:0" (
+                allowedTokens = ["cpu", "cuda:0"]
+            )
+            custom int inputs:dim
+            custom int inputs:dim1 = 1
+            custom int inputs:dim2 = 1
+            custom int inputs:dim3 = 1
+            custom int inputs:dim4 = 1
+            custom int inputs:dimCount = 1
+            custom token inputs:dimSource = "points"
+            custom uint inputs:execIn
+            prepend uint inputs:execIn.connect = </World/ActionGraph/on_tick.outputs:tick>
+            custom point3f[] inputs:points
+            prepend point3f[] inputs:points.connect = </World/ActionGraph/PlaneReadAttrib.outputs:value>
+            custom float inputs:time
+            prepend float inputs:time.connect = </World/ActionGraph/on_tick.outputs:time>
+            token node:type = "omni.warp.WarpKernel"
+            int node:typeVersion = 2
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            custom point3f[] outputs:points
+            custom string state:userAttrDescs = '[{"port_type": 0, "base_name": "points", "data_type_name": "point3f", "is_array": true, "array_format": 0, "array_shape_source": null, "optional": false}, {"port_type": 0, "base_name": "time", "data_type_name": "float", "is_array": false, "array_format": 0, "array_shape_source": null, "optional": false}, {"port_type": 1, "base_name": "points", "data_type_name": "point3f", "is_array": true, "array_format": 0, "array_shape_source": 0, "optional": false}]'
+            custom int state:userAttrsEvent = 0
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (482, 5)
+        }
+
+        def OmniGraphNode "PlaneWriteAttrib" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom uint inputs:execIn
+            prepend uint inputs:execIn.connect = </World/ActionGraph/warp_kernel.outputs:execOut>
+            custom token inputs:name = "points"
+            custom rel inputs:prim (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            string relType = "target"
+                        }
+                    }
+                }
+            )
+            prepend rel inputs:prim = </World/MeshOut/Plane>
+            custom token inputs:primPath
+            custom bool inputs:usdWriteBack = 1
+            custom bool inputs:usePath = 0
+            custom token inputs:value (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            float3[] attrValue = []
+                            string resolvedType = "pointf[3][]"
+                        }
+                    }
+                }
+            )
+            prepend token inputs:value.connect = </World/ActionGraph/warp_kernel.outputs:points>
+            token node:type = "omni.graph.nodes.WritePrimAttribute"
+            int node:typeVersion = 2
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            custom bool state:correctlySetup = 0
+            custom uint64 state:destAttrib
+            custom uint64 state:destPath
+            custom uint64 state:destPathToken
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (843, 41)
+        }
+    }
+
+    def Scope "Looks"
+    {
+        def "ClothMaterial" (
+            prepend payload = @./assets/materials/cloth_material.usda@
+        )
+        {
+            over "ClothMaterial"
+            {
+                over "Shader"
+                {
+                    color3f inputs:diffuse_reflection_color = (0.8, 0.35, 0.125) (
+                        customData = {
+                            float3 default = (0.2, 0.2, 0.2)
+                        }
+                        displayGroup = "Albedo"
+                        displayName = "Albedo Color"
+                        doc = "This is the albedo base color"
+                        hidden = false
+                        renderType = "color"
+                    )
+                }
+            }
+        }
+    }
+
+    def "MeshIn" (
+        prepend payload = @./assets/geometries/plane_256x256.usd@
+    )
+    {
+        token visibility = "invisible"
+        float3 xformOp:rotateXYZ = (0, 0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (0, 25, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+    }
+
+    def "MeshOut" (
+        prepend payload = @./assets/geometries/plane_256x256.usd@
+    )
+    {
+        float3 xformOp:rotateXYZ = (0, 0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (0, 25, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        over "Plane" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </World/Looks/ClothMaterial/ClothMaterial> (
+                bindMaterialAs = "weakerThanDescendants"
+            )
+        }
+    }
+}
+
+def Xform "Environment"
+{
+    double3 xformOp:rotateXYZ = (0, 0, 0)
+    double3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (0, 0, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+    def "Stage" (
+        prepend payload = @./assets/environments/stage.usda@
+    )
+    {
+    }
+}
+
+def Xform "CameraRoot"
+{
+    double3 xformOp:rotateXYZ = (-20, 10, 0)
+    double3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (0, 30, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+    def Camera "Camera"
+    {
+        float2 clippingRange = (1, 10000000)
+        float focalLength = 25
+        float focusDistance = 400
+        float fStop = 0
+        bool omni:kit:cameraLock = 0
+        double3 xformOp:rotateYXZ = (0, 0, 0)
+        double3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (0, 0, 400)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateYXZ", "xformOp:scale"]
+    }
+}

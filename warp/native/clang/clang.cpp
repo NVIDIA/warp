@@ -45,6 +45,7 @@
 #elif defined(__APPLE__)
     extern "C" void __bzero(void*, size_t);
     extern "C" __double2 __sincos_stret(double);
+    extern "C" __float2 __sincosf_stret(float);
 #endif
 
 extern "C" {
@@ -114,8 +115,6 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
     std::unique_ptr<llvm::MemoryBuffer> buffer = llvm::MemoryBuffer::getMemBufferCopy(cpp_src);
     compiler_invocation.getPreprocessorOpts().addRemappedFile(input_file.c_str(), buffer.get());
 
-    compiler_instance.getPreprocessorOpts().addMacroDef("WP_CPU");
-
     if(!debug)
     {
         compiler_instance.getPreprocessorOpts().addMacroDef("NDEBUG");
@@ -135,16 +134,8 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
 
 extern "C" {
 
-WP_API int compile_cpp(const char* cpp_src, const char* include_dir, const char* output_file, bool debug)
+WP_API int compile_cpp(const char* cpp_src, const char *input_file, const char* include_dir, const char* output_file, bool debug)
 {
-    #if defined (_WIN32)
-        const char* obj_ext = ".obj";
-    #else
-        const char* obj_ext = ".o";
-    #endif
-
-    std::string input_file = std::string(output_file).substr(0, std::strlen(output_file) - std::strlen(obj_ext));
-
     initialize_llvm();
 
     llvm::LLVMContext context;
@@ -277,6 +268,7 @@ WP_API int load_obj(const char* object_file, const char* module_name)
         #elif defined(__APPLE__)
             SYMBOL(__bzero),
             SYMBOL(__sincos_stret),
+            SYMBOL(__sincosf_stret),
         #else
             SYMBOL(sincosf), SYMBOL_T(sincos, void(*)(double,double*,double*)),
         #endif

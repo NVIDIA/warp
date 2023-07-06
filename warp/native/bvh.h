@@ -103,7 +103,6 @@ CUDA_CALLABLE inline bounds3 bounds_intersection(const bounds3& a, const bounds3
 	return bounds3(max(a.lower, b.lower), min(a.upper, b.upper));
 }
 
-
 struct BVHPackedNodeHalf
 {
 	float x;
@@ -136,6 +135,8 @@ struct BVH
 	void* context;
 };
 
+#if !defined(__CUDA_ARCH__)
+
 BVH bvh_create(const bounds3* bounds, int num_bounds);
 
 void bvh_destroy_host(BVH& bvh);
@@ -147,7 +148,7 @@ void bvh_refit_device(BVH& bvh, const bounds3* bounds);
 // copy host BVH to device
 BVH bvh_clone(void* context, const BVH& bvh_host);
 
-
+#endif  // !__CUDA_ARCH__
 
 CUDA_CALLABLE inline BVHPackedNodeHalf make_node(const vec3& bound, int child, bool leaf)
 {
@@ -424,9 +425,9 @@ CUDA_CALLABLE inline void adj_bvh_query_next(bvh_query_t& query, int& index, bvh
 
 
 
-bool bvh_get_descriptor(uint64_t id, BVH& bvh);
-void bvh_add_descriptor(uint64_t id, const BVH& bvh);
-void bvh_rem_descriptor(uint64_t id);
+CUDA_CALLABLE bool bvh_get_descriptor(uint64_t id, BVH& bvh);
+CUDA_CALLABLE void bvh_add_descriptor(uint64_t id, const BVH& bvh);
+CUDA_CALLABLE void bvh_rem_descriptor(uint64_t id);
 
 
 
