@@ -28,6 +28,9 @@ from omni.warp._extension.menu import WarpMenu
 
 
 SCENES_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../data/scenes"))
+NODES_INIT_PATH = os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "../nodes/_impl/__init__.py")
+)
 
 WARP_GETTING_STARTED_URL = "https://docs.omniverse.nvidia.com/prod_extensions/prod_extensions/ext_warp.html"
 WARP_DOCUMENTATION_URL = "https://nvidia.github.io/warp/"
@@ -188,7 +191,7 @@ class OmniWarpExtension(omni.ext.IExt):
             if manager.is_extension_enabled("omni.graph.ui"):
                 import omni.graph.ui
 
-                omni.graph.ui.ComputeNodeWidget.get_instance().add_template_path(__file__)
+                omni.graph.ui.ComputeNodeWidget.get_instance().add_template_path(NODES_INIT_PATH)
 
     def on_startup(self, ext_id):
         log_info("OmniWarpExtension startup")
@@ -244,6 +247,7 @@ class OmniWarpExtension(omni.ext.IExt):
         # a Python namespace package.
         import omni.warp
         import omni.warp.nodes
+
         omni.warp.from_omni_graph = omni.warp.nodes.from_omni_graph
 
     def on_shutdown(self):
@@ -266,6 +270,7 @@ class OmniWarpExtension(omni.ext.IExt):
 
         # Clean-up the extension's API.
         import omni.warp
+
         delattr(omni.warp, "from_omni_graph")
 
     def _register_actions(self):

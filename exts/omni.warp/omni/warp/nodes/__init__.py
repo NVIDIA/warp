@@ -9,10 +9,14 @@
 
 __all__ = [
     "NodeTimer",
-    "bundle_define_prim_attrs",
+    "bundle_get_attr",
     "bundle_get_child_count",
     "bundle_get_prim_type",
     "bundle_get_world_xform",
+    "bundle_has_changed",
+    "bundle_have_attrs_changed",
+    "bundle_set_prim_type",
+    "bundle_set_world_xform",
     "from_omni_graph",
     "mesh_create_bundle",
     "mesh_copy_bundle",
@@ -37,17 +41,18 @@ __all__ = [
     "points_get_velocities",
     "points_get_widths",
     "points_get_world_extent",
-    "prim_get_world_xform",
 ]
 
 from omni.warp.nodes._impl.attributes import (
     from_omni_graph,
 )
 from omni.warp.nodes._impl.bundles import (
-    bundle_define_prim_attrs,
+    bundle_get_attr,
     bundle_get_child_count,
     bundle_get_prim_type,
     bundle_get_world_xform,
+    bundle_has_changed,
+    bundle_have_attrs_changed,
 )
 from omni.warp.nodes._impl.common import (
     NodeTimer,
@@ -79,4 +84,3 @@ from omni.warp.nodes._impl.points import (
     points_get_widths,
     points_get_world_extent,
 )
-from omni.warp.nodes._impl.usd import prim_get_world_xform
