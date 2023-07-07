@@ -102,12 +102,37 @@ void memset_host(void* dest, int value, size_t n)
     }
 }
 
-void memtile_host(void* dest, void *src, size_t srcsize, size_t n)
+// fill memory buffer with a value: this is a faster memtile variant
+// for types bigger than one byte, but requires proper alignment of dst
+template <typename T>
+void memtile_value_host(T* dst, T value, size_t n)
 {
-    for( size_t i=0; i < n; ++i )
+    while (n--)
+        *dst++ = value;
+}
+
+void memtile_host(void* dst, const void* src, size_t srcsize, size_t n)
+{
+    size_t dst_addr = reinterpret_cast<size_t>(dst);
+    size_t src_addr = reinterpret_cast<size_t>(src);
+
+    // try memtile_value first because it should be faster, but we need to ensure proper alignment
+    if (srcsize == 8 && (dst_addr & 7) == 0 && (src_addr & 7) == 0)
+        memtile_value_host(reinterpret_cast<int64_t*>(dst), *reinterpret_cast<const int64_t*>(src), n);
+    else if (srcsize == 4 && (dst_addr & 3) == 0 && (src_addr & 3) == 0)
+        memtile_value_host(reinterpret_cast<int32_t*>(dst), *reinterpret_cast<const int32_t*>(src), n);
+    else if (srcsize == 2 && (dst_addr & 1) == 0 && (src_addr & 1) == 0)
+        memtile_value_host(reinterpret_cast<int16_t*>(dst), *reinterpret_cast<const int16_t*>(src), n);
+    else if (srcsize == 1)
+        memset(dst, *reinterpret_cast<const int8_t*>(src), n);
+    else
     {
-        memcpy(dest,src,srcsize);
-        dest = (char*)dest + srcsize;
+        // generic version
+        while (n--)
+        {
+            memcpy(dst, src, srcsize);
+            dst = (int8_t*)dst + srcsize;
+        }
     }
 }
 
@@ -260,6 +285,75 @@ WP_API size_t array_copy_host(void* dst, void* src, int dst_type, int src_type, 
 }
 
 
+static void array_fill_strided(void* data, const int* shape, const int* strides, int ndim, const void* value, int value_size)
+{
+    if (ndim == 1)
+    {
+        char* p = (char*)data;
+        for (int i = 0; i < shape[0]; i++)
+        {
+            memcpy(p, value, value_size);
+            p += strides[0];
+        }
+    }
+    else
+    {
+        for (int i = 0; i < shape[0]; i++)
+        {
+            char* p = (char*)data + i * strides[0];
+            // recurse on next inner dimension
+            array_fill_strided(p, shape + 1, strides + 1, ndim - 1, value, value_size);
+        }
+    }
+}
+
+
+static void array_fill_indexed(void* data, const int* shape, const int* strides, const int*const* indices, int ndim, const void* value, int value_size)
+{
+    if (ndim == 1)
+    {
+        for (int i = 0; i < shape[0]; i++)
+        {
+            int idx = indices[0] ? indices[0][i] : i;
+            char* p = (char*)data + idx * strides[0];
+            memcpy(p, value, value_size);
+        }
+    }
+    else
+    {
+        for (int i = 0; i < shape[0]; i++)
+        {
+            int idx = indices[0] ? indices[0][i] : i;
+            char* p = (char*)data + idx * strides[0];
+            // recurse on next inner dimension
+            array_fill_indexed(p, shape + 1, strides + 1, indices + 1, ndim - 1, value, value_size);
+        }
+    }
+}
+
+
+WP_API void array_fill_host(void* arr_ptr, int arr_type, const void* value_ptr, int value_size)
+{
+    if (!arr_ptr || !value_ptr)
+        return;
+
+    if (arr_type == wp::ARRAY_TYPE_REGULAR)
+    {
+        wp::array_t<void>& arr = *static_cast<wp::array_t<void>*>(arr_ptr);
+        array_fill_strided(arr.data, arr.shape.dims, arr.strides, arr.ndim, value_ptr, value_size);
+    }
+    else if (arr_type == wp::ARRAY_TYPE_INDEXED)
+    {
+        wp::indexedarray_t<void>& ia = *static_cast<wp::indexedarray_t<void>*>(arr_ptr);
+        array_fill_indexed(ia.arr.data, ia.shape.dims, ia.arr.strides, ia.indices, ia.arr.ndim, value_ptr, value_size);
+    }
+    else
+    {
+        fprintf(stderr, "Warp error: Invalid array type id %d\n", arr_type);
+    }
+}
+
+
 // impl. files
 // TODO: compile as separate translation units
 #include "bvh.cpp"
@@ -313,13 +407,17 @@ void memset_device(void* context, void* dest, int value, size_t n)
 {
 }
 
-void memtile_device(void* context, void* dest, void *src, size_t srcsize, size_t n)
+void memtile_device(void* context, void* dest, const void* src, size_t srcsize, size_t n)
 {
 }
 
 size_t array_copy_device(void* context, void* dst, void* src, int dst_type, int src_type, int elem_size)
 {
     return 0;
+}
+
+void array_fill_device(void* context, void* arr, int arr_type, const void* value, int value_size)
+{
 }
 
 WP_API int cuda_driver_version() { return 0; }

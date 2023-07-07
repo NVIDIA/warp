@@ -1,0 +1,52 @@
+{
+    "WarpGridCreate": {
+        "version": 1,
+        "categoryDefinitions": "../../../../config/warp_categories.json",
+        "description": "Creates a geometry mesh grid.",
+        "categories": ["warp"],
+        "language": "Python",
+        "uiName": "Grid Create",
+        "cudaPointers": "cpu",
+        "inputs": {
+            "execIn": {
+                "type": "execution",
+                "description": "Input execution."
+            },
+            "transform": {
+                "type": "matrixd[4]",
+                "uiName": "Transform",
+                "description": "World transformation to store alongside the output geometry."
+            },
+            "size": {
+                "type": "float[2]",
+                "uiName": "Size",
+                "description": "Geometry's size.",
+                "default": [100.0, 100.0],
+                "metadata": {
+                    "minimum": [0.0, 0.0]
+                }
+            },
+            "dims": {
+                "type": "int[2]",
+                "uiName": "Dims",
+                "description": "Dimensions for each side of the grid.",
+                "default": [1, 1],
+                "metadata": {
+                    "minimum": [1, 1]
+                }
+            }
+        },
+        "outputs": {
+            "execOut": {
+                "type": "execution",
+                "description": "Output execution."
+            },
+            "mesh": {
+                "type": "bundle",
+                "uiName": "Mesh",
+                "description": "Output mesh geometry.",
+                "memoryType": "cuda"
+            }
+        }
+    }
+}

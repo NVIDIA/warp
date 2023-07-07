@@ -11,7 +11,6 @@ import ctypes
 from typing import Union
 
 
-
 # return the warp device corresponding to a torch device
 def device_from_torch(torch_device):
     return warp.get_device(str(torch_device))
@@ -67,8 +66,7 @@ def dtype_is_compatible(torch_dtype, warp_dtype):
 
         dtype_is_compatible.compatible_sets = {
             torch.float64: {warp.float64},
-            # float32 can be used for scalars and vector/matrix types
-            torch.float32: {warp.float32, *warp.types.warp.types.vector_types},
+            torch.float32: {warp.float32},
             torch.float16: {warp.float16},
             # allow aliasing integer tensors as signed or unsigned integer arrays
             torch.int64: {warp.int64, warp.uint64},
@@ -86,7 +84,10 @@ def dtype_is_compatible(torch_dtype, warp_dtype):
     compatible_set = dtype_is_compatible.compatible_sets.get(torch_dtype)
 
     if compatible_set is not None:
-        return warp_dtype in compatible_set
+        if hasattr(warp_dtype, "_wp_scalar_type_"):
+            return warp_dtype._wp_scalar_type_ in compatible_set
+        else:
+            return warp_dtype in compatible_set
     else:
         raise TypeError(f"Invalid or unsupported data type: {torch_dtype}")
 
@@ -100,9 +101,6 @@ def from_torch(t, dtype=None, requires_grad=None, grad=None):
         dtype = dtype_from_torch(t.dtype)
     elif not dtype_is_compatible(t.dtype, dtype):
         raise RuntimeError(f"Incompatible data types: {t.dtype} and {dtype}")
-
-    if requires_grad is None:
-        requires_grad = t.requires_grad
 
     # get size of underlying data type to compute strides
     ctype_size = ctypes.sizeof(dtype._type_)
@@ -122,7 +120,7 @@ def from_torch(t, dtype=None, requires_grad=None, grad=None):
             )
 
         # ensure the inner strides are contiguous
-        stride = 4
+        stride = ctype_size
         for i in range(dtype_dims):
             if strides[-i - 1] != stride:
                 raise RuntimeError(
@@ -130,34 +128,36 @@ def from_torch(t, dtype=None, requires_grad=None, grad=None):
                 )
             stride *= dtype_shape[-i - 1]
 
-        shape = tuple(shape[:-dtype_dims])
-        strides = tuple(strides[:-dtype_dims])
+        shape = tuple(shape[:-dtype_dims]) or (1,)
+        strides = tuple(strides[:-dtype_dims]) or (ctype_size,)
 
-    grad_ptr = None
     if grad is not None:
-        import torch
+        if not isinstance(grad, warp.array):
+            import torch
 
-        if isinstance(grad, warp.types.array):
-            grad_ptr = grad.ptr
-        elif isinstance(grad, torch.Tensor):
-            grad_ptr = grad.data_ptr()
-    elif t.grad is not None:
-        grad_ptr = t.grad.data_ptr()
+            if isinstance(grad, torch.Tensor):
+                grad = from_torch(grad)
+            else:
+                raise ValueError(f"Invalid gradient type: {type(grad)}")
+    elif requires_grad:
+        # try to wrap the tensor gradient, if it has one
+        if t.grad is not None:
+            grad = from_torch(t.grad)
 
     a = warp.types.array(
         ptr=t.data_ptr(),
-        grad_ptr=grad_ptr,
         dtype=dtype,
         shape=shape,
         strides=strides,
+        device=device_from_torch(t.device),
         copy=False,
         owner=False,
+        grad=grad,
         requires_grad=requires_grad,
-        device=device_from_torch(t.device),
     )
 
     # save a reference to the source tensor, otherwise it will be deallocated
-    a.tensor = t
+    a._tensor = t
     return a
 
 

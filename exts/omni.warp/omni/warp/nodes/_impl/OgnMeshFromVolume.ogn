@@ -1,0 +1,93 @@
+{
+    "WarpMeshFromVolume": {
+        "version": 1,
+        "categoryDefinitions": "../../../../config/warp_categories.json",
+        "description": "Converts a volume into a mesh.",
+        "categories": ["warp"],
+        "language": "Python",
+        "uiName": "Mesh From Volume",
+        "cudaPointers": "cpu",
+        "inputs": {
+            "execIn": {
+                "type": "execution",
+                "description": "Input execution."
+            },
+            "transform": {
+                "type": "matrixd[4]",
+                "uiName": "Transform",
+                "description": "World transformation to store alongside the output geometry."
+            },
+            "size": {
+                "type": "float[3]",
+                "uiName": "Size",
+                "description": "Geometry's size.",
+                "default": [100.0, 100.0, 100.0],
+                "metadata": {
+                    "minimum": [0.0, 0.0, 0.0]
+                }
+            },
+            "dim1": {
+                "type": "int",
+                "description": "Size of the first texture dimension.",
+                "uiName": "Dim 1",
+                "default": 64,
+                "metadata": {
+                    "minimum": 1
+                }
+            },
+            "dim2": {
+                "type": "int",
+                "description": "Size of the second texture dimension.",
+                "uiName": "Dim 2",
+                "default": 64,
+                "metadata": {
+                    "minimum": 1
+                }
+            },
+            "dim3": {
+                "type": "int",
+                "description": "Size of the third texture dimension.",
+                "uiName": "Dim 3",
+                "default": 64,
+                "metadata": {
+                    "minimum": 1
+                }
+            },
+            "data": {
+                "type": "float[]",
+                "description": "Volume data.",
+                "uiName": "Data",
+                "memoryType": "cuda"
+            },
+            "maxPoints": {
+                "type": "int",
+                "description": "Maximum number of points to generate.",
+                "uiName": "Max Points",
+                "default": 1000000
+            },
+            "maxTriangles": {
+                "type": "int",
+                "description": "Maximum number of triangles to generate.",
+                "uiName": "Max Triangles",
+                "default": 1000000
+            },
+            "threshold": {
+                "type": "float",
+                "description": "ISO value that is considered as being the surface.",
+                "uiName": "Threshold"
+            }
+        },
+        "outputs": {
+            "execOut": {
+                "type": "execution",
+                "description": "Output execution."
+            },
+            "mesh": {
+                "type": "bundle",
+                "uiName": "Mesh",
+                "description": "Output mesh geometry.",
+                "memoryType": "cuda"
+            }
+        }
+    }
+}

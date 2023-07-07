@@ -1,5 +1,56 @@
 # CHANGELOG
 
+## [0.10.0] - 2023-07-05
+
+- Add support for macOS universal binaries (x86 + aarch64) for M1+ support
+- Add additional methods for SDF generation please see the following new methods:
+  -  `wp.mesh_query_point_nosign()` - closest point query with no sign determination
+  -  `wp.mesh_query_point_sign_normal()` - closest point query with sign from angle-weighted normal
+  -  `wp.mesh_query_point_sign_winding_number()` - closest point query with fast winding number sign determination
+- Add CSR/BSR sparse matrix support, see `warp.sparse` module:
+  - `wp.sparse.BsrMatrix`
+  - `wp.sparse.bsr_zeros()`, `wp.sparse.bsr_set_from_triplets()` for construction
+  - `wp.sparse.bsr_mm()`, `wp.sparse_bsr_mv()` for matrix-matrix and matrix-vector products respectively
+- Add array-wide utilities:
+  - `wp.utils.array_scan()` - prefix sum (inclusive or exlusive)
+  - `wp.utils.array_sum()` - sum across array
+  - `wp.utils.radix_sort_pairs()` - in-place radix sort (key,value) pairs
+- Add support for calling `@wp.func` functions from Python (outside of kernel scope)
+- Add support for recording kernel launches using a `wp.Launch` object that can be replayed with low overhead, use `wp.launch(..., record_cmd=True)` to generate a command object
+- Optimizations for `wp.struct` kernel arguments, up to 20x faster launches for kernels with large structs or number of params
+- Refresh USD samples to use bundle based workflow + change tracking
+- Add Python API for manipulating mesh and point bundle data in OmniGraph, see `omni.warp.nodes` module
+  - See `omni.warp.nodes.mesh_create_bundle()`, `omni.warp.nodes.mesh_get_points()`, etc.
+- Improvements to `wp.array`:
+  - Fix a number of array methods misbehaving with empty arrays
+  - Fix a number of bugs and memory leaks related to gradient arrays
+  - Fix array construction when creating arrays in pinned memory from a data source in pageable memory
+  - `wp.empty()` no longer zeroes-out memory and returns an uninitialized array, as intended
+  - `array.zero_()` and `array.fill_()` work with non-contiguous arrays
+  - Support wrapping non-contiguous NumPy arrays without a copy
+  - Support preserving the outer dimensions of NumPy arrays when wrapping them as Warp arrays of vector or matrix types
+  - Improve PyTorch and DLPack interop with Warp arrays of arbitrary vectors and matrices
+  - `array.fill_()` can now take lists or other sequences when filling arrays of vectors or matrices, e.g. `arr.fill_([[1, 2], [3, 4]])`
+  - `array.fill_()` now works with arrays of structs (pass a struct instance)
+  - `wp.copy()` gracefully handles copying between non-contiguous arrays on different devices
+  - Add `wp.full()` and `wp.full_like()`, e.g., `a = wp.full(shape, value)`
+  - Add optional `device` argument to `wp.empty_like()`, `wp.zeros_like()`, `wp.full_like()`, and `wp.clone()`
+  - Add `indexedarray` methods `.zero_()`, `.fill_()`, and `.assign()`
+  - Fix `indexedarray` methods `.numpy()` and `.list()`
+  - Fix `array.list()` to work with arrays of any Warp data type
+  - Fix `array.list()` synchronization issue with CUDA arrays
+  - `array.numpy()` called on an array of structs returns a structured NumPy array with named fields
+  - Improve the performance of creating arrays
+- Fix for `Error: No module named 'omni.warp.core'` when running some Kit configurations (e.g.: stubgen)
+- Fix for `wp.struct` instance address being included in module content hash
+- Fix codegen with overridden function names
+- Fix for kernel hashing so it occurs after code generation and before loading to fix a bug with stale kernel cache
+- Fix for `wp.BVH.refit()` when executed on the CPU
+- Fix adjoint of `wp.struct` constructor
+- Fix element accessors for `wp.float16` vectors and matrices in Python
+- Fix `wp.float16` members in structs
+- Remove deprecated `wp.ScopedCudaGuard()`, please use `wp.ScopedDevice()` instead
+
 ## [0.9.0] - 2023-06-01
 
 - Add support for in-place modifications to vector, matrix, and struct types inside kernels (will warn during backward pass with `wp.verbose` if using gradients)
@@ -33,6 +84,9 @@
 - Add support for logical boolean operators with `int` types
 - Fix for `wp.quat()` default constructor
 - Fix conditional reassignments
+- Add sign determination using angle weighted normal version of `wp.mesh_query_point()` as `wp.mesh_query_sign_normal()`
+- Add sign determination using winding number of `wp.mesh_query_point()` as `wp.mesh_query_sign_winding_number()`
+- Add query point without sign determination `wp.mesh_query_no_sign()`
 
 ## [0.8.1] - 2023-04-13
 

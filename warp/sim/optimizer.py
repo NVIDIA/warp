@@ -56,9 +56,10 @@ def nesterov2(
 
 
 def inner(a, b, out):
-
     from warp.utils import array_inner
+
     array_inner(a, b, out)
+
 
 class Optimizer:
     def __init__(self, n, mode, device):

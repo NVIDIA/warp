@@ -1,0 +1,192 @@
+{
+    "WarpClothSimulate": {
+        "version": 1,
+        "categoryDefinitions": "../../../../config/warp_categories.json",
+        "description": "Simulates cloth.",
+        "categories": ["warp"],
+        "language": "Python",
+        "uiName": "Cloth Simulate",
+        "cudaPointers": "cpu",
+        "inputs": {
+            "execIn": {
+                "type": "execution",
+                "description": "Input execution."
+            },
+            "enabled": {
+                "type": "bool",
+                "description": "Whether to enable the simulation.",
+                "uiName": "Enabled",
+                "default": true
+            },
+            "substepCount": {
+                "type": "int",
+                "description": "Number of substeps.",
+                "uiName": "Substep Count",
+                "default": 32
+            },
+            "gravity": {
+                "type": "vectorf[3]",
+                "description": "Gravity force.",
+                "uiName": "Gravity",
+                "default": [0.0, -980, 0.0]
+            },
+            "globalScale": {
+                "type": "float",
+                "description": "Global scale value for the simulation attributes.",
+                "uiName": "Global Scale",
+                "default": 100.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "contactElasticStiffness": {
+                "type": "float",
+                "description": "Contact elastic stiffness. Multiple of the global scale value.",
+                "uiName": "Contact Elastic Stiffness",
+                "default": 500000.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "contactFrictionStiffness": {
+                "type": "float",
+                "description": "Contact friction stiffness. Multiple of the global scale value.",
+                "uiName": "Contact Friction Stiffness",
+                "default": 10000.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "contactFrictionCoeff": {
+                "type": "float",
+                "description": "Contact coefficient of friction.",
+                "uiName": "Contact Friction Coeff",
+                "default": 0.75,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "contactDampingStiffness": {
+                "type": "float",
+                "description": "Contact damping stiffness. Multiple of the global scale value.",
+                "uiName": "Contact Damping Stiffness",
+                "default": 10000.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "cloth": {
+                "type": "bundle",
+                "description": "Cloth to simulate.",
+                "uiName": "Cloth",
+                "memoryType": "cuda"
+            },
+            "clothDensity": {
+                "type": "float",
+                "description": "Cloth density.",
+                "uiName": "Cloth Density",
+                "default": 100.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "clothTriElasticStiffness": {
+                "type": "float",
+                "description": "Triangle elastic stiffness. Multiple of the global scale value.",
+                "uiName": "Cloth Triangle Elastic Stiffness",
+                "default": 1000000.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "clothTriAreaStiffness": {
+                "type": "float",
+                "description": "Triangle area stiffness. Multiple of the global scale value.",
+                "uiName": "Cloth Triangle Area Stiffness",
+                "default": 1000000.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "clothTriDampingStiffness": {
+                "type": "float",
+                "description": "Triangle damping stiffness. Multiple of the global scale value.",
+                "uiName": "Cloth Triangle Damping Stiffness",
+                "default": 100.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "clothEdgeBendingStiffness": {
+                "type": "float",
+                "description": "Edge bending stiffness. Multiple of the global scale value.",
+                "uiName": "Cloth Edge Bending Stiffness",
+                "default": 0.01,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "clothEdgeDampingStiffness": {
+                "type": "float",
+                "description": "Edge damping stiffness. Multiple of the global scale value.",
+                "uiName": "Cloth Edge Damping Stiffness",
+                "default": 0.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "collider": {
+                "type": "bundle",
+                "description": "Collider geometry mesh.",
+                "uiName": "Collider",
+                "memoryType": "cuda"
+            },
+            "colliderContactDistance": {
+                "type": "float",
+                "description": "Distance to maintain from the collider's surface.",
+                "uiName": "Collider Contact Distance",
+                "default": 5.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "colliderContactQueryRange": {
+                "type": "float",
+                "description": "Distance to start probing for contacts with the collider's surface. Multiple of the collider contact distance.",
+                "uiName": "Collider Contact Query Range",
+                "default": 100.0,
+                "metadata": {
+                    "min": 1.0
+                }
+            },
+            "groundEnabled": {
+                "type": "bool",
+                "description": "Whether to add a ground collider.",
+                "uiName": "Ground Enabled",
+                "default": true
+            },
+            "groundAltitude": {
+                "type": "float",
+                "description": "Position of the ground on the Y axis.",
+                "uiName": "Ground Altitude"
+            },
+            "time": {
+                "type": "double",
+                "description": "Time.",
+                "uiName": "Time"
+            }
+        },
+        "outputs": {
+            "execOut": {
+                "type": "execution",
+                "description": "Output execution."
+            },
+            "cloth": {
+                "type": "bundle",
+                "description": "Output particles geometry.",
+                "uiName": "Cloth",
+                "memoryType": "cuda"
+            }
+        }
+    }
+}

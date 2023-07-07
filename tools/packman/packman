@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2019-2020 NVIDIA CORPORATION
+# Copyright 2019-2023 NVIDIA CORPORATION
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ else
 	PM_CURL_SILENT="-s -S"
 	PM_WGET_QUIET="--quiet"
 fi
-PM_PACKMAN_VERSION=6.55.1
+PM_PACKMAN_VERSION=7.5
 
 # This is necessary for newer macOS
 if [ `uname` == 'Darwin' ]; then
@@ -85,7 +85,7 @@ install_python()
 {
 	PLATFORM=`uname`
 	PROCESSOR=`uname -m`
-	PYTHON_VERSION=3.7.13-nv1
+	PYTHON_VERSION=3.10.5-1
 
 	if [ $PLATFORM == 'Darwin' ]; then
 		PYTHON_PACKAGE=$PYTHON_VERSION-macos-x86_64
@@ -152,20 +152,6 @@ if [ ! -f "$PM_MODULE" ]; then
 		echo "Failure while fetching packman module from S3!"
 		exit 1
 	fi
-fi
-
-# Ensure 7za package exists:
-PM_7za_VERSION=22.01-1
-export PM_7za_PATH="$PM_PACKAGES_ROOT/7za/$PM_7za_VERSION"
-if [ ! -d "$PM_7za_PATH" ]; then
-    export PM_7za_PATH="$PM_PACKAGES_ROOT/chk/7za/$PM_7za_VERSION"
-    if [ ! -d "$PM_7za_PATH" ]; then
-        "$PM_PYTHON" -S -s -u -E "$PM_MODULE" pull "$PM_MODULE_DIR/deps.packman.xml"
-        if [ "$?" -ne 0 ]; then
-           echo "Failure while installing required 7za package"
-           exit 1
-        fi
-    fi
 fi
 
 # Generate temporary file name for environment variables:

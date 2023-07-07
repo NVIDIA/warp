@@ -272,7 +272,8 @@ class Function:
 
             if len(kwargs):
                 raise RuntimeError(
-                    f"Error calling function '{self.key}', keyword arguments are not supported for user-defined overloads.")
+                    f"Error calling function '{self.key}', keyword arguments are not supported for user-defined overloads."
+                )
 
             # try and find a matching overload
             for f in self.user_overloads.values():
@@ -287,15 +288,13 @@ class Function:
                 except Exception:
                     continue
 
-            raise RuntimeError(
-                f"Error calling function '{self.key}', no overload found for arguments {args}")
+            raise RuntimeError(f"Error calling function '{self.key}', no overload found for arguments {args}")
 
         else:
             # user-defined function with no overloads
 
             if self.func is None:
-                raise RuntimeError(
-                    f"Error calling function '{self.key}', function is undefined")
+                raise RuntimeError(f"Error calling function '{self.key}', function is undefined")
 
             # this function has no overloads, call it like a plain Python function
             return self.func(*args, **kwargs)
@@ -457,7 +456,7 @@ class Kernel:
             raise RuntimeError(f"Invalid number of arguments for kernel {self.key}")
 
         arg_names = list(self.adj.arg_types.keys())
-        
+
         return warp.types.infer_argument_types(args, template_types, arg_names)
 
     def add_overload(self, arg_types):
@@ -903,8 +902,7 @@ class ModuleBuilder:
                 if isinstance(var.type, warp.codegen.Struct):
                     stack.append(var.type)
                 elif isinstance(var.type, warp.types.array) and isinstance(var.type.dtype, warp.codegen.Struct):
-                    stack.append(var.type.dtype)                   
-
+                    stack.append(var.type.dtype)
 
         # Build them in reverse to generate a correct dependency order.
         for s in reversed(structs):
@@ -1258,13 +1256,13 @@ class Module:
                             verify_fp=warp.config.verify_fp,
                         )
 
-                    # load the object code
-                    runtime.llvm.load_obj(obj_path.encode("utf-8"), module_name.encode("utf-8"))
-                    self.cpu_module = module_name
-
                     # update cpu hash
                     with open(cpu_hash_path, "wb") as f:
                         f.write(module_hash)
+
+                    # load the object code
+                    runtime.llvm.load_obj(obj_path.encode("utf-8"), module_name.encode("utf-8"))
+                    self.cpu_module = module_name
 
                 except Exception as e:
                     self.cpu_build_failed = True
@@ -1327,16 +1325,16 @@ class Module:
                             verify_fp=warp.config.verify_fp,
                         )
 
+                    # update cuda hash
+                    with open(cuda_hash_path, "wb") as f:
+                        f.write(module_hash)
+
                     # load the module
                     cuda_module = warp.build.load_cuda(output_path, device)
                     if cuda_module is not None:
                         self.cuda_modules[device.context] = cuda_module
                     else:
                         raise Exception("Failed to load CUDA module")
-
-                    # update cuda hash
-                    with open(cuda_hash_path, "wb") as f:
-                        f.write(module_hash)
 
                 except Exception as e:
                     self.cuda_build_failed = True
@@ -1412,6 +1410,8 @@ class Allocator:
 
     def alloc(self, size_in_bytes, pinned=False):
         if self.device.is_cuda:
+            if self.device.is_capturing:
+                raise RuntimeError(f"Cannot allocate memory on device {self} while graph capture is active")
             return runtime.core.alloc_device(self.device.context, size_in_bytes)
         elif self.device.is_cpu:
             if pinned:
@@ -1421,6 +1421,8 @@ class Allocator:
 
     def free(self, ptr, size_in_bytes, pinned=False):
         if self.device.is_cuda:
+            if self.device.is_capturing:
+                raise RuntimeError(f"Cannot free memory on device {self} while graph capture is active")
             return runtime.core.free_device(self.device.context, ptr)
         elif self.device.is_cpu:
             if pinned:
@@ -1789,15 +1791,82 @@ class Runtime:
         ]
         self.core.array_copy_device.restype = ctypes.c_size_t
 
-        self.core.array_sum_double_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        self.core.array_sum_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        self.core.array_sum_double_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        self.core.array_sum_float_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        self.core.array_fill_host.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_int]
+        self.core.array_fill_host.restype = None
+        self.core.array_fill_device.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_int,
+            ctypes.c_void_p,
+            ctypes.c_int,
+        ]
+        self.core.array_fill_device.restype = None
 
-        self.core.array_inner_double_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        self.core.array_inner_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        self.core.array_inner_double_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        self.core.array_inner_float_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        self.core.array_sum_double_host.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        self.core.array_sum_float_host.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        self.core.array_sum_double_device.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        self.core.array_sum_float_device.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+
+        self.core.array_inner_double_host.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        self.core.array_inner_float_host.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        self.core.array_inner_double_device.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        self.core.array_inner_float_device.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
 
         self.core.array_scan_int_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
         self.core.array_scan_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
@@ -1841,6 +1910,7 @@ class Runtime:
             warp.types.array_t,
             ctypes.c_int,
             ctypes.c_int,
+            ctypes.c_int,
         ]
 
         self.core.mesh_create_device.restype = ctypes.c_uint64
@@ -1849,6 +1919,7 @@ class Runtime:
             warp.types.array_t,
             warp.types.array_t,
             warp.types.array_t,
+            ctypes.c_int,
             ctypes.c_int,
             ctypes.c_int,
         ]
@@ -2003,7 +2074,6 @@ class Runtime:
         self.core.bsr_transpose_float_device.argtypes = bsr_transpose_argtypes
         self.core.bsr_transpose_double_device.argtypes = bsr_transpose_argtypes
 
-
         self.core.is_cuda_enabled.argtypes = None
         self.core.is_cuda_enabled.restype = ctypes.c_int
         self.core.is_cuda_compatibility_enabled.argtypes = None
@@ -2146,7 +2216,6 @@ class Runtime:
 
         self.device_map = {}  # device lookup by alias
         self.context_map = {}  # device lookup by context
-        self.graph_capture_map = {}  # indicates whether graph capture is active for a given device
 
         # register CPU device
         cpu_name = platform.processor()
@@ -2155,7 +2224,6 @@ class Runtime:
         self.cpu_device = Device(self, "cpu")
         self.device_map["cpu"] = self.cpu_device
         self.context_map[None] = self.cpu_device
-        self.graph_capture_map[None] = False
 
         cuda_device_count = self.core.cuda_device_get_count()
 
@@ -2189,12 +2257,9 @@ class Runtime:
                 self.set_default_device("cuda")
             else:
                 self.set_default_device("cuda:0")
-            # save the initial CUDA device for backward compatibility with ScopedCudaGuard
-            self.initial_cuda_device = self.default_device
         else:
             # CUDA not available
             self.set_default_device("cpu")
-            self.initial_cuda_device = None
 
         # initialize kernel cache
         warp.build.init_kernel_cache(warp.config.kernel_cache_dir)
@@ -2598,63 +2663,23 @@ def zeros(
         A warp.array object representing the allocation
     """
 
-    # backwards compatibility for case where users did wp.zeros(n, dtype=..), or wp.zeros(n=length, dtype=..)
-    if isinstance(shape, int):
-        shape = (shape,)
-    elif "n" in kwargs:
-        shape = (kwargs["n"],)
+    arr = empty(shape=shape, dtype=dtype, device=device, requires_grad=requires_grad, pinned=pinned, **kwargs)
 
-    # compute num els
-    num_elements = 1
-    for d in shape:
-        num_elements *= d
+    # use the CUDA default stream for synchronous behaviour with other streams
+    with warp.ScopedStream(arr.device.null_stream):
+        arr.zero_()
 
-    num_bytes = num_elements * warp.types.type_size_in_bytes(dtype)
-
-    device = get_device(device)
-
-    ptr = None
-    grad_ptr = None
-
-    if num_bytes > 0:
-        if device.is_capturing:
-            raise RuntimeError(f"Cannot allocate memory while graph capture is active on device {device}.")
-
-        ptr = device.allocator.alloc(num_bytes, pinned=pinned)
-        if ptr is None:
-            raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
-
-        # use the CUDA default stream for synchronous behaviour with other streams
-        with warp.ScopedStream(device.null_stream):
-            device.memset(ptr, 0, num_bytes)
-
-        if requires_grad:
-            # allocate gradient array
-            grad_ptr = device.allocator.alloc(num_bytes, pinned=pinned)
-            if grad_ptr is None:
-                raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
-            with warp.ScopedStream(device.null_stream):
-                device.memset(grad_ptr, 0, num_bytes)
-
-    # construct array
-    return warp.types.array(
-        dtype=dtype,
-        shape=shape,
-        capacity=num_bytes,
-        ptr=ptr,
-        grad_ptr=grad_ptr,
-        device=device,
-        owner=True,
-        requires_grad=requires_grad,
-        pinned=pinned,
-    )
+    return arr
 
 
-def zeros_like(src: warp.array, requires_grad: bool = None, pinned: bool = None) -> warp.array:
+def zeros_like(
+    src: warp.array, device: Devicelike = None, requires_grad: bool = None, pinned: bool = None
+) -> warp.array:
     """Return a zero-initialized array with the same type and dimension of another array
 
     Args:
-        src: The template array to use for length, data type, and device
+        src: The template array to use for shape, data type, and device
+        device: The device where the new array will be created (defaults to src.device)
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
 
@@ -2662,24 +2687,108 @@ def zeros_like(src: warp.array, requires_grad: bool = None, pinned: bool = None)
         A warp.array object representing the allocation
     """
 
-    if requires_grad is None:
-        if hasattr(src, "requires_grad"):
-            requires_grad = src.requires_grad
-        else:
-            requires_grad = False
+    arr = empty_like(src, device=device, requires_grad=requires_grad, pinned=pinned)
 
-    if pinned is None:
-        pinned = src.pinned
+    arr.zero_()
 
-    arr = zeros(shape=src.shape, dtype=src.dtype, device=src.device, requires_grad=requires_grad, pinned=pinned)
     return arr
 
 
-def clone(src: warp.array, requires_grad: bool = None, pinned: bool = None) -> warp.array:
+def full(
+    shape: Tuple = None,
+    value=0,
+    dtype=Any,
+    device: Devicelike = None,
+    requires_grad: bool = False,
+    pinned: bool = False,
+    **kwargs,
+) -> warp.array:
+    """Return an array with all elements initialized to the given value
+
+    Args:
+        shape: Array dimensions
+        value: Element value
+        dtype: Type of each element, e.g.: float, warp.vec3, warp.mat33, etc
+        device: Device that array will live on
+        requires_grad: Whether the array will be tracked for back propagation
+        pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+
+    Returns:
+        A warp.array object representing the allocation
+    """
+
+    if dtype == Any:
+        # determine dtype from value
+        value_type = type(value)
+        if value_type == int:
+            dtype = warp.int32
+        elif value_type == float:
+            dtype = warp.float32
+        elif value_type in warp.types.scalar_types or hasattr(value_type, "_wp_scalar_type_"):
+            dtype = value_type
+        elif isinstance(value, warp.codegen.StructInstance):
+            dtype = value._cls
+        elif hasattr(value, "__len__"):
+            # a sequence, assume it's a vector or matrix value
+            try:
+                # try to convert to a numpy array first
+                na = np.array(value, copy=False)
+            except Exception as e:
+                raise ValueError(f"Failed to interpret the value as a vector or matrix: {e}")
+
+            # determine the scalar type
+            scalar_type = warp.types.np_dtype_to_warp_type.get(na.dtype)
+            if scalar_type is None:
+                raise ValueError(f"Failed to convert {na.dtype} to a Warp data type")
+
+            # determine if vector or matrix
+            if na.ndim == 1:
+                dtype = warp.types.vector(na.size, scalar_type)
+            elif na.ndim == 2:
+                dtype = warp.types.matrix(na.shape, scalar_type)
+            else:
+                raise ValueError(f"Values with more than two dimensions are not supported")
+        else:
+            raise ValueError(f"Invalid value type for Warp array: {value_type}")
+
+    arr = empty(shape=shape, dtype=dtype, device=device, requires_grad=requires_grad, pinned=pinned, **kwargs)
+
+    # use the CUDA default stream for synchronous behaviour with other streams
+    with warp.ScopedStream(arr.device.null_stream):
+        arr.fill_(value)
+
+    return arr
+
+
+def full_like(
+    src: warp.array, value: Any, device: Devicelike = None, requires_grad: bool = None, pinned: bool = None
+) -> warp.array:
+    """Return an array with all elements initialized to the given value with the same type and dimension of another array
+
+    Args:
+        src: The template array to use for shape, data type, and device
+        value: Element value
+        device: The device where the new array will be created (defaults to src.device)
+        requires_grad: Whether the array will be tracked for back propagation
+        pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+
+    Returns:
+        A warp.array object representing the allocation
+    """
+
+    arr = empty_like(src, device=device, requires_grad=requires_grad, pinned=pinned)
+
+    arr.fill_(value)
+
+    return arr
+
+
+def clone(src: warp.array, device: Devicelike = None, requires_grad: bool = None, pinned: bool = None) -> warp.array:
     """Clone an existing array, allocates a copy of the src memory
 
     Args:
         src: The source array to copy
+        device: The device where the new array will be created (defaults to src.device)
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
 
@@ -2687,19 +2796,11 @@ def clone(src: warp.array, requires_grad: bool = None, pinned: bool = None) -> w
         A warp.array object representing the allocation
     """
 
-    if requires_grad is None:
-        if hasattr(src, "requires_grad"):
-            requires_grad = src.requires_grad
-        else:
-            requires_grad = False
+    arr = empty_like(src, device=device, requires_grad=requires_grad, pinned=pinned)
 
-    if pinned is None:
-        pinned = src.pinned
+    warp.copy(arr, src)
 
-    dest = empty(shape=src.shape, dtype=src.dtype, device=src.device, requires_grad=requires_grad, pinned=pinned)
-    copy(dest, src)
-
-    return dest
+    return arr
 
 
 def empty(
@@ -2713,7 +2814,7 @@ def empty(
     """Returns an uninitialized array
 
     Args:
-        n: Number of elements
+        shape: Array dimensions
         dtype: Type of each element, e.g.: `warp.vec3`, `warp.mat33`, etc
         device: Device that array will live on
         requires_grad: Whether the array will be tracked for back propagation
@@ -2723,21 +2824,35 @@ def empty(
         A warp.array object representing the allocation
     """
 
-    # todo: implement uninitialized allocation
-    return zeros(shape, dtype, device, requires_grad=requires_grad, pinned=pinned, **kwargs)
+    # backwards compatibility for case where users called wp.empty(n=length, ...)
+    if "n" in kwargs:
+        shape = (kwargs["n"],)
+        del kwargs["n"]
+
+    # ensure shape is specified, even if creating a zero-sized array
+    if shape is None:
+        shape = 0
+
+    return warp.array(shape=shape, dtype=dtype, device=device, requires_grad=requires_grad, pinned=pinned, **kwargs)
 
 
-def empty_like(src: warp.array, requires_grad: bool = None, pinned: bool = None) -> warp.array:
+def empty_like(
+    src: warp.array, device: Devicelike = None, requires_grad: bool = None, pinned: bool = None
+) -> warp.array:
     """Return an uninitialized array with the same type and dimension of another array
 
     Args:
-        src: The template array to use for length, data type, and device
+        src: The template array to use for shape, data type, and device
+        device: The device where the new array will be created (defaults to src.device)
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
 
     Returns:
         A warp.array object representing the allocation
     """
+
+    if device is None:
+        device = src.device
 
     if requires_grad is None:
         if hasattr(src, "requires_grad"):
@@ -2746,9 +2861,12 @@ def empty_like(src: warp.array, requires_grad: bool = None, pinned: bool = None)
             requires_grad = False
 
     if pinned is None:
-        pinned = src.pinned
+        if hasattr(src, "pinned"):
+            pinned = src.pinned
+        else:
+            pinned = False
 
-    arr = empty(shape=src.shape, dtype=src.dtype, device=src.device, requires_grad=requires_grad, pinned=pinned)
+    arr = empty(shape=src.shape, dtype=src.dtype, device=device, requires_grad=requires_grad, pinned=pinned)
     return arr
 
 
@@ -2758,8 +2876,7 @@ def from_numpy(arr, dtype, device: Devicelike = None, requires_grad=False):
 
 # given a kernel destination argument type and a value convert
 #  to a c-type that can be passed to a kernel
-def pack_arg(arg_type, arg_name, value, device, adjoint=False):
-
+def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
     if warp.types.is_array(arg_type):
         if value is None:
             # allow for NULL arrays
@@ -2844,43 +2961,70 @@ def pack_arg(arg_type, arg_name, value, device, adjoint=False):
 # represents all data required for a kernel launch
 # so that launches can be replayed quickly, use `wp.launch(..., record_cmd=True)`
 class Launch:
+    def __init__(self, kernel, device, hooks=None, params=None, params_addr=None, bounds=None):
+        # if not specified look up hooks
+        if not hooks:
+            module = kernel.module
+            if not module.load(device):
+                return
 
-    def __init__(self, kernel, hooks, params, params_addr, bounds, device):
+            hooks = module.get_kernel_hooks(kernel, device)
+
+        # if not specified set a zero bound
+        if not bounds:
+            bounds = warp.types.launch_bounds_t(0)
+
+        # if not specified then build a list of default value params for args
+        if not params:
+            params = []
+            params.append(bounds)
+
+            for a in kernel.adj.args:
+                if isinstance(a.type, warp.types.array):
+                    params.append(a.type.__ctype__())
+                elif isinstance(a.type, warp.codegen.Struct):
+                    params.append(a.type().__ctype__())
+                else:
+                    params.append(pack_arg(kernel, a.type, a.label, 0, device, False))
+
+            kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
+            kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
+
+            params_addr = kernel_params
+
         self.kernel = kernel
         self.hooks = hooks
         self.params = params
         self.params_addr = params_addr
         self.device = device
         self.bounds = bounds
-       
+
     def set_dim(self, dim):
         self.bounds = warp.types.launch_bounds_t(dim)
-       
+
         # launch bounds always at index 0
         self.params[0] = self.bounds
 
         # for CUDA kernels we need to update the address to each arg
         if self.params_addr:
             self.params_addr[0] = ctypes.c_void_p(ctypes.addressof(self.bounds))
-    
+
     # set kernel param at an index, will convert to ctype as necessary
     def set_param_at_index(self, index, value):
-    
         arg_type = self.kernel.adj.args[index].type
         arg_name = self.kernel.adj.args[index].label
 
-        carg = pack_arg(arg_type, arg_name, value, self.device, False)
+        carg = pack_arg(self.kernel, arg_type, arg_name, value, self.device, False)
 
         self.params[index + 1] = carg
 
         # for CUDA kernels we need to update the address to each arg
         if self.params_addr:
             self.params_addr[index + 1] = ctypes.c_void_p(ctypes.addressof(carg))
-    
+
     # set kernel param at an index without any type conversion
     # args must be passed as ctypes or basic int / float types
     def set_param_at_index_from_ctype(self, index, value):
-
         if isinstance(value, ctypes.Structure):
             # not sure how to directly assign struct->struct without reallocating using ctypes
             self.params[index + 1] = value
@@ -2888,7 +3032,7 @@ class Launch:
             # for CUDA kernels we need to update the address to each arg
             if self.params_addr:
                 self.params_addr[index + 1] = ctypes.c_void_p(ctypes.addressof(value))
-        
+
         else:
             self.params[index + 1].__init__(value)
 
@@ -2903,7 +3047,7 @@ class Launch:
         # lookup argument index
         for i, arg in enumerate(self.kernel.adj.args):
             if arg.label == name:
-                self.set_ctype_at_index(i, value)
+                self.set_param_at_index_from_ctype(i, value)
 
     # set all params
     def set_params(self, values):
@@ -2911,17 +3055,15 @@ class Launch:
             self.set_param_at_index(i, v)
 
     # set all params without performing type-conversions
-    def set_param_from_ctypes(self, values):
+    def set_params_from_ctypes(self, values):
         for i, v in enumerate(values):
-            self.set_ctype_at_index(i, v)
+            self.set_param_at_index_from_ctype(i, v)
 
     def launch(self) -> Any:
-
         if self.device.is_cpu:
             self.hooks.forward(*self.params)
         else:
             runtime.core.cuda_launch_kernel(self.device.context, self.hooks.forward, self.bounds.size, self.params_addr)
-
 
 
 def launch(
@@ -2935,7 +3077,7 @@ def launch(
     stream: Stream = None,
     adjoint=False,
     record_tape=True,
-    record_cmd=False
+    record_cmd=False,
 ):
     """Launch a Warp kernel on the target device
 
@@ -2985,8 +3127,7 @@ def launch(
                 arg_type = kernel.adj.args[i].type
                 arg_name = kernel.adj.args[i].label
 
-                params.append(pack_arg(arg_type, arg_name, a, device, adjoint))
-                
+                params.append(pack_arg(kernel, arg_type, arg_name, a, device, adjoint))
 
         fwd_args = inputs + outputs
         adj_args = adj_inputs + adj_outputs
@@ -3027,9 +3168,11 @@ def launch(
                     raise RuntimeError(
                         f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
                     )
-                
+
                 if record_cmd:
-                    launch = Launch(kernel, hooks, params, None, bounds, device)
+                    launch = Launch(
+                        kernel=kernel, hooks=hooks, params=params, params_addr=None, bounds=bounds, device=device
+                    )
                     return launch
                 else:
                     hooks.forward(*params)
@@ -3053,16 +3196,20 @@ def launch(
                             f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
                         )
 
-
                     if record_cmd:
-
-                        launch = Launch(kernel, hooks, params, kernel_params, bounds, device)
+                        launch = Launch(
+                            kernel=kernel,
+                            hooks=hooks,
+                            params=params,
+                            params_addr=kernel_params,
+                            bounds=bounds,
+                            device=device,
+                        )
                         return launch
-                    
+
                     else:
                         # launch
                         runtime.core.cuda_launch_kernel(device.context, hooks.forward, bounds.size, kernel_params)
-                        
 
                 try:
                     runtime.verify_cuda_device(device)
@@ -3341,7 +3488,14 @@ def copy(
     if count == 0:
         return
 
-    has_grad = hasattr(src, "grad_ptr") and hasattr(dest, "grad_ptr") and src.grad_ptr and dest.grad_ptr
+    # copying non-contiguous arrays requires that they are on the same device
+    if not (src.is_contiguous and dest.is_contiguous) and src.device != dest.device:
+        if dest.is_contiguous:
+            # make a contiguous copy of the source array
+            src = src.contiguous()
+        else:
+            # make a copy of the source array on the destination device
+            src = src.to(dest.device)
 
     if src.is_contiguous and dest.is_contiguous:
         bytes_to_copy = count * warp.types.type_size_in_bytes(src.dtype)
@@ -3355,10 +3509,6 @@ def copy(
         src_ptr = src.ptr + src_offset_in_bytes
         dst_ptr = dest.ptr + dst_offset_in_bytes
 
-        if has_grad:
-            src_grad_ptr = src.grad_ptr + src_offset_in_bytes
-            dst_grad_ptr = dest.grad_ptr + dst_offset_in_bytes
-
         if src_offset_in_bytes + bytes_to_copy > src_size_in_bytes:
             raise RuntimeError(
                 f"Trying to copy source buffer with size ({bytes_to_copy}) from offset ({src_offset_in_bytes}) is larger than source size ({src_size_in_bytes})"
@@ -3371,8 +3521,6 @@ def copy(
 
         if src.device.is_cpu and dest.device.is_cpu:
             runtime.core.memcpy_h2h(dst_ptr, src_ptr, bytes_to_copy)
-            if has_grad:
-                runtime.core.memcpy_h2h(dst_grad_ptr, src_grad_ptr, bytes_to_copy)
         else:
             # figure out the CUDA context/stream for the copy
             if stream is not None:
@@ -3385,31 +3533,18 @@ def copy(
             with warp.ScopedStream(stream):
                 if src.device.is_cpu and dest.device.is_cuda:
                     runtime.core.memcpy_h2d(copy_device.context, dst_ptr, src_ptr, bytes_to_copy)
-                    if has_grad:
-                        runtime.core.memcpy_h2d(copy_device.context, dst_grad_ptr, src_grad_ptr, bytes_to_copy)
                 elif src.device.is_cuda and dest.device.is_cpu:
                     runtime.core.memcpy_d2h(copy_device.context, dst_ptr, src_ptr, bytes_to_copy)
-                    if has_grad:
-                        runtime.core.memcpy_d2h(copy_device.context, dst_grad_ptr, src_grad_ptr, bytes_to_copy)
                 elif src.device.is_cuda and dest.device.is_cuda:
                     if src.device == dest.device:
                         runtime.core.memcpy_d2d(copy_device.context, dst_ptr, src_ptr, bytes_to_copy)
-                        if has_grad:
-                            runtime.core.memcpy_d2d(copy_device.context, dst_grad_ptr, src_grad_ptr, bytes_to_copy)
                     else:
                         runtime.core.memcpy_peer(copy_device.context, dst_ptr, src_ptr, bytes_to_copy)
-                        if has_grad:
-                            runtime.core.memcpy_peer(copy_device.context, dst_grad_ptr, src_grad_ptr, bytes_to_copy)
                 else:
                     raise RuntimeError("Unexpected source and destination combination")
 
     else:
         # handle non-contiguous and indexed arrays
-
-        if src.device != dest.device:
-            raise RuntimeError(
-                f"Copies between non-contiguous arrays must be on the same device, got {dest.device} and {src.device}"
-            )
 
         if src.shape != dest.shape:
             raise RuntimeError("Incompatible array shapes")
@@ -3420,24 +3555,22 @@ def copy(
         if src_elem_size != dst_elem_size:
             raise RuntimeError("Incompatible array data types")
 
-        def array_type(a):
-            if isinstance(a, warp.types.array):
-                return warp.types.ARRAY_TYPE_REGULAR
-            elif isinstance(a, warp.types.indexedarray):
-                return warp.types.ARRAY_TYPE_INDEXED
-
         src_desc = src.__ctype__()
         dst_desc = dest.__ctype__()
         src_ptr = ctypes.pointer(src_desc)
         dst_ptr = ctypes.pointer(dst_desc)
-        src_type = array_type(src)
-        dst_type = array_type(dest)
+        src_type = warp.types.array_type_id(src)
+        dst_type = warp.types.array_type_id(dest)
 
         if src.device.is_cuda:
             with warp.ScopedStream(stream):
                 runtime.core.array_copy_device(src.device.context, dst_ptr, src_ptr, dst_type, src_type, src_elem_size)
         else:
             runtime.core.array_copy_host(dst_ptr, src_ptr, dst_type, src_type, src_elem_size)
+
+    # copy gradient, if needed
+    if hasattr(src, "grad") and src.grad is not None and hasattr(dest, "grad") and dest.grad is not None:
+        copy(dest.grad, src.grad, stream=stream)
 
 
 def type_str(t):

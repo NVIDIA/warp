@@ -163,6 +163,7 @@ API Reference
    modules/functions
    modules/sim
    modules/interoperability
+   modules/sparse
    genindex
    
 

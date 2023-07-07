@@ -373,6 +373,35 @@ def test_struct_mutate_attributes_kernel():
     wp.expect_eq(t.param2, 1.1)
 
 
+@wp.struct
+class InnerStruct:
+    i: int
+
+
+@wp.struct
+class ArrayStruct:
+    array: wp.array(dtype=InnerStruct)
+
+
+@wp.kernel
+def struct2_reader(test: ArrayStruct):
+    k = wp.tid()
+    wp.expect_eq(k + 1, test.array[k].i)
+
+
+def test_nested_array_struct(test, device):
+    var1 = InnerStruct()
+    var1.i = 1
+
+    var2 = InnerStruct()
+    var2.i = 2
+
+    struct = ArrayStruct()
+    struct.array = wp.array([var1, var2], dtype=InnerStruct)
+
+    wp.launch(struct2_reader, dim=2, inputs=[struct])
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -392,6 +421,7 @@ def register(parent):
     )
     add_kernel_test(TestStruct, kernel=test_return, name="test_return", dim=1, inputs=[], devices=devices)
     add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
+    add_function_test(TestStruct, "test_nested_array_struct", test_nested_array_struct, devices=devices)
     add_function_test(TestStruct, "test_struct_math_conversions", test_struct_math_conversions, devices=devices)
     add_function_test(
         TestStruct, "test_struct_default_attributes_python", test_struct_default_attributes_python, devices=devices

@@ -49,8 +49,8 @@ extern "C"
     WP_API void memset_device(void* context, void* dest, int value, size_t n);
     
     // takes srcsize bytes starting at src and repeats them n times at dst (writes srcsize * n bytes in total):
-    WP_API void memtile_host(void* dest, void *src, size_t srcsize, size_t n);
-    WP_API void memtile_device(void* context, void* dest, void *src, size_t srcsize, size_t n);
+    WP_API void memtile_host(void* dest, const void* src, size_t srcsize, size_t n);
+    WP_API void memtile_device(void* context, void* dest, const void* src, size_t srcsize, size_t n);
 
 	WP_API uint64_t bvh_create_host(wp::vec3* lowers, wp::vec3* uppers, int num_bounds);
 	WP_API void bvh_destroy_host(uint64_t id);
@@ -62,11 +62,11 @@ extern "C"
 
     // create a user-accessible copy of the mesh, it is the 
     // users responsibility to keep-alive the points/tris data for the duration of the mesh lifetime
-	WP_API uint64_t mesh_create_host(wp::array_t<wp::vec3> points, wp::array_t<wp::vec3> velocities, wp::array_t<int> tris, int num_points, int num_tris);
+	WP_API uint64_t mesh_create_host(wp::array_t<wp::vec3> points, wp::array_t<wp::vec3> velocities, wp::array_t<int> tris, int num_points, int num_tris, int support_winding_number);
 	WP_API void mesh_destroy_host(uint64_t id);
     WP_API void mesh_refit_host(uint64_t id);
 
-	WP_API uint64_t mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::array_t<wp::vec3> velocities, wp::array_t<int> tris, int num_points, int num_tris);
+	WP_API uint64_t mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::array_t<wp::vec3> velocities, wp::array_t<int> tris, int num_points, int num_tris, int support_winding_number);
 	WP_API void mesh_destroy_device(uint64_t id);
     WP_API void mesh_refit_device(uint64_t id);
 
@@ -106,6 +106,10 @@ extern "C"
     // generic copy supporting non-contiguous arrays
     WP_API size_t array_copy_host(void* dst, void* src, int dst_type, int src_type, int elem_size);
     WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_type, int src_type, int elem_size);
+
+    // generic fill for non-contiguous arrays
+    WP_API void array_fill_host(void* arr, int arr_type, const void* value, int value_size);
+    WP_API void array_fill_device(void* context, void* arr, int arr_type, const void* value, int value_size);
 
     WP_API void array_inner_float_host(uint64_t a, uint64_t b, uint64_t out, int count, int stride_a, int stride_b, int type_len);
     WP_API void array_inner_double_host(uint64_t a, uint64_t b, uint64_t out, int count, int stride_a, int stride_b, int type_len);

@@ -52,6 +52,8 @@ from warp.context import get_device, set_device, synchronize_device
 from warp.context import (
     zeros,
     zeros_like,
+    full,
+    full_like,
     clone,
     empty,
     empty_like,
@@ -65,13 +67,13 @@ from warp.context import (
 from warp.context import set_module_options, get_module_options, get_module
 from warp.context import capture_begin, capture_end, capture_launch
 from warp.context import print_builtins, export_builtins, export_stubs
-from warp.context import Kernel, Function
+from warp.context import Kernel, Function, Launch
 from warp.context import Stream, get_stream, set_stream, synchronize_stream
 from warp.context import Event, record_event, wait_event, wait_stream
 from warp.context import RegisteredGLBuffer
 
 from warp.tape import Tape
-from warp.utils import ScopedTimer, ScopedCudaGuard, ScopedDevice, ScopedStream
+from warp.utils import ScopedTimer, ScopedDevice, ScopedStream
 from warp.utils import transform_expand
 
 from warp.torch import from_torch, to_torch
@@ -552,6 +554,14 @@ def diag(d: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
 
 
 @over
+def get_diag(m: Matrix[Any, Any, Scalar]) -> Vector[Any, Scalar]:
+    """
+    Returns a vector containing the diagonal elements of the square matrix.
+    """
+    ...
+
+
+@over
 def cw_mul(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """
     Component wise multiply of two 2d vectors.
@@ -867,6 +877,9 @@ def mesh_query_point(
     """
     Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
 
+       Identifies the sign of the distance using additional ray-casts to determine if the point is inside or outside. This method is relatively robust, but
+       does increase computational cost. See below for additional sign determination methods.
+
        :param id: The mesh identifier
        :param point: The point in space to query
        :param max_dist: Mesh faces above this distance will not be considered by the query
@@ -874,6 +887,88 @@ def mesh_query_point(
        :param face: Returns the index of the closest face
        :param bary_u: Returns the barycentric u coordinate of the closest point
        :param bary_v: Returns the barycentric v coordinate of the closest point
+    """
+    ...
+
+
+@over
+def mesh_query_point_no_sign(
+    id: uint64, point: vec3f, max_dist: float32, face: int32, bary_u: float32, bary_v: float32
+) -> bool:
+    """
+    Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
+
+       This method does not compute the sign of the point (inside/outside) which makes it faster than other point query methods.
+
+       :param id: The mesh identifier
+       :param point: The point in space to query
+       :param max_dist: Mesh faces above this distance will not be considered by the query
+       :param face: Returns the index of the closest face
+       :param bary_u: Returns the barycentric u coordinate of the closest point
+       :param bary_v: Returns the barycentric v coordinate of the closest point
+    """
+    ...
+
+
+@over
+def mesh_query_point_sign_normal(
+    id: uint64,
+    point: vec3f,
+    max_dist: float32,
+    inside: float32,
+    face: int32,
+    bary_u: float32,
+    bary_v: float32,
+    epsilon: float32,
+) -> bool:
+    """
+    Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
+
+       Identifies the sign of the distance (inside/outside) using the angle-weighted pseudo normal. This approach to sign determination is robust for well conditioned meshes
+       that are watertight and non-self intersecting, it is also comparatively fast to compute.
+
+       :param id: The mesh identifier
+       :param point: The point in space to query
+       :param max_dist: Mesh faces above this distance will not be considered by the query
+       :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise. Note that mesh must be watertight for this to be robust
+       :param face: Returns the index of the closest face
+       :param bary_u: Returns the barycentric u coordinate of the closest point
+       :param bary_v: Returns the barycentric v coordinate of the closest point
+       :param epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3
+    """
+    ...
+
+
+@over
+def mesh_query_point_sign_winding_number(
+    id: uint64,
+    point: vec3f,
+    max_dist: float32,
+    inside: float32,
+    face: int32,
+    bary_u: float32,
+    bary_v: float32,
+    accuracy: float32,
+    threshold: float32,
+) -> bool:
+    """
+    Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
+
+       Identifies the sign using the winding number of the mesh relative to the query point. This method of sign determination is robust for poorly conditioned meshes
+       and provides a smooth approximation to sign even when the mesh is not watertight. This method is the most robust and accurate of the sign determination meshes
+       but also the most expensive.
+
+        Note that the Mesh object must be constructed with ``suport_winding_number=True`` for this method to return correct results.
+
+       :param id: The mesh identifier
+       :param point: The point in space to query
+       :param max_dist: Mesh faces above this distance will not be considered by the query
+       :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise. Note that mesh must be watertight for this to be robust
+       :param face: Returns the index of the closest face
+       :param bary_u: Returns the barycentric u coordinate of the closest point
+       :param bary_v: Returns the barycentric v coordinate of the closest point
+       :param accuracy: Accuracy for computing the winding number with fast winding number method utilizing second order dipole approximation, default 2.0
+       :param threshold: The threshold of the winding number to be considered inside, default 0.5
     """
     ...
 
@@ -1694,6 +1789,14 @@ def expect_near(arg1: vec3f, arg2: vec3f, tolerance: float32):
 def lower_bound(arr: Array[Scalar], value: Scalar) -> int:
     """
     Search a sorted array for the closest element greater than or equal to value.
+    """
+    ...
+
+
+@over
+def lower_bound(arr: Array[Scalar], arr_begin: int32, arr_end: int32, value: Scalar) -> int:
+    """
+    Search a sorted array range [arr_begin, arr_end) for the closest element greater than or equal to value.
     """
     ...
 

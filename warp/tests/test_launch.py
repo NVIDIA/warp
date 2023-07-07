@@ -80,29 +80,28 @@ class Params:
     i: int
     f: float
 
+
 @wp.kernel
 def kernel_cmd(params: Params, i: int, f: float, v: wp.vec3, m: wp.mat33, out: wp.array(dtype=int)):
-
     tid = wp.tid()
 
     wp.expect_eq(params.i, i)
     wp.expect_eq(params.f, f)
-    
+
     wp.expect_eq(i, int(f))
-    
+
     wp.expect_eq(v[0], f)
     wp.expect_eq(v[1], f)
     wp.expect_eq(v[2], f)
-    
-    wp.expect_eq(m[0,0], f)
-    wp.expect_eq(m[1,1], f)
-    wp.expect_eq(m[2,2], f)
-    
+
+    wp.expect_eq(m[0, 0], f)
+    wp.expect_eq(m[1, 1], f)
+    wp.expect_eq(m[2, 2], f)
+
     out[tid] = tid + i
 
 
 def test_launch_cmd(test, device):
-
     n = 1
 
     ref = np.arange(0, n)
@@ -114,9 +113,7 @@ def test_launch_cmd(test, device):
 
     v = wp.vec3(params.f, params.f, params.f)
 
-    m = wp.mat33(params.f, 0.0, 0.0,
-                 0.0, params.f, 0.0,
-                 0.0, 0.0, params.f)
+    m = wp.mat33(params.f, 0.0, 0.0, 0.0, params.f, 0.0, 0.0, 0.0, params.f)
 
     # standard launch
     wp.launch(kernel_cmd, dim=n, inputs=[params, params.i, params.f, v, m, out], device=device)
@@ -125,49 +122,45 @@ def test_launch_cmd(test, device):
 
     # cmd launch
     out.zero_()
-    
+
     cmd = wp.launch(kernel_cmd, dim=n, inputs=[params, params.i, params.f, v, m, out], device=device, record_cmd=True)
-    
+
     cmd.launch()
-    
+
     assert_np_equal(out.numpy(), ref + params.i)
 
-    
-def test_launch_cmd_set_param(test, device):
 
+def test_launch_cmd_set_param(test, device):
     n = 1
 
     ref = np.arange(0, n)
 
-    params = Params()   
+    params = Params()
     v = wp.vec3()
     m = wp.mat33()
-  
+
     cmd = wp.launch(kernel_cmd, dim=n, inputs=[params, 0, 0.0, v, m, None], device=device, record_cmd=True)
 
     # cmd param modification
     out = wp.zeros(n, dtype=int, device=device)
-    
+
     params.i = 13
     params.f = 13.0
 
     v = wp.vec3(params.f, params.f, params.f)
 
-    m = wp.mat33(params.f, 0.0, 0.0,
-                 0.0, params.f, 0.0,
-                 0.0, 0.0, params.f)
+    m = wp.mat33(params.f, 0.0, 0.0, 0.0, params.f, 0.0, 0.0, 0.0, params.f)
 
     cmd.set_param_at_index(0, params)
     cmd.set_param_at_index(1, params.i)
     cmd.set_param_at_index(2, params.f)
     cmd.set_param_at_index(3, v)
     cmd.set_param_at_index(4, m)
-    cmd.set_param_at_index(5, out)
+    cmd.set_param_by_name("out", out)
 
     cmd.launch()
-    
-    assert_np_equal(out.numpy(), ref + params.i)
 
+    assert_np_equal(out.numpy(), ref + params.i)
 
     # test changing params after launch directly
     # because we now cache the ctypes object inside the wp.struct
@@ -177,40 +170,37 @@ def test_launch_cmd_set_param(test, device):
 
     v = wp.vec3(params.f, params.f, params.f)
 
-    m = wp.mat33(params.f, 0.0, 0.0,
-                 0.0, params.f, 0.0,
-                 0.0, 0.0, params.f)
+    m = wp.mat33(params.f, 0.0, 0.0, 0.0, params.f, 0.0, 0.0, 0.0, params.f)
 
     # this is the line we explicitly leave out to
     # ensure that param changes are reflected in the launch
-    #launch.set_param_at_index(0, params)
-    
+    # launch.set_param_at_index(0, params)
+
     cmd.set_param_at_index(1, params.i)
     cmd.set_param_at_index(2, params.f)
     cmd.set_param_at_index(3, v)
     cmd.set_param_at_index(4, m)
-    cmd.set_param_at_index(5, out)
+    cmd.set_param_by_name("out", out)
 
     cmd.launch()
-    
+
     assert_np_equal(out.numpy(), ref + params.i)
-    
+
 
 def test_launch_cmd_set_ctype(test, device):
-
     n = 1
 
     ref = np.arange(0, n)
 
-    params = Params()   
+    params = Params()
     v = wp.vec3()
     m = wp.mat33()
-  
+
     cmd = wp.launch(kernel_cmd, dim=n, inputs=[params, 0, 0.0, v, m, None], device=device, record_cmd=True)
 
     # cmd param modification
     out = wp.zeros(n, dtype=int, device=device)
-    
+
     # cmd param modification
     out.zero_()
 
@@ -219,28 +209,27 @@ def test_launch_cmd_set_ctype(test, device):
 
     v = wp.vec3(params.f, params.f, params.f)
 
-    m = wp.mat33(params.f, 0.0, 0.0,
-                 0.0, params.f, 0.0,
-                 0.0, 0.0, params.f)
+    m = wp.mat33(params.f, 0.0, 0.0, 0.0, params.f, 0.0, 0.0, 0.0, params.f)
 
     cmd.set_param_at_index_from_ctype(0, params.__ctype__())
     cmd.set_param_at_index_from_ctype(1, params.i)
     cmd.set_param_at_index_from_ctype(2, params.f)
     cmd.set_param_at_index_from_ctype(3, v)
     cmd.set_param_at_index_from_ctype(4, m)
-    cmd.set_param_at_index_from_ctype(5, out.__ctype__())
+    cmd.set_param_by_name_from_ctype("out", out.__ctype__())
 
     cmd.launch()
 
     assert_np_equal(out.numpy(), ref + params.i)
+
 
 @wp.kernel
 def arange(out: wp.array(dtype=int)):
     tid = wp.tid()
     out[tid] = tid
 
+
 def test_launch_cmd_set_dim(test, device):
-    
     n = 10
 
     ref = np.arange(0, n, dtype=int)
@@ -249,6 +238,31 @@ def test_launch_cmd_set_dim(test, device):
     cmd = wp.launch(arange, dim=n, inputs=[out], device=device, record_cmd=True)
 
     cmd.set_dim(5)
+    cmd.launch()
+
+    # check first half the array is filled while rest is still zero
+    assert_np_equal(out.numpy()[0:5], ref[0:5])
+    assert_np_equal(out.numpy()[5:], np.zeros(5))
+
+    out.zero_()
+
+    cmd.set_dim(10)
+    cmd.launch()
+
+    # check the whole array was filled
+    assert_np_equal(out.numpy(), ref)
+
+
+def test_launch_cmd_empty(test, device):
+    n = 10
+
+    ref = np.arange(0, n, dtype=int)
+    out = wp.zeros(n, dtype=int, device=device)
+
+    cmd = wp.Launch(arange, device)
+    cmd.set_dim(5)
+    cmd.set_param_by_name("out", out)
+
     cmd.launch()
 
     # check first half the array is filled while rest is still zero
@@ -279,6 +293,7 @@ def register(parent):
     add_function_test(TestLaunch, "test_launch_cmd_set_param", test_launch_cmd_set_param, devices=devices)
     add_function_test(TestLaunch, "test_launch_cmd_set_ctype", test_launch_cmd_set_ctype, devices=devices)
     add_function_test(TestLaunch, "test_launch_cmd_set_dim", test_launch_cmd_set_dim, devices=devices)
+    add_function_test(TestLaunch, "test_launch_cmd_empty", test_launch_cmd_empty, devices=devices)
 
     return TestLaunch
 
