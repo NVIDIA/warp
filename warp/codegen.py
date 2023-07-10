@@ -1680,10 +1680,7 @@ class Adjoint:
         out = adj.add_call(func, [left, right])
 
         # update symbol map
-        if isinstance(left, Var):
-            adj.symbols[left.label] = out
-        else:
-            adj.symbols[node.target.id] = out
+        adj.symbols[node.target.id] = out
 
     def emit_Tuple(adj, node):
         # LHS for expressions, such as i, j, k = 1, 2, 3
