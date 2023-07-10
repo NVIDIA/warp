@@ -114,21 +114,25 @@ class InternalState:
     """Internal state for the node."""
 
     def __init__(self) -> None:
-        self.transform = None
-        self.seed = None
-        self.min_sdf = None
-        self.max_sdf = None
-        self.radius = None
-        self.spacing = None
-        self.spacing_jitter = None
-        self.mass = None
-        self.vel_dir = None
-        self.vel_amount = None
-        self.max_pts = None
-
         self.mesh = None
 
         self.is_valid = False
+
+        self.attr_tracking = omni.warp.nodes.AttrTracking(
+            (
+                "transform",
+                "seed",
+                "minSdf",
+                "maxSdf",
+                "radius",
+                "spacing",
+                "spacingJitter",
+                "mass",
+                "velocityDir",
+                "velocityAmount",
+                "maxPoints",
+            ),
+        )
 
     def needs_initialization(self, db: OgnParticlesFromMeshDatabase) -> bool:
         """Checks if the internal state needs to be (re)initialized."""
@@ -172,36 +176,6 @@ class InternalState:
         self.mesh = mesh
 
         return True
-
-    def have_setting_attrs_changed(self, db: OgnParticlesFromMeshDatabase) -> bool:
-        """Checks if the values of the attributes that set-up the node have changed."""
-        return (
-            not np.array_equal(db.inputs.transform, self.transform)
-            or db.inputs.seed != self.seed
-            or db.inputs.minSdf != self.min_sdf
-            or db.inputs.maxSdf != self.max_sdf
-            or db.inputs.radius != self.radius
-            or db.inputs.spacing != self.spacing
-            or db.inputs.spacingJitter != self.spacing_jitter
-            or db.inputs.mass != self.mass
-            or not np.array_equal(db.inputs.velocityDir, self.vel_dir)
-            or db.inputs.velocityAmount != self.vel_amount
-            or db.inputs.maxPoints != self.max_pts
-        )
-
-    def store_setting_attrs(self, db: OgnParticlesFromMeshDatabase) -> None:
-        """Stores the values of the attributes that set-up the node."""
-        self.transform = db.inputs.transform.copy()
-        self.seed = db.inputs.seed
-        self.min_sdf = db.inputs.minSdf
-        self.max_sdf = db.inputs.maxSdf
-        self.radius = db.inputs.radius
-        self.spacing = db.inputs.spacing
-        self.spacing_jitter = db.inputs.spacingJitter
-        self.mass = db.inputs.mass
-        self.vel_dir = db.inputs.velocityDir.copy()
-        self.vel_amount = db.inputs.velocityAmount
-        self.max_pts = db.inputs.maxPoints
 
 
 #   Compute
@@ -268,7 +242,7 @@ def compute(db: OgnParticlesFromMeshDatabase) -> None:
     if state.needs_initialization(db):
         if not state.initialize(db):
             return
-    elif not state.have_setting_attrs_changed(db):
+    elif not state.attr_tracking.have_attrs_changed(db):
         return
 
     with omni.warp.nodes.NodeTimer("spawn_particles", db, active=PROFILING):
@@ -319,7 +293,7 @@ def compute(db: OgnParticlesFromMeshDatabase) -> None:
         masses = omni.warp.nodes.points_get_masses(db.outputs.particles)
         masses.fill_(db.inputs.mass)
 
-    state.store_setting_attrs(db)
+    state.attr_tracking.update_state(db)
 
 
 #   Node Entry Point

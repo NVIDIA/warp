@@ -158,6 +158,40 @@ def attr_cast_array_to_warp(
     assert False, "Unexpected device '{}'.".format(device.alias)
 
 
+#   Tracking
+# ------------------------------------------------------------------------------
+
+
+class AttrTracking:
+    """Attributes state for tracking changes."""
+
+    def __init__(self, names: Sequence[str]) -> None:
+        self._names = names
+        self._state = [None] * len(names)
+
+    def have_attrs_changed(self, db: og.Database) -> bool:
+        """Compare the current attribute values with the internal state."""
+        for i, name in enumerate(self._names):
+            cached_value = self._state[i]
+            current_value = getattr(db.inputs, name)
+            if isinstance(current_value, np.ndarray):
+                if not np.array_equal(current_value, cached_value):
+                    return True
+            elif current_value != cached_value:
+                return True
+
+        return False
+
+    def update_state(self, db: og.Database) -> None:
+        """Updates the internal state with the current attribute values."""
+        for i, name in enumerate(self._names):
+            current_value = getattr(db.inputs, name)
+            if isinstance(current_value, np.ndarray):
+                self._state[i] = current_value.copy()
+            else:
+                self._state[i] = current_value
+
+
 #   High-level Helper
 # ------------------------------------------------------------------------------
 
