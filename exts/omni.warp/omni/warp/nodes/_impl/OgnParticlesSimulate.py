@@ -66,9 +66,9 @@ def transform_points_kernel(
 
 
 @wp.kernel(enable_backward=False)
-def transform_collider_kernel(
-    collider_points_0: wp.array(dtype=wp.vec3),
-    collider_points_1: wp.array(dtype=wp.vec3),
+def update_collider_kernel(
+    points_0: wp.array(dtype=wp.vec3),
+    points_1: wp.array(dtype=wp.vec3),
     xform_0: wp.mat44,
     xform_1: wp.mat44,
     sim_dt: float,
@@ -77,11 +77,27 @@ def transform_collider_kernel(
 ):
     tid = wp.tid()
 
-    points_0 = wp.transform_point(xform_0, collider_points_0[tid])
-    points_1 = wp.transform_point(xform_1, collider_points_1[tid])
+    point_0 = wp.transform_point(xform_0, points_0[tid])
+    point_1 = wp.transform_point(xform_1, points_1[tid])
 
-    out_points[tid] = points_0
-    out_velocities[tid] = (points_1 - points_0) / sim_dt
+    out_points[tid] = point_0
+    out_velocities[tid] = (point_1 - point_0) / sim_dt
+
+
+@wp.kernel(enable_backward=False)
+def update_particles_kernel(
+    points_0: wp.array(dtype=wp.vec3),
+    xform: wp.mat44,
+    out_points: wp.array(dtype=wp.vec3),
+    out_velocities: wp.array(dtype=wp.vec3),
+):
+    tid = wp.tid()
+
+    point = wp.transform_point(xform, points_0[tid])
+    diff = point - points_0[tid]
+
+    out_points[tid] = point
+    out_velocities[tid] = out_velocities[tid] + diff
 
 
 #   Internal State
@@ -108,10 +124,12 @@ class InternalState:
         self._ground_altitude = None
 
         self.sim_dt = None
+        self.sim_tick = None
         self.model = None
         self.integrator = None
         self.state_0 = None
         self.state_1 = None
+        self.xform = None
         self.collider_xform = None
         self.collider_mesh = None
         self.collider_points_0 = None
@@ -162,6 +180,24 @@ class InternalState:
 
         # Initialize Warp's simulation model builder.
         builder = wp.sim.ModelBuilder()
+
+        # Retrieve some data from the particles points.
+        points = omni.warp.nodes.points_get_points(db.inputs.particles)
+        xform = omni.warp.nodes.bundle_get_world_xform(db.inputs.particles)
+
+        # Transform the particles point positions into world space.
+        world_points = wp.empty(len(points), dtype=wp.vec3)
+        wp.launch(
+            kernel=transform_points_kernel,
+            dim=len(points),
+            inputs=[
+                points,
+                xform.T,
+            ],
+            outputs=[
+                world_points,
+            ],
+        )
 
         if db.inputs.collider.valid:
             # Retrieve some data from the collider mesh.
@@ -235,7 +271,7 @@ class InternalState:
         # Register the input particles into the system.
         model.particle_count = omni.warp.nodes.points_get_point_count(db.inputs.particles)
 
-        model.particle_q = omni.warp.nodes.points_get_points(db.inputs.particles)
+        model.particle_q = world_points
         model.particle_qd = omni.warp.nodes.points_get_velocities(db.inputs.particles)
         model.particle_mass = omni.warp.nodes.points_get_masses(db.inputs.particles)
 
@@ -292,10 +328,12 @@ class InternalState:
 
         # Store the class members.
         self.sim_dt = sim_dt
+        self.sim_tick = 0
         self.model = model
         self.integrator = integrator
         self.state_0 = model.state()
         self.state_1 = model.state()
+        self.xform = xform.copy()
 
         if USE_GRAPH:
             # Create the CUDA graph.
@@ -332,11 +370,12 @@ class InternalState:
 
 def update_collider(
     db: OgnParticlesSimulateDatabase,
-    points: wp.array,
-    xform: np.ndarray,
 ) -> None:
     """Updates the collider state."""
     state = db.internal_state
+
+    points = omni.warp.nodes.mesh_get_points(db.inputs.collider)
+    xform = omni.warp.nodes.bundle_get_world_xform(db.inputs.collider)
 
     # Swap the previous and current collider point positions.
     (state.collider_points_0, state.collider_points_1) = (
@@ -347,13 +386,13 @@ def update_collider(
     # Store the current point positions.
     wp.copy(state.collider_points_1, points)
 
-    # Store the previous and current world transformations.
+    # Retrieve the previous and current world transformations.
     xform_0 = state.collider_xform
     xform_1 = xform
 
     # Update the internal point positions and velocities.
     wp.launch(
-        kernel=transform_collider_kernel,
+        kernel=update_collider_kernel,
         dim=len(state.collider_mesh.vertices),
         inputs=[
             state.collider_points_1,
@@ -370,6 +409,39 @@ def update_collider(
 
     # Refit the BVH.
     state.collider_mesh.mesh.refit()
+
+    # Update the state members.
+    state.collider_xform = xform.copy()
+
+
+def update_particles(
+    db: OgnParticlesSimulateDatabase,
+) -> None:
+    """Updates the particles state."""
+    state = db.internal_state
+
+    xform = omni.warp.nodes.bundle_get_world_xform(db.inputs.particles)
+
+    # Retrieve the previous and current world transformations.
+    xform_0 = state.xform
+    xform_1 = xform
+
+    # Update the internal point positions and velocities.
+    wp.launch(
+        kernel=update_particles_kernel,
+        dim=len(state.state_0.particle_q),
+        inputs=[
+            state.state_0.particle_q,
+            np.matmul(np.linalg.inv(xform_0), xform_1).T,
+        ],
+        outputs=[
+            state.state_0.particle_q,
+            state.state_0.particle_qd,
+        ],
+    )
+
+    # Update the state members.
+    state.xform = xform.copy()
 
 
 def step(db: OgnParticlesSimulateDatabase) -> None:
@@ -418,11 +490,7 @@ def compute(db: OgnParticlesSimulateDatabase) -> None:
 
     if not db.inputs.enabled:
         # Pass through the data.
-        omni.warp.nodes.points_copy_bundle(
-            db.outputs.particles,
-            db.inputs.particles,
-            deep_copy=False,
-        )
+        db.outputs.particles = db.inputs.particles
 
         # Store whether the simulation was last enabled.
         state.enabled = False
@@ -444,26 +512,46 @@ def compute(db: OgnParticlesSimulateDatabase) -> None:
     else:
         # We skip the simulation if it has just been initialized.
 
-        if db.inputs.collider.valid and state.collider_mesh is not None:
-            with db.inputs.collider.changes() as bundle_changes:
-                geometry_changes = bundle_changes.get_change(db.inputs.collider)
-                if geometry_changes != og.BundleChangeType.NONE:
-                    with omni.warp.nodes.NodeTimer("update_collider", db, active=PROFILING):
-                        # The collider might be animated so we need to update its state.
-                        collider_points = omni.warp.nodes.mesh_get_points(db.inputs.collider)
-                        collider_xform = omni.warp.nodes.bundle_get_world_xform(db.inputs.collider)
-                        update_collider(db, collider_points, collider_xform)
+        if state.sim_tick == 0 and omni.warp.nodes.bundle_has_changed(db.inputs.particles):
+            if not state.initialize(db):
+                return
 
-                        # Update the state members.
-                        state.collider_xform = collider_xform.copy()
+        if (
+            db.inputs.collider.valid
+            and state.collider_mesh is not None
+            and omni.warp.nodes.bundle_has_changed(db.inputs.collider)
+        ):
+            # The collider might be animated so we need to update its state.
+            update_collider(db)
+
+        if omni.warp.nodes.bundle_have_attrs_changed(db.inputs.particles, ("worldMatrix",)):
+            update_particles(db)
 
         with omni.warp.nodes.NodeTimer("simulate", db, active=PROFILING):
             # Run the particles simulation at the current time.
             simulate(db)
 
-        # Store the current point positions into the bundle.
-        out_points = omni.warp.nodes.points_get_points(db.outputs.particles)
-        wp.copy(out_points, state.state_0.particle_q)
+        with omni.warp.nodes.NodeTimer("transform_points_to_local_space", db, active=PROFILING):
+            # Retrieve some data from the particles points.
+            xform = omni.warp.nodes.bundle_get_world_xform(db.inputs.particles)
+
+            # Transform the particles point positions back into local space
+            # and store them into the bundle.
+            out_points = omni.warp.nodes.points_get_points(db.outputs.particles)
+            wp.launch(
+                kernel=transform_points_kernel,
+                dim=len(out_points),
+                inputs=[
+                    state.state_0.particle_q,
+                    np.linalg.inv(xform).T,
+                ],
+                outputs=[
+                    out_points,
+                ],
+            )
+
+        # Increment the simulation tick.
+        state.sim_tick += 1
 
     # Store whether the simulation was last enabled.
     state.enabled = True

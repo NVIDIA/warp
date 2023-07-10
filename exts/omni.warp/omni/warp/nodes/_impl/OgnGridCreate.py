@@ -29,7 +29,7 @@ class InternalState:
     """Internal state for the node."""
 
     def __init__(self) -> None:
-        self.xform_prim_path = None
+        self.transform = None
         self.size = None
         self.dims = None
 
@@ -38,14 +38,14 @@ class InternalState:
     def have_setting_attrs_changed(self, db: OgnGridCreateDatabase) -> bool:
         """Checks if the values of the attributes that set-up the node have changed."""
         return (
-            db.inputs.xformPrimPath != self.xform_prim_path
+            not np.array_equal(db.inputs.transform, self.transform)
             or not np.array_equal(db.inputs.size, self.size)
             or not np.array_equal(db.inputs.dims, self.dims)
         )
 
     def store_setting_attrs(self, db: OgnGridCreateDatabase) -> None:
         """Stores the values of the attributes that set-up the node."""
-        self.xform_prim_path = db.inputs.xformPrimPath
+        self.transform = db.inputs.transform.copy()
         self.size = db.inputs.size.copy()
         self.dims = db.inputs.dims.copy()
 
@@ -77,6 +77,7 @@ def compute(db: OgnGridCreateDatabase) -> None:
         point_count,
         vertex_count,
         face_count,
+        xform=db.inputs.transform,
     )
 
     with omni.warp.nodes.NodeTimer("grid_create", db, active=PROFILING):
@@ -90,13 +91,6 @@ def compute(db: OgnGridCreateDatabase) -> None:
             db.inputs.size.tolist(),
             db.inputs.dims.tolist(),
         )
-
-    # Set the USD primitive path and type.
-    omni.warp.nodes.bundle_define_prim_attrs(
-        db.outputs.mesh,
-        "Mesh",
-        xform_prim_path=db.inputs.xformPrimPath,
-    )
 
     state.store_setting_attrs(db)
 

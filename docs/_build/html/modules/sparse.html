@@ -2,11 +2,10 @@
 <html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="prev" title="Interoperability" href="interoperability.html" />
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="prev" title="Interoperability" href="interoperability.html" />
 
-    <!-- Generated with Sphinx 6.1.3 and Furo 2023.03.27 -->
-        <title>Sparse Linear Algebra Reference - Warp 0.9.0</title>
+    <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 -->
+        <title>Sparse Linear Algebra Reference - Warp 0.10.0</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -136,7 +135,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">Warp 0.9.0</div></a>
+      <a href="../index.html"><div class="brand">Warp 0.10.0</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -163,7 +162,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 0.9.0</span>
+  <span class="sidebar-brand-text">Warp 0.10.0</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -227,7 +226,7 @@
           </label>
         </div>
         <article role="main">
-          <section id="sparse-linear-algebra-reference">
+          <div class="section" id="sparse-linear-algebra-reference">
 <h1>Sparse Linear Algebra Reference<a class="headerlink" href="#sparse-linear-algebra-reference" title="Permalink to this heading">#</a></h1>
 <p>Warp includes a sparse linear algebra module <code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> that implements a few common operations for manipulating sparse matrices.</p>
 <div class="admonition note">
@@ -238,7 +237,7 @@
 <p class="admonition-title">Warning</p>
 <p>This module provide naive implementations of useful routines for convenience. For performance, if possible prefer optimized implementations such as provided by cuSPARSE.</p>
 </div>
-<section id="blocked-sparse-row-bsr-matrices">
+<div class="section" id="blocked-sparse-row-bsr-matrices">
 <h2>Blocked Sparse Row (BSR) matrices<a class="headerlink" href="#blocked-sparse-row-bsr-matrices" title="Permalink to this heading">#</a></h2>
 <p>At the moment, <cite>warp.sparse</cite> only supports BSR matrix, including the special case of 1x1 blocks, Compressed Sparse Row (CSR) matrices.</p>
 <span class="target" id="module-warp.sparse"></span><dl class="py class">
@@ -251,7 +250,7 @@
 <span class="sig-name descname"><span class="pre">nrow</span></span><a class="headerlink" href="#warp.sparse.BsrMatrix.nrow" title="Permalink to this definition">#</a></dt>
 <dd><p>Number of rows of blocks</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -262,7 +261,7 @@
 <span class="sig-name descname"><span class="pre">ncol</span></span><a class="headerlink" href="#warp.sparse.BsrMatrix.ncol" title="Permalink to this definition">#</a></dt>
 <dd><p>Number of columns of blocks</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -273,7 +272,7 @@
 <span class="sig-name descname"><span class="pre">nnz</span></span><a class="headerlink" href="#warp.sparse.BsrMatrix.nnz" title="Permalink to this definition">#</a></dt>
 <dd><p>Number of non-zero blocks: equal to <cite>offsets[-1]</cite>, cached on host for convenience</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -284,7 +283,7 @@
 <span class="sig-name descname"><span class="pre">offsets</span></span><a class="headerlink" href="#warp.sparse.BsrMatrix.offsets" title="Permalink to this definition">#</a></dt>
 <dd><p>Array of size at least 1 + nrows containing start and end offsets og blocks in each row</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array(dtype=int)</p>
 </dd>
 </dl>
@@ -295,7 +294,7 @@
 <span class="sig-name descname"><span class="pre">columns</span></span><a class="headerlink" href="#warp.sparse.BsrMatrix.columns" title="Permalink to this definition">#</a></dt>
 <dd><p>Array of size at least equal to nnz containing block column indices</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array(dtype=int)</p>
 </dd>
 </dl>
@@ -306,7 +305,7 @@
 <span class="sig-name descname"><span class="pre">values</span></span><a class="headerlink" href="#warp.sparse.BsrMatrix.values" title="Permalink to this definition">#</a></dt>
 <dd><p>Array of size at least equal to nnz containing block values</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array(dtype=dtype)</p>
 </dd>
 </dl>
@@ -343,15 +342,15 @@
 <span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_zeros</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rows_of_blocks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cols_of_blocks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sparse.bsr_zeros" title="Permalink to this definition">#</a></dt>
 <dd><p>Constructs an empty BSR or CS matrix with the given shape</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>rows_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
 <li><p><strong>cols_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
 <li><p><strong>block_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.11)"><em>type</em></a>) – </p></li>
-<li><p><strong>device</strong> (<em>Device</em><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>None</em>) – </p></li>
+<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.11)"><em>Union</em></a><em>[</em><em>Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em><em>]</em>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dt class="field-even">Return type</dt>
 <dd class="field-even"><p><a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a></p>
 </dd>
 </dl>
@@ -365,12 +364,12 @@
 or a 3d array with data type equal to the <cite>dest</cite> matrix scalar type.</p>
 <p>Previous blocks of <cite>dest</cite> are discarded.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>dest</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – </p></li>
-<li><p><strong>rows</strong> (<em>&lt;warp.types.array object at 0x000001BB4561A130&gt;</em>) – </p></li>
-<li><p><strong>columns</strong> (<em>&lt;warp.types.array object at 0x000001BB4561A610&gt;</em>) – </p></li>
-<li><p><strong>values</strong> (<em>&lt;warp.types.array object at 0x000001BB77526100&gt;</em>) – </p></li>
+<li><p><strong>rows</strong> (<em>&lt;warp.types.array object at 0x0000029FDA4AF048&gt;</em>) – </p></li>
+<li><p><strong>columns</strong> (<em>&lt;warp.types.array object at 0x0000029FDA4AF088&gt;</em>) – </p></li>
+<li><p><strong>values</strong> (<em>&lt;warp.types.array object at 0x0000029FDA4AF0C8&gt;</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -381,7 +380,7 @@ or a 3d array with data type equal to the <cite>dest</cite> matrix scalar type.<
 <span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_assign</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dest</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sparse.bsr_assign" title="Permalink to this definition">#</a></dt>
 <dd><p>Copies the content of the <cite>src</cite> matrix to <cite>dest</cite>, possibly casting the block values.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>dest</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – </p></li>
 <li><p><strong>src</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – </p></li>
@@ -395,7 +394,7 @@ or a 3d array with data type equal to the <cite>dest</cite> matrix scalar type.<
 <span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_copy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scalar_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sparse.bsr_copy" title="Permalink to this definition">#</a></dt>
 <dd><p>Returns a copy of matrix A, possibly asting values to a new scalar type</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>A</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – </p>
 </dd>
 </dl>
@@ -406,7 +405,7 @@ or a 3d array with data type equal to the <cite>dest</cite> matrix scalar type.<
 <span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_set_transpose</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dest</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sparse.bsr_set_transpose" title="Permalink to this definition">#</a></dt>
 <dd><p>Assigns the transposed matrix <cite>src</cite> to matrix <cite>dest</cite></p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>dest</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – </p></li>
 <li><p><strong>src</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – </p></li>
@@ -420,7 +419,7 @@ or a 3d array with data type equal to the <cite>dest</cite> matrix scalar type.<
 <span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_transposed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sparse.bsr_transposed" title="Permalink to this definition">#</a></dt>
 <dd><p>Returns a copy of the transposed matrix <cite>A</cite></p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>A</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – </p>
 </dd>
 </dl>
@@ -431,10 +430,10 @@ or a 3d array with data type equal to the <cite>dest</cite> matrix scalar type.<
 <span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_get_diag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sparse.bsr_get_diag" title="Permalink to this definition">#</a></dt>
 <dd><p>Returns the block diagonal of a square sparse matrix</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>A</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – </p></li>
-<li><p><strong>out</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.types.array"><em>array</em></a><em> | </em><em>None</em>) – </p></li>
+<li><p><strong>out</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference internal" href="runtime.html#warp.array" title="warp.types.array"><em>array</em></a><em>]</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -445,7 +444,7 @@ or a 3d array with data type equal to the <cite>dest</cite> matrix scalar type.<
 <span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_set_diag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diag</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sparse.bsr_set_diag" title="Permalink to this definition">#</a></dt>
 <dd><p>Sets A as a block-diagonal square matrix</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>A</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – </p></li>
 <li><p><strong>diag</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.types.array"><em>array</em></a>) – </p></li>
@@ -459,7 +458,7 @@ or a 3d array with data type equal to the <cite>dest</cite> matrix scalar type.<
 <span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_diag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">diag</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sparse.bsr_diag" title="Permalink to this definition">#</a></dt>
 <dd><p>Creates a square block-diagonal BSR matrix from the values array <cite>diag</cite></p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>diag</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.types.array"><em>array</em></a>) – </p>
 </dd>
 </dl>
@@ -470,7 +469,7 @@ or a 3d array with data type equal to the <cite>dest</cite> matrix scalar type.<
 <span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_axpy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sparse.bsr_axpy" title="Permalink to this definition">#</a></dt>
 <dd><p>Performs the operation <cite>y := alpha * X + beta * y</cite> on BSR matrices <cite>x</cite> and <cite>y</cite></p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>x</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – </p></li>
 <li><p><strong>y</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – </p></li>
@@ -486,11 +485,11 @@ or a 3d array with data type equal to the <cite>dest</cite> matrix scalar type.<
 <span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_mm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sparse.bsr_mm" title="Permalink to this definition">#</a></dt>
 <dd><p>Performs the operation <cite>z := alpha * X * Y + beta * z</cite> on BSR matrices <cite>x</cite>, <cite>y</cite> and <cite>z</cite></p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>x</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – </p></li>
 <li><p><strong>y</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – </p></li>
-<li><p><strong>z</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a><em> | </em><em>None</em>) – </p></li>
+<li><p><strong>z</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a><em>]</em>) – </p></li>
 <li><p><strong>alpha</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – </p></li>
 <li><p><strong>beta</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – </p></li>
 </ul>
@@ -503,7 +502,7 @@ or a 3d array with data type equal to the <cite>dest</cite> matrix scalar type.<
 <span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_mv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sparse.bsr_mv" title="Permalink to this definition">#</a></dt>
 <dd><p>Naive implementation of sparse matrix-vector product, <cite>y := alpha * A * x + beta * y</cite>.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>A</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – </p></li>
 <li><p><strong>x</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.types.array"><em>array</em></a>) – </p></li>
@@ -515,8 +514,8 @@ or a 3d array with data type equal to the <cite>dest</cite> matrix scalar type.<
 </dl>
 </dd></dl>
 
-</section>
-</section>
+</div>
+</div>
 
         </article>
       </div>
@@ -612,6 +611,9 @@ or a 3d array with data type equal to the <cite>dest</cite> matrix scalar type.<
     </aside>
   </div>
 </div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../_static/doctools.js"></script>
     <script src="../_static/sphinx_highlight.js"></script>
     <script src="../_static/scripts/furo.js"></script>

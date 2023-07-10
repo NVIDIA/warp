@@ -8,6 +8,7 @@
 """Helpers to author point cloud geometries represented as OmniGraph bundles."""
 
 from math import inf
+from typing import Optional
 
 import numpy as np
 import omni.graph.core as og
@@ -23,6 +24,8 @@ from omni.warp.nodes._impl.bundles import (
     bundle_create_child,
     bundle_get_attr,
     bundle_get_world_xform,
+    bundle_set_prim_type,
+    bundle_set_world_xform,
 )
 
 
@@ -33,6 +36,7 @@ from omni.warp.nodes._impl.bundles import (
 def points_create_bundle(
     dst_bundle: og.BundleContents,
     point_count: int,
+    xform: Optional[np.ndarray] = None,
     child_idx: int = 0,
 ) -> None:
     """Creates and initializes point cloud attributes within a bundle."""
@@ -81,6 +85,11 @@ def points_create_bundle(
         ),
         size=point_count,
     )
+
+    bundle_set_prim_type(dst_bundle, "Points", child_idx=child_idx)
+
+    if xform is not None:
+        bundle_set_world_xform(dst_bundle, xform, child_idx=child_idx)
 
 
 def points_copy_bundle(

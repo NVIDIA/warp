@@ -155,6 +155,7 @@ def compute(db: OgnMeshFromVolumeDatabase) -> None:
         point_count,
         vertex_count,
         face_count,
+        xform=db.inputs.transform,
     )
 
     out_points = omni.warp.nodes.mesh_get_points(db.outputs.mesh)
@@ -196,13 +197,6 @@ def compute(db: OgnMeshFromVolumeDatabase) -> None:
                 out_points,
             ],
         )
-
-    # Set the USD primitive path and type.
-    omni.warp.nodes.bundle_define_prim_attrs(
-        db.outputs.mesh,
-        "Mesh",
-        xform_prim_path=db.inputs.xformPrimPath,
-    )
 
 
 #   Node Entry Point

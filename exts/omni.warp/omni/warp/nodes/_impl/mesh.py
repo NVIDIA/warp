@@ -7,6 +7,8 @@
 
 """Helpers to author mesh geometries represented as OmniGraph bundles."""
 
+from typing import Optional
+
 import numpy as np
 import omni.graph.core as og
 import warp as wp
@@ -20,6 +22,8 @@ from omni.warp.nodes._impl.bundles import (
     bundle_create_attr,
     bundle_create_child,
     bundle_get_attr,
+    bundle_set_prim_type,
+    bundle_set_world_xform,
 )
 from omni.warp.nodes._impl.points import (
     points_get_points,
@@ -34,6 +38,7 @@ def mesh_create_bundle(
     point_count: int,
     vertex_count: int,
     face_count: int,
+    xform: Optional[np.ndarray] = None,
     child_idx: int = 0,
 ) -> None:
     """Creates and initializes mesh attributes within a bundle."""
@@ -93,6 +98,11 @@ def mesh_create_bundle(
         ),
         size=vertex_count,
     )
+
+    bundle_set_prim_type(dst_bundle, "Mesh", child_idx=child_idx)
+
+    if xform is not None:
+        bundle_set_world_xform(dst_bundle, xform, child_idx=child_idx)
 
 
 def mesh_copy_bundle(

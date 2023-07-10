@@ -343,6 +343,7 @@ def compute(db: OgnWaveSolveDatabase) -> None:
         point_count,
         vertex_count,
         face_count,
+        xform=db.inputs.transform,
     )
 
     if state.needs_initialization(db):
@@ -375,13 +376,6 @@ def compute(db: OgnWaveSolveDatabase) -> None:
             # Update the mesh points with the height map resulting from
             # the displacement and simulation steps.
             update_mesh(db)
-
-    # Set the USD primitive path and type.
-    omni.warp.nodes.bundle_define_prim_attrs(
-        db.outputs.mesh,
-        "Mesh",
-        xform_prim_path=db.inputs.xformPrimPath,
-    )
 
     # Store the current time.
     state.time = db.inputs.time

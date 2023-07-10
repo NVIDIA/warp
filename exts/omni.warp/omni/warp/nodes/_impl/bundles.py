@@ -7,7 +7,10 @@
 
 """Helpers to author OmniGraph bundles."""
 
-from typing import Optional
+from typing import (
+    Optional,
+    Sequence,
+)
 
 import numpy as np
 import omni.graph.core as og
@@ -18,7 +21,6 @@ from omni.warp.nodes._impl.attributes import (
     attr_get_gpu_array,
     attr_set_cpu_array,
 )
-from omni.warp.nodes._impl.usd import prim_get_world_xform
 
 
 #   High-level Bundle API (og.BundleContents)
@@ -41,6 +43,26 @@ def bundle_get_prim_type(
     return attr_get_cpu_array(attr)
 
 
+def bundle_set_prim_type(
+    bundle: og.BundleContents,
+    prim_type: str,
+    child_idx: int = 0,
+) -> None:
+    """Sets the primitive type."""
+    child_bundle = bundle_create_child(bundle, child_idx)
+    attr = bundle_create_attr(
+        child_bundle,
+        "sourcePrimType",
+        og.Type(
+            og.BaseDataType.TOKEN,
+            tuple_count=1,
+            array_depth=0,
+            role=og.AttributeRole.NONE,
+        ),
+    )
+    attr_set_cpu_array(attr, prim_type)
+
+
 def bundle_get_world_xform(
     bundle: og.BundleContents,
     child_idx: int = 0,
@@ -53,9 +75,29 @@ def bundle_get_world_xform(
     return attr_get_cpu_array(attr).reshape(4, 4)
 
 
+def bundle_set_world_xform(
+    bundle: og.BundleContents,
+    xform: np.ndarray,
+    child_idx: int = 0,
+) -> None:
+    """Sets the bundle's world transformation matrix."""
+    child_bundle = bundle_create_child(bundle, child_idx)
+    attr = bundle_create_attr(
+        child_bundle,
+        "worldMatrix",
+        og.Type(
+            og.BaseDataType.DOUBLE,
+            tuple_count=16,
+            array_depth=0,
+            role=og.AttributeRole.MATRIX,
+        ),
+    )
+    attr_set_cpu_array(attr, xform)
+
+
 def bundle_create_child(
     bundle: og.BundleContents,
-    child_idx: int,
+    child_idx: int = 0,
 ) -> og.IBundle2:
     """Creates a single child bundle if it doesn't already exist."""
     if child_idx < bundle.bundle.get_child_bundle_count():
@@ -67,7 +109,7 @@ def bundle_create_child(
 def bundle_get_attr(
     bundle: og.BundleContents,
     name: str,
-    child_idx: int,
+    child_idx: int = 0,
 ) -> Optional[og.AttributeData]:
     """Retrieves a bundle attribute from its name."""
     if bundle.bundle.get_child_bundle_count():
@@ -81,39 +123,30 @@ def bundle_get_attr(
     return attr
 
 
-def bundle_define_prim_attrs(
+def bundle_has_changed(
     bundle: og.BundleContents,
-    prim_type: str,
-    xform_prim_path: Optional[str] = None,
     child_idx: int = 0,
-) -> None:
-    """Defines the primitive attributes."""
-    child_bundle = bundle_create_child(bundle, child_idx)
-    xform = prim_get_world_xform(xform_prim_path)
+) -> bool:
+    """Checks whether the contents of the bundle has changed."""
+    with bundle.changes() as bundle_changes:
+        child_bundle = bundle.bundle.get_child_bundle(child_idx)
+        return bundle_changes.get_change(child_bundle) != og.BundleChangeType.NONE
 
-    prim_type_attr = bundle_create_attr(
-        child_bundle,
-        "sourcePrimType",
-        og.Type(
-            og.BaseDataType.TOKEN,
-            tuple_count=1,
-            array_depth=0,
-            role=og.AttributeRole.NONE,
-        ),
-    )
-    attr_set_cpu_array(prim_type_attr, prim_type)
 
-    world_matrix_attr = bundle_create_attr(
-        child_bundle,
-        "worldMatrix",
-        og.Type(
-            og.BaseDataType.DOUBLE,
-            tuple_count=16,
-            array_depth=0,
-            role=og.AttributeRole.MATRIX,
-        ),
-    )
-    attr_set_cpu_array(world_matrix_attr, xform)
+def bundle_have_attrs_changed(
+    bundle: og.BundleContents,
+    attr_names: Sequence[str],
+    child_idx: int = 0,
+) -> bool:
+    """Checks whether the contents of a bundle's attributes hab changed."""
+    with bundle.changes() as bundle_changes:
+        child_bundle = bundle.bundle.get_child_bundle(child_idx)
+        for attr_name in attr_names:
+            attr = child_bundle.get_attribute_by_name(attr_name)
+            if bundle_changes.get_change(attr) != og.BundleChangeType.NONE:
+                return True
+
+    return False
 
 
 #   Low-level Bundle API (og.IBundle2)

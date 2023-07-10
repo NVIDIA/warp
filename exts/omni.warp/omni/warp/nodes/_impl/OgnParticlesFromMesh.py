@@ -114,7 +114,7 @@ class InternalState:
     """Internal state for the node."""
 
     def __init__(self) -> None:
-        self.xform_prim_path = None
+        self.transform = None
         self.seed = None
         self.min_sdf = None
         self.max_sdf = None
@@ -135,10 +135,8 @@ class InternalState:
         if not self.is_valid:
             return True
 
-        with db.inputs.mesh.changes() as bundle_changes:
-            geometry_changes = bundle_changes.get_change(db.inputs.mesh)
-            if geometry_changes != og.BundleChangeType.NONE:
-                return True
+        if omni.warp.nodes.bundle_has_changed(db.inputs.mesh):
+            return True
 
         return False
 
@@ -178,7 +176,7 @@ class InternalState:
     def have_setting_attrs_changed(self, db: OgnParticlesFromMeshDatabase) -> bool:
         """Checks if the values of the attributes that set-up the node have changed."""
         return (
-            db.inputs.xformPrimPath != self.xform_prim_path
+            not np.array_equal(db.inputs.transform, self.transform)
             or db.inputs.seed != self.seed
             or db.inputs.minSdf != self.min_sdf
             or db.inputs.maxSdf != self.max_sdf
@@ -193,7 +191,7 @@ class InternalState:
 
     def store_setting_attrs(self, db: OgnParticlesFromMeshDatabase) -> None:
         """Stores the values of the attributes that set-up the node."""
-        self.xform_prim_path = db.inputs.xformPrimPath
+        self.transform = db.inputs.transform.copy()
         self.seed = db.inputs.seed
         self.min_sdf = db.inputs.minSdf
         self.max_sdf = db.inputs.maxSdf
@@ -278,7 +276,11 @@ def compute(db: OgnParticlesFromMeshDatabase) -> None:
         (points, point_count) = spawn_particles(db)
 
     # Create a new geometry points within the output bundle.
-    omni.warp.nodes.points_create_bundle(db.outputs.particles, point_count)
+    omni.warp.nodes.points_create_bundle(
+        db.outputs.particles,
+        point_count,
+        xform=db.inputs.transform,
+    )
 
     # Copy the point positions onto the output bundle.
     wp.copy(
@@ -316,13 +318,6 @@ def compute(db: OgnParticlesFromMeshDatabase) -> None:
         # Store the mass in the output bundle.
         masses = omni.warp.nodes.points_get_masses(db.outputs.particles)
         masses.fill_(db.inputs.mass)
-
-    # Set the USD primitive path and type.
-    omni.warp.nodes.bundle_define_prim_attrs(
-        db.outputs.particles,
-        "Points",
-        xform_prim_path=db.inputs.xformPrimPath,
-    )
 
     state.store_setting_attrs(db)
 
