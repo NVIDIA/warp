@@ -15,8 +15,8 @@ import omni.graph.core as og
 import warp as wp
 
 from omni.warp.nodes._impl.attributes import (
-    attr_get_cpu_array,
-    attr_get_gpu_array,
+    attr_get,
+    attr_get_array_on_gpu,
 )
 from omni.warp.nodes._impl.bundles import (
     bundle_copy_attr_value,
@@ -124,7 +124,7 @@ def points_get_points(
 ) -> wp.array(dtype=wp.vec3):
     """Retrieves the bundle points attribute as a Warp array."""
     attr = bundle_get_attr(bundle, "points", child_idx)
-    return attr_get_gpu_array(attr, wp.vec3, read_only=bundle.read_only)
+    return attr_get_array_on_gpu(attr, wp.vec3, read_only=bundle.read_only)
 
 
 def points_get_velocities(
@@ -133,7 +133,7 @@ def points_get_velocities(
 ) -> wp.array(dtype=wp.vec3):
     """Retrieves the bundle velocities attribute as a Warp array."""
     attr = bundle_get_attr(bundle, "velocities", child_idx)
-    return attr_get_gpu_array(attr, wp.vec3, read_only=bundle.read_only)
+    return attr_get_array_on_gpu(attr, wp.vec3, read_only=bundle.read_only)
 
 
 def points_get_widths(
@@ -142,7 +142,7 @@ def points_get_widths(
 ) -> wp.array(dtype=float):
     """Retrieves the bundle widths attribute as a Warp array."""
     attr = bundle_get_attr(bundle, "widths", child_idx)
-    return attr_get_gpu_array(attr, float, read_only=bundle.read_only)
+    return attr_get_array_on_gpu(attr, float, read_only=bundle.read_only)
 
 
 def points_get_masses(
@@ -151,7 +151,7 @@ def points_get_masses(
 ) -> wp.array(dtype=float):
     """Retrieves the bundle masses attribute as a Warp array."""
     attr = bundle_get_attr(bundle, "masses", child_idx)
-    return attr_get_gpu_array(attr, float, read_only=bundle.read_only)
+    return attr_get_array_on_gpu(attr, float, read_only=bundle.read_only)
 
 
 def points_get_local_extent(
@@ -163,7 +163,7 @@ def points_get_local_extent(
     # geometry primitives on the stage.
     attr = bundle_get_attr(bundle, "extent", child_idx)
     if attr is not None:
-        return attr_get_cpu_array(attr)
+        return attr_get(attr)
 
     # Alternatively, the ReadPrims node offers an option to compute the bounding
     # box which results in a triple of 'bboxMinCorner', 'bboxMaxCorner',
@@ -173,8 +173,8 @@ def points_get_local_extent(
     if min_attr is not None and max_attr is not None:
         return np.stack(
             (
-                attr_get_cpu_array(min_attr),
-                attr_get_cpu_array(max_attr),
+                attr_get(min_attr),
+                attr_get(max_attr),
             ),
         )
 

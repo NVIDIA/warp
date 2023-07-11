@@ -14,8 +14,8 @@ import omni.graph.core as og
 import warp as wp
 
 from omni.warp.nodes._impl.attributes import (
-    attr_get_cpu_array,
-    attr_get_gpu_array,
+    attr_get,
+    attr_get_array_on_gpu,
 )
 from omni.warp.nodes._impl.bundles import (
     bundle_copy_attr_value,
@@ -138,7 +138,7 @@ def mesh_get_vertex_count(
 ) -> int:
     """Retrieves the number of vertices."""
     attr = bundle_get_attr(bundle, "faceVertexCounts", child_idx)
-    return int(np.sum(attr_get_cpu_array(attr)))
+    return int(np.sum(attr_get(attr)))
 
 
 def mesh_get_face_count(
@@ -171,7 +171,7 @@ def mesh_get_normals(
 ) -> wp.array(dtype=wp.vec3):
     """Retrieves the bundle normals attribute as a Warp array."""
     attr = bundle_get_attr(bundle, "normals", child_idx)
-    return attr_get_gpu_array(attr, wp.vec3, read_only=bundle.read_only)
+    return attr_get_array_on_gpu(attr, wp.vec3, read_only=bundle.read_only)
 
 
 def mesh_get_uvs(
@@ -180,7 +180,7 @@ def mesh_get_uvs(
 ) -> wp.array(dtype=wp.vec2):
     """Retrieves the bundle UVs attribute as a Warp array."""
     attr = bundle_get_attr(bundle, "primvars:st", child_idx)
-    return attr_get_gpu_array(attr, wp.vec2, read_only=bundle.read_only)
+    return attr_get_array_on_gpu(attr, wp.vec2, read_only=bundle.read_only)
 
 
 def mesh_get_face_vertex_counts(
@@ -189,7 +189,7 @@ def mesh_get_face_vertex_counts(
 ) -> wp.array(dtype=int):
     """Retrieves the bundle face vertex counts attribute as a Warp array."""
     attr = bundle_get_attr(bundle, "faceVertexCounts", child_idx)
-    return attr_get_gpu_array(attr, int, read_only=bundle.read_only)
+    return attr_get_array_on_gpu(attr, int, read_only=bundle.read_only)
 
 
 def mesh_get_face_vertex_indices(
@@ -198,7 +198,7 @@ def mesh_get_face_vertex_indices(
 ) -> wp.array(dtype=int):
     """Retrieves the bundle face vertex indices attribute as a Warp array."""
     attr = bundle_get_attr(bundle, "faceVertexIndices", child_idx)
-    return attr_get_gpu_array(attr, int, read_only=bundle.read_only)
+    return attr_get_array_on_gpu(attr, int, read_only=bundle.read_only)
 
 
 def mesh_get_local_extent(
