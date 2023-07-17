@@ -250,6 +250,24 @@ def test_mesh_query_ray(test, device):
     )
 
 
+def test_mesh_refit_graph(test, device):
+    points = wp.array(POINT_POSITIONS, dtype=wp.vec3)
+
+    indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int)
+    mesh = wp.Mesh(points=points, indices=indices)
+
+    wp.capture_begin()
+
+    mesh.refit()
+
+    graph = wp.capture_end()
+
+    # replay
+    num_iters = 10
+    for _ in range(num_iters):
+        wp.capture_launch(graph)
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -259,6 +277,7 @@ def register(parent):
     add_function_test(TestMesh, "test_mesh_read_properties", test_mesh_read_properties, devices=devices)
     add_function_test(TestMesh, "test_mesh_query_point", test_mesh_query_point, devices=devices)
     add_function_test(TestMesh, "test_mesh_query_ray", test_mesh_query_ray, devices=devices)
+    add_function_test(TestMesh, "test_mesh_refit_graph", test_mesh_refit_graph, devices=wp.get_cuda_devices())
     return TestMesh
 
 
