@@ -216,11 +216,27 @@ void* alloc_device(void* context, size_t s)
     return ptr;
 }
 
+void* alloc_device_async(void* context, size_t s)
+{
+    ContextGuard guard(context);
+
+    void* ptr;
+    check_cuda(cudaMallocAsync(&ptr, s, get_current_stream()));
+    return ptr;
+}
+
 void free_device(void* context, void* ptr)
 {
     ContextGuard guard(context);
 
     check_cuda(cudaFree(ptr));
+}
+
+void free_device_async(void* context, void* ptr)
+{
+    ContextGuard guard(context);
+
+    check_cuda(cudaFreeAsync(ptr, get_current_stream()));
 }
 
 void memcpy_h2d(void* context, void* dest, void* src, size_t n)
@@ -1208,10 +1224,10 @@ void* cuda_graph_end_capture(void* context)
         //cudaGraphDebugDotPrint(graph, "graph.dot", cudaGraphDebugDotFlagsVerbose);
 
         cudaGraphExec_t graph_exec = NULL;
-        check_cuda(cudaGraphInstantiate(&graph_exec, graph, NULL, NULL, 0));
+        //check_cuda(cudaGraphInstantiate(&graph_exec, graph, NULL, NULL, 0));
         
         // can use after CUDA 11.4 to permit graphs to capture cudaMallocAsync() operations
-        //check_cuda(cudaGraphInstantiateWithFlags(&graph_exec, graph, cudaGraphInstantiateFlagAutoFreeOnLaunch));
+        check_cuda(cudaGraphInstantiateWithFlags(&graph_exec, graph, cudaGraphInstantiateFlagAutoFreeOnLaunch));
 
         // free source graph
         check_cuda(cudaGraphDestroy(graph));

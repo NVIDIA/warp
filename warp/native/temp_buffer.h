@@ -18,8 +18,8 @@ struct TemporaryBuffer
         {
             size = std::max(2 * size, (buffer_size * 3) / 2);
 
-            free_device(WP_CURRENT_CONTEXT, buffer);
-            buffer = alloc_device(WP_CURRENT_CONTEXT, size);
+            free_device_async(WP_CURRENT_CONTEXT, buffer);
+            buffer = alloc_device_async(WP_CURRENT_CONTEXT, size);
             buffer_size = size;
         }
     }
