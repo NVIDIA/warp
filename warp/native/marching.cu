@@ -362,13 +362,13 @@ namespace wp {
 
             const int num_to_alloc = mc.num_cells*3/2;
 
-            free_device_async(WP_CURRENT_CONTEXT, mc.first_cell_vert);
-            free_device_async(WP_CURRENT_CONTEXT, mc.first_cell_tri);
-            free_device_async(WP_CURRENT_CONTEXT, mc.cell_verts);
+            free_device(WP_CURRENT_CONTEXT, mc.first_cell_vert);
+            free_device(WP_CURRENT_CONTEXT, mc.first_cell_tri);
+            free_device(WP_CURRENT_CONTEXT, mc.cell_verts);
 
-            mc.first_cell_vert = (int*)alloc_device_async(WP_CURRENT_CONTEXT, sizeof(int) * num_to_alloc);
-            mc.first_cell_tri = (int*)alloc_device_async(WP_CURRENT_CONTEXT, sizeof(int) * num_to_alloc);
-            mc.cell_verts = (int*)alloc_device_async(WP_CURRENT_CONTEXT, sizeof(int) * 3 * num_to_alloc);
+            mc.first_cell_vert = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * num_to_alloc);
+            mc.first_cell_tri = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * num_to_alloc);
+            mc.cell_verts = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * 3 * num_to_alloc);
 
             mc.max_cells = num_to_alloc;
         }
