@@ -24,8 +24,6 @@ import omni.kit.actions.core
 import omni.timeline
 import warp as wp
 
-from omni.warp._extension.menu import WarpMenu
-
 
 SCENES_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../data/scenes"))
 NODES_INIT_PATH = os.path.normpath(
@@ -118,6 +116,8 @@ def verify_kernel_node_load(nodes: Sequence[og.Node]):
     )
 
     async def show_async():
+        import omni.kit.app
+
         # wait a few frames to allow the app ui to finish loading
         await omni.kit.app.get_app().next_update_async()
         await omni.kit.app.get_app().next_update_async()
@@ -179,13 +179,14 @@ def on_kernel_opt_in_setting_change(
 
 class OmniWarpExtension(omni.ext.IExt):
     def __init__(self, *args, **kwargs):
+        import omni.kit.app
+
         super().__init__(*args, **kwargs)
+        self._menu = None
         self._stage_subscription = None
         self._opt_in_setting_sub = None
 
         with suppress(ImportError):
-            import omni.kit.app
-
             app = omni.kit.app.get_app()
             manager = app.get_extension_manager()
             if manager.is_extension_enabled("omni.graph.ui"):
@@ -196,6 +197,8 @@ class OmniWarpExtension(omni.ext.IExt):
     def on_startup(self, ext_id):
         log_info("OmniWarpExtension startup")
 
+        import omni.kit.app
+
         settings = carb.settings.get_settings()
 
         wp.config.enable_backward = settings.get(SETTING_ENABLE_BACKWARD)
@@ -204,18 +207,17 @@ class OmniWarpExtension(omni.ext.IExt):
         self._is_live = True
         self._ext_name = "omni.warp"
 
-        try:
+        with suppress(ImportError):
             import omni.kit.menu.utils
-        except ImportError:
-            print("Warning: menu not enabled.")
-        else:
+            from omni.warp._extension.menu import WarpMenu
+
             self._register_actions()
             self._menu = WarpMenu()
 
-        try:
-            importlib.import_module("omni.kit.browser.sample").register_sample_folder(SCENES_PATH, "Warp")
-        except ImportError as e:
-            print("Warning: sample browser not enabled.")
+        with suppress(ImportError):
+            import omni.kit.browser.sample
+
+            omni.kit.browser.sample.register_sample_folder(SCENES_PATH, "Warp")
 
         self._update_event_stream = omni.kit.app.get_app_interface().get_update_event_stream()
         self._stage_event_sub = (
@@ -258,10 +260,10 @@ class OmniWarpExtension(omni.ext.IExt):
             self._menu = None
             self._deregister_actions()
 
-        try:
-            importlib.import_module("omni.kit.browser.sample").unregister_sample_folder(SCENES_PATH)
-        except ImportError as e:
-            print(e)
+        with suppress(ImportError):
+            import omni.kit.browser.sample
+
+            omni.kit.browser.sample.unregister_sample_folder(SCENES_PATH)
 
         self._update_event_stream = None
         self._stage_event_sub = None
