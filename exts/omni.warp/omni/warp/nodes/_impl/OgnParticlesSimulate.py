@@ -171,7 +171,11 @@ class InternalState:
 
         return False
 
-    def initialize(self, db: OgnParticlesSimulateDatabase) -> bool:
+    def initialize(
+        self,
+        db: OgnParticlesSimulateDatabase,
+        device: wp.context.Device,
+    ) -> bool:
         """Initializes the internal state."""
         # Compute the simulation time step.
         timeline = omni.timeline.get_timeline_interface()
@@ -336,8 +340,12 @@ class InternalState:
         self.xform = xform.copy()
 
         if USE_GRAPH:
-            # Create the CUDA graph.
-            wp.capture_begin()
+            # Create the CUDA graph. We first manually load the necessary
+            # modules to avoid the capture to load all the modules that are
+            # registered and possibly not relevant.
+            wp.load_module(device=device)
+            wp.load_module(module=warp.sim, device=device, recursive=True)
+            wp.capture_begin(force_module_load=False)
             step(db)
             self.graph = wp.capture_end()
         else:
@@ -481,7 +489,7 @@ def simulate(db: OgnParticlesSimulateDatabase) -> None:
         step(db)
 
 
-def compute(db: OgnParticlesSimulateDatabase) -> None:
+def compute(db: OgnParticlesSimulateDatabase, device: wp.context.Device) -> None:
     """Evaluates the node."""
     if not db.inputs.particles.valid or not db.outputs.particles.valid:
         return
@@ -507,13 +515,13 @@ def compute(db: OgnParticlesSimulateDatabase) -> None:
             deep_copy=True,
         )
 
-        if not state.initialize(db):
+        if not state.initialize(db, device):
             return
     else:
         # We skip the simulation if it has just been initialized.
 
         if state.sim_tick == 0 and omni.warp.nodes.bundle_has_changed(db.inputs.particles):
-            if not state.initialize(db):
+            if not state.initialize(db, device):
                 return
 
         if (
@@ -577,7 +585,7 @@ class OgnParticlesSimulate:
 
         try:
             with wp.ScopedDevice(device):
-                compute(db)
+                compute(db, device)
         except Exception:
             db.log_error(traceback.format_exc())
             db.internal_state.is_valid = False
