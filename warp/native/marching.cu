@@ -1,8 +1,6 @@
 #include "warp.h"
 #include "cuda_util.h"
-
-#include "thrust/device_ptr.h"
-#include "thrust/sort.h"
+#include "scan.h"
 
 namespace wp {
 
@@ -168,6 +166,10 @@ namespace wp {
 		MarchingCubes() 
         {
 			memset(this, 0, sizeof(MarchingCubes));
+            first_cell_vert = nullptr;
+            first_cell_tri = nullptr;
+		    cell_verts = nullptr;
+            context = nullptr;
 		}
 
         __device__ __host__ int cell_index(int xi, int yi, int zi) const
@@ -360,13 +362,13 @@ namespace wp {
 
             const int num_to_alloc = mc.num_cells*3/2;
 
-            free_device(WP_CURRENT_CONTEXT, mc.first_cell_vert);
-            free_device(WP_CURRENT_CONTEXT, mc.first_cell_tri);
-            free_device(WP_CURRENT_CONTEXT, mc.cell_verts);
+            free_device_async(WP_CURRENT_CONTEXT, mc.first_cell_vert);
+            free_device_async(WP_CURRENT_CONTEXT, mc.first_cell_tri);
+            free_device_async(WP_CURRENT_CONTEXT, mc.cell_verts);
 
-            mc.first_cell_vert = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * num_to_alloc);
-            mc.first_cell_tri = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * num_to_alloc);
-            mc.cell_verts = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * 3 * num_to_alloc);
+            mc.first_cell_vert = (int*)alloc_device_async(WP_CURRENT_CONTEXT, sizeof(int) * num_to_alloc);
+            mc.first_cell_tri = (int*)alloc_device_async(WP_CURRENT_CONTEXT, sizeof(int) * num_to_alloc);
+            mc.cell_verts = (int*)alloc_device_async(WP_CURRENT_CONTEXT, sizeof(int) * 3 * num_to_alloc);
 
             mc.max_cells = num_to_alloc;
         }
@@ -377,9 +379,9 @@ namespace wp {
     {
         ContextGuard guard(mc.context);
 
-        free_device(WP_CURRENT_CONTEXT, mc.first_cell_vert);
-        free_device(WP_CURRENT_CONTEXT, mc.first_cell_tri);
-        free_device(WP_CURRENT_CONTEXT, mc.cell_verts);
+        free_device_async(WP_CURRENT_CONTEXT, mc.first_cell_vert);
+        free_device_async(WP_CURRENT_CONTEXT, mc.first_cell_tri);
+        free_device_async(WP_CURRENT_CONTEXT, mc.cell_verts);
     }
 
 } // namespace wp
@@ -444,10 +446,7 @@ WP_API int marching_cubes_surface_device(
     int num_last;		
     memcpy_d2h(WP_CURRENT_CONTEXT, &num_last, &mc.first_cell_vert[mc.num_cells - 1], sizeof(int));
 
-    thrust::exclusive_scan(
-        thrust::device_ptr<int>(mc.first_cell_vert),
-        thrust::device_ptr<int>(mc.first_cell_vert + mc.num_cells),
-        thrust::device_ptr<int>(mc.first_cell_vert));
+    scan_device(mc.first_cell_vert, mc.first_cell_vert, mc.num_cells, false);
 
     int num_verts;
     memcpy_d2h(WP_CURRENT_CONTEXT, &num_verts, &mc.first_cell_vert[mc.num_cells - 1], sizeof(int));
@@ -472,10 +471,7 @@ WP_API int marching_cubes_surface_device(
     
     memcpy_d2h(WP_CURRENT_CONTEXT, &num_last, &mc.first_cell_tri[mc.num_cells - 1], sizeof(int));
 
-    thrust::exclusive_scan(
-        thrust::device_ptr<int>(mc.first_cell_tri),
-        thrust::device_ptr<int>(mc.first_cell_tri + mc.num_cells),
-        thrust::device_ptr<int>(mc.first_cell_tri));
+    scan_device(mc.first_cell_tri, mc.first_cell_tri, mc.num_cells, false);
 
 
     int num_indices;
