@@ -379,9 +379,9 @@ namespace wp {
     {
         ContextGuard guard(mc.context);
 
-        free_device_async(WP_CURRENT_CONTEXT, mc.first_cell_vert);
-        free_device_async(WP_CURRENT_CONTEXT, mc.first_cell_tri);
-        free_device_async(WP_CURRENT_CONTEXT, mc.cell_verts);
+        free_device(WP_CURRENT_CONTEXT, mc.first_cell_vert);
+        free_device(WP_CURRENT_CONTEXT, mc.first_cell_tri);
+        free_device(WP_CURRENT_CONTEXT, mc.cell_verts);
     }
 
 } // namespace wp
