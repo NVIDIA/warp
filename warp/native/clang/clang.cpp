@@ -327,7 +327,7 @@ WP_API uint64_t lookup(const char* dll_name, const char* function_name)
     if(!func)
     {
         std::cerr << "Failed to lookup symbol: " << llvm::toString(func.takeError()) << std::endl;
-        return -1;
+        return 0;
     }
 
     return func->getValue();
