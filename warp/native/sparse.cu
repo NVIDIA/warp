@@ -178,9 +178,9 @@ int bsr_matrix_from_triplets_device(const int rows_per_block,
     check_cuda(cub::DeviceSelect::If(nullptr, buff_size, d_keys.Current(),
                                      d_keys.Alternate(), d_nz_triplet_count,
                                      nnz, isNotZero, stream));
-    cub_temp.ensure_fits(buff_size);
+    void* temp_buffer = cub_temp.alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
     check_cuda(cub::DeviceSelect::If(
-        cub_temp.buffer, buff_size, d_keys.Current(), d_keys.Alternate(),
+        temp_buffer, buff_size, d_keys.Current(), d_keys.Alternate(),
         d_nz_triplet_count, nnz, isNotZero, stream));
 
     // switch current/alternate in double buffer
@@ -212,8 +212,9 @@ int bsr_matrix_from_triplets_device(const int rows_per_block,
   size_t buff_size = 0;
   check_cuda(cub::DeviceRadixSort::SortPairs(
       nullptr, buff_size, d_values, d_keys, nz_triplet_count, 0, 64, stream));
-  cub_temp.ensure_fits(buff_size);
-  check_cuda(cub::DeviceRadixSort::SortPairs(cub_temp.buffer, buff_size,
+  void* temp_buffer = cub_temp.alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
+  
+  check_cuda(cub::DeviceRadixSort::SortPairs(temp_buffer, buff_size,
                                              d_values, d_keys, nz_triplet_count,
                                              0, 64, stream));
 
@@ -221,9 +222,9 @@ int bsr_matrix_from_triplets_device(const int rows_per_block,
   check_cuda(cub::DeviceRunLengthEncode::Encode(
       nullptr, buff_size, d_values.Current(), d_values.Alternate(),
       d_keys.Alternate(), d_nz_triplet_count, nz_triplet_count, stream));
-  cub_temp.ensure_fits(buff_size);
+  temp_buffer = cub_temp.alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
   check_cuda(cub::DeviceRunLengthEncode::Encode(
-      cub_temp.buffer, buff_size, d_values.Current(), d_values.Alternate(),
+      temp_buffer, buff_size, d_values.Current(), d_values.Alternate(),
       d_keys.Alternate(), d_nz_triplet_count, nz_triplet_count, stream));
 
   memcpy_d2h(WP_CURRENT_CONTEXT, pinned_count, d_nz_triplet_count, sizeof(int));
@@ -239,9 +240,9 @@ int bsr_matrix_from_triplets_device(const int rows_per_block,
   check_cuda(cub::DeviceScan::InclusiveSum(
       nullptr, buff_size, d_keys.Alternate(), d_keys.Alternate(),
       nz_triplet_count, stream));
-  cub_temp.ensure_fits(buff_size);
+  temp_buffer = cub_temp.alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
   check_cuda(cub::DeviceScan::InclusiveSum(
-      cub_temp.buffer, buff_size, d_keys.Alternate(), d_keys.Alternate(),
+      temp_buffer, buff_size, d_keys.Alternate(), d_keys.Alternate(),
       nz_triplet_count, stream));
 
   // While we're at it, zero the bsr offsets buffer
@@ -261,8 +262,8 @@ int bsr_matrix_from_triplets_device(const int rows_per_block,
   // Last, prefix sum the row block counts
   check_cuda(cub::DeviceScan::InclusiveSum(nullptr, buff_size, bsr_offsets,
                                            bsr_offsets, row_count + 1, stream));
-  cub_temp.ensure_fits(buff_size);
-  check_cuda(cub::DeviceScan::InclusiveSum(cub_temp.buffer, buff_size,
+  temp_buffer = cub_temp.alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
+  check_cuda(cub::DeviceScan::InclusiveSum(temp_buffer, buff_size,
                                            bsr_offsets, bsr_offsets,
                                            row_count + 1, stream));
 
@@ -384,17 +385,17 @@ void bsr_transpose_device(int rows_per_block, int cols_per_block, int row_count,
   size_t buff_size = 0;
   check_cuda(cub::DeviceRadixSort::SortPairs(nullptr, buff_size, d_values,
                                              d_keys, nnz, 0, 64, stream));
-  cub_temp.ensure_fits(buff_size);
+  void* temp_buffer = cub_temp.alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
   check_cuda(cub::DeviceRadixSort::SortPairs(
-      cub_temp.buffer, buff_size, d_values, d_keys, nnz, 0, 64, stream));
+      temp_buffer, buff_size, d_values, d_keys, nnz, 0, 64, stream));
 
   // Prefix sum the trasnposed row block counts
   check_cuda(cub::DeviceScan::InclusiveSum(
       nullptr, buff_size, transposed_bsr_offsets, transposed_bsr_offsets,
       col_count + 1, stream));
-  cub_temp.ensure_fits(buff_size);
+  temp_buffer = cub_temp.alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
   check_cuda(cub::DeviceScan::InclusiveSum(
-      cub_temp.buffer, buff_size, transposed_bsr_offsets,
+      temp_buffer, buff_size, transposed_bsr_offsets,
       transposed_bsr_offsets, col_count + 1, stream));
 
   // Move and transpose invidual blocks

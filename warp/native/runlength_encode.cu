@@ -27,10 +27,10 @@ void runlength_encode_device(int n,
         nullptr, buff_size, values, run_values, run_lengths, run_count,
         n, stream));
 
-    cub_temp.ensure_fits(buff_size);
+    void* temp_buffer = cub_temp.alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
 
     check_cuda(cub::DeviceRunLengthEncode::Encode(
-        cub_temp.buffer, buff_size, values, run_values, run_lengths, run_count,
+        temp_buffer, buff_size, values, run_values, run_lengths, run_count,
         n, stream));
 }
 
