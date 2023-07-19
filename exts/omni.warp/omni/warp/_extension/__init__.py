@@ -9,7 +9,6 @@
 
 import asyncio
 from contextlib import suppress
-import importlib
 import os
 import subprocess
 import sys
@@ -21,7 +20,6 @@ import carb.dictionary
 import omni.ext
 import omni.graph.core as og
 import omni.kit.actions.core
-import omni.timeline
 import warp as wp
 
 
@@ -41,14 +39,6 @@ OMNIGRAPH_STAGEUPDATE_ORDER = 100  # We want our attach() to run after OG so tha
 
 def log_info(msg):
     carb.log_info("[omni.warp] {}".format(msg))
-
-
-def log_warn(msg):
-    carb.log_warn("[omni.warp] {}".format(msg))
-
-
-def log_error(msg):
-    carb.log_error("[omni.warp] {}".format(msg))
 
 
 def open_file(filename):
@@ -219,11 +209,6 @@ class OmniWarpExtension(omni.ext.IExt):
 
             omni.kit.browser.sample.register_sample_folder(SCENES_PATH, "Warp")
 
-        self._update_event_stream = omni.kit.app.get_app_interface().get_update_event_stream()
-        self._stage_event_sub = (
-            omni.usd.get_context().get_stage_event_stream().create_subscription_to_pop(self._on_stage_event)
-        )
-
         stage_update = omni.stageupdate.get_stage_update_interface()
 
         self._stage_subscription = stage_update.create_stage_update_node(
@@ -265,8 +250,6 @@ class OmniWarpExtension(omni.ext.IExt):
 
             omni.kit.browser.sample.unregister_sample_folder(SCENES_PATH)
 
-        self._update_event_stream = None
-        self._stage_event_sub = None
         self._stage_subscription = None
         self._opt_in_setting_sub = None
 
@@ -310,31 +293,6 @@ class OmniWarpExtension(omni.ext.IExt):
     def _deregister_actions(self):
         action_registry = omni.kit.actions.core.get_action_registry()
         action_registry.deregister_all_actions_for_extension(self._ext_name)
-
-    def _on_update(self, event):
-        timeline = omni.timeline.get_timeline_interface()
-        if timeline.is_playing() and self._example is not None:
-            with wp.ScopedDevice("cuda:0"):
-                self._example.update()
-                self._example.render(is_live=self._is_live)
-
-    def _on_stage_event(self, event):
-        if event.type == int(omni.usd.StageEventType.CLOSED):
-            self._refresh_example()
-        if event.type == int(omni.usd.StageEventType.OPENED):
-            self._refresh_example()
-
-    def _reset_example(self):
-        if self._example is not None:
-            stage = omni.usd.get_context().get_stage()
-            stage.GetRootLayer().Clear()
-            with wp.ScopedDevice("cuda:0"):
-                self._example.init(stage)
-                self._example.render(is_live=self._is_live)
-
-    def _refresh_example(self):
-        self._example = None
-        self._update_event_sub = None
 
     def _on_browse_scenes_click(self):
         open_file(SCENES_PATH)
