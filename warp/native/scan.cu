@@ -25,13 +25,13 @@ void scan_device(const T* values_in, T* values_out, int n, bool inclusive)
         cub::DeviceScan::ExclusiveSum(NULL, scan_temp_size, values_in, values_out, n);
     }
 
-    cub_temp.ensure_fits(scan_temp_size);
+    void* temp_buffer = cub_temp.alloc_temp_device(WP_CURRENT_CONTEXT, scan_temp_size);
 
     // scan
     if (inclusive) {
-        cub::DeviceScan::InclusiveSum(cub_temp.buffer, scan_temp_size, values_in, values_out, n, (cudaStream_t)cuda_stream_get_current());
+        cub::DeviceScan::InclusiveSum(temp_buffer, scan_temp_size, values_in, values_out, n, (cudaStream_t)cuda_stream_get_current());
     } else {
-        cub::DeviceScan::ExclusiveSum(cub_temp.buffer, scan_temp_size, values_in, values_out, n, (cudaStream_t)cuda_stream_get_current());
+        cub::DeviceScan::ExclusiveSum(temp_buffer, scan_temp_size, values_in, values_out, n, (cudaStream_t)cuda_stream_get_current());
     }
 }
 
