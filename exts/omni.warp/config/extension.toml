@@ -45,6 +45,3 @@ name = "omni.warp.nodes"
 
 [settings]
 exts."omni.warp".enable_backward = false
-
-[[test]]
-pythonTests.include = ["omni.warp.nodes.ogn.*"]
