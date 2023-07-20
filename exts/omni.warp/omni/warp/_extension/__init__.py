@@ -32,7 +32,7 @@ NODES_INIT_PATH = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "../nodes/_impl/__init__.py")
 )
 
-WARP_GETTING_STARTED_URL = "https://docs.omniverse.nvidia.com/prod_extensions/prod_extensions/ext_warp.html"
+WARP_GETTING_STARTED_URL = "https://docs.omniverse.nvidia.com/extensions/latest/ext_warp.html"
 WARP_DOCUMENTATION_URL = "https://nvidia.github.io/warp/"
 
 SETTING_ENABLE_BACKWARD = "/exts/omni.warp/enable_backward"
