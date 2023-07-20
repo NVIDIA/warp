@@ -25,6 +25,8 @@
 #include <llvm/PassRegistry.h>
 #include <llvm/InitializePasses.h>
 #include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IRReader/IRReader.h>
+#include <llvm/Linker/Linker.h>
 
 #include <llvm/ExecutionEngine/Orc/LLJIT.h>
 #include <llvm/ExecutionEngine/JITEventListener.h>
@@ -55,8 +57,7 @@ extern "C" {
 // On Linux it suffices for these symbols not to be stripped out, while for Windows a .pdb has to contain
 // their information. LLVM defines them, but we don't want a huge .pdb with all LLVM source code's debug
 // info. By forward-declaring them here it suffices to compile this file with /Zi.
-struct jit_descriptor;
-extern jit_descriptor __jit_debug_descriptor;
+extern struct jit_descriptor __jit_debug_descriptor;
 extern void __jit_debug_register_code();
 
 }
@@ -132,6 +133,67 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
     return success ? std::move(emit_llvm_only_action.takeModule()) : nullptr;
 }
 
+static std::unique_ptr<llvm::Module> cuda_to_llvm(const std::string& input_file, const char* cpp_src, const char* include_dir, bool debug, llvm::LLVMContext& context)
+{
+    // Compilation arguments
+    std::vector<const char*> args;
+    args.push_back(input_file.c_str());
+
+    args.push_back("-I");
+    args.push_back(include_dir);
+
+    args.push_back(debug ? "-O0" : "-O2");
+
+    args.push_back("-triple");
+    args.push_back("nvptx64-nvidia-cuda");
+
+    args.push_back("-target-cpu");
+    args.push_back("sm_70");
+
+    clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> diagnostic_options = new clang::DiagnosticOptions();
+    std::unique_ptr<clang::TextDiagnosticPrinter> text_diagnostic_printer =
+            std::make_unique<clang::TextDiagnosticPrinter>(llvm::errs(), &*diagnostic_options);
+    clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> diagnostic_ids;
+    std::unique_ptr<clang::DiagnosticsEngine> diagnostic_engine =
+            std::make_unique<clang::DiagnosticsEngine>(diagnostic_ids, &*diagnostic_options, text_diagnostic_printer.release());
+
+    clang::CompilerInstance compiler_instance;
+
+    auto& compiler_invocation = compiler_instance.getInvocation();
+    clang::CompilerInvocation::CreateFromArgs(compiler_invocation, args, *diagnostic_engine.release());
+
+    if(debug)
+    {
+        compiler_invocation.getCodeGenOpts().setDebugInfo(clang::codegenoptions::FullDebugInfo);
+    }
+
+    // Map code to a MemoryBuffer
+    std::unique_ptr<llvm::MemoryBuffer> buffer = llvm::MemoryBuffer::getMemBufferCopy(cpp_src);
+    compiler_invocation.getPreprocessorOpts().addRemappedFile(input_file.c_str(), buffer.get());
+
+    // According to https://llvm.org/docs/CompileCudaWithLLVM.html, "Both clang and nvcc define `__CUDACC__` during CUDA compilation."
+    // But this normally happens in the __clang_cuda_runtime_wrapper.h header, which we don't include.
+    // The __CUDA__ and __CUDA_ARCH__ macros are internally defined by llvm-project/clang/lib/Frontend/InitPreprocessor.cpp
+    compiler_instance.getPreprocessorOpts().addMacroDef("__CUDACC__");
+
+    if(!debug)
+    {
+        compiler_instance.getPreprocessorOpts().addMacroDef("NDEBUG");
+    }
+
+    compiler_instance.getLangOpts().CUDA = 1;
+    compiler_instance.getLangOpts().CUDAIsDevice = 1;
+    compiler_instance.getLangOpts().CUDAAllowVariadicFunctions = 1;
+
+    compiler_instance.createDiagnostics(text_diagnostic_printer.get(), false);
+
+    clang::EmitLLVMOnlyAction emit_llvm_only_action(&context);
+    bool success = compiler_instance.ExecuteAction(emit_llvm_only_action);
+    buffer.release();
+
+    return success ? std::move(emit_llvm_only_action.takeModule()) : nullptr;
+}
+
 extern "C" {
 
 WP_API int compile_cpp(const char* cpp_src, const char *input_file, const char* include_dir, const char* output_file, bool debug)
@@ -146,13 +208,13 @@ WP_API int compile_cpp(const char* cpp_src, const char *input_file, const char* 
         return -1;
     }
 
-    std::string Error;
-    const llvm::Target* target = llvm::TargetRegistry::lookupTarget(target_triple, Error);
+    std::string error;
+    const llvm::Target* target = llvm::TargetRegistry::lookupTarget(target_triple, error);
 
     const char* CPU = "generic";
     const char* features = "";
     llvm::TargetOptions target_options;
-    llvm::Reloc::Model relocation_model = llvm::Reloc::PIC_;  // DLLs need Position Independent Code
+    llvm::Reloc::Model relocation_model = llvm::Reloc::PIC_;  // Position Independent Code
     llvm::CodeModel::Model code_model = llvm::CodeModel::Large;  // Don't make assumptions about displacement sizes
     llvm::TargetMachine* target_machine = target->createTargetMachine(target_triple, CPU, features, target_options, relocation_model, code_model);
 
@@ -163,6 +225,59 @@ WP_API int compile_cpp(const char* cpp_src, const char *input_file, const char* 
 
     llvm::legacy::PassManager pass_manager;
     llvm::CodeGenFileType file_type = llvm::CGFT_ObjectFile;
+    target_machine->addPassesToEmitFile(pass_manager, output, nullptr, file_type);
+
+    pass_manager.run(*module);
+    output.flush();
+
+    delete target_machine;
+
+    return 0;
+}
+
+WP_API int compile_cuda(const char* cpp_src, const char *input_file, const char* include_dir, const char* output_file, bool debug)
+{
+    initialize_llvm();
+
+    llvm::LLVMContext context;
+    std::unique_ptr<llvm::Module> module = cuda_to_llvm(input_file, cpp_src, include_dir, debug, context);
+
+    if(!module)
+    {
+        return -1;
+    }
+
+    std::string error;
+    const llvm::Target* target = llvm::TargetRegistry::lookupTarget("nvptx64-nvidia-cuda", error);
+
+    const char* CPU = "sm_70";
+    const char* features = "+ptx75";  // Warp requires CUDA 11.5, which supports PTX ISA 7.5
+    llvm::TargetOptions target_options;
+    llvm::Reloc::Model relocation_model = llvm::Reloc::PIC_;
+    llvm::TargetMachine* target_machine = target->createTargetMachine("nvptx64-nvidia-cuda", CPU, features, target_options, relocation_model);
+
+    module->setDataLayout(target_machine->createDataLayout());
+
+    // Link libdevice
+    llvm::SMDiagnostic diagnostic;
+    std::string libdevice_path = std::string(include_dir) + "/libdevice/libdevice.10.bc";
+    std::unique_ptr<llvm::Module> libdevice(llvm::parseIRFile(libdevice_path, diagnostic, context));
+    if(!libdevice)
+    {
+        return -1;
+    }
+
+    llvm::Linker linker(*module.get());
+    if(linker.linkInModule(std::move(libdevice), llvm::Linker::Flags::LinkOnlyNeeded) == true)
+    {
+        return -1;
+    }
+
+    std::error_code error_code;
+    llvm::raw_fd_ostream output(output_file, error_code, llvm::sys::fs::OF_None);
+
+    llvm::legacy::PassManager pass_manager;
+    llvm::CodeGenFileType file_type = llvm::CGFT_AssemblyFile;
     target_machine->addPassesToEmitFile(pass_manager, output, nullptr, file_type);
 
     pass_manager.run(*module);

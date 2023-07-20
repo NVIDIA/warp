@@ -1219,7 +1219,10 @@ inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
     float16 old = buf[0];
     buf[0] += value;
     return old;
-#else
+#elif defined(__clang__)  // CUDA compiled by Clang
+	__half r = atomicAdd(reinterpret_cast<__half*>(buf), *reinterpret_cast<__half*>(&value));
+    return *reinterpret_cast<float16*>(&r);
+#else  // CUDA compiled by NVRTC
     //return atomicAdd(buf, value);
     
     /* Define __PTR for atomicAdd prototypes below, undef after done */
@@ -1243,7 +1246,7 @@ inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
 
     #undef __PTR
 
-#endif // defined(__CUDA_ARCH__)
+#endif  // CUDA compiled by NVRTC
 
 }
 
@@ -1528,7 +1531,7 @@ inline CUDA_CALLABLE void expect_near(const T& actual, const T& expected, const 
 {
     if (abs(actual - expected) > tolerance)
     {
-        printf("Error, expect_near() failed with torerance "); print(tolerance);
+        printf("Error, expect_near() failed with tolerance "); print(tolerance);
         printf("\t Expected: "); print(expected); 
         printf("\t Actual: "); print(actual);
     }
@@ -1539,7 +1542,7 @@ inline CUDA_CALLABLE void expect_near(const vec3& actual, const vec3& expected, 
     const float diff = max(max(abs(actual[0] - expected[0]), abs(actual[1] - expected[1])), abs(actual[2] - expected[2]));
     if (diff > tolerance)
     {
-        printf("Error, expect_near() failed with torerance "); print(tolerance);
+        printf("Error, expect_near() failed with tolerance "); print(tolerance);
         printf("\t Expected: "); print(expected); 
         printf("\t Actual: "); print(actual);
     }
