@@ -1948,6 +1948,23 @@ class array(Array):
                 f"Arrays may only have {ARRAY_MAX_DIMS} dimensions maximum, trying to create array with {len(shape)} dims."
             )
 
+        # check for -1 dimension and reformat
+        if -1 in shape:
+            idx = self.size
+            denom = 1
+            minus_one_count = 0
+            for i, d in enumerate(shape):
+                if d == -1:
+                    idx = i
+                    minus_one_count += 1
+                else:
+                    denom *= d
+            if minus_one_count > 1:
+                raise RuntimeError("Cannot infer shape if more than one index is -1.")
+            new_shape = list(shape)
+            new_shape[idx] = int(self.size / denom)
+            shape = tuple(new_shape)
+
         size = 1
         for d in shape:
             size *= d
