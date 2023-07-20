@@ -124,8 +124,8 @@ class StructInstance:
             else:
                 # wp.array
                 assert isinstance(value, array)
-                assert (
-                    types_equal(value.dtype, var.type.dtype)
+                assert types_equal(
+                    value.dtype, var.type.dtype
                 ), "assign to struct member variable {} failed, expected type {}, got type {}".format(
                     name, type_repr(var.type.dtype), type_repr(value.dtype)
                 )
@@ -1257,6 +1257,25 @@ class Adjoint:
             else:
                 return False
 
+    # detects whether a loop contains a break (or continue) statement
+    def contains_break(adj, body):
+        for s in body:
+            if isinstance(s, ast.Break):
+                return True
+            elif isinstance(s, ast.Continue):
+                return True
+            elif isinstance(s, ast.If):
+                if adj.contains_break(s.body):
+                    return True
+                if adj.contains_break(s.orelse):
+                    return True
+            else:
+                # note that nested for or while loops containing a break statement
+                # do not affect the current loop
+                pass
+
+        return False
+
     def emit_For(adj, node):
         # try and unroll simple range() statements that use constant args
         unrolled = False
@@ -1299,6 +1318,9 @@ class Adjoint:
                         print(
                             f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop."
                         )
+                elif adj.contains_break(node.body):
+                    if warp.config.verbose:
+                        print("Warning: 'break' or 'continue' found in loop body, will generate dynamic loop.")
                 else:
                     # unroll
                     for i in range(start, end, step):

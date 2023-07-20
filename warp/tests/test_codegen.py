@@ -213,6 +213,18 @@ def test_break_early(n: int):
 
 
 @wp.kernel
+def test_break_unroll():
+    a = int(0)
+
+    for i in range(0, 10):
+        if i > 5:
+            a = i
+            break
+
+    wp.expect_eq(a, 6)
+
+
+@wp.kernel
 def test_break_multiple(n: int):
     a = int(0)
 
@@ -243,6 +255,19 @@ def test_continue(n: int):
         a += 1
 
     wp.expect_eq(a, n - 1)
+
+
+@wp.kernel
+def test_continue_unroll():
+    a = int(0)
+
+    for i in range(0, 10):
+        if i == 5:
+            continue
+
+        a += 1
+
+    wp.expect_eq(a, 9)
 
 
 lower = wp.constant(-3)
@@ -432,10 +457,12 @@ def register(parent):
 
     add_kernel_test(TestCodeGen, name="test_break", kernel=test_break, dim=1, inputs=[10], devices=devices)
     add_kernel_test(TestCodeGen, name="test_break_early", kernel=test_break_early, dim=1, inputs=[10], devices=devices)
+    add_kernel_test(TestCodeGen, name="test_break_unroll", kernel=test_break_unroll, dim=1, devices=devices)
     add_kernel_test(
         TestCodeGen, name="test_break_multiple", kernel=test_break_multiple, dim=1, inputs=[10], devices=devices
     )
     add_kernel_test(TestCodeGen, name="test_continue", kernel=test_continue, dim=1, inputs=[10], devices=devices)
+    add_kernel_test(TestCodeGen, name="test_continue_unroll", kernel=test_continue_unroll, dim=1, devices=devices)
 
     add_function_test(TestCodeGen, func=test_unresolved_func, name="test_unresolved_func", devices=devices)
     add_function_test(TestCodeGen, func=test_unresolved_symbol, name="test_unresolved_symbol", devices=devices)
