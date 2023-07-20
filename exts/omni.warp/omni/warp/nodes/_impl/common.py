@@ -141,7 +141,7 @@ def get_warp_type_from_data_type_name(
 
 def type_convert_og_to_warp(
     og_type: og.Type,
-    dim_count: int = 0,
+    dim_count: Optional[int] = None,
     as_str: bool = False,
     str_namespace: Optional[str] = "wp",
 ) -> Union[Any, str]:
@@ -151,6 +151,9 @@ def type_convert_og_to_warp(
     )
     if data_type_name is None:
         raise RuntimeError("Unsupported attribute type '{}'.".format(og_type))
+
+    if dim_count is None:
+        dim_count = og_type.array_depth
 
     return get_warp_type_from_data_type_name(
         data_type_name,
@@ -162,11 +165,18 @@ def type_convert_og_to_warp(
 
 def type_convert_sdf_name_to_warp(
     sdf_type_name: str,
-    dim_count: int = 0,
+    dim_count: Optional[int] = None,
     as_str: bool = False,
     str_namespace: Optional[str] = "wp",
 ) -> Union[Any, str]:
     """Converts a Sdf type name into a compatible Warp type."""
+    if sdf_type_name.endswith("[]"):
+        sdf_type_name = sdf_type_name[:-2]
+        if dim_count is None:
+            dim_count = 1
+    elif dim_count is None:
+        dim_count = 0
+
     data_type_name = _SDF_DATA_TYPE_NAME_TO_WARP.get(sdf_type_name)
     if data_type_name is None:
         raise RuntimeError("Unsupported attribute type '{}'.".format(sdf_type_name))
@@ -181,9 +191,16 @@ def type_convert_sdf_name_to_warp(
 
 def type_convert_sdf_name_to_og(
     sdf_type_name: str,
-    is_array: bool = False,
+    is_array: Optional[bool] = None,
 ) -> og.Type:
     """Converts a Sdf type name into its corresponding OmniGraph type."""
+    if sdf_type_name.endswith("[]"):
+        sdf_type_name = sdf_type_name[:-2]
+        if is_array is None:
+            is_array = True
+    elif is_array is None:
+        is_array = False
+
     data_type = _SDF_DATA_TYPE_TO_OG.get(sdf_type_name)
     if data_type is None:
         raise RuntimeError("Unsupported attribute type '{}'.".format(sdf_type_name))
