@@ -138,7 +138,7 @@ def bundle_have_attrs_changed(
     attr_names: Sequence[str],
     child_idx: int = 0,
 ) -> bool:
-    """Checks whether the contents of a bundle's attributes hab changed."""
+    """Checks whether the contents of a bundle's attributes have changed."""
     with bundle.changes() as bundle_changes:
         child_bundle = bundle.bundle.get_child_bundle(child_idx)
         for attr_name in attr_names:

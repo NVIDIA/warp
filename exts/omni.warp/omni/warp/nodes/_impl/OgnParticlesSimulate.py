@@ -108,21 +108,6 @@ class InternalState:
     """Internal state for the node."""
 
     def __init__(self) -> None:
-        self._substep_count = None
-        self._gravity = None
-        self._global_scale = None
-        self._contact_elastic_stiffness = None
-        self._contact_friction_stiffness = None
-        self._contact_friction_coeff = None
-        self._contact_damping_stiffness = None
-        self._particles_query_range = None
-        self._particles_contact_adhesion = None
-        self._particles_contact_cohesion = None
-        self._collider_contact_distance = None
-        self._collider_contact_query_range = None
-        self._ground_enabled = None
-        self._ground_altitude = None
-
         self.sim_dt = None
         self.sim_tick = None
         self.model = None
@@ -136,33 +121,36 @@ class InternalState:
         self.collider_points_1 = None
         self.graph = None
 
-        self.enabled = True
+        self.sim_enabled = True
         self.time = 0.0
 
         self.is_valid = False
 
+        self.attr_tracking = omni.warp.nodes.AttrTracking(
+            (
+                "substepCount",
+                "gravity",
+                "globalScale",
+                "contactElasticStiffness",
+                "contactFrictionStiffness",
+                "contactFrictionCoeff",
+                "contactDampingStiffness",
+                "particlesQueryRange",
+                "particlesContactAdhesion",
+                "particlesContactCohesion",
+                "colliderContactDistance",
+                "colliderContactQueryRange",
+                "groundEnabled",
+                "groundAltitude",
+            ),
+        )
+
     def needs_initialization(self, db: OgnParticlesSimulateDatabase) -> bool:
         """Checks if the internal state needs to be (re)initialized."""
-        if not self.is_valid or not db.inputs.enabled:
+        if not self.is_valid or not db.inputs.enabled or not self.sim_enabled:
             return True
 
-        if (
-            not self.enabled
-            or db.inputs.substepCount != self._substep_count
-            or not np.array_equal(db.inputs.gravity, self._gravity)
-            or db.inputs.globalScale != self._global_scale
-            or db.inputs.contactElasticStiffness != self._contact_elastic_stiffness
-            or db.inputs.contactFrictionStiffness != self._contact_friction_stiffness
-            or db.inputs.contactFrictionCoeff != self._contact_friction_coeff
-            or db.inputs.contactDampingStiffness != self._contact_damping_stiffness
-            or db.inputs.particlesQueryRange != self._particles_query_range
-            or db.inputs.particlesContactAdhesion != self._particles_contact_adhesion
-            or db.inputs.particlesContactCohesion != self._particles_contact_cohesion
-            or db.inputs.colliderContactDistance != self._collider_contact_distance
-            or db.inputs.colliderContactQueryRange != self._collider_contact_query_range
-            or db.inputs.groundEnabled != self._ground_enabled
-            or db.inputs.groundAltitude != self._ground_altitude
-        ):
+        if self.attr_tracking.have_attrs_changed(db):
             return True
 
         if db.inputs.time < self.time:
@@ -343,23 +331,7 @@ class InternalState:
         else:
             self.graph = None
 
-        # Cache the node attribute values relevant to this internal state.
-        # They're the ones used to check whether it needs to be reinitialized
-        # or not.
-        self._substep_count = db.inputs.substepCount
-        self._gravity = db.inputs.gravity.copy()
-        self._global_scale = db.inputs.globalScale
-        self._contact_elastic_stiffness = db.inputs.contactElasticStiffness
-        self._contact_friction_stiffness = db.inputs.contactFrictionStiffness
-        self._contact_friction_coeff = db.inputs.contactFrictionCoeff
-        self._contact_damping_stiffness = db.inputs.contactDampingStiffness
-        self._particles_query_range = db.inputs.particlesQueryRange
-        self._particles_contact_adhesion = db.inputs.particlesContactAdhesion
-        self._particles_contact_cohesion = db.inputs.particlesContactCohesion
-        self._collider_contact_distance = db.inputs.colliderContactDistance
-        self._collider_contact_query_range = db.inputs.colliderContactQueryRange
-        self._ground_enabled = db.inputs.groundEnabled
-        self._ground_altitude = db.inputs.groundAltitude
+        self.attr_tracking.update_state(db)
 
         return True
 
@@ -493,7 +465,7 @@ def compute(db: OgnParticlesSimulateDatabase) -> None:
         db.outputs.particles = db.inputs.particles
 
         # Store whether the simulation was last enabled.
-        state.enabled = False
+        state.sim_enabled = False
         return
 
     if state.needs_initialization(db):
@@ -554,7 +526,7 @@ def compute(db: OgnParticlesSimulateDatabase) -> None:
         state.sim_tick += 1
 
     # Store whether the simulation was last enabled.
-    state.enabled = True
+    state.sim_enabled = True
 
     # Store the current time.
     state.time = db.inputs.time
