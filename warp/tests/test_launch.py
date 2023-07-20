@@ -278,6 +278,37 @@ def test_launch_cmd_empty(test, device):
     assert_np_equal(out.numpy(), ref)
 
 
+@wp.kernel
+def kernel_mul(
+    values: wp.array(dtype=int),
+    coeff: int,
+    out: wp.array(dtype=int),
+):
+    tid = wp.tid()
+    out[tid] = values[tid] * coeff
+
+
+def test_launch_tuple_args(test, device):
+    values = wp.array(np.arange(0, 4), dtype=int, device=device)
+    coeff = 3
+    out = wp.empty_like(values)
+
+    wp.launch(
+        kernel_mul,
+        dim=len(values),
+        inputs=(
+            values,
+            coeff,
+        ),
+        outputs=(
+            out,
+        ),
+        device=device,
+    )
+
+    assert_np_equal(out.numpy(), np.array((0, 3, 6, 9)))
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -294,6 +325,8 @@ def register(parent):
     add_function_test(TestLaunch, "test_launch_cmd_set_ctype", test_launch_cmd_set_ctype, devices=devices)
     add_function_test(TestLaunch, "test_launch_cmd_set_dim", test_launch_cmd_set_dim, devices=devices)
     add_function_test(TestLaunch, "test_launch_cmd_empty", test_launch_cmd_empty, devices=devices)
+
+    add_function_test(TestLaunch, "test_launch_tuple_args", test_launch_tuple_args, devices=devices)
 
     return TestLaunch
 
