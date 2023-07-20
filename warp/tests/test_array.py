@@ -313,6 +313,12 @@ def test_reshape(test, device):
     assert_array_equal(grad, ones)
     test.assertEqual(loss.numpy()[0], 15)
 
+    np_arr = np.arange(6, dtype=float)
+    arr = wp.array(np_arr, dtype=float, device=device)
+    arr_infer = arr.reshape((-1, 3))
+    arr_comp = wp.array(np_arr.reshape((-1, 3)), dtype=float, device=device)
+    assert_array_equal(arr_infer, arr_comp)
+
 
 @wp.kernel
 def compare_stepped_window_a(x: wp.array2d(dtype=float)):
