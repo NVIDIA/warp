@@ -78,7 +78,7 @@ _DATA_TYPES_MAPPING = (
     ("quatf"     , (_BaseDType.FLOAT ,  4, _AttrRole.QUATERNION), "quat"   ),
     ("texCoord2f", (_BaseDType.FLOAT ,  2, _AttrRole.TEXCOORD  ), "vec2"   ),
     ("texCoord3f", (_BaseDType.FLOAT ,  3, _AttrRole.TEXCOORD  ), "vec3"   ),
-    ("timecode"  , (_BaseDType.DOUBLE,  1, _AttrRole.TIMECODE  ), "float32"),
+    ("timecode"  , (_BaseDType.DOUBLE,  1, _AttrRole.TIMECODE  ), "float64"),
     ("token"     , (_BaseDType.TOKEN ,  1, _AttrRole.NONE      ), "uint64" ),
     ("uchar"     , (_BaseDType.UCHAR ,  1, _AttrRole.NONE      ), "uint8"  ),
     ("uint"      , (_BaseDType.UINT  ,  1, _AttrRole.NONE      ), "uint32" ),
