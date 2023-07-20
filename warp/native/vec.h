@@ -581,7 +581,7 @@ inline CUDA_CALLABLE void expect_near(const vec_t<Length, Type>& actual, const v
     }
     if (diff > tolerance)
     {
-        printf("Error, expect_near() failed with torerance "); print(tolerance);
+        printf("Error, expect_near() failed with tolerance "); print(tolerance);
         printf("\t Expected: "); print(expected); 
         printf("\t Actual: "); print(actual);
     }
