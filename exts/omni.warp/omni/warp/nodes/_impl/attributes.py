@@ -22,7 +22,7 @@ import numpy as np
 import omni.graph.core as og
 import warp as wp
 
-from omni.warp.nodes._impl.common import convert_og_type_to_warp
+from omni.warp.nodes._impl.common import type_convert_og_to_warp
 
 
 ATTR_BUNDLE_TYPE = og.Type(
@@ -216,7 +216,7 @@ def from_omni_graph(
             raise RuntimeError("The attribute data isn't an array.")
 
         if dtype is None:
-            base_type = convert_og_type_to_warp(
+            base_type = type_convert_og_to_warp(
                 og.Type(
                     data.dtype.base_type,
                     tuple_count=data.dtype.tuple_count,
@@ -280,7 +280,7 @@ def from_omni_graph(
 
         if on_gpu:
             data_type = data.get_type()
-            base_type = convert_og_type_to_warp(
+            base_type = type_convert_og_to_warp(
                 og.Type(
                     data_type.base_type,
                     tuple_count=data_type.tuple_count,

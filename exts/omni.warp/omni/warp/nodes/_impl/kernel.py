@@ -33,8 +33,8 @@ import warp as wp
 
 from omni.warp.nodes._impl.common import (
     IntEnum,
-    convert_og_type_to_warp,
     get_warp_type_from_data_type_name,
+    type_convert_og_to_warp,
 )
 from omni.warp.nodes._impl.attributes import (
     ATTR_BUNDLE_TYPE,
@@ -334,7 +334,7 @@ def gather_attribute_infos(
                 port_type=_ATTR_PORT_TYPE_INPUT,
                 base_name=base_name,
                 og_type=og_type,
-                warp_type=convert_og_type_to_warp(
+                warp_type=type_convert_og_to_warp(
                     og_data_type,
                     dim_count=int(is_array),
                 ),
@@ -382,7 +382,7 @@ def gather_attribute_infos(
                 port_type=_ATTR_PORT_TYPE_OUTPUT,
                 base_name=base_name,
                 og_type=og_type,
-                warp_type=convert_og_type_to_warp(
+                warp_type=type_convert_og_to_warp(
                     og_data_type,
                     dim_count=dim_count,
                 ),

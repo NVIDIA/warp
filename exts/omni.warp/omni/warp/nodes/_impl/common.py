@@ -139,7 +139,7 @@ def get_warp_type_from_data_type_name(
     return wp.array(dtype=dtype, ndim=dim_count)
 
 
-def convert_og_type_to_warp(
+def type_convert_og_to_warp(
     og_type: og.Type,
     dim_count: int = 0,
     as_str: bool = False,
@@ -160,7 +160,7 @@ def convert_og_type_to_warp(
     )
 
 
-def convert_sdf_type_name_to_warp(
+def type_convert_sdf_name_to_warp(
     sdf_type_name: str,
     dim_count: int = 0,
     as_str: bool = False,
@@ -179,7 +179,7 @@ def convert_sdf_type_name_to_warp(
     )
 
 
-def convert_sdf_type_name_to_og(
+def type_convert_sdf_name_to_og(
     sdf_type_name: str,
     is_array: bool = False,
 ) -> og.Type:
