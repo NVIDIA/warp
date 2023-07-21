@@ -1915,6 +1915,54 @@ def test_array_of_structs_grad(test, device):
     assert_np_equal(grads["param2"], np.full(num_items, 2.0, dtype=np.float32))
 
 
+@wp.struct
+class NumpyStruct:
+    x: int
+    v: wp.vec3
+
+
+def test_array_of_structs_from_numpy(test, device):
+    num_items = 10
+
+    na = np.zeros(num_items, dtype=NumpyStruct.numpy_dtype())
+    na["x"] = 17
+    na["v"] = (1, 2, 3)
+
+    a = wp.array(data=na, dtype=NumpyStruct, device=device)
+
+    assert_np_equal(a.numpy(), na)
+
+
+def test_array_of_structs_roundtrip(test, device):
+    num_items = 10
+
+    value = NumpyStruct()
+    value.x = 17
+    value.v = wp.vec3(1.0, 2.0, 3.0)
+
+    # create Warp structured array
+    a = wp.full(num_items, value, device=device)
+
+    # convert to NumPy structured array
+    na = a.numpy()
+
+    expected = np.zeros(num_items, dtype=NumpyStruct.numpy_dtype())
+    expected["x"] = value.x
+    expected["v"] = value.v
+
+    assert_np_equal(na, expected)
+
+    # modify a field
+    na["x"] = 42
+
+    # convert back to Warp array
+    a = wp.from_numpy(na, NumpyStruct, device=device)
+
+    expected["x"] = 42
+
+    assert_np_equal(a.numpy(), expected)
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -1957,6 +2005,8 @@ def register(parent):
     add_function_test(TestArray, "test_array_to_bool", test_array_to_bool, devices=devices)
     add_function_test(TestArray, "test_array_of_structs", test_array_of_structs, devices=devices)
     add_function_test(TestArray, "test_array_of_structs_grad", test_array_of_structs_grad, devices=devices)
+    add_function_test(TestArray, "test_array_of_structs_from_numpy", test_array_of_structs_from_numpy, devices=devices)
+    add_function_test(TestArray, "test_array_of_structs_roundtrip", test_array_of_structs_roundtrip, devices=devices)
 
     return TestArray
 
