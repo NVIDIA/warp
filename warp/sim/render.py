@@ -65,6 +65,7 @@ def CreateSimRenderer(renderer):
             up_axis="y",
             show_rigid_contact_points=False,
             contact_points_radius=1e-3,
+            show_joints=False,
             **render_kwargs,
         ):
             # create USD stage
@@ -72,6 +73,7 @@ def CreateSimRenderer(renderer):
             self.scaling = scaling
             self.cam_axis = "xyz".index(up_axis.lower())
             self.show_rigid_contact_points = show_rigid_contact_points
+            self.show_joints = show_joints
             self.contact_points_radius = contact_points_radius
             self.populate(model)
 
@@ -101,9 +103,9 @@ def CreateSimRenderer(renderer):
                 body_name = f"body_{b}_{self.model.body_name[b].replace(' ', '_')}"
                 self.body_names.append(body_name)
                 self.register_body(body_name)
-                self.body_env.append(env_id)
                 if b > 0 and b % self.bodies_per_env == 0:
                     env_id += 1
+                self.body_env.append(env_id)
 
             # create rigid shape children
             if self.model.shape_count:
@@ -210,6 +212,66 @@ def CreateSimRenderer(renderer):
 
                     self.add_shape_instance(name, shape, body, X_bs.p, X_bs.q, scale)
                     self.instance_count += 1
+
+                if self.show_joints and model.joint_count:
+                    joint_type = model.joint_type.numpy()
+                    joint_axis = model.joint_axis.numpy()
+                    joint_axis_start = model.joint_axis_start.numpy()
+                    joint_axis_dim = model.joint_axis_dim.numpy()
+                    joint_parent = model.joint_parent.numpy()
+                    joint_child = model.joint_child.numpy()
+                    joint_tf = model.joint_X_p.numpy()
+                    shape_collision_radius = model.shape_collision_radius.numpy()
+                    y_axis = wp.vec3(0., 1., 0.)
+                    color = (1., 0., 1.)
+
+                    shape = self.render_arrow(
+                        "joint_arrow", None, None,
+                        base_radius=0.01, base_height=0.4,
+                        cap_radius=0.02, cap_height=0.1,
+                        parent_body=None, is_template=True,
+                        color=color
+                    )
+                    for i, t in enumerate(joint_type):
+                        if t not in {
+                            warp.sim.JOINT_REVOLUTE,
+                            # warp.sim.JOINT_PRISMATIC,
+                            warp.sim.JOINT_UNIVERSAL,
+                            warp.sim.JOINT_COMPOUND,
+                            warp.sim.JOINT_D6,
+                        }:
+                            continue
+                        tf = joint_tf[i]
+                        body = int(joint_parent[i])
+                        # if body == -1:
+                        #     continue
+                        num_linear_axes = int(joint_axis_dim[i][0])
+                        num_angular_axes = int(joint_axis_dim[i][1])
+
+                        # find a good scale for the arrow based on the average radius
+                        # of the shapes attached to the joint child body
+                        scale = np.ones(3)
+                        child = int(joint_child[i])
+                        if child >= 0:
+                            radii = []
+                            for s in model.body_shapes[child]:
+                                radii.append(shape_collision_radius[s])
+                            if len(radii) > 0:
+                                scale *= np.mean(radii) * 2.0
+
+                        for a in range(num_linear_axes, num_linear_axes + num_angular_axes):
+                            index = joint_axis_start[i] + a
+                            axis = joint_axis[index]
+                            if np.linalg.norm(axis) < 1e-6:
+                                continue
+                            p = wp.vec3(tf[:3])
+                            q = wp.quat(tf[3:])
+                            # compute rotation between axis and y
+                            axis = axis / np.linalg.norm(axis)
+                            q = q * wp.quat_between_vectors(wp.vec3(*axis), y_axis)
+                            name = f"joint_{i}_{a}"
+                            self.add_shape_instance(name, shape, body, p, q, scale, color1=color, color2=color)
+                            self.instance_count += 1
 
             if model.ground:
                 self.render_ground()

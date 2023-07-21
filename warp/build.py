@@ -8,7 +8,6 @@
 import os
 
 import warp.config
-import warp.utils
 from warp.thirdparty import appdirs
 
 
