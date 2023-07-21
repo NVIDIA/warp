@@ -32,12 +32,12 @@ extern "C"
     WP_API void* alloc_host(size_t s);
     WP_API void* alloc_pinned(size_t s);
     WP_API void* alloc_device(void* context, size_t s);
-    WP_API void* alloc_device_async(void* context, size_t s);
+    WP_API void* alloc_temp_device(void* context, size_t s);
 
     WP_API void free_host(void* ptr);
     WP_API void free_pinned(void* ptr);
     WP_API void free_device(void* context, void* ptr);
-    WP_API void free_device_async(void* context, void* ptr);
+    WP_API void free_temp_device(void* context, void* ptr);
 
     // all memcpys are performed asynchronously
     WP_API void memcpy_h2h(void* dest, void* src, size_t n);

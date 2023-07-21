@@ -216,8 +216,10 @@ void* alloc_device(void* context, size_t s)
     return ptr;
 }
 
-void* alloc_device_async(void* context, size_t s)
+void* alloc_temp_device(void* context, size_t s)
 {
+    // "cudaMallocAsync ignores the current device/context when determining where the allocation will reside. Instead,
+    // cudaMallocAsync determines the resident device based on the specified memory pool or the supplied stream."
     ContextGuard guard(context);
 
     void* ptr;
@@ -232,10 +234,9 @@ void free_device(void* context, void* ptr)
     check_cuda(cudaFree(ptr));
 }
 
-void free_device_async(void* context, void* ptr)
+void free_temp_device(void* context, void* ptr)
 {
     ContextGuard guard(context);
-
     check_cuda(cudaFreeAsync(ptr, get_current_stream()));
 }
 
