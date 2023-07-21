@@ -7,29 +7,55 @@ import sys
 if sys.version_info[0] < 3:
     raise Exception("Warp requires Python 3.x minimum")
 
-import os
 import argparse
+import os
 
 import warp.config
-from warp.build_dll import build_dll, set_msvc_compiler, find_host_compiler
+from warp.build_dll import build_dll, find_host_compiler, set_msvc_compiler
 
 parser = argparse.ArgumentParser(description="Warp build script")
 parser.add_argument("--msvc_path", type=str, help="Path to MSVC compiler (optional if already on PATH)")
 parser.add_argument("--sdk_path", type=str, help="Path to WinSDK (optional if already on PATH)")
 parser.add_argument("--cuda_path", type=str, help="Path to CUDA SDK")
-parser.add_argument("--mode", type=str, default="release", help="Build configuration, either 'release' or 'debug'")
-parser.add_argument("--verbose", type=bool, default=True, help="Verbose building output, default True")
+parser.add_argument(
+    "--mode",
+    type=str,
+    default="release",
+    help="Build configuration, default 'release'",
+    choices=["release", "debug"],
+)
+
+# Note argparse.BooleanOptionalAction can be used here when Python 3.9+ becomes the minimum supported version
+parser.add_argument("--verbose", action="store_true", help="Verbose building output, default enabled")
+parser.add_argument("--no_verbose", dest="verbose", action="store_false")
+parser.set_defaults(verbose=True)
+
 parser.add_argument(
     "--verify_fp",
-    type=bool,
-    default=False,
-    help="Verify kernel inputs and outputs are finite after each launch, default False",
+    action="store_true",
+    help="Verify kernel inputs and outputs are finite after each launch, default disabled",
 )
-parser.add_argument("--fast_math", type=bool, default=False, help="Enable fast math on library, default False")
+parser.add_argument("--no_verify_fp", dest="verify_fp", action="store_false")
+parser.set_defaults(verify_fp=False)
+
+parser.add_argument("--fast_math", action="store_true", help="Enable fast math on library, default disabled")
+parser.add_argument("--no_fast_math", dest="fast_math", action="store_false")
+parser.set_defaults(fast_math=False)
+
 parser.add_argument("--quick", action="store_true", help="Only generate PTX code, disable CUTLASS ops")
-parser.add_argument("--build_llvm", type=bool, default=False, help="Build Clang/LLVM compiler from source")
-parser.add_argument("--debug_llvm", type=bool, default=False, help="Enable LLVM compiler code debugging")
-parser.add_argument("--standalone", type=bool, default=True, help="Use standalone LLVM-based JIT compiler")
+
+parser.add_argument("--build_llvm", action="store_true", help="Build Clang/LLVM compiler from source, default disabled")
+parser.add_argument("--no_build_llvm", dest="build_llvm", action="store_false")
+parser.set_defaults(build_llvm=False)
+
+parser.add_argument("--debug_llvm", action="store_true", help="Enable LLVM compiler code debugging, default disabled")
+parser.add_argument("--no_debug_llvm", dest="debug_llvm", action="store_false")
+parser.set_defaults(debug_llvm=False)
+
+parser.add_argument("--standalone", action="store_true", help="Use standalone LLVM-based JIT compiler, default enabled")
+parser.add_argument("--no_standalone", dest="standalone", action="store_false")
+parser.set_defaults(standalone=True)
+
 args = parser.parse_args()
 
 # set build output path off this file
@@ -44,7 +70,8 @@ warp.config.verify_fp = args.verify_fp
 warp.config.fast_math = args.fast_math
 
 
-# See PyTorch for reference on how to find nvcc.exe more robustly, https://pytorch.org/docs/stable/_modules/torch/utils/cpp_extension.html#CppExtension
+# See PyTorch for reference on how to find nvcc.exe more robustly
+# https://pytorch.org/docs/stable/_modules/torch/utils/cpp_extension.html#CppExtension
 def find_cuda():
     # Guess #1
     cuda_home = os.environ.get("CUDA_HOME") or os.environ.get("CUDA_PATH")
