@@ -254,7 +254,6 @@ CUDA_CALLABLE inline void combine_precomputed_solid_angle_props(SolidAngleProps 
 	vec3 N = left_child_data->normal;
 	vec3 areaP = left_child_data->area_P;
 	float area = left_child_data->area;
-	vec3 local_P = left_child_data->average_p;
 	if (right_child_data)
 	{
 		const vec3 local_N = right_child_data->normal;
