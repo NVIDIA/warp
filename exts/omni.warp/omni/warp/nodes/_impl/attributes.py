@@ -10,6 +10,7 @@
 import functools
 import operator
 from typing import (
+    Any,
     Optional,
     Union,
     Sequence,
@@ -94,27 +95,22 @@ def attr_get_name(
 # ------------------------------------------------------------------------------
 
 
-def attr_get_cpu_array(
+def attr_get(
     attr: og.AttributeData,
-    read_only: bool = True,
-) -> Union[np.ndarray, str]:
-    """Retrieves the value of an array attribute living on the CPU."""
-    return attr.get_array(
-        on_gpu=False,
-        get_for_write=not read_only,
-        reserved_element_count=0 if read_only else attr.size(),
-    )
+) -> Any:
+    """Retrieves the value from an attribute living on the CPU."""
+    return attr.get(on_gpu=False)
 
 
-def attr_set_cpu_array(
+def attr_set(
     attr: og.AttributeData,
-    value: Sequence,
+    value: Any,
 ) -> None:
     """Sets the given value onto an array attribute living on the CPU."""
     attr.set(value, on_gpu=False)
 
 
-def attr_get_gpu_array(
+def attr_get_array_on_gpu(
     attr: og.AttributeData,
     dtype: type,
     read_only: bool = True,
@@ -156,6 +152,40 @@ def attr_cast_array_to_warp(
         )
 
     assert False, "Unexpected device '{}'.".format(device.alias)
+
+
+#   Tracking
+# ------------------------------------------------------------------------------
+
+
+class AttrTracking:
+    """Attributes state for tracking changes."""
+
+    def __init__(self, names: Sequence[str]) -> None:
+        self._names = names
+        self._state = [None] * len(names)
+
+    def have_attrs_changed(self, db: og.Database) -> bool:
+        """Compare the current attribute values with the internal state."""
+        for i, name in enumerate(self._names):
+            cached_value = self._state[i]
+            current_value = getattr(db.inputs, name)
+            if isinstance(current_value, np.ndarray):
+                if not np.array_equal(current_value, cached_value):
+                    return True
+            elif current_value != cached_value:
+                return True
+
+        return False
+
+    def update_state(self, db: og.Database) -> None:
+        """Updates the internal state with the current attribute values."""
+        for i, name in enumerate(self._names):
+            current_value = getattr(db.inputs, name)
+            if isinstance(current_value, np.ndarray):
+                self._state[i] = current_value.copy()
+            else:
+                self._state[i] = current_value
 
 
 #   High-level Helper

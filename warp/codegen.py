@@ -124,8 +124,8 @@ class StructInstance:
             else:
                 # wp.array
                 assert isinstance(value, array)
-                assert (
-                    types_equal(value.dtype, var.type.dtype)
+                assert types_equal(
+                    value.dtype, var.type.dtype
                 ), "assign to struct member variable {} failed, expected type {}, got type {}".format(
                     name, type_repr(var.type.dtype), type_repr(value.dtype)
                 )
@@ -1257,63 +1257,90 @@ class Adjoint:
             else:
                 return False
 
+    # detects whether a loop contains a break (or continue) statement
+    def contains_break(adj, body):
+        for s in body:
+            if isinstance(s, ast.Break):
+                return True
+            elif isinstance(s, ast.Continue):
+                return True
+            elif isinstance(s, ast.If):
+                if adj.contains_break(s.body):
+                    return True
+                if adj.contains_break(s.orelse):
+                    return True
+            else:
+                # note that nested for or while loops containing a break statement
+                # do not affect the current loop
+                pass
+
+        return False
+
+    # returns a constant range() if unrollable, otherwise None
+    def get_unroll_range(adj, loop):
+        if not isinstance(loop.iter, ast.Call) or loop.iter.func.id != "range":
+            return None
+
+        for a in loop.iter.args:
+            # if all range() arguments are numeric constants we will unroll
+            # note that this only handles trivial constants, it will not unroll
+            # constant compile-time expressions e.g.: range(0, 3*2)
+            if not adj.is_num(a):
+                return None
+
+        # range(end)
+        if len(loop.iter.args) == 1:
+            start = 0
+            end = adj.eval_num(loop.iter.args[0])
+            step = 1
+
+        # range(start, end)
+        elif len(loop.iter.args) == 2:
+            start = adj.eval_num(loop.iter.args[0])
+            end = adj.eval_num(loop.iter.args[1])
+            step = 1
+
+        # range(start, end, step)
+        elif len(loop.iter.args) == 3:
+            start = adj.eval_num(loop.iter.args[0])
+            end = adj.eval_num(loop.iter.args[1])
+            step = adj.eval_num(loop.iter.args[2])
+
+        # test if we're above max unroll count
+        max_iters = abs(end - start) // abs(step)
+        max_unroll = adj.builder.options["max_unroll"]
+
+        if max_iters > max_unroll:
+            if warp.config.verbose:
+                print(
+                    f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop."
+                )
+            return None
+
+        if adj.contains_break(loop.body):
+            if warp.config.verbose:
+                print("Warning: 'break' or 'continue' found in loop body, will generate dynamic loop.")
+            return None
+
+        # unroll
+        return range(start, end, step)
+
     def emit_For(adj, node):
         # try and unroll simple range() statements that use constant args
-        unrolled = False
+        unroll_range = adj.get_unroll_range(node)
 
-        if isinstance(node.iter, ast.Call) and node.iter.func.id == "range":
-            is_constant = True
-            for a in node.iter.args:
-                # if all range() arguments are numeric constants we will unroll
-                # note that this only handles trivial constants, it will not unroll
-                # constant compile-time expressions e.g.: range(0, 3*2)
-                if not adj.is_num(a):
-                    is_constant = False
-                    break
+        if unroll_range:
+            for i in unroll_range:
+                const_iter = adj.add_constant(i)
+                var_iter = adj.add_call(warp.context.builtin_functions["int"], [const_iter])
+                adj.symbols[node.target.id] = var_iter
 
-            if is_constant:
-                # range(end)
-                if len(node.iter.args) == 1:
-                    start = 0
-                    end = adj.eval_num(node.iter.args[0])
-                    step = 1
+                # eval body
+                for s in node.body:
+                    adj.eval(s)
 
-                # range(start, end)
-                elif len(node.iter.args) == 2:
-                    start = adj.eval_num(node.iter.args[0])
-                    end = adj.eval_num(node.iter.args[1])
-                    step = 1
-
-                # range(start, end, step)
-                elif len(node.iter.args) == 3:
-                    start = adj.eval_num(node.iter.args[0])
-                    end = adj.eval_num(node.iter.args[1])
-                    step = adj.eval_num(node.iter.args[2])
-
-                # test if we're above max unroll count
-                max_iters = abs(end - start) // abs(step)
-                max_unroll = adj.builder.options["max_unroll"]
-
-                if max_iters > max_unroll:
-                    if warp.config.verbose:
-                        print(
-                            f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop."
-                        )
-                else:
-                    # unroll
-                    for i in range(start, end, step):
-                        const_iter = adj.add_constant(i)
-                        var_iter = adj.add_call(warp.context.builtin_functions["int"], [const_iter])
-                        adj.symbols[node.target.id] = var_iter
-
-                        # eval body
-                        for s in node.body:
-                            adj.eval(s)
-
-                    unrolled = True
-
-        # couldn't unroll so generate a dynamic loop
-        if not unrolled:
+        # otherwise generate a dynamic loop
+        else:
             # evaluate the Iterable
             iter = adj.eval(node.iter)
 

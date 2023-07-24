@@ -47,28 +47,26 @@ class InternalState:
     """Internal state for the node."""
 
     def __init__(self) -> None:
-        self._dim_1 = None
-        self._dim_2 = None
-        self._dim_3 = None
-        self._max_pts = None
-        self._max_tris = None
-
         self.mc = None
 
         self.is_valid = False
+
+        self.attr_tracking = omni.warp.nodes.AttrTracking(
+            (
+                "dim1",
+                "dim2",
+                "dim3",
+                "maxPoints",
+                "maxTriangles",
+            ),
+        )
 
     def needs_initialization(self, db: OgnMeshFromVolumeDatabase) -> bool:
         """Checks if the internal state needs to be (re)initialized."""
         if not self.is_valid:
             return True
 
-        if (
-            db.inputs.dim1 != self._dim_1
-            or db.inputs.dim2 != self._dim_2
-            or db.inputs.dim3 != self._dim_3
-            or db.inputs.maxPoints != self._max_pts
-            or db.inputs.maxTriangles != self._max_tris
-        ):
+        if self.attr_tracking.have_attrs_changed(db):
             return True
 
         return False
@@ -87,14 +85,7 @@ class InternalState:
         # Store the class members.
         self.mc = mc
 
-        # Cache the node attribute values relevant to this internal state.
-        # They're the ones used to check whether it needs to be reinitialized
-        # or not.
-        self._dim_1 = db.inputs.dim1
-        self._dim_2 = db.inputs.dim2
-        self._dim_3 = db.inputs.dim3
-        self._max_pts = db.inputs.maxPoints
-        self._max_tris = db.inputs.maxTriangles
+        self.attr_tracking.update_state(db)
 
         return True
 

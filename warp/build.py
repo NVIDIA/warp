@@ -8,7 +8,6 @@
 import os
 
 import warp.config
-import warp.utils
 from warp.thirdparty import appdirs
 
 
@@ -16,14 +15,19 @@ from warp.thirdparty import appdirs
 def build_cuda(cu_path, arch, output_path, config="release", verify_fp=False, fast_math=False):
     with open(cu_path, "rb") as src_file:
         src = src_file.read()
+        cu_path = cu_path.encode("utf-8")
         inc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "native").encode("utf-8")
         output_path = output_path.encode("utf-8")
 
-        err = warp.context.runtime.core.cuda_compile_program(
-            src, arch, inc_path, config == "debug", warp.config.verbose, verify_fp, fast_math, output_path
-        )
-        if err:
-            raise Exception("CUDA build failed")
+        if warp.config.llvm_cuda:
+            warp.context.runtime.llvm.compile_cuda(src, cu_path, inc_path, output_path, False)
+
+        else:
+            err = warp.context.runtime.core.cuda_compile_program(
+                src, arch, inc_path, config == "debug", warp.config.verbose, verify_fp, fast_math, output_path
+            )
+            if err:
+                raise Exception("CUDA build failed")
 
 
 # load PTX or CUBIN as a CUDA runtime module (input type determined by input_path extension)

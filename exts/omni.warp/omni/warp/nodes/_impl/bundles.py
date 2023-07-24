@@ -17,9 +17,9 @@ import omni.graph.core as og
 import warp as wp
 
 from omni.warp.nodes._impl.attributes import (
-    attr_get_cpu_array,
-    attr_get_gpu_array,
-    attr_set_cpu_array,
+    attr_get,
+    attr_get_array_on_gpu,
+    attr_set,
 )
 
 
@@ -40,7 +40,7 @@ def bundle_get_prim_type(
 ) -> str:
     """Retrieves the primitive type."""
     attr = bundle_get_attr(bundle, "sourcePrimType", child_idx)
-    return attr_get_cpu_array(attr)
+    return attr_get(attr)
 
 
 def bundle_set_prim_type(
@@ -60,7 +60,7 @@ def bundle_set_prim_type(
             role=og.AttributeRole.NONE,
         ),
     )
-    attr_set_cpu_array(attr, prim_type)
+    attr_set(attr, prim_type)
 
 
 def bundle_get_world_xform(
@@ -72,7 +72,7 @@ def bundle_get_world_xform(
     if attr is None:
         return np.identity(4)
 
-    return attr_get_cpu_array(attr).reshape(4, 4)
+    return attr_get(attr).reshape(4, 4)
 
 
 def bundle_set_world_xform(
@@ -92,7 +92,7 @@ def bundle_set_world_xform(
             role=og.AttributeRole.MATRIX,
         ),
     )
-    attr_set_cpu_array(attr, xform)
+    attr_set(attr, xform)
 
 
 def bundle_create_child(
@@ -138,7 +138,7 @@ def bundle_have_attrs_changed(
     attr_names: Sequence[str],
     child_idx: int = 0,
 ) -> bool:
-    """Checks whether the contents of a bundle's attributes hab changed."""
+    """Checks whether the contents of a bundle's attributes have changed."""
     with bundle.changes() as bundle_changes:
         child_bundle = bundle.bundle.get_child_bundle(child_idx)
         for attr_name in attr_names:
@@ -181,6 +181,6 @@ def bundle_copy_attr_value(
         return
 
     wp.copy(
-        attr_get_gpu_array(dst_attr, dtype, read_only=False),
-        attr_get_gpu_array(src_attr, dtype, read_only=True),
+        attr_get_array_on_gpu(dst_attr, dtype, read_only=False),
+        attr_get_array_on_gpu(src_attr, dtype, read_only=True),
     )

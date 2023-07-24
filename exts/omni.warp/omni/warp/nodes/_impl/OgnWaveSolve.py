@@ -149,9 +149,6 @@ class InternalState:
     """Internal state for the node."""
 
     def __init__(self) -> None:
-        self._size = None
-        self._cell_size = None
-
         self.height_map_0 = None
         self.height_map_1 = None
 
@@ -159,12 +156,19 @@ class InternalState:
 
         self.is_valid = False
 
+        self.attr_tracking = omni.warp.nodes.AttrTracking(
+            (
+                "size",
+                "cellSize",
+            ),
+        )
+
     def needs_initialization(self, db: OgnWaveSolveDatabase) -> bool:
         """Checks if the internal state needs to be (re)initialized."""
         if not self.is_valid:
             return True
 
-        if not np.array_equal(db.inputs.size, self._size) or db.inputs.cellSize != self._cell_size:
+        if self.attr_tracking.have_attrs_changed(db):
             return True
 
         if db.inputs.time < self.time:
@@ -201,11 +205,7 @@ class InternalState:
         self.height_map_0 = height_map_0
         self.height_map_1 = height_map_1
 
-        # Cache the node attribute values relevant to this internal state.
-        # They're the ones used to check whether it needs to be reinitialized
-        # or not.
-        self._size = db.inputs.size.copy()
-        self._cell_size = db.inputs.cellSize
+        self.attr_tracking.update_state(db)
 
         return True
 
