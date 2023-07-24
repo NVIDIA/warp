@@ -224,6 +224,7 @@ extern "C"
     WP_API const char* cuda_device_get_name(int ordinal);
     WP_API int cuda_device_get_arch(int ordinal);
     WP_API int cuda_device_is_uva(int ordinal);
+    WP_API int cuda_device_is_memory_pool_supported(int ordinal);
 
     WP_API void* cuda_context_get_current();
     WP_API void cuda_context_set_current(void* context);
@@ -233,6 +234,7 @@ extern "C"
     WP_API void cuda_context_destroy(void* context);
     WP_API int cuda_context_get_device_ordinal(void* context);
     WP_API int cuda_context_is_primary(void* context);
+    WP_API int cuda_context_is_memory_pool_supported(void* context);
     WP_API void* cuda_context_get_stream(void* context);
     WP_API void cuda_context_set_stream(void* context, void* stream);
     WP_API int cuda_context_can_access_peer(void* context, void* peer_context);
