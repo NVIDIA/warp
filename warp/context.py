@@ -1141,11 +1141,12 @@ class Module:
 
                 # kernel source
                 for kernel in module.kernels.values():
-                    if not kernel.is_generic:
-                        ch.update(bytes(kernel.adj.source, "utf-8"))
-                    else:
-                        for k in kernel.overloads.values():
-                            ch.update(bytes(k.adj.source, "utf-8"))
+                    ch.update(bytes(kernel.adj.source, "utf-8"))
+                    # for generic kernels the Python source is always the same,
+                    # but we hash the type signatures of all the overloads
+                    if kernel.is_generic:
+                        for sig in sorted(kernel.overloads.keys()):
+                            ch.update(bytes(sig, "utf-8"))
 
                 module.content_hash = ch.digest()
 

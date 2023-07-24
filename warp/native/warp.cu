@@ -1508,7 +1508,7 @@ void* cuda_get_kernel(void* context, void* module, const char* name)
 
     CUfunction kernel = NULL;
     if (!check_cu(cuModuleGetFunction_f(&kernel, (CUmodule)module, name)))
-        printf("Warp: Failed to lookup kernel function %s in module\n", name);
+        fprintf(stderr, "Warp CUDA error: Failed to lookup kernel function %s in module\n", name);
 
     return kernel;
 }
