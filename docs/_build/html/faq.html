@@ -2,11 +2,10 @@
 <html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Runtime Reference" href="modules/runtime.html" /><link rel="prev" title="Debugging" href="debugging.html" />
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Runtime Reference" href="modules/runtime.html" /><link rel="prev" title="Debugging" href="debugging.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 -->
-        <title>FAQ - Warp 0.10.0</title>
+        <title>FAQ - Warp 0.10.1</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -136,7 +135,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Warp 0.10.0</div></a>
+      <a href="index.html"><div class="brand">Warp 0.10.1</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -163,7 +162,7 @@
     <img class="sidebar-logo only-dark" src="_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 0.10.0</span>
+  <span class="sidebar-brand-text">Warp 0.10.1</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -227,9 +226,9 @@
           </label>
         </div>
         <article role="main">
-          <section id="faq">
+          <div class="section" id="faq">
 <h1>FAQ<a class="headerlink" href="#faq" title="Permalink to this heading">#</a></h1>
-<section id="how-does-warp-relate-to-other-python-projects-for-gpu-programming-e-g-numba-taichi-cupy-pytorch-etc">
+<div class="section" id="how-does-warp-relate-to-other-python-projects-for-gpu-programming-e-g-numba-taichi-cupy-pytorch-etc">
 <h2>How does Warp relate to other Python projects for GPU programming, e.g.: Numba, Taichi, cuPy, PyTorch, etc.?<a class="headerlink" href="#how-does-warp-relate-to-other-python-projects-for-gpu-programming-e-g-numba-taichi-cupy-pytorch-etc" title="Permalink to this heading">#</a></h2>
 <p>Warp is inspired by many of these projects, and is closely related to
 Numba and Taichi which both expose kernel programming to Python. These
@@ -253,16 +252,16 @@ conditional logic, heterogenous workloads (like the ones we often find in
 simulation and graphics), then the kernel-based programming model like
 the one in Warp are often more convenient since users have control over
 individual threads.</p>
-</section>
-<section id="does-warp-support-all-of-the-python-language">
+</div>
+<div class="section" id="does-warp-support-all-of-the-python-language">
 <h2>Does Warp support all of the Python language?<a class="headerlink" href="#does-warp-support-all-of-the-python-language" title="Permalink to this heading">#</a></h2>
 <p>No, Warp supports a subset of Python that maps well to the GPU. Our goal
 is to not have any performance cliffs so that users can expect
 consistently good behavior from kernels that is close to native code.
 Examples of unsupported concepts that don’t map well to the GPU are
 dynamic types, list comprehensions, exceptions, garbage collection, etc.</p>
-</section>
-<section id="when-should-i-call-wp-synchronize">
+</div>
+<div class="section" id="when-should-i-call-wp-synchronize">
 <h2>When should I call <code class="docutils literal notranslate"><span class="pre">wp.synchronize()</span></code>?<a class="headerlink" href="#when-should-i-call-wp-synchronize" title="Permalink to this heading">#</a></h2>
 <p>One of the common sources of confusion for new users is when calls to
 <code class="docutils literal notranslate"><span class="pre">wp.synchronize()</span></code> are necessary. The answer is “almost never”!
@@ -295,8 +294,8 @@ are being performed back to CPU asynchronously, e.g.:</p>
 <span class="n">a3</span> <span class="o">=</span> <span class="n">cpu_array_3</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
 </pre></div>
 </div>
-</section>
-<section id="what-happens-when-you-differentiate-a-function-like-wp-abs-x">
+</div>
+<div class="section" id="what-happens-when-you-differentiate-a-function-like-wp-abs-x">
 <h2>What happens when you differentiate a function like <code class="docutils literal notranslate"><span class="pre">wp.abs(x)</span></code>?<a class="headerlink" href="#what-happens-when-you-differentiate-a-function-like-wp-abs-x" title="Permalink to this heading">#</a></h2>
 <p>Non-smooth functions such as <code class="docutils literal notranslate"><span class="pre">y=|x|</span></code> do not have a single unique
 gradient at <code class="docutils literal notranslate"><span class="pre">x=0</span></code>, rather they have what is known as a
@@ -309,15 +308,15 @@ the implementation for these functions in <code class="docutils literal notransl
 <p>Most optimizers (particularly ones that exploit stochasticity), are not
 sensitive to the choice of which gradient to use from the subgradient,
 although there are exceptions.</p>
-</section>
-<section id="does-warp-support-multi-gpu-programming">
+</div>
+<div class="section" id="does-warp-support-multi-gpu-programming">
 <h2>Does Warp support multi-GPU programming?<a class="headerlink" href="#does-warp-support-multi-gpu-programming" title="Permalink to this heading">#</a></h2>
 <p>Yes! Since version <code class="docutils literal notranslate"><span class="pre">0.4.0</span></code> we support allocating, launching, and
 copying between multiple GPUs in a single process. We follow the naming
 conventions of PyTorch and use aliases such as <code class="docutils literal notranslate"><span class="pre">cuda:0</span></code>, <code class="docutils literal notranslate"><span class="pre">cuda:1</span></code>,
 <code class="docutils literal notranslate"><span class="pre">cpu</span></code> to identify individual devices.</p>
-</section>
-<section id="should-i-switch-to-warp-over-isaacgym-physx">
+</div>
+<div class="section" id="should-i-switch-to-warp-over-isaacgym-physx">
 <h2>Should I switch to Warp over IsaacGym / PhysX?<a class="headerlink" href="#should-i-switch-to-warp-over-isaacgym-physx" title="Permalink to this heading">#</a></h2>
 <p>Warp is not a replacement for IsaacGym, IsaacSim, or PhysX - while Warp
 does offer some physical simulation capabilities this is primarily aimed
@@ -325,8 +324,8 @@ at developers who need differentiable physics, rather than a fully
 featured physics engine. Warp is also integrated with IsaacGym and is
 great for performing auxiliary tasks such as reward and observation
 computations for reinforcement learning.</p>
-</section>
-</section>
+</div>
+</div>
 
         </article>
       </div>
@@ -408,6 +407,9 @@ computations for reinforcement learning.</p>
     </aside>
   </div>
 </div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="_static/doctools.js"></script>
     <script src="_static/sphinx_highlight.js"></script>
     <script src="_static/scripts/furo.js"></script>

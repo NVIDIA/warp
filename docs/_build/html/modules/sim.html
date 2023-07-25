@@ -2,11 +2,10 @@
 <html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Interoperability" href="interoperability.html" /><link rel="prev" title="Kernel Reference" href="functions.html" />
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Interoperability" href="interoperability.html" /><link rel="prev" title="Kernel Reference" href="functions.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 -->
-        <title>Simulation Reference - Warp 0.10.0</title>
+        <title>Simulation Reference - Warp 0.10.1</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -136,7 +135,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">Warp 0.10.0</div></a>
+      <a href="../index.html"><div class="brand">Warp 0.10.1</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -163,7 +162,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 0.10.0</span>
+  <span class="sidebar-brand-text">Warp 0.10.1</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -227,14 +226,14 @@
           </label>
         </div>
         <article role="main">
-          <section id="simulation-reference">
+          <div class="section" id="simulation-reference">
 <h1>Simulation Reference<a class="headerlink" href="#simulation-reference" title="Permalink to this heading">#</a></h1>
 <p>Warp includes a simulation module <code class="docutils literal notranslate"><span class="pre">warp.sim</span></code> that includes many common physical simulation models, and integrators for explicit and implicit time-stepping.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>The simulation model is under construction and should be expected to change rapidly, please treat this section as work in progress.</p>
 </div>
-<section id="model">
+<div class="section" id="model">
 <h2>Model<a class="headerlink" href="#model" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.sim.ModelBuilder">
@@ -282,7 +281,7 @@ desired.</p>
 <span class="sig-name descname"><span class="pre">add_builder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">articulation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">update_num_env_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">separate_collision_group</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_builder" title="Permalink to this definition">#</a></dt>
 <dd><p>Copies a rigid articulation from <cite>articulation</cite>, another <cite>ModelBuilder</cite>.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>articulation</strong> – a model builder to add rigid articulation from.</p></li>
 <li><p><strong>xform</strong> – offset transform applied to root bodies.</p></li>
@@ -298,20 +297,20 @@ desired.</p>
 <span class="sig-name descname"><span class="pre">add_body</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">origin=&lt;warp.types.transformf</span> <span class="pre">object&gt;,</span> <span class="pre">armature=0.0,</span> <span class="pre">com=array([0.,</span> <span class="pre">0.,</span> <span class="pre">0.]),</span> <span class="pre">I_m=array([[0.,</span> <span class="pre">0.,</span> <span class="pre">0.],</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">[0.,</span> <span class="pre">0.,</span> <span class="pre">0.],</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">[0.,</span> <span class="pre">0.,</span> <span class="pre">0.]]),</span> <span class="pre">m=0.0,</span> <span class="pre">name=None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_body" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds a rigid body to the model.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>origin</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.11)"><em>Tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em><em>]</em>) – The location of the body in the world frame</p></li>
 <li><p><strong>armature</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – Artificial inertia added to the body</p></li>
 <li><p><strong>com</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The center of mass of the body w.r.t its origin</p></li>
 <li><p><strong>I_m</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The 3x3 inertia tensor of the body (specified relative to the center of mass)</p></li>
 <li><p><strong>m</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – Mass of the body</p></li>
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>None</em>) – Name of the body (optional)</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em>) – Name of the body (optional)</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>The index of the body in the model</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -326,7 +325,7 @@ desired.</p>
 <span class="sig-name descname"><span class="pre">add_joint_revolute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent_xform</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child_xform</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_ke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit_lower</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-6.283185307179586</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit_upper</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6.283185307179586</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit_ke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit_kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">linear_compliance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angular_compliance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collision_filter_parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enabled</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_joint_revolute" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds a revolute joint to the model</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>parent</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the parent body</p></li>
 <li><p><strong>child</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the child body</p></li>
@@ -342,16 +341,16 @@ desired.</p>
 <li><p><strong>limit_kd</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The damping of the joint limit</p></li>
 <li><p><strong>linear_compliance</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The linear compliance of the joint</p></li>
 <li><p><strong>angular_compliance</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The angular compliance of the joint</p></li>
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>None</em>) – The name of the joint</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em>) – The name of the joint</p></li>
 <li><p><strong>collision_filter_parent</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether to filter collisions between shapes of the parent and child bodies</p></li>
 <li><p><strong>enabled</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether the joint is enabled</p></li>
 <li><p><strong>mode</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>The index of the child body</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -362,7 +361,7 @@ desired.</p>
 <span class="sig-name descname"><span class="pre">add_joint_prismatic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent_xform</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child_xform</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_ke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit_lower</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-10000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit_upper</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit_ke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit_kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">linear_compliance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angular_compliance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collision_filter_parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enabled</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_joint_prismatic" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds a prismatic joint to the model</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>parent</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the parent body</p></li>
 <li><p><strong>child</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the child body</p></li>
@@ -378,16 +377,16 @@ desired.</p>
 <li><p><strong>limit_kd</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The damping of the joint limit</p></li>
 <li><p><strong>linear_compliance</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The linear compliance of the joint</p></li>
 <li><p><strong>angular_compliance</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The angular compliance of the joint</p></li>
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>None</em>) – The name of the joint</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em>) – The name of the joint</p></li>
 <li><p><strong>collision_filter_parent</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether to filter collisions between shapes of the parent and child bodies</p></li>
 <li><p><strong>enabled</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether the joint is enabled</p></li>
 <li><p><strong>mode</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>The index of the child body</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -398,7 +397,7 @@ desired.</p>
 <span class="sig-name descname"><span class="pre">add_joint_ball</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent_xform=&lt;warp.types.transformf</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child_xform=&lt;warp.types.transformf</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">linear_compliance=0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angular_compliance=0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collision_filter_parent=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enabled=True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_joint_ball" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds a ball joint to the model</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>parent</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the parent body</p></li>
 <li><p><strong>child</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the child body</p></li>
@@ -406,16 +405,16 @@ desired.</p>
 <li><p><strong>xform</strong> – The transform of the joint in the child body’s local frame</p></li>
 <li><p><strong>linear_compliance</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The linear compliance of the joint</p></li>
 <li><p><strong>angular_compliance</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The angular compliance of the joint</p></li>
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>None</em>) – The name of the joint</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em>) – The name of the joint</p></li>
 <li><p><strong>collision_filter_parent</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether to filter collisions between shapes of the parent and child bodies</p></li>
 <li><p><strong>enabled</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether the joint is enabled</p></li>
 <li><p><strong>child_xform</strong> (<em>transformf</em>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>The index of the child body</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -426,7 +425,7 @@ desired.</p>
 <span class="sig-name descname"><span class="pre">add_joint_fixed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent_xform=&lt;warp.types.transformf</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child_xform=&lt;warp.types.transformf</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">linear_compliance=0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angular_compliance=0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collision_filter_parent=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enabled=True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_joint_fixed" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds a fixed joint to the model</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>parent</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the parent body</p></li>
 <li><p><strong>child</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the child body</p></li>
@@ -434,16 +433,16 @@ desired.</p>
 <li><p><strong>xform</strong> – The transform of the joint in the child body’s local frame</p></li>
 <li><p><strong>linear_compliance</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The linear compliance of the joint</p></li>
 <li><p><strong>angular_compliance</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The angular compliance of the joint</p></li>
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>None</em>) – The name of the joint</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em>) – The name of the joint</p></li>
 <li><p><strong>collision_filter_parent</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether to filter collisions between shapes of the parent and child bodies</p></li>
 <li><p><strong>enabled</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether the joint is enabled</p></li>
 <li><p><strong>child_xform</strong> (<em>transformf</em>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>The index of the child body</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -454,22 +453,22 @@ desired.</p>
 <span class="sig-name descname"><span class="pre">add_joint_free</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">child</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent_xform=&lt;warp.types.transformf</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child_xform=&lt;warp.types.transformf</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent=-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collision_filter_parent=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enabled=True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_joint_free" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds a free joint to the model</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>parent</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the parent body</p></li>
 <li><p><strong>child</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the child body</p></li>
 <li><p><strong>parent_xform</strong> (<em>transformf</em>) – The transform of the joint in the parent body’s local frame</p></li>
 <li><p><strong>xform</strong> – The transform of the joint in the child body’s local frame</p></li>
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>None</em>) – The name of the joint</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em>) – The name of the joint</p></li>
 <li><p><strong>collision_filter_parent</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether to filter collisions between shapes of the parent and child bodies</p></li>
 <li><p><strong>enabled</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether the joint is enabled</p></li>
 <li><p><strong>child_xform</strong> (<em>transformf</em>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>The index of the child body</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -480,7 +479,7 @@ desired.</p>
 <span class="sig-name descname"><span class="pre">add_joint_distance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent_xform=&lt;warp.types.transformf</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child_xform=&lt;warp.types.transformf</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_distance=-1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_distance=1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compliance=0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collision_filter_parent=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enabled=True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_joint_distance" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds a distance joint to the model</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>parent</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the parent body</p></li>
 <li><p><strong>child</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the child body</p></li>
@@ -494,10 +493,10 @@ desired.</p>
 <li><p><strong>child_xform</strong> (<em>transformf</em>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>The index of the child body</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -508,7 +507,7 @@ desired.</p>
 <span class="sig-name descname"><span class="pre">add_joint_universal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis_0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis_1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent_xform=&lt;warp.types.transformf</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child_xform=&lt;warp.types.transformf</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">linear_compliance=0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angular_compliance=0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collision_filter_parent=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enabled=True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_joint_universal" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds a universal joint to the model</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>parent</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the parent body</p></li>
 <li><p><strong>child</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the child body</p></li>
@@ -518,16 +517,16 @@ desired.</p>
 <li><p><strong>xform</strong> – The transform of the joint in the child body’s local frame</p></li>
 <li><p><strong>linear_compliance</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The linear compliance of the joint</p></li>
 <li><p><strong>angular_compliance</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The angular compliance of the joint</p></li>
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>None</em>) – The name of the joint</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em>) – The name of the joint</p></li>
 <li><p><strong>collision_filter_parent</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether to filter collisions between shapes of the parent and child bodies</p></li>
 <li><p><strong>enabled</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether the joint is enabled</p></li>
 <li><p><strong>child_xform</strong> (<em>transformf</em>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>The index of the child body</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -538,7 +537,7 @@ desired.</p>
 <span class="sig-name descname"><span class="pre">add_joint_compound</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis_0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis_1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis_2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent_xform=&lt;warp.types.transformf</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child_xform=&lt;warp.types.transformf</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collision_filter_parent=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enabled=True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_joint_compound" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds a compound joint to the model</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>parent</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the parent body</p></li>
 <li><p><strong>child</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the child body</p></li>
@@ -547,16 +546,16 @@ desired.</p>
 <li><p><strong>axis_2</strong> (<em>JointAxis</em>) – The third axis of the joint</p></li>
 <li><p><strong>parent_xform</strong> (<em>transformf</em>) – The transform of the joint in the parent body’s local frame</p></li>
 <li><p><strong>xform</strong> – The transform of the joint in the child body’s local frame</p></li>
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>None</em>) – The name of the joint</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em>) – The name of the joint</p></li>
 <li><p><strong>collision_filter_parent</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether to filter collisions between shapes of the parent and child bodies</p></li>
 <li><p><strong>enabled</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether the joint is enabled</p></li>
 <li><p><strong>child_xform</strong> (<em>transformf</em>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>The index of the child body</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -567,13 +566,13 @@ desired.</p>
 <span class="sig-name descname"><span class="pre">add_joint_d6</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">linear_axes=[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angular_axes=[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent_xform=&lt;warp.types.transformf</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child_xform=&lt;warp.types.transformf</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">linear_compliance=0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angular_compliance=0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collision_filter_parent=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enabled=True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_joint_d6" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds a generic joint with custom linear and angular axes.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>parent</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the parent body</p></li>
 <li><p><strong>child</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the child body</p></li>
 <li><p><strong>linear_axes</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><em>JointAxis</em><em>]</em>) – A list of linear axes</p></li>
 <li><p><strong>angular_axes</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><em>JointAxis</em><em>]</em>) – A list of angular axes</p></li>
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>None</em>) – The name of the joint</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em>) – The name of the joint</p></li>
 <li><p><strong>parent_xform</strong> (<em>transformf</em>) – The transform of the joint in the parent body’s local frame</p></li>
 <li><p><strong>xform</strong> – The transform of the joint in the child body’s local frame</p></li>
 <li><p><strong>linear_compliance</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The linear compliance of the joint</p></li>
@@ -583,7 +582,7 @@ desired.</p>
 <li><p><strong>child_xform</strong> (<em>transformf</em>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>The index of the child body</p>
 </dd>
 </dl>
@@ -594,7 +593,7 @@ desired.</p>
 <span class="sig-name descname"><span class="pre">add_muscle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bodies</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lmax</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pen</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_muscle" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds a muscle-tendon activation unit</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>bodies</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a><em>]</em>) – A list of body indices for each waypoint</p></li>
 <li><p><strong>positions</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em><em>]</em>) – A list of positions of each waypoint in the body’s local frame</p></li>
@@ -605,10 +604,10 @@ desired.</p>
 <li><p><strong>pen</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>The index of the muscle in the model</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)">float</a></p>
 </dd>
 </dl>
@@ -621,11 +620,11 @@ desired.</p>
 If pos and rot are defined, the plane is assumed to have its normal as (0, 1, 0).
 Otherwise, the plane equation is used.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>plane</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The plane equation in form a*x + b*y + c*z + d = 0</p></li>
-<li><p><strong>pos</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – The position of the plane in world coordinates</p></li>
-<li><p><strong>rot</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – The rotation of the plane in world coordinates</p></li>
+<li><p><strong>pos</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em><em>]</em>) – The position of the plane in world coordinates</p></li>
+<li><p><strong>rot</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em><em>]</em>) – The rotation of the plane in world coordinates</p></li>
 <li><p><strong>width</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The extent along x of the plane (infinite if 0)</p></li>
 <li><p><strong>length</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The extent along z of the plane (infinite if 0)</p></li>
 <li><p><strong>body</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The body index to attach the shape to (-1 by default to keep the plane static)</p></li>
@@ -646,7 +645,7 @@ Otherwise, the plane equation is used.</p>
 <span class="sig-name descname"><span class="pre">add_shape_sphere</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">body</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pos</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0,</span> <span class="pre">1.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restitution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_solid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thickness</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">has_ground_collision</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_shape_sphere" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds a sphere collision shape to a body.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>body</strong> – The index of the parent body this shape belongs to</p></li>
 <li><p><strong>pos</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The location of the shape with respect to the parent frame</p></li>
@@ -671,7 +670,7 @@ Otherwise, the plane equation is used.</p>
 <span class="sig-name descname"><span class="pre">add_shape_box</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">body</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pos</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0,</span> <span class="pre">1.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restitution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_solid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thickness</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">has_ground_collision</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_shape_box" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds a box collision shape to a body.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>body</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the parent body this shape belongs to</p></li>
 <li><p><strong>pos</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The location of the shape with respect to the parent frame</p></li>
@@ -698,7 +697,7 @@ Otherwise, the plane equation is used.</p>
 <span class="sig-name descname"><span class="pre">add_shape_capsule</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">body</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pos</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0,</span> <span class="pre">1.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">half_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">up_axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restitution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_solid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thickness</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">has_ground_collision</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_shape_capsule" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds a capsule collision shape to a body.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>body</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the parent body this shape belongs to</p></li>
 <li><p><strong>pos</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The location of the shape with respect to the parent frame</p></li>
@@ -725,7 +724,7 @@ Otherwise, the plane equation is used.</p>
 <span class="sig-name descname"><span class="pre">add_shape_cylinder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">body</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pos</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0,</span> <span class="pre">1.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">half_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">up_axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restitution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_solid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thickness</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">has_ground_collision</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_shape_cylinder" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds a cylinder collision shape to a body.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>body</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the parent body this shape belongs to</p></li>
 <li><p><strong>pos</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The location of the shape with respect to the parent frame</p></li>
@@ -752,7 +751,7 @@ Otherwise, the plane equation is used.</p>
 <span class="sig-name descname"><span class="pre">add_shape_cone</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">body</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pos</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0,</span> <span class="pre">1.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">half_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">up_axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restitution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_solid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thickness</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">has_ground_collision</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_shape_cone" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds a cone collision shape to a body.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>body</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the parent body this shape belongs to</p></li>
 <li><p><strong>pos</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The location of the shape with respect to the parent frame</p></li>
@@ -779,12 +778,12 @@ Otherwise, the plane equation is used.</p>
 <span class="sig-name descname"><span class="pre">add_shape_mesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">body</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pos</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0,</span> <span class="pre">1.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mesh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1.0,</span> <span class="pre">1.0,</span> <span class="pre">1.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restitution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_solid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thickness</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">has_ground_collision</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_shape_mesh" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds a triangle mesh collision shape to a body.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>body</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the parent body this shape belongs to</p></li>
 <li><p><strong>pos</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The location of the shape with respect to the parent frame</p></li>
 <li><p><strong>rot</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The rotation of the shape with respect to the parent frame</p></li>
-<li><p><strong>mesh</strong> (<em>Mesh</em><em> | </em><em>None</em>) – The mesh object</p></li>
+<li><p><strong>mesh</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><em>Mesh</em><em>]</em>) – The mesh object</p></li>
 <li><p><strong>scale</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – Scale to use for the collider</p></li>
 <li><p><strong>density</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The density of the shape</p></li>
 <li><p><strong>ke</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The contact elastic stiffness</p></li>
@@ -805,16 +804,16 @@ Otherwise, the plane equation is used.</p>
 <span class="sig-name descname"><span class="pre">add_particle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mass</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flags=&lt;warp.types.uint32</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_particle" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds a single particle to the model</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>pos</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The initial position of the particle</p></li>
 <li><p><strong>vel</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The initial velocity of the particle</p></li>
 <li><p><strong>mass</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The mass of the particle</p></li>
 <li><p><strong>flags</strong> (<em>uint32</em>) – The flags that control the dynamical behavior of the particle, see PARTICLE_FLAG_* constants</p></li>
-<li><p><strong>radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em> | </em><em>None</em>) – The radius of the particle used in collision handling. If None, the radius is set to the default value (default_particle_radius).</p></li>
+<li><p><strong>radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The radius of the particle used in collision handling. If None, the radius is set to the default value (default_particle_radius).</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dt class="field-even">Return type</dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -823,19 +822,19 @@ Otherwise, the plane equation is used.</p>
 <p>Set the mass equal to zero to create a ‘kinematic’ particle that does is not subject to dynamics.</p>
 </div>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>The index of the particle in the system</p>
 </dd>
-<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dt class="field-even">Parameters</dt>
 <dd class="field-even"><ul class="simple">
 <li><p><strong>pos</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – </p></li>
 <li><p><strong>vel</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – </p></li>
 <li><p><strong>mass</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – </p></li>
-<li><p><strong>radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em> | </em><em>None</em>) – </p></li>
+<li><p><strong>radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – </p></li>
 <li><p><strong>flags</strong> (<em>uint32</em>) – </p></li>
 </ul>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -846,7 +845,7 @@ Otherwise, the plane equation is used.</p>
 <span class="sig-name descname"><span class="pre">add_spring</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">j</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ke</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kd</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">control</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_spring" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds a spring between two particles in the system</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>i</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the first particle</p></li>
 <li><p><strong>j</strong> – The index of the second particle</p></li>
@@ -870,7 +869,7 @@ between the particles in their initial configuration.</p>
 <p>Triangles are modeled as viscoelastic elements with elastic stiffness and damping
 Parameters specified on the model. See model.tri_ke, model.tri_kd.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>i</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the first particle</p></li>
 <li><p><strong>j</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the second particle</p></li>
@@ -882,10 +881,10 @@ Parameters specified on the model. See model.tri_ke, model.tri_kd.</p>
 <li><p><strong>tri_lift</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>The area of the triangle</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)">float</a></p>
 </dd>
 </dl>
@@ -909,22 +908,22 @@ between the particles in their initial configuration.</p>
 <p>Triangles are modeled as viscoelastic elements with elastic stiffness and damping
 Parameters specified on the model. See model.tri_ke, model.tri_kd.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>i</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a><em>]</em>) – The indices of the first particle</p></li>
 <li><p><strong>j</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a><em>]</em>) – The indices of the second particle</p></li>
 <li><p><strong>k</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a><em>]</em>) – The indices of the third particle</p></li>
-<li><p><strong>tri_ke</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – </p></li>
-<li><p><strong>tri_ka</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – </p></li>
-<li><p><strong>tri_kd</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – </p></li>
-<li><p><strong>tri_drag</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – </p></li>
-<li><p><strong>tri_lift</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – </p></li>
+<li><p><strong>tri_ke</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em><em>]</em>) – </p></li>
+<li><p><strong>tri_ka</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em><em>]</em>) – </p></li>
+<li><p><strong>tri_kd</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em><em>]</em>) – </p></li>
+<li><p><strong>tri_drag</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em><em>]</em>) – </p></li>
+<li><p><strong>tri_lift</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em><em>]</em>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>The areas of the triangles</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)">float</a>]</p>
 </dd>
 </dl>
@@ -942,7 +941,7 @@ between the particles in their initial configuration.</p>
 <p>Tetrahedra are modeled as viscoelastic elements with a NeoHookean energy
 density based on [Smith et al. 2018].</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>i</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the first particle</p></li>
 <li><p><strong>j</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the second particle</p></li>
@@ -953,10 +952,10 @@ density based on [Smith et al. 2018].</p>
 <li><p><strong>k_damp</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The element’s damping stiffness</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>The volume of the tetrahedron</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)">float</a></p>
 </dd>
 </dl>
@@ -974,13 +973,13 @@ density based on [Smith et al. 2018].</p>
 bending energy is based of [Bridson et al. 2002]. Bending stiffness is controlled
 by the <cite>model.tri_kb</cite> parameter.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>i</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the first particle</p></li>
 <li><p><strong>j</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the second particle</p></li>
 <li><p><strong>k</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the third particle</p></li>
 <li><p><strong>l</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – The index of the fourth particle</p></li>
-<li><p><strong>rest</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em> | </em><em>None</em>) – The rest angle across the edge in radians, if not specified it will be computed</p></li>
+<li><p><strong>rest</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The rest angle across the edge in radians, if not specified it will be computed</p></li>
 <li><p><strong>edge_ke</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – </p></li>
 <li><p><strong>edge_kd</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – </p></li>
 </ul>
@@ -1002,15 +1001,15 @@ winding: (i, k, l), (j, l, k).</p>
 bending energy is based of [Bridson et al. 2002]. Bending stiffness is controlled
 by the <cite>model.tri_kb</cite> parameter.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>i</strong> – The indices of the first particle</p></li>
 <li><p><strong>j</strong> – The indices of the second particle</p></li>
 <li><p><strong>k</strong> – The indices of the third particle</p></li>
 <li><p><strong>l</strong> – The indices of the fourth particle</p></li>
-<li><p><strong>rest</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – The rest angles across the edges in radians, if not specified they will be computed</p></li>
-<li><p><strong>edge_ke</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – </p></li>
-<li><p><strong>edge_kd</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – </p></li>
+<li><p><strong>rest</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em><em>]</em>) – The rest angles across the edges in radians, if not specified they will be computed</p></li>
+<li><p><strong>edge_ke</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em><em>]</em>) – </p></li>
+<li><p><strong>edge_kd</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em><em>]</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -1029,7 +1028,7 @@ winding: (i, k, l), (j, l, k).</p>
 <p>Creates a rectangular grid of particles with FEM triangles and bending elements
 automatically.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>pos</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The position of the cloth in world space</p></li>
 <li><p><strong>rot</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The orientation of the cloth in world space</p></li>
@@ -1063,7 +1062,7 @@ automatically.</p>
 <p>Creates one FEM triangle element and one bending element for every face
 and edge in the input triangle mesh</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>pos</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The position of the cloth in world space</p></li>
 <li><p><strong>rot</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The orientation of the cloth in world space</p></li>
@@ -1098,7 +1097,7 @@ and edge in the input triangle mesh</p>
 to create beams and sheets. Each hexahedral cell is decomposed into 5
 tetrahedral elements.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>pos</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The position of the solid in world space</p></li>
 <li><p><strong>rot</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The orientation of the solid in world space</p></li>
@@ -1132,7 +1131,7 @@ tetrahedral elements.</p>
 <span class="sig-name descname"><span class="pre">add_soft_mesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vertices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_mu</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_lambda</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_damp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tri_ke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tri_ka</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tri_kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tri_drag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tri_lift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_soft_mesh" title="Permalink to this definition">#</a></dt>
 <dd><p>Helper to create a tetrahedral model from an input tetrahedral mesh</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>pos</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The position of the solid in world space</p></li>
 <li><p><strong>rot</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>]</em>) – The orientation of the solid in world space</p></li>
@@ -1160,7 +1159,7 @@ tetrahedral elements.</p>
 <dd><p>Creates a ground plane for the world. If the normal is not specified,
 the up_vector of the ModelBuilder is used.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>ke</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – </p></li>
 <li><p><strong>kd</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – </p></li>
@@ -1179,16 +1178,16 @@ the up_vector of the ModelBuilder is used.</p>
 <p>After building simulation elements this method should be called to transfer
 all data to device memory ready for simulation.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>device</strong> – The simulation device to use, e.g.: ‘cpu’, ‘cuda’</p></li>
 <li><p><strong>requires_grad</strong> – Whether to enable gradient computation for the model</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>A model object.</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference internal" href="#warp.sim.Model" title="warp.sim.model.Model"><em>Model</em></a></p>
 </dd>
 </dl>
@@ -1207,7 +1206,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">requires_grad</span></span><a class="headerlink" href="#warp.sim.Model.requires_grad" title="Permalink to this definition">#</a></dt>
 <dd><p>Indicates whether the model was finalized with gradient computation enabled</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)">float</a></p>
 </dd>
 </dl>
@@ -1218,7 +1217,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">num_envs</span></span><a class="headerlink" href="#warp.sim.Model.num_envs" title="Permalink to this definition">#</a></dt>
 <dd><p>Number of articulation environments that were added to the ModelBuilder via <cite>add_builder</cite></p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -1229,7 +1228,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">particle_q</span></span><a class="headerlink" href="#warp.sim.Model.particle_q" title="Permalink to this definition">#</a></dt>
 <dd><p>Particle positions, shape [particle_count, 3], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1240,7 +1239,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">particle_qd</span></span><a class="headerlink" href="#warp.sim.Model.particle_qd" title="Permalink to this definition">#</a></dt>
 <dd><p>Particle velocities, shape [particle_count, 3], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1251,7 +1250,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">particle_mass</span></span><a class="headerlink" href="#warp.sim.Model.particle_mass" title="Permalink to this definition">#</a></dt>
 <dd><p>Particle mass, shape [particle_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1262,7 +1261,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">particle_inv_mass</span></span><a class="headerlink" href="#warp.sim.Model.particle_inv_mass" title="Permalink to this definition">#</a></dt>
 <dd><p>Particle inverse mass, shape [particle_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1273,7 +1272,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">particle_radius</span></span><a class="headerlink" href="#warp.sim.Model.particle_radius" title="Permalink to this definition">#</a></dt>
 <dd><p>Particle radius, shape [particle_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1284,7 +1283,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">particle_max_radius</span></span><a class="headerlink" href="#warp.sim.Model.particle_max_radius" title="Permalink to this definition">#</a></dt>
 <dd><p>Maximum particle radius (useful for HashGrid construction)</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)">float</a></p>
 </dd>
 </dl>
@@ -1295,7 +1294,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">particle_ke</span></span><a class="headerlink" href="#warp.sim.Model.particle_ke" title="Permalink to this definition">#</a></dt>
 <dd><p>Particle normal contact stiffness (used by SemiImplicitIntegrator), shape [particle_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1306,7 +1305,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">particle_kd</span></span><a class="headerlink" href="#warp.sim.Model.particle_kd" title="Permalink to this definition">#</a></dt>
 <dd><p>Particle normal contact damping (used by SemiImplicitIntegrator), shape [particle_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1317,7 +1316,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">particle_kf</span></span><a class="headerlink" href="#warp.sim.Model.particle_kf" title="Permalink to this definition">#</a></dt>
 <dd><p>Particle friction force stiffness (used by SemiImplicitIntegrator), shape [particle_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1328,7 +1327,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">particle_mu</span></span><a class="headerlink" href="#warp.sim.Model.particle_mu" title="Permalink to this definition">#</a></dt>
 <dd><p>Particle friction coefficient, shape [particle_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1339,7 +1338,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">particle_cohesion</span></span><a class="headerlink" href="#warp.sim.Model.particle_cohesion" title="Permalink to this definition">#</a></dt>
 <dd><p>Particle cohesion strength, shape [particle_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1350,7 +1349,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">particle_adhesion</span></span><a class="headerlink" href="#warp.sim.Model.particle_adhesion" title="Permalink to this definition">#</a></dt>
 <dd><p>Particle adhesion strength, shape [particle_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1361,7 +1360,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">particle_grid</span></span><a class="headerlink" href="#warp.sim.Model.particle_grid" title="Permalink to this definition">#</a></dt>
 <dd><p>HashGrid instance used for accelerated simulation of particle interactions</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference internal" href="runtime.html#warp.HashGrid" title="warp.HashGrid">HashGrid</a></p>
 </dd>
 </dl>
@@ -1372,7 +1371,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">particle_flags</span></span><a class="headerlink" href="#warp.sim.Model.particle_flags" title="Permalink to this definition">#</a></dt>
 <dd><p>Particle enabled state, shape [particle_count], bool</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1383,7 +1382,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">shape_transform</span></span><a class="headerlink" href="#warp.sim.Model.shape_transform" title="Permalink to this definition">#</a></dt>
 <dd><p>Rigid shape transforms, shape [shape_count, 7], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1394,7 +1393,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">shape_body</span></span><a class="headerlink" href="#warp.sim.Model.shape_body" title="Permalink to this definition">#</a></dt>
 <dd><p>Rigid shape body index, shape [shape_count], int</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1405,7 +1404,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">body_shapes</span></span><a class="headerlink" href="#warp.sim.Model.body_shapes" title="Permalink to this definition">#</a></dt>
 <dd><p>Mapping from body index to list of attached shape indices</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)">dict</a></p>
 </dd>
 </dl>
@@ -1416,7 +1415,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">shape_materials</span></span><a class="headerlink" href="#warp.sim.Model.shape_materials" title="Permalink to this definition">#</a></dt>
 <dd><p>Rigid shape contact materials, shape [shape_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>ModelShapeMaterials</p>
 </dd>
 </dl>
@@ -1427,7 +1426,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">shape_shape_geo</span></span><a class="headerlink" href="#warp.sim.Model.shape_shape_geo" title="Permalink to this definition">#</a></dt>
 <dd><p>Shape geometry properties (geo type, scale, thickness, etc.), shape [shape_count, 3], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>ModelShapeGeometry</p>
 </dd>
 </dl>
@@ -1438,7 +1437,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">shape_geo_src</span></span><a class="headerlink" href="#warp.sim.Model.shape_geo_src" title="Permalink to this definition">#</a></dt>
 <dd><p>List of <cite>wp.Mesh</cite> instances used for rendering of mesh geometry</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.11)">list</a></p>
 </dd>
 </dl>
@@ -1449,7 +1448,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">shape_collision_group</span></span><a class="headerlink" href="#warp.sim.Model.shape_collision_group" title="Permalink to this definition">#</a></dt>
 <dd><p>Collision group of each shape, shape [shape_count], int</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.11)">list</a></p>
 </dd>
 </dl>
@@ -1460,7 +1459,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">shape_collision_group_map</span></span><a class="headerlink" href="#warp.sim.Model.shape_collision_group_map" title="Permalink to this definition">#</a></dt>
 <dd><p>Mapping from collision group to list of shape indices</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)">dict</a></p>
 </dd>
 </dl>
@@ -1471,7 +1470,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">shape_collision_filter_pairs</span></span><a class="headerlink" href="#warp.sim.Model.shape_collision_filter_pairs" title="Permalink to this definition">#</a></dt>
 <dd><p>Pairs of shape indices that should not collide</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#set" title="(in Python v3.11)">set</a></p>
 </dd>
 </dl>
@@ -1482,7 +1481,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">shape_collision_radius</span></span><a class="headerlink" href="#warp.sim.Model.shape_collision_radius" title="Permalink to this definition">#</a></dt>
 <dd><p>Collision radius of each shape used for bounding sphere broadphase collision checking, shape [shape_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1493,7 +1492,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">shape_ground_collision</span></span><a class="headerlink" href="#warp.sim.Model.shape_ground_collision" title="Permalink to this definition">#</a></dt>
 <dd><p>Indicates whether each shape should collide with the ground, shape [shape_count], bool</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.11)">list</a></p>
 </dd>
 </dl>
@@ -1504,7 +1503,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">shape_contact_pairs</span></span><a class="headerlink" href="#warp.sim.Model.shape_contact_pairs" title="Permalink to this definition">#</a></dt>
 <dd><p>Pairs of shape indices that may collide, shape [contact_pair_count, 2], int</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1515,7 +1514,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">shape_ground_contact_pairs</span></span><a class="headerlink" href="#warp.sim.Model.shape_ground_contact_pairs" title="Permalink to this definition">#</a></dt>
 <dd><p>Pairs of shape, ground indices that may collide, shape [ground_contact_pair_count, 2], int</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1526,7 +1525,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">spring_indices</span></span><a class="headerlink" href="#warp.sim.Model.spring_indices" title="Permalink to this definition">#</a></dt>
 <dd><p>Particle spring indices, shape [spring_count*2], int</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1537,7 +1536,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">spring_rest_length</span></span><a class="headerlink" href="#warp.sim.Model.spring_rest_length" title="Permalink to this definition">#</a></dt>
 <dd><p>Particle spring rest length, shape [spring_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1548,7 +1547,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">spring_stiffness</span></span><a class="headerlink" href="#warp.sim.Model.spring_stiffness" title="Permalink to this definition">#</a></dt>
 <dd><p>Particle spring stiffness, shape [spring_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1559,7 +1558,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">spring_damping</span></span><a class="headerlink" href="#warp.sim.Model.spring_damping" title="Permalink to this definition">#</a></dt>
 <dd><p>Particle spring damping, shape [spring_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1570,7 +1569,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">spring_control</span></span><a class="headerlink" href="#warp.sim.Model.spring_control" title="Permalink to this definition">#</a></dt>
 <dd><p>Particle spring activation, shape [spring_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1581,7 +1580,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">tri_indices</span></span><a class="headerlink" href="#warp.sim.Model.tri_indices" title="Permalink to this definition">#</a></dt>
 <dd><p>Triangle element indices, shape [tri_count*3], int</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1592,7 +1591,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">tri_poses</span></span><a class="headerlink" href="#warp.sim.Model.tri_poses" title="Permalink to this definition">#</a></dt>
 <dd><p>Triangle element rest pose, shape [tri_count, 2, 2], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1603,7 +1602,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">tri_activations</span></span><a class="headerlink" href="#warp.sim.Model.tri_activations" title="Permalink to this definition">#</a></dt>
 <dd><p>Triangle element activations, shape [tri_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1614,7 +1613,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">tri_materials</span></span><a class="headerlink" href="#warp.sim.Model.tri_materials" title="Permalink to this definition">#</a></dt>
 <dd><p>Triangle element materials, shape [tri_count, 5], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1625,7 +1624,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">edge_indices</span></span><a class="headerlink" href="#warp.sim.Model.edge_indices" title="Permalink to this definition">#</a></dt>
 <dd><p>Bending edge indices, shape [edge_count*2], int</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1636,7 +1635,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">edge_rest_angle</span></span><a class="headerlink" href="#warp.sim.Model.edge_rest_angle" title="Permalink to this definition">#</a></dt>
 <dd><p>Bending edge rest angle, shape [edge_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1647,7 +1646,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">edge_bending_properties</span></span><a class="headerlink" href="#warp.sim.Model.edge_bending_properties" title="Permalink to this definition">#</a></dt>
 <dd><p>Bending edge stiffness and damping parameters, shape [edge_count, 2], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1658,7 +1657,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">tet_indices</span></span><a class="headerlink" href="#warp.sim.Model.tet_indices" title="Permalink to this definition">#</a></dt>
 <dd><p>Tetrahedral element indices, shape [tet_count*4], int</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1669,7 +1668,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">tet_poses</span></span><a class="headerlink" href="#warp.sim.Model.tet_poses" title="Permalink to this definition">#</a></dt>
 <dd><p>Tetrahedral rest poses, shape [tet_count, 3, 3], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1680,7 +1679,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">tet_activations</span></span><a class="headerlink" href="#warp.sim.Model.tet_activations" title="Permalink to this definition">#</a></dt>
 <dd><p>Tetrahedral volumetric activations, shape [tet_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1691,7 +1690,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">tet_materials</span></span><a class="headerlink" href="#warp.sim.Model.tet_materials" title="Permalink to this definition">#</a></dt>
 <dd><p>Tetrahedral elastic parameters in form <span class="math notranslate nohighlight">\(k_{mu}, k_{lambda}, k_{damp}\)</span>, shape [tet_count, 3]</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1702,7 +1701,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">body_q</span></span><a class="headerlink" href="#warp.sim.Model.body_q" title="Permalink to this definition">#</a></dt>
 <dd><p>Poses of rigid bodies used for state initialization, shape [body_count, 7], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1713,7 +1712,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">body_qd</span></span><a class="headerlink" href="#warp.sim.Model.body_qd" title="Permalink to this definition">#</a></dt>
 <dd><p>Velocities of rigid bodies used for state initialization, shape [body_count, 6], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1724,7 +1723,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">body_com</span></span><a class="headerlink" href="#warp.sim.Model.body_com" title="Permalink to this definition">#</a></dt>
 <dd><p>Rigid body center of mass (in local frame), shape [body_count, 7], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1735,7 +1734,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">body_inertia</span></span><a class="headerlink" href="#warp.sim.Model.body_inertia" title="Permalink to this definition">#</a></dt>
 <dd><p>Rigid body inertia tensor (relative to COM), shape [body_count, 3, 3], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1746,7 +1745,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">body_inv_inertia</span></span><a class="headerlink" href="#warp.sim.Model.body_inv_inertia" title="Permalink to this definition">#</a></dt>
 <dd><p>Rigid body inverse inertia tensor (relative to COM), shape [body_count, 3, 3], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1757,7 +1756,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">body_mass</span></span><a class="headerlink" href="#warp.sim.Model.body_mass" title="Permalink to this definition">#</a></dt>
 <dd><p>Rigid body mass, shape [body_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1768,7 +1767,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">body_inv_mass</span></span><a class="headerlink" href="#warp.sim.Model.body_inv_mass" title="Permalink to this definition">#</a></dt>
 <dd><p>Rigid body inverse mass, shape [body_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1779,7 +1778,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">body_name</span></span><a class="headerlink" href="#warp.sim.Model.body_name" title="Permalink to this definition">#</a></dt>
 <dd><p>Rigid body names, shape [body_count], str</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.11)">list</a></p>
 </dd>
 </dl>
@@ -1790,7 +1789,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_q</span></span><a class="headerlink" href="#warp.sim.Model.joint_q" title="Permalink to this definition">#</a></dt>
 <dd><p>Generalized joint positions used for state initialization, shape [joint_coord_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1801,7 +1800,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_qd</span></span><a class="headerlink" href="#warp.sim.Model.joint_qd" title="Permalink to this definition">#</a></dt>
 <dd><p>Generalized joint velocities used for state initialization, shape [joint_dof_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1812,7 +1811,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_act</span></span><a class="headerlink" href="#warp.sim.Model.joint_act" title="Permalink to this definition">#</a></dt>
 <dd><p>Generalized joint actuation force, shape [joint_dof_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1823,7 +1822,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_type</span></span><a class="headerlink" href="#warp.sim.Model.joint_type" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint type, shape [joint_count], int</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1834,7 +1833,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_parent</span></span><a class="headerlink" href="#warp.sim.Model.joint_parent" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint parent body indices, shape [joint_count], int</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1845,7 +1844,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_child</span></span><a class="headerlink" href="#warp.sim.Model.joint_child" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint child body indices, shape [joint_count], int</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1856,7 +1855,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_X_p</span></span><a class="headerlink" href="#warp.sim.Model.joint_X_p" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint transform in parent frame, shape [joint_count, 7], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1867,7 +1866,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_X_c</span></span><a class="headerlink" href="#warp.sim.Model.joint_X_c" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint mass frame in child frame, shape [joint_count, 7], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1878,7 +1877,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_axis</span></span><a class="headerlink" href="#warp.sim.Model.joint_axis" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint axis in child frame, shape [joint_axis_count, 3], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1889,7 +1888,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_armature</span></span><a class="headerlink" href="#warp.sim.Model.joint_armature" title="Permalink to this definition">#</a></dt>
 <dd><p>Armature for each joint, shape [joint_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1900,7 +1899,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_target</span></span><a class="headerlink" href="#warp.sim.Model.joint_target" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint target position/velocity (depending on joint axis mode), shape [joint_axis_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1911,7 +1910,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_target_ke</span></span><a class="headerlink" href="#warp.sim.Model.joint_target_ke" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint stiffness, shape [joint_axis_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1922,7 +1921,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_target_kd</span></span><a class="headerlink" href="#warp.sim.Model.joint_target_kd" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint damping, shape [joint_axis_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1933,7 +1932,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_axis_start</span></span><a class="headerlink" href="#warp.sim.Model.joint_axis_start" title="Permalink to this definition">#</a></dt>
 <dd><p>Start index of the first axis per joint, shape [joint_count], int</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1944,7 +1943,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_axis_dim</span></span><a class="headerlink" href="#warp.sim.Model.joint_axis_dim" title="Permalink to this definition">#</a></dt>
 <dd><p>Number of linear and angular axes per joint, shape [joint_count, 2], int</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1955,7 +1954,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_axis_mode</span></span><a class="headerlink" href="#warp.sim.Model.joint_axis_mode" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint axis mode, shape [joint_axis_count], int</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1966,7 +1965,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_linear_compliance</span></span><a class="headerlink" href="#warp.sim.Model.joint_linear_compliance" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint linear compliance, shape [joint_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1977,7 +1976,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_angular_compliance</span></span><a class="headerlink" href="#warp.sim.Model.joint_angular_compliance" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint linear compliance, shape [joint_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1988,7 +1987,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_enabled</span></span><a class="headerlink" href="#warp.sim.Model.joint_enabled" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint enabled, shape [joint_count], int</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -1999,7 +1998,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_limit_lower</span></span><a class="headerlink" href="#warp.sim.Model.joint_limit_lower" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint lower position limits, shape [joint_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -2010,7 +2009,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_limit_upper</span></span><a class="headerlink" href="#warp.sim.Model.joint_limit_upper" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint upper position limits, shape [joint_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -2021,7 +2020,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_limit_ke</span></span><a class="headerlink" href="#warp.sim.Model.joint_limit_ke" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint position limit stiffness (used by SemiImplicitIntegrator), shape [joint_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -2032,7 +2031,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_limit_kd</span></span><a class="headerlink" href="#warp.sim.Model.joint_limit_kd" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint position limit damping (used by SemiImplicitIntegrator), shape [joint_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -2043,7 +2042,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_twist_lower</span></span><a class="headerlink" href="#warp.sim.Model.joint_twist_lower" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint lower twist limit, shape [joint_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -2054,7 +2053,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_twist_upper</span></span><a class="headerlink" href="#warp.sim.Model.joint_twist_upper" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint upper twist limit, shape [joint_count], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -2065,7 +2064,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_q_start</span></span><a class="headerlink" href="#warp.sim.Model.joint_q_start" title="Permalink to this definition">#</a></dt>
 <dd><p>Start index of the first position coordinate per joint, shape [joint_count], int</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -2076,7 +2075,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_qd_start</span></span><a class="headerlink" href="#warp.sim.Model.joint_qd_start" title="Permalink to this definition">#</a></dt>
 <dd><p>Start index of the first velocity coordinate per joint, shape [joint_count], int</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -2087,7 +2086,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_name</span></span><a class="headerlink" href="#warp.sim.Model.joint_name" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint names, shape [joint_count], str</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.11)">list</a></p>
 </dd>
 </dl>
@@ -2098,7 +2097,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_attach_ke</span></span><a class="headerlink" href="#warp.sim.Model.joint_attach_ke" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint attachment force stiffness (used by SemiImplicitIntegrator)</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)">float</a></p>
 </dd>
 </dl>
@@ -2109,7 +2108,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_attach_kd</span></span><a class="headerlink" href="#warp.sim.Model.joint_attach_kd" title="Permalink to this definition">#</a></dt>
 <dd><p>Joint attachment force damping (used by SemiImplicitIntegrator)</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)">float</a></p>
 </dd>
 </dl>
@@ -2120,7 +2119,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">articulation_start</span></span><a class="headerlink" href="#warp.sim.Model.articulation_start" title="Permalink to this definition">#</a></dt>
 <dd><p>Articulation start index, shape [articulation_count], int</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -2131,7 +2130,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">soft_contact_margin</span></span><a class="headerlink" href="#warp.sim.Model.soft_contact_margin" title="Permalink to this definition">#</a></dt>
 <dd><p>Contact margin for generation of soft contacts</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)">float</a></p>
 </dd>
 </dl>
@@ -2142,7 +2141,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">soft_contact_ke</span></span><a class="headerlink" href="#warp.sim.Model.soft_contact_ke" title="Permalink to this definition">#</a></dt>
 <dd><p>Stiffness of soft contacts (used by SemiImplicitIntegrator)</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)">float</a></p>
 </dd>
 </dl>
@@ -2153,7 +2152,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">soft_contact_kd</span></span><a class="headerlink" href="#warp.sim.Model.soft_contact_kd" title="Permalink to this definition">#</a></dt>
 <dd><p>Damping of soft contacts (used by SemiImplicitIntegrator)</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)">float</a></p>
 </dd>
 </dl>
@@ -2164,7 +2163,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">soft_contact_kf</span></span><a class="headerlink" href="#warp.sim.Model.soft_contact_kf" title="Permalink to this definition">#</a></dt>
 <dd><p>Stiffness of friction force in soft contacts (used by SemiImplicitIntegrator)</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)">float</a></p>
 </dd>
 </dl>
@@ -2175,7 +2174,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">soft_contact_mu</span></span><a class="headerlink" href="#warp.sim.Model.soft_contact_mu" title="Permalink to this definition">#</a></dt>
 <dd><p>Friction coefficient of soft contacts</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)">float</a></p>
 </dd>
 </dl>
@@ -2186,7 +2185,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">soft_contact_restitution</span></span><a class="headerlink" href="#warp.sim.Model.soft_contact_restitution" title="Permalink to this definition">#</a></dt>
 <dd><p>Restitution coefficient of soft contacts (used by XPBDIntegrator)</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)">float</a></p>
 </dd>
 </dl>
@@ -2197,7 +2196,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">rigid_contact_margin</span></span><a class="headerlink" href="#warp.sim.Model.rigid_contact_margin" title="Permalink to this definition">#</a></dt>
 <dd><p>Contact margin for generation of rigid body contacts</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)">float</a></p>
 </dd>
 </dl>
@@ -2208,7 +2207,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">rigid_contact_torsional_friction</span></span><a class="headerlink" href="#warp.sim.Model.rigid_contact_torsional_friction" title="Permalink to this definition">#</a></dt>
 <dd><p>Torsional friction coefficient for rigid body contacts (used by XPBDIntegrator)</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)">float</a></p>
 </dd>
 </dl>
@@ -2219,7 +2218,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">rigid_contact_rolling_friction</span></span><a class="headerlink" href="#warp.sim.Model.rigid_contact_rolling_friction" title="Permalink to this definition">#</a></dt>
 <dd><p>Rolling friction coefficient for rigid body contacts (used by XPBDIntegrator)</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)">float</a></p>
 </dd>
 </dl>
@@ -2230,7 +2229,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">ground</span></span><a class="headerlink" href="#warp.sim.Model.ground" title="Permalink to this definition">#</a></dt>
 <dd><p>Whether the ground plane and ground contacts are enabled</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)">bool</a></p>
 </dd>
 </dl>
@@ -2241,7 +2240,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">ground_plane</span></span><a class="headerlink" href="#warp.sim.Model.ground_plane" title="Permalink to this definition">#</a></dt>
 <dd><p>Ground plane 3D normal and offset, shape [4], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -2252,7 +2251,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">up_vector</span></span><a class="headerlink" href="#warp.sim.Model.up_vector" title="Permalink to this definition">#</a></dt>
 <dd><p>Up vector of the world, shape [3], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>np.ndarray</p>
 </dd>
 </dl>
@@ -2263,7 +2262,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">up_axis</span></span><a class="headerlink" href="#warp.sim.Model.up_axis" title="Permalink to this definition">#</a></dt>
 <dd><p>Up axis, 0 for x, 1 for y, 2 for z</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -2274,7 +2273,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">gravity</span></span><a class="headerlink" href="#warp.sim.Model.gravity" title="Permalink to this definition">#</a></dt>
 <dd><p>Gravity vector, shape [3], float</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>np.ndarray</p>
 </dd>
 </dl>
@@ -2285,7 +2284,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">particle_count</span></span><a class="headerlink" href="#warp.sim.Model.particle_count" title="Permalink to this definition">#</a></dt>
 <dd><p>Total number of particles in the system</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -2296,7 +2295,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">body_count</span></span><a class="headerlink" href="#warp.sim.Model.body_count" title="Permalink to this definition">#</a></dt>
 <dd><p>Total number of bodies in the system</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -2307,7 +2306,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">shape_count</span></span><a class="headerlink" href="#warp.sim.Model.shape_count" title="Permalink to this definition">#</a></dt>
 <dd><p>Total number of shapes in the system</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -2318,7 +2317,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_count</span></span><a class="headerlink" href="#warp.sim.Model.joint_count" title="Permalink to this definition">#</a></dt>
 <dd><p>Total number of joints in the system</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -2329,7 +2328,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">tri_count</span></span><a class="headerlink" href="#warp.sim.Model.tri_count" title="Permalink to this definition">#</a></dt>
 <dd><p>Total number of triangles in the system</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -2340,7 +2339,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">tet_count</span></span><a class="headerlink" href="#warp.sim.Model.tet_count" title="Permalink to this definition">#</a></dt>
 <dd><p>Total number of tetrahedra in the system</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -2351,7 +2350,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">edge_count</span></span><a class="headerlink" href="#warp.sim.Model.edge_count" title="Permalink to this definition">#</a></dt>
 <dd><p>Total number of edges in the system</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -2362,7 +2361,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">spring_count</span></span><a class="headerlink" href="#warp.sim.Model.spring_count" title="Permalink to this definition">#</a></dt>
 <dd><p>Total number of springs in the system</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -2373,7 +2372,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">contact_count</span></span><a class="headerlink" href="#warp.sim.Model.contact_count" title="Permalink to this definition">#</a></dt>
 <dd><p>Total number of contacts in the system</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -2384,7 +2383,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">muscle_count</span></span><a class="headerlink" href="#warp.sim.Model.muscle_count" title="Permalink to this definition">#</a></dt>
 <dd><p>Total number of muscles in the system</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -2395,7 +2394,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">articulation_count</span></span><a class="headerlink" href="#warp.sim.Model.articulation_count" title="Permalink to this definition">#</a></dt>
 <dd><p>Total number of articulations in the system</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -2406,7 +2405,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_dof_count</span></span><a class="headerlink" href="#warp.sim.Model.joint_dof_count" title="Permalink to this definition">#</a></dt>
 <dd><p>Total number of velocity degrees of freedom of all joints in the system</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -2417,7 +2416,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">joint_coord_count</span></span><a class="headerlink" href="#warp.sim.Model.joint_coord_count" title="Permalink to this definition">#</a></dt>
 <dd><p>Total number of position degrees of freedom of all joints in the system</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -2428,7 +2427,7 @@ all geometry, constraints, and parameters used to describe the simulation.</p>
 <span class="sig-name descname"><span class="pre">device</span></span><a class="headerlink" href="#warp.sim.Model.device" title="Permalink to this definition">#</a></dt>
 <dd><p>Device on which the Model was allocated</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.Device</p>
 </dd>
 </dl>
@@ -2447,7 +2446,7 @@ desired.</p>
 <p>The returned state will be initialized with the initial configuration given in
 the model description.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference internal" href="#warp.sim.State" title="warp.sim.model.State"><em>State</em></a></p>
 </dd>
 </dl>
@@ -2481,8 +2480,8 @@ a set of all tensors owned by the model.</p>
 
 </dd></dl>
 
-</section>
-<section id="state">
+</div>
+<div class="section" id="state">
 <h2>State<a class="headerlink" href="#state" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.sim.State">
@@ -2497,7 +2496,7 @@ generally be created using the <a class="reference internal" href="#warp.sim.Mod
 <span class="sig-name descname"><span class="pre">particle_q</span></span><a class="headerlink" href="#warp.sim.State.particle_q" title="Permalink to this definition">#</a></dt>
 <dd><p>Tensor of particle positions</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -2508,7 +2507,7 @@ generally be created using the <a class="reference internal" href="#warp.sim.Mod
 <span class="sig-name descname"><span class="pre">particle_qd</span></span><a class="headerlink" href="#warp.sim.State.particle_qd" title="Permalink to this definition">#</a></dt>
 <dd><p>Tensor of particle velocities</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -2519,7 +2518,7 @@ generally be created using the <a class="reference internal" href="#warp.sim.Mod
 <span class="sig-name descname"><span class="pre">body_q</span></span><a class="headerlink" href="#warp.sim.State.body_q" title="Permalink to this definition">#</a></dt>
 <dd><p>Tensor of body coordinates</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -2530,7 +2529,7 @@ generally be created using the <a class="reference internal" href="#warp.sim.Mod
 <span class="sig-name descname"><span class="pre">body_qd</span></span><a class="headerlink" href="#warp.sim.State.body_qd" title="Permalink to this definition">#</a></dt>
 <dd><p>Tensor of body velocities</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>wp.array</p>
 </dd>
 </dl>
@@ -2546,8 +2545,8 @@ a set of all tensors owned by the state.</p>
 
 </dd></dl>
 
-</section>
-<section id="integrators">
+</div>
+<div class="section" id="integrators">
 <h2>Integrators<a class="headerlink" href="#integrators" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.sim.SemiImplicitIntegrator">
@@ -2585,8 +2584,8 @@ may be used to advance the simulation state forward in time.</p>
 </div>
 </dd></dl>
 
-</section>
-</section>
+</div>
+</div>
 
         </article>
       </div>
@@ -2836,6 +2835,9 @@ may be used to advance the simulation state forward in time.</p>
     </aside>
   </div>
 </div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../_static/doctools.js"></script>
     <script src="../_static/sphinx_highlight.js"></script>
     <script src="../_static/scripts/furo.js"></script>
