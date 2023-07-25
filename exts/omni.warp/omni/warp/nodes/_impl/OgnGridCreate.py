@@ -29,25 +29,15 @@ class InternalState:
     """Internal state for the node."""
 
     def __init__(self) -> None:
-        self.transform = None
-        self.size = None
-        self.dims = None
-
         self.is_valid = False
 
-    def have_setting_attrs_changed(self, db: OgnGridCreateDatabase) -> bool:
-        """Checks if the values of the attributes that set-up the node have changed."""
-        return (
-            not np.array_equal(db.inputs.transform, self.transform)
-            or not np.array_equal(db.inputs.size, self.size)
-            or not np.array_equal(db.inputs.dims, self.dims)
+        self.attr_tracking = omni.warp.nodes.AttrTracking(
+            (
+                "transform",
+                "size",
+                "dims",
+            ),
         )
-
-    def store_setting_attrs(self, db: OgnGridCreateDatabase) -> None:
-        """Stores the values of the attributes that set-up the node."""
-        self.transform = db.inputs.transform.copy()
-        self.size = db.inputs.size.copy()
-        self.dims = db.inputs.dims.copy()
 
 
 #   Compute
@@ -63,7 +53,7 @@ def compute(db: OgnGridCreateDatabase) -> None:
 
     state = db.internal_state
 
-    if state.is_valid and not state.have_setting_attrs_changed(db):
+    if state.is_valid and not state.attr_tracking.have_attrs_changed(db):
         return
 
     # Compute the mesh's topology counts.
@@ -92,7 +82,7 @@ def compute(db: OgnGridCreateDatabase) -> None:
             db.inputs.dims.tolist(),
         )
 
-    state.store_setting_attrs(db)
+    state.attr_tracking.update_state(db)
 
 
 #   Node Entry Point

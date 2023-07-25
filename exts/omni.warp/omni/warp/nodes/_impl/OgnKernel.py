@@ -45,7 +45,12 @@ class InternalState(InternalStateBase):
 
     def __init__(self) -> None:
         super().__init__()
-        self._dim_count = None
+
+        self.attr_tracking = omni.warp.nodes.AttrTracking(
+            (
+                "dimCount",
+            ),
+        )
 
     def needs_initialization(
         self,
@@ -59,7 +64,7 @@ class InternalState(InternalStateBase):
         ):
             return True
 
-        if self._dim_count != db.inputs.dimCount:
+        if self.attr_tracking.have_attrs_changed(db):
             return True
 
         return False
@@ -72,10 +77,6 @@ class InternalState(InternalStateBase):
         """Initializes the internal state and recompile the kernel."""
         if not super().initialize(db):
             return False
-
-        # Cache the node attribute values relevant to this internal state.
-        # They're the ones used to check whether this state is outdated or not.
-        self._dim_count = kernel_dim_count
 
         # Retrieve the user attribute descriptions, if any.
         attr_descs = deserialize_user_attribute_descs(db.state.userAttrDescs)
@@ -103,6 +104,8 @@ class InternalState(InternalStateBase):
         # Define the base class members.
         self.attr_infos = attr_infos
         self.kernel_module = kernel_module
+
+        self.attr_tracking.update_state(db)
 
         return True
 

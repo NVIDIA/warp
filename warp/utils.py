@@ -169,6 +169,19 @@ def quat_from_matrix(m):
     return normalize(np.array([x, y, z, w]))
 
 
+@wp.func
+def quat_between_vectors(a: wp.vec3, b: wp.vec3) -> wp.quat:
+    """
+    Compute the quaternion that rotates vector a to vector b
+    """
+    a = wp.normalize(a)
+    b = wp.normalize(b)
+    c = wp.cross(a, b)
+    d = wp.dot(a, b)
+    q = wp.quat(c[0], c[1], c[2], 1.0 + d)
+    return wp.normalize(q)
+
+
 # rigid body transform
 
 

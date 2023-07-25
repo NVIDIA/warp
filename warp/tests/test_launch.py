@@ -5,14 +5,13 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import unittest
+
 # include parent path
 import numpy as np
-import math
 
 import warp as wp
 from warp.tests.test_base import *
-
-import unittest
 
 wp.init()
 
@@ -278,6 +277,58 @@ def test_launch_cmd_empty(test, device):
     assert_np_equal(out.numpy(), ref)
 
 
+@wp.kernel
+def kernel_mul(
+    values: wp.array(dtype=int),
+    coeff: int,
+    out: wp.array(dtype=int),
+):
+    tid = wp.tid()
+    out[tid] = values[tid] * coeff
+
+
+def test_launch_tuple_args(test, device):
+    values = wp.array(np.arange(0, 4), dtype=int, device=device)
+    coeff = 3
+    out = wp.empty_like(values)
+
+    wp.launch(
+        kernel_mul,
+        dim=len(values),
+        inputs=(
+            values,
+            coeff,
+        ),
+        outputs=(out,),
+        device=device,
+    )
+
+    assert_np_equal(out.numpy(), np.array((0, 3, 6, 9)))
+
+
+@wp.kernel
+def conditional_sum(result: wp.array(dtype=wp.uint64)):
+    i, j, k = wp.tid()
+
+    if i == 0:
+        wp.atomic_add(result, 0, wp.uint64(1))
+
+
+def test_launch_large_kernel(test, device):
+    """Test tid() on kernel launch of 2**33 threads.
+
+    The function conditional sum will add 1 to result for every thread that has an i index of 0.
+    Due to the size of the grid, this test is not run on CPUs
+    """
+    test_result = wp.zeros(shape=(1,), dtype=wp.uint64, device=device)
+
+    large_dim_length = 2**16
+    half_result = large_dim_length * large_dim_length
+
+    wp.launch(kernel=conditional_sum, dim=[2, large_dim_length, large_dim_length], inputs=[test_result], device=device)
+    test.assertEqual(test_result.numpy()[0], half_result)
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -294,6 +345,8 @@ def register(parent):
     add_function_test(TestLaunch, "test_launch_cmd_set_ctype", test_launch_cmd_set_ctype, devices=devices)
     add_function_test(TestLaunch, "test_launch_cmd_set_dim", test_launch_cmd_set_dim, devices=devices)
     add_function_test(TestLaunch, "test_launch_cmd_empty", test_launch_cmd_empty, devices=devices)
+
+    add_function_test(TestLaunch, "test_launch_large_kernel", test_launch_large_kernel, devices=wp.get_cuda_devices())
 
     return TestLaunch
 

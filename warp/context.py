@@ -29,7 +29,6 @@ from types import ModuleType
 from copy import copy as shallowcopy
 
 import warp
-import warp.utils
 import warp.codegen
 import warp.build
 import warp.config
@@ -1142,11 +1141,12 @@ class Module:
 
                 # kernel source
                 for kernel in module.kernels.values():
-                    if not kernel.is_generic:
-                        ch.update(bytes(kernel.adj.source, "utf-8"))
-                    else:
-                        for k in kernel.overloads.values():
-                            ch.update(bytes(k.adj.source, "utf-8"))
+                    ch.update(bytes(kernel.adj.source, "utf-8"))
+                    # for generic kernels the Python source is always the same,
+                    # but we hash the type signatures of all the overloads
+                    if kernel.is_generic:
+                        for sig in sorted(kernel.overloads.keys()):
+                            ch.update(bytes(sig, "utf-8"))
 
                 module.content_hash = ch.digest()
 
@@ -1184,6 +1184,8 @@ class Module:
         return hash_recursive(self, visited=set())
 
     def load(self, device):
+        from warp.utils import ScopedTimer
+
         device = get_device(device)
 
         if device.is_cpu:
@@ -1205,7 +1207,7 @@ class Module:
             if not warp.is_cuda_available():
                 raise RuntimeError("Failed to build CUDA module because CUDA is not available")
 
-        with warp.utils.ScopedTimer(f"Module {self.name} load on device '{device}'", active=not warp.config.quiet):
+        with ScopedTimer(f"Module {self.name} load on device '{device}'", active=not warp.config.quiet):
             build_path = warp.build.kernel_bin_dir
             gen_path = warp.build.kernel_gen_dir
 
@@ -1247,7 +1249,7 @@ class Module:
                     cpp_file.close()
 
                     # build object code
-                    with warp.utils.ScopedTimer("Compile x86", active=warp.config.verbose):
+                    with ScopedTimer("Compile x86", active=warp.config.verbose):
                         warp.build.build_cpu(
                             obj_path,
                             cpp_path,
@@ -1315,7 +1317,7 @@ class Module:
                     cu_file.close()
 
                     # generate PTX or CUBIN
-                    with warp.utils.ScopedTimer("Compile CUDA", active=warp.config.verbose):
+                    with ScopedTimer("Compile CUDA", active=warp.config.verbose):
                         warp.build.build_cuda(
                             cu_path,
                             output_arch,

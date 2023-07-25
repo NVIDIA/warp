@@ -33,6 +33,8 @@ class CartpoleEnvironment(Environment):
 
     activate_ground_plane = False
 
+    show_joints = True
+
     def create_articulation(self, builder):
         wp.sim.parse_urdf(
             os.path.join(os.path.dirname(__file__), "../assets/cartpole.urdf"),
