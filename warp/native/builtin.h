@@ -1165,7 +1165,7 @@ inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j)
 {
     const size_t index = grid_index();
 
-    const int n = s_launchBounds.shape[1];
+    const size_t n = s_launchBounds.shape[1];
 
     // convert to work item
     i = index/n;
@@ -1176,8 +1176,8 @@ inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k)
 {
     const size_t index = grid_index();
 
-    const int n = s_launchBounds.shape[1];
-    const int o = s_launchBounds.shape[2];
+    const size_t n = s_launchBounds.shape[1];
+    const size_t o = s_launchBounds.shape[2];
 
     // convert to work item
     i = index/(n*o);
@@ -1189,9 +1189,9 @@ inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, int& l)
 {
     const size_t index = grid_index();
 
-    const int n = s_launchBounds.shape[1];
-    const int o = s_launchBounds.shape[2];
-    const int p = s_launchBounds.shape[3];
+    const size_t n = s_launchBounds.shape[1];
+    const size_t o = s_launchBounds.shape[2];
+    const size_t p = s_launchBounds.shape[3];
 
     // convert to work item
     i = index/(n*o*p);
