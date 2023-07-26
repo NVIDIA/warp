@@ -5,35 +5,25 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import ast
+import ctypes
+import hashlib
+import inspect
 import math
 import os
-import sys
-import hashlib
-import ctypes
 import platform
-import ast
+import sys
 import types
-import inspect
-
-from typing import Tuple
-from typing import List
-from typing import Dict
-from typing import Any
-from typing import Callable
-from typing import Union
-from typing import Mapping
-from typing import Optional
-
-from types import ModuleType
-
 from copy import copy as shallowcopy
-
-import warp
-import warp.codegen
-import warp.build
-import warp.config
+from types import ModuleType
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
 
 import numpy as np
+
+import warp
+import warp.build
+import warp.codegen
+import warp.config
 
 # represents either a built-in or user-defined function
 
@@ -1565,6 +1555,7 @@ class Device:
             self.arch = 0
             self.is_uva = False
             self.is_cubin_supported = False
+            self.is_mempool_supported = False
 
             # TODO: add more device-specific dispatch functions
             self.memset = runtime.core.memset_host
@@ -1577,6 +1568,17 @@ class Device:
             self.is_uva = runtime.core.cuda_device_is_uva(ordinal)
             # check whether our NVRTC can generate CUBINs for this architecture
             self.is_cubin_supported = self.arch in runtime.nvrtc_supported_archs
+            self.is_mempool_supported = runtime.core.cuda_device_is_memory_pool_supported(ordinal)
+
+            # Warn the user of a possible misconfiguration of their system
+            if not self.is_mempool_supported:
+                import warnings
+
+                warnings.warn(
+                    f"Support for stream ordered memory allocators was not detected on device {ordinal}. "
+                    "This can prevent the use of graphs and/or result in poor performance. "
+                    "Is the UVM driver enabled?"
+                )
 
             # initialize streams unless context acquisition is postponed
             if self._context is not None:
