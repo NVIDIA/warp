@@ -2,8 +2,7 @@
 <html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="FAQ" href="faq.html" /><link rel="prev" title="Profiling" href="modules/profiling.html" />
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="FAQ" href="faq.html" /><link rel="prev" title="Profiling" href="modules/profiling.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 -->
         <title>Debugging - Warp 0.10.1</title>
@@ -227,9 +226,9 @@
           </label>
         </div>
         <article role="main">
-          <section id="debugging">
+          <div class="section" id="debugging">
 <h1>Debugging<a class="headerlink" href="#debugging" title="Permalink to this heading">#</a></h1>
-<section id="printing-values">
+<div class="section" id="printing-values">
 <h2>Printing Values<a class="headerlink" href="#printing-values" title="Permalink to this heading">#</a></h2>
 <p>Often one of the best debugging methods is to simply print values from kernels. Warp supports printing all built-in
 types using the <code class="docutils literal notranslate"><span class="pre">print()</span></code> function, e.g.:</p>
@@ -249,16 +248,16 @@ types using the <code class="docutils literal notranslate"><span class="pre">pri
 <p class="admonition-title">Note</p>
 <p>Formatted printing is only available for scalar types (e.g.: <code class="docutils literal notranslate"><span class="pre">int</span></code> and <code class="docutils literal notranslate"><span class="pre">float</span></code>) not vector types.</p>
 </div>
-</section>
-<section id="printing-launches">
+</div>
+<div class="section" id="printing-launches">
 <h2>Printing Launches<a class="headerlink" href="#printing-launches" title="Permalink to this heading">#</a></h2>
 <p>For complex applications it can be difficult to understand the order-of-operations that lead to a bug. To help diagnose
 these issues Warp supports a simple option to print out all launches and arguments to the console:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">print_launches</span> <span class="o">=</span> <span class="kc">True</span>
 </pre></div>
 </div>
-</section>
-<section id="step-through-debugging">
+</div>
+<div class="section" id="step-through-debugging">
 <h2>Step-Through Debugging<a class="headerlink" href="#step-through-debugging" title="Permalink to this heading">#</a></h2>
 <p>It is possible to attach IDE debuggers such as Visual Studio to Warp processes to step through generated kernel code.
 Users should first compile the kernels in debug mode by setting <code class="docutils literal notranslate"><span class="pre">wp.config.mode</span> <span class="pre">=</span> <span class="pre">&quot;debug&quot;</span></code>.</p>
@@ -268,8 +267,8 @@ the debugger should be attached, and a breakpoint inserted into the generated co
 <p class="admonition-title">Note</p>
 <p>Generated kernel code is not a 1:1 correspondence with the original Python code, but individual operations can still be replayed and variables inspected.</p>
 </div>
-</section>
-<section id="generated-code">
+</div>
+<div class="section" id="generated-code">
 <h2>Generated Code<a class="headerlink" href="#generated-code" title="Permalink to this heading">#</a></h2>
 <p>The generated code for kernels is stored in a central cache location in the user’s home directory, the cache location is printed at startup when <code class="docutils literal notranslate"><span class="pre">wp.init()</span></code> is called, for example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Warp</span> <span class="mf">0.8.1</span> <span class="n">initialized</span><span class="p">:</span>
@@ -282,13 +281,13 @@ the debugger should be attached, and a breakpoint inserted into the generated co
 </pre></div>
 </div>
 <p>The kernel cache has <code class="docutils literal notranslate"><span class="pre">gen</span></code> and <code class="docutils literal notranslate"><span class="pre">bin</span></code> folders that contain the generated C++/CUDA code and the compiled binaries respectively. Occasionally it can be useful to inspect the generated code for debugging / profiling.</p>
-</section>
-<section id="bounds-checking">
+</div>
+<div class="section" id="bounds-checking">
 <h2>Bounds Checking<a class="headerlink" href="#bounds-checking" title="Permalink to this heading">#</a></h2>
 <p>Warp will perform bounds checking in debug build configurations to ensure that all array accesses lie within the defined
 shape.</p>
-</section>
-<section id="cuda-verification">
+</div>
+<div class="section" id="cuda-verification">
 <h2>CUDA Verification<a class="headerlink" href="#cuda-verification" title="Permalink to this heading">#</a></h2>
 <p>It is possible to generate out-of-bounds memory access violations through poorly formed kernel code or inputs. In this
 case the CUDA runtime will detect the violation and put the CUDA context into an error state. Subsequent kernel launches
@@ -300,8 +299,8 @@ encountered it will raise an exception that often helps to narrow down the probl
 <p class="admonition-title">Note</p>
 <p>Verifying CUDA state at each launch requires synchronizing CPU and GPU which has a significant overhead. Users should ensure this setting is only used during debugging.</p>
 </div>
-</section>
-</section>
+</div>
+</div>
 
         </article>
       </div>
@@ -383,6 +382,9 @@ encountered it will raise an exception that often helps to narrow down the probl
     </aside>
   </div>
 </div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="_static/doctools.js"></script>
     <script src="_static/sphinx_highlight.js"></script>
     <script src="_static/scripts/furo.js"></script>

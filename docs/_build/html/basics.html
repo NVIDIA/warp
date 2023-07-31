@@ -2,8 +2,7 @@
 <html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Devices" href="modules/devices.html" /><link rel="prev" title="Installation" href="installation.html" />
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Devices" href="modules/devices.html" /><link rel="prev" title="Installation" href="installation.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 -->
         <title>Basics - Warp 0.10.1</title>
@@ -227,9 +226,9 @@
           </label>
         </div>
         <article role="main">
-          <section id="basics">
+          <div class="section" id="basics">
 <h1>Basics<a class="headerlink" href="#basics" title="Permalink to this heading">#</a></h1>
-<section id="initialization">
+<div class="section" id="initialization">
 <h2>Initialization<a class="headerlink" href="#initialization" title="Permalink to this heading">#</a></h2>
 <p>Before use Warp should be explicitly initialized with the <code class="docutils literal notranslate"><span class="pre">wp.init()</span></code> method as follows:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">warp</span> <span class="k">as</span> <span class="nn">wp</span>
@@ -237,8 +236,8 @@
 <span class="n">wp</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
 </pre></div>
 </div>
-</section>
-<section id="devices">
+</div>
+<div class="section" id="devices">
 <h2>Devices<a class="headerlink" href="#devices" title="Permalink to this heading">#</a></h2>
 <p>Users can query the supported compute devices using the <code class="docutils literal notranslate"><span class="pre">wp.get_devices()</span></code> method:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">get_devices</span><span class="p">())</span>
@@ -248,8 +247,8 @@
 </div>
 <p>These device strings can then be used to allocate memory and launch kernels.
 More information about working with devices is available in <a class="reference internal" href="modules/devices.html#devices"><span class="std std-ref">Devices</span></a>.</p>
-</section>
-<section id="kernels">
+</div>
+<div class="section" id="kernels">
 <h2>Kernels<a class="headerlink" href="#kernels" title="Permalink to this heading">#</a></h2>
 <p>In Warp, kernels are defined as Python functions, decorated with the <code class="docutils literal notranslate"><span class="pre">&#64;warp.kernel</span></code> decorator.
 Note that all input arguments must be typed, and that the function cannot access any global state.
@@ -318,8 +317,8 @@ For best performance multiple copies should be queued together:</p>
 <span class="n">wp</span><span class="o">.</span><span class="n">synchronize</span><span class="p">()</span>
 </pre></div>
 </div>
-</section>
-<section id="memory-model">
+</div>
+<div class="section" id="memory-model">
 <h2>Memory Model<a class="headerlink" href="#memory-model" title="Permalink to this heading">#</a></h2>
 <p>Memory allocations are exposed via the <code class="docutils literal notranslate"><span class="pre">warp.array</span></code> type. Arrays wrap an underlying memory allocation that may live in
 either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in structures
@@ -327,8 +326,8 @@ either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a
 <p>Arrays may be constructed from Python lists or NumPy arrays; by default, data will be copied to new memory for the
 device specified. However, it is possible for arrays to alias user memory using the <code class="docutils literal notranslate"><span class="pre">copy=False</span></code> parameter to the
 array constructor.</p>
-</section>
-<section id="user-functions">
+</div>
+<div class="section" id="user-functions">
 <h2>User Functions<a class="headerlink" href="#user-functions" title="Permalink to this heading">#</a></h2>
 <p>Users can write their own functions using the <code class="docutils literal notranslate"><span class="pre">wp.func</span></code> decorator, for example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
@@ -337,21 +336,21 @@ array constructor.</p>
 </pre></div>
 </div>
 <p>User functions can be called freely from within kernels inside the same module and accept arrays as inputs.</p>
-</section>
-<section id="compilation-model">
+</div>
+<div class="section" id="compilation-model">
 <h2>Compilation Model<a class="headerlink" href="#compilation-model" title="Permalink to this heading">#</a></h2>
 <p>Warp uses a Python-&gt;C++/CUDA compilation model that generates kernel code from Python function definitions. All kernels belonging to a Python module are runtime compiled into dynamic libraries and PTX, the result is then cached between application restarts for fast startup times.</p>
 <p>Note that compilation is triggered on the first kernel launch for that module. Any kernels registered in the module with <code class="docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code> will be included in the shared library.</p>
 <img alt="_images/compiler_pipeline.png" src="_images/compiler_pipeline.png" />
-</section>
-<section id="language-details">
+</div>
+<div class="section" id="language-details">
 <h2>Language Details<a class="headerlink" href="#language-details" title="Permalink to this heading">#</a></h2>
 <p>To support GPU computation and differentiability, there are some differences from the CPython runtime.</p>
-<section id="built-in-types">
+<div class="section" id="built-in-types">
 <h3>Built-in Types<a class="headerlink" href="#built-in-types" title="Permalink to this heading">#</a></h3>
 <p>Warp supports a number of built-in math types similar to high-level shading languages, for example <code class="docutils literal notranslate"><span class="pre">vec2,</span> <span class="pre">vec3,</span> <span class="pre">vec4,</span> <span class="pre">mat22,</span> <span class="pre">mat33,</span> <span class="pre">mat44,</span> <span class="pre">quat,</span> <span class="pre">array</span></code>. All built-in types have value semantics so that expressions such as <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">=</span> <span class="pre">b</span></code> generate a copy of the variable b rather than a reference.</p>
-</section>
-<section id="strong-typing">
+</div>
+<div class="section" id="strong-typing">
 <h3>Strong Typing<a class="headerlink" href="#strong-typing" title="Permalink to this heading">#</a></h3>
 <p>Unlike Python, in Warp all variables must be typed. Types are inferred from source expressions and function signatures using the Python typing extensions. All kernel parameters must be annotated with the appropriate type, for example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
@@ -368,8 +367,8 @@ array constructor.</p>
 <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span>
 </pre></div>
 </div>
-</section>
-<section id="immutable-types">
+</div>
+<div class="section" id="immutable-types">
 <h3>Immutable Types<a class="headerlink" href="#immutable-types" title="Permalink to this heading">#</a></h3>
 <p>Similar to Python tuples, built-in value types are immutable, and users should use construction syntax to mutate existing variables, for example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
@@ -381,8 +380,8 @@ array constructor.</p>
 <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
 </pre></div>
 </div>
-</section>
-<section id="unsupported-features">
+</div>
+<div class="section" id="unsupported-features">
 <h3>Unsupported Features<a class="headerlink" href="#unsupported-features" title="Permalink to this heading">#</a></h3>
 <p>To achieve good performance on GPUs some dynamic language features are not supported:</p>
 <ul class="simple">
@@ -394,9 +393,9 @@ array constructor.</p>
 <li><p>Recursion</p></li>
 <li><p>Dynamic allocation, lists, sets, dictionaries</p></li>
 </ul>
-</section>
-</section>
-</section>
+</div>
+</div>
+</div>
 
         </article>
       </div>
@@ -485,6 +484,9 @@ array constructor.</p>
     </aside>
   </div>
 </div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="_static/doctools.js"></script>
     <script src="_static/sphinx_highlight.js"></script>
     <script src="_static/scripts/furo.js"></script>
