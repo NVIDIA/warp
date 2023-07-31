@@ -8,6 +8,7 @@
 """Public Python API exposed by the omni.warp.nodes package."""
 
 __all__ = [
+    "AttrTracking",
     "NodeTimer",
     "bundle_get_attr",
     "bundle_get_child_count",
@@ -44,6 +45,7 @@ __all__ = [
 ]
 
 from omni.warp.nodes._impl.attributes import (
+    AttrTracking,
     from_omni_graph,
 )
 from omni.warp.nodes._impl.bundles import (

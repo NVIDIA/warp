@@ -1165,7 +1165,7 @@ inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j)
 {
     const size_t index = grid_index();
 
-    const int n = s_launchBounds.shape[1];
+    const size_t n = s_launchBounds.shape[1];
 
     // convert to work item
     i = index/n;
@@ -1176,8 +1176,8 @@ inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k)
 {
     const size_t index = grid_index();
 
-    const int n = s_launchBounds.shape[1];
-    const int o = s_launchBounds.shape[2];
+    const size_t n = s_launchBounds.shape[1];
+    const size_t o = s_launchBounds.shape[2];
 
     // convert to work item
     i = index/(n*o);
@@ -1189,9 +1189,9 @@ inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, int& l)
 {
     const size_t index = grid_index();
 
-    const int n = s_launchBounds.shape[1];
-    const int o = s_launchBounds.shape[2];
-    const int p = s_launchBounds.shape[3];
+    const size_t n = s_launchBounds.shape[1];
+    const size_t o = s_launchBounds.shape[2];
+    const size_t p = s_launchBounds.shape[3];
 
     // convert to work item
     i = index/(n*o*p);
@@ -1219,7 +1219,10 @@ inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
     float16 old = buf[0];
     buf[0] += value;
     return old;
-#else
+#elif defined(__clang__)  // CUDA compiled by Clang
+	__half r = atomicAdd(reinterpret_cast<__half*>(buf), *reinterpret_cast<__half*>(&value));
+    return *reinterpret_cast<float16*>(&r);
+#else  // CUDA compiled by NVRTC
     //return atomicAdd(buf, value);
     
     /* Define __PTR for atomicAdd prototypes below, undef after done */
@@ -1243,7 +1246,7 @@ inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
 
     #undef __PTR
 
-#endif // defined(__CUDA_ARCH__)
+#endif  // CUDA compiled by NVRTC
 
 }
 
@@ -1528,7 +1531,7 @@ inline CUDA_CALLABLE void expect_near(const T& actual, const T& expected, const 
 {
     if (abs(actual - expected) > tolerance)
     {
-        printf("Error, expect_near() failed with torerance "); print(tolerance);
+        printf("Error, expect_near() failed with tolerance "); print(tolerance);
         printf("\t Expected: "); print(expected); 
         printf("\t Actual: "); print(actual);
     }
@@ -1539,7 +1542,7 @@ inline CUDA_CALLABLE void expect_near(const vec3& actual, const vec3& expected, 
     const float diff = max(max(abs(actual[0] - expected[0]), abs(actual[1] - expected[1])), abs(actual[2] - expected[2]));
     if (diff > tolerance)
     {
-        printf("Error, expect_near() failed with torerance "); print(tolerance);
+        printf("Error, expect_near() failed with tolerance "); print(tolerance);
         printf("\t Expected: "); print(expected); 
         printf("\t Actual: "); print(actual);
     }

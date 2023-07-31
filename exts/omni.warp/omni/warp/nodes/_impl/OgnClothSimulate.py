@@ -81,24 +81,6 @@ class InternalState:
     """Internal state for the node."""
 
     def __init__(self) -> None:
-        self._substep_count = None
-        self._gravity = None
-        self._global_scale = None
-        self._contact_elastic_stiffness = None
-        self._contact_friction_stiffness = None
-        self._contact_friction_coeff = None
-        self._contact_damping_stiffness = None
-        self._cloth_density = None
-        self._cloth_tri_elastic_stiffness = None
-        self._cloth_tri_area_stiffness = None
-        self._cloth_tri_damping_stiffness = None
-        self._cloth_edge_bending_stiffness = None
-        self._cloth_edge_damping_stiffness = None
-        self._collider_contact_distance = None
-        self._collider_contact_query_range = None
-        self._ground_enabled = None
-        self._ground_altitude = None
-
         self.sim_dt = None
         self.sim_tick = None
         self.model = None
@@ -112,36 +94,39 @@ class InternalState:
         self.collider_points_1 = None
         self.graph = None
 
-        self.enabled = True
+        self.sim_enabled = True
         self.time = 0.0
 
         self.is_valid = False
 
+        self.attr_tracking = omni.warp.nodes.AttrTracking(
+            (
+                "substepCount",
+                "gravity",
+                "globalScale",
+                "contactElasticStiffness",
+                "contactFrictionStiffness",
+                "contactFrictionCoeff",
+                "contactDampingStiffness",
+                "clothDensity",
+                "clothTriElasticStiffness",
+                "clothTriAreaStiffness",
+                "clothTriDampingStiffness",
+                "clothEdgeBendingStiffness",
+                "clothEdgeDampingStiffness",
+                "colliderContactDistance",
+                "colliderContactQueryRange",
+                "groundEnabled",
+                "groundAltitude",
+            ),
+        )
+
     def needs_initialization(self, db: OgnClothSimulateDatabase) -> bool:
         """Checks if the internal state needs to be (re)initialized."""
-        if not self.is_valid or not db.inputs.enabled:
+        if not self.is_valid or not db.inputs.enabled or not self.sim_enabled:
             return True
 
-        if (
-            not self.enabled
-            or db.inputs.substepCount != self._substep_count
-            or not np.array_equal(db.inputs.gravity, self._gravity)
-            or db.inputs.globalScale != self._global_scale
-            or db.inputs.contactElasticStiffness != self._contact_elastic_stiffness
-            or db.inputs.contactFrictionStiffness != self._contact_friction_stiffness
-            or db.inputs.contactFrictionCoeff != self._contact_friction_coeff
-            or db.inputs.contactDampingStiffness != self._contact_damping_stiffness
-            or db.inputs.clothDensity != self._cloth_density
-            or db.inputs.clothTriElasticStiffness != self._cloth_tri_elastic_stiffness
-            or db.inputs.clothTriAreaStiffness != self._cloth_tri_area_stiffness
-            or db.inputs.clothTriDampingStiffness != self._cloth_tri_damping_stiffness
-            or db.inputs.clothEdgeBendingStiffness != self._cloth_edge_bending_stiffness
-            or db.inputs.clothEdgeDampingStiffness != self._cloth_edge_damping_stiffness
-            or db.inputs.colliderContactDistance != self._collider_contact_distance
-            or db.inputs.colliderContactQueryRange != self._collider_contact_query_range
-            or db.inputs.groundEnabled != self._ground_enabled
-            or db.inputs.groundAltitude != self._ground_altitude
-        ):
+        if self.attr_tracking.have_attrs_changed(db):
             return True
 
         if db.inputs.time < self.time:
@@ -150,7 +135,11 @@ class InternalState:
 
         return False
 
-    def initialize(self, db: OgnClothSimulateDatabase) -> bool:
+    def initialize(
+        self,
+        db: OgnClothSimulateDatabase,
+        device: wp.context.Device,
+    ) -> bool:
         """Initializes the internal state."""
         # Compute the simulation time step.
         timeline = omni.timeline.get_timeline_interface()
@@ -298,33 +287,18 @@ class InternalState:
         self.xform = xform.copy()
 
         if USE_GRAPH:
-            # Create the CUDA graph.
-            wp.capture_begin()
+            # Create the CUDA graph. We first manually load the necessary
+            # modules to avoid the capture to load all the modules that are
+            # registered and possibly not relevant.
+            wp.load_module(device=device)
+            wp.load_module(module=warp.sim, device=device, recursive=True)
+            wp.capture_begin(force_module_load=False)
             step(db)
             self.graph = wp.capture_end()
         else:
             self.graph = None
 
-        # Cache the node attribute values relevant to this internal state.
-        # They're the ones used to check whether it needs to be reinitialized
-        # or not.
-        self._substep_count = db.inputs.substepCount
-        self._gravity = db.inputs.gravity.copy()
-        self._global_scale = db.inputs.globalScale
-        self._contact_elastic_stiffness = db.inputs.contactElasticStiffness
-        self._contact_friction_stiffness = db.inputs.contactFrictionStiffness
-        self._contact_friction_coeff = db.inputs.contactFrictionCoeff
-        self._contact_damping_stiffness = db.inputs.contactDampingStiffness
-        self._cloth_density = db.inputs.clothDensity
-        self._cloth_tri_elastic_stiffness = db.inputs.clothTriElasticStiffness
-        self._cloth_tri_area_stiffness = db.inputs.clothTriAreaStiffness
-        self._cloth_tri_damping_stiffness = db.inputs.clothTriDampingStiffness
-        self._cloth_edge_bending_stiffness = db.inputs.clothEdgeBendingStiffness
-        self._cloth_edge_damping_stiffness = db.inputs.clothEdgeDampingStiffness
-        self._collider_contact_distance = db.inputs.colliderContactDistance
-        self._collider_contact_query_range = db.inputs.colliderContactQueryRange
-        self._ground_enabled = db.inputs.groundEnabled
-        self._ground_altitude = db.inputs.groundAltitude
+        self.attr_tracking.update_state(db)
 
         return True
 
@@ -441,7 +415,7 @@ def simulate(db: OgnClothSimulateDatabase) -> None:
         step(db)
 
 
-def compute(db: OgnClothSimulateDatabase) -> None:
+def compute(db: OgnClothSimulateDatabase, device: wp.context.Device) -> None:
     """Evaluates the node."""
     if not db.inputs.cloth.valid or not db.outputs.cloth.valid:
         return
@@ -453,7 +427,7 @@ def compute(db: OgnClothSimulateDatabase) -> None:
         db.outputs.cloth = db.inputs.cloth
 
         # Store whether the simulation was last enabled.
-        state.enabled = False
+        state.sim_enabled = False
         return
 
     if state.needs_initialization(db):
@@ -467,13 +441,13 @@ def compute(db: OgnClothSimulateDatabase) -> None:
             deep_copy=True,
         )
 
-        if not state.initialize(db):
+        if not state.initialize(db, device):
             return
     else:
         # We skip the simulation if it has just been initialized.
 
         if state.sim_tick == 0 and omni.warp.nodes.bundle_has_changed(db.inputs.cloth):
-            if not state.initialize(db):
+            if not state.initialize(db, device):
                 return
 
         if (
@@ -514,7 +488,7 @@ def compute(db: OgnClothSimulateDatabase) -> None:
         state.sim_tick += 1
 
     # Store whether the simulation was last enabled.
-    state.enabled = True
+    state.sim_enabled = True
 
     # Store the current time.
     state.time = db.inputs.time
@@ -537,7 +511,7 @@ class OgnClothSimulate:
 
         try:
             with wp.ScopedDevice(device):
-                compute(db)
+                compute(db, device)
         except Exception:
             db.log_error(traceback.format_exc())
             db.internal_state.is_valid = False

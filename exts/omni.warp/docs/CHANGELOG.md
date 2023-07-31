@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## [0.10.1] - 2023-07-25
+
+- Fix for large multidimensional kernel launches (> 2^32 threads)
+- Fix for module hashing with generics
+- Fix for unrolling loops with break or continue statements (will skip unrolling)
+- Fix for passing boolean arguments to build_lib.py (previously ignored)
+- Fix build warnings on Linux
+- Fix for creating array of structs from NumPy structured array
+- Fix for regression on kernel load times in Kit when using warp.sim
+- Update `warp.array.reshape()` to handle `-1` dimensions
+- Update margin used by for mesh queries when using `wp.sim.create_soft_body_contacts()`
+- Improvements to gradient handling with `warp.from_torch()`, `warp.to_torch()` plus documentation
+
 ## [0.10.0] - 2023-07-05
 
 - Add support for macOS universal binaries (x86 + aarch64) for M1+ support

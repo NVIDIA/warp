@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Sparse Linear Algebra Reference" href="sparse.html" /><link rel="prev" title="Simulation Reference" href="sim.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 -->
-        <title>Interoperability - Warp 0.10.0</title>
+        <title>Interoperability - Warp 0.10.1</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -135,7 +135,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">Warp 0.10.0</div></a>
+      <a href="../index.html"><div class="brand">Warp 0.10.1</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -162,7 +162,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 0.10.0</span>
+  <span class="sidebar-brand-text">Warp 0.10.1</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -260,7 +260,7 @@ directly:</p>
 <p>These helper functions allow the conversion of Warp arrays to/from PyTorch tensors without copying the underlying data.
 At the same time, if available, gradient arrays and tensors are converted to/from PyTorch autograd tensors, allowing the use of Warp arrays
 in PyTorch autograd computations.</p>
-<section id="optimization-example-using-warp-from-torch">
+<div class="section" id="optimization-example-using-warp-from-torch">
 <h3>Optimization example using <code class="docutils literal notranslate"><span class="pre">warp.from_torch</span></code><a class="headerlink" href="#optimization-example-using-warp-from-torch" title="Permalink to this heading">#</a></h3>
 <p>An example usage of minimizing a loss function over an array of 2D points written in Warp via PyTorch’s Adam optimizer using <code class="docutils literal notranslate"><span class="pre">warp.from_torch</span></code> is as follows:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">warp</span> <span class="k">as</span> <span class="nn">wp</span>
@@ -299,8 +299,8 @@ in PyTorch autograd computations.</p>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="se">\t</span><span class="s2">loss: </span><span class="si">{</span><span class="n">l</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-</section>
-<section id="optimization-example-using-warp-to-torch">
+</div>
+<div class="section" id="optimization-example-using-warp-to-torch">
 <h3>Optimization example using <code class="docutils literal notranslate"><span class="pre">warp.to_torch</span></code><a class="headerlink" href="#optimization-example-using-warp-to-torch" title="Permalink to this heading">#</a></h3>
 <p>Less code is needed when we declare the optimization variables directly in Warp and use <code class="docutils literal notranslate"><span class="pre">warp.to_torch</span></code> to convert them to PyTorch tensors.
 Here, we revisit the same example from above where now only a single conversion to a torch tensor is needed to supply Adam with the optimization variables:</p>
@@ -364,17 +364,17 @@ Here, we revisit the same example from above where now only a single conversion 
 <span class="sig-prename descclassname"><span class="pre">warp.torch.</span></span><span class="sig-name descname"><span class="pre">from_torch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.torch.from_torch" title="Permalink to this definition">#</a></dt>
 <dd><p>Wrap a PyTorch tensor to a Warp array without copying the data.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>t</strong> (<em>torch.Tensor</em>) – The torch tensor to wrap.</p></li>
 <li><p><strong>dtype</strong> (<em>warp.dtype</em><em>, </em><em>optional</em>) – The target data type of the resulting Warp array. Defaults to the tensor value type mapped to a Warp array value type.</p></li>
 <li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a><em>, </em><em>optional</em>) – Whether the resulting array should wrap the tensor’s gradient, if it exists (the grad tensor will be allocated otherwise). Defaults to the tensor’s <cite>requires_grad</cite> value.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>The wrapped array.</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference internal" href="runtime.html#warp.array" title="warp.array">warp.array</a></p>
 </dd>
 </dl>
@@ -385,16 +385,16 @@ Here, we revisit the same example from above where now only a single conversion 
 <span class="sig-prename descclassname"><span class="pre">warp.torch.</span></span><span class="sig-name descname"><span class="pre">to_torch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.torch.to_torch" title="Permalink to this definition">#</a></dt>
 <dd><p>Convert a Warp array to a PyTorch tensor without copying the data.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>a</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.array"><em>warp.array</em></a>) – The Warp array to convert.</p></li>
 <li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a><em>, </em><em>optional</em>) – Whether the resulting tensor should convert the array’s gradient, if it exists, to a grad tensor. Defaults to the array’s <cite>requires_grad</cite> value.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>The converted tensor.</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p>torch.Tensor</p>
 </dd>
 </dl>
@@ -412,9 +412,9 @@ Here, we revisit the same example from above where now only a single conversion 
 <dd><p>Convert from a Warp.Stream to a PyTorch CUDA stream.</p>
 </dd></dl>
 
-</section>
-</section>
-<section id="cupy-numba">
+</div>
+</div>
+<div class="section" id="cupy-numba">
 <h2>CuPy/Numba<a class="headerlink" href="#cupy-numba" title="Permalink to this heading">#</a></h2>
 <p>Warp GPU arrays support the <code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code> protocol for sharing data with other Python GPU frameworks.
 Currently this is one-directional, so that Warp arrays can be used as input to any framework that also supports the

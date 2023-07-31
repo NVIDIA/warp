@@ -1314,15 +1314,24 @@ class array(Array):
             if dtype is None:
                 raise RuntimeError(f"Unsupported input data dtype: {arr.dtype}")
         elif isinstance(dtype, warp.codegen.Struct):
-            try:
-                # convert each struct instance to its corresponding ctype
-                ctype_list = [v.__ctype__() for v in data]
-                # convert the list of ctypes to a contiguous ctypes array
-                ctype_arr = (dtype.ctype * len(ctype_list))(*ctype_list)
-                # convert to numpy
-                arr = np.frombuffer(ctype_arr, dtype=dtype.ctype)
-            except Exception as e:
-                raise RuntimeError(f"Error while trying to construct Warp array from a sequence of Warp structs: {e}")
+            if isinstance(data, np.ndarray):
+                # construct from numpy structured array
+                if data.dtype != dtype.numpy_dtype():
+                    raise RuntimeError(f"Invalid source data type for array of structs, expected {dtype.numpy_dtype()}, got {data.dtype}")
+                arr = data
+            elif isinstance(data, (list, tuple)):
+                # construct from a sequence of structs
+                try:
+                    # convert each struct instance to its corresponding ctype
+                    ctype_list = [v.__ctype__() for v in data]
+                    # convert the list of ctypes to a contiguous ctypes array
+                    ctype_arr = (dtype.ctype * len(ctype_list))(*ctype_list)
+                    # convert to numpy
+                    arr = np.frombuffer(ctype_arr, dtype=dtype.ctype)
+                except Exception as e:
+                    raise RuntimeError(f"Error while trying to construct Warp array from a sequence of Warp structs: {e}")
+            else:
+                raise RuntimeError(f"Invalid data argument for array of structs, expected a sequence of structs or a NumPy structured array")
         else:
             # convert input data to the given dtype
             npdtype = warp_type_to_np_dtype.get(scalar_dtype)
@@ -1947,6 +1956,23 @@ class array(Array):
             raise RuntimeError(
                 f"Arrays may only have {ARRAY_MAX_DIMS} dimensions maximum, trying to create array with {len(shape)} dims."
             )
+
+        # check for -1 dimension and reformat
+        if -1 in shape:
+            idx = self.size
+            denom = 1
+            minus_one_count = 0
+            for i, d in enumerate(shape):
+                if d == -1:
+                    idx = i
+                    minus_one_count += 1
+                else:
+                    denom *= d
+            if minus_one_count > 1:
+                raise RuntimeError("Cannot infer shape if more than one index is -1.")
+            new_shape = list(shape)
+            new_shape[idx] = int(self.size / denom)
+            shape = tuple(new_shape)
 
         size = 1
         for d in shape:
