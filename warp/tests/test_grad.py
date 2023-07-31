@@ -9,6 +9,7 @@ import numpy as np
 import warp as wp
 from warp.tests.test_base import *
 
+wp.config.quiet = True
 wp.init()
 
 
@@ -514,7 +515,7 @@ def test_mesh_grad(test, device):
 # so that the correct counter value per thread can be used in the replay
 # phase of the backward pass
 @wp.func
-def differentiable_atomic_add(
+def reversible_atomic_add(
     counter: wp.array(dtype=int),
     counter_index: int,
     value: int,
@@ -526,8 +527,8 @@ def differentiable_atomic_add(
     return next_index
 
 
-@differentiable_atomic_add.replay
-def replay_differentiable_atomic_add(
+@wp.func_replay(reversible_atomic_add)
+def replay_reversible_atomic_add(
     counter: wp.array(dtype=int),
     counter_index: int,
     value: int,
@@ -552,7 +553,7 @@ def test_custom_replay_grad(test, device):
         output: wp.array(dtype=float)
     ):
         tid = wp.tid()
-        idx = differentiable_atomic_add(counter, 0, 1, thread_values, tid)
+        idx = reversible_atomic_add(counter, 0, 1, thread_values, tid)
         output[idx] = input[idx] ** 2.0
 
     tape = wp.Tape()
@@ -568,7 +569,7 @@ def overload_fn(x: float, y: float):
     return x * 3.0 + y / 3.0, y ** 2.5
 
 
-@overload_fn.grad
+@wp.func_grad(overload_fn)
 def overload_fn_grad(x: float, y: float, adj_ret0: float, adj_ret1: float):
     wp.adjoint[x] += x * adj_ret0 * 42.0 + y * adj_ret1 * 10.0
     wp.adjoint[y] += y * adj_ret1 * 3.0
@@ -585,7 +586,7 @@ def overload_fn(x: MyStruct):
     return x.vec[0] * x.vec[1] * x.vec[2] * 4.0, wp.length(x.vec), x.scalar ** 0.5
 
 
-@overload_fn.grad
+@wp.func_grad(overload_fn)
 def overload_fn_grad(x: MyStruct, adj_ret0: float, adj_ret1: float, adj_ret2: float):
     wp.adjoint[x.scalar] += x.scalar * adj_ret0 * 10.0
     wp.adjoint[x.vec][0] += adj_ret0 * x.vec[1] * x.vec[2] * 20.0

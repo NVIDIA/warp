@@ -447,137 +447,6 @@ class Function:
         inputs_str = ", ".join([f"{k}: {v.__name__}" for k, v in self.input_types.items()])
         return f"<Function {self.key}({inputs_str})>"
 
-    def replay(self, func):
-        """Defines a custom function to be called in the forward call of this function inside the backward pass (replay mode).
-        The provided function has to match the signature of one of the original function overloads."""
-
-        generic = any(warp.types.type_is_generic(x) for x in self.input_types.values())
-        if generic:
-            raise RuntimeError(
-                f"Cannot define custom replay definition for {self.key} since functions with generic input arguments are not yet supported."
-            )
-
-        args = get_function_args(func)
-        arg_types = list(args.values())
-        generic = any(warp.types.type_is_generic(x) for x in arg_types)
-        if generic:
-            raise RuntimeError(
-                f"Cannot define custom replay definition for {self.key} since the provided replay function has generic input arguments."
-            )
-
-        f = self.get_overload(arg_types)
-        if f is None:
-            inputs_str = ", ".join([f"{k}: {v.__name__}" for k, v in args.items()])
-            raise RuntimeError(
-                f"Could not find forward definition of function {self.key} that matches custom replay definition with arguments:\n{inputs_str}"
-            )
-        f.custom_replay_func = Function(
-            func,
-            key=f"replay_{f.key}",
-            namespace=f.namespace,
-            input_types=f.input_types,
-            value_func=f.value_func,
-            module=f.module,
-            template_func=f.template_func,
-            skip_reverse_codegen=True,
-            overwrite_func_name_by_key=True,
-            skip_adding_overload=True,
-            code_transformers=f.adj.transformers)
-
-    def grad(self, func):
-        """Defines a custom gradient function that replaces the default reverse-mode behavior for this function.
-        The function signature must correspond to one of the function overloads in the following way:
-        the first part of the input arguments are the original input variables with the same types as their
-        corresponding arguments in the original function, and the second part of the input arguments are the
-        adjoint variables of the output variables (if available) of the original function with the same types as the
-        output variables. The function must not return anything."""
-
-        generic = any(warp.types.type_is_generic(x) for x in self.input_types.values())
-        if generic:
-            raise RuntimeError(
-                f"Cannot define custom grad definition for {self.key} since functions with generic input arguments are not yet supported."
-            )
-
-        reverse_args = {}
-        reverse_args.update(self.input_types)
-
-        # create temporary Adjoint instance to analyze the function signature
-        adj = warp.codegen.Adjoint(
-            func,
-            skip_forward_codegen=True,
-            skip_reverse_codegen=False,
-            transformers=self.adj.transformers
-        )
-
-        from warp.types import types_equal
-
-        grad_args = adj.args
-        grad_sig = warp.types.get_signature([arg.type for arg in grad_args], func_name=self.key)
-
-        generic = any(warp.types.type_is_generic(x.type) for x in grad_args)
-        if generic:
-            raise RuntimeError(
-                f"Cannot define custom grad definition for {self.key} since the provided grad function has generic input arguments."
-            )
-
-        def match_function(f):
-            # check whether the function overload f matches the signature of the provided gradient function
-            if not hasattr(f.adj, "return_var"):
-                f.adj.build(None)
-            expected_args = list(f.input_types.items())
-            if f.adj.return_var is not None:
-                expected_args += [(f"adj_ret_{var.label}", var.type) for var in f.adj.return_var]
-            if len(grad_args) != len(expected_args):
-                return False
-            if any(not types_equal(a.type, exp_type) for a, (_, exp_type) in zip(grad_args, expected_args)):
-                return False
-            return True
-
-        def add_custom_grad(f: Function):
-            # register custom gradient function
-            f.custom_grad_func = Function(
-                func,
-                key=f.key,
-                namespace=f.namespace,
-                input_types=reverse_args,
-                value_func=None,
-                module=f.module,
-                template_func=f.template_func,
-                skip_forward_codegen=True,
-                overwrite_func_name_by_key=True,
-                custom_reverse_mode=True,
-                custom_reverse_num_input_args=len(f.input_types),
-                skip_adding_overload=False,
-                code_transformers=f.adj.transformers)
-            f.adj.skip_reverse_codegen = True
-
-        if hasattr(self, "user_overloads") and len(self.user_overloads):
-            # find matching overload for which this grad function is defined
-            for sig, f in self.user_overloads.items():
-                if not grad_sig.startswith(sig):
-                    continue
-                if match_function(f):
-                    add_custom_grad(f)
-                    return
-            raise RuntimeError(f"No function overload found for gradient function {func.__qualname__} for function {self.key}")
-        else:
-            # resolve return variables
-            self.adj.build(None)
-
-            expected_args = list(self.input_types.items())
-            if self.adj.return_var is not None:
-                expected_args += [(f"adj_ret_{var.label}", var.type) for var in self.adj.return_var]
-
-            # check if the signature matches this function
-            if match_function(self):
-                add_custom_grad(self)    
-            else:
-                raise RuntimeError(
-                    f"Gradient function {func.__qualname__} for function {self.key} has an incorrect signature. The arguments must match the "
-                    "forward function arguments plus the adjoint variables corresponding to the return variables:"
-                    f"\n{', '.join(map(lambda nt: f'{nt[0]}: {nt[1].__name__}', expected_args))}"
-                )
-
 
 class KernelHooks:
     def __init__(self, forward, backward):
@@ -695,6 +564,148 @@ def func(f):
 
     # return the top of the list of overloads for this key
     return m.functions[name]
+
+
+def func_grad(forward_fn):
+    """
+    Decorator to register a custom gradient function for a given forward function.
+    The function signature must correspond to one of the function overloads in the following way:
+    the first part of the input arguments are the original input variables with the same types as their
+    corresponding arguments in the original function, and the second part of the input arguments are the
+    adjoint variables of the output variables (if available) of the original function with the same types as the
+    output variables. The function must not return anything.
+    """
+    def wrapper(grad_fn):
+        generic = any(warp.types.type_is_generic(x) for x in forward_fn.input_types.values())
+        if generic:
+            raise RuntimeError(
+                f"Cannot define custom grad definition for {forward_fn.key} since functions with generic input arguments are not yet supported."
+            )
+
+        reverse_args = {}
+        reverse_args.update(forward_fn.input_types)
+
+        # create temporary Adjoint instance to analyze the function signature
+        adj = warp.codegen.Adjoint(
+            grad_fn,
+            skip_forward_codegen=True,
+            skip_reverse_codegen=False,
+            transformers=forward_fn.adj.transformers
+        )
+
+        from warp.types import types_equal
+
+        grad_args = adj.args
+        grad_sig = warp.types.get_signature([arg.type for arg in grad_args], func_name=forward_fn.key)
+
+        generic = any(warp.types.type_is_generic(x.type) for x in grad_args)
+        if generic:
+            raise RuntimeError(
+                f"Cannot define custom grad definition for {forward_fn.key} since the provided grad function has generic input arguments."
+            )
+
+        def match_function(f):
+            # check whether the function overload f matches the signature of the provided gradient function
+            if not hasattr(f.adj, "return_var"):
+                f.adj.build(None)
+            expected_args = list(f.input_types.items())
+            if f.adj.return_var is not None:
+                expected_args += [(f"adj_ret_{var.label}", var.type) for var in f.adj.return_var]
+            if len(grad_args) != len(expected_args):
+                return False
+            if any(not types_equal(a.type, exp_type) for a, (_, exp_type) in zip(grad_args, expected_args)):
+                return False
+            return True
+
+        def add_custom_grad(f: Function):
+            # register custom gradient function
+            f.custom_grad_func = Function(
+                grad_fn,
+                key=f.key,
+                namespace=f.namespace,
+                input_types=reverse_args,
+                value_func=None,
+                module=f.module,
+                template_func=f.template_func,
+                skip_forward_codegen=True,
+                overwrite_func_name_by_key=True,
+                custom_reverse_mode=True,
+                custom_reverse_num_input_args=len(f.input_types),
+                skip_adding_overload=False,
+                code_transformers=f.adj.transformers)
+            f.adj.skip_reverse_codegen = True
+
+        if hasattr(forward_fn, "user_overloads") and len(forward_fn.user_overloads):
+            # find matching overload for which this grad function is defined
+            for sig, f in forward_fn.user_overloads.items():
+                if not grad_sig.startswith(sig):
+                    continue
+                if match_function(f):
+                    add_custom_grad(f)
+                    return
+            raise RuntimeError(f"No function overload found for gradient function {grad_fn.__qualname__} for function {forward_fn.key}")
+        else:
+            # resolve return variables
+            forward_fn.adj.build(None)
+
+            expected_args = list(forward_fn.input_types.items())
+            if forward_fn.adj.return_var is not None:
+                expected_args += [(f"adj_ret_{var.label}", var.type) for var in forward_fn.adj.return_var]
+
+            # check if the signature matches this function
+            if match_function(forward_fn):
+                add_custom_grad(forward_fn)
+            else:
+                raise RuntimeError(
+                    f"Gradient function {grad_fn.__qualname__} for function {forward_fn.key} has an incorrect signature. The arguments must match the "
+                    "forward function arguments plus the adjoint variables corresponding to the return variables:"
+                    f"\n{', '.join(map(lambda nt: f'{nt[0]}: {nt[1].__name__}', expected_args))}"
+                )
+
+    return wrapper
+
+
+def func_replay(forward_fn):
+    """
+    Decorator to register a custom replay function for a given forward function.
+    The replay function is the function version that is called in the forward phase of the backward pass (replay mode) and corresponds to the forward function by default.
+    The provided function has to match the signature of one of the original forward function overloads.
+    """
+    def wrapper(replay_fn):
+        generic = any(warp.types.type_is_generic(x) for x in forward_fn.input_types.values())
+        if generic:
+            raise RuntimeError(
+                f"Cannot define custom replay definition for {forward_fn.key} since functions with generic input arguments are not yet supported."
+            )
+
+        args = get_function_args(replay_fn)
+        arg_types = list(args.values())
+        generic = any(warp.types.type_is_generic(x) for x in arg_types)
+        if generic:
+            raise RuntimeError(
+                f"Cannot define custom replay definition for {forward_fn.key} since the provided replay function has generic input arguments."
+            )
+
+        f = forward_fn.get_overload(arg_types)
+        if f is None:
+            inputs_str = ", ".join([f"{k}: {v.__name__}" for k, v in args.items()])
+            raise RuntimeError(
+                f"Could not find forward definition of function {forward_fn.key} that matches custom replay definition with arguments:\n{inputs_str}"
+            )
+        f.custom_replay_func = Function(
+            replay_fn,
+            key=f"replay_{f.key}",
+            namespace=f.namespace,
+            input_types=f.input_types,
+            value_func=f.value_func,
+            module=f.module,
+            template_func=f.template_func,
+            skip_reverse_codegen=True,
+            overwrite_func_name_by_key=True,
+            skip_adding_overload=True,
+            code_transformers=f.adj.transformers)
+
+    return wrapper
 
 
 # decorator to register kernel, @kernel, custom_name may be a string
