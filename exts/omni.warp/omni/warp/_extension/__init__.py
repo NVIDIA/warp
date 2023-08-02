@@ -37,10 +37,6 @@ SETTING_KERNEL_NODE_ENABLE_OPT_IN = "/app/omni.warp/kernel_enable_opt_in"
 OMNIGRAPH_STAGEUPDATE_ORDER = 100  # We want our attach() to run after OG so that nodes have been instantiated
 
 
-def log_info(msg):
-    carb.log_info("[omni.warp] {}".format(msg))
-
-
 def open_file(filename):
     if sys.platform == "win32":
         os.startfile(filename)
@@ -185,8 +181,6 @@ class OmniWarpExtension(omni.ext.IExt):
                 omni.graph.ui.ComputeNodeWidget.get_instance().add_template_path(NODES_INIT_PATH)
 
     def on_startup(self, ext_id):
-        log_info("OmniWarpExtension startup")
-
         import omni.kit.app
 
         settings = carb.settings.get_settings()
@@ -238,8 +232,6 @@ class OmniWarpExtension(omni.ext.IExt):
         omni.warp.from_omni_graph = omni.warp.nodes.from_omni_graph
 
     def on_shutdown(self):
-        log_info("OmniWarpExtension shutdown")
-
         if self._menu is not None:
             self._menu.shutdown()
             self._menu = None
