@@ -187,8 +187,8 @@ def vector(length, dtype):
         def __pos__(self, y):
             return warp.pos(self, y)
 
-        def __neg__(self, y):
-            return warp.neg(self, y)
+        def __neg__(self):
+            return warp.neg(self)
 
         def __str__(self):
             return f"[{', '.join(map(str, self))}]"

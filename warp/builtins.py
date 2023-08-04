@@ -306,6 +306,7 @@ add_builtin(
     doc="Compute the double dot product between two matrices.",
 )
 
+
 add_builtin(
     "min",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
@@ -318,6 +319,20 @@ add_builtin(
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
     value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
     doc="Return the element wise maximum of two vectors.",
+    group="Vector Math",
+)
+add_builtin(
+    "abs",
+    input_types={"x": vector(length=Any, dtype=Scalar)},
+    value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
+    doc="Return the element wise absolute value of a vector.",
+    group="Vector Math",
+)
+add_builtin(
+    "sign",
+    input_types={"x": vector(length=Any, dtype=Scalar)},
+    value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
+    doc="Return the element wise sign of a vector.",
     group="Vector Math",
 )
 
