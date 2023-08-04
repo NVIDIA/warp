@@ -135,7 +135,7 @@ def test_tape(test, device):
         np.ceil(np.random.uniform(low=low, high=high, size=(m, n))), dtype=float, device=device, requires_grad=True
     )
     D = wp.array2d(np.zeros((m, n)), dtype=float, device=device, requires_grad=True)
-    loss = wp.zeros(1, dtype=float, requires_grad=True)
+    loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
 
     # test tape
     tape = wp.Tape()
@@ -148,7 +148,7 @@ def test_tape(test, device):
 
     # test adjoint
     D.grad = wp.array2d(np.ones((m, n)), dtype=float, device=device)
-    wp.adj_matmul(A, B, C, A.grad, B.grad, C.grad, D.grad)
+    wp.adj_matmul(A, B, C, A.grad, B.grad, C.grad, D.grad, device=device)
     assert_np_equal(A_grad, A.grad.numpy())
 
     # test zero
@@ -156,10 +156,42 @@ def test_tape(test, device):
     assert_array_equal(A.grad, wp.zeros_like(A))
 
 
+def test_operator(test, device):
+    low = -4.5
+    high = 3.5
+    m = 64
+    n = 128
+    k = 256
+    A = wp.array2d(
+        np.ceil(np.random.uniform(low=low, high=high, size=(m, k))), dtype=float, device=device, requires_grad=True
+    )
+    B = wp.array2d(
+        np.ceil(np.random.uniform(low=low, high=high, size=(k, n))), dtype=float, device=device, requires_grad=True
+    )
+    loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+
+    # test tape
+    tape = wp.Tape()
+    with tape:
+        D = A @ B
+        wp.launch(matrix_sum_kernel, dim=(m, n), inputs=[D, loss], device=device)
+
+    tape.backward(loss=loss)
+
+    # test adjoint
+    D.grad = wp.array2d(np.ones((m, n)), dtype=float, device=device)
+    # deep copy, needed because transpose data is not contiguous
+    B_transpose = wp.array2d(B.transpose().numpy(), dtype=float, device=device)
+
+    adj_A = D.grad @ B_transpose
+    assert_array_equal(adj_A, A.grad)
+
+    # test zero
+    tape.zero()
+    assert_array_equal(A.grad, wp.zeros_like(A))
+
+
 def register(parent):
-    # we test two cases
-    # A: arrays are stored on host, multiplied on device
-    # B: arrays are stored on device, multipled on device
     devices = [d for d in get_test_devices()]
 
     class TestMatmul(parent):
@@ -173,8 +205,10 @@ def register(parent):
             # add_function_test(TestMatmul, "test_f16", test_f16, devices=devices)
             add_function_test(TestMatmul, "test_f32", test_f32, devices=devices)
             add_function_test(TestMatmul, "test_f64", test_f64, devices=devices)
+            add_function_test(TestMatmul, "test_tape", test_tape, devices=devices)
+            add_function_test(TestMatmul, "test_operator", test_operator, devices=devices)
         else:
-            print(f"Skipping matmul tests because CUTLASS is not supported in this build")
+            print("Skipping matmul tests because CUTLASS is not supported in this build")
 
     return TestMatmul
 

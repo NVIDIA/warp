@@ -17,6 +17,7 @@
 import numpy as np
 
 import warp as wp
+import warp.render
 
 import os
 

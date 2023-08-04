@@ -1,0 +1,404 @@
+#usda 1.0
+(
+    customLayerData = {
+        dictionary cameraSettings = {
+            string boundCamera = "/CameraRoot/Camera"
+        }
+        dictionary renderSettings = {
+            bool "rtx:ambientOcclusion:enabled" = 0
+            bool "rtx:directLighting:domeLight:enabled" = 0
+            bool "rtx:indirectDiffuse:enabled" = 0
+            int "rtx:post:dlss:execMode" = 0
+            double "rtx:sceneDb:ambientLightIntensity" = 5
+            bool "rtx:shadows:enabled" = 0
+            bool "rtx:translucency:reflectAtAllBounce" = 1
+        }
+    }
+    defaultPrim = "World"
+    endTimeCode = 36000
+    metersPerUnit = 0.01
+    startTimeCode = 0
+    timeCodesPerSecond = 60
+    upAxis = "Y"
+)
+
+def Xform "World"
+{
+    def OmniGraph "ActionGraph"
+    {
+        token evaluationMode = "Automatic"
+        token evaluator:type = "execution"
+        token fabricCacheBacking = "Shared"
+        int2 fileFormatVersion = (1, 7)
+        token pipelineStage = "pipelineStageSimulation"
+
+        def OmniGraphNode "on_loaded" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            token node:type = "omni.graph.action.OnLoaded"
+            int node:typeVersion = 1
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            uniform token ui:nodegraph:node:expansionState = "open"
+            uniform float2 ui:nodegraph:node:pos = (70, -90)
+        }
+
+        def OmniGraphNode "on_tick" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom uint inputs:framePeriod = 0
+            custom bool inputs:onlyPlayback = 1
+            token node:type = "omni.graph.action.OnTick"
+            int node:typeVersion = 1
+            custom double outputs:absoluteSimTime
+            custom double outputs:deltaSeconds
+            custom double outputs:frame
+            custom bool outputs:isPlaying
+            custom uint outputs:tick (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            custom double outputs:time
+            custom double outputs:timeSinceStart
+            custom double state:accumulatedSeconds = 0
+            custom uint state:frameCount = 0
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (71, 19)
+        }
+
+        def OmniGraphNode "read_xform" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom rel inputs:prim = </World/Mesh> (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            string relType = "target"
+                        }
+                    }
+                }
+            )
+            custom token inputs:primPath
+            custom bool inputs:usePath = 0
+            token node:type = "omni.graph.nodes.GetPrimLocalToWorldTransform"
+            int node:typeVersion = 2
+            custom matrix4d outputs:localToWorldTransform
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (0, 170)
+        }
+
+        def OmniGraphNode "read_collider" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom int inputs:_debugStamp
+            custom bool inputs:applySkelBinding = 0
+            custom string inputs:attrNamesToImport = "*"
+            custom bool inputs:computeBoundingBox = 0
+            custom bool inputs:enableBundleChangeTracking
+            custom bool inputs:enableChangeTracking
+            custom string inputs:pathPattern = ""
+            custom rel inputs:prims = </World/Collider> (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            string relType = "target"
+                        }
+                    }
+                }
+            )
+            custom string inputs:typePattern = "*"
+            custom timecode inputs:usdTimecode = nan
+            token node:type = "omni.graph.nodes.ReadPrimsV2"
+            int node:typeVersion = 1
+            custom bool state:applySkelBinding = 0
+            custom string state:attrNamesToImport
+            custom bool state:computeBoundingBox = 0
+            custom bool state:enableBundleChangeTracking
+            custom bool state:enableChangeTracking
+            custom uint64[] state:inputPrimPaths = []
+            custom string state:pathPattern
+            custom uint64[] state:primPaths = []
+            custom string state:typePattern
+            custom timecode state:usdTimecode = -1
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (90, 300)
+
+            def Output "outputs_primsBundle"
+            {
+            }
+        }
+
+        def OmniGraphNode "wave_solve" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom float inputs:amplitude = 2
+            custom float inputs:cellSize = 1
+            custom rel inputs:collider
+            prepend rel inputs:collider = </World/ActionGraph/read_collider/outputs_primsBundle>
+            custom float inputs:damping = 0.25
+            custom uint inputs:execIn
+            prepend uint inputs:execIn.connect = [
+                </World/ActionGraph/on_loaded.outputs:execOut>,
+                </World/ActionGraph/on_tick.outputs:tick>,
+            ]
+            custom float2 inputs:size = (600, 300)
+            custom float inputs:speed = 1000
+            custom double inputs:time
+            prepend double inputs:time.connect = </World/ActionGraph/on_tick.outputs:time>
+            custom matrix4d inputs:transform
+            prepend matrix4d inputs:transform.connect = </World/ActionGraph/read_xform.outputs:localToWorldTransform>
+            token node:type = "omni.warp.WarpWaveSolve"
+            int node:typeVersion = 1
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (398, 79)
+
+            def Output "outputs_mesh"
+            {
+            }
+        }
+
+        def OmniGraphNode "write_prims" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom string inputs:attrNamesToExport = "*"
+            prepend string inputs:attrNamesToExport.connect = </World/ActionGraph/bundle_inspect_changes.outputs:attrsChanged>
+            custom uint inputs:execIn
+            prepend uint inputs:execIn.connect = </World/ActionGraph/bundle_inspect_changes.outputs:execOut>
+            custom token inputs:layerIdentifier
+            custom string inputs:pathPattern = "*"
+            custom rel inputs:prims = </World/Mesh> (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            string relType = "target"
+                        }
+                    }
+                }
+            )
+            custom rel inputs:primsBundle
+            prepend rel inputs:primsBundle = </World/ActionGraph/bundle_inspect_changes/outputs_bundle>
+            custom bool inputs:scatterUnderTargets = 0
+            custom string inputs:typePattern = "*"
+            custom bool inputs:usdWriteBack = 1
+            prepend bool inputs:usdWriteBack.connect = </World/ActionGraph/bundle_inspect_changes.outputs:topologyChanged>
+            token node:type = "omni.graph.nodes.WritePrimsV2"
+            int node:typeVersion = 1
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            custom string state:attrNamesToExport = "*"
+            custom token state:layerIdentifier
+            custom string state:pathPattern = "*"
+            custom uint64 state:primBundleDirtyId
+            custom uint64[] state:prims = []
+            custom bool state:scatterUnderTargets = 0
+            custom string state:typePattern = "*"
+            custom bool state:usdWriteBack = 1
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (935, 110)
+        }
+
+        def OmniGraphNode "bundle_inspect_changes" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom rel inputs:bundle
+            prepend rel inputs:bundle = </World/ActionGraph/wave_solve/outputs_mesh>
+            custom uint inputs:execIn
+            prepend uint inputs:execIn.connect = </World/ActionGraph/wave_solve.outputs:execOut>
+            token node:type = "omni.warp.WarpOgnBundleInspectChanges"
+            int node:typeVersion = 1
+            custom string outputs:attrsChanged
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            custom bool outputs:topologyChanged
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (660, 90)
+
+            def Output "outputs_bundle"
+            {
+            }
+        }
+    }
+
+    def Scope "Looks"
+    {
+        def "CeramicMaterial" (
+            prepend payload = @./assets/materials/ceramic_material.usda@
+        )
+        {
+            over "CeramicMaterial"
+            {
+                over "Shader"
+                {
+                    color3f inputs:diffuse_reflection_color = (0.5, 0.5, 0.5) (
+                        customData = {
+                            float3 default = (0.2, 0.2, 0.2)
+                        }
+                        displayGroup = "Albedo"
+                        displayName = "Albedo Color"
+                        doc = "This is the albedo base color"
+                        hidden = false
+                        renderType = "color"
+                    )
+                }
+            }
+        }
+
+        def "OceanMaterial" (
+            prepend payload = @./assets/materials/ocean_material.usda@
+        )
+        {
+            over "OceanMaterial"
+            {
+                over "Shader"
+                {
+                    color3f inputs:glass_color = (0.05, 0.175, 0.2) (
+                        customData = {
+                            float3 default = (1, 1, 1)
+                            dictionary range = {
+                                float3 max = (1, 1, 1)
+                                float3 min = (0, 0, 0)
+                            }
+                        }
+                        displayGroup = "Color"
+                        displayName = "Glass Color"
+                        doc = "Sets the color of the glass"
+                        hidden = false
+                        renderType = "color"
+                    )
+                }
+            }
+        }
+    }
+
+    def Mesh "Mesh" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        rel material:binding = </World/Looks/OceanMaterial/OceanMaterial> (
+            bindMaterialAs = "weakerThanDescendants"
+        )
+        float3 xformOp:rotateXYZ = (0, 0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (0, 50, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+    }
+
+    def Sphere "Collider" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        float3[] extent = [(-50, -50, -50), (50, 50, 50)]
+        rel material:binding = </World/Looks/CeramicMaterial/CeramicMaterial> (
+            bindMaterialAs = "weakerThanDescendants"
+        )
+        bool primvars:doNotCastShadows = 1
+        double radius = 50
+        custom bool refinementEnableOverride = 1
+        custom int refinementLevel = 2
+        double3 xformOp:rotateXYZ = (0, 0, 0)
+        double3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (0, 50, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+    }
+}
+
+def Xform "Environment"
+{
+    double3 xformOp:rotateXYZ = (0, 0, 0)
+    double3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (0, 0, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+    def "Stage" (
+        prepend payload = @./assets/environments/stage.usda@
+    )
+    {
+        over "Geometries"
+        {
+            over "Platform"
+            {
+                token visibility = "invisible"
+            }
+        }
+
+        over "Lights"
+        {
+            def DomeLight "DomeLight" (
+                prepend apiSchemas = ["ShapingAPI"]
+            )
+            {
+                float inputs:intensity = 1000
+                float inputs:shaping:cone:angle = 180
+                float inputs:shaping:cone:softness
+                float inputs:shaping:focus
+                color3f inputs:shaping:focusTint
+                asset inputs:shaping:ies:file
+                asset inputs:texture:file = @https://omniverse-content-production.s3.us-west-2.amazonaws.com/Assets/Skies/2022_1/Skies/Evening/evening_road_01.hdr@
+                token inputs:texture:format = "latlong"
+                bool visibleInPrimaryRay = 0
+                double3 xformOp:rotateXYZ = (270, 0, 0)
+                double3 xformOp:scale = (1, 1, 1)
+                double3 xformOp:translate = (0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+            }
+        }
+
+        over "Looks"
+        {
+            over "StageBackgroundMaterial"
+            {
+                over "Shader"
+                {
+                    color3f inputs:diffuse_reflection_color = (0.2, 0.2, 0.2) (
+                        doc = "This is the albedo base color"
+                        hidden = false
+                        renderType = "color"
+                    )
+                }
+            }
+        }
+    }
+}
+
+def Xform "CameraRoot"
+{
+    double3 xformOp:rotateXYZ = (-45, 20, 0)
+    double3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (0, 35, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+    def Camera "Camera"
+    {
+        float2 clippingRange = (1, 10000000)
+        float focalLength = 25
+        float focusDistance = 800
+        float fStop = 0
+        bool omni:kit:cameraLock = 0
+        double3 xformOp:rotateYXZ = (0, 0, 0)
+        double3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (0, 0, 800)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateYXZ", "xformOp:scale"]
+    }
+}

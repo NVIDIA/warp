@@ -75,6 +75,11 @@ CUresult cuModuleLoadDataEx_f(CUmodule *module, const void *image, unsigned int 
 CUresult cuModuleGetFunction_f(CUfunction *hfunc, CUmodule hmod, const char *name);
 CUresult cuLaunchKernel_f(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, CUstream hStream, void **kernelParams, void **extra);
 CUresult cuMemcpyPeerAsync_f(CUdeviceptr dst_ptr, CUcontext dst_ctx, CUdeviceptr src_ptr, CUcontext src_ctx, size_t n, CUstream stream);
+CUresult cuGraphicsMapResources_f(unsigned int count, CUgraphicsResource* resources, CUstream stream);
+CUresult cuGraphicsUnmapResources_f(unsigned int count, CUgraphicsResource* resources, CUstream hStream);
+CUresult cuGraphicsResourceGetMappedPointer_f(CUdeviceptr* pDevPtr, size_t* pSize, CUgraphicsResource resource);
+CUresult cuGraphicsGLRegisterBuffer_f(CUgraphicsResource *pCudaResource, unsigned int buffer, unsigned int flags);
+CUresult cuGraphicsUnregisterResource_f(CUgraphicsResource resource);
 
 
 bool init_cuda_driver();

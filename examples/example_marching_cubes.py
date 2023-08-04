@@ -15,6 +15,7 @@
 
 
 import warp as wp
+import warp.render
 
 import os
 import math

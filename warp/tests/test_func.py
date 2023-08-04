@@ -83,7 +83,7 @@ def test_override_func():
     wp.expect_eq(i, 3)
 
 
-def test_func_export(test, device):
+def test_native_func_export(test, device):
     # tests calling native functions from Python
 
     q = wp.quat(0.0, 0.0, 0.0, 1.0)
@@ -134,6 +134,17 @@ def test_func_export(test, device):
     test.assertAlmostEqual(f, 1.0, places=3)
 
 
+def test_user_func_export(test, device):
+    # tests calling overloaded user-defined functions from Python
+    i = custom(1)
+    f = custom(1.0)
+    v = custom(wp.vec3(1.0, 0.0, 0.0))
+
+    test.assertEqual(i, 2)
+    test.assertEqual(f, 2.0)
+    assert_np_equal(np.array([*v]), np.array([2.0, 0.0, 0.0]))
+
+
 def test_func_closure_capture(test, device):
     def make_closure_kernel(func):
         def closure_kernel_fn(data: wp.array(dtype=float), expected: float):
@@ -170,6 +181,36 @@ def test_return_func(test, device):
     wp.launch(kernel=test_return_kernel, dim=test_data.size, inputs=[test_data], device=device)
 
 
+@wp.func
+def multi_valued_func(a: wp.float32, b: wp.float32):
+    return a + b, a - b, a * b, a / b
+
+
+def test_multi_valued_func(test, device):
+    @wp.kernel
+    def test_multi_valued_kernel(test_data1: wp.array(dtype=wp.float32), test_data2: wp.array(dtype=wp.float32)):
+        tid = wp.tid()
+        d1, d2 = test_data1[tid], test_data2[tid]
+        a, b, c, d = multi_valued_func(d1, d2)
+        wp.expect_eq(a, d1 + d2)
+        wp.expect_eq(b, d1 - d2)
+        wp.expect_eq(c, d1 * d2)
+        wp.expect_eq(d, d1 / d2)
+
+    test_data1 = wp.array(np.arange(100), dtype=wp.float32, device=device)
+    test_data2 = wp.array(np.arange(100, 0, -1), dtype=wp.float32, device=device)
+    wp.launch(kernel=test_multi_valued_kernel, dim=test_data1.size, inputs=[test_data1, test_data2], device=device)
+
+
+@wp.kernel
+def test_func_defaults():
+    # test default as expected
+    wp.expect_near(1.0, 1.0 + 1.0e-6)
+
+    # test that changing tolerance still works
+    wp.expect_near(1.0, 1.1, 0.5)
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -179,8 +220,11 @@ def register(parent):
     add_kernel_test(TestFunc, kernel=test_overload_func, name="test_overload_func", dim=1, devices=devices)
     add_function_test(TestFunc, func=test_return_func, name="test_return_func", devices=devices)
     add_kernel_test(TestFunc, kernel=test_override_func, name="test_override_func", dim=1, devices=devices)
-    add_function_test(TestFunc, func=test_func_export, name="test_func_export", devices=["cpu"])
+    add_function_test(TestFunc, func=test_native_func_export, name="test_native_func_export", devices=["cpu"])
+    add_function_test(TestFunc, func=test_user_func_export, name="test_user_func_export", devices=["cpu"])
     add_function_test(TestFunc, func=test_func_closure_capture, name="test_func_closure_capture", devices=devices)
+    add_function_test(TestFunc, func=test_multi_valued_func, name="test_multi_valued_func", devices=devices)
+    add_kernel_test(TestFunc, kernel=test_func_defaults, name="test_func_defaults", dim=1, devices=devices)
 
     return TestFunc
 

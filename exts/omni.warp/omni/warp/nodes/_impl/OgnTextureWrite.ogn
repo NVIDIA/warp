@@ -1,0 +1,81 @@
+{
+    "WarpTextureWrite": {
+        "version": 1,
+        "categoryDefinitions": "../../../../config/warp_categories.json",
+        "description": "Writes a texture.",
+        "categories": ["warp"],
+        "language": "Python",
+        "uiName": "Texture Write",
+        "cudaPointers": "cpu",
+        "inputs": {
+            "execIn": {
+                "type": "execution",
+                "description": "Input execution."
+            },
+            "uri": {
+                "type": "string",
+                "description": "URI of the texture to write to.",
+                "uiName": "URI",
+                "default": "dynamic://"
+            },
+            "data": {
+                "type": "colorf[4][]",
+                "description": "Texture data.",
+                "uiName": "Data",
+                "memoryType": "cuda"
+            },
+            "dimCount": {
+                "type": "int",
+                "description": "Number of texture dimensions.",
+                "uiName": "Dim Count",
+                "default": 2,
+                "metadata": {
+                    "minimum": 1,
+                    "maximum": 4
+                }
+            },
+            "dim1": {
+                "type": "int",
+                "description": "Size of the first texture dimension.",
+                "uiName": "Dim 1",
+                "default": 128,
+                "metadata": {
+                    "minimum": 0
+                }
+            },
+            "dim2": {
+                "type": "int",
+                "description": "Size of the second texture dimension.",
+                "uiName": "Dim 2",
+                "default": 128,
+                "metadata": {
+                    "minimum": 0
+                }
+            },
+            "dim3": {
+                "type": "int",
+                "description": "Size of the third texture dimension.",
+                "uiName": "Dim 3",
+                "default": 128,
+                "metadata": {
+                    "minimum": 0
+                }
+            },
+            "dim4": {
+                "type": "int",
+                "description": "Size of the fourth texture dimension.",
+                "uiName": "Dim 4",
+                "default": 1,
+                "metadata": {
+                    "minimum": 0
+                }
+            }
+        },
+        "outputs": {
+            "execOut": {
+                "type": "execution",
+                "description": "Output execution."
+            }
+        }
+    }
+}

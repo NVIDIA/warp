@@ -18,7 +18,7 @@ class Tape:
         self.loss = None
 
     def __enter__(self):
-        if wp.context.runtime.tape != None:
+        if wp.context.runtime.tape is not None:
             raise RuntimeError("Warp: Error, entering a tape while one is already active")
 
         wp.context.runtime.tape = self
@@ -26,7 +26,7 @@ class Tape:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if wp.context.runtime.tape == None:
+        if wp.context.runtime.tape is None:
             raise RuntimeError("Warp: Error, ended tape capture, but tape not present")
 
         wp.context.runtime.tape = None
@@ -125,11 +125,11 @@ class Tape:
             return a.grad
 
         elif isinstance(a, wp.codegen.StructInstance):
-            adj = a._struct_()
-            for name, _ in a._struct_.ctype._fields_:
+            adj = a._cls()
+            for name, _ in a._cls.ctype._fields_:
                 if name.startswith("_"):
                     continue
-                if isinstance(a._struct_.vars[name].type, wp.array):
+                if isinstance(a._cls.vars[name].type, wp.array):
                     arr = getattr(a, name)
                     if arr.grad:
                         grad = self.gradients[arr] = arr.grad
@@ -152,8 +152,8 @@ class Tape:
         for a, g in self.gradients.items():
             if a not in self.const_gradients:
                 if isinstance(a, wp.codegen.StructInstance):
-                    for name in g._struct_.vars:
-                        if isinstance(g._struct_.vars[name].type, wp.array) and g._struct_.vars[name].requires_grad:
+                    for name in g._cls.vars:
+                        if isinstance(g._cls.vars[name].type, wp.array) and g._cls.vars[name].requires_grad:
                             getattr(g, name).zero_()
                 else:
                     g.zero_()

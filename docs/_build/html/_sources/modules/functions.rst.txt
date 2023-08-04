@@ -105,6 +105,13 @@ Scalar Math
    Return the element wise minimum of two vectors.
 
 
+.. function:: min(v: Vector[Any,Scalar]) -> Scalar
+   :noindex:
+   :nocontentsentry:
+
+   Return the minimum element of a vector.
+
+
 .. function:: max(x: Scalar, y: Scalar) -> Scalar
 
    Return the maximum of two scalars.
@@ -115,6 +122,13 @@ Scalar Math
    :nocontentsentry:
 
    Return the element wise maximum of two vectors.
+
+
+.. function:: max(v: Vector[Any,Scalar]) -> Scalar
+   :noindex:
+   :nocontentsentry:
+
+   Return the maximum element of a vector.
 
 
 .. function:: clamp(x: Scalar, a: Scalar, b: Scalar) -> Scalar
@@ -285,6 +299,16 @@ Vector Math
    Compute the double dot product between two matrices.
 
 
+.. function:: argmin(v: Vector[Any,Scalar]) -> uint32
+
+   Return the index of the minimum element of a vector. [1]_
+
+
+.. function:: argmax(v: Vector[Any,Scalar]) -> uint32
+
+   Return the index of the maximum element of a vector. [1]_
+
+
 .. function:: outer(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]
 
    Compute the outer product x*y^T for two vec2 objects.
@@ -387,6 +411,11 @@ Vector Math
 .. function:: diag(d: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]
 
    Returns a matrix with the components of the vector d on the diagonal
+
+
+.. function:: get_diag(m: Matrix[Any,Any,Scalar]) -> Vector[Any,Scalar]
+
+   Returns a vector containing the diagonal elements of the square matrix.
 
 
 .. function:: cw_mul(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
@@ -660,6 +689,11 @@ Utility
 .. function:: print(value: Any) -> None
 
    Print variable to stdout
+
+
+.. function:: breakpoint() -> None
+
+   Debugger breakpoint
 
 
 .. function:: tid() -> int
@@ -945,6 +979,9 @@ Geometry
 
    Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
 
+   Identifies the sign of the distance using additional ray-casts to determine if the point is inside or outside. This method is relatively robust, but
+   does increase computational cost. See below for additional sign determination methods.
+
    :param id: The mesh identifier
    :param point: The point in space to query
    :param max_dist: Mesh faces above this distance will not be considered by the query
@@ -952,6 +989,58 @@ Geometry
    :param face: Returns the index of the closest face
    :param bary_u: Returns the barycentric u coordinate of the closest point
    :param bary_v: Returns the barycentric v coordinate of the closest point
+
+
+.. function:: mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32, face: int32, bary_u: float32, bary_v: float32) -> bool
+
+   Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
+
+   This method does not compute the sign of the point (inside/outside) which makes it faster than other point query methods.
+
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param max_dist: Mesh faces above this distance will not be considered by the query
+   :param face: Returns the index of the closest face
+   :param bary_u: Returns the barycentric u coordinate of the closest point
+   :param bary_v: Returns the barycentric v coordinate of the closest point
+
+
+.. function:: mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, inside: float32, face: int32, bary_u: float32, bary_v: float32, epsilon: float32) -> bool
+
+   Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
+    
+   Identifies the sign of the distance (inside/outside) using the angle-weighted pseudo normal. This approach to sign determination is robust for well conditioned meshes
+   that are watertight and non-self intersecting, it is also comparatively fast to compute.
+
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param max_dist: Mesh faces above this distance will not be considered by the query
+   :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise. Note that mesh must be watertight for this to be robust
+   :param face: Returns the index of the closest face
+   :param bary_u: Returns the barycentric u coordinate of the closest point
+   :param bary_v: Returns the barycentric v coordinate of the closest point
+   :param epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3
+
+
+.. function:: mesh_query_point_sign_winding_number(id: uint64, point: vec3f, max_dist: float32, inside: float32, face: int32, bary_u: float32, bary_v: float32, accuracy: float32, threshold: float32) -> bool
+
+   Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found. 
+    
+   Identifies the sign using the winding number of the mesh relative to the query point. This method of sign determination is robust for poorly conditioned meshes
+   and provides a smooth approximation to sign even when the mesh is not watertight. This method is the most robust and accurate of the sign determination meshes
+   but also the most expensive.
+     
+    Note that the Mesh object must be constructed with ``suport_winding_number=True`` for this method to return correct results.
+
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param max_dist: Mesh faces above this distance will not be considered by the query
+   :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise. Note that mesh must be watertight for this to be robust
+   :param face: Returns the index of the closest face
+   :param bary_u: Returns the barycentric u coordinate of the closest point
+   :param bary_v: Returns the barycentric v coordinate of the closest point
+   :param accuracy: Accuracy for computing the winding number with fast winding number method utilizing second order dipole approximation, default 2.0
+   :param threshold: The threshold of the winding number to be considered inside, default 0.5
 
 
 .. function:: mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32, t: float32, bary_u: float32, bary_v: float32, sign: float32, normal: vec3f, face: int32) -> bool
@@ -1021,7 +1110,7 @@ Geometry
 
 .. function:: mesh_get(id: uint64) -> Mesh
 
-   Retrieves the mesh given its index.
+   Retrieves the mesh given its index. [1]_
 
 
 .. function:: mesh_eval_face_normal(id: uint64, face: int32) -> vec3f
@@ -1310,6 +1399,13 @@ Other
    Search a sorted array for the closest element greater than or equal to value.
 
 
+.. function:: lower_bound(arr: Array[Scalar], arr_begin: int32, arr_end: int32, value: Scalar) -> int
+   :noindex:
+   :nocontentsentry:
+
+   Search a sorted array range [arr_begin, arr_end) for the closest element greater than or equal to value.
+
+
 
 
 Operators
@@ -1358,6 +1454,24 @@ Operators
 .. function:: sub(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]
    :noindex:
    :nocontentsentry:
+
+
+.. function:: bit_and(x: Int, y: Int) -> Int
+
+
+.. function:: bit_or(x: Int, y: Int) -> Int
+
+
+.. function:: bit_xor(x: Int, y: Int) -> Int
+
+
+.. function:: lshift(x: Int, y: Int) -> Int
+
+
+.. function:: rshift(x: Int, y: Int) -> Int
+
+
+.. function:: invert(x: Int) -> Int
 
 
 .. function:: mul(x: Scalar, y: Scalar) -> Scalar
@@ -1522,6 +1636,11 @@ Operators
 
 
 .. function:: unot(b: uint64) -> bool
+   :noindex:
+   :nocontentsentry:
+
+
+.. function:: unot(a: Array[Any]) -> bool
    :noindex:
    :nocontentsentry:
 

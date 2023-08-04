@@ -7,7 +7,6 @@
 
 import ctypes
 import hashlib
-import inspect
 import struct
 import zlib
 import numpy as np
@@ -76,6 +75,14 @@ def constant(x):
     return x
 
 
+def float_to_half_bits(value):
+    return warp.context.runtime.core.float_to_half_bits(value)
+
+
+def half_bits_to_float(value):
+    return warp.context.runtime.core.half_bits_to_float(value)
+
+
 # ----------------------
 # built-in types
 
@@ -99,19 +106,15 @@ def vector(length, dtype):
         _wp_generic_type_str_ = "vec_t"
         _wp_constructor_ = "vector"
 
+        # special handling for float16 type: in this case, data is stored
+        # as uint16 but it's actually half precision floating point
+        # data. This means we need to convert each of the arguments
+        # to uint16s containing half float bits before storing them in
+        # the array:
+        scalar_import = float_to_half_bits if _wp_scalar_type_ == float16 else lambda x: x
+        scalar_export = half_bits_to_float if _wp_scalar_type_ == float16 else lambda x: x
+
         def __init__(self, *args):
-            if self._wp_scalar_type_ == float16:
-                # special case for float16 type: in this case, data is stored
-                # as uint16 but it's actually half precision floating point
-                # data. This means we need to convert each of the arguments
-                # to uint16s containing half float bits before storing them in
-                # the array:
-                from warp.context import runtime
-
-                scalar_value = runtime.core.float_to_half_bits
-            else:
-                scalar_value = lambda x: x
-
             num_args = len(args)
             if num_args == 0:
                 super().__init__()
@@ -121,17 +124,41 @@ def vector(length, dtype):
                     self.__init__(*args[0])
                 else:
                     # set all elements to the same value
-                    value = scalar_value(args[0])
+                    value = vec_t.scalar_import(args[0])
                     for i in range(self._length_):
                         super().__setitem__(i, value)
             elif num_args == self._length_:
                 # set all scalar elements
                 for i in range(self._length_):
-                    super().__setitem__(i, scalar_value(args[i]))
+                    super().__setitem__(i, vec_t.scalar_import(args[i]))
             else:
                 raise ValueError(
                     f"Invalid number of arguments in vector constructor, expected {self._length_} elements, got {num_args}"
                 )
+
+        def __getitem__(self, key):
+            if isinstance(key, int):
+                return vec_t.scalar_export(super().__getitem__(key))
+            elif isinstance(key, slice):
+                if self._wp_scalar_type_ == float16:
+                    return [vec_t.scalar_export(x) for x in super().__getitem__(key)]
+                else:
+                    return super().__getitem__(key)
+            else:
+                raise KeyError(f"Invalid key {key}, expected int or slice")
+
+        def __setitem__(self, key, value):
+            if isinstance(key, int):
+                super().__setitem__(key, vec_t.scalar_import(value))
+                return value
+            elif isinstance(key, slice):
+                if self._wp_scalar_type_ == float16:
+                    super().__setitem__(key, [vec_t.scalar_import(x) for x in value])
+                    return value
+                else:
+                    return super().__setitem__(key, value)
+            else:
+                raise KeyError(f"Invalid key {key}, expected int or slice")
 
         def __add__(self, y):
             return warp.add(self, y)
@@ -166,6 +193,23 @@ def vector(length, dtype):
         def __str__(self):
             return f"[{', '.join(map(str, self))}]"
 
+        def __eq__(self, other):
+            for i in range(self._length_):
+                if self[i] != other[i]:
+                    return False
+            return True
+
+        @classmethod
+        def from_ptr(cls, ptr):
+            if ptr:
+                # create a new vector instance and initialize the contents from the binary data
+                # this skips float16 conversions, assuming that float16 data is already encoded as uint16
+                value = cls()
+                ctypes.memmove(ctypes.byref(value), ptr, ctypes.sizeof(cls._type_) * cls._length_)
+                return value
+            else:
+                raise RuntimeError("NULL pointer exception")
+
     return vec_t
 
 
@@ -192,19 +236,15 @@ def matrix(shape, dtype):
 
         _wp_row_type_ = vector(0 if shape[1] == Any else shape[1], dtype)
 
+        # special handling for float16 type: in this case, data is stored
+        # as uint16 but it's actually half precision floating point
+        # data. This means we need to convert each of the arguments
+        # to uint16s containing half float bits before storing them in
+        # the array:
+        scalar_import = float_to_half_bits if _wp_scalar_type_ == float16 else lambda x: x
+        scalar_export = half_bits_to_float if _wp_scalar_type_ == float16 else lambda x: x
+
         def __init__(self, *args):
-            if self._wp_scalar_type_ == float16:
-                # special case for float16 type: in this case, data is stored
-                # as uint16 but it's actually half precision floating point
-                # data. This means we need to convert each of the arguments
-                # to uint16s containing half float bits before storing them in
-                # the array:
-                from warp.context import runtime
-
-                scalar_value = runtime.core.float_to_half_bits
-            else:
-                scalar_value = lambda x: x
-
             num_args = len(args)
             if num_args == 0:
                 super().__init__()
@@ -214,13 +254,13 @@ def matrix(shape, dtype):
                     self.__init__(*args[0])
                 else:
                     # set all elements to the same value
-                    value = scalar_value(args[0])
+                    value = mat_t.scalar_import(args[0])
                     for i in range(self._length_):
                         super().__setitem__(i, value)
             elif num_args == self._length_:
                 # set all scalar elements
                 for i in range(self._length_):
-                    super().__setitem__(i, scalar_value(args[i]))
+                    super().__setitem__(i, mat_t.scalar_import(args[i]))
             elif num_args == self._shape_[0]:
                 # row vectors
                 for i, row in enumerate(args):
@@ -230,7 +270,7 @@ def matrix(shape, dtype):
                         )
                     offset = i * self._shape_[1]
                     for i in range(self._shape_[1]):
-                        super().__setitem__(offset + i, scalar_value(row[i]))
+                        super().__setitem__(offset + i, mat_t.scalar_import(row[i]))
             else:
                 raise ValueError(
                     f"Invalid number of arguments in matrix constructor, expected {self._length_} elements, got {num_args}"
@@ -254,6 +294,12 @@ def matrix(shape, dtype):
         def __rmul__(self, x):
             return warp.mul(x, self)
 
+        def __matmul__(self, y):
+            return warp.mul(self, y)
+
+        def __rmatmul__(self, x):
+            return warp.mul(x, self)
+
         def __div__(self, y):
             return warp.div(self, y)
 
@@ -274,42 +320,69 @@ def matrix(shape, dtype):
 
             return "[" + ",\n ".join(row_str) + "]"
 
+        def __eq__(self, other):
+            for i in range(self._shape_[0]):
+                for j in range(self._shape_[1]):
+                    if self[i][j] != other[i][j]:
+                        return False
+            return True
+
         def get_row(self, r):
             if r < 0 or r >= self._shape_[0]:
                 raise IndexError("Invalid row index")
             row_start = r * self._shape_[1]
             row_end = row_start + self._shape_[1]
-            return self._wp_row_type_(*super().__getitem__(slice(row_start, row_end)))
+            row_data = super().__getitem__(slice(row_start, row_end))
+            if self._wp_scalar_type_ == float16:
+                return self._wp_row_type_(*[mat_t.scalar_export(x) for x in row_data])
+            else:
+                return self._wp_row_type_(row_data)
 
         def set_row(self, r, v):
             if r < 0 or r >= self._shape_[0]:
                 raise IndexError("Invalid row index")
             row_start = r * self._shape_[1]
             row_end = row_start + self._shape_[1]
+            if self._wp_scalar_type_ == float16:
+                v = [mat_t.scalar_import(x) for x in v]
             super().__setitem__(slice(row_start, row_end), v)
 
         def __getitem__(self, key):
             if isinstance(key, Tuple):
                 # element indexing m[i,j]
-                return super().__getitem__(key[1] * self._shape_[0] + key[1])
+                if len(key) != 2:
+                    raise KeyError(f"Invalid key, expected one or two indices, got {len(key)}")
+                return mat_t.scalar_export(super().__getitem__(key[0] * self._shape_[1] + key[1]))
             elif isinstance(key, int):
                 # row vector indexing m[r]
                 return self.get_row(key)
             else:
-                # slice etc.
-                return super().__getitem__(key)
+                raise KeyError(f"Invalid key {key}, expected int or pair of ints")
 
         def __setitem__(self, key, value):
             if isinstance(key, Tuple):
                 # element indexing m[i,j] = x
-                return super().__setitem__(key[1] * self._shape_[0] + key[1], value)
+                if len(key) != 2:
+                    raise KeyError(f"Invalid key, expected one or two indices, got {len(key)}")
+                super().__setitem__(key[0] * self._shape_[1] + key[1], mat_t.scalar_import(value))
+                return value
             elif isinstance(key, int):
                 # row vector indexing m[r] = v
                 self.set_row(key, value)
                 return value
             else:
-                # slice etc.
-                return super().__setitem__(key, value)
+                raise KeyError(f"Invalid key {key}, expected int or pair of ints")
+
+        @classmethod
+        def from_ptr(cls, ptr):
+            if ptr:
+                # create a new matrix instance and initialize the contents from the binary data
+                # this skips float16 conversions, assuming that float16 data is already encoded as uint16
+                value = cls()
+                ctypes.memmove(ctypes.byref(value), ptr, ctypes.sizeof(cls._type_) * cls._length_)
+                return value
+            else:
+                raise RuntimeError("NULL pointer exception")
 
     return mat_t
 
@@ -750,6 +823,20 @@ np_dtype_to_warp_type = {
     np.dtype(np.float64): float64,
 }
 
+warp_type_to_np_dtype = {
+    int8: np.int8,
+    int16: np.int16,
+    int32: np.int32,
+    int64: np.int64,
+    uint8: np.uint8,
+    uint16: np.uint16,
+    uint32: np.uint32,
+    uint64: np.uint64,
+    float16: np.float16,
+    float32: np.float32,
+    float64: np.float64,
+}
+
 
 # represent a Python range iterator
 class range_t:
@@ -819,17 +906,43 @@ class shape_t(ctypes.Structure):
 class array_t(ctypes.Structure):
     _fields_ = [
         ("data", ctypes.c_uint64),
+        ("grad", ctypes.c_uint64),
         ("shape", ctypes.c_int32 * ARRAY_MAX_DIMS),
         ("strides", ctypes.c_int32 * ARRAY_MAX_DIMS),
         ("ndim", ctypes.c_int32),
     ]
 
-    def __init__(self, data=0, ndim=0, shape=(0,), strides=(0,)):
+    def __init__(self, data=0, grad=0, ndim=0, shape=(0,), strides=(0,)):
         self.data = data
+        self.grad = grad
         self.ndim = ndim
         for i in range(ndim):
             self.shape[i] = shape[i]
             self.strides[i] = strides[i]
+
+    # structured type description used when array_t is packed in a struct and shared via numpy structured array.
+    @classmethod
+    def numpy_dtype(cls):
+        return cls._numpy_dtype_
+
+    # structured value used when array_t is packed in a struct and shared via a numpy structured array
+    def numpy_value(self):
+        return (self.data, self.grad, list(self.shape), list(self.strides), self.ndim)
+
+
+# NOTE: must match array_t._fields_
+array_t._numpy_dtype_ = {
+    "names": ["data", "grad", "shape", "strides", "ndim"],
+    "formats": ["u8", "u8", f"{ARRAY_MAX_DIMS}i4", f"{ARRAY_MAX_DIMS}i4", "i4"],
+    "offsets": [
+        array_t.data.offset,
+        array_t.grad.offset,
+        array_t.shape.offset,
+        array_t.strides.offset,
+        array_t.ndim.offset,
+    ],
+    "itemsize": ctypes.sizeof(array_t),
+}
 
 
 class indexedarray_t(ctypes.Structure):
@@ -840,13 +953,19 @@ class indexedarray_t(ctypes.Structure):
     ]
 
     def __init__(self, data, indices, shape):
-        self.data = data.__ctype__()
-        for i in range(data.ndim):
-            if indices[i] is not None:
-                self.indices[i] = ctypes.c_void_p(indices[i].ptr)
-            else:
+        if data is None:
+            self.data = array().__ctype__()
+            for i in range(ARRAY_MAX_DIMS):
                 self.indices[i] = ctypes.c_void_p(None)
-            self.shape[i] = shape[i]
+                self.shape[i] = 0
+        else:
+            self.data = data.__ctype__()
+            for i in range(data.ndim):
+                if indices[i] is not None:
+                    self.indices[i] = ctypes.c_void_p(indices[i].ptr)
+                else:
+                    self.indices[i] = ctypes.c_void_p(None)
+                self.shape[i] = shape[i]
 
 
 def type_ctype(dtype):
@@ -860,19 +979,26 @@ def type_ctype(dtype):
 
 
 def type_length(dtype):
-    if dtype == float or dtype == int:
+    if dtype == float or dtype == int or isinstance(dtype, warp.codegen.Struct):
         return 1
     else:
         return dtype._length_
 
 
+def type_scalar_type(dtype):
+    return getattr(dtype, "_wp_scalar_type_", dtype)
+
+
 def type_size_in_bytes(dtype):
     if dtype.__module__ == "ctypes":
         return ctypes.sizeof(dtype)
+    elif type_is_struct(dtype):
+        return ctypes.sizeof(dtype.ctype)
     elif dtype == float or dtype == int:
         return 4
     elif hasattr(dtype, "_type_"):
         return getattr(dtype, "_length_", 1) * ctypes.sizeof(dtype._type_)
+
     else:
         return 0
 
@@ -887,6 +1013,8 @@ def type_to_warp(dtype):
 
 
 def type_typestr(dtype):
+    from warp.codegen import Struct
+
     if dtype == float16:
         return "<f2"
     elif dtype == float32:
@@ -909,10 +1037,24 @@ def type_typestr(dtype):
         return "<i8"
     elif dtype == uint64:
         return "<u8"
+    elif isinstance(dtype, Struct):
+        return f"|V{ctypes.sizeof(dtype.ctype)}"
     elif issubclass(dtype, ctypes.Array):
         return type_typestr(dtype._wp_scalar_type_)
     else:
         raise Exception("Unknown ctype")
+
+
+# converts any known type to a human readable string, good for error messages, reporting etc
+def type_repr(t):
+    if is_array(t):
+        return str(f"array(ndim={t.ndim}, dtype={t.dtype})")
+    if type_is_vector(t):
+        return str(f"vector(length={t._shape_[0]}, dtype={t._wp_scalar_type_})")
+    elif type_is_matrix(t):
+        return str(f"matrix(shape=({t._shape_[0]}, {t._shape_[1]}), dtype={t._wp_scalar_type_})")
+    else:
+        return str(t)
 
 
 def type_is_int(t):
@@ -927,6 +1069,31 @@ def type_is_float(t):
         t = float32
 
     return t in float_types
+
+
+def type_is_struct(dtype):
+    from warp.codegen import Struct
+
+    if isinstance(dtype, Struct):
+        return True
+    else:
+        return False
+
+
+# returns True if the passed *type* is a vector
+def type_is_vector(t):
+    if hasattr(t, "_wp_generic_type_str_") and t._wp_generic_type_str_ == "vec_t":
+        return True
+    else:
+        return False
+
+
+# returns True if the passed *type* is a matrix
+def type_is_matrix(t):
+    if hasattr(t, "_wp_generic_type_str_") and t._wp_generic_type_str_ == "mat_t":
+        return True
+    else:
+        return False
 
 
 # returns true for all value types (int, float, bool, scalars, vectors, matrices)
@@ -948,6 +1115,11 @@ def is_float(x):
 
 def is_value(x):
     return type_is_value(type(x))
+
+
+# returns true if the passed *instance* is one of the array types
+def is_array(a):
+    return isinstance(a, array_types)
 
 
 def types_equal(a, b, match_generic=False):
@@ -1019,17 +1191,18 @@ class array(Array):
         dtype: DType = Any,
         shape=None,
         strides=None,
-        length=0,
+        length=None,
         ptr=None,
-        capacity=0,
+        capacity=None,
         device=None,
-        copy=True,
-        owner=True,
-        ndim=None,
-        requires_grad=False,
         pinned=False,
+        copy=True,
+        owner=True,  # TODO: replace with deleter=None
+        ndim=None,
+        grad=None,
+        requires_grad=False,
     ):
-        """Constructs a new Warp array object from existing data.
+        """Constructs a new Warp array object
 
         When the ``data`` argument is a valid list, tuple, or ndarray the array will be constructed from this object's data.
         For objects that are not stored sequentially in memory (e.g.: a list), then the data will first
@@ -1040,38 +1213,37 @@ class array(Array):
         allocation should reside on the same device given by the device argument, and the user should set the length
         and dtype parameter appropriately.
 
+        If neither ``data`` nor ``ptr`` are specified, the ``shape`` or ``length`` arguments are checked next.
+        This construction path can be used to create new uninitialized arrays, but users are encouraged to call
+        ``wp.empty()``, ``wp.zeros()``, or ``wp.full()`` instead to create new arrays.
+
+        If none of the above arguments are specified, a simple type annotation is constructed.  This is used when annotating
+        kernel arguments or struct members (e.g.,``arr: wp.array(dtype=float)``).  In this case, only ``dtype`` and ``ndim``
+        are taken into account and no memory is allocated for the array.
+
         Args:
             data (Union[list, tuple, ndarray]) An object to construct the array from, can be a Tuple, List, or generally any type convertible to an np.array
             dtype (Union): One of the built-in types, e.g.: :class:`warp.mat33`, if dtype is Any and data an ndarray then it will be inferred from the array data type
             shape (tuple): Dimensions of the array
             strides (tuple): Number of bytes in each dimension between successive elements of the array
-            length (int): Number of elements (rows) of the data type (deprecated, users should use `shape` argument)
+            length (int): Number of elements of the data type (deprecated, users should use `shape` argument)
             ptr (uint64): Address of an external memory address to alias (data should be None)
             capacity (int): Maximum size in bytes of the ptr allocation (data should be None)
             device (Devicelike): Device the array lives on
             copy (bool): Whether the incoming data will be copied or aliased, this is only possible when the incoming `data` already lives on the device specified and types match
             owner (bool): Should the array object try to deallocate memory when it is deleted
             requires_grad (bool): Whether or not gradients will be tracked for this array, see :class:`warp.Tape` for details
+            grad (array): The gradient array to use
             pinned (bool): Whether to allocate pinned host memory, which allows asynchronous host-device transfers (only applicable with device="cpu")
 
         """
 
         self.owner = False
-
-        # convert shape to Tuple
-        if shape == None:
-            shape = tuple(length for _ in range(ndim or 1))
-        elif isinstance(shape, int):
-            shape = (shape,)
-        elif isinstance(shape, List):
-            shape = tuple(shape)
-
-        self.shape = shape
-
-        if len(shape) > ARRAY_MAX_DIMS:
-            raise RuntimeError(
-                f"Arrays may only have {ARRAY_MAX_DIMS} dimensions maximum, trying to create array with {len(shape)} dims."
-            )
+        self.ctype = None
+        self._requires_grad = False
+        self._grad = None
+        # __array_interface__ or __cuda_array_interface__, evaluated lazily and cached
+        self._array_interface = None
 
         # canonicalize dtype
         if dtype == int:
@@ -1079,205 +1251,321 @@ class array(Array):
         elif dtype == float:
             dtype = float32
 
-        if data is not None or ptr is not None:
-            from .context import runtime
+        # convert shape to tuple (or leave shape=None if neither shape nor length were specified)
+        if shape is not None:
+            if isinstance(shape, int):
+                shape = (shape,)
+            else:
+                shape = tuple(shape)
+                if len(shape) > ARRAY_MAX_DIMS:
+                    raise RuntimeError(
+                        f"Failed to create array with shape {shape}, the maximum number of dimensions is {ARRAY_MAX_DIMS}"
+                    )
+        elif length is not None:
+            # backward compatibility
+            shape = (length,)
 
-            device = runtime.get_device(device)
-
+        # determine the construction path from the given arguments
         if data is not None:
-            if device.is_capturing:
-                raise RuntimeError(f"Cannot allocate memory on device {device} while graph capture is active")
-
+            # data or ptr, not both
             if ptr is not None:
-                # data or ptr, not both
-                raise RuntimeError("Should only construct arrays with either data or ptr arguments, not both")
+                raise RuntimeError("Can only construct arrays with either `data` or `ptr` arguments, not both")
+            self._init_from_data(data, dtype, shape, device, copy, pinned)
+        elif ptr is not None:
+            self._init_from_ptr(ptr, dtype, shape, strides, capacity, device, owner, pinned)
+        elif shape is not None:
+            self._init_new(dtype, shape, strides, device, pinned)
+        else:
+            self._init_annotation(dtype, ndim or 1)
 
+        # initialize gradient, if needed
+        if self.device is not None:
+            if grad is not None:
+                # this will also check whether the gradient array is compatible
+                self.grad = grad
+            else:
+                # allocate gradient if needed
+                self._requires_grad = requires_grad
+                if requires_grad:
+                    with warp.ScopedStream(self.device.null_stream):
+                        self._alloc_grad()
+
+    def _init_from_data(self, data, dtype, shape, device, copy, pinned):
+        if not hasattr(data, "__len__"):
+            raise RuntimeError(f"Data must be a sequence or array, got scalar {data}")
+
+        if hasattr(dtype, "_wp_scalar_type_"):
+            dtype_shape = dtype._shape_
+            dtype_ndim = len(dtype_shape)
+            scalar_dtype = dtype._wp_scalar_type_
+        else:
+            dtype_shape = ()
+            dtype_ndim = 0
+            scalar_dtype = dtype
+
+        # convert input data to ndarray (handles lists, tuples, etc.) and determine dtype
+        if dtype == Any:
+            # infer dtype from data
             try:
-                # force convert tuples and lists (or any array type) to ndarray
-                arr = np.array(data, copy=False)
+                arr = np.array(data, copy=False, ndmin=1)
+            except Exception as e:
+                raise RuntimeError(f"Failed to convert input data to an array: {e}")
+            dtype = np_dtype_to_warp_type.get(arr.dtype)
+            if dtype is None:
+                raise RuntimeError(f"Unsupported input data dtype: {arr.dtype}")
+        elif isinstance(dtype, warp.codegen.Struct):
+            if isinstance(data, np.ndarray):
+                # construct from numpy structured array
+                if data.dtype != dtype.numpy_dtype():
+                    raise RuntimeError(f"Invalid source data type for array of structs, expected {dtype.numpy_dtype()}, got {data.dtype}")
+                arr = data
+            elif isinstance(data, (list, tuple)):
+                # construct from a sequence of structs
+                try:
+                    # convert each struct instance to its corresponding ctype
+                    ctype_list = [v.__ctype__() for v in data]
+                    # convert the list of ctypes to a contiguous ctypes array
+                    ctype_arr = (dtype.ctype * len(ctype_list))(*ctype_list)
+                    # convert to numpy
+                    arr = np.frombuffer(ctype_arr, dtype=dtype.ctype)
+                except Exception as e:
+                    raise RuntimeError(f"Error while trying to construct Warp array from a sequence of Warp structs: {e}")
+            else:
+                raise RuntimeError(f"Invalid data argument for array of structs, expected a sequence of structs or a NumPy structured array")
+        else:
+            # convert input data to the given dtype
+            npdtype = warp_type_to_np_dtype.get(scalar_dtype)
+            if npdtype is None:
+                raise RuntimeError(
+                    f"Failed to convert input data to an array with Warp type {warp.context.type_str(dtype)}"
+                )
+            try:
+                arr = np.array(data, dtype=npdtype, copy=False, ndmin=1)
+            except Exception as e:
+                raise RuntimeError(f"Failed to convert input data to an array with type {npdtype}: {e}")
+
+        # determine whether the input needs reshaping
+        target_npshape = None
+        if shape is not None:
+            target_npshape = (*shape, *dtype_shape)
+        elif dtype_ndim > 0:
+            # prune inner dimensions of length 1
+            while arr.ndim > 1 and arr.shape[-1] == 1:
+                arr = np.squeeze(arr, axis=-1)
+            # if the inner dims don't match exactly, check if the innermost dim is a multiple of type length
+            if arr.ndim < dtype_ndim or arr.shape[-dtype_ndim:] != dtype_shape:
+                if arr.shape[-1] == dtype._length_:
+                    target_npshape = (*arr.shape[:-1], *dtype_shape)
+                elif arr.shape[-1] % dtype._length_ == 0:
+                    target_npshape = (*arr.shape[:-1], arr.shape[-1] // dtype._length_, *dtype_shape)
+                else:
+                    if dtype_ndim == 1:
+                        raise RuntimeError(
+                            f"The inner dimensions of the input data are not compatible with the requested vector type {warp.context.type_str(dtype)}: expected an inner dimension that is a multiple of {dtype._length_}"
+                        )
+                    else:
+                        raise RuntimeError(
+                            f"The inner dimensions of the input data are not compatible with the requested matrix type {warp.context.type_str(dtype)}: expected inner dimensions {dtype._shape_} or a multiple of {dtype._length_}"
+                        )
+
+        if target_npshape is not None:
+            try:
+                arr = arr.reshape(target_npshape)
             except Exception as e:
                 raise RuntimeError(
-                    "When constructing an array the data argument must be convertible to ndarray type type. Encountered an error while converting:"
-                    + str(e)
+                    f"Failed to reshape the input data to the given shape {shape} and type {warp.context.type_str(dtype)}: {e}"
                 )
 
-            if dtype == Any:
-                # infer dtype from the source data array
-                dtype = np_dtype_to_warp_type[arr.dtype]
+        # determine final shape and strides
+        if dtype_ndim > 0:
+            # make sure the inner dims are contiguous for vector/matrix types
+            scalar_size = type_size_in_bytes(dtype._wp_scalar_type_)
+            inner_contiguous = arr.strides[-1] == scalar_size
+            if inner_contiguous and dtype_ndim > 1:
+                inner_contiguous = arr.strides[-2] == scalar_size * dtype_shape[-1]
 
-            try:
-                # try to convert src array to destination type
-                arr = arr.astype(dtype=type_typestr(dtype), copy=False)
-            except:
-                raise RuntimeError(
-                    f"Could not convert input data with type {arr.dtype} to array with type {dtype._type_}"
-                )
+            if not inner_contiguous:
+                arr = np.ascontiguousarray(arr)
 
-            # ensure contiguous
-            arr = np.ascontiguousarray(arr)
-
-            # remove any trailing dimensions of length 1
-            if arr.ndim > 1 and arr.shape[-1] == 1:
-                arr = np.squeeze(arr, axis=len(arr.shape) - 1)
-
-            ptr = arr.__array_interface__["data"][0]
-            shape = arr.__array_interface__["shape"]
-            strides = arr.__array_interface__.get("strides", None)
-
-            # Convert input shape to Warp
-            if type_length(dtype) > 1:
-                # if we are constructing an array of vectors/matrices, but input
-                # is one dimensional (i.e.: flattened) then try and reshape to
-                # to match target dtype, inferring the first dimension
-                if arr.ndim == 1:
-                    arr = arr.reshape((-1, *dtype._shape_))
-
-                # last dimension should match dtype shape when using vector types,
-                # e.g.: array of mat22 objects should have shape (n, 2, 2)
-                dtype_ndim = len(dtype._shape_)
-
-                trailing_shape = arr.shape[-dtype_ndim:]
-                leading_shape = arr.shape[0:-dtype_ndim]
-
-                if dtype._shape_ != trailing_shape:
-                    raise RuntimeError(
-                        f"Last dimensions of input array should match the specified data type, given shape {arr.shape}, expected last dimensions to match dtype shape {dtype._shape_}"
-                    )
-
-                shape = leading_shape
-
-                if strides is not None:
-                    strides = strides[0:-dtype_ndim]
-
-            if device.is_cpu and copy == False:
-                # ref numpy memory directly
-                self.shape = shape
-                self.ptr = ptr
-                self.dtype = dtype
-                self.strides = strides
-                self.capacity = arr.size * type_size_in_bytes(dtype)
-                self.device = device
-                self.owner = False
-                self.pinned = False
-
-                # keep a ref to source array to keep allocation alive
-                self.ref = arr
-
-            else:
-                # otherwise, we must transfer to device memory
-                # create a host wrapper around the numpy array
-                # and a new destination array to copy it to
-                src = array(
-                    dtype=dtype,
-                    shape=shape,
-                    strides=strides,
-                    capacity=arr.size * type_size_in_bytes(dtype),
-                    ptr=ptr,
-                    device="cpu",
-                    copy=False,
-                    owner=False,
-                )
-                dest = warp.empty(shape, dtype=dtype, device=device, requires_grad=requires_grad, pinned=pinned)
-                dest.owner = False
-
-                # copy data using the CUDA default stream for synchronous behaviour with other streams
-                warp.copy(dest, src, stream=device.null_stream)
-
-                # object copy to self and transfer data ownership, would probably be cleaner to have _empty, _zero, etc as class methods
-                from copy import copy as shallowcopy
-
-                self.__dict__ = shallowcopy(dest.__dict__)
-                self.owner = True
-
+            shape = arr.shape[:-dtype_ndim] or (1,)
+            strides = arr.strides[:-dtype_ndim] or (type_size_in_bytes(dtype),)
         else:
-            # explicit construction from ptr to external memory
-            self.shape = shape
-            self.strides = strides
-            self.capacity = capacity
-            self.dtype = dtype
-            self.ptr = ptr
-            self.device = device
-            self.owner = owner
-            if device is not None and device.is_cpu:
-                self.pinned = pinned
-            else:
-                self.pinned = False
+            shape = arr.shape or (1,)
+            strides = arr.strides or (type_size_in_bytes(dtype),)
 
-            self.__name__ = "array<" + type.__name__ + ">"
+        device = warp.get_device(device)
 
-        # update ndim
-        if ndim == None:
-            self.ndim = len(self.shape)
+        if device.is_cpu and not copy and not pinned:
+            # reference numpy memory directly
+            self._init_from_ptr(arr.ctypes.data, dtype, shape, strides, None, device, False, False)
+            # keep a ref to the source array to keep allocation alive
+            self._ref = arr
         else:
-            self.ndim = ndim
+            # copy data into a new array
+            self._init_new(dtype, shape, None, device, pinned)
+            src = array(
+                ptr=arr.ctypes.data,
+                dtype=dtype,
+                shape=shape,
+                strides=strides,
+                device="cpu",
+                copy=False,
+                owner=False,
+            )
+            warp.copy(self, src)
 
-        # update size (num elements)
-        self.size = 1
-        for d in self.shape:
-            self.size *= d
+    def _init_from_ptr(self, ptr, dtype, shape, strides, capacity, device, owner, pinned):
+        if dtype == Any:
+            raise RuntimeError(f"A concrete data type is required to create the array")
 
-        self.grad = None
+        device = warp.get_device(device)
 
-        # set up array interface access so we can treat this object as a numpy array
-        if self.ptr:
-            # update byte strides and contiguous flag
-            contiguous_strides = strides_from_shape(self.shape, self.dtype)
-            if strides is None:
-                self.strides = contiguous_strides
-                self.is_contiguous = True
+        size = 1
+        for d in shape:
+            size *= d
+
+        contiguous_strides = strides_from_shape(shape, dtype)
+
+        if strides is None:
+            strides = contiguous_strides
+            is_contiguous = True
+            if capacity is None:
+                capacity = size * type_size_in_bytes(dtype)
+        else:
+            is_contiguous = strides == contiguous_strides
+            if capacity is None:
+                capacity = shape[0] * strides[0]
+
+        self.dtype = dtype
+        self.ndim = len(shape)
+        self.size = size
+        self.capacity = capacity
+        self.shape = shape
+        self.strides = strides
+        self.ptr = ptr
+        self.device = device
+        self.owner = owner
+        self.pinned = pinned if device.is_cpu else False
+        self.is_contiguous = is_contiguous
+
+    def _init_new(self, dtype, shape, strides, device, pinned):
+        if dtype == Any:
+            raise RuntimeError(f"A concrete data type is required to create the array")
+
+        device = warp.get_device(device)
+
+        size = 1
+        for d in shape:
+            size *= d
+
+        contiguous_strides = strides_from_shape(shape, dtype)
+
+        if strides is None:
+            strides = contiguous_strides
+            is_contiguous = True
+            capacity = size * type_size_in_bytes(dtype)
+        else:
+            is_contiguous = strides == contiguous_strides
+            capacity = shape[0] * strides[0]
+
+        if capacity > 0:
+            ptr = device.allocator.alloc(capacity, pinned=pinned)
+            if ptr is None:
+                raise RuntimeError(f"Array allocation failed on device: {device} for {capacity} bytes")
+        else:
+            ptr = None
+
+        self.dtype = dtype
+        self.ndim = len(shape)
+        self.size = size
+        self.capacity = capacity
+        self.shape = shape
+        self.strides = strides
+        self.ptr = ptr
+        self.device = device
+        self.owner = True
+        self.pinned = pinned if device.is_cpu else False
+        self.is_contiguous = is_contiguous
+
+    def _init_annotation(self, dtype, ndim):
+        self.dtype = dtype
+        self.ndim = ndim
+        self.size = 0
+        self.capacity = 0
+        self.shape = (0,) * ndim
+        self.strides = (0,) * ndim
+        self.ptr = None
+        self.device = None
+        self.owner = False
+        self.pinned = False
+        self.is_contiguous = False
+
+    @property
+    def __array_interface__(self):
+        # raising an AttributeError here makes hasattr() return False
+        if self.device is None or not self.device.is_cpu:
+            raise AttributeError(f"__array_interface__ not supported because device is {self.device}")
+
+        if self._array_interface is None:
+            # get flat shape (including type shape)
+            if isinstance(self.dtype, warp.codegen.Struct):
+                # struct
+                arr_shape = self.shape
+                arr_strides = self.strides
+                descr = self.dtype.numpy_dtype()
+            elif issubclass(self.dtype, ctypes.Array):
+                # vector type, flatten the dimensions into one tuple
+                arr_shape = (*self.shape, *self.dtype._shape_)
+                dtype_strides = strides_from_shape(self.dtype._shape_, self.dtype._type_)
+                arr_strides = (*self.strides, *dtype_strides)
+                descr = None
             else:
-                self.strides = strides
-                self.is_contiguous = strides[:ndim] == contiguous_strides[:ndim]
+                # scalar type
+                arr_shape = self.shape
+                arr_strides = self.strides
+                descr = None
 
-            # store flat shape (including type shape)
-            if self.dtype not in [Any, Scalar, Float, Int] and issubclass(dtype, ctypes.Array):
+            self._array_interface = {
+                "data": (self.ptr if self.ptr is not None else 0, False),
+                "shape": tuple(arr_shape),
+                "strides": tuple(arr_strides),
+                "typestr": type_typestr(self.dtype),
+                "descr": descr,  # optional description of structured array layout
+                "version": 3,
+            }
+
+        return self._array_interface
+
+    @property
+    def __cuda_array_interface__(self):
+        # raising an AttributeError here makes hasattr() return False
+        if self.device is None or not self.device.is_cuda:
+            raise AttributeError(f"__cuda_array_interface__ is not supported because device is {self.device}")
+
+        if self._array_interface is None:
+            # get flat shape (including type shape)
+            if issubclass(self.dtype, ctypes.Array):
                 # vector type, flatten the dimensions into one tuple
                 arr_shape = (*self.shape, *self.dtype._shape_)
                 dtype_strides = strides_from_shape(self.dtype._shape_, self.dtype._type_)
                 arr_strides = (*self.strides, *dtype_strides)
             else:
-                # scalar type
+                # scalar or struct type
                 arr_shape = self.shape
                 arr_strides = self.strides
 
-            if device.is_cpu:
-                self.__array_interface__ = {
-                    "data": (self.ptr, False),
-                    "shape": tuple(arr_shape),
-                    "strides": tuple(arr_strides),
-                    "typestr": type_typestr(self.dtype),
-                    "version": 3,
-                }
+            self._array_interface = {
+                "data": (self.ptr if self.ptr is not None else 0, False),
+                "shape": tuple(arr_shape),
+                "strides": tuple(arr_strides),
+                "typestr": type_typestr(self.dtype),
+                "version": 2,
+            }
 
-            # set up cuda array interface access so we can treat this object as a Torch tensor
-            elif device.is_cuda:
-                self.__cuda_array_interface__ = {
-                    "data": (self.ptr, False),
-                    "shape": tuple(arr_shape),
-                    "strides": tuple(arr_strides),
-                    "typestr": type_typestr(self.dtype),
-                    "version": 2,
-                }
-
-            # controls if gradients will be computed by wp.Tape
-            # this will trigger allocation of a gradient array if it doesn't exist already
-            self.requires_grad = requires_grad
-
-        else:
-            # array has no data
-            self.strides = (0,) * self.ndim
-            self.is_contiguous = False
-            self.requires_grad = False
-
-        self.ctype = None
+        return self._array_interface
 
     def __del__(self):
-        if self.owner and self.device is not None and self.ptr is not None:
-            # TODO: ill-timed gc could trigger superfluous context switches here
-            #       Delegate to a separate thread? (e.g., device_free_async)
-            if self.device.is_capturing:
-                raise RuntimeError(f"Cannot free memory on device {self.device} while graph capture is active")
-
+        if self.owner:
             # use CUDA context guard to avoid side effects during garbage collection
             with self.device.context_guard:
                 self.device.allocator.free(self.ptr, self.capacity, self.pinned)
@@ -1286,11 +1574,11 @@ class array(Array):
         return self.shape[0]
 
     def __str__(self):
-        if self.device == None:
+        if self.device is None:
             # for 'empty' arrays we just return the type information, these are used in kernel function signatures
             return f"array{self.dtype}"
         else:
-            return str(self.to("cpu").numpy())
+            return str(self.numpy())
 
     def __getitem__(self, key):
         if isinstance(key, int):
@@ -1341,7 +1629,7 @@ class array(Array):
                 if stop < 0:
                     stop = self.shape[idx] + stop
 
-                if start < 0 or start > self.shape[idx] - 1:
+                if start < 0 or start >= self.shape[idx]:
                     raise RuntimeError(f"Invalid indexing in slice: {start}:{stop}:{step}")
                 if stop < 1 or stop > self.shape[idx]:
                     raise RuntimeError(f"Invalid indexing in slice: {start}:{stop}:{step}")
@@ -1365,22 +1653,37 @@ class array(Array):
                 start = k
                 if start < 0:
                     start = self.shape[idx] + start
-                if start < 0 or start > self.shape[idx] - 1:
+                if start < 0 or start >= self.shape[idx]:
                     raise RuntimeError(f"Invalid indexing in slice: {k}")
                 new_dim -= 1
 
                 ptr_offset += self.strides[idx] * start
 
+        # handle grad
+        if self.grad is not None:
+            new_grad = array(
+                ptr=self.grad.ptr + ptr_offset if self.grad.ptr is not None else None,
+                dtype=self.grad.dtype,
+                shape=tuple(new_shape),
+                strides=tuple(new_strides),
+                device=self.grad.device,
+                pinned=self.grad.pinned,
+                owner=False,
+            )
+            # store back-ref to stop data being destroyed
+            new_grad._ref = self.grad
+        else:
+            new_grad = None
+
         a = array(
+            ptr=self.ptr + ptr_offset if self.ptr is not None else None,
             dtype=self.dtype,
             shape=tuple(new_shape),
             strides=tuple(new_strides),
-            ptr=self.ptr + ptr_offset,
-            capacity=self.capacity,
             device=self.device,
+            pinned=self.pinned,
             owner=False,
-            ndim=new_dim,
-            requires_grad=self.requires_grad,
+            grad=new_grad,
         )
 
         # store back-ref to stop data being destroyed
@@ -1398,9 +1701,52 @@ class array(Array):
     def __ctype__(self):
         if self.ctype is None:
             data = 0 if self.ptr is None else ctypes.c_uint64(self.ptr)
-            self.ctype = array_t(data=data, ndim=self.ndim, shape=self.shape, strides=self.strides)
+            grad = 0 if self.grad is None or self.grad.ptr is None else ctypes.c_uint64(self.grad.ptr)
+            self.ctype = array_t(data=data, grad=grad, ndim=self.ndim, shape=self.shape, strides=self.strides)
 
         return self.ctype
+
+    def __matmul__(self, other):
+        """
+        Enables A @ B syntax for matrix multiplication
+        """
+        if self.ndim != 2 or other.ndim != 2:
+            raise RuntimeError(
+                "A has dim = {}, B has dim = {}. If multiplying with @, A and B must have dim = 2.".format(
+                    self.ndim, other.ndim
+                )
+            )
+
+        m = self.shape[0]
+        n = other.shape[1]
+        c = warp.zeros(shape=(m, n), dtype=self.dtype, device=self.device, requires_grad=True)
+        d = warp.zeros(shape=(m, n), dtype=self.dtype, device=self.device, requires_grad=True)
+        matmul(self, other, c, d, device=self.device)
+        return d
+
+    @property
+    def grad(self):
+        return self._grad
+
+    @grad.setter
+    def grad(self, grad):
+        if grad is None:
+            self._grad = None
+            self._requires_grad = False
+        else:
+            # make sure the given gradient array is compatible
+            if (
+                grad.dtype != self.dtype
+                or grad.shape != self.shape
+                or grad.strides != self.strides
+                or grad.device != self.device
+            ):
+                raise ValueError("The given gradient array is incompatible")
+            self._grad = grad
+            self._requires_grad = True
+
+        # trigger re-creation of C-representation
+        self.ctype = None
 
     @property
     def requires_grad(self):
@@ -1408,15 +1754,24 @@ class array(Array):
 
     @requires_grad.setter
     def requires_grad(self, value: bool):
-        if value and self.grad is None:
+        if value and self._grad is None:
             self._alloc_grad()
         elif not value:
-            self.grad = None
+            self._grad = None
 
         self._requires_grad = value
 
+        # trigger re-creation of C-representation
+        self.ctype = None
+
     def _alloc_grad(self):
-        self.grad = warp.zeros(shape=self.shape, dtype=self.dtype, device=self.device, requires_grad=False)
+        self._grad = array(
+            dtype=self.dtype, shape=self.shape, strides=self.strides, device=self.device, pinned=self.pinned
+        )
+        self._grad.zero_()
+
+        # trigger re-creation of C-representation
+        self.ctype = None
 
     @property
     def vars(self):
@@ -1429,107 +1784,131 @@ class array(Array):
         return array._vars
 
     def zero_(self):
-        if not self.is_contiguous:
-            raise RuntimeError(f"Assigning to non-contiguous arrays is unsupported.")
-
-        if self.device is not None and self.ptr is not None:
-            self.device.memset(
-                ctypes.c_void_p(self.ptr), ctypes.c_int(0), ctypes.c_size_t(self.size * type_size_in_bytes(self.dtype))
-            )
+        if self.is_contiguous:
+            # simple memset is usually faster than generic fill
+            self.device.memset(self.ptr, 0, self.size * type_size_in_bytes(self.dtype))
+        else:
+            self.fill_(0)
 
     def fill_(self, value):
-        if not self.is_contiguous:
-            raise RuntimeError(f"Assigning to non-contiguous arrays is unsupported.")
+        if self.size == 0:
+            return
 
-        if self.device is not None and self.ptr is not None:
-            if isinstance(value, ctypes.Array):
-                # in this case we're filling the array with a vector or
-                # something similar, eg arr.fill_(wp.vec3(1.0,2.0,3.0)).
-
-                # check input type:
-                value_type_ok = False
-                if issubclass(self.dtype, ctypes.Array):
-                    value_type_ok = (self.dtype._length_ == value._length_) and (self.dtype._type_ == value._type_)
-                if not value_type_ok:
-                    raise RuntimeError(
-                        f"wp.array has Array type elements (eg vec, mat etc). Value type must match element type in wp.array.fill_() method"
+        # try to convert the given value to the array dtype
+        try:
+            if isinstance(self.dtype, warp.codegen.Struct):
+                if isinstance(value, self.dtype.cls):
+                    cvalue = value.__ctype__()
+                elif value == 0:
+                    # allow zero-initializing structs using default constructor
+                    cvalue = self.dtype().__ctype__()
+                else:
+                    raise ValueError(
+                        f"Invalid initializer value for struct {self.dtype.cls.__name__}, expected struct instance or 0"
                     )
-
-                src = ctypes.cast(value, ctypes.POINTER(ctypes.c_void_p))
-
-                srcsize = value._length_ * ctypes.sizeof(value._type_)
-                dst = ctypes.cast(self.ptr, ctypes.POINTER(ctypes.c_int))
-                self.device.memtile(dst, src, srcsize, self.size)
-
+            elif issubclass(self.dtype, ctypes.Array):
+                # vector/matrix
+                cvalue = self.dtype(value)
             else:
-                # In this case we're just filling the array with a scalar,
-                # eg arr.fill_(1.0). If the elements are scalars, we need to
-                # set them all to "value", otherwise we need to set all the
-                # components of all the vector elements to "value":
-
-                # work out array element type:
-                elem_type = self.dtype._type_ if issubclass(self.dtype, ctypes.Array) else type_ctype(self.dtype)
-                elem_size = ctypes.sizeof(elem_type)
-
-                # convert value to array type
-                # we need a special case for float16 because it's annoying...
-                if types_equal(self.dtype, float16) or (
-                    hasattr(self.dtype, "_wp_scalar_type_") and types_equal(self.dtype._wp_scalar_type_, float16)
-                ):
-                    # special case for float16:
-                    # If you just do elem_type(value), it'll just convert "value"
-                    # to uint16 then interpret the bits as float16, which will
-                    # mess the data up. Instead, we use float_to_half_bits() to
-                    # convert "value" to a float16 and return its bits in a uint16:
-
-                    from warp.context import runtime
-
-                    src_value = elem_type(runtime.core.float_to_half_bits(ctypes.c_float(value)))
+                # scalar
+                if type(value) in warp.types.scalar_types:
+                    value = value.value
+                if self.dtype == float16:
+                    cvalue = self.dtype._type_(float_to_half_bits(value))
                 else:
-                    src_value = elem_type(value)
+                    cvalue = self.dtype._type_(value)
+        except Exception as e:
+            raise ValueError(f"Failed to convert the value to the array data type: {e}")
 
-                # use memset for these special cases because it's quicker (probably...):
-                total_bytes = self.size * type_size_in_bytes(self.dtype)
-                if elem_size in [1, 2, 4] and (total_bytes % 4 == 0):
-                    # interpret as a 4 byte integer:
-                    dest_value = ctypes.cast(ctypes.pointer(src_value), ctypes.POINTER(ctypes.c_int)).contents
-                    if elem_size == 1:
-                        # need to repeat the bits, otherwise we'll get an array interleaved with zeros:
-                        dest_value.value = dest_value.value & 0x000000FF
-                        dest_value.value = (
-                            dest_value.value
-                            + (dest_value.value << 8)
-                            + (dest_value.value << 16)
-                            + (dest_value.value << 24)
-                        )
-                    elif elem_size == 2:
-                        # need to repeat the bits, otherwise we'll get an array interleaved with zeros:
-                        dest_value.value = dest_value.value & 0x0000FFFF
-                        dest_value.value = dest_value.value + (dest_value.value << 16)
+        cvalue_ptr = ctypes.pointer(cvalue)
+        cvalue_size = ctypes.sizeof(cvalue)
 
-                    self.device.memset(
-                        ctypes.cast(self.ptr, ctypes.POINTER(ctypes.c_int)), dest_value, ctypes.c_size_t(total_bytes)
-                    )
-                else:
-                    num_elems = self.size * self.dtype._length_ if issubclass(self.dtype, ctypes.Array) else self.size
-                    dst = ctypes.cast(self.ptr, ctypes.POINTER(ctypes.c_int))
-                    self.device.memtile(dst, ctypes.pointer(src_value), elem_size, num_elems)
+        # prefer using memtile for contiguous arrays, because it should be faster than generic fill
+        if self.is_contiguous:
+            self.device.memtile(self.ptr, cvalue_ptr, cvalue_size, self.size)
+        else:
+            carr = self.__ctype__()
+            carr_ptr = ctypes.pointer(carr)
+
+            if self.device.is_cuda:
+                warp.context.runtime.core.array_fill_device(
+                    self.device.context, carr_ptr, ARRAY_TYPE_REGULAR, cvalue_ptr, cvalue_size
+                )
+            else:
+                warp.context.runtime.core.array_fill_host(carr_ptr, ARRAY_TYPE_REGULAR, cvalue_ptr, cvalue_size)
 
     # equivalent to wrapping src data in an array and copying to self
     def assign(self, src):
-        if isinstance(src, array):
+        if is_array(src):
             warp.copy(self, src)
         else:
-            warp.copy(self, array(src, dtype=self.dtype, copy=False, device="cpu"))
+            warp.copy(self, array(data=src, dtype=self.dtype, copy=False, device="cpu"))
 
     # convert array to ndarray (alias memory through array interface)
     def numpy(self):
-        # use the CUDA default stream for synchronous behaviour with other streams
-        with warp.ScopedStream(self.device.null_stream):
-            if self.ptr is None:
-                return np.empty(shape=self.shape, dtype=self.dtype)
+        if self.ptr:
+            # use the CUDA default stream for synchronous behaviour with other streams
+            with warp.ScopedStream(self.device.null_stream):
+                a = self.to("cpu")
+            # convert through __array_interface__
+            # Note: this handles arrays of structs using `descr`, so the result will be a structured NumPy array
+            return np.array(a, copy=False)
+        else:
+            # return an empty numpy array with the correct dtype and shape
+            if isinstance(self.dtype, warp.codegen.Struct):
+                npdtype = self.dtype.numpy_dtype()
+                npshape = self.shape
+            elif issubclass(self.dtype, ctypes.Array):
+                npdtype = warp_type_to_np_dtype[self.dtype._wp_scalar_type_]
+                npshape = (*self.shape, *self.dtype._shape_)
             else:
-                return np.array(self.to("cpu"), copy=False)
+                npdtype = warp_type_to_np_dtype[self.dtype]
+                npshape = self.shape
+            return np.empty(npshape, dtype=npdtype)
+
+    # return a ctypes cast of the array address
+    # note #1: only CPU arrays support this method
+    # note #2: the array must be contiguous
+    # note #3: accesses to this object are *not* bounds checked
+    # note #4: for float16 types, a pointer to the internal uint16 representation is returned
+    def cptr(self):
+        if not self.ptr:
+            return None
+
+        if self.device != "cpu" or not self.is_contiguous:
+            raise RuntimeError(
+                "Accessing array memory through a ctypes ptr is only supported for contiguous CPU arrays."
+            )
+
+        if isinstance(self.dtype, warp.codegen.Struct):
+            p = ctypes.cast(self.ptr, ctypes.POINTER(self.dtype.ctype))
+        else:
+            p = ctypes.cast(self.ptr, ctypes.POINTER(self.dtype._type_))
+
+        # store backref to the underlying array to avoid it being deallocated
+        p._ref = self
+
+        return p
+
+    # returns a flattened list of items in the array as a Python list
+    def list(self):
+        a = self.numpy()
+
+        if isinstance(self.dtype, warp.codegen.Struct):
+            # struct
+            a = a.flatten()
+            data = a.ctypes.data
+            stride = a.strides[0]
+            return [self.dtype.from_ptr(data + i * stride) for i in range(self.size)]
+        elif issubclass(self.dtype, ctypes.Array):
+            # vector/matrix - flatten, but preserve inner vector/matrix dimensions
+            a = a.reshape((self.size, *self.dtype._shape_))
+            data = a.ctypes.data
+            stride = a.strides[0]
+            return [self.dtype.from_ptr(data + i * stride) for i in range(self.size)]
+        else:
+            # scalar
+            return list(a.flatten())
 
     # convert data from one device to another, nop if already on device
     def to(self, device):
@@ -1537,26 +1916,24 @@ class array(Array):
         if self.device == device:
             return self
         else:
-            dest = warp.empty(shape=self.shape, dtype=self.dtype, device=device)
-            # to copy between devices, array must be contiguous
-            warp.copy(dest, self.contiguous())
-            return dest
+            return warp.clone(self, device=device)
 
     def flatten(self):
+        if self.ndim == 1:
+            return self
+
         if not self.is_contiguous:
-            raise RuntimeError(f"Flattening non-contiguous arrays is unsupported.")
+            raise RuntimeError("Flattening non-contiguous arrays is unsupported.")
 
         a = array(
+            ptr=self.ptr,
             dtype=self.dtype,
             shape=(self.size,),
-            strides=(type_size_in_bytes(self.dtype),),
-            ptr=self.ptr,
-            capacity=self.capacity,
             device=self.device,
+            pinned=self.pinned,
             copy=False,
             owner=False,
-            ndim=1,
-            requires_grad=self.requires_grad,
+            grad=None if self.grad is None else self.grad.flatten(),
         )
 
         # store back-ref to stop data being destroyed
@@ -1565,20 +1942,37 @@ class array(Array):
 
     def reshape(self, shape):
         if not self.is_contiguous:
-            raise RuntimeError(f"Reshaping non-contiguous arrays is unsupported.")
+            raise RuntimeError("Reshaping non-contiguous arrays is unsupported.")
 
         # convert shape to tuple
-        if shape == None:
+        if shape is None:
             raise RuntimeError("shape parameter is required.")
         if isinstance(shape, int):
             shape = (shape,)
-        elif isinstance(shape, List):
+        elif not isinstance(shape, tuple):
             shape = tuple(shape)
 
         if len(shape) > ARRAY_MAX_DIMS:
             raise RuntimeError(
                 f"Arrays may only have {ARRAY_MAX_DIMS} dimensions maximum, trying to create array with {len(shape)} dims."
             )
+
+        # check for -1 dimension and reformat
+        if -1 in shape:
+            idx = self.size
+            denom = 1
+            minus_one_count = 0
+            for i, d in enumerate(shape):
+                if d == -1:
+                    idx = i
+                    minus_one_count += 1
+                else:
+                    denom *= d
+            if minus_one_count > 1:
+                raise RuntimeError("Cannot infer shape if more than one index is -1.")
+            new_shape = list(shape)
+            new_shape[idx] = int(self.size / denom)
+            shape = tuple(new_shape)
 
         size = 1
         for d in shape:
@@ -1588,16 +1982,15 @@ class array(Array):
             raise RuntimeError("Reshaped array must have the same total size as the original.")
 
         a = array(
+            ptr=self.ptr,
             dtype=self.dtype,
             shape=shape,
             strides=None,
-            ptr=self.ptr,
-            capacity=self.capacity,
             device=self.device,
+            pinned=self.pinned,
             copy=False,
             owner=False,
-            ndim=len(shape),
-            requires_grad=self.requires_grad,
+            grad=None if self.grad is None else self.grad.reshape(shape),
         )
 
         # store back-ref to stop data being destroyed
@@ -1606,25 +1999,23 @@ class array(Array):
 
     def view(self, dtype):
         if type_size_in_bytes(dtype) != type_size_in_bytes(self.dtype):
-            raise RuntimeError("cannot reinterpret cast dtypes of unequal byte size")
-        else:
-            # return an alias of the array memory with different type information
-            a = array(
-                data=None,
-                dtype=dtype,
-                shape=self.shape,
-                strides=self.strides,
-                ptr=self.ptr,
-                capacity=self.capacity,
-                device=self.device,
-                copy=False,
-                owner=False,
-                ndim=self.ndim,
-                requires_grad=self.requires_grad,
-            )
+            raise RuntimeError("Cannot cast dtypes of unequal byte size")
 
-            a._ref = self
-            return a
+        # return an alias of the array memory with different type information
+        a = array(
+            ptr=self.ptr,
+            dtype=dtype,
+            shape=self.shape,
+            strides=self.strides,
+            device=self.device,
+            pinned=self.pinned,
+            copy=False,
+            owner=False,
+            grad=None if self.grad is None else self.grad.view(dtype),
+        )
+
+        a._ref = self
+        return a
 
     def contiguous(self):
         if self.is_contiguous:
@@ -1632,21 +2023,20 @@ class array(Array):
 
         a = warp.empty_like(self)
         warp.copy(a, self)
-
         return a
 
     # note: transpose operation will return an array with a non-contiguous access pattern
     def transpose(self, axes=None):
         # noop if 1d array
-        if len(self.shape) == 1:
+        if self.ndim == 1:
             return self
 
-        if axes == None:
+        if axes is None:
             # reverse the order of the axes
             axes = range(self.ndim)[::-1]
-
-        if len(axes) != len(self.shape):
+        elif len(axes) != len(self.shape):
             raise RuntimeError("Length of parameter axes must be equal in length to array shape")
+
         shape = []
         strides = []
         for a in axes:
@@ -1658,17 +2048,15 @@ class array(Array):
             strides.append(self.strides[a])
 
         a = array(
-            data=None,
+            ptr=self.ptr,
             dtype=self.dtype,
             shape=tuple(shape),
             strides=tuple(strides),
-            ptr=self.ptr,
-            capacity=self.capacity,
             device=self.device,
+            pinned=self.pinned,
             copy=False,
             owner=False,
-            ndim=self.ndim,
-            requires_grad=self.requires_grad,
+            grad=None if self.grad is None else self.grad.transpose(axes=axes),
         )
 
         a._ref = self
@@ -1699,6 +2087,7 @@ def array4d(*args, **kwargs):
     return array(*args, **kwargs)
 
 
+# TODO: Rewrite so that we take only shape, not length and optional shape
 def from_ptr(ptr, length, dtype=None, shape=None, device=None):
     return array(
         dtype=dtype,
@@ -1717,9 +2106,7 @@ class indexedarray(Generic[T]):
     # (initialized when needed)
     _vars = None
 
-    def __init__(
-        self, data: array = None, indices: Union[array, List[array]] = None, dtype=None, ndim=None, requires_grad=False
-    ):
+    def __init__(self, data: array = None, indices: Union[array, List[array]] = None, dtype=None, ndim=None):
         # canonicalize types
         if dtype is not None:
             if dtype == int:
@@ -1781,7 +2168,7 @@ class indexedarray(Generic[T]):
                     shape[0] = len(indices)
 
                 else:
-                    raise ValueError(f"Indices must be a single Warp array or a list of Warp arrays")
+                    raise ValueError("Indices must be a single Warp array or a list of Warp arrays")
 
             self.shape = tuple(shape)
 
@@ -1800,34 +2187,19 @@ class indexedarray(Generic[T]):
 
         self.is_contiguous = False
 
-        self.grad = None
-        self.requires_grad = requires_grad
-
     def __len__(self):
         return self.shape[0]
 
     def __str__(self):
-        return f"indexedarray{self.dtype}"
+        if self.device is None:
+            # type annotation
+            return f"indexedarray{self.dtype}"
+        else:
+            return str(self.numpy())
 
     # construct a C-representation of the array for passing to kernels
     def __ctype__(self):
         return indexedarray_t(self.data, self.indices, self.shape)
-
-    @property
-    def requires_grad(self):
-        return self._requires_grad
-
-    @requires_grad.setter
-    def requires_grad(self, value: bool):
-        if value and self.grad is None and self.data is not None:
-            self._alloc_grad()
-        elif not value:
-            self.grad = None
-
-        self._requires_grad = value
-
-    def _alloc_grad(self):
-        self.grad = warp.zeros(shape=self.shape, dtype=self.dtype, device=self.device, requires_grad=False)
 
     @property
     def vars(self):
@@ -1842,7 +2214,6 @@ class indexedarray(Generic[T]):
     def contiguous(self):
         a = warp.empty_like(self)
         warp.copy(a, self)
-
         return a
 
     # convert data from one device to another, nop if already on device
@@ -1851,16 +2222,72 @@ class indexedarray(Generic[T]):
         if self.device == device:
             return self
         else:
-            dest = warp.empty(shape=self.shape, dtype=self.dtype, device=device)
-            # to copy between devices, array must be contiguous
-            warp.copy(dest, self.contiguous())
-            return dest
+            return warp.clone(self, device=device)
 
-    # convert array to ndarray (alias memory through array interface)
+    # return a contiguous numpy copy
     def numpy(self):
         # use the CUDA default stream for synchronous behaviour with other streams
         with warp.ScopedStream(self.device.null_stream):
-            return np.array(self.contiguous().to("cpu"), copy=False)
+            return self.contiguous().numpy()
+
+    # returns a flattened list of items in the array as a Python list
+    def list(self):
+        # use the CUDA default stream for synchronous behaviour with other streams
+        with warp.ScopedStream(self.device.null_stream):
+            return self.contiguous().list()
+
+    def zero_(self):
+        self.fill_(0)
+
+    def fill_(self, value):
+        if self.size == 0:
+            return
+
+        # try to convert the given value to the array dtype
+        try:
+            if isinstance(self.dtype, warp.codegen.Struct):
+                if isinstance(value, self.dtype.cls):
+                    cvalue = value.__ctype__()
+                elif value == 0:
+                    # allow zero-initializing structs using default constructor
+                    cvalue = self.dtype().__ctype__()
+                else:
+                    raise ValueError(
+                        f"Invalid initializer value for struct {self.dtype.cls.__name__}, expected struct instance or 0"
+                    )
+            elif issubclass(self.dtype, ctypes.Array):
+                # vector/matrix
+                cvalue = self.dtype(value)
+            else:
+                # scalar
+                if type(value) in warp.types.scalar_types:
+                    value = value.value
+                if self.dtype == float16:
+                    cvalue = self.dtype._type_(float_to_half_bits(value))
+                else:
+                    cvalue = self.dtype._type_(value)
+        except Exception as e:
+            raise ValueError(f"Failed to convert the value to the array data type: {e}")
+
+        cvalue_ptr = ctypes.pointer(cvalue)
+        cvalue_size = ctypes.sizeof(cvalue)
+
+        ctype = self.__ctype__()
+        ctype_ptr = ctypes.pointer(ctype)
+
+        if self.device.is_cuda:
+            warp.context.runtime.core.array_fill_device(
+                self.device.context, ctype_ptr, ARRAY_TYPE_INDEXED, cvalue_ptr, cvalue_size
+            )
+        else:
+            warp.context.runtime.core.array_fill_host(ctype_ptr, ARRAY_TYPE_INDEXED, cvalue_ptr, cvalue_size)
+
+    # equivalent to wrapping src data in an array and copying to self
+    def assign(self, src):
+        if is_array(src):
+            warp.copy(self, src)
+        else:
+            warp.copy(self, array(data=src, dtype=self.dtype, copy=False, device="cpu"))
 
 
 # aliases for indexedarrays with small dimensions
@@ -1890,8 +2317,13 @@ def indexedarray4d(*args, **kwargs):
 array_types = (array, indexedarray)
 
 
-def is_array(a):
-    return isinstance(a, array_types)
+def array_type_id(a):
+    if isinstance(a, warp.array):
+        return warp.types.ARRAY_TYPE_REGULAR
+    elif isinstance(a, warp.indexedarray):
+        return warp.types.ARRAY_TYPE_INDEXED
+    else:
+        raise ValueError(f"Invalid array")
 
 
 class Bvh:
@@ -1970,10 +2402,10 @@ class Mesh:
     vars = {
         "points": Var("points", array(dtype=vec3)),
         "velocities": Var("velocities", array(dtype=vec3)),
-        "indices": Var("indices", array(dtype=int32, ndim=2)),
+        "indices": Var("indices", array(dtype=int32)),
     }
 
-    def __init__(self, points=None, indices=None, velocities=None):
+    def __init__(self, points=None, indices=None, velocities=None, support_winding_number=False):
         """Class representing a triangle mesh.
 
         Attributes:
@@ -1982,8 +2414,9 @@ class Mesh:
 
         Args:
             points (:class:`warp.array`): Array of vertex positions of type :class:`warp.vec3`
-            indices (:class:`warp.array`): Array of triangle indices of type :class:`warp.int32`, should be length 3*number of triangles
+            indices (:class:`warp.array`): Array of triangle indices of type :class:`warp.int32`, should be a 1d array with shape (num_tris, 3)
             velocities (:class:`warp.array`): Array of vertex velocities of type :class:`warp.vec3` (optional)
+            support_winding_number (bool): If true the mesh will build additional datastructures to support `wp.mesh_query_point_sign_winding_number()` queries
         """
 
         if points.device != indices.device:
@@ -1998,31 +2431,34 @@ class Mesh:
         if indices.dtype != int32 or not indices.is_contiguous:
             raise RuntimeError("Mesh indices should be a contiguous array of type wp.int32")
 
+        if indices.ndim > 1:
+            raise RuntimeError("Mesh indices should be a flattened 1d array of indices")
+
         self.device = points.device
         self.points = points
         self.velocities = velocities
         self.indices = indices
 
-        def get_data(array):
-            if array:
-                return ctypes.c_void_p(array.ptr)
-            else:
-                return ctypes.c_void_p(0)
-
         from warp.context import runtime
 
         if self.device.is_cpu:
             self.id = runtime.core.mesh_create_host(
-                get_data(points), get_data(velocities), get_data(indices), int(len(points)), int(indices.size / 3)
+                points.__ctype__(),
+                velocities.__ctype__() if velocities else array().__ctype__(),
+                indices.__ctype__(),
+                int(len(points)),
+                int(indices.size / 3),
+                int(support_winding_number),
             )
         else:
             self.id = runtime.core.mesh_create_device(
                 self.device.context,
-                get_data(points),
-                get_data(velocities),
-                get_data(indices),
+                points.__ctype__(),
+                velocities.__ctype__() if velocities else array().__ctype__(),
+                indices.__ctype__(),
                 int(len(points)),
                 int(indices.size / 3),
+                int(support_winding_number),
             )
 
     def __del__(self):
@@ -2035,7 +2471,6 @@ class Mesh:
                 # use CUDA context guard to avoid side effects during garbage collection
                 with self.device.context_guard:
                     runtime.core.mesh_destroy_device(self.id)
-
         except:
             pass
 
@@ -2076,7 +2511,7 @@ class Volume:
             return
 
         if data.device is None:
-            raise RuntimeError(f"Invalid device")
+            raise RuntimeError("Invalid device")
         self.device = data.device
 
         if self.device.is_cpu:
@@ -2113,7 +2548,7 @@ class Volume:
             self.context.core.volume_get_buffer_info_host(self.id, ctypes.byref(buf), ctypes.byref(size))
         else:
             self.context.core.volume_get_buffer_info_device(self.id, ctypes.byref(buf), ctypes.byref(size))
-        return array(ptr=buf.value, dtype=uint8, length=size.value, device=self.device, owner=False)
+        return array(ptr=buf.value, dtype=uint8, shape=size.value, device=self.device, owner=False)
 
     def get_tiles(self):
         if self.id == 0:
@@ -2126,9 +2561,7 @@ class Volume:
         else:
             self.context.core.volume_get_tiles_device(self.id, ctypes.byref(buf), ctypes.byref(size))
         num_tiles = size.value // (3 * 4)
-        return array(
-            ptr=buf.value, dtype=int32, shape=(num_tiles, 3), length=size.value, device=self.device, owner=True
-        )
+        return array(ptr=buf.value, dtype=int32, shape=(num_tiles, 3), device=self.device, owner=True)
 
     def get_voxel_size(self):
         if self.id == 0:
@@ -2253,7 +2686,7 @@ class Volume:
             and (tile_points.dtype == int32 and tile_points.ndim == 2)
             or (tile_points.dtype == vec3 and tile_points.ndim == 1)
         ):
-            raise RuntimeError(f"Expected an warp array of vec3s or of n-by-3 int32s as tile_points!")
+            raise RuntimeError("Expected an warp array of vec3s or of n-by-3 int32s as tile_points!")
         if not tile_points.device.is_cuda:
             tile_points = array(tile_points, dtype=tile_points.dtype, device=device)
 
@@ -2349,6 +2782,14 @@ def matmul(
             "Invalid shapes for matrices: A = {} B = {} C = {} D = {}".format(a.shape, b.shape, c.shape, d.shape)
         )
 
+    if runtime.tape:
+        runtime.tape.record_func(
+            backward=lambda: adj_matmul(
+                a, b, c, a.grad, b.grad, c.grad, d.grad, alpha, beta, allow_tf32x3_arith, device
+            ),
+            arrays=[a, b, c, d],
+        )
+
     # cpu fallback if no cuda devices found
     if device == "cpu":
         d.assign(alpha * (a.numpy() @ b.numpy()) + beta * c.numpy())
@@ -2374,14 +2815,6 @@ def matmul(
     )
     if not ret:
         raise RuntimeError("Matmul failed.")
-
-    if runtime.tape:
-        runtime.tape.record_func(
-            backward=lambda: adj_matmul(
-                a, b, c, a.grad, b.grad, c.grad, d.grad, alpha, beta, allow_tf32x3_arith, device
-            ),
-            arrays=[a, b, c, d],
-        )
 
 
 def adj_matmul(
@@ -2581,6 +3014,14 @@ def batched_matmul(
             "Invalid shapes for matrices: A = {} B = {} C = {} D = {}".format(a.shape, b.shape, c.shape, d.shape)
         )
 
+    if runtime.tape:
+        runtime.tape.record_func(
+            backward=lambda: adj_matmul(
+                a, b, c, a.grad, b.grad, c.grad, d.grad, alpha, beta, allow_tf32x3_arith, device
+            ),
+            arrays=[a, b, c, d],
+        )
+
     # cpu fallback if no cuda devices found
     if device == "cpu":
         d.assign(alpha * np.matmul(a.numpy(), b.numpy()) + beta * c.numpy())
@@ -2606,14 +3047,6 @@ def batched_matmul(
     )
     if not ret:
         raise RuntimeError("Batched matmul failed.")
-
-    if runtime.tape:
-        runtime.tape.record_func(
-            backward=lambda: adj_matmul(
-                a, b, c, a.grad, b.grad, c.grad, d.grad, alpha, beta, allow_tf32x3_arith, device
-            ),
-            arrays=[a, b, c, d],
-        )
 
 
 def adj_batched_matmul(
@@ -2789,6 +3222,9 @@ class HashGrid:
         else:
             self.id = runtime.core.hash_grid_create_device(self.device.context, dim_x, dim_y, dim_z)
 
+        # indicates whether the grid data has been reserved for use by a kernel
+        self.reserved = False
+
     def build(self, points, radius):
         """Updates the hash grid data structure.
 
@@ -2808,6 +3244,7 @@ class HashGrid:
             runtime.core.hash_grid_update_host(self.id, radius, ctypes.cast(points.ptr, ctypes.c_void_p), len(points))
         else:
             runtime.core.hash_grid_update_device(self.id, radius, ctypes.cast(points.ptr, ctypes.c_void_p), len(points))
+        self.reserved = True
 
     def reserve(self, num_points):
         from warp.context import runtime
@@ -2816,6 +3253,7 @@ class HashGrid:
             runtime.core.hash_grid_reserve_host(self.id, num_points)
         else:
             runtime.core.hash_grid_reserve_device(self.id, num_points)
+        self.reserved = True
 
     def __del__(self):
         try:
@@ -2930,6 +3368,10 @@ def type_is_generic(t):
         return False
 
 
+def type_is_generic_scalar(t):
+    return t in (Scalar, Float, Int)
+
+
 def type_matches_template(arg_type, template_type):
     """Check if an argument type matches a template.
 
@@ -2981,6 +3423,49 @@ def type_matches_template(arg_type, template_type):
                 return False
 
     return True
+
+
+def infer_argument_types(args, template_types, arg_names=None):
+    """Resolve argument types with the given list of template types."""
+
+    if len(args) != len(template_types):
+        raise RuntimeError(f"Number of arguments must match number of template types.")
+
+    arg_types = []
+
+    for i in range(len(args)):
+        arg = args[i]
+        arg_type = type(arg)
+        arg_name = arg_names[i] if arg_names else str(i)
+        if arg_type in warp.types.array_types:
+            arg_types.append(arg_type(dtype=arg.dtype, ndim=arg.ndim))
+        elif arg_type in warp.types.scalar_types:
+            arg_types.append(arg_type)
+        elif arg_type in [int, float]:
+            # canonicalize type
+            arg_types.append(warp.types.type_to_warp(arg_type))
+        elif hasattr(arg_type, "_wp_scalar_type_"):
+            # vector/matrix type
+            arg_types.append(arg_type)
+        elif issubclass(arg_type, warp.codegen.StructInstance):
+            # a struct
+            arg_types.append(arg._cls)
+        # elif arg_type in [warp.types.launch_bounds_t, warp.types.shape_t, warp.types.range_t]:
+        #     arg_types.append(arg_type)
+        # elif arg_type in [warp.hash_grid_query_t, warp.mesh_query_aabb_t, warp.bvh_query_t]:
+        #     arg_types.append(arg_type)
+        elif arg is None:
+            # allow passing None for arrays
+            t = template_types[i]
+            if warp.types.is_array(t):
+                arg_types.append(type(t)(dtype=t.dtype, ndim=t.ndim))
+            else:
+                raise TypeError(f"Unable to infer the type of argument '{arg_name}', got None")
+        else:
+            # TODO: attempt to figure out if it's a vector/matrix type given as a numpy array, list, etc.
+            raise TypeError(f"Unable to infer the type of argument '{arg_name}', got {arg_type}")
+
+    return arg_types
 
 
 simple_type_codes = {

@@ -56,13 +56,9 @@ def nesterov2(
 
 
 def inner(a, b, out):
-    if a.device != b.device:
-        raise RuntimeError("Inner product devices do not match")
+    from warp.utils import array_inner
 
-    if a.device.is_cpu:
-        wp.context.runtime.array_inner_host(a, b, out, a.length)
-    elif a.device.is_cuda:
-        wp.context.runtime.array_inner_device(a, b, out, a.length)
+    array_inner(a, b, out)
 
 
 class Optimizer:

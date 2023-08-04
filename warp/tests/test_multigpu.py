@@ -34,6 +34,9 @@ def arange(start: int, step: int, a: wp.array(dtype=int)):
 def test_multigpu_set_device(test, device):
     assert len(wp.get_cuda_devices()) > 1, "At least two CUDA devices are required"
 
+    # save default device
+    saved_device = wp.get_device()
+
     n = 32
 
     wp.set_device("cuda:0")
@@ -44,7 +47,8 @@ def test_multigpu_set_device(test, device):
     a1 = wp.empty(n, dtype=int)
     wp.launch(arange, dim=a1.size, inputs=[0, 1, a1])
 
-    wp.synchronize()
+    # restore default device
+    wp.set_device(saved_device)
 
     assert a0.device == "cuda:0"
     assert a1.device == "cuda:1"
@@ -67,8 +71,6 @@ def test_multigpu_scoped_device(test, device):
     with wp.ScopedDevice("cuda:1"):
         a1 = wp.empty(n, dtype=int)
         wp.launch(arange, dim=a1.size, inputs=[0, 1, a1])
-
-    wp.synchronize()
 
     assert a0.device == "cuda:0"
     assert a1.device == "cuda:1"
@@ -120,21 +122,44 @@ def test_multigpu_pingpong(test, device):
     a0 = wp.zeros(n, dtype=float, device="cuda:0")
     a1 = wp.zeros(n, dtype=float, device="cuda:1")
 
+    iters = 10
+
+    for _ in range(iters):
+        wp.launch(inc, dim=a0.size, inputs=[a0], device=a0.device)
+        wp.synchronize_device(a0.device)
+        wp.copy(a1, a0)
+
+        wp.launch(inc, dim=a1.size, inputs=[a1], device=a1.device)
+        wp.synchronize_device(a1.device)
+        wp.copy(a0, a1)
+
+    expected = np.full(n, iters * 2, dtype=np.float32)
+
+    assert_np_equal(a0.numpy(), expected)
+    assert_np_equal(a1.numpy(), expected)
+
+
+def test_multigpu_pingpong_streams(test, device):
+    assert len(wp.get_cuda_devices()) > 1, "At least two CUDA devices are required"
+
+    n = 1024 * 1024
+
+    a0 = wp.zeros(n, dtype=float, device="cuda:0")
+    a1 = wp.zeros(n, dtype=float, device="cuda:1")
+
     stream0 = wp.get_stream("cuda:0")
     stream1 = wp.get_stream("cuda:1")
 
     iters = 10
 
-    for i in range(iters):
-        wp.launch(inc, dim=a0.size, inputs=[a0], device=a0.device)
-        wp.copy(a1, a0, stream=stream0)
-
+    for _ in range(iters):
+        wp.launch(inc, dim=a0.size, inputs=[a0], stream=stream0)
         stream1.wait_stream(stream0)
+        wp.copy(a1, a0, stream=stream1)
 
-        wp.launch(inc, dim=a1.size, inputs=[a1], device=a1.device)
-        wp.copy(a0, a1, stream=stream1)
-
+        wp.launch(inc, dim=a1.size, inputs=[a1], stream=stream1)
         stream0.wait_stream(stream1)
+        wp.copy(a0, a1, stream=stream0)
 
     expected = np.full(n, iters * 2, dtype=np.float32)
 
@@ -151,6 +176,7 @@ def register(parent):
         add_function_test(TestMultigpu, "test_multigpu_scoped_device", test_multigpu_scoped_device)
         add_function_test(TestMultigpu, "test_multigpu_nesting", test_multigpu_nesting)
         add_function_test(TestMultigpu, "test_multigpu_pingpong", test_multigpu_pingpong)
+        add_function_test(TestMultigpu, "test_multigpu_pingpong_streams", test_multigpu_pingpong_streams)
 
     return TestMultigpu
 

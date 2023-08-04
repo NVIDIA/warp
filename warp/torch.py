@@ -8,16 +8,16 @@
 import warp
 import numpy
 import ctypes
-from typing import Union
 
 
 # return the warp device corresponding to a torch device
 def device_from_torch(torch_device):
+    """Return the warp device corresponding to a torch device."""
     return warp.get_device(str(torch_device))
 
 
-# return the torch device corresponding to a warp device
 def device_to_torch(wp_device):
+    """Return the torch device corresponding to a warp device."""
     device = warp.get_device(wp_device)
     if device.is_cpu or device.is_primary:
         return str(device)
@@ -28,6 +28,7 @@ def device_to_torch(wp_device):
 
 
 def dtype_from_torch(torch_dtype):
+    """Return the Warp dtype corresponding to a torch dtype."""
     # initialize lookup table on first call to defer torch import
     if dtype_from_torch.type_map is None:
         import torch
@@ -60,14 +61,14 @@ dtype_from_torch.type_map = None
 
 
 def dtype_is_compatible(torch_dtype, warp_dtype):
+    """Evaluates whether the given torch dtype is compatible with the given warp dtype."""
     # initialize lookup table on first call to defer torch import
     if dtype_is_compatible.compatible_sets is None:
         import torch
 
         dtype_is_compatible.compatible_sets = {
             torch.float64: {warp.float64},
-            # float32 can be used for scalars and vector/matrix types
-            torch.float32: {warp.float32, *warp.types.warp.types.vector_types},
+            torch.float32: {warp.float32},
             torch.float16: {warp.float16},
             # allow aliasing integer tensors as signed or unsigned integer arrays
             torch.int64: {warp.int64, warp.uint64},
@@ -85,7 +86,10 @@ def dtype_is_compatible(torch_dtype, warp_dtype):
     compatible_set = dtype_is_compatible.compatible_sets.get(torch_dtype)
 
     if compatible_set is not None:
-        return warp_dtype in compatible_set
+        if hasattr(warp_dtype, "_wp_scalar_type_"):
+            return warp_dtype._wp_scalar_type_ in compatible_set
+        else:
+            return warp_dtype in compatible_set
     else:
         raise TypeError(f"Invalid or unsupported data type: {torch_dtype}")
 
@@ -94,14 +98,21 @@ dtype_is_compatible.compatible_sets = None
 
 
 # wrap a torch tensor to a wp array, data is not copied
-def from_torch(t, dtype=None, requires_grad=None):
+def from_torch(t, dtype=None, requires_grad=None, grad=None):
+    """Wrap a PyTorch tensor to a Warp array without copying the data.
+
+    Args:
+        t (torch.Tensor): The torch tensor to wrap.
+        dtype (warp.dtype, optional): The target data type of the resulting Warp array. Defaults to the tensor value type mapped to a Warp array value type.
+        requires_grad (bool, optional): Whether the resulting array should wrap the tensor's gradient, if it exists (the grad tensor will be allocated otherwise). Defaults to the tensor's `requires_grad` value.
+
+    Returns:
+        warp.array: The wrapped array.
+    """
     if dtype is None:
         dtype = dtype_from_torch(t.dtype)
     elif not dtype_is_compatible(t.dtype, dtype):
         raise RuntimeError(f"Incompatible data types: {t.dtype} and {dtype}")
-
-    if requires_grad is None:
-        requires_grad = t.requires_grad
 
     # get size of underlying data type to compute strides
     ctype_size = ctypes.sizeof(dtype._type_)
@@ -121,7 +132,7 @@ def from_torch(t, dtype=None, requires_grad=None):
             )
 
         # ensure the inner strides are contiguous
-        stride = 4
+        stride = ctype_size
         for i in range(dtype_dims):
             if strides[-i - 1] != stride:
                 raise RuntimeError(
@@ -129,46 +140,90 @@ def from_torch(t, dtype=None, requires_grad=None):
                 )
             stride *= dtype_shape[-i - 1]
 
-        shape = tuple(shape[:-dtype_dims])
-        strides = tuple(strides[:-dtype_dims])
+        shape = tuple(shape[:-dtype_dims]) or (1,)
+        strides = tuple(strides[:-dtype_dims]) or (ctype_size,)
+
+    requires_grad = t.requires_grad if requires_grad is None else requires_grad
+    if grad is not None:
+        if not isinstance(grad, warp.array):
+            import torch
+
+            if isinstance(grad, torch.Tensor):
+                grad = from_torch(grad)
+            else:
+                raise ValueError(f"Invalid gradient type: {type(grad)}")
+    elif requires_grad:
+        # wrap the tensor gradient, allocate if necessary
+        if t.grad is None:
+            # allocate a zero-filled gradient tensor if it doesn't exist
+            import torch
+            t.grad = torch.zeros_like(t, requires_grad=False)
+        grad = from_torch(t.grad)
 
     a = warp.types.array(
         ptr=t.data_ptr(),
         dtype=dtype,
         shape=shape,
         strides=strides,
+        device=device_from_torch(t.device),
         copy=False,
         owner=False,
+        grad=grad,
         requires_grad=requires_grad,
-        device=device_from_torch(t.device),
     )
 
     # save a reference to the source tensor, otherwise it will be deallocated
-    a.tensor = t
+    a._tensor = t
     return a
 
 
-def to_torch(a):
+def to_torch(a, requires_grad=None):
+    """
+    Convert a Warp array to a PyTorch tensor without copying the data.
+
+    Args:
+        a (warp.array): The Warp array to convert.
+        requires_grad (bool, optional): Whether the resulting tensor should convert the array's gradient, if it exists, to a grad tensor. Defaults to the array's `requires_grad` value.
+
+    Returns:
+        torch.Tensor: The converted tensor.
+    """
     import torch
+
+    if requires_grad is None:
+        requires_grad = a.requires_grad
+
+    # Torch does not support structured arrays
+    if isinstance(a.dtype, warp.codegen.Struct):
+        raise RuntimeError("Cannot convert structured Warp arrays to Torch.")
 
     if a.device.is_cpu:
         # Torch has an issue wrapping CPU objects
         # that support the __array_interface__ protocol
         # in this case we need to workaround by going
         # to an ndarray first, see https://pearu.github.io/array_interface_pytorch.html
-        return torch.as_tensor(numpy.asarray(a))
+        t = torch.as_tensor(numpy.asarray(a))
+        t.requires_grad = requires_grad
+        if requires_grad and a.requires_grad:
+            t.grad = torch.as_tensor(numpy.asarray(a.grad))
+        return t
 
     elif a.device.is_cuda:
         # Torch does support the __cuda_array_interface__
         # correctly, but we must be sure to maintain a reference
         # to the owning object to prevent memory allocs going out of scope
-        return torch.as_tensor(a, device=device_to_torch(a.device))
+        t = torch.as_tensor(a, device=device_to_torch(a.device))
+        t.requires_grad = requires_grad
+        if requires_grad and a.requires_grad:
+            t.grad = torch.as_tensor(a.grad, device=device_to_torch(a.device))
+        return t
 
     else:
         raise RuntimeError("Unsupported device")
 
 
 def stream_from_torch(stream_or_device=None):
+    """Convert from a PyTorch CUDA stream to a Warp.Stream."""
     import torch
 
     if isinstance(stream_or_device, torch.cuda.Stream):
@@ -188,6 +243,7 @@ def stream_from_torch(stream_or_device=None):
 
 
 def stream_to_torch(stream_or_device=None):
+    """Convert from a Warp.Stream to a PyTorch CUDA stream."""
     import torch
 
     if isinstance(stream_or_device, warp.Stream):

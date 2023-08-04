@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Simulation Reference" href="sim.html" /><link rel="prev" title="Runtime Reference" href="runtime.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 -->
-        <title>Kernel Reference - Warp 0.8.2</title>
+        <title>Kernel Reference - Warp 0.10.1</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -135,7 +135,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">Warp 0.8.2</div></a>
+      <a href="../index.html"><div class="brand">Warp 0.10.1</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -162,7 +162,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 0.8.2</span>
+  <span class="sidebar-brand-text">Warp 0.10.1</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -185,6 +185,7 @@
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Kernel Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sim.html">Simulation Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sparse.html">Sparse Linear Algebra Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Project Links</span></p>
@@ -616,6 +617,12 @@
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">min</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">v</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Vector" title="warp.Vector"><span class="pre">Vector</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a></span></span></dt>
+<dd><p>Return the minimum element of a vector.</p>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="warp.max">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">max</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a></span></span><a class="headerlink" href="#warp.max" title="Permalink to this definition">#</a></dt>
 <dd><p>Return the maximum of two scalars.</p>
@@ -625,6 +632,12 @@
 <dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">max</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Vector" title="warp.Vector"><span class="pre">Vector</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Vector" title="warp.Vector"><span class="pre">Vector</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.Vector" title="warp.Vector"><span class="pre">Vector</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
 <dd><p>Return the element wise maximum of two vectors.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">max</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">v</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Vector" title="warp.Vector"><span class="pre">Vector</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a></span></span></dt>
+<dd><p>Return the maximum element of a vector.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -830,6 +843,18 @@ Equivalent to <code class="docutils literal notranslate"><span class="pre">numpy
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="warp.argmin">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">argmin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">v</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Vector" title="warp.Vector"><span class="pre">Vector</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.uint32" title="warp.uint32"><span class="pre">uint32</span></a></span></span><a class="headerlink" href="#warp.argmin" title="Permalink to this definition">#</a></dt>
+<dd><p>Return the index of the minimum element of a vector. <a class="footnote-reference brackets" href="#id7" id="id1">1</a></p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.argmax">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">argmax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">v</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Vector" title="warp.Vector"><span class="pre">Vector</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.uint32" title="warp.uint32"><span class="pre">uint32</span></a></span></span><a class="headerlink" href="#warp.argmax" title="Permalink to this definition">#</a></dt>
+<dd><p>Return the index of the maximum element of a vector. <a class="footnote-reference brackets" href="#id7" id="id2">1</a></p>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="warp.outer">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">outer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Vector" title="warp.Vector"><span class="pre">Vector</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Vector" title="warp.Vector"><span class="pre">Vector</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.Matrix" title="warp.Matrix"><span class="pre">Matrix</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp.outer" title="Permalink to this definition">#</a></dt>
 <dd><p>Compute the outer product x*y^T for two vec2 objects.</p>
@@ -935,6 +960,12 @@ Equivalent to <code class="docutils literal notranslate"><span class="pre">numpy
 <dt class="sig sig-object py" id="warp.diag">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">diag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Vector" title="warp.Vector"><span class="pre">Vector</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.Matrix" title="warp.Matrix"><span class="pre">Matrix</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp.diag" title="Permalink to this definition">#</a></dt>
 <dd><p>Returns a matrix with the components of the vector d on the diagonal</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.get_diag">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">get_diag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">m</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Matrix" title="warp.Matrix"><span class="pre">Matrix</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.Vector" title="warp.Vector"><span class="pre">Vector</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp.get_diag" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns a vector containing the diagonal elements of the square matrix.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -1245,6 +1276,12 @@ then users should transpose the transformation matrix before calling this method
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="warp.breakpoint">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">breakpoint</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#warp.breakpoint" title="Permalink to this definition">#</a></dt>
+<dd><p>Debugger breakpoint</p>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="warp.tid">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">tid</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#warp.tid" title="Permalink to this definition">#</a></dt>
 <dd><p>Return the current thread index. Note that this is the <em>global</em> index of the thread in the range [0, dim)
@@ -1519,6 +1556,8 @@ if there are no more overlapping bound.</p>
 <dt class="sig sig-object py" id="warp.mesh_query_point">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">mesh_query_point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">point</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">inside</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">face</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">bary_u</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">bary_v</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#warp.mesh_query_point" title="Permalink to this definition">#</a></dt>
 <dd><p>Computes the closest point on the mesh with identifier <cite>id</cite> to the given point in space. Returns <code class="docutils literal notranslate"><span class="pre">True</span></code> if a point &lt; <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> is found.</p>
+<p>Identifies the sign of the distance using additional ray-casts to determine if the point is inside or outside. This method is relatively robust, but
+does increase computational cost. See below for additional sign determination methods.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -1529,6 +1568,74 @@ if there are no more overlapping bound.</p>
 <li><p><strong>face</strong> – Returns the index of the closest face</p></li>
 <li><p><strong>bary_u</strong> – Returns the barycentric u coordinate of the closest point</p></li>
 <li><p><strong>bary_v</strong> – Returns the barycentric v coordinate of the closest point</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.mesh_query_point_no_sign">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">mesh_query_point_no_sign</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">point</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">face</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">bary_u</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">bary_v</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#warp.mesh_query_point_no_sign" title="Permalink to this definition">#</a></dt>
+<dd><p>Computes the closest point on the mesh with identifier <cite>id</cite> to the given point in space. Returns <code class="docutils literal notranslate"><span class="pre">True</span></code> if a point &lt; <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> is found.</p>
+<p>This method does not compute the sign of the point (inside/outside) which makes it faster than other point query methods.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>id</strong> – The mesh identifier</p></li>
+<li><p><strong>point</strong> – The point in space to query</p></li>
+<li><p><strong>max_dist</strong> – Mesh faces above this distance will not be considered by the query</p></li>
+<li><p><strong>face</strong> – Returns the index of the closest face</p></li>
+<li><p><strong>bary_u</strong> – Returns the barycentric u coordinate of the closest point</p></li>
+<li><p><strong>bary_v</strong> – Returns the barycentric v coordinate of the closest point</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.mesh_query_point_sign_normal">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">mesh_query_point_sign_normal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">point</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">inside</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">face</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">bary_u</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">bary_v</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">epsilon</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#warp.mesh_query_point_sign_normal" title="Permalink to this definition">#</a></dt>
+<dd><p>Computes the closest point on the mesh with identifier <cite>id</cite> to the given point in space. Returns <code class="docutils literal notranslate"><span class="pre">True</span></code> if a point &lt; <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> is found.</p>
+<p>Identifies the sign of the distance (inside/outside) using the angle-weighted pseudo normal. This approach to sign determination is robust for well conditioned meshes
+that are watertight and non-self intersecting, it is also comparatively fast to compute.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>id</strong> – The mesh identifier</p></li>
+<li><p><strong>point</strong> – The point in space to query</p></li>
+<li><p><strong>max_dist</strong> – Mesh faces above this distance will not be considered by the query</p></li>
+<li><p><strong>inside</strong> – Returns a value &lt; 0 if query point is inside the mesh, &gt;=0 otherwise. Note that mesh must be watertight for this to be robust</p></li>
+<li><p><strong>face</strong> – Returns the index of the closest face</p></li>
+<li><p><strong>bary_u</strong> – Returns the barycentric u coordinate of the closest point</p></li>
+<li><p><strong>bary_v</strong> – Returns the barycentric v coordinate of the closest point</p></li>
+<li><p><strong>epsilon</strong> – Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.mesh_query_point_sign_winding_number">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">mesh_query_point_sign_winding_number</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">point</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">inside</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">face</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">bary_u</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">bary_v</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">accuracy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#warp.mesh_query_point_sign_winding_number" title="Permalink to this definition">#</a></dt>
+<dd><p>Computes the closest point on the mesh with identifier <cite>id</cite> to the given point in space. Returns <code class="docutils literal notranslate"><span class="pre">True</span></code> if a point &lt; <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> is found.</p>
+<p>Identifies the sign using the winding number of the mesh relative to the query point. This method of sign determination is robust for poorly conditioned meshes
+and provides a smooth approximation to sign even when the mesh is not watertight. This method is the most robust and accurate of the sign determination meshes
+but also the most expensive.</p>
+<blockquote>
+<div><p>Note that the Mesh object must be constructed with <code class="docutils literal notranslate"><span class="pre">suport_winding_number=True</span></code> for this method to return correct results.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>id</strong> – The mesh identifier</p></li>
+<li><p><strong>point</strong> – The point in space to query</p></li>
+<li><p><strong>max_dist</strong> – Mesh faces above this distance will not be considered by the query</p></li>
+<li><p><strong>inside</strong> – Returns a value &lt; 0 if query point is inside the mesh, &gt;=0 otherwise. Note that mesh must be watertight for this to be robust</p></li>
+<li><p><strong>face</strong> – Returns the index of the closest face</p></li>
+<li><p><strong>bary_u</strong> – Returns the barycentric u coordinate of the closest point</p></li>
+<li><p><strong>bary_v</strong> – Returns the barycentric v coordinate of the closest point</p></li>
+<li><p><strong>accuracy</strong> – Accuracy for computing the winding number with fast winding number method utilizing second order dipole approximation, default 2.0</p></li>
+<li><p><strong>threshold</strong> – The threshold of the winding number to be considered inside, default 0.5</p></li>
 </ul>
 </dd>
 </dl>
@@ -1621,7 +1728,7 @@ traversal occurs in a spatially coherent order.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.mesh_get">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">mesh_get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="runtime.html#warp.Mesh" title="warp.Mesh"><span class="pre">Mesh</span></a></span></span><a class="headerlink" href="#warp.mesh_get" title="Permalink to this definition">#</a></dt>
-<dd><p>Retrieves the mesh given its index.</p>
+<dd><p>Retrieves the mesh given its index. <a class="footnote-reference brackets" href="#id7" id="id3">1</a></p>
 </dd></dl>
 
 <dl class="py function">
@@ -1921,19 +2028,19 @@ but each thread should generate uncorrelated values. In this case usage should b
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.curlnoise">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">curlnoise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.uint32" title="warp.uint32"><span class="pre">uint32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">xy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.vec2f" title="warp.vec2f"><span class="pre">vec2f</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.vec2f" title="warp.vec2f"><span class="pre">vec2f</span></a></span></span><a class="headerlink" href="#warp.curlnoise" title="Permalink to this definition">#</a></dt>
-<dd><p>Divergence-free vector field based on the gradient of a Perlin noise function. <a class="footnote-reference brackets" href="#id4" id="id1">1</a></p>
+<dd><p>Divergence-free vector field based on the gradient of a Perlin noise function. <a class="footnote-reference brackets" href="#id7" id="id4">1</a></p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">curlnoise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.uint32" title="warp.uint32"><span class="pre">uint32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">xyz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></span></dt>
-<dd><p>Divergence-free vector field based on the curl of three Perlin noise functions. <a class="footnote-reference brackets" href="#id4" id="id2">1</a></p>
+<dd><p>Divergence-free vector field based on the curl of three Perlin noise functions. <a class="footnote-reference brackets" href="#id7" id="id5">1</a></p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">curlnoise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.uint32" title="warp.uint32"><span class="pre">uint32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">xyzt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.vec4f" title="warp.vec4f"><span class="pre">vec4f</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></span></dt>
-<dd><p>Divergence-free vector field based on the curl of three Perlin noise functions. <a class="footnote-reference brackets" href="#id4" id="id3">1</a></p>
+<dd><p>Divergence-free vector field based on the curl of three Perlin noise functions. <a class="footnote-reference brackets" href="#id7" id="id6">1</a></p>
 </dd></dl>
 
 </div>
@@ -1943,6 +2050,12 @@ but each thread should generate uncorrelated values. In this case usage should b
 <dt class="sig sig-object py" id="warp.lower_bound">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">lower_bound</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Array" title="warp.Array"><span class="pre">Array</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#warp.lower_bound" title="Permalink to this definition">#</a></dt>
 <dd><p>Search a sorted array for the closest element greater than or equal to value.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">lower_bound</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Array" title="warp.Array"><span class="pre">Array</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arr_begin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">arr_end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></span></dt>
+<dd><p>Search a sorted array range [arr_begin, arr_end) for the closest element greater than or equal to value.</p>
 </dd></dl>
 
 </div>
@@ -1996,6 +2109,36 @@ but each thread should generate uncorrelated values. In this case usage should b
 <dl class="py function">
 <dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">sub</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Transformation" title="warp.Transformation"><span class="pre">Transformation</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Transformation" title="warp.Transformation"><span class="pre">Transformation</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.Transformation" title="warp.Transformation"><span class="pre">Transformation</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.bit_and">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">bit_and</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></span><a class="headerlink" href="#warp.bit_and" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.bit_or">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">bit_or</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></span><a class="headerlink" href="#warp.bit_or" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.bit_xor">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">bit_xor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></span><a class="headerlink" href="#warp.bit_xor" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.lshift">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">lshift</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></span><a class="headerlink" href="#warp.lshift" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.rshift">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">rshift</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></span><a class="headerlink" href="#warp.rshift" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.invert">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">invert</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></span><a class="headerlink" href="#warp.invert" title="Permalink to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
@@ -2178,9 +2321,14 @@ but each thread should generate uncorrelated values. In this case usage should b
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">unot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span></span></dt>
 <dd></dd></dl>
 
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">unot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Array" title="warp.Array"><span class="pre">Array</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span></span></dt>
+<dd></dd></dl>
+
 <p class="rubric">Footnotes</p>
 <dl class="footnote brackets">
-<dt class="label" id="id4"><span class="brackets">1</span><span class="fn-backref">(<a href="#id1">1</a>,<a href="#id2">2</a>,<a href="#id3">3</a>)</span></dt>
+<dt class="label" id="id7"><span class="brackets">1</span><span class="fn-backref">(<a href="#id1">1</a>,<a href="#id2">2</a>,<a href="#id3">3</a>,<a href="#id4">4</a>,<a href="#id5">5</a>,<a href="#id6">6</a>)</span></dt>
 <dd><p>Note: function gradients not implemented for backpropagation.</p>
 </dd>
 </dl>
@@ -2367,6 +2515,8 @@ but each thread should generate uncorrelated values. In this case usage should b
 <li><a class="reference internal" href="#vector-math">Vector Math</a><ul>
 <li><a class="reference internal" href="#warp.dot"><code class="docutils literal notranslate"><span class="pre">dot()</span></code></a></li>
 <li><a class="reference internal" href="#warp.ddot"><code class="docutils literal notranslate"><span class="pre">ddot()</span></code></a></li>
+<li><a class="reference internal" href="#warp.argmin"><code class="docutils literal notranslate"><span class="pre">argmin()</span></code></a></li>
+<li><a class="reference internal" href="#warp.argmax"><code class="docutils literal notranslate"><span class="pre">argmax()</span></code></a></li>
 <li><a class="reference internal" href="#warp.outer"><code class="docutils literal notranslate"><span class="pre">outer()</span></code></a></li>
 <li><a class="reference internal" href="#warp.cross"><code class="docutils literal notranslate"><span class="pre">cross()</span></code></a></li>
 <li><a class="reference internal" href="#warp.skew"><code class="docutils literal notranslate"><span class="pre">skew()</span></code></a></li>
@@ -2378,6 +2528,7 @@ but each thread should generate uncorrelated values. In this case usage should b
 <li><a class="reference internal" href="#warp.determinant"><code class="docutils literal notranslate"><span class="pre">determinant()</span></code></a></li>
 <li><a class="reference internal" href="#warp.trace"><code class="docutils literal notranslate"><span class="pre">trace()</span></code></a></li>
 <li><a class="reference internal" href="#warp.diag"><code class="docutils literal notranslate"><span class="pre">diag()</span></code></a></li>
+<li><a class="reference internal" href="#warp.get_diag"><code class="docutils literal notranslate"><span class="pre">get_diag()</span></code></a></li>
 <li><a class="reference internal" href="#warp.cw_mul"><code class="docutils literal notranslate"><span class="pre">cw_mul()</span></code></a></li>
 <li><a class="reference internal" href="#warp.cw_div"><code class="docutils literal notranslate"><span class="pre">cw_div()</span></code></a></li>
 <li><a class="reference internal" href="#warp.vector"><code class="docutils literal notranslate"><span class="pre">vector()</span></code></a></li>
@@ -2428,6 +2579,7 @@ but each thread should generate uncorrelated values. In this case usage should b
 <li><a class="reference internal" href="#warp.mlp"><code class="docutils literal notranslate"><span class="pre">mlp()</span></code></a></li>
 <li><a class="reference internal" href="#warp.printf"><code class="docutils literal notranslate"><span class="pre">printf()</span></code></a></li>
 <li><a class="reference internal" href="#warp.print"><code class="docutils literal notranslate"><span class="pre">print()</span></code></a></li>
+<li><a class="reference internal" href="#warp.breakpoint"><code class="docutils literal notranslate"><span class="pre">breakpoint()</span></code></a></li>
 <li><a class="reference internal" href="#warp.tid"><code class="docutils literal notranslate"><span class="pre">tid()</span></code></a></li>
 <li><a class="reference internal" href="#warp.select"><code class="docutils literal notranslate"><span class="pre">select()</span></code></a></li>
 <li><a class="reference internal" href="#warp.atomic_add"><code class="docutils literal notranslate"><span class="pre">atomic_add()</span></code></a></li>
@@ -2444,6 +2596,9 @@ but each thread should generate uncorrelated values. In this case usage should b
 <li><a class="reference internal" href="#warp.bvh_query_ray"><code class="docutils literal notranslate"><span class="pre">bvh_query_ray()</span></code></a></li>
 <li><a class="reference internal" href="#warp.bvh_query_next"><code class="docutils literal notranslate"><span class="pre">bvh_query_next()</span></code></a></li>
 <li><a class="reference internal" href="#warp.mesh_query_point"><code class="docutils literal notranslate"><span class="pre">mesh_query_point()</span></code></a></li>
+<li><a class="reference internal" href="#warp.mesh_query_point_no_sign"><code class="docutils literal notranslate"><span class="pre">mesh_query_point_no_sign()</span></code></a></li>
+<li><a class="reference internal" href="#warp.mesh_query_point_sign_normal"><code class="docutils literal notranslate"><span class="pre">mesh_query_point_sign_normal()</span></code></a></li>
+<li><a class="reference internal" href="#warp.mesh_query_point_sign_winding_number"><code class="docutils literal notranslate"><span class="pre">mesh_query_point_sign_winding_number()</span></code></a></li>
 <li><a class="reference internal" href="#warp.mesh_query_ray"><code class="docutils literal notranslate"><span class="pre">mesh_query_ray()</span></code></a></li>
 <li><a class="reference internal" href="#warp.mesh_query_aabb"><code class="docutils literal notranslate"><span class="pre">mesh_query_aabb()</span></code></a></li>
 <li><a class="reference internal" href="#warp.mesh_query_aabb_next"><code class="docutils literal notranslate"><span class="pre">mesh_query_aabb_next()</span></code></a></li>
@@ -2505,6 +2660,12 @@ but each thread should generate uncorrelated values. In this case usage should b
 <li><a class="reference internal" href="#operators">Operators</a><ul>
 <li><a class="reference internal" href="#warp.add"><code class="docutils literal notranslate"><span class="pre">add()</span></code></a></li>
 <li><a class="reference internal" href="#warp.sub"><code class="docutils literal notranslate"><span class="pre">sub()</span></code></a></li>
+<li><a class="reference internal" href="#warp.bit_and"><code class="docutils literal notranslate"><span class="pre">bit_and()</span></code></a></li>
+<li><a class="reference internal" href="#warp.bit_or"><code class="docutils literal notranslate"><span class="pre">bit_or()</span></code></a></li>
+<li><a class="reference internal" href="#warp.bit_xor"><code class="docutils literal notranslate"><span class="pre">bit_xor()</span></code></a></li>
+<li><a class="reference internal" href="#warp.lshift"><code class="docutils literal notranslate"><span class="pre">lshift()</span></code></a></li>
+<li><a class="reference internal" href="#warp.rshift"><code class="docutils literal notranslate"><span class="pre">rshift()</span></code></a></li>
+<li><a class="reference internal" href="#warp.invert"><code class="docutils literal notranslate"><span class="pre">invert()</span></code></a></li>
 <li><a class="reference internal" href="#warp.mul"><code class="docutils literal notranslate"><span class="pre">mul()</span></code></a></li>
 <li><a class="reference internal" href="#warp.mod"><code class="docutils literal notranslate"><span class="pre">mod()</span></code></a></li>
 <li><a class="reference internal" href="#warp.div"><code class="docutils literal notranslate"><span class="pre">div()</span></code></a></li>

@@ -45,6 +45,9 @@ def test_operators_scalar_int():
     f = a - b
     # g = b**8    # integer pow not implemented
     h = 10 // 3
+    i = 10 % 3
+    j = 2 << 3
+    k = 16 >> 1
 
     expect_eq(c, 2)
     expect_eq(d, 3)
@@ -52,6 +55,19 @@ def test_operators_scalar_int():
     expect_eq(f, -1)
     # expect_eq(g, 256)
     expect_eq(h, 3)
+    expect_eq(i, 1)
+    expect_eq(j, 16)
+    expect_eq(k, 8)
+
+    f0 = wp.uint32(1 << 0)
+    f1 = wp.uint32(1 << 3)
+    expect_eq(f0 | f1, f0 + f1)
+    expect_eq(f0 & f1, wp.uint32(0))
+
+    l = wp.uint8(0)
+    for n in range(8):
+        l |= wp.uint8(1 << n)
+    expect_eq(l, ~wp.uint8(0))
 
 
 @wp.kernel

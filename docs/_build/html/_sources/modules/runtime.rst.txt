@@ -17,7 +17,7 @@ Kernels
 Kernels are launched with the ``warp.launch()`` function on a specific device (CPU/GPU)::
 
    wp.launch(simple_kernel, dim=1024, inputs=[a, b, c], device="cuda")
- 
+
 Kernels may be launched with multi-dimensional grid bounds. In this case threads are not assigned a single index, but a coordinate in of an n-dimensional grid, e.g.::
 
    wp.launch(complex_kernel, dim=(128, 128, 3), ...)
@@ -26,10 +26,10 @@ Launches a 3d grid of threads with dimension 128x128x3. To retrieve the 3d index
 
    i,j,k = wp.tid()
 
-.. note:: 
+.. note::
    Currently kernels launched on ``cpu`` devices will be executed in serial. Kernels launched on ``cuda`` devices will be launched in parallel with a fixed block-size.
 
-.. note:: 
+.. note::
    Note that all the kernel inputs must live on the target device, or a runtime exception will be raised.
 
 .. autofunction:: launch
@@ -41,7 +41,7 @@ Arrays are the fundamental memory abstraction in Warp; they are created through 
 
     wp.empty(shape=1024, dtype=wp.vec3, device="cpu")
     wp.zeros(shape=1024, dtype=float, device="cuda")
-    
+
 
 Arrays can also be constructed directly from ``numpy`` ndarrays as follows: ::
 
@@ -63,13 +63,13 @@ Note that for multi-dimensional data the ``dtype`` parameter must be specified e
    # initialize as an array of vec3 objects
    a = wp.array(r, dtype=wp.vec3, device="cuda")
 
-If the shapes are incompatible an error will be raised. 
+If the shapes are incompatible an error will be raised.
 
 
 Arrays can be moved between devices using the ``array.to()`` method: ::
 
    host_array = wp.array(a, dtype=float, device="cpu")
-   
+
    # allocate and copy to GPU
    device_array = host_array.to("cuda")
 
@@ -107,7 +107,7 @@ To create an array slice use the following syntax, where the number of indices i
 Slice operators can be concatenated, e.g.: ``s = array[i][j][k]``. Slices can be passed to ``wp.func`` user functions provided
 the function also declares the expected array dimension. Currently only single-index slicing is supported.
 
-.. note:: 
+.. note::
    Currently Warp limits arrays to 4 dimensions maximum. This is in addition to the contained datatype, which may be 1-2 dimensional for vector and matrix types such as ``vec3``, and ``mat33``.
 
 
@@ -119,10 +119,31 @@ The following construction methods are provided for allocating zero-initialized 
 .. autofunction:: empty_like
 .. autofunction:: copy
 .. autofunction:: clone
-   
+
 .. autoclass:: array
    :members:
-   
+
+Matrix Multiplication
+#####################
+
+Warp 2D array multiplication is built on NVIDIA's CUTLASS library, which enables fast matrix multiplication of large arrays on the GPU.
+
+If no GPU is detected, matrix multiplication falls back to Numpy's implementation on the CPU.
+
+Matrix multiplication is fully differentiable, and can be recorded on the tape like so::
+
+   tape = wp.Tape()
+   with tape:
+      wp.matmul(A, B, C, D, device=device)
+      wp.launch(loss_kernel, dim=(m, n), inputs=[D, loss], device=device)
+
+   tape.backward(loss=loss)
+   A_grad = A.grad.numpy()
+
+Using the ``@`` operator (``D = A @ B``) will default to the same CUTLASS algorithm used in ``wp.matmul``.
+
+.. autofunction:: matmul
+
 Data Types
 ----------
 
@@ -187,7 +208,7 @@ Vectors support most standard linear algebra operations, e.g.: ::
 
    @wp.kernel
    def compute( ... ):
-      
+
       # basis vectors
       a = wp.vec3(1.0, 0.0, 0.0)
       b = wp.vec3(0.0, 1.0, 0.0)
@@ -195,7 +216,7 @@ Vectors support most standard linear algebra operations, e.g.: ::
       # take the cross product
       c = wp.cross(a, b)
 
-      # compute 
+      # compute
       r = wp.dot(c, c)
 
       ...
@@ -214,7 +235,7 @@ Once declared, the new type can be used when allocating arrays or inside kernels
    # use inside a kernel
    @wp.kernel
    def compute( ... ):
-      
+
       # zero initialize a custom named vector type
       v = vec5d()
       ...
@@ -275,7 +296,7 @@ Matrices are stored in row-major format and support most standard linear algebra
 
    @wp.kernel
    def compute( ... ):
-      
+
       # initialize matrix
       m = wp.mat22(1.0, 2.0,
                    3.0, 4.0)
@@ -303,7 +324,7 @@ These can be used inside a kernel: ::
    def compute( ... ):
       ...
 
-      # initialize a mat32h matrix 
+      # initialize a mat32h matrix
       m = mat32h(wp.float16(1.0), wp.float16(2.0),
                  wp.float16(3.0), wp.float16(4.0),
                  wp.float16(5.0), wp.float16(6.0))
@@ -327,7 +348,7 @@ It's also possible to directly create anonymously typed instances inside kernels
             wp.float16(1.0), wp.float16(2.0),
             wp.float16(1.0), wp.float16(2.0),
             shape=(3,2))
-   
+
       # zero initialize a 3x2 half precision matrix:
       m = wp.matrix(wp.float16(0.0),shape=(3,2))
 
@@ -376,7 +397,7 @@ You can also create identity quaternion and anonymously typed instances inside a
 
       # create a double precision identity quaternion:
       qd = wp.quat_identity(dtype=wp.float64)
-      
+
       # precision defaults to wp.float32 so this creates a single precision identity quaternion:
       qf = wp.quat_identity()
 
@@ -417,7 +438,7 @@ Transforms can be constructed inside kernels from translation and rotation parts
              wp.vec3(1.0, 2.0, 3.0),
              wp.quat_from_axis_angle(0.0, 1.0, 0.0, wp.degrees(30.0)))
 
-      # transform a point 
+      # transform a point
       p = wp.transform_point(t, wp.vec3(10.0, 0.5, 1.0))
 
       # transform a vector (ignore translation)
@@ -435,8 +456,48 @@ You can also create identity transforms and anonymously typed instances inside a
 
       # create double precision identity transform:
       qd = wp.transform_identity(dtype=wp.float64)
-      
-   
+
+Structs
+#######
+
+Users can define custom structure types using the ``@wp.struct`` decorator as follows::
+
+   @wp.struct
+   class MyStruct:
+
+      param1: int
+      param2: float
+      param3: wp.array(dtype=wp.vec3)
+
+Struct attributes must be annotated with their respective type. They can be constructed in Python scope and then passed to kernels as arguments::
+
+   @wp.kernel
+   def compute(args: MyStruct):
+
+      tid = wp.tid()
+
+      print(args.param1)
+      print(args.param2)
+      print(args.param3[tid])
+
+   # construct an instance of the struct in Python
+   s = MyStruct()
+   s.param1 = 10
+   s.param2 = 2.5
+   s.param3 = wp.zeros(shape=10, dtype=wp.vec3)
+
+   # pass to our compute kernel
+   wp.launch(compute, dim=10, inputs=[s])
+
+Arrays of structs can zero initialized as follows::
+
+      a = wp.zeros(shape=10, dtype=MyStruct)
+
+Or initialized from a list of struct objects::
+
+      a = wp.array([MyStruct(), MyStruct(), MyStruct()], dtype=MyStruct)
+
+
 Type Conversions
 ################
 
@@ -485,7 +546,7 @@ Boolean Operators
 |   not a      | True if a is False, otherwise False  |
 +--------------+--------------------------------------+
 
-.. note:: 
+.. note::
 
    Expressions such as ``if (a and b):`` currently do not perform short-circuit evaluation. In this case ``b`` will also be evaluated even when ``a`` is ``False``. Users should take care to ensure that secondary conditions are safe to evaluate (e.g.: do not index out of bounds) in all cases.
 
@@ -609,8 +670,8 @@ To sample the volume inside a kernel we pass a reference to it by id, and use th
 
       # transform position to the volume's local-space
       q = wp.volume_world_to_index(volume, p)
-      
-      # sample volume with trilinear interpolation     
+
+      # sample volume with trilinear interpolation
       f = wp.volume_sample_f(volume, q, wp.Volume.LINEAR)
 
       # write result
@@ -630,7 +691,7 @@ Hash Grids
 
 Many particle-based simulation methods such as the Discrete Element Method (DEM), or Smoothed Particle Hydrodynamics (SPH), involve iterating over spatial neighbors to compute force interactions. Hash grids are a well-established data structure to accelerate these nearest neighbor queries, and particularly well-suited to the GPU.
 
-To support spatial neighbor queries Warp provides a ``HashGrid`` object that may be created as follows:: 
+To support spatial neighbor queries Warp provides a ``HashGrid`` object that may be created as follows::
 
    grid = wp.HashGrid(dim_x=128, dim_y=128, dim_z=128, device="cuda")
 
@@ -656,9 +717,9 @@ Where ``p`` is an array of ``warp.vec3`` point positions, and ``r`` is the radiu
       sum = wp.vec3()
 
       while(wp.hash_grid_query_next(query, index)):
-            
+
          neighbor = points[index]
-         
+
          # compute distance to neighbor point
          dist = wp.length(p-neighbor)
          if (dist <= radius):
@@ -701,12 +762,12 @@ Note that gradients are accumulated on the participating buffers, so if you wish
 
    tape.zero()
 
-.. note:: 
+.. note::
 
    Warp uses a source-code transformation approach to auto-differentiation. In this approach the backwards pass must keep a record of intermediate values computed during the forward pass. This imposes some restrictions on what kernels can do and still be differentiable:
 
    * Dynamic loops should not mutate any previously declared local variable. This means the loop must be side-effect free. A simple way to ensure this is to move the loop body into a separate function. Static loops that are unrolled at compile time do not have this restriction and can perform any computation.
-         
+
    * Kernels should not overwrite any previously used array values except to perform simple linear add/subtract operations (e.g.: via ``wp.atomic_add()``)
 
 .. autoclass:: Tape

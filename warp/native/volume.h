@@ -305,7 +305,7 @@ CUDA_CALLABLE inline void adj_volume_store_f(
     uint64_t id, int32_t i, int32_t j, int32_t k, const float& value,
     uint64_t& adj_id, int32_t& adj_i, int32_t& adj_j, int32_t& adj_k, float& adj_value)
 {
-    adj_value += volume_lookup_f(adj_id, i, j, k);
+    adj_value += volume_lookup_f(id, i, j, k);
 }
 
 CUDA_CALLABLE inline void volume_store_v(uint64_t id, int32_t i, int32_t j, int32_t k, const vec3& value)
@@ -325,7 +325,7 @@ CUDA_CALLABLE inline void adj_volume_store_v(
     uint64_t id, int32_t i, int32_t j, int32_t k, const vec3& value,
     uint64_t& adj_id, int32_t& adj_i, int32_t& adj_j, int32_t& adj_k, vec3& adj_value)
 {
-    adj_value = add(adj_value, volume_lookup_v(adj_id, i, j, k));
+    adj_value = add(adj_value, volume_lookup_v(id, i, j, k));
 }
 
 CUDA_CALLABLE inline void volume_store_i(uint64_t id, int32_t i, int32_t j, int32_t k, const int32_t& value)
@@ -344,7 +344,7 @@ CUDA_CALLABLE inline void adj_volume_store_i(
     uint64_t id, int32_t i, int32_t j, int32_t k, const int32_t& value,
     uint64_t& adj_id, int32_t& adj_i, int32_t& adj_j, int32_t& adj_k, int32_t& adj_value)
 {
-    adj_value = add(adj_value, volume_lookup_i(adj_id, i, j, k));
+    adj_value = add(adj_value, volume_lookup_i(id, i, j, k));
 }
 
 // Transform position from index space to world space

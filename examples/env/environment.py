@@ -1,3 +1,10 @@
+# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
 import warp as wp
 import warp.sim
 import warp.sim.render
@@ -13,7 +20,7 @@ wp.init()
 
 class RenderMode(Enum):
     NONE = "none"
-    TINY = "tiny"
+    OPENGL = "opengl"
     USD = "usd"
 
     def __str__(self):
@@ -28,7 +35,7 @@ class IntegratorType(Enum):
         return self.value
 
 
-def compute_env_offsets(num_envs, env_offset=(5.0, 0.0, 5.0), upaxis="y"):
+def compute_env_offsets(num_envs, env_offset=(5.0, 0.0, 5.0), up_axis="y"):
     # compute positional offsets per environment
     env_offset = np.array(env_offset)
     nonzeros = np.nonzero(env_offset)[0]
@@ -62,9 +69,9 @@ def compute_env_offsets(num_envs, env_offset=(5.0, 0.0, 5.0), upaxis="y"):
     env_offsets = np.array(env_offsets)
     min_offsets = np.min(env_offsets, axis=0)
     correction = min_offsets + (np.max(env_offsets, axis=0) - min_offsets) / 2.0
-    if isinstance(upaxis, str):
-        upaxis = "xyz".index(upaxis.lower())
-    correction[upaxis] = 0.0  # ensure the envs are not shifted below the ground plane
+    if isinstance(up_axis, str):
+        up_axis = "xyz".index(up_axis.lower())
+    correction[up_axis] = 0.0  # ensure the envs are not shifted below the ground plane
     env_offsets -= correction
     return env_offsets
 
@@ -75,10 +82,9 @@ class Environment:
     frame_dt = 1.0 / 60.0
 
     episode_duration = 5.0  # seconds
-    episode_frames = int(episode_duration / frame_dt)
 
-    # whether to play the simulation indefinitely when using the Tiny renderer
-    continuous_tiny_render: bool = True
+    # whether to play the simulation indefinitely when using the OpenGL renderer
+    continuous_opengl_render: bool = True
 
     sim_substeps_euler: int = 16
     sim_substeps_xpbd: int = 5
@@ -86,9 +92,14 @@ class Environment:
     euler_settings = dict()
     xpbd_settings = dict()
 
-    render_mode: RenderMode = RenderMode.TINY
-    tiny_render_settings = dict()
+    render_mode: RenderMode = RenderMode.OPENGL
+    opengl_render_settings = dict()
     usd_render_settings = dict(scaling=10.0)
+    show_rigid_contact_points = False
+    contact_points_radius = 1e-3
+    show_joints = False
+    # whether OpenGLRenderer should render each environment in a separate tile
+    use_tiled_rendering = False
 
     # whether to apply model.joint_q, joint_qd to bodies before simulating
     eval_fk: bool = True
@@ -122,6 +133,9 @@ class Environment:
     plot_joint_coords: bool = False
 
     requires_grad: bool = False
+
+    # control-related definitions, to be updated by derived classes
+    control_dim: int = 0
 
     def __init__(self):
         self.parser = argparse.ArgumentParser()
@@ -157,10 +171,16 @@ class Environment:
         elif self.integrator_type == IntegratorType.XPBD:
             self.sim_substeps = self.sim_substeps_xpbd
 
+        self.episode_frames = int(self.episode_duration / self.frame_dt)
         self.sim_dt = self.frame_dt / self.sim_substeps
         self.sim_steps = int(self.episode_duration / self.sim_dt)
 
+        if self.use_tiled_rendering and self.render_mode == RenderMode.OPENGL:
+            # no environment offset when using tiled rendering
+            self.env_offset = (0.0, 0.0, 0.0)
+
         builder = wp.sim.ModelBuilder()
+        builder.rigid_contact_margin = self.rigid_contact_margin
         try:
             articulation_builder = wp.sim.ModelBuilder()
             self.create_articulation(articulation_builder)
@@ -197,14 +217,37 @@ class Environment:
         self.renderer = None
         if self.profile:
             self.render_mode = RenderMode.NONE
-        if self.render_mode == RenderMode.TINY:
-            self.renderer = wp.sim.render.SimRendererTiny(
-                self.model, self.sim_name, upaxis=self.up_axis, **self.tiny_render_settings
-            )
+        if self.render_mode == RenderMode.OPENGL:
+            self.renderer = wp.sim.render.SimRendererOpenGL(
+                self.model,
+                self.sim_name,
+                up_axis=self.up_axis,
+                show_rigid_contact_points=self.show_rigid_contact_points,
+                contact_points_radius=self.contact_points_radius,
+                show_joints=self.show_joints,
+                **self.opengl_render_settings)
+            if self.use_tiled_rendering and self.num_envs > 1:
+                floor_id = self.model.shape_count - 1
+                # all shapes except the floor
+                instance_ids = np.arange(floor_id, dtype=np.int32).tolist()
+                shapes_per_env = floor_id // self.num_envs
+                additional_instances = []
+                if self.activate_ground_plane:
+                    additional_instances.append(floor_id)
+                self.renderer.setup_tiled_rendering(
+                    instances=[
+                        instance_ids[i * shapes_per_env : (i + 1) * shapes_per_env] + additional_instances
+                        for i in range(self.num_envs)
+                    ]
+                )
         elif self.render_mode == RenderMode.USD:
-            filename = os.path.join(os.path.dirname(__file__), "outputs", self.sim_name + ".usd")
+            filename = os.path.join(os.path.dirname(__file__), "..", "outputs", self.sim_name + ".usd")
             self.renderer = wp.sim.render.SimRendererUsd(
-                self.model, filename, upaxis=self.up_axis, **self.usd_render_settings
+                self.model,
+                filename,
+                up_axis=self.up_axis,
+                show_rigid_contact_points=self.show_rigid_contact_points,
+                **self.usd_render_settings,
             )
 
     def create_articulation(self, builder):
@@ -238,12 +281,13 @@ class Environment:
             self.integrator.simulate(self.model, self.state_0, self.state_1, self.sim_dt)
             self.state_0, self.state_1 = self.state_1, self.state_0
 
-    def render(self, is_live=False):
+    def render(self, state=None):
         if self.renderer is not None:
             with wp.ScopedTimer("render", False):
                 self.render_time += self.frame_dt
                 self.renderer.begin_frame(self.render_time)
-                self.renderer.render(self.state_0)
+                # render state 1 (swapped with state 0 just before)
+                self.renderer.render(state or self.state_1)
                 self.renderer.end_frame()
 
     def run(self):
@@ -259,12 +303,11 @@ class Environment:
             wp.sim.eval_fk(self.model, self.model.joint_q, self.model.joint_qd, None, self.state_0)
 
         self.before_simulate()
-        self.update()
 
         if self.renderer is not None:
-            self.render()
+            self.render(self.state_0)
 
-            if self.render_mode == RenderMode.TINY:
+            if self.render_mode == RenderMode.OPENGL:
                 self.renderer.paused = True
 
         profiler = {}
@@ -294,47 +337,33 @@ class Environment:
 
         # simulate
         with wp.ScopedTimer("simulate", detailed=False, print=False, active=True, dict=profiler):
-            if self.renderer is not None:
-                with wp.ScopedTimer("render", False):
-                    if self.renderer is not None:
-                        self.render_time += self.frame_dt
-
-                        self.renderer.begin_frame(self.render_time)
-                        self.renderer.render(self.state_0)
-                        self.renderer.end_frame()
-
-            while True:
-                progress = range(self.episode_frames)
-                for f in progress:
+            running = True
+            while running:
+                for f in range(self.episode_frames):
                     if self.use_graph_capture:
                         wp.capture_launch(graph)
                         self.sim_time += self.frame_dt
                     else:
-                        for i in range(0, self.sim_substeps):
-                            self.state_0.clear_forces()
-                            self.custom_update()
-                            wp.sim.collide(self.model, self.state_0)
-                            self.integrator.simulate(
-                                self.model, self.state_0, self.state_1, self.sim_dt, requires_grad=self.requires_grad
-                            )
-                            self.state_0, self.state_1 = self.state_1, self.state_0
+                        self.update()
+                        self.sim_time += self.frame_dt
 
-                            self.sim_time += self.sim_dt
+                        if not self.profile:
+                            if self.plot_body_coords:
+                                q_history.append(self.state_0.body_q.numpy().copy())
+                                qd_history.append(self.state_0.body_qd.numpy().copy())
+                                delta_history.append(self.state_0.body_deltas.numpy().copy())
+                                num_con_history.append(self.model.rigid_contact_inv_weight.numpy().copy())
 
-                            if not self.profile:
-                                if self.plot_body_coords:
-                                    q_history.append(self.state_0.body_q.numpy().copy())
-                                    qd_history.append(self.state_0.body_qd.numpy().copy())
-                                    delta_history.append(self.state_0.body_deltas.numpy().copy())
-                                    num_con_history.append(self.model.rigid_contact_inv_weight.numpy().copy())
-
-                                if self.plot_joint_coords:
-                                    wp.sim.eval_ik(self.model, self.state_0, joint_q, joint_qd)
-                                    joint_q_history.append(joint_q.numpy().copy())
+                            if self.plot_joint_coords:
+                                wp.sim.eval_ik(self.model, self.state_0, joint_q, joint_qd)
+                                joint_q_history.append(joint_q.numpy().copy())
 
                     self.render()
+                    if self.render_mode == RenderMode.OPENGL and self.renderer.has_exit:
+                        running = False
+                        break
 
-                if not self.continuous_tiny_render or self.render_mode != RenderMode.TINY:
+                if not self.continuous_opengl_render or self.render_mode != RenderMode.OPENGL:
                     break
 
             wp.synchronize()
@@ -413,20 +442,20 @@ class Environment:
 
             joint_id = 0
             joint_type_names = {
-                wp.sim.JOINT_BALL.val: "ball",
-                wp.sim.JOINT_REVOLUTE.val: "hinge",
-                wp.sim.JOINT_PRISMATIC.val: "slide",
-                wp.sim.JOINT_UNIVERSAL.val: "universal",
-                wp.sim.JOINT_COMPOUND.val: "compound",
-                wp.sim.JOINT_FREE.val: "free",
-                wp.sim.JOINT_FIXED.val: "fixed",
-                wp.sim.JOINT_DISTANCE.val: "distance",
-                wp.sim.JOINT_D6.val: "D6",
+                wp.sim.JOINT_BALL: "ball",
+                wp.sim.JOINT_REVOLUTE: "hinge",
+                wp.sim.JOINT_PRISMATIC: "slide",
+                wp.sim.JOINT_UNIVERSAL: "universal",
+                wp.sim.JOINT_COMPOUND: "compound",
+                wp.sim.JOINT_FREE: "free",
+                wp.sim.JOINT_FIXED: "fixed",
+                wp.sim.JOINT_DISTANCE: "distance",
+                wp.sim.JOINT_D6: "D6",
             }
             joint_lower = self.model.joint_limit_lower.numpy()
             joint_upper = self.model.joint_limit_upper.numpy()
             joint_type = self.model.joint_type.numpy()
-            while joint_id < len(joint_type) - 1 and joint_type[joint_id] == wp.sim.JOINT_FIXED.val:
+            while joint_id < len(joint_type) - 1 and joint_type[joint_id] == wp.sim.JOINT_FIXED:
                 # skip fixed joints
                 joint_id += 1
             q_start = self.model.joint_q_start.numpy()
@@ -439,7 +468,7 @@ class Environment:
                     continue
                 ax.grid()
                 ax.plot(joint_q_history[:, dim])
-                if joint_type[joint_id] != wp.sim.JOINT_FREE.val:
+                if joint_type[joint_id] != wp.sim.JOINT_FREE:
                     lower = joint_lower[qd_i]
                     if abs(lower) < 2 * np.pi:
                         ax.axhline(lower, color="red")

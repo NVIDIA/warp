@@ -1,0 +1,48 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    upAxis = "Y"
+)
+
+def Xform "World"
+{
+    def Material "OceanMaterial"
+    {
+        token outputs:mdl:displacement.connect = </World/OceanMaterial/Shader.outputs:out>
+        token outputs:mdl:surface.connect = </World/OceanMaterial/Shader.outputs:out>
+        token outputs:mdl:volume.connect = </World/OceanMaterial/Shader.outputs:out>
+
+        def Shader "Shader"
+        {
+            uniform token info:implementationSource = "sourceAsset"
+            uniform asset info:mdl:sourceAsset = @OmniGlass.mdl@
+            uniform token info:mdl:sourceAsset:subIdentifier = "OmniGlass"
+
+            float inputs:glass_ior = 1.325 (
+                customData = {
+                    float default = 1.491
+                    dictionary soft_range = {
+                        float max = 4
+                        float min = 1
+                    }
+                }
+                displayGroup = "Refraction"
+                displayName = "Glass IOR"
+                doc = "Sets IOR of the glass material "
+                hidden = false
+            )
+            bool inputs:thin_walled = 1 (
+                customData = {
+                    bool default = 0
+                }
+                displayGroup = "Refraction"
+                displayName = "Thin Walled"
+                doc = "When enabled, the material is considered thin-walled. Use this, when you have glass surfaces that are modeled with a single plane"
+                hidden = false
+            )
+            token outputs:out (
+                renderType = "material"
+            )
+        }
+    }
+}

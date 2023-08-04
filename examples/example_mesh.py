@@ -9,7 +9,7 @@
 # Example Mesh
 #
 # Shows how to implement a PBD particle simulation with collision against
-# a deforming triangle mesh. The mesh collision uses wp.mesh_query_point()
+# a deforming triangle mesh. The mesh collision uses wp.mesh_query_point_sign_normal()
 # to compute the closest point, and wp.Mesh.refit() to update the mesh
 # object after deformation.
 #
@@ -18,6 +18,8 @@
 import numpy as np
 
 import warp as wp
+import warp.render
+
 from pxr import Usd, UsdGeom
 
 import os
@@ -63,7 +65,7 @@ def simulate(
 
     max_dist = 1.5
 
-    if wp.mesh_query_point(mesh, xpred, max_dist, sign, face_index, face_u, face_v):
+    if wp.mesh_query_point_sign_normal(mesh, xpred, max_dist, sign, face_index, face_u, face_v):
         p = wp.mesh_eval_position(mesh, face_index, face_u, face_v)
 
         delta = xpred - p

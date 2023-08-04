@@ -186,9 +186,10 @@ class Example:
                 if self.enable_rendering:
                     with wp.ScopedTimer("render", active=True):
                         self.render()
-                    self.renderer.save()
 
             wp.synchronize()
+            if self.enable_rendering:
+                self.renderer.save()
 
 
 if __name__ == "__main__":

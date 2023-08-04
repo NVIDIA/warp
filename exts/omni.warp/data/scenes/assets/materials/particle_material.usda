@@ -1,0 +1,39 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    upAxis = "Y"
+)
+
+def Xform "World"
+{
+    def Material "ParticleMaterial"
+    {
+        token outputs:mdl:displacement.connect = </World/ParticleMaterial/Shader.outputs:out>
+        token outputs:mdl:surface.connect = </World/ParticleMaterial/Shader.outputs:out>
+        token outputs:mdl:volume.connect = </World/ParticleMaterial/Shader.outputs:out>
+
+        def Shader "Shader"
+        {
+            uniform token info:implementationSource = "sourceAsset"
+            uniform asset info:mdl:sourceAsset = @OmniPBRBase.mdl@
+            uniform token info:mdl:sourceAsset:subIdentifier = "OmniPBRBase"
+
+            float inputs:specular_level = 0 (
+                customData = {
+                    float default = 0.5
+                    dictionary soft_range = {
+                        float max = 1
+                        float min = 0
+                    }
+                }
+                displayGroup = "Reflectivity"
+                displayName = "Specular"
+                doc = "The specular level (intensity) of the material"
+                hidden = false
+            )
+            token outputs:out (
+                renderType = "material"
+            )
+        }
+    }
+}

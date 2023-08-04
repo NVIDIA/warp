@@ -7,8 +7,8 @@
 
 import numpy as np
 import unittest
-import sys
-
+import os
+import ctypes
 
 import warp as wp
 from warp.tests.test_base import *
@@ -64,57 +64,69 @@ def test_dlpack_dtypes_and_shapes(test, device):
         test.assertEqual(a1.shape, a2.shape)
         test.assertEqual(a1.strides, a2.strides)
 
-    # convert vec arrays to float arrays
-    def wrap_vec_to_float_tensor(vec_dtype):
+    # convert vector arrays to scalar arrays
+    def wrap_vector_to_scalar_tensor(vec_dtype):
+        scalar_type = vec_dtype._wp_scalar_type_
+        scalar_size = ctypes.sizeof(vec_dtype._type_)
+
         a1 = wp.zeros(10, dtype=vec_dtype, device=device)
-        a2 = wp.from_dlpack(wp.to_dlpack(a1), dtype=wp.float32)
+        a2 = wp.from_dlpack(wp.to_dlpack(a1), dtype=scalar_type)
 
         test.assertEqual(a1.ptr, a2.ptr)
         test.assertEqual(a1.device, a2.device)
         test.assertEqual(a2.ndim, a1.ndim + 1)
         test.assertEqual(a1.dtype, vec_dtype)
-        test.assertEqual(a2.dtype, wp.float32)
+        test.assertEqual(a2.dtype, scalar_type)
         test.assertEqual(a2.shape, (*a1.shape, vec_dtype._length_))
-        test.assertEqual(a2.strides, (*a1.strides, 4))
+        test.assertEqual(a2.strides, (*a1.strides, scalar_size))
 
-    # convert float arrays to vec arrays
-    def wrap_float_to_vec_tensor(vec_dtype):
-        a1 = wp.zeros((10, vec_dtype._length_), dtype=wp.float32, device=device)
+    # convert scalar arrays to vector arrays
+    def wrap_scalar_to_vector_tensor(vec_dtype):
+        scalar_type = vec_dtype._wp_scalar_type_
+        scalar_size = ctypes.sizeof(vec_dtype._type_)
+
+        a1 = wp.zeros((10, vec_dtype._length_), dtype=scalar_type, device=device)
         a2 = wp.from_dlpack(wp.to_dlpack(a1), dtype=vec_dtype)
 
         test.assertEqual(a1.ptr, a2.ptr)
         test.assertEqual(a1.device, a2.device)
         test.assertEqual(a2.ndim, a1.ndim - 1)
-        test.assertEqual(a1.dtype, wp.float32)
+        test.assertEqual(a1.dtype, scalar_type)
         test.assertEqual(a2.dtype, vec_dtype)
         test.assertEqual(a1.shape, (*a2.shape, vec_dtype._length_))
-        test.assertEqual(a1.strides, (*a2.strides, 4))
+        test.assertEqual(a1.strides, (*a2.strides, scalar_size))
 
-    # convert mat arrays to float arrays
-    def wrap_mat_to_float_tensor(mat_dtype):
+    # convert matrix arrays to scalar arrays
+    def wrap_matrix_to_scalar_tensor(mat_dtype):
+        scalar_type = mat_dtype._wp_scalar_type_
+        scalar_size = ctypes.sizeof(mat_dtype._type_)
+
         a1 = wp.zeros(10, dtype=mat_dtype, device=device)
-        a2 = wp.from_dlpack(wp.to_dlpack(a1), dtype=wp.float32)
+        a2 = wp.from_dlpack(wp.to_dlpack(a1), dtype=scalar_type)
 
         test.assertEqual(a1.ptr, a2.ptr)
         test.assertEqual(a1.device, a2.device)
         test.assertEqual(a2.ndim, a1.ndim + 2)
         test.assertEqual(a1.dtype, mat_dtype)
-        test.assertEqual(a2.dtype, wp.float32)
+        test.assertEqual(a2.dtype, scalar_type)
         test.assertEqual(a2.shape, (*a1.shape, *mat_dtype._shape_))
-        test.assertEqual(a2.strides, (*a1.strides, *wp.types.strides_from_shape(mat_dtype._shape_, wp.float32)))
+        test.assertEqual(a2.strides, (*a1.strides, scalar_size * mat_dtype._shape_[1], scalar_size))
 
-    # convert float arrays to mat arrays
-    def wrap_float_to_mat_tensor(mat_dtype):
-        a1 = wp.zeros((10, *mat_dtype._shape_), dtype=wp.float32, device=device)
+    # convert scalar arrays to matrix arrays
+    def wrap_scalar_to_matrix_tensor(mat_dtype):
+        scalar_type = mat_dtype._wp_scalar_type_
+        scalar_size = ctypes.sizeof(mat_dtype._type_)
+
+        a1 = wp.zeros((10, *mat_dtype._shape_), dtype=scalar_type, device=device)
         a2 = wp.from_dlpack(wp.to_dlpack(a1), dtype=mat_dtype)
 
         test.assertEqual(a1.ptr, a2.ptr)
         test.assertEqual(a1.device, a2.device)
         test.assertEqual(a2.ndim, a1.ndim - 2)
-        test.assertEqual(a1.dtype, wp.float32)
+        test.assertEqual(a1.dtype, scalar_type)
         test.assertEqual(a2.dtype, mat_dtype)
         test.assertEqual(a1.shape, (*a2.shape, *mat_dtype._shape_))
-        test.assertEqual(a1.strides, (*a2.strides, *wp.types.strides_from_shape(mat_dtype._shape_, wp.float32)))
+        test.assertEqual(a1.strides, (*a2.strides, scalar_size * mat_dtype._shape_[1], scalar_size))
 
     for t in wp.types.scalar_types:
         wrap_scalar_tensor_implicit(t)
@@ -132,25 +144,38 @@ def test_dlpack_dtypes_and_shapes(test, device):
     wrap_scalar_tensor_explicit(wp.int64, wp.uint64)
     wrap_scalar_tensor_explicit(wp.uint64, wp.int64)
 
-    wrap_vec_to_float_tensor(wp.vec2)
-    wrap_vec_to_float_tensor(wp.vec3)
-    wrap_vec_to_float_tensor(wp.vec4)
-    wrap_vec_to_float_tensor(wp.spatial_vector)
-    wrap_vec_to_float_tensor(wp.transform)
+    vec_types = []
+    for t in wp.types.scalar_types:
+        for vec_len in [2, 3, 4, 5]:
+            vec_types.append(wp.types.vector(vec_len, t))
 
-    wrap_float_to_vec_tensor(wp.vec2)
-    wrap_float_to_vec_tensor(wp.vec3)
-    wrap_float_to_vec_tensor(wp.vec4)
-    wrap_float_to_vec_tensor(wp.spatial_vector)
-    wrap_float_to_vec_tensor(wp.transform)
+    vec_types.append(wp.quath)
+    vec_types.append(wp.quatf)
+    vec_types.append(wp.quatd)
+    vec_types.append(wp.transformh)
+    vec_types.append(wp.transformf)
+    vec_types.append(wp.transformd)
+    vec_types.append(wp.spatial_vectorh)
+    vec_types.append(wp.spatial_vectorf)
+    vec_types.append(wp.spatial_vectord)
 
-    wrap_mat_to_float_tensor(wp.mat22)
-    wrap_mat_to_float_tensor(wp.mat33)
-    wrap_mat_to_float_tensor(wp.mat44)
+    for vec_type in vec_types:
+        wrap_vector_to_scalar_tensor(vec_type)
+        wrap_scalar_to_vector_tensor(vec_type)
 
-    wrap_float_to_mat_tensor(wp.mat22)
-    wrap_float_to_mat_tensor(wp.mat33)
-    wrap_float_to_mat_tensor(wp.mat44)
+    mat_shapes = [(2, 2), (3, 3), (4, 4), (5, 5), (2, 3), (3, 2), (3, 4), (4, 3)]
+    mat_types = []
+    for t in wp.types.scalar_types:
+        for mat_shape in mat_shapes:
+            mat_types.append(wp.types.matrix(mat_shape, t))
+
+    mat_types.append(wp.spatial_matrixh)
+    mat_types.append(wp.spatial_matrixf)
+    mat_types.append(wp.spatial_matrixd)
+
+    for mat_type in mat_types:
+        wrap_matrix_to_scalar_tensor(mat_type)
+        wrap_scalar_to_matrix_tensor(mat_type)
 
 
 def test_dlpack_warp_to_torch(test, device):
@@ -313,6 +338,9 @@ def register(parent):
 
     # jax interop via dlpack
     try:
+        # prevent Jax from gobbling up GPU memory
+        os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+
         import jax
         import jax.dlpack
 

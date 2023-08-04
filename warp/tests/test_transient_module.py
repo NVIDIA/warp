@@ -59,8 +59,11 @@ def test_transient_module(test, device):
     # Loading it a second time shouldn't be an issue.
     module = load_code_as_module(CODE, "")
 
+    assert len(module.compute.module.structs) == 1
+    assert len(module.compute.module.functions) == 1
+
     data = module.Data()
-    data.x = wp.array(123, dtype=int)
+    data.x = wp.array([123], dtype=int)
 
     wp.set_module_options({"foo": "bar"}, module=module)
     assert wp.get_module_options(module=module).get("foo") == "bar"

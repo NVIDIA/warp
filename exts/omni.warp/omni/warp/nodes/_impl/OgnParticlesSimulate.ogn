@@ -1,0 +1,165 @@
+{
+    "WarpParticlesSimulate": {
+        "version": 1,
+        "categoryDefinitions": "../../../../config/warp_categories.json",
+        "description": "Simulates particles.",
+        "categories": ["warp"],
+        "language": "Python",
+        "uiName": "Particles Simulate",
+        "cudaPointers": "cpu",
+        "inputs": {
+            "execIn": {
+                "type": "execution",
+                "description": "Input execution."
+            },
+            "enabled": {
+                "type": "bool",
+                "description": "Whether to enable the simulation.",
+                "uiName": "Enabled",
+                "default": true
+            },
+            "substepCount": {
+                "type": "int",
+                "description": "Number of substeps.",
+                "uiName": "Substep Count",
+                "default": 32
+            },
+            "gravity": {
+                "type": "vectorf[3]",
+                "description": "Gravity force.",
+                "uiName": "Gravity",
+                "default": [0.0, -980, 0.0]
+            },
+            "globalScale": {
+                "type": "float",
+                "description": "Global scale value for the simulation attributes.",
+                "uiName": "Global Scale",
+                "default": 100.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "contactElasticStiffness": {
+                "type": "float",
+                "description": "Contact elastic stiffness. Multiple of the global scale value.",
+                "uiName": "Contact Elastic Stiffness",
+                "default": 100.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "contactFrictionStiffness": {
+                "type": "float",
+                "description": "Contact friction stiffness. Multiple of the global scale value.",
+                "uiName": "Contact Friction Stiffness",
+                "default": 1.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "contactFrictionCoeff": {
+                "type": "float",
+                "description": "Contact coefficient of friction.",
+                "uiName": "Contact Friction Coeff",
+                "default": 0.75,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "contactDampingStiffness": {
+                "type": "float",
+                "description": "Contact damping stiffness. Multiple of the global scale value.",
+                "uiName": "Contact Damping Stiffness",
+                "default": 1.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "particles": {
+                "type": "bundle",
+                "description": "Particles to simulate.",
+                "uiName": "Particles",
+                "memoryType": "cuda"
+            },
+            "particlesQueryRange": {
+                "type": "float",
+                "description": "Amount to expand the grid cell size to accommodate caching neighbours between steps. Multiple of the largest particle radius.",
+                "uiName": "Particles Query Range",
+                "default": 2.0,
+                "metadata": {
+                    "min": 1.0
+                }
+            },
+            "particlesContactAdhesion": {
+                "type": "float",
+                "description": "Contact coefficient of adhesion.",
+                "uiName": "Particles Contact Adhesion",
+                "default": 0.25,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "particlesContactCohesion": {
+                "type": "float",
+                "description": "Contact coefficient of cohesion.",
+                "uiName": "Particles Contact Cohesion",
+                "default": 0.1,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "collider": {
+                "type": "bundle",
+                "description": "Collider geometry mesh.",
+                "uiName": "Collider",
+                "memoryType": "cuda"
+            },
+            "colliderContactDistance": {
+                "type": "float",
+                "description": "Distance to maintain from the collider's surface.",
+                "uiName": "Collider Contact Distance",
+                "default": 1,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "colliderContactQueryRange": {
+                "type": "float",
+                "description": "Distance to start probing for contacts with the collider's surface. Multiple of the collider contact distance.",
+                "uiName": "Collider Contact Query Range",
+                "default": 100.0,
+                "metadata": {
+                    "min": 1.0
+                }
+            },
+            "groundEnabled": {
+                "type": "bool",
+                "description": "Whether to add a ground collider.",
+                "uiName": "Ground Enabled",
+                "default": true
+            },
+            "groundAltitude": {
+                "type": "float",
+                "description": "Position of the ground on the Y axis.",
+                "uiName": "Ground Altitude"
+            },
+            "time": {
+                "type": "double",
+                "description": "Time.",
+                "uiName": "Time"
+            }
+        },
+        "outputs": {
+            "execOut": {
+                "type": "execution",
+                "description": "Output execution."
+            },
+            "particles": {
+                "type": "bundle",
+                "description": "Output particles geometry.",
+                "uiName": "Particles",
+                "memoryType": "cuda"
+            }
+        }
+    }
+}

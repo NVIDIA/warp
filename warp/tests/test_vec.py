@@ -119,6 +119,68 @@ def test_arrays(test, device, dtype):
     assert_np_equal(v4.numpy(), v4_np, tol=1.0e-6)
 
 
+def test_components(test, device, dtype):
+    # test accessing vector components from Python - this is especially important
+    # for float16, which requires special handling internally
+
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec3 = wp.types.vector(length=3, dtype=wptype)
+
+    v = vec3(1, 2, 3)
+
+    # test __getitem__ for individual components
+    test.assertEqual(v[0], 1)
+    test.assertEqual(v[1], 2)
+    test.assertEqual(v[2], 3)
+
+    # test __getitem__ for slices
+    s = v[:]
+    test.assertEqual(s[0], 1)
+    test.assertEqual(s[1], 2)
+    test.assertEqual(s[2], 3)
+
+    s = v[1:]
+    test.assertEqual(s[0], 2)
+    test.assertEqual(s[1], 3)
+
+    s = v[:2]
+    test.assertEqual(s[0], 1)
+    test.assertEqual(s[1], 2)
+
+    s = v[::2]
+    test.assertEqual(s[0], 1)
+    test.assertEqual(s[1], 3)
+
+    # test __setitem__ for individual components
+    v[0] = 4
+    v[1] = 5
+    v[2] = 6
+    test.assertEqual(v[0], 4)
+    test.assertEqual(v[1], 5)
+    test.assertEqual(v[2], 6)
+
+    # test __setitem__ for slices
+    v[:] = [7, 8, 9]
+    test.assertEqual(v[0], 7)
+    test.assertEqual(v[1], 8)
+    test.assertEqual(v[2], 9)
+
+    v[1:] = [10, 11]
+    test.assertEqual(v[0], 7)
+    test.assertEqual(v[1], 10)
+    test.assertEqual(v[2], 11)
+
+    v[:2] = [12, 13]
+    test.assertEqual(v[0], 12)
+    test.assertEqual(v[1], 13)
+    test.assertEqual(v[2], 11)
+
+    v[::2] = [14, 15]
+    test.assertEqual(v[0], 14)
+    test.assertEqual(v[1], 13)
+    test.assertEqual(v[2], 15)
+
+
 def test_anon_type_instance(test, device, dtype, register_kernels=False):
     np.random.seed(123)
 
@@ -2764,6 +2826,32 @@ def test_constructors_default_precision():
         wp.expect_eq(custom[i], float(i))
 
 
+@wp.kernel
+def test_vector_mutation(expected: wp.types.vector(length=10, dtype=float)):
+    v = wp.vector(length=10, dtype=float)
+
+    # test element indexing
+    v[0] = 1.0
+
+    for i in range(1, 10):
+        v[i] = float(i) + 1.0
+
+    wp.expect_eq(v, expected)
+
+
+CONSTANT_LENGTH = wp.constant(10)
+
+
+# tests that we can use global constants in length keyword argument
+# for vector constructor
+@wp.kernel
+def test_constructors_constant_length():
+    v = wp.vector(length=(CONSTANT_LENGTH), dtype=float)
+
+    for i in range(CONSTANT_LENGTH):
+        v[i] = float(i)
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -2772,6 +2860,16 @@ def register(parent):
 
     add_kernel_test(TestVec, test_constructors_explicit_precision, dim=1, devices=devices)
     add_kernel_test(TestVec, test_constructors_default_precision, dim=1, devices=devices)
+    add_kernel_test(TestVec, test_constructors_constant_length, dim=1, devices=devices)
+
+    vec10 = wp.types.vector(length=10, dtype=float)
+    add_kernel_test(
+        TestVec,
+        test_vector_mutation,
+        dim=1,
+        inputs=[vec10(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0)],
+        devices=devices,
+    )
 
     for dtype in np_unsigned_int_types:
         add_function_test_register_kernel(
@@ -2803,6 +2901,7 @@ def register(parent):
 
     for dtype in np_scalar_types:
         add_function_test(TestVec, f"test_arrays_{dtype.__name__}", test_arrays, devices=devices, dtype=dtype)
+        add_function_test(TestVec, f"test_components_{dtype.__name__}", test_components, devices=None, dtype=dtype)
         add_function_test_register_kernel(
             TestVec, f"test_constructors_{dtype.__name__}", test_constructors, devices=devices, dtype=dtype
         )

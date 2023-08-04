@@ -30,6 +30,14 @@ struct mat_t
                 data[i][j] = s;
     }
     
+    template <typename OtherType>
+    inline explicit CUDA_CALLABLE mat_t(const mat_t<Rows, Cols, OtherType>& other)
+    {
+        for (unsigned i=0; i < Rows; ++i)
+            for (unsigned j=0; j < Cols; ++j)
+                data[i][j] = other.data[i][j];
+    }
+    
     inline CUDA_CALLABLE mat_t(vec_t<2,Type> c0, vec_t<2,Type> c1)
     {
         data[0][0] = c0[0];
@@ -303,19 +311,66 @@ inline CUDA_CALLABLE vec_t<Cols,Type> index(const mat_t<Rows,Cols,Type>& m, int 
 template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE Type index(const mat_t<Rows,Cols,Type>& m, int row, int col)
 {
-#if FP_CHECK
-    if (row < 0 || row > Rows)
+#ifndef NDEBUG
+    if (row < 0 || row >= Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
-    if (col < 0 || col > Cols)
+    if (col < 0 || col >= Cols)
     {
         printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
         assert(0);
     }
 #endif
     return m.data[row][col];
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void indexset(mat_t<Rows,Cols,Type>& m, int row, vec_t<Cols, Type> value)
+{
+#ifndef NDEBUG
+    if (row < 0 || row >= Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    for(unsigned i=0; i < Cols; ++i)
+        m.data[row][i] = value[i];
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void indexset(mat_t<Rows,Cols,Type>& m, int row, int col, Type value)
+{
+#ifndef NDEBUG
+    if (row < 0 || row >= Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+    if (col < 0 || col >= Cols)
+    {
+        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+    m.data[row][col] = value;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_indexset(const mat_t<Rows,Cols,Type>& m, int row, const vec_t<Cols, Type>& value,
+                                       const mat_t<Rows,Cols,Type>& adj_m, int adj_row, const vec_t<Cols, Type>& adj_value)
+{
+    // nop
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_indexset(const mat_t<Rows,Cols,Type>& m, int row, int col, Type value,
+                                       const mat_t<Rows,Cols,Type>& adj_m, int adj_row, int adj_col, Type adj_value)
+{
+    // nop
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
@@ -561,6 +616,17 @@ inline CUDA_CALLABLE Type trace(const mat_t<Rows,Rows,Type>& m)
     return ret;
 }
 
+template<unsigned Rows, typename Type>
+inline CUDA_CALLABLE vec_t<Rows, Type> get_diag(const mat_t<Rows,Rows,Type>& m)
+{
+    vec_t<Rows, Type> ret;
+    for( unsigned i=0; i < Rows; ++i )
+    {
+        ret[i] = m.data[i][i];
+    }
+    return ret;
+}
+
 // Only implementing inverses for 2x2, 3x3 and 4x4 matrices for now...
 template<typename Type>
 inline CUDA_CALLABLE mat_t<2,2,Type> inverse(const mat_t<2,2,Type>& m)
@@ -795,7 +861,7 @@ inline CUDA_CALLABLE vec_t<3,Type> transform_vector(const mat_t<4,4,Type>& m, co
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_index(const mat_t<Rows,Cols,Type>& m, int row, mat_t<Rows,Cols,Type>& adj_m, int& adj_row, const vec_t<Rows,Type>& adj_ret)
+inline CUDA_CALLABLE void adj_index(const mat_t<Rows,Cols,Type>& m, int row, mat_t<Rows,Cols,Type>& adj_m, int& adj_row, const vec_t<Cols,Type>& adj_ret)
 {
     for( unsigned col=0; col < Cols; ++col )
         adj_m.data[row][col] += adj_ret[col];
@@ -804,7 +870,7 @@ inline CUDA_CALLABLE void adj_index(const mat_t<Rows,Cols,Type>& m, int row, mat
 template<unsigned Rows, unsigned Cols, typename Type>
 inline void CUDA_CALLABLE adj_index(const mat_t<Rows,Cols,Type>& m, int row, int col, mat_t<Rows,Cols,Type>& adj_m, int& adj_row, int& adj_col, Type adj_ret)
 {
-#if FP_CHECK
+#ifndef NDEBUG
     if (row < 0 || row > Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
@@ -924,6 +990,13 @@ inline CUDA_CALLABLE void adj_diag(const vec_t<Rows,Type>& d, vec_t<Rows,Type>& 
 {
     for (unsigned i=0; i < Rows; ++i)
         adj_d[i] += adj_ret.data[i][i];
+}
+
+template<unsigned Rows, typename Type>
+inline CUDA_CALLABLE void adj_get_diag(const mat_t<Rows,Rows,Type>& m, mat_t<Rows,Rows,Type>& adj_m, const vec_t<Rows,Type>& adj_ret)
+{
+    for (unsigned i=0; i < Rows; ++i)
+        adj_m.data[i][i] += adj_ret[i];
 }
 
 template<typename Type>
@@ -1092,6 +1165,19 @@ inline CUDA_CALLABLE void adj_mat_t(Type s, Type& adj_s, const mat_t<Rows, Cols,
         for (unsigned j=0; j < Cols; ++j)
         {
             adj_s += adj_ret.data[i][j];
+        }
+    }
+}
+
+// adjoint for the casting constructor:
+template<unsigned Rows, unsigned Cols, typename Type, typename OtherType>
+inline CUDA_CALLABLE void adj_mat_t(const mat_t<Rows, Cols, OtherType>& other, mat_t<Rows, Cols, OtherType>& adj_other, const mat_t<Rows, Cols, Type>& adj_ret)
+{
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            adj_other.data[i][j] += adj_ret.data[i][j];
         }
     }
 }

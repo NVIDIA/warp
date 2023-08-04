@@ -4,7 +4,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="#" /><link rel="search" title="Search" href="search.html" />
 
-    <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 --><title>Index - Warp 0.8.2</title>
+    <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 --><title>Index - Warp 0.10.1</title>
 <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -134,7 +134,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Warp 0.8.2</div></a>
+      <a href="index.html"><div class="brand">Warp 0.10.1</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -161,7 +161,7 @@
     <img class="sidebar-logo only-dark" src="_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 0.8.2</span>
+  <span class="sidebar-brand-text">Warp 0.10.1</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -184,6 +184,7 @@
 <li class="toctree-l1"><a class="reference internal" href="modules/functions.html">Kernel Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/sim.html">Simulation Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/sparse.html">Sparse Linear Algebra Reference</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Index</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Project Links</span></p>
@@ -279,10 +280,10 @@
 </li>
         <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_shape_cone">add_shape_cone() (warp.sim.ModelBuilder method)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_shape_cylinder">add_shape_cylinder() (warp.sim.ModelBuilder method)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_shape_mesh">add_shape_mesh() (warp.sim.ModelBuilder method)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_shape_plane">add_shape_plane() (warp.sim.ModelBuilder method)</a>
@@ -304,6 +305,10 @@
         <li><a href="modules/runtime.html#warp.Volume.allocate">allocate() (warp.Volume class method)</a>
 </li>
         <li><a href="modules/runtime.html#warp.Volume.allocate_by_tiles">allocate_by_tiles() (warp.Volume class method)</a>
+</li>
+        <li><a href="modules/functions.html#warp.argmax">argmax() (in module warp)</a>
+</li>
+        <li><a href="modules/functions.html#warp.argmin">argmin() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.Array">Array (class in warp)</a>
 </li>
@@ -335,6 +340,16 @@
   <h2>B</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/functions.html#warp.bit_and">bit_and() (in module warp)</a>
+</li>
+        <li><a href="modules/functions.html#warp.bit_or">bit_or() (in module warp)</a>
+</li>
+        <li><a href="modules/functions.html#warp.bit_xor">bit_xor() (in module warp)</a>
+</li>
+        <li><a href="modules/sparse.html#warp.sparse.BsrMatrix.block_shape">block_shape (warp.sparse.BsrMatrix property)</a>
+</li>
+        <li><a href="modules/sparse.html#warp.sparse.BsrMatrix.block_size">block_size (warp.sparse.BsrMatrix property)</a>
+</li>
         <li><a href="modules/sim.html#warp.sim.Model.body_com">body_com (warp.sim.Model attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.body_count">body_count (warp.sim.Model attribute)</a>
@@ -355,8 +370,6 @@
           <li><a href="modules/sim.html#warp.sim.State.body_q">(warp.sim.State attribute)</a>
 </li>
         </ul></li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/sim.html#warp.sim.Model.body_qd">body_qd (warp.sim.Model attribute)</a>
 
         <ul>
@@ -364,6 +377,36 @@
 </li>
         </ul></li>
         <li><a href="modules/sim.html#warp.sim.Model.body_shapes">body_shapes (warp.sim.Model attribute)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/functions.html#warp.breakpoint">breakpoint() (in module warp)</a>
+</li>
+        <li><a href="modules/sparse.html#warp.sparse.bsr_assign">bsr_assign() (in module warp.sparse)</a>
+</li>
+        <li><a href="modules/sparse.html#warp.sparse.bsr_axpy">bsr_axpy() (in module warp.sparse)</a>
+</li>
+        <li><a href="modules/sparse.html#warp.sparse.bsr_copy">bsr_copy() (in module warp.sparse)</a>
+</li>
+        <li><a href="modules/sparse.html#warp.sparse.bsr_diag">bsr_diag() (in module warp.sparse)</a>
+</li>
+        <li><a href="modules/sparse.html#warp.sparse.bsr_get_diag">bsr_get_diag() (in module warp.sparse)</a>
+</li>
+        <li><a href="modules/sparse.html#warp.sparse.bsr_mm">bsr_mm() (in module warp.sparse)</a>
+</li>
+        <li><a href="modules/sparse.html#warp.sparse.bsr_mv">bsr_mv() (in module warp.sparse)</a>
+</li>
+        <li><a href="modules/sparse.html#warp.sparse.bsr_set_diag">bsr_set_diag() (in module warp.sparse)</a>
+</li>
+        <li><a href="modules/sparse.html#warp.sparse.bsr_set_from_triplets">bsr_set_from_triplets() (in module warp.sparse)</a>
+</li>
+        <li><a href="modules/sparse.html#warp.sparse.bsr_set_transpose">bsr_set_transpose() (in module warp.sparse)</a>
+</li>
+        <li><a href="modules/sparse.html#warp.sparse.bsr_transposed">bsr_transposed() (in module warp.sparse)</a>
+</li>
+        <li><a href="modules/sparse.html#warp.sparse.bsr_zeros">bsr_zeros() (in module warp.sparse)</a>
+</li>
+        <li><a href="modules/sparse.html#warp.sparse.BsrMatrix">BsrMatrix (class in warp.sparse)</a>
 </li>
         <li><a href="modules/runtime.html#warp.HashGrid.build">build() (warp.HashGrid method)</a>
 </li>
@@ -397,10 +440,12 @@
 </li>
         <li><a href="modules/functions.html#warp.closest_point_edge_edge">closest_point_edge_edge() (in module warp)</a>
 </li>
-        <li><a href="modules/runtime.html#warp.constant">constant (class in warp)</a>
+        <li><a href="modules/sparse.html#warp.sparse.BsrMatrix.columns">columns (warp.sparse.BsrMatrix attribute)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/runtime.html#warp.constant">constant (class in warp)</a>
+</li>
         <li><a href="modules/sim.html#warp.sim.Model.contact_count">contact_count (warp.sim.Model attribute)</a>
 </li>
         <li><a href="modules/runtime.html#warp.copy">copy() (in module warp)</a>
@@ -547,6 +592,8 @@
   <h2>G</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/functions.html#warp.get_diag">get_diag() (in module warp)</a>
+</li>
         <li><a href="modules/sim.html#warp.sim.Model.gravity">gravity (warp.sim.Model attribute)</a>
 </li>
     </ul></td>
@@ -604,6 +651,8 @@
         <li><a href="modules/functions.html#warp.intersect_tri_tri">intersect_tri_tri() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.inverse">inverse() (in module warp)</a>
+</li>
+        <li><a href="modules/functions.html#warp.invert">invert() (in module warp)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -697,10 +746,10 @@
 </li>
         <li><a href="modules/functions.html#warp.lerp">lerp() (in module warp)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/runtime.html#warp.Volume.LINEAR">LINEAR (warp.Volume attribute)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/functions.html#warp.log">log() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.log10">log10() (in module warp)</a>
@@ -708,6 +757,8 @@
         <li><a href="modules/functions.html#warp.log2">log2() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.lower_bound">lower_bound() (in module warp)</a>
+</li>
+        <li><a href="modules/functions.html#warp.lshift">lshift() (in module warp)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -735,6 +786,8 @@
 </li>
         <li><a href="modules/functions.html#warp.mat44h">mat44h (class in warp)</a>
 </li>
+        <li><a href="modules/runtime.html#warp.matmul">matmul() (in module warp)</a>
+</li>
         <li><a href="modules/functions.html#warp.Matrix">Matrix (class in warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.matrix">matrix() (in module warp)</a>
@@ -751,12 +804,12 @@
 </li>
         <li><a href="modules/functions.html#warp.mesh_get">mesh_get() (in module warp)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/functions.html#warp.mesh_get_index">mesh_get_index() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.mesh_get_point">mesh_get_point() (in module warp)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/functions.html#warp.mesh_get_velocity">mesh_get_velocity() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.mesh_query_aabb">mesh_query_aabb() (in module warp)</a>
@@ -764,6 +817,12 @@
         <li><a href="modules/functions.html#warp.mesh_query_aabb_next">mesh_query_aabb_next() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.mesh_query_point">mesh_query_point() (in module warp)</a>
+</li>
+        <li><a href="modules/functions.html#warp.mesh_query_point_no_sign">mesh_query_point_no_sign() (in module warp)</a>
+</li>
+        <li><a href="modules/functions.html#warp.mesh_query_point_sign_normal">mesh_query_point_sign_normal() (in module warp)</a>
+</li>
+        <li><a href="modules/functions.html#warp.mesh_query_point_sign_winding_number">mesh_query_point_sign_winding_number() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.mesh_query_ray">mesh_query_ray() (in module warp)</a>
 </li>
@@ -785,6 +844,8 @@
 </li>
           <li><a href="modules/interoperability.html#module-warp.jax">warp.jax</a>
 </li>
+          <li><a href="modules/sparse.html#module-warp.sparse">warp.sparse</a>
+</li>
           <li><a href="modules/interoperability.html#module-warp.torch">warp.torch</a>
 </li>
         </ul></li>
@@ -800,7 +861,11 @@
   <h2>N</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/sparse.html#warp.sparse.BsrMatrix.ncol">ncol (warp.sparse.BsrMatrix attribute)</a>
+</li>
         <li><a href="modules/functions.html#warp.neg">neg() (in module warp)</a>
+</li>
+        <li><a href="modules/sparse.html#warp.sparse.BsrMatrix.nnz">nnz (warp.sparse.BsrMatrix attribute)</a>
 </li>
         <li><a href="modules/functions.html#warp.noise">noise() (in module warp)</a>
 </li>
@@ -809,6 +874,8 @@
         <li><a href="modules/functions.html#warp.nonzero">nonzero() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.normalize">normalize() (in module warp)</a>
+</li>
+        <li><a href="modules/sparse.html#warp.sparse.BsrMatrix.nrow">nrow (warp.sparse.BsrMatrix attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.num_envs">num_envs (warp.sim.Model attribute)</a>
 </li>
@@ -819,6 +886,10 @@
 <section id="O" class="genindex-section">
   <h2>O</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/sparse.html#warp.sparse.BsrMatrix.offsets">offsets (warp.sparse.BsrMatrix attribute)</a>
+</li>
+    </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/functions.html#warp.outer">outer() (in module warp)</a>
 </li>
@@ -836,6 +907,8 @@
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.particle_count">particle_count (warp.sim.Model attribute)</a>
 </li>
+        <li><a href="modules/sim.html#warp.sim.Model.particle_flags">particle_flags (warp.sim.Model attribute)</a>
+</li>
         <li><a href="modules/sim.html#warp.sim.Model.particle_grid">particle_grid (warp.sim.Model attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.particle_inv_mass">particle_inv_mass (warp.sim.Model attribute)</a>
@@ -847,6 +920,8 @@
         <li><a href="modules/sim.html#warp.sim.Model.particle_kf">particle_kf (warp.sim.Model attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.particle_mass">particle_mass (warp.sim.Model attribute)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.Model.particle_max_radius">particle_max_radius (warp.sim.Model attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.particle_mu">particle_mu (warp.sim.Model attribute)</a>
 </li>
@@ -865,7 +940,11 @@
 </li>
         </ul></li>
         <li><a href="modules/sim.html#warp.sim.Model.particle_radius">particle_radius (warp.sim.Model attribute)</a>
+
+        <ul>
+          <li><a href="modules/sim.html#id0">(warp.sim.Model property)</a>
 </li>
+        </ul></li>
         <li><a href="modules/functions.html#warp.pnoise">pnoise() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.poisson">poisson() (in module warp)</a>
@@ -954,6 +1033,8 @@
 </li>
         <li><a href="modules/functions.html#warp.round">round() (in module warp)</a>
 </li>
+        <li><a href="modules/functions.html#warp.rshift">rshift() (in module warp)</a>
+</li>
     </ul></td>
   </tr></table>
 </section>
@@ -984,6 +1065,8 @@
 </li>
         <li><a href="modules/functions.html#warp.Scalar">Scalar (class in warp)</a>
 </li>
+        <li><a href="modules/sparse.html#warp.sparse.BsrMatrix.scalar_type">scalar_type (warp.sparse.BsrMatrix property)</a>
+</li>
         <li><a href="modules/profiling.html#warp.ScopedTimer">ScopedTimer (class in warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.select">select() (in module warp)</a>
@@ -991,6 +1074,8 @@
         <li><a href="modules/sim.html#warp.sim.SemiImplicitIntegrator">SemiImplicitIntegrator (class in warp.sim)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.ModelBuilder.set_ground_plane">set_ground_plane() (warp.sim.ModelBuilder method)</a>
+</li>
+        <li><a href="modules/sparse.html#warp.sparse.BsrMatrix.shape">shape (warp.sparse.BsrMatrix property)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.shape_body">shape_body (warp.sim.Model attribute)</a>
 </li>
@@ -1030,8 +1115,6 @@
 </li>
         <li><a href="modules/functions.html#warp.smoothstep">smoothstep() (in module warp)</a>
 </li>
-        <li><a href="modules/sim.html#warp.sim.Model.soft_contact_distance">soft_contact_distance (warp.sim.Model attribute)</a>
-</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/sim.html#warp.sim.Model.soft_contact_kd">soft_contact_kd (warp.sim.Model attribute)</a>
@@ -1045,6 +1128,8 @@
         <li><a href="modules/sim.html#warp.sim.Model.soft_contact_max">soft_contact_max (warp.sim.Model property)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.soft_contact_mu">soft_contact_mu (warp.sim.Model attribute)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.Model.soft_contact_restitution">soft_contact_restitution (warp.sim.Model attribute)</a>
 </li>
         <li><a href="modules/functions.html#warp.spatial_adjoint">spatial_adjoint() (in module warp)</a>
 </li>
@@ -1210,6 +1295,8 @@
   <h2>V</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/sparse.html#warp.sparse.BsrMatrix.values">values (warp.sparse.BsrMatrix attribute)</a>
+</li>
         <li><a href="modules/functions.html#warp.vec2b">vec2b (class in warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.vec2d">vec2d (class in warp)</a>
@@ -1334,6 +1421,13 @@
         </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li>
+    warp.sparse
+
+        <ul>
+          <li><a href="modules/sparse.html#module-warp.sparse">module</a>
+</li>
+        </ul></li>
         <li>
     warp.torch
 

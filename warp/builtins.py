@@ -21,7 +21,7 @@ def sametype_value_func(default):
         if args is None:
             return default
         if not all(types_equal(args[0].type, a.type) for a in args[1:]):
-            raise RuntimeError(f"Input types must be exactly the same, {[a.type for a in args]}")
+            raise RuntimeError(f"Input types must be the same, found: {[type_repr(a.type) for a in args]}")
         return args[0].type
 
     return fn
@@ -322,19 +322,52 @@ add_builtin(
     group="Vector Math",
 )
 add_builtin(
-  "abs",
-  input_types={"x": vector(length=Any, dtype=Scalar)},
-  value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
-  doc="Return the element wise absolute value of a vector.",
-  group="Vector Math",
+    "abs",
+    input_types={"x": vector(length=Any, dtype=Scalar)},
+    value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
+    doc="Return the element wise absolute value of a vector.",
+    group="Vector Math",
 )
 add_builtin(
-  "sign",
-  input_types={"x": vector(length=Any, dtype=Scalar)},
-  value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
-  doc="Return the element wise sign of a vector.",
-  group="Vector Math",
+    "sign",
+    input_types={"x": vector(length=Any, dtype=Scalar)},
+    value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
+    doc="Return the element wise sign of a vector.",
+    group="Vector Math",
 )
+
+add_builtin(
+    "min",
+    input_types={"v": vector(length=Any, dtype=Scalar)},
+    value_func=sametype_scalar_value_func,
+    doc="Return the minimum element of a vector.",
+    group="Vector Math",
+)
+add_builtin(
+    "max",
+    input_types={"v": vector(length=Any, dtype=Scalar)},
+    value_func=sametype_scalar_value_func,
+    doc="Return the maximum element of a vector.",
+    group="Vector Math",
+)
+
+add_builtin(
+    "argmin",
+    input_types={"v": vector(length=Any, dtype=Scalar)},
+    value_func=lambda args, kwds, _: warp.uint32,
+    doc="Return the index of the minimum element of a vector.",
+    group="Vector Math",
+    missing_grad=True,
+)
+add_builtin(
+    "argmax",
+    input_types={"v": vector(length=Any, dtype=Scalar)},
+    value_func=lambda args, kwds, _: warp.uint32,
+    doc="Return the index of the maximum element of a vector.",
+    group="Vector Math",
+    missing_grad=True,
+)
+
 
 def value_func_outer(args, kwds, _):
     if args is None:
@@ -516,6 +549,26 @@ add_builtin(
     doc="Returns a matrix with the components of the vector d on the diagonal",
 )
 
+
+def value_func_get_diag(args, kwds, _):
+    if args is None:
+        return vector(length=(Any), dtype=Scalar)
+    else:
+        if args[0].type._shape_[0] != args[0].type._shape_[1]:
+            raise RuntimeError(
+                f"Matrix shape is {args[0].type._shape_}; get_diag is only available for square matrices."
+            )
+        return vector(length=args[0].type._shape_[0], dtype=args[0].type._wp_scalar_type_)
+
+
+add_builtin(
+    "get_diag",
+    input_types={"m": matrix(shape=(Any, Any), dtype=Scalar)},
+    value_func=value_func_get_diag,
+    group="Vector Math",
+    doc="Returns a vector containing the diagonal elements of the square matrix.",
+)
+
 add_builtin(
     "cw_mul",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
@@ -560,7 +613,7 @@ def vector_constructor_func(args, kwds, templates):
     if args is None:
         return vector(length=Any, dtype=Scalar)
 
-    if templates == None or len(templates) == 0:
+    if templates is None or len(templates) == 0:
         # handle construction of anonymous (undeclared) vector types
 
         if "length" in kwds:
@@ -578,6 +631,13 @@ def vector_constructor_func(args, kwds, templates):
                 # value initialization e.g.: wp.vec(1.0, length=5)
                 veclen = kwds["length"]
                 vectype = args[0].type
+                if getattr(vectype, "_wp_generic_type_str_", None) == "vec_t":
+                    # constructor from another matrix
+                    if vectype._length_ != veclen:
+                        raise RuntimeError(
+                            f"Incompatible vector lengths for casting copy constructor, {veclen} vs {vectype._length_}"
+                        )
+                    vectype = vectype._wp_scalar_type_
             else:
                 raise RuntimeError(
                     "vec() must have one scalar argument or the dtype keyword argument if the length keyword argument is specified, e.g.: wp.vec(1.0, length=5)"
@@ -599,7 +659,11 @@ def vector_constructor_func(args, kwds, templates):
             veclen = len(args)
             vectype = args[0].type
 
-            if not all(vectype == a.type for a in args):
+            if len(args) == 1 and getattr(vectype, "_wp_generic_type_str_", None) == "vec_t":
+                # constructor from another vector
+                veclen = vectype._length_
+                vectype = vectype._wp_scalar_type_
+            elif not all(vectype == a.type for a in args):
                 raise RuntimeError(
                     f"All numeric arguments to vec() constructor should have the same type, expected {veclen} args of type {vectype}, received { ','.join(map(lambda x : str(x.type), args)) }"
                 )
@@ -611,7 +675,13 @@ def vector_constructor_func(args, kwds, templates):
     else:
         # construction of a predeclared type, e.g.: vec5d
         veclen, vectype = templates
-        if not all(vectype == a.type for a in args):
+        if len(args) == 1 and getattr(args[0].type, "_wp_generic_type_str_", None) == "vec_t":
+            # constructor from another vector
+            if args[0].type._length_ != veclen:
+                raise RuntimeError(
+                    f"Incompatible matrix sizes for casting copy constructor, {veclen} vs {args[0].type._length_}"
+                )
+        elif not all(vectype == a.type for a in args):
             raise RuntimeError(
                 f"All numeric arguments to vec() constructor should have the same type, expected {veclen} args of type {vectype}, received { ','.join(map(lambda x : str(x.type), args)) }"
             )
@@ -655,7 +725,14 @@ def matrix_constructor_func(args, kwds, templates):
             shape = kwds["shape"]
             dtype = args[0].type
 
-            if len(args) > 1 and len(args) != shape[0] * shape[1]:
+            if len(args) == 1 and getattr(dtype, "_wp_generic_type_str_", None) == "mat_t":
+                # constructor from another matrix
+                if types[0]._shape_ != shape:
+                    raise RuntimeError(
+                        f"Incompatible matrix sizes for casting copy constructor, {shape} vs {types[0]._shape_}"
+                    )
+                dtype = dtype._wp_scalar_type_
+            elif len(args) > 1 and len(args) != shape[0] * shape[1]:
                 raise RuntimeError(
                     "Wrong number of arguments for matrix() function, must initialize with either a scalar value, or m*n values"
                 )
@@ -670,31 +747,37 @@ def matrix_constructor_func(args, kwds, templates):
         dtype = templates[2]
 
         if len(args) > 0:
-            # check scalar arg type matches declared type
-            if infer_scalar_type(args) != dtype:
-                raise RuntimeError("Wrong scalar type for mat {} constructor".format(",".join(map(str, templates))))
-
-            # check vector arg type matches declared type
             types = [a.type for a in args]
-            if all(hasattr(a, "_wp_generic_type_str_") and a._wp_generic_type_str_ == "vec_t" for a in types):
-                cols = len(types)
-                if shape[1] != cols:
+            if len(args) == 1 and getattr(types[0], "_wp_generic_type_str_", None) == "mat_t":
+                # constructor from another matrix with same dimension but possibly different type
+                if types[0]._shape_ != shape:
                     raise RuntimeError(
-                        "Wrong number of vectors when attempting to construct a matrix with column vectors"
+                        f"Incompatible matrix sizes for casting copy constructor, {shape} vs {types[0]._shape_}"
                     )
-
-                if not all(a._length_ == shape[0] for a in types):
-                    raise RuntimeError(
-                        "Wrong vector row count when attempting to construct a matrix with column vectors"
-                    )
-
             else:
-                # check that we either got 1 arg (scalar construction), or enough values for whole matrix
-                size = shape[0] * shape[1]
-                if len(args) > 1 and len(args) != shape[0] * shape[1]:
-                    raise RuntimeError(
-                        "Wrong number of scalars when attempting to construct a matrix from a list of components"
-                    )
+                # check scalar arg type matches declared type
+                if infer_scalar_type(args) != dtype:
+                    raise RuntimeError("Wrong scalar type for mat {} constructor".format(",".join(map(str, templates))))
+
+                # check vector arg type matches declared type
+                if all(hasattr(a, "_wp_generic_type_str_") and a._wp_generic_type_str_ == "vec_t" for a in types):
+                    cols = len(types)
+                    if shape[1] != cols:
+                        raise RuntimeError(
+                            "Wrong number of vectors when attempting to construct a matrix with column vectors"
+                        )
+
+                    if not all(a._length_ == shape[0] for a in types):
+                        raise RuntimeError(
+                            "Wrong vector row count when attempting to construct a matrix with column vectors"
+                        )
+                else:
+                    # check that we either got 1 arg (scalar construction), or enough values for whole matrix
+                    size = shape[0] * shape[1]
+                    if len(args) > 1 and len(args) != size:
+                        raise RuntimeError(
+                            "Wrong number of scalars when attempting to construct a matrix from a list of components"
+                        )
 
     return matrix(shape=shape, dtype=dtype)
 
@@ -741,7 +824,7 @@ def matrix_identity_value_func(args, kwds, templates):
 
     n, dtype = [kwds["n"], kwds["dtype"]]
 
-    if n == None:
+    if n is None:
         raise RuntimeError("'n' must be a constant when calling identity() function")
 
     templates.append(n)
@@ -1390,6 +1473,9 @@ add_builtin(
     group="Geometry",
     doc="""Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
 
+   Identifies the sign of the distance using additional ray-casts to determine if the point is inside or outside. This method is relatively robust, but
+   does increase computational cost. See below for additional sign determination methods.
+
    :param id: The mesh identifier
    :param point: The point in space to query
    :param max_dist: Mesh faces above this distance will not be considered by the query
@@ -1397,6 +1483,95 @@ add_builtin(
    :param face: Returns the index of the closest face
    :param bary_u: Returns the barycentric u coordinate of the closest point
    :param bary_v: Returns the barycentric v coordinate of the closest point""",
+)
+
+add_builtin(
+    "mesh_query_point_no_sign",
+    input_types={
+        "id": uint64,
+        "point": vec3,
+        "max_dist": float,
+        "face": int,
+        "bary_u": float,
+        "bary_v": float,
+    },
+    value_type=bool,
+    group="Geometry",
+    doc="""Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
+
+   This method does not compute the sign of the point (inside/outside) which makes it faster than other point query methods.
+
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param max_dist: Mesh faces above this distance will not be considered by the query
+   :param face: Returns the index of the closest face
+   :param bary_u: Returns the barycentric u coordinate of the closest point
+   :param bary_v: Returns the barycentric v coordinate of the closest point""",
+)
+
+add_builtin(
+    "mesh_query_point_sign_normal",
+    input_types={
+        "id": uint64,
+        "point": vec3,
+        "max_dist": float,
+        "inside": float,
+        "face": int,
+        "bary_u": float,
+        "bary_v": float,
+        "epsilon": float,
+    },
+    defaults={"epsilon": 1.0e-3},
+    value_type=bool,
+    group="Geometry",
+    doc="""Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
+    
+   Identifies the sign of the distance (inside/outside) using the angle-weighted pseudo normal. This approach to sign determination is robust for well conditioned meshes
+   that are watertight and non-self intersecting, it is also comparatively fast to compute.
+
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param max_dist: Mesh faces above this distance will not be considered by the query
+   :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise. Note that mesh must be watertight for this to be robust
+   :param face: Returns the index of the closest face
+   :param bary_u: Returns the barycentric u coordinate of the closest point
+   :param bary_v: Returns the barycentric v coordinate of the closest point
+   :param epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3""",
+)
+
+add_builtin(
+    "mesh_query_point_sign_winding_number",
+    input_types={
+        "id": uint64,
+        "point": vec3,
+        "max_dist": float,
+        "inside": float,
+        "face": int,
+        "bary_u": float,
+        "bary_v": float,
+        "accuracy": float,
+        "threshold": float,
+    },
+    defaults={"accuracy": 2.0, "threshold": 0.5},
+    value_type=bool,
+    group="Geometry",
+    doc="""Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found. 
+    
+   Identifies the sign using the winding number of the mesh relative to the query point. This method of sign determination is robust for poorly conditioned meshes
+   and provides a smooth approximation to sign even when the mesh is not watertight. This method is the most robust and accurate of the sign determination meshes
+   but also the most expensive.
+     
+    Note that the Mesh object must be constructed with ``suport_winding_number=True`` for this method to return correct results.
+
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param max_dist: Mesh faces above this distance will not be considered by the query
+   :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise. Note that mesh must be watertight for this to be robust
+   :param face: Returns the index of the closest face
+   :param bary_u: Returns the barycentric u coordinate of the closest point
+   :param bary_v: Returns the barycentric v coordinate of the closest point
+   :param accuracy: Accuracy for computing the winding number with fast winding number method utilizing second order dipole approximation, default 2.0
+   :param threshold: The threshold of the winding number to be considered inside, default 0.5""",
 )
 
 add_builtin(
@@ -1502,11 +1677,11 @@ add_builtin(
     doc="Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method. Returns > 0 if triangles intersect.",
 )
 
-
 add_builtin(
     "mesh_get",
     input_types={"id": uint64},
     value_type=Mesh,
+    missing_grad=True,
     group="Geometry",
     doc="""Retrieves the mesh given its index.""",
 )
@@ -1914,6 +2089,16 @@ add_builtin(
 
 add_builtin("print", input_types={"value": Any}, doc="Print variable to stdout", export=False, group="Utility")
 
+add_builtin(
+    "breakpoint",
+    input_types={},
+    doc="Debugger breakpoint",
+    export=False,
+    group="Utility",
+    namespace="",
+    native_func="__debugbreak",
+)
+
 # helpers
 add_builtin(
     "tid",
@@ -2295,6 +2480,83 @@ add_builtin(
 
 add_builtin("index", input_types={"s": shape_t, "i": int}, value_type=int, hidden=True, group="Utility")
 
+
+def vector_indexset_element_value_func(args, kwds, _):
+    vec = args[0]
+    index = args[1]
+    value = args[2]
+
+    if value.type is not vec.type._wp_scalar_type_:
+        raise RuntimeError(
+            f"Trying to assign type '{type_repr(value.type)}' to element of a vector with type '{type_repr(vec.type)}'"
+        )
+
+    return None
+
+
+# implements vector[index] = value
+add_builtin(
+    "indexset",
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
+    value_func=vector_indexset_element_value_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+)
+
+
+def matrix_indexset_element_value_func(args, kwds, _):
+    mat = args[0]
+    row = args[1]
+    col = args[2]
+    value = args[3]
+
+    if value.type is not mat.type._wp_scalar_type_:
+        raise RuntimeError(
+            f"Trying to assign type '{type_repr(value.type)}' to element of a matrix with type '{type_repr(mat.type)}'"
+        )
+
+    return None
+
+
+def matrix_indexset_row_value_func(args, kwds, _):
+    mat = args[0]
+    row = args[1]
+    value = args[2]
+
+    if value.type._shape_[0] != mat.type._shape_[1]:
+        raise RuntimeError(
+            f"Trying to assign vector with length {value.type._length} to matrix with shape {mat.type._shape}, vector length must match the number of matrix columns."
+        )
+
+    if value.type._wp_scalar_type_ is not mat.type._wp_scalar_type_:
+        raise RuntimeError(
+            f"Trying to assign vector of type '{type_repr(value.type)}' to row of matrix of type '{type_repr(mat.type)}'"
+        )
+
+    return None
+
+
+# implements matrix[i] = row
+add_builtin(
+    "indexset",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "value": vector(length=Any, dtype=Scalar)},
+    value_func=matrix_indexset_row_value_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+)
+
+# implements matrix[i,j] = scalar
+add_builtin(
+    "indexset",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int, "value": Scalar},
+    value_func=matrix_indexset_element_value_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+)
+
 for t in scalar_types + vector_types:
     if "vec" in t.__name__ or "mat" in t.__name__:
         continue
@@ -2412,6 +2674,7 @@ add_builtin(
 add_builtin(
     "expect_near",
     input_types={"arg1": Float, "arg2": Float, "tolerance": Float},
+    defaults={"tolerance": 1.0e-6},
     value_type=None,
     doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude",
     group="Utility",
@@ -2432,6 +2695,13 @@ add_builtin(
     input_types={"arr": array(dtype=Scalar), "value": Scalar},
     value_type=int,
     doc="Search a sorted array for the closest element greater than or equal to value.",
+)
+
+add_builtin(
+    "lower_bound",
+    input_types={"arr": array(dtype=Scalar), "arr_begin": int, "arr_end": int, "value": Scalar},
+    value_type=int,
+    doc="Search a sorted array range [arr_begin, arr_end) for the closest element greater than or equal to value.",
 )
 
 # ---------------------------------
@@ -2500,6 +2770,14 @@ add_builtin(
     doc="",
     group="Operators",
 )
+
+# bitwise operators
+add_builtin("bit_and", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators")
+add_builtin("bit_or", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators")
+add_builtin("bit_xor", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators")
+add_builtin("lshift", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators")
+add_builtin("rshift", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators")
+add_builtin("invert", input_types={"x": Int}, value_func=sametype_value_func(Int), doc="", group="Operators")
 
 
 def scalar_mul_value_func(default):
@@ -2721,3 +2999,6 @@ add_builtin(
 add_builtin("unot", input_types={"b": bool}, value_type=bool, doc="", group="Operators")
 for t in int_types:
     add_builtin("unot", input_types={"b": t}, value_type=bool, doc="", group="Operators")
+
+
+add_builtin("unot", input_types={"a": array(dtype=Any)}, value_type=bool, doc="", group="Operators")
