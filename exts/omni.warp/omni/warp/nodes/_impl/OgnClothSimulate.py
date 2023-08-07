@@ -336,8 +336,8 @@ def update_collider(
         kernel=update_collider_kernel,
         dim=len(state.collider_mesh.vertices),
         inputs=[
-            state.collider_points_1,
             state.collider_points_0,
+            state.collider_points_1,
             xform_0.T,
             xform_1.T,
             state.sim_dt,
