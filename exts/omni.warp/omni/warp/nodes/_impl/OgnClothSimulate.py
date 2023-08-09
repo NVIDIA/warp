@@ -253,7 +253,7 @@ class InternalState:
 
         # Register the ground.
         builder.set_ground_plane(
-            offset=-db.inputs.groundAltitude,
+            offset=-db.inputs.groundAltitude + db.inputs.colliderContactDistance,
             ke=db.inputs.contactElasticStiffness * db.inputs.globalScale,
             kd=db.inputs.contactDampingStiffness * db.inputs.globalScale,
             kf=db.inputs.contactFrictionStiffness * db.inputs.globalScale,
