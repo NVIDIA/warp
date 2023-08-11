@@ -20,14 +20,89 @@ int cuda_init();
 
 uint16_t float_to_half_bits(float x)
 {
-    return wp::half(x).u;
+    // adapted from Fabien Giesen's post: https://gist.github.com/rygorous/2156668
+    union fp32
+    {
+        uint32_t u;
+        float f;
+
+        struct
+        {
+            unsigned int mantissa : 23;
+            unsigned int exponent : 8;
+            unsigned int sign : 1;
+        };
+    };
+
+    fp32 f;
+    f.f = x;
+
+    fp32 f32infty = { 255 << 23 };
+    fp32 f16infty = { 31 << 23 };
+    fp32 magic = { 15 << 23 };
+    uint32_t sign_mask = 0x80000000u;
+    uint32_t round_mask = ~0xfffu; 
+    uint16_t u;
+
+    uint32_t sign = f.u & sign_mask;
+    f.u ^= sign;
+
+    // NOTE all the integer compares in this function can be safely
+    // compiled into signed compares since all operands are below
+    // 0x80000000. Important if you want fast straight SSE2 code
+    // (since there's no unsigned PCMPGTD).
+
+    if (f.u >= f32infty.u) // Inf or NaN (all exponent bits set)
+        u = (f.u > f32infty.u) ? 0x7e00 : 0x7c00; // NaN->qNaN and Inf->Inf
+    else // (De)normalized number or zero
+    {
+        f.u &= round_mask;
+        f.f *= magic.f;
+        f.u -= round_mask;
+        if (f.u > f16infty.u) f.u = f16infty.u; // Clamp to signed infinity if overflowed
+
+        u = f.u >> 13; // Take the bits!
+    }
+
+    u |= sign >> 16;
+    return u;
 }
 
 float half_bits_to_float(uint16_t u)
 {
-    wp::half h;
-    h.u = u;
-    return half_to_float(h);
+    // adapted from Fabien Giesen's post: https://gist.github.com/rygorous/2156668
+    union fp32
+    {
+        uint32_t u;
+        float f;
+
+        struct
+        {
+            unsigned int mantissa : 23;
+            unsigned int exponent : 8;
+            unsigned int sign : 1;
+        };
+    };
+
+    static const fp32 magic = { 113 << 23 };
+    static const uint32_t shifted_exp = 0x7c00 << 13; // exponent mask after shift
+    fp32 o;
+
+    o.u = (u & 0x7fff) << 13;     // exponent/mantissa bits
+    uint32_t exp = shifted_exp & o.u;   // just the exponent
+    o.u += (127 - 15) << 23;        // exponent adjust
+
+    // handle exponent special cases
+    if (exp == shifted_exp) // Inf/NaN?
+        o.u += (128 - 16) << 23;    // extra exp adjust
+    else if (exp == 0) // Zero/Denormal?
+    {
+        o.u += 1 << 23;             // extra exp adjust
+        o.f -= magic.f;             // renormalize
+    }
+
+    o.u |= (u & 0x8000) << 16;    // sign bit
+    return o.f;
 }
 
 int init()

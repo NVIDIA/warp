@@ -63,14 +63,14 @@ extern void __jit_debug_register_code();
 }
 
 namespace wp {
-	
+
 #if defined (_WIN32)
-	// Windows defaults to using the COFF binary format (aka. "msvc" in the target triple).
-	// Override it to use the ELF format to support DWARF debug info, but keep using the
-	// Microsoft calling convention (see also https://llvm.org/docs/DebuggingJITedCode.html).
-	static const char* target_triple = "x86_64-pc-windows-elf";
+    // Windows defaults to using the COFF binary format (aka. "msvc" in the target triple).
+    // Override it to use the ELF format to support DWARF debug info, but keep using the
+    // Microsoft calling convention (see also https://llvm.org/docs/DebuggingJITedCode.html).
+    static const char* target_triple = "x86_64-pc-windows-elf";
 #else
-	static const char* target_triple = LLVM_DEFAULT_TARGET_TRIPLE;
+    static const char* target_triple = LLVM_DEFAULT_TARGET_TRIPLE;
 #endif
 
 static void initialize_llvm()
@@ -94,6 +94,11 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
 
     args.push_back("-triple");
     args.push_back(target_triple);
+
+    #if defined(__x86_64__) || defined(_M_X64)
+        args.push_back("-target-feature");
+        args.push_back("+f16c");  // Enables support for _Float16
+    #endif
 
     clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> diagnostic_options = new clang::DiagnosticOptions();
     std::unique_ptr<clang::TextDiagnosticPrinter> text_diagnostic_printer =
@@ -382,8 +387,7 @@ WP_API int load_obj(const char* object_file, const char* module_name)
             SYMBOL(__chkstk),
         #elif defined(__APPLE__)
             SYMBOL(__bzero),
-            SYMBOL(__sincos_stret),
-            SYMBOL(__sincosf_stret),
+            SYMBOL(__sincos_stret), SYMBOL(__sincosf_stret),
         #else
             SYMBOL(sincosf), SYMBOL_T(sincos, void(*)(double,double*,double*)),
         #endif
