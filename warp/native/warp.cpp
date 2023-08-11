@@ -10,19 +10,10 @@
 #include "scan.h"
 #include "array.h"
 
+#include "exports.h"
+
 #include "stdlib.h"
 #include "string.h"
-
-
-namespace wp
-{
-
-extern "C"
-{
-    #include "exports.h"
-}
-
-} // namespace wp
 
 int cuda_init();
 
