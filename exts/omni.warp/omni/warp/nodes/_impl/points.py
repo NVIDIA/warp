@@ -37,6 +37,9 @@ def points_create_bundle(
     dst_bundle: og.BundleContents,
     point_count: int,
     xform: Optional[np.ndarray] = None,
+    create_masses: bool = False,
+    create_velocities: bool = False,
+    create_widths: bool = False,
     child_idx: int = 0,
 ) -> None:
     """Creates and initializes point cloud attributes within a bundle."""
@@ -52,44 +55,50 @@ def points_create_bundle(
         ),
         size=point_count,
     )
-    bundle_create_attr(
-        child_bundle,
-        "velocities",
-        og.Type(
-            og.BaseDataType.FLOAT,
-            tuple_count=3,
-            array_depth=1,
-            role=og.AttributeRole.VECTOR,
-        ),
-        size=point_count,
-    )
-    bundle_create_attr(
-        child_bundle,
-        "widths",
-        og.Type(
-            og.BaseDataType.FLOAT,
-            tuple_count=1,
-            array_depth=1,
-            role=og.AttributeRole.NONE,
-        ),
-        size=point_count,
-    )
-    bundle_create_attr(
-        child_bundle,
-        "masses",
-        og.Type(
-            og.BaseDataType.FLOAT,
-            tuple_count=1,
-            array_depth=1,
-            role=og.AttributeRole.NONE,
-        ),
-        size=point_count,
-    )
 
     bundle_set_prim_type(dst_bundle, "Points", child_idx=child_idx)
 
     if xform is not None:
         bundle_set_world_xform(dst_bundle, xform, child_idx=child_idx)
+
+    if create_masses:
+        bundle_create_attr(
+            child_bundle,
+            "masses",
+            og.Type(
+                og.BaseDataType.FLOAT,
+                tuple_count=1,
+                array_depth=1,
+                role=og.AttributeRole.NONE,
+            ),
+            size=point_count,
+        )
+
+    if create_velocities:
+        bundle_create_attr(
+            child_bundle,
+            "velocities",
+            og.Type(
+                og.BaseDataType.FLOAT,
+                tuple_count=3,
+                array_depth=1,
+                role=og.AttributeRole.VECTOR,
+            ),
+            size=point_count,
+        )
+
+    if create_widths:
+        bundle_create_attr(
+            child_bundle,
+            "widths",
+            og.Type(
+                og.BaseDataType.FLOAT,
+                tuple_count=1,
+                array_depth=1,
+                role=og.AttributeRole.NONE,
+            ),
+            size=point_count,
+        )
 
 
 def points_copy_bundle(
@@ -105,9 +114,9 @@ def points_copy_bundle(
 
     if deep_copy:
         bundle_copy_attr_value(dst_child_bundle, src_child_bundle, "points", wp.vec3)
+        bundle_copy_attr_value(dst_child_bundle, src_child_bundle, "masses", float)
         bundle_copy_attr_value(dst_child_bundle, src_child_bundle, "velocities", wp.vec3)
         bundle_copy_attr_value(dst_child_bundle, src_child_bundle, "widths", float)
-        bundle_copy_attr_value(dst_child_bundle, src_child_bundle, "masses", float)
 
 
 def points_get_point_count(

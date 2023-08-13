@@ -254,6 +254,9 @@ def compute(db: OgnParticlesFromMeshDatabase) -> None:
         db.outputs.particles,
         point_count,
         xform=db.inputs.transform,
+        create_masses=True,
+        create_velocities=True,
+        create_widths=True,
     )
 
     # Copy the point positions onto the output bundle.

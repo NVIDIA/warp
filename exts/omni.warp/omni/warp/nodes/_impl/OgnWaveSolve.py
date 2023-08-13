@@ -344,6 +344,8 @@ def compute(db: OgnWaveSolveDatabase) -> None:
         vertex_count,
         face_count,
         xform=db.inputs.transform,
+        create_normals=True,
+        create_uvs=True,
     )
 
     if state.needs_initialization(db):

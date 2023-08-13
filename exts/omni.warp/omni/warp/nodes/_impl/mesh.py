@@ -39,6 +39,8 @@ def mesh_create_bundle(
     vertex_count: int,
     face_count: int,
     xform: Optional[np.ndarray] = None,
+    create_normals: bool = False,
+    create_uvs: bool = False,
     child_idx: int = 0,
 ) -> None:
     """Creates and initializes mesh attributes within a bundle."""
@@ -53,28 +55,6 @@ def mesh_create_bundle(
             role=og.AttributeRole.POSITION,
         ),
         size=point_count,
-    )
-    bundle_create_attr(
-        child_bundle,
-        "normals",
-        og.Type(
-            og.BaseDataType.FLOAT,
-            tuple_count=3,
-            array_depth=1,
-            role=og.AttributeRole.NORMAL,
-        ),
-        size=vertex_count,
-    )
-    bundle_create_attr(
-        child_bundle,
-        "primvars:st",
-        og.Type(
-            og.BaseDataType.FLOAT,
-            tuple_count=2,
-            array_depth=1,
-            role=og.AttributeRole.TEXCOORD,
-        ),
-        size=vertex_count,
     )
     bundle_create_attr(
         child_bundle,
@@ -104,6 +84,32 @@ def mesh_create_bundle(
     if xform is not None:
         bundle_set_world_xform(dst_bundle, xform, child_idx=child_idx)
 
+    if create_normals:
+        bundle_create_attr(
+            child_bundle,
+            "normals",
+            og.Type(
+                og.BaseDataType.FLOAT,
+                tuple_count=3,
+                array_depth=1,
+                role=og.AttributeRole.NORMAL,
+            ),
+            size=vertex_count,
+        )
+
+    if create_uvs:
+        bundle_create_attr(
+            child_bundle,
+            "primvars:st",
+            og.Type(
+                og.BaseDataType.FLOAT,
+                tuple_count=2,
+                array_depth=1,
+                role=og.AttributeRole.TEXCOORD,
+            ),
+            size=vertex_count,
+        )
+
 
 def mesh_copy_bundle(
     dst_bundle: og.BundleContents,
@@ -118,10 +124,10 @@ def mesh_copy_bundle(
 
     if deep_copy:
         bundle_copy_attr_value(dst_child_bundle, src_child_bundle, "points", wp.vec3)
-        bundle_copy_attr_value(dst_child_bundle, src_child_bundle, "normals", wp.vec3)
-        bundle_copy_attr_value(dst_child_bundle, src_child_bundle, "primvars:st", wp.vec2)
         bundle_copy_attr_value(dst_child_bundle, src_child_bundle, "faceVertexCounts", int)
         bundle_copy_attr_value(dst_child_bundle, src_child_bundle, "faceVertexIndices", int)
+        bundle_copy_attr_value(dst_child_bundle, src_child_bundle, "normals", wp.vec3)
+        bundle_copy_attr_value(dst_child_bundle, src_child_bundle, "primvars:st", wp.vec2)
 
 
 def mesh_get_point_count(
