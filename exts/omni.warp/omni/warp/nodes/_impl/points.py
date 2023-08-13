@@ -17,11 +17,13 @@ import warp as wp
 from omni.warp.nodes._impl.attributes import (
     attr_get,
     attr_get_array_on_gpu,
+    attr_set,
 )
 from omni.warp.nodes._impl.bundles import (
     bundle_copy_attr_value,
     bundle_create_attr,
     bundle_create_child,
+    bundle_create_metadata_attr,
     bundle_get_attr,
     bundle_get_world_xform,
     bundle_set_prim_type,
@@ -37,6 +39,7 @@ def points_create_bundle(
     dst_bundle: og.BundleContents,
     point_count: int,
     xform: Optional[np.ndarray] = None,
+    create_display_color: bool = False,
     create_masses: bool = False,
     create_velocities: bool = False,
     create_widths: bool = False,
@@ -60,6 +63,31 @@ def points_create_bundle(
 
     if xform is not None:
         bundle_set_world_xform(dst_bundle, xform, child_idx=child_idx)
+
+    if create_display_color:
+        bundle_create_attr(
+            child_bundle,
+            "primvars:displayColor",
+            og.Type(
+                og.BaseDataType.FLOAT,
+                tuple_count=3,
+                array_depth=1,
+                role=og.AttributeRole.COLOR,
+            ),
+            size=point_count,
+        )
+        interp_attr = bundle_create_metadata_attr(
+            child_bundle,
+            "primvars:displayColor",
+            "interpolation",
+            og.Type(
+                og.BaseDataType.TOKEN,
+                tuple_count=1,
+                array_depth=0,
+                role=og.AttributeRole.NONE,
+            ),
+        )
+        attr_set(interp_attr, "vertex")
 
     if create_masses:
         bundle_create_attr(
@@ -114,6 +142,7 @@ def points_copy_bundle(
 
     if deep_copy:
         bundle_copy_attr_value(dst_child_bundle, src_child_bundle, "points", wp.vec3)
+        bundle_copy_attr_value(dst_child_bundle, src_child_bundle, "primvars:displayColor", wp.vec3)
         bundle_copy_attr_value(dst_child_bundle, src_child_bundle, "masses", float)
         bundle_copy_attr_value(dst_child_bundle, src_child_bundle, "velocities", wp.vec3)
         bundle_copy_attr_value(dst_child_bundle, src_child_bundle, "widths", float)
@@ -161,6 +190,15 @@ def points_get_masses(
     """Retrieves the bundle masses attribute as a Warp array."""
     attr = bundle_get_attr(bundle, "masses", child_idx)
     return attr_get_array_on_gpu(attr, float, read_only=bundle.read_only)
+
+
+def points_get_display_color(
+    bundle: og.BundleContents,
+    child_idx: int = 0,
+) -> wp.array(dtype=wp.vec3):
+    """Retrieves the bundle display color attribute as a Warp array."""
+    attr = bundle_get_attr(bundle, "primvars:displayColor", child_idx)
+    return attr_get_array_on_gpu(attr, wp.vec3, read_only=bundle.read_only)
 
 
 def points_get_local_extent(
