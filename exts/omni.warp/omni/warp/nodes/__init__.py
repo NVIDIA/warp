@@ -10,6 +10,15 @@
 __all__ = [
     "AttrTracking",
     "NodeTimer",
+    "basis_curves_copy_bundle",
+    "basis_curves_create_bundle",
+    "basis_curves_get_curve_count",
+    "basis_curves_get_curve_vertex_counts",
+    "basis_curves_get_local_extent",
+    "basis_curves_get_point_count",
+    "basis_curves_get_points",
+    "basis_curves_get_widths",
+    "basis_curves_get_world_extent",
     "bundle_get_attr",
     "bundle_get_child_count",
     "bundle_get_prim_type",
@@ -58,6 +67,17 @@ from omni.warp.nodes._impl.bundles import (
 )
 from omni.warp.nodes._impl.common import (
     NodeTimer,
+)
+from omni.warp.nodes._impl.basis_curves import (
+    basis_curves_copy_bundle,
+    basis_curves_create_bundle,
+    basis_curves_get_curve_count,
+    basis_curves_get_curve_vertex_counts,
+    basis_curves_get_local_extent,
+    basis_curves_get_point_count,
+    basis_curves_get_points,
+    basis_curves_get_widths,
+    basis_curves_get_world_extent,
 )
 from omni.warp.nodes._impl.mesh import (
     mesh_create_bundle,
