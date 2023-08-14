@@ -235,6 +235,11 @@ class InternalState:
                 pos=(0.0, 0.0, 0.0),
                 rot=(0.0, 0.0, 0.0, 1.0),
                 scale=(1.0, 1.0, 1.0),
+                density=0.0,
+                ke=0.0,
+                kd=0.0,
+                kf=0.0,
+                mu=0.0,
             )
 
             # Store the collider's point positions as internal state.
