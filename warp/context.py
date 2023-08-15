@@ -5,35 +5,24 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import math
-import os
-import sys
-import hashlib
-import ctypes
-import platform
 import ast
-import types
+import ctypes
+import hashlib
 import inspect
-
-from typing import Tuple
-from typing import List
-from typing import Dict
-from typing import Any
-from typing import Callable
-from typing import Union
-from typing import Mapping
-from typing import Optional
-
-from types import ModuleType
-
+import os
+import platform
+import sys
+import types
 from copy import copy as shallowcopy
-
-import warp
-import warp.codegen
-import warp.build
-import warp.config
+from types import ModuleType
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
 
 import numpy as np
+
+import warp
+import warp.build
+import warp.codegen
+import warp.config
 
 # represents either a built-in or user-defined function
 
@@ -181,7 +170,7 @@ class Function:
                             x = ValueArg()
 
                             # force conversion to ndarray first (handles tuple / list, Gf.Vec3 case)
-                            if isinstance(a, ctypes.Array) == False:
+                            if isinstance(a, ctypes.Array) is False:
                                 # assume you want the float32 version of the function so it doesn't just
                                 # grab an override for a random data type:
                                 if arg_type._type_ != ctypes.c_float:
@@ -216,7 +205,7 @@ class Function:
                             try:
                                 # try to pack as a scalar type
                                 params.append(arg_type._type_(a))
-                            except:
+                            except Exception:
                                 raise RuntimeError(
                                     f"Error calling function {f.key}, unable to pack function parameter type {type(a)} for param {arg_name}, expected {arg_type}"
                                 )
@@ -316,7 +305,7 @@ class Function:
             # todo: construct a default value for each of the functions args
             # so we can generate the return type for overloaded functions
             return_type = type_str(self.value_func(None, None, None))
-        except:
+        except Exception:
             return False
 
         if return_type.startswith("Tuple"):
@@ -670,7 +659,7 @@ def add_builtin(
         def initializer_list_func(args, templates):
             return False
 
-    if defaults == None:
+    if defaults is None:
         defaults = {}
 
     # Add specialized versions of this builtin if it's generic by matching arguments against
@@ -752,7 +741,7 @@ def add_builtin(
                 # This also gives us the return type, which we keep for later:
                 try:
                     return_type = value_func([warp.codegen.Var("", t) for t in argtypes], {}, [])
-                except Exception as e:
+                except Exception:
                     continue
 
                 # The return_type might just be vector_t(length=3,dtype=wp.float32), so we've got to match that
@@ -811,7 +800,7 @@ def add_builtin(
 
         # export means the function will be added to the `warp` module namespace
         # so that users can call it directly from the Python interpreter
-        if export == True:
+        if export is True:
             if hasattr(warp, key):
                 # check that we haven't already created something at this location
                 # if it's just an overload stub for auto-complete then overwrite it
@@ -894,7 +883,7 @@ class ModuleBuilder:
         while stack:
             s = stack.pop()
 
-            if not s in structs:
+            if s not in structs:
                 structs.append(s)
 
             for var in s.vars.values():
@@ -1092,7 +1081,7 @@ class Module:
                     if isinstance(func, warp.context.Function) and func.module is not None:
                         add_ref(func.module)
 
-                except:
+                except Exception:
                     # Lookups may fail for builtins, but that's ok.
                     # Lookups may also fail for functions in this module that haven't been imported yet,
                     # and that's ok too (not an external reference).
@@ -2749,7 +2738,7 @@ def full(
             elif na.ndim == 2:
                 dtype = warp.types.matrix(na.shape, scalar_type)
             else:
-                raise ValueError(f"Values with more than two dimensions are not supported")
+                raise ValueError("Values with more than two dimensions are not supported")
         else:
             raise ValueError(f"Invalid value type for Warp array: {value_type}")
 
@@ -2934,7 +2923,7 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             # try constructing the required value from the argument (handles tuple / list, Gf.Vec3 case)
             try:
                 return arg_type(value)
-            except:
+            except Exception:
                 raise ValueError(f"Failed to convert argument for param {arg_name} to {type_str(arg_type)}")
 
     elif isinstance(value, bool):
@@ -2943,20 +2932,28 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
     elif isinstance(value, arg_type):
         try:
             # try to pack as a scalar type
-            return arg_type._type_(value.value)
-        except:
+            if arg_type is warp.types.float16:
+                return arg_type._type_(warp.types.float_to_half_bits(value.value))
+            else:
+                return arg_type._type_(value.value)
+        except Exception:
             raise RuntimeError(
-                f"Error launching kernel, unable to pack kernel parameter type {type(value)} for param {arg_name}, expected {arg_type}"
+                "Error launching kernel, unable to pack kernel parameter type "
+                f"{type(value)} for param {arg_name}, expected {arg_type}"
             )
 
     else:
         try:
             # try to pack as a scalar type
-            return arg_type._type_(value)
+            if arg_type is warp.types.float16:
+                return arg_type._type_(warp.types.float_to_half_bits(value))
+            else:
+                return arg_type._type_(value)
         except Exception as e:
             print(e)
             raise RuntimeError(
-                f"Error launching kernel, unable to pack kernel parameter type {type(value)} for param {arg_name}, expected {arg_type}"
+                "Error launching kernel, unable to pack kernel parameter type "
+                f"{type(value)} for param {arg_name}, expected {arg_type}"
             )
 
 
@@ -3108,7 +3105,7 @@ def launch(
         device = runtime.get_device(device)
 
     # check function is a Kernel
-    if isinstance(kernel, Kernel) == False:
+    if isinstance(kernel, Kernel) is False:
         raise RuntimeError("Error launching kernel, can only launch functions decorated with @wp.kernel.")
 
     # debugging aid
@@ -3400,7 +3397,7 @@ def capture_begin(device: Devicelike = None, stream=None, force_module_load=True
 
     """
 
-    if warp.config.verify_cuda == True:
+    if warp.config.verify_cuda is True:
         raise RuntimeError("Cannot use CUDA error verification during graph capture")
 
     if stream is not None:
@@ -3642,7 +3639,7 @@ def print_function(f, file, noentry=False):
         # todo: construct a default value for each of the functions args
         # so we can generate the return type for overloaded functions
         return_type = " -> " + type_str(f.value_func(None, None, None))
-    except:
+    except Exception:
         pass
 
     print(f".. function:: {f.key}({args}){return_type}", file=file)
@@ -3693,14 +3690,14 @@ def print_builtins(file):
     print("\nGeneric Types", file=file)
     print("-------------", file=file)
 
-    print(f".. class:: Int", file=file)
-    print(f".. class:: Float", file=file)
-    print(f".. class:: Scalar", file=file)
-    print(f".. class:: Vector", file=file)
-    print(f".. class:: Matrix", file=file)
-    print(f".. class:: Quaternion", file=file)
-    print(f".. class:: Transformation", file=file)
-    print(f".. class:: Array", file=file)
+    print(".. class:: Int", file=file)
+    print(".. class:: Float", file=file)
+    print(".. class:: Scalar", file=file)
+    print(".. class:: Vector", file=file)
+    print(".. class:: Matrix", file=file)
+    print(".. class:: Quaternion", file=file)
+    print(".. class:: Transformation", file=file)
+    print(".. class:: Array", file=file)
 
     # build dictionary of all functions by group
     groups = {}
@@ -3783,7 +3780,7 @@ def export_stubs(file):
 
             return_str = ""
 
-            if f.export == False or f.hidden == True:  # or f.generic:
+            if f.export is False or f.hidden is True:  # or f.generic:
                 continue
 
             try:
@@ -3793,15 +3790,15 @@ def export_stubs(file):
                 if return_type:
                     return_str = " -> " + type_str(return_type)
 
-            except:
+            except Exception:
                 pass
 
             print("@over", file=file)
             print(f"def {f.key}({args}){return_str}:", file=file)
-            print(f'    """', file=file)
+            print('    """', file=file)
             print(textwrap.indent(text=f.doc, prefix="    "), file=file)
-            print(f'    """', file=file)
-            print(f"    ...\n\n", file=file)
+            print('    """', file=file)
+            print("    ...\n\n", file=file)
 
 
 def export_builtins(file):
@@ -3815,7 +3812,7 @@ def export_builtins(file):
 
     for k, g in builtin_functions.items():
         for f in g.overloads:
-            if f.export == False or f.generic:
+            if f.export is False or f.generic:
                 continue
 
             simple = True
@@ -3838,7 +3835,7 @@ def export_builtins(file):
                 # todo: construct a default value for each of the functions args
                 # so we can generate the return type for overloaded functions
                 return_type = ctype_str(f.value_func(None, None, None))
-            except:
+            except Exception:
                 continue
 
             if return_type.startswith("Tuple"):
