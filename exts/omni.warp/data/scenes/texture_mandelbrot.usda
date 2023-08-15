@@ -6,6 +6,7 @@
         }
         dictionary renderSettings = {
             int "rtx:post:dlss:execMode" = 0
+            bool "rtx:resetPtAccumOnAnimTimeChange" = 1
             bool "rtx:translucency:enabled" = 0
         }
     }
