@@ -1,11 +1,9 @@
-import warp as wp
-import numpy as np
-
 import unittest
+
+import numpy as np
 
 import warp as wp
 from warp.tests.test_base import *
-
 
 wp.init()
 
@@ -43,6 +41,34 @@ def test_fp16_conversion(test, device):
 
 
 @wp.kernel
+def value_load_store_half(f16_value: wp.float16, f16_array: wp.array(dtype=wp.float16)):
+    wp.expect_eq(f16_value, f16_array[0])
+
+    # check stores
+    f16_array[0] = f16_value
+
+
+def test_fp16_kernel_parameter(test, device):
+    """Test the ability to pass in fp16 into kernels as parameters"""
+
+    s = [1.0, 2.0, 3.0, -3.14159]
+
+    for test_val in s:
+        np_f16 = np.array([test_val], dtype=np.float16)
+        wp_f16 = wp.array([test_val], dtype=wp.float16, device=device)
+
+        wp.launch(value_load_store_half, (1,), inputs=[wp.float16(test_val), wp_f16], device=device)
+
+        # check that stores worked
+        assert_np_equal(np_f16, wp_f16.numpy())
+
+        # Do the same thing but pass in test_val as a Python float to test automatic conversion
+        wp_f16 = wp.array([test_val], dtype=wp.float16, device=device)
+        wp.launch(value_load_store_half, (1,), inputs=[test_val, wp_f16], device=device)
+        assert_np_equal(np_f16, wp_f16.numpy())
+
+
+@wp.kernel
 def mul_half(input: wp.array(dtype=wp.float16), output: wp.array(dtype=wp.float16)):
     tid = wp.tid()
 
@@ -55,7 +81,7 @@ def mul_half(input: wp.array(dtype=wp.float16), output: wp.array(dtype=wp.float1
 
 def test_fp16_grad(test, device):
     # checks that gradients are correctly propagated for
-    # fp16 arrays, even when intermediate calcualtions
+    # fp16 arrays, even when intermediate calculations
     # are performed in e.g.: fp32
 
     s = np.random.rand(15).astype(np.float16)
@@ -87,6 +113,7 @@ def register(parent):
 
     add_function_test(TestFp16, "test_fp16_conversion", test_fp16_conversion, devices=devices)
     add_function_test(TestFp16, "test_fp16_grad", test_fp16_grad, devices=devices)
+    add_function_test(TestFp16, "test_fp16_kernel_parameter", test_fp16_kernel_parameter, devices=devices)
 
     return TestFp16
 
