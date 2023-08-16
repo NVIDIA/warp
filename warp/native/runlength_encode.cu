@@ -3,8 +3,6 @@
 #include "warp.h"
 #include "cuda_util.h"
 
-#include "temp_buffer.h"
-
 #define THRUST_IGNORE_CUB_VERSION_CHECK
 #include <cub/device/device_run_length_encode.cuh>
 
@@ -15,11 +13,7 @@ void runlength_encode_device(int n,
                              int *run_lengths,
                              int *run_count)
 {
-    void *context = cuda_context_get_current();
-
-    TemporaryBuffer &cub_temp = g_temp_buffer_map[context];
-
-    ContextGuard guard(context);
+    ContextGuard guard(cuda_context_get_current());
     cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_get_current());
 
     size_t buff_size = 0;
@@ -27,11 +21,13 @@ void runlength_encode_device(int n,
         nullptr, buff_size, values, run_values, run_lengths, run_count,
         n, stream));
 
-    cub_temp.ensure_fits(buff_size);
+    void* temp_buffer = alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
 
     check_cuda(cub::DeviceRunLengthEncode::Encode(
-        cub_temp.buffer, buff_size, values, run_values, run_lengths, run_count,
+        temp_buffer, buff_size, values, run_values, run_lengths, run_count,
         n, stream));
+
+    free_temp_device(WP_CURRENT_CONTEXT, temp_buffer);
 }
 
 void runlength_encode_int_device(

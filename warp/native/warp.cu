@@ -77,6 +77,7 @@ struct DeviceInfo
     char name[kNameLen] = "";
     int arch = 0;
     int is_uva = 0;
+    int is_memory_pool_supported = 0;
 };
 
 struct ContextInfo
@@ -126,6 +127,7 @@ int cuda_init()
                 g_devices[i].ordinal = i;
                 check_cu(cuDeviceGetName_f(g_devices[i].name, DeviceInfo::kNameLen, device));
                 check_cu(cuDeviceGetAttribute_f(&g_devices[i].is_uva, CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING, device));
+                check_cu(cuDeviceGetAttribute_f(&g_devices[i].is_memory_pool_supported, CU_DEVICE_ATTRIBUTE_MEMORY_POOLS_SUPPORTED, device));
                 int major = 0;
                 int minor = 0;
                 check_cu(cuDeviceGetAttribute_f(&major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, device));
@@ -216,11 +218,45 @@ void* alloc_device(void* context, size_t s)
     return ptr;
 }
 
+void* alloc_temp_device(void* context, size_t s)
+{
+    // "cudaMallocAsync ignores the current device/context when determining where the allocation will reside. Instead,
+    // cudaMallocAsync determines the resident device based on the specified memory pool or the supplied stream."
+    ContextGuard guard(context);
+
+    void* ptr;
+
+    if (cuda_context_is_memory_pool_supported(context))
+    {
+        check_cuda(cudaMallocAsync(&ptr, s, get_current_stream()));
+    }
+    else
+    {
+        check_cuda(cudaMalloc(&ptr, s));
+    }
+
+    return ptr;
+}
+
 void free_device(void* context, void* ptr)
 {
     ContextGuard guard(context);
 
     check_cuda(cudaFree(ptr));
+}
+
+void free_temp_device(void* context, void* ptr)
+{
+    ContextGuard guard(context);
+
+    if (cuda_context_is_memory_pool_supported(context))
+    {
+        check_cuda(cudaFreeAsync(ptr, get_current_stream()));
+    }
+    else
+    {
+        check_cuda(cudaFree(ptr));
+    }
 }
 
 void memcpy_h2d(void* context, void* dest, void* src, size_t n)
@@ -891,6 +927,13 @@ int cuda_device_is_uva(int ordinal)
     return 0;
 }
 
+int cuda_device_is_memory_pool_supported(int ordinal)
+{
+    if (ordinal >= 0 && ordinal < int(g_devices.size()))
+        return g_devices[ordinal].is_memory_pool_supported;
+    return false;
+}
+
 void* cuda_context_get_current()
 {
     return get_current_context();
@@ -995,6 +1038,16 @@ int cuda_context_is_primary(void* context)
         void* device_primary_context = cuda_device_primary_context_retain(ordinal);
         cuda_device_primary_context_release(ordinal);
         return int(context == device_primary_context);
+    }
+    return 0;
+}
+
+int cuda_context_is_memory_pool_supported(void* context)
+{
+    int ordinal = cuda_context_get_device_ordinal(context);
+    if (ordinal != -1)
+    {
+        return cuda_device_is_memory_pool_supported(ordinal);
     }
     return 0;
 }
@@ -1208,10 +1261,10 @@ void* cuda_graph_end_capture(void* context)
         //cudaGraphDebugDotPrint(graph, "graph.dot", cudaGraphDebugDotFlagsVerbose);
 
         cudaGraphExec_t graph_exec = NULL;
-        check_cuda(cudaGraphInstantiate(&graph_exec, graph, NULL, NULL, 0));
+        //check_cuda(cudaGraphInstantiate(&graph_exec, graph, NULL, NULL, 0));
         
         // can use after CUDA 11.4 to permit graphs to capture cudaMallocAsync() operations
-        //check_cuda(cudaGraphInstantiateWithFlags(&graph_exec, graph, cudaGraphInstantiateFlagAutoFreeOnLaunch));
+        check_cuda(cudaGraphInstantiateWithFlags(&graph_exec, graph, cudaGraphInstantiateFlagAutoFreeOnLaunch));
 
         // free source graph
         check_cuda(cudaGraphDestroy(graph));
