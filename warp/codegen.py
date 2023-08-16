@@ -2122,9 +2122,9 @@ def codegen_struct(struct, device="cpu", indent_size=4):
     for label, var in struct.vars.items():
         reverse_args.append(var.ctype() + " & adj_" + label)
         if is_array(var.type):
-            reverse_body.append(f"adj_{label} = {indent_block}adj_ret.{label};\n")
+            reverse_body.append(f"{indent_block}adj_{label} = adj_ret.{label};\n")
         else:
-            reverse_body.append(f"adj_{label} += {indent_block}adj_ret.{label};\n")
+            reverse_body.append(f"{indent_block}adj_{label} += adj_ret.{label};\n")
 
     reverse_args.append(name + " & adj_ret")
 
