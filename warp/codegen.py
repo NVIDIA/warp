@@ -625,10 +625,10 @@ class Adjoint:
         return arg_str
 
     def indent(adj):
-        adj.prefix = adj.prefix + "\t"
+        adj.prefix = adj.prefix + "    "
 
     def dedent(adj):
-        adj.prefix = adj.prefix[0:-1]
+        adj.prefix = adj.prefix[:-4]
 
     def begin_block(adj):
         b = Block()
@@ -1821,7 +1821,7 @@ class Adjoint:
     def set_lineno(adj, lineno):
         if adj.lineno is None or adj.lineno != lineno:
             line = lineno + adj.fun_lineno
-            source = adj.raw_source[lineno].strip().ljust(80)
+            source = adj.raw_source[lineno].strip().ljust(80 - len(adj.prefix), " ")
             adj.add_forward(f"// {source}       <L {line}>")
             adj.add_reverse(f"// adj: {source}  <L {line}>")
         adj.lineno = lineno
@@ -2080,7 +2080,7 @@ def constant_str(value):
 def indent(args, stops=1):
     sep = ",\n"
     for i in range(stops):
-        sep += "\t"
+        sep += "    "
 
     # return sep + args.replace(", ", "," + sep)
     return sep.join(args)
