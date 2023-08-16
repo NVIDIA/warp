@@ -149,7 +149,7 @@ def from_torch(t, dtype=None, requires_grad=None, grad=None):
             import torch
 
             if isinstance(grad, torch.Tensor):
-                grad = from_torch(grad)
+                grad = from_torch(grad, dtype=dtype)
             else:
                 raise ValueError(f"Invalid gradient type: {type(grad)}")
     elif requires_grad:
@@ -158,7 +158,7 @@ def from_torch(t, dtype=None, requires_grad=None, grad=None):
             # allocate a zero-filled gradient tensor if it doesn't exist
             import torch
             t.grad = torch.zeros_like(t, requires_grad=False)
-        grad = from_torch(t.grad)
+        grad = from_torch(t.grad, dtype=dtype)
 
     a = warp.types.array(
         ptr=t.data_ptr(),

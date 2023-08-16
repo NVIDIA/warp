@@ -1,3 +1,4 @@
+import glob
 import os
 
 python_header = """# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
@@ -19,23 +20,22 @@ cpp_header = """/** Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
 
 """
 
-dirs = ["warp/*.py",
-        "warp/sim/*.py",
-        "warp/native/*.h",
-        "warp/native/*.cpp",
-        "warp/native/*.cu",
-        "exts/omni.warp/omni/warp/*.py",
-        "exts/omni.warp/omni/warp/nodes/*.py",
-        "tests/*.py"]
+dirs = [
+    "warp/*.py",
+    "warp/sim/*.py",
+    "warp/native/*.h",
+    "warp/native/*.cpp",
+    "warp/native/*.cu",
+    "exts/omni.warp/omni/warp/*.py",
+    "exts/omni.warp/omni/warp/nodes/*.py",
+    "tests/*.py",
+]
 
-import glob
 
 for d in dirs:
-    
     paths = glob.glob(d)
 
     for p in paths:
-
         ext = os.path.splitext(p)[1]
 
         if ext == ".py":
@@ -47,18 +47,9 @@ for d in dirs:
         s = f.read()
         f.close()
 
-        if s.startswith(header) == False:
+        if s.startswith(header) is False:
             s = header + s
 
             f = open(p, "wt")
             f.write(s)
             f.close()
-        
-        
-
-        
-
-
-
-
-

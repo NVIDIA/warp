@@ -1,7 +1,3 @@
-import os
-import sys
-import subprocess
-
 import warp as wp
 
 # this script generates a header that can be used to bind
@@ -11,7 +7,7 @@ import warp as wp
 
 wp.init()
 
-f = open("warp/native/exports.h","w")
+f = open("warp/native/exports.h", "w")
 wp.export_builtins(f)
 f.close()
 

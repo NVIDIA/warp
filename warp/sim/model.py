@@ -2974,7 +2974,10 @@ class ModelBuilder:
 
         adj = wp.utils.MeshAdjacency(self.tri_indices[start_tri:end_tri], end_tri - start_tri)
 
-        edgeinds = np.array([[e.o0, e.o1, e.v0, e.v1] for k, e in adj.edges.items()])
+        edgeinds = np.fromiter(
+            (x for e in adj.edges.values() if e.f0 != -1 and e.f1 != -1 for x in (e.o0, e.o1, e.v0, e.v1)),
+            int,
+        ).reshape(-1, 4)
         self.add_edges(
             edgeinds[:, 0],
             edgeinds[:, 1],

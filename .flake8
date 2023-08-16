@@ -102,6 +102,16 @@ ignore =
 ;     # No value for argument 'is_item_expanded_fn' in constructor call (no-value-for-parameter)
 ;     # PLE1120
 
+; Warp ignores
+;
+;     # Do not use variables named 'I', 'O', or 'l' (E741)
+    E741,
+
 per-file-ignores =
-    */__init__.py: F401,
-    */stubs.py: F401
+    */__init__.py: F401,F403,
+    */stubs.py: F401,E402,F403
+    warp/tests/*.py: F403
+extend-exclude = 
+    warp/native/cutlass/,
+    warp/thirdparty/appdirs.py,
+    tools

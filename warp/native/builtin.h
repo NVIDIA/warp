@@ -141,7 +141,7 @@ static_assert(sizeof(half) == 2, "Size of half / float16 type must be 2-bytes");
 
 typedef half float16;
 
-#if __CUDA_ARCH__
+#if defined(__CUDA_ARCH__)
 
 CUDA_CALLABLE inline half float_to_half(float x)
 {
@@ -157,95 +157,38 @@ CUDA_CALLABLE inline float half_to_float(half x)
     return val;
 }
 
-#else
+#elif defined(__clang__)
 
-// adapted from Fabien Giesen's post: https://gist.github.com/rygorous/2156668
+// _Float16 is Clang's native half-precision floating-point type
 inline half float_to_half(float x)
 {
-    union fp32
-    {
-        uint32 u;
-        float f;
 
-        struct
-        {
-            unsigned int mantissa : 23;
-            unsigned int exponent : 8;
-            unsigned int sign : 1;
-        };
-    };
-
-    fp32 f;
-    f.f = x;
-
-    fp32 f32infty = { 255 << 23 };
-    fp32 f16infty = { 31 << 23 };
-    fp32 magic = { 15 << 23 };
-    uint32 sign_mask = 0x80000000u;
-    uint32 round_mask = ~0xfffu; 
-    half o;
-
-    uint32 sign = f.u & sign_mask;
-    f.u ^= sign;
-
-    // NOTE all the integer compares in this function can be safely
-    // compiled into signed compares since all operands are below
-    // 0x80000000. Important if you want fast straight SSE2 code
-    // (since there's no unsigned PCMPGTD).
-
-    if (f.u >= f32infty.u) // Inf or NaN (all exponent bits set)
-        o.u = (f.u > f32infty.u) ? 0x7e00 : 0x7c00; // NaN->qNaN and Inf->Inf
-    else // (De)normalized number or zero
-    {
-        f.u &= round_mask;
-        f.f *= magic.f;
-        f.u -= round_mask;
-        if (f.u > f16infty.u) f.u = f16infty.u; // Clamp to signed infinity if overflowed
-
-        o.u = f.u >> 13; // Take the bits!
-    }
-
-    o.u |= sign >> 16;
-    return o;
+    _Float16 f16 = static_cast<_Float16>(x);
+    return *reinterpret_cast<half*>(&f16);
 }
-
 
 inline float half_to_float(half h)
 {
-    union fp32
-    {
-        uint32 u;
-        float f;
-
-        struct
-        {
-            unsigned int mantissa : 23;
-            unsigned int exponent : 8;
-            unsigned int sign : 1;
-        };
-    };
-
-    static const fp32 magic = { 113 << 23 };
-    static const uint32 shifted_exp = 0x7c00 << 13; // exponent mask after shift
-    fp32 o;
-
-    o.u = (h.u & 0x7fff) << 13;     // exponent/mantissa bits
-    uint32 exp = shifted_exp & o.u;   // just the exponent
-    o.u += (127 - 15) << 23;        // exponent adjust
-
-    // handle exponent special cases
-    if (exp == shifted_exp) // Inf/NaN?
-        o.u += (128 - 16) << 23;    // extra exp adjust
-    else if (exp == 0) // Zero/Denormal?
-    {
-        o.u += 1 << 23;             // extra exp adjust
-        o.f -= magic.f;             // renormalize
-    }
-
-    o.u |= (h.u & 0x8000) << 16;    // sign bit
-    return o.f;
+    _Float16 f16 = *reinterpret_cast<_Float16*>(&h);
+    return static_cast<float>(f16);
 }
 
+#else  // Native C++ for Warp builtins outside of kernels
+
+extern "C" WP_API uint16_t float_to_half_bits(float x);
+extern "C" WP_API float half_bits_to_float(uint16_t u);
+
+inline half float_to_half(float x)
+{
+    half h;
+    h.u = float_to_half_bits(x);
+    return h;
+}
+
+inline float half_to_float(half h)
+{
+   return half_bits_to_float(h.u);
+}
 
 #endif
 

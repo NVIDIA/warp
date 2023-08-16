@@ -1808,7 +1808,7 @@ static CUDA_CALLABLE void adj_{name}({reverse_args})
 {reverse_body}
 }}
 
-CUDA_CALLABLE void atomic_add({name}* p, {name} t)
+CUDA_CALLABLE void adj_atomic_add({name}* p, {name} t)
 {{
 {atomic_add_body}
 }}
@@ -2039,7 +2039,7 @@ def codegen_struct(struct, device="cpu", indent_size=4):
         forward_args.append(f"{var.ctype()} const& {label} = {{}}")
         reverse_args.append(f"{var.ctype()} const&")
 
-        atomic_add_body.append(f"{indent_block}atomic_add(&p->{label}, t.{label});\n")
+        atomic_add_body.append(f"{indent_block}adj_atomic_add(&p->{label}, t.{label});\n")
 
         prefix = f"{indent_block}," if forward_initializers else ":"
         forward_initializers.append(f"{indent_block}{prefix} {label}{{{label}}}\n")

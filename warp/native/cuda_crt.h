@@ -1033,6 +1033,11 @@ __device_forceinline__ unsigned int atomicAdd(unsigned int *const address, const
     return __uAtomicAdd(address, val);
 }
 
+__device_forceinline__ unsigned int atomicAdd(unsigned long long *const address, const unsigned long long val)
+{
+    return __ullAtomicAdd(address, val);
+}
+
 __device_forceinline__ int atomicMin(int *const address, const int val)
 {
     return __iAtomicMin(address, val);
