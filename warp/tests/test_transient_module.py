@@ -12,6 +12,7 @@ import unittest
 
 import warp as wp
 from warp.tests.test_base import *
+from importlib import util
 
 CODE = """# -*- coding: utf-8 -*-
 
@@ -45,8 +46,8 @@ def load_code_as_module(code, name):
         with os.fdopen(file, "w") as f:
             f.write(code)
 
-        spec = importlib.util.spec_from_file_location(name, file_path)
-        module = importlib.util.module_from_spec(spec)
+        spec = util.spec_from_file_location(name, file_path)
+        module = util.module_from_spec(spec)
         spec.loader.exec_module(module)
     finally:
         os.remove(file_path)
