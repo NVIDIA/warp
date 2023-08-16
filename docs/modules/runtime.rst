@@ -925,14 +925,14 @@ In the following, we increment an array index in each thread via ``wp.atomic_add
 
    def main():
       dim = 16
-      use_reversible_atomic_add = False
+      use_reversible_increment = False
       input = wp.array(np.arange(1, dim + 1), dtype=wp.float32, requires_grad=True)
       counter = wp.zeros(1, dtype=wp.int32)
       thread_ids = wp.zeros(dim, dtype=wp.int32)
       output = wp.zeros(dim, dtype=wp.float32, requires_grad=True)
       tape = wp.Tape()
       with tape:
-         if use_reversible_atomic_add:
+         if use_reversible_increment:
             wp.launch(test_add_diff, dim, inputs=[counter, thread_ids, input], outputs=[output])
          else:
             wp.launch(test_add, dim, inputs=[counter, input], outputs=[output])
@@ -965,10 +965,10 @@ to which input value.
 The index returned by the adjoint of ``wp.atomic_add`` is always zero so that the gradient the first entry of the input array,
 i.e. :math:`\frac{1}{2\sqrt{1}} = 0.5`, is accumulated ``dim`` times (hence ``input.grad[0] == 4.0`` and all other entries zero).
 
-To fix this, we define a new Warp function ``reversible_atomic_add`` with a custom *replay* definition that stores the thread ID in a separate array::
+To fix this, we define a new Warp function ``reversible_increment`` with a custom *replay* definition that stores the thread ID in a separate array::
 
    @wp.func
-   def reversible_atomic_add(
+   def reversible_increment(
       buf: wp.array(dtype=int),
       buf_index: int,
       value: int,
@@ -981,8 +981,8 @@ To fix this, we define a new Warp function ``reversible_atomic_add`` with a cust
       return next_index
 
 
-   @wp.func_replay(reversible_atomic_add)
-   def replay_reversible_atomic_add(
+   @wp.func_replay(reversible_increment)
+   def replay_reversible_increment(
       buf: wp.array(dtype=int),
       buf_index: int,
       value: int,
@@ -992,8 +992,8 @@ To fix this, we define a new Warp function ``reversible_atomic_add`` with a cust
       return thread_values[tid]
 
 
-Instead of running the ``reversible_atomic_add`` function, the custom replay code in function ``replay_reversible_atomic_add`` is now executed
-during forward phase in the backward pass of the function calling ``reversible_atomic_add``.
+Instead of running the ``reversible_increment`` function, the custom replay code in function ``replay_reversible_increment`` is now executed
+during forward phase in the backward pass of the function calling ``reversible_increment``.
 We first stored the array index to each thread ID in the forward pass, and now we retrieve the array index for each thread ID in the backward pass.
 That way, the backward pass can reproduce the same addition operation as in the forward pass with exactly the same operands per thread.
 
@@ -1009,10 +1009,10 @@ To use our function we write the following kernel::
       output: wp.array(dtype=float)
    ):
       tid = wp.tid()
-      idx = reversible_atomic_add(counter, 0, 1, thread_ids, tid)
+      idx = reversible_increment(counter, 0, 1, thread_ids, tid)
       output[idx] = wp.sqrt(input[idx])
 
-Running the ``test_add_diff`` kernel via the previous ``main`` function with ``use_reversible_atomic_add = True``, we now compute correct gradients
+Running the ``test_add_diff`` kernel via the previous ``main`` function with ``use_reversible_increment = True``, we now compute correct gradients
 for the input array:
 
 .. code-block:: js
