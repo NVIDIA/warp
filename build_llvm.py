@@ -1,10 +1,9 @@
-import sys
 import os
 import subprocess
+import sys
 
 import warp
-from warp.build_dll import build_dll_for_arch
-from warp.build_dll import run_cmd
+from warp.build_dll import build_dll_for_arch, run_cmd
 
 # set build output path off this file
 base_path = os.path.dirname(os.path.realpath(__file__))
@@ -267,13 +266,13 @@ def build_from_source_for_arch(args, arch):
         "-D", "LLVM_TOOL_YAML2OBJ_BUILD=FALSE",
         # fmt: on
     ]
-    ret = subprocess.check_call(cmake_gen, stderr=subprocess.STDOUT)
+    subprocess.check_call(cmake_gen, stderr=subprocess.STDOUT)
 
     cmake_build = ["cmake", "--build", build_path]
-    ret = subprocess.check_call(cmake_build, stderr=subprocess.STDOUT)
+    subprocess.check_call(cmake_build, stderr=subprocess.STDOUT)
 
     cmake_install = ["cmake", "--install", build_path]
-    ret = subprocess.check_call(cmake_install, stderr=subprocess.STDOUT)
+    subprocess.check_call(cmake_install, stderr=subprocess.STDOUT)
 
 
 def build_from_source(args):

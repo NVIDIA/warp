@@ -13,7 +13,6 @@ import numpy as np
 import omni.graph.core as og
 import omni.timeline
 import warp as wp
-import warp.sim
 
 import omni.warp.nodes
 from omni.warp.nodes.ogn.OgnClothSimulateDatabase import OgnClothSimulateDatabase
@@ -141,6 +140,9 @@ class InternalState:
         device: wp.context.Device,
     ) -> bool:
         """Initializes the internal state."""
+        # Lazy load warp.sim here to not slow down extension loading.
+        import warp.sim
+
         # Compute the simulation time step.
         timeline = omni.timeline.get_timeline_interface()
         sim_rate = timeline.get_ticks_per_second()

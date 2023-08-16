@@ -151,6 +151,29 @@ def test_from_torch(test, device):
     wrap_mat_tensor(4, 4, wp.mat44)
     wrap_mat_tensor(6, 6, wp.spatial_matrix)
 
+    def wrap_vec_tensor_with_grad(n, desired_warp_dtype):
+        t = torch.zeros((10, n), dtype=torch.float32, device=torch_device)
+        a = wp.from_torch(t, desired_warp_dtype, requires_grad=True)
+        assert a.dtype == desired_warp_dtype
+        assert a.shape == (10,)
+
+    wrap_vec_tensor_with_grad(2, wp.vec2)
+    wrap_vec_tensor_with_grad(3, wp.vec3)
+    wrap_vec_tensor_with_grad(4, wp.vec4)
+    wrap_vec_tensor_with_grad(6, wp.spatial_vector)
+    wrap_vec_tensor_with_grad(7, wp.transform)
+
+    def wrap_mat_tensor_with_grad(n, m, desired_warp_dtype):
+        t = torch.zeros((10, n, m), dtype=torch.float32, device=torch_device)
+        a = wp.from_torch(t, desired_warp_dtype, requires_grad=True)
+        assert a.dtype == desired_warp_dtype
+        assert a.shape == (10,)
+
+    wrap_mat_tensor_with_grad(2, 2, wp.mat22)
+    wrap_mat_tensor_with_grad(3, 3, wp.mat33)
+    wrap_mat_tensor_with_grad(4, 4, wp.mat44)
+    wrap_mat_tensor_with_grad(6, 6, wp.spatial_matrix)
+
 
 def test_to_torch(test, device):
     import torch

@@ -121,7 +121,7 @@ else:
 
 setuptools.setup(
     name="warp-lang",
-    version="0.10.0",
+    version="0.10.1",
     author="NVIDIA",
     author_email="mmacklin@nvidia.com",
     description="A Python framework for high-performance simulation and graphics programming",

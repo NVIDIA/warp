@@ -64,18 +64,6 @@ def laplacian(
 
 
 @wp.kernel(enable_backward=False)
-def sample_height_kernel(
-    height_map: wp.array(dtype=float),
-    x: int,
-    z: int,
-    point_count_x: int,
-    point_count_z: int,
-    out_height: wp.array(dtype=float),
-):
-    out_height[0] = sample_height(height_map, x, z, point_count_x, point_count_z)
-
-
-@wp.kernel(enable_backward=False)
 def displace_kernel(
     point_count_x: int,
     center_x: float,
