@@ -2306,13 +2306,13 @@ def codegen_func(adj, name, device="cpu", options={}):
         )
 
     if not adj.skip_reverse_codegen:
-        if options.get("enable_backward", True):
-            if adj.custom_reverse_mode:
-                reverse_body = "\t// user-defined adjoint code\n" + forward_body
-            else:
-                reverse_body = codegen_func_reverse(adj, func_type="function", device=device)
+        if adj.custom_reverse_mode:
+            reverse_body = "\t// user-defined adjoint code\n" + forward_body
         else:
-            reverse_body = "\t// reverse mode disabled (module option \"enable_backward\" is False)\n"
+            if options.get("enable_backward", True):
+                reverse_body = codegen_func_reverse(adj, func_type="function", device=device)
+            else:
+                reverse_body = "\t// reverse mode disabled (module option \"enable_backward\" is False)\n"
         s += reverse_template.format(
             name=c_func_name,
             return_type=return_type,
