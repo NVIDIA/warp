@@ -1,6 +1,46 @@
 [build-system]
-requires = ["setuptools>=42", "build", "wheel"]
+requires = ["setuptools>=61", "build", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "warp-lang"
+requires-python = ">=3.7"
+authors = [
+    {name = "NVIDIA", email = "mmacklin@nvidia.com"},
+]
+description = "A Python framework for high-performance simulation and graphics programming"
+license = {text = "NVSCL"}
+classifiers = [
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "License :: Other/Proprietary License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy",
+]
+dynamic = ["version"]
+
+[project.urls]
+GitHub = "https://github.com/NVIDIA/warp"
+Documentation = "https://nvidia.github.io/warp"
+Changelog = "https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+dev = ["flake8", "black", "isort", "nvtx", "furo"]
+
+[tool.setuptools.packages]
+find = {}
+
+[tool.setuptools.dynamic]
+version = {attr = "warp.config.version"}
 
 [tool.black]
 line-length = 120
+
+[tool.isort]
+profile = "black"
+skip_gitignore = true
