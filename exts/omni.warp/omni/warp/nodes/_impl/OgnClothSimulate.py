@@ -72,6 +72,17 @@ def update_cloth_kernel(
     out_velocities[tid] = out_velocities[tid] + diff
 
 
+@wp.kernel
+def update_contacts_kernel(
+    points: wp.array(dtype=wp.vec3),
+    velocities: wp.array(dtype=wp.vec3),
+    sim_dt: float,
+    out_points: wp.array(dtype=wp.vec3),
+):
+    tid = wp.tid()
+    out_points[tid] = points[tid] + velocities[tid] * sim_dt
+
+
 #   Internal State
 # ------------------------------------------------------------------------------
 
@@ -401,6 +412,20 @@ def step(db: OgnClothSimulateDatabase) -> None:
 
     for _ in range(db.inputs.substepCount):
         state.state_0.clear_forces()
+
+        wp.launch(
+            update_contacts_kernel,
+            state.model.soft_contact_max,
+            inputs=[
+                state.model.soft_contact_body_pos,
+                state.model.soft_contact_body_vel,
+                sim_dt,
+            ],
+            outputs=[
+                state.model.soft_contact_body_pos,
+            ],
+        )
+
         state.integrator.simulate(
             state.model,
             state.state_0,
