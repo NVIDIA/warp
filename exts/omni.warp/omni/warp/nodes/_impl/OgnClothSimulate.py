@@ -72,6 +72,17 @@ def update_cloth_kernel(
     out_velocities[tid] = out_velocities[tid] + diff
 
 
+@wp.kernel
+def update_contacts_kernel(
+    points: wp.array(dtype=wp.vec3),
+    velocities: wp.array(dtype=wp.vec3),
+    sim_dt: float,
+    out_points: wp.array(dtype=wp.vec3),
+):
+    tid = wp.tid()
+    out_points[tid] = points[tid] + velocities[tid] * sim_dt
+
+
 #   Internal State
 # ------------------------------------------------------------------------------
 
@@ -235,6 +246,11 @@ class InternalState:
                 pos=(0.0, 0.0, 0.0),
                 rot=(0.0, 0.0, 0.0, 1.0),
                 scale=(1.0, 1.0, 1.0),
+                density=0.0,
+                ke=0.0,
+                kd=0.0,
+                kf=0.0,
+                mu=0.0,
             )
 
             # Store the collider's point positions as internal state.
@@ -253,7 +269,7 @@ class InternalState:
 
         # Register the ground.
         builder.set_ground_plane(
-            offset=-db.inputs.groundAltitude,
+            offset=-db.inputs.groundAltitude + db.inputs.colliderContactDistance,
             ke=db.inputs.contactElasticStiffness * db.inputs.globalScale,
             kd=db.inputs.contactDampingStiffness * db.inputs.globalScale,
             kf=db.inputs.contactFrictionStiffness * db.inputs.globalScale,
@@ -336,8 +352,8 @@ def update_collider(
         kernel=update_collider_kernel,
         dim=len(state.collider_mesh.vertices),
         inputs=[
-            state.collider_points_1,
             state.collider_points_0,
+            state.collider_points_1,
             xform_0.T,
             xform_1.T,
             state.sim_dt,
@@ -396,6 +412,20 @@ def step(db: OgnClothSimulateDatabase) -> None:
 
     for _ in range(db.inputs.substepCount):
         state.state_0.clear_forces()
+
+        wp.launch(
+            update_contacts_kernel,
+            state.model.soft_contact_max,
+            inputs=[
+                state.model.soft_contact_body_pos,
+                state.model.soft_contact_body_vel,
+                sim_dt,
+            ],
+            outputs=[
+                state.model.soft_contact_body_pos,
+            ],
+        )
+
         state.integrator.simulate(
             state.model,
             state.state_0,
