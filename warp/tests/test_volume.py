@@ -61,6 +61,27 @@ def test_volume_sample_linear_f(volume: wp.uint64, points: wp.array(dtype=wp.vec
 
     expect_near(wp.volume_sample_f(volume, p, wp.Volume.LINEAR), expected, 2.0e-4)
 
+@wp.kernel
+def test_volume_sample_grad_linear_f(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
+    tid = wp.tid()
+
+    p = points[tid]
+
+    expected_val = p[0] * p[1] * p[2]
+    expected_gx = p[1] * p[2]
+    expected_gy = p[0] * p[2]
+    expected_gz = p[0] * p[1]
+
+    if abs(p[0]) > 10.0 or abs(p[1]) > 10.0 or abs(p[2]) > 10.0:
+        return  # not testing against background values
+    
+    grad = wp.vec3(0.0, 0.0, 0.0)
+    val = wp.volume_sample_grad_f(volume, p, wp.Volume.LINEAR, grad)
+    
+    expect_near(val, expected_val, 2.0e-4)
+    expect_near(grad[0], expected_gx, 2.0e-4)
+    expect_near(grad[1], expected_gy, 2.0e-4)
+    expect_near(grad[2], expected_gz, 2.0e-4)
 
 @wp.kernel
 def test_volume_sample_local_f_linear_values(
@@ -70,6 +91,23 @@ def test_volume_sample_local_f_linear_values(
     p = points[tid]
     values[tid] = wp.volume_sample_f(volume, p, wp.Volume.LINEAR)
 
+@wp.kernel
+def test_volume_sample_grad_local_f_linear_values(
+    volume: wp.uint64, points: wp.array(dtype=wp.vec3), values: wp.array(dtype=wp.float32), case_num:int
+):
+    tid = wp.tid()
+    p = points[tid]
+
+    grad = wp.vec3(0.0, 0.0, 0.0)    
+    val = wp.volume_sample_grad_f(volume, p, wp.Volume.LINEAR, grad)
+    if case_num == 0:
+        values[tid] = val
+    elif case_num == 1:
+        values[tid] = grad[0]
+    elif case_num == 2:
+        values[tid] = grad[1]
+    elif case_num == 3:
+        values[tid] = grad[2]
 
 @wp.kernel
 def test_volume_sample_world_f_linear_values(
@@ -80,6 +118,25 @@ def test_volume_sample_world_f_linear_values(
     p = wp.volume_world_to_index(volume, q)
     values[tid] = wp.volume_sample_f(volume, p, wp.Volume.LINEAR)
 
+
+@wp.kernel
+def test_volume_sample_grad_world_f_linear_values(
+    volume: wp.uint64, points: wp.array(dtype=wp.vec3), values: wp.array(dtype=wp.float32), case_num:int
+):
+    tid = wp.tid()
+    q = points[tid]
+    p = wp.volume_world_to_index(volume, q)
+
+    grad = wp.vec3(0.0, 0.0, 0.0)    
+    val = wp.volume_sample_grad_f(volume, p, wp.Volume.LINEAR, grad)
+    if case_num == 0:
+        values[tid] = val
+    elif case_num == 1:
+        values[tid] = grad[0]
+    elif case_num == 2:
+        values[tid] = grad[1]
+    elif case_num == 3:
+        values[tid] = grad[2]
 
 # vec3f volume tests
 @wp.kernel
@@ -356,6 +413,64 @@ def register(parent):
                     grad_computed = tape.gradients[xyzs].numpy()[0]
                     np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
 
+        def test_volume_sample_grad_linear_f_gradient(self):
+            for device in devices:
+                points = rng.uniform(-10.0, 10.0, size=(100, 3))
+                values = wp.array(np.zeros(1), dtype=wp.float32, device=device, requires_grad=True)
+                for case in points:
+                    uvws = wp.array(case, dtype=wp.vec3, device=device, requires_grad=True)
+                    xyzs = wp.array(case * 0.25, dtype=wp.vec3, device=device, requires_grad=True)
+
+                    for case_num in range(4):
+                        tape = wp.Tape()
+                        with tape:
+                            wp.launch(
+                                test_volume_sample_grad_local_f_linear_values,
+                                dim=1,
+                                inputs=[volumes["float"][device.alias].id, uvws, values, case_num],
+                                device=device,
+                            )
+                        tape.backward(values)
+
+                        x, y, z = case
+                        grad_computed = tape.gradients[uvws].numpy()[0]
+                        if case_num == 0:
+                            grad_expected = np.array([y * z, x * z, x * y])
+                        elif case_num == 1:
+                            grad_expected = np.array([0.0, z, y])
+                        elif case_num == 2:
+                            grad_expected = np.array([z, 0.0, x])
+                        elif case_num == 3:
+                            grad_expected = np.array([y, x, 0.0])
+
+                        np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
+                        tape.zero()
+
+                    for case_num in range(4):
+                        tape = wp.Tape()
+                        with tape:
+                            wp.launch(
+                                test_volume_sample_grad_world_f_linear_values,
+                                dim=1,
+                                inputs=[volumes["float"][device.alias].id, xyzs, values, case_num],
+                                device=device,
+                            )
+                        tape.backward(values)
+
+                        x, y, z = case
+                        grad_computed = tape.gradients[xyzs].numpy()[0]
+                        if case_num == 0:
+                            grad_expected = np.array([y * z, x * z, x * y]) / 0.25
+                        elif case_num == 1:
+                            grad_expected = np.array([0.0, z, y]) / 0.25
+                        elif case_num == 2:
+                            grad_expected = np.array([z, 0.0, x]) / 0.25
+                        elif case_num == 3:
+                            grad_expected = np.array([y, x, 0.0]) / 0.25
+
+                        np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
+                        tape.zero()
+
         def test_volume_sample_linear_v_gradient(self):
             for device in devices:
                 points = rng.uniform(-10.0, 10.0, size=(100, 3))
@@ -521,6 +636,13 @@ def register(parent):
         add_kernel_test(
             TestVolumes,
             test_volume_sample_linear_f,
+            dim=len(point_grid),
+            inputs=[volumes["float"][device.alias].id, points_jittered[device.alias]],
+            devices=[device.alias],
+        )
+        add_kernel_test(
+            TestVolumes,
+            test_volume_sample_grad_linear_f,
             dim=len(point_grid),
             inputs=[volumes["float"][device.alias].id, points_jittered[device.alias]],
             devices=[device.alias],

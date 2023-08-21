@@ -607,6 +607,7 @@ WP_API void builtin_iter_next_range_t(range_t range, int* ret) { *ret = iter_nex
 WP_API void builtin_iter_next_hash_grid_query_t(hash_grid_query_t query, int* ret) { *ret = iter_next(query); }
 WP_API void builtin_iter_next_mesh_query_aabb_t(mesh_query_aabb_t query, int* ret) { *ret = iter_next(query); }
 WP_API void builtin_volume_sample_f_uint64_vec3f_int32(uint64 id, vec3f uvw, int32 sampling_mode, float* ret) { *ret = volume_sample_f(id, uvw, sampling_mode); }
+WP_API void builtin_volume_sample_grad_f_uint64_vec3f_int32_vec3f(uint64 id, vec3f uvw, int32 sampling_mode, vec3f grad, float* ret) { *ret = volume_sample_grad_f(id, uvw, sampling_mode, grad); }
 WP_API void builtin_volume_lookup_f_uint64_int32_int32_int32(uint64 id, int32 i, int32 j, int32 k, float* ret) { *ret = volume_lookup_f(id, i, j, k); }
 WP_API void builtin_volume_sample_v_uint64_vec3f_int32(uint64 id, vec3f uvw, int32 sampling_mode, vec3f* ret) { *ret = volume_sample_v(id, uvw, sampling_mode); }
 WP_API void builtin_volume_lookup_v_uint64_int32_int32_int32(uint64 id, int32 i, int32 j, int32 k, vec3f* ret) { *ret = volume_lookup_v(id, i, j, k); }
