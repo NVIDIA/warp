@@ -194,3 +194,66 @@ def vec_max(a: wp.vec3, b: wp.vec3):
 @wp.func
 def vec_abs(a: wp.vec3):
     return wp.vec3(wp.abs(a[0]), wp.abs(a[1]), wp.abs(a[2]))
+
+
+@wp.kernel
+def store_dense_volume_to_nano_vdb_v(volume: wp.uint64, values: wp.array(dtype=wp.vec3, ndim = 3)):
+    i, j, k = wp.tid()
+    wp.volume_store_v(volume, i, j, k, values[i,j,k])
+
+@wp.kernel
+def store_dense_volume_to_nano_vdb_f(volume: wp.uint64, values: wp.array(dtype=wp.float32, ndim = 3)):
+    i, j, k = wp.tid()
+    wp.volume_store_f(volume, i, j, k, values[i,j,k])
+
+@wp.kernel
+def store_dense_volume_to_nano_vdb_i(volume: wp.uint64, values: wp.array(dtype=wp.int32, ndim = 3)):
+    i, j, k = wp.tid()
+    wp.volume_store_i(volume, i, j, k, values[i,j,k])
+
+import numpy as np
+import math
+
+def create_volume_from_numpy(numpy_array: np.array, min_world=(0.0, 0.0, 0.0), voxel_size=1.0, bg_value=0.0, device =None):
+    target_shape = (math.ceil(numpy_array.shape[0] / 8) * 8, math.ceil(numpy_array.shape[1] / 8) * 8, math.ceil(numpy_array.shape[2] / 8) * 8)
+    if hasattr(bg_value, "__len__"):
+        # vec3, assuming the numpy array is 4D 
+        padded_array = np.array((target_shape[0], target_shape[1], target_shape[2], 3), dtype=np.single)
+        padded_array[:, :, :, :] = np.array(bg_value)
+        padded_array[0:numpy_array.shape[0], 0:numpy_array.shape[1], 0:numpy_array.shape[2], :] = numpy_array
+    else:
+        if type(bg_value) == int:
+            dtype = int
+        else:
+            dtype = float
+        padded_amount = (math.ceil(numpy_array.shape[0] / 8) * 8 - numpy_array.shape[0], math.ceil(numpy_array.shape[1] / 8) * 8 - numpy_array.shape[1], math.ceil(numpy_array.shape[2] / 8) * 8 - numpy_array.shape[2])
+        padded_array = np.pad(numpy_array, ((0, padded_amount[0]), (0, padded_amount[1]), (0, padded_amount[2])), mode = "constant", constant_values = bg_value)
+
+    shape = padded_array.shape
+    volume = wp.Volume.allocate(min_world, [min_world[0] + (shape[0] - 1) * voxel_size, min_world[1] + (shape[1] - 1) * voxel_size, min_world[2] + (shape[2] - 1) * voxel_size], voxel_size, bg_value = bg_value, points_in_world_space = True, translation = min_world, device = device)
+    
+    # Populate volume
+    if hasattr(bg_value, "__len__"):
+        wp.launch(
+            store_dense_volume_to_nano_vdb_v,
+            dim = (shape[0], shape[1], shape[2]),
+            inputs = [volume.id, wp.array(padded_array, dtype = wp.vec3, device = device)],
+            device = device,
+        )
+    elif type(bg_value) == int:
+        wp.launch(
+            store_dense_volume_to_nano_vdb_i,
+            dim = shape,
+            inputs = [volume.id, wp.array(padded_array, dtype = wp.int32, device = device)],
+            device = device,
+        )
+    else:
+        wp.launch(
+            store_dense_volume_to_nano_vdb_f,
+            dim = shape,
+            inputs = [volume.id, wp.array(padded_array, dtype = wp.float32, device = device)],
+            device = device,
+        )
+
+    return volume
+        

@@ -1754,6 +1754,14 @@ add_builtin(
 )
 
 add_builtin(
+    "volume_sample_grad_f",
+    input_types={"id": uint64, "uvw": vec3, "sampling_mode": int, "grad": vec3},
+    value_type=float,
+    group="Volumes",
+    doc="""Sample the volume and its gradient given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""",
+)
+
+add_builtin(
     "volume_lookup_f",
     input_types={"id": uint64, "i": int, "j": int, "k": int},
     value_type=float,

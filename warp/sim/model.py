@@ -67,7 +67,6 @@ def flag_to_int(flag):
         return flag.value
     return int(flag)
 
-
 # Material properties pertaining to rigid shape contact dynamics
 @wp.struct
 class ModelShapeMaterials:
@@ -119,7 +118,34 @@ class JointAxis:
         self.target_kd = target_kd
         self.mode = mode
 
+class SDF:
+    #Describes a signed distance field for simulation
+    #
+    #    Attributes:
+    #
+    #        Either a NanoVDB file name or a numpy array
+    #
+    def __init__(self, 
+                volume = None, 
+                I = np.eye(3, dtype=np.float32),
+                mass = 1.0,
+                com = np.array((0.0, 0.0, 0.0))                
+    ):
+        self.volume = volume
 
+        # Need to specify these for now
+        self.has_inertia = True
+        self.is_solid = True
+        self.mass = mass
+        self.com = com
+        self.I = I
+
+    def finalize(self, device=None):
+        return self.volume.id
+
+    def __hash__(self):
+        return hash((self.volume.id))
+        
 class Mesh:
     """Describes a triangle collision mesh for simulation
 
@@ -262,7 +288,7 @@ def compute_shape_mass(type, scale, src, density, is_solid, thickness):
         else:
             hollow = compute_cone_inertia(density, r - thickness, h - 2.0 * thickness)
             return solid[0] - hollow[0], solid[1], solid[2] - hollow[2]
-    elif type == GEO_MESH:
+    elif (type == GEO_MESH) or (type == GEO_SDF):
         if src.has_inertia and src.mass > 0.0 and src.is_solid == is_solid:
             m, c, I = src.mass, src.com, src.I
 
@@ -285,10 +311,12 @@ def compute_shape_mass(type, scale, src, density, is_solid, thickness):
 
             return m_new, c_new, I_new
         else:
-            # fall back to computing inertia from mesh geometry
-            vertices = np.array(src.vertices) * np.array(scale[:3])
-            m, c, I, vol = compute_mesh_inertia(density, vertices, src.indices, is_solid, thickness)
-            return m, c, I
+            if type == GEO_MESH:
+                # fall back to computing inertia from mesh geometry
+                vertices = np.array(src.vertices) * np.array(scale[:3])
+                m, c, I, vol = compute_mesh_inertia(density, vertices, src.indices, is_solid, thickness)
+                return m, c, I
+
     raise ValueError("Unsupported shape type: {}".format(type))
 
 
@@ -2318,6 +2346,58 @@ class ModelBuilder:
             thickness,
             is_solid,
             has_ground_collision=has_ground_collision,
+        )
+
+    def add_shape_sdf( 
+        self,
+        body: int,
+        pos: Vec3 = (0.0, 0.0, 0.0),
+        rot: Quat = (0.0, 0.0, 0.0, 1.0),
+        sdf: SDF = None,
+        scale: Vec3 = (1.0, 1.0, 1.0),
+        density: float = default_shape_density,
+        ke: float = default_shape_ke,
+        kd: float = default_shape_kd,
+        kf: float = default_shape_kf,
+        mu: float = default_shape_mu,
+        restitution: float = default_shape_restitution,
+        is_solid: bool = True,
+        thickness: float = default_geo_thickness
+    ):
+        """Adds SDF collision shape to a body.
+
+        Args:
+            body: The index of the parent body this shape belongs to
+            pos: The location of the shape with respect to the parent frame
+            rot: The rotation of the shape with respect to the parent frame
+            sdf: The sdf object
+            scale: Scale to use for the collider
+            density: The density of the shape
+            ke: The contact elastic stiffness
+            kd: The contact damping stiffness
+            kf: The contact friction stiffness
+            mu: The coefficient of friction
+            restitution: The coefficient of restitution
+            is_solid: If True, the mesh is solid, otherwise it is a hollow surface with the given wall thickness
+            thickness: Thickness to use for computing inertia of a hollow mesh, and for collision handling
+            has_ground_collision: If True, the mesh will collide with the ground plane if `Model.ground` is True
+
+        """
+        return self._add_shape(
+            body,
+            pos,
+            rot,
+            GEO_SDF,
+            (scale[0], scale[1], scale[2], 0.0),
+            sdf,
+            density,
+            ke,
+            kd,
+            kf,
+            mu,
+            restitution,
+            thickness,
+            is_solid,
         )
 
     def _shape_radius(self, type, scale, src):

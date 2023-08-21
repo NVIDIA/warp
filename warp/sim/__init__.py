@@ -6,7 +6,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 
-from .model import State, Model, ModelBuilder, Mesh
+from .model import State, Model, ModelBuilder, Mesh, SDF
 
 from .model import GEO_SPHERE
 from .model import GEO_BOX
@@ -48,3 +48,5 @@ from .import_mjcf import parse_mjcf
 from .import_urdf import parse_urdf
 from .import_snu import parse_snu
 from .import_usd import parse_usd
+
+from .utils import create_volume_from_numpy

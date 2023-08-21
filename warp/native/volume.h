@@ -232,6 +232,126 @@ CUDA_CALLABLE inline void adj_volume_sample_i(uint64_t id, vec3 uvw, uint64_t& a
     // NOP
 }
 
+// Sampling the volume at the given index-space coordinates, uvw can be fractional
+CUDA_CALLABLE inline float volume_sample_grad_f(uint64_t id, vec3 uvw, int sampling_mode, vec3& grad)
+{
+    const pnanovdb_buf_t buf = volume::id_to_buffer(id);
+    const pnanovdb_root_handle_t root = volume::get_root(buf);
+    const pnanovdb_vec3_t uvw_pnano{ uvw[0], uvw[1], uvw[2] };
+
+    if (sampling_mode == volume::CLOSEST)
+    {
+        const pnanovdb_coord_t ijk = pnanovdb_vec3_round_to_coord(uvw_pnano);
+        float val;
+        pnano_read(val, buf, root, PNANOVDB_REF(ijk));
+        grad = vec3(0.0f, 0.0f, 0.0f);
+        return val;
+    }
+    else if (sampling_mode == volume::LINEAR)
+    {
+        // NB. linear sampling is not used on int volumes
+        constexpr pnanovdb_coord_t OFFSETS[] = {
+            { 0, 0, 0 }, { 0, 0, 1 }, { 0, 1, 0 }, { 0, 1, 1 }, { 1, 0, 0 }, { 1, 0, 1 }, { 1, 1, 0 }, { 1, 1, 1 },
+        };
+
+        const pnanovdb_vec3_t ijk_base{ floorf(uvw_pnano.x), floorf(uvw_pnano.y), floorf(uvw_pnano.z) };
+        const pnanovdb_vec3_t ijk_frac{ uvw_pnano.x - ijk_base.x, uvw_pnano.y - ijk_base.y, uvw_pnano.z - ijk_base.z };
+        const pnanovdb_coord_t ijk{ (pnanovdb_int32_t)ijk_base.x, (pnanovdb_int32_t)ijk_base.y, (pnanovdb_int32_t)ijk_base.z };
+
+        pnanovdb_readaccessor_t accessor;
+        pnanovdb_readaccessor_init(PNANOVDB_REF(accessor), root);
+        float val = 0.0f;
+        const float wx[2]{ 1 - ijk_frac.x, ijk_frac.x };
+        const float wy[2]{ 1 - ijk_frac.y, ijk_frac.y };
+        const float wz[2]{ 1 - ijk_frac.z, ijk_frac.z };
+
+        const float sign_dx[8] = {-1.0f, -1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
+        const float sign_dy[8] = {-1.0f, -1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f};
+        const float sign_dz[8] = {-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f};
+        
+        float dfdx = 0.0f;
+        float dfdy = 0.0f;
+        float dfdz = 0.0f;
+        for (int idx = 0; idx < 8; ++idx)
+        {
+            const pnanovdb_coord_t& offs = OFFSETS[idx];
+            const pnanovdb_coord_t ijk_shifted = pnanovdb_coord_add(ijk, offs);
+            float v;
+            pnano_read(v, buf, PNANOVDB_REF(accessor), PNANOVDB_REF(ijk_shifted));
+            val = add(val, wx[offs.x] * wy[offs.y] * wz[offs.z] * v);
+            dfdx = add(dfdx, wy[offs.y] * wz[offs.z] * sign_dx[idx] * v);
+            dfdy = add(dfdy, wx[offs.x] * wz[offs.z] * sign_dy[idx] * v);
+            dfdz = add(dfdz, wx[offs.x] * wy[offs.y] * sign_dz[idx] * v);
+        }
+        grad = vec3(dfdx, dfdy, dfdz);
+        return val;
+    }
+    return 0.0f;
+}
+
+CUDA_CALLABLE inline void adj_volume_sample_grad_f(
+    uint64_t id, vec3 uvw, int sampling_mode, vec3& grad, uint64_t& adj_id, vec3& adj_uvw, int& adj_sampling_mode, vec3& adj_grad, const float& adj_ret)
+{
+    if (volume::get_grid_type(volume::id_to_buffer(id)) != PNANOVDB_GRID_TYPE_FLOAT) return;
+
+    if (sampling_mode != volume::LINEAR) {
+        return; // NOP
+    }
+
+    const pnanovdb_buf_t buf = volume::id_to_buffer(id);
+    const pnanovdb_root_handle_t root = volume::get_root(buf);
+    const pnanovdb_vec3_t uvw_pnano{ uvw[0], uvw[1], uvw[2] };
+
+    constexpr pnanovdb_coord_t OFFSETS[] = {
+        { 0, 0, 0 }, { 0, 0, 1 }, { 0, 1, 0 }, { 0, 1, 1 }, { 1, 0, 0 }, { 1, 0, 1 }, { 1, 1, 0 }, { 1, 1, 1 },
+    };
+
+    const pnanovdb_vec3_t ijk_base{ floorf(uvw_pnano.x), floorf(uvw_pnano.y), floorf(uvw_pnano.z) };
+    const pnanovdb_vec3_t ijk_frac{ uvw_pnano.x - ijk_base.x, uvw_pnano.y - ijk_base.y, uvw_pnano.z - ijk_base.z };
+    const pnanovdb_coord_t ijk{ (pnanovdb_int32_t)ijk_base.x, (pnanovdb_int32_t)ijk_base.y, (pnanovdb_int32_t)ijk_base.z };
+
+    pnanovdb_readaccessor_t accessor;
+    pnanovdb_readaccessor_init(PNANOVDB_REF(accessor), root);
+    const float wx[2]{ 1 - ijk_frac.x, ijk_frac.x };
+    const float wy[2]{ 1 - ijk_frac.y, ijk_frac.y };
+    const float wz[2]{ 1 - ijk_frac.z, ijk_frac.z };
+    const float sign_dx[8] = {-1.0f, -1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
+    const float sign_dy[8] = {-1.0f, -1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f};
+    const float sign_dz[8] = {-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f};
+    
+    float dfdxdy = 0.0f;
+    float dfdxdz = 0.0f;
+    float dfdydx = 0.0f;
+    float dfdydz = 0.0f;
+    float dfdzdx = 0.0f;    
+    float dfdzdy = 0.0f;    
+    vec3 dphi(0,0,0);
+    for (int idx = 0; idx < 8; ++idx)
+    {
+        const pnanovdb_coord_t& offs = OFFSETS[idx];
+        const pnanovdb_coord_t ijk_shifted = pnanovdb_coord_add(ijk, offs);
+        float v;
+        pnano_read(v, buf, PNANOVDB_REF(accessor), PNANOVDB_REF(ijk_shifted));
+        const vec3 signs(offs.x * 2 - 1, offs.y * 2 - 1, offs.z * 2 - 1);
+        const vec3 grad_w(signs[0] * wy[offs.y] * wz[offs.z], signs[1] * wx[offs.x] * wz[offs.z], signs[2] * wx[offs.x] * wy[offs.y]); 
+        dphi = add(dphi, mul(v, grad_w));
+
+        dfdxdy = add(dfdxdy, signs[1] * wz[offs.z] * sign_dx[idx] * v);
+        dfdxdz = add(dfdxdz, wy[offs.y] * signs[2] * sign_dx[idx] * v);
+
+        dfdydx = add(dfdydx, signs[0] * wz[offs.z] * sign_dy[idx] * v);
+        dfdydz = add(dfdydz, wx[offs.x] * signs[2] * sign_dy[idx] * v);
+
+        dfdzdx = add(dfdzdx, signs[0] * wy[offs.y] * sign_dz[idx] * v);        
+        dfdzdy = add(dfdzdy, wx[offs.x] * signs[1] * sign_dz[idx] * v);        
+    }
+
+    adj_uvw += mul(dphi, adj_ret);
+    adj_uvw[0] += adj_grad[1] * dfdydx + adj_grad[2] * dfdzdx;
+    adj_uvw[1] += adj_grad[0] * dfdxdy + adj_grad[2] * dfdzdy;
+    adj_uvw[2] += adj_grad[0] * dfdxdz + adj_grad[1] * dfdydz;
+}
+
 CUDA_CALLABLE inline float volume_lookup_f(uint64_t id, int32_t i, int32_t j, int32_t k)
 {
     if (volume::get_grid_type(volume::id_to_buffer(id)) != PNANOVDB_GRID_TYPE_FLOAT) return 0.f;

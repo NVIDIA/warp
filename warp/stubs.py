@@ -1138,6 +1138,12 @@ def volume_sample_f(id: uint64, uvw: vec3f, sampling_mode: int32) -> float:
     """
     ...
 
+@over
+def volume_sample_grad_f(id: uint64, uvw: vec3f, sampling_mode: int32, grad: vec3f) -> float:
+    """
+    Sample the volume and its gradient given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
+    """
+    ...
 
 @over
 def volume_lookup_f(id: uint64, i: int32, j: int32, k: int32) -> float:
