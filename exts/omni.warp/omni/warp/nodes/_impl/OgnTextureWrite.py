@@ -11,11 +11,15 @@ import ctypes
 import traceback
 
 import omni.graph.core as og
-import omni.ui as ui
 import omni.warp.nodes
 import warp as wp
 
 from omni.warp.nodes.ogn.OgnTextureWriteDatabase import OgnTextureWriteDatabase
+
+try:
+    import ommi.ui as ui
+except ImportError:
+    ui = None
 
 
 #   Internal State
@@ -71,6 +75,10 @@ class InternalState:
 
 def compute(db: OgnTextureWriteDatabase) -> None:
     """Evaluates the node."""
+    if ui is None:
+        db.log_warning("Cannot write dynamic textures in headless mode.")
+        return
+
     if not db.inputs.data.memory or db.inputs.data.shape[0] == 0:
         return
 

@@ -28,12 +28,12 @@ exclude = ["Ogn*Database.py", "*/ogn*"]
 "omni.kit.actions.core" = {}
 "omni.kit.browser.sample" = {optional = true}
 "omni.kit.menu.utils" = {optional = true}
-"omni.kit.property.usd" = {}
-"omni.kit.widget.searchfield" = {}
-"omni.kit.widget.text_editor" = {}
-"omni.kit.window.property" = {}
+"omni.kit.property.usd" = {optional = true}
+"omni.kit.widget.searchfield" = {optional = true}
+"omni.kit.widget.text_editor" = {optional = true}
+"omni.kit.window.property" = {optional = true}
 "omni.timeline" = {}
-"omni.ui" = {}
+"omni.ui" = {optional = true}
 "omni.usd" = {}
 "omni.warp.core" = {}
 
