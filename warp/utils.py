@@ -649,7 +649,6 @@ def array_inner(a, b, out=None, count=None, axis=None):
 
 _copy_kernel_cache = dict()
 
-
 def array_cast(in_array, out_array, count=None):
     def make_copy_kernel(dest_dtype, src_dtype):
         import re
@@ -737,6 +736,22 @@ def array_cast(in_array, out_array, count=None):
 # cp.print_stats(sort='tottime')
 # exit(0)
 
+
+# helper kernels for initializing NVDB volumes from a dense array
+@wp.kernel
+def copy_dense_volume_to_nano_vdb_v(volume: wp.uint64, values: wp.array(dtype=wp.vec3, ndim = 3)):
+    i, j, k = wp.tid()
+    wp.volume_store_v(volume, i, j, k, values[i,j,k])
+
+@wp.kernel
+def copy_dense_volume_to_nano_vdb_f(volume: wp.uint64, values: wp.array(dtype=wp.float32, ndim = 3)):
+    i, j, k = wp.tid()
+    wp.volume_store_f(volume, i, j, k, values[i,j,k])
+
+@wp.kernel
+def copy_dense_volume_to_nano_vdb_i(volume: wp.uint64, values: wp.array(dtype=wp.int32, ndim = 3)):
+    i, j, k = wp.tid()
+    wp.volume_store_i(volume, i, j, k, values[i,j,k])
 
 # represent an edge between v0, v1 with connected faces f0, f1, and opposite vertex o0, and o1
 # winding is such that first tri can be reconstructed as {v0, v1, o0}, and second tri as { v1, v0, o1 }

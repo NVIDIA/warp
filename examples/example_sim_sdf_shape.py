@@ -79,7 +79,7 @@ class Example:
                     dis = np.linalg.norm(pos-center)
                     sphere_sdf_np[x,y,z] = dis - rad
 
-        sphere_vdb = wp.sim.create_volume_from_numpy(sphere_sdf_np, mins, voxel_size, rad + 3.0 * voxel_size)
+        sphere_vdb = wp.Volume.load_from_numpy(sphere_sdf_np, mins, voxel_size, rad + 3.0 * voxel_size)
         sphere_sdf = wp.sim.SDF(sphere_vdb)
 
         self.sphere_pos = (3.0, 15.0, 0.0)

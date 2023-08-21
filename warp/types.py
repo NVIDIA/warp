@@ -2486,6 +2486,7 @@ class Mesh:
             runtime.verify_cuda_device(self.device)
 
 
+
 class Volume:
     CLOSEST = constant(0)
     LINEAR = constant(1)
@@ -2571,8 +2572,15 @@ class Volume:
         self.context.core.volume_get_voxel_size(self.id, ctypes.byref(dx), ctypes.byref(dy), ctypes.byref(dz))
         return (dx.value, dy.value, dz.value)
 
+
     @classmethod
     def load_from_nvdb(cls, file_or_buffer, device=None):
+        """ Creates a Volume object from a NanoVDB file or in-memory buffer.
+
+            Returns:
+
+                A ``warp.Volume`` object.
+        """
         try:
             data = file_or_buffer.read()
         except AttributeError:
@@ -2600,6 +2608,66 @@ class Volume:
 
         data_array = array(np.frombuffer(grid_data, dtype=np.byte), device=device)
         return cls(data_array)
+
+    @classmethod
+    def load_from_numpy(cls, ndarray: np.array, min_world=(0.0, 0.0, 0.0), voxel_size=1.0, bg_value=0.0, device=None):
+        """Creates a Volume object from a dense 3D NumPy array.
+
+            Args:
+                min_world: The 3D coordinate of the lower corner of the volume 
+                voxel_size: The size of each voxel in spatial coordinates
+                bg_value: Background value
+                device: The device to create the volume on, e.g.: "cpu", or "cuda:0"
+
+            Returns:
+
+                A ``warp.Volume`` object.
+        """
+        
+        import math
+
+        target_shape = (math.ceil(ndarray.shape[0] / 8) * 8, math.ceil(ndarray.shape[1] / 8) * 8, math.ceil(ndarray.shape[2] / 8) * 8)
+        if hasattr(bg_value, "__len__"):
+            # vec3, assuming the numpy array is 4D 
+            padded_array = np.array((target_shape[0], target_shape[1], target_shape[2], 3), dtype=np.single)
+            padded_array[:, :, :, :] = np.array(bg_value)
+            padded_array[0:ndarray.shape[0], 0:ndarray.shape[1], 0:ndarray.shape[2], :] = ndarray
+        else:
+            if type(bg_value) == int:
+                dtype = int
+            else:
+                dtype = float
+            padded_amount = (math.ceil(ndarray.shape[0] / 8) * 8 - ndarray.shape[0], math.ceil(ndarray.shape[1] / 8) * 8 - ndarray.shape[1], math.ceil(ndarray.shape[2] / 8) * 8 - ndarray.shape[2])
+            padded_array = np.pad(ndarray, ((0, padded_amount[0]), (0, padded_amount[1]), (0, padded_amount[2])), mode="constant", constant_values=bg_value)
+
+        shape = padded_array.shape
+        volume = warp.Volume.allocate(min_world, [min_world[0] + (shape[0] - 1) * voxel_size, min_world[1] + (shape[1] - 1) * voxel_size, min_world[2] + (shape[2] - 1) * voxel_size], voxel_size, bg_value = bg_value, points_in_world_space = True, translation = min_world, device = device)
+        
+        # Populate volume
+        if hasattr(bg_value, "__len__"):
+            warp.launch(
+                warp.utils.copy_dense_volume_to_nano_vdb_v,
+                dim = (shape[0], shape[1], shape[2]),
+                inputs = [volume.id, warp.array(padded_array, dtype = warp.vec3, device = device)],
+                device = device,
+            )
+        elif type(bg_value) == int:
+            warp.launch(
+                warp.utils.copy_dense_volume_to_nano_vdb_i,
+                dim = shape,
+                inputs = [volume.id, warp.array(padded_array, dtype = warp.int32, device = device)],
+                device = device,
+            )
+        else:
+            warp.launch(
+                warp.utils.copy_dense_volume_to_nano_vdb_f,
+                dim = shape,
+                inputs = [volume.id, warp.array(padded_array, dtype = warp.float32, device = device)],
+                device = device,
+            )
+
+        return volume        
+
 
     @classmethod
     def allocate(

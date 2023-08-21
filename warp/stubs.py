@@ -44,7 +44,7 @@ from warp.types import matmul, adj_matmul, batched_matmul, adj_batched_matmul, f
 from warp.types import vector as vec
 from warp.types import matrix as mat
 
-from warp.context import init, func, kernel, struct, overload
+from warp.context import init, func, func_grad, func_replay, kernel, struct, overload
 from warp.context import is_cpu_available, is_cuda_available, is_device_available
 from warp.context import get_devices, get_preferred_device
 from warp.context import get_cuda_devices, get_cuda_device_count, get_cuda_device, map_cuda_device, unmap_cuda_device
@@ -1138,12 +1138,14 @@ def volume_sample_f(id: uint64, uvw: vec3f, sampling_mode: int32) -> float:
     """
     ...
 
+
 @over
 def volume_sample_grad_f(id: uint64, uvw: vec3f, sampling_mode: int32, grad: vec3f) -> float:
     """
     Sample the volume and its gradient given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
     """
     ...
+
 
 @over
 def volume_lookup_f(id: uint64, i: int32, j: int32, k: int32) -> float:
