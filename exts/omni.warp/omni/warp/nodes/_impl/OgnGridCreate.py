@@ -68,6 +68,8 @@ def compute(db: OgnGridCreateDatabase) -> None:
         vertex_count,
         face_count,
         xform=db.inputs.transform,
+        create_normals=True,
+        create_uvs=True,
     )
 
     with omni.warp.nodes.NodeTimer("grid_create", db, active=PROFILING):
