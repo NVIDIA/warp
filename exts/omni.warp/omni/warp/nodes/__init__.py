@@ -54,6 +54,9 @@ __all__ = [
     "points_get_velocities",
     "points_get_widths",
     "points_get_world_extent",
+    "type_convert_og_to_warp",
+    "type_convert_sdf_name_to_warp",
+    "type_convert_sdf_name_to_og",
 ]
 
 from omni.warp.nodes._impl.attributes import (
@@ -70,6 +73,9 @@ from omni.warp.nodes._impl.bundles import (
 )
 from omni.warp.nodes._impl.common import (
     NodeTimer,
+    type_convert_og_to_warp,
+    type_convert_sdf_name_to_warp,
+    type_convert_sdf_name_to_og,
 )
 from omni.warp.nodes._impl.basis_curves import (
     basis_curves_copy_bundle,
