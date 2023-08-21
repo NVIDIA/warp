@@ -15,7 +15,7 @@ import sys
 import types
 from copy import copy as shallowcopy
 from types import ModuleType
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -3051,8 +3051,34 @@ def empty_like(
     return arr
 
 
-def from_numpy(arr, dtype, device: Devicelike = None, requires_grad=False):
-    return warp.array(data=arr, dtype=dtype, device=device, requires_grad=requires_grad)
+def from_numpy(
+    arr: np.ndarray,
+    dtype: Optional[type] = None,
+    shape: Optional[Sequence[int]] = None,
+    device: Optional[Devicelike] = None,
+    requires_grad: bool = False,
+) -> warp.array:
+    if dtype is None:
+        base_type = warp.types.np_dtype_to_warp_type.get(arr.dtype)
+        if base_type is None:
+            raise RuntimeError("Unsupported NumPy data type '{}'.".format(arr.dtype))
+
+        dim_count = len(arr.shape)
+        if dim_count == 2:
+            dtype = warp.types.vector(length=arr.shape[1], dtype=base_type)
+        elif dim_count == 3:
+            dtype = warp.types.matrix(shape=(arr.shape[1], arr.shape[2]), dtype=base_type)
+        else:
+            dtype = base_type
+
+    return warp.array(
+        data=arr,
+        dtype=dtype,
+        shape=shape,
+        owner=False,
+        device=device,
+        requires_grad=requires_grad,
+    )
 
 
 # given a kernel destination argument type and a value convert

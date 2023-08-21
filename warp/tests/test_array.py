@@ -1969,6 +1969,130 @@ def test_array_of_structs_roundtrip(test, device):
     assert_np_equal(a.numpy(), expected)
 
 
+def test_array_from_numpy(test, device):
+    arr = np.array((1.0, 2.0, 3.0), dtype=float)
+
+    result = wp.from_numpy(arr)
+    expected = wp.array((1.0, 2.0, 3.0), dtype=wp.float32, shape=(3,))
+    assert_np_equal(result.numpy(), expected.numpy())
+
+    result = wp.from_numpy(arr, dtype=wp.vec3)
+    expected = wp.array(((1.0, 2.0, 3.0),), dtype=wp.vec3, shape=(1,))
+    assert_np_equal(result.numpy(), expected.numpy())
+
+    # --------------------------------------------------------------------------
+
+    arr = np.array(((1.0, 2.0, 3.0), (4.0, 5.0, 6.0)), dtype=float)
+
+    result = wp.from_numpy(arr)
+    expected = wp.array(((1.0, 2.0, 3.0), (4.0, 5.0, 6.0)), dtype=wp.vec3, shape=(2,))
+    assert_np_equal(result.numpy(), expected.numpy())
+
+    result = wp.from_numpy(arr, dtype=wp.float32)
+    expected = wp.array(((1.0, 2.0, 3.0), (4.0, 5.0, 6.0)), dtype=wp.float32, shape=(2, 3))
+    assert_np_equal(result.numpy(), expected.numpy())
+
+    result = wp.from_numpy(arr, dtype=wp.float32, shape=(6,))
+    expected = wp.array((1.0, 2.0, 3.0, 4.0, 5.0, 6.0), dtype=wp.float32, shape=(6,))
+    assert_np_equal(result.numpy(), expected.numpy())
+
+    # --------------------------------------------------------------------------
+
+    arr = np.array(
+        (
+            (
+                (1.0, 2.0, 3.0, 4.0),
+                (2.0, 3.0, 4.0, 5.0),
+                (3.0, 4.0, 5.0, 6.0),
+                (4.0, 5.0, 6.0, 7.0),
+            ),
+            (
+                (2.0, 3.0, 4.0, 5.0),
+                (3.0, 4.0, 5.0, 6.0),
+                (4.0, 5.0, 6.0, 7.0),
+                (5.0, 6.0, 7.0, 8.0),
+            ),
+        ),
+        dtype=float,
+    )
+
+    result = wp.from_numpy(arr)
+    expected = wp.array(
+        (
+            (
+                (1.0, 2.0, 3.0, 4.0),
+                (2.0, 3.0, 4.0, 5.0),
+                (3.0, 4.0, 5.0, 6.0),
+                (4.0, 5.0, 6.0, 7.0),
+            ),
+            (
+                (2.0, 3.0, 4.0, 5.0),
+                (3.0, 4.0, 5.0, 6.0),
+                (4.0, 5.0, 6.0, 7.0),
+                (5.0, 6.0, 7.0, 8.0),
+            ),
+        ),
+        dtype=wp.mat44,
+        shape=(2,),
+    )
+    assert_np_equal(result.numpy(), expected.numpy())
+
+    result = wp.from_numpy(arr, dtype=wp.float32)
+    expected = wp.array(
+        (
+            (
+                (1.0, 2.0, 3.0, 4.0),
+                (2.0, 3.0, 4.0, 5.0),
+                (3.0, 4.0, 5.0, 6.0),
+                (4.0, 5.0, 6.0, 7.0),
+            ),
+            (
+                (2.0, 3.0, 4.0, 5.0),
+                (3.0, 4.0, 5.0, 6.0),
+                (4.0, 5.0, 6.0, 7.0),
+                (5.0, 6.0, 7.0, 8.0),
+            ),
+        ),
+        dtype=wp.float32,
+        shape=(2, 4, 4),
+    )
+    assert_np_equal(result.numpy(), expected.numpy())
+
+    result = wp.from_numpy(arr, dtype=wp.vec4)
+    expected = wp.array(
+        (
+            (1.0, 2.0, 3.0, 4.0),
+            (2.0, 3.0, 4.0, 5.0),
+            (3.0, 4.0, 5.0, 6.0),
+            (4.0, 5.0, 6.0, 7.0),
+            (2.0, 3.0, 4.0, 5.0),
+            (3.0, 4.0, 5.0, 6.0),
+            (4.0, 5.0, 6.0, 7.0),
+            (5.0, 6.0, 7.0, 8.0),
+        ),
+        dtype=wp.vec4,
+        shape=(8,),
+    )
+    assert_np_equal(result.numpy(), expected.numpy())
+
+    result = wp.from_numpy(arr, dtype=wp.float32, shape=(32,))
+    expected = wp.array(
+        (
+            1.0, 2.0, 3.0, 4.0,
+            2.0, 3.0, 4.0, 5.0,
+            3.0, 4.0, 5.0, 6.0,
+            4.0, 5.0, 6.0, 7.0,
+            2.0, 3.0, 4.0, 5.0,
+            3.0, 4.0, 5.0, 6.0,
+            4.0, 5.0, 6.0, 7.0,
+            5.0, 6.0, 7.0, 8.0,
+        ),
+        dtype=wp.float32,
+        shape=(32,),
+    )
+    assert_np_equal(result.numpy(), expected.numpy())
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -2013,6 +2137,7 @@ def register(parent):
     add_function_test(TestArray, "test_array_of_structs_grad", test_array_of_structs_grad, devices=devices)
     add_function_test(TestArray, "test_array_of_structs_from_numpy", test_array_of_structs_from_numpy, devices=devices)
     add_function_test(TestArray, "test_array_of_structs_roundtrip", test_array_of_structs_roundtrip, devices=devices)
+    add_function_test(TestArray, "test_array_from_numpy", test_array_from_numpy, devices=devices)
 
     return TestArray
 
