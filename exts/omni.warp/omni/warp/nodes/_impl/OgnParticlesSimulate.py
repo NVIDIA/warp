@@ -483,11 +483,7 @@ def compute(db: OgnParticlesSimulateDatabase, device: wp.context.Device) -> None
 
         # We want to use the input particles geometry as the initial state
         # of the simulation so we copy its bundle to the output one.
-        omni.warp.nodes.points_copy_bundle(
-            db.outputs.particles,
-            db.inputs.particles,
-            deep_copy=True,
-        )
+        db.outputs.particles = db.inputs.particles
 
         if not state.initialize(db, device):
             return
