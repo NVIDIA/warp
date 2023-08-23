@@ -10,6 +10,7 @@
 
 from warp.types import array, array1d, array2d, array3d, array4d, constant
 from warp.types import indexedarray, indexedarray1d, indexedarray2d, indexedarray3d, indexedarray4d
+from warp.fabric import fabricarray, fabricarrayarray, indexedfabricarray, indexedfabricarrayarray
 
 from warp.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64
 from warp.types import vec2, vec2b, vec2ub, vec2s, vec2us, vec2i, vec2ui, vec2l, vec2ul, vec2h, vec2f, vec2d

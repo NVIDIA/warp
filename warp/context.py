@@ -3771,6 +3771,14 @@ def copy(
         if src_elem_size != dst_elem_size:
             raise RuntimeError("Incompatible array data types")
 
+        # can't copy to/from fabric arrays of arrays, because they are jagged arrays of arbitrary lengths
+        # TODO?
+        if (
+            isinstance(src, (warp.fabricarray, warp.indexedfabricarray)) and src.ndim > 1 or
+            isinstance(dest, (warp.fabricarray, warp.indexedfabricarray)) and dest.ndim > 1
+        ):
+            raise RuntimeError("Copying to/from Fabric arrays of arrays is not supported")
+
         src_desc = src.__ctype__()
         dst_desc = dest.__ctype__()
         src_ptr = ctypes.pointer(src_desc)
@@ -3806,6 +3814,10 @@ def type_str(t):
         return f"Array[{type_str(t.dtype)}]"
     elif isinstance(t, warp.indexedarray):
         return f"IndexedArray[{type_str(t.dtype)}]"
+    elif isinstance(t, warp.fabricarray):
+        return f"FabricArray[{type_str(t.dtype)}]"
+    elif isinstance(t, warp.indexedfabricarray):
+        return f"IndexedFabricArray[{type_str(t.dtype)}]"
     elif hasattr(t, "_wp_generic_type_str_"):
         generic_type = t._wp_generic_type_str_
 

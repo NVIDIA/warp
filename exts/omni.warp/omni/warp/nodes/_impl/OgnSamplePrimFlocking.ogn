@@ -1,0 +1,28 @@
+{
+    "WarpSamplePrimFlocking": {
+        "version": 1,
+        "categoryDefinitions": "../../../../config/warp_categories.json",
+        "description": "Meet the flockers.",
+        "categories": ["warp", "warp:samples"],
+        "language": "Python",
+        "uiName": "Flocking Simulation",
+        "cudaPointers": "cpu",
+        "inputs": {
+            "execIn": {
+                "type": "execution",
+                "description": "Input execution."
+            },
+            "time": {
+                "type": "double",
+                "uiName": "Time",
+                "description": "Time."
+            }
+        },
+        "outputs": {
+            "execOut": {
+                "type": "execution",
+                "description": "Output execution."
+            }
+        }
+    }
+}

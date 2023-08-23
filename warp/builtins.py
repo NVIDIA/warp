@@ -2198,13 +2198,13 @@ def view_value_func(args, kwds, _):
             raise RuntimeError(f"view() index arguments must be of integer type, got index of type {a.type}")
 
     # create an array view with leading dimensions removed
-    import copy
-
-    view_type = copy.copy(args[0].type)
-    view_type.ndim -= num_indices
-
-    return view_type
-
+    dtype = args[0].type.dtype
+    ndim = num_dims - num_indices
+    if isinstance(args[0].type, (fabricarray, indexedfabricarray)):
+        # fabric array of arrays: return array attribute as a regular array
+        return array(dtype=dtype, ndim=ndim)
+    else:
+        return type(args[0].type)(dtype=dtype, ndim=ndim)
 
 # does argument checking and type propagation for store()
 def store_value_func(args, kwds, _):
