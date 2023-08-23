@@ -8,21 +8,23 @@
 """A module for building simulation models and state.
 """
 
-from .inertia import transform_inertia
-from .inertia import compute_cone_inertia
-from .inertia import compute_cylinder_inertia
-from .inertia import compute_capsule_inertia
-from .inertia import compute_box_inertia
-from .inertia import compute_sphere_inertia
-from .inertia import compute_mesh_inertia
+import copy
+import math
+from typing import List, Optional, Tuple
 
-import warp as wp
 import numpy as np
 
-import math
-import copy
+import warp as wp
 
-from typing import List, Optional, Tuple
+from .inertia import (
+    compute_box_inertia,
+    compute_capsule_inertia,
+    compute_cone_inertia,
+    compute_cylinder_inertia,
+    compute_mesh_inertia,
+    compute_sphere_inertia,
+    transform_inertia,
+)
 
 Vec3 = List[float]
 Vec4 = List[float]
@@ -66,6 +68,7 @@ def flag_to_int(flag):
     if type(flag) in wp.types.int_types:
         return flag.value
     return int(flag)
+
 
 # Material properties pertaining to rigid shape contact dynamics
 @wp.struct
@@ -118,19 +121,15 @@ class JointAxis:
         self.target_kd = target_kd
         self.mode = mode
 
+
 class SDF:
-    #Describes a signed distance field for simulation
+    # Describes a signed distance field for simulation
     #
     #    Attributes:
     #
     #        Either a NanoVDB file name or a numpy array
     #
-    def __init__(self, 
-                volume = None, 
-                I = np.eye(3, dtype=np.float32),
-                mass = 1.0,
-                com = np.array((0.0, 0.0, 0.0))                
-    ):
+    def __init__(self, volume=None, I=np.eye(3, dtype=np.float32), mass=1.0, com=np.array((0.0, 0.0, 0.0))):
         self.volume = volume
 
         # Need to specify these for now
@@ -145,7 +144,8 @@ class SDF:
 
     def __hash__(self):
         return hash((self.volume.id))
-        
+
+
 class Mesh:
     """Describes a triangle collision mesh for simulation
 
@@ -650,8 +650,8 @@ class Model:
 
     def find_shape_contact_pairs(self):
         # find potential contact pairs based on collision groups and collision mask (pairwise filtering)
-        import itertools
         import copy
+        import itertools
 
         filters = copy.copy(self.shape_collision_filter_pairs)
         for a, b in self.shape_collision_filter_pairs:
@@ -805,6 +805,8 @@ class Model:
     def collide(self, state: State):
         import warnings
 
+        warnings.simplefilter("default")
+
         warnings.warn(
             "Model.collide() is not needed anymore and will be removed in a future Warp version.",
             DeprecationWarning,
@@ -820,6 +822,8 @@ class Model:
     def soft_contact_distance(self):
         import warnings
 
+        warnings.simplefilter("default")
+
         warnings.warn(
             "Model.soft_contact_distance is deprecated and will be removed in a future Warp version. "
             "Particles now have individual radii, returning `Model.particle_max_radius`.",
@@ -831,6 +835,8 @@ class Model:
     @soft_contact_distance.setter
     def soft_contact_distance(self, value):
         import warnings
+
+        warnings.simplefilter("default")
 
         warnings.warn(
             "Model.soft_contact_distance is deprecated and will be removed in a future Warp version. "
@@ -849,10 +855,12 @@ class Model:
         if isinstance(value, float):
             import warnings
 
+            warnings.simplefilter("default")
+
             warnings.warn(
                 "Model.particle_radius is an array of per-particle radii, assigning with a scalar value "
                 "is deprecated and will be removed in a future Warp version.",
-                DeprecationWarning,
+                PendingDeprecationWarning,
                 stacklevel=2,
             )
             self._particle_radius.fill_(value)
@@ -2348,7 +2356,7 @@ class ModelBuilder:
             has_ground_collision=has_ground_collision,
         )
 
-    def add_shape_sdf( 
+    def add_shape_sdf(
         self,
         body: int,
         pos: Vec3 = (0.0, 0.0, 0.0),
@@ -2362,7 +2370,7 @@ class ModelBuilder:
         mu: float = default_shape_mu,
         restitution: float = default_shape_restitution,
         is_solid: bool = True,
-        thickness: float = default_geo_thickness
+        thickness: float = default_geo_thickness,
     ):
         """Adds SDF collision shape to a body.
 

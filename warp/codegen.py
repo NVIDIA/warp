@@ -7,23 +7,17 @@
 
 from __future__ import annotations
 
+import ast
+import ctypes
+import inspect
 import re
 import sys
-import ast
-import inspect
-import ctypes
 import textwrap
 import types
+from typing import Any, Callable, Mapping
 
-import numpy as np
-
-from typing import Any
-from typing import Callable
-from typing import Mapping
-from typing import Union
-
-from warp.types import *
 import warp.config
+from warp.types import *
 
 # map operator to function name
 builtin_operators = {}
@@ -445,14 +439,17 @@ class Adjoint:
         adj,
         func,
         overload_annotations=None,
+        is_user_function=False,
         skip_forward_codegen=False,
         skip_reverse_codegen=False,
         custom_reverse_mode=False,
         custom_reverse_num_input_args=-1,
         forced_func_name=None,
-        transformers: List[ast.NodeTransformer]=[],
+        transformers: List[ast.NodeTransformer] = [],
     ):
         adj.func = func
+
+        adj.is_user_function = is_user_function
 
         # whether the generation of the forward code is skipped for this function
         adj.skip_forward_codegen = skip_forward_codegen
@@ -597,7 +594,9 @@ class Adjoint:
         return arg_str
 
     # generates argument string for a reverse function call
-    def format_reverse_call_args(adj, args, args_out, non_adjoint_args, non_adjoint_outputs, use_initializer_list, has_output_args=True):
+    def format_reverse_call_args(
+        adj, args, args_out, non_adjoint_args, non_adjoint_outputs, use_initializer_list, has_output_args=True
+    ):
         formatted_var = adj.format_args("var", args)
         formatted_out = []
         if has_output_args and len(args_out) > 1:
@@ -870,7 +869,9 @@ class Adjoint:
             adj.add_forward(forward_call)
 
             if not func.missing_grad and len(args):
-                arg_str = adj.format_reverse_call_args(args, output, {}, {}, use_initializer_list, has_output_args=func.custom_grad_func is None)
+                arg_str = adj.format_reverse_call_args(
+                    args, output, {}, {}, use_initializer_list, has_output_args=func.custom_grad_func is None
+                )
                 if arg_str is not None:
                     reverse_call = "{}adj_{}({});".format(func.namespace, func.native_func, arg_str)
                     adj.add_reverse(reverse_call)
@@ -1197,9 +1198,9 @@ class Adjoint:
             return out
 
     def emit_NameConstant(adj, node):
-        if node.value == True:
+        if node.value is True:
             return adj.add_constant(True)
-        elif node.value == False:
+        elif node.value is False:
             return adj.add_constant(False)
         elif node.value is None:
             raise TypeError("None type unsupported")
@@ -1423,7 +1424,7 @@ class Adjoint:
         func, path = adj.resolve_path(node.func)
         templates = []
 
-        if isinstance(func, warp.context.Function) == False:
+        if isinstance(func, warp.context.Function) is False:
             if len(path) == 0:
                 raise RuntimeError(f"Unrecognized syntax for function call, path not valid: '{node.func}'")
 
@@ -1752,6 +1753,24 @@ class Adjoint:
         emit_node = node_visitors.get(type(node))
 
         if emit_node is not None:
+            if adj.is_user_function:
+                if hasattr(node, "value") and hasattr(node.value, "func") and hasattr(node.value.func, "attr"):
+                    if node.value.func.attr == "tid":
+                        import warnings
+
+                        warnings.simplefilter("default")  # Change the filter in this process
+
+                        lineno = adj.lineno + adj.fun_lineno
+                        line = adj.source.splitlines()[adj.lineno]
+                        # msg = f'Error while parsing function "{adj.fun_name}" at {adj.filename}:{lineno}:\n{line}\n'
+
+                        warnings.warn(
+                            "Calling wp.tid() from a @wp.func is deprecated and will be removed in a future Warp "
+                            "version. Instead, obtain the indices from a @wp.kernel and pass them as "
+                            f"arguments to this function {adj.fun_name}, {adj.filename}:{lineno}:\n{line}\n",
+                            PendingDeprecationWarning,
+                            stacklevel=2,
+                        )
             return emit_node(adj, node)
         else:
             raise Exception("Error, ast node of type {} not supported".format(type(node)))
@@ -1794,7 +1813,7 @@ class Adjoint:
             vars_dict = {**adj.func.__globals__, **capturedvars}
             func = eval(".".join(path), vars_dict)
             return func, path
-        except:
+        except Exception:
             pass
 
         # I added this so people can eg do this kind of thing
@@ -1814,7 +1833,7 @@ class Adjoint:
             evalstr = ".".join(["warp"] + path)
             func = eval(evalstr, {"warp": warp})
             return func, path
-        except:
+        except Exception:
             return None, path
 
     # annotate generated code with the original source code line
@@ -2277,7 +2296,7 @@ def codegen_func(adj, name, device="cpu", options={}):
         reverse_args.append(return_type + " & adj_ret")
     # custom output reverse args (user-declared)
     if adj.custom_reverse_mode:
-        for arg in adj.args[adj.custom_reverse_num_input_args:]:
+        for arg in adj.args[adj.custom_reverse_num_input_args :]:
             reverse_args.append(f"{arg.ctype()} & {arg.emit()}")
 
     if device == "cpu":
@@ -2312,7 +2331,7 @@ def codegen_func(adj, name, device="cpu", options={}):
             if options.get("enable_backward", True):
                 reverse_body = codegen_func_reverse(adj, func_type="function", device=device)
             else:
-                reverse_body = "\t// reverse mode disabled (module option \"enable_backward\" is False)\n"
+                reverse_body = '\t// reverse mode disabled (module option "enable_backward" is False)\n'
         s += reverse_template.format(
             name=c_func_name,
             return_type=return_type,

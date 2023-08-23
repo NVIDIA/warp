@@ -126,6 +126,7 @@ class Function:
             # user defined (Python) function
             self.adj = warp.codegen.Adjoint(
                 func,
+                is_user_function=True,
                 skip_forward_codegen=skip_forward_codegen,
                 skip_reverse_codegen=skip_reverse_codegen,
                 forced_func_name=forced_func_name,
