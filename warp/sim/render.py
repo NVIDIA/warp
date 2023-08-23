@@ -62,7 +62,7 @@ def CreateSimRenderer(renderer):
             path,
             scaling=1.0,
             fps=60,
-            up_axis="y",
+            up_axis="Y",
             show_rigid_contact_points=False,
             contact_points_radius=1e-3,
             show_joints=False,
@@ -71,7 +71,7 @@ def CreateSimRenderer(renderer):
             # create USD stage
             super().__init__(path, scaling=scaling, fps=fps, up_axis=up_axis, **render_kwargs)
             self.scaling = scaling
-            self.cam_axis = "xyz".index(up_axis.lower())
+            self.cam_axis = "XYZ".index(up_axis.upper())
             self.show_rigid_contact_points = show_rigid_contact_points
             self.show_joints = show_joints
             self.contact_points_radius = contact_points_radius

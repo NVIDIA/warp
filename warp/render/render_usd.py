@@ -53,7 +53,7 @@ def _compute_segment_xform(pos0, pos1):
 class UsdRenderer:
     """A USD renderer"""
 
-    def __init__(self, stage, up_axis="y", fps=60, scaling=1.0):
+    def __init__(self, stage, up_axis="Y", fps=60, scaling=1.0):
         """Construct a UsdRenderer object
 
         Args:
@@ -72,7 +72,7 @@ class UsdRenderer:
             self.stage = stage
         else:
             print("Failed to create stage in renderer. Please construct with stage path or stage object.")
-        self.up_axis = up_axis
+        self.up_axis = up_axis.upper()
         self.fps = float(fps)
         self.time = 0.0
 
@@ -97,11 +97,11 @@ class UsdRenderer:
         self.stage.SetEndTimeCode(0.0)
         self.stage.SetTimeCodesPerSecond(self.fps)
 
-        if up_axis == "x":
+        if up_axis == "X":
             UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.x)
-        elif up_axis == "y":
+        elif up_axis == "Y":
             UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.y)
-        elif up_axis == "z":
+        elif up_axis == "Z":
             UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.z)
 
         # add default lights
@@ -234,13 +234,13 @@ class UsdRenderer:
         mesh = UsdGeom.Mesh.Define(self.stage, self.root.GetPath().AppendChild("ground"))
         mesh.CreateDoubleSidedAttr().Set(True)
 
-        if self.up_axis == "x":
+        if self.up_axis == "X":
             points = ((0.0, -size, -size), (0.0, size, -size), (0.0, size, size), (0.0, -size, size))
             normals = ((1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 0.0))
-        elif self.up_axis == "y":
+        elif self.up_axis == "Y":
             points = ((-size, 0.0, -size), (size, 0.0, -size), (size, 0.0, size), (-size, 0.0, size))
             normals = ((0.0, 1.0, 0.0), (0.0, 1.0, 0.0), (0.0, 1.0, 0.0), (0.0, 1.0, 0.0))
-        elif self.up_axis == "z":
+        elif self.up_axis == "Z":
             points = ((-size, -size, 0.0), (size, -size, 0.0), (size, size, 0.0), (-size, size, 0.0))
             normals = ((0.0, 0.0, 1.0), (0.0, 0.0, 1.0), (0.0, 0.0, 1.0), (0.0, 0.0, 1.0))
         counts = (4,)
