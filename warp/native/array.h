@@ -88,8 +88,11 @@ namespace wp
 
 const int ARRAY_MAX_DIMS = 4;       // must match constant in types.py
 
-const int ARRAY_TYPE_REGULAR = 0;   // must match constant in types.py
-const int ARRAY_TYPE_INDEXED = 1;   // must match constant in types.py
+// must match constants in types.py
+const int ARRAY_TYPE_REGULAR = 0;
+const int ARRAY_TYPE_INDEXED = 1;
+const int ARRAY_TYPE_FABRIC = 2;
+const int ARRAY_TYPE_FABRIC_INDEXED = 3;
 
 struct shape_t
 {
@@ -920,3 +923,5 @@ template<template<typename> class A1, template<typename> class A2, typename T>
 inline CUDA_CALLABLE void adj_atomic_max(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret) {}
 
 } // namespace wp
+
+#include "fabric.h"
