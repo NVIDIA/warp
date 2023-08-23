@@ -164,6 +164,7 @@ API Reference
    modules/sim
    modules/interoperability
    modules/sparse
+   modules/fem
    genindex
    
 
