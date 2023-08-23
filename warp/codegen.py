@@ -1491,7 +1491,7 @@ class Adjoint:
     def emit_Subscript(adj, node):
         if hasattr(node.value, "attr") and node.value.attr == "adjoint":
             # handle adjoint of a variable, i.e. wp.adjoint[var]
-            var = adj.eval(node.slice.value)
+            var = adj.eval(node.slice)
             var_name = var.label
             var = Var(f"adj_{var_name}", type=var.type, constant=None, prefix=False, is_adjoint=True)
             adj.symbols[var.label] = var
@@ -1580,7 +1580,7 @@ class Adjoint:
         elif isinstance(node.targets[0], ast.Subscript):
             if hasattr(node.targets[0].value, "attr") and node.targets[0].value.attr == "adjoint":
                 # handle adjoint of a variable, i.e. wp.adjoint[var]
-                src_var = adj.eval(node.targets[0].slice.value)
+                src_var = adj.eval(node.targets[0].slice)
                 var = Var(f"adj_{src_var.label}", type=src_var.type, constant=None, prefix=False)
                 adj.symbols[var.label] = var
                 value = adj.eval(node.value)
