@@ -52,7 +52,7 @@ class Example:
             articulation_builder,
             xform=wp.transform(np.zeros(3), wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi * 0.5)),
             floating=False,
-            density=0,
+            density=100,
             armature=0.1,
             stiffness=0.0,
             damping=0.0,
