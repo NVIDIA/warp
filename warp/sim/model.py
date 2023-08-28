@@ -344,6 +344,7 @@ class Model:
         particle_adhesion (wp.array): Particle adhesion strength, shape [particle_count], float
         particle_grid (HashGrid): HashGrid instance used for accelerated simulation of particle interactions
         particle_flags (wp.array): Particle enabled state, shape [particle_count], bool
+        particle_max_velocity (float): Maximum particle velocity (to prevent instability)
 
         shape_transform (wp.array): Rigid shape transforms, shape [shape_count, 7], float
         shape_body (wp.array): Rigid shape body index, shape [shape_count], int
@@ -479,6 +480,7 @@ class Model:
         self.particle_adhesion = 0.0
         self.particle_grid = None
         self.particle_flags = None
+        self.particle_max_velocity = 1e5
 
         self.shape_transform = None
         self.shape_body = None
@@ -955,6 +957,7 @@ class ModelBuilder:
         self.particle_mass = []
         self.particle_radius = []
         self.particle_flags = []
+        self.particle_max_velocity = 1e5
 
         # shapes (each shape has an entry in these arrays)
         # transform from shape to body
@@ -3429,6 +3432,7 @@ class ModelBuilder:
             m._particle_radius = wp.array(self.particle_radius, dtype=wp.float32, requires_grad=requires_grad)
             m.particle_flags = wp.array([flag_to_int(f) for f in self.particle_flags], dtype=wp.uint32)
             m.particle_max_radius = np.max(self.particle_radius) if len(self.particle_radius) > 0 else 0.0
+            m.particle_max_velocity = self.particle_max_velocity
 
             # hash-grid for particle interactions
             m.particle_grid = wp.HashGrid(128, 128, 128)
