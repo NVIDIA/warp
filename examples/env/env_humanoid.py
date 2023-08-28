@@ -55,6 +55,7 @@ class HumanoidEnvironment(Environment):
             limit_ke=1.0e2,
             limit_kd=1.0e1,
             enable_self_collisions=True,
+            up_axis="y",
         )
 
         builder.joint_q[:7] = [0.0, 1.7, 0.0, *wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi * 0.5)]

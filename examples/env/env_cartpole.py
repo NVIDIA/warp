@@ -41,7 +41,6 @@ class CartpoleEnvironment(Environment):
             builder,
             xform=wp.transform((0.0, 0.0, 0.0), wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi * 0.5)),
             floating=False,
-            density=0,
             armature=0.1,
             stiffness=0.0,
             damping=0.0,

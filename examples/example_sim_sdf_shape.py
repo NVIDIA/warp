@@ -52,49 +52,50 @@ class Example:
             mass=0.1,
             jitter=self.radius * 0.1,
         )
-        rock_vdb = wp.Volume.load_from_nvdb(open(os.path.join(os.path.dirname(__file__), "assets/rocks.nvdb"), "rb").read())
+        rock_vdb = wp.Volume.load_from_nvdb(
+            open(os.path.join(os.path.dirname(__file__), "assets/rocks.nvdb"), "rb").read())
         rock_sdf = wp.sim.SDF(rock_vdb)
         s = builder.add_shape_sdf(
-                ke=1.0e4,
-                kd=1000.0,
-                kf=1000.0,
-                mu=0.5,
-                sdf=rock_sdf,
-                body=-1, 
-                pos=(0.0, 0.0, 0.0),
-                rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), -0.5*math.pi),
-                scale=(0.01, 0.01, 0.01))
+            ke=1.0e4,
+            kd=1000.0,
+            kf=1000.0,
+            mu=0.5,
+            sdf=rock_sdf,
+            body=-1,
+            pos=(0.0, 0.0, 0.0),
+            rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), -0.5 * math.pi),
+            scale=(0.01, 0.01, 0.01))
 
-        mins = np.array([-3.0,-3.0,-3.0])
+        mins = np.array([-3.0, -3.0, -3.0])
         voxel_size = 0.2
-        maxs = np.array([3.0,3.0,3.0])
-        nums = np.ceil((maxs-mins) / (voxel_size)).astype(dtype=int)
+        maxs = np.array([3.0, 3.0, 3.0])
+        nums = np.ceil((maxs - mins) / (voxel_size)).astype(dtype=int)
         center = np.array([0.0, 0.0, 0.0])
         rad = 2.5
         sphere_sdf_np = np.zeros(tuple(nums))
         for x in range(nums[0]):
             for y in range(nums[1]):
                 for z in range(nums[2]):
-                    pos = mins + voxel_size * np.array([x,y,z])
-                    dis = np.linalg.norm(pos-center)
-                    sphere_sdf_np[x,y,z] = dis - rad
+                    pos = mins + voxel_size * np.array([x, y, z])
+                    dis = np.linalg.norm(pos - center)
+                    sphere_sdf_np[x, y, z] = dis - rad
 
         sphere_vdb = wp.Volume.load_from_numpy(sphere_sdf_np, mins, voxel_size, rad + 3.0 * voxel_size)
         sphere_sdf = wp.sim.SDF(sphere_vdb)
 
         self.sphere_pos = (3.0, 15.0, 0.0)
         self.sphere_scale = 1.0
-        self.sphere_radius = rad 
+        self.sphere_radius = rad
         s = builder.add_shape_sdf(
-                ke=1.0e4,
-                kd=1000.0,
-                kf=1000.0,
-                mu=0.5,
-                sdf=sphere_sdf,
-                body=-1, 
-                pos=self.sphere_pos,
-                scale=(self.sphere_scale, self.sphere_scale, self.sphere_scale) )
-    
+            ke=1.0e4,
+            kd=1000.0,
+            kf=1000.0,
+            mu=0.5,
+            sdf=sphere_sdf,
+            body=-1,
+            pos=self.sphere_pos,
+            scale=(self.sphere_scale, self.sphere_scale, self.sphere_scale))
+
         self.model = builder.finalize()
         self.model.particle_kf = 25.0
 
@@ -125,18 +126,20 @@ class Example:
             time = 0.0 if is_live else self.sim_time
 
             self.renderer.begin_frame(time)
-            
+
             # Note the extra wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi) is because .usd is oriented differently from .nvdb
             self.renderer.render_ref(
                 name="collision",
                 path=os.path.join(os.path.dirname(__file__), "assets/rocks.usd"),
-                pos=(0.0, 0.0, 0.0),                
-                rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), -0.5*math.pi)*wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi),
+                pos=(0.0, 0.0, 0.0),
+                rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), -0.5 * math.pi) *
+                wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi),
                 scale=(0.01, 0.01, 0.01),
-            )  
+            )
 
-            self.renderer.render_sphere(name = "sphere", pos=self.sphere_pos, radius=self.sphere_scale*self.sphere_radius, rot=(0.0, 0.0, 0.0, 1.0))
-                     
+            self.renderer.render_sphere(name="sphere", pos=self.sphere_pos,
+                                        radius=self.sphere_scale * self.sphere_radius, rot=(0.0, 0.0, 0.0, 1.0))
+
             self.renderer.render(self.state_0)
             self.renderer.end_frame()
 

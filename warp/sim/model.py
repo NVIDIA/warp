@@ -94,6 +94,22 @@ class ModelShapeGeometry:
 
 # Axis (linear or angular) of a joint that can have bounds and be driven towards a target
 class JointAxis:
+    """
+    Describes a joint axis that can have limits and be driven towards a target.
+
+    Attributes:
+
+        axis (3D vector): The axis that this JointAxis object describes 
+        limit_lower (float): The lower limit of the joint axis
+        limit_upper (float): The upper limit of the joint axis
+        limit_ke (float): The elastic stiffness of the joint axis limits, only respected by SemiImplicitIntegrator
+        limit_kd (float): The damping stiffness of the joint axis limits, only respected by SemiImplicitIntegrator
+        target (float): The target position or velocity (depending on the mode, see `Joint modes`_) of the joint axis
+        target_ke (float): The proportional gain of the joint axis target drive PD controller
+        target_kd (float): The derivative gain of the joint axis target drive PD controller
+        mode (int): The mode of the joint axis, see `Joint modes`_
+    """
+
     def __init__(
         self,
         axis,
@@ -172,8 +188,8 @@ class Mesh:
             is_solid: If True, the mesh is assumed to be a solid during inertia computation, otherwise it is assumed to be a hollow surface
         """
 
-        self.vertices = vertices
-        self.indices = indices
+        self.vertices = np.array(vertices).reshape(-1, 3)
+        self.indices = np.array(indices, dtype=np.int32).flatten()
         self.is_solid = is_solid
         self.has_inertia = compute_inertia
 
@@ -209,17 +225,30 @@ class State:
 
     Attributes:
 
+        particle_count (int): Number of particles
+        body_count (int): Number of rigid bodies
+
         particle_q (wp.array): Tensor of particle positions
         particle_qd (wp.array): Tensor of particle velocities
+        particle_f (wp.array): Tensor of particle forces
 
         body_q (wp.array): Tensor of body coordinates
         body_qd (wp.array): Tensor of body velocities
+        body_f (wp.array): Tensor of body forces
 
     """
 
     def __init__(self):
         self.particle_count = 0
         self.body_count = 0
+
+        self.particle_q = None
+        self.particle_qd = None
+        self.particle_f = None
+
+        self.body_q = None
+        self.body_qd = None
+        self.body_f = None
 
     def clear_forces(self):
         if self.particle_count:
@@ -288,7 +317,7 @@ def compute_shape_mass(type, scale, src, density, is_solid, thickness):
         else:
             hollow = compute_cone_inertia(density, r - thickness, h - 2.0 * thickness)
             return solid[0] - hollow[0], solid[1], solid[2] - hollow[2]
-    elif (type == GEO_MESH) or (type == GEO_SDF):
+    elif type == GEO_MESH or type == GEO_SDF:
         if src.has_inertia and src.mass > 0.0 and src.is_solid == is_solid:
             m, c, I = src.mass, src.com, src.I
 
@@ -310,13 +339,11 @@ def compute_shape_mass(type, scale, src, density, is_solid, thickness):
             I_new = np.array([[Ixx, Ixy, Ixz], [Ixy, Iyy, Iyz], [Ixz, Iyz, Izz]])
 
             return m_new, c_new, I_new
-        else:
-            if type == GEO_MESH:
-                # fall back to computing inertia from mesh geometry
-                vertices = np.array(src.vertices) * np.array(scale[:3])
-                m, c, I, vol = compute_mesh_inertia(density, vertices, src.indices, is_solid, thickness)
-                return m, c, I
-
+        elif type == GEO_MESH:
+            # fall back to computing inertia from mesh geometry
+            vertices = np.array(src.vertices) * np.array(scale[:3])
+            m, c, I, vol = compute_mesh_inertia(density, vertices, src.indices, is_solid, thickness)
+            return m, c, I
     raise ValueError("Unsupported shape type: {}".format(type))
 
 
@@ -416,11 +443,10 @@ class Model:
         joint_twist_upper (wp.array): Joint upper twist limit, shape [joint_count], float
         joint_q_start (wp.array): Start index of the first position coordinate per joint, shape [joint_count], int
         joint_qd_start (wp.array): Start index of the first velocity coordinate per joint, shape [joint_count], int
+        articulation_start (wp.array): Articulation start index, shape [articulation_count], int
         joint_name (list): Joint names, shape [joint_count], str
         joint_attach_ke (float): Joint attachment force stiffness (used by SemiImplicitIntegrator)
         joint_attach_kd (float): Joint attachment force damping (used by SemiImplicitIntegrator)
-
-        articulation_start (wp.array): Articulation start index, shape [articulation_count], int
 
         soft_contact_margin (float): Contact margin for generation of soft contacts
         soft_contact_ke (float): Stiffness of soft contacts (used by SemiImplicitIntegrator)
@@ -550,6 +576,8 @@ class Model:
         self.joint_twist_lower = None
         self.joint_twist_upper = None
         self.joint_q_start = None
+        self.joint_qd_start = None
+        self.articulation_start = None
         self.joint_name = None
 
         # todo: per-joint values?
@@ -590,7 +618,7 @@ class Model:
 
         self.device = wp.get_device(device)
 
-    def state(self, requires_grad=False) -> State:
+    def state(self, requires_grad=None) -> State:
         """Returns a state object for the model
 
         The returned state will be initialized with the initial configuration given in
@@ -598,21 +626,14 @@ class Model:
         """
 
         s = State()
+        if requires_grad is None:
+            requires_grad = self.requires_grad
 
         s.particle_count = self.particle_count
         s.body_count = self.body_count
 
         # --------------------------------
         # dynamic state (input, output)
-
-        s.particle_q = None
-        s.particle_qd = None
-        s.particle_f = None
-
-        s.body_q = None
-        s.body_qd = None
-        s.body_f = None
-        s.body_deltas = None
 
         # particles
         if self.particle_count:
@@ -1070,7 +1091,7 @@ class ModelBuilder:
         self.joint_coord_count = 0
         self.joint_axis_total_count = 0
 
-        self.up_vector = up_vector
+        self.up_vector = np.array(up_vector)
         self.up_axis = np.argmax(np.abs(up_vector))
         self.gravity = gravity
         # indicates whether a ground plane has been created
@@ -1170,7 +1191,17 @@ class ModelBuilder:
 
         start_body_idx = self.body_count
         start_shape_idx = self.shape_count
-        self.shape_body.extend([b + start_body_idx for b in articulation.shape_body])
+        for s, b in enumerate(articulation.shape_body):
+            if b > -1:
+                new_b = b + start_body_idx
+                self.shape_body.append(new_b)
+                self.shape_transform.append(articulation.shape_transform[s])
+            else:
+                self.shape_body.append(-1)
+                # apply offset transform to root bodies
+                if xform is not None:
+                    self.shape_transform.append(xform * articulation.shape_transform[s])
+
         for b, shapes in articulation.body_shapes.items():
             self.body_shapes[b + start_body_idx] = [s + start_shape_idx for s in shapes]
 
@@ -1181,10 +1212,10 @@ class ModelBuilder:
                 for i in range(len(joint_X_p)):
                     if articulation.joint_type[i] == wp.sim.JOINT_FREE:
                         qi = articulation.joint_q_start[i]
-                        xform_prev = wp.transform(joint_q[qi : qi + 3], joint_q[qi + 3 : qi + 7])
+                        xform_prev = wp.transform(joint_q[qi: qi + 3], joint_q[qi + 3: qi + 7])
                         tf = xform * xform_prev
-                        joint_q[qi : qi + 3] = tf.p
-                        joint_q[qi + 3 : qi + 7] = tf.q
+                        joint_q[qi: qi + 3] = tf.p
+                        joint_q[qi + 3: qi + 7] = tf.q
                     elif articulation.joint_parent[i] == -1:
                         joint_X_p[i] = xform * joint_X_p[i]
             self.joint_X_p.extend(joint_X_p)
@@ -1263,7 +1294,6 @@ class ModelBuilder:
             "joint_target_kd",
             "joint_linear_compliance",
             "joint_angular_compliance",
-            "shape_transform",
             "shape_geo_type",
             "shape_geo_scale",
             "shape_geo_src",
@@ -1359,6 +1389,26 @@ class ModelBuilder:
         collision_filter_parent: bool = True,
         enabled: bool = True,
     ) -> int:
+        """
+        Generic method to add any type of joint to this ModelBuilder.
+
+        Args:
+            joint_type: The type of joint to add (see `Joint types`_)
+            parent: The index of the parent body (-1 is the world)
+            child: The index of the child body
+            linear_axes: The linear axes (see :class:`JointAxis`) of the joint
+            angular_axes: The angular axes (see :class:`JointAxis`) of the joint
+            name: The name of the joint
+            parent_xform: The transform of the joint in the parent body's local frame
+            child_xform: The transform of the joint in the child body's local frame
+            linear_compliance: The linear compliance of the joint
+            angular_compliance: The angular compliance of the joint
+            collision_filter_parent: Whether to filter collisions between shapes of the parent and child bodies
+            enabled: Whether the joint is enabled
+
+        Returns:
+            The index of the child body
+        """
         self.joint_type.append(joint_type)
         self.joint_parent.append(parent)
         if child not in self.joint_parents:
@@ -1377,26 +1427,29 @@ class ModelBuilder:
         self.joint_angular_compliance.append(angular_compliance)
         self.joint_enabled.append(enabled)
 
+        def add_axis_dim(dim):
+            self.joint_axis.append(dim.axis)
+            self.joint_axis_mode.append(dim.mode)
+            self.joint_target.append(dim.target)
+            self.joint_target_ke.append(dim.target_ke)
+            self.joint_target_kd.append(dim.target_kd)
+            self.joint_limit_ke.append(dim.limit_ke)
+            self.joint_limit_kd.append(dim.limit_kd)
+            if np.isfinite(dim.limit_lower):
+                self.joint_limit_lower.append(dim.limit_lower)
+            else:
+                self.joint_limit_lower.append(-1e6)
+            if np.isfinite(dim.limit_upper):
+                self.joint_limit_upper.append(dim.limit_upper)
+            else:
+                self.joint_limit_upper.append(1e6)
+            # self.joint_limit_lower.append(dim.limit_lower)
+            # self.joint_limit_upper.append(dim.limit_upper)
+
         for dim in linear_axes:
-            self.joint_axis.append(dim.axis)
-            self.joint_axis_mode.append(dim.mode)
-            self.joint_target.append(dim.target)
-            self.joint_target_ke.append(dim.target_ke)
-            self.joint_target_kd.append(dim.target_kd)
-            self.joint_limit_ke.append(dim.limit_ke)
-            self.joint_limit_kd.append(dim.limit_kd)
-            self.joint_limit_lower.append(dim.limit_lower)
-            self.joint_limit_upper.append(dim.limit_upper)
+            add_axis_dim(dim)
         for dim in angular_axes:
-            self.joint_axis.append(dim.axis)
-            self.joint_axis_mode.append(dim.mode)
-            self.joint_target.append(dim.target)
-            self.joint_target_ke.append(dim.target_ke)
-            self.joint_target_kd.append(dim.target_kd)
-            self.joint_limit_ke.append(dim.limit_ke)
-            self.joint_limit_kd.append(dim.limit_kd)
-            self.joint_limit_lower.append(dim.limit_lower)
-            self.joint_limit_upper.append(dim.limit_upper)
+            add_axis_dim(dim)
 
         if joint_type == JOINT_PRISMATIC:
             dof_count = 1
@@ -1896,6 +1949,252 @@ class ModelBuilder:
             collision_filter_parent=collision_filter_parent,
             enabled=enabled,
         )
+
+    def collapse_fixed_joints(self, verbose=wp.config.verbose):
+        """Removes fixed joints from the model and merges the bodies they connect."""
+
+        body_data = {}
+        body_children = {-1: []}
+        visited = {}
+        for i in range(self.body_count):
+            name = self.body_name[i]
+            body_data[i] = {
+                "shapes": self.body_shapes[i],
+                "q": self.body_q[i],
+                "qd": self.body_qd[i],
+                "mass": self.body_mass[i],
+                "inertia": self.body_inertia[i],
+                "inv_mass": self.body_inv_mass[i],
+                "inv_inertia": self.body_inv_inertia[i],
+                "com": self.body_com[i],
+                "name": name,
+                "original_id": i,
+            }
+            visited[i] = False
+            body_children[i] = []
+
+        joint_data = {}
+        for i in range(self.joint_count):
+            name = self.joint_name[i]
+            parent = self.joint_parent[i]
+            child = self.joint_child[i]
+            body_children[parent].append(child)
+
+            q_start = self.joint_q_start[i]
+            qd_start = self.joint_qd_start[i]
+            if i < self.joint_count - 1:
+                q_dim = self.joint_q_start[i + 1] - q_start
+                qd_dim = self.joint_qd_start[i + 1] - qd_start
+            else:
+                q_dim = len(self.joint_q) - q_start
+                qd_dim = len(self.joint_qd) - qd_start
+
+            data = {
+                "type": self.joint_type[i],
+                # 'armature': self.joint_armature[i],
+                "q": self.joint_q[q_start: q_start + q_dim],
+                "qd": self.joint_qd[qd_start: qd_start + qd_dim],
+                "act": self.joint_act[qd_start: qd_start + qd_dim],
+                "q_start": q_start,
+                "qd_start": qd_start,
+                "linear_compliance": self.joint_linear_compliance[i],
+                "angular_compliance": self.joint_angular_compliance[i],
+                "name": name,
+                "parent_xform": wp.transform_expand(self.joint_X_p[i]),
+                "child_xform": wp.transform_expand(self.joint_X_c[i]),
+                "enabled": self.joint_enabled[i],
+                "axes": [],
+                "axis_dim": self.joint_axis_dim[i],
+                "parent": parent,
+                "child": child,
+                "original_id": i,
+            }
+            num_lin_axes, num_ang_axes = self.joint_axis_dim[i]
+            start_ax = self.joint_axis_start[i]
+            for j in range(start_ax, start_ax + num_lin_axes + num_ang_axes):
+                data["axes"].append(
+                    {
+                        "axis": self.joint_axis[j],
+                        "axis_mode": self.joint_axis_mode[j],
+                        "target": self.joint_target[j],
+                        "target_ke": self.joint_target_ke[j],
+                        "target_kd": self.joint_target_kd[j],
+                        "limit_ke": self.joint_limit_ke[j],
+                        "limit_kd": self.joint_limit_kd[j],
+                        "limit_lower": self.joint_limit_lower[j],
+                        "limit_upper": self.joint_limit_upper[j],
+                    }
+                )
+
+            joint_data[(parent, child)] = data
+
+        # sort body children so we traverse the tree in the same order as the bodies are listed
+        for children in body_children.values():
+            children.sort(key=lambda x: body_data[x]["original_id"])
+
+        retained_joints = []
+        retained_bodies = []
+        body_remap = {-1: -1}
+
+        # depth first search over the joint graph
+        def dfs(parent_body: int, child_body: int, incoming_xform: wp.transform, last_dynamic_body: int):
+            nonlocal visited
+            nonlocal retained_joints
+            nonlocal retained_bodies
+            nonlocal body_data
+            nonlocal body_remap
+
+            joint = joint_data[(parent_body, child_body)]
+            if joint["type"] == JOINT_FIXED:
+                joint_xform = joint["parent_xform"] * wp.transform_inverse(joint["child_xform"])
+                incoming_xform = incoming_xform * joint_xform
+                parent_name = self.body_name[parent_body] if parent_body > -1 else "world"
+                child_name = self.body_name[child_body]
+                last_dynamic_body_name = self.body_name[last_dynamic_body] if last_dynamic_body > -1 else "world"
+                if verbose:
+                    print(
+                        f'Remove fixed joint {joint["name"]} between {parent_name} and {child_name}, '
+                        f'merging {child_name} into {last_dynamic_body_name}'
+                    )
+                child_id = body_data[child_body]["original_id"]
+                for shape in self.body_shapes[child_id]:
+                    self.shape_transform[shape] = incoming_xform * self.shape_transform[shape]
+                    if verbose:
+                        print(
+                            f"  Shape {shape} moved to body {last_dynamic_body_name} with transform {self.shape_transform[shape]}"
+                        )
+                    if last_dynamic_body > -1:
+                        self.shape_body[shape] = body_data[last_dynamic_body]["id"]
+                        # add inertia to last_dynamic_body
+                        m = body_data[child_body]["mass"]
+                        com = body_data[child_body]["com"]
+                        inertia = body_data[child_body]["inertia"]
+                        body_data[last_dynamic_body]["inertia"] += wp.sim.transform_inertia(
+                            m, inertia, incoming_xform.p, incoming_xform.q
+                        )
+                        body_data[last_dynamic_body]["mass"] += m
+                        source_m = body_data[last_dynamic_body]["mass"]
+                        source_com = body_data[last_dynamic_body]["com"]
+                        body_data[last_dynamic_body]["com"] = (m * com + source_m * source_com) / (m + source_m)
+                        body_data[last_dynamic_body]["shapes"].append(shape)
+                        # indicate to recompute inverse mass, inertia for this body
+                        body_data[last_dynamic_body]["inv_mass"] = None
+                    else:
+                        self.shape_body[shape] = -1
+            else:
+                joint["parent_xform"] = incoming_xform * joint["parent_xform"]
+                joint["parent"] = last_dynamic_body
+                last_dynamic_body = child_body
+                incoming_xform = wp.transform()
+                retained_joints.append(joint)
+                new_id = len(retained_bodies)
+                body_data[child_body]["id"] = new_id
+                retained_bodies.append(child_body)
+                for shape in body_data[child_body]["shapes"]:
+                    self.shape_body[shape] = new_id
+
+            visited[parent_body] = True
+            if visited[child_body] or child_body not in body_children:
+                return
+            for child in body_children[child_body]:
+                if not visited[child]:
+                    dfs(child_body, child, incoming_xform, last_dynamic_body)
+
+        for body in body_children[-1]:
+            if not visited[body]:
+                dfs(-1, body, wp.transform(), -1)
+
+        # repopulate the model
+        self.body_name.clear()
+        self.body_q.clear()
+        self.body_qd.clear()
+        self.body_mass.clear()
+        self.body_inertia.clear()
+        self.body_com.clear()
+        self.body_inv_mass.clear()
+        self.body_inv_inertia.clear()
+        self.body_shapes.clear()
+        for i in retained_bodies:
+            body = body_data[i]
+            new_id = len(self.body_name)
+            body_remap[body["original_id"]] = new_id
+            self.body_name.append(body["name"])
+            self.body_q.append(list(body["q"]))
+            self.body_qd.append(list(body["qd"]))
+            m = body["mass"]
+            inertia = body["inertia"]
+            self.body_mass.append(m)
+            self.body_inertia.append(inertia)
+            self.body_com.append(body["com"])
+            if body["inv_mass"] is None:
+                # recompute inverse mass and inertia
+                if m > 0.0:
+                    self.body_inv_mass.append(1.0 / m)
+                    self.body_inv_inertia.append(np.linalg.inv(inertia))
+                else:
+                    self.body_inv_mass.append(0.0)
+                    self.body_inv_inertia.append(np.zeros((3, 3)))
+            else:
+                self.body_inv_mass.append(body["inv_mass"])
+                self.body_inv_inertia.append(body["inv_inertia"])
+            self.body_shapes[new_id] = body["shapes"]
+            body_remap[body["original_id"]] = new_id
+
+        # sort joints so they appear in the same order as before
+        retained_joints.sort(key=lambda x: x["original_id"])
+
+        self.joint_name.clear()
+        self.joint_type.clear()
+        self.joint_parent.clear()
+        self.joint_child.clear()
+        self.joint_q.clear()
+        self.joint_qd.clear()
+        self.joint_q_start.clear()
+        self.joint_qd_start.clear()
+        self.joint_enabled.clear()
+        self.joint_linear_compliance.clear()
+        self.joint_angular_compliance.clear()
+        self.joint_X_p.clear()
+        self.joint_X_c.clear()
+        self.joint_axis.clear()
+        self.joint_axis_mode.clear()
+        self.joint_target.clear()
+        self.joint_target_ke.clear()
+        self.joint_target_kd.clear()
+        self.joint_limit_lower.clear()
+        self.joint_limit_upper.clear()
+        self.joint_limit_ke.clear()
+        self.joint_limit_kd.clear()
+        self.joint_axis_dim.clear()
+        self.joint_axis_start.clear()
+        self.joint_act.clear()
+        for joint in retained_joints:
+            self.joint_name.append(joint["name"])
+            self.joint_type.append(joint["type"])
+            self.joint_parent.append(body_remap[joint["parent"]])
+            self.joint_child.append(body_remap[joint["child"]])
+            self.joint_q_start.append(len(self.joint_q))
+            self.joint_qd_start.append(len(self.joint_qd))
+            self.joint_q.extend(joint["q"])
+            self.joint_qd.extend(joint["qd"])
+            self.joint_act.extend(joint["act"])
+            self.joint_enabled.append(joint["enabled"])
+            self.joint_linear_compliance.append(joint["linear_compliance"])
+            self.joint_angular_compliance.append(joint["angular_compliance"])
+            self.joint_X_p.append(list(joint["parent_xform"]))
+            self.joint_X_c.append(list(joint["child_xform"]))
+            self.joint_axis_dim.append(joint["axis_dim"])
+            self.joint_axis_start.append(len(self.joint_axis))
+            for axis in joint["axes"]:
+                self.joint_axis.append(axis["axis"])
+                self.joint_axis_mode.append(axis["axis_mode"])
+                self.joint_target.append(axis["target"])
+                self.joint_target_ke.append(axis["target_ke"])
+                self.joint_target_kd.append(axis["target_kd"])
+                self.joint_limit_lower.append(axis["limit_lower"])
+                self.joint_limit_upper.append(axis["limit_upper"])
+                self.joint_limit_ke.append(axis["limit_ke"])
+                self.joint_limit_kd.append(axis["limit_kd"])
 
     # muscles
     def add_muscle(

@@ -31,6 +31,33 @@ def parse_usd(
     ignore_paths=[],
     export_usda=False,
 ):
+    """
+    Parses a USD file containing UsdPhysics schema definitions for rigid-body articulations and adds the bodies, shapes and joints to the given ModelBuilder.
+
+    Args:
+        filename (str): The file path or URL to the USD file to parse.
+        builder (ModelBuilder): The :class:`ModelBuilder` to add the bodies and joints to.
+        default_density (float): The default density to use for bodies without a density attribute.
+        only_load_enabled_rigid_bodies (bool): If True, only rigid bodies which do not have `physics:rigidBodyEnabled` set to False are loaded.
+        only_load_enabled_joints (bool): If True, only joints which do not have `physics:jointEnabled` set to False are loaded.
+        default_ke (float): The default contact stiffness to use, only considered by SemiImplicitIntegrator.
+        default_kd (float): The default contact damping to use, only considered by SemiImplicitIntegrator.
+        default_kf (float): The default friction stiffness to use, only considered by SemiImplicitIntegrator.
+        default_mu (float): The default friction coefficient to use if a shape has not friction coefficient defined.
+        default_restitution (float): The default coefficient of restitution to use if a shape has not coefficient of restitution defined.
+        default_thickness (float): The thickness to add to the shape geometry.
+        joint_limit_ke (float): The default stiffness to use for joint limits, only considered by SemiImplicitIntegrator.
+        joint_limit_kd (float): The default damping to use for joint limits, only considered by SemiImplicitIntegrator.
+        verbose (bool): If True, print additional information about the parsed USD file.
+        ignore_paths (List[str]): A list of regular expressions matching prim paths to ignore.
+        export_usda (bool): If True and the filename is a URL, export the downloaded USD file to a USDA file.
+
+    Returns:
+        dict: Dictionary with the following entries: "fps": USD stage frames per second. "duration": Difference between end time code and start time code of the USD stage. "up_axis": Upper-case string of the stage up axis.
+
+    Note:
+        This importer is experimental and only supports a subset of the USD Physics schema. Please report any issues you encounter.
+    """
     try:
         from pxr import Usd, UsdGeom, UsdPhysics
     except ImportError:
@@ -38,7 +65,9 @@ def parse_usd(
 
     if filename.startswith("http://") or filename.startswith("https://"):
         # download file
-        import requests, os, datetime
+        import requests
+        import os
+        import datetime
 
         response = requests.get(filename, allow_redirects=True)
         if response.status_code != 200:
@@ -95,7 +124,7 @@ def parse_usd(
                     with open(usda_filename, "w") as f:
                         f.write(ref_stage_str)
                         print(f"Exported USDA file to {usda_filename}.")
-            except:
+            except Exception:
                 print(f"Failed to download {refname}.")
 
         filename = target_filename
@@ -761,5 +790,5 @@ def parse_usd(
     return {
         "fps": stage.GetFramesPerSecond(),
         "duration": stage.GetEndTimeCode() - stage.GetStartTimeCode(),
-        "up_axis": UsdGeom.GetStageUpAxis(stage).lower(),
+        "up_axis": UsdGeom.GetStageUpAxis(stage).upper(),
     }
