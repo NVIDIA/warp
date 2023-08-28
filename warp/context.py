@@ -37,6 +37,7 @@ def create_value_func(type):
 def get_function_args(func):
     """Ensures that all function arguments are annotated and returns a dictionary mapping from argument name to its type."""
     import inspect
+
     argspec = inspect.getfullargspec(func)
 
     # use source-level argument annotations
@@ -69,7 +70,6 @@ class Function:
         custom_replay_func=None,
         skip_forward_codegen=False,
         skip_reverse_codegen=False,
-        overwrite_func_name_by_key=False,
         custom_reverse_num_input_args=-1,
         custom_reverse_mode=False,
         overloaded_annotations=None,
@@ -118,22 +118,16 @@ class Function:
             self.user_templates = {}
             self.user_overloads = {}
 
-            # optionally use the provided key as function name
-            forced_func_name = None
-            if overwrite_func_name_by_key:
-                forced_func_name = key
-
             # user defined (Python) function
             self.adj = warp.codegen.Adjoint(
                 func,
                 is_user_function=True,
                 skip_forward_codegen=skip_forward_codegen,
                 skip_reverse_codegen=skip_reverse_codegen,
-                forced_func_name=forced_func_name,
                 custom_reverse_num_input_args=custom_reverse_num_input_args,
                 custom_reverse_mode=custom_reverse_mode,
                 overload_annotations=overloaded_annotations,
-                transformers=code_transformers
+                transformers=code_transformers,
             )
 
             # record input types
@@ -564,6 +558,7 @@ def func_grad(forward_fn):
     adjoint variables of the output variables (if available) of the original function with the same types as the
     output variables. The function must not return anything.
     """
+
     def wrapper(grad_fn):
         generic = any(warp.types.type_is_generic(x) for x in forward_fn.input_types.values())
         if generic:
@@ -576,10 +571,7 @@ def func_grad(forward_fn):
 
         # create temporary Adjoint instance to analyze the function signature
         adj = warp.codegen.Adjoint(
-            grad_fn,
-            skip_forward_codegen=True,
-            skip_reverse_codegen=False,
-            transformers=forward_fn.adj.transformers
+            grad_fn, skip_forward_codegen=True, skip_reverse_codegen=False, transformers=forward_fn.adj.transformers
         )
 
         from warp.types import types_equal
@@ -617,11 +609,11 @@ def func_grad(forward_fn):
                 module=f.module,
                 template_func=f.template_func,
                 skip_forward_codegen=True,
-                overwrite_func_name_by_key=True,
                 custom_reverse_mode=True,
                 custom_reverse_num_input_args=len(f.input_types),
                 skip_adding_overload=False,
-                code_transformers=f.adj.transformers)
+                code_transformers=f.adj.transformers,
+            )
             f.adj.skip_reverse_codegen = True
 
         if hasattr(forward_fn, "user_overloads") and len(forward_fn.user_overloads):
@@ -632,7 +624,9 @@ def func_grad(forward_fn):
                 if match_function(f):
                     add_custom_grad(f)
                     return
-            raise RuntimeError(f"No function overload found for gradient function {grad_fn.__qualname__} for function {forward_fn.key}")
+            raise RuntimeError(
+                f"No function overload found for gradient function {grad_fn.__qualname__} for function {forward_fn.key}"
+            )
         else:
             # resolve return variables
             forward_fn.adj.build(None)
@@ -660,6 +654,7 @@ def func_replay(forward_fn):
     The replay function is the function version that is called in the forward phase of the backward pass (replay mode) and corresponds to the forward function by default.
     The provided function has to match the signature of one of the original forward function overloads.
     """
+
     def wrapper(replay_fn):
         generic = any(warp.types.type_is_generic(x) for x in forward_fn.input_types.values())
         if generic:
@@ -690,9 +685,9 @@ def func_replay(forward_fn):
             module=f.module,
             template_func=f.template_func,
             skip_reverse_codegen=True,
-            overwrite_func_name_by_key=True,
             skip_adding_overload=True,
-            code_transformers=f.adj.transformers)
+            code_transformers=f.adj.transformers,
+        )
 
     return wrapper
 
@@ -1119,7 +1114,9 @@ class ModuleBuilder:
 
         # code-gen all imported functions
         for func in self.functions.keys():
-            source += warp.codegen.codegen_func(func.adj, name=func.key, device=device, options=self.options)
+            source += warp.codegen.codegen_func(
+                func.adj, c_func_name=func.native_func, device=device, options=self.options
+            )
 
         for kernel in self.module.kernels.values():
             # each kernel gets an entry point in the module
