@@ -444,7 +444,6 @@ class Adjoint:
         skip_reverse_codegen=False,
         custom_reverse_mode=False,
         custom_reverse_num_input_args=-1,
-        forced_func_name=None,
         transformers: List[ast.NodeTransformer] = [],
     ):
         adj.func = func
@@ -478,9 +477,6 @@ class Adjoint:
             adj.tree = transformer.visit(adj.tree)
 
         adj.fun_name = adj.tree.body[0].name
-
-        # function name to be used for the generated code (if defined)
-        adj.forced_func_name = forced_func_name
 
         # whether the forward code shall be used for the reverse pass and a custom
         # function signature is applied to the reverse version of the function
@@ -2256,7 +2252,7 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
     return s
 
 
-def codegen_func(adj, name, device="cpu", options={}):
+def codegen_func(adj, c_func_name: str, device="cpu", options={}):
     # forward header
     if adj.return_var is not None and len(adj.return_var) == 1:
         return_type = adj.return_var[0].ctype()
@@ -2310,8 +2306,6 @@ def codegen_func(adj, name, device="cpu", options={}):
 
     # codegen body
     forward_body = codegen_func_forward(adj, func_type="function", device=device)
-
-    c_func_name = make_full_qualified_name(adj.forced_func_name or adj.func.__qualname__)
 
     s = ""
     if not adj.skip_forward_codegen:
