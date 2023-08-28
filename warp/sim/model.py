@@ -229,20 +229,22 @@ class State:
             self.body_f.zero_()
 
     def flatten(self):
-        """Returns a list of Tensors stored by the state
+        import warnings
 
-        This function is intended to be used internal-only but can be used to obtain
-        a set of all tensors owned by the state.
-        """
+        warnings.warn(
+            "Model.flatten() will be removed in a future Warp version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
-        tensors = []
+        arrays = []
 
         # build a list of all tensor attributes
         for attr, value in self.__dict__.items():
-            if wp.is_tensor(value):
-                tensors.append(value)
+            if isinstance(value, wp.array):
+                arrays.append(value)
 
-        return tensors
+        return arrays
 
 
 def compute_shape_mass(type, scale, src, density, is_solid, thickness):
