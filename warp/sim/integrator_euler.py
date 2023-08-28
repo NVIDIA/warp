@@ -28,6 +28,7 @@ def integrate_particles(
     particle_flags: wp.array(dtype=wp.uint32),
     gravity: wp.vec3,
     dt: float,
+    v_max: float,
     x_new: wp.array(dtype=wp.vec3),
     v_new: wp.array(dtype=wp.vec3),
 ):
@@ -43,6 +44,10 @@ def integrate_particles(
 
     # simple semi-implicit Euler. v1 = v0 + a dt, x1 = x0 + v1 dt
     v1 = v0 + (f0 * inv_mass + gravity * wp.step(0.0 - inv_mass)) * dt
+    # enforce velocity limit to prevent instability
+    v1_mag = wp.length(v1)
+    if v1_mag > v_max:
+        v1 *= v_max / v1_mag
     x1 = x0 + v1 * dt
 
     x_new[tid] = x1
@@ -1824,6 +1829,7 @@ class SemiImplicitIntegrator:
                         model.particle_flags,
                         model.gravity,
                         dt,
+                        model.particle_max_velocity,
                     ],
                     outputs=[state_out.particle_q, state_out.particle_qd],
                     device=model.device,
@@ -1912,6 +1918,7 @@ def init_state(model, state_in, state_out, dt):
             model.particle_flags,
             model.gravity,
             dt,
+            model.particle_max_velocity,
         ],
         outputs=[state_out.particle_q, state_out.particle_qd],
         device=model.device,

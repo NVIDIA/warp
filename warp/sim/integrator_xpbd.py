@@ -495,6 +495,7 @@ def apply_particle_deltas(
     particle_flags: wp.array(dtype=wp.uint32),
     delta: wp.array(dtype=wp.vec3),
     dt: float,
+    v_max: float,
     x_out: wp.array(dtype=wp.vec3),
     v_out: wp.array(dtype=wp.vec3),
 ):
@@ -510,6 +511,11 @@ def apply_particle_deltas(
 
     x_new = xp + d
     v_new = (x_new - x0) / dt
+
+    # enforce velocity limit to prevent instability
+    v_new_mag = wp.length(v_new)
+    if v_new_mag > v_max:
+        v_new *= v_max / v_new_mag
 
     x_out[tid] = x_new
     v_out[tid] = v_new
@@ -1878,6 +1884,7 @@ class XPBDIntegrator:
                         model.particle_flags,
                         model.gravity,
                         dt,
+                        model.particle_max_velocity,
                     ],
                     outputs=[particle_q, particle_qd],
                     device=model.device,
@@ -2087,6 +2094,7 @@ class XPBDIntegrator:
                             model.particle_flags,
                             deltas,
                             dt,
+                            model.particle_max_velocity,
                         ],
                         outputs=[new_particle_q, new_particle_qd],
                         device=model.device,
