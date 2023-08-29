@@ -1,15 +1,16 @@
 <!doctype html>
-<html class="no-js" lang="en">
+<html class="no-js" lang="en" data-content_root="../">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Debugging" href="../debugging.html" /><link rel="prev" title="Devices" href="devices.html" />
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Debugging" href="../debugging.html" /><link rel="prev" title="Devices" href="devices.html" />
 
-    <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 -->
-        <title>Profiling - Warp 0.10.1</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css" />
+    <!-- Generated with Sphinx 7.2.2 and Furo 2023.08.19 -->
+        <title>Profiling - Warp1.0.0-beta.1</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=36a5483c" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=112ea5a1" />
     
     
 
@@ -135,7 +136,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">Warp 0.10.1</div></a>
+      <a href="../index.html"><div class="brand">Warp<br\>1.0.0-beta.1</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -162,7 +163,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 0.10.1</span>
+  <span class="sidebar-brand-text">Warp<br\>1.0.0-beta.1</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -186,6 +187,7 @@
 <li class="toctree-l1"><a class="reference internal" href="sim.html">Simulation Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="interoperability.html">Interoperability</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sparse.html">Sparse Linear Algebra Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fem.html">FEM Toolkit Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Project Links</span></p>
@@ -226,8 +228,8 @@
           </label>
         </div>
         <article role="main">
-          <div class="section" id="profiling">
-<h1>Profiling<a class="headerlink" href="#profiling" title="Permalink to this heading">#</a></h1>
+          <section id="profiling">
+<h1>Profiling<a class="headerlink" href="#profiling" title="Link to this heading">#</a></h1>
 <p><code class="docutils literal notranslate"><span class="pre">wp.ScopedTimer</span></code> objects can be used to gain some basic insight into the performance of Warp applications:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedTimer</span><span class="p">(</span><span class="s2">&quot;grid build&quot;</span><span class="p">):</span>
    <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">point_radius</span><span class="p">)</span>
@@ -268,10 +270,10 @@ An equivalent way to create an NVTX range without using <code class="docutils li
 between timer and NVTX capabilities of <code class="docutils literal notranslate"><span class="pre">wp.ScopedTimer</span></code>.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.ScopedTimer">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">ScopedTimer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">active</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detailed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_nvtx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'rapids'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">synchronize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.ScopedTimer" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">ScopedTimer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">active</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detailed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_nvtx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'rapids'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">synchronize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.ScopedTimer" title="Link to this definition">#</a></dt>
 <dd><p>Context manager object for a timer</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a>) – Name of timer</p></li>
 <li><p><strong>active</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Enables this timer</p></li>
@@ -286,10 +288,10 @@ between timer and NVTX capabilities of <code class="docutils literal notranslate
 </dl>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.ScopedTimer.elapsed">
-<span class="sig-name descname"><span class="pre">elapsed</span></span><a class="headerlink" href="#warp.ScopedTimer.elapsed" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">elapsed</span></span><a class="headerlink" href="#warp.ScopedTimer.elapsed" title="Link to this definition">#</a></dt>
 <dd><p>The duration of the <code class="docutils literal notranslate"><span class="pre">with</span></code> block used with this object</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)">float</a></p>
 </dd>
 </dl>
@@ -297,7 +299,7 @@ between timer and NVTX capabilities of <code class="docutils literal notranslate
 
 </dd></dl>
 
-</div>
+</section>
 
         </article>
       </div>
@@ -376,12 +378,9 @@ between timer and NVTX capabilities of <code class="docutils literal notranslate
       
     </aside>
   </div>
-</div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-    <script src="../_static/jquery.js"></script>
-    <script src="../_static/underscore.js"></script>
-    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
-    <script src="../_static/doctools.js"></script>
-    <script src="../_static/sphinx_highlight.js"></script>
-    <script src="../_static/scripts/furo.js"></script>
+</div><script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=32e29ea5"></script>
     </body>
 </html>

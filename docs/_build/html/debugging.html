@@ -1,15 +1,16 @@
 <!doctype html>
-<html class="no-js" lang="en">
+<html class="no-js" lang="en" data-content_root="./">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="FAQ" href="faq.html" /><link rel="prev" title="Profiling" href="modules/profiling.html" />
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="FAQ" href="faq.html" /><link rel="prev" title="Profiling" href="modules/profiling.html" />
 
-    <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 -->
-        <title>Debugging - Warp 0.10.1</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css" />
+    <!-- Generated with Sphinx 7.2.2 and Furo 2023.08.19 -->
+        <title>Debugging - Warp1.0.0-beta.1</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=112ea5a1" />
     
     
 
@@ -135,7 +136,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Warp 0.10.1</div></a>
+      <a href="index.html"><div class="brand">Warp<br\>1.0.0-beta.1</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -162,7 +163,7 @@
     <img class="sidebar-logo only-dark" src="_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 0.10.1</span>
+  <span class="sidebar-brand-text">Warp<br\>1.0.0-beta.1</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -186,6 +187,7 @@
 <li class="toctree-l1"><a class="reference internal" href="modules/sim.html">Simulation Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/sparse.html">Sparse Linear Algebra Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/fem.html">FEM Toolkit Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="genindex.html">Index</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Project Links</span></p>
@@ -226,10 +228,10 @@
           </label>
         </div>
         <article role="main">
-          <div class="section" id="debugging">
-<h1>Debugging<a class="headerlink" href="#debugging" title="Permalink to this heading">#</a></h1>
-<div class="section" id="printing-values">
-<h2>Printing Values<a class="headerlink" href="#printing-values" title="Permalink to this heading">#</a></h2>
+          <section id="debugging">
+<h1>Debugging<a class="headerlink" href="#debugging" title="Link to this heading">#</a></h1>
+<section id="printing-values">
+<h2>Printing Values<a class="headerlink" href="#printing-values" title="Link to this heading">#</a></h2>
 <p>Often one of the best debugging methods is to simply print values from kernels. Warp supports printing all built-in
 types using the <code class="docutils literal notranslate"><span class="pre">print()</span></code> function, e.g.:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">v</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span>
@@ -248,17 +250,17 @@ types using the <code class="docutils literal notranslate"><span class="pre">pri
 <p class="admonition-title">Note</p>
 <p>Formatted printing is only available for scalar types (e.g.: <code class="docutils literal notranslate"><span class="pre">int</span></code> and <code class="docutils literal notranslate"><span class="pre">float</span></code>) not vector types.</p>
 </div>
-</div>
-<div class="section" id="printing-launches">
-<h2>Printing Launches<a class="headerlink" href="#printing-launches" title="Permalink to this heading">#</a></h2>
+</section>
+<section id="printing-launches">
+<h2>Printing Launches<a class="headerlink" href="#printing-launches" title="Link to this heading">#</a></h2>
 <p>For complex applications it can be difficult to understand the order-of-operations that lead to a bug. To help diagnose
 these issues Warp supports a simple option to print out all launches and arguments to the console:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">print_launches</span> <span class="o">=</span> <span class="kc">True</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="step-through-debugging">
-<h2>Step-Through Debugging<a class="headerlink" href="#step-through-debugging" title="Permalink to this heading">#</a></h2>
+</section>
+<section id="step-through-debugging">
+<h2>Step-Through Debugging<a class="headerlink" href="#step-through-debugging" title="Link to this heading">#</a></h2>
 <p>It is possible to attach IDE debuggers such as Visual Studio to Warp processes to step through generated kernel code.
 Users should first compile the kernels in debug mode by setting <code class="docutils literal notranslate"><span class="pre">wp.config.mode</span> <span class="pre">=</span> <span class="pre">&quot;debug&quot;</span></code>.</p>
 <p>This setting ensures that line numbers, and debug symbols are generated correctly. After launching the Python process,
@@ -267,9 +269,9 @@ the debugger should be attached, and a breakpoint inserted into the generated co
 <p class="admonition-title">Note</p>
 <p>Generated kernel code is not a 1:1 correspondence with the original Python code, but individual operations can still be replayed and variables inspected.</p>
 </div>
-</div>
-<div class="section" id="generated-code">
-<h2>Generated Code<a class="headerlink" href="#generated-code" title="Permalink to this heading">#</a></h2>
+</section>
+<section id="generated-code">
+<h2>Generated Code<a class="headerlink" href="#generated-code" title="Link to this heading">#</a></h2>
 <p>The generated code for kernels is stored in a central cache location in the user’s home directory, the cache location is printed at startup when <code class="docutils literal notranslate"><span class="pre">wp.init()</span></code> is called, for example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Warp</span> <span class="mf">0.8.1</span> <span class="n">initialized</span><span class="p">:</span>
    <span class="n">CUDA</span> <span class="n">Toolkit</span><span class="p">:</span> <span class="mf">11.8</span><span class="p">,</span> <span class="n">Driver</span><span class="p">:</span> <span class="mf">11.8</span>
@@ -281,14 +283,14 @@ the debugger should be attached, and a breakpoint inserted into the generated co
 </pre></div>
 </div>
 <p>The kernel cache has <code class="docutils literal notranslate"><span class="pre">gen</span></code> and <code class="docutils literal notranslate"><span class="pre">bin</span></code> folders that contain the generated C++/CUDA code and the compiled binaries respectively. Occasionally it can be useful to inspect the generated code for debugging / profiling.</p>
-</div>
-<div class="section" id="bounds-checking">
-<h2>Bounds Checking<a class="headerlink" href="#bounds-checking" title="Permalink to this heading">#</a></h2>
+</section>
+<section id="bounds-checking">
+<h2>Bounds Checking<a class="headerlink" href="#bounds-checking" title="Link to this heading">#</a></h2>
 <p>Warp will perform bounds checking in debug build configurations to ensure that all array accesses lie within the defined
 shape.</p>
-</div>
-<div class="section" id="cuda-verification">
-<h2>CUDA Verification<a class="headerlink" href="#cuda-verification" title="Permalink to this heading">#</a></h2>
+</section>
+<section id="cuda-verification">
+<h2>CUDA Verification<a class="headerlink" href="#cuda-verification" title="Link to this heading">#</a></h2>
 <p>It is possible to generate out-of-bounds memory access violations through poorly formed kernel code or inputs. In this
 case the CUDA runtime will detect the violation and put the CUDA context into an error state. Subsequent kernel launches
 may silently fail which can lead to hard to diagnose issues.</p>
@@ -299,8 +301,8 @@ encountered it will raise an exception that often helps to narrow down the probl
 <p class="admonition-title">Note</p>
 <p>Verifying CUDA state at each launch requires synchronizing CPU and GPU which has a significant overhead. Users should ensure this setting is only used during debugging.</p>
 </div>
-</div>
-</div>
+</section>
+</section>
 
         </article>
       </div>
@@ -381,12 +383,9 @@ encountered it will raise an exception that often helps to narrow down the probl
       
     </aside>
   </div>
-</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/jquery.js"></script>
-    <script src="_static/underscore.js"></script>
-    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
-    <script src="_static/doctools.js"></script>
-    <script src="_static/sphinx_highlight.js"></script>
-    <script src="_static/scripts/furo.js"></script>
+</div><script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/scripts/furo.js?v=32e29ea5"></script>
     </body>
 </html>

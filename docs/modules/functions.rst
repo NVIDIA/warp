@@ -817,6 +817,62 @@ Utility
    Atomically add ``value`` onto the array at location given by indices.
 
 
+.. function:: atomic_add(a: FabricArray[Any], i: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Atomically add ``value`` onto the array at location given by index.
+
+
+.. function:: atomic_add(a: FabricArray[Any], i: int32, j: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Atomically add ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_add(a: FabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Atomically add ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_add(a: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Atomically add ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_add(a: IndexedFabricArray[Any], i: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Atomically add ``value`` onto the array at location given by index.
+
+
+.. function:: atomic_add(a: IndexedFabricArray[Any], i: int32, j: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Atomically add ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_add(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Atomically add ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_add(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Atomically add ``value`` onto the array at location given by indices.
+
+
 .. function:: atomic_sub(a: Array[Any], i: int32, value: Any)
 
    Atomically subtract ``value`` onto the array at location given by index.
@@ -837,6 +893,62 @@ Utility
 
 
 .. function:: atomic_sub(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Atomically subtract ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_sub(a: FabricArray[Any], i: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Atomically subtract ``value`` onto the array at location given by index.
+
+
+.. function:: atomic_sub(a: FabricArray[Any], i: int32, j: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Atomically subtract ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_sub(a: FabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Atomically subtract ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_sub(a: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Atomically subtract ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_sub(a: IndexedFabricArray[Any], i: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Atomically subtract ``value`` onto the array at location given by index.
+
+
+.. function:: atomic_sub(a: IndexedFabricArray[Any], i: int32, j: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Atomically subtract ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_sub(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Atomically subtract ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_sub(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
    :noindex:
    :nocontentsentry:
 
@@ -869,6 +981,62 @@ Utility
    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
+.. function:: atomic_min(a: FabricArray[Any], i: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_min(a: FabricArray[Any], i: int32, j: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_min(a: FabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_min(a: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_min(a: IndexedFabricArray[Any], i: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_min(a: IndexedFabricArray[Any], i: int32, j: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_min(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_min(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
 .. function:: atomic_max(a: Array[Any], i: int32, value: Any)
 
    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
@@ -889,6 +1057,62 @@ Utility
 
 
 .. function:: atomic_max(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_max(a: FabricArray[Any], i: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_max(a: FabricArray[Any], i: int32, j: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_max(a: FabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_max(a: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_max(a: IndexedFabricArray[Any], i: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_max(a: IndexedFabricArray[Any], i: int32, j: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_max(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_max(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
    :noindex:
    :nocontentsentry:
 
@@ -1153,9 +1377,11 @@ Volumes
 
    Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
 
+
 .. function:: volume_sample_grad_f(id: uint64, uvw: vec3f, sampling_mode: int32, grad: vec3f) -> float
 
    Sample the volume and its gradient given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
+
 
 .. function:: volume_lookup_f(id: uint64, i: int32, j: int32, k: int32) -> float
 

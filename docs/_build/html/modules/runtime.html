@@ -1,15 +1,16 @@
 <!doctype html>
-<html class="no-js" lang="en">
+<html class="no-js" lang="en" data-content_root="../">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Kernel Reference" href="functions.html" /><link rel="prev" title="FAQ" href="../faq.html" />
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Kernel Reference" href="functions.html" /><link rel="prev" title="FAQ" href="../faq.html" />
 
-    <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 -->
-        <title>Runtime Reference - Warp 0.10.1</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css" />
+    <!-- Generated with Sphinx 7.2.2 and Furo 2023.08.19 -->
+        <title>Runtime Reference - Warp1.0.0-beta.1</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=36a5483c" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=112ea5a1" />
     
     
 
@@ -135,7 +136,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">Warp 0.10.1</div></a>
+      <a href="../index.html"><div class="brand">Warp<br\>1.0.0-beta.1</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -162,7 +163,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 0.10.1</span>
+  <span class="sidebar-brand-text">Warp<br\>1.0.0-beta.1</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -186,6 +187,7 @@
 <li class="toctree-l1"><a class="reference internal" href="sim.html">Simulation Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="interoperability.html">Interoperability</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sparse.html">Sparse Linear Algebra Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fem.html">FEM Toolkit Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Project Links</span></p>
@@ -226,10 +228,10 @@
           </label>
         </div>
         <article role="main">
-          <div class="section" id="runtime-reference">
-<h1>Runtime Reference<a class="headerlink" href="#runtime-reference" title="Permalink to this heading">#</a></h1>
-<div class="section" id="kernels">
-<h2>Kernels<a class="headerlink" href="#kernels" title="Permalink to this heading">#</a></h2>
+          <section id="runtime-reference">
+<h1>Runtime Reference<a class="headerlink" href="#runtime-reference" title="Link to this heading">#</a></h1>
+<section id="kernels">
+<h2>Kernels<a class="headerlink" href="#kernels" title="Link to this heading">#</a></h2>
 <p>Kernels are launched with the <code class="docutils literal notranslate"><span class="pre">warp.launch()</span></code> function on a specific device (CPU/GPU):</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">simple_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
 </pre></div>
@@ -252,11 +254,11 @@
 </div>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.launch">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">launch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inputs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adj_inputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adj_outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adjoint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">record_tape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">record_cmd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.launch" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">launch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inputs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adj_inputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adj_outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adjoint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">record_tape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">record_cmd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.launch" title="Link to this definition">#</a></dt>
 <dd><p>Launch a Warp kernel on the target device</p>
 <p>Kernel launches are asynchronous with respect to the calling Python thread.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>kernel</strong> – The name of a Warp kernel function, decorated with the <code class="docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code> decorator</p></li>
 <li><p><strong>dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.11)"><em>Tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a><em>]</em>) – The number of threads to launch the kernel, can be an integer, or a Tuple of ints with max of 4 dimensions</p></li>
@@ -264,8 +266,8 @@
 <li><p><strong>outputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a>) – The output parameters (optional)</p></li>
 <li><p><strong>adj_inputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a>) – The adjoint inputs (optional)</p></li>
 <li><p><strong>adj_outputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a>) – The adjoint outputs (optional)</p></li>
-<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.11)"><em>Union</em></a><em>[</em><em>Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em><em>]</em>) – The device to launch on (optional)</p></li>
-<li><p><strong>stream</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><em>Stream</em><em>]</em>) – The stream to launch on (optional)</p></li>
+<li><p><strong>device</strong> (<em>Device</em><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>None</em>) – The device to launch on (optional)</p></li>
+<li><p><strong>stream</strong> (<em>Stream</em><em> | </em><em>None</em>) – The stream to launch on (optional)</p></li>
 <li><p><strong>adjoint</strong> – Whether to run forward or backward pass (typically use False)</p></li>
 <li><p><strong>record_tape</strong> – When true the launch will be recorded the global wp.Tape() object when present</p></li>
 <li><p><strong>record_cmd</strong> – When True the launch will be returned as a <code class="docutils literal notranslate"><span class="pre">Launch</span></code> command object, the launch will not occur until the user calls <code class="docutils literal notranslate"><span class="pre">cmd.launch()</span></code></p></li>
@@ -274,9 +276,9 @@
 </dl>
 </dd></dl>
 
-</div>
-<div class="section" id="arrays">
-<h2>Arrays<a class="headerlink" href="#arrays" title="Permalink to this heading">#</a></h2>
+</section>
+<section id="arrays">
+<h2>Arrays<a class="headerlink" href="#arrays" title="Link to this heading">#</a></h2>
 <p>Arrays are the fundamental memory abstraction in Warp; they are created through the following global constructors:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
@@ -318,8 +320,8 @@
 <span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">dest_array</span><span class="p">,</span> <span class="n">src_array</span><span class="p">)</span>
 </pre></div>
 </div>
-<div class="section" id="multi-dimensional-arrays">
-<h3>Multi-dimensional arrays<a class="headerlink" href="#multi-dimensional-arrays" title="Permalink to this heading">#</a></h3>
+<section id="multi-dimensional-arrays">
+<h3>Multi-dimensional arrays<a class="headerlink" href="#multi-dimensional-arrays" title="Link to this heading">#</a></h3>
 <p>Multi-dimensional arrays can be constructed by passing a tuple of sizes for each dimension, e.g.: the following constructs a 2d array of size 1024x16:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
 </pre></div>
@@ -349,22 +351,22 @@ the function also declares the expected array dimension. Currently only single-i
 <p>The following construction methods are provided for allocating zero-initialized and empty (non-initialized) arrays:</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.zeros">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">zeros</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype=&lt;class</span> <span class="pre">'float'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pinned=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.zeros" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">zeros</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype=&lt;class</span> <span class="pre">'float'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pinned=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.zeros" title="Link to this definition">#</a></dt>
 <dd><p>Return a zero-initialized array</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.11)"><em>Tuple</em></a><em>]</em>) – Array dimensions</p></li>
+<li><p><strong>shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.11)"><em>Tuple</em></a><em> | </em><em>None</em>) – Array dimensions</p></li>
 <li><p><strong>dtype</strong> – Type of each element, e.g.: warp.vec3, warp.mat33, etc</p></li>
-<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.11)"><em>Union</em></a><em>[</em><em>Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em><em>]</em>) – Device that array will live on</p></li>
+<li><p><strong>device</strong> (<em>Device</em><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>None</em>) – Device that array will live on</p></li>
 <li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether the array will be tracked for back propagation</p></li>
 <li><p><strong>pinned</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether the array uses pinned host memory (only applicable to CPU arrays)</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A warp.array object representing the allocation</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="#warp.array" title="warp.types.array"><em>array</em></a></p>
 </dd>
 </dl>
@@ -372,21 +374,21 @@ the function also declares the expected array dimension. Currently only single-i
 
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.zeros_like">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">zeros_like</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pinned</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.zeros_like" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">zeros_like</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pinned</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.zeros_like" title="Link to this definition">#</a></dt>
 <dd><p>Return a zero-initialized array with the same type and dimension of another array</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>src</strong> (<a class="reference internal" href="#warp.array" title="warp.types.array"><em>array</em></a>) – The template array to use for shape, data type, and device</p></li>
-<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.11)"><em>Union</em></a><em>[</em><em>Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em><em>]</em>) – The device where the new array will be created (defaults to src.device)</p></li>
-<li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a><em>]</em>) – Whether the array will be tracked for back propagation</p></li>
-<li><p><strong>pinned</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a><em>]</em>) – Whether the array uses pinned host memory (only applicable to CPU arrays)</p></li>
+<li><p><strong>device</strong> (<em>Device</em><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>None</em>) – The device where the new array will be created (defaults to src.device)</p></li>
+<li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a><em> | </em><em>None</em>) – Whether the array will be tracked for back propagation</p></li>
+<li><p><strong>pinned</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a><em> | </em><em>None</em>) – Whether the array uses pinned host memory (only applicable to CPU arrays)</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A warp.array object representing the allocation</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="#warp.array" title="warp.types.array"><em>array</em></a></p>
 </dd>
 </dl>
@@ -394,22 +396,22 @@ the function also declares the expected array dimension. Currently only single-i
 
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.empty">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">empty</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype=&lt;class</span> <span class="pre">'float'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pinned=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.empty" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">empty</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype=&lt;class</span> <span class="pre">'float'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pinned=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.empty" title="Link to this definition">#</a></dt>
 <dd><p>Returns an uninitialized array</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.11)"><em>Tuple</em></a><em>]</em>) – Array dimensions</p></li>
+<li><p><strong>shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.11)"><em>Tuple</em></a><em> | </em><em>None</em>) – Array dimensions</p></li>
 <li><p><strong>dtype</strong> – Type of each element, e.g.: <cite>warp.vec3</cite>, <cite>warp.mat33</cite>, etc</p></li>
-<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.11)"><em>Union</em></a><em>[</em><em>Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em><em>]</em>) – Device that array will live on</p></li>
+<li><p><strong>device</strong> (<em>Device</em><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>None</em>) – Device that array will live on</p></li>
 <li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether the array will be tracked for back propagation</p></li>
 <li><p><strong>pinned</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether the array uses pinned host memory (only applicable to CPU arrays)</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A warp.array object representing the allocation</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="#warp.array" title="warp.types.array"><em>array</em></a></p>
 </dd>
 </dl>
@@ -417,21 +419,21 @@ the function also declares the expected array dimension. Currently only single-i
 
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.empty_like">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">empty_like</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pinned</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.empty_like" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">empty_like</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pinned</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.empty_like" title="Link to this definition">#</a></dt>
 <dd><p>Return an uninitialized array with the same type and dimension of another array</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>src</strong> (<a class="reference internal" href="#warp.array" title="warp.types.array"><em>array</em></a>) – The template array to use for shape, data type, and device</p></li>
-<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.11)"><em>Union</em></a><em>[</em><em>Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em><em>]</em>) – The device where the new array will be created (defaults to src.device)</p></li>
-<li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a><em>]</em>) – Whether the array will be tracked for back propagation</p></li>
-<li><p><strong>pinned</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a><em>]</em>) – Whether the array uses pinned host memory (only applicable to CPU arrays)</p></li>
+<li><p><strong>device</strong> (<em>Device</em><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>None</em>) – The device where the new array will be created (defaults to src.device)</p></li>
+<li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a><em> | </em><em>None</em>) – Whether the array will be tracked for back propagation</p></li>
+<li><p><strong>pinned</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a><em> | </em><em>None</em>) – Whether the array uses pinned host memory (only applicable to CPU arrays)</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A warp.array object representing the allocation</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="#warp.array" title="warp.types.array"><em>array</em></a></p>
 </dd>
 </dl>
@@ -439,17 +441,17 @@ the function also declares the expected array dimension. Currently only single-i
 
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.copy">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dest</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dest_offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.copy" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dest</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dest_offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.copy" title="Link to this definition">#</a></dt>
 <dd><p>Copy array contents from src to dest</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>dest</strong> (<a class="reference internal" href="#warp.array" title="warp.types.array"><em>array</em></a>) – Destination array, must be at least as big as source buffer</p></li>
 <li><p><strong>src</strong> (<a class="reference internal" href="#warp.array" title="warp.types.array"><em>array</em></a>) – Source array</p></li>
 <li><p><strong>dest_offset</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – Element offset in the destination array</p></li>
 <li><p><strong>src_offset</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – Element offset in the source array</p></li>
 <li><p><strong>count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – Number of array elements to copy (will copy all elements if set to 0)</p></li>
-<li><p><strong>stream</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><em>Stream</em><em>]</em>) – The stream on which to perform the copy (optional)</p></li>
+<li><p><strong>stream</strong> (<em>Stream</em><em> | </em><em>None</em>) – The stream on which to perform the copy (optional)</p></li>
 </ul>
 </dd>
 </dl>
@@ -457,21 +459,21 @@ the function also declares the expected array dimension. Currently only single-i
 
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.clone">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">clone</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pinned</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.clone" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">clone</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pinned</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.clone" title="Link to this definition">#</a></dt>
 <dd><p>Clone an existing array, allocates a copy of the src memory</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>src</strong> (<a class="reference internal" href="#warp.array" title="warp.types.array"><em>array</em></a>) – The source array to copy</p></li>
-<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.11)"><em>Union</em></a><em>[</em><em>Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em><em>]</em>) – The device where the new array will be created (defaults to src.device)</p></li>
-<li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a><em>]</em>) – Whether the array will be tracked for back propagation</p></li>
-<li><p><strong>pinned</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a><em>]</em>) – Whether the array uses pinned host memory (only applicable to CPU arrays)</p></li>
+<li><p><strong>device</strong> (<em>Device</em><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>None</em>) – The device where the new array will be created (defaults to src.device)</p></li>
+<li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a><em> | </em><em>None</em>) – Whether the array will be tracked for back propagation</p></li>
+<li><p><strong>pinned</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a><em> | </em><em>None</em>) – Whether the array uses pinned host memory (only applicable to CPU arrays)</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A warp.array object representing the allocation</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="#warp.array" title="warp.types.array"><em>array</em></a></p>
 </dd>
 </dl>
@@ -479,7 +481,7 @@ the function also declares the expected array dimension. Currently only single-i
 
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.array">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">typing.Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strides</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ptr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pinned</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">owner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.array" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">typing.Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strides</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ptr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pinned</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">owner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.array" title="Link to this definition">#</a></dt>
 <dd><p>Constructs a new Warp array object</p>
 <p>When the <code class="docutils literal notranslate"><span class="pre">data</span></code> argument is a valid list, tuple, or ndarray the array will be constructed from this object’s data.
 For objects that are not stored sequentially in memory (e.g.: a list), then the data will first
@@ -495,7 +497,7 @@ This construction path can be used to create new uninitialized arrays, but users
 kernel arguments or struct members (e.g.,``arr: wp.array(dtype=float)``).  In this case, only <code class="docutils literal notranslate"><span class="pre">dtype</span></code> and <code class="docutils literal notranslate"><span class="pre">ndim</span></code>
 are taken into account and no memory is allocated for the array.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>data</strong> (<em>Union</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.11)"><em>list</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><em>tuple</em></a><em>, </em><em>ndarray</em><em>]</em>) – </p></li>
 <li><p><strong>dtype</strong> (<em>Union</em>) – One of the built-in types, e.g.: <code class="xref py py-class docutils literal notranslate"><span class="pre">warp.mat33</span></code>, if dtype is Any and data an ndarray then it will be inferred from the array data type</p></li>
@@ -515,9 +517,9 @@ are taken into account and no memory is allocated for the array.</p>
 </dl>
 </dd></dl>
 
-</div>
-<div class="section" id="matrix-multiplication">
-<h3>Matrix Multiplication<a class="headerlink" href="#matrix-multiplication" title="Permalink to this heading">#</a></h3>
+</section>
+<section id="matrix-multiplication">
+<h3>Matrix Multiplication<a class="headerlink" href="#matrix-multiplication" title="Link to this heading">#</a></h3>
 <p>Warp 2D array multiplication is built on NVIDIA’s CUTLASS library, which enables fast matrix multiplication of large arrays on the GPU.</p>
 <p>If no GPU is detected, matrix multiplication falls back to Numpy’s implementation on the CPU.</p>
 <p>Matrix multiplication is fully differentiable, and can be recorded on the tape like so:</p>
@@ -533,10 +535,10 @@ are taken into account and no memory is allocated for the array.</p>
 <p>Using the <code class="docutils literal notranslate"><span class="pre">&#64;</span></code> operator (<code class="docutils literal notranslate"><span class="pre">D</span> <span class="pre">=</span> <span class="pre">A</span> <span class="pre">&#64;</span> <span class="pre">B</span></code>) will default to the same CUTLASS algorithm used in <code class="docutils literal notranslate"><span class="pre">wp.matmul</span></code>.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.matmul">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">matmul</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_tf32x3_arith</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.matmul" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">matmul</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_tf32x3_arith</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.matmul" title="Link to this definition">#</a></dt>
 <dd><p>Computes a generic matrix-matrix multiplication (GEMM) of the form: <cite>d = alpha * (a &#64; b) + beta * c</cite>.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>a</strong> (<em>array2d</em>) – two-dimensional array containing matrix A</p></li>
 <li><p><strong>b</strong> (<em>array2d</em>) – two-dimensional array containing matrix B</p></li>
@@ -552,19 +554,15 @@ while using Tensor Cores</p></li>
 </dl>
 </dd></dl>
 
-</div>
-</div>
-<div class="section" id="data-types">
-<h2>Data Types<a class="headerlink" href="#data-types" title="Permalink to this heading">#</a></h2>
-<div class="section" id="scalar-types">
-<h3>Scalar Types<a class="headerlink" href="#scalar-types" title="Permalink to this heading">#</a></h3>
+</section>
+</section>
+<section id="data-types">
+<h2>Data Types<a class="headerlink" href="#data-types" title="Link to this heading">#</a></h2>
+<section id="scalar-types">
+<h3>Scalar Types<a class="headerlink" href="#scalar-types" title="Link to this heading">#</a></h3>
 <p>The following scalar storage types are supported for array structures:</p>
 <div class="table-wrapper docutils container">
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 27%" />
-<col style="width: 73%" />
-</colgroup>
 <tbody>
 <tr class="row-odd"><td><p>int8</p></td>
 <td><p>signed byte</p></td>
@@ -600,17 +598,13 @@ while using Tensor Cores</p></li>
 </table>
 </div>
 <p>Warp supports <code class="docutils literal notranslate"><span class="pre">float</span></code> and <code class="docutils literal notranslate"><span class="pre">int</span></code> as aliases for <code class="docutils literal notranslate"><span class="pre">wp.float32</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.int32</span></code> respectively.</p>
-</div>
-<div class="section" id="vectors">
-<h3>Vectors<a class="headerlink" href="#vectors" title="Permalink to this heading">#</a></h3>
+</section>
+<section id="vectors">
+<h3>Vectors<a class="headerlink" href="#vectors" title="Link to this heading">#</a></h3>
 <p>Warp provides built-in math and geometry types for common simulation and graphics problems. A full reference for operators and functions for these types is available in the <a class="reference internal" href="functions.html"><span class="doc">Kernel Reference</span></a>.</p>
 <p>Warp supports vectors of numbers with an arbitrary length/numeric type. The built in concrete types are as follows:</p>
 <div class="table-wrapper docutils container">
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 32%" />
-<col style="width: 68%" />
-</colgroup>
 <tbody>
 <tr class="row-odd"><td><p>vec2 vec3 vec4</p></td>
 <td><p>2d, 3d, 4d vector of default precision floats</p></td>
@@ -704,16 +698,12 @@ while using Tensor Cores</p></li>
 </pre></div>
 </div>
 <p>These can be used with all the standard vector arithmetic operators, e.g.: <code class="docutils literal notranslate"><span class="pre">+</span></code>, <code class="docutils literal notranslate"><span class="pre">-</span></code>, scalar multiplication, and can also be transformed using matrices with compatible dimensions, potentially returning vectors with a different length.</p>
-</div>
-<div class="section" id="matrices">
-<h3>Matrices<a class="headerlink" href="#matrices" title="Permalink to this heading">#</a></h3>
+</section>
+<section id="matrices">
+<h3>Matrices<a class="headerlink" href="#matrices" title="Link to this heading">#</a></h3>
 <p>Matrices with arbitrary shapes/numeric types are also supported. The built in concrete matrix types are as follows:</p>
 <div class="table-wrapper docutils container">
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 67%" />
-</colgroup>
 <tbody>
 <tr class="row-odd"><td><p>mat22 mat33 mat44</p></td>
 <td><p>2,3 and 4d square matrix of default precision</p></td>
@@ -805,16 +795,12 @@ while using Tensor Cores</p></li>
 </pre></div>
 </div>
 <p>As with vectors, you can do standard matrix arithmetic with these variables, along with multiplying matrices with compatible shapes and potentially returning a matrix with a new shape.</p>
-</div>
-<div class="section" id="quaternions">
-<h3>Quaternions<a class="headerlink" href="#quaternions" title="Permalink to this heading">#</a></h3>
+</section>
+<section id="quaternions">
+<h3>Quaternions<a class="headerlink" href="#quaternions" title="Link to this heading">#</a></h3>
 <p>Warp supports quaternions with the layout <code class="docutils literal notranslate"><span class="pre">i,</span> <span class="pre">j,</span> <span class="pre">k,</span> <span class="pre">w</span></code> where <code class="docutils literal notranslate"><span class="pre">w</span></code> is the real part. Here are the built in concrete quaternion types:</p>
 <div class="table-wrapper docutils container">
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 27%" />
-<col style="width: 73%" />
-</colgroup>
 <tbody>
 <tr class="row-odd"><td><p>quat</p></td>
 <td><p>Default precision floating point quaternion</p></td>
@@ -870,16 +856,12 @@ while using Tensor Cores</p></li>
       <span class="n">wp</span><span class="o">.</span><span class="n">float16</span><span class="p">(</span><span class="mf">1.0</span><span class="p">))</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="transforms">
-<h3>Transforms<a class="headerlink" href="#transforms" title="Permalink to this heading">#</a></h3>
+</section>
+<section id="transforms">
+<h3>Transforms<a class="headerlink" href="#transforms" title="Link to this heading">#</a></h3>
 <p>Transforms are 7d vectors of floats representing a spatial rigid body transformation in format (p, q) where p is a 3d vector, and q is a quaternion.</p>
 <div class="table-wrapper docutils container">
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 28%" />
-<col style="width: 72%" />
-</colgroup>
 <tbody>
 <tr class="row-odd"><td><p>transform</p></td>
 <td><p>Default precision floating point transform</p></td>
@@ -925,9 +907,9 @@ while using Tensor Cores</p></li>
    <span class="n">qd</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">transform_identity</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="structs">
-<h3>Structs<a class="headerlink" href="#structs" title="Permalink to this heading">#</a></h3>
+</section>
+<section id="structs">
+<h3>Structs<a class="headerlink" href="#structs" title="Link to this heading">#</a></h3>
 <p>Users can define custom structure types using the <code class="docutils literal notranslate"><span class="pre">&#64;wp.struct</span></code> decorator as follows:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">struct</span>
 <span class="k">class</span> <span class="nc">MyStruct</span><span class="p">:</span>
@@ -965,18 +947,18 @@ while using Tensor Cores</p></li>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">MyStruct</span><span class="p">(),</span> <span class="n">MyStruct</span><span class="p">(),</span> <span class="n">MyStruct</span><span class="p">()],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">MyStruct</span><span class="p">)</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="type-conversions">
-<h3>Type Conversions<a class="headerlink" href="#type-conversions" title="Permalink to this heading">#</a></h3>
+</section>
+<section id="type-conversions">
+<h3>Type Conversions<a class="headerlink" href="#type-conversions" title="Link to this heading">#</a></h3>
 <p>Warp is particularly strict regarding type conversions and does not perform <em>any</em> implicit conversion between numeric types. The user is responsible for ensuring types for most arithmetic operators match, e.g.: <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">=</span> <span class="pre">float(0.0)</span> <span class="pre">+</span> <span class="pre">int(4)</span></code> will result in an error. This can be surprising for users that are accustomed to C-style conversions but avoids a class of common bugs that result from implicit conversions.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Warp does not currently perform implicit type conversions between numeric types. Users should explicitly cast variables to compatible types using constructors like <code class="docutils literal notranslate"><span class="pre">int()</span></code>, <code class="docutils literal notranslate"><span class="pre">float()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.float16()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.uint8()</span></code> etc.</p>
 </div>
-</div>
-</div>
-<div class="section" id="constants">
-<h2>Constants<a class="headerlink" href="#constants" title="Permalink to this heading">#</a></h2>
+</section>
+</section>
+<section id="constants">
+<h2>Constants<a class="headerlink" href="#constants" title="Link to this heading">#</a></h2>
 <p>In general, Warp kernels cannot access variables in the global Python interpreter state. One exception to this is for compile-time constants, which may be declared globally (or as class attributes) and folded into the kernel definition.</p>
 <p>Constants are defined using the <code class="docutils literal notranslate"><span class="pre">warp.constant()</span></code> function. An example is shown below:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">TYPE_SPHERE</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
@@ -998,26 +980,22 @@ while using Tensor Cores</p></li>
 </div>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.constant">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">constant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.constant" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">constant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.constant" title="Link to this definition">#</a></dt>
 <dd><p>Function to declare compile-time constants accessible from Warp kernels</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>x</strong> – Compile-time constant value, can be any of the built-in math types.</p>
 </dd>
 </dl>
 </dd></dl>
 
-</div>
-<div class="section" id="operators">
-<h2>Operators<a class="headerlink" href="#operators" title="Permalink to this heading">#</a></h2>
-<div class="section" id="boolean-operators">
-<h3>Boolean Operators<a class="headerlink" href="#boolean-operators" title="Permalink to this heading">#</a></h3>
+</section>
+<section id="operators">
+<h2>Operators<a class="headerlink" href="#operators" title="Link to this heading">#</a></h2>
+<section id="boolean-operators">
+<h3>Boolean Operators<a class="headerlink" href="#boolean-operators" title="Link to this heading">#</a></h3>
 <div class="table-wrapper docutils container">
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 27%" />
-<col style="width: 73%" />
-</colgroup>
 <tbody>
 <tr class="row-odd"><td><p>a and b</p></td>
 <td><p>True if a and b are True</p></td>
@@ -1035,15 +1013,11 @@ while using Tensor Cores</p></li>
 <p class="admonition-title">Note</p>
 <p>Expressions such as <code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">(a</span> <span class="pre">and</span> <span class="pre">b):</span></code> currently do not perform short-circuit evaluation. In this case <code class="docutils literal notranslate"><span class="pre">b</span></code> will also be evaluated even when <code class="docutils literal notranslate"><span class="pre">a</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>. Users should take care to ensure that secondary conditions are safe to evaluate (e.g.: do not index out of bounds) in all cases.</p>
 </div>
-</div>
-<div class="section" id="comparison-operators">
-<h3>Comparison Operators<a class="headerlink" href="#comparison-operators" title="Permalink to this heading">#</a></h3>
+</section>
+<section id="comparison-operators">
+<h3>Comparison Operators<a class="headerlink" href="#comparison-operators" title="Link to this heading">#</a></h3>
 <div class="table-wrapper docutils container">
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 20%" />
-<col style="width: 80%" />
-</colgroup>
 <tbody>
 <tr class="row-odd"><td><p>a &gt; b</p></td>
 <td><p>True if a strictly greater than b</p></td>
@@ -1066,15 +1040,11 @@ while using Tensor Cores</p></li>
 </tbody>
 </table>
 </div>
-</div>
-<div class="section" id="arithmetic-operators">
-<h3>Arithmetic Operators<a class="headerlink" href="#arithmetic-operators" title="Permalink to this heading">#</a></h3>
+</section>
+<section id="arithmetic-operators">
+<h3>Arithmetic Operators<a class="headerlink" href="#arithmetic-operators" title="Link to this heading">#</a></h3>
 <div class="table-wrapper docutils container">
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 30%" />
-<col style="width: 70%" />
-</colgroup>
 <tbody>
 <tr class="row-odd"><td><p>a + b</p></td>
 <td><p>Addition</p></td>
@@ -1104,10 +1074,10 @@ while using Tensor Cores</p></li>
 <p class="admonition-title">Note</p>
 <p>Since implicit conversions are not performed arguments types to operators should match. Users should use type constructors, e.g.: <code class="docutils literal notranslate"><span class="pre">float()</span></code>, <code class="docutils literal notranslate"><span class="pre">int()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.int64(),</span> <span class="pre">etc</span></code> to cast variables to the correct type. Also note that the multiplication expression <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">*</span> <span class="pre">b</span></code> is used to represent scalar multiplication and matrix multiplication. Currently the <code class="docutils literal notranslate"><span class="pre">&#64;</span></code> operator is not supported in this version.</p>
 </div>
-</div>
-</div>
-<div class="section" id="meshes">
-<h2>Meshes<a class="headerlink" href="#meshes" title="Permalink to this heading">#</a></h2>
+</section>
+</section>
+<section id="meshes">
+<h2>Meshes<a class="headerlink" href="#meshes" title="Link to this heading">#</a></h2>
 <p>Warp provides a <code class="docutils literal notranslate"><span class="pre">warp.Mesh</span></code> class to manage triangle mesh data. To create a mesh users provide a points, indices and optionally a velocity array:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mesh</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Mesh</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">velocities</span><span class="p">)</span>
 </pre></div>
@@ -1150,22 +1120,22 @@ while using Tensor Cores</p></li>
 </div>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Mesh">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Mesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">velocities</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">support_winding_number</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.Mesh" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Mesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">velocities</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">support_winding_number</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.Mesh" title="Link to this definition">#</a></dt>
 <dd><p>Class representing a triangle mesh.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Mesh.id">
-<span class="sig-name descname"><span class="pre">id</span></span><a class="headerlink" href="#warp.Mesh.id" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">id</span></span><a class="headerlink" href="#warp.Mesh.id" title="Link to this definition">#</a></dt>
 <dd><p>Unique identifier for this mesh object, can be passed to kernels.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Mesh.device">
-<span class="sig-name descname"><span class="pre">device</span></span><a class="headerlink" href="#warp.Mesh.device" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">device</span></span><a class="headerlink" href="#warp.Mesh.device" title="Link to this definition">#</a></dt>
 <dd><p>Device this object lives on, all buffers must live on the same device.</p>
 </dd></dl>
 
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>points</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of vertex positions of type <code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></p></li>
 <li><p><strong>indices</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of triangle indices of type <a class="reference internal" href="functions.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a>, should be a 1d array with shape (num_tris, 3)</p></li>
@@ -1176,15 +1146,15 @@ while using Tensor Cores</p></li>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Mesh.refit">
-<span class="sig-name descname"><span class="pre">refit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.Mesh.refit" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">refit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.Mesh.refit" title="Link to this definition">#</a></dt>
 <dd><p>Refit the BVH to points. This should be called after users modify the <cite>points</cite> data.</p>
 </dd></dl>
 
 </dd></dl>
 
-</div>
-<div class="section" id="volumes">
-<h2>Volumes<a class="headerlink" href="#volumes" title="Permalink to this heading">#</a></h2>
+</section>
+<section id="volumes">
+<h2>Volumes<a class="headerlink" href="#volumes" title="Link to this heading">#</a></h2>
 <p>Sparse volumes are incredibly useful for representing grid data over large domains, such as signed distance fields (SDFs) for complex objects, or velocities for large-scale fluid flow. Warp supports reading sparse volumetric grids stored using the <a class="reference external" href="https://developer.nvidia.com/nanovdb">NanoVDB</a> standard. Users can access voxels directly, or use built-in closest point or trilinear interpolation to sample grid data from world or local-space.</p>
 <p>Volume object can be created directly from Warp arrays containing a NanoVDB grid or from the contents of a standard <code class="docutils literal notranslate"><span class="pre">.nvdb</span></code> file, using the <code class="docutils literal notranslate"><span class="pre">load_from_nvdb</span></code> method.</p>
 <p>Below we give an example of creating a Volume object from an existing NanoVDB file:</p>
@@ -1226,14 +1196,14 @@ while using Tensor Cores</p></li>
 </div>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Volume">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Volume</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.Volume" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Volume</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.Volume" title="Link to this definition">#</a></dt>
 <dd><p>Class representing a sparse grid.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.CLOSEST">
-<span class="sig-name descname"><span class="pre">CLOSEST</span></span><a class="headerlink" href="#warp.Volume.CLOSEST" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">CLOSEST</span></span><a class="headerlink" href="#warp.Volume.CLOSEST" title="Link to this definition">#</a></dt>
 <dd><p>Enum value to specify nearest-neighbor interpolation during sampling</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
@@ -1241,23 +1211,54 @@ while using Tensor Cores</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.LINEAR">
-<span class="sig-name descname"><span class="pre">LINEAR</span></span><a class="headerlink" href="#warp.Volume.LINEAR" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">LINEAR</span></span><a class="headerlink" href="#warp.Volume.LINEAR" title="Link to this definition">#</a></dt>
 <dd><p>Enum value to specify trilinear interpolation during sampling</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>data</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of bytes representing the volume in NanoVDB format</p>
 </dd>
 </dl>
 <dl class="py method">
+<dt class="sig sig-object py" id="warp.Volume.load_from_nvdb">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load_from_nvdb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_or_buffer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.Volume.load_from_nvdb" title="Link to this definition">#</a></dt>
+<dd><p>Creates a Volume object from a NanoVDB file or in-memory buffer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A <code class="docutils literal notranslate"><span class="pre">warp.Volume</span></code> object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.Volume.load_from_numpy">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load_from_numpy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_world</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">voxel_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bg_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.Volume.load_from_numpy" title="Link to this definition">#</a></dt>
+<dd><p>Creates a Volume object from a dense 3D NumPy array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>min_world</strong> – The 3D coordinate of the lower corner of the volume</p></li>
+<li><p><strong>voxel_size</strong> – The size of each voxel in spatial coordinates</p></li>
+<li><p><strong>bg_value</strong> – Background value</p></li>
+<li><p><strong>device</strong> – The device to create the volume on, e.g.: “cpu”, or “cuda:0”</p></li>
+<li><p><strong>ndarray</strong> (<em>array</em>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <code class="docutils literal notranslate"><span class="pre">warp.Volume</span></code> object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.allocate">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">allocate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">voxel_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bg_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">translation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points_in_world_space</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.Volume.allocate" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">allocate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">voxel_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bg_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">translation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points_in_world_space</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.Volume.allocate" title="Link to this definition">#</a></dt>
 <dd><p>Allocate a new Volume based on the bounding box defined by min and max.</p>
 <p>Allocate a volume that is large enough to contain voxels [min[0], min[1], min[2]] - [max[0], max[1], max[2]], inclusive.
 If points_in_world_space is true, then min and max are first converted to index space with the given voxel size and
@@ -1265,7 +1266,7 @@ translation, and the volume is allocated with those.</p>
 <p>The smallest unit of allocation is a dense tile of 8x8x8 voxels, the requested bounding box is rounded up to tiles, and
 the resulting tiles will be available in the new volume.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>min</strong> (<em>array-like</em>) – Lower 3D-coordinates of the bounding box in index space or world space, inclusive</p></li>
 <li><p><strong>max</strong> (<em>array-like</em>) – Upper 3D-coordinates of the bounding box in index space or world space, inclusive</p></li>
@@ -1280,7 +1281,7 @@ the resulting tiles will be available in the new volume.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.allocate_by_tiles">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">allocate_by_tiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tile_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">voxel_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bg_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">translation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.Volume.allocate_by_tiles" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">allocate_by_tiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tile_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">voxel_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bg_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">translation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.Volume.allocate_by_tiles" title="Link to this definition">#</a></dt>
 <dd><p>Allocate a new Volume with active tiles for each point tile_points.</p>
 <p>The smallest unit of allocation is a dense tile of 8x8x8 voxels.
 This is the primary method for allocating sparse volumes. It uses an array of points indicating the tiles that must be allocated.</p>
@@ -1292,7 +1293,7 @@ This is the primary method for allocating sparse volumes. It uses an array of po
 </dd>
 </dl>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>tile_points</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of positions that define the tiles to be allocated.
 The array can be a 2d, N-by-3 array of <a class="reference internal" href="functions.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a> values, indicating index space positions,
@@ -1313,9 +1314,9 @@ Repeated points per tile are allowed and will be efficiently deduplicated.</p></
 <p class="admonition-title">See also</p>
 <p><a class="reference external" href="functions.html#volumes">Reference</a> for the volume functions available in kernels.</p>
 </div>
-</div>
-<div class="section" id="hash-grids">
-<h2>Hash Grids<a class="headerlink" href="#hash-grids" title="Permalink to this heading">#</a></h2>
+</section>
+<section id="hash-grids">
+<h2>Hash Grids<a class="headerlink" href="#hash-grids" title="Link to this heading">#</a></h2>
 <p>Many particle-based simulation methods such as the Discrete Element Method (DEM), or Smoothed Particle Hydrodynamics (SPH), involve iterating over spatial neighbors to compute force interactions. Hash grids are a well-established data structure to accelerate these nearest neighbor queries, and particularly well-suited to the GPU.</p>
 <p>To support spatial neighbor queries Warp provides a <code class="docutils literal notranslate"><span class="pre">HashGrid</span></code> object that may be created as follows:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">grid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">HashGrid</span><span class="p">(</span><span class="n">dim_x</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">dim_y</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">dim_z</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
@@ -1359,22 +1360,22 @@ Repeated points per tile are allowed and will be efficiently deduplicated.</p></
 </div>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.HashGrid">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">HashGrid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.HashGrid" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">HashGrid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.HashGrid" title="Link to this definition">#</a></dt>
 <dd><p>Class representing a hash grid object for accelerated point queries.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.HashGrid.id">
-<span class="sig-name descname"><span class="pre">id</span></span><a class="headerlink" href="#warp.HashGrid.id" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">id</span></span><a class="headerlink" href="#warp.HashGrid.id" title="Link to this definition">#</a></dt>
 <dd><p>Unique identifier for this mesh object, can be passed to kernels.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.HashGrid.device">
-<span class="sig-name descname"><span class="pre">device</span></span><a class="headerlink" href="#warp.HashGrid.device" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">device</span></span><a class="headerlink" href="#warp.HashGrid.device" title="Link to this definition">#</a></dt>
 <dd><p>Device this object lives on, all buffers must live on the same device.</p>
 </dd></dl>
 
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>dim_x</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – Number of cells in x-axis</p></li>
 <li><p><strong>dim_y</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – Number of cells in y-axis</p></li>
@@ -1384,12 +1385,12 @@ Repeated points per tile are allowed and will be efficiently deduplicated.</p></
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.HashGrid.build">
-<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.HashGrid.build" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.HashGrid.build" title="Link to this definition">#</a></dt>
 <dd><p>Updates the hash grid data structure.</p>
 <p>This method rebuilds the underlying datastructure and should be called any time the set
 of points changes.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>points</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of points of type <code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></p></li>
 <li><p><strong>radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The cell size to use for bucketing points, cells are cubes with edges of this width.
@@ -1402,9 +1403,9 @@ the radius used when performing queries.</p></li>
 
 </dd></dl>
 
-</div>
-<div class="section" id="differentiability">
-<h2>Differentiability<a class="headerlink" href="#differentiability" title="Permalink to this heading">#</a></h2>
+</section>
+<section id="differentiability">
+<h2>Differentiability<a class="headerlink" href="#differentiability" title="Link to this heading">#</a></h2>
 <p>By default Warp generates a forward and backward (adjoint) version of each kernel definition. Buffers that participate in the chain of computation should be created with <code class="docutils literal notranslate"><span class="pre">requires_grad=True</span></code>, for example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
@@ -1441,11 +1442,74 @@ the radius used when performing queries.</p></li>
 </div>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Tape">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Tape</span></span><a class="headerlink" href="#warp.Tape" title="Permalink to this definition">#</a></dt>
-<dd></dd></dl>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Tape</span></span><a class="headerlink" href="#warp.Tape" title="Link to this definition">#</a></dt>
+<dd><p>Record kernel launches within a Tape scope to enable automatic differentiation.
+Gradients can be computed after the operations have been recorded on the tape via
+<code class="docutils literal notranslate"><span class="pre">tape.backward()</span></code>.</p>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">tape</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span>
 
-<div class="section" id="jacobians">
-<h3>Jacobians<a class="headerlink" href="#jacobians" title="Permalink to this heading">#</a></h3>
+<span class="c1"># forward pass</span>
+<span class="k">with</span> <span class="n">tape</span><span class="p">:</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">compute1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">compute2</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">c</span><span class="p">,</span> <span class="n">d</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">loss</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">l</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+
+<span class="c1"># reverse pass</span>
+<span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Gradients can be accessed via the <code class="docutils literal notranslate"><span class="pre">tape.gradients</span></code> dictionary, e.g.:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">tape</span><span class="o">.</span><span class="n">gradients</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.Tape.backward">
+<span class="sig-name descname"><span class="pre">backward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">loss</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grads</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.Tape.backward" title="Link to this definition">#</a></dt>
+<dd><p>Evaluate the backward pass of the recorded operations on the tape.
+A single-element array <code class="docutils literal notranslate"><span class="pre">loss</span></code> or a dictionary of arrays <code class="docutils literal notranslate"><span class="pre">grads</span></code>
+can be provided to assign the incoming gradients for the reverse-mode
+automatic differentiation pass.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>loss</strong> (<em>wp.array</em>) – A single-element array that holds the loss function value whose gradient is to be computed</p></li>
+<li><p><strong>grads</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)"><em>dict</em></a>) – A dictionary of arrays that map from Warp arrays to their incoming gradients</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.Tape.record_func">
+<span class="sig-name descname"><span class="pre">record_func</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">backward</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arrays</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.Tape.record_func" title="Link to this definition">#</a></dt>
+<dd><p>Records a custom function to be executed only in the backward pass.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>backward</strong> (<em>Callable</em>) – A callable Python object (can be any function) that will be executed in the backward pass.</p></li>
+<li><p><strong>arrays</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.11)"><em>list</em></a>) – A list of arrays that are used by the function for gradient tracking.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.Tape.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.Tape.reset" title="Link to this definition">#</a></dt>
+<dd><p>Clear all operations recorded on the tape and zero out all gradients.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.Tape.zero">
+<span class="sig-name descname"><span class="pre">zero</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.Tape.zero" title="Link to this definition">#</a></dt>
+<dd><p>Zero out all gradients recorded on the tape.</p>
+</dd></dl>
+
+</dd></dl>
+
+<section id="jacobians">
+<h3>Jacobians<a class="headerlink" href="#jacobians" title="Link to this heading">#</a></h3>
 <p>To compute the Jacobian matrix <span class="math notranslate nohighlight">\(J\in\mathbb{R}^{m\times n}\)</span> of a multi-valued function <span class="math notranslate nohighlight">\(f: \mathbb{R}^n \to \mathbb{R}^m\)</span>, we can evaluate an entire row of the Jacobian in parallel by finding the Jacobian-vector product <span class="math notranslate nohighlight">\(J^\top \mathbf{e}\)</span>. The vector <span class="math notranslate nohighlight">\(\mathbf{e}\in\mathbb{R}^m\)</span> selects the indices in the output buffer to differentiate with respect to.
 In Warp, instead of passing a scalar loss buffer to the <code class="docutils literal notranslate"><span class="pre">tape.backward()</span></code> method, we pass a dictionary <code class="docutils literal notranslate"><span class="pre">grads</span></code> mapping from the function output array to the selection vector <span class="math notranslate nohighlight">\(\mathbf{e}\)</span> having the same type:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># compute the Jacobian for a function of single output</span>
@@ -1483,10 +1547,225 @@ In Warp, instead of passing a scalar loss buffer to the <code class="docutils li
    <span class="n">tape</span><span class="o">.</span><span class="n">zero</span><span class="p">()</span>
 </pre></div>
 </div>
+</section>
+<section id="custom-gradient-functions">
+<h3>Custom Gradient Functions<a class="headerlink" href="#custom-gradient-functions" title="Link to this heading">#</a></h3>
+<p>Warp supports custom gradient function definitions for user-defined Warp functions.
+This allows users to define code that should replace the automatically generated derivatives.</p>
+<p>To differentiate a function <span class="math notranslate nohighlight">\(h(x) = f(g(x))\)</span> that has a nested call to function <span class="math notranslate nohighlight">\(g(x)\)</span>, the chain rule is evaluated in the automatic differentiation of <span class="math notranslate nohighlight">\(h(x)\)</span>:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[h^\prime(x) = f^\prime({\color{green}{\underset{\textrm{replay}}{g(x)}}}) {\color{blue}{\underset{\textrm{grad}}{g^\prime(x)}}}\]</div>
 </div>
+<p>This implies that a function to be compatible with the autodiff engine needs to provide an implementation of its forward version
+<span class="math notranslate nohighlight">\(\color{green}{g(x)}\)</span>, which we refer to as “replay” function (that matches the original function definition by default),
+and its derivative <span class="math notranslate nohighlight">\(\color{blue}{g^\prime(x)}\)</span>, refered to as “grad”.</p>
+<p>Both the replay and the grad implementations can be customized by the user. They are defined as follows:</p>
+<div class="table-wrapper colwidths-given docutils container" id="id1">
+<table class="docutils align-default" id="id1">
+<caption><span class="caption-text">Customizing the replay and grad versions of function <code class="docutils literal notranslate"><span class="pre">myfunc</span></code></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
+<colgroup>
+<col style="width: 100.0%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>Forward Function</p></td>
+</tr>
+<tr class="row-even"><td><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span> <span class="nf">myfunc</span><span class="p">(</span><span class="n">in1</span><span class="p">:</span> <span class="n">InType1</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">inN</span><span class="p">:</span> <span class="n">InTypeN</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OutType1</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">OutTypeM</span><span class="p">:</span>
+   <span class="k">return</span> <span class="n">out1</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">outM</span>
+</pre></div>
 </div>
-<div class="section" id="graphs">
-<h2>Graphs<a class="headerlink" href="#graphs" title="Permalink to this heading">#</a></h2>
+</td>
+</tr>
+<tr class="row-odd"><td><p>Custom Replay Function</p></td>
+</tr>
+<tr class="row-even"><td><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func_replay</span><span class="p">(</span><span class="n">myfunc</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">replay_myfunc</span><span class="p">(</span><span class="n">in1</span><span class="p">:</span> <span class="n">InType1</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">inN</span><span class="p">:</span> <span class="n">InTypeN</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OutType1</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">OutTypeM</span><span class="p">:</span>
+   <span class="c1"># Custom forward computations to be executed in the backward pass of a</span>
+   <span class="c1"># function calling `myfunc` go here</span>
+   <span class="c1"># Ensure the output variables match the original forward definition</span>
+   <span class="k">return</span> <span class="n">out1</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">outM</span>
+</pre></div>
+</div>
+</td>
+</tr>
+<tr class="row-odd"><td><p>Custom Grad Function</p></td>
+</tr>
+<tr class="row-even"><td><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func_grad</span><span class="p">(</span><span class="n">myfunc</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">adj_myfunc</span><span class="p">(</span><span class="n">in1</span><span class="p">:</span> <span class="n">InType1</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">inN</span><span class="p">:</span> <span class="n">InTypeN</span><span class="p">,</span> <span class="n">adj_out1</span><span class="p">:</span> <span class="n">OutType1</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">adj_outM</span><span class="p">:</span> <span class="n">OutTypeM</span><span class="p">):</span>
+   <span class="c1"># Custom adjoint code goes here</span>
+   <span class="c1"># Update the partial derivatives for the inputs as follows:</span>
+   <span class="n">wp</span><span class="o">.</span><span class="n">adjoint</span><span class="p">[</span><span class="n">in1</span><span class="p">]</span> <span class="o">+=</span> <span class="o">...</span>
+   <span class="o">...</span>
+   <span class="n">wp</span><span class="o">.</span><span class="n">adjoint</span><span class="p">[</span><span class="n">inN</span><span class="p">]</span> <span class="o">+=</span> <span class="o">...</span>
+</pre></div>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>It is currently not possible to define custom replay or grad functions for functions that
+have generic arguments, e.g. <code class="docutils literal notranslate"><span class="pre">Any</span></code> or <code class="docutils literal notranslate"><span class="pre">warp.array(dtype=Any)</span></code>. Replay or grad functions that
+themselves use generic arguments are also not yet supported.</p>
+</div>
+<section id="example-1-custom-grad-function">
+<h4>Example 1: Custom Grad Function<a class="headerlink" href="#example-1-custom-grad-function" title="Link to this heading">#</a></h4>
+<p>In the following, we define a Warp function <code class="docutils literal notranslate"><span class="pre">safe_sqrt</span></code> that computes the square root of a number:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span> <span class="nf">safe_sqrt</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+   <span class="k">return</span> <span class="n">wp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To evaluate this function, we define a kernel that applies <code class="docutils literal notranslate"><span class="pre">safe_sqrt</span></code> to an array of input values:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span> <span class="nf">run_safe_sqrt</span><span class="p">(</span><span class="n">xs</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span> <span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+   <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+   <span class="n">output</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">safe_sqrt</span><span class="p">(</span><span class="n">xs</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Calling the kernel for an array of values <code class="docutils literal notranslate"><span class="pre">[1.0,</span> <span class="pre">2.0,</span> <span class="pre">0.0]</span></code> yields the expected outputs, the gradients are finite except for the zero input:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xs</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">ys</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span>
+<span class="n">tape</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span>
+<span class="k">with</span> <span class="n">tape</span><span class="p">:</span>
+   <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">run_safe_sqrt</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">xs</span><span class="p">),</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">xs</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">ys</span><span class="p">])</span>
+<span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">grads</span><span class="o">=</span><span class="p">{</span><span class="n">ys</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">xs</span><span class="p">)),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)})</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;ys     &quot;</span><span class="p">,</span> <span class="n">ys</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;xs.grad&quot;</span><span class="p">,</span> <span class="n">xs</span><span class="o">.</span><span class="n">grad</span><span class="p">)</span>
+
+<span class="c1"># ys      [1.   1.4142135   0. ]</span>
+<span class="c1"># xs.grad [0.5  0.35355338  inf]</span>
+</pre></div>
+</div>
+<p>It is often desired to catch nonfinite gradients in the computation graph as they may cause the entire gradient computation to be nonfinite.
+To do so, we can define a custom gradient function that replaces the adjoint function for <code class="docutils literal notranslate"><span class="pre">safe_sqrt</span></code> which is automatically generated by
+decorating the custom gradient code via <code class="docutils literal notranslate"><span class="pre">&#64;wp.func_grad(safe_sqrt)</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func_grad</span><span class="p">(</span><span class="n">safe_sqrt</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">adj_safe_sqrt</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">adj_ret</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+   <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+      <span class="n">wp</span><span class="o">.</span><span class="n">adjoint</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">+=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">wp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> <span class="o">*</span> <span class="n">adj_ret</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The function signature of the custom grad code consists of the input arguments of the forward function plus the adjoint variables of the
+forward function outputs. To access and modify the partial derivatives of the input arguments, we use the <code class="docutils literal notranslate"><span class="pre">wp.adjoint</span></code> dictionary.
+The keys of this dictionary are the input arguments of the forward function, and the values are the partial derivatives of the forward function
+output with respect to the input argument.</p>
+</div>
+</section>
+<section id="example-2-custom-replay-function">
+<h4>Example 2: Custom Replay Function<a class="headerlink" href="#example-2-custom-replay-function" title="Link to this heading">#</a></h4>
+<p>In the following, we increment an array index in each thread via <code class="docutils literal notranslate"><span class="pre">wp.atomic_add</span></code> and compute the square root of an input array at the incremented index.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span> <span class="nf">test_add</span><span class="p">(</span><span class="n">counter</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span> <span class="nb">input</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span> <span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+   <span class="n">idx</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">atomic_add</span><span class="p">(</span><span class="n">counter</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+   <span class="n">output</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">input</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+   <span class="n">dim</span> <span class="o">=</span> <span class="mi">16</span>
+   <span class="n">use_reversible_increment</span> <span class="o">=</span> <span class="kc">False</span>
+   <span class="nb">input</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dim</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+   <span class="n">counter</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+   <span class="n">thread_ids</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+   <span class="n">output</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+   <span class="n">tape</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span>
+   <span class="k">with</span> <span class="n">tape</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">use_reversible_increment</span><span class="p">:</span>
+         <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">test_add_diff</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">counter</span><span class="p">,</span> <span class="n">thread_ids</span><span class="p">,</span> <span class="nb">input</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">output</span><span class="p">])</span>
+      <span class="k">else</span><span class="p">:</span>
+         <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">test_add</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">counter</span><span class="p">,</span> <span class="nb">input</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">output</span><span class="p">])</span>
+
+   <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;counter:    &quot;</span><span class="p">,</span> <span class="n">counter</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;thread_ids: &quot;</span><span class="p">,</span> <span class="n">thread_ids</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;input:      &quot;</span><span class="p">,</span> <span class="nb">input</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;output:     &quot;</span><span class="p">,</span> <span class="n">output</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+
+   <span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">grads</span><span class="o">=</span><span class="p">{</span>
+      <span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">dim</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+   <span class="p">})</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;input.grad: &quot;</span><span class="p">,</span> <span class="nb">input</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+   <span class="n">main</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The output of the above code is:</p>
+<div class="highlight-js notranslate"><div class="highlight"><pre><span></span><span class="nx">counter</span><span class="o">:</span><span class="w">     </span><span class="p">[</span><span class="mf">8</span><span class="p">]</span>
+<span class="nx">thread_ids</span><span class="o">:</span><span class="w">  </span><span class="p">[</span><span class="mf">0</span><span class="w"> </span><span class="mf">0</span><span class="w"> </span><span class="mf">0</span><span class="w"> </span><span class="mf">0</span><span class="w"> </span><span class="mf">0</span><span class="w"> </span><span class="mf">0</span><span class="w"> </span><span class="mf">0</span><span class="w"> </span><span class="mf">0</span><span class="p">]</span>
+<span class="nx">input</span><span class="o">:</span><span class="w">       </span><span class="p">[</span><span class="mf">1.</span><span class="w"> </span><span class="mf">2.</span><span class="w"> </span><span class="mf">3.</span><span class="w"> </span><span class="mf">4.</span><span class="w"> </span><span class="mf">5.</span><span class="w"> </span><span class="mf">6.</span><span class="w"> </span><span class="mf">7.</span><span class="w"> </span><span class="mf">8.</span><span class="p">]</span>
+<span class="nx">output</span><span class="o">:</span><span class="w">      </span><span class="p">[</span><span class="mf">1.</span><span class="w">  </span><span class="mf">1.4142135</span><span class="w">  </span><span class="mf">1.7320508</span><span class="w">  </span><span class="mf">2.</span><span class="w">  </span><span class="mf">2.236068</span><span class="w">  </span><span class="mf">2.4494898</span><span class="w">  </span><span class="mf">2.6457512</span><span class="w">  </span><span class="mf">2.828427</span><span class="p">]</span>
+<span class="nx">input</span><span class="p">.</span><span class="nx">grad</span><span class="o">:</span><span class="w">  </span><span class="p">[</span><span class="mf">4.</span><span class="w"> </span><span class="mf">0.</span><span class="w"> </span><span class="mf">0.</span><span class="w"> </span><span class="mf">0.</span><span class="w"> </span><span class="mf">0.</span><span class="w"> </span><span class="mf">0.</span><span class="w"> </span><span class="mf">0.</span><span class="w"> </span><span class="mf">0.</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>The gradient of the input is incorrect because the backward pass involving the atomic operation <code class="docutils literal notranslate"><span class="pre">wp.atomic_add</span></code> does not know which thread ID corresponds
+to which input value.
+The index returned by the adjoint of <code class="docutils literal notranslate"><span class="pre">wp.atomic_add</span></code> is always zero so that the gradient the first entry of the input array,
+i.e. <span class="math notranslate nohighlight">\(\frac{1}{2\sqrt{1}} = 0.5\)</span>, is accumulated <code class="docutils literal notranslate"><span class="pre">dim</span></code> times (hence <code class="docutils literal notranslate"><span class="pre">input.grad[0]</span> <span class="pre">==</span> <span class="pre">4.0</span></code> and all other entries zero).</p>
+<p>To fix this, we define a new Warp function <code class="docutils literal notranslate"><span class="pre">reversible_increment</span></code> with a custom <em>replay</em> definition that stores the thread ID in a separate array:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span> <span class="nf">reversible_increment</span><span class="p">(</span>
+   <span class="n">buf</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
+   <span class="n">buf_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+   <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+   <span class="n">thread_values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
+   <span class="n">tid</span><span class="p">:</span> <span class="nb">int</span>
+<span class="p">):</span>
+   <span class="n">next_index</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">atomic_add</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">buf_index</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+   <span class="c1"># store which thread ID corresponds to which index for the backward pass</span>
+   <span class="n">thread_values</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">next_index</span>
+   <span class="k">return</span> <span class="n">next_index</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func_replay</span><span class="p">(</span><span class="n">reversible_increment</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">replay_reversible_increment</span><span class="p">(</span>
+   <span class="n">buf</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
+   <span class="n">buf_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+   <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+   <span class="n">thread_values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
+   <span class="n">tid</span><span class="p">:</span> <span class="nb">int</span>
+<span class="p">):</span>
+   <span class="k">return</span> <span class="n">thread_values</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Instead of running the <code class="docutils literal notranslate"><span class="pre">reversible_increment</span></code> function, the custom replay code in function <code class="docutils literal notranslate"><span class="pre">replay_reversible_increment</span></code> is now executed
+during forward phase in the backward pass of the function calling <code class="docutils literal notranslate"><span class="pre">reversible_increment</span></code>.
+We first stored the array index to each thread ID in the forward pass, and now we retrieve the array index for each thread ID in the backward pass.
+That way, the backward pass can reproduce the same addition operation as in the forward pass with exactly the same operands per thread.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The function signature of the custom replay code must match the forward function signature.</p>
+</div>
+<p>To use our function we write the following kernel:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span> <span class="nf">test_add_diff</span><span class="p">(</span>
+   <span class="n">counter</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
+   <span class="n">thread_ids</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
+   <span class="nb">input</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span>
+   <span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="p">):</span>
+   <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+   <span class="n">idx</span> <span class="o">=</span> <span class="n">reversible_increment</span><span class="p">(</span><span class="n">counter</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">thread_ids</span><span class="p">,</span> <span class="n">tid</span><span class="p">)</span>
+   <span class="n">output</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">input</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Running the <code class="docutils literal notranslate"><span class="pre">test_add_diff</span></code> kernel via the previous <code class="docutils literal notranslate"><span class="pre">main</span></code> function with <code class="docutils literal notranslate"><span class="pre">use_reversible_increment</span> <span class="pre">=</span> <span class="pre">True</span></code>, we now compute correct gradients
+for the input array:</p>
+<div class="highlight-js notranslate"><div class="highlight"><pre><span></span><span class="nx">counter</span><span class="o">:</span><span class="w">     </span><span class="p">[</span><span class="mf">8</span><span class="p">]</span>
+<span class="nx">thread_ids</span><span class="o">:</span><span class="w">  </span><span class="p">[</span><span class="mf">0</span><span class="w"> </span><span class="mf">1</span><span class="w"> </span><span class="mf">2</span><span class="w"> </span><span class="mf">3</span><span class="w"> </span><span class="mf">4</span><span class="w"> </span><span class="mf">5</span><span class="w"> </span><span class="mf">6</span><span class="w"> </span><span class="mf">7</span><span class="p">]</span>
+<span class="nx">input</span><span class="o">:</span><span class="w">       </span><span class="p">[</span><span class="mf">1.</span><span class="w"> </span><span class="mf">2.</span><span class="w"> </span><span class="mf">3.</span><span class="w"> </span><span class="mf">4.</span><span class="w"> </span><span class="mf">5.</span><span class="w"> </span><span class="mf">6.</span><span class="w"> </span><span class="mf">7.</span><span class="w"> </span><span class="mf">8.</span><span class="p">]</span>
+<span class="nx">output</span><span class="o">:</span><span class="w">      </span><span class="p">[</span><span class="mf">1.</span><span class="w">   </span><span class="mf">1.4142135</span><span class="w">   </span><span class="mf">1.7320508</span><span class="w">   </span><span class="mf">2.</span><span class="w">    </span><span class="mf">2.236068</span><span class="w">   </span><span class="mf">2.4494898</span><span class="w">   </span><span class="mf">2.6457512</span><span class="w">   </span><span class="mf">2.828427</span><span class="w">  </span><span class="p">]</span>
+<span class="nx">input</span><span class="p">.</span><span class="nx">grad</span><span class="o">:</span><span class="w">  </span><span class="p">[</span><span class="mf">0.5</span><span class="w">  </span><span class="mf">0.35355338</span><span class="w">  </span><span class="mf">0.28867513</span><span class="w">  </span><span class="mf">0.25</span><span class="w">  </span><span class="mf">0.2236068</span><span class="w">  </span><span class="mf">0.20412414</span><span class="w">  </span><span class="mf">0.18898225</span><span class="w">  </span><span class="mf">0.17677669</span><span class="p">]</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+<section id="graphs">
+<h2>Graphs<a class="headerlink" href="#graphs" title="Link to this heading">#</a></h2>
 <p>Launching kernels from Python introduces significant additional overhead compared to C++ or native programs. To address this, Warp exposes the concept of <a class="reference external" href="https://developer.nvidia.com/blog/cuda-graphs/">CUDA graphs</a> to allow recording large batches of kernels and replaying them with very little CPU overhead.</p>
 <p>To record a series of kernel launches use the <code class="docutils literal notranslate"><span class="pre">warp.capture_begin()</span></code> and <code class="docutils literal notranslate"><span class="pre">warp.capture_end()</span></code> API as follows:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># begin capture</span>
@@ -1507,14 +1786,14 @@ In Warp, instead of passing a scalar loss buffer to the <code class="docutils li
 <p>Note that only launch calls are recorded in the graph, any Python executed outside of the kernel code will not be recorded. Typically it only makes sense to use CUDA graphs when the graph will be reused / launched multiple times.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.capture_begin">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">capture_begin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_module_load</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.capture_begin" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">capture_begin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_module_load</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.capture_begin" title="Link to this definition">#</a></dt>
 <dd><p>Begin capture of a CUDA graph</p>
 <p>Captures all subsequent kernel launches and memory operations on CUDA devices.
 This can be used to record large numbers of kernels and replay them with low-overhead.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.11)"><em>Union</em></a><em>[</em><em>Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em><em>]</em>) – The device to capture on, if None the current CUDA device will be used</p></li>
+<li><p><strong>device</strong> (<em>Device</em><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>None</em>) – The device to capture on, if None the current CUDA device will be used</p></li>
 <li><p><strong>stream</strong> – The CUDA stream to capture on</p></li>
 <li><p><strong>force_module_load</strong> – Whether or not to force loading of all kernels before capture, in general it is better to use <code class="xref py py-func docutils literal notranslate"><span class="pre">load_module()</span></code> to selectively load kernels.</p></li>
 </ul>
@@ -1524,16 +1803,16 @@ This can be used to record large numbers of kernels and replay them with low-ove
 
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.capture_end">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">capture_end</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.capture_end" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">capture_end</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.capture_end" title="Link to this definition">#</a></dt>
 <dd><p>Ends the capture of a CUDA graph</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>A handle to a CUDA graph object that can be launched with <a class="reference internal" href="#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">capture_launch()</span></code></a></p>
 </dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.11)"><em>Union</em></a><em>[</em><em>Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em><em>]</em>) – </p>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>device</strong> (<em>Device</em><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>None</em>) – </p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><em>Graph</em></p>
 </dd>
 </dl>
@@ -1541,20 +1820,20 @@ This can be used to record large numbers of kernels and replay them with low-ove
 
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.capture_launch">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">capture_launch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.capture_launch" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">capture_launch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.capture_launch" title="Link to this definition">#</a></dt>
 <dd><p>Launch a previously captured CUDA graph</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>graph</strong> (<em>Graph</em>) – A Graph as returned by <a class="reference internal" href="#warp.capture_end" title="warp.capture_end"><code class="xref py py-func docutils literal notranslate"><span class="pre">capture_end()</span></code></a></p></li>
-<li><p><strong>stream</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><em>Stream</em><em>]</em>) – A Stream to launch the graph on (optional)</p></li>
+<li><p><strong>stream</strong> (<em>Stream</em><em> | </em><em>None</em>) – A Stream to launch the graph on (optional)</p></li>
 </ul>
 </dd>
 </dl>
 </dd></dl>
 
-</div>
-</div>
+</section>
+</section>
 
         </article>
       </div>
@@ -1672,6 +1951,8 @@ This can be used to record large numbers of kernels and replay them with low-ove
 <li><a class="reference internal" href="#warp.Volume"><code class="docutils literal notranslate"><span class="pre">Volume</span></code></a><ul>
 <li><a class="reference internal" href="#warp.Volume.CLOSEST"><code class="docutils literal notranslate"><span class="pre">Volume.CLOSEST</span></code></a></li>
 <li><a class="reference internal" href="#warp.Volume.LINEAR"><code class="docutils literal notranslate"><span class="pre">Volume.LINEAR</span></code></a></li>
+<li><a class="reference internal" href="#warp.Volume.load_from_nvdb"><code class="docutils literal notranslate"><span class="pre">Volume.load_from_nvdb()</span></code></a></li>
+<li><a class="reference internal" href="#warp.Volume.load_from_numpy"><code class="docutils literal notranslate"><span class="pre">Volume.load_from_numpy()</span></code></a></li>
 <li><a class="reference internal" href="#warp.Volume.allocate"><code class="docutils literal notranslate"><span class="pre">Volume.allocate()</span></code></a></li>
 <li><a class="reference internal" href="#warp.Volume.allocate_by_tiles"><code class="docutils literal notranslate"><span class="pre">Volume.allocate_by_tiles()</span></code></a></li>
 </ul>
@@ -1688,8 +1969,19 @@ This can be used to record large numbers of kernels and replay them with low-ove
 </ul>
 </li>
 <li><a class="reference internal" href="#differentiability">Differentiability</a><ul>
-<li><a class="reference internal" href="#warp.Tape"><code class="docutils literal notranslate"><span class="pre">Tape</span></code></a></li>
+<li><a class="reference internal" href="#warp.Tape"><code class="docutils literal notranslate"><span class="pre">Tape</span></code></a><ul>
+<li><a class="reference internal" href="#warp.Tape.backward"><code class="docutils literal notranslate"><span class="pre">Tape.backward()</span></code></a></li>
+<li><a class="reference internal" href="#warp.Tape.record_func"><code class="docutils literal notranslate"><span class="pre">Tape.record_func()</span></code></a></li>
+<li><a class="reference internal" href="#warp.Tape.reset"><code class="docutils literal notranslate"><span class="pre">Tape.reset()</span></code></a></li>
+<li><a class="reference internal" href="#warp.Tape.zero"><code class="docutils literal notranslate"><span class="pre">Tape.zero()</span></code></a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#jacobians">Jacobians</a></li>
+<li><a class="reference internal" href="#custom-gradient-functions">Custom Gradient Functions</a><ul>
+<li><a class="reference internal" href="#example-1-custom-grad-function">Example 1: Custom Grad Function</a></li>
+<li><a class="reference internal" href="#example-2-custom-replay-function">Example 2: Custom Replay Function</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a class="reference internal" href="#graphs">Graphs</a><ul>
@@ -1709,13 +2001,10 @@ This can be used to record large numbers of kernels and replay them with low-ove
       
     </aside>
   </div>
-</div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-    <script src="../_static/jquery.js"></script>
-    <script src="../_static/underscore.js"></script>
-    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
-    <script src="../_static/doctools.js"></script>
-    <script src="../_static/sphinx_highlight.js"></script>
-    <script src="../_static/scripts/furo.js"></script>
+</div><script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=32e29ea5"></script>
     <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     </body>
 </html>

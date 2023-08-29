@@ -1,14 +1,14 @@
 <!doctype html>
-<html class="no-js" lang="en">
+<html class="no-js" lang="en" data-content_root="./">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="#" /><link rel="search" title="Search" href="search.html" />
 
-    <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 --><title>Index - Warp 0.10.1</title>
-<link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css" />
+    <!-- Generated with Sphinx 7.2.2 and Furo 2023.08.19 --><title>Index - Warp1.0.0-beta.1</title>
+<link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=112ea5a1" />
     
     
 
@@ -134,7 +134,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Warp 0.10.1</div></a>
+      <a href="index.html"><div class="brand">Warp<br\>1.0.0-beta.1</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -161,7 +161,7 @@
     <img class="sidebar-logo only-dark" src="_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 0.10.1</span>
+  <span class="sidebar-brand-text">Warp<br\>1.0.0-beta.1</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -185,6 +185,7 @@
 <li class="toctree-l1"><a class="reference internal" href="modules/sim.html">Simulation Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/sparse.html">Sparse Linear Algebra Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/fem.html">FEM Toolkit Reference</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Index</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Project Links</span></p>
@@ -252,6 +253,8 @@
 </li>
         <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_edges">add_edges() (warp.sim.ModelBuilder method)</a>
 </li>
+        <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_joint">add_joint() (warp.sim.ModelBuilder method)</a>
+</li>
         <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_joint_ball">add_joint_ball() (warp.sim.ModelBuilder method)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_joint_compound">add_joint_compound() (warp.sim.ModelBuilder method)</a>
@@ -282,11 +285,13 @@
 </li>
         <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_shape_cylinder">add_shape_cylinder() (warp.sim.ModelBuilder method)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_shape_mesh">add_shape_mesh() (warp.sim.ModelBuilder method)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_shape_plane">add_shape_plane() (warp.sim.ModelBuilder method)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_shape_sdf">add_shape_sdf() (warp.sim.ModelBuilder method)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_shape_sphere">add_shape_sphere() (warp.sim.ModelBuilder method)</a>
 </li>
@@ -306,6 +311,12 @@
 </li>
         <li><a href="modules/runtime.html#warp.Volume.allocate_by_tiles">allocate_by_tiles() (warp.Volume class method)</a>
 </li>
+        <li><a href="modules/fem.html#warp.fem.quadrature.PicQuadrature.Arg">Arg (warp.fem.quadrature.PicQuadrature attribute)</a>
+
+        <ul>
+          <li><a href="modules/fem.html#warp.fem.quadrature.Quadrature.Arg">(warp.fem.quadrature.Quadrature attribute)</a>
+</li>
+        </ul></li>
         <li><a href="modules/functions.html#warp.argmax">argmax() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.argmin">argmin() (in module warp)</a>
@@ -332,6 +343,10 @@
 </li>
         <li><a href="modules/functions.html#warp.atomic_sub">atomic_sub() (in module warp)</a>
 </li>
+        <li><a href="modules/fem.html#warp.fem.operator.average">average() (in module warp.fem.operator)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.JointAxis.axis">axis (warp.sim.JointAxis attribute)</a>
+</li>
     </ul></td>
   </tr></table>
 </section>
@@ -340,6 +355,8 @@
   <h2>B</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/runtime.html#warp.Tape.backward">backward() (warp.Tape method)</a>
+</li>
         <li><a href="modules/functions.html#warp.bit_and">bit_and() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.bit_or">bit_or() (in module warp)</a>
@@ -353,6 +370,12 @@
         <li><a href="modules/sim.html#warp.sim.Model.body_com">body_com (warp.sim.Model attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.body_count">body_count (warp.sim.Model attribute)</a>
+
+        <ul>
+          <li><a href="modules/sim.html#warp.sim.State.body_count">(warp.sim.State attribute)</a>
+</li>
+        </ul></li>
+        <li><a href="modules/sim.html#warp.sim.State.body_f">body_f (warp.sim.State attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.body_inertia">body_inertia (warp.sim.Model attribute)</a>
 </li>
@@ -380,6 +403,10 @@
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/fem.html#warp.fem.geometry.GeometryPartition.boundary_side_count">boundary_side_count() (warp.fem.geometry.GeometryPartition method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.geometry.Geometry.boundary_side_index">boundary_side_index() (warp.fem.geometry.Geometry method)</a>
+</li>
         <li><a href="modules/functions.html#warp.breakpoint">breakpoint() (in module warp)</a>
 </li>
         <li><a href="modules/sparse.html#warp.sparse.bsr_assign">bsr_assign() (in module warp.sparse)</a>
@@ -432,18 +459,42 @@
 </li>
         <li><a href="modules/functions.html#warp.ceil">ceil() (in module warp)</a>
 </li>
+        <li><a href="modules/fem.html#warp.fem.geometry.Geometry.cell_arg_value">cell_arg_value() (warp.fem.geometry.Geometry method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.geometry.ExplicitGeometryPartition.cell_count">cell_count() (warp.fem.geometry.ExplicitGeometryPartition method)</a>
+
+        <ul>
+          <li><a href="modules/fem.html#warp.fem.geometry.GeometryPartition.cell_count">(warp.fem.geometry.GeometryPartition method)</a>
+</li>
+          <li><a href="modules/fem.html#warp.fem.geometry.LinearGeometryPartition.cell_count">(warp.fem.geometry.LinearGeometryPartition method)</a>
+</li>
+        </ul></li>
+        <li><a href="modules/fem.html#warp.fem.geometry.Geometry.cell_lookup">cell_lookup() (warp.fem.geometry.Geometry method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.geometry.Geometry.cell_measure">cell_measure() (warp.fem.geometry.Geometry method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.geometry.Geometry.cell_measure_ratio">cell_measure_ratio() (warp.fem.geometry.Geometry method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.geometry.Geometry.cell_normal">cell_normal() (warp.fem.geometry.Geometry method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.geometry.Geometry.cell_position">cell_position() (warp.fem.geometry.Geometry method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.geometry.Geometry.CellArg">CellArg (warp.fem.geometry.Geometry attribute)</a>
+</li>
         <li><a href="modules/functions.html#warp.clamp">clamp() (in module warp)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/runtime.html#warp.clone">clone() (in module warp)</a>
 </li>
         <li><a href="modules/runtime.html#warp.Volume.CLOSEST">CLOSEST (warp.Volume attribute)</a>
 </li>
         <li><a href="modules/functions.html#warp.closest_point_edge_edge">closest_point_edge_edge() (in module warp)</a>
 </li>
+        <li><a href="modules/sim.html#warp.sim.ModelBuilder.collapse_fixed_joints">collapse_fixed_joints() (warp.sim.ModelBuilder method)</a>
+</li>
         <li><a href="modules/sparse.html#warp.sparse.BsrMatrix.columns">columns (warp.sparse.BsrMatrix attribute)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/runtime.html#warp.constant">constant (class in warp)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.contact_count">contact_count (warp.sim.Model attribute)</a>
@@ -472,7 +523,11 @@
   <h2>D</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/fem.html#warp.fem.operator.D">D() (in module warp.fem.operator)</a>
+</li>
         <li><a href="modules/functions.html#warp.ddot">ddot() (in module warp)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.operator.degree">degree() (in module warp.fem.operator)</a>
 </li>
         <li><a href="modules/functions.html#warp.degrees">degrees() (in module warp)</a>
 </li>
@@ -494,17 +549,33 @@
 </li>
         <li><a href="modules/interoperability.html#warp.dlpack.device_to_dlpack">device_to_dlpack() (in module warp.dlpack)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/interoperability.html#warp.jax.device_to_jax">device_to_jax() (in module warp.jax)</a>
 </li>
         <li><a href="modules/interoperability.html#warp.torch.device_to_torch">device_to_torch() (in module warp.torch)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/functions.html#warp.diag">diag() (in module warp)</a>
 </li>
+        <li><a href="modules/fem.html#warp.fem.space.FunctionSpace.DIMENSION">DIMENSION (warp.fem.space.FunctionSpace attribute)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.domain.GeometryDomain.dimension">dimension() (warp.fem.domain.GeometryDomain method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.field.DiscreteField">DiscreteField (class in warp.fem.field)</a>
+</li>
         <li><a href="modules/functions.html#warp.div">div() (in module warp)</a>
+
+        <ul>
+          <li><a href="modules/fem.html#warp.fem.operator.div">(in module warp.fem.operator)</a>
+</li>
+        </ul></li>
+        <li><a href="modules/fem.html#warp.fem.field.DiscreteField.dof_values">dof_values (warp.fem.field.DiscreteField property)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.space.DofMapper">DofMapper (class in warp.fem.space)</a>
 </li>
         <li><a href="modules/functions.html#warp.dot">dot() (in module warp)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.space.FunctionSpace.dtype">dtype (warp.fem.space.FunctionSpace attribute)</a>
 </li>
         <li><a href="modules/interoperability.html#warp.dlpack.dtype_from_dlpack">dtype_from_dlpack() (in module warp.dlpack)</a>
 </li>
@@ -536,17 +607,65 @@
 </li>
         <li><a href="modules/functions.html#warp.eig3">eig3() (in module warp)</a>
 </li>
+        <li><a href="modules/profiling.html#warp.ScopedTimer.elapsed">elapsed (warp.ScopedTimer attribute)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.domain.GeometryDomain.element_arg_value">element_arg_value() (warp.fem.domain.GeometryDomain method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.domain.GeometryDomain.element_count">element_count() (warp.fem.domain.GeometryDomain method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.domain.GeometryDomain.element_index">element_index (warp.fem.domain.GeometryDomain attribute)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.domain.GeometryDomain.element_index_arg_value">element_index_arg_value() (warp.fem.domain.GeometryDomain method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.space.FunctionSpace.element_inner_weight">element_inner_weight() (warp.fem.space.FunctionSpace method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.space.FunctionSpace.element_inner_weight_gradient">element_inner_weight_gradient() (warp.fem.space.FunctionSpace method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.domain.GeometryDomain.element_lookup">element_lookup (warp.fem.domain.GeometryDomain attribute)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.domain.GeometryDomain.element_measure">element_measure (warp.fem.domain.GeometryDomain attribute)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.domain.GeometryDomain.element_measure_ratio">element_measure_ratio (warp.fem.domain.GeometryDomain attribute)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.space.FunctionSpace.element_node_index">element_node_index() (warp.fem.space.FunctionSpace method)</a>
+</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="modules/profiling.html#warp.ScopedTimer.elapsed">elapsed (warp.ScopedTimer attribute)</a>
+        <li><a href="modules/fem.html#warp.fem.domain.GeometryDomain.element_normal">element_normal (warp.fem.domain.GeometryDomain attribute)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.space.FunctionSpace.element_outer_weight">element_outer_weight() (warp.fem.space.FunctionSpace method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.domain.GeometryDomain.element_position">element_position (warp.fem.domain.GeometryDomain attribute)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.domain.GeometryDomain.ElementArg">ElementArg (warp.fem.domain.GeometryDomain attribute)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.domain.GeometryDomain.ElementIndexArg">ElementIndexArg (warp.fem.domain.GeometryDomain attribute)</a>
 </li>
         <li><a href="modules/runtime.html#warp.empty">empty() (in module warp)</a>
 </li>
         <li><a href="modules/runtime.html#warp.empty_like">empty_like() (in module warp)</a>
 </li>
+        <li><a href="modules/fem.html#warp.fem.field.DiscreteField.eval_arg_value">eval_arg_value() (warp.fem.field.DiscreteField method)</a>
+
+        <ul>
+          <li><a href="modules/fem.html#warp.fem.quadrature.Quadrature.eval_arg_value">(warp.fem.quadrature.Quadrature method)</a>
+</li>
+        </ul></li>
+        <li><a href="modules/fem.html#warp.fem.field.DiscreteField.eval_grad_inner">eval_grad_inner() (warp.fem.field.DiscreteField method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.field.DiscreteField.eval_grad_outer">eval_grad_outer() (warp.fem.field.DiscreteField method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.field.DiscreteField.eval_inner">eval_inner() (warp.fem.field.DiscreteField method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.field.DiscreteField.eval_outer">eval_outer() (warp.fem.field.DiscreteField method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.field.DiscreteField.EvalArg">EvalArg (warp.fem.field.DiscreteField attribute)</a>
+</li>
         <li><a href="modules/functions.html#warp.exp">exp() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.expect_near">expect_near() (in module warp)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.geometry.ExplicitGeometryPartition">ExplicitGeometryPartition (class in warp.fem.geometry)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -556,24 +675,22 @@
   <h2>F</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/fem.html#warp.fem.field.FieldRestriction">FieldRestriction (class in warp.fem.field)</a>
+</li>
         <li><a href="modules/sim.html#warp.sim.ModelBuilder.finalize">finalize() (warp.sim.ModelBuilder method)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.flatten">flatten() (warp.sim.Model method)</a>
-
-        <ul>
-          <li><a href="modules/sim.html#warp.sim.State.flatten">(warp.sim.State method)</a>
 </li>
-        </ul></li>
         <li><a href="modules/functions.html#warp.Float">Float (class in warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.float16">float16 (class in warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.float32">float32 (class in warp)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/functions.html#warp.float64">float64 (class in warp)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/functions.html#warp.floor">floor() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.floordiv">floordiv() (in module warp)</a>
@@ -584,6 +701,10 @@
 </li>
         <li><a href="modules/interoperability.html#warp.torch.from_torch">from_torch() (in module warp.torch)</a>
 </li>
+        <li><a href="modules/fem.html#warp.fem.geometry.GeometryPartition.frontier_side_count">frontier_side_count() (warp.fem.geometry.GeometryPartition method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.space.FunctionSpace">FunctionSpace (class in warp.fem.space)</a>
+</li>
     </ul></td>
   </tr></table>
 </section>
@@ -592,12 +713,28 @@
   <h2>G</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/fem.html#warp.fem.geometry.Geometry">Geometry (class in warp.fem.geometry)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.space.FunctionSpace.geometry">geometry() (warp.fem.space.FunctionSpace method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.domain.GeometryDomain">GeometryDomain (class in warp.fem.domain)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.geometry.GeometryPartition">GeometryPartition (class in warp.fem.geometry)</a>
+</li>
         <li><a href="modules/functions.html#warp.get_diag">get_diag() (in module warp)</a>
 </li>
-        <li><a href="modules/sim.html#warp.sim.Model.gravity">gravity (warp.sim.Model attribute)</a>
+        <li><a href="modules/fem.html#warp.fem.operator.grad">grad() (in module warp.fem.operator)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/fem.html#warp.fem.operator.grad_average">grad_average() (in module warp.fem.operator)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.operator.grad_jump">grad_jump() (in module warp.fem.operator)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.operator.grad_outer">grad_outer() (in module warp.fem.operator)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.Model.gravity">gravity (warp.sim.Model attribute)</a>
+</li>
         <li><a href="modules/sim.html#warp.sim.Model.ground">ground (warp.sim.Model attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.ground_plane">ground_plane (warp.sim.Model attribute)</a>
@@ -636,17 +773,27 @@
         </ul></li>
         <li><a href="modules/functions.html#warp.identity">identity() (in module warp)</a>
 </li>
+        <li><a href="modules/fem.html#warp.fem.operator.inner">inner() (in module warp.fem.operator)</a>
+</li>
         <li><a href="modules/functions.html#warp.Int">Int (class in warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.int16">int16 (class in warp)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/functions.html#warp.int32">int32 (class in warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.int64">int64 (class in warp)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/functions.html#warp.int8">int8 (class in warp)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.operator.integrand">integrand() (in module warp.fem.operator)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.integrate.integrate">integrate() (in module warp.fem.integrate)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.space.SpacePartition.interior_node_count">interior_node_count() (warp.fem.space.SpacePartition method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.integrate.interpolate">interpolate() (in module warp.fem.integrate)</a>
 </li>
         <li><a href="modules/functions.html#warp.intersect_tri_tri">intersect_tri_tri() (in module warp)</a>
 </li>
@@ -680,31 +827,51 @@
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.joint_axis_start">joint_axis_start (warp.sim.Model attribute)</a>
 </li>
+        <li><a href="modules/sim.html#warp.sim.JOINT_BALL">JOINT_BALL (in module warp.sim)</a>
+</li>
         <li><a href="modules/sim.html#warp.sim.Model.joint_child">joint_child (warp.sim.Model attribute)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.JOINT_COMPOUND">JOINT_COMPOUND (in module warp.sim)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.joint_coord_count">joint_coord_count (warp.sim.Model attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.joint_count">joint_count (warp.sim.Model attribute)</a>
 </li>
+        <li><a href="modules/sim.html#warp.sim.JOINT_D6">JOINT_D6 (in module warp.sim)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.JOINT_DISTANCE">JOINT_DISTANCE (in module warp.sim)</a>
+</li>
         <li><a href="modules/sim.html#warp.sim.Model.joint_dof_count">joint_dof_count (warp.sim.Model attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.joint_enabled">joint_enabled (warp.sim.Model attribute)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.JOINT_FIXED">JOINT_FIXED (in module warp.sim)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.JOINT_FREE">JOINT_FREE (in module warp.sim)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.joint_limit_kd">joint_limit_kd (warp.sim.Model attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.joint_limit_ke">joint_limit_ke (warp.sim.Model attribute)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/sim.html#warp.sim.Model.joint_limit_lower">joint_limit_lower (warp.sim.Model attribute)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/sim.html#warp.sim.Model.joint_limit_upper">joint_limit_upper (warp.sim.Model attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.joint_linear_compliance">joint_linear_compliance (warp.sim.Model attribute)</a>
 </li>
+        <li><a href="modules/sim.html#warp.sim.JOINT_MODE_LIMIT">JOINT_MODE_LIMIT (in module warp.sim)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.JOINT_MODE_TARGET_POSITION">JOINT_MODE_TARGET_POSITION (in module warp.sim)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.JOINT_MODE_TARGET_VELOCITY">JOINT_MODE_TARGET_VELOCITY (in module warp.sim)</a>
+</li>
         <li><a href="modules/sim.html#warp.sim.Model.joint_name">joint_name (warp.sim.Model attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.joint_parent">joint_parent (warp.sim.Model attribute)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.JOINT_PRISMATIC">JOINT_PRISMATIC (in module warp.sim)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.joint_q">joint_q (warp.sim.Model attribute)</a>
 </li>
@@ -713,6 +880,8 @@
         <li><a href="modules/sim.html#warp.sim.Model.joint_qd">joint_qd (warp.sim.Model attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.joint_qd_start">joint_qd_start (warp.sim.Model attribute)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.JOINT_REVOLUTE">JOINT_REVOLUTE (in module warp.sim)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.joint_target">joint_target (warp.sim.Model attribute)</a>
 </li>
@@ -726,9 +895,15 @@
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.joint_type">joint_type (warp.sim.Model attribute)</a>
 </li>
+        <li><a href="modules/sim.html#warp.sim.JOINT_UNIVERSAL">JOINT_UNIVERSAL (in module warp.sim)</a>
+</li>
         <li><a href="modules/sim.html#warp.sim.Model.joint_X_c">joint_X_c (warp.sim.Model attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.joint_X_p">joint_X_p (warp.sim.Model attribute)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.JointAxis">JointAxis (class in warp.sim)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.operator.jump">jump() (in module warp.fem.operator)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -746,15 +921,31 @@
 </li>
         <li><a href="modules/functions.html#warp.lerp">lerp() (in module warp)</a>
 </li>
+        <li><a href="modules/sim.html#warp.sim.JointAxis.limit_kd">limit_kd (warp.sim.JointAxis attribute)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.JointAxis.limit_ke">limit_ke (warp.sim.JointAxis attribute)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.JointAxis.limit_lower">limit_lower (warp.sim.JointAxis attribute)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.JointAxis.limit_upper">limit_upper (warp.sim.JointAxis attribute)</a>
+</li>
         <li><a href="modules/runtime.html#warp.Volume.LINEAR">LINEAR (warp.Volume attribute)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/fem.html#warp.fem.geometry.LinearGeometryPartition">LinearGeometryPartition (class in warp.fem.geometry)</a>
+</li>
+        <li><a href="modules/runtime.html#warp.Volume.load_from_numpy">load_from_numpy() (warp.Volume class method)</a>
+</li>
+        <li><a href="modules/runtime.html#warp.Volume.load_from_nvdb">load_from_nvdb() (warp.Volume class method)</a>
+</li>
         <li><a href="modules/functions.html#warp.log">log() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.log10">log10() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.log2">log2() (in module warp)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.operator.lookup">lookup() (in module warp.fem.operator)</a>
 </li>
         <li><a href="modules/functions.html#warp.lower_bound">lower_bound() (in module warp)</a>
 </li>
@@ -768,6 +959,20 @@
   <h2>M</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/fem.html#warp.fem.space.FunctionSpace.make_field">make_field() (warp.fem.space.FunctionSpace method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.space.make_polynomial_space">make_polynomial_space() (in module warp.fem.space)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.field.make_restriction">make_restriction() (in module warp.fem.field)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.space.make_space_partition">make_space_partition() (in module warp.fem.space)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.space.make_space_restriction">make_space_restriction() (in module warp.fem.space)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.field.make_test">make_test() (in module warp.fem.field)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.field.make_trial">make_trial() (in module warp.fem.field)</a>
+</li>
         <li><a href="modules/functions.html#warp.mat22d">mat22d (class in warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.mat22f">mat22f (class in warp)</a>
@@ -794,12 +999,18 @@
 </li>
         <li><a href="modules/functions.html#warp.max">max() (in module warp)</a>
 </li>
+        <li><a href="modules/fem.html#warp.fem.operator.measure">measure() (in module warp.fem.operator)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.operator.measure_ratio">measure_ratio() (in module warp.fem.operator)</a>
+</li>
         <li><a href="modules/runtime.html#warp.Mesh">Mesh (class in warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.mesh_eval_face_normal">mesh_eval_face_normal() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.mesh_eval_position">mesh_eval_position() (in module warp)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/functions.html#warp.mesh_eval_velocity">mesh_eval_velocity() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.mesh_get">mesh_get() (in module warp)</a>
@@ -808,8 +1019,6 @@
 </li>
         <li><a href="modules/functions.html#warp.mesh_get_point">mesh_get_point() (in module warp)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/functions.html#warp.mesh_get_velocity">mesh_get_velocity() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.mesh_query_aabb">mesh_query_aabb() (in module warp)</a>
@@ -831,6 +1040,8 @@
         <li><a href="modules/functions.html#warp.mlp">mlp() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.mod">mod() (in module warp)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.JointAxis.mode">mode (warp.sim.JointAxis attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model">Model (class in warp.sim)</a>
 </li>
@@ -867,11 +1078,25 @@
 </li>
         <li><a href="modules/sparse.html#warp.sparse.BsrMatrix.nnz">nnz (warp.sparse.BsrMatrix attribute)</a>
 </li>
-        <li><a href="modules/functions.html#warp.noise">noise() (in module warp)</a>
+        <li><a href="modules/fem.html#warp.fem.space.FunctionSpace.node_coords_in_element">node_coords_in_element() (warp.fem.space.FunctionSpace method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.space.FunctionSpace.node_count">node_count() (warp.fem.space.FunctionSpace method)</a>
+
+        <ul>
+          <li><a href="modules/fem.html#warp.fem.space.SpacePartition.node_count">(warp.fem.space.SpacePartition method)</a>
+</li>
+        </ul></li>
+        <li><a href="modules/fem.html#warp.fem.space.FunctionSpace.node_positions">node_positions() (warp.fem.space.FunctionSpace method)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/fem.html#warp.fem.space.FunctionSpace.NODES_PER_ELEMENT">NODES_PER_ELEMENT (warp.fem.space.FunctionSpace attribute)</a>
+</li>
+        <li><a href="modules/functions.html#warp.noise">noise() (in module warp)</a>
+</li>
         <li><a href="modules/functions.html#warp.nonzero">nonzero() (in module warp)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.operator.normal">normal() (in module warp.fem.operator)</a>
 </li>
         <li><a href="modules/functions.html#warp.normalize">normalize() (in module warp)</a>
 </li>
@@ -889,9 +1114,19 @@
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/sparse.html#warp.sparse.BsrMatrix.offsets">offsets (warp.sparse.BsrMatrix attribute)</a>
 </li>
+        <li><a href="modules/fem.html#warp.fem.operator.operator">operator() (in module warp.fem.operator)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.space.FunctionSpace.ORDER">ORDER (warp.fem.space.FunctionSpace attribute)</a>
+</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/functions.html#warp.outer">outer() (in module warp)</a>
+
+        <ul>
+          <li><a href="modules/fem.html#warp.fem.operator.outer">(in module warp.fem.operator)</a>
+</li>
+        </ul></li>
+        <li><a href="modules/fem.html#warp.fem.space.SpacePartition.owned_node_count">owned_node_count() (warp.fem.space.SpacePartition method)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -901,11 +1136,23 @@
   <h2>P</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/sim.html#warp.sim.parse_mjcf">parse_mjcf() (in module warp.sim)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.parse_urdf">parse_urdf() (in module warp.sim)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.parse_usd">parse_usd() (in module warp.sim)</a>
+</li>
         <li><a href="modules/sim.html#warp.sim.Model.particle_adhesion">particle_adhesion (warp.sim.Model attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.particle_cohesion">particle_cohesion (warp.sim.Model attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.particle_count">particle_count (warp.sim.Model attribute)</a>
+
+        <ul>
+          <li><a href="modules/sim.html#warp.sim.State.particle_count">(warp.sim.State attribute)</a>
+</li>
+        </ul></li>
+        <li><a href="modules/sim.html#warp.sim.State.particle_f">particle_f (warp.sim.State attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.particle_flags">particle_flags (warp.sim.Model attribute)</a>
 </li>
@@ -923,16 +1170,18 @@
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.particle_max_radius">particle_max_radius (warp.sim.Model attribute)</a>
 </li>
+        <li><a href="modules/sim.html#warp.sim.Model.particle_max_velocity">particle_max_velocity (warp.sim.Model attribute)</a>
+</li>
         <li><a href="modules/sim.html#warp.sim.Model.particle_mu">particle_mu (warp.sim.Model attribute)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/sim.html#warp.sim.Model.particle_q">particle_q (warp.sim.Model attribute)</a>
 
         <ul>
           <li><a href="modules/sim.html#warp.sim.State.particle_q">(warp.sim.State attribute)</a>
 </li>
         </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/sim.html#warp.sim.Model.particle_qd">particle_qd (warp.sim.Model attribute)</a>
 
         <ul>
@@ -945,11 +1194,29 @@
           <li><a href="modules/sim.html#id0">(warp.sim.Model property)</a>
 </li>
         </ul></li>
+        <li><a href="modules/fem.html#warp.fem.space.SpacePartition.partition_node_index">partition_node_index() (warp.fem.space.SpacePartition method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.quadrature.PicQuadrature">PicQuadrature (class in warp.fem.quadrature)</a>
+</li>
         <li><a href="modules/functions.html#warp.pnoise">pnoise() (in module warp)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.quadrature.PicQuadrature.point_coords">point_coords (warp.fem.quadrature.PicQuadrature attribute)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.quadrature.Quadrature.point_coords">point_coords() (warp.fem.quadrature.Quadrature method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.quadrature.PicQuadrature.point_count">point_count (warp.fem.quadrature.PicQuadrature attribute)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.quadrature.Quadrature.point_count">point_count() (warp.fem.quadrature.Quadrature method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.quadrature.PicQuadrature.point_weight">point_weight (warp.fem.quadrature.PicQuadrature attribute)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.quadrature.Quadrature.point_weight">point_weight() (warp.fem.quadrature.Quadrature method)</a>
 </li>
         <li><a href="modules/functions.html#warp.poisson">poisson() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.pos">pos() (in module warp)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.operator.position">position() (in module warp.fem.operator)</a>
 </li>
         <li><a href="modules/functions.html#warp.pow">pow() (in module warp)</a>
 </li>
@@ -967,6 +1234,8 @@
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/functions.html#warp.qr3">qr3() (in module warp)</a>
 </li>
+        <li><a href="modules/fem.html#warp.fem.quadrature.Quadrature">Quadrature (class in warp.fem.quadrature)</a>
+</li>
         <li><a href="modules/functions.html#warp.quat_from_axis_angle">quat_from_axis_angle() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.quat_from_matrix">quat_from_matrix() (in module warp)</a>
@@ -979,10 +1248,10 @@
 </li>
         <li><a href="modules/functions.html#warp.quat_rotate_inv">quat_rotate_inv() (in module warp)</a>
 </li>
-        <li><a href="modules/functions.html#warp.quat_rpy">quat_rpy() (in module warp)</a>
-</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/functions.html#warp.quat_rpy">quat_rpy() (in module warp)</a>
+</li>
         <li><a href="modules/functions.html#warp.quat_slerp">quat_slerp() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.quat_to_axis_angle">quat_to_axis_angle() (in module warp)</a>
@@ -1017,11 +1286,21 @@
 </li>
         <li><a href="modules/functions.html#warp.randn">randn() (in module warp)</a>
 </li>
-        <li><a href="modules/runtime.html#warp.Mesh.refit">refit() (warp.Mesh method)</a>
+        <li><a href="modules/runtime.html#warp.Tape.record_func">record_func() (warp.Tape method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.geometry.Geometry.reference_cell">reference_cell() (warp.fem.geometry.Geometry method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.domain.GeometryDomain.reference_element">reference_element() (warp.fem.domain.GeometryDomain method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.geometry.Geometry.reference_side">reference_side() (warp.fem.geometry.Geometry method)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/runtime.html#warp.Mesh.refit">refit() (warp.Mesh method)</a>
+</li>
         <li><a href="modules/sim.html#warp.sim.Model.requires_grad">requires_grad (warp.sim.Model attribute)</a>
+</li>
+        <li><a href="modules/runtime.html#warp.Tape.reset">reset() (warp.Tape method)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.rigid_contact_margin">rigid_contact_margin (warp.sim.Model attribute)</a>
 </li>
@@ -1075,6 +1354,8 @@
 </li>
         <li><a href="modules/sim.html#warp.sim.ModelBuilder.set_ground_plane">set_ground_plane() (warp.sim.ModelBuilder method)</a>
 </li>
+        <li><a href="modules/fem.html#warp.fem.field.DiscreteField.set_node_value">set_node_value() (warp.fem.field.DiscreteField method)</a>
+</li>
         <li><a href="modules/sparse.html#warp.sparse.BsrMatrix.shape">shape (warp.sparse.BsrMatrix property)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.shape_body">shape_body (warp.sim.Model attribute)</a>
@@ -1105,18 +1386,36 @@
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.shape_transform">shape_transform (warp.sim.Model attribute)</a>
 </li>
+        <li><a href="modules/fem.html#warp.fem.geometry.Geometry.side_arg_value">side_arg_value() (warp.fem.geometry.Geometry method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.geometry.GeometryPartition.side_count">side_count() (warp.fem.geometry.GeometryPartition method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.geometry.Geometry.side_inner_cell_index">side_inner_cell_index() (warp.fem.geometry.Geometry method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.geometry.Geometry.side_measure">side_measure() (warp.fem.geometry.Geometry method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.geometry.Geometry.side_measure_ratio">side_measure_ratio() (warp.fem.geometry.Geometry method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.geometry.Geometry.side_normal">side_normal() (warp.fem.geometry.Geometry method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.geometry.Geometry.side_outer_cell_index">side_outer_cell_index() (warp.fem.geometry.Geometry method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.geometry.Geometry.side_position">side_position() (warp.fem.geometry.Geometry method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.geometry.Geometry.SideArg">SideArg (warp.fem.geometry.Geometry attribute)</a>
+</li>
         <li><a href="modules/functions.html#warp.sign">sign() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.sin">sin() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.sinh">sinh() (in module warp)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/functions.html#warp.skew">skew() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.smoothstep">smoothstep() (in module warp)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/sim.html#warp.sim.Model.soft_contact_kd">soft_contact_kd (warp.sim.Model attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.soft_contact_ke">soft_contact_ke (warp.sim.Model attribute)</a>
@@ -1130,6 +1429,16 @@
         <li><a href="modules/sim.html#warp.sim.Model.soft_contact_mu">soft_contact_mu (warp.sim.Model attribute)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.soft_contact_restitution">soft_contact_restitution (warp.sim.Model attribute)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.space.FunctionSpace.space_arg_value">space_arg_value() (warp.fem.space.FunctionSpace method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.space.SpacePartition.space_node_indices">space_node_indices() (warp.fem.space.SpacePartition method)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.space.FunctionSpace.SpaceArg">SpaceArg (warp.fem.space.FunctionSpace attribute)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.space.SpacePartition">SpacePartition (class in warp.fem.space)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.space.SpaceRestriction">SpaceRestriction (class in warp.fem.space)</a>
 </li>
         <li><a href="modules/functions.html#warp.spatial_adjoint">spatial_adjoint() (in module warp)</a>
 </li>
@@ -1189,6 +1498,8 @@
 </li>
         <li><a href="modules/functions.html#warp.svd3">svd3() (in module warp)</a>
 </li>
+        <li><a href="modules/fem.html#warp.fem.space.SymmetricTensorMapper">SymmetricTensorMapper (class in warp.fem.space)</a>
+</li>
     </ul></td>
   </tr></table>
 </section>
@@ -1202,6 +1513,14 @@
         <li><a href="modules/functions.html#warp.tanh">tanh() (in module warp)</a>
 </li>
         <li><a href="modules/runtime.html#warp.Tape">Tape (class in warp)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.JointAxis.target">target (warp.sim.JointAxis attribute)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.JointAxis.target_kd">target_kd (warp.sim.JointAxis attribute)</a>
+</li>
+        <li><a href="modules/sim.html#warp.sim.JointAxis.target_ke">target_ke (warp.sim.JointAxis attribute)</a>
+</li>
+        <li><a href="modules/fem.html#warp.fem.field.TestField">TestField (class in warp.fem.field)</a>
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.tet_activations">tet_activations (warp.sim.Model attribute)</a>
 </li>
@@ -1221,16 +1540,28 @@
 </li>
         <li><a href="modules/interoperability.html#warp.torch.to_torch">to_torch() (in module warp.torch)</a>
 </li>
-        <li><a href="modules/functions.html#warp.trace">trace() (in module warp)</a>
+        <li><a href="modules/fem.html#warp.fem.quadrature.PicQuadrature.total_point_count">total_point_count() (warp.fem.quadrature.PicQuadrature method)</a>
+
+        <ul>
+          <li><a href="modules/fem.html#warp.fem.quadrature.Quadrature.total_point_count">(warp.fem.quadrature.Quadrature method)</a>
 </li>
+        </ul></li>
+        <li><a href="modules/functions.html#warp.trace">trace() (in module warp)</a>
+
+        <ul>
+          <li><a href="modules/fem.html#warp.fem.field.DiscreteField.trace">(warp.fem.field.DiscreteField method)</a>
+</li>
+          <li><a href="modules/fem.html#warp.fem.space.FunctionSpace.trace">(warp.fem.space.FunctionSpace method)</a>
+</li>
+        </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/functions.html#warp.transform_get_rotation">transform_get_rotation() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.transform_get_translation">transform_get_translation() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.transform_identity">transform_identity() (in module warp)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="modules/functions.html#warp.transform_inverse">transform_inverse() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.transform_multiply">transform_multiply() (in module warp)</a>
@@ -1261,6 +1592,8 @@
 </li>
         <li><a href="modules/sim.html#warp.sim.Model.tri_poses">tri_poses (warp.sim.Model attribute)</a>
 </li>
+        <li><a href="modules/fem.html#warp.fem.field.TrialField">TrialField (class in warp.fem.field)</a>
+</li>
         <li><a href="modules/functions.html#warp.trunc">trunc() (in module warp)</a>
 </li>
     </ul></td>
@@ -1277,9 +1610,11 @@
 </li>
         <li><a href="modules/functions.html#warp.uint64">uint64 (class in warp)</a>
 </li>
+        <li><a href="modules/functions.html#warp.uint8">uint8 (class in warp)</a>
+</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="modules/functions.html#warp.uint8">uint8 (class in warp)</a>
+        <li><a href="modules/fem.html#warp.fem.space.FunctionSpace.unit_dof_value">unit_dof_value() (warp.fem.space.FunctionSpace method)</a>
 </li>
         <li><a href="modules/functions.html#warp.unot">unot() (in module warp)</a>
 </li>
@@ -1295,6 +1630,8 @@
   <h2>V</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/fem.html#warp.fem.space.FunctionSpace.VALUE_DOF_COUNT">VALUE_DOF_COUNT (warp.fem.space.FunctionSpace attribute)</a>
+</li>
         <li><a href="modules/sparse.html#warp.sparse.BsrMatrix.values">values (warp.sparse.BsrMatrix attribute)</a>
 </li>
         <li><a href="modules/functions.html#warp.vec2b">vec2b (class in warp)</a>
@@ -1383,6 +1720,8 @@
 </li>
         <li><a href="modules/functions.html#warp.volume_sample_f">volume_sample_f() (in module warp)</a>
 </li>
+        <li><a href="modules/functions.html#warp.volume_sample_grad_f">volume_sample_grad_f() (in module warp)</a>
+</li>
         <li><a href="modules/functions.html#warp.volume_sample_i">volume_sample_i() (in module warp)</a>
 </li>
         <li><a href="modules/functions.html#warp.volume_sample_v">volume_sample_v() (in module warp)</a>
@@ -1412,6 +1751,8 @@
           <li><a href="modules/interoperability.html#module-warp.dlpack">module</a>
 </li>
         </ul></li>
+        <li><a href="modules/fem.html#warp.fem.warp.fem.types.Sample">warp.fem.types.Sample (class in warp.fem)</a>
+</li>
         <li>
     warp.jax
 
@@ -1453,10 +1794,12 @@
   <h2>Z</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="modules/runtime.html#warp.zeros">zeros() (in module warp)</a>
+        <li><a href="modules/runtime.html#warp.Tape.zero">zero() (warp.Tape method)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="modules/runtime.html#warp.zeros">zeros() (in module warp)</a>
+</li>
         <li><a href="modules/runtime.html#warp.zeros_like">zeros_like() (in module warp)</a>
 </li>
     </ul></td>
@@ -1501,12 +1844,9 @@
       
     </aside>
   </div>
-</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/jquery.js"></script>
-    <script src="_static/underscore.js"></script>
-    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
-    <script src="_static/doctools.js"></script>
-    <script src="_static/sphinx_highlight.js"></script>
-    <script src="_static/scripts/furo.js"></script>
+</div><script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/scripts/furo.js?v=32e29ea5"></script>
     </body>
 </html>

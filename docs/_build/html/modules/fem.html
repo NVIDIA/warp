@@ -1,0 +1,1963 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="prev" title="Sparse Linear Algebra Reference" href="sparse.html" />
+
+    <!-- Generated with Sphinx 7.2.2 and Furo 2023.08.19 -->
+        <title>FEM Toolkit Reference - Warp1.0.0-beta.1</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=36a5483c" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=112ea5a1" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  --admonition-title-font-size: 100%;
+  --admonition-font-size: 100%;
+  --color-api-pre-name: #4e9a06;
+  --color-api-name: #4e9a06;
+  --color-admonition-title--seealso: #ffffff;
+  --color-admonition-title-background--seealso: #448aff;
+  --color-admonition-title-background--note: #76b900;
+  --color-admonition-title--note: #ffffff;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-admonition-title-background--note: #535353;
+  --color-admonition-title--note: #ffffff;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-admonition-title-background--note: #535353;
+  --color-admonition-title--note: #ffffff;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">Warp<br\>1.0.0-beta.1</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../_static/logo-light-mode.png" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/logo-dark-mode.png" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">Warp<br\>1.0.0-beta.1</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">User's Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="runtime.html">Runtime Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="functions.html">Kernel Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sim.html">Simulation Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sparse.html">Sparse Linear Algebra Reference</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">FEM Toolkit Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NVIDIA/warp">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://discord.com/channels/827959428476174346/953756751977648148">Discord</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <section id="fem-toolkit-reference">
+<h1>FEM Toolkit Reference<a class="headerlink" href="#fem-toolkit-reference" title="Link to this heading">#</a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code> module is designed to facilitate computing weak-form integrals in element-based Galerkin methods,
+allowing to quickly experiment with various FEM formulations and discretization schemes.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The FEM tookit is under construction and should be expected to change rapidly, please treat this section as work in progress.</p>
+</div>
+<section id="integrands">
+<h2>Integrands<a class="headerlink" href="#integrands" title="Link to this heading">#</a></h2>
+<p>The core functionality of the FEM toolkit is the ability to integrate constant, linear and bilinear forms
+over various domains and using arbitrary interpolation basis.</p>
+<p>The main mechanism is the <code class="docutils literal notranslate"><span class="pre">warp.fem.integrand</span></code> decorator, for instance:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@integrand</span>
+<span class="k">def</span> <span class="nf">linear_form</span><span class="p">(</span>
+   <span class="n">s</span><span class="p">:</span> <span class="n">Sample</span><span class="p">,</span>
+   <span class="n">v</span><span class="p">:</span> <span class="n">Field</span><span class="p">,</span>
+<span class="p">):</span>
+   <span class="k">return</span> <span class="n">v</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+
+
+<span class="nd">@integrand</span>
+<span class="k">def</span> <span class="nf">diffusion_form</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="n">Sample</span><span class="p">,</span> <span class="n">u</span><span class="p">:</span> <span class="n">Field</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">Field</span><span class="p">,</span> <span class="n">nu</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+   <span class="k">return</span> <span class="n">nu</span> <span class="o">*</span> <span class="n">wp</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span>
+      <span class="n">grad</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">s</span><span class="p">),</span>
+      <span class="n">grad</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">),</span>
+   <span class="p">)</span>
+</pre></div>
+</div>
+<p>Integrands are normal warp kernels, meaning any usual warp function can be used.
+However, they accept a few special parameters:</p>
+<blockquote>
+<div><ul>
+<li><p><a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><code class="xref py py-class docutils literal notranslate"><span class="pre">types.Sample</span></code></a> contains information about the current integration sample point, such as the element index and coordinates in element.</p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">types.Field</span></code> designates an abstract field, which will be replaced at call time by the actual field type. This can be a <a class="reference internal" href="#warp.fem.field.DiscreteField" title="warp.fem.field.DiscreteField"><code class="xref py py-class docutils literal notranslate"><span class="pre">field.DiscreteField</span></code></a>, <a class="reference internal" href="#warp.fem.field.TestField" title="warp.fem.field.TestField"><code class="xref py py-class docutils literal notranslate"><span class="pre">field.TestField</span></code></a>, <a class="reference internal" href="#warp.fem.field.TrialField" title="warp.fem.field.TrialField"><code class="xref py py-class docutils literal notranslate"><span class="pre">field.TrialField</span></code></a> defined over arbitrary <a class="reference internal" href="#warp.fem.space.FunctionSpace" title="warp.fem.space.FunctionSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">space.FunctionSpace</span></code></a>.
+Fields can be evaluated at a given sample using the <a class="reference internal" href="#warp.fem.operator.inner" title="warp.fem.operator.inner"><code class="xref py py-func docutils literal notranslate"><span class="pre">operator.inner()</span></code></a> operator, or as a shortcut using the usual call operator.
+Several other operators are available, such as <a class="reference internal" href="#warp.fem.operator.grad" title="warp.fem.operator.grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">operator.grad()</span></code></a>; see the <a class="reference internal" href="#operators"><span class="std std-ref">Operators</span></a> section.</p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">types.Domain</span></code> designates an abstract integration domain. Several operators are also provided for domains, for example in the example below evaluating the normal at the current sample position:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@integrand</span>
+<span class="k">def</span> <span class="nf">y_mass_form</span><span class="p">(</span>
+    <span class="n">s</span><span class="p">:</span> <span class="n">Sample</span><span class="p">,</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="n">Domain</span><span class="p">,</span>
+    <span class="n">u</span><span class="p">:</span> <span class="n">Field</span><span class="p">,</span>
+    <span class="n">v</span><span class="p">:</span> <span class="n">Field</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="c1"># Non-zero mass on vertical edges only</span>
+    <span class="n">nor</span> <span class="o">=</span> <span class="n">normal</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">u</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">*</span> <span class="n">v</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">*</span> <span class="n">nor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</div></blockquote>
+<p>Integrands cannot be used directly with <a class="reference internal" href="runtime.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.launch()</span></code></a>, but must be called through <a class="reference internal" href="#warp.fem.integrate.integrate" title="warp.fem.integrate.integrate"><code class="xref py py-func docutils literal notranslate"><span class="pre">integrate.integrate()</span></code></a> or <a class="reference internal" href="#warp.fem.integrate.interpolate" title="warp.fem.integrate.interpolate"><code class="xref py py-func docutils literal notranslate"><span class="pre">integrate.interpolate()</span></code></a> instead.
+The root integrand (<code class="docutils literal notranslate"><span class="pre">integrand</span></code> argument to <code class="docutils literal notranslate"><span class="pre">integrate</span></code> or <code class="docutils literal notranslate"><span class="pre">interpolate</span></code>) will automatically get passed <a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><code class="xref py py-class docutils literal notranslate"><span class="pre">types.Sample</span></code></a> and <code class="xref py py-class docutils literal notranslate"><span class="pre">types.Domain</span></code> parameters.
+<code class="xref py py-class docutils literal notranslate"><span class="pre">types.Field</span></code> parameters must be passed as a dictionary in the <code class="docutils literal notranslate"><span class="pre">fields</span></code> argument of the launcher function, and all other standard Warp types arguments must be
+passed as a dictionary in the <code class="docutils literal notranslate"><span class="pre">values</span></code>  argument of the launcher function, for instance:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">integrate</span><span class="p">(</span><span class="n">diffusion_form</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;u&quot;</span><span class="p">:</span> <span class="n">trial</span><span class="p">,</span> <span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="n">test</span><span class="p">},</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;nu&quot;</span><span class="p">:</span> <span class="n">viscosity</span><span class="p">})</span>
+</pre></div>
+</div>
+</section>
+<section id="basic-workflow">
+<h2>Basic workflow<a class="headerlink" href="#basic-workflow" title="Link to this heading">#</a></h2>
+<p>The typical steps for solving a linear PDE are as follow:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Define a <a class="reference internal" href="#warp.fem.geometry.Geometry" title="warp.fem.geometry.Geometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">geometry.Geometry</span></code></a> (grid, mesh, etc). At the moment, 2D and 3D regular grids, triangle and tetrahedron meshes are supported.</p></li>
+<li><p>Define one or more <a class="reference internal" href="#warp.fem.space.FunctionSpace" title="warp.fem.space.FunctionSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">space.FunctionSpace</span></code></a>, by equipping the geometry elements with shape functions. See <a class="reference internal" href="#warp.fem.space.make_polynomial_space" title="warp.fem.space.make_polynomial_space"><code class="xref py py-func docutils literal notranslate"><span class="pre">space.make_polynomial_space()</span></code></a>. At the moment, Lagrange polynomial shape functions up to order 3 are supported.</p></li>
+<li><p>Define an integration <a class="reference internal" href="#warp.fem.domain.GeometryDomain" title="warp.fem.domain.GeometryDomain"><code class="xref py py-class docutils literal notranslate"><span class="pre">domain.GeometryDomain</span></code></a>: the geometry’s cells or boundary sides, for instance</p></li>
+<li><p>Integrate linear forms to build the system’s right-hand-side. Define a test function over the function space using <a class="reference internal" href="#warp.fem.field.make_test" title="warp.fem.field.make_test"><code class="xref py py-func docutils literal notranslate"><span class="pre">field.make_test()</span></code></a>,
+a <a class="reference internal" href="#warp.fem.quadrature.Quadrature" title="warp.fem.quadrature.Quadrature"><code class="xref py py-class docutils literal notranslate"><span class="pre">quadrature.Quadrature</span></code></a> formula (or let the module choose one based on the function space degree), and call <a class="reference internal" href="#warp.fem.integrate.integrate" title="warp.fem.integrate.integrate"><code class="xref py py-func docutils literal notranslate"><span class="pre">integrate.integrate()</span></code></a> with the linear form integrand.
+The result is a <a class="reference internal" href="runtime.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> containing the integration result for each of the function space degrees of freedom.</p></li>
+<li><p>Integrate bilinear forms to build the system’s left-hand-side. Define a trial function over the function space using <a class="reference internal" href="#warp.fem.field.make_trial" title="warp.fem.field.make_trial"><code class="xref py py-func docutils literal notranslate"><span class="pre">field.make_trial()</span></code></a>,
+then call <a class="reference internal" href="#warp.fem.integrate.integrate" title="warp.fem.integrate.integrate"><code class="xref py py-func docutils literal notranslate"><span class="pre">integrate.integrate()</span></code></a> with the bilinear form integrand.
+The result is a <a class="reference internal" href="sparse.html#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.sparse.BsrMatrix</span></code></a> containing the integration result for each pair of test and trial function space degrees of freedom.
+Note that the trial and test functions do not have to be defined over the same function space, so that Mixed FEM is supported.</p></li>
+<li><p>Solve the resulting linear system using the solver of your choice</p></li>
+</ul>
+</div></blockquote>
+<p>The following excerpt from the introductory example <code class="docutils literal notranslate"><span class="pre">examples/fem/example_diffusion.py</span></code> outlines this procedure:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Grid geometry</span>
+<span class="n">geo</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">cell_size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+<span class="c1"># Domain and function spaces</span>
+<span class="n">domain</span> <span class="o">=</span> <span class="n">Cells</span><span class="p">(</span><span class="n">geometry</span><span class="o">=</span><span class="n">geo</span><span class="p">)</span>
+<span class="n">scalar_space</span> <span class="o">=</span> <span class="n">make_polynomial_space</span><span class="p">(</span><span class="n">geo</span><span class="p">,</span> <span class="n">degree</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+
+<span class="c1"># Right-hand-side (forcing term)</span>
+<span class="n">test</span> <span class="o">=</span> <span class="n">make_test</span><span class="p">(</span><span class="n">space</span><span class="o">=</span><span class="n">scalar_space</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">)</span>
+<span class="n">rhs</span> <span class="o">=</span> <span class="n">integrate</span><span class="p">(</span><span class="n">linear_form</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="n">test</span><span class="p">})</span>
+
+<span class="c1"># Weakly-imposed boundary conditions on Y sides</span>
+<span class="n">boundary</span> <span class="o">=</span> <span class="n">BoundarySides</span><span class="p">(</span><span class="n">geo</span><span class="p">)</span>
+<span class="n">bd_test</span> <span class="o">=</span> <span class="n">make_test</span><span class="p">(</span><span class="n">space</span><span class="o">=</span><span class="n">scalar_space</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">boundary</span><span class="p">)</span>
+<span class="n">bd_trial</span> <span class="o">=</span> <span class="n">make_trial</span><span class="p">(</span><span class="n">space</span><span class="o">=</span><span class="n">scalar_space</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">boundary</span><span class="p">)</span>
+<span class="n">bd_matrix</span> <span class="o">=</span> <span class="n">integrate</span><span class="p">(</span><span class="n">y_mass_form</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;u&quot;</span><span class="p">:</span> <span class="n">bd_trial</span><span class="p">,</span> <span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="n">bd_test</span><span class="p">})</span>
+
+<span class="c1"># Diffusion form</span>
+<span class="n">trial</span> <span class="o">=</span> <span class="n">make_trial</span><span class="p">(</span><span class="n">space</span><span class="o">=</span><span class="n">scalar_space</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">)</span>
+<span class="n">matrix</span> <span class="o">=</span> <span class="n">integrate</span><span class="p">(</span><span class="n">diffusion_form</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;u&quot;</span><span class="p">:</span> <span class="n">trial</span><span class="p">,</span> <span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="n">test</span><span class="p">},</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;nu&quot;</span><span class="p">:</span> <span class="n">viscosity</span><span class="p">})</span>
+
+<span class="c1"># Assemble linear system (add diffusion and boundary condition matrices)</span>
+<span class="n">bsr_axpy</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">bd_matrix</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">matrix</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">boundary_strength</span><span class="p">,</span> <span class="n">beta</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># Solve linear system using Conjugate Gradient</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">rhs</span><span class="p">)</span>
+<span class="n">bsr_cg</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="n">rhs</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <a class="reference internal" href="#warp.fem.integrate.integrate" title="warp.fem.integrate.integrate"><code class="xref py py-func docutils literal notranslate"><span class="pre">integrate.integrate()</span></code></a> function does not check that the passed integrands are actually linear or bilinear forms; it is up to the user to ensure that they are.
+To solve non-linear PDEs, one can use an iterative procedure and pass the current value of the studied function <code class="xref py py-class docutils literal notranslate"><span class="pre">DiscreteField</span></code> argument to the integrand, on which
+arbitrary operations are permitted. However, the result of the form must remain linear in the test and trial fields.</p>
+</div>
+</section>
+<section id="introductory-examples">
+<h2>Introductory examples<a class="headerlink" href="#introductory-examples" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">warp.fem</span></code> ships with a list of examples in the <code class="docutils literal notranslate"><span class="pre">examples/fem</span></code> directory illustrating common model problems.</p>
+<blockquote>
+<div><ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">example_diffusion.py</span></code>: 2D diffusion with homogenous Neumann and Dirichlet boundary conditions</dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">example_diffusion_3d.py</span></code>: 3D variant of the diffusion problem</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">example_convection_diffusion.py</span></code>: 2D convection-diffusion using semi-Lagrangian advection</dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">example_diffusion_dg0.py</span></code>: 2D convection-diffusion using finite-volume and upwind transport</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">example_diffusion_dg.py</span></code>: 2D convection-diffusion using Discontinuous Galerkin aith upwind transport and Symmetric Interior Penalty</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">example_stokes.py</span></code>: 2D incompressible Stokes flow using mixed P_k/P_{k-1} elements</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">example_navier_stokes.py</span></code>: 2D Navier-Stokes flow using mixed P_k/P_{k-1} elements</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">example_mixed_elasticity.py</span></code>: 2D linear elasticity using mixed continuous/discontinuous P_k/P_{k-1}d elements</p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="advanced-usages">
+<h2>Advanced usages<a class="headerlink" href="#advanced-usages" title="Link to this heading">#</a></h2>
+<section id="particle-based-quadrature">
+<h3>Particle-based quadrature<a class="headerlink" href="#particle-based-quadrature" title="Link to this heading">#</a></h3>
+<p>The <a class="reference internal" href="#warp.fem.quadrature.PicQuadrature" title="warp.fem.quadrature.PicQuadrature"><code class="xref py py-class docutils literal notranslate"><span class="pre">quadrature.PicQuadrature</span></code></a> provides a way to define Particle-In-Cell quadratures from a set or arbitrary particles,
+which can be helpful to develop MPM-like methods.
+The particles are automatically bucketed to the geometry cells when the quadrature is initialized.
+This is illustrated by the <code class="docutils literal notranslate"><span class="pre">example_stokes_transfer[_3d,</span> <span class="pre">_usd].py</span></code> series of examples.</p>
+</section>
+<section id="partitioning">
+<h3>Partitioning<a class="headerlink" href="#partitioning" title="Link to this heading">#</a></h3>
+<p>The FEM toolkit makes it possible to perform integration on a subset of the domain elements,
+possibly re-indexing degrees of freedom so that the linear system contains the local ones only.
+This is useful for distributed computation (see <code class="docutils literal notranslate"><span class="pre">examples/fem/example_diffusion_mgpu.py</span></code>), or simply to limit the simulation domain to a subset of active cells (see <code class="docutils literal notranslate"><span class="pre">examples/fem/example_stokes_transfer.py</span></code>).</p>
+<p>A partition of the simulation geometry can be defined using subclasses of <a class="reference internal" href="#warp.fem.geometry.GeometryPartition" title="warp.fem.geometry.GeometryPartition"><code class="xref py py-class docutils literal notranslate"><span class="pre">geometry.GeometryPartition</span></code></a>
+such as <a class="reference internal" href="#warp.fem.geometry.LinearGeometryPartition" title="warp.fem.geometry.LinearGeometryPartition"><code class="xref py py-class docutils literal notranslate"><span class="pre">geometry.LinearGeometryPartition</span></code></a>  or <a class="reference internal" href="#warp.fem.geometry.ExplicitGeometryPartition" title="warp.fem.geometry.ExplicitGeometryPartition"><code class="xref py py-class docutils literal notranslate"><span class="pre">geometry.ExplicitGeometryPartition</span></code></a>.</p>
+<p>Function spaces can then be partitioned according to the geometry partition using <a class="reference internal" href="#warp.fem.space.make_space_partition" title="warp.fem.space.make_space_partition"><code class="xref py py-func docutils literal notranslate"><span class="pre">space.make_space_partition()</span></code></a>.
+The resulting <a class="reference internal" href="#warp.fem.space.SpacePartition" title="warp.fem.space.SpacePartition"><code class="xref py py-class docutils literal notranslate"><span class="pre">space.SpacePartition</span></code></a> object allows translating between space-wide and partition-wide node indices,
+and differentiating interior, frontier and exterior nodes.</p>
+</section>
+</section>
+<section id="operators">
+<span id="id1"></span><h2>Operators<a class="headerlink" href="#operators" title="Link to this heading">#</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.operator.position">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">position</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Domain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><span class="pre">Sample</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.position" title="Link to this definition">#</a></dt>
+<dd><p>Evaluates the world position of the sample point x</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.operator.normal">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">normal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Domain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><span class="pre">Sample</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.normal" title="Link to this definition">#</a></dt>
+<dd><p>Evaluates the element normal at the sample point x. Null for interior points.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.operator.lookup">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Domain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.lookup" title="Link to this definition">#</a></dt>
+<dd><p>Look-ups a sample point from a world position, projecting to the closet point on the domain</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.operator.measure">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Domain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><span class="pre">Sample</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.measure" title="Link to this definition">#</a></dt>
+<dd><p>Returns the measure (volume, area, or length) of an element</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.operator.measure_ratio">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">measure_ratio</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Domain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><span class="pre">Sample</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.measure_ratio" title="Link to this definition">#</a></dt>
+<dd><p>Returns the maximum ratio between the measure of this element and that of higher-dimensional neighbours.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.operator.degree">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">degree</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Field</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.degree" title="Link to this definition">#</a></dt>
+<dd><p>Polynomial degree of a field</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.operator.inner">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">inner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><span class="pre">Sample</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.inner" title="Link to this definition">#</a></dt>
+<dd><p>Evaluates the field at a sample point x. On oriented sides, use the inner element</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.operator.outer">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">outer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><span class="pre">Sample</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.outer" title="Link to this definition">#</a></dt>
+<dd><p>Evaluates the field at a sample point x. On oriented sides, use the outer element. On interior points and on domain boundaries, this is equivalent to inner.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.operator.grad">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">grad</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><span class="pre">Sample</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.grad" title="Link to this definition">#</a></dt>
+<dd><p>Evaluates the field gradient at a sample point x. On oriented sides, use the inner element</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.operator.grad_outer">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">grad_outer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><span class="pre">Sample</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.grad_outer" title="Link to this definition">#</a></dt>
+<dd><p>Evaluates the field gradient at a sample point x. On oriented sides, use the outer element. On interior points and on domain boundaries, this is equivalent to grad.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.operator.D">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><span class="pre">Sample</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.D" title="Link to this definition">#</a></dt>
+<dd><p>Symmetric part of the (inner) gradient of the field at x</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.operator.div">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">div</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><span class="pre">Sample</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.div" title="Link to this definition">#</a></dt>
+<dd><p>(Inner) divergence of the field at x</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.operator.jump">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">jump</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><span class="pre">Sample</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.jump" title="Link to this definition">#</a></dt>
+<dd><p>Jump between inner and outer element values on an interior side. Zero for interior points or domain boundaries</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.operator.average">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">average</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><span class="pre">Sample</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.average" title="Link to this definition">#</a></dt>
+<dd><p>Average between inner and outer element values</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.operator.grad_jump">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">grad_jump</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><span class="pre">Sample</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.grad_jump" title="Link to this definition">#</a></dt>
+<dd><p>Jump between inner and outer element gradients on an interior side. Zero for interior points or domain boundaries</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.operator.grad_average">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">grad_average</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><span class="pre">Sample</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.grad_average" title="Link to this definition">#</a></dt>
+<dd><p>Average between inner and outer element gradients</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.operator.operator">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">operator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resolver</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.operator" title="Link to this definition">#</a></dt>
+<dd><p>Decorator for functions operating on Field-like or Domain-like data inside warp.fem integrands</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>resolver</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.11)"><em>Callable</em></a>) – </p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="integration">
+<h2>Integration<a class="headerlink" href="#integration" title="Link to this heading">#</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.integrate.integrate">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.integrate.</span></span><span class="sig-name descname"><span class="pre">integrate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">integrand</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quadrature=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nodal=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields={}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values={}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">accumulate_dtype=&lt;class</span> <span class="pre">'warp.types.float64'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dtype=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output=None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.integrate.integrate" title="Link to this definition">#</a></dt>
+<dd><p>Integrates a constant, linear or bilinear form, and returns a scalar, array, or sparse matrix, respectively.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>integrand</strong> (<em>Integrand</em>) – Form to be integrated, must have <cite>wp.integrand</cite> decorator</p></li>
+<li><p><strong>domain</strong> (<a class="reference internal" href="#warp.fem.domain.GeometryDomain" title="warp.fem.domain.GeometryDomain"><em>GeometryDomain</em></a><em> | </em><em>None</em>) – Integration domain. If None, deduced from fields</p></li>
+<li><p><strong>quadrature</strong> (<a class="reference internal" href="#warp.fem.quadrature.Quadrature" title="warp.fem.quadrature.quadrature.Quadrature"><em>Quadrature</em></a><em> | </em><em>None</em>) – Quadrature formula. If None, deduced from domain and fields degree.</p></li>
+<li><p><strong>nodal</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – For linear or bilinear form only, use the test function nodes as the quadrature points. Assumes Lagrange interpolation functions are used, and no differential or DG operator is evaluated on the test or trial functions.</p></li>
+<li><p><strong>fields</strong> – Discrete, test, and trial fields to be passed to the integrand. Keys in the dictionary must match integrand parameter names.</p></li>
+<li><p><strong>values</strong> – Additional variable values to be passed to the integrand, can by of any type accepted by warp kernel launchs. Keys in the dictionary must match integrand parameter names.</p></li>
+<li><p><strong>device</strong> – Device on which to perform the integration</p></li>
+<li><p><strong>accumulate_dtype</strong> – Scalar type to be used for accumulating integration samples</p></li>
+<li><p><strong>output_dtype</strong> – Scalar type for returned results. If None, defaults to accumulate_dtype</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.integrate.interpolate">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.integrate.</span></span><span class="sig-name descname"><span class="pre">interpolate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">integrand</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dest</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.integrate.interpolate" title="Link to this definition">#</a></dt>
+<dd><p>Interpolates a function and assigns the result to a discrete field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>integrand</strong> (<em>Integrand</em>) – Function to be interpolated, must have <cite>wp.integrand</cite> decorator</p></li>
+<li><p><strong>dest</strong> (<a class="reference internal" href="#warp.fem.field.DiscreteField" title="warp.fem.field.discrete_field.DiscreteField"><em>DiscreteField</em></a><em> | </em><a class="reference internal" href="#warp.fem.field.FieldRestriction" title="warp.fem.field.restriction.FieldRestriction"><em>FieldRestriction</em></a>) – Discrete field, or restriction of a discrete field to a domain, to which the interpolation result will be assigned</p></li>
+<li><p><strong>fields</strong> – Discrete fields to be passed to the integrand. Keys in the dictionary must match integrand parameters names.</p></li>
+<li><p><strong>values</strong> – Additional variable values to be passed to the integrand, can by of any type accepted by warp kernel launchs. Keys in the dictionary must match integrand parameter names.</p></li>
+<li><p><strong>device</strong> – Device on which to perform the interpolation</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.operator.integrand">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">integrand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.integrand" title="Link to this definition">#</a></dt>
+<dd><p>Decorator for functions to be integrated (or interpolated) using warp.fem</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>func</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.11)"><em>Callable</em></a>) – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.warp.fem.types.Sample">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.types.</span></span><span class="sig-name descname"><span class="pre">Sample</span></span><a class="headerlink" href="#warp.fem.warp.fem.types.Sample" title="Link to this definition">#</a></dt>
+<dd><p>Per-sample point context for evaluating fields and related operators in integrands.</p>
+</dd></dl>
+
+</section>
+<section id="geometry">
+<h2>Geometry<a class="headerlink" href="#geometry" title="Link to this heading">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.geometry.Geometry">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.geometry.</span></span><span class="sig-name descname"><span class="pre">Geometry</span></span><a class="headerlink" href="#warp.fem.geometry.Geometry" title="Link to this definition">#</a></dt>
+<dd><p>Interface class for discrete geometries</p>
+<p>A geometry is composed of cells and sides. Sides may be boundary or interior (between cells).</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.Geometry.reference_cell">
+<span class="sig-name descname"><span class="pre">reference_cell</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.Geometry.reference_cell" title="Link to this definition">#</a></dt>
+<dd><p>Prototypical element for a cell</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>Element</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.Geometry.reference_side">
+<span class="sig-name descname"><span class="pre">reference_side</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.Geometry.reference_side" title="Link to this definition">#</a></dt>
+<dd><p>Prototypical element for a side</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>Element</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.geometry.Geometry.CellArg">
+<span class="sig-name descname"><span class="pre">CellArg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></em><a class="headerlink" href="#warp.fem.geometry.Geometry.CellArg" title="Link to this definition">#</a></dt>
+<dd><p>Structure containing arguments to be passed to device function evaluating cell-related quantities</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.geometry.Geometry.SideArg">
+<span class="sig-name descname"><span class="pre">SideArg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></em><a class="headerlink" href="#warp.fem.geometry.Geometry.SideArg" title="Link to this definition">#</a></dt>
+<dd><p>Structure containing arguments to be passed to device function evaluating side-related quantities</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.Geometry.cell_arg_value">
+<span class="sig-name descname"><span class="pre">cell_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.Geometry.cell_arg_value" title="Link to this definition">#</a></dt>
+<dd><p>Value of the arguments to be passed to cell-related device functions</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Geometry.CellArg</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.Geometry.cell_position">
+<span class="sig-name descname"><span class="pre">cell_position</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.Geometry.cell_position" title="Link to this definition">#</a></dt>
+<dd><p>Device function returning the cell position at a sample point</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>Geometry.CellArg</em>) – </p></li>
+<li><p><strong>s</strong> (<a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><em>Sample</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.Geometry.cell_lookup">
+<span class="sig-name descname"><span class="pre">cell_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">guess</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.Geometry.cell_lookup" title="Link to this definition">#</a></dt>
+<dd><p>Device function returning the cell sample point corresponding to a world position. Can use guess for faster lookup</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>Geometry.CellArg</em>) – </p></li>
+<li><p><strong>pos</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
+<li><p><strong>guess</strong> (<a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><em>Sample</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.Geometry.cell_measure">
+<span class="sig-name descname"><span class="pre">cell_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.Geometry.cell_measure" title="Link to this definition">#</a></dt>
+<dd><p>Device function returning the measure determinant (e.g. volume, area) at a given point</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>Geometry.CellArg</em>) – </p></li>
+<li><p><strong>s</strong> (<a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><em>Sample</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.Geometry.cell_measure_ratio">
+<span class="sig-name descname"><span class="pre">cell_measure_ratio</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.Geometry.cell_measure_ratio" title="Link to this definition">#</a></dt>
+<dd><p>Device function returning the ratio of the measure of a side to that of its neighbour cells</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>Geometry.CellArg</em>) – </p></li>
+<li><p><strong>s</strong> (<a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><em>Sample</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.Geometry.cell_normal">
+<span class="sig-name descname"><span class="pre">cell_normal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.Geometry.cell_normal" title="Link to this definition">#</a></dt>
+<dd><p>Device function returning the element normal at a sample point</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>Geometry.CellArg</em>) – </p></li>
+<li><p><strong>s</strong> (<a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><em>Sample</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.Geometry.side_arg_value">
+<span class="sig-name descname"><span class="pre">side_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.Geometry.side_arg_value" title="Link to this definition">#</a></dt>
+<dd><p>Value of the arguments to be passed to side-related device functions</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Geometry.SideArg</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.Geometry.boundary_side_index">
+<span class="sig-name descname"><span class="pre">boundary_side_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">boundary_side_index</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.Geometry.boundary_side_index" title="Link to this definition">#</a></dt>
+<dd><p>Device function returning the side index corresponding to a boundary side</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>Geometry.SideArg</em>) – </p></li>
+<li><p><strong>boundary_side_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.Geometry.side_position">
+<span class="sig-name descname"><span class="pre">side_position</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.Geometry.side_position" title="Link to this definition">#</a></dt>
+<dd><p>Device function returning the side position at a sample point</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>Geometry.SideArg</em>) – </p></li>
+<li><p><strong>s</strong> (<a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><em>Sample</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.Geometry.side_measure">
+<span class="sig-name descname"><span class="pre">side_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.Geometry.side_measure" title="Link to this definition">#</a></dt>
+<dd><p>Device function returning the measure determinant (e.g. volume, area) at a given point</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>Geometry.SideArg</em>) – </p></li>
+<li><p><strong>s</strong> (<a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><em>Sample</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.Geometry.side_measure_ratio">
+<span class="sig-name descname"><span class="pre">side_measure_ratio</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.Geometry.side_measure_ratio" title="Link to this definition">#</a></dt>
+<dd><p>Device function returning the ratio of the measure of a side to that of its neighbour cells</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>Geometry.SideArg</em>) – </p></li>
+<li><p><strong>s</strong> (<a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><em>Sample</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.Geometry.side_normal">
+<span class="sig-name descname"><span class="pre">side_normal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.Geometry.side_normal" title="Link to this definition">#</a></dt>
+<dd><p>Device function returning the element normal at a sample point</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>Geometry.SideArg</em>) – </p></li>
+<li><p><strong>s</strong> (<a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><em>Sample</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.Geometry.side_inner_cell_index">
+<span class="sig-name descname"><span class="pre">side_inner_cell_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">side_index</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.Geometry.side_inner_cell_index" title="Link to this definition">#</a></dt>
+<dd><p>Device function returning the inner cell index for a given side</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>Geometry.SideArg</em>) – </p></li>
+<li><p><strong>side_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.Geometry.side_outer_cell_index">
+<span class="sig-name descname"><span class="pre">side_outer_cell_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">side_index</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.Geometry.side_outer_cell_index" title="Link to this definition">#</a></dt>
+<dd><p>Device function returning the outer cell index for a given side</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>Geometry.SideArg</em>) – </p></li>
+<li><p><strong>side_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.geometry.GeometryPartition">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.geometry.</span></span><span class="sig-name descname"><span class="pre">GeometryPartition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.GeometryPartition" title="Link to this definition">#</a></dt>
+<dd><p>Base class for geometry partitions, i.e. subset of cells and sides</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>geometry</strong> (<a class="reference internal" href="#warp.fem.geometry.Geometry" title="warp.fem.geometry.geometry.Geometry"><em>Geometry</em></a>) – </p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.GeometryPartition.cell_count">
+<span class="sig-name descname"><span class="pre">cell_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.GeometryPartition.cell_count" title="Link to this definition">#</a></dt>
+<dd><p>Number of cells that are ‘owned’ by this partition</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.GeometryPartition.side_count">
+<span class="sig-name descname"><span class="pre">side_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.GeometryPartition.side_count" title="Link to this definition">#</a></dt>
+<dd><p>Number of sides that are ‘owned’ by this partition</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.GeometryPartition.boundary_side_count">
+<span class="sig-name descname"><span class="pre">boundary_side_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.GeometryPartition.boundary_side_count" title="Link to this definition">#</a></dt>
+<dd><p>Number of geo-boundary sides that are ‘owned’ by this partition</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.GeometryPartition.frontier_side_count">
+<span class="sig-name descname"><span class="pre">frontier_side_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.GeometryPartition.frontier_side_count" title="Link to this definition">#</a></dt>
+<dd><p>Number of sides with neighbors owned by this and another partition</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.domain.GeometryDomain">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.domain.</span></span><span class="sig-name descname"><span class="pre">GeometryDomain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.domain.GeometryDomain" title="Link to this definition">#</a></dt>
+<dd><p>Interface class for domains, i.e. (partial) views of elements in a Geometry</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>geometry</strong> (<a class="reference internal" href="#warp.fem.geometry.Geometry" title="warp.fem.geometry.geometry.Geometry"><em>Geometry</em></a><em> | </em><a class="reference internal" href="#warp.fem.geometry.GeometryPartition" title="warp.fem.geometry.partition.GeometryPartition"><em>GeometryPartition</em></a>) – </p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.domain.GeometryDomain.dimension">
+<span class="sig-name descname"><span class="pre">dimension</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.domain.GeometryDomain.dimension" title="Link to this definition">#</a></dt>
+<dd><p>Dimension of the elements of the domain</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.domain.GeometryDomain.element_count">
+<span class="sig-name descname"><span class="pre">element_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.domain.GeometryDomain.element_count" title="Link to this definition">#</a></dt>
+<dd><p>Number of elements in the domain</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.domain.GeometryDomain.reference_element">
+<span class="sig-name descname"><span class="pre">reference_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.domain.GeometryDomain.reference_element" title="Link to this definition">#</a></dt>
+<dd><p>Protypical element</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>Element</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.domain.GeometryDomain.element_index_arg_value">
+<span class="sig-name descname"><span class="pre">element_index_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.domain.GeometryDomain.element_index_arg_value" title="Link to this definition">#</a></dt>
+<dd><p>Value of the argument to be passed to device functions</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>device</strong> (<em>Device</em><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>None</em>) – </p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>StructInstance</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.domain.GeometryDomain.element_arg_value">
+<span class="sig-name descname"><span class="pre">element_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.domain.GeometryDomain.element_arg_value" title="Link to this definition">#</a></dt>
+<dd><p>Value of the argument to be passed to device functions</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>device</strong> (<em>Device</em><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> | </em><em>None</em>) – </p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>StructInstance</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.domain.GeometryDomain.ElementIndexArg">
+<span class="sig-name descname"><span class="pre">ElementIndexArg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></em><a class="headerlink" href="#warp.fem.domain.GeometryDomain.ElementIndexArg" title="Link to this definition">#</a></dt>
+<dd><p>Structure containing arguments to be passed to device functions computing element indices</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.domain.GeometryDomain.element_index">
+<span class="sig-name descname"><span class="pre">element_index</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Function</span></em><a class="headerlink" href="#warp.fem.domain.GeometryDomain.element_index" title="Link to this definition">#</a></dt>
+<dd><p>Device function for retrieving an ElementIndex from a linearized index</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.domain.GeometryDomain.ElementArg">
+<span class="sig-name descname"><span class="pre">ElementArg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></em><a class="headerlink" href="#warp.fem.domain.GeometryDomain.ElementArg" title="Link to this definition">#</a></dt>
+<dd><p>Structure containing arguments to be passed to device functions computing element geometry</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.domain.GeometryDomain.element_measure">
+<span class="sig-name descname"><span class="pre">element_measure</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Function</span></em><a class="headerlink" href="#warp.fem.domain.GeometryDomain.element_measure" title="Link to this definition">#</a></dt>
+<dd><p>Device function returning the measure determinant (e.g. volume, area) at a given point</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.domain.GeometryDomain.element_measure_ratio">
+<span class="sig-name descname"><span class="pre">element_measure_ratio</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Function</span></em><a class="headerlink" href="#warp.fem.domain.GeometryDomain.element_measure_ratio" title="Link to this definition">#</a></dt>
+<dd><p>Device function returning the ratio of the measure of a side to that of its neighbour cells</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.domain.GeometryDomain.element_position">
+<span class="sig-name descname"><span class="pre">element_position</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Function</span></em><a class="headerlink" href="#warp.fem.domain.GeometryDomain.element_position" title="Link to this definition">#</a></dt>
+<dd><p>Device function returning the element position at a sample point</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.domain.GeometryDomain.element_normal">
+<span class="sig-name descname"><span class="pre">element_normal</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Function</span></em><a class="headerlink" href="#warp.fem.domain.GeometryDomain.element_normal" title="Link to this definition">#</a></dt>
+<dd><p>Device function returning the element normal at a sample point</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.domain.GeometryDomain.element_lookup">
+<span class="sig-name descname"><span class="pre">element_lookup</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Function</span></em><a class="headerlink" href="#warp.fem.domain.GeometryDomain.element_lookup" title="Link to this definition">#</a></dt>
+<dd><p>Device function returning the sample point corresponding to a world position</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.quadrature.Quadrature">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.quadrature.</span></span><span class="sig-name descname"><span class="pre">Quadrature</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.quadrature.Quadrature" title="Link to this definition">#</a></dt>
+<dd><p>Interface class for quadrature rules</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>domain</strong> (<a class="reference internal" href="#warp.fem.domain.GeometryDomain" title="warp.fem.domain.GeometryDomain"><em>GeometryDomain</em></a>) – </p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.quadrature.Quadrature.Arg">
+<span class="sig-name descname"><span class="pre">Arg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></em><a class="headerlink" href="#warp.fem.quadrature.Quadrature.Arg" title="Link to this definition">#</a></dt>
+<dd><p>Structure containing arguments to be passed to device functions</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.quadrature.Quadrature.eval_arg_value">
+<span class="sig-name descname"><span class="pre">eval_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.quadrature.Quadrature.eval_arg_value" title="Link to this definition">#</a></dt>
+<dd><p>Value of the argument to be passed to device</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>StructInstance</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.quadrature.Quadrature.total_point_count">
+<span class="sig-name descname"><span class="pre">total_point_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.quadrature.Quadrature.total_point_count" title="Link to this definition">#</a></dt>
+<dd><p>Total number of quadrature points over the domain</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.quadrature.Quadrature.point_count">
+<span class="sig-name descname"><span class="pre">point_count</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">element_index</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.quadrature.Quadrature.point_count" title="Link to this definition">#</a></dt>
+<dd><p>Number of quadrature points for a given element</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arg</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
+<li><p><strong>element_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.quadrature.Quadrature.point_coords">
+<span class="sig-name descname"><span class="pre">point_coords</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">element_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qp_index</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.quadrature.Quadrature.point_coords" title="Link to this definition">#</a></dt>
+<dd><p>Coordinates in element of the qp_index’th quadrature point</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arg</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
+<li><p><strong>element_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
+<li><p><strong>qp_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.quadrature.Quadrature.point_weight">
+<span class="sig-name descname"><span class="pre">point_weight</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">element_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qp_index</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.quadrature.Quadrature.point_weight" title="Link to this definition">#</a></dt>
+<dd><p>Weight of the qp_index’th quadrature point</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arg</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
+<li><p><strong>element_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
+<li><p><strong>qp_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.geometry.LinearGeometryPartition">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.geometry.</span></span><span class="sig-name descname"><span class="pre">LinearGeometryPartition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">partition_rank</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">partition_count</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.LinearGeometryPartition" title="Link to this definition">#</a></dt>
+<dd><p>Creates a geometry partition by uniformly partionning cell indices</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>geometry</strong> (<a class="reference internal" href="#warp.fem.geometry.Geometry" title="warp.fem.geometry.geometry.Geometry"><em>Geometry</em></a>) – the geometry to partition</p></li>
+<li><p><strong>partition_rank</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – the index of the partition being created</p></li>
+<li><p><strong>partition_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – the number of partitions that will be created over the geometry</p></li>
+<li><p><strong>device</strong> – Warp device on which to perform and store computations</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.LinearGeometryPartition.cell_count">
+<span class="sig-name descname"><span class="pre">cell_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.LinearGeometryPartition.cell_count" title="Link to this definition">#</a></dt>
+<dd><p>Number of cells that are ‘owned’ by this partition</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.geometry.ExplicitGeometryPartition">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.geometry.</span></span><span class="sig-name descname"><span class="pre">ExplicitGeometryPartition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cell_mask</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.ExplicitGeometryPartition" title="Link to this definition">#</a></dt>
+<dd><p>Creates a geometry partition by uniformly partionning cell indices</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>geometry</strong> (<a class="reference internal" href="#warp.fem.geometry.Geometry" title="warp.fem.geometry.geometry.Geometry"><em>Geometry</em></a>) – the geometry to partition</p></li>
+<li><p><strong>cell_mask</strong> (<em>wp.array</em><em>(</em><em>dtype=int</em><em>)</em>) – warp array of length <code class="docutils literal notranslate"><span class="pre">geometry.cell-count()</span></code> indicating which cells are selected. Array values must be either <code class="docutils literal notranslate"><span class="pre">1</span></code> (selected) or <code class="docutils literal notranslate"><span class="pre">0</span></code> (not selected).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.ExplicitGeometryPartition.cell_count">
+<span class="sig-name descname"><span class="pre">cell_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.geometry.ExplicitGeometryPartition.cell_count" title="Link to this definition">#</a></dt>
+<dd><p>Number of cells that are ‘owned’ by this partition</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.quadrature.PicQuadrature">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.quadrature.</span></span><span class="sig-name descname"><span class="pre">PicQuadrature</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">measures</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.quadrature.PicQuadrature" title="Link to this definition">#</a></dt>
+<dd><p>Particle-based quadrature formula, using a global set of points irregularely spread out over geometry elements.</p>
+<p>Useful for Particle-In-Cell and derived methods.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>domain</strong> (<a class="reference internal" href="#warp.fem.domain.GeometryDomain" title="warp.fem.domain.GeometryDomain"><em>GeometryDomain</em></a>) – </p></li>
+<li><p><strong>positions</strong> (<em>wp.array</em><em>(</em><em>)</em>) – </p></li>
+<li><p><strong>measures</strong> (<em>wp.array</em><em>(</em><em>dtype=float</em><em>)</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.quadrature.PicQuadrature.Arg">
+<span class="sig-name descname"><span class="pre">Arg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;warp.codegen.Struct</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#warp.fem.quadrature.PicQuadrature.Arg" title="Link to this definition">#</a></dt>
+<dd><p>Structure containing arguments to be passed to device functions</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.quadrature.PicQuadrature.total_point_count">
+<span class="sig-name descname"><span class="pre">total_point_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.quadrature.PicQuadrature.total_point_count" title="Link to this definition">#</a></dt>
+<dd><p>Total number of quadrature points over the domain</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.quadrature.PicQuadrature.point_count">
+<span class="sig-name descname"><span class="pre">point_count</span></span><a class="headerlink" href="#warp.fem.quadrature.PicQuadrature.point_count" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.quadrature.PicQuadrature.point_coords">
+<span class="sig-name descname"><span class="pre">point_coords</span></span><a class="headerlink" href="#warp.fem.quadrature.PicQuadrature.point_coords" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.quadrature.PicQuadrature.point_weight">
+<span class="sig-name descname"><span class="pre">point_weight</span></span><a class="headerlink" href="#warp.fem.quadrature.PicQuadrature.point_weight" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="function-spaces">
+<h2>Function Spaces<a class="headerlink" href="#function-spaces" title="Link to this heading">#</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.space.make_polynomial_space">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.space.</span></span><span class="sig-name descname"><span class="pre">make_polynomial_space</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype=&lt;class</span> <span class="pre">'float'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dof_mapper=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degree=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">discontinuous=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">family=None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.make_polynomial_space" title="Link to this definition">#</a></dt>
+<dd><p>Equip elements of a geometry with a Lagrange polynomial function space</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>geo</strong> (<a class="reference internal" href="#warp.fem.geometry.Geometry" title="warp.fem.geometry.geometry.Geometry"><em>Geometry</em></a>) – the Geometry on which to build the space</p></li>
+<li><p><strong>dtype</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.11)"><em>type</em></a>) – value type the function space. If <code class="docutils literal notranslate"><span class="pre">dof_mapper</span></code> is provided, the value type from the DofMapper will be used instead.</p></li>
+<li><p><strong>dof_mapper</strong> (<a class="reference internal" href="#warp.fem.space.DofMapper" title="warp.fem.space.dof_mapper.DofMapper"><em>DofMapper</em></a><em> | </em><em>None</em>) – mapping from node degrees of freedom to function values, defaults to Identity. Useful for reduced coordinates, e.g. <a class="reference internal" href="#warp.fem.space.SymmetricTensorMapper" title="warp.fem.space.SymmetricTensorMapper"><code class="xref py py-class docutils literal notranslate"><span class="pre">SymmetricTensorMapper</span></code></a> maps 2x2 (resp 3x3) symmetric tensors to 3 (resp 6) degrees of freedom.</p></li>
+<li><p><strong>degree</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – polynomial degree of the per-element shape functions</p></li>
+<li><p><strong>discontinuous</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – if True, use Discontinuous Galerkin shape functions. Discontinuous is implied if degree is 0, i.e, piecewise-constant shape functions.</p></li>
+<li><p><strong>family</strong> (<em>Polynomial</em><em> | </em><em>None</em>) – Polynomial family used to generate the shape function basis. If not provided, a reasonable basis is chosen.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the constructed function space</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#warp.fem.space.FunctionSpace" title="warp.fem.space.function_space.FunctionSpace"><em>FunctionSpace</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.space.make_space_partition">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.space.</span></span><span class="sig-name descname"><span class="pre">make_space_partition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geometry_partition</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_halo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.make_space_partition" title="Link to this definition">#</a></dt>
+<dd><p>Computes the substep of nodes from a function space that touch a geometry partition</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>space</strong> (<a class="reference internal" href="#warp.fem.space.FunctionSpace" title="warp.fem.space.function_space.FunctionSpace"><em>FunctionSpace</em></a>) – the function space to consider</p></li>
+<li><p><strong>geometry_partition</strong> (<a class="reference internal" href="#warp.fem.geometry.GeometryPartition" title="warp.fem.geometry.partition.GeometryPartition"><em>GeometryPartition</em></a><em> | </em><em>None</em>) – The subset of the space geometry.  If not provided, use the whole geometry.</p></li>
+<li><p><strong>with_halo</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – if True, include the halo nodes (nodes from exterior frontier cells to the partition)</p></li>
+<li><p><strong>device</strong> – Warp device on which to perform and store computations</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the resulting space partition</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#warp.fem.space.SpacePartition" title="warp.fem.space.partition.SpacePartition"><em>SpacePartition</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.space.make_space_restriction">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.space.</span></span><span class="sig-name descname"><span class="pre">make_space_restriction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">space_partition</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.make_space_restriction" title="Link to this definition">#</a></dt>
+<dd><p>Restricts a function space to a Domain, i.e. a subset of its elements.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>space</strong> (<a class="reference internal" href="#warp.fem.space.FunctionSpace" title="warp.fem.space.function_space.FunctionSpace"><em>FunctionSpace</em></a>) – the space to be restricted</p></li>
+<li><p><strong>space_partition</strong> (<a class="reference internal" href="#warp.fem.space.SpacePartition" title="warp.fem.space.partition.SpacePartition"><em>SpacePartition</em></a><em> | </em><em>None</em>) – if provided, the subset of nodes from <code class="docutils literal notranslate"><span class="pre">space</span></code> to consider</p></li>
+<li><p><strong>domain</strong> (<a class="reference internal" href="#warp.fem.domain.GeometryDomain" title="warp.fem.domain.GeometryDomain"><em>GeometryDomain</em></a><em> | </em><em>None</em>) – the domain to restrict the space to, defaults to all cells of the space geometry or partition.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#warp.fem.space.SpaceRestriction" title="warp.fem.space.restriction.SpaceRestriction"><em>SpaceRestriction</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.space.FunctionSpace">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.space.</span></span><span class="sig-name descname"><span class="pre">FunctionSpace</span></span><a class="headerlink" href="#warp.fem.space.FunctionSpace" title="Link to this definition">#</a></dt>
+<dd><p>Interface class for function spaces, i.e. geometry + interpolation basis</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.space.FunctionSpace.DIMENSION">
+<span class="sig-name descname"><span class="pre">DIMENSION</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.fem.space.FunctionSpace.DIMENSION" title="Link to this definition">#</a></dt>
+<dd><p>Input dimension of the function space</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.space.FunctionSpace.NODES_PER_ELEMENT">
+<span class="sig-name descname"><span class="pre">NODES_PER_ELEMENT</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.fem.space.FunctionSpace.NODES_PER_ELEMENT" title="Link to this definition">#</a></dt>
+<dd><p>Number of interpolation nodes per element of the geometry</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.space.FunctionSpace.ORDER">
+<span class="sig-name descname"><span class="pre">ORDER</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.fem.space.FunctionSpace.ORDER" title="Link to this definition">#</a></dt>
+<dd><p>Order of the interpolation basis</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.space.FunctionSpace.VALUE_DOF_COUNT">
+<span class="sig-name descname"><span class="pre">VALUE_DOF_COUNT</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.fem.space.FunctionSpace.VALUE_DOF_COUNT" title="Link to this definition">#</a></dt>
+<dd><p>Number of degrees of freedom per node</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.space.FunctionSpace.dtype">
+<span class="sig-name descname"><span class="pre">dtype</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.11)"><span class="pre">type</span></a></em><a class="headerlink" href="#warp.fem.space.FunctionSpace.dtype" title="Link to this definition">#</a></dt>
+<dd><p>Value type of the interpolation functions</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.space.FunctionSpace.SpaceArg">
+<span class="sig-name descname"><span class="pre">SpaceArg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></em><a class="headerlink" href="#warp.fem.space.FunctionSpace.SpaceArg" title="Link to this definition">#</a></dt>
+<dd><p>Structure containing arguments to be passed to device function</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.FunctionSpace.node_count">
+<span class="sig-name descname"><span class="pre">node_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.FunctionSpace.node_count" title="Link to this definition">#</a></dt>
+<dd><p>Number of nodes in the interpolation basis</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.FunctionSpace.node_positions">
+<span class="sig-name descname"><span class="pre">node_positions</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.FunctionSpace.node_positions" title="Link to this definition">#</a></dt>
+<dd><p>Node positions, for visualization purposes only</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.FunctionSpace.geometry">
+<span class="sig-name descname"><span class="pre">geometry</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.FunctionSpace.geometry" title="Link to this definition">#</a></dt>
+<dd><p>Underlying geometry</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#warp.fem.geometry.Geometry" title="warp.fem.geometry.geometry.Geometry"><em>Geometry</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.FunctionSpace.space_arg_value">
+<span class="sig-name descname"><span class="pre">space_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.FunctionSpace.space_arg_value" title="Link to this definition">#</a></dt>
+<dd><p>Value of the arguments to be passed to device functions</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>StructInstance</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.FunctionSpace.trace">
+<span class="sig-name descname"><span class="pre">trace</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.FunctionSpace.trace" title="Link to this definition">#</a></dt>
+<dd><p>Trace of the function space over lower-dimensional elements of the geometry</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.FunctionSpace.make_field">
+<span class="sig-name descname"><span class="pre">make_field</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space_partition</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geometry_partition</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.FunctionSpace.make_field" title="Link to this definition">#</a></dt>
+<dd><p>Returns a zero-initialized field over this function space</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.FunctionSpace.unit_dof_value">
+<span class="sig-name descname"><span class="pre">unit_dof_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dof</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.FunctionSpace.unit_dof_value" title="Link to this definition">#</a></dt>
+<dd><p>Unit value for a given degree of freedom. Typically a rank-1 tensor</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
+<li><p><strong>dof</strong> (<em>vec_t</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.FunctionSpace.element_node_index">
+<span class="sig-name descname"><span class="pre">element_node_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">element_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_index_in_elt</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.FunctionSpace.element_node_index" title="Link to this definition">#</a></dt>
+<dd><p>Global node index for a given node in a given element</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
+<li><p><strong>element_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
+<li><p><strong>node_index_in_elt</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.FunctionSpace.node_coords_in_element">
+<span class="sig-name descname"><span class="pre">node_coords_in_element</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">element_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_index_in_elt</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.FunctionSpace.node_coords_in_element" title="Link to this definition">#</a></dt>
+<dd><p>Coordinates inside element of a given node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
+<li><p><strong>element_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
+<li><p><strong>node_index_in_elt</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.FunctionSpace.element_inner_weight">
+<span class="sig-name descname"><span class="pre">element_inner_weight</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">element_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coords</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_index_in_elt</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.FunctionSpace.element_inner_weight" title="Link to this definition">#</a></dt>
+<dd><p>Inner weight for a node at given coordinates</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
+<li><p><strong>element_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
+<li><p><strong>coords</strong> (<em>vec3f</em>) – </p></li>
+<li><p><strong>node_index_in_elt</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.FunctionSpace.element_inner_weight_gradient">
+<span class="sig-name descname"><span class="pre">element_inner_weight_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">element_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coords</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_index_in_elt</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.FunctionSpace.element_inner_weight_gradient" title="Link to this definition">#</a></dt>
+<dd><p>Inner weight gradient for a node at given coordinates</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
+<li><p><strong>element_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
+<li><p><strong>coords</strong> (<em>vec3f</em>) – </p></li>
+<li><p><strong>node_index_in_elt</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.FunctionSpace.element_outer_weight">
+<span class="sig-name descname"><span class="pre">element_outer_weight</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">element_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coords</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_index_in_elt</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.FunctionSpace.element_outer_weight" title="Link to this definition">#</a></dt>
+<dd><p>Outer weight for a node at given coordinates</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
+<li><p><strong>element_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
+<li><p><strong>coords</strong> (<em>vec3f</em>) – </p></li>
+<li><p><strong>node_index_in_elt</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.space.SpacePartition">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.space.</span></span><span class="sig-name descname"><span class="pre">SpacePartition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geo_partition</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.SpacePartition" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>space</strong> (<a class="reference internal" href="#warp.fem.space.FunctionSpace" title="warp.fem.space.function_space.FunctionSpace"><em>FunctionSpace</em></a>) – </p></li>
+<li><p><strong>geo_partition</strong> (<a class="reference internal" href="#warp.fem.geometry.GeometryPartition" title="warp.fem.geometry.partition.GeometryPartition"><em>GeometryPartition</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.SpacePartition.node_count">
+<span class="sig-name descname"><span class="pre">node_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.SpacePartition.node_count" title="Link to this definition">#</a></dt>
+<dd><p>Returns number of nodes in this partition</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.SpacePartition.owned_node_count">
+<span class="sig-name descname"><span class="pre">owned_node_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.SpacePartition.owned_node_count" title="Link to this definition">#</a></dt>
+<dd><p>Returns number of nodes in this partition, excluding exterior halo</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.SpacePartition.interior_node_count">
+<span class="sig-name descname"><span class="pre">interior_node_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.SpacePartition.interior_node_count" title="Link to this definition">#</a></dt>
+<dd><p>Returns number of interior nodes in this partition</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.SpacePartition.space_node_indices">
+<span class="sig-name descname"><span class="pre">space_node_indices</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.SpacePartition.space_node_indices" title="Link to this definition">#</a></dt>
+<dd><p>Return the global function space indices for nodes in this partition</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="runtime.html#warp.array" title="warp.types.array"><em>array</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.space.SpacePartition.partition_node_index">
+<span class="sig-name descname"><span class="pre">partition_node_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space_node_index</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.SpacePartition.partition_node_index" title="Link to this definition">#</a></dt>
+<dd><p>Returns the index in the partition of a function space node, or -1 if it does not exist</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
+<li><p><strong>space_node_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.space.SpaceRestriction">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.space.</span></span><span class="sig-name descname"><span class="pre">SpaceRestriction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">space_partition</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.SpaceRestriction" title="Link to this definition">#</a></dt>
+<dd><p>Restriction of a space to a given GeometryDomain</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>space</strong> (<a class="reference internal" href="#warp.fem.space.FunctionSpace" title="warp.fem.space.function_space.FunctionSpace"><em>FunctionSpace</em></a>) – </p></li>
+<li><p><strong>domain</strong> (<a class="reference internal" href="#warp.fem.domain.GeometryDomain" title="warp.fem.domain.GeometryDomain"><em>GeometryDomain</em></a>) – </p></li>
+<li><p><strong>space_partition</strong> (<a class="reference internal" href="#warp.fem.space.SpacePartition" title="warp.fem.space.partition.SpacePartition"><em>SpacePartition</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.space.DofMapper">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.space.</span></span><span class="sig-name descname"><span class="pre">DofMapper</span></span><a class="headerlink" href="#warp.fem.space.DofMapper" title="Link to this definition">#</a></dt>
+<dd><p>Base class from mapping node degrees of freedom to function values</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.space.SymmetricTensorMapper">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.space.</span></span><span class="sig-name descname"><span class="pre">SymmetricTensorMapper</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.SymmetricTensorMapper" title="Link to this definition">#</a></dt>
+<dd><p>Orthonormal isomorphism from R^{n (n+1)} to nxn symmetric tensors,
+using usual L2 norm for vectors and half Frobenius norm, (tau : tau)/2 for tensors.
+See [Daviet and Bertails-Descoubes 2016]</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dtype</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.11)"><em>type</em></a>) – </p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="fields">
+<h2>Fields<a class="headerlink" href="#fields" title="Link to this heading">#</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.field.make_test">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.field.</span></span><span class="sig-name descname"><span class="pre">make_test</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">space_partition</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.field.make_test" title="Link to this definition">#</a></dt>
+<dd><p>Constructs a test field over a function space or its restriction</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>space</strong> (<a class="reference internal" href="#warp.fem.space.FunctionSpace" title="warp.fem.space.function_space.FunctionSpace"><em>FunctionSpace</em></a><em> | </em><a class="reference internal" href="#warp.fem.space.SpaceRestriction" title="warp.fem.space.restriction.SpaceRestriction"><em>SpaceRestriction</em></a><em> | </em><em>None</em>) – the function space or function space restriction</p></li>
+<li><p><strong>space_partition</strong> (<a class="reference internal" href="#warp.fem.space.SpacePartition" title="warp.fem.space.partition.SpacePartition"><em>SpacePartition</em></a><em> | </em><em>None</em>) – if <code class="docutils literal notranslate"><span class="pre">space</span></code> is a whole function space, the optional subset of node indices to consider</p></li>
+<li><p><strong>domain</strong> (<a class="reference internal" href="#warp.fem.domain.GeometryDomain" title="warp.fem.domain.GeometryDomain"><em>GeometryDomain</em></a><em> | </em><em>None</em>) – if <code class="docutils literal notranslate"><span class="pre">space</span></code> is a whole function space, the optional subset of elements to consider</p></li>
+<li><p><strong>device</strong> – Warp device on which to perform and store computations</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the test field</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#warp.fem.field.TestField" title="warp.fem.field.test.TestField"><em>TestField</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.field.make_trial">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.field.</span></span><span class="sig-name descname"><span class="pre">make_trial</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">space_partition</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.field.make_trial" title="Link to this definition">#</a></dt>
+<dd><p>Constructs a trial field over a function space or partition</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>space</strong> (<a class="reference internal" href="#warp.fem.space.FunctionSpace" title="warp.fem.space.function_space.FunctionSpace"><em>FunctionSpace</em></a><em> | </em><a class="reference internal" href="#warp.fem.space.SpaceRestriction" title="warp.fem.space.restriction.SpaceRestriction"><em>SpaceRestriction</em></a><em> | </em><em>None</em>) – the function space or function space restriction</p></li>
+<li><p><strong>space_partition</strong> (<a class="reference internal" href="#warp.fem.space.SpacePartition" title="warp.fem.space.partition.SpacePartition"><em>SpacePartition</em></a><em> | </em><em>None</em>) – if <code class="docutils literal notranslate"><span class="pre">space</span></code> is a whole function space, the optional subset of node indices to consider</p></li>
+<li><p><strong>domain</strong> (<a class="reference internal" href="#warp.fem.domain.GeometryDomain" title="warp.fem.domain.GeometryDomain"><em>GeometryDomain</em></a><em> | </em><em>None</em>) – if <code class="docutils literal notranslate"><span class="pre">space</span></code> is a whole function space, the optional subset of elements to consider</p></li>
+<li><p><strong>device</strong> – Warp device on which to perform and store computations</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the trial field</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#warp.fem.field.TrialField" title="warp.fem.field.trial.TrialField"><em>TrialField</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.field.make_restriction">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.field.</span></span><span class="sig-name descname"><span class="pre">make_restriction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">space_restriction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.field.make_restriction" title="Link to this definition">#</a></dt>
+<dd><p>Restricts a discrete field to a subset of elements.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>field</strong> (<a class="reference internal" href="#warp.fem.field.DiscreteField" title="warp.fem.field.discrete_field.DiscreteField"><em>DiscreteField</em></a>) – the discrete field to restrict</p></li>
+<li><p><strong>space_restriction</strong> (<a class="reference internal" href="#warp.fem.space.SpaceRestriction" title="warp.fem.space.restriction.SpaceRestriction"><em>SpaceRestriction</em></a><em> | </em><em>None</em>) – the function space restriction defining the subset of elements to consider</p></li>
+<li><p><strong>domain</strong> (<a class="reference internal" href="#warp.fem.domain.GeometryDomain" title="warp.fem.domain.GeometryDomain"><em>GeometryDomain</em></a><em> | </em><em>None</em>) – if <code class="docutils literal notranslate"><span class="pre">space_restriction</span></code> is not provided, the <code class="xref py py-class docutils literal notranslate"><span class="pre">Domain</span></code> defining the subset of elements to consider</p></li>
+<li><p><strong>device</strong> – Warp device on which to perform and store computations</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the field restriction</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#warp.fem.field.FieldRestriction" title="warp.fem.field.restriction.FieldRestriction"><em>FieldRestriction</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.field.DiscreteField">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.field.</span></span><span class="sig-name descname"><span class="pre">DiscreteField</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">space_partition</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.field.DiscreteField" title="Link to this definition">#</a></dt>
+<dd><p>Field defined over a partition of a discrete function space</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>space</strong> (<a class="reference internal" href="#warp.fem.space.FunctionSpace" title="warp.fem.space.function_space.FunctionSpace"><em>FunctionSpace</em></a>) – </p></li>
+<li><p><strong>space_partition</strong> (<a class="reference internal" href="#warp.fem.space.SpacePartition" title="warp.fem.space.partition.SpacePartition"><em>SpacePartition</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.field.DiscreteField.EvalArg">
+<span class="sig-name descname"><span class="pre">EvalArg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></em><a class="headerlink" href="#warp.fem.field.DiscreteField.EvalArg" title="Link to this definition">#</a></dt>
+<dd><p>Structure containing arguments passed to device functions for field evaluation</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.fem.field.DiscreteField.dof_values">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dof_values</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="runtime.html#warp.array" title="warp.types.array"><span class="pre">array</span></a></em><a class="headerlink" href="#warp.fem.field.DiscreteField.dof_values" title="Link to this definition">#</a></dt>
+<dd><p>Array of degrees of freedom values</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.field.DiscreteField.trace">
+<span class="sig-name descname"><span class="pre">trace</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.field.DiscreteField.trace" title="Link to this definition">#</a></dt>
+<dd><p>Trace of this field over a lower-dimensional function space</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#warp.fem.space.FunctionSpace" title="warp.fem.space.function_space.FunctionSpace"><em>FunctionSpace</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.field.DiscreteField.eval_arg_value">
+<span class="sig-name descname"><span class="pre">eval_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.field.DiscreteField.eval_arg_value" title="Link to this definition">#</a></dt>
+<dd><p>Value of arguments to be passed to device functions</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.field.DiscreteField.set_node_value">
+<span class="sig-name descname"><span class="pre">set_node_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.field.DiscreteField.set_node_value" title="Link to this definition">#</a></dt>
+<dd><p>Device function setting the value at given node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
+<li><p><strong>node_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – </p></li>
+<li><p><strong>value</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.field.DiscreteField.eval_inner">
+<span class="sig-name descname"><span class="pre">eval_inner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.field.DiscreteField.eval_inner" title="Link to this definition">#</a></dt>
+<dd><p>Device function evaluating the inner field value at a sample point</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
+<li><p><strong>s</strong> (<em>&lt;warp.codegen.Struct object at 0x0000017FEDF03550&gt;</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.field.DiscreteField.eval_grad_inner">
+<span class="sig-name descname"><span class="pre">eval_grad_inner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.field.DiscreteField.eval_grad_inner" title="Link to this definition">#</a></dt>
+<dd><p>Device function evaluating the inner field gradient at a sample point</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
+<li><p><strong>s</strong> (<em>&lt;warp.codegen.Struct object at 0x0000017FEDF03550&gt;</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.field.DiscreteField.eval_outer">
+<span class="sig-name descname"><span class="pre">eval_outer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.field.DiscreteField.eval_outer" title="Link to this definition">#</a></dt>
+<dd><p>Device function evaluating the outer field value at a sample point</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
+<li><p><strong>s</strong> (<em>&lt;warp.codegen.Struct object at 0x0000017FEDF03550&gt;</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.field.DiscreteField.eval_grad_outer">
+<span class="sig-name descname"><span class="pre">eval_grad_outer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.field.DiscreteField.eval_grad_outer" title="Link to this definition">#</a></dt>
+<dd><p>Device function evaluating the outer field gradient at a sample point</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
+<li><p><strong>s</strong> (<em>&lt;warp.codegen.Struct object at 0x0000017FEDF03550&gt;</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.field.FieldRestriction">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.field.</span></span><span class="sig-name descname"><span class="pre">FieldRestriction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space_restriction</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.field.FieldRestriction" title="Link to this definition">#</a></dt>
+<dd><p>Restriction of a space to a given GeometryDomain</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>space_restriction</strong> (<a class="reference internal" href="#warp.fem.space.SpaceRestriction" title="warp.fem.space.restriction.SpaceRestriction"><em>SpaceRestriction</em></a>) – </p></li>
+<li><p><strong>field</strong> (<a class="reference internal" href="#warp.fem.field.DiscreteField" title="warp.fem.field.discrete_field.DiscreteField"><em>DiscreteField</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.field.TestField">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.field.</span></span><span class="sig-name descname"><span class="pre">TestField</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space_restriction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.field.TestField" title="Link to this definition">#</a></dt>
+<dd><p>Field defined over a space restriction that can be used as a test function</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>space_restriction</strong> (<a class="reference internal" href="#warp.fem.space.SpaceRestriction" title="warp.fem.space.restriction.SpaceRestriction"><em>SpaceRestriction</em></a>) – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.field.TrialField">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.field.</span></span><span class="sig-name descname"><span class="pre">TrialField</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">space_partition</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.field.TrialField" title="Link to this definition">#</a></dt>
+<dd><p>Field defined over a domain that can be used as a trial function</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>space</strong> (<a class="reference internal" href="#warp.fem.space.FunctionSpace" title="warp.fem.space.function_space.FunctionSpace"><em>FunctionSpace</em></a>) – </p></li>
+<li><p><strong>space_partition</strong> (<a class="reference internal" href="#warp.fem.space.SpacePartition" title="warp.fem.space.partition.SpacePartition"><em>SpacePartition</em></a>) – </p></li>
+<li><p><strong>domain</strong> (<a class="reference internal" href="#warp.fem.domain.GeometryDomain" title="warp.fem.domain.GeometryDomain"><em>GeometryDomain</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          <a class="prev-page" href="sparse.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Sparse Linear Algebra Reference</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2023, NVIDIA
+            </div>
+            Made with 
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              <a class="muted-link " href="https://github.com/NVIDIA/warp" aria-label="GitHub">
+            <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">
+                <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
+            </svg>
+        </a>
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">FEM Toolkit Reference</a><ul>
+<li><a class="reference internal" href="#integrands">Integrands</a></li>
+<li><a class="reference internal" href="#basic-workflow">Basic workflow</a></li>
+<li><a class="reference internal" href="#introductory-examples">Introductory examples</a></li>
+<li><a class="reference internal" href="#advanced-usages">Advanced usages</a><ul>
+<li><a class="reference internal" href="#particle-based-quadrature">Particle-based quadrature</a></li>
+<li><a class="reference internal" href="#partitioning">Partitioning</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#operators">Operators</a><ul>
+<li><a class="reference internal" href="#warp.fem.operator.position"><code class="docutils literal notranslate"><span class="pre">position()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.operator.normal"><code class="docutils literal notranslate"><span class="pre">normal()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.operator.lookup"><code class="docutils literal notranslate"><span class="pre">lookup()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.operator.measure"><code class="docutils literal notranslate"><span class="pre">measure()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.operator.measure_ratio"><code class="docutils literal notranslate"><span class="pre">measure_ratio()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.operator.degree"><code class="docutils literal notranslate"><span class="pre">degree()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.operator.inner"><code class="docutils literal notranslate"><span class="pre">inner()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.operator.outer"><code class="docutils literal notranslate"><span class="pre">outer()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.operator.grad"><code class="docutils literal notranslate"><span class="pre">grad()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.operator.grad_outer"><code class="docutils literal notranslate"><span class="pre">grad_outer()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.operator.D"><code class="docutils literal notranslate"><span class="pre">D()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.operator.div"><code class="docutils literal notranslate"><span class="pre">div()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.operator.jump"><code class="docutils literal notranslate"><span class="pre">jump()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.operator.average"><code class="docutils literal notranslate"><span class="pre">average()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.operator.grad_jump"><code class="docutils literal notranslate"><span class="pre">grad_jump()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.operator.grad_average"><code class="docutils literal notranslate"><span class="pre">grad_average()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.operator.operator"><code class="docutils literal notranslate"><span class="pre">operator()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#integration">Integration</a><ul>
+<li><a class="reference internal" href="#warp.fem.integrate.integrate"><code class="docutils literal notranslate"><span class="pre">integrate()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.integrate.interpolate"><code class="docutils literal notranslate"><span class="pre">interpolate()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.operator.integrand"><code class="docutils literal notranslate"><span class="pre">integrand()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.warp.fem.types.Sample"><code class="docutils literal notranslate"><span class="pre">warp.fem.types.Sample</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#geometry">Geometry</a><ul>
+<li><a class="reference internal" href="#warp.fem.geometry.Geometry"><code class="docutils literal notranslate"><span class="pre">Geometry</span></code></a><ul>
+<li><a class="reference internal" href="#warp.fem.geometry.Geometry.reference_cell"><code class="docutils literal notranslate"><span class="pre">Geometry.reference_cell()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.geometry.Geometry.reference_side"><code class="docutils literal notranslate"><span class="pre">Geometry.reference_side()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.geometry.Geometry.CellArg"><code class="docutils literal notranslate"><span class="pre">Geometry.CellArg</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.geometry.Geometry.SideArg"><code class="docutils literal notranslate"><span class="pre">Geometry.SideArg</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.geometry.Geometry.cell_arg_value"><code class="docutils literal notranslate"><span class="pre">Geometry.cell_arg_value()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.geometry.Geometry.cell_position"><code class="docutils literal notranslate"><span class="pre">Geometry.cell_position()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.geometry.Geometry.cell_lookup"><code class="docutils literal notranslate"><span class="pre">Geometry.cell_lookup()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.geometry.Geometry.cell_measure"><code class="docutils literal notranslate"><span class="pre">Geometry.cell_measure()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.geometry.Geometry.cell_measure_ratio"><code class="docutils literal notranslate"><span class="pre">Geometry.cell_measure_ratio()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.geometry.Geometry.cell_normal"><code class="docutils literal notranslate"><span class="pre">Geometry.cell_normal()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.geometry.Geometry.side_arg_value"><code class="docutils literal notranslate"><span class="pre">Geometry.side_arg_value()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.geometry.Geometry.boundary_side_index"><code class="docutils literal notranslate"><span class="pre">Geometry.boundary_side_index()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.geometry.Geometry.side_position"><code class="docutils literal notranslate"><span class="pre">Geometry.side_position()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.geometry.Geometry.side_measure"><code class="docutils literal notranslate"><span class="pre">Geometry.side_measure()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.geometry.Geometry.side_measure_ratio"><code class="docutils literal notranslate"><span class="pre">Geometry.side_measure_ratio()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.geometry.Geometry.side_normal"><code class="docutils literal notranslate"><span class="pre">Geometry.side_normal()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.geometry.Geometry.side_inner_cell_index"><code class="docutils literal notranslate"><span class="pre">Geometry.side_inner_cell_index()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.geometry.Geometry.side_outer_cell_index"><code class="docutils literal notranslate"><span class="pre">Geometry.side_outer_cell_index()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#warp.fem.geometry.GeometryPartition"><code class="docutils literal notranslate"><span class="pre">GeometryPartition</span></code></a><ul>
+<li><a class="reference internal" href="#warp.fem.geometry.GeometryPartition.cell_count"><code class="docutils literal notranslate"><span class="pre">GeometryPartition.cell_count()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.geometry.GeometryPartition.side_count"><code class="docutils literal notranslate"><span class="pre">GeometryPartition.side_count()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.geometry.GeometryPartition.boundary_side_count"><code class="docutils literal notranslate"><span class="pre">GeometryPartition.boundary_side_count()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.geometry.GeometryPartition.frontier_side_count"><code class="docutils literal notranslate"><span class="pre">GeometryPartition.frontier_side_count()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#warp.fem.domain.GeometryDomain"><code class="docutils literal notranslate"><span class="pre">GeometryDomain</span></code></a><ul>
+<li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.dimension"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.dimension()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.element_count"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.element_count()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.reference_element"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.reference_element()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.element_index_arg_value"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.element_index_arg_value()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.element_arg_value"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.element_arg_value()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.ElementIndexArg"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.ElementIndexArg</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.element_index"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.element_index</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.ElementArg"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.ElementArg</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.element_measure"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.element_measure</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.element_measure_ratio"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.element_measure_ratio</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.element_position"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.element_position</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.element_normal"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.element_normal</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.element_lookup"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.element_lookup</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#warp.fem.quadrature.Quadrature"><code class="docutils literal notranslate"><span class="pre">Quadrature</span></code></a><ul>
+<li><a class="reference internal" href="#warp.fem.quadrature.Quadrature.Arg"><code class="docutils literal notranslate"><span class="pre">Quadrature.Arg</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.quadrature.Quadrature.eval_arg_value"><code class="docutils literal notranslate"><span class="pre">Quadrature.eval_arg_value()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.quadrature.Quadrature.total_point_count"><code class="docutils literal notranslate"><span class="pre">Quadrature.total_point_count()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.quadrature.Quadrature.point_count"><code class="docutils literal notranslate"><span class="pre">Quadrature.point_count()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.quadrature.Quadrature.point_coords"><code class="docutils literal notranslate"><span class="pre">Quadrature.point_coords()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.quadrature.Quadrature.point_weight"><code class="docutils literal notranslate"><span class="pre">Quadrature.point_weight()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#warp.fem.geometry.LinearGeometryPartition"><code class="docutils literal notranslate"><span class="pre">LinearGeometryPartition</span></code></a><ul>
+<li><a class="reference internal" href="#warp.fem.geometry.LinearGeometryPartition.cell_count"><code class="docutils literal notranslate"><span class="pre">LinearGeometryPartition.cell_count()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#warp.fem.geometry.ExplicitGeometryPartition"><code class="docutils literal notranslate"><span class="pre">ExplicitGeometryPartition</span></code></a><ul>
+<li><a class="reference internal" href="#warp.fem.geometry.ExplicitGeometryPartition.cell_count"><code class="docutils literal notranslate"><span class="pre">ExplicitGeometryPartition.cell_count()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#warp.fem.quadrature.PicQuadrature"><code class="docutils literal notranslate"><span class="pre">PicQuadrature</span></code></a><ul>
+<li><a class="reference internal" href="#warp.fem.quadrature.PicQuadrature.Arg"><code class="docutils literal notranslate"><span class="pre">PicQuadrature.Arg</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.quadrature.PicQuadrature.total_point_count"><code class="docutils literal notranslate"><span class="pre">PicQuadrature.total_point_count()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.quadrature.PicQuadrature.point_count"><code class="docutils literal notranslate"><span class="pre">PicQuadrature.point_count</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.quadrature.PicQuadrature.point_coords"><code class="docutils literal notranslate"><span class="pre">PicQuadrature.point_coords</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.quadrature.PicQuadrature.point_weight"><code class="docutils literal notranslate"><span class="pre">PicQuadrature.point_weight</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#function-spaces">Function Spaces</a><ul>
+<li><a class="reference internal" href="#warp.fem.space.make_polynomial_space"><code class="docutils literal notranslate"><span class="pre">make_polynomial_space()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.make_space_partition"><code class="docutils literal notranslate"><span class="pre">make_space_partition()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.make_space_restriction"><code class="docutils literal notranslate"><span class="pre">make_space_restriction()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.FunctionSpace"><code class="docutils literal notranslate"><span class="pre">FunctionSpace</span></code></a><ul>
+<li><a class="reference internal" href="#warp.fem.space.FunctionSpace.DIMENSION"><code class="docutils literal notranslate"><span class="pre">FunctionSpace.DIMENSION</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.FunctionSpace.NODES_PER_ELEMENT"><code class="docutils literal notranslate"><span class="pre">FunctionSpace.NODES_PER_ELEMENT</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.FunctionSpace.ORDER"><code class="docutils literal notranslate"><span class="pre">FunctionSpace.ORDER</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.FunctionSpace.VALUE_DOF_COUNT"><code class="docutils literal notranslate"><span class="pre">FunctionSpace.VALUE_DOF_COUNT</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.FunctionSpace.dtype"><code class="docutils literal notranslate"><span class="pre">FunctionSpace.dtype</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.FunctionSpace.SpaceArg"><code class="docutils literal notranslate"><span class="pre">FunctionSpace.SpaceArg</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.FunctionSpace.node_count"><code class="docutils literal notranslate"><span class="pre">FunctionSpace.node_count()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.FunctionSpace.node_positions"><code class="docutils literal notranslate"><span class="pre">FunctionSpace.node_positions()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.FunctionSpace.geometry"><code class="docutils literal notranslate"><span class="pre">FunctionSpace.geometry()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.FunctionSpace.space_arg_value"><code class="docutils literal notranslate"><span class="pre">FunctionSpace.space_arg_value()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.FunctionSpace.trace"><code class="docutils literal notranslate"><span class="pre">FunctionSpace.trace()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.FunctionSpace.make_field"><code class="docutils literal notranslate"><span class="pre">FunctionSpace.make_field()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.FunctionSpace.unit_dof_value"><code class="docutils literal notranslate"><span class="pre">FunctionSpace.unit_dof_value()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.FunctionSpace.element_node_index"><code class="docutils literal notranslate"><span class="pre">FunctionSpace.element_node_index()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.FunctionSpace.node_coords_in_element"><code class="docutils literal notranslate"><span class="pre">FunctionSpace.node_coords_in_element()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.FunctionSpace.element_inner_weight"><code class="docutils literal notranslate"><span class="pre">FunctionSpace.element_inner_weight()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.FunctionSpace.element_inner_weight_gradient"><code class="docutils literal notranslate"><span class="pre">FunctionSpace.element_inner_weight_gradient()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.FunctionSpace.element_outer_weight"><code class="docutils literal notranslate"><span class="pre">FunctionSpace.element_outer_weight()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#warp.fem.space.SpacePartition"><code class="docutils literal notranslate"><span class="pre">SpacePartition</span></code></a><ul>
+<li><a class="reference internal" href="#warp.fem.space.SpacePartition.node_count"><code class="docutils literal notranslate"><span class="pre">SpacePartition.node_count()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.SpacePartition.owned_node_count"><code class="docutils literal notranslate"><span class="pre">SpacePartition.owned_node_count()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.SpacePartition.interior_node_count"><code class="docutils literal notranslate"><span class="pre">SpacePartition.interior_node_count()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.SpacePartition.space_node_indices"><code class="docutils literal notranslate"><span class="pre">SpacePartition.space_node_indices()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.SpacePartition.partition_node_index"><code class="docutils literal notranslate"><span class="pre">SpacePartition.partition_node_index()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#warp.fem.space.SpaceRestriction"><code class="docutils literal notranslate"><span class="pre">SpaceRestriction</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.DofMapper"><code class="docutils literal notranslate"><span class="pre">DofMapper</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.SymmetricTensorMapper"><code class="docutils literal notranslate"><span class="pre">SymmetricTensorMapper</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#fields">Fields</a><ul>
+<li><a class="reference internal" href="#warp.fem.field.make_test"><code class="docutils literal notranslate"><span class="pre">make_test()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.field.make_trial"><code class="docutils literal notranslate"><span class="pre">make_trial()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.field.make_restriction"><code class="docutils literal notranslate"><span class="pre">make_restriction()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.field.DiscreteField"><code class="docutils literal notranslate"><span class="pre">DiscreteField</span></code></a><ul>
+<li><a class="reference internal" href="#warp.fem.field.DiscreteField.EvalArg"><code class="docutils literal notranslate"><span class="pre">DiscreteField.EvalArg</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.field.DiscreteField.dof_values"><code class="docutils literal notranslate"><span class="pre">DiscreteField.dof_values</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.field.DiscreteField.trace"><code class="docutils literal notranslate"><span class="pre">DiscreteField.trace()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.field.DiscreteField.eval_arg_value"><code class="docutils literal notranslate"><span class="pre">DiscreteField.eval_arg_value()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.field.DiscreteField.set_node_value"><code class="docutils literal notranslate"><span class="pre">DiscreteField.set_node_value()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.field.DiscreteField.eval_inner"><code class="docutils literal notranslate"><span class="pre">DiscreteField.eval_inner()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.field.DiscreteField.eval_grad_inner"><code class="docutils literal notranslate"><span class="pre">DiscreteField.eval_grad_inner()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.field.DiscreteField.eval_outer"><code class="docutils literal notranslate"><span class="pre">DiscreteField.eval_outer()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.field.DiscreteField.eval_grad_outer"><code class="docutils literal notranslate"><span class="pre">DiscreteField.eval_grad_outer()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#warp.fem.field.FieldRestriction"><code class="docutils literal notranslate"><span class="pre">FieldRestriction</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.field.TestField"><code class="docutils literal notranslate"><span class="pre">TestField</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.field.TrialField"><code class="docutils literal notranslate"><span class="pre">TrialField</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=32e29ea5"></script>
+    </body>
+</html>

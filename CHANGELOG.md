@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## [1.0.0-beta.1] - 2023-08-29
+
+- Fix for `wp.float16` being passed as kernel arguments
+- Fix for compile errors with kernels using structs in backward pass
+- Fix for `wp.Mesh.refit()` not being CUDA graph capturable due to synchronous temp. allocs
+- Fix for example flickering / MGPU crashes with Mandlebrot demo in Kit by reusing `ui.DynamicImageProvider` instances
+- Fix for a regression that disabled bundle change tracking in samples
+- Fix for incorrect surface velocities when meshes are deforming in `OgnClothSimulate`
+- Fix for incorrect lower-case when setting USD stage "up_axis" in examples
+- Fix for incompatible gradient types when wrapping PyTorch tensor as a vector or matrix type
+- Fix for adding open edges when building cloth constraints from meshes in `wp.sim.ModelBuilder.add_cloth_mesh()`
+- Add support for `wp.fabricarray` to directly access Fabric data from Warp kernels, see https://omniverse.gitlab-master-pages.nvidia.com/usdrt/docs/usdrt_prim_selection.html for examples
+- Add support for user defined gradient functions, see `@wp.func_replay`, and `@wp.func_grad` decorators
+- Add support for more OG attribute types in `omni.warp.from_omni_graph()`
+- Add support for creating NanoVDB `wp.Volume` objects from dense NumPy arrays
+- Add support for `wp.volume_sample_grad_f()` which returns the value + gradient efficiently from an NVDB volume
+- Add support for LLVM fp16 intrinsics for half-precision arithmetic
+- Add implementation of stochastic gradient descent, see `wp.optim.SGD`
+- Add `warp.fem` framework for solving weak-form PDE problems (see https://gdaviet.gitlab-master-pages.nvidia.com/warp/modules/fem.html)
+- Optimizations for `omni.warp` extension load time (2.2s to 625ms cold start)
+- Make all `omni.ui` dependencies optional so that Warp unit tests can run headless
+- Deprecation of `wp.tid()` outside of kernel functions, users should pass `tid()` values to `wp.func` functions explicitly
+- Deprecation of `wp.sim.Model.flatten()` for returning all contained tensors from the model
+- Add support for clamping particle max velocity in `wp.sim.Model.particle_max_velocity`
+- Remove dependency on `urdfpy` package, improve MJCF parser handling of default values
+
 ## [0.10.1] - 2023-07-25
 
 - Fix for large multidimensional kernel launches (> 2^32 threads)
