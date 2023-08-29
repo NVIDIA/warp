@@ -2092,7 +2092,7 @@ def from_ptr(ptr, length, dtype=None, shape=None, device=None):
         dtype=dtype,
         length=length,
         capacity=length * type_size_in_bytes(dtype),
-        ptr=ctypes.cast(ptr, ctypes.POINTER(ctypes.c_size_t)).contents.value,
+        ptr=0 if ptr == 0 else ctypes.cast(ptr, ctypes.POINTER(ctypes.c_size_t)).contents.value,
         shape=shape,
         device=device,
         owner=False,
