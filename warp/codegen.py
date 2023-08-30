@@ -700,6 +700,8 @@ class Adjoint:
         # we validate argument types before they go to generated native code
         resolved_func = None
 
+        arg_types = [a.type for a in args if not isinstance(a, warp.context.Function)]
+
         if func.is_builtin():
             for f in func.overloads:
                 match = True
@@ -752,8 +754,6 @@ class Adjoint:
                     break
         else:
             # user-defined function
-            arg_types = [a.type for a in args]
-
             resolved_func = func.get_overload(arg_types)
 
         if resolved_func is None:
@@ -798,7 +798,7 @@ class Adjoint:
             adj.builder.build_function(func)
 
         # evaluate the function type based on inputs
-        value_type = func.value_func(args, kwds, templates)
+        value_type = func.value_func(arg_types, kwds, templates)
 
         func_name = compute_type_str(func.native_func, templates)
 
