@@ -704,54 +704,53 @@ class Adjoint:
 
         if func.is_builtin():
             for f in func.overloads:
-                match = True
-
                 # skip type checking for variadic functions
                 if not f.variadic:
                     # check argument counts match are compatible (may be some default args)
                     if len(f.input_types) < len(args):
-                        match = False
                         continue
 
-                    # check argument types equal
-                    for i, (arg_name, arg_type) in enumerate(f.input_types.items()):
-                        # if arg type registered as Any, treat as
-                        # template allowing any type to match
-                        if arg_type == Any:
-                            continue
+                    def match_args(args, f):
+                        # check argument types equal
+                        for i, (arg_name, arg_type) in enumerate(f.input_types.items()):
+                            # if arg type registered as Any, treat as
+                            # template allowing any type to match
+                            if arg_type == Any:
+                                continue
 
-                        # handle function refs as a special case
-                        if arg_type == Callable and type(args[i]) is warp.context.Function:
-                            continue
+                            # handle function refs as a special case
+                            if arg_type == Callable and type(args[i]) is warp.context.Function:
+                                continue
 
-                        # look for default values for missing args
-                        if i >= len(args):
-                            if arg_name not in f.defaults:
-                                match = False
-                                break
-                        else:
-                            # otherwise check arg type matches input variable type
-                            if not types_equal(arg_type, args[i].type, match_generic=True):
-                                match = False
-                                break
+                            # look for default values for missing args
+                            if i >= len(args):
+                                if arg_name not in f.defaults:
+                                    return False
+                            else:
+                                # otherwise check arg type matches input variable type
+                                if not types_equal(arg_type, args[i].type, match_generic=True):
+                                    return False
+
+                        return True
+
+                    if not match_args(args, f):
+                        continue
 
                 # check output dimensions match expectations
                 if min_outputs:
                     try:
                         value_type = f.value_func(args, kwds, templates)
-                        if len(value_type) != min_outputs:
-                            match = False
+                        if not hasattr(value_type, "__len__") or len(value_type) != min_outputs:
                             continue
                     except Exception:
                         # value func may fail if the user has given
                         # incorrect args, so we need to catch this
-                        match = False
                         continue
 
                 # found a match, use it
-                if match:
-                    resolved_func = f
-                    break
+                resolved_func = f
+                break
+
         else:
             # user-defined function
             resolved_func = func.get_overload(arg_types)
@@ -790,7 +789,6 @@ class Adjoint:
                     const = adj.add_constant(func.defaults[arg_name])
                     args.append(const)
                 else:
-                    match = False
                     break
 
         # if it is a user-function then build it recursively

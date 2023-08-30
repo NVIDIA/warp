@@ -2210,6 +2210,7 @@ def view_value_func(arg_types, kwds, _):
     else:
         return type(arg_types[0])(dtype=dtype, ndim=ndim)
 
+
 # does argument checking and type propagation for store()
 def store_value_func(arg_types, kwds, _):
     # check target type
