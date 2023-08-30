@@ -13,8 +13,10 @@
 #
 ###########################################################################
 
+import argparse
 import os
 import math
+from enum import Enum
 
 import numpy as np
 
@@ -27,9 +29,29 @@ from pxr import Usd, UsdGeom
 
 wp.init()
 
+class IntegratorType(Enum):
+    EULER = "euler"
+    XPBD = "xpbd"
+
+    def __str__(self):
+        return self.value
 
 class Example:
     def __init__(self, stage):
+
+        self.parser = argparse.ArgumentParser()
+        self.parser.add_argument(
+            "--integrator",
+            help="Type of integrator",
+            type=IntegratorType,
+            choices=list(IntegratorType),
+            default=IntegratorType.EULER,
+        )
+
+        args = self.parser.parse_args()
+
+        self.integrator_type = args.integrator
+
         self.sim_width = 64
         self.sim_height = 32
 
@@ -40,23 +62,41 @@ class Example:
         self.sim_dt = (1.0 / self.sim_fps) / self.sim_substeps
         self.sim_time = 0.0
         self.sim_use_graph = wp.get_device().is_cuda
+        self.simulate_timer = wp.ScopedTimer("simulate", dict={})
 
         builder = wp.sim.ModelBuilder()
 
-        builder.add_cloth_grid(
-            pos=(0.0, 4.0, 0.0),
-            rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi * 0.5),
-            vel=(0.0, 0.0, 0.0),
-            dim_x=self.sim_width,
-            dim_y=self.sim_height,
-            cell_x=0.1,
-            cell_y=0.1,
-            mass=0.1,
-            fix_left=True,
-            tri_ke=1.0e3,
-            tri_ka=1.0e3,
-            tri_kd=1.0e1,
-        )
+        if self.integrator_type == IntegratorType.EULER:
+            builder.add_cloth_grid(
+                pos=(0.0, 4.0, 0.0),
+                rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi * 0.5),
+                vel=(0.0, 0.0, 0.0),
+                dim_x=self.sim_width,
+                dim_y=self.sim_height,
+                cell_x=0.1,
+                cell_y=0.1,
+                mass=0.1,
+                fix_left=True,
+                tri_ke=1.0e3,
+                tri_ka=1.0e3,
+                tri_kd=1.0e1,
+            )
+        else:
+            builder.add_cloth_grid(
+                pos=(0.0, 4.0, 0.0),
+                rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi * 0.5),
+                vel=(0.0, 0.0, 0.0),
+                dim_x=self.sim_width,
+                dim_y=self.sim_height,
+                cell_x=0.1,
+                cell_y=0.1,
+                mass=0.1,
+                fix_left=True,
+                edge_ke=1.0e2,
+                add_springs=True,
+                spring_ke=1.0e3,
+                spring_kd=0.0,
+            )
 
         usd_stage = Usd.Stage.Open(os.path.join(os.path.dirname(__file__), "assets/bunny.usd"))
         usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/bunny/bunny"))
@@ -82,7 +122,10 @@ class Example:
         self.model.soft_contact_ke = 1.0e4
         self.model.soft_contact_kd = 1.0e2
 
-        self.integrator = wp.sim.SemiImplicitIntegrator()
+        if self.integrator_type == IntegratorType.EULER:
+            self.integrator = wp.sim.SemiImplicitIntegrator()
+        else:
+            self.integrator = wp.sim.XPBDIntegrator(iterations=1)
 
         self.state_0 = self.model.state()
         self.state_1 = self.model.state()
@@ -106,7 +149,7 @@ class Example:
             self.graph = wp.capture_end()
 
     def update(self):
-        with wp.ScopedTimer("simulate", active=True):
+        with self.simulate_timer:
             if self.sim_use_graph:
                 wp.capture_launch(self.graph)
             else:
@@ -139,5 +182,8 @@ if __name__ == "__main__":
     for i in range(example.sim_frames):
         example.update()
         example.render()
+
+    frame_times = example.simulate_timer.dict["simulate"]
+    print("\nAverage frame sim time: {:.2f} ms".format(sum(frame_times) / len(frame_times)))
 
     example.renderer.save()
