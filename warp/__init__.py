@@ -79,3 +79,7 @@ from warp.dlpack import from_dlpack, to_dlpack
 from warp.constants import *
 
 from . import builtins
+
+import warp.config
+
+__version__ = warp.config.version
