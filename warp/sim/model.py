@@ -401,7 +401,7 @@ class Model:
         tri_activations (wp.array): Triangle element activations, shape [tri_count], float
         tri_materials (wp.array): Triangle element materials, shape [tri_count, 5], float
 
-        edge_indices (wp.array): Bending edge indices, shape [edge_count*2], int
+        edge_indices (wp.array): Bending edge indices, shape [edge_count*4], int
         edge_rest_angle (wp.array): Bending edge rest angle, shape [edge_count], float
         edge_bending_properties (wp.array): Bending edge stiffness and damping parameters, shape [edge_count, 2], float
 
@@ -951,6 +951,10 @@ class ModelBuilder:
     default_tri_kd = 10.0
     default_tri_drag = 0.0
     default_tri_lift = 0.0
+
+    # Default distance constraint properties
+    default_spring_ke = 100.0
+    default_spring_kd = 0.0
 
     # Default edge bending properties
     default_edge_ke = 100.0
@@ -3197,6 +3201,9 @@ class ModelBuilder:
         tri_lift: float = default_tri_lift,
         edge_ke: float = default_edge_ke,
         edge_kd: float = default_edge_kd,
+        add_springs: bool = False,
+        spring_ke: float = default_spring_ke,
+        spring_kd: float = default_spring_kd,
     ):
         """Helper to create a regular planar cloth grid
 
@@ -3283,6 +3290,8 @@ class ModelBuilder:
         # is a good test of the adjacency structure
         adj = wp.utils.MeshAdjacency(self.tri_indices[start_tri:end_tri], end_tri - start_tri)
 
+        spring_indices = set()
+
         for k, e in adj.edges.items():
             # skip open edges
             if e.f0 == -1 or e.f1 == -1:
@@ -3291,6 +3300,20 @@ class ModelBuilder:
             self.add_edge(
                 e.o0, e.o1, e.v0, e.v1, edge_ke=edge_ke, edge_kd=edge_kd
             )  # opposite 0, opposite 1, vertex 0, vertex 1
+
+            spring_indices.add((min(e.o0, e.o1), max(e.o0, e.o1)))
+            spring_indices.add((min(e.o0, e.v0), max(e.o0, e.v0)))
+            spring_indices.add((min(e.o0, e.v1), max(e.o0, e.v1)))
+
+            spring_indices.add((min(e.o1, e.v0), max(e.o1, e.v0)))
+            spring_indices.add((min(e.o1, e.v1), max(e.o1, e.v1)))
+
+            spring_indices.add((min(e.v0, e.v1), max(e.v0, e.v1)))
+
+
+        if add_springs:
+            for i, j in spring_indices:
+                self.add_spring(i, j, spring_ke, spring_kd, control = 0.0)
 
     def add_cloth_mesh(
         self,
@@ -3310,6 +3333,9 @@ class ModelBuilder:
         tri_lift: float = default_tri_lift,
         edge_ke: float = default_edge_ke,
         edge_kd: float = default_edge_kd,
+        add_springs: bool = False,
+        spring_ke: float = default_spring_ke,
+        spring_kd: float = default_spring_kd,
     ):
         """Helper to create a cloth model from a regular triangle mesh
 
@@ -3378,6 +3404,21 @@ class ModelBuilder:
             edge_ke=[edge_ke] * len(edgeinds),
             edge_kd=[edge_kd] * len(edgeinds),
         )
+
+        if add_springs:
+            spring_indices = set()
+            for i, j, k, l in edgeinds:
+                spring_indices.add((min(i, j), max(i, j)))
+                spring_indices.add((min(i, k), max(i, k)))
+                spring_indices.add((min(i, l), max(i, l)))
+
+                spring_indices.add((min(j, k), max(j, k)))
+                spring_indices.add((min(j, l), max(j, l)))
+
+                spring_indices.add((min(k, l), max(k, l)))
+
+            for i, j in spring_indices:
+                self.add_spring(i, j, spring_ke, spring_kd, control = 0.0)
 
     def add_particle_grid(
         self,
@@ -3789,6 +3830,7 @@ class ModelBuilder:
             m.spring_stiffness = wp.array(self.spring_stiffness, dtype=wp.float32, requires_grad=requires_grad)
             m.spring_damping = wp.array(self.spring_damping, dtype=wp.float32, requires_grad=requires_grad)
             m.spring_control = wp.array(self.spring_control, dtype=wp.float32, requires_grad=requires_grad)
+            m.spring_constraint_lambdas = wp.array(shape=len(self.spring_rest_length), dtype=wp.float32, requires_grad=requires_grad)
 
             # ---------------------
             # triangles
@@ -3806,6 +3848,7 @@ class ModelBuilder:
             m.edge_bending_properties = wp.array(
                 self.edge_bending_properties, dtype=wp.float32, requires_grad=requires_grad
             )
+            m.edge_constraint_lambdas = wp.array(shape=len(self.edge_rest_angle), dtype=wp.float32, requires_grad=requires_grad)
 
             # ---------------------
             # tetrahedra
