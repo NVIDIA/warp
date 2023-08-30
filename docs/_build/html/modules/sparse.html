@@ -3,10 +3,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="FEM Toolkit Reference" href="fem.html" /><link rel="prev" title="Interoperability" href="interoperability.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="warp.fem" href="fem.html" /><link rel="prev" title="warp.sim" href="sim.html" />
 
     <!-- Generated with Sphinx 7.2.2 and Furo 2023.08.19 -->
-        <title>Sparse Linear Algebra Reference - Warp1.0.0-beta.1</title>
+        <title>warp.sparse - Warp 1.0.0-beta.1</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=36a5483c" />
@@ -136,7 +136,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">Warp<br\>1.0.0-beta.1</div></a>
+      <a href="../index.html"><div class="brand">Warp 1.0.0-beta.1</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -163,7 +163,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp<br\>1.0.0-beta.1</span>
+  <span class="sidebar-brand-text">Warp 1.0.0-beta.1</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -177,18 +177,20 @@
 <li class="toctree-l1"><a class="reference internal" href="../basics.html">Basics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="devices.html">Devices</a></li>
 <li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interoperability.html">Interoperability</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../debugging.html">Debugging</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
-<ul class="current">
+<p class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="runtime.html">Runtime Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="functions.html">Kernel Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sim.html">Simulation Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="interoperability.html">Interoperability</a></li>
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Sparse Linear Algebra Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="fem.html">FEM Toolkit Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Simulation Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="sim.html">warp.sim</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fem.html">warp.fem</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Project Links</span></p>
 <ul>
@@ -228,20 +230,12 @@
           </label>
         </div>
         <article role="main">
-          <section id="sparse-linear-algebra-reference">
-<h1>Sparse Linear Algebra Reference<a class="headerlink" href="#sparse-linear-algebra-reference" title="Link to this heading">#</a></h1>
-<p>Warp includes a sparse linear algebra module <code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> that implements a few common operations for manipulating sparse matrices.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>The sparse module is under construction and should be expected to change rapidly, please treat this section as work in progress.</p>
-</div>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>This module provide naive implementations of useful routines for convenience. For performance, if possible prefer optimized implementations such as provided by cuSPARSE.</p>
-</div>
-<section id="blocked-sparse-row-bsr-matrices">
-<h2>Blocked Sparse Row (BSR) matrices<a class="headerlink" href="#blocked-sparse-row-bsr-matrices" title="Link to this heading">#</a></h2>
-<p>At the moment, <cite>warp.sparse</cite> only supports BSR matrix, including the special case of 1x1 blocks, Compressed Sparse Row (CSR) matrices.</p>
+          <section id="warp-sparse">
+<h1>warp.sparse<a class="headerlink" href="#warp-sparse" title="Link to this heading">#</a></h1>
+<p>Warp includes a sparse linear algebra module <code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> that implements some common operations for manipulating sparse matrices that arise in simulation.</p>
+<section id="sparse-matrices">
+<h2>Sparse Matrices<a class="headerlink" href="#sparse-matrices" title="Link to this heading">#</a></h2>
+<p>Currently <cite>warp.sparse</cite> supports Block Sparse Row (BSR) matrices, the BSR format can also be used to represent Compressed Sparse Row (CSR) matrices as a special case with a 1x1 block size.</p>
 <dl class="py class" id="module-warp.sparse">
 <dt class="sig sig-object py" id="warp.sparse.BsrMatrix">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">BsrMatrix</span></span><a class="headerlink" href="#warp.sparse.BsrMatrix" title="Link to this definition">#</a></dt>
@@ -369,9 +363,9 @@ or a 3d array with data type equal to the <cite>dest</cite> matrix scalar type.<
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>dest</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – </p></li>
-<li><p><strong>rows</strong> (<em>&lt;warp.types.array object at 0x0000017FEDE41000&gt;</em>) – </p></li>
-<li><p><strong>columns</strong> (<em>&lt;warp.types.array object at 0x0000017FEDE41090&gt;</em>) – </p></li>
-<li><p><strong>values</strong> (<em>&lt;warp.types.array object at 0x0000017FEDE421D0&gt;</em>) – </p></li>
+<li><p><strong>rows</strong> (<em>&lt;warp.types.array object at 0x000001C0FF88A5C0&gt;</em>) – </p></li>
+<li><p><strong>columns</strong> (<em>&lt;warp.types.array object at 0x000001C0FF88A650&gt;</em>) – </p></li>
+<li><p><strong>values</strong> (<em>&lt;warp.types.array object at 0x000001C0FF88B790&gt;</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -529,18 +523,18 @@ or a 3d array with data type equal to the <cite>dest</cite> matrix scalar type.<
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">FEM Toolkit Reference</div>
+                <div class="title">warp.fem</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="interoperability.html">
+          <a class="prev-page" href="sim.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Interoperability</div>
+                <div class="title">warp.sim</div>
                 
               </div>
             </a>
@@ -580,8 +574,8 @@ or a 3d array with data type equal to the <cite>dest</cite> matrix scalar type.<
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">Sparse Linear Algebra Reference</a><ul>
-<li><a class="reference internal" href="#blocked-sparse-row-bsr-matrices">Blocked Sparse Row (BSR) matrices</a><ul>
+<li><a class="reference internal" href="#">warp.sparse</a><ul>
+<li><a class="reference internal" href="#sparse-matrices">Sparse Matrices</a><ul>
 <li><a class="reference internal" href="#warp.sparse.BsrMatrix"><code class="docutils literal notranslate"><span class="pre">BsrMatrix</span></code></a><ul>
 <li><a class="reference internal" href="#warp.sparse.BsrMatrix.nrow"><code class="docutils literal notranslate"><span class="pre">BsrMatrix.nrow</span></code></a></li>
 <li><a class="reference internal" href="#warp.sparse.BsrMatrix.ncol"><code class="docutils literal notranslate"><span class="pre">BsrMatrix.ncol</span></code></a></li>

@@ -1,4 +1,4 @@
-FEM Toolkit Reference
+warp.fem
 =====================
 
 .. currentmodule:: warp.fem
@@ -7,11 +7,10 @@ FEM Toolkit Reference
    .. toctree::
    :maxdepth: 2
 
-The ``warp.fem`` module is designed to facilitate computing weak-form integrals in element-based Galerkin methods,
-allowing to quickly experiment with various FEM formulations and discretization schemes.
-
-.. note:: The FEM tookit is under construction and should be expected to change rapidly, please treat this section as work in progress.
-
+The ``warp.fem`` module is designed to facilitate solving physical systems described as differential 
+equations. For example, it can solve PDEs for diffusion, convection, fluid flow, and elasticity problems 
+using finite element-based (FEM) Galerkin methods, and allows users to quickly experiment with various FEM
+formulations and discretization schemes.
 
 Integrands
 ----------

@@ -1,3 +1,5 @@
+.. _interopability:
+
 Interoperability
 ================
 
@@ -129,8 +131,8 @@ Currently this is one-directional, so that Warp arrays can be used as input to a
 JAX
 ---
 
-Interop with JAX arrays is not currently well supported, although it is possible to first convert arrays to a Torch
-tensor and then to JAX via. the dlpack mechanism.
+Interop with JAX arrays is supported through the following methods, internally these use the DLPack protocol to exchange
+data in a zero-copy way with JAX.
 
 .. automodule:: warp.jax
     :members:

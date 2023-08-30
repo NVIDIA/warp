@@ -10,6 +10,7 @@ Runtime Reference
 ..    devices
 ..    profiling
 
+This section describes the Warp Python runtime API, how to manage memory, launch kernels, and high-level functionality for dealing with such as meshes and volumes. The APIs described in this section are intended to be used at *Python Scope* and  run inside for CPython interpreter. For a comprehensive list of functions available inside at *Kernel Scope*, please see the Kernel Reference section.
 
 Kernels
 -------

@@ -3,10 +3,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="prev" title="Sparse Linear Algebra Reference" href="sparse.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="prev" title="warp.sparse" href="sparse.html" />
 
     <!-- Generated with Sphinx 7.2.2 and Furo 2023.08.19 -->
-        <title>FEM Toolkit Reference - Warp1.0.0-beta.1</title>
+        <title>warp.fem - Warp 1.0.0-beta.1</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=36a5483c" />
@@ -136,7 +136,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">Warp<br\>1.0.0-beta.1</div></a>
+      <a href="../index.html"><div class="brand">Warp 1.0.0-beta.1</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -163,7 +163,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp<br\>1.0.0-beta.1</span>
+  <span class="sidebar-brand-text">Warp 1.0.0-beta.1</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -177,18 +177,20 @@
 <li class="toctree-l1"><a class="reference internal" href="../basics.html">Basics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="devices.html">Devices</a></li>
 <li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interoperability.html">Interoperability</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../debugging.html">Debugging</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
-<ul class="current">
+<p class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="runtime.html">Runtime Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="functions.html">Kernel Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sim.html">Simulation Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="interoperability.html">Interoperability</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sparse.html">Sparse Linear Algebra Reference</a></li>
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">FEM Toolkit Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Simulation Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="sim.html">warp.sim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sparse.html">warp.sparse</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">warp.fem</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Project Links</span></p>
 <ul>
@@ -228,14 +230,12 @@
           </label>
         </div>
         <article role="main">
-          <section id="fem-toolkit-reference">
-<h1>FEM Toolkit Reference<a class="headerlink" href="#fem-toolkit-reference" title="Link to this heading">#</a></h1>
-<p>The <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code> module is designed to facilitate computing weak-form integrals in element-based Galerkin methods,
-allowing to quickly experiment with various FEM formulations and discretization schemes.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>The FEM tookit is under construction and should be expected to change rapidly, please treat this section as work in progress.</p>
-</div>
+          <section id="warp-fem">
+<h1>warp.fem<a class="headerlink" href="#warp-fem" title="Link to this heading">#</a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code> module is designed to facilitate solving physical systems described as differential
+equations. For example, it can solve PDEs for diffusion, convection, fluid flow, and elasticity problems
+using finite element-based (FEM) Galerkin methods, and allows users to quickly experiment with various FEM
+formulations and discretization schemes.</p>
 <section id="integrands">
 <h2>Integrands<a class="headerlink" href="#integrands" title="Link to this heading">#</a></h2>
 <p>The core functionality of the FEM toolkit is the ability to integrate constant, linear and bilinear forms
@@ -1631,7 +1631,7 @@ See [Daviet and Bertails-Descoubes 2016]</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
-<li><p><strong>s</strong> (<em>&lt;warp.codegen.Struct object at 0x0000017FEDF03550&gt;</em>) – </p></li>
+<li><p><strong>s</strong> (<em>&lt;warp.codegen.Struct object at 0x000001C0FFADED40&gt;</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -1645,7 +1645,7 @@ See [Daviet and Bertails-Descoubes 2016]</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
-<li><p><strong>s</strong> (<em>&lt;warp.codegen.Struct object at 0x0000017FEDF03550&gt;</em>) – </p></li>
+<li><p><strong>s</strong> (<em>&lt;warp.codegen.Struct object at 0x000001C0FFADED40&gt;</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -1659,7 +1659,7 @@ See [Daviet and Bertails-Descoubes 2016]</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
-<li><p><strong>s</strong> (<em>&lt;warp.codegen.Struct object at 0x0000017FEDF03550&gt;</em>) – </p></li>
+<li><p><strong>s</strong> (<em>&lt;warp.codegen.Struct object at 0x000001C0FFADED40&gt;</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -1673,7 +1673,7 @@ See [Daviet and Bertails-Descoubes 2016]</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
-<li><p><strong>s</strong> (<em>&lt;warp.codegen.Struct object at 0x0000017FEDF03550&gt;</em>) – </p></li>
+<li><p><strong>s</strong> (<em>&lt;warp.codegen.Struct object at 0x000001C0FFADED40&gt;</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -1737,7 +1737,7 @@ See [Daviet and Bertails-Descoubes 2016]</p>
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Sparse Linear Algebra Reference</div>
+                <div class="title">warp.sparse</div>
                 
               </div>
             </a>
@@ -1777,7 +1777,7 @@ See [Daviet and Bertails-Descoubes 2016]</p>
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">FEM Toolkit Reference</a><ul>
+<li><a class="reference internal" href="#">warp.fem</a><ul>
 <li><a class="reference internal" href="#integrands">Integrands</a></li>
 <li><a class="reference internal" href="#basic-workflow">Basic workflow</a></li>
 <li><a class="reference internal" href="#introductory-examples">Introductory examples</a></li>

@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Profiling" href="profiling.html" /><link rel="prev" title="Basics" href="../basics.html" />
 
     <!-- Generated with Sphinx 7.2.2 and Furo 2023.08.19 -->
-        <title>Devices - Warp1.0.0-beta.1</title>
+        <title>Devices - Warp 1.0.0-beta.1</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=36a5483c" />
@@ -136,7 +136,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">Warp<br\>1.0.0-beta.1</div></a>
+      <a href="../index.html"><div class="brand">Warp 1.0.0-beta.1</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -163,7 +163,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp<br\>1.0.0-beta.1</span>
+  <span class="sidebar-brand-text">Warp 1.0.0-beta.1</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -177,18 +177,20 @@
 <li class="toctree-l1"><a class="reference internal" href="../basics.html">Basics</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Devices</a></li>
 <li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interoperability.html">Interoperability</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../debugging.html">Debugging</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<p class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="runtime.html">Runtime Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="functions.html">Kernel Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sim.html">Simulation Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="interoperability.html">Interoperability</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sparse.html">Sparse Linear Algebra Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="fem.html">FEM Toolkit Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Simulation Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sim.html">warp.sim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fem.html">warp.fem</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Project Links</span></p>
 <ul>
@@ -348,8 +350,8 @@
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">wp.synchronize_device()</span></code> function offers more fine-grained synchronization than <code class="docutils literal notranslate"><span class="pre">wp.synchronize()</span></code>, as the latter waits for <em>all</em> devices to complete their work.</p>
 </section>
-<section id="custom-cuda-contexts-advanced">
-<h2>Custom CUDA Contexts (Advanced)<a class="headerlink" href="#custom-cuda-contexts-advanced" title="Link to this heading">#</a></h2>
+<section id="custom-cuda-contexts">
+<h2>Custom CUDA Contexts<a class="headerlink" href="#custom-cuda-contexts" title="Link to this heading">#</a></h2>
 <p>Warp is designed to work with arbitrary CUDA contexts so it can easily integrate into different workflows.</p>
 <p>Applications built on the CUDA Runtime API target the <em>primary context</em> of each device.  The Runtime API hides CUDA context management under the hood.  In Warp, device <code class="docutils literal notranslate"><span class="pre">&quot;cuda:i&quot;</span></code> represents the primary context of device <code class="docutils literal notranslate"><span class="pre">i</span></code>, which aligns with the CUDA Runtime API.</p>
 <p>Applications built on the CUDA Driver API work with CUDA contexts directly and can create custom CUDA contexts on any device.  Custom CUDA contexts can be created with specific affinity or interop features that benefit the application.  Warp can work with these CUDA contexts as well.</p>
@@ -437,7 +439,7 @@
 <li><a class="reference internal" href="#scoped-devices">Scoped Devices</a></li>
 <li><a class="reference internal" href="#current-cuda-device">Current CUDA Device</a></li>
 <li><a class="reference internal" href="#device-synchronization">Device Synchronization</a></li>
-<li><a class="reference internal" href="#custom-cuda-contexts-advanced">Custom CUDA Contexts (Advanced)</a></li>
+<li><a class="reference internal" href="#custom-cuda-contexts">Custom CUDA Contexts</a></li>
 </ul>
 </li>
 </ul>

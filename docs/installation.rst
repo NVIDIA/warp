@@ -1,22 +1,26 @@
 Installation
 ============
 
-Python version
---------------
+The easiest way is to install Warp is from PyPi:
 
-Warp supports Python versions 3.7 and newer.
+.. code-block:: sh
+
+    $ pip install warp-lang
+
+Pre-built binary packages for Windows, Linux and macOS are also available on the `Releases <https://github.com/NVIDIA/warp/releases>`__ page. To install in your local Python environment extract the archive and run the following command from the root directory:
+
+.. code-block:: sh
+
+    $ pip install .
 
 Dependencies
 ------------
 
-Warp requires the following dependencies to be installed:
+Warp supports Python versions 3.7.x onwards, and requires the following dependencies to be installed:
 
 * `NumPy`_
 
 .. _NumPy: https://numpy.org
-
-Optional dependencies
-~~~~~~~~~~~~~~~~~~~~~
 
 The following dependencies may be required to enable certain features:
 
@@ -31,22 +35,6 @@ Building the Warp documentation requires the following dependencies:
 
 .. _Sphinx: https://www.sphinx-doc.org
 .. _Furo: https://github.com/pradyunsg/furo
-
-Installing from PyPI
---------------------
-
-The easiest way is to install from PyPI:
-
-.. code-block:: sh
-
-    $ pip install warp-lang
-
-Pre-built binary packages for Windows and Linux are also available on the Releases page.
-To install in your local Python environment extract the archive and run the following command from the root directory:
-
-.. code-block:: sh
-
-    $ pip install .
 
 Building from source
 -----------------------------------

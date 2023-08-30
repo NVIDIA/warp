@@ -126,8 +126,8 @@ CUDA kernel launches and memory operations can execute asynchronously.  This all
 
 The ``wp.synchronize_device()`` function offers more fine-grained synchronization than ``wp.synchronize()``, as the latter waits for *all* devices to complete their work.
 
-Custom CUDA Contexts (Advanced)
--------------------------------
+Custom CUDA Contexts
+--------------------
 
 Warp is designed to work with arbitrary CUDA contexts so it can easily integrate into different workflows.
 

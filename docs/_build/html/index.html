@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Installation" href="installation.html" />
 
     <!-- Generated with Sphinx 7.2.2 and Furo 2023.08.19 -->
-        <title>Warp1.0.0-beta.1</title>
+        <title>Warp 1.0.0-beta.1</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
@@ -136,7 +136,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="#"><div class="brand">Warp<br\>1.0.0-beta.1</div></a>
+      <a href="#"><div class="brand">Warp 1.0.0-beta.1</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -163,7 +163,7 @@
     <img class="sidebar-logo only-dark" src="_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp<br\>1.0.0-beta.1</span>
+  <span class="sidebar-brand-text">Warp 1.0.0-beta.1</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -177,18 +177,20 @@
 <li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/devices.html">Devices</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<p class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="modules/runtime.html">Runtime Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/functions.html">Kernel Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modules/sim.html">Simulation Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modules/sparse.html">Sparse Linear Algebra Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modules/fem.html">FEM Toolkit Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="genindex.html">Index</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Simulation Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules/sim.html">warp.sim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/fem.html">warp.fem</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Project Links</span></p>
 <ul>
@@ -230,15 +232,24 @@
         <article role="main">
           <section id="nvidia-warp-documentation">
 <h1>NVIDIA Warp Documentation<a class="headerlink" href="#nvidia-warp-documentation" title="Link to this heading">#</a></h1>
-<p>Warp is a Python framework for writing high-performance simulation and graphics code. Kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.</p>
-<p>Warp is comes with a rich set of primitives that make it easy to write programs for physics simulation, geometry
-processing, and procedural animation. In addition, Warp kernels are differentiable, and can be used as part of
-machine-learning training pipelines with other frameworks such as PyTorch.</p>
+<p>Warp is a Python framework for writing high-performance simulation and graphics code. Warp takes
+regular Python functions and JIT compiles them to efficient kernel code that can run on the CPU or GPU.</p>
+<p>Warp is designed for spatial computing and comes with a rich set of primitives that make it easy to write
+programs for physics simulation, perception, robotics, and geometry processing. In addition, Warp kernels
+are differentiable and can be used as part of machine-learning pipelines with frameworks such as PyTorch and JAX.</p>
 <p>Below are some examples of simulations implemented using Warp:</p>
 <img alt="_images/header.png" src="_images/header.png" />
 </section>
 <section id="quickstart">
 <h1>Quickstart<a class="headerlink" href="#quickstart" title="Link to this heading">#</a></h1>
+<p>The easiest way is to install Warp is from PyPi:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>warp-lang
+</pre></div>
+</div>
+<p>Pre-built binary packages for Windows, Linux and macOS are also available on the <a class="reference external" href="https://github.com/NVIDIA/warp/releases">Releases</a> page. To install in your local Python environment extract the archive and run the following command from the root directory:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>.
+</pre></div>
+</div>
 <section id="basic-example">
 <h2>Basic example<a class="headerlink" href="#basic-example" title="Link to this heading">#</a></h2>
 <p>An example first program that computes the lengths of random 3D vectors is given below:</p>
@@ -251,7 +262,7 @@ machine-learning training pipelines with other frameworks such as PyTorch.</p>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span> <span class="nf">length</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">),</span>
-        <span class="n">lengths</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+           <span class="n">lengths</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
 
     <span class="c1"># thread index</span>
     <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
@@ -266,8 +277,8 @@ machine-learning training pipelines with other frameworks such as PyTorch.</p>
 
 <span class="c1"># launch kernel</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">length</span><span class="p">,</span>
-        <span class="n">dim</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">points</span><span class="p">),</span>
-        <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">points</span><span class="p">,</span> <span class="n">lengths</span><span class="p">])</span>
+          <span class="n">dim</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">points</span><span class="p">),</span>
+          <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">points</span><span class="p">,</span> <span class="n">lengths</span><span class="p">])</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="n">lengths</span><span class="p">)</span>
 </pre></div>
@@ -358,17 +369,14 @@ commercial licensing inquires.</p>
 <p class="caption" role="heading"><span class="caption-text">User's Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#python-version">Python version</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#dependencies">Dependencies</a></li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#installing-from-pypi">Installing from PyPI</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#building-from-source">Building from source</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="basics.html#initialization">Initialization</a></li>
-<li class="toctree-l2"><a class="reference internal" href="basics.html#devices">Devices</a></li>
 <li class="toctree-l2"><a class="reference internal" href="basics.html#kernels">Kernels</a></li>
-<li class="toctree-l2"><a class="reference internal" href="basics.html#memory-model">Memory Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="basics.html#arrays">Arrays</a></li>
 <li class="toctree-l2"><a class="reference internal" href="basics.html#user-functions">User Functions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="basics.html#compilation-model">Compilation Model</a></li>
 <li class="toctree-l2"><a class="reference internal" href="basics.html#language-details">Language Details</a></li>
@@ -379,11 +387,19 @@ commercial licensing inquires.</p>
 <li class="toctree-l2"><a class="reference internal" href="modules/devices.html#scoped-devices">Scoped Devices</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/devices.html#current-cuda-device">Current CUDA Device</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/devices.html#device-synchronization">Device Synchronization</a></li>
-<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#custom-cuda-contexts-advanced">Custom CUDA Contexts (Advanced)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#custom-cuda-contexts">Custom CUDA Contexts</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="modules/profiling.html">Profiling</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="modules/profiling.html#warp.ScopedTimer"><code class="docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#numpy">NumPy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#pytorch">PyTorch</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#cupy-numba">CuPy/Numba</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#jax">JAX</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#dlpack">DLPack</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a><ul>
@@ -410,7 +426,7 @@ commercial licensing inquires.</p>
 <section id="api-reference">
 <h2>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading">#</a></h2>
 <div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<p class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="modules/runtime.html">Runtime Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#kernels">Kernels</a></li>
@@ -442,26 +458,26 @@ commercial licensing inquires.</p>
 <li class="toctree-l2"><a class="reference internal" href="modules/functions.html#operators">Operators</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="modules/sim.html">Simulation Reference</a><ul>
+</ul>
+</div>
+</section>
+<section id="simulation-reference">
+<h2>Simulation Reference<a class="headerlink" href="#simulation-reference" title="Link to this heading">#</a></h2>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Simulation Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules/sim.html">warp.sim</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="modules/sim.html#model">Model</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/sim.html#state">State</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/sim.html#integrators">Integrators</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/sim.html#importers">Importers</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#numpy">NumPy</a></li>
-<li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#pytorch">PyTorch</a></li>
-<li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#cupy-numba">CuPy/Numba</a></li>
-<li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#jax">JAX</a></li>
-<li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#dlpack">DLPack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/sparse.html">warp.sparse</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/sparse.html#sparse-matrices">Sparse Matrices</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="modules/sparse.html">Sparse Linear Algebra Reference</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="modules/sparse.html#blocked-sparse-row-bsr-matrices">Blocked Sparse Row (BSR) matrices</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="modules/fem.html">FEM Toolkit Reference</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="modules/fem.html">warp.fem</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="modules/fem.html#integrands">Integrands</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/fem.html#basic-workflow">Basic workflow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/fem.html#introductory-examples">Introductory examples</a></li>
@@ -473,7 +489,6 @@ commercial licensing inquires.</p>
 <li class="toctree-l2"><a class="reference internal" href="modules/fem.html#fields">Fields</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="genindex.html">Index</a></li>
 </ul>
 </div>
 <div class="toctree-wrapper compound">

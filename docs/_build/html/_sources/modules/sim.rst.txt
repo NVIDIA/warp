@@ -1,4 +1,4 @@
-Simulation Reference
+warp.sim
 ====================
 
 .. currentmodule:: warp.sim

@@ -3,10 +3,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Interoperability" href="interoperability.html" /><link rel="prev" title="Kernel Reference" href="functions.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="warp.sparse" href="sparse.html" /><link rel="prev" title="Kernel Reference" href="functions.html" />
 
     <!-- Generated with Sphinx 7.2.2 and Furo 2023.08.19 -->
-        <title>Simulation Reference - Warp1.0.0-beta.1</title>
+        <title>warp.sim - Warp 1.0.0-beta.1</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=36a5483c" />
@@ -136,7 +136,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">Warp<br\>1.0.0-beta.1</div></a>
+      <a href="../index.html"><div class="brand">Warp 1.0.0-beta.1</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -163,7 +163,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp<br\>1.0.0-beta.1</span>
+  <span class="sidebar-brand-text">Warp 1.0.0-beta.1</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -177,18 +177,20 @@
 <li class="toctree-l1"><a class="reference internal" href="../basics.html">Basics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="devices.html">Devices</a></li>
 <li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interoperability.html">Interoperability</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../debugging.html">Debugging</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
-<ul class="current">
+<p class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="runtime.html">Runtime Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="functions.html">Kernel Reference</a></li>
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Simulation Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="interoperability.html">Interoperability</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sparse.html">Sparse Linear Algebra Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="fem.html">FEM Toolkit Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Simulation Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">warp.sim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fem.html">warp.fem</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Project Links</span></p>
 <ul>
@@ -228,8 +230,8 @@
           </label>
         </div>
         <article role="main">
-          <section id="simulation-reference">
-<h1>Simulation Reference<a class="headerlink" href="#simulation-reference" title="Link to this heading">#</a></h1>
+          <section id="warp-sim">
+<h1>warp.sim<a class="headerlink" href="#warp-sim" title="Link to this heading">#</a></h1>
 <p>Warp includes a simulation module <code class="docutils literal notranslate"><span class="pre">warp.sim</span></code> that includes many common physical simulation models, and integrators for explicit and implicit time-stepping.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -3003,12 +3005,12 @@ may be used to advance the simulation state forward in time.</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="interoperability.html">
+          <a class="next-page" href="sparse.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Interoperability</div>
+                <div class="title">warp.sparse</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -3059,7 +3061,7 @@ may be used to advance the simulation state forward in time.</p>
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">Simulation Reference</a><ul>
+<li><a class="reference internal" href="#">warp.sim</a><ul>
 <li><a class="reference internal" href="#model">Model</a><ul>
 <li><a class="reference internal" href="#warp.sim.ModelBuilder"><code class="docutils literal notranslate"><span class="pre">ModelBuilder</span></code></a><ul>
 <li><a class="reference internal" href="#warp.sim.ModelBuilder.add_builder"><code class="docutils literal notranslate"><span class="pre">ModelBuilder.add_builder()</span></code></a></li>
