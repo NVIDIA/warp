@@ -5,14 +5,14 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import math
+import unittest
+
 # include parent path
 import numpy as np
-import math
 
 import warp as wp
 from warp.tests.test_base import *
-
-import unittest
 
 wp.init()
 
@@ -397,7 +397,7 @@ def test_slicing(test, device):
     assert_array_equal(wp_arr[:5], wp.array(np_arr[:5], dtype=int, device=device))
     assert_array_equal(wp_arr[1:5], wp.array(np_arr[1:5], dtype=int, device=device))
     assert_array_equal(wp_arr[-9:-5:1], wp.array(np_arr[-9:-5:1], dtype=int, device=device))
-    assert_array_equal(wp_arr[:5,], wp.array(np_arr[:5], dtype=int, device=device))
+    assert_array_equal(wp_arr[:5,], wp.array(np_arr[:5], dtype=int, device=device))  # noqa: E231
 
 
 def test_view(test, device):
@@ -738,7 +738,10 @@ def test_fill_matrix(test, device):
             assert_np_equal(a4.numpy(), np.zeros((*a4.shape, *mat_shape), dtype=nptype))
 
             # matrix values can be passed as a 1d numpy array, 2d numpy array, flat list, nested list, or Warp matrix instance
-            fill_arr1 = np.arange(mat_len, dtype=nptype)
+            if wptype != wp.bool:
+                fill_arr1 = np.arange(mat_len, dtype=nptype)
+            else:
+                fill_arr1 = np.ones(mat_len, dtype=nptype)
             fill_arr2 = fill_arr1.reshape(mat_shape)
             fill_list1 = list(fill_arr1)
             fill_list2 = [list(row) for row in fill_arr2]
@@ -1295,7 +1298,10 @@ def test_full_matrix(test, device):
                 assert_np_equal(na, np.full(a.size * mattype._length_, 42, dtype=nptype).reshape(npshape))
 
                 # fill with 1d numpy array and specific dtype
-                fill_arr1d = np.arange(mattype._length_, dtype=nptype)
+                if wptype != wp.bool:
+                    fill_arr1d = np.arange(mattype._length_, dtype=nptype)
+                else:
+                    fill_arr1d = np.ones(mattype._length_, dtype=nptype)
                 a = wp.full(shape, fill_arr1d, dtype=mattype, device=device)
                 na = a.numpy()
 
@@ -1695,6 +1701,7 @@ def test_to_list_struct(test, device):
         a1: wp.array(dtype=int)
         a2: wp.array2d(dtype=float)
         a3: wp.array3d(dtype=wp.float16)
+        bool: wp.bool
 
     dim = 3
 
@@ -1714,6 +1721,7 @@ def test_to_list_struct(test, device):
     s.a1 = wp.empty(1, dtype=int, device=device)
     s.a2 = wp.empty((1, 1), dtype=float, device=device)
     s.a3 = wp.empty((1, 1, 1), dtype=wp.float16, device=device)
+    s.bool = True
 
     for ndim in range(1, 5):
         shape = (dim,) * ndim
@@ -1731,6 +1739,7 @@ def test_to_list_struct(test, device):
             test.assertEqual(l[i].mi, s.mi)
             test.assertEqual(l[i].mf, s.mf)
             test.assertEqual(l[i].mh, s.mh)
+            test.assertEqual(l[i].bool, s.bool)
             test.assertEqual(l[i].inner.h, s.inner.h)
             test.assertEqual(l[i].inner.v, s.inner.v)
             test.assertEqual(l[i].a1.dtype, s.a1.dtype)

@@ -5,15 +5,14 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
-import numpy as np
+import unittest
 from typing import Any
 
-import warp as wp
-from warp.tests.test_base import *
-from .test_array import FillStruct
+import numpy as np
 
-import unittest
+import warp as wp
+from warp.tests.test_array import FillStruct
+from warp.tests.test_base import *
 
 wp.init()
 
@@ -919,7 +918,10 @@ def test_indexedarray_fill_matrix(test, device):
             assert_np_equal(a4.numpy(), np.zeros((*a4.shape, *mat_shape), dtype=nptype))
 
             # matrix values can be passed as a 1d numpy array, 2d numpy array, flat list, nested list, or Warp matrix instance
-            fill_arr1 = np.arange(mat_len, dtype=nptype)
+            if wptype != wp.bool:
+                fill_arr1 = np.arange(mat_len, dtype=nptype)
+            else:
+                fill_arr1 = np.ones(mat_len, dtype=nptype)
             fill_arr2 = fill_arr1.reshape(mat_shape)
             fill_list1 = list(fill_arr1)
             fill_list2 = [list(row) for row in fill_arr2]

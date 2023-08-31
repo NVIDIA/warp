@@ -5,15 +5,12 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-from .context import add_builtin
+import builtins
+from typing import Any, Callable, Dict, List, Tuple
 
 from warp.types import *
 
-from typing import Tuple
-from typing import List
-from typing import Dict
-from typing import Any
-from typing import Callable
+from .context import add_builtin
 
 
 def sametype_value_func(default):
@@ -592,6 +589,9 @@ for t in scalar_types_all:
         add_builtin(
             t.__name__, input_types={"u": u}, value_type=t, doc="", hidden=True, group="Scalar Math", export=False
         )
+
+for u in [bool, builtins.bool]:
+    add_builtin(bool.__name__, input_types={"u": u}, value_type=bool, doc="", hidden=True, export=False, namespace="")
 
 
 def vector_constructor_func(args, kwds, templates):
@@ -1437,7 +1437,7 @@ add_builtin(
 add_builtin(
     "bvh_query_next",
     input_types={"query": bvh_query_t, "index": int},
-    value_type=bool,
+    value_type=builtins.bool,
     group="Geometry",
     doc="""Move to the next bound returned by the query. The index of the current bound is stored in ``index``, returns ``False``
    if there are no more overlapping bound.""",
@@ -1454,7 +1454,7 @@ add_builtin(
         "bary_u": float,
         "bary_v": float,
     },
-    value_type=bool,
+    value_type=builtins.bool,
     group="Geometry",
     doc="""Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
 
@@ -1480,7 +1480,7 @@ add_builtin(
         "bary_u": float,
         "bary_v": float,
     },
-    value_type=bool,
+    value_type=builtins.bool,
     group="Geometry",
     doc="""Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
 
@@ -1507,7 +1507,7 @@ add_builtin(
         "epsilon": float,
     },
     defaults={"epsilon": 1.0e-3},
-    value_type=bool,
+    value_type=builtins.bool,
     group="Geometry",
     doc="""Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
     
@@ -1538,7 +1538,7 @@ add_builtin(
         "threshold": float,
     },
     defaults={"accuracy": 2.0, "threshold": 0.5},
-    value_type=bool,
+    value_type=builtins.bool,
     group="Geometry",
     doc="""Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found. 
     
@@ -1573,7 +1573,7 @@ add_builtin(
         "normal": vec3,
         "face": int,
     },
-    value_type=bool,
+    value_type=builtins.bool,
     group="Geometry",
     doc="""Computes the closest ray hit on the mesh with identifier `id`, returns ``True`` if a point < ``max_t`` is found.
 
@@ -1605,7 +1605,7 @@ add_builtin(
 add_builtin(
     "mesh_query_aabb_next",
     input_types={"query": mesh_query_aabb_t, "index": int},
-    value_type=bool,
+    value_type=builtins.bool,
     group="Geometry",
     doc="""Move to the next triangle overlapping the query bounding box. The index of the current face is stored in ``index``, returns ``False``
    if there are no more overlapping triangles.""",
@@ -1639,7 +1639,7 @@ add_builtin(
 add_builtin(
     "hash_grid_query_next",
     input_types={"query": hash_grid_query_t, "index": int},
-    value_type=bool,
+    value_type=builtins.bool,
     group="Geometry",
     doc="""Move to the next point in the hash grid query. The index of the current neighbor is stored in ``index``, returns ``False``
    if there are no more neighbors.""",
@@ -2131,6 +2131,13 @@ add_builtin("copy", variadic=True, hidden=True, export=False, group="Utility")
 add_builtin(
     "select",
     input_types={"cond": bool, "arg1": Any, "arg2": Any},
+    value_func=lambda args, kwds, _: args[1].type,
+    doc="Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``",
+    group="Utility",
+)
+add_builtin(
+    "select",
+    input_types={"cond": builtins.bool, "arg1": Any, "arg2": Any},
     value_func=lambda args, kwds, _: args[1].type,
     doc="Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``",
     group="Utility",
@@ -2989,9 +2996,10 @@ add_builtin(
     group="Operators",
 )
 
-add_builtin("unot", input_types={"b": bool}, value_type=bool, doc="", group="Operators")
+add_builtin("unot", input_types={"b": builtins.bool}, value_type=builtins.bool, doc="", group="Operators")
+add_builtin("unot", input_types={"b": bool}, value_type=builtins.bool, doc="", group="Operators")
 for t in int_types:
-    add_builtin("unot", input_types={"b": t}, value_type=bool, doc="", group="Operators")
+    add_builtin("unot", input_types={"b": t}, value_type=builtins.bool, doc="", group="Operators")
 
 
-add_builtin("unot", input_types={"a": array(dtype=Any)}, value_type=bool, doc="", group="Operators")
+add_builtin("unot", input_types={"a": array(dtype=Any)}, value_type=builtins.bool, doc="", group="Operators")

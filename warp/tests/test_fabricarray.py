@@ -7,13 +7,13 @@
 
 # include parent path
 import math
-import numpy as np
+import unittest
 from typing import Any
+
+import numpy as np
 
 import warp as wp
 from warp.tests.test_base import *
-
-import unittest
 
 wp.init()
 
@@ -32,8 +32,8 @@ _fabric_types = [
 
 
 def _warp_type_to_fabric(dtype, is_array=False):
-
     scalar_map = {
+        wp.bool: "b",
         wp.int8: "i1",
         wp.int16: "i2",
         wp.int32: "i4",
@@ -66,8 +66,7 @@ def _warp_type_to_fabric(dtype, is_array=False):
 
 
 # returns a fabric array interface constructed from a regular array
-def _create_fabric_array_interface(data: wp.array, attrib: str, bucket_sizes: list=None, copy=False):
-
+def _create_fabric_array_interface(data: wp.array, attrib: str, bucket_sizes: list = None, copy=False):
     assert isinstance(data, wp.array)
     assert data.ndim == 1
 
@@ -99,10 +98,10 @@ def _create_fabric_array_interface(data: wp.array, attrib: str, bucket_sizes: li
             bucket_size = np.random.randint(bucket_min, bucket_max)
             bucket_sizes.append(bucket_size)
             size_remaining -= bucket_size
-        
+
         if size_remaining > 0:
             bucket_sizes.append(size_remaining)
-    
+
     else:
         # empty data array
         bucket_sizes = []
@@ -133,13 +132,12 @@ def _create_fabric_array_interface(data: wp.array, attrib: str, bucket_sizes: li
 
 
 # returns a fabric array array interface constructed from a list of regular arrays
-def _create_fabric_array_array_interface(data: list, attrib: str, bucket_sizes: list=None):
-
+def _create_fabric_array_array_interface(data: list, attrib: str, bucket_sizes: list = None):
     # data should be a list of arrays
     assert isinstance(data, list)
-    
+
     num_arrays = len(data)
-    assert(num_arrays > 0)
+    assert num_arrays > 0
 
     device = data[0].device
     dtype = data[0].dtype
@@ -169,7 +167,7 @@ def _create_fabric_array_array_interface(data: list, attrib: str, bucket_sizes: 
             bucket_size = np.random.randint(bucket_min, bucket_max)
             bucket_sizes.append(bucket_size)
             size_remaining -= bucket_size
-        
+
         if size_remaining > 0:
             bucket_sizes.append(size_remaining)
 
@@ -243,7 +241,6 @@ def fa_kernel_indexed(a: wp.indexedfabricarray(dtype=float), expected: wp.indexe
     wp.expect_eq(a[i], 2.0 * expected[i] + 1.0)
 
 
-
 def test_fabricarray_kernel(test, device):
     data = wp.array(data=np.arange(100, dtype=np.float32), device=device)
     iface = _create_fabric_array_interface(data, "foo", copy=True)
@@ -287,7 +284,6 @@ def fa_generic_dtype_kernel_indexed(a: wp.indexedfabricarray(dtype=Any), b: wp.i
 
 
 def test_fabricarray_generic_dtype(test, device):
-
     for T in _fabric_types:
         if hasattr(T, "_wp_scalar_type_"):
             nptype = wp.types.warp_type_to_np_dtype[T._wp_scalar_type_]
@@ -337,7 +333,6 @@ def fa_generic_array_kernel(a: Any, b: Any):
 
 
 def test_fabricarray_generic_array(test, device):
-
     for T in _fabric_types:
         if hasattr(T, "_wp_scalar_type_"):
             nptype = wp.types.warp_type_to_np_dtype[T._wp_scalar_type_]
@@ -454,7 +449,6 @@ def test_fabricarray_empty(test, device):
         test.assertEqual(na.dtype, nptype)
 
         test.assertEqual(ifa.list(), [])
-
 
     # test with scalars, vectors, and matrices
     for nptype, wptype in wp.types.np_dtype_to_warp_type.items():
@@ -708,7 +702,11 @@ def test_fabricarray_fill_matrix(test, device):
             assert_np_equal(fa.numpy(), np.zeros((*fa.shape, *mat_shape), dtype=nptype))
 
             # matrix values can be passed as a 1d numpy array, 2d numpy array, flat list, nested list, or Warp matrix instance
-            fill_arr1 = np.arange(mat_len, dtype=nptype)
+            if wptype != wp.bool:
+                fill_arr1 = np.arange(mat_len, dtype=nptype)
+            else:
+                fill_arr1 = np.ones(mat_len, dtype=nptype)
+
             fill_arr2 = fill_arr1.reshape(mat_shape)
             fill_list1 = list(fill_arr1)
             fill_list2 = [list(row) for row in fill_arr2]
@@ -774,7 +772,10 @@ def test_fabricarray_fill_matrix(test, device):
             assert_np_equal(ifb.numpy(), np.zeros((*ifb.shape, *mat_shape), dtype=nptype))
 
             # matrix values can be passed as a 1d numpy array, 2d numpy array, flat list, nested list, or Warp matrix instance
-            fill_arr1 = np.arange(mat_len, dtype=nptype)
+            if wptype != wp.bool:
+                fill_arr1 = np.arange(mat_len, dtype=nptype)
+            else:
+                fill_arr1 = np.ones(mat_len, dtype=nptype)
             fill_arr2 = fill_arr1.reshape(mat_shape)
             fill_list1 = list(fill_arr1)
             fill_list2 = [list(row) for row in fill_arr2]
@@ -851,7 +852,6 @@ def fa_generic_sums_kernel_indexed(a: wp.indexedfabricarrayarray(dtype=Any), sum
 
 
 def test_fabricarrayarray(test, device):
-
     for T in _fabric_types:
         if hasattr(T, "_wp_scalar_type_"):
             nptype = wp.types.warp_type_to_np_dtype[T._wp_scalar_type_]
@@ -936,8 +936,12 @@ def register(parent):
     # fabric arrays
     add_function_test(TestFabricArray, "test_fabricarray_kernel", test_fabricarray_kernel, devices=devices)
     add_function_test(TestFabricArray, "test_fabricarray_empty", test_fabricarray_empty, devices=devices)
-    add_function_test(TestFabricArray, "test_fabricarray_generic_dtype", test_fabricarray_generic_dtype, devices=devices)
-    add_function_test(TestFabricArray, "test_fabricarray_generic_array", test_fabricarray_generic_array, devices=devices)
+    add_function_test(
+        TestFabricArray, "test_fabricarray_generic_dtype", test_fabricarray_generic_dtype, devices=devices
+    )
+    add_function_test(
+        TestFabricArray, "test_fabricarray_generic_array", test_fabricarray_generic_array, devices=devices
+    )
     add_function_test(TestFabricArray, "test_fabricarray_fill_scalar", test_fabricarray_fill_scalar, devices=devices)
     add_function_test(TestFabricArray, "test_fabricarray_fill_vector", test_fabricarray_fill_vector, devices=devices)
     add_function_test(TestFabricArray, "test_fabricarray_fill_matrix", test_fabricarray_fill_matrix, devices=devices)

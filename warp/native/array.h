@@ -740,6 +740,8 @@ CUDA_CALLABLE inline void adj_atomic_add(uint32* buf, uint32 value) { }
 CUDA_CALLABLE inline void adj_atomic_add(int64* buf, int64 value) { }
 CUDA_CALLABLE inline void adj_atomic_add(uint64* buf, uint64 value) { }
 
+CUDA_CALLABLE inline void adj_atomic_add(bool* buf, bool value) { }
+
 // only generate gradients for T types
 template<typename T>
 inline CUDA_CALLABLE void adj_load(const array_t<T>& buf, int i, const array_t<T>& adj_buf, int& adj_i, const T& adj_output)
