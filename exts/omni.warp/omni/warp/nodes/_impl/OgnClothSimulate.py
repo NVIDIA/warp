@@ -293,7 +293,7 @@ class InternalState:
         model.soft_contact_mu = db.inputs.contactFrictionCoeff
         model.soft_contact_kd = db.inputs.contactDampingStiffness * db.inputs.globalScale
         model.soft_contact_margin = db.inputs.colliderContactDistance * db.inputs.colliderContactQueryRange
-        model.particle_radius = db.inputs.colliderContactDistance
+        model.particle_radius.fill_(db.inputs.colliderContactDistance)
 
         # Store the class members.
         self.sim_dt = sim_dt
