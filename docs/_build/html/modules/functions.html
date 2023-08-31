@@ -1046,6 +1046,21 @@ while the left and right basis vectors are returned in U and V.</p>
 </dd></dl>
 
 </section>
+<section id="other">
+<h2>Other<a class="headerlink" href="#other" title="Link to this heading">#</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.lower_bound">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">lower_bound</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Array" title="warp.Array"><span class="pre">Array</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#warp.lower_bound" title="Link to this definition">#</a></dt>
+<dd><p>Search a sorted array for the closest element greater than or equal to value.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">lower_bound</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Array" title="warp.Array"><span class="pre">Array</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arr_begin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">arr_end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></span></dt>
+<dd><p>Search a sorted array range [arr_begin, arr_end) for the closest element greater than or equal to value.</p>
+</dd></dl>
+
+</section>
 <section id="quaternion-math">
 <h2>Quaternion Math<a class="headerlink" href="#quaternion-math" title="Link to this heading">#</a></h2>
 <dl class="py function">
@@ -1313,6 +1328,12 @@ where dim is the parameter passed to kernel launch.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.select">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">select</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cond</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.select" title="Link to this definition">#</a></dt>
+<dd><p>Select between two arguments, if cond is false then return <code class="docutils literal notranslate"><span class="pre">arg1</span></code>, otherwise return <code class="docutils literal notranslate"><span class="pre">arg2</span></code></p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">select</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cond</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span></dt>
 <dd><p>Select between two arguments, if cond is false then return <code class="docutils literal notranslate"><span class="pre">arg1</span></code>, otherwise return <code class="docutils literal notranslate"><span class="pre">arg2</span></code></p>
 </dd></dl>
 
@@ -2246,21 +2267,6 @@ but each thread should generate uncorrelated values. In this case usage should b
 </dd></dl>
 
 </section>
-<section id="other">
-<h2>Other<a class="headerlink" href="#other" title="Link to this heading">#</a></h2>
-<dl class="py function">
-<dt class="sig sig-object py" id="warp.lower_bound">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">lower_bound</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Array" title="warp.Array"><span class="pre">Array</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#warp.lower_bound" title="Link to this definition">#</a></dt>
-<dd><p>Search a sorted array for the closest element greater than or equal to value.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">lower_bound</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Array" title="warp.Array"><span class="pre">Array</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arr_begin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">arr_end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Scalar" title="warp.Scalar"><span class="pre">Scalar</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></span></dt>
-<dd><p>Search a sorted array range [arr_begin, arr_end) for the closest element greater than or equal to value.</p>
-</dd></dl>
-
-</section>
 <section id="operators">
 <h2>Operators<a class="headerlink" href="#operators" title="Link to this heading">#</a></h2>
 <dl class="py function">
@@ -2481,6 +2487,11 @@ but each thread should generate uncorrelated values. In this case usage should b
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.unot">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">unot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#warp.unot" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">unot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span></span></dt>
 <dd></dd></dl>
 
 <dl class="py function">
@@ -2743,6 +2754,10 @@ but each thread should generate uncorrelated values. In this case usage should b
 <li><a class="reference internal" href="#warp.eig3"><code class="docutils literal notranslate"><span class="pre">eig3()</span></code></a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#other">Other</a><ul>
+<li><a class="reference internal" href="#warp.lower_bound"><code class="docutils literal notranslate"><span class="pre">lower_bound()</span></code></a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#quaternion-math">Quaternion Math</a><ul>
 <li><a class="reference internal" href="#warp.quaternion"><code class="docutils literal notranslate"><span class="pre">quaternion()</span></code></a></li>
 <li><a class="reference internal" href="#warp.quat_identity"><code class="docutils literal notranslate"><span class="pre">quat_identity()</span></code></a></li>
@@ -2856,10 +2871,6 @@ but each thread should generate uncorrelated values. In this case usage should b
 <li><a class="reference internal" href="#warp.noise"><code class="docutils literal notranslate"><span class="pre">noise()</span></code></a></li>
 <li><a class="reference internal" href="#warp.pnoise"><code class="docutils literal notranslate"><span class="pre">pnoise()</span></code></a></li>
 <li><a class="reference internal" href="#warp.curlnoise"><code class="docutils literal notranslate"><span class="pre">curlnoise()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#other">Other</a><ul>
-<li><a class="reference internal" href="#warp.lower_bound"><code class="docutils literal notranslate"><span class="pre">lower_bound()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#operators">Operators</a><ul>

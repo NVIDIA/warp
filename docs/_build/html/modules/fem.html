@@ -377,7 +377,7 @@ arbitrary operations are permitted. However, the result of the form must remain 
 <p>The <a class="reference internal" href="#warp.fem.quadrature.PicQuadrature" title="warp.fem.quadrature.PicQuadrature"><code class="xref py py-class docutils literal notranslate"><span class="pre">quadrature.PicQuadrature</span></code></a> provides a way to define Particle-In-Cell quadratures from a set or arbitrary particles,
 which can be helpful to develop MPM-like methods.
 The particles are automatically bucketed to the geometry cells when the quadrature is initialized.
-This is illustrated by the <code class="docutils literal notranslate"><span class="pre">example_stokes_transfer[_3d,</span> <span class="pre">_usd].py</span></code> series of examples.</p>
+This is illustrated by the <code class="docutils literal notranslate"><span class="pre">example_stokes_transfer[_3d].py</span></code> and <code class="docutils literal notranslate"><span class="pre">example_apic_fluid.py</span></code> examples.</p>
 </section>
 <section id="partitioning">
 <h3>Partitioning<a class="headerlink" href="#partitioning" title="Link to this heading">#</a></h3>
@@ -408,7 +408,7 @@ and differentiating interior, frontier and exterior nodes.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.fem.operator.lookup">
 <span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Domain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.lookup" title="Link to this definition">#</a></dt>
-<dd><p>Look-ups a sample point from a world position, projecting to the closet point on the domain</p>
+<dd><p>Look-ups a sample point from a world position, projecting to the closest point on the domain</p>
 </dd></dl>
 
 <dl class="py function">
@@ -451,6 +451,12 @@ and differentiating interior, frontier and exterior nodes.</p>
 <dt class="sig sig-object py" id="warp.fem.operator.grad_outer">
 <span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">grad_outer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><span class="pre">Sample</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.grad_outer" title="Link to this definition">#</a></dt>
 <dd><p>Evaluates the field gradient at a sample point x. On oriented sides, use the outer element. On interior points and on domain boundaries, this is equivalent to grad.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.operator.at_node">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.operator.</span></span><span class="sig-name descname"><span class="pre">at_node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.warp.fem.types.Sample" title="warp.fem.warp.fem.types.Sample"><span class="pre">Sample</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.operator.at_node" title="Link to this definition">#</a></dt>
+<dd><p>For a Test or Trial field, returns a copy of the Sample <cite>s</cite> moved to the coordinates of the node being evaluated</p>
 </dd></dl>
 
 <dl class="py function">
@@ -857,6 +863,18 @@ and differentiating interior, frontier and exterior nodes.</p>
 <dd class="field-odd"><p><strong>geometry</strong> (<a class="reference internal" href="#warp.fem.geometry.Geometry" title="warp.fem.geometry.geometry.Geometry"><em>Geometry</em></a><em> | </em><a class="reference internal" href="#warp.fem.geometry.GeometryPartition" title="warp.fem.geometry.partition.GeometryPartition"><em>GeometryPartition</em></a>) – </p>
 </dd>
 </dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.domain.GeometryDomain.ElementKind">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ElementKind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.domain.GeometryDomain.ElementKind" title="Link to this definition">#</a></dt>
+<dd><p>Possible kinds of elements contained in a domain</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.fem.domain.GeometryDomain.element_kind">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_kind</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#warp.fem.domain.GeometryDomain.ElementKind" title="warp.fem.domain.GeometryDomain.ElementKind"><span class="pre">ElementKind</span></a></em><a class="headerlink" href="#warp.fem.domain.GeometryDomain.element_kind" title="Link to this definition">#</a></dt>
+<dd><p>Kind of elements that this domain contains (cells or sides)</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.domain.GeometryDomain.dimension">
 <span class="sig-name descname"><span class="pre">dimension</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.domain.GeometryDomain.dimension" title="Link to this definition">#</a></dt>
@@ -872,6 +890,17 @@ and differentiating interior, frontier and exterior nodes.</p>
 <dt class="sig sig-object py" id="warp.fem.domain.GeometryDomain.element_count">
 <span class="sig-name descname"><span class="pre">element_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.domain.GeometryDomain.element_count" title="Link to this definition">#</a></dt>
 <dd><p>Number of elements in the domain</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.domain.GeometryDomain.geometry_element_count">
+<span class="sig-name descname"><span class="pre">geometry_element_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.domain.GeometryDomain.geometry_element_count" title="Link to this definition">#</a></dt>
+<dd><p>Number of elements in the underlying geometry</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
@@ -983,6 +1012,12 @@ and differentiating interior, frontier and exterior nodes.</p>
 <dd><p>Structure containing arguments to be passed to device functions</p>
 </dd></dl>
 
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.fem.quadrature.Quadrature.domain">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">domain</span></span><a class="headerlink" href="#warp.fem.quadrature.Quadrature.domain" title="Link to this definition">#</a></dt>
+<dd><p>Domain over which this quadrature is defined</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.quadrature.Quadrature.eval_arg_value">
 <span class="sig-name descname"><span class="pre">eval_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.quadrature.Quadrature.eval_arg_value" title="Link to this definition">#</a></dt>
@@ -1081,7 +1116,7 @@ and differentiating interior, frontier and exterior nodes.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>geometry</strong> (<a class="reference internal" href="#warp.fem.geometry.Geometry" title="warp.fem.geometry.geometry.Geometry"><em>Geometry</em></a>) – the geometry to partition</p></li>
-<li><p><strong>cell_mask</strong> (<em>wp.array</em><em>(</em><em>dtype=int</em><em>)</em>) – warp array of length <code class="docutils literal notranslate"><span class="pre">geometry.cell-count()</span></code> indicating which cells are selected. Array values must be either <code class="docutils literal notranslate"><span class="pre">1</span></code> (selected) or <code class="docutils literal notranslate"><span class="pre">0</span></code> (not selected).</p></li>
+<li><p><strong>cell_mask</strong> (<em>wp.array</em><em>(</em><em>dtype=int</em><em>)</em>) – warp array of length <code class="docutils literal notranslate"><span class="pre">geometry.cell_count()</span></code> indicating which cells are selected. Array values must be either <code class="docutils literal notranslate"><span class="pre">1</span></code> (selected) or <code class="docutils literal notranslate"><span class="pre">0</span></code> (not selected).</p></li>
 </ul>
 </dd>
 </dl>
@@ -1112,6 +1147,12 @@ and differentiating interior, frontier and exterior nodes.</p>
 </ul>
 </dd>
 </dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.fem.quadrature.PicQuadrature.domain">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">domain</span></span><a class="headerlink" href="#warp.fem.quadrature.PicQuadrature.domain" title="Link to this definition">#</a></dt>
+<dd><p>Domain over which this quadrature is defined</p>
+</dd></dl>
+
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.quadrature.PicQuadrature.Arg">
 <span class="sig-name descname"><span class="pre">Arg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;warp.codegen.Struct</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#warp.fem.quadrature.PicQuadrature.Arg" title="Link to this definition">#</a></dt>
@@ -1138,6 +1179,17 @@ and differentiating interior, frontier and exterior nodes.</p>
 <dt class="sig sig-object py" id="warp.fem.quadrature.PicQuadrature.point_weight">
 <span class="sig-name descname"><span class="pre">point_weight</span></span><a class="headerlink" href="#warp.fem.quadrature.PicQuadrature.point_weight" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.quadrature.PicQuadrature.fill_element_mask">
+<span class="sig-name descname"><span class="pre">fill_element_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mask</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.quadrature.PicQuadrature.fill_element_mask" title="Link to this definition">#</a></dt>
+<dd><p>Fills a mask array such that all non-empty elements are set to 1, all empty elements to zero.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mask</strong> (<em>wp.array</em><em>(</em><em>dtype=int</em><em>)</em>) – Int warp array with size at least equal to <cite>self.domain.geometry_element_count()</cite></p>
+</dd>
+</dl>
+</dd></dl>
 
 </dd></dl>
 
@@ -1487,15 +1539,40 @@ and differentiating interior, frontier and exterior nodes.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.space.SymmetricTensorMapper">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.space.</span></span><span class="sig-name descname"><span class="pre">SymmetricTensorMapper</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.SymmetricTensorMapper" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.space.</span></span><span class="sig-name descname"><span class="pre">SymmetricTensorMapper</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mapping</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Mapping.VOIGT</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.SymmetricTensorMapper" title="Link to this definition">#</a></dt>
 <dd><p>Orthonormal isomorphism from R^{n (n+1)} to nxn symmetric tensors,
-using usual L2 norm for vectors and half Frobenius norm, (tau : tau)/2 for tensors.
-See [Daviet and Bertails-Descoubes 2016]</p>
+using usual L2 norm for vectors and half Frobenius norm, (tau : tau)/2 for tensors.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>dtype</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.11)"><em>type</em></a>) – </p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dtype</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.11)"><em>type</em></a>) – </p></li>
+<li><p><strong>mapping</strong> (<a class="reference internal" href="#warp.fem.space.SymmetricTensorMapper.Mapping" title="warp.fem.space.dof_mapper.SymmetricTensorMapper.Mapping"><em>Mapping</em></a>) – </p></li>
+</ul>
 </dd>
 </dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.space.SymmetricTensorMapper.Mapping">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Mapping</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.space.SymmetricTensorMapper.Mapping" title="Link to this definition">#</a></dt>
+<dd><p>An enumeration.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.space.SymmetricTensorMapper.Mapping.VOIGT">
+<span class="sig-name descname"><span class="pre">VOIGT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#warp.fem.space.SymmetricTensorMapper.Mapping.VOIGT" title="Link to this definition">#</a></dt>
+<dd><p>Voigt ordering of vector coefficients:
+first the three diagonal terms, then off-diagonal coefficients</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.space.SymmetricTensorMapper.Mapping.DB16">
+<span class="sig-name descname"><span class="pre">DB16</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#warp.fem.space.SymmetricTensorMapper.Mapping.DB16" title="Link to this definition">#</a></dt>
+<dd><dl class="simple">
+<dt>Ordering that also separates normal from tangential coefficients:</dt><dd><p>first trace, then other diagonal terms, then off-diagonal coefficients.</p>
+</dd>
+</dl>
+<p>See [Daviet and Bertails-Descoubes 2016]</p>
+</dd></dl>
+
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -1631,7 +1708,7 @@ See [Daviet and Bertails-Descoubes 2016]</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
-<li><p><strong>s</strong> (<em>&lt;warp.codegen.Struct object at 0x000001C0FFADED40&gt;</em>) – </p></li>
+<li><p><strong>s</strong> (<em>&lt;warp.codegen.Struct object at 0x000002434EE4B160&gt;</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -1645,7 +1722,7 @@ See [Daviet and Bertails-Descoubes 2016]</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
-<li><p><strong>s</strong> (<em>&lt;warp.codegen.Struct object at 0x000001C0FFADED40&gt;</em>) – </p></li>
+<li><p><strong>s</strong> (<em>&lt;warp.codegen.Struct object at 0x000002434EE4B160&gt;</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -1659,7 +1736,7 @@ See [Daviet and Bertails-Descoubes 2016]</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
-<li><p><strong>s</strong> (<em>&lt;warp.codegen.Struct object at 0x000001C0FFADED40&gt;</em>) – </p></li>
+<li><p><strong>s</strong> (<em>&lt;warp.codegen.Struct object at 0x000002434EE4B160&gt;</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -1673,7 +1750,7 @@ See [Daviet and Bertails-Descoubes 2016]</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.11)"><em>Any</em></a>) – </p></li>
-<li><p><strong>s</strong> (<em>&lt;warp.codegen.Struct object at 0x000001C0FFADED40&gt;</em>) – </p></li>
+<li><p><strong>s</strong> (<em>&lt;warp.codegen.Struct object at 0x000002434EE4B160&gt;</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -1797,6 +1874,7 @@ See [Daviet and Bertails-Descoubes 2016]</p>
 <li><a class="reference internal" href="#warp.fem.operator.outer"><code class="docutils literal notranslate"><span class="pre">outer()</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.operator.grad"><code class="docutils literal notranslate"><span class="pre">grad()</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.operator.grad_outer"><code class="docutils literal notranslate"><span class="pre">grad_outer()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.operator.at_node"><code class="docutils literal notranslate"><span class="pre">at_node()</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.operator.D"><code class="docutils literal notranslate"><span class="pre">D()</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.operator.div"><code class="docutils literal notranslate"><span class="pre">div()</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.operator.jump"><code class="docutils literal notranslate"><span class="pre">jump()</span></code></a></li>
@@ -1843,8 +1921,11 @@ See [Daviet and Bertails-Descoubes 2016]</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#warp.fem.domain.GeometryDomain"><code class="docutils literal notranslate"><span class="pre">GeometryDomain</span></code></a><ul>
+<li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.ElementKind"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.ElementKind</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.element_kind"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.element_kind</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.dimension"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.dimension()</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.element_count"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.element_count()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.geometry_element_count"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.geometry_element_count()</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.reference_element"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.reference_element()</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.element_index_arg_value"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.element_index_arg_value()</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.domain.GeometryDomain.element_arg_value"><code class="docutils literal notranslate"><span class="pre">GeometryDomain.element_arg_value()</span></code></a></li>
@@ -1860,6 +1941,7 @@ See [Daviet and Bertails-Descoubes 2016]</p>
 </li>
 <li><a class="reference internal" href="#warp.fem.quadrature.Quadrature"><code class="docutils literal notranslate"><span class="pre">Quadrature</span></code></a><ul>
 <li><a class="reference internal" href="#warp.fem.quadrature.Quadrature.Arg"><code class="docutils literal notranslate"><span class="pre">Quadrature.Arg</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.quadrature.Quadrature.domain"><code class="docutils literal notranslate"><span class="pre">Quadrature.domain</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.quadrature.Quadrature.eval_arg_value"><code class="docutils literal notranslate"><span class="pre">Quadrature.eval_arg_value()</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.quadrature.Quadrature.total_point_count"><code class="docutils literal notranslate"><span class="pre">Quadrature.total_point_count()</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.quadrature.Quadrature.point_count"><code class="docutils literal notranslate"><span class="pre">Quadrature.point_count()</span></code></a></li>
@@ -1876,11 +1958,13 @@ See [Daviet and Bertails-Descoubes 2016]</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#warp.fem.quadrature.PicQuadrature"><code class="docutils literal notranslate"><span class="pre">PicQuadrature</span></code></a><ul>
+<li><a class="reference internal" href="#warp.fem.quadrature.PicQuadrature.domain"><code class="docutils literal notranslate"><span class="pre">PicQuadrature.domain</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.quadrature.PicQuadrature.Arg"><code class="docutils literal notranslate"><span class="pre">PicQuadrature.Arg</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.quadrature.PicQuadrature.total_point_count"><code class="docutils literal notranslate"><span class="pre">PicQuadrature.total_point_count()</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.quadrature.PicQuadrature.point_count"><code class="docutils literal notranslate"><span class="pre">PicQuadrature.point_count</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.quadrature.PicQuadrature.point_coords"><code class="docutils literal notranslate"><span class="pre">PicQuadrature.point_coords</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.quadrature.PicQuadrature.point_weight"><code class="docutils literal notranslate"><span class="pre">PicQuadrature.point_weight</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.quadrature.PicQuadrature.fill_element_mask"><code class="docutils literal notranslate"><span class="pre">PicQuadrature.fill_element_mask()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -1920,7 +2004,14 @@ See [Daviet and Bertails-Descoubes 2016]</p>
 </li>
 <li><a class="reference internal" href="#warp.fem.space.SpaceRestriction"><code class="docutils literal notranslate"><span class="pre">SpaceRestriction</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.space.DofMapper"><code class="docutils literal notranslate"><span class="pre">DofMapper</span></code></a></li>
-<li><a class="reference internal" href="#warp.fem.space.SymmetricTensorMapper"><code class="docutils literal notranslate"><span class="pre">SymmetricTensorMapper</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.SymmetricTensorMapper"><code class="docutils literal notranslate"><span class="pre">SymmetricTensorMapper</span></code></a><ul>
+<li><a class="reference internal" href="#warp.fem.space.SymmetricTensorMapper.Mapping"><code class="docutils literal notranslate"><span class="pre">SymmetricTensorMapper.Mapping</span></code></a><ul>
+<li><a class="reference internal" href="#warp.fem.space.SymmetricTensorMapper.Mapping.VOIGT"><code class="docutils literal notranslate"><span class="pre">SymmetricTensorMapper.Mapping.VOIGT</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.space.SymmetricTensorMapper.Mapping.DB16"><code class="docutils literal notranslate"><span class="pre">SymmetricTensorMapper.Mapping.DB16</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a class="reference internal" href="#fields">Fields</a><ul>

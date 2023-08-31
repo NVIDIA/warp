@@ -489,6 +489,22 @@ Vector Math
 
 
 
+Other
+---------------
+.. function:: lower_bound(arr: Array[Scalar], value: Scalar) -> int
+
+   Search a sorted array for the closest element greater than or equal to value.
+
+
+.. function:: lower_bound(arr: Array[Scalar], arr_begin: int32, arr_end: int32, value: Scalar) -> int
+   :noindex:
+   :nocontentsentry:
+
+   Search a sorted array range [arr_begin, arr_end) for the closest element greater than or equal to value.
+
+
+
+
 Quaternion Math
 ---------------
 .. function:: quaternion() -> Quaternion[Scalar]
@@ -724,6 +740,13 @@ Utility
 
 
 .. function:: select(cond: bool, arg1: Any, arg2: Any)
+
+   Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+
+
+.. function:: select(cond: bool, arg1: Any, arg2: Any)
+   :noindex:
+   :nocontentsentry:
 
    Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
 
@@ -1621,22 +1644,6 @@ Random
 
 
 
-Other
----------------
-.. function:: lower_bound(arr: Array[Scalar], value: Scalar) -> int
-
-   Search a sorted array for the closest element greater than or equal to value.
-
-
-.. function:: lower_bound(arr: Array[Scalar], arr_begin: int32, arr_end: int32, value: Scalar) -> int
-   :noindex:
-   :nocontentsentry:
-
-   Search a sorted array range [arr_begin, arr_end) for the closest element greater than or equal to value.
-
-
-
-
 Operators
 ---------------
 .. function:: add(x: Scalar, y: Scalar) -> Scalar
@@ -1827,6 +1834,11 @@ Operators
 
 
 .. function:: unot(b: bool) -> bool
+
+
+.. function:: unot(b: bool) -> bool
+   :noindex:
+   :nocontentsentry:
 
 
 .. function:: unot(b: int8) -> bool
