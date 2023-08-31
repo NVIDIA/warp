@@ -266,11 +266,11 @@ def mesh_get_world_extent(
     )
 
 
-def mesh_get_triangulated_face_vertex_indices(
+def mesh_triangulate(
     bundle: og.BundleContents,
     child_idx: int = 0,
 ) -> wp.array(dtype=int):
-    """Retrieves a triangulated version of the face vertex indices."""
+    """Computes a triangulated version of the face vertex indices."""
     counts = mesh_get_face_vertex_counts(bundle, child_idx=child_idx).numpy()
     if np.all(counts == 3):
         return mesh_get_face_vertex_indices(bundle, child_idx=child_idx)

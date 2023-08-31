@@ -217,7 +217,7 @@ class InternalState:
 
             # Initialize Warp's mesh instance, which requires
             # triangulated meshes.
-            collider_face_vertex_indices = omni.warp.nodes.mesh_get_triangulated_face_vertex_indices(
+            collider_face_vertex_indices = omni.warp.nodes.mesh_triangulate(
                 db.inputs.collider,
             )
             collider_mesh = wp.sim.Mesh(
@@ -317,7 +317,6 @@ class InternalState:
         model.soft_contact_kf = db.inputs.contactFrictionStiffness * db.inputs.globalScale
         model.soft_contact_mu = db.inputs.contactFrictionCoeff
         model.soft_contact_kd = db.inputs.contactDampingStiffness * db.inputs.globalScale
-        model.soft_contact_distance = db.inputs.colliderContactDistance
         model.soft_contact_margin = db.inputs.colliderContactDistance * db.inputs.colliderContactQueryRange
 
         # Store the class members.

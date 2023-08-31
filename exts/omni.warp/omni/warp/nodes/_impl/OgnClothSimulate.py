@@ -182,7 +182,7 @@ class InternalState:
 
         # Register the cloth geometry mesh into Warp's simulation model builder,
         # which requires triangulated meshes.
-        face_vertex_indices = omni.warp.nodes.mesh_get_triangulated_face_vertex_indices(db.inputs.cloth)
+        face_vertex_indices = omni.warp.nodes.mesh_triangulate(db.inputs.cloth)
         builder.add_cloth_mesh(
             pos=(0.0, 0.0, 0.0),
             rot=(0.0, 0.0, 0.0, 1.0),
@@ -229,7 +229,7 @@ class InternalState:
 
             # Initialize Warp's mesh instance, which requires
             # triangulated meshes.
-            collider_face_vertex_indices = omni.warp.nodes.mesh_get_triangulated_face_vertex_indices(
+            collider_face_vertex_indices = omni.warp.nodes.mesh_triangulate(
                 db.inputs.collider,
             )
             collider_mesh = wp.sim.Mesh(

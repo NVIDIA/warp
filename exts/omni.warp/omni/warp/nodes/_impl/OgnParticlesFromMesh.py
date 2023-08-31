@@ -165,7 +165,7 @@ class InternalState:
 
         # Initialize Warp's mesh instance, which requires
         # a triangulated topology.
-        face_vertex_indices = omni.warp.nodes.mesh_get_triangulated_face_vertex_indices(db.inputs.mesh)
+        face_vertex_indices = omni.warp.nodes.mesh_triangulate(db.inputs.mesh)
         mesh = wp.Mesh(
             points=world_point_positions,
             velocities=wp.zeros(point_count, dtype=wp.vec3),

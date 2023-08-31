@@ -1,8 +1,125 @@
 #usda 1.0
 (
     customLayerData = {
+        dictionary MovieCaptureSettings = {
+            double animation_fps = 60
+            int batch_count = 1
+            string camera_name = "/CameraRoot/Camera"
+            bool capture_application = 0
+            int capture_every_nth_frames = 20
+            bool capture_every_nth_frames_checked = 0
+            int capture_frame_end = 36000
+            int capture_frame_start = 0
+            string capture_name = "Capture"
+            string capture_range = "Custom Range - Frames"
+            double capture_time_end = 10
+            double capture_time_start = 0
+            string exr_compression_method = "zips"
+            double fps = 60
+            bool generate_shader_cache = 0
+            bool hdr_for_exr_checked = 1
+            bool hdr_for_exr_visible = 0
+            int iray_pathtrace_spp = 1
+            int iray_subframes_per_frame = 32
+            string movie_type = "Sequence"
+            int mp4_encoding_bitrate = 16777216
+            int mp4_encoding_iframe_interval = 60
+            string mp4_encoding_preset = "PRESET_DEFAULT"
+            string mp4_encoding_profile = "H264_PROFILE_HIGH"
+            string mp4_encoding_rc_mode = "RC_VBR"
+            int mp4_encoding_rc_target_quality = 0
+            bool mp4_encoding_video_full_range_flag = 0
+            string output_format = ".png"
+            string output_path = "C:/Users/mmacklin/OneDrive - NVIDIA Corporation/Documents/Kit/shared/capture"
+            bool overwrite_existing_frame_checked = 0
+            bool pathtrace_mb_checked = 1
+            double pathtrace_mb_frame_shutter_close = 0.5
+            double pathtrace_mb_frame_shutter_open = 0
+            int pathtrace_mb_subframes = 64
+            int pathtrace_spp_per_iteration_mgpu = 1
+            int pathtrace_spp_per_subframe = 1
+            string queue_instance = "localhost Queue"
+            int realtime_settle_latency = 0
+            string render_preset = "RaytracedLighting"
+            bool render_style = 1
+            bool renumber_negtive_frames_checked = 0
+            int resolution_aspect_ratio_selected = 0
+            string resolution_aspect_ratios = '["1.000:1", "16:9", "4:3"]'
+            int resolution_height = 256
+            string resolution_type = "Custom"
+            bool resolution_w_h_linked = 0
+            int resolution_width = 256
+            int run_n_frames_before_start = 20
+            bool run_n_frames_before_start_checked = 0
+            bool save_alpha_checked = 0
+            bool skip_upload_to_s3 = 0
+            int start_delay_seconds = 10
+            double sunstudy_end = 18
+            int sunstudy_movie_minutes = 1
+            int sunstudy_movie_seconds = 1
+            double sunstudy_start = 6
+            string task_comment = ""
+            string task_priority = ""
+            string task_type = "create-render"
+            bool upload_to_s3 = 0
+        }
         dictionary cameraSettings = {
+            dictionary Front = {
+                double3 position = (0, 0, 50000)
+                double radius = 500
+            }
+            dictionary Perspective = {
+                double3 position = (500, 500, 500)
+                double3 target = (-0.0000039780385918675165, 0.00000795607684267452, -0.000003978038364493841)
+            }
+            dictionary Right = {
+                double3 position = (-50000, 0, 0)
+                double radius = 500
+            }
+            dictionary Top = {
+                double3 position = (0, 50000, 0)
+                double radius = 500
+            }
             string boundCamera = "/CameraRoot/Camera"
+        }
+        dictionary omni_layer = {
+            string authoring_layer = "./prim_flocking.usda"
+        }
+        dictionary renderSettings = {
+            float3 "rtx:debugView:pixelDebug:textColor" = (0, 1e18, 0)
+            int "rtx:externalFrameCounter" = 1
+            float3 "rtx:fog:fogColor" = (0.75, 0.75, 0.75)
+            float3 "rtx:index:regionOfInterestMax" = (0, 0, 0)
+            float3 "rtx:index:regionOfInterestMin" = (0, 0, 0)
+            float3 "rtx:iray:environment_dome_ground_position" = (0, 0, 0)
+            float3 "rtx:iray:environment_dome_ground_reflectivity" = (0, 0, 0)
+            float3 "rtx:iray:environment_dome_rotation_axis" = (3.4028235e38, 3.4028235e38, 3.4028235e38)
+            float3 "rtx:post:backgroundZeroAlpha:backgroundDefaultColor" = (0, 0, 0)
+            float3 "rtx:post:colorcorr:contrast" = (1, 1, 1)
+            float3 "rtx:post:colorcorr:gain" = (1, 1, 1)
+            float3 "rtx:post:colorcorr:gamma" = (1, 1, 1)
+            float3 "rtx:post:colorcorr:offset" = (0, 0, 0)
+            float3 "rtx:post:colorcorr:saturation" = (1, 1, 1)
+            float3 "rtx:post:colorgrad:blackpoint" = (0, 0, 0)
+            float3 "rtx:post:colorgrad:contrast" = (1, 1, 1)
+            float3 "rtx:post:colorgrad:gain" = (1, 1, 1)
+            float3 "rtx:post:colorgrad:gamma" = (1, 1, 1)
+            float3 "rtx:post:colorgrad:lift" = (0, 0, 0)
+            float3 "rtx:post:colorgrad:multiply" = (1, 1, 1)
+            float3 "rtx:post:colorgrad:offset" = (0, 0, 0)
+            float3 "rtx:post:colorgrad:whitepoint" = (1, 1, 1)
+            float3 "rtx:post:lensDistortion:lensFocalLengthArray" = (10, 30, 50)
+            float3 "rtx:post:lensFlares:anisoFlareFalloffX" = (450, 475, 500)
+            float3 "rtx:post:lensFlares:anisoFlareFalloffY" = (10, 10, 10)
+            float3 "rtx:post:lensFlares:cutoffPoint" = (2, 2, 2)
+            float3 "rtx:post:lensFlares:haloFlareFalloff" = (10, 10, 10)
+            float3 "rtx:post:lensFlares:haloFlareRadius" = (75, 75, 75)
+            float3 "rtx:post:lensFlares:isotropicFlareFalloff" = (50, 50, 50)
+            float3 "rtx:post:tonemap:whitepoint" = (1, 1, 1)
+            float3 "rtx:raytracing:indexdirect:svoBrickSize" = (32, 32, 32)
+            float3 "rtx:raytracing:inscattering:singleScatteringAlbedo" = (0.9, 0.9, 0.9)
+            float3 "rtx:raytracing:inscattering:transmittanceColor" = (0.5, 0.5, 0.5)
+            float3 "rtx:sceneDb:ambientLightColor" = (0.1, 0.1, 0.1)
         }
     }
     defaultPrim = "World"
@@ -27,8 +144,8 @@ def Xform "World"
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
         {
-            token node:type = "omni.graph.action.OnLoaded"
-            int node:typeVersion = 1
+            token node:type = "omni.graph.action_nodes.OnLoaded"
+            int node:typeVersion = 2
             custom uint outputs:execOut (
                 customData = {
                     bool isExecution = 1
@@ -44,8 +161,8 @@ def Xform "World"
         {
             custom uint inputs:framePeriod = 0
             custom bool inputs:onlyPlayback = 1
-            token node:type = "omni.graph.action.OnTick"
-            int node:typeVersion = 1
+            token node:type = "omni.graph.action_nodes.OnTick"
+            int node:typeVersion = 2
             custom double outputs:absoluteSimTime
             custom double outputs:deltaSeconds
             custom double outputs:frame
@@ -106,8 +223,8 @@ def Xform "World"
                     }
                     displayGroup = "Albedo"
                     displayName = "Albedo Color"
-                    doc = """This is the albedo base color
-
+                    doc = """This is the albedo base color\r
+\r
 """
                     hidden = false
                     renderType = "color"
@@ -118,8 +235,8 @@ def Xform "World"
                     }
                     displayGroup = "Emissive"
                     displayName = "Emissive Color"
-                    doc = """The emission color
-
+                    doc = """The emission color\r
+\r
 """
                     hidden = false
                     renderType = "color"
@@ -131,8 +248,8 @@ def Xform "World"
                     }
                     displayGroup = "Emissive"
                     displayName = "Emissive Intensity"
-                    doc = """Intensity of the emission
-
+                    doc = """Intensity of the emission\r
+\r
 """
                     hidden = false
                 )
@@ -142,8 +259,8 @@ def Xform "World"
                     }
                     displayGroup = "Emissive"
                     displayName = "Enable Emission"
-                    doc = """Enables the emission of light from the material
-
+                    doc = """Enables the emission of light from the material\r
+\r
 """
                     hidden = false
                 )
@@ -157,8 +274,8 @@ def Xform "World"
                     }
                     displayGroup = "Reflectivity"
                     displayName = "Specular"
-                    doc = """The specular level (intensity) of the material
-
+                    doc = """The specular level (intensity) of the material\r
+\r
 """
                     hidden = false
                 )
@@ -208,7 +325,7 @@ def Xform "World"
                 uniform token info:implementationSource = "sourceAsset"
                 uniform asset info:mdl:sourceAsset = @OmniPBRBase.mdl@
                 uniform token info:mdl:sourceAsset:subIdentifier = "OmniPBRBase"
-                color3f inputs:diffuse_reflection_color = (0.5, 0.5, 0.5) (
+                color3f inputs:diffuse_reflection_color = (0.2, 0.2, 0.2) (
                     customData = {
                         float3 default = (0.2, 0.2, 0.2)
                     }
@@ -219,6 +336,32 @@ def Xform "World"
 """
                     hidden = false
                     renderType = "color"
+                )
+                float inputs:metalness = 0 (
+                    customData = {
+                        float default = 0
+                        dictionary range = {
+                            float max = 1
+                            float min = 0
+                        }
+                    }
+                    displayGroup = "Reflectivity"
+                    displayName = "Metalness"
+                    doc = """Bias towards pure specular reflection
+
+"""
+                    hidden = false
+                )
+                float inputs:specular_reflection_roughness = 0 (
+                    customData = {
+                        float default = 0
+                    }
+                    displayGroup = "Reflectivity"
+                    displayName = "Roughness"
+                    doc = """Higher roughness values lead to more blurry reflections
+
+"""
+                    hidden = false
                 )
                 token outputs:out (
                     renderType = "material"
@@ -15327,85 +15470,6 @@ def Xform "Environment"
         prepend payload = @./assets/environments/stage.usda@
     )
     {
-        over "Lights"
-        {
-            over "FrontLight"
-            {
-                token visibility = "invisible"
-            }
-
-            over "LSideLight"
-            {
-                float intensity = 500
-                token visibility = "inherited"
-            }
-
-            over "FillLight"
-            {
-                token visibility = "invisible"
-            }
-
-            over "RSideLight"
-            {
-                float intensity = 2000
-            }
-        }
-
-        over "Looks"
-        {
-            over "PlatformTopMaterial"
-            {
-                over "Shader"
-                {
-                    float inputs:metalness = 1 (
-                        doc = """Bias towards pure specular reflection
-
-"""
-                        hidden = false
-                    )
-                    float inputs:specular_reflection_roughness = 0.075 (
-                        doc = """Higher roughness values lead to more blurry reflections
-
-"""
-                        hidden = false
-                    )
-                }
-            }
-
-            over "StageBackgroundMaterial"
-            {
-                over "Shader"
-                {
-                    float inputs:metalness = 0.099999994 (
-                        customData = {
-                            float default = 0
-                            dictionary range = {
-                                float max = 1
-                                float min = 0
-                            }
-                        }
-                        displayGroup = "Reflectivity"
-                        displayName = "Metalness"
-                        doc = """Bias towards pure specular reflection
-
-"""
-                        hidden = false
-                    )
-                    float inputs:specular_reflection_roughness = 0.2 (
-                        customData = {
-                            float default = 0
-                        }
-                        displayGroup = "Reflectivity"
-                        displayName = "Roughness"
-                        doc = """Higher roughness values lead to more blurry reflections
-
-"""
-                        hidden = false
-                    )
-                }
-            }
-        }
-
         over "Geometries"
         {
             over "Platform"
@@ -15438,10 +15502,10 @@ def Xform "CameraRoot"
         float focusDistance = 400
         float fStop = 0
         bool omni:kit:cameraLock = 0
-        custom uniform vector3d omni:kit:centerOfInterest = (0, 0, -7.1728660458533815)
-        double3 xformOp:rotateYXZ = (-25.155351638793945, -10.253520965576172, -7.803501129150391)
+        custom uniform vector3d omni:kit:centerOfInterest = (0, 0, -671.4723562723951)
+        double3 xformOp:rotateYXZ = (-13.414179534496157, 30.699638753242226, 19.862235142530068)
         double3 xformOp:scale = (1, 1, 1)
-        double3 xformOp:translate = (-53.45260017920982, 219.78490444761107, 441.7391742287679)
+        double3 xformOp:translate = (273.6711095198031, 216.45398652779048, 567.9006040054342)
         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateYXZ", "xformOp:scale"]
     }
 }
