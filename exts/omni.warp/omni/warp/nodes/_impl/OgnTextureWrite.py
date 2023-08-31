@@ -17,7 +17,7 @@ import warp as wp
 from omni.warp.nodes.ogn.OgnTextureWriteDatabase import OgnTextureWriteDatabase
 
 try:
-    import ommi.ui as ui
+    import omni.ui as ui
 except ImportError:
     ui = None
 
