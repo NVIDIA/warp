@@ -46,7 +46,6 @@ __device__ void __debugbreak() {}
 namespace wp
 {
 
-
 // numeric types (used from generated kernels)
 typedef float float32;
 typedef double float64;
@@ -251,6 +250,8 @@ template <typename T>
 CUDA_CALLABLE inline void adj_int8(T, T&, int8) {}
 template <typename T>
 CUDA_CALLABLE inline void adj_uint8(T, T&, uint8) {}
+template <typename T>
+CUDA_CALLABLE inline void adj_bool(T, T&, bool) {}
 template <typename T>
 CUDA_CALLABLE inline void adj_int16(T, T&, int16) {}
 template <typename T>

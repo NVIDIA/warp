@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import ast
+import builtins
 import ctypes
 import inspect
 import re
@@ -673,7 +674,7 @@ class Adjoint:
         return output
 
     def add_comp(adj, op_strings, left, comps):
-        output = adj.add_var(bool)
+        output = adj.add_var(builtins.bool)
 
         s = "var_" + str(output) + " = " + ("(" * len(comps)) + "var_" + str(left) + " "
         for op, comp in zip(op_strings, comps):
@@ -686,7 +687,7 @@ class Adjoint:
         return output
 
     def add_bool_op(adj, op_string, exprs):
-        output = adj.add_var(bool)
+        output = adj.add_var(builtins.bool)
         command = (
             "var_" + str(output) + " = " + (" " + op_string + " ").join(["var_" + str(expr) for expr in exprs]) + ";"
         )
@@ -2053,7 +2054,7 @@ WP_API void {name}_cpu_backward(
 def constant_str(value):
     value_type = type(value)
 
-    if value_type == bool:
+    if value_type == bool or value_type == builtins.bool:
         if value:
             return "true"
         else:

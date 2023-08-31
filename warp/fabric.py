@@ -1,5 +1,6 @@
 import ctypes
-from typing import Any, Generic
+import math
+from typing import Any
 
 import warp
 from warp.types import *
@@ -22,7 +23,7 @@ class fabricbucket_t(ctypes.Structure):
 
 class fabricarray_t(ctypes.Structure):
     _fields_ = [
-        ("buckets", ctypes.c_void_p),   # array of fabricbucket_t on the correct device
+        ("buckets", ctypes.c_void_p),  # array of fabricbucket_t on the correct device
         ("nbuckets", ctypes.c_size_t),
         ("size", ctypes.c_size_t),
     ]
@@ -59,7 +60,7 @@ def fabric_to_warp_dtype(type_info, attrib_name):
         raise RuntimeError(f"Attribute '{attrib_name}' cannot be used in Warp")
 
     base_type_dict = {
-        "b": warp.uint8,   # boolean
+        "b": warp.bool,  # boolean
         "i1": warp.int8,
         "i2": warp.int16,
         "i4": warp.int32,
@@ -100,13 +101,11 @@ def fabric_to_warp_dtype(type_info, attrib_name):
 
 
 class fabricarray(noncontiguous_array_base[T]):
-
     # member attributes available during code-gen (e.g.: d = arr.shape[0])
     # (initialized when needed)
     _vars = None
 
     def __init__(self, data=None, attrib=None, dtype=Any, ndim=None):
-
         super().__init__(ARRAY_TYPE_FABRIC)
 
         if data is not None:
@@ -122,7 +121,9 @@ class fabricarray(noncontiguous_array_base[T]):
             elif hasattr(data, "__fabric_arrays_interface__"):
                 iface = data.__fabric_arrays_interface__
             else:
-                raise ValueError("Invalid data argument for fabricarray: expected dict or object with __fabric_arrays_interface__")
+                raise ValueError(
+                    "Invalid data argument for fabricarray: expected dict or object with __fabric_arrays_interface__"
+                )
 
             version = iface.get("version")
             if version != 1:
@@ -136,7 +137,7 @@ class fabricarray(noncontiguous_array_base[T]):
 
             attribs = iface.get("attribs")
             if not isinstance(attribs, dict):
-                raise ValueError(f"Failed to get Fabric interface attributes")
+                raise ValueError("Failed to get Fabric interface attributes")
 
             # look up attribute info by name
             attrib_info = attribs.get(attrib)
@@ -144,7 +145,7 @@ class fabricarray(noncontiguous_array_base[T]):
                 raise ValueError(f"Failed to get attribute '{attrib}'")
 
             type_info = attrib_info["type"]
-            assert(len(type_info) == 5)
+            assert len(type_info) == 5
 
             self.dtype = fabric_to_warp_dtype(type_info, attrib)
 
@@ -165,13 +166,15 @@ class fabricarray(noncontiguous_array_base[T]):
                 self.ndim = 2
                 array_lengths = attrib_info["array_lengths"]
                 if not hasattr(array_lengths, "__len__") or len(array_lengths) != len(pointers):
-                    raise RuntimeError("Attribute `array_lengths` must be a list of the same size as `pointers` and `counts`")
+                    raise RuntimeError(
+                        "Attribute `array_lengths` must be a list of the same size as `pointers` and `counts`"
+                    )
             else:
                 raise ValueError(f"Invalid attribute array depth: {array_depth}")
 
             num_buckets = len(pointers)
             size = 0
-            
+
             buckets = (fabricbucket_t * num_buckets)()
             for i in range(num_buckets):
                 buckets[i].index_start = size
@@ -242,7 +245,6 @@ class fabricarray(noncontiguous_array_base[T]):
         return fabricarray._vars
 
     def fill_(self, value):
-
         # TODO?
         # filling Fabric arrays of arrays is not supported, because they are jagged arrays of arbitrary lengths
         if self.ndim > 1:
@@ -259,13 +261,11 @@ def fabricarrayarray(**kwargs):
 
 
 class indexedfabricarray(noncontiguous_array_base[T]):
-
     # member attributes available during code-gen (e.g.: d = arr.shape[0])
     # (initialized when needed)
     _vars = None
 
     def __init__(self, fa=None, indices=None, dtype=None, ndim=None):
-
         super().__init__(ARRAY_TYPE_FABRIC_INDEXED)
 
         if fa is not None:
@@ -311,7 +311,6 @@ class indexedfabricarray(noncontiguous_array_base[T]):
         return indexedfabricarray._vars
 
     def fill_(self, value):
-
         # TODO?
         # filling Fabric arrays of arrays is not supported, because they are jagged arrays of arbitrary lengths
         if self.ndim > 1:
