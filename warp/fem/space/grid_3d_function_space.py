@@ -664,8 +664,8 @@ class GridDGTripolynomialSpace(Grid3DFunctionSpace):
         return cache.get_func(element_node_index, f"{self.name}_{self.ORDER}")
 
     class Trace(GridTripolynomialSpace.Trace):
-        def __init__(self, space: "GridTripolynomialSpace"):
+        def __init__(self, space: "GridDGTripolynomialSpace"):
             super().__init__(space)
 
     def trace(self):
-        return GridTripolynomialSpace.Trace(self)
+        return GridDGTripolynomialSpace.Trace(self)

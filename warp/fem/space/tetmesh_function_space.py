@@ -1196,4 +1196,4 @@ class TetmeshDGPolynomialSpace(TetmeshFunctionSpace):
             super().__init__(space)
 
     def trace(self):
-        return TetmeshPolynomialSpace.Trace(self)
+        return TetmeshDGPolynomialSpace.Trace(self)

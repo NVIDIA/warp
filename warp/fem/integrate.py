@@ -749,15 +749,16 @@ def _generate_integrate_kernel(
     ValueStruct = _gen_value_struct(value_args)
 
     # Check if kernel exist in cache
+    kernel_suffix = f"_itg_{domain.name}_{FieldStruct.key}"
     if nodal:
-        kernel_suffix = f"_itg_nodal_{FieldStruct.key}"
+        kernel_suffix += "_nodal"
     else:
-        kernel_suffix = f"_itg_{quadrature.name}_{FieldStruct.key}"
+        kernel_suffix += quadrature.name
 
     if test:
-        kernel_suffix += f"_test_{test.space.name}"
+        kernel_suffix += f"_test_{test.space_partition.name}_{test.space.name}"
     if trial:
-        kernel_suffix += f"_trial_{trial.space.name}"
+        kernel_suffix += f"_trial_{trial.space_partition.name}_{trial.space.name}"
 
     kernel = cache.get_integrand_kernel(
         integrand=integrand,
@@ -1234,7 +1235,7 @@ def _generate_interpolate_kernel(integrand: Integrand, dest: FieldLike, fields: 
     ValueStruct = _gen_value_struct(value_args)
 
     # Check if kernel exist in cache
-    kernel_suffix = f"_itp_{FieldStruct.key}_{dest.space.name}"
+    kernel_suffix = f"_itp_{FieldStruct.key}_{dest.domain.name}_{dest.space_restriction.space_partition.name}_{dest.space.name}"
 
     kernel = cache.get_integrand_kernel(
         integrand=integrand,
@@ -1244,9 +1245,6 @@ def _generate_interpolate_kernel(integrand: Integrand, dest: FieldLike, fields: 
         return kernel, FieldStruct, ValueStruct
 
     # Generate interpolation kernel
-    kernel_suffix = f"{integrand_func.key}_{dest.space.name}_{FieldStruct.key}"
-    kernel_suffix = re.sub("[^0-9a-zA-Z_]+", "", kernel_suffix)
-
     interpolate_kernel_fn = get_interpolate_kernel(
         integrand_func,
         domain,

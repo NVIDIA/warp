@@ -127,6 +127,10 @@ class NodalField(DiscreteField):
     ):
         NODES_PER_ELEMENT = space.NODES_PER_ELEMENT
 
+        if wp.types.type_is_matrix(space.dtype):
+            # There is no Warp high-order tensor type to represent matrix gradients
+            return None
+
         def eval_grad_inner(args: EvalArg, s: Sample):
             res = utils.generalized_outer(
                 space.element_inner_weight_gradient(args.space_arg, s.element_index, s.element_coords, 0),
@@ -169,6 +173,10 @@ class NodalField(DiscreteField):
         read_node_value: wp.Function,
     ):
         NODES_PER_ELEMENT = space.NODES_PER_ELEMENT
+
+        if wp.types.type_is_matrix(space.dtype):
+            # There is no Warp high-order tensor type to represent matrix gradients
+            return None
 
         def eval_grad_outer(args: EvalArg, s: Sample):
             res = utils.generalized_outer(

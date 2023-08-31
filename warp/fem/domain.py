@@ -1,4 +1,5 @@
 from typing import Union
+from enum import Enum
 
 import warp as wp
 import warp.codegen
@@ -17,6 +18,12 @@ GeometryOrPartition = Union[Geometry, GeometryPartition]
 class GeometryDomain:
     """Interface class for domains, i.e. (partial) views of elements in a Geometry"""
 
+    class ElementKind(Enum):
+        """Possible kinds of elements contained in a domain"""
+
+        CELL = 0
+        SIDE = 1
+
     def __init__(self, geometry: GeometryOrPartition):
         if isinstance(geometry, GeometryPartition):
             self.geometry_partition = geometry
@@ -32,6 +39,14 @@ class GeometryDomain:
     def __str__(self) -> str:
         return self.name
 
+    def __eq__(self, other) -> bool:
+        return self.__class__ == other.__class__ and self.geometry_partition == other.geometry_partition
+
+    @property
+    def element_kind(self) -> ElementKind:
+        """Kind of elements that this domain contains (cells or sides)"""
+        raise NotImplementedError
+
     def dimension(self) -> int:
         """Dimension of the elements of the domain"""
         raise NotImplementedError
@@ -39,6 +54,10 @@ class GeometryDomain:
     def element_count(self) -> int:
         """Number of elements in the domain"""
         raise NotImplementedError
+
+    def geometry_element_count(self) -> int:
+        """Number of elements in the underlying geometry"""
+        return self.geometry.cell_count()
 
     def reference_element(self) -> Element:
         """Protypical element"""
@@ -82,6 +101,10 @@ class Cells(GeometryDomain):
 
     def __init__(self, geometry: GeometryOrPartition):
         super().__init__(geometry)
+
+    @property
+    def element_kind(self) -> GeometryDomain.ElementKind:
+        return GeometryDomain.ElementKind.CELL
 
     def dimension(self) -> int:
         return self.geometry.dimension
@@ -140,6 +163,10 @@ class Sides(GeometryDomain):
     def __init__(self, geometry: GeometryOrPartition):
         self.geometry = geometry
         super().__init__(geometry)
+
+    @property
+    def element_kind(self) -> GeometryDomain.ElementKind:
+        return GeometryDomain.ElementKind.SIDE
 
     def dimension(self) -> int:
         return self.geometry.dimension - 1

@@ -856,4 +856,4 @@ class Trimesh2DDGPolynomialSpace(Trimesh2DFunctionSpace):
             super().__init__(space)
 
     def trace(self):
-        return Trimesh2DPolynomialSpace.Trace(self)
+        return Trimesh2DDGPolynomialSpace.Trace(self)

@@ -64,7 +64,7 @@ def normal(domain: Domain, x: Sample):
 
 @operator(resolver=lambda dmn: dmn.element_lookup)
 def lookup(domain: Domain, x: Any):
-    """Look-ups a sample point from a world position, projecting to the closet point on the domain"""
+    """Look-ups a sample point from a world position, projecting to the closest point on the domain"""
     pass
 
 
@@ -111,6 +111,12 @@ def grad_outer(f: Field, x: Sample):
 @operator(resolver=lambda f: f.eval_degree)
 def degree(f: Field):
     """Polynomial degree of a field"""
+    pass
+
+
+@operator(resolver=lambda f: f.at_node)
+def at_node(f: Field, s: Sample):
+    """For a Test or Trial field, returns a copy of the Sample `s` moved to the coordinates of the node being evaluated"""
     pass
 
 

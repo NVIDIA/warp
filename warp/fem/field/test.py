@@ -20,6 +20,7 @@ class TestField:
         self.eval_grad_inner = TestField._make_eval_grad_inner(self.space)
         self.eval_outer = TestField._make_eval_outer(self.space)
         self.eval_grad_outer = TestField._make_eval_grad_outer(self.space)
+        self.at_node = TestField._make_at_node(self.space)
 
     @property
     def EvalArg(self) -> wp.codegen.Struct:
@@ -52,8 +53,11 @@ class TestField:
 
     @staticmethod
     def _make_eval_grad_inner(space: FunctionSpace):
-        def eval_nabla_test_inner(args: space.SpaceArg, s: Sample):
+        if wp.types.type_is_matrix(space.dtype):
+            # There is no Warp high-order tensor type to represent matrix gradients
+            return None
 
+        def eval_nabla_test_inner(args: space.SpaceArg, s: Sample):
             nabla_weight = space.element_inner_weight_gradient(
                 args,
                 s.element_index,
@@ -70,7 +74,6 @@ class TestField:
     @staticmethod
     def _make_eval_outer(space: FunctionSpace):
         def eval_test_outer(args: space.SpaceArg, s: Sample):
-
             weight = space.element_outer_weight(
                 args,
                 s.element_index,
@@ -83,8 +86,11 @@ class TestField:
 
     @staticmethod
     def _make_eval_grad_outer(space: FunctionSpace):
-        def eval_nabla_test(args: space.SpaceArg, s: Sample):
+        if wp.types.type_is_matrix(space.dtype):
+            # There is no Warp high-order tensor type to represent matrix gradients
+            return None
 
+        def eval_nabla_test(args: space.SpaceArg, s: Sample):
             nabla_weight = space.element_outer_weight_gradient(
                 args,
                 s.element_index,
@@ -97,3 +103,11 @@ class TestField:
             )
 
         return cache.get_func(eval_nabla_test, space.name)
+
+    @staticmethod
+    def _make_at_node(space: FunctionSpace):
+        def at_node(args: space.SpaceArg, s: Sample):
+            node_coords = space.node_coords_in_element(args, s.element_index, get_node_index_in_element(s.test_dof))
+            return Sample(s.element_index, node_coords, s.qp_index, s.qp_weight, s.test_dof, s.trial_dof)
+
+        return cache.get_func(at_node, space.name)

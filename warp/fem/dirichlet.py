@@ -2,37 +2,23 @@ from typing import Any, Optional
 
 import warp as wp
 
-from warp.types import type_length
+from warp.types import type_length, type_is_matrix
 from warp.sparse import BsrMatrix, bsr_copy, bsr_mv, bsr_mm, bsr_assign, bsr_axpy
 
 from .utils import array_axpy
 
 
-def normalize_dirichlet_projector(projector_matrix: BsrMatrix, fixed_value: wp.array):
+def normalize_dirichlet_projector(projector_matrix: BsrMatrix, fixed_value: Optional[wp.array] = None):
     """
-    Scale projector so that it becomes idempotent, and apply the same scaling to fixed_value
+    Scale projector so that it becomes idempotent, and apply the same scaling to fixed_value if provided
     """
 
     if projector_matrix.nrow < projector_matrix.nnz or projector_matrix.ncol != projector_matrix.nrow:
         raise ValueError("Projector must be a square diagonal matrix, with at most one non-zero block per row")
 
-    if fixed_value.shape[0] != projector_matrix.nrow:
-        raise ValueError("Fixed value array must be of length equal to the number of rows of blocks")
-
+    # Cast blocks to matrix type if necessary
     projector_values = projector_matrix.values
-
-    if type_length(fixed_value.dtype) == 1:
-        # array of scalars, convert to 1d array of vectors
-        fixed_value = wp.array(
-            data=None,
-            ptr=fixed_value.ptr,
-            capacity=fixed_value.capacity,
-            owner=False,
-            device=fixed_value.device,
-            dtype=wp.vec(length=projector_matrix.block_shape[0], dtype=projector_matrix.scalar_type),
-            shape=fixed_value.shape[0],
-        )
-
+    if not type_is_matrix(projector_values.dtype):
         projector_values = wp.array(
             data=None,
             ptr=projector_values.ptr,
@@ -43,12 +29,36 @@ def normalize_dirichlet_projector(projector_matrix: BsrMatrix, fixed_value: wp.a
             shape=projector_values.shape[0],
         )
 
-    wp.launch(
-        kernel=_normalize_dirichlet_projector_kernel,
-        dim=projector_matrix.nrow,
-        device=fixed_value.device,
-        inputs=[projector_matrix.offsets, projector_matrix.columns, projector_values, fixed_value],
-    )
+    if fixed_value is None:
+        wp.launch(
+            kernel=_normalize_dirichlet_projector_kernel,
+            dim=projector_matrix.nrow,
+            device=projector_values.device,
+            inputs=[projector_matrix.offsets, projector_matrix.columns, projector_values],
+        )
+
+    else:
+        if fixed_value.shape[0] != projector_matrix.nrow:
+            raise ValueError("Fixed value array must be of length equal to the number of rows of blocks")
+
+        if type_length(fixed_value.dtype) == 1:
+            # array of scalars, convert to 1d array of vectors
+            fixed_value = wp.array(
+                data=None,
+                ptr=fixed_value.ptr,
+                capacity=fixed_value.capacity,
+                owner=False,
+                device=fixed_value.device,
+                dtype=wp.vec(length=projector_matrix.block_shape[0], dtype=projector_matrix.scalar_type),
+                shape=fixed_value.shape[0],
+            )
+
+        wp.launch(
+            kernel=_normalize_dirichlet_projector_and_values_kernel,
+            dim=projector_matrix.nrow,
+            device=projector_values.device,
+            inputs=[projector_matrix.offsets, projector_matrix.columns, projector_values, fixed_value],
+        )
 
 
 def project_system_rhs(
@@ -109,12 +119,45 @@ def _normalize_dirichlet_projector_kernel(
     offsets: wp.array(dtype=int),
     columns: wp.array(dtype=int),
     block_values: wp.array(dtype=Any),
+):
+    row = wp.tid()
+
+    beg = offsets[row]
+    end = offsets[row + 1]
+
+    if beg == end:
+        return
+
+    diag = wp.lower_bound(columns, beg, end, row)
+
+    if diag < end and columns[diag] == row:
+        P = block_values[diag]
+
+        P_sq = P * P
+        trace_P = wp.trace(P)
+        trace_P_sq = wp.trace(P_sq)
+
+        if wp.nonzero(trace_P_sq):
+            scale = trace_P / trace_P_sq
+            block_values[diag] = scale * P
+        else:
+            block_values[diag] = P - P
+
+
+@wp.kernel
+def _normalize_dirichlet_projector_and_values_kernel(
+    offsets: wp.array(dtype=int),
+    columns: wp.array(dtype=int),
+    block_values: wp.array(dtype=Any),
     fixed_values: wp.array(dtype=Any),
 ):
     row = wp.tid()
 
     beg = offsets[row]
     end = offsets[row + 1]
+
+    if beg == end:
+        return
 
     diag = wp.lower_bound(columns, beg, end, row)
 

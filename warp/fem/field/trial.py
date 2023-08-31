@@ -30,6 +30,7 @@ class TrialField:
         self.eval_grad_inner = TrialField._make_eval_grad_inner(self.space)
         self.eval_outer = TrialField._make_eval_outer(self.space)
         self.eval_grad_outer = TrialField._make_eval_grad_outer(self.space)
+        self.at_node = TrialField._make_at_node(self.space)
 
     def partition_node_count(self) -> int:
         return self.space_partition.node_count()
@@ -65,6 +66,10 @@ class TrialField:
 
     @staticmethod
     def _make_eval_grad_inner(space: FunctionSpace):
+        if wp.types.type_is_matrix(space.dtype):
+            # There is no Warp high-order tensor type to represent matrix gradients
+            return None
+
         def eval_nabla_trial(args: space.SpaceArg, s: Sample):
             nabla_weight = space.element_inner_weight_gradient(
                 args,
@@ -94,6 +99,10 @@ class TrialField:
 
     @staticmethod
     def _make_eval_grad_outer(space: FunctionSpace):
+        if wp.types.type_is_matrix(space.dtype):
+            # There is no Warp high-order tensor type to represent matrix gradients
+            return None
+
         def eval_nabla_trial_outer(args: space.SpaceArg, s: Sample):
             nabla_weight = space.element_outer_weight_gradient(
                 args,
@@ -107,3 +116,11 @@ class TrialField:
             )
 
         return cache.get_func(eval_nabla_trial_outer, space.name)
+
+    @staticmethod
+    def _make_at_node(space: FunctionSpace):
+        def at_node(args: space.SpaceArg, s: Sample):
+            node_coords = space.node_coords_in_element(args, s.element_index, get_node_index_in_element(s.trial_dof))
+            return Sample(s.element_index, node_coords, s.qp_index, s.qp_weight, s.test_dof, s.trial_dof)
+
+        return cache.get_func(at_node, space.name)

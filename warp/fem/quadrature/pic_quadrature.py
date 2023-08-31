@@ -33,6 +33,18 @@ class PicQuadrature(Quadrature):
     def name(self):
         return f"{self.__class__.__name__}"
 
+    @Quadrature.domain.setter
+    def domain(self, domain: GeometryDomain):
+        # Allow changing the quadrature domain as long as underlying geometry and element kind are the same
+        if self.domain is not None and (
+            domain.geometry != self.domain.geometry or domain.element_kind != self.domain.element_kind
+        ):
+            raise RuntimeError(
+                "Cannot change the domain to that of a different Geometry and/or using different element kinds."
+            )
+
+        self._domain = domain
+
     @wp.struct
     class Arg:
         cell_particle_offsets: wp.array(dtype=int)
@@ -69,6 +81,28 @@ class PicQuadrature(Quadrature):
     def point_index(arg: Arg, element_index: ElementIndex, index: int):
         particle_index = arg.cell_particle_indices[arg.cell_particle_offsets[element_index] + index]
         return particle_index
+
+    def fill_element_mask(self, mask: "wp.array(dtype=int)"):
+        """Fills a mask array such that all non-empty elements are set to 1, all empty elements to zero.
+
+        Args:
+            mask: Int warp array with size at least equal to `self.domain.geometry_element_count()`
+        """
+
+        wp.launch(
+            kernel=PicQuadrature._fill_mask_kernel,
+            dim=self.domain.geometry_element_count(),
+            device=mask.device,
+            inputs=[self._cell_particle_offsets, mask],
+        )
+
+    @wp.kernel
+    def _fill_mask_kernel(
+        element_particle_offsets: wp.array(dtype=int),
+        element_mask: wp.array(dtype=int),
+    ):
+        i = wp.tid()
+        element_mask[i] = wp.select(element_particle_offsets[i] == element_particle_offsets[i + 1], 1, 0)
 
     def _bin_particles(self):
         from warp.fem import cache
@@ -115,5 +149,5 @@ class PicQuadrature(Quadrature):
         )
 
         self._cell_particle_offsets, self._cell_particle_indices, self._cell_count, _ = compress_node_indices(
-            self.domain.geometry.cell_count(), cell_index
+            self.domain.geometry_element_count(), cell_index
         )

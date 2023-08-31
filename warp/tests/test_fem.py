@@ -319,24 +319,25 @@ def test_regular_quadrature(test_case, device):
 
 def test_dof_mapper(test_case, device):
     matrix_types = [wp.mat22, wp.mat33]
-    for dtype in matrix_types:
-        mapper = SymmetricTensorMapper(dtype)
-        dof_dtype = mapper.dof_dtype
+    for mapping in SymmetricTensorMapper.Mapping:
+        for dtype in matrix_types:
+            mapper = SymmetricTensorMapper(dtype, mapping=mapping)
+            dof_dtype = mapper.dof_dtype
 
-        for k in range(dof_dtype._length_):
-            elem = np.array(dof_dtype(0.0))
-            elem[k] = 1.0
-            dof_vec = dof_dtype(elem)
+            for k in range(dof_dtype._length_):
+                elem = np.array(dof_dtype(0.0))
+                elem[k] = 1.0
+                dof_vec = dof_dtype(elem)
 
-            mat = mapper.dof_to_value(dof_vec)
-            dof_round_trip = mapper.value_to_dof(mat)
+                mat = mapper.dof_to_value(dof_vec)
+                dof_round_trip = mapper.value_to_dof(mat)
 
-            # Check that value_to_dof(dof_to_value) is idempotent
-            assert_np_equal(np.array(dof_round_trip), np.array(dof_vec))
+                # Check that value_to_dof(dof_to_value) is idempotent
+                assert_np_equal(np.array(dof_round_trip), np.array(dof_vec))
 
-            # Check that value is unitary for Frobenius norm 0.5 * |tau:tau|
-            frob_norm2 = 0.5 * wp.ddot(mat, mat)
-            test_case.assertAlmostEqual(frob_norm2, 1.0, places=6)
+                # Check that value is unitary for Frobenius norm 0.5 * |tau:tau|
+                frob_norm2 = 0.5 * wp.ddot(mat, mat)
+                test_case.assertAlmostEqual(frob_norm2, 1.0, places=6)
 
 
 def register(parent):
