@@ -8,6 +8,11 @@ wp.init()
 TRUE_CONSTANT = wp.constant(True)
 
 
+@wp.func
+def identity_function(input_bool: wp.bool, plain_bool: bool):
+    return input_bool and plain_bool
+
+
 @wp.kernel
 def identity_test(data: wp.array(dtype=wp.bool)):
     i = wp.tid()
@@ -16,6 +21,7 @@ def identity_test(data: wp.array(dtype=wp.bool)):
     data[i] = data[i] and wp.bool(True)
     data[i] = data[i] and not False
     data[i] = data[i] and not wp.bool(False)
+    data[i] = identity_function(data[i], True)
 
     if data[i]:
         data[i] = True
