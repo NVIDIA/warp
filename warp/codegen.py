@@ -1415,7 +1415,23 @@ class Adjoint:
     def emit_Expr(adj, node):
         return adj.eval(node.value)
 
+    def check_tid_in_func_deprecation(adj, node):
+        if adj.is_user_function:
+            if hasattr(node.func, "attr") and node.func.attr == "tid":
+                lineno = adj.lineno + adj.fun_lineno
+                line = adj.source.splitlines()[adj.lineno]
+
+                warp.utils.warn(
+                    "Calling wp.tid() from a @wp.func is deprecated and will be removed in a future Warp "
+                    "version. Instead, obtain the indices from a @wp.kernel and pass them as "
+                    f"arguments to this function {adj.fun_name}, {adj.filename}:{lineno}:\n{line}\n",
+                    PendingDeprecationWarning,
+                    stacklevel=2,
+                )
+
     def emit_Call(adj, node):
+        adj.check_tid_in_func_deprecation(node)
+
         # try and lookup function in globals by
         # resolving path (e.g.: module.submodule.attr)
         func, path = adj.resolve_path(node.func)
@@ -1750,19 +1766,6 @@ class Adjoint:
         emit_node = node_visitors.get(type(node))
 
         if emit_node is not None:
-            if adj.is_user_function:
-                if hasattr(node, "value") and hasattr(node.value, "func") and hasattr(node.value.func, "attr"):
-                    if node.value.func.attr == "tid":
-                        lineno = adj.lineno + adj.fun_lineno
-                        line = adj.source.splitlines()[adj.lineno]
-
-                        warp.utils.warn(
-                            "Calling wp.tid() from a @wp.func is deprecated and will be removed in a future Warp "
-                            "version. Instead, obtain the indices from a @wp.kernel and pass them as "
-                            f"arguments to this function {adj.fun_name}, {adj.filename}:{lineno}:\n{line}\n",
-                            PendingDeprecationWarning,
-                            stacklevel=2,
-                        )
             return emit_node(adj, node)
         else:
             raise Exception("Error, ast node of type {} not supported".format(type(node)))
