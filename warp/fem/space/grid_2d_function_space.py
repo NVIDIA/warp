@@ -611,4 +611,4 @@ class GridDGBipolynomialSpace(Grid2DFunctionSpace):
             super().__init__(space)
 
     def trace(self):
-        return GridBipolynomialSpace.Trace(self)
+        return GridDGBipolynomialSpace.Trace(self)

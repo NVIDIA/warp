@@ -244,4 +244,4 @@ def invert_diagonal_bsr_mass_matrix(A: BsrMatrix):
 @wp.kernel
 def _block_diagonal_mass_invert(values: wp.array(dtype=Any)):
     i = wp.tid()
-    values[i] = values[i] * wp.ddot(values[i], values[i])
+    values[i] = values[i] / wp.ddot(values[i], values[i])

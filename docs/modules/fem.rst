@@ -141,7 +141,7 @@ Particle-based quadrature
 The :class:`.quadrature.PicQuadrature` provides a way to define Particle-In-Cell quadratures from a set or arbitrary particles,
 which can be helpful to develop MPM-like methods.
 The particles are automatically bucketed to the geometry cells when the quadrature is initialized.
-This is illustrated by the ``example_stokes_transfer[_3d, _usd].py`` series of examples.
+This is illustrated by the ``example_stokes_transfer[_3d].py`` and ``example_apic_fluid.py`` examples.
 
 Partitioning
 ^^^^^^^^^^^^
@@ -172,6 +172,7 @@ Operators
 .. autofunction:: warp.fem.operator.outer(f: Field, s: Sample)
 .. autofunction:: warp.fem.operator.grad(f: Field, s: Sample)
 .. autofunction:: warp.fem.operator.grad_outer(f: Field, s: Sample)
+.. autofunction:: warp.fem.operator.at_node(f: Field, s: Sample)
 
 .. autofunction:: warp.fem.operator.D(f: Field, s: Sample)
 .. autofunction:: warp.fem.operator.div(f: Field, s: Sample)

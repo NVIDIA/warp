@@ -15,7 +15,12 @@ class Quadrature:
     """Structure containing arguments to be passed to device functions"""
 
     def __init__(self, domain: domain.GeometryDomain):
-        self.domain = domain
+        self._domain = domain
+
+    @property
+    def domain(self):
+        """Domain over which this quadrature is defined"""
+        return self._domain
 
     def eval_arg_value(self, device) -> wp.codegen.StructInstance:
         """

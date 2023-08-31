@@ -202,9 +202,9 @@ def bsr_assign(dest: BsrMatrix, src: BsrMatrix):
     _bsr_ensure_fits(dest)
 
     wp.copy(dest=dest.offsets, src=src.offsets, count=src.nrow + 1)
-    wp.copy(dest=dest.columns, src=src.columns, count=src.nnz)
-
-    warp.utils.array_cast(out_array=dest.values, in_array=src.values, count=src.nnz)
+    if src.nnz > 0:
+        wp.copy(dest=dest.columns, src=src.columns, count=src.nnz)
+        warp.utils.array_cast(out_array=dest.values, in_array=src.values, count=src.nnz)
 
 
 def bsr_copy(A: BsrMatrix, scalar_type=None):

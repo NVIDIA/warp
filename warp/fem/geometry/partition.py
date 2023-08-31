@@ -61,6 +61,10 @@ class WholeGeometryPartition(GeometryPartition):
         self.boundary_side_index = geometry.boundary_side_index
         self.frontier_side_index = WholeGeometryPartition._identity_element_index
 
+    def __eq__(self, other: GeometryPartition) -> bool:
+        # Ensures that two whole partition instances of the same geometry are considered equal
+        return isinstance(other, WholeGeometryPartition) and self.geometry == other.geometry
+
     def cell_count(self) -> int:
         return self.geometry.cell_count()
 
@@ -279,7 +283,7 @@ class ExplicitGeometryPartition(CellBasedGeometryPartition):
 
         Args:
             geometry: the geometry to partition
-            cell_mask: warp array of length ``geometry.cell-count()`` indicating which cells are selected. Array values must be either ``1`` (selected) or ``0`` (not selected).
+            cell_mask: warp array of length ``geometry.cell_count()`` indicating which cells are selected. Array values must be either ``1`` (selected) or ``0`` (not selected).
         """
 
         super().__init__(geometry)

@@ -264,7 +264,7 @@ class Grid2D(Geometry):
 
     @wp.func
     def side_measure(args: SideArg, s: Sample):
-        return args.cell_size
+        return args.cell_arg.cell_size
 
     @wp.func
     def side_measure_ratio(args: SideArg, s: Sample):

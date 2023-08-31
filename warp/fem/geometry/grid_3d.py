@@ -228,7 +228,7 @@ class Grid3D(Geometry):
         return Sample(cell_index, coords, NULL_QP_INDEX, 0.0, NULL_DOF_INDEX, NULL_DOF_INDEX)
 
     @wp.func
-    def cell_lookup(args: CellArg, pos: wp.vec2, guess: Sample):
+    def cell_lookup(args: CellArg, pos: wp.vec3, guess: Sample):
         return Grid3D.cell_lookup(args, pos)
 
     @wp.func
