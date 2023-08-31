@@ -3586,6 +3586,7 @@ def infer_argument_types(args, template_types, arg_names=None):
 simple_type_codes = {
     int: "i4",
     float: "f4",
+    builtins.bool: "b",
     bool: "b",
     str: "str",  # accepted by print()
     int8: "i1",
