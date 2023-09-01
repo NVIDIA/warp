@@ -41,9 +41,7 @@ def count_neighbors(grid: wp.uint64, radius: float, points: wp.array(dtype=wp.ve
     count = int(0)
 
     # construct query around point p
-    neighbors = wp.hash_grid_query(grid, p, radius)
-
-    for index in neighbors:
+    for index in wp.hash_grid_query(grid, p, radius):
         # compute distance to point
         d = wp.length(p - points[index])
 
