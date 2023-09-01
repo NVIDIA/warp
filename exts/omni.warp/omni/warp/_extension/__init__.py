@@ -9,7 +9,6 @@
 
 import asyncio
 from contextlib import suppress
-import importlib
 import os
 import subprocess
 import sys
@@ -21,10 +20,7 @@ import carb.dictionary
 import omni.ext
 import omni.graph.core as og
 import omni.kit.actions.core
-import omni.timeline
 import warp as wp
-
-from omni.warp._extension.menu import WarpMenu
 
 
 SCENES_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../data/scenes"))
@@ -39,18 +35,6 @@ SETTING_ENABLE_BACKWARD = "/exts/omni.warp/enable_backward"
 SETTING_KERNEL_NODE_OPT_IN = "/app/omni.warp/kernel_opt_in"
 SETTING_KERNEL_NODE_ENABLE_OPT_IN = "/app/omni.warp/kernel_enable_opt_in"
 OMNIGRAPH_STAGEUPDATE_ORDER = 100  # We want our attach() to run after OG so that nodes have been instantiated
-
-
-def log_info(msg):
-    carb.log_info("[omni.warp] {}".format(msg))
-
-
-def log_warn(msg):
-    carb.log_warn("[omni.warp] {}".format(msg))
-
-
-def log_error(msg):
-    carb.log_error("[omni.warp] {}".format(msg))
 
 
 def open_file(filename):
@@ -118,6 +102,8 @@ def verify_kernel_node_load(nodes: Sequence[og.Node]):
     )
 
     async def show_async():
+        import omni.kit.app
+
         # wait a few frames to allow the app ui to finish loading
         await omni.kit.app.get_app().next_update_async()
         await omni.kit.app.get_app().next_update_async()
@@ -179,13 +165,14 @@ def on_kernel_opt_in_setting_change(
 
 class OmniWarpExtension(omni.ext.IExt):
     def __init__(self, *args, **kwargs):
+        import omni.kit.app
+
         super().__init__(*args, **kwargs)
+        self._menu = None
         self._stage_subscription = None
         self._opt_in_setting_sub = None
 
         with suppress(ImportError):
-            import omni.kit.app
-
             app = omni.kit.app.get_app()
             manager = app.get_extension_manager()
             if manager.is_extension_enabled("omni.graph.ui"):
@@ -194,7 +181,7 @@ class OmniWarpExtension(omni.ext.IExt):
                 omni.graph.ui.ComputeNodeWidget.get_instance().add_template_path(NODES_INIT_PATH)
 
     def on_startup(self, ext_id):
-        log_info("OmniWarpExtension startup")
+        import omni.kit.app
 
         settings = carb.settings.get_settings()
 
@@ -204,23 +191,17 @@ class OmniWarpExtension(omni.ext.IExt):
         self._is_live = True
         self._ext_name = "omni.warp"
 
-        try:
+        with suppress(ImportError):
             import omni.kit.menu.utils
-        except ImportError:
-            print("Warning: menu not enabled.")
-        else:
+            from omni.warp._extension.menu import WarpMenu
+
             self._register_actions()
             self._menu = WarpMenu()
 
-        try:
-            importlib.import_module("omni.kit.browser.sample").register_sample_folder(SCENES_PATH, "Warp")
-        except ImportError as e:
-            print("Warning: sample browser not enabled.")
+        with suppress(ImportError):
+            import omni.kit.browser.sample
 
-        self._update_event_stream = omni.kit.app.get_app_interface().get_update_event_stream()
-        self._stage_event_sub = (
-            omni.usd.get_context().get_stage_event_stream().create_subscription_to_pop(self._on_stage_event)
-        )
+            omni.kit.browser.sample.register_sample_folder(SCENES_PATH, "Warp")
 
         stage_update = omni.stageupdate.get_stage_update_interface()
 
@@ -251,20 +232,16 @@ class OmniWarpExtension(omni.ext.IExt):
         omni.warp.from_omni_graph = omni.warp.nodes.from_omni_graph
 
     def on_shutdown(self):
-        log_info("OmniWarpExtension shutdown")
-
         if self._menu is not None:
             self._menu.shutdown()
             self._menu = None
             self._deregister_actions()
 
-        try:
-            importlib.import_module("omni.kit.browser.sample").unregister_sample_folder(SCENES_PATH)
-        except ImportError as e:
-            print(e)
+        with suppress(ImportError):
+            import omni.kit.browser.sample
 
-        self._update_event_stream = None
-        self._stage_event_sub = None
+            omni.kit.browser.sample.unregister_sample_folder(SCENES_PATH)
+
         self._stage_subscription = None
         self._opt_in_setting_sub = None
 
@@ -308,31 +285,6 @@ class OmniWarpExtension(omni.ext.IExt):
     def _deregister_actions(self):
         action_registry = omni.kit.actions.core.get_action_registry()
         action_registry.deregister_all_actions_for_extension(self._ext_name)
-
-    def _on_update(self, event):
-        timeline = omni.timeline.get_timeline_interface()
-        if timeline.is_playing() and self._example is not None:
-            with wp.ScopedDevice("cuda:0"):
-                self._example.update()
-                self._example.render(is_live=self._is_live)
-
-    def _on_stage_event(self, event):
-        if event.type == int(omni.usd.StageEventType.CLOSED):
-            self._refresh_example()
-        if event.type == int(omni.usd.StageEventType.OPENED):
-            self._refresh_example()
-
-    def _reset_example(self):
-        if self._example is not None:
-            stage = omni.usd.get_context().get_stage()
-            stage.GetRootLayer().Clear()
-            with wp.ScopedDevice("cuda:0"):
-                self._example.init(stage)
-                self._example.render(is_live=self._is_live)
-
-    def _refresh_example(self):
-        self._example = None
-        self._update_event_sub = None
 
     def _on_browse_scenes_click(self):
         open_file(SCENES_PATH)

@@ -5,15 +5,30 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import os
-import math
-import timeit
 import cProfile
+import math
+import sys
+import timeit
+import warnings
+from typing import Any, Tuple, Union
+
 import numpy as np
-from typing import Union, Tuple, Any
 
 import warp as wp
 import warp.types
+
+
+def warp_showwarning(message, category, filename, lineno, file=None, line=None):
+    """Version of warnings.showwarning that always prints to sys.stdout."""
+    msg = warnings.WarningMessage(message, category, filename, lineno, sys.stdout, line)
+    warnings._showwarnmsg_impl(msg)
+
+
+def warn(message, category=None, stacklevel=1):
+    with warnings.catch_warnings():
+        warnings.simplefilter("default")  # Change the filter in this process
+        warnings.showwarning = warp_showwarning
+        warnings.warn(message, category, stacklevel + 1)  # Increment stacklevel by 1 since we are in a wrapper
 
 
 def length(a):
@@ -653,6 +668,7 @@ _copy_kernel_cache = dict()
 def array_cast(in_array, out_array, count=None):
     def make_copy_kernel(dest_dtype, src_dtype):
         import re
+
         import warp.context
 
         def copy_kernel(
@@ -738,6 +754,25 @@ def array_cast(in_array, out_array, count=None):
 # exit(0)
 
 
+# helper kernels for initializing NVDB volumes from a dense array
+@wp.kernel
+def copy_dense_volume_to_nano_vdb_v(volume: wp.uint64, values: wp.array(dtype=wp.vec3, ndim=3)):
+    i, j, k = wp.tid()
+    wp.volume_store_v(volume, i, j, k, values[i, j, k])
+
+
+@wp.kernel
+def copy_dense_volume_to_nano_vdb_f(volume: wp.uint64, values: wp.array(dtype=wp.float32, ndim=3)):
+    i, j, k = wp.tid()
+    wp.volume_store_f(volume, i, j, k, values[i, j, k])
+
+
+@wp.kernel
+def copy_dense_volume_to_nano_vdb_i(volume: wp.uint64, values: wp.array(dtype=wp.int32, ndim=3)):
+    i, j, k = wp.tid()
+    wp.volume_store_i(volume, i, j, k, values[i, j, k])
+
+
 # represent an edge between v0, v1 with connected faces f0, f1, and opposite vertex o0, and o1
 # winding is such that first tri can be reconstructed as {v0, v1, o0}, and second tri as { v1, v0, o1 }
 class MeshEdge:
@@ -821,6 +856,7 @@ def mem_report():
         print("Type: %s Total Tensors: %d \tUsed Memory Space: %.2f MBytes" % (mem_type, total_numel, total_mem))
 
     import gc
+
     import torch
 
     gc.collect()

@@ -292,6 +292,7 @@ def solve_springs(
     spring_stiffness: wp.array(dtype=float),
     spring_damping: wp.array(dtype=float),
     dt: float,
+    lambdas: wp.array(dtype=float),
     delta: wp.array(dtype=wp.vec3),
 ):
     tid = wp.tid()
@@ -313,29 +314,135 @@ def solve_springs(
     vij = vi - vj
 
     l = wp.length(xij)
-    l_inv = 1.0 / l
 
-    # normalized spring direction
-    dir = xij * l_inv
+    if l == 0.0:
+        return
+
+    n = xij / l
 
     c = l - rest
-    dcdt = wp.dot(dir, vij)
-
-    # damping based on relative velocity.
-    # fs = dir * (ke * c + kd * dcdt)
+    grad_c_xi = n
+    grad_c_xj = -1.0 * n
 
     wi = invmass[i]
     wj = invmass[j]
 
     denom = wi + wj
+
+    # Note strict inequality for damping -- 0 damping is ok
+    if denom <= 0.0 or ke <= 0.0 or kd < 0.0:
+        return
+
+    alpha= 1.0 / (ke * dt * dt)
+    gamma = kd / (ke * dt)
+
+    grad_c_dot_v = dt * wp.dot(grad_c_xi, vij) # Note: dt because from the paper we want x_i - x^n, not v...
+    dlambda = -1.0 * (c + alpha* lambdas[tid] + gamma * grad_c_dot_v) / ((1.0 + gamma) * denom + alpha)
+
+    dxi = wi * dlambda * grad_c_xi
+    dxj = wj * dlambda * grad_c_xj
+
+    lambdas[tid] = lambdas[tid] + dlambda
+
+    wp.atomic_add(delta, i, dxi)
+    wp.atomic_add(delta, j, dxj)
+
+
+@wp.kernel
+def bending_constraint(
+    x: wp.array(dtype=wp.vec3),
+    v: wp.array(dtype=wp.vec3),
+    invmass: wp.array(dtype=float),
+    indices: wp.array2d(dtype=int),
+    rest: wp.array(dtype=float),
+    bending_properties: wp.array2d(dtype=float),
+    dt: float,
+    lambdas: wp.array(dtype=float),
+    delta: wp.array(dtype=wp.vec3),
+):
+
+    tid = wp.tid()
+    eps = 1.0e-6
+
+    ke = bending_properties[tid, 0]
+    kd = bending_properties[tid, 1]
+
+    i = indices[tid, 0]
+    j = indices[tid, 1]
+    k = indices[tid, 2]
+    l = indices[tid, 3]
+
+    if i == -1 or j == -1 or k == -1 or l == -1:
+        return
+
+    rest_angle = rest[tid]
+
+    x1 = x[i]
+    x2 = x[j]
+    x3 = x[k]
+    x4 = x[l]
+
+    v1 = v[i]
+    v2 = v[j]
+    v3 = v[k]
+    v4 = v[l]
+
+    w1 = invmass[i]
+    w2 = invmass[j]
+    w3 = invmass[k]
+    w4 = invmass[l]
+
+    n1 = wp.cross(x3 - x1, x4 - x1)  # normal to face 1
+    n2 = wp.cross(x4 - x2, x3 - x2)  # normal to face 2
+
+    n1_length = wp.length(n1)
+    n2_length = wp.length(n2)
+
+    if n1_length < eps or n2_length < eps:
+        return
+
+    n1 /= n1_length
+    n2 /= n2_length
+
+    cos_theta = wp.dot(n1, n2)
+
+    e = x4 - x3
+    e_hat = wp.normalize(e)
+    e_length = wp.length(e)
+
+    derivative_flip = wp.sign(wp.dot(wp.cross(n1, n2), e))
+    derivative_flip *= -1.0
+    angle = wp.acos(cos_theta)
+
+    grad_x1 = n1 * e_length * derivative_flip
+    grad_x2 = n2 * e_length * derivative_flip
+    grad_x3 = (n1 * wp.dot(x1 - x4, e_hat) + n2 * wp.dot(x2 - x4, e_hat)) * derivative_flip
+    grad_x4 = (n1 * wp.dot(x3 - x1, e_hat) + n2 * wp.dot(x3 - x2, e_hat)) * derivative_flip
+    c = angle - rest_angle
+    denominator =  (w1 * wp.length_sq(grad_x1) + w2 * wp.length_sq(grad_x2) + w3 * wp.length_sq(grad_x3) + w4 * wp.length_sq(grad_x4))
+
+    # Note strict inequality for damping -- 0 damping is ok
+    if denominator <= 0.0 or ke <= 0.0 or kd < 0.0:
+        return
+
     alpha = 1.0 / (ke * dt * dt)
+    gamma = kd / (ke * dt)
 
-    multiplier = c / (denom)  # + alpha)
+    grad_dot_v = dt * (wp.dot(grad_x1, v1) + wp.dot(grad_x2, v2) + wp.dot(grad_x3, v3) + wp.dot(grad_x4, v4))
 
-    xd = dir * multiplier
+    dlambda = -1.0 * (c + alpha * lambdas[tid] + gamma * grad_dot_v) / ((1.0 + gamma) * denominator + alpha)
 
-    wp.atomic_sub(delta, i, xd * wi)
-    wp.atomic_add(delta, j, xd * wj)
+    delta0 = w1 * dlambda * grad_x1
+    delta1 = w2 * dlambda * grad_x2
+    delta2 = w3 * dlambda * grad_x3
+    delta3 = w4 * dlambda * grad_x4
+
+    lambdas[tid] = lambdas[tid] + dlambda
+
+    wp.atomic_add(delta, i, delta0)
+    wp.atomic_add(delta, j, delta1)
+    wp.atomic_add(delta, k, delta2)
+    wp.atomic_add(delta, l, delta3)
 
 
 @wp.kernel
@@ -495,6 +602,7 @@ def apply_particle_deltas(
     particle_flags: wp.array(dtype=wp.uint32),
     delta: wp.array(dtype=wp.vec3),
     dt: float,
+    v_max: float,
     x_out: wp.array(dtype=wp.vec3),
     v_out: wp.array(dtype=wp.vec3),
 ):
@@ -510,6 +618,11 @@ def apply_particle_deltas(
 
     x_new = xp + d
     v_new = (x_new - x0) / dt
+
+    # enforce velocity limit to prevent instability
+    v_new_mag = wp.length(v_new)
+    if v_new_mag > v_max:
+        v_new *= v_max / v_new_mag
 
     x_out[tid] = x_new
     v_out[tid] = v_new
@@ -1873,11 +1986,12 @@ class XPBDIntegrator:
                     inputs=[
                         state_in.particle_q,
                         state_in.particle_qd,
-                        state_out.particle_f,
+                        state_in.particle_f,
                         model.particle_inv_mass,
                         model.particle_flags,
                         model.gravity,
                         dt,
+                        model.particle_max_velocity,
                     ],
                     outputs=[particle_q, particle_qd],
                     device=model.device,
@@ -1926,6 +2040,12 @@ class XPBDIntegrator:
                     outputs=[state_out.body_q, state_out.body_qd],
                     device=model.device,
                 )
+
+            if model.spring_count:
+                model.spring_constraint_lambdas.zero_()
+            
+            if model.edge_count:
+                model.edge_constraint_lambdas.zero_()
 
             for i in range(self.iterations):
                 # print(f"### iteration {i} / {self.iterations-1}")
@@ -2031,7 +2151,7 @@ class XPBDIntegrator:
                             device=model.device,
                         )
 
-                    # damped springs
+                    # distance constraints
                     if model.spring_count:
                         wp.launch(
                             kernel=solve_springs,
@@ -2045,6 +2165,26 @@ class XPBDIntegrator:
                                 model.spring_stiffness,
                                 model.spring_damping,
                                 dt,
+                                model.spring_constraint_lambdas,
+                            ],
+                            outputs=[deltas],
+                            device=model.device,
+                        )
+
+                    # bending constraints
+                    if model.edge_count:
+                        wp.launch(
+                            kernel=bending_constraint,
+                            dim=model.edge_count,
+                            inputs=[
+                                particle_q,
+                                particle_qd,
+                                model.particle_inv_mass,
+                                model.edge_indices,
+                                model.edge_rest_angle,
+                                model.edge_bending_properties,
+                                dt,
+                                model.edge_constraint_lambdas,
                             ],
                             outputs=[deltas],
                             device=model.device,
@@ -2087,6 +2227,7 @@ class XPBDIntegrator:
                             model.particle_flags,
                             deltas,
                             dt,
+                            model.particle_max_velocity,
                         ],
                         outputs=[new_particle_q, new_particle_qd],
                         device=model.device,

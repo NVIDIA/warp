@@ -10,25 +10,23 @@ Before use Warp should be explicitly initialized with the ``wp.init()`` method a
 
     wp.init()
 
-Devices
--------
+Warp will print some startup information about the compute devices available, driver versions, and the location
+for any generated kernel code, e.g.:
 
-Users can query the supported compute devices using the ``wp.get_devices()`` method::
+.. code:: bat
 
-   print(wp.get_devices())
+    Warp 1.0.0 initialized:
+    CUDA Toolkit: 11.8, Driver: 12.1
+    Devices:
+        "cpu"    | AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD
+        "cuda:0" | NVIDIA GeForce RTX 4080 (sm_89)
+    Kernel cache: C:\Users\mmacklin\AppData\Local\NVIDIA Corporation\warp\Cache\1.0.0
 
-   >> ['cpu', 'cuda:0']
-
-These device strings can then be used to allocate memory and launch kernels. 
-More information about working with devices is available in :ref:`devices`.
 
 Kernels
 -------
 
-In Warp, kernels are defined as Python functions, decorated with the ``@warp.kernel`` decorator.
-Note that all input arguments must be typed, and that the function cannot access any global state.
-Kernels have a 1:1 correspondence with CUDA kernels, and may be launched with any number of parallel
-execution threads::
+In Warp, compute kernels are defined as Python functions, and annotated with the ``@warp.kernel`` decorator, as follows::
 
     @wp.kernel
     def simple_kernel(a: wp.array(dtype=wp.vec3),
@@ -48,6 +46,45 @@ execution threads::
         # write result back to memory
         c[tid] = r
 
+Because Warp kernels are compiled to native C++/CUDA code all the function input arguments must be statically typed. This allows 
+Warp to generate fast code that executes at essentially at native speeds. Because kernels may be run on either the CPU
+or GPU, they cannot access arbitrary global state from the Python environment. Instead they must read and write data
+through their input parameters such as arrays.
+
+Warp kernels functions have a 1:1 correspondence with CUDA kernels, to launch a kernel with 1024 threads, we use ``wp.launch()`` as follows::
+
+    wp.launch(kernel=simple_kernel, # kernel to launch
+              dim=1024,             # number of threads
+              inputs=[a, b, c],     # parameters
+              device="cuda")        # execution device
+
+Inside the kernel we can retrieve the *thread index* of the each thread using the ``wp.tid()`` builtin function::
+
+    # get thread index
+    i = wp.tid()
+
+Kernels can be launched with 1D, 2D, 3D, or 4D grids of threads, e.g.: to launch a 2D grid of threads to process a 1024x1024 image we could write::
+
+    wp.launch(kernel=compute_image, 
+              dim=(1024, 1024),       
+              inputs=[img],     
+              device="cuda")
+
+Then, inside the kernel we can retrieve a 2D thread index as follows::
+
+    # get thread index
+    i, j = wp.tid()
+
+    # write out a color value for each pixel
+    color[i, j] = wp.vec3(r, g, b)
+
+Arrays
+------
+
+Memory allocations are exposed via the ``warp.array`` type. Arrays wrap an underlying memory allocation that may live in
+either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in values
+(``float,``, ``int``, ``vec3``, ``matrix33``, etc).
+
 Arrays can be allocated similar to PyTorch::
 
     # allocate an uninitialized array of vec3s
@@ -61,50 +98,19 @@ Arrays can be allocated similar to PyTorch::
     a = np.ones((10, 3), dtype=np.float32)
     v = wp.from_numpy(a, dtype=wp.vec3, device="cuda")
 
+By default, Warp arrays that are initialized from external data (e.g.: NumPy, Lists, Tuples) will create a copy the data to new memory for the
+device specified. However, it is possible for arrays to alias external memory using the ``copy=False`` parameter to the
+array constructor provided the input is contiguous and on the same device. See the :ref:`interopability` section for more details on sharing
+memory with external frameworks.
 
-To launch a kernel use the following syntax::
+To read GPU array data back to CPU memory we can use the ``array.numpy()`` method::
 
-    wp.launch(kernel=simple_kernel, # kernel to launch
-              dim=1024,             # number of threads
-              inputs=[a, b, c],     # parameters
-              device="cuda")        # execution device
-
-
-Note that all input and output buffers must exist on the same device as the one specified for execution.
-
-Often we need to read data back to main (CPU) memory which can be done conveniently as follows::
-
-    # automatically bring data from device back to host
+    # bring data from device back to host
     view = device_array.numpy()
 
-This pattern will allocate a temporary CPU buffer, perform a copy from device->host memory, and return a NumPy view onto
-it. To avoid allocating temporary buffers this process can be managed explicitly::
-
-    # manually bring data back to host
-    wp.copy(dest=host_array, src=device_array)
-    wp.synchronize()
-
-    view = host_array.numpy()
-
-All copy operations are performed asynchronously and must be synchronized explicitly to ensure data is visible.
-For best performance multiple copies should be queued together::
-
-    # launch multiple copy operations asynchronously
-    wp.copy(dest=host_array_0, src=device_array_0)
-    wp.copy(dest=host_array_1, src=device_array_1)
-    wp.copy(dest=host_array_2, src=device_array_2)
-    wp.synchronize()
-
-Memory Model
-------------
-
-Memory allocations are exposed via the ``warp.array`` type. Arrays wrap an underlying memory allocation that may live in
-either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in structures
-(``vec3``, ``matrix33``, etc).
-
-Arrays may be constructed from Python lists or NumPy arrays; by default, data will be copied to new memory for the
-device specified. However, it is possible for arrays to alias user memory using the ``copy=False`` parameter to the
-array constructor.
+This will automatically synchronize with the GPU to ensure that any outstanding work has finished, and will
+copy the array back to CPU memory where it is passed to NumPy. Calling ``array.numpy()`` on a CPU array will return
+a zero-copy NumPy view onto the Warp data.
 
 User Functions
 --------------
@@ -144,8 +150,8 @@ Unlike Python, in Warp all variables must be typed. Types are inferred from sour
 
     @wp.kernel
     def simple_kernel(a: wp.array(dtype=vec3),
-                    b: wp.array(dtype=vec3),
-                    c: float):
+                      b: wp.array(dtype=vec3),
+                      c: float):
 
 Tuple initialization is not supported, instead variables should be explicitly typed: ::
 
@@ -155,29 +161,15 @@ Tuple initialization is not supported, instead variables should be explicitly ty
     # valid
     a = wp.vec3(1.0, 2.0, 3.0) 
 
-Immutable Types
-^^^^^^^^^^^^^^^
-
-Similar to Python tuples, built-in value types are immutable, and users should use construction syntax to mutate existing variables, for example: ::
-
-    a = wp.vec3(0.0, 0.0, 0.0)
-
-    # invalid
-    a[1] = 1.0
-
-    # valid
-    a = wp.vec3(0.0, 1.0, 0.0)
-
 
 Unsupported Features
 ^^^^^^^^^^^^^^^^^^^^
 
 To achieve good performance on GPUs some dynamic language features are not supported:
 
-* Array slicing notation
 * Lambda functions
+* List comprehensions
 * Exceptions
-* Class definitions
-* Runtime evaluation of expressions, e.g.: eval()
 * Recursion
-* Dynamic allocation, lists, sets, dictionaries
+* Runtime evaluation of expressions, e.g.: eval()
+* Dynamic structures such as lists, sets, dictionaries, etc

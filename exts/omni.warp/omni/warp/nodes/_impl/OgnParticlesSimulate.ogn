@@ -112,6 +112,7 @@
                 "type": "bundle",
                 "description": "Collider geometry mesh.",
                 "uiName": "Collider",
+                "optional": true,
                 "memoryType": "cuda"
             },
             "colliderContactDistance": {

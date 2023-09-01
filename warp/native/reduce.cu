@@ -103,23 +103,22 @@ template <typename T> void array_sum_device(const T *ptr_a, T *ptr_out, int coun
     assert((byte_stride % sizeof(T)) == 0);
     const int stride = byte_stride / sizeof(T);
 
-    void *context = cuda_context_get_current();
-    TemporaryBuffer &cub_temp = g_temp_buffer_map[context];
-
-    ContextGuard guard(context);
+    ContextGuard guard(cuda_context_get_current());
     cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_get_current());
 
     cub_strided_iterator<const T> ptr_strided{ptr_a, stride};
 
     size_t buff_size = 0;
     check_cuda(cub::DeviceReduce::Sum(nullptr, buff_size, ptr_strided, ptr_out, count, stream));
-    cub_temp.ensure_fits(buff_size);
+    void* temp_buffer = alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
 
     for (int k = 0; k < type_length; ++k)
     {
         cub_strided_iterator<const T> ptr_strided{ptr_a + k, stride};
-        check_cuda(cub::DeviceReduce::Sum(cub_temp.buffer, buff_size, ptr_strided, ptr_out + k, count, stream));
+        check_cuda(cub::DeviceReduce::Sum(temp_buffer, buff_size, ptr_strided, ptr_out + k, count, stream));
     }
+
+    free_temp_device(WP_CURRENT_CONTEXT, temp_buffer);
 }
 
 template <typename T>
@@ -265,19 +264,18 @@ void array_inner_device(const ElemT *ptr_a, const ElemT *ptr_b, ScalarT *ptr_out
     const int stride_a = byte_stride_a / sizeof(ElemT);
     const int stride_b = byte_stride_b / sizeof(ElemT);
 
-    void *context = cuda_context_get_current();
-    TemporaryBuffer &cub_temp = g_temp_buffer_map[context];
-
-    ContextGuard guard(context);
+    ContextGuard guard(cuda_context_get_current());
     cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_get_current());
 
     cub_inner_product_iterator<ElemT, ScalarT> inner_iterator{ptr_a, ptr_b, stride_a, stride_b, type_length};
 
     size_t buff_size = 0;
     check_cuda(cub::DeviceReduce::Sum(nullptr, buff_size, inner_iterator, ptr_out, count, stream));
-    cub_temp.ensure_fits(buff_size);
+    void* temp_buffer = alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
 
-    check_cuda(cub::DeviceReduce::Sum(cub_temp.buffer, buff_size, inner_iterator, ptr_out, count, stream));
+    check_cuda(cub::DeviceReduce::Sum(temp_buffer, buff_size, inner_iterator, ptr_out, count, stream));
+
+    free_temp_device(WP_CURRENT_CONTEXT, temp_buffer);
 }
 
 template <typename T>

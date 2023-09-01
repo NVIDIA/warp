@@ -1,7 +1,7 @@
 
 [package]
 # Semantic Versioning is used: https://semver.org/
-version = "0.10.1"
+version = "1.0.0-beta.2"
 authors = ["NVIDIA"]
 title = "Warp"
 description="A Python framework for high-performance simulation and graphics programming"
@@ -28,12 +28,12 @@ exclude = ["Ogn*Database.py", "*/ogn*"]
 "omni.kit.actions.core" = {}
 "omni.kit.browser.sample" = {optional = true}
 "omni.kit.menu.utils" = {optional = true}
-"omni.kit.property.usd" = {}
-"omni.kit.widget.searchfield" = {}
-"omni.kit.widget.text_editor" = {}
-"omni.kit.window.property" = {}
+"omni.kit.property.usd" = {optional = true}
+"omni.kit.widget.searchfield" = {optional = true}
+"omni.kit.widget.text_editor" = {optional = true}
+"omni.kit.window.property" = {optional = true}
 "omni.timeline" = {}
-"omni.ui" = {}
+"omni.ui" = {optional = true}
 "omni.usd" = {}
 "omni.warp.core" = {}
 
@@ -45,6 +45,3 @@ name = "omni.warp.nodes"
 
 [settings]
 exts."omni.warp".enable_backward = false
-
-[[test]]
-pythonTests.include = ["omni.warp.nodes.ogn.*"]

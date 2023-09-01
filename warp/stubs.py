@@ -23,8 +23,9 @@ Array = Generic[DType]
 
 from warp.types import array, array1d, array2d, array3d, array4d, constant
 from warp.types import indexedarray, indexedarray1d, indexedarray2d, indexedarray3d, indexedarray4d
+from warp.fabric import fabricarray, fabricarrayarray, indexedfabricarray, indexedfabricarrayarray
 
-from warp.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64
+from warp.types import bool, int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64
 from warp.types import vec2, vec2b, vec2ub, vec2s, vec2us, vec2i, vec2ui, vec2l, vec2ul, vec2h, vec2f, vec2d
 from warp.types import vec3, vec3b, vec3ub, vec3s, vec3us, vec3i, vec3ui, vec3l, vec3ul, vec3h, vec3f, vec3d
 from warp.types import vec4, vec4b, vec4ub, vec4s, vec4us, vec4i, vec4ui, vec4l, vec4ul, vec4h, vec4f, vec4d
@@ -44,7 +45,7 @@ from warp.types import matmul, adj_matmul, batched_matmul, adj_batched_matmul, f
 from warp.types import vector as vec
 from warp.types import matrix as mat
 
-from warp.context import init, func, kernel, struct, overload
+from warp.context import init, func, func_grad, func_replay, kernel, struct, overload
 from warp.context import is_cpu_available, is_cuda_available, is_device_available
 from warp.context import get_devices, get_preferred_device
 from warp.context import get_cuda_devices, get_cuda_device_count, get_cuda_device, map_cuda_device, unmap_cuda_device
@@ -88,6 +89,10 @@ from warp.dlpack import from_dlpack, to_dlpack
 from warp.constants import *
 
 from . import builtins
+
+import warp.config
+
+__version__ = warp.config.version
 
 
 @over
@@ -1140,6 +1145,14 @@ def volume_sample_f(id: uint64, uvw: vec3f, sampling_mode: int32) -> float:
 
 
 @over
+def volume_sample_grad_f(id: uint64, uvw: vec3f, sampling_mode: int32, grad: vec3f) -> float:
+    """
+    Sample the volume and its gradient given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
+    """
+    ...
+
+
+@over
 def volume_lookup_f(id: uint64, i: int32, j: int32, k: int32) -> float:
     """
     Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
@@ -1522,6 +1535,14 @@ def select(cond: bool, arg1: Any, arg2: Any):
 
 
 @over
+def select(cond: bool, arg1: Any, arg2: Any):
+    """
+    Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+    """
+    ...
+
+
+@over
 def select(cond: int8, arg1: Any, arg2: Any):
     """
     Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
@@ -1626,6 +1647,70 @@ def atomic_add(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any
 
 
 @over
+def atomic_add(a: FabricArray[Any], i: int32, value: Any):
+    """
+    Atomically add ``value`` onto the array at location given by index.
+    """
+    ...
+
+
+@over
+def atomic_add(a: FabricArray[Any], i: int32, j: int32, value: Any):
+    """
+    Atomically add ``value`` onto the array at location given by indices.
+    """
+    ...
+
+
+@over
+def atomic_add(a: FabricArray[Any], i: int32, j: int32, k: int32, value: Any):
+    """
+    Atomically add ``value`` onto the array at location given by indices.
+    """
+    ...
+
+
+@over
+def atomic_add(a: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
+    """
+    Atomically add ``value`` onto the array at location given by indices.
+    """
+    ...
+
+
+@over
+def atomic_add(a: IndexedFabricArray[Any], i: int32, value: Any):
+    """
+    Atomically add ``value`` onto the array at location given by index.
+    """
+    ...
+
+
+@over
+def atomic_add(a: IndexedFabricArray[Any], i: int32, j: int32, value: Any):
+    """
+    Atomically add ``value`` onto the array at location given by indices.
+    """
+    ...
+
+
+@over
+def atomic_add(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any):
+    """
+    Atomically add ``value`` onto the array at location given by indices.
+    """
+    ...
+
+
+@over
+def atomic_add(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
+    """
+    Atomically add ``value`` onto the array at location given by indices.
+    """
+    ...
+
+
+@over
 def atomic_sub(a: Array[Any], i: int32, value: Any):
     """
     Atomically subtract ``value`` onto the array at location given by index.
@@ -1651,6 +1736,70 @@ def atomic_sub(a: Array[Any], i: int32, j: int32, k: int32, value: Any):
 
 @over
 def atomic_sub(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
+    """
+    Atomically subtract ``value`` onto the array at location given by indices.
+    """
+    ...
+
+
+@over
+def atomic_sub(a: FabricArray[Any], i: int32, value: Any):
+    """
+    Atomically subtract ``value`` onto the array at location given by index.
+    """
+    ...
+
+
+@over
+def atomic_sub(a: FabricArray[Any], i: int32, j: int32, value: Any):
+    """
+    Atomically subtract ``value`` onto the array at location given by indices.
+    """
+    ...
+
+
+@over
+def atomic_sub(a: FabricArray[Any], i: int32, j: int32, k: int32, value: Any):
+    """
+    Atomically subtract ``value`` onto the array at location given by indices.
+    """
+    ...
+
+
+@over
+def atomic_sub(a: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
+    """
+    Atomically subtract ``value`` onto the array at location given by indices.
+    """
+    ...
+
+
+@over
+def atomic_sub(a: IndexedFabricArray[Any], i: int32, value: Any):
+    """
+    Atomically subtract ``value`` onto the array at location given by index.
+    """
+    ...
+
+
+@over
+def atomic_sub(a: IndexedFabricArray[Any], i: int32, j: int32, value: Any):
+    """
+    Atomically subtract ``value`` onto the array at location given by indices.
+    """
+    ...
+
+
+@over
+def atomic_sub(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any):
+    """
+    Atomically subtract ``value`` onto the array at location given by indices.
+    """
+    ...
+
+
+@over
+def atomic_sub(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
     """
     Atomically subtract ``value`` onto the array at location given by indices.
     """
@@ -1690,6 +1839,70 @@ def atomic_min(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any
 
 
 @over
+def atomic_min(a: FabricArray[Any], i: int32, value: Any):
+    """
+    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    """
+    ...
+
+
+@over
+def atomic_min(a: FabricArray[Any], i: int32, j: int32, value: Any):
+    """
+    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    """
+    ...
+
+
+@over
+def atomic_min(a: FabricArray[Any], i: int32, j: int32, k: int32, value: Any):
+    """
+    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    """
+    ...
+
+
+@over
+def atomic_min(a: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
+    """
+    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    """
+    ...
+
+
+@over
+def atomic_min(a: IndexedFabricArray[Any], i: int32, value: Any):
+    """
+    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    """
+    ...
+
+
+@over
+def atomic_min(a: IndexedFabricArray[Any], i: int32, j: int32, value: Any):
+    """
+    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    """
+    ...
+
+
+@over
+def atomic_min(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any):
+    """
+    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    """
+    ...
+
+
+@over
+def atomic_min(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
+    """
+    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    """
+    ...
+
+
+@over
 def atomic_max(a: Array[Any], i: int32, value: Any):
     """
     Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
@@ -1715,6 +1928,70 @@ def atomic_max(a: Array[Any], i: int32, j: int32, k: int32, value: Any):
 
 @over
 def atomic_max(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
+    """
+    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    """
+    ...
+
+
+@over
+def atomic_max(a: FabricArray[Any], i: int32, value: Any):
+    """
+    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    """
+    ...
+
+
+@over
+def atomic_max(a: FabricArray[Any], i: int32, j: int32, value: Any):
+    """
+    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    """
+    ...
+
+
+@over
+def atomic_max(a: FabricArray[Any], i: int32, j: int32, k: int32, value: Any):
+    """
+    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    """
+    ...
+
+
+@over
+def atomic_max(a: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
+    """
+    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    """
+    ...
+
+
+@over
+def atomic_max(a: IndexedFabricArray[Any], i: int32, value: Any):
+    """
+    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    """
+    ...
+
+
+@over
+def atomic_max(a: IndexedFabricArray[Any], i: int32, j: int32, value: Any):
+    """
+    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    """
+    ...
+
+
+@over
+def atomic_max(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any):
+    """
+    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    """
+    ...
+
+
+@over
+def atomic_max(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
     """
     Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
@@ -2055,6 +2332,12 @@ def neg(x: Quaternion[Scalar]) -> Quaternion[Scalar]:
 
 @over
 def neg(x: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """ """
+    ...
+
+
+@over
+def unot(b: bool) -> bool:
     """ """
     ...
 

@@ -8,6 +8,8 @@
 """Helpers to author OmniGraph attributes."""
 
 import functools
+import inspect
+import math
 import operator
 from typing import (
     Any,
@@ -19,6 +21,8 @@ from typing import (
 import numpy as np
 import omni.graph.core as og
 import warp as wp
+
+from omni.warp.nodes._impl.common import type_convert_og_to_warp
 
 
 ATTR_BUNDLE_TYPE = og.Type(
@@ -193,23 +197,166 @@ class AttrTracking:
 
 
 def from_omni_graph(
-    value: Union[np.array, og.DataWrapper],
+    value: Union[np.ndarray, og.DataWrapper, og.AttributeData, og.DynamicAttributeAccess],
     dtype: Optional[type] = None,
     shape: Optional[Sequence[int]] = None,
     device: Optional[wp.context.Device] = None,
 ) -> wp.array:
-    """Converts an OmniGraph array value to its corresponding Warp type."""
-    if dtype is None:
-        dtype = float
+    """Casts an OmniGraph array data to its corresponding Warp type."""
 
-    if shape is None:
-        # The array value might define 2 dimensions when tuples such as
-        # wp.vec3 are used as data type, so we preserve only the first
-        # dimension to retrieve the actual shape since OmniGraph only
-        # supports 1D arrays anyways.
-        shape = value.shape[:1]
+    def from_data_wrapper(
+        data: og.DataWrapper,
+        dtype: Optional[type],
+        shape: Optional[Sequence[int]],
+        device: Optional[wp.context.Device],
+    ) -> wp.array:
+        if data.gpu_ptr_kind != og.PtrToPtrKind.CPU:
+            raise RuntimeError("All pointers must live on the CPU, make sure to set 'cudaPointers' to 'cpu'.")
+        elif not data.is_array:
+            raise RuntimeError("The attribute data isn't an array.")
 
-    if device is None:
-        device = wp.get_device()
+        if dtype is None:
+            base_type = type_convert_og_to_warp(
+                og.Type(
+                    data.dtype.base_type,
+                    tuple_count=data.dtype.tuple_count,
+                    array_depth=0,
+                    role=og.AttributeRole.MATRIX if data.dtype.is_matrix_type() else og.AttributeRole.NONE,
+                ),
+            )
 
-    return attr_cast_array_to_warp(value, dtype, shape, device)
+            dim_count = len(data.shape)
+            if dim_count == 1:
+                dtype = base_type
+            elif dim_count == 2:
+                dtype = wp.types.vector(length=data.shape[1], dtype=base_type)
+            elif dim_count == 3:
+                dtype = wp.types.matrix(shape=(data.shape[1], data.shape[2]), dtype=base_type)
+            else:
+                raise RuntimeError("Arrays with more than 3 dimensions are not supported.")
+
+        arr_size = data.shape[0] * data.dtype.size
+        element_size = wp.types.type_size_in_bytes(dtype)
+
+        if shape is None:
+            # Infer a shape compatible with the dtype.
+            for i in range(len(data.shape)):
+                if functools.reduce(operator.mul, data.shape[: i + 1]) * element_size == arr_size:
+                    shape = data.shape[: i + 1]
+                    break
+
+        if shape is None:
+            if arr_size % element_size != 0:
+                raise RuntimeError(
+                    "Cannot infer a size matching the Warp data type '{}' with "
+                    "an array size of '{}' bytes.".format(dtype.__name__, arr_size)
+                )
+            size = arr_size // element_size
+        else:
+            size = functools.reduce(operator.mul, shape)
+
+        src_device = wp.get_device(str(data.device))
+        dst_device = device
+        return wp.from_ptr(
+            data.memory,
+            size,
+            dtype=dtype,
+            shape=shape,
+            device=src_device,
+        ).to(dst_device)
+
+    def from_attr_data(
+        data: og.AttributeData,
+        dtype: Optional[type],
+        shape: Optional[Sequence[int]],
+        device: Optional[wp.context.Device],
+    ) -> wp.array:
+        if data.gpu_valid():
+            on_gpu = True
+        elif data.cpu_valid():
+            on_gpu = False
+        else:
+            raise RuntimeError("The attribute data isn't valid.")
+
+        if on_gpu:
+            data_type = data.get_type()
+            base_type = type_convert_og_to_warp(
+                og.Type(
+                    data_type.base_type,
+                    tuple_count=data_type.tuple_count,
+                    array_depth=0,
+                    role=data_type.role,
+                ),
+            )
+
+            if dtype is None:
+                dtype = base_type
+
+            arr_size = data.size() * wp.types.type_size_in_bytes(base_type)
+            element_size = wp.types.type_size_in_bytes(dtype)
+
+            if shape is None:
+                # Infer a shape compatible with the dtype.
+                if data_type.is_matrix_type():
+                    dim = math.isqrt(data_type.tuple_count)
+                    arr_shape = (data.size(), dim, dim)
+                else:
+                    arr_shape = (data.size(), data_type.tuple_count)
+
+                for i in range(len(arr_shape)):
+                    if functools.reduce(operator.mul, arr_shape[: i + 1]) * element_size == arr_size:
+                        shape = arr_shape[: i + 1]
+                        break
+
+            if shape is None:
+                if arr_size % element_size != 0:
+                    raise RuntimeError(
+                        "Cannot infer a size matching the Warp data type '{}' with "
+                        "an array size of '{}' bytes.".format(dtype.__name__, arr_size)
+                    )
+                size = arr_size // element_size
+            else:
+                size = functools.reduce(operator.mul, shape)
+
+            data.gpu_ptr_kind = og.PtrToPtrKind.CPU
+            (ptr, _) = data.get_array(
+                on_gpu=True,
+                get_for_write=not data.is_read_only(),
+                reserved_element_count=0 if data.is_read_only() else data.size(),
+            )
+
+            src_device = wp.get_device("cuda")
+            dst_device = device
+            return wp.from_ptr(
+                ptr,
+                size,
+                dtype=dtype,
+                shape=shape,
+                device=src_device,
+            ).to(dst_device)
+        else:
+            arr = data.get_array(
+                on_gpu=False,
+                get_for_write=not data.is_read_only(),
+                reserved_element_count=0 if data.is_read_only() else data.size(),
+            )
+            return wp.from_numpy(arr, dtype=dtype, shape=shape, device=device)
+
+    if isinstance(value, np.ndarray):
+        return wp.from_numpy(value, dtype=dtype, shape=shape, device=device)
+    elif isinstance(value, og.DataWrapper):
+        return from_data_wrapper(value, dtype, shape, device)
+    elif isinstance(value, og.AttributeData):
+        return from_attr_data(value, dtype, shape, device)
+    elif og.DynamicAttributeAccess in inspect.getmro(type(getattr(value, "_parent", None))):
+        if device is None:
+            device = wp.get_device()
+
+        if device.is_cpu:
+            return wp.from_numpy(value.cpu, dtype=dtype, shape=shape, device=device)
+        elif device.is_cuda:
+            return from_data_wrapper(value.gpu, dtype, shape, device)
+        else:
+            assert False, "Unexpected device '{}'.".format(device.alias)
+
+    return None

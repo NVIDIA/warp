@@ -202,13 +202,13 @@ def bsr_assign(dest: BsrMatrix, src: BsrMatrix):
     _bsr_ensure_fits(dest)
 
     wp.copy(dest=dest.offsets, src=src.offsets, count=src.nrow + 1)
-    wp.copy(dest=dest.columns, src=src.columns, count=src.nnz)
-
-    warp.utils.array_cast(out_array=dest.values, in_array=src.values, count=src.nnz)
+    if src.nnz > 0:
+        wp.copy(dest=dest.columns, src=src.columns, count=src.nnz)
+        warp.utils.array_cast(out_array=dest.values, in_array=src.values, count=src.nnz)
 
 
 def bsr_copy(A: BsrMatrix, scalar_type=None):
-    """Returns a copy of matrix A, possibly asting values to a new scalar type"""
+    """Returns a copy of matrix A, possibly casting values to a new scalar type"""
     if scalar_type is None:
         block_type = A.values.dtype
     elif A.block_shape == (1, 1):
@@ -665,16 +665,23 @@ def bsr_mm(x: BsrMatrix, y: BsrMatrix, z: BsrMatrix = None, alpha: float = 1.0, 
         inputs=[0, beta, mm_rows, mm_cols, z.offsets, z.columns, z.values, mm_values],
     )
 
-    # Add mm blocks
+    # Update z to point to result blocks
+    z.values = mm_values
+    z.nnz = mm_nnz
+
+    # Add mm blocks to z values
+
+    if z.block_shape == (1, 1) and x.block_shape != (1, 1):
+        # Result block type is scalar, but operands are matrices
+        # Cast result to (1x1) matrix to perform multiplication
+        mm_values = mm_values.view(wp.types.matrix(shape=(1, 1), dtype=z.scalar_type))
+
     wp.launch(
         kernel=_bsr_mm_compute_values,
         device=device,
         dim=z.nrow,
         inputs=[alpha, x.offsets, x.columns, x.values, y.offsets, y.columns, y.values, z.offsets, z.columns, mm_values],
     )
-
-    z.values = mm_values
-    z.nnz = mm_nnz
 
     return z
 

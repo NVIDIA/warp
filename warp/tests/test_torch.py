@@ -5,10 +5,10 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import unittest
+
 # include parent path
 import numpy as np
-import unittest
-import sys
 
 import warp as wp
 from warp.tests.test_base import *
@@ -103,7 +103,7 @@ def test_from_torch(test, device):
     wrap_scalar_tensor_implicit(torch.int16, wp.int16)
     wrap_scalar_tensor_implicit(torch.int8, wp.int8)
     wrap_scalar_tensor_implicit(torch.uint8, wp.uint8)
-    wrap_scalar_tensor_implicit(torch.bool, wp.uint8)
+    wrap_scalar_tensor_implicit(torch.bool, wp.bool)
 
     # explicitly specify warp dtype
     def wrap_scalar_tensor_explicit(torch_dtype, expected_warp_dtype):
@@ -127,6 +127,7 @@ def test_from_torch(test, device):
     wrap_scalar_tensor_explicit(torch.uint8, wp.int8)
     wrap_scalar_tensor_explicit(torch.bool, wp.uint8)
     wrap_scalar_tensor_explicit(torch.bool, wp.int8)
+    wrap_scalar_tensor_explicit(torch.bool, wp.bool)
 
     def wrap_vec_tensor(n, desired_warp_dtype):
         t = torch.zeros((10, n), dtype=torch.float32, device=torch_device)
@@ -151,6 +152,29 @@ def test_from_torch(test, device):
     wrap_mat_tensor(4, 4, wp.mat44)
     wrap_mat_tensor(6, 6, wp.spatial_matrix)
 
+    def wrap_vec_tensor_with_grad(n, desired_warp_dtype):
+        t = torch.zeros((10, n), dtype=torch.float32, device=torch_device)
+        a = wp.from_torch(t, desired_warp_dtype, requires_grad=True)
+        assert a.dtype == desired_warp_dtype
+        assert a.shape == (10,)
+
+    wrap_vec_tensor_with_grad(2, wp.vec2)
+    wrap_vec_tensor_with_grad(3, wp.vec3)
+    wrap_vec_tensor_with_grad(4, wp.vec4)
+    wrap_vec_tensor_with_grad(6, wp.spatial_vector)
+    wrap_vec_tensor_with_grad(7, wp.transform)
+
+    def wrap_mat_tensor_with_grad(n, m, desired_warp_dtype):
+        t = torch.zeros((10, n, m), dtype=torch.float32, device=torch_device)
+        a = wp.from_torch(t, desired_warp_dtype, requires_grad=True)
+        assert a.dtype == desired_warp_dtype
+        assert a.shape == (10,)
+
+    wrap_mat_tensor_with_grad(2, 2, wp.mat22)
+    wrap_mat_tensor_with_grad(3, 3, wp.mat33)
+    wrap_mat_tensor_with_grad(4, 4, wp.mat44)
+    wrap_mat_tensor_with_grad(6, 6, wp.spatial_matrix)
+
 
 def test_to_torch(test, device):
     import torch
@@ -169,6 +193,7 @@ def test_to_torch(test, device):
     wrap_scalar_array(wp.int16, torch.int16)
     wrap_scalar_array(wp.int8, torch.int8)
     wrap_scalar_array(wp.uint8, torch.uint8)
+    wrap_scalar_array(wp.bool, torch.bool)
 
     # not supported by torch
     # wrap_scalar_array(wp.uint64, torch.int64)

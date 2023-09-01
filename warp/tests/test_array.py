@@ -5,14 +5,14 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import math
+import unittest
+
 # include parent path
 import numpy as np
-import math
 
 import warp as wp
 from warp.tests.test_base import *
-
-import unittest
 
 wp.init()
 
@@ -397,7 +397,7 @@ def test_slicing(test, device):
     assert_array_equal(wp_arr[:5], wp.array(np_arr[:5], dtype=int, device=device))
     assert_array_equal(wp_arr[1:5], wp.array(np_arr[1:5], dtype=int, device=device))
     assert_array_equal(wp_arr[-9:-5:1], wp.array(np_arr[-9:-5:1], dtype=int, device=device))
-    assert_array_equal(wp_arr[:5,], wp.array(np_arr[:5], dtype=int, device=device))
+    assert_array_equal(wp_arr[:5,], wp.array(np_arr[:5], dtype=int, device=device))  # noqa: E231
 
 
 def test_view(test, device):
@@ -738,7 +738,10 @@ def test_fill_matrix(test, device):
             assert_np_equal(a4.numpy(), np.zeros((*a4.shape, *mat_shape), dtype=nptype))
 
             # matrix values can be passed as a 1d numpy array, 2d numpy array, flat list, nested list, or Warp matrix instance
-            fill_arr1 = np.arange(mat_len, dtype=nptype)
+            if wptype != wp.bool:
+                fill_arr1 = np.arange(mat_len, dtype=nptype)
+            else:
+                fill_arr1 = np.ones(mat_len, dtype=nptype)
             fill_arr2 = fill_arr1.reshape(mat_shape)
             fill_list1 = list(fill_arr1)
             fill_list2 = [list(row) for row in fill_arr2]
@@ -1295,7 +1298,10 @@ def test_full_matrix(test, device):
                 assert_np_equal(na, np.full(a.size * mattype._length_, 42, dtype=nptype).reshape(npshape))
 
                 # fill with 1d numpy array and specific dtype
-                fill_arr1d = np.arange(mattype._length_, dtype=nptype)
+                if wptype != wp.bool:
+                    fill_arr1d = np.arange(mattype._length_, dtype=nptype)
+                else:
+                    fill_arr1d = np.ones(mattype._length_, dtype=nptype)
                 a = wp.full(shape, fill_arr1d, dtype=mattype, device=device)
                 na = a.numpy()
 
@@ -1695,6 +1701,7 @@ def test_to_list_struct(test, device):
         a1: wp.array(dtype=int)
         a2: wp.array2d(dtype=float)
         a3: wp.array3d(dtype=wp.float16)
+        bool: wp.bool
 
     dim = 3
 
@@ -1714,6 +1721,7 @@ def test_to_list_struct(test, device):
     s.a1 = wp.empty(1, dtype=int, device=device)
     s.a2 = wp.empty((1, 1), dtype=float, device=device)
     s.a3 = wp.empty((1, 1, 1), dtype=wp.float16, device=device)
+    s.bool = True
 
     for ndim in range(1, 5):
         shape = (dim,) * ndim
@@ -1731,6 +1739,7 @@ def test_to_list_struct(test, device):
             test.assertEqual(l[i].mi, s.mi)
             test.assertEqual(l[i].mf, s.mf)
             test.assertEqual(l[i].mh, s.mh)
+            test.assertEqual(l[i].bool, s.bool)
             test.assertEqual(l[i].inner.h, s.inner.h)
             test.assertEqual(l[i].inner.v, s.inner.v)
             test.assertEqual(l[i].a1.dtype, s.a1.dtype)
@@ -1969,6 +1978,130 @@ def test_array_of_structs_roundtrip(test, device):
     assert_np_equal(a.numpy(), expected)
 
 
+def test_array_from_numpy(test, device):
+    arr = np.array((1.0, 2.0, 3.0), dtype=float)
+
+    result = wp.from_numpy(arr)
+    expected = wp.array((1.0, 2.0, 3.0), dtype=wp.float32, shape=(3,))
+    assert_np_equal(result.numpy(), expected.numpy())
+
+    result = wp.from_numpy(arr, dtype=wp.vec3)
+    expected = wp.array(((1.0, 2.0, 3.0),), dtype=wp.vec3, shape=(1,))
+    assert_np_equal(result.numpy(), expected.numpy())
+
+    # --------------------------------------------------------------------------
+
+    arr = np.array(((1.0, 2.0, 3.0), (4.0, 5.0, 6.0)), dtype=float)
+
+    result = wp.from_numpy(arr)
+    expected = wp.array(((1.0, 2.0, 3.0), (4.0, 5.0, 6.0)), dtype=wp.vec3, shape=(2,))
+    assert_np_equal(result.numpy(), expected.numpy())
+
+    result = wp.from_numpy(arr, dtype=wp.float32)
+    expected = wp.array(((1.0, 2.0, 3.0), (4.0, 5.0, 6.0)), dtype=wp.float32, shape=(2, 3))
+    assert_np_equal(result.numpy(), expected.numpy())
+
+    result = wp.from_numpy(arr, dtype=wp.float32, shape=(6,))
+    expected = wp.array((1.0, 2.0, 3.0, 4.0, 5.0, 6.0), dtype=wp.float32, shape=(6,))
+    assert_np_equal(result.numpy(), expected.numpy())
+
+    # --------------------------------------------------------------------------
+
+    arr = np.array(
+        (
+            (
+                (1.0, 2.0, 3.0, 4.0),
+                (2.0, 3.0, 4.0, 5.0),
+                (3.0, 4.0, 5.0, 6.0),
+                (4.0, 5.0, 6.0, 7.0),
+            ),
+            (
+                (2.0, 3.0, 4.0, 5.0),
+                (3.0, 4.0, 5.0, 6.0),
+                (4.0, 5.0, 6.0, 7.0),
+                (5.0, 6.0, 7.0, 8.0),
+            ),
+        ),
+        dtype=float,
+    )
+
+    result = wp.from_numpy(arr)
+    expected = wp.array(
+        (
+            (
+                (1.0, 2.0, 3.0, 4.0),
+                (2.0, 3.0, 4.0, 5.0),
+                (3.0, 4.0, 5.0, 6.0),
+                (4.0, 5.0, 6.0, 7.0),
+            ),
+            (
+                (2.0, 3.0, 4.0, 5.0),
+                (3.0, 4.0, 5.0, 6.0),
+                (4.0, 5.0, 6.0, 7.0),
+                (5.0, 6.0, 7.0, 8.0),
+            ),
+        ),
+        dtype=wp.mat44,
+        shape=(2,),
+    )
+    assert_np_equal(result.numpy(), expected.numpy())
+
+    result = wp.from_numpy(arr, dtype=wp.float32)
+    expected = wp.array(
+        (
+            (
+                (1.0, 2.0, 3.0, 4.0),
+                (2.0, 3.0, 4.0, 5.0),
+                (3.0, 4.0, 5.0, 6.0),
+                (4.0, 5.0, 6.0, 7.0),
+            ),
+            (
+                (2.0, 3.0, 4.0, 5.0),
+                (3.0, 4.0, 5.0, 6.0),
+                (4.0, 5.0, 6.0, 7.0),
+                (5.0, 6.0, 7.0, 8.0),
+            ),
+        ),
+        dtype=wp.float32,
+        shape=(2, 4, 4),
+    )
+    assert_np_equal(result.numpy(), expected.numpy())
+
+    result = wp.from_numpy(arr, dtype=wp.vec4)
+    expected = wp.array(
+        (
+            (1.0, 2.0, 3.0, 4.0),
+            (2.0, 3.0, 4.0, 5.0),
+            (3.0, 4.0, 5.0, 6.0),
+            (4.0, 5.0, 6.0, 7.0),
+            (2.0, 3.0, 4.0, 5.0),
+            (3.0, 4.0, 5.0, 6.0),
+            (4.0, 5.0, 6.0, 7.0),
+            (5.0, 6.0, 7.0, 8.0),
+        ),
+        dtype=wp.vec4,
+        shape=(8,),
+    )
+    assert_np_equal(result.numpy(), expected.numpy())
+
+    result = wp.from_numpy(arr, dtype=wp.float32, shape=(32,))
+    expected = wp.array(
+        (
+            1.0, 2.0, 3.0, 4.0,
+            2.0, 3.0, 4.0, 5.0,
+            3.0, 4.0, 5.0, 6.0,
+            4.0, 5.0, 6.0, 7.0,
+            2.0, 3.0, 4.0, 5.0,
+            3.0, 4.0, 5.0, 6.0,
+            4.0, 5.0, 6.0, 7.0,
+            5.0, 6.0, 7.0, 8.0,
+        ),
+        dtype=wp.float32,
+        shape=(32,),
+    )
+    assert_np_equal(result.numpy(), expected.numpy())
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -2013,6 +2146,7 @@ def register(parent):
     add_function_test(TestArray, "test_array_of_structs_grad", test_array_of_structs_grad, devices=devices)
     add_function_test(TestArray, "test_array_of_structs_from_numpy", test_array_of_structs_from_numpy, devices=devices)
     add_function_test(TestArray, "test_array_of_structs_roundtrip", test_array_of_structs_roundtrip, devices=devices)
+    add_function_test(TestArray, "test_array_from_numpy", test_array_from_numpy, devices=devices)
 
     return TestArray
 

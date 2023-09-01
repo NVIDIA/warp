@@ -6,3 +6,4 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 from .adam import Adam
+from .sgd import SGD

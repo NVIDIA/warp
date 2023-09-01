@@ -14,7 +14,6 @@ import numpy as np
 import omni.graph.core as og
 import omni.timeline
 import warp as wp
-import warp.sim
 
 import omni.warp.nodes
 from omni.warp.nodes.ogn.OgnParticlesSimulateDatabase import OgnParticlesSimulateDatabase
@@ -165,6 +164,9 @@ class InternalState:
         device: wp.context.Device,
     ) -> bool:
         """Initializes the internal state."""
+        # Lazy load warp.sim here to not slow down extension loading.
+        import warp.sim
+
         # Compute the simulation time step.
         timeline = omni.timeline.get_timeline_interface()
         sim_rate = timeline.get_ticks_per_second()
@@ -215,7 +217,7 @@ class InternalState:
 
             # Initialize Warp's mesh instance, which requires
             # triangulated meshes.
-            collider_face_vertex_indices = omni.warp.nodes.mesh_get_triangulated_face_vertex_indices(
+            collider_face_vertex_indices = omni.warp.nodes.mesh_triangulate(
                 db.inputs.collider,
             )
             collider_mesh = wp.sim.Mesh(
@@ -315,7 +317,6 @@ class InternalState:
         model.soft_contact_kf = db.inputs.contactFrictionStiffness * db.inputs.globalScale
         model.soft_contact_mu = db.inputs.contactFrictionCoeff
         model.soft_contact_kd = db.inputs.contactDampingStiffness * db.inputs.globalScale
-        model.soft_contact_distance = db.inputs.colliderContactDistance
         model.soft_contact_margin = db.inputs.colliderContactDistance * db.inputs.colliderContactQueryRange
 
         # Store the class members.
@@ -375,8 +376,8 @@ def update_collider(
         kernel=update_collider_kernel,
         dim=len(state.collider_mesh.vertices),
         inputs=[
-            state.collider_points_1,
             state.collider_points_0,
+            state.collider_points_1,
             xform_0.T,
             xform_1.T,
             state.sim_dt,
@@ -481,11 +482,7 @@ def compute(db: OgnParticlesSimulateDatabase, device: wp.context.Device) -> None
 
         # We want to use the input particles geometry as the initial state
         # of the simulation so we copy its bundle to the output one.
-        omni.warp.nodes.points_copy_bundle(
-            db.outputs.particles,
-            db.inputs.particles,
-            deep_copy=True,
-        )
+        db.outputs.particles = db.inputs.particles
 
         if not state.initialize(db, device):
             return

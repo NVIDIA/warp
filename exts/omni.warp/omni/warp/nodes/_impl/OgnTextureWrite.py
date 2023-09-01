@@ -11,10 +11,62 @@ import ctypes
 import traceback
 
 import omni.graph.core as og
-import omni.ui as ui
+import omni.warp.nodes
 import warp as wp
 
 from omni.warp.nodes.ogn.OgnTextureWriteDatabase import OgnTextureWriteDatabase
+
+try:
+    import omni.ui as ui
+except ImportError:
+    ui = None
+
+
+#   Internal State
+# ------------------------------------------------------------------------------
+
+
+class InternalState:
+    """Internal state for the node."""
+
+    def __init__(self) -> None:
+        self.texture_provider = None
+
+        self.is_valid = False
+
+        self.attr_tracking = omni.warp.nodes.AttrTracking(
+            (
+                "uri",
+            ),
+        )
+
+    def needs_initialization(self, db: OgnTextureWriteDatabase) -> bool:
+        """Checks if the internal state needs to be (re)initialized."""
+        if not self.is_valid:
+            return True
+
+        if self.attr_tracking.have_attrs_changed(db):
+            return True
+
+        return False
+
+    def initialize(
+        self,
+        db: OgnTextureWriteDatabase,
+    ) -> bool:
+        """Initializes the internal state."""
+        uri = db.inputs.uri
+        if not uri.startswith("dynamic://"):
+            return False
+
+        texture_provider = ui.DynamicTextureProvider(uri[10:])
+
+        # Store the class members.
+        self.texture_provider = texture_provider
+
+        self.attr_tracking.update_state(db)
+
+        return True
 
 
 #   Compute
@@ -23,12 +75,19 @@ from omni.warp.nodes.ogn.OgnTextureWriteDatabase import OgnTextureWriteDatabase
 
 def compute(db: OgnTextureWriteDatabase) -> None:
     """Evaluates the node."""
+    if ui is None:
+        db.log_warning("Cannot write dynamic textures in headless mode.")
+        return
+
     if not db.inputs.data.memory or db.inputs.data.shape[0] == 0:
         return
 
-    uri = db.inputs.uri
-    if not uri.startswith("dynamic://"):
-        return
+    state = db.internal_state
+
+    if state.needs_initialization(db):
+        # Initialize the internal state if it hasn't been already.
+        if not state.initialize(db):
+            return
 
     dim_count = min(max(db.inputs.dimCount, 0), wp.types.ARRAY_MAX_DIMS)
     resolution = tuple(max(getattr(db.inputs, "dim{}".format(i + 1)), 0) for i in range(dim_count))
@@ -38,8 +97,7 @@ def compute(db: OgnTextureWriteDatabase) -> None:
     data_ptr = ctypes.cast(db.inputs.data.memory, ctypes.POINTER(ctypes.c_size_t)).contents.value
 
     # Write the texture to the provider.
-    provider = ui.DynamicTextureProvider(uri[10:])
-    provider.set_bytes_data_from_gpu(
+    state.texture_provider.set_bytes_data_from_gpu(
         data_ptr,
         resolution,
         format=ui.TextureFormat.RGBA32_SFLOAT,
@@ -54,12 +112,19 @@ class OgnTextureWrite:
     """Dynamic texture write node."""
 
     @staticmethod
+    def internal_state() -> InternalState:
+        return InternalState()
+
+    @staticmethod
     def compute(db: OgnTextureWriteDatabase) -> None:
         try:
             compute(db)
         except Exception:
             db.log_error(traceback.format_exc())
+            db.internal_state.is_valid = False
             return
+
+        db.internal_state.is_valid = True
 
         # Trigger the execution for the downstream nodes.
         db.outputs.execOut = og.ExecutionAttributeState.ENABLED

@@ -765,7 +765,7 @@ class OpenGLRenderer:
         title="Warp sim",
         scaling=1.0,
         fps=60,
-        up_axis="y",
+        up_axis="Y",
         screen_width=1024,
         screen_height=768,
         near_plane=0.01,
@@ -826,7 +826,7 @@ class OpenGLRenderer:
         if isinstance(up_axis, int):
             self._camera_axis = up_axis
         else:
-            self._camera_axis = "xyz".index(up_axis.lower())
+            self._camera_axis = "XYZ".index(up_axis.upper())
         self._yaw, self._pitch = -90.0, 0.0
         self._last_x, self._last_y = self.screen_width // 2, self.screen_height // 2
         self._first_mouse = True

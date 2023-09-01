@@ -17,9 +17,6 @@ import warp as wp
 from omni.warp.nodes.ogn.OgnBundleInspectChangesDatabase import OgnBundleInspectChangesDatabase
 
 
-wp.init()
-
-
 _ATTR_NAMES_PER_PRIM_TYPE = {
     "Mesh": (
         "points",

@@ -1,15 +1,16 @@
 <!doctype html>
-<html class="no-js" lang="en">
+<html class="no-js" lang="en" data-content_root="../">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Profiling" href="profiling.html" /><link rel="prev" title="Basics" href="../basics.html" />
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Profiling" href="profiling.html" /><link rel="prev" title="Basics" href="../basics.html" />
 
-    <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 -->
-        <title>Devices - Warp 0.10.1</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css" />
+    <!-- Generated with Sphinx 7.2.2 and Furo 2023.08.19 -->
+        <title>Devices - Warp 1.0.0-beta.2</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=36a5483c" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=112ea5a1" />
     
     
 
@@ -135,7 +136,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">Warp 0.10.1</div></a>
+      <a href="../index.html"><div class="brand">Warp 1.0.0-beta.2</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -162,7 +163,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 0.10.1</span>
+  <span class="sidebar-brand-text">Warp 1.0.0-beta.2</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -176,17 +177,20 @@
 <li class="toctree-l1"><a class="reference internal" href="../basics.html">Basics</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Devices</a></li>
 <li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interoperability.html">Interoperability</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../debugging.html">Debugging</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<p class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="runtime.html">Runtime Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="functions.html">Kernel Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sim.html">Simulation Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="interoperability.html">Interoperability</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sparse.html">Sparse Linear Algebra Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Simulation Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sim.html">warp.sim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fem.html">warp.fem</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Project Links</span></p>
 <ul>
@@ -226,8 +230,8 @@
           </label>
         </div>
         <article role="main">
-          <div class="section" id="devices">
-<span id="id1"></span><h1>Devices<a class="headerlink" href="#devices" title="Permalink to this heading">#</a></h1>
+          <section id="devices">
+<span id="id1"></span><h1>Devices<a class="headerlink" href="#devices" title="Link to this heading">#</a></h1>
 <p>Warp assigns unique string aliases to all supported compute devices in the system.  There is currently a single CPU device exposed as <code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code>.  Each CUDA-capable GPU gets an alias of the form <code class="docutils literal notranslate"><span class="pre">&quot;cuda:i&quot;</span></code>, where <code class="docutils literal notranslate"><span class="pre">i</span></code> is the CUDA device ordinal.  This convention should be familiar to users of other popular frameworks like PyTorch.</p>
 <p>It is possible to explicitly target a specific device with each Warp API call using the <code class="docutils literal notranslate"><span class="pre">device</span></code> argument:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
@@ -244,8 +248,8 @@
 <p class="admonition-title">Note</p>
 <p>A Warp CUDA device (<code class="docutils literal notranslate"><span class="pre">&quot;cuda:i&quot;</span></code>) corresponds to the primary CUDA context of device <code class="docutils literal notranslate"><span class="pre">i</span></code>.  This is compatible with frameworks like PyTorch and other software that uses the CUDA Runtime API.  It makes interoperability easy, because GPU resources like memory can be shared with Warp.</p>
 </div>
-<div class="section" id="default-device">
-<h2>Default Device<a class="headerlink" href="#default-device" title="Permalink to this heading">#</a></h2>
+<section id="default-device">
+<h2>Default Device<a class="headerlink" href="#default-device" title="Link to this heading">#</a></h2>
 <p>To simplify writing code, Warp has the concept of <strong>default device</strong>.  When the <code class="docutils literal notranslate"><span class="pre">device</span></code> argument is omitted from a Warp API call, the default device will be used.</p>
 <p>During Warp initialization, the default device is set to be <code class="docutils literal notranslate"><span class="pre">&quot;cuda:0&quot;</span></code> if CUDA is available.  Otherwise, the default device is <code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code>.</p>
 <p>The function <code class="docutils literal notranslate"><span class="pre">wp.set_device()</span></code> can be used to change the default device:</p>
@@ -284,9 +288,9 @@
 <span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="scoped-devices">
-<h2>Scoped Devices<a class="headerlink" href="#scoped-devices" title="Permalink to this heading">#</a></h2>
+</section>
+<section id="scoped-devices">
+<h2>Scoped Devices<a class="headerlink" href="#scoped-devices" title="Link to this heading">#</a></h2>
 <p>Another way to manage the default device is using <code class="docutils literal notranslate"><span class="pre">wp.ScopedDevice</span></code> objects.  They can be arbitrarily nested and restore the previous default device on exit:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">):</span>
    <span class="c1"># alloc and launch on &quot;cpu&quot;</span>
@@ -310,9 +314,9 @@
 <p class="admonition-title">Note</p>
 <p>For CUDA devices, <code class="docutils literal notranslate"><span class="pre">wp.ScopedDevice</span></code> makes the device’s CUDA context current and restores the previous CUDA context on exit.  This is handy when running Warp scripts as part of a bigger pipeline, because it avoids any side effects of changing the CUDA context in the enclosed code.</p>
 </div>
-</div>
-<div class="section" id="current-cuda-device">
-<h2>Current CUDA Device<a class="headerlink" href="#current-cuda-device" title="Permalink to this heading">#</a></h2>
+</section>
+<section id="current-cuda-device">
+<h2>Current CUDA Device<a class="headerlink" href="#current-cuda-device" title="Link to this heading">#</a></h2>
 <p>Warp uses the device alias <code class="docutils literal notranslate"><span class="pre">&quot;cuda&quot;</span></code> to target the current CUDA device.  This allows external code to manage the CUDA device on which to execute Warp scripts.  It is analogous to the PyTorch <code class="docutils literal notranslate"><span class="pre">&quot;cuda&quot;</span></code> device, which should be familiar to Torch users and simplify interoperation.</p>
 <p>In this snippet, we use PyTorch to manage the current CUDA device and invoke a Warp kernel on that device:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">example_function</span><span class="p">():</span>
@@ -337,17 +341,17 @@
 <p class="admonition-title">Note</p>
 <p>Using the device alias <code class="docutils literal notranslate"><span class="pre">&quot;cuda&quot;</span></code> can be problematic if the code runs in an environment where another part of the code can unpredictably change the CUDA context.  Using an explicit CUDA device like <code class="docutils literal notranslate"><span class="pre">&quot;cuda:i&quot;</span></code> is recommended to avoid such issues.</p>
 </div>
-</div>
-<div class="section" id="device-synchronization">
-<h2>Device Synchronization<a class="headerlink" href="#device-synchronization" title="Permalink to this heading">#</a></h2>
+</section>
+<section id="device-synchronization">
+<h2>Device Synchronization<a class="headerlink" href="#device-synchronization" title="Link to this heading">#</a></h2>
 <p>CUDA kernel launches and memory operations can execute asynchronously.  This allows for overlapping compute and memory operations on different devices.  Warp allows synchronizing the host with outstanding asynchronous operations on a specific device:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">synchronize_device</span><span class="p">(</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">wp.synchronize_device()</span></code> function offers more fine-grained synchronization than <code class="docutils literal notranslate"><span class="pre">wp.synchronize()</span></code>, as the latter waits for <em>all</em> devices to complete their work.</p>
-</div>
-<div class="section" id="custom-cuda-contexts-advanced">
-<h2>Custom CUDA Contexts (Advanced)<a class="headerlink" href="#custom-cuda-contexts-advanced" title="Permalink to this heading">#</a></h2>
+</section>
+<section id="custom-cuda-contexts">
+<h2>Custom CUDA Contexts<a class="headerlink" href="#custom-cuda-contexts" title="Link to this heading">#</a></h2>
 <p>Warp is designed to work with arbitrary CUDA contexts so it can easily integrate into different workflows.</p>
 <p>Applications built on the CUDA Runtime API target the <em>primary context</em> of each device.  The Runtime API hides CUDA context management under the hood.  In Warp, device <code class="docutils literal notranslate"><span class="pre">&quot;cuda:i&quot;</span></code> represents the primary context of device <code class="docutils literal notranslate"><span class="pre">i</span></code>, which aligns with the CUDA Runtime API.</p>
 <p>Applications built on the CUDA Driver API work with CUDA contexts directly and can create custom CUDA contexts on any device.  Custom CUDA contexts can be created with specific affinity or interop features that benefit the application.  Warp can work with these CUDA contexts as well.</p>
@@ -366,8 +370,8 @@
    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
 </pre></div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
         </article>
       </div>
@@ -435,7 +439,7 @@
 <li><a class="reference internal" href="#scoped-devices">Scoped Devices</a></li>
 <li><a class="reference internal" href="#current-cuda-device">Current CUDA Device</a></li>
 <li><a class="reference internal" href="#device-synchronization">Device Synchronization</a></li>
-<li><a class="reference internal" href="#custom-cuda-contexts-advanced">Custom CUDA Contexts (Advanced)</a></li>
+<li><a class="reference internal" href="#custom-cuda-contexts">Custom CUDA Contexts</a></li>
 </ul>
 </li>
 </ul>
@@ -447,12 +451,9 @@
       
     </aside>
   </div>
-</div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-    <script src="../_static/jquery.js"></script>
-    <script src="../_static/underscore.js"></script>
-    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
-    <script src="../_static/doctools.js"></script>
-    <script src="../_static/sphinx_highlight.js"></script>
-    <script src="../_static/scripts/furo.js"></script>
+</div><script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=32e29ea5"></script>
     </body>
 </html>

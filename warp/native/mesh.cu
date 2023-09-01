@@ -10,8 +10,7 @@
 #include "cuda_util.h"
 #include "mesh.h"
 #include "bvh.h"
-#include "thrust/device_ptr.h"
-#include <thrust/scan.h>
+#include "scan.h"
 
 namespace wp
 {
@@ -180,10 +179,7 @@ void mesh_refit_device(uint64_t id)
         float* length_tmp_ptr = (float*)m.bounds;
         wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_mesh_edge_lengths, m.num_tris, (m.num_tris, m.points, m.indices, length_tmp_ptr));
         
-        thrust::inclusive_scan(
-            thrust::device_ptr<float>(length_tmp_ptr),
-            thrust::device_ptr<float>(length_tmp_ptr + m.num_tris),
-            thrust::device_ptr<float>(length_tmp_ptr));
+        scan_device(length_tmp_ptr, length_tmp_ptr, m.num_tris, true);
             
         wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_average_mesh_edge_length, 1, (m.num_tris, length_tmp_ptr, (wp::Mesh*)id));
         wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_triangle_bounds, m.num_tris, (m.num_tris, m.points, m.indices, m.bounds));
@@ -199,4 +195,3 @@ void mesh_refit_device(uint64_t id)
     }
 
 }
-

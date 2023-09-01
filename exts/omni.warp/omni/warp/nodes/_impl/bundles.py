@@ -167,6 +167,20 @@ def bundle_create_attr(
     return bundle.create_attribute(name, og_type, element_count=size)
 
 
+def bundle_create_metadata_attr(
+    bundle: og.IBundle2,
+    name: str,
+    field_name: str,
+    og_type: og.Type,
+) -> og.AttributeData:
+    """Creates a bundle metadata attribute if it doesn't already exist."""
+    attr = bundle.get_attribute_metadata_by_name(name, field_name)
+    if attr.is_valid() and attr.get_type() == og_type:
+        return attr
+
+    return bundle.create_attribute_metadata(name, field_name, og_type)
+
+
 def bundle_copy_attr_value(
     dst_bundle: og.IBundle2,
     src_bundle: og.IBundle2,

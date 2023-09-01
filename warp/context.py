@@ -5,35 +5,24 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import math
-import os
-import sys
-import hashlib
-import ctypes
-import platform
 import ast
-import types
+import ctypes
+import hashlib
 import inspect
-
-from typing import Tuple
-from typing import List
-from typing import Dict
-from typing import Any
-from typing import Callable
-from typing import Union
-from typing import Mapping
-from typing import Optional
-
-from types import ModuleType
-
+import os
+import platform
+import sys
+import types
 from copy import copy as shallowcopy
-
-import warp
-import warp.codegen
-import warp.build
-import warp.config
+from types import ModuleType
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
+
+import warp
+import warp.build
+import warp.codegen
+import warp.config
 
 # represents either a built-in or user-defined function
 
@@ -43,6 +32,18 @@ def create_value_func(type):
         return type
 
     return value_func
+
+
+def get_function_args(func):
+    """Ensures that all function arguments are annotated and returns a dictionary mapping from argument name to its type."""
+    import inspect
+
+    argspec = inspect.getfullargspec(func)
+
+    # use source-level argument annotations
+    if len(argspec.annotations) < len(argspec.args):
+        raise RuntimeError(f"Incomplete argument annotations on function {func.__qualname__}")
+    return argspec.annotations
 
 
 class Function:
@@ -66,8 +67,14 @@ class Function:
         generic=False,
         native_func=None,
         defaults=None,
+        custom_replay_func=None,
+        skip_forward_codegen=False,
+        skip_reverse_codegen=False,
+        custom_reverse_num_input_args=-1,
+        custom_reverse_mode=False,
         overloaded_annotations=None,
         code_transformers=[],
+        skip_adding_overload=False,
     ):
         self.func = func  # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
@@ -81,6 +88,9 @@ class Function:
         self.module = module
         self.variadic = variadic  # function can take arbitrary number of inputs, e.g.: printf()
         self.defaults = defaults
+        # Function instance for a custom implementation of the replay pass
+        self.custom_replay_func = custom_replay_func
+        self.custom_grad_func = None
 
         if initializer_list_func is None:
             self.initializer_list_func = lambda x, y: False
@@ -110,7 +120,14 @@ class Function:
 
             # user defined (Python) function
             self.adj = warp.codegen.Adjoint(
-                func, overload_annotations=overloaded_annotations, transformers=code_transformers
+                func,
+                is_user_function=True,
+                skip_forward_codegen=skip_forward_codegen,
+                skip_reverse_codegen=skip_reverse_codegen,
+                custom_reverse_num_input_args=custom_reverse_num_input_args,
+                custom_reverse_mode=custom_reverse_mode,
+                overload_annotations=overloaded_annotations,
+                transformers=code_transformers,
             )
 
             # record input types
@@ -139,11 +156,12 @@ class Function:
             else:
                 self.mangled_name = None
 
-        self.add_overload(self)
+        if not skip_adding_overload:
+            self.add_overload(self)
 
         # add to current module
         if module:
-            module.register_function(self)
+            module.register_function(self, skip_adding_overload)
 
     def __call__(self, *args, **kwargs):
         # handles calling a builtin (native) function
@@ -181,7 +199,7 @@ class Function:
                             x = ValueArg()
 
                             # force conversion to ndarray first (handles tuple / list, Gf.Vec3 case)
-                            if isinstance(a, ctypes.Array) == False:
+                            if isinstance(a, ctypes.Array) is False:
                                 # assume you want the float32 version of the function so it doesn't just
                                 # grab an override for a random data type:
                                 if arg_type._type_ != ctypes.c_float:
@@ -216,7 +234,7 @@ class Function:
                             try:
                                 # try to pack as a scalar type
                                 params.append(arg_type._type_(a))
-                            except:
+                            except Exception:
                                 raise RuntimeError(
                                     f"Error calling function {f.key}, unable to pack function parameter type {type(a)} for param {arg_name}, expected {arg_type}"
                                 )
@@ -316,7 +334,7 @@ class Function:
             # todo: construct a default value for each of the functions args
             # so we can generate the return type for overloaded functions
             return_type = type_str(self.value_func(None, None, None))
-        except:
+        except Exception:
             return False
 
         if return_type.startswith("Tuple"):
@@ -531,6 +549,149 @@ def func(f):
     return m.functions[name]
 
 
+def func_grad(forward_fn):
+    """
+    Decorator to register a custom gradient function for a given forward function.
+    The function signature must correspond to one of the function overloads in the following way:
+    the first part of the input arguments are the original input variables with the same types as their
+    corresponding arguments in the original function, and the second part of the input arguments are the
+    adjoint variables of the output variables (if available) of the original function with the same types as the
+    output variables. The function must not return anything.
+    """
+
+    def wrapper(grad_fn):
+        generic = any(warp.types.type_is_generic(x) for x in forward_fn.input_types.values())
+        if generic:
+            raise RuntimeError(
+                f"Cannot define custom grad definition for {forward_fn.key} since functions with generic input arguments are not yet supported."
+            )
+
+        reverse_args = {}
+        reverse_args.update(forward_fn.input_types)
+
+        # create temporary Adjoint instance to analyze the function signature
+        adj = warp.codegen.Adjoint(
+            grad_fn, skip_forward_codegen=True, skip_reverse_codegen=False, transformers=forward_fn.adj.transformers
+        )
+
+        from warp.types import types_equal
+
+        grad_args = adj.args
+        grad_sig = warp.types.get_signature([arg.type for arg in grad_args], func_name=forward_fn.key)
+
+        generic = any(warp.types.type_is_generic(x.type) for x in grad_args)
+        if generic:
+            raise RuntimeError(
+                f"Cannot define custom grad definition for {forward_fn.key} since the provided grad function has generic input arguments."
+            )
+
+        def match_function(f):
+            # check whether the function overload f matches the signature of the provided gradient function
+            if not hasattr(f.adj, "return_var"):
+                f.adj.build(None)
+            expected_args = list(f.input_types.items())
+            if f.adj.return_var is not None:
+                expected_args += [(f"adj_ret_{var.label}", var.type) for var in f.adj.return_var]
+            if len(grad_args) != len(expected_args):
+                return False
+            if any(not types_equal(a.type, exp_type) for a, (_, exp_type) in zip(grad_args, expected_args)):
+                return False
+            return True
+
+        def add_custom_grad(f: Function):
+            # register custom gradient function
+            f.custom_grad_func = Function(
+                grad_fn,
+                key=f.key,
+                namespace=f.namespace,
+                input_types=reverse_args,
+                value_func=None,
+                module=f.module,
+                template_func=f.template_func,
+                skip_forward_codegen=True,
+                custom_reverse_mode=True,
+                custom_reverse_num_input_args=len(f.input_types),
+                skip_adding_overload=False,
+                code_transformers=f.adj.transformers,
+            )
+            f.adj.skip_reverse_codegen = True
+
+        if hasattr(forward_fn, "user_overloads") and len(forward_fn.user_overloads):
+            # find matching overload for which this grad function is defined
+            for sig, f in forward_fn.user_overloads.items():
+                if not grad_sig.startswith(sig):
+                    continue
+                if match_function(f):
+                    add_custom_grad(f)
+                    return
+            raise RuntimeError(
+                f"No function overload found for gradient function {grad_fn.__qualname__} for function {forward_fn.key}"
+            )
+        else:
+            # resolve return variables
+            forward_fn.adj.build(None)
+
+            expected_args = list(forward_fn.input_types.items())
+            if forward_fn.adj.return_var is not None:
+                expected_args += [(f"adj_ret_{var.label}", var.type) for var in forward_fn.adj.return_var]
+
+            # check if the signature matches this function
+            if match_function(forward_fn):
+                add_custom_grad(forward_fn)
+            else:
+                raise RuntimeError(
+                    f"Gradient function {grad_fn.__qualname__} for function {forward_fn.key} has an incorrect signature. The arguments must match the "
+                    "forward function arguments plus the adjoint variables corresponding to the return variables:"
+                    f"\n{', '.join(map(lambda nt: f'{nt[0]}: {nt[1].__name__}', expected_args))}"
+                )
+
+    return wrapper
+
+
+def func_replay(forward_fn):
+    """
+    Decorator to register a custom replay function for a given forward function.
+    The replay function is the function version that is called in the forward phase of the backward pass (replay mode) and corresponds to the forward function by default.
+    The provided function has to match the signature of one of the original forward function overloads.
+    """
+
+    def wrapper(replay_fn):
+        generic = any(warp.types.type_is_generic(x) for x in forward_fn.input_types.values())
+        if generic:
+            raise RuntimeError(
+                f"Cannot define custom replay definition for {forward_fn.key} since functions with generic input arguments are not yet supported."
+            )
+
+        args = get_function_args(replay_fn)
+        arg_types = list(args.values())
+        generic = any(warp.types.type_is_generic(x) for x in arg_types)
+        if generic:
+            raise RuntimeError(
+                f"Cannot define custom replay definition for {forward_fn.key} since the provided replay function has generic input arguments."
+            )
+
+        f = forward_fn.get_overload(arg_types)
+        if f is None:
+            inputs_str = ", ".join([f"{k}: {v.__name__}" for k, v in args.items()])
+            raise RuntimeError(
+                f"Could not find forward definition of function {forward_fn.key} that matches custom replay definition with arguments:\n{inputs_str}"
+            )
+        f.custom_replay_func = Function(
+            replay_fn,
+            key=f"replay_{f.key}",
+            namespace=f.namespace,
+            input_types=f.input_types,
+            value_func=f.value_func,
+            module=f.module,
+            template_func=f.template_func,
+            skip_reverse_codegen=True,
+            skip_adding_overload=True,
+            code_transformers=f.adj.transformers,
+        )
+
+    return wrapper
+
+
 # decorator to register kernel, @kernel, custom_name may be a string
 # that creates a kernel with a different name from the actual function
 def kernel(f=None, *, enable_backward=None):
@@ -670,7 +831,7 @@ def add_builtin(
         def initializer_list_func(args, templates):
             return False
 
-    if defaults == None:
+    if defaults is None:
         defaults = {}
 
     # Add specialized versions of this builtin if it's generic by matching arguments against
@@ -752,7 +913,7 @@ def add_builtin(
                 # This also gives us the return type, which we keep for later:
                 try:
                     return_type = value_func([warp.codegen.Var("", t) for t in argtypes], {}, [])
-                except Exception as e:
+                except Exception:
                     continue
 
                 # The return_type might just be vector_t(length=3,dtype=wp.float32), so we've got to match that
@@ -811,7 +972,7 @@ def add_builtin(
 
         # export means the function will be added to the `warp` module namespace
         # so that users can call it directly from the Python interpreter
-        if export == True:
+        if export is True:
             if hasattr(warp, key):
                 # check that we haven't already created something at this location
                 # if it's just an overload stub for auto-complete then overwrite it
@@ -878,6 +1039,8 @@ class ModuleBuilder:
         for func in module.functions.values():
             for f in func.user_overloads.values():
                 self.build_function(f)
+                if f.custom_replay_func is not None:
+                    self.build_function(f.custom_replay_func)
 
         # build all kernel entry points
         for kernel in module.kernels.values():
@@ -894,7 +1057,7 @@ class ModuleBuilder:
         while stack:
             s = stack.pop()
 
-            if not s in structs:
+            if s not in structs:
                 structs.append(s)
 
             for var in s.vars.values():
@@ -951,7 +1114,9 @@ class ModuleBuilder:
 
         # code-gen all imported functions
         for func in self.functions.keys():
-            source += warp.codegen.codegen_func(func.adj, name=func.key, device=device, options=self.options)
+            source += warp.codegen.codegen_func(
+                func.adj, c_func_name=func.native_func, device=device, options=self.options
+            )
 
         for kernel in self.module.kernels.values():
             # each kernel gets an entry point in the module
@@ -1045,7 +1210,7 @@ class Module:
         # for a reload of module on next launch
         self.unload()
 
-    def register_function(self, func):
+    def register_function(self, func, skip_adding_overload=False):
         if func.key not in self.functions:
             self.functions[func.key] = func
         else:
@@ -1065,7 +1230,7 @@ class Module:
             )
             if sig == sig_existing:
                 self.functions[func.key] = func
-            else:
+            elif not skip_adding_overload:
                 func_existing.add_overload(func)
 
         self.find_references(func.adj)
@@ -1092,7 +1257,7 @@ class Module:
                     if isinstance(func, warp.context.Function) and func.module is not None:
                         add_ref(func.module)
 
-                except:
+                except Exception:
                     # Lookups may fail for builtins, but that's ok.
                     # Lookups may also fail for functions in this module that haven't been imported yet,
                     # and that's ok too (not an external reference).
@@ -1566,6 +1731,7 @@ class Device:
             self.arch = 0
             self.is_uva = False
             self.is_cubin_supported = False
+            self.is_mempool_supported = False
 
             # TODO: add more device-specific dispatch functions
             self.memset = runtime.core.memset_host
@@ -1578,6 +1744,15 @@ class Device:
             self.is_uva = runtime.core.cuda_device_is_uva(ordinal)
             # check whether our NVRTC can generate CUBINs for this architecture
             self.is_cubin_supported = self.arch in runtime.nvrtc_supported_archs
+            self.is_mempool_supported = runtime.core.cuda_device_is_memory_pool_supported(ordinal)
+
+            # Warn the user of a possible misconfiguration of their system
+            if not self.is_mempool_supported:
+                warp.utils.warn(
+                    f"Support for stream ordered memory allocators was not detected on device {ordinal}. "
+                    "This can prevent the use of graphs and/or result in poor performance. "
+                    "Is the UVM driver enabled?"
+                )
 
             # initialize streams unless context acquisition is postponed
             if self._context is not None:
@@ -2749,7 +2924,7 @@ def full(
             elif na.ndim == 2:
                 dtype = warp.types.matrix(na.shape, scalar_type)
             else:
-                raise ValueError(f"Values with more than two dimensions are not supported")
+                raise ValueError("Values with more than two dimensions are not supported")
         else:
             raise ValueError(f"Invalid value type for Warp array: {value_type}")
 
@@ -2872,8 +3047,34 @@ def empty_like(
     return arr
 
 
-def from_numpy(arr, dtype, device: Devicelike = None, requires_grad=False):
-    return warp.array(data=arr, dtype=dtype, device=device, requires_grad=requires_grad)
+def from_numpy(
+    arr: np.ndarray,
+    dtype: Optional[type] = None,
+    shape: Optional[Sequence[int]] = None,
+    device: Optional[Devicelike] = None,
+    requires_grad: bool = False,
+) -> warp.array:
+    if dtype is None:
+        base_type = warp.types.np_dtype_to_warp_type.get(arr.dtype)
+        if base_type is None:
+            raise RuntimeError("Unsupported NumPy data type '{}'.".format(arr.dtype))
+
+        dim_count = len(arr.shape)
+        if dim_count == 2:
+            dtype = warp.types.vector(length=arr.shape[1], dtype=base_type)
+        elif dim_count == 3:
+            dtype = warp.types.matrix(shape=(arr.shape[1], arr.shape[2]), dtype=base_type)
+        else:
+            dtype = base_type
+
+    return warp.array(
+        data=arr,
+        dtype=dtype,
+        shape=shape,
+        owner=False,
+        device=device,
+        requires_grad=requires_grad,
+    )
 
 
 # given a kernel destination argument type and a value convert
@@ -2934,7 +3135,7 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             # try constructing the required value from the argument (handles tuple / list, Gf.Vec3 case)
             try:
                 return arg_type(value)
-            except:
+            except Exception:
                 raise ValueError(f"Failed to convert argument for param {arg_name} to {type_str(arg_type)}")
 
     elif isinstance(value, bool):
@@ -2943,20 +3144,28 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
     elif isinstance(value, arg_type):
         try:
             # try to pack as a scalar type
-            return arg_type._type_(value.value)
-        except:
+            if arg_type is warp.types.float16:
+                return arg_type._type_(warp.types.float_to_half_bits(value.value))
+            else:
+                return arg_type._type_(value.value)
+        except Exception:
             raise RuntimeError(
-                f"Error launching kernel, unable to pack kernel parameter type {type(value)} for param {arg_name}, expected {arg_type}"
+                "Error launching kernel, unable to pack kernel parameter type "
+                f"{type(value)} for param {arg_name}, expected {arg_type}"
             )
 
     else:
         try:
             # try to pack as a scalar type
-            return arg_type._type_(value)
+            if arg_type is warp.types.float16:
+                return arg_type._type_(warp.types.float_to_half_bits(value))
+            else:
+                return arg_type._type_(value)
         except Exception as e:
             print(e)
             raise RuntimeError(
-                f"Error launching kernel, unable to pack kernel parameter type {type(value)} for param {arg_name}, expected {arg_type}"
+                "Error launching kernel, unable to pack kernel parameter type "
+                f"{type(value)} for param {arg_name}, expected {arg_type}"
             )
 
 
@@ -3108,7 +3317,7 @@ def launch(
         device = runtime.get_device(device)
 
     # check function is a Kernel
-    if isinstance(kernel, Kernel) == False:
+    if isinstance(kernel, Kernel) is False:
         raise RuntimeError("Error launching kernel, can only launch functions decorated with @wp.kernel.")
 
     # debugging aid
@@ -3400,7 +3609,7 @@ def capture_begin(device: Devicelike = None, stream=None, force_module_load=True
 
     """
 
-    if warp.config.verify_cuda == True:
+    if warp.config.verify_cuda is True:
         raise RuntimeError("Cannot use CUDA error verification during graph capture")
 
     if stream is not None:
@@ -3557,6 +3766,16 @@ def copy(
         if src_elem_size != dst_elem_size:
             raise RuntimeError("Incompatible array data types")
 
+        # can't copy to/from fabric arrays of arrays, because they are jagged arrays of arbitrary lengths
+        # TODO?
+        if (
+            isinstance(src, (warp.fabricarray, warp.indexedfabricarray))
+            and src.ndim > 1
+            or isinstance(dest, (warp.fabricarray, warp.indexedfabricarray))
+            and dest.ndim > 1
+        ):
+            raise RuntimeError("Copying to/from Fabric arrays of arrays is not supported")
+
         src_desc = src.__ctype__()
         dst_desc = dest.__ctype__()
         src_ptr = ctypes.pointer(src_desc)
@@ -3592,6 +3811,10 @@ def type_str(t):
         return f"Array[{type_str(t.dtype)}]"
     elif isinstance(t, warp.indexedarray):
         return f"IndexedArray[{type_str(t.dtype)}]"
+    elif isinstance(t, warp.fabricarray):
+        return f"FabricArray[{type_str(t.dtype)}]"
+    elif isinstance(t, warp.indexedfabricarray):
+        return f"IndexedFabricArray[{type_str(t.dtype)}]"
     elif hasattr(t, "_wp_generic_type_str_"):
         generic_type = t._wp_generic_type_str_
 
@@ -3642,7 +3865,7 @@ def print_function(f, file, noentry=False):
         # todo: construct a default value for each of the functions args
         # so we can generate the return type for overloaded functions
         return_type = " -> " + type_str(f.value_func(None, None, None))
-    except:
+    except Exception:
         pass
 
     print(f".. function:: {f.key}({args}){return_type}", file=file)
@@ -3693,14 +3916,14 @@ def print_builtins(file):
     print("\nGeneric Types", file=file)
     print("-------------", file=file)
 
-    print(f".. class:: Int", file=file)
-    print(f".. class:: Float", file=file)
-    print(f".. class:: Scalar", file=file)
-    print(f".. class:: Vector", file=file)
-    print(f".. class:: Matrix", file=file)
-    print(f".. class:: Quaternion", file=file)
-    print(f".. class:: Transformation", file=file)
-    print(f".. class:: Array", file=file)
+    print(".. class:: Int", file=file)
+    print(".. class:: Float", file=file)
+    print(".. class:: Scalar", file=file)
+    print(".. class:: Vector", file=file)
+    print(".. class:: Matrix", file=file)
+    print(".. class:: Quaternion", file=file)
+    print(".. class:: Transformation", file=file)
+    print(".. class:: Array", file=file)
 
     # build dictionary of all functions by group
     groups = {}
@@ -3783,7 +4006,7 @@ def export_stubs(file):
 
             return_str = ""
 
-            if f.export == False or f.hidden == True:  # or f.generic:
+            if f.export is False or f.hidden is True:  # or f.generic:
                 continue
 
             try:
@@ -3793,15 +4016,15 @@ def export_stubs(file):
                 if return_type:
                     return_str = " -> " + type_str(return_type)
 
-            except:
+            except Exception:
                 pass
 
             print("@over", file=file)
             print(f"def {f.key}({args}){return_str}:", file=file)
-            print(f'    """', file=file)
+            print('    """', file=file)
             print(textwrap.indent(text=f.doc, prefix="    "), file=file)
-            print(f'    """', file=file)
-            print(f"    ...\n\n", file=file)
+            print('    """', file=file)
+            print("    ...\n\n", file=file)
 
 
 def export_builtins(file):
@@ -3815,7 +4038,7 @@ def export_builtins(file):
 
     for k, g in builtin_functions.items():
         for f in g.overloads:
-            if f.export == False or f.generic:
+            if f.export is False or f.generic:
                 continue
 
             simple = True
@@ -3838,7 +4061,7 @@ def export_builtins(file):
                 # todo: construct a default value for each of the functions args
                 # so we can generate the return type for overloaded functions
                 return_type = ctype_str(f.value_func(None, None, None))
-            except:
+            except Exception:
                 continue
 
             if return_type.startswith("Tuple"):

@@ -5,9 +5,11 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import warp
-import numpy
 import ctypes
+
+import numpy
+
+import warp
 
 
 # return the warp device corresponding to a torch device
@@ -42,7 +44,7 @@ def dtype_from_torch(torch_dtype):
             torch.int16: warp.int16,
             torch.int8: warp.int8,
             torch.uint8: warp.uint8,
-            torch.bool: warp.uint8,
+            torch.bool: warp.bool,
             # currently unsupported by Warp
             # torch.bfloat16:
             # torch.complex64:
@@ -76,7 +78,7 @@ def dtype_is_compatible(torch_dtype, warp_dtype):
             torch.int16: {warp.int16, warp.uint16},
             torch.int8: {warp.int8, warp.uint8},
             torch.uint8: {warp.uint8, warp.int8},
-            torch.bool: {warp.uint8, warp.int8},
+            torch.bool: {warp.bool, warp.uint8, warp.int8},
             # currently unsupported by Warp
             # torch.bfloat16:
             # torch.complex64:
@@ -149,7 +151,7 @@ def from_torch(t, dtype=None, requires_grad=None, grad=None):
             import torch
 
             if isinstance(grad, torch.Tensor):
-                grad = from_torch(grad)
+                grad = from_torch(grad, dtype=dtype)
             else:
                 raise ValueError(f"Invalid gradient type: {type(grad)}")
     elif requires_grad:
@@ -157,8 +159,9 @@ def from_torch(t, dtype=None, requires_grad=None, grad=None):
         if t.grad is None:
             # allocate a zero-filled gradient tensor if it doesn't exist
             import torch
+
             t.grad = torch.zeros_like(t, requires_grad=False)
-        grad = from_torch(t.grad)
+        grad = from_torch(t.grad, dtype=dtype)
 
     a = warp.types.array(
         ptr=t.data_ptr(),

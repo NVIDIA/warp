@@ -1,15 +1,16 @@
 <!doctype html>
-<html class="no-js" lang="en">
+<html class="no-js" lang="en" data-content_root="./">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Basics" href="basics.html" /><link rel="prev" title="NVIDIA Warp Documentation" href="index.html" />
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Basics" href="basics.html" /><link rel="prev" title="NVIDIA Warp Documentation" href="index.html" />
 
-    <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 -->
-        <title>Installation - Warp 0.10.1</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css" />
+    <!-- Generated with Sphinx 7.2.2 and Furo 2023.08.19 -->
+        <title>Installation - Warp 1.0.0-beta.2</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=112ea5a1" />
     
     
 
@@ -135,7 +136,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Warp 0.10.1</div></a>
+      <a href="index.html"><div class="brand">Warp 1.0.0-beta.2</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -162,7 +163,7 @@
     <img class="sidebar-logo only-dark" src="_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 0.10.1</span>
+  <span class="sidebar-brand-text">Warp 1.0.0-beta.2</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -176,17 +177,20 @@
 <li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/devices.html">Devices</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<p class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="modules/runtime.html">Runtime Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/functions.html">Kernel Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modules/sim.html">Simulation Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modules/sparse.html">Sparse Linear Algebra Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="genindex.html">Index</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Simulation Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules/sim.html">warp.sim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/fem.html">warp.fem</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Project Links</span></p>
 <ul>
@@ -226,20 +230,22 @@
           </label>
         </div>
         <article role="main">
-          <div class="section" id="installation">
-<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h1>
-<div class="section" id="python-version">
-<h2>Python version<a class="headerlink" href="#python-version" title="Permalink to this heading">#</a></h2>
-<p>Warp supports Python versions 3.7 and newer.</p>
+          <section id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h1>
+<p>The easiest way is to install Warp is from PyPi:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>warp-lang
+</pre></div>
 </div>
-<div class="section" id="dependencies">
-<h2>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this heading">#</a></h2>
-<p>Warp requires the following dependencies to be installed:</p>
+<p>Pre-built binary packages for Windows, Linux and macOS are also available on the <a class="reference external" href="https://github.com/NVIDIA/warp/releases">Releases</a> page. To install in your local Python environment extract the archive and run the following command from the root directory:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>.
+</pre></div>
+</div>
+<section id="dependencies">
+<h2>Dependencies<a class="headerlink" href="#dependencies" title="Link to this heading">#</a></h2>
+<p>Warp supports Python versions 3.7.x onwards, and requires the following dependencies to be installed:</p>
 <ul class="simple">
 <li><p><a class="reference external" href="https://numpy.org">NumPy</a></p></li>
 </ul>
-<div class="section" id="optional-dependencies">
-<h3>Optional dependencies<a class="headerlink" href="#optional-dependencies" title="Permalink to this heading">#</a></h3>
 <p>The following dependencies may be required to enable certain features:</p>
 <ul class="simple">
 <li><p>JAX</p></li>
@@ -251,22 +257,9 @@
 <li><p><a class="reference external" href="https://www.sphinx-doc.org">Sphinx</a></p></li>
 <li><p><a class="reference external" href="https://github.com/pradyunsg/furo">Furo</a></p></li>
 </ul>
-</div>
-</div>
-<div class="section" id="installing-from-pypi">
-<h2>Installing from PyPI<a class="headerlink" href="#installing-from-pypi" title="Permalink to this heading">#</a></h2>
-<p>The easiest way is to install from PyPI:</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>warp-lang
-</pre></div>
-</div>
-<p>Pre-built binary packages for Windows and Linux are also available on the Releases page.
-To install in your local Python environment extract the archive and run the following command from the root directory:</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>.
-</pre></div>
-</div>
-</div>
-<div class="section" id="building-from-source">
-<h2>Building from source<a class="headerlink" href="#building-from-source" title="Permalink to this heading">#</a></h2>
+</section>
+<section id="building-from-source">
+<h2>Building from source<a class="headerlink" href="#building-from-source" title="Link to this heading">#</a></h2>
 <p>For developers who want to build the library themselves the following
 tools are required:</p>
 <ul class="simple">
@@ -296,8 +289,8 @@ enabled “Developer Mode” in Windows settings and symlinks in git:</p>
 </pre></div>
 </div>
 <p>This will ensure symlinks inside <code class="docutils literal notranslate"><span class="pre">exts/omni.warp</span></code> work upon cloning.</p>
-</div>
-</div>
+</section>
+</section>
 
         </article>
       </div>
@@ -361,12 +354,7 @@ enabled “Developer Mode” in Windows settings and symlinks in git:</p>
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Installation</a><ul>
-<li><a class="reference internal" href="#python-version">Python version</a></li>
-<li><a class="reference internal" href="#dependencies">Dependencies</a><ul>
-<li><a class="reference internal" href="#optional-dependencies">Optional dependencies</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#installing-from-pypi">Installing from PyPI</a></li>
+<li><a class="reference internal" href="#dependencies">Dependencies</a></li>
 <li><a class="reference internal" href="#building-from-source">Building from source</a></li>
 </ul>
 </li>
@@ -379,12 +367,9 @@ enabled “Developer Mode” in Windows settings and symlinks in git:</p>
       
     </aside>
   </div>
-</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/jquery.js"></script>
-    <script src="_static/underscore.js"></script>
-    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
-    <script src="_static/doctools.js"></script>
-    <script src="_static/sphinx_highlight.js"></script>
-    <script src="_static/scripts/furo.js"></script>
+</div><script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/scripts/furo.js?v=32e29ea5"></script>
     </body>
 </html>

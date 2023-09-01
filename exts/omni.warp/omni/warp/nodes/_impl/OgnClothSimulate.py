@@ -13,7 +13,6 @@ import numpy as np
 import omni.graph.core as og
 import omni.timeline
 import warp as wp
-import warp.sim
 
 import omni.warp.nodes
 from omni.warp.nodes.ogn.OgnClothSimulateDatabase import OgnClothSimulateDatabase
@@ -71,6 +70,17 @@ def update_cloth_kernel(
 
     out_points[tid] = point
     out_velocities[tid] = out_velocities[tid] + diff
+
+
+@wp.kernel
+def update_contacts_kernel(
+    points: wp.array(dtype=wp.vec3),
+    velocities: wp.array(dtype=wp.vec3),
+    sim_dt: float,
+    out_points: wp.array(dtype=wp.vec3),
+):
+    tid = wp.tid()
+    out_points[tid] = points[tid] + velocities[tid] * sim_dt
 
 
 #   Internal State
@@ -141,6 +151,9 @@ class InternalState:
         device: wp.context.Device,
     ) -> bool:
         """Initializes the internal state."""
+        # Lazy load warp.sim here to not slow down extension loading.
+        import warp.sim
+
         # Compute the simulation time step.
         timeline = omni.timeline.get_timeline_interface()
         sim_rate = timeline.get_ticks_per_second()
@@ -169,7 +182,7 @@ class InternalState:
 
         # Register the cloth geometry mesh into Warp's simulation model builder,
         # which requires triangulated meshes.
-        face_vertex_indices = omni.warp.nodes.mesh_get_triangulated_face_vertex_indices(db.inputs.cloth)
+        face_vertex_indices = omni.warp.nodes.mesh_triangulate(db.inputs.cloth)
         builder.add_cloth_mesh(
             pos=(0.0, 0.0, 0.0),
             rot=(0.0, 0.0, 0.0, 1.0),
@@ -216,7 +229,7 @@ class InternalState:
 
             # Initialize Warp's mesh instance, which requires
             # triangulated meshes.
-            collider_face_vertex_indices = omni.warp.nodes.mesh_get_triangulated_face_vertex_indices(
+            collider_face_vertex_indices = omni.warp.nodes.mesh_triangulate(
                 db.inputs.collider,
             )
             collider_mesh = wp.sim.Mesh(
@@ -233,6 +246,11 @@ class InternalState:
                 pos=(0.0, 0.0, 0.0),
                 rot=(0.0, 0.0, 0.0, 1.0),
                 scale=(1.0, 1.0, 1.0),
+                density=0.0,
+                ke=0.0,
+                kd=0.0,
+                kf=0.0,
+                mu=0.0,
             )
 
             # Store the collider's point positions as internal state.
@@ -251,7 +269,7 @@ class InternalState:
 
         # Register the ground.
         builder.set_ground_plane(
-            offset=-db.inputs.groundAltitude,
+            offset=-db.inputs.groundAltitude + db.inputs.colliderContactDistance,
             ke=db.inputs.contactElasticStiffness * db.inputs.globalScale,
             kd=db.inputs.contactDampingStiffness * db.inputs.globalScale,
             kf=db.inputs.contactFrictionStiffness * db.inputs.globalScale,
@@ -275,7 +293,7 @@ class InternalState:
         model.soft_contact_mu = db.inputs.contactFrictionCoeff
         model.soft_contact_kd = db.inputs.contactDampingStiffness * db.inputs.globalScale
         model.soft_contact_margin = db.inputs.colliderContactDistance * db.inputs.colliderContactQueryRange
-        model.particle_radius = db.inputs.colliderContactDistance
+        model.particle_radius.fill_(db.inputs.colliderContactDistance)
 
         # Store the class members.
         self.sim_dt = sim_dt
@@ -334,8 +352,8 @@ def update_collider(
         kernel=update_collider_kernel,
         dim=len(state.collider_mesh.vertices),
         inputs=[
-            state.collider_points_1,
             state.collider_points_0,
+            state.collider_points_1,
             xform_0.T,
             xform_1.T,
             state.sim_dt,
@@ -394,6 +412,20 @@ def step(db: OgnClothSimulateDatabase) -> None:
 
     for _ in range(db.inputs.substepCount):
         state.state_0.clear_forces()
+
+        wp.launch(
+            update_contacts_kernel,
+            state.model.soft_contact_max,
+            inputs=[
+                state.model.soft_contact_body_pos,
+                state.model.soft_contact_body_vel,
+                sim_dt,
+            ],
+            outputs=[
+                state.model.soft_contact_body_pos,
+            ],
+        )
+
         state.integrator.simulate(
             state.model,
             state.state_0,
@@ -435,11 +467,7 @@ def compute(db: OgnClothSimulateDatabase, device: wp.context.Device) -> None:
 
         # We want to use the input cloth geometry as the initial state
         # of the simulation so we copy its bundle to the output one.
-        omni.warp.nodes.mesh_copy_bundle(
-            db.outputs.cloth,
-            db.inputs.cloth,
-            deep_copy=True,
-        )
+        db.outputs.cloth = db.inputs.cloth
 
         if not state.initialize(db, device):
             return

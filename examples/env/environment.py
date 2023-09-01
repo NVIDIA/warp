@@ -35,7 +35,7 @@ class IntegratorType(Enum):
         return self.value
 
 
-def compute_env_offsets(num_envs, env_offset=(5.0, 0.0, 5.0), up_axis="y"):
+def compute_env_offsets(num_envs, env_offset=(5.0, 0.0, 5.0), up_axis="Y"):
     # compute positional offsets per environment
     env_offset = np.array(env_offset)
     nonzeros = np.nonzero(env_offset)[0]
@@ -70,7 +70,7 @@ def compute_env_offsets(num_envs, env_offset=(5.0, 0.0, 5.0), up_axis="y"):
     min_offsets = np.min(env_offsets, axis=0)
     correction = min_offsets + (np.max(env_offsets, axis=0) - min_offsets) / 2.0
     if isinstance(up_axis, str):
-        up_axis = "xyz".index(up_axis.lower())
+        up_axis = "XYZ".index(up_axis.upper())
     correction[up_axis] = 0.0  # ensure the envs are not shifted below the ground plane
     env_offsets -= correction
     return env_offsets
@@ -114,7 +114,7 @@ class Environment:
 
     integrator_type: IntegratorType = IntegratorType.XPBD
 
-    up_axis: str = "y"
+    up_axis: str = "Y"
     gravity: float = -9.81
     env_offset: Tuple[float, float, float] = (1.0, 0.0, 1.0)
 

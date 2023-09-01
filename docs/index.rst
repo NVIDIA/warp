@@ -1,11 +1,12 @@
 NVIDIA Warp Documentation
 =========================
 
-Warp is a Python framework for writing high-performance simulation and graphics code. Kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.
+Warp is a Python framework for writing high-performance simulation and graphics code. Warp takes
+regular Python functions and JIT compiles them to efficient kernel code that can run on the CPU or GPU.
 
-Warp is comes with a rich set of primitives that make it easy to write programs for physics simulation, geometry
-processing, and procedural animation. In addition, Warp kernels are differentiable, and can be used as part of
-machine-learning training pipelines with other frameworks such as PyTorch.
+Warp is designed for spatial computing and comes with a rich set of primitives that make it easy to write 
+programs for physics simulation, perception, robotics, and geometry processing. In addition, Warp kernels 
+are differentiable and can be used as part of machine-learning pipelines with frameworks such as PyTorch and JAX.
 
 Below are some examples of simulations implemented using Warp:
 
@@ -13,6 +14,18 @@ Below are some examples of simulations implemented using Warp:
 
 Quickstart
 ==========
+
+The easiest way is to install Warp is from PyPi:
+
+.. code-block:: sh
+
+    $ pip install warp-lang
+
+Pre-built binary packages for Windows, Linux and macOS are also available on the `Releases <https://github.com/NVIDIA/warp/releases>`__ page. To install in your local Python environment extract the archive and run the following command from the root directory:
+
+.. code-block:: sh
+
+    $ pip install .
 
 Basic example
 -------------
@@ -28,7 +41,7 @@ An example first program that computes the lengths of random 3D vectors is given
 
     @wp.kernel
     def length(points: wp.array(dtype=wp.vec3),
-            lengths: wp.array(dtype=float)):
+               lengths: wp.array(dtype=float)):
 
         # thread index
         tid = wp.tid()
@@ -43,8 +56,8 @@ An example first program that computes the lengths of random 3D vectors is given
 
     # launch kernel
     wp.launch(kernel=length,
-            dim=len(points),
-            inputs=[points, lengths])
+              dim=len(points),
+              inputs=[points, lengths])
 
     print(lengths)
 
@@ -149,6 +162,7 @@ User's Guide
    basics
    modules/devices
    modules/profiling
+   modules/interoperability
    debugging
    faq
 
@@ -157,15 +171,21 @@ API Reference
 
 .. toctree::
    :maxdepth: 2
-   :caption: API Reference
+   :caption: Core Reference
    
    modules/runtime
    modules/functions
-   modules/sim
-   modules/interoperability
-   modules/sparse
-   genindex
    
+Simulation Reference
+--------------------
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Simulation Reference
+   
+   modules/sim
+   modules/sparse
+   modules/fem
 
 .. toctree::
    :hidden:

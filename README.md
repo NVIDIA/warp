@@ -1,8 +1,11 @@
-# NVIDIA Warp (Preview)
+# NVIDIA Warp
 
-Warp is a Python framework for writing high-performance simulation and graphics code. Kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.
+Warp is a Python framework for writing high-performance simulation and graphics code. Warp takes
+regular Python functions and JIT compiles them to efficient kernel code that can run on the CPU or GPU.
 
-Warp is comes with a rich set of primitives that make it easy to write programs for physics simulation, geometry processing, and procedural animation. In addition, Warp kernels are differentiable, and can be used as part of machine-learning training pipelines with other frameworks such as PyTorch.
+Warp is designed for spatial computing and comes with a rich set of primitives that make it easy to write 
+programs for physics simulation, perception, robotics, and geometry processing. In addition, Warp kernels 
+are differentiable and can be used as part of machine-learning pipelines with frameworks such as PyTorch and JAX.
 
 Please refer to the project [Documentation](https://nvidia.github.io/warp/) for API and language reference and [CHANGELOG.md](./CHANGELOG.md) for release history.
 
@@ -13,7 +16,7 @@ _A selection of physical simulations computed with Warp_
 
 ## Installing 
 
-Warp supports Python versions 3.7.x-3.11.x. The easiest way is to install from PyPi:
+Warp supports Python versions 3.7.x onwards. The easiest way is to install from PyPi:
 
     pip install warp-lang
 

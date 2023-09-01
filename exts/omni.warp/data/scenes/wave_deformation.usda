@@ -328,8 +328,8 @@ def compute(inputs: Inputs, outputs: Outputs):\r
 \r
     angle = wp.max(inputs.angle, 0.0)\r
     point = inputs.points[tid]\r
-    xform = wp.transpose(inputs.worldMatrix)\r
-    manipulator_xform = wp.transpose(inputs.manipulator)\r
+    xform = wp.mat44(wp.transpose(inputs.worldMatrix))\r
+    manipulator_xform = wp.mat44(wp.transpose(inputs.manipulator))\r
 \r
     # Move the point within the manipulator's transformation space.\r
     point = wp.transform_point(wp.inverse(manipulator_xform) * xform, point)\r

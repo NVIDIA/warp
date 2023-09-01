@@ -194,3 +194,6 @@ def vec_max(a: wp.vec3, b: wp.vec3):
 @wp.func
 def vec_abs(a: wp.vec3):
     return wp.vec3(wp.abs(a[0]), wp.abs(a[1]), wp.abs(a[2]))
+
+
+        

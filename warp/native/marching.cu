@@ -1,8 +1,6 @@
 #include "warp.h"
 #include "cuda_util.h"
-
-#include "thrust/device_ptr.h"
-#include "thrust/sort.h"
+#include "scan.h"
 
 namespace wp {
 
@@ -162,13 +160,17 @@ namespace wp {
     };
 
 
-	// ---------------------------------------------------------------------------------------
-	struct MarchingCubes
-	{
-		MarchingCubes() 
+    // ---------------------------------------------------------------------------------------
+    struct MarchingCubes
+    {
+        MarchingCubes() 
         {
-			memset(this, 0, sizeof(MarchingCubes));
-		}
+            memset(this, 0, sizeof(MarchingCubes));
+            first_cell_vert = nullptr;
+            first_cell_tri = nullptr;
+            cell_verts = nullptr;
+            context = nullptr;
+        }
 
         __device__ __host__ int cell_index(int xi, int yi, int zi) const
         {
@@ -181,169 +183,169 @@ namespace wp {
             xi = cell_index / ny;
         }
 
-		// grid
+        // grid
         int nx;
         int ny;
         int nz;
 
-		int* first_cell_vert;
-		int* first_cell_tri;
-		int* cell_verts;
+        int* first_cell_vert;
+        int* first_cell_tri;
+        int* cell_verts;
 
         int num_cells;   
         int max_cells;
 
         void* context;
-	};
+    };
 
 
-	// -----------------------------------------------------------------------------------
-	__global__ void count_cell_verts(MarchingCubes mc, const float* density, float threshold)
-	{
-		int cell_index = blockIdx.x * blockDim.x + threadIdx.x;
-		if (cell_index >= mc.num_cells)
-			return;
+    // -----------------------------------------------------------------------------------
+    __global__ void count_cell_verts(MarchingCubes mc, const float* density, float threshold)
+    {
+        int cell_index = blockIdx.x * blockDim.x + threadIdx.x;
+        if (cell_index >= mc.num_cells)
+            return;
 
-		int xi, yi, zi;
-		mc.cell_coord(cell_index, xi, yi, zi);
+        int xi, yi, zi;
+        mc.cell_coord(cell_index, xi, yi, zi);
 
-		mc.first_cell_vert[cell_index] = 0;
-		if (xi >= mc.nx - 1 || yi >= mc.ny - 1 || zi >= mc.nz - 1)
-			return;
+        mc.first_cell_vert[cell_index] = 0;
+        if (xi >= mc.nx - 1 || yi >= mc.ny - 1 || zi >= mc.nz - 1)
+            return;
 
-		float d0 = density[cell_index];
-		float dx = density[mc.cell_index(xi + 1, yi, zi)];
-		float dy = density[mc.cell_index(xi, yi + 1, zi)];
-		float dz = density[mc.cell_index(xi, yi, zi + 1)];
+        float d0 = density[cell_index];
+        float dx = density[mc.cell_index(xi + 1, yi, zi)];
+        float dy = density[mc.cell_index(xi, yi + 1, zi)];
+        float dz = density[mc.cell_index(xi, yi, zi + 1)];
 
-		int num = 0;
-		if ((d0 <= threshold && dx >= threshold) || (dx <= threshold && d0 >= threshold))
-			num++;
-		if ((d0 <= threshold && dy >= threshold) || (dy <= threshold && d0 >= threshold))
-			num++;
-		if ((d0 <= threshold && dz >= threshold) || (dz <= threshold && d0 >= threshold))
-			num++;
+        int num = 0;
+        if ((d0 <= threshold && dx >= threshold) || (dx <= threshold && d0 >= threshold))
+            num++;
+        if ((d0 <= threshold && dy >= threshold) || (dy <= threshold && d0 >= threshold))
+            num++;
+        if ((d0 <= threshold && dz >= threshold) || (dz <= threshold && d0 >= threshold))
+            num++;
 
-		mc.first_cell_vert[cell_index] = num;
-	}
+        mc.first_cell_vert[cell_index] = num;
+    }
 
-	// -----------------------------------------------------------------------------------
-	__global__ void create_cell_verts(MarchingCubes mc, vec3* __restrict__ vertices, vec3* normals, const float* __restrict__  density, float threshold)
-	{
-		int cell_index = blockIdx.x * blockDim.x + threadIdx.x;
-		if (cell_index >= mc.num_cells)
-			return;
+    // -----------------------------------------------------------------------------------
+    __global__ void create_cell_verts(MarchingCubes mc, vec3* __restrict__ vertices, vec3* normals, const float* __restrict__  density, float threshold)
+    {
+        int cell_index = blockIdx.x * blockDim.x + threadIdx.x;
+        if (cell_index >= mc.num_cells)
+            return;
 
-		int xi, yi, zi;
-		mc.cell_coord(cell_index, xi, yi, zi);
-		if (xi >= mc.nx - 1 || yi >= mc.ny - 1 || zi >= mc.nz - 1)
-			return;
+        int xi, yi, zi;
+        mc.cell_coord(cell_index, xi, yi, zi);
+        if (xi >= mc.nx - 1 || yi >= mc.ny - 1 || zi >= mc.nz - 1)
+            return;
 
-		vec3 p = vec3(xi + 0.5f, yi + 0.5f, zi + 0.5f);
+        vec3 p = vec3(xi + 0.5f, yi + 0.5f, zi + 0.5f);
 
-		float d0 = density[cell_index];
-		float ds[3];
-		ds[0] = density[mc.cell_index(xi + 1, yi, zi)];
-		ds[1] = density[mc.cell_index(xi, yi + 1, zi)];
-		ds[2] = density[mc.cell_index(xi, yi, zi + 1)];
+        float d0 = density[cell_index];
+        float ds[3];
+        ds[0] = density[mc.cell_index(xi + 1, yi, zi)];
+        ds[1] = density[mc.cell_index(xi, yi + 1, zi)];
+        ds[2] = density[mc.cell_index(xi, yi, zi + 1)];
 
-		// vec3 n0 = densityNormal[cell_index];
-		// vec3 ns[3];
-		// ns[0] = densityNormal[mc.cell_index(xi + 1, yi, zi)];
-		// ns[1] = densityNormal[mc.cell_index(xi, yi + 1, zi)];
-		// ns[2] = densityNormal[mc.cell_index(xi, yi, zi + 1)];
+        // vec3 n0 = densityNormal[cell_index];
+        // vec3 ns[3];
+        // ns[0] = densityNormal[mc.cell_index(xi + 1, yi, zi)];
+        // ns[1] = densityNormal[mc.cell_index(xi, yi + 1, zi)];
+        // ns[2] = densityNormal[mc.cell_index(xi, yi, zi + 1)];
 
-		int first = mc.first_cell_vert[cell_index];
+        int first = mc.first_cell_vert[cell_index];
 
-		for (int dim = 0; dim < 3; dim++) 
+        for (int dim = 0; dim < 3; dim++) 
         {
-			float d = ds[dim];
-			mc.cell_verts[3 * cell_index + dim] = 0;
+            float d = ds[dim];
+            mc.cell_verts[3 * cell_index + dim] = 0;
 
-			if ((d0 <= threshold && d >= threshold) || (d <= threshold && d0 >= threshold)) 
+            if ((d0 <= threshold && d >= threshold) || (d <= threshold && d0 >= threshold)) 
             {
-				float t = (d != d0) ? clamp((threshold - d0) / (d - d0), 0.0f, 1.0f) : 0.5f;
-				int id = first++;
+                float t = (d != d0) ? clamp((threshold - d0) / (d - d0), 0.0f, 1.0f) : 0.5f;
+                int id = first++;
 
-				vec3 off;
-				off[dim] = t;
-				vertices[id] = p + off;
+                vec3 off;
+                off[dim] = t;
+                vertices[id] = p + off;
 
-				// vec3 n = normalize(n0 + t * (ns[dim] - n0));
-				// normals[id] = -n;
+                // vec3 n = normalize(n0 + t * (ns[dim] - n0));
+                // normals[id] = -n;
 
-				mc.cell_verts[3 * cell_index + dim] = id;
-			}
-		}
-	}
+                mc.cell_verts[3 * cell_index + dim] = id;
+            }
+        }
+    }
 
-	// -----------------------------------------------------------------------------------
-	__global__ void count_cell_tris(MarchingCubes mc, const float* __restrict__ density, float threshold)
-	{
-		int cell_index = blockIdx.x * blockDim.x + threadIdx.x;
-		if (cell_index >= mc.num_cells)
-			return;
+    // -----------------------------------------------------------------------------------
+    __global__ void count_cell_tris(MarchingCubes mc, const float* __restrict__ density, float threshold)
+    {
+        int cell_index = blockIdx.x * blockDim.x + threadIdx.x;
+        if (cell_index >= mc.num_cells)
+            return;
 
-		int xi, yi, zi;
-		mc.cell_coord(cell_index, xi, yi, zi);
+        int xi, yi, zi;
+        mc.cell_coord(cell_index, xi, yi, zi);
 
-		mc.first_cell_tri[cell_index] = 0;
-		if (xi >= mc.nx - 2 || yi >= mc.ny - 2 || zi >= mc.nz - 2)
-			return;
+        mc.first_cell_tri[cell_index] = 0;
+        if (xi >= mc.nx - 2 || yi >= mc.ny - 2 || zi >= mc.nz - 2)
+            return;
 
-		int code = 0;
-		for (int i = 0; i < 8; i++) {
-			int cxi = xi + marchingCubeCorners[i][0];
-			int cyi = yi + marchingCubeCorners[i][1];
-			int czi = zi + marchingCubeCorners[i][2];
+        int code = 0;
+        for (int i = 0; i < 8; i++) {
+            int cxi = xi + marchingCubeCorners[i][0];
+            int cyi = yi + marchingCubeCorners[i][1];
+            int czi = zi + marchingCubeCorners[i][2];
 
-			if (density[mc.cell_index(cxi, cyi, czi)] >= threshold)
-				code |= (1 << i);
-		}
+            if (density[mc.cell_index(cxi, cyi, czi)] >= threshold)
+                code |= (1 << i);
+        }
 
-		mc.first_cell_tri[cell_index] = firstMarchingCubesId[code + 1] - firstMarchingCubesId[code];
-	}
+        mc.first_cell_tri[cell_index] = firstMarchingCubesId[code + 1] - firstMarchingCubesId[code];
+    }
 
-	// -----------------------------------------------------------------------------------
-	__global__ void create_cell_tris(MarchingCubes mc, const float* __restrict__ density, int* __restrict__ triangles, float threshold)
-	{
-		int cell_index = blockIdx.x * blockDim.x + threadIdx.x;
-		if (cell_index >= mc.num_cells)
-			return;
+    // -----------------------------------------------------------------------------------
+    __global__ void create_cell_tris(MarchingCubes mc, const float* __restrict__ density, int* __restrict__ triangles, float threshold)
+    {
+        int cell_index = blockIdx.x * blockDim.x + threadIdx.x;
+        if (cell_index >= mc.num_cells)
+            return;
 
-		int xi, yi, zi;
-		mc.cell_coord(cell_index, xi, yi, zi);
-		if (xi >= mc.nx - 2 || yi >= mc.ny - 2 || zi >= mc.nz - 2)
-			return;
+        int xi, yi, zi;
+        mc.cell_coord(cell_index, xi, yi, zi);
+        if (xi >= mc.nx - 2 || yi >= mc.ny - 2 || zi >= mc.nz - 2)
+            return;
 
-		int code = 0;
-		for (int i = 0; i < 8; i++)
+        int code = 0;
+        for (int i = 0; i < 8; i++)
         {
-			int cxi = xi + marchingCubeCorners[i][0];
-			int cyi = yi + marchingCubeCorners[i][1];
-			int czi = zi + marchingCubeCorners[i][2];
+            int cxi = xi + marchingCubeCorners[i][0];
+            int cyi = yi + marchingCubeCorners[i][1];
+            int czi = zi + marchingCubeCorners[i][2];
 
-			if (density[mc.cell_index(cxi, cyi, czi)] >= threshold)
-				code |= (1 << i);
-		}
+            if (density[mc.cell_index(cxi, cyi, czi)] >= threshold)
+                code |= (1 << i);
+        }
 
-		int firstIn = firstMarchingCubesId[code];
-		int num = firstMarchingCubesId[code + 1] - firstIn;
-		int firstOut = mc.first_cell_tri[cell_index];
+        int firstIn = firstMarchingCubesId[code];
+        int num = firstMarchingCubesId[code + 1] - firstIn;
+        int firstOut = mc.first_cell_tri[cell_index];
 
-		for (int i = 0; i < num; i++)
+        for (int i = 0; i < num; i++)
         {
-			int eid = marchingCubesIds[firstIn + i];
+            int eid = marchingCubesIds[firstIn + i];
 
-			int exi = xi + marchingCubesEdgeLocations[eid][0];
-			int eyi = yi + marchingCubesEdgeLocations[eid][1];
-			int ezi = zi + marchingCubesEdgeLocations[eid][2];
-			int edgeNr = marchingCubesEdgeLocations[eid][3];
+            int exi = xi + marchingCubesEdgeLocations[eid][0];
+            int eyi = yi + marchingCubesEdgeLocations[eid][1];
+            int ezi = zi + marchingCubesEdgeLocations[eid][2];
+            int edgeNr = marchingCubesEdgeLocations[eid][3];
 
-			int id = mc.cell_verts[3 * mc.cell_index(exi, eyi, ezi) + edgeNr];
-			triangles[firstOut + i] = id;
-		}
-	}
+            int id = mc.cell_verts[3 * mc.cell_index(exi, eyi, ezi) + edgeNr];
+            triangles[firstOut + i] = id;
+        }
+    }
 
     // -------------------------
     void marching_cubes_resize(MarchingCubes& mc, int nx, int ny, int nz)
@@ -444,10 +446,7 @@ WP_API int marching_cubes_surface_device(
     int num_last;		
     memcpy_d2h(WP_CURRENT_CONTEXT, &num_last, &mc.first_cell_vert[mc.num_cells - 1], sizeof(int));
 
-    thrust::exclusive_scan(
-        thrust::device_ptr<int>(mc.first_cell_vert),
-        thrust::device_ptr<int>(mc.first_cell_vert + mc.num_cells),
-        thrust::device_ptr<int>(mc.first_cell_vert));
+    scan_device(mc.first_cell_vert, mc.first_cell_vert, mc.num_cells, false);
 
     int num_verts;
     memcpy_d2h(WP_CURRENT_CONTEXT, &num_verts, &mc.first_cell_vert[mc.num_cells - 1], sizeof(int));
@@ -472,10 +471,7 @@ WP_API int marching_cubes_surface_device(
     
     memcpy_d2h(WP_CURRENT_CONTEXT, &num_last, &mc.first_cell_tri[mc.num_cells - 1], sizeof(int));
 
-    thrust::exclusive_scan(
-        thrust::device_ptr<int>(mc.first_cell_tri),
-        thrust::device_ptr<int>(mc.first_cell_tri + mc.num_cells),
-        thrust::device_ptr<int>(mc.first_cell_tri));
+    scan_device(mc.first_cell_tri, mc.first_cell_tri, mc.num_cells, false);
 
 
     int num_indices;
