@@ -28,7 +28,7 @@ def warn(message, category=None, stacklevel=1):
     with warnings.catch_warnings():
         warnings.simplefilter("default")  # Change the filter in this process
         warnings.showwarning = warp_showwarning
-        warnings.warn(message, category, stacklevel)
+        warnings.warn(message, category, stacklevel + 1)  # Increment stacklevel by 1 since we are in a wrapper
 
 
 def length(a):
