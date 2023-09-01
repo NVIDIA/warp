@@ -542,11 +542,15 @@ class Adjoint:
             adj.eval(adj.tree.body[0])
         except Exception as e:
             try:
+                if isinstance(e, KeyError) and e.args[0].__module__ == "ast":
+                    msg = f'Syntax error: unsupported construct "ast.{e.args[0].__name__}"'
+                else:
+                    msg = "Error"
                 lineno = adj.lineno + adj.fun_lineno
                 line = adj.source.splitlines()[adj.lineno]
-                msg = f'Error while parsing function "{adj.fun_name}" at {adj.filename}:{lineno}:\n{line}\n'
+                msg += f' while parsing function "{adj.fun_name}" at {adj.filename}:{lineno}:\n{line}\n'
                 ex, data, traceback = sys.exc_info()
-                e = ex("".join([msg] + list(data.args))).with_traceback(traceback)
+                e = ex(";".join([msg] + [str(a) for a in data.args])).with_traceback(traceback)
             finally:
                 raise e
 
@@ -1763,12 +1767,9 @@ class Adjoint:
         if hasattr(node, "lineno"):
             adj.set_lineno(node.lineno - 1)
 
-        emit_node = adj.node_visitors.get(type(node))
+        emit_node = adj.node_visitors[type(node)]
 
-        if emit_node is not None:
-            return emit_node(adj, node)
-        else:
-            raise Exception("Error, ast node of type {} not supported".format(type(node)))
+        return emit_node(adj, node)
 
     # helper to evaluate expressions of the form
     # obj1.obj2.obj3.attr in the function's global scope
