@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## [1.0.0-beta.2] - 2023-09-01
+
+- Fix for passing bool into `wp.func` functions
+- Fix for deprecation warnings appearing on `stderr`, now redirected to `stdout`
+
 ## [1.0.0-beta.1] - 2023-08-29
 
 - Fix for `wp.float16` being passed as kernel arguments

@@ -1,11 +1,16 @@
 # CHANGELOG
 
+## [1.0.0-beta.2] - 2023-09-01
+
+- Fix for passing bool into `wp.func` functions
+- Fix for deprecation warnings appearing on `stderr`, now redirected to `stdout`
+
 ## [1.0.0-beta.1] - 2023-08-29
 
 - Fix for `wp.float16` being passed as kernel arguments
 - Fix for compile errors with kernels using structs in backward pass
 - Fix for `wp.Mesh.refit()` not being CUDA graph capturable due to synchronous temp. allocs
-- Fix for example flickering / MGPU crashes with Mandlebrot demo in Kit by reusing `ui.DynamicImageProvider` instances
+- Fix for dynamic texture example flickering / MGPU crashes demo in Kit by reusing `ui.DynamicImageProvider` instances
 - Fix for a regression that disabled bundle change tracking in samples
 - Fix for incorrect surface velocities when meshes are deforming in `OgnClothSimulate`
 - Fix for incorrect lower-case when setting USD stage "up_axis" in examples
