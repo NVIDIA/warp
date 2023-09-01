@@ -4,6 +4,7 @@
 
 - Fix for passing bool into `wp.func` functions
 - Fix for deprecation warnings appearing on `stderr`, now redirected to `stdout`
+- Fix for using `for i in wp.hash_grid_query(..)` syntax
 
 ## [1.0.0-beta.1] - 2023-08-29
 
