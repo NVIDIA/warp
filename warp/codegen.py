@@ -1753,15 +1753,10 @@ class Adjoint:
             if adj.is_user_function:
                 if hasattr(node, "value") and hasattr(node.value, "func") and hasattr(node.value.func, "attr"):
                     if node.value.func.attr == "tid":
-                        import warnings
-
-                        warnings.simplefilter("default")  # Change the filter in this process
-
                         lineno = adj.lineno + adj.fun_lineno
                         line = adj.source.splitlines()[adj.lineno]
-                        # msg = f'Error while parsing function "{adj.fun_name}" at {adj.filename}:{lineno}:\n{line}\n'
 
-                        warnings.warn(
+                        warp.utils.warn(
                             "Calling wp.tid() from a @wp.func is deprecated and will be removed in a future Warp "
                             "version. Instead, obtain the indices from a @wp.kernel and pass them as "
                             f"arguments to this function {adj.fun_name}, {adj.filename}:{lineno}:\n{line}\n",

@@ -1748,9 +1748,7 @@ class Device:
 
             # Warn the user of a possible misconfiguration of their system
             if not self.is_mempool_supported:
-                import warnings
-
-                warnings.warn(
+                warp.utils.warn(
                     f"Support for stream ordered memory allocators was not detected on device {ordinal}. "
                     "This can prevent the use of graphs and/or result in poor performance. "
                     "Is the UVM driver enabled?"
@@ -3771,8 +3769,10 @@ def copy(
         # can't copy to/from fabric arrays of arrays, because they are jagged arrays of arbitrary lengths
         # TODO?
         if (
-            isinstance(src, (warp.fabricarray, warp.indexedfabricarray)) and src.ndim > 1 or
-            isinstance(dest, (warp.fabricarray, warp.indexedfabricarray)) and dest.ndim > 1
+            isinstance(src, (warp.fabricarray, warp.indexedfabricarray))
+            and src.ndim > 1
+            or isinstance(dest, (warp.fabricarray, warp.indexedfabricarray))
+            and dest.ndim > 1
         ):
             raise RuntimeError("Copying to/from Fabric arrays of arrays is not supported")
 

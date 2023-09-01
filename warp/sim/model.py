@@ -99,7 +99,7 @@ class JointAxis:
 
     Attributes:
 
-        axis (3D vector): The axis that this JointAxis object describes 
+        axis (3D vector): The axis that this JointAxis object describes
         limit_lower (float): The lower limit of the joint axis
         limit_upper (float): The upper limit of the joint axis
         limit_ke (float): The elastic stiffness of the joint axis limits, only respected by SemiImplicitIntegrator
@@ -258,9 +258,7 @@ class State:
             self.body_f.zero_()
 
     def flatten(self):
-        import warnings
-
-        warnings.warn(
+        wp.utils.warn(
             "Model.flatten() will be removed in a future Warp version.",
             DeprecationWarning,
             stacklevel=2,
@@ -828,11 +826,7 @@ class Model:
         return tensors
 
     def collide(self, state: State):
-        import warnings
-
-        warnings.simplefilter("default")
-
-        warnings.warn(
+        wp.utils.warn(
             "Model.collide() is not needed anymore and will be removed in a future Warp version.",
             DeprecationWarning,
             stacklevel=2,
@@ -845,11 +839,7 @@ class Model:
 
     @property
     def soft_contact_distance(self):
-        import warnings
-
-        warnings.simplefilter("default")
-
-        warnings.warn(
+        wp.utils.warn(
             "Model.soft_contact_distance is deprecated and will be removed in a future Warp version. "
             "Particles now have individual radii, returning `Model.particle_max_radius`.",
             DeprecationWarning,
@@ -859,11 +849,7 @@ class Model:
 
     @soft_contact_distance.setter
     def soft_contact_distance(self, value):
-        import warnings
-
-        warnings.simplefilter("default")
-
-        warnings.warn(
+        wp.utils.warn(
             "Model.soft_contact_distance is deprecated and will be removed in a future Warp version. "
             "Particles now have individual radii, see `Model.particle_radius`.",
             DeprecationWarning,
@@ -878,11 +864,7 @@ class Model:
     @particle_radius.setter
     def particle_radius(self, value):
         if isinstance(value, float):
-            import warnings
-
-            warnings.simplefilter("default")
-
-            warnings.warn(
+            wp.utils.warn(
                 "Model.particle_radius is an array of per-particle radii, assigning with a scalar value "
                 "is deprecated and will be removed in a future Warp version.",
                 PendingDeprecationWarning,
@@ -1221,10 +1203,10 @@ class ModelBuilder:
                 for i in range(len(joint_X_p)):
                     if articulation.joint_type[i] == wp.sim.JOINT_FREE:
                         qi = articulation.joint_q_start[i]
-                        xform_prev = wp.transform(joint_q[qi: qi + 3], joint_q[qi + 3: qi + 7])
+                        xform_prev = wp.transform(joint_q[qi : qi + 3], joint_q[qi + 3 : qi + 7])
                         tf = xform * xform_prev
-                        joint_q[qi: qi + 3] = tf.p
-                        joint_q[qi + 3: qi + 7] = tf.q
+                        joint_q[qi : qi + 3] = tf.p
+                        joint_q[qi + 3 : qi + 7] = tf.q
                     elif articulation.joint_parent[i] == -1:
                         joint_X_p[i] = xform * joint_X_p[i]
             self.joint_X_p.extend(joint_X_p)
@@ -2001,9 +1983,9 @@ class ModelBuilder:
             data = {
                 "type": self.joint_type[i],
                 # 'armature': self.joint_armature[i],
-                "q": self.joint_q[q_start: q_start + q_dim],
-                "qd": self.joint_qd[qd_start: qd_start + qd_dim],
-                "act": self.joint_act[qd_start: qd_start + qd_dim],
+                "q": self.joint_q[q_start : q_start + q_dim],
+                "qd": self.joint_qd[qd_start : qd_start + qd_dim],
+                "act": self.joint_act[qd_start : qd_start + qd_dim],
                 "q_start": q_start,
                 "qd_start": qd_start,
                 "linear_compliance": self.joint_linear_compliance[i],
@@ -2063,7 +2045,7 @@ class ModelBuilder:
                 if verbose:
                     print(
                         f'Remove fixed joint {joint["name"]} between {parent_name} and {child_name}, '
-                        f'merging {child_name} into {last_dynamic_body_name}'
+                        f"merging {child_name} into {last_dynamic_body_name}"
                     )
                 child_id = body_data[child_body]["original_id"]
                 for shape in self.body_shapes[child_id]:
@@ -3310,10 +3292,9 @@ class ModelBuilder:
 
             spring_indices.add((min(e.v0, e.v1), max(e.v0, e.v1)))
 
-
         if add_springs:
             for i, j in spring_indices:
-                self.add_spring(i, j, spring_ke, spring_kd, control = 0.0)
+                self.add_spring(i, j, spring_ke, spring_kd, control=0.0)
 
     def add_cloth_mesh(
         self,
@@ -3418,7 +3399,7 @@ class ModelBuilder:
                 spring_indices.add((min(k, l), max(k, l)))
 
             for i, j in spring_indices:
-                self.add_spring(i, j, spring_ke, spring_kd, control = 0.0)
+                self.add_spring(i, j, spring_ke, spring_kd, control=0.0)
 
     def add_particle_grid(
         self,
@@ -3830,7 +3811,9 @@ class ModelBuilder:
             m.spring_stiffness = wp.array(self.spring_stiffness, dtype=wp.float32, requires_grad=requires_grad)
             m.spring_damping = wp.array(self.spring_damping, dtype=wp.float32, requires_grad=requires_grad)
             m.spring_control = wp.array(self.spring_control, dtype=wp.float32, requires_grad=requires_grad)
-            m.spring_constraint_lambdas = wp.array(shape=len(self.spring_rest_length), dtype=wp.float32, requires_grad=requires_grad)
+            m.spring_constraint_lambdas = wp.array(
+                shape=len(self.spring_rest_length), dtype=wp.float32, requires_grad=requires_grad
+            )
 
             # ---------------------
             # triangles
@@ -3848,7 +3831,9 @@ class ModelBuilder:
             m.edge_bending_properties = wp.array(
                 self.edge_bending_properties, dtype=wp.float32, requires_grad=requires_grad
             )
-            m.edge_constraint_lambdas = wp.array(shape=len(self.edge_rest_angle), dtype=wp.float32, requires_grad=requires_grad)
+            m.edge_constraint_lambdas = wp.array(
+                shape=len(self.edge_rest_angle), dtype=wp.float32, requires_grad=requires_grad
+            )
 
             # ---------------------
             # tetrahedra
