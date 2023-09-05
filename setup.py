@@ -44,10 +44,6 @@ def detect_warp_platforms():
 
 detected_platforms = detect_warp_platforms()
 
-# read the contents of your README file
-from pathlib import Path
-readme = (Path(__file__).parent / "README.md").read_text()
-
 wheel_platform = None  # The one platform for which we're building a wheel
 
 if args.command == "bdist_wheel":
@@ -62,7 +58,7 @@ if args.command == "bdist_wheel":
             print(f"Platform argument '{args.platform}' not recognized")
         elif wheel_platform not in detected_platforms:
             print(f"No libraries found for {wheel_platform.fancy_name}")
-            print(f"Falling back to auto-detection")
+            print("Falling back to auto-detection")
             wheel_platform = None
 
 if wheel_platform is None:
@@ -139,6 +135,4 @@ setuptools.setup(
     cmdclass={
         "bdist_wheel": WarpBDistWheel,
     },
-    long_description=readme,
-    long_description_content_type='text/markdown'
 )
