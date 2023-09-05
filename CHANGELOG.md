@@ -49,15 +49,15 @@
 
 - Add support for macOS universal binaries (x86 + aarch64) for M1+ support
 - Add additional methods for SDF generation please see the following new methods:
-  -  `wp.mesh_query_point_nosign()` - closest point query with no sign determination
-  -  `wp.mesh_query_point_sign_normal()` - closest point query with sign from angle-weighted normal
-  -  `wp.mesh_query_point_sign_winding_number()` - closest point query with fast winding number sign determination
+  - `wp.mesh_query_point_nosign()` - closest point query with no sign determination
+  - `wp.mesh_query_point_sign_normal()` - closest point query with sign from angle-weighted normal
+  - `wp.mesh_query_point_sign_winding_number()` - closest point query with fast winding number sign determination
 - Add CSR/BSR sparse matrix support, see `warp.sparse` module:
   - `wp.sparse.BsrMatrix`
   - `wp.sparse.bsr_zeros()`, `wp.sparse.bsr_set_from_triplets()` for construction
   - `wp.sparse.bsr_mm()`, `wp.sparse_bsr_mv()` for matrix-matrix and matrix-vector products respectively
 - Add array-wide utilities:
-  - `wp.utils.array_scan()` - prefix sum (inclusive or exlusive)
+  - `wp.utils.array_scan()` - prefix sum (inclusive or exclusive)
   - `wp.utils.array_sum()` - sum across array
   - `wp.utils.radix_sort_pairs()` - in-place radix sort (key,value) pairs
 - Add support for calling `@wp.func` functions from Python (outside of kernel scope)
@@ -172,7 +172,7 @@
 - Fix capture of `wp.func` and `wp.constant` types from inside Python closures
 - Fix for CUDA on WSL 
 - Fix for matrices in structs
-- Fix for tranpose indexing for some non-square matrices
+- Fix for transpose indexing for some non-square matrices
 - Enable Python faulthandler by default
 - Update to VS2019
 
@@ -227,7 +227,7 @@ Breaking Changes
 - Allow optional attributes for Kernel Node
 - Allow disabling backward pass code-gen on a per-kernel basis, use `@wp.kernel(enable_backward=False)`
 - Replace Python `imp` package with `importlib`
-- Fix for quaterion slerp gradients (`wp.quat_slerp()`)
+- Fix for quaternion slerp gradients (`wp.quat_slerp()`)
 
 ## [0.6.1] - 2022-12-05
 
@@ -283,7 +283,7 @@ Breaking Changes
 - Add NVDB volume allocation API, see `wp.Volume.allocate()`, and `wp.Volume.allocate_by_tiles()`
 - Add NVDB volume write methods, see `wp.volume_store_i()`, `wp.volume_store_f()`, `wp.volume_store_v()`
 - Add MGPU documentation
-- Add example showing how to compute Jacobian of multiple environements in parallel, see `example_jacobian_ik.py`
+- Add example showing how to compute Jacobian of multiple environments in parallel, see `example_jacobian_ik.py`
 - Add `wp.Tape.zero()` support for `wp.struct` types
 - Make SampleBrowser an optional dependency for Kit extension
 - Make `wp.Mesh` object accept both 1d and 2d arrays of face vertex indices
@@ -373,7 +373,7 @@ Breaking Changes
 - Add support for retrieving a single row from builtin types, e.g.: `r = m33[i]`
 - Add  `wp.log2()` and `wp.log10()` builtins
 - Add support for quickly instancing `wp.sim.ModelBuilder` objects to improve env. creation performance for RL
-- Remove custom CUB version and improve compatability with CUDA 11.7
+- Remove custom CUB version and improve compatibility with CUDA 11.7
 - Fix to preserve external user-gradients when calling `wp.Tape.zero()`
 - Fix to only allocate gradient of a Torch tensor if `requires_grad=True`
 - Fix for missing `wp.mat22` constructor adjoint
@@ -412,7 +412,7 @@ Breaking Changes
 - Add support for overloading `@wp.func` functions based on argument type
 - Add support for calling built-in functions directly from Python interpreter outside kernels (experimental)
 - Add support for auto-complete and docstring lookup for builtins in IDEs like VSCode, PyCharm, etc
-- Add support for doing partial array copys, see `wp.copy()` for details
+- Add support for doing partial array copies, see `wp.copy()` for details
 - Add support for accessing mesh data directly in kernels, see `wp.mesh_get_point()`, `wp.mesh_get_index()`, `wp.mesh_eval_face_normal()`
 - Change to only compile for targets where kernel is launched (e.g.: will not compile CPU unless explicitly requested)
 
@@ -550,7 +550,7 @@ Breaking Changes
 
 ## [0.1.19] - 2021-10-15
 
-- Publish from 2021.3 to avoid omni.graph database incompatabilities
+- Publish from 2021.3 to avoid omni.graph database incompatibilities
 
 ## [0.1.18] - 2021-10-08
 
@@ -642,7 +642,7 @@ Breaking Changes
 
 - Add support for unary negation operator
 - Add support for mutating variables during dynamic loops (non-differentiable)
-- Add support for inplace operators
+- Add support for in-place operators
 - Improve kernel cache start up times (avoids adjointing before cache check)
 - Update README.md with requirements / examples
 
@@ -663,5 +663,3 @@ Breaking Changes
 ## [0.1.0] - 2021-05-17
 
 - Initial publish for alpha testing
-
-
