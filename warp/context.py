@@ -3490,7 +3490,7 @@ def synchronize_stream(stream_or_device=None):
     runtime.core.cuda_stream_synchronize(stream.device.context, stream.cuda_stream)
 
 
-def force_load(device: Union[Device, str] = None, modules: List[Module] = None):
+def force_load(device: Union[Device, str, List[Device], List[str]] = None, modules: List[Module] = None):
     """Force user-defined kernels to be compiled and loaded
 
     Args:
@@ -3504,6 +3504,8 @@ def force_load(device: Union[Device, str] = None, modules: List[Module] = None):
 
     if device is None:
         devices = get_devices()
+    elif isinstance(device, list):
+        devices = [get_device(device_item) for device_item in device]
     else:
         devices = [get_device(device)]
 

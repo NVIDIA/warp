@@ -5,11 +5,12 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import unittest
+
 import numpy as np
+
 import warp as wp
 from warp.tests.test_base import *
-
-import unittest
 
 wp.init()
 
@@ -393,4 +394,7 @@ def register(parent):
 
 if __name__ == "__main__":
     c = register(unittest.TestCase)
+
+    wp.force_load(wp.get_cuda_devices())
+
     unittest.main(verbosity=2)
