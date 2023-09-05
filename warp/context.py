@@ -912,7 +912,7 @@ def add_builtin(
                 # on the generated argument list and skip generation if it fails.
                 # This also gives us the return type, which we keep for later:
                 try:
-                    return_type = value_func([warp.codegen.Var("", t) for t in argtypes], {}, [])
+                    return_type = value_func(argtypes, {}, [])
                 except Exception:
                     continue
 
@@ -1090,7 +1090,7 @@ class ModuleBuilder:
             if not func.value_func:
 
                 def wrap(adj):
-                    def value_type(args, kwds, templates):
+                    def value_type(arg_types, kwds, templates):
                         if adj.return_var is None or len(adj.return_var) == 0:
                             return None
                         if len(adj.return_var) == 1:
