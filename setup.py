@@ -61,13 +61,13 @@ if args.command == "bdist_wheel":
             print("Falling back to auto-detection")
             wheel_platform = None
 
-if wheel_platform is None:
-    if len(detected_platforms) > 1:
-        print("Libraries for multiple platforms were detected. Picking the first one.")
-        print("Run `python -m build --wheel -C--build-option=-P[windows|linux|macos]` to select a specific one.")
-    wheel_platform = next(iter(detected_platforms))
+    if wheel_platform is None:
+        if len(detected_platforms) > 1:
+            print("Libraries for multiple platforms were detected. Picking the first one.")
+            print("Run `python -m build --wheel -C--build-option=-P[windows|linux|macos]` to select a specific one.")
+        wheel_platform = next(iter(detected_platforms))
 
-print("Creating Warp wheel for " + wheel_platform.fancy_name)
+    print("Creating Warp wheel for " + wheel_platform.fancy_name)
 
 
 # Binary wheel distribution builds assume that the platform you're building on will be the platform
