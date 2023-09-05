@@ -678,9 +678,9 @@ class Adjoint:
     def add_comp(adj, op_strings, left, comps):
         output = adj.add_var(builtins.bool)
 
-        s = "var_" + str(output) + " = " + ("(" * len(comps)) + "var_" + str(left) + " "
+        s = output.emit() + " = " + ("(" * len(comps)) + left.emit() + " "
         for op, comp in zip(op_strings, comps):
-            s += op + " var_" + str(comp) + ") "
+            s += op + " " + comp.emit() + ") "
 
         s = s.rstrip() + ";"
 
@@ -690,9 +690,7 @@ class Adjoint:
 
     def add_bool_op(adj, op_string, exprs):
         output = adj.add_var(builtins.bool)
-        command = (
-            "var_" + str(output) + " = " + (" " + op_string + " ").join(["var_" + str(expr) for expr in exprs]) + ";"
-        )
+        command = output.emit() + " = " + (" " + op_string + " ").join([expr.emit() for expr in exprs]) + ";"
         adj.add_forward(command)
 
         return output
@@ -876,11 +874,11 @@ class Adjoint:
         if var is None or len(var) == 0:
             adj.add_forward("return;", f"goto label{adj.label_count};")
         elif len(var) == 1:
-            adj.add_forward(f"return var_{var[0]};", f"goto label{adj.label_count};")
+            adj.add_forward(f"return {var[0].emit()};", f"goto label{adj.label_count};")
             adj.add_reverse("adj_" + str(var[0]) + " += adj_ret;")
         else:
             for i, v in enumerate(var):
-                adj.add_forward(f"ret_{i} = var_{v};")
+                adj.add_forward(f"ret_{i} = {v.emit()};")
                 adj.add_reverse(f"adj_{v} += adj_ret_{i};")
             adj.add_forward("return;", f"goto label{adj.label_count};")
 
@@ -890,7 +888,7 @@ class Adjoint:
 
     # define an if statement
     def begin_if(adj, cond):
-        adj.add_forward(f"if (var_{cond}) {{")
+        adj.add_forward(f"if ({cond.emit()}) {{")
         adj.add_reverse("}")
 
         adj.indent()
@@ -899,10 +897,10 @@ class Adjoint:
         adj.dedent()
 
         adj.add_forward("}")
-        adj.add_reverse(f"if (var_{cond}) {{")
+        adj.add_reverse(f"if ({cond.emit()}) {{")
 
     def begin_else(adj, cond):
-        adj.add_forward(f"if (!var_{cond}) {{")
+        adj.add_forward(f"if (!{cond.emit()}) {{")
         adj.add_reverse("}")
 
         adj.indent()
@@ -911,7 +909,7 @@ class Adjoint:
         adj.dedent()
 
         adj.add_forward("}")
-        adj.add_reverse(f"if (!var_{cond}) {{")
+        adj.add_reverse(f"if (!{cond.emit()}) {{")
 
     # define a for-loop
     def begin_for(adj, iter):
@@ -921,7 +919,7 @@ class Adjoint:
         adj.indent()
 
         # evaluate cond
-        adj.add_forward(f"if (iter_cmp(var_{iter}) == 0) goto for_end_{cond_block.label};")
+        adj.add_forward(f"if (iter_cmp({iter.emit()}) == 0) goto for_end_{cond_block.label};")
 
         # evaluate iter
         val = adj.add_call(warp.context.builtin_functions["iter_next"], [iter])
@@ -955,7 +953,7 @@ class Adjoint:
         reverse = []
 
         # reverse iterator
-        reverse.append(adj.prefix + f"var_{iter} = wp::iter_reverse(var_{iter});")
+        reverse.append(adj.prefix + f"{iter.emit()} = wp::iter_reverse({iter.emit()});")
 
         for i in cond_block.body_forward:
             reverse.append(i)
@@ -990,7 +988,7 @@ class Adjoint:
 
         c = adj.eval(cond)
 
-        cond_block.body_forward.append(f"if ((var_{c}) == false) goto while_end_{cond_block.label};")
+        cond_block.body_forward.append(f"if (({c.emit()}) == false) goto while_end_{cond_block.label};")
 
         # being block around loop
         adj.begin_block()
