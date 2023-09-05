@@ -26,8 +26,8 @@ def build_cuda(cu_path, arch, output_path, config="release", verify_fp=False, fa
             err = warp.context.runtime.core.cuda_compile_program(
                 src, arch, inc_path, config == "debug", warp.config.verbose, verify_fp, fast_math, output_path
             )
-            if err:
-                raise Exception("CUDA build failed")
+            if err != 0:
+                raise Exception(f"CUDA kernel build failed with error code {err}")
 
 
 # load PTX or CUBIN as a CUDA runtime module (input type determined by input_path extension)
@@ -45,7 +45,9 @@ def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=Fal
         inc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "native").encode("utf-8")
         obj_path = obj_path.encode("utf-8")
 
-        warp.context.runtime.llvm.compile_cpp(src, cpp_path, inc_path, obj_path, mode == "debug")
+        err = warp.context.runtime.llvm.compile_cpp(src, cpp_path, inc_path, obj_path, mode == "debug")
+        if err != 0:
+            raise Exception(f"CPU kernel build failed with error code {err}")
 
 
 kernel_bin_dir = None
