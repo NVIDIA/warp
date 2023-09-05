@@ -542,11 +542,15 @@ class Adjoint:
             adj.eval(adj.tree.body[0])
         except Exception as e:
             try:
+                if isinstance(e, KeyError) and e.args[0].__module__ == "ast":
+                    msg = f'Syntax error: unsupported construct "ast.{e.args[0].__name__}"'
+                else:
+                    msg = "Error"
                 lineno = adj.lineno + adj.fun_lineno
                 line = adj.source.splitlines()[adj.lineno]
-                msg = f'Error while parsing function "{adj.fun_name}" at {adj.filename}:{lineno}:\n{line}\n'
+                msg += f' while parsing function "{adj.fun_name}" at {adj.filename}:{lineno}:\n{line}\n'
                 ex, data, traceback = sys.exc_info()
-                e = ex("".join([msg] + list(data.args))).with_traceback(traceback)
+                e = ex(";".join([msg] + [str(a) for a in data.args])).with_traceback(traceback)
             finally:
                 raise e
 
@@ -1413,7 +1417,23 @@ class Adjoint:
     def emit_Expr(adj, node):
         return adj.eval(node.value)
 
+    def check_tid_in_func_deprecation(adj, node):
+        if adj.is_user_function:
+            if hasattr(node.func, "attr") and node.func.attr == "tid":
+                lineno = adj.lineno + adj.fun_lineno
+                line = adj.source.splitlines()[adj.lineno]
+
+                warp.utils.warn(
+                    "Calling wp.tid() from a @wp.func is deprecated and will be removed in a future Warp "
+                    "version. Instead, obtain the indices from a @wp.kernel and pass them as "
+                    f"arguments to this function {adj.fun_name}, {adj.filename}:{lineno}:\n{line}\n",
+                    PendingDeprecationWarning,
+                    stacklevel=2,
+                )
+
     def emit_Call(adj, node):
+        adj.check_tid_in_func_deprecation(node)
+
         # try and lookup function in globals by
         # resolving path (e.g.: module.submodule.attr)
         func, path = adj.resolve_path(node.func)
@@ -1713,57 +1733,41 @@ class Adjoint:
     def emit_Pass(adj, node):
         pass
 
+    node_visitors = {
+        ast.FunctionDef: emit_FunctionDef,
+        ast.If: emit_If,
+        ast.Compare: emit_Compare,
+        ast.BoolOp: emit_BoolOp,
+        ast.Name: emit_Name,
+        ast.Attribute: emit_Attribute,
+        ast.Str: emit_String,  # Deprecated in 3.8; use Constant
+        ast.Num: emit_Num,  # Deprecated in 3.8; use Constant
+        ast.NameConstant: emit_NameConstant,  # Deprecated in 3.8; use Constant
+        ast.Constant: emit_Constant,
+        ast.BinOp: emit_BinOp,
+        ast.UnaryOp: emit_UnaryOp,
+        ast.While: emit_While,
+        ast.For: emit_For,
+        ast.Break: emit_Break,
+        ast.Continue: emit_Continue,
+        ast.Expr: emit_Expr,
+        ast.Call: emit_Call,
+        ast.Index: emit_Index,  # Deprecated in 3.8; Use the index value directly instead.
+        ast.Subscript: emit_Subscript,
+        ast.Assign: emit_Assign,
+        ast.Return: emit_Return,
+        ast.AugAssign: emit_AugAssign,
+        ast.Tuple: emit_Tuple,
+        ast.Pass: emit_Pass,
+    }
+
     def eval(adj, node):
         if hasattr(node, "lineno"):
             adj.set_lineno(node.lineno - 1)
 
-        node_visitors = {
-            ast.FunctionDef: Adjoint.emit_FunctionDef,
-            ast.If: Adjoint.emit_If,
-            ast.Compare: Adjoint.emit_Compare,
-            ast.BoolOp: Adjoint.emit_BoolOp,
-            ast.Name: Adjoint.emit_Name,
-            ast.Attribute: Adjoint.emit_Attribute,
-            ast.Str: Adjoint.emit_String,  # Deprecated in 3.8; use Constant
-            ast.Num: Adjoint.emit_Num,  # Deprecated in 3.8; use Constant
-            ast.NameConstant: Adjoint.emit_NameConstant,  # Deprecated in 3.8; use Constant
-            ast.Constant: Adjoint.emit_Constant,
-            ast.BinOp: Adjoint.emit_BinOp,
-            ast.UnaryOp: Adjoint.emit_UnaryOp,
-            ast.While: Adjoint.emit_While,
-            ast.For: Adjoint.emit_For,
-            ast.Break: Adjoint.emit_Break,
-            ast.Continue: Adjoint.emit_Continue,
-            ast.Expr: Adjoint.emit_Expr,
-            ast.Call: Adjoint.emit_Call,
-            ast.Index: Adjoint.emit_Index,  # Deprecated in 3.8; Use the index value directly instead.
-            ast.Subscript: Adjoint.emit_Subscript,
-            ast.Assign: Adjoint.emit_Assign,
-            ast.Return: Adjoint.emit_Return,
-            ast.AugAssign: Adjoint.emit_AugAssign,
-            ast.Tuple: Adjoint.emit_Tuple,
-            ast.Pass: Adjoint.emit_Pass,
-        }
+        emit_node = adj.node_visitors[type(node)]
 
-        emit_node = node_visitors.get(type(node))
-
-        if emit_node is not None:
-            if adj.is_user_function:
-                if hasattr(node, "value") and hasattr(node.value, "func") and hasattr(node.value.func, "attr"):
-                    if node.value.func.attr == "tid":
-                        lineno = adj.lineno + adj.fun_lineno
-                        line = adj.source.splitlines()[adj.lineno]
-
-                        warp.utils.warn(
-                            "Calling wp.tid() from a @wp.func is deprecated and will be removed in a future Warp "
-                            "version. Instead, obtain the indices from a @wp.kernel and pass them as "
-                            f"arguments to this function {adj.fun_name}, {adj.filename}:{lineno}:\n{line}\n",
-                            PendingDeprecationWarning,
-                            stacklevel=2,
-                        )
-            return emit_node(adj, node)
-        else:
-            raise Exception("Error, ast node of type {} not supported".format(type(node)))
+        return emit_node(adj, node)
 
     # helper to evaluate expressions of the form
     # obj1.obj2.obj3.attr in the function's global scope
