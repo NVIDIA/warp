@@ -24,7 +24,7 @@ class Platform(NamedTuple):
 platforms = [
     Platform("windows", "Windows", ".dll", "win_amd64"),
     Platform("linux", "Linux", ".so", "manylinux2014_x86_64"),
-    Platform("macos", "macOS", ".dylib", "macosx_10_13_x86_64"),
+    Platform("macos", "macOS", ".dylib", "macosx_10_13_universal2"),
 ]
 
 
