@@ -37,6 +37,7 @@ find = {}
 
 [tool.setuptools.dynamic]
 version = {attr = "warp.config.version"}
+readme = {file = ["README.md"]}
 
 [tool.black]
 line-length = 120
