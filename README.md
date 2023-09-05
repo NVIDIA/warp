@@ -9,8 +9,8 @@ are differentiable and can be used as part of machine-learning pipelines with fr
 
 Please refer to the project [Documentation](https://nvidia.github.io/warp/) for API and language reference and [CHANGELOG.md](./CHANGELOG.md) for release history.
 
-![](./docs/img/gifs/aldina.gif) ![](./docs/img/gifs/nanovdb.gif)
-![](./docs/img/gifs/ocean.gif) ![](./docs/img/gifs/particles.gif)
+![](https://github.com/NVIDIA/warp/raw/main/docs/img/gifs/aldina.gif) ![](https://github.com/NVIDIA/warp/raw/main/docs/img/gifs/nanovdb.gif)
+![](https://github.com/NVIDIA/warp/raw/main/docs/img/gifs/ocean.gif) ![](https://github.com/NVIDIA/warp/raw/main/docs/img/gifs/particles.gif)
 
 _A selection of physical simulations computed with Warp_
 
@@ -100,7 +100,7 @@ This will ensure symlinks inside ``exts/omni.warp`` work upon cloning.
 
 A Warp Omniverse extension is available in the extension registry inside Omniverse Kit or Create:
 
-<img src="./docs/img/omniverse.png" width=550px/>
+<img src="https://github.com/NVIDIA/warp/raw/main/docs/img/omniverse.png" width=550px/>
 
 Enabling the extension will automatically install and initialize the Warp Python module inside the Kit Python environment. Please see the [Omniverse Warp Documentation](http://docs.omniverse.nvidia.com/extensions/warp.html) for more details on how to use Warp in Omniverse.
 

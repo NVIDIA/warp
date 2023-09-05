@@ -22,7 +22,7 @@ classifiers = [
 dependencies = [
     "numpy",
 ]
-dynamic = ["version"]
+dynamic = ["version", "readme"]
 
 [project.urls]
 GitHub = "https://github.com/NVIDIA/warp"

@@ -44,6 +44,10 @@ def detect_warp_platforms():
 
 detected_platforms = detect_warp_platforms()
 
+# read the contents of your README file
+from pathlib import Path
+readme = (Path(__file__).parent / "README.md").read_text()
+
 wheel_platform = None  # The one platform for which we're building a wheel
 
 if args.command == "bdist_wheel":
@@ -135,4 +139,6 @@ setuptools.setup(
     cmdclass={
         "bdist_wheel": WarpBDistWheel,
     },
+    long_description=readme,
+    long_description_content_type='text/markdown'
 )
