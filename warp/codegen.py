@@ -121,9 +121,7 @@ class StructInstance:
                 assert isinstance(value, array)
                 assert types_equal(
                     value.dtype, var.type.dtype
-                ), "assign to struct member variable {} failed, expected type {}, got type {}".format(
-                    name, type_repr(var.type.dtype), type_repr(value.dtype)
-                )
+                ), f"assign to struct member variable {name} failed, expected type {type_repr(var.type.dtype)}, got type {type_repr(value.dtype)}"
                 setattr(self._ctype, name, value.__ctype__())
 
         elif isinstance(var.type, Struct):
@@ -583,7 +581,7 @@ class Adjoint:
             elif isinstance(a, Var):
                 arg_strs.append(a.emit(prefix))
             else:
-                arg_strs.append(f"{prefix}_{a}")
+                raise TypeError(f"Arguments must be variables or functions, got {type(a)}")
 
         return arg_strs
 
@@ -591,7 +589,7 @@ class Adjoint:
     def format_forward_call_args(adj, args, use_initializer_list):
         arg_str = ", ".join(adj.format_args("var", args))
         if use_initializer_list:
-            return "{{{}}}".format(arg_str)
+            return f"{{{arg_str}}}"
         return arg_str
 
     # generates argument string for a reverse function call
@@ -612,9 +610,9 @@ class Adjoint:
             return None
 
         if use_initializer_list:
-            var_str = "{{{}}}".format(", ".join(formatted_var))
-            out_str = "{{{}}}".format(", ".join(formatted_out))
-            adj_str = "{{{}}}".format(", ".join(formatted_var_adj))
+            var_str = f"{{{', '.join(formatted_var)}}}"
+            out_str = f"{{{', '.join(formatted_out)}}}"
+            adj_str = f"{{{', '.join(formatted_var_adj)}}}"
             out_adj_str = ", ".join(formatted_out_adj)
             if len(args_out) > 1:
                 arg_str = ", ".join([var_str, out_str, adj_str, out_adj_str])
@@ -680,9 +678,9 @@ class Adjoint:
     def add_comp(adj, op_strings, left, comps):
         output = adj.add_var(builtins.bool)
 
-        s = "var_" + str(output) + " = " + ("(" * len(comps)) + "var_" + str(left) + " "
+        s = output.emit() + " = " + ("(" * len(comps)) + left.emit() + " "
         for op, comp in zip(op_strings, comps):
-            s += op + " var_" + str(comp) + ") "
+            s += op + " " + comp.emit() + ") "
 
         s = s.rstrip() + ";"
 
@@ -692,9 +690,7 @@ class Adjoint:
 
     def add_bool_op(adj, op_string, exprs):
         output = adj.add_var(builtins.bool)
-        command = (
-            "var_" + str(output) + " = " + (" " + op_string + " ").join(["var_" + str(expr) for expr in exprs]) + ";"
-        )
+        command = output.emit() + " = " + (" " + op_string + " ").join([expr.emit() for expr in exprs]) + ";"
         adj.add_forward(command)
 
         return output
@@ -759,6 +755,7 @@ class Adjoint:
             # user-defined function
             resolved_func = func.get_overload(arg_types)
 
+        # report error if not resolved
         if resolved_func is None:
             arg_types = []
 
@@ -783,8 +780,7 @@ class Adjoint:
                 f"Couldn't find function overload for '{func.key}' that matched inputs with types: [{', '.join(arg_types)}]"
             )
 
-        else:
-            func = resolved_func
+        func = resolved_func
 
         # push any default values onto args
         for i, (arg_name, arg_type) in enumerate(func.input_types.items()):
@@ -809,13 +805,11 @@ class Adjoint:
         if value_type is None:
             # handles expression (zero output) functions, e.g.: void do_something();
 
-            forward_call = "{}{}({});".format(
-                func.namespace, func_name, adj.format_forward_call_args(args, use_initializer_list)
-            )
+            forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(args, use_initializer_list)});"
             replay_call = forward_call
             if func.custom_replay_func is not None:
-                replay_call = "{}replay_{}({});".format(
-                    func.namespace, func_name, adj.format_forward_call_args(args, use_initializer_list)
+                replay_call = (
+                    f"{func.namespace}replay_{func_name}({adj.format_forward_call_args(args, use_initializer_list)});"
                 )
             if func.skip_replay:
                 adj.add_forward(forward_call, replay="// " + replay_call)
@@ -825,7 +819,7 @@ class Adjoint:
             if not func.missing_grad and len(args):
                 arg_str = adj.format_reverse_call_args(args, [], {}, {}, use_initializer_list)
                 if arg_str is not None:
-                    reverse_call = "{}adj_{}({});".format(func.namespace, func.native_func, arg_str)
+                    reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
                     adj.add_reverse(reverse_call)
 
             return None
@@ -836,14 +830,10 @@ class Adjoint:
             if isinstance(value_type, list):
                 value_type = value_type[0]
             output = adj.add_var(value_type)
-            forward_call = "var_{} = {}{}({});".format(
-                output, func.namespace, func_name, adj.format_forward_call_args(args, use_initializer_list)
-            )
+            forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(args, use_initializer_list)});"
             replay_call = forward_call
             if func.custom_replay_func is not None:
-                replay_call = "var_{} = {}replay_{}({});".format(
-                    output, func.namespace, func_name, adj.format_forward_call_args(args, use_initializer_list)
-                )
+                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(args, use_initializer_list)});"
 
             if func.skip_replay:
                 adj.add_forward(forward_call, replay="// " + replay_call)
@@ -853,7 +843,7 @@ class Adjoint:
             if not func.missing_grad and len(args):
                 arg_str = adj.format_reverse_call_args(args, [output], {}, {}, use_initializer_list)
                 if arg_str is not None:
-                    reverse_call = "{}adj_{}({});".format(func.namespace, func.native_func, arg_str)
+                    reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
                     adj.add_reverse(reverse_call)
 
             return output
@@ -862,8 +852,8 @@ class Adjoint:
             # handle multiple value functions
 
             output = [adj.add_var(v) for v in value_type]
-            forward_call = "{}{}({});".format(
-                func.namespace, func_name, adj.format_forward_call_args(args + output, use_initializer_list)
+            forward_call = (
+                f"{func.namespace}{func_name}({adj.format_forward_call_args(args + output, use_initializer_list)});"
             )
             adj.add_forward(forward_call)
 
@@ -872,7 +862,7 @@ class Adjoint:
                     args, output, {}, {}, use_initializer_list, has_output_args=func.custom_grad_func is None
                 )
                 if arg_str is not None:
-                    reverse_call = "{}adj_{}({});".format(func.namespace, func.native_func, arg_str)
+                    reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
                     adj.add_reverse(reverse_call)
 
             if len(output) == 1:
@@ -882,23 +872,23 @@ class Adjoint:
 
     def add_return(adj, var):
         if var is None or len(var) == 0:
-            adj.add_forward("return;", "goto label{};".format(adj.label_count))
+            adj.add_forward("return;", f"goto label{adj.label_count};")
         elif len(var) == 1:
-            adj.add_forward("return var_{};".format(var[0]), "goto label{};".format(adj.label_count))
+            adj.add_forward(f"return {var[0].emit()};", f"goto label{adj.label_count};")
             adj.add_reverse("adj_" + str(var[0]) + " += adj_ret;")
         else:
             for i, v in enumerate(var):
-                adj.add_forward("ret_{} = var_{};".format(i, v))
-                adj.add_reverse("adj_{} += adj_ret_{};".format(v, i))
-            adj.add_forward("return;", "goto label{};".format(adj.label_count))
+                adj.add_forward(f"ret_{i} = {v.emit()};")
+                adj.add_reverse(f"adj_{v} += adj_ret_{i};")
+            adj.add_forward("return;", f"goto label{adj.label_count};")
 
-        adj.add_reverse("label{}:;".format(adj.label_count))
+        adj.add_reverse(f"label{adj.label_count}:;")
 
         adj.label_count += 1
 
     # define an if statement
     def begin_if(adj, cond):
-        adj.add_forward("if (var_{}) {{".format(cond))
+        adj.add_forward(f"if ({cond.emit()}) {{")
         adj.add_reverse("}")
 
         adj.indent()
@@ -907,10 +897,10 @@ class Adjoint:
         adj.dedent()
 
         adj.add_forward("}")
-        adj.add_reverse(f"if (var_{cond}) {{")
+        adj.add_reverse(f"if ({cond.emit()}) {{")
 
     def begin_else(adj, cond):
-        adj.add_forward(f"if (!var_{cond}) {{")
+        adj.add_forward(f"if (!{cond.emit()}) {{")
         adj.add_reverse("}")
 
         adj.indent()
@@ -919,7 +909,7 @@ class Adjoint:
         adj.dedent()
 
         adj.add_forward("}")
-        adj.add_reverse(f"if (!var_{cond}) {{")
+        adj.add_reverse(f"if (!{cond.emit()}) {{")
 
     # define a for-loop
     def begin_for(adj, iter):
@@ -929,7 +919,7 @@ class Adjoint:
         adj.indent()
 
         # evaluate cond
-        adj.add_forward(f"if (iter_cmp(var_{iter}) == 0) goto for_end_{cond_block.label};")
+        adj.add_forward(f"if (iter_cmp({iter.emit()}) == 0) goto for_end_{cond_block.label};")
 
         # evaluate iter
         val = adj.add_call(warp.context.builtin_functions["iter_next"], [iter])
@@ -963,7 +953,7 @@ class Adjoint:
         reverse = []
 
         # reverse iterator
-        reverse.append(adj.prefix + f"var_{iter} = wp::iter_reverse(var_{iter});")
+        reverse.append(adj.prefix + f"{iter.emit()} = wp::iter_reverse({iter.emit()});")
 
         for i in cond_block.body_forward:
             reverse.append(i)
@@ -998,7 +988,7 @@ class Adjoint:
 
         c = adj.eval(cond)
 
-        cond_block.body_forward.append(f"if ((var_{c}) == false) goto while_end_{cond_block.label};")
+        cond_block.body_forward.append(f"if (({c.emit()}) == false) goto while_end_{cond_block.label};")
 
         # being block around loop
         adj.begin_block()
@@ -1128,7 +1118,7 @@ class Adjoint:
         elif isinstance(op, ast.Or):
             func = "||"
         else:
-            raise KeyError("Op {} is not supported".format(op))
+            raise KeyError(f"Op {op} is not supported")
 
         return adj.add_bool_op(func, [adj.eval(expr) for expr in node.values])
 
@@ -1248,9 +1238,7 @@ class Adjoint:
 
                 if var1.constant is not None:
                     raise Exception(
-                        "Error mutating a constant {} inside a dynamic loop, use the following syntax: pi = float(3.141) to declare a dynamic variable".format(
-                            sym
-                        )
+                        f"Error mutating a constant {sym} inside a dynamic loop, use the following syntax: pi = float(3.141) to declare a dynamic variable"
                     )
 
                 # overwrite the old variable value (violates SSA)
@@ -1324,7 +1312,11 @@ class Adjoint:
 
     # returns a constant range() if unrollable, otherwise None
     def get_unroll_range(adj, loop):
-        if not isinstance(loop.iter, ast.Call) or not isinstance(loop.iter.func, ast.Name) or loop.iter.func.id != "range":
+        if (
+            not isinstance(loop.iter, ast.Call)
+            or not isinstance(loop.iter.func, ast.Name)
+            or loop.iter.func.id != "range"
+        ):
             return None
 
         for a in loop.iter.args:
@@ -1439,7 +1431,7 @@ class Adjoint:
         func, path = adj.resolve_path(node.func)
         templates = []
 
-        if isinstance(func, warp.context.Function) is False:
+        if not isinstance(func, warp.context.Function):
             if len(path) == 0:
                 raise RuntimeError(f"Unrecognized syntax for function call, path not valid: '{node.func}'")
 
@@ -1573,18 +1565,14 @@ class Adjoint:
 
             if len(names) != len(out):
                 raise RuntimeError(
-                    "Multiple return functions need to receive all their output values, incorrect number of values to unpack (expected {}, got {})".format(
-                        len(out), len(names)
-                    )
+                    f"Multiple return functions need to receive all their output values, incorrect number of values to unpack (expected {len(out)}, got {len(names)})"
                 )
 
             for name, rhs in zip(names, out):
                 if name in adj.symbols:
                     if not types_equal(rhs.type, adj.symbols[name].type):
                         raise TypeError(
-                            "Error, assigning to existing symbol {} ({}) with different type ({})".format(
-                                name, adj.symbols[name].type, rhs.type
-                            )
+                            f"Error, assigning to existing symbol {name} ({adj.symbols[name].type}) with different type ({rhs.type})"
                         )
 
                 adj.symbols[name] = rhs
@@ -1654,9 +1642,7 @@ class Adjoint:
             if name in adj.symbols:
                 if not types_equal(rhs.type, adj.symbols[name].type):
                     raise TypeError(
-                        "Error, assigning to existing symbol {} ({}) with different type ({})".format(
-                            name, adj.symbols[name].type, rhs.type
-                        )
+                        f"Error, assigning to existing symbol {name} ({adj.symbols[name].type}) with different type ({rhs.type})"
                     )
 
             # handle simple assignment case (a = b), where we generate a value copy rather than reference
@@ -2245,7 +2231,7 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
         else:
             s += codegen_func_reverse_body(adj, device=device, indent=4)
     else:
-        raise ValueError("Device {} not supported for codegen".format(device))
+        raise ValueError(f"Device {device} not supported for codegen")
 
     return s
 
@@ -2300,7 +2286,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options={}):
         forward_template = cuda_forward_function_template
         reverse_template = cuda_reverse_function_template
     else:
-        raise ValueError("Device {} is not supported".format(device))
+        raise ValueError(f"Device {device} is not supported")
 
     # codegen body
     forward_body = codegen_func_forward(adj, func_type="function", device=device)
@@ -2374,7 +2360,7 @@ def codegen_kernel(kernel, device, options):
     elif device == "cuda":
         template = cuda_kernel_template
     else:
-        raise ValueError("Device {} is not supported".format(device))
+        raise ValueError(f"Device {device} is not supported")
 
     s = template.format(
         name=kernel.get_mangled_name(),
