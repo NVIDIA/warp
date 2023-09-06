@@ -581,7 +581,7 @@ class Adjoint:
             elif isinstance(a, Var):
                 arg_strs.append(a.emit(prefix))
             else:
-                arg_strs.append(f"{prefix}_{a}")
+                raise TypeError(f"Arguments must be variables or functions, got {type(a)}")
 
         return arg_strs
 
