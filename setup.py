@@ -85,8 +85,12 @@ class WarpBDistWheel(bdist_wheel):
         self.platform = ""
 
     def get_tag(self):
-        # The wheel's complete tag format is {python tag}-{abi tag}-{platform tag}.
-        return "py3", "none", wheel_platform.tag
+        if wheel_platform is not None:
+            # The wheel's complete tag format is {python tag}-{abi tag}-{platform tag}.
+            return "py3", "none", wheel_platform.tag
+        else:
+            # The target platform was not overridden. Fall back to base class behavior.
+            return bdist_wheel.get_tag(self)
 
     def run(self):
         super().run()
