@@ -61,13 +61,13 @@ if args.command == "bdist_wheel":
             print("Falling back to auto-detection")
             wheel_platform = None
 
-if wheel_platform is None:
-    if len(detected_platforms) > 1:
-        print("Libraries for multiple platforms were detected. Picking the first one.")
-        print("Run `python -m build --wheel -C--build-option=-P[windows|linux|macos]` to select a specific one.")
-    wheel_platform = next(iter(detected_platforms))
+    if wheel_platform is None:
+        if len(detected_platforms) > 1:
+            print("Libraries for multiple platforms were detected. Picking the first one.")
+            print("Run `python -m build --wheel -C--build-option=-P[windows|linux|macos]` to select a specific one.")
+        wheel_platform = next(iter(detected_platforms))
 
-print("Creating Warp wheel for " + wheel_platform.fancy_name)
+    print("Creating Warp wheel for " + wheel_platform.fancy_name)
 
 
 # Binary wheel distribution builds assume that the platform you're building on will be the platform
@@ -85,8 +85,12 @@ class WarpBDistWheel(bdist_wheel):
         self.platform = ""
 
     def get_tag(self):
-        # The wheel's complete tag format is {python tag}-{abi tag}-{platform tag}.
-        return "py3", "none", wheel_platform.tag
+        if wheel_platform is not None:
+            # The wheel's complete tag format is {python tag}-{abi tag}-{platform tag}.
+            return "py3", "none", wheel_platform.tag
+        else:
+            # The target platform was not overridden. Fall back to base class behavior.
+            return bdist_wheel.get_tag(self)
 
     def run(self):
         super().run()
