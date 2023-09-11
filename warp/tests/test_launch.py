@@ -329,6 +329,43 @@ def test_launch_large_kernel(test, device):
     test.assertEqual(test_result.numpy()[0], half_result)
 
 
+@wp.kernel
+def count_elements(result: wp.array(dtype=wp.uint64)):
+    wp.atomic_add(result, 0, wp.uint64(1))
+
+
+def test_launch_max_blocks(test, device):
+    # Loop over 1000x1x1 elements using a grid of 256 threads
+    test_result = wp.zeros(shape=(1,), dtype=wp.uint64, device=device)
+    wp.launch(count_elements, (1000,), inputs=[test_result], max_blocks=1, device=device)
+    test.assertEqual(test_result.numpy()[0], 1000)
+
+    # Loop over 2x10x10 elements using a grid of 256 threads, using the tid() index to count half the elements
+    test_result.zero_()
+    wp.launch(
+        conditional_sum,
+        (
+            2,
+            50,
+            10,
+        ),
+        inputs=[test_result],
+        max_blocks=1,
+        device=device,
+    )
+    test.assertEqual(test_result.numpy()[0], 500)
+
+
+def test_launch_very_large_kernel(test, device):
+    """Due to the size of the grid, this test is not run on CPUs"""
+
+    # Dim is chosen to be larger than the maximum CUDA one-dimensional grid size (total threads)
+    dim = (2**31 - 1) * 256 + 1
+    test_result = wp.zeros(shape=(1,), dtype=wp.uint64, device=device)
+    wp.launch(count_elements, (dim,), inputs=[test_result], device=device)
+    test.assertEqual(test_result.numpy()[0], dim)
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -347,6 +384,11 @@ def register(parent):
     add_function_test(TestLaunch, "test_launch_cmd_empty", test_launch_cmd_empty, devices=devices)
 
     add_function_test(TestLaunch, "test_launch_large_kernel", test_launch_large_kernel, devices=wp.get_cuda_devices())
+
+    add_function_test(TestLaunch, "test_launch_max_blocks", test_launch_max_blocks, devices=devices)
+    add_function_test(
+        TestLaunch, "test_launch_very_large_kernel", test_launch_very_large_kernel, devices=wp.get_cuda_devices()
+    )
 
     return TestLaunch
 

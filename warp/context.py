@@ -2364,6 +2364,7 @@ class Runtime:
             ctypes.c_void_p,
             ctypes.c_void_p,
             ctypes.c_size_t,
+            ctypes.c_int,
             ctypes.POINTER(ctypes.c_void_p),
         ]
         self.core.cuda_launch_kernel.restype = ctypes.c_size_t
@@ -3172,7 +3173,7 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
 # represents all data required for a kernel launch
 # so that launches can be replayed quickly, use `wp.launch(..., record_cmd=True)`
 class Launch:
-    def __init__(self, kernel, device, hooks=None, params=None, params_addr=None, bounds=None):
+    def __init__(self, kernel, device, hooks=None, params=None, params_addr=None, bounds=None, max_blocks=0):
         # if not specified look up hooks
         if not hooks:
             module = kernel.module
@@ -3209,6 +3210,7 @@ class Launch:
         self.params_addr = params_addr
         self.device = device
         self.bounds = bounds
+        self.max_blocks = max_blocks
 
     def set_dim(self, dim):
         self.bounds = warp.types.launch_bounds_t(dim)
@@ -3274,7 +3276,9 @@ class Launch:
         if self.device.is_cpu:
             self.hooks.forward(*self.params)
         else:
-            runtime.core.cuda_launch_kernel(self.device.context, self.hooks.forward, self.bounds.size, self.params_addr)
+            runtime.core.cuda_launch_kernel(
+                self.device.context, self.hooks.forward, self.bounds.size, self.max_blocks, self.params_addr
+            )
 
 
 def launch(
@@ -3289,6 +3293,7 @@ def launch(
     adjoint=False,
     record_tape=True,
     record_cmd=False,
+    max_blocks=0,
 ):
     """Launch a Warp kernel on the target device
 
@@ -3306,6 +3311,8 @@ def launch(
         adjoint: Whether to run forward or backward pass (typically use False)
         record_tape: When true the launch will be recorded the global wp.Tape() object when present
         record_cmd: When True the launch will be returned as a ``Launch`` command object, the launch will not occur until the user calls ``cmd.launch()``
+        max_blocks: The maximum number of CUDA thread blocks to use. Only has an effect for CUDA kernel launches.
+            If negative or zero, the maximum hardware value will be used.
     """
 
     assert_initialized()
@@ -3399,7 +3406,9 @@ def launch(
                             f"Failed to find backward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
                         )
 
-                    runtime.core.cuda_launch_kernel(device.context, hooks.backward, bounds.size, kernel_params)
+                    runtime.core.cuda_launch_kernel(
+                        device.context, hooks.backward, bounds.size, max_blocks, kernel_params
+                    )
 
                 else:
                     if hooks.forward is None:
@@ -3420,7 +3429,9 @@ def launch(
 
                     else:
                         # launch
-                        runtime.core.cuda_launch_kernel(device.context, hooks.forward, bounds.size, kernel_params)
+                        runtime.core.cuda_launch_kernel(
+                            device.context, hooks.forward, bounds.size, max_blocks, kernel_params
+                        )
 
                 try:
                     runtime.verify_cuda_device(device)
@@ -3430,7 +3441,7 @@ def launch(
 
     # record on tape if one is active
     if runtime.tape and record_tape:
-        runtime.tape.record_launch(kernel, dim, inputs, outputs, device)
+        runtime.tape.record_launch(kernel, dim, max_blocks, inputs, outputs, device)
 
 
 def synchronize():

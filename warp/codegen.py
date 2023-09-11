@@ -1324,7 +1324,11 @@ class Adjoint:
 
     # returns a constant range() if unrollable, otherwise None
     def get_unroll_range(adj, loop):
-        if not isinstance(loop.iter, ast.Call) or not isinstance(loop.iter.func, ast.Name) or loop.iter.func.id != "range":
+        if (
+            not isinstance(loop.iter, ast.Call)
+            or not isinstance(loop.iter.func, ast.Name)
+            or loop.iter.func.id != "range"
+        ):
             return None
 
         for a in loop.iter.args:
@@ -1417,22 +1421,19 @@ class Adjoint:
     def emit_Expr(adj, node):
         return adj.eval(node.value)
 
-    def check_tid_in_func_deprecation(adj, node):
+    def check_tid_in_func_error(adj, node):
         if adj.is_user_function:
             if hasattr(node.func, "attr") and node.func.attr == "tid":
                 lineno = adj.lineno + adj.fun_lineno
                 line = adj.source.splitlines()[adj.lineno]
-
-                warp.utils.warn(
-                    "Calling wp.tid() from a @wp.func is deprecated and will be removed in a future Warp "
-                    "version. Instead, obtain the indices from a @wp.kernel and pass them as "
-                    f"arguments to this function {adj.fun_name}, {adj.filename}:{lineno}:\n{line}\n",
-                    PendingDeprecationWarning,
-                    stacklevel=2,
+                raise RuntimeError(
+                    "tid() may only be called from a Warp kernel, not a Warp function. "
+                    "Instead, obtain the indices from a @wp.kernel and pass them as "
+                    f"arguments to the function {adj.fun_name}, {adj.filename}:{lineno}:\n{line}\n"
                 )
 
     def emit_Call(adj, node):
-        adj.check_tid_in_func_deprecation(node)
+        adj.check_tid_in_func_error(node)
 
         # try and lookup function in globals by
         # resolving path (e.g.: module.submodule.attr)
@@ -1858,6 +1859,11 @@ cpu_module_header = """
 #define int(x) cast_int(x)
 #define adj_int(x, adj_x, adj_ret) adj_cast_int(x, adj_x, adj_ret)
 
+#define builtin_tid1d() wp::tid(s_threadIdx)
+#define builtin_tid2d(x, y) wp::tid(x, y, s_threadIdx, dim)
+#define builtin_tid3d(x, y, z) wp::tid(x, y, z, s_threadIdx, dim)
+#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, s_threadIdx, dim)
+
 using namespace wp;
 
 """
@@ -1873,6 +1879,10 @@ cuda_module_header = """
 #define int(x) cast_int(x)
 #define adj_int(x, adj_x, adj_ret) adj_cast_int(x, adj_x, adj_ret)
 
+#define builtin_tid1d() wp::tid(_idx)
+#define builtin_tid2d(x, y) wp::tid(x, y, _idx, dim)
+#define builtin_tid3d(x, y, z) wp::tid(x, y, z, _idx, dim)
+#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, _idx, dim)
 
 using namespace wp;
 
@@ -1944,24 +1954,18 @@ cuda_kernel_template = """
 extern "C" __global__ void {name}_cuda_kernel_forward(
     {forward_args})
 {{
-    size_t _idx = grid_index();
-    if (_idx >= dim.size)
-        return;
-
-    set_launch_bounds(dim);
-
-{forward_body}}}
+    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
+         _idx < dim.size;
+         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x)) {{
+{forward_body}}}}}
 
 extern "C" __global__ void {name}_cuda_kernel_backward(
     {reverse_args})
 {{
-    size_t _idx = grid_index();
-    if (_idx >= dim.size)
-        return;
-
-    set_launch_bounds(dim);
-
-{reverse_body}}}
+    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
+         _idx < dim.size;
+         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x)) {{
+{reverse_body}}}}}
 
 """
 
@@ -1987,8 +1991,6 @@ extern "C" {{
 WP_API void {name}_cpu_forward(
     {forward_args})
 {{
-    set_launch_bounds(dim);
-
     for (size_t i=0; i < dim.size; ++i)
     {{
         s_threadIdx = i;
@@ -2001,8 +2003,6 @@ WP_API void {name}_cpu_forward(
 WP_API void {name}_cpu_backward(
     {reverse_args})
 {{
-    set_launch_bounds(dim);
-
     for (size_t i=0; i < dim.size; ++i)
     {{
         s_threadIdx = i;
@@ -2191,7 +2191,7 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu"):
     return s
 
 
-def codegen_func_reverse_body(adj, device="cpu", indent=4):
+def codegen_func_reverse_body(adj, device="cpu", indent=4, func_type="kernel"):
     body = []
     indent_block = " " * indent
 
@@ -2209,7 +2209,11 @@ def codegen_func_reverse_body(adj, device="cpu", indent=4):
     for l in reversed(adj.blocks[0].body_reverse):
         body += [l + "\n"]
 
-    body += ["return;\n"]
+    # In grid-stride kernels the reverse body is in a for loop
+    if device == "cuda" and func_type == "kernel":
+        body += ["continue;\n"]
+    else:
+        body += ["return;\n"]
 
     return "".join([indent_block + l for l in body])
 
@@ -2241,9 +2245,9 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
         s += codegen_func_reverse_body(adj, device=device, indent=4)
     elif device == "cuda":
         if func_type == "kernel":
-            s += codegen_func_reverse_body(adj, device=device, indent=8)
+            s += codegen_func_reverse_body(adj, device=device, indent=8, func_type=func_type)
         else:
-            s += codegen_func_reverse_body(adj, device=device, indent=4)
+            s += codegen_func_reverse_body(adj, device=device, indent=4, func_type=func_type)
     else:
         raise ValueError("Device {} not supported for codegen".format(device))
 

@@ -645,7 +645,6 @@ WP_API void builtin_pnoise_uint32_vec4f_int32_int32_int32_int32(uint32 state, ve
 WP_API void builtin_curlnoise_uint32_vec2f(uint32 state, vec2f xy, vec2f* ret) { *ret = curlnoise(state, xy); }
 WP_API void builtin_curlnoise_uint32_vec3f(uint32 state, vec3f xyz, vec3f* ret) { *ret = curlnoise(state, xyz); }
 WP_API void builtin_curlnoise_uint32_vec4f(uint32 state, vec4f xyzt, vec3f* ret) { *ret = curlnoise(state, xyzt); }
-WP_API void builtin_tid(int* ret) { *ret = tid(); }
 WP_API void builtin_index_vec2h_int32(vec2h a, int32 i, float16* ret) { *ret = index(a, i); }
 WP_API void builtin_index_vec3h_int32(vec3h a, int32 i, float16* ret) { *ret = index(a, i); }
 WP_API void builtin_index_vec4h_int32(vec4h a, int32 i, float16* ret) { *ret = index(a, i); }
