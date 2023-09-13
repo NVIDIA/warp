@@ -267,7 +267,7 @@ extern "C"
     WP_API void* cuda_load_module(void* context, const char* ptx);
     WP_API void cuda_unload_module(void* context, void* module);
     WP_API void* cuda_get_kernel(void* context, void* module, const char* name);
-    WP_API size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, void** args);
+    WP_API size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, int max_blocks, void** args);
 
     WP_API void cuda_set_context_restore_policy(bool always_restore);
     WP_API int cuda_get_context_restore_policy();

@@ -1050,34 +1050,8 @@ struct launch_bounds_t
     size_t size;                // total number of threads
 };
 
-#ifdef __CUDACC__
-
-// store launch bounds in shared memory so
-// we can access them from any user func
-// this is to avoid having to explicitly
-// set another piece of __constant__ memory
-// from the host
-__shared__ launch_bounds_t s_launchBounds;
-
-__device__ inline void set_launch_bounds(const launch_bounds_t& b)
-{
-    if (threadIdx.x == 0)
-        s_launchBounds = b;
-
-    __syncthreads();
-}
-
-#else
-
-// for single-threaded CPU we store launch
-// bounds in static memory to share globally
-static launch_bounds_t s_launchBounds;
+#ifndef __CUDACC__
 static size_t s_threadIdx;
-
-inline void set_launch_bounds(const launch_bounds_t& b)
-{
-    s_launchBounds = b;
-}
 #endif
 
 inline CUDA_CALLABLE size_t grid_index()
@@ -1091,10 +1065,8 @@ inline CUDA_CALLABLE size_t grid_index()
 #endif
 }
 
-inline CUDA_CALLABLE int tid()
+inline CUDA_CALLABLE int tid(size_t index)
 {
-    const size_t index = grid_index();
-
     // For the 1-D tid() we need to warn the user if we're about to provide a truncated index
     // Only do this in _DEBUG when called from device to avoid excessive register allocation
 #if defined(_DEBUG) || !defined(__CUDA_ARCH__)
@@ -1105,23 +1077,19 @@ inline CUDA_CALLABLE int tid()
     return static_cast<int>(index);
 }
 
-inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j)
+inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, size_t index, const launch_bounds_t& launch_bounds)
 {
-    const size_t index = grid_index();
-
-    const size_t n = s_launchBounds.shape[1];
+    const size_t n = launch_bounds.shape[1];
 
     // convert to work item
     i = index/n;
     j = index%n;
 }
 
-inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k)
+inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, size_t index, const launch_bounds_t& launch_bounds)
 {
-    const size_t index = grid_index();
-
-    const size_t n = s_launchBounds.shape[1];
-    const size_t o = s_launchBounds.shape[2];
+    const size_t n = launch_bounds.shape[1];
+    const size_t o = launch_bounds.shape[2];
 
     // convert to work item
     i = index/(n*o);
@@ -1129,13 +1097,11 @@ inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k)
     k = index%o;
 }
 
-inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, int& l)
+inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, int& l, size_t index, const launch_bounds_t& launch_bounds)
 {
-    const size_t index = grid_index();
-
-    const size_t n = s_launchBounds.shape[1];
-    const size_t o = s_launchBounds.shape[2];
-    const size_t p = s_launchBounds.shape[3];
+    const size_t n = launch_bounds.shape[1];
+    const size_t o = launch_bounds.shape[2];
+    const size_t p = launch_bounds.shape[3];
 
     // convert to work item
     i = index/(n*o*p);

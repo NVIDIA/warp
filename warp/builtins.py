@@ -2097,6 +2097,8 @@ add_builtin(
     group="Utility",
     doc="""Return the current thread index. Note that this is the *global* index of the thread in the range [0, dim) 
    where dim is the parameter passed to kernel launch.""",
+    namespace="",
+    native_func="builtin_tid1d",
 )
 
 add_builtin(
@@ -2105,6 +2107,8 @@ add_builtin(
     value_type=[int, int],
     group="Utility",
     doc="""Return the current thread indices for a 2d kernel launch. Use ``i,j = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.""",
+    namespace="",
+    native_func="builtin_tid2d",
 )
 
 add_builtin(
@@ -2113,6 +2117,8 @@ add_builtin(
     value_type=[int, int, int],
     group="Utility",
     doc="""Return the current thread indices for a 3d kernel launch. Use ``i,j,k = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.""",
+    namespace="",
+    native_func="builtin_tid3d",
 )
 
 add_builtin(
@@ -2121,6 +2127,8 @@ add_builtin(
     value_type=[int, int, int, int],
     group="Utility",
     doc="""Return the current thread indices for a 4d kernel launch. Use ``i,j,k,l = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.""",
+    namespace="",
+    native_func="builtin_tid4d",
 )
 
 

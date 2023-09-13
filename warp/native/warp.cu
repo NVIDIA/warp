@@ -1841,14 +1841,34 @@ void* cuda_get_kernel(void* context, void* module, const char* name)
     return kernel;
 }
 
-size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, void** args)
+size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, int max_blocks, void** args)
 {
     ContextGuard guard(context);
 
     const int block_dim = 256;
     // CUDA specs up to compute capability 9.0 says the max x-dim grid is 2**31-1, so
     // grid_dim is fine as an int for the near future
-    const int grid_dim = (dim + block_dim - 1)/block_dim;
+    int grid_dim = (dim + block_dim - 1)/block_dim;
+
+    if (max_blocks <= 0) {
+        max_blocks = 2147483647;
+    }
+
+    if (grid_dim < 0)
+    {
+#if defined(_DEBUG)
+        fprintf(stderr, "Warp warning: Overflow in grid dimensions detected for %zu total elements and 256 threads "
+                "per block.\n    Setting block count to %d.\n", dim, max_blocks);
+#endif
+        grid_dim =  max_blocks;
+    }
+    else 
+    {
+        if (grid_dim > max_blocks)
+        {
+            grid_dim = max_blocks;
+        }
+    }
 
     CUresult res = cuLaunchKernel_f(
         (CUfunction)kernel,
