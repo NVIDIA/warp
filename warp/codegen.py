@@ -646,10 +646,9 @@ class Adjoint:
     def end_block(adj):
         return adj.blocks.pop()
 
-    def add_var(adj, type=None, constant=None, name=None):
-        if name is None:
-            index = len(adj.variables)
-            name = str(index)
+    def add_var(adj, type=None, constant=None):
+        index = len(adj.variables)
+        name = str(index)
 
         # allocate new variable
         v = Var(name, type=type, constant=constant)
