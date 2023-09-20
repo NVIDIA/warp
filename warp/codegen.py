@@ -1163,6 +1163,9 @@ class Adjoint:
         return getattr(var_type, attr, None)
 
     def emit_Attribute(adj, node):
+        if hasattr(node, "is_adjoint"):
+            node.value.is_adjoint = True
+
         val = adj.eval(node.value)
 
         try:
@@ -1290,7 +1293,6 @@ class Adjoint:
         # e.g.: wp.constant in the globals scope
         obj, path = adj.resolve_static_expression(a)
         return warp.types.is_int(obj), obj
-
 
     # detects whether a loop contains a break (or continue) statement
     def contains_break(adj, body):
@@ -1517,11 +1519,16 @@ class Adjoint:
         # the ast.Index node appears in 3.7 versions
         # when performing array slices, e.g.: x = arr[i]
         # but in version 3.8 and higher it does not appear
+
+        if hasattr(node, "is_adjoint"):
+            node.value.is_adjoint = True
+
         return adj.eval(node.value)
 
     def emit_Subscript(adj, node):
         if hasattr(node.value, "attr") and node.value.attr == "adjoint":
             # handle adjoint of a variable, i.e. wp.adjoint[var]
+            node.slice.is_adjoint = True
             var = adj.eval(node.slice)
             var_name = var.label
             var = Var(f"adj_{var_name}", type=var.type, constant=None, prefix=False)
@@ -1606,6 +1613,7 @@ class Adjoint:
         elif isinstance(node.targets[0], ast.Subscript):
             if hasattr(node.targets[0].value, "attr") and node.targets[0].value.attr == "adjoint":
                 # handle adjoint of a variable, i.e. wp.adjoint[var]
+                node.targets[0].slice.is_adjoint = True
                 src_var = adj.eval(node.targets[0].slice)
                 var = Var(f"adj_{src_var.label}", type=src_var.type, constant=None, prefix=False)
                 adj.symbols[var.label] = var
