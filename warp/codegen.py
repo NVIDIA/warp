@@ -391,22 +391,26 @@ class Var:
     def __str__(self):
         return self.label
 
-    def ctype(self):
-        if is_array(self.type):
-            if hasattr(self.type.dtype, "_wp_generic_type_str_"):
-                dtypestr = compute_type_str(self.type.dtype._wp_generic_type_str_, self.type.dtype._wp_type_params_)
-            elif isinstance(self.type.dtype, Struct):
-                dtypestr = make_full_qualified_name(self.type.dtype.cls)
+    @staticmethod
+    def type_to_ctype(t):
+        if is_array(t):
+            if hasattr(t.dtype, "_wp_generic_type_str_"):
+                dtypestr = compute_type_str(t.dtype._wp_generic_type_str_, t.dtype._wp_type_params_)
+            elif isinstance(t.dtype, Struct):
+                dtypestr = make_full_qualified_name(t.dtype.cls)
             else:
-                dtypestr = str(self.type.dtype.__name__)
-            classstr = type(self.type).__name__
+                dtypestr = str(t.dtype.__name__)
+            classstr = type(t).__name__
             return f"{classstr}_t<{dtypestr}>"
-        elif isinstance(self.type, Struct):
-            return make_full_qualified_name(self.type.cls)
-        elif hasattr(self.type, "_wp_generic_type_str_"):
-            return compute_type_str(self.type._wp_generic_type_str_, self.type._wp_type_params_)
+        elif isinstance(t, Struct):
+            return make_full_qualified_name(t.cls)
+        elif hasattr(t, "_wp_generic_type_str_"):
+            return compute_type_str(t._wp_generic_type_str_, t._wp_type_params_)
         else:
-            return str(self.type.__name__)
+            return str(t.__name__)
+
+    def ctype(self):
+        return Var.type_to_ctype(self.type)
 
     def emit(self, prefix: str = "var"):
         if self.prefix:
