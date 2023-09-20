@@ -1717,25 +1717,9 @@ class Adjoint:
         adj.add_return(var)
 
     def emit_AugAssign(adj, node):
-        # convert inplace operations (+=, -=, etc) to ssa form, e.g.: c = a + b
-        left = adj.eval(node.target)
-
-        if left.is_adjoint:
-            # replace augassign with assignment statement + binary op
-            new_node = ast.Assign(targets=[node.target], value=ast.BinOp(node.target, node.op, node.value))
-            adj.eval(new_node)
-            return
-
-        right = adj.eval(node.value)
-
-        # lookup
-        name = builtin_operators[type(node.op)]
-        func = warp.context.builtin_functions[name]
-
-        out = adj.add_call(func, [left, right])
-
-        # update symbol map
-        adj.symbols[node.target.id] = out
+        # replace augmented assignment with assignment statement + binary op
+        new_node = ast.Assign(targets=[node.target], value=ast.BinOp(node.target, node.op, node.value))
+        adj.eval(new_node)
 
     def emit_Tuple(adj, node):
         # LHS for expressions, such as i, j, k = 1, 2, 3
