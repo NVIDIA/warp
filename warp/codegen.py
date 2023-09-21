@@ -375,7 +375,7 @@ def compute_type_str(base_name, template_params):
 
 
 class Var:
-    def __init__(self, label, type, requires_grad=False, constant=None, prefix=True, is_adjoint=False):
+    def __init__(self, label, type, requires_grad=False, constant=None, prefix=True):
         # convert built-in types to wp types
         if type == float:
             type = float32
@@ -387,7 +387,6 @@ class Var:
         self.requires_grad = requires_grad
         self.constant = constant
         self.prefix = prefix
-        self.is_adjoint = is_adjoint
 
     def __str__(self):
         return self.label
@@ -1525,7 +1524,7 @@ class Adjoint:
             # handle adjoint of a variable, i.e. wp.adjoint[var]
             var = adj.eval(node.slice)
             var_name = var.label
-            var = Var(f"adj_{var_name}", type=var.type, constant=None, prefix=False, is_adjoint=True)
+            var = Var(f"adj_{var_name}", type=var.type, constant=None, prefix=False)
             adj.symbols[var.label] = var
             return var
 
@@ -1561,7 +1560,6 @@ class Adjoint:
             # handles non-array type indexing, e.g: vec3, mat33, etc
             out = adj.add_call(warp.context.builtin_functions["index"], [target, *indices])
 
-        out.is_adjoint = target.is_adjoint
         return out
 
     def emit_Assign(adj, node):
