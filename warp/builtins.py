@@ -712,9 +712,9 @@ def matrix_constructor_func(arg_types, kwds, templates):
 
             if len(arg_types) == 1 and getattr(dtype, "_wp_generic_type_str_", None) == "mat_t":
                 # constructor from another matrix
-                if types[0]._shape_ != shape:
+                if arg_types[0]._shape_ != shape:
                     raise RuntimeError(
-                        f"Incompatible matrix sizes for casting copy constructor, {shape} vs {types[0]._shape_}"
+                        f"Incompatible matrix sizes for casting copy constructor, {shape} vs {arg_types[0]._shape_}"
                     )
                 dtype = dtype._wp_scalar_type_
             elif len(arg_types) > 1 and len(arg_types) != shape[0] * shape[1]:
@@ -732,12 +732,11 @@ def matrix_constructor_func(arg_types, kwds, templates):
         dtype = templates[2]
 
         if len(arg_types) > 0:
-            types = [t for t in arg_types]
-            if len(arg_types) == 1 and getattr(types[0], "_wp_generic_type_str_", None) == "mat_t":
+            if len(arg_types) == 1 and getattr(arg_types[0], "_wp_generic_type_str_", None) == "mat_t":
                 # constructor from another matrix with same dimension but possibly different type
-                if types[0]._shape_ != shape:
+                if arg_types[0]._shape_ != shape:
                     raise RuntimeError(
-                        f"Incompatible matrix sizes for casting copy constructor, {shape} vs {types[0]._shape_}"
+                        f"Incompatible matrix sizes for casting copy constructor, {shape} vs {arg_types[0]._shape_}"
                     )
             else:
                 # check scalar arg type matches declared type
@@ -745,14 +744,14 @@ def matrix_constructor_func(arg_types, kwds, templates):
                     raise RuntimeError("Wrong scalar type for mat {} constructor".format(",".join(map(str, templates))))
 
                 # check vector arg type matches declared type
-                if all(hasattr(a, "_wp_generic_type_str_") and a._wp_generic_type_str_ == "vec_t" for a in types):
-                    cols = len(types)
+                if all(hasattr(a, "_wp_generic_type_str_") and a._wp_generic_type_str_ == "vec_t" for a in arg_types):
+                    cols = len(arg_types)
                     if shape[1] != cols:
                         raise RuntimeError(
                             "Wrong number of vectors when attempting to construct a matrix with column vectors"
                         )
 
-                    if not all(a._length_ == shape[0] for a in types):
+                    if not all(a._length_ == shape[0] for a in arg_types):
                         raise RuntimeError(
                             "Wrong vector row count when attempting to construct a matrix with column vectors"
                         )
