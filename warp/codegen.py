@@ -534,7 +534,7 @@ class Adjoint:
         adj.loop_blocks = []
 
         # holds current indent level
-        adj.prefix = ""
+        adj.indentation = ""
 
         # used to generate new label indices
         adj.label_count = 0
@@ -631,10 +631,10 @@ class Adjoint:
         return arg_str
 
     def indent(adj):
-        adj.prefix = adj.prefix + "    "
+        adj.indentation = adj.indentation + "    "
 
     def dedent(adj):
-        adj.prefix = adj.prefix[:-4]
+        adj.indentation = adj.indentation[:-4]
 
     def begin_block(adj):
         b = Block()
@@ -664,19 +664,19 @@ class Adjoint:
 
     # append a statement to the forward pass
     def add_forward(adj, statement, replay=None, skip_replay=False):
-        adj.blocks[-1].body_forward.append(adj.prefix + statement)
+        adj.blocks[-1].body_forward.append(adj.indentation + statement)
 
         if not skip_replay:
             if replay:
                 # if custom replay specified then output it
-                adj.blocks[-1].body_replay.append(adj.prefix + replay)
+                adj.blocks[-1].body_replay.append(adj.indentation + replay)
             else:
                 # by default just replay the original statement
-                adj.blocks[-1].body_replay.append(adj.prefix + statement)
+                adj.blocks[-1].body_replay.append(adj.indentation + statement)
 
     # append a statement to the reverse pass
     def add_reverse(adj, statement):
-        adj.blocks[-1].body_reverse.append(adj.prefix + statement)
+        adj.blocks[-1].body_reverse.append(adj.indentation + statement)
 
     def add_constant(adj, n):
         output = adj.add_var(type=type(n), constant=n)
@@ -959,14 +959,14 @@ class Adjoint:
         reverse = []
 
         # reverse iterator
-        reverse.append(adj.prefix + f"{iter.emit()} = wp::iter_reverse({iter.emit()});")
+        reverse.append(adj.indentation + f"{iter.emit()} = wp::iter_reverse({iter.emit()});")
 
         for i in cond_block.body_forward:
             reverse.append(i)
 
         # zero adjoints
         for i in body_block.vars:
-            reverse.append(adj.prefix + f"\t{i.emit('adj')} = {{}};")
+            reverse.append(adj.indentation + f"\t{i.emit('adj')} = {{}};")
 
         # replay
         for i in body_block.body_replay:
@@ -976,8 +976,8 @@ class Adjoint:
         for i in reversed(body_block.body_reverse):
             reverse.append(i)
 
-        reverse.append(adj.prefix + f"\tgoto for_start_{cond_block.label};")
-        reverse.append(adj.prefix + f"for_end_{cond_block.label}:;")
+        reverse.append(adj.indentation + f"\tgoto for_start_{cond_block.label};")
+        reverse.append(adj.indentation + f"for_end_{cond_block.label}:;")
 
         adj.blocks[-1].body_reverse.extend(reversed(reverse))
 
@@ -1886,7 +1886,7 @@ class Adjoint:
     def set_lineno(adj, lineno):
         if adj.lineno is None or adj.lineno != lineno:
             line = lineno + adj.fun_lineno
-            source = adj.raw_source[lineno].strip().ljust(80 - len(adj.prefix), " ")
+            source = adj.raw_source[lineno].strip().ljust(80 - len(adj.indentation), " ")
             adj.add_forward(f"// {source}       <L {line}>")
             adj.add_reverse(f"// adj: {source}  <L {line}>")
         adj.lineno = lineno
