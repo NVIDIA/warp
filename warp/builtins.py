@@ -9,6 +9,7 @@ import builtins
 from typing import Any, Callable, Dict, List, Tuple
 
 from warp.types import *
+from warp.codegen import Reference
 
 from .context import add_builtin
 
@@ -2230,7 +2231,7 @@ def load_value_func(arg_types, kwds, _):
         if not type_is_int(t):
             raise RuntimeError(f"load() index arguments must be of integer type, got index of type {t}")
 
-    return arg_types[0].dtype
+    return Reference(arg_types[0].dtype)
 
 
 # does argument checking and type propagation for view()
@@ -2294,7 +2295,7 @@ def store_value_func(arg_types, kwds, _):
     return None
 
 
-add_builtin("load", variadic=True, hidden=True, value_func=load_value_func, group="Utility")
+add_builtin("address", variadic=True, hidden=True, value_func=load_value_func, group="Utility")
 add_builtin("view", variadic=True, hidden=True, value_func=view_value_func, group="Utility")
 add_builtin("store", variadic=True, hidden=True, value_func=store_value_func, skip_replay=True, group="Utility")
 
