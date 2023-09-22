@@ -418,6 +418,9 @@ class Var:
         else:
             return self.label
 
+    def emit_adj(self):
+        return self.emit("adj")
+
 
 class Block:
     # Represents a basic block of instructions, e.g.: list
@@ -966,7 +969,7 @@ class Adjoint:
 
         # zero adjoints
         for i in body_block.vars:
-            reverse.append(adj.indentation + f"\t{i.emit('adj')} = {{}};")
+            reverse.append(adj.indentation + f"\t{i.emit_adj()} = {{}};")
 
         # replay
         for i in body_block.body_replay:
@@ -1025,7 +1028,7 @@ class Adjoint:
 
         # zero adjoints of local vars
         for i in body_block.vars:
-            reverse.append(f"{i.emit('adj')} = {{}};")
+            reverse.append(f"{i.emit_adj()} = {{}};")
 
         # replay
         for i in body_block.body_replay:
@@ -2287,7 +2290,7 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
     s += "    // dual vars\n"
 
     for var in adj.variables:
-        s += f"    {var.ctype()} {var.emit('adj')} = {{}};\n"
+        s += f"    {var.ctype()} {var.emit_adj()} = {{}};\n"
 
     if device == "cpu":
         s += codegen_func_reverse_body(adj, device=device, indent=4)
