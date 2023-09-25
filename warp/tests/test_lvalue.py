@@ -310,6 +310,49 @@ def test_array_struct_struct_assign(test, device):
             raise AssertionError(f"Unexpected result, got: {f} expected: {expected}")
 
 
+@wp.struct
+class S:
+    a: wp.uint32
+    b: wp.float32
+
+
+@wp.struct
+class F:
+    x: wp.float32
+    s: S
+    y: wp.int32
+
+
+@wp.kernel
+def complex_kernel(foos: wp.array(dtype=F)):
+    i = wp.tid()
+    foos[i].x += wp.float32(1.0)
+    foos[i].y = wp.int32(2)
+    foos[i].s.b += wp.float32(3.0)
+    foos[i].s.a = wp.uint32(foos[i].y)
+
+
+def test_complex(test, device):
+    foos = wp.zeros((10,), dtype=F, device=device)
+
+    wp.launch(
+        kernel=complex_kernel,
+        dim=(10,),
+        inputs=[foos],
+        device=device,
+    )
+    wp.synchronize()
+
+    expected = F()
+    expected.x = 1.0
+    expected.y = 2
+    expected.s.b = 3.0
+    expected.s.a = expected.y
+    for f in foos.list():
+        if f.x != expected.x or f.y != expected.y or f.s.a != expected.s.a or f.s.b != expected.s.b:
+            raise AssertionError(f"Unexpected result, got: {f} expected: {expected}")
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -326,6 +369,7 @@ def register(parent):
     add_function_test(TestLValue, "test_array_assign", test_array_assign, devices=devices)
     add_function_test(TestLValue, "test_array_struct_assign", test_array_struct_assign, devices=devices)
     add_function_test(TestLValue, "test_array_struct_struct_assign", test_array_struct_struct_assign, devices=devices)
+    add_function_test(TestLValue, "test_complex", test_complex, devices=devices)
 
     return TestLValue
 

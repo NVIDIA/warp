@@ -1616,6 +1616,9 @@ class Adjoint:
         return out
 
     def emit_Assign(adj, node):
+        if len(node.targets) != 1:
+            raise RuntimeError("Assigning the same value to multiple variable is not supported")
+
         # handle the case where we are assigning multiple output variables
         if isinstance(node.targets[0], ast.Tuple):
             # record the expected number of outputs on the node
@@ -1678,7 +1681,6 @@ class Adjoint:
                 for arg in slice.elts:
                     var = adj.eval(arg)
                     indices.append(var)
-
             elif isinstance(slice, ast.Index) and isinstance(slice.value, ast.Tuple):
                 # handles the x[i, j] case (Python 3.7.x)
                 for arg in slice.value.elts:
