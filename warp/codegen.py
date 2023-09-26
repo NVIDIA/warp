@@ -1907,7 +1907,7 @@ class Adjoint:
                 var = adj.eval(operator_args[0])
 
                 if isinstance(var, Var):
-                    var_type = var.type
+                    var_type = strip_reference(var.type)
                     # Allow accessing type attributes, for instance array.dtype
                     while attributes:
                         var_type = adj.resolve_type_attribute(var_type, attributes.pop())
