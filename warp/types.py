@@ -1060,9 +1060,16 @@ def type_repr(t):
         return str(f"array(ndim={t.ndim}, dtype={t.dtype})")
     if type_is_vector(t):
         return str(f"vector(length={t._shape_[0]}, dtype={t._wp_scalar_type_})")
-    elif type_is_matrix(t):
+    if type_is_matrix(t):
         return str(f"matrix(shape=({t._shape_[0]}, {t._shape_[1]}), dtype={t._wp_scalar_type_})")
-    else:
+    if type_is_struct(t):
+        return type_repr(t.cls)
+    if t in scalar_types:
+        return t.__name__
+
+    try:
+        return t.__module__ + "." + t.__qualname__
+    except AttributeError:
         return str(t)
 
 

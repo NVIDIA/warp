@@ -1251,7 +1251,7 @@ class Module:
             if isinstance(node, ast.Call):
                 try:
                     # try to resolve the function
-                    func, _ = adj.resolve_path(node.func)
+                    func, _ = adj.resolve_static_expression(node.func, eval_types=False)
 
                     # if this is a user-defined function, add a module reference
                     if isinstance(func, warp.context.Function) and func.module is not None:

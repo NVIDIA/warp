@@ -697,15 +697,22 @@ def _bsr_mv_kernel(
     y: wp.array(dtype=Any),
 ):
     row = wp.tid()
-    beg = A_offsets[row]
-    end = A_offsets[row + 1]
 
-    yr = y[row]
-    v = yr - yr  # WAR to get zero with correct type
-    for block in range(beg, end):
-        v = v + A_values[block] * x[A_columns[block]]
+    # zero-initialize with type of y elements
+    scalar_zero = type(alpha)(0)
+    v = y.dtype(scalar_zero)
 
-    y[row] = beta * yr + alpha * v
+    if alpha != scalar_zero:
+        beg = A_offsets[row]
+        end = A_offsets[row + 1]
+        for block in range(beg, end):
+            v += A_values[block] * x[A_columns[block]]
+        v *= alpha
+
+    if beta != scalar_zero:
+        v += beta * y[row]
+
+    y[row] = v
 
 
 def bsr_mv(A: BsrMatrix, x: wp.array, y: wp.array, alpha: float = 1.0, beta: float = 0.0):
