@@ -501,6 +501,7 @@ class Adjoint:
             adj.arg_types = overload_annotations.copy()
 
         adj.args = []
+        adj.symbols = {}
 
         for name, type in adj.arg_types.items():
             # skip return hint
@@ -510,6 +511,10 @@ class Adjoint:
             # add variable for argument
             arg = Var(name, type, False)
             adj.args.append(arg)
+
+            # pre-populate symbol dictionary with function argument names
+            # this is to avoid registering false references to overshadowed modules
+            adj.symbols[name] = arg
 
     # generate function ssa form and adjoint
     def build(adj, builder):
@@ -768,10 +773,8 @@ class Adjoint:
                         arg_type = x.type[0]
                     else:
                         arg_type = x.type
-                    if arg_type.__module__ == "warp.types":
-                        arg_types.append(arg_type.__name__)
-                    else:
-                        arg_types.append(arg_type.__module__ + "." + arg_type.__name__)
+
+                    arg_types.append(type_repr(arg_type))
 
                 if isinstance(x, warp.context.Function):
                     arg_types.append("function")
@@ -796,6 +799,7 @@ class Adjoint:
             adj.builder.build_function(func)
 
         # evaluate the function type based on inputs
+
         value_type = func.value_func(arg_types, kwds, templates)
 
         func_name = compute_type_str(func.native_func, templates)
@@ -1150,10 +1154,20 @@ class Adjoint:
         # pass it back to the caller for processing
         return obj
 
-    def emit_Attribute(adj, node):
-        try:
-            val = adj.eval(node.value)
+    @staticmethod
+    def resolve_type_attribute(var_type: type, attr: str):
+        if isinstance(var_type, type) and type_is_value(var_type):
+            if attr == "dtype":
+                return type_scalar_type(var_type)
+            elif attr == "length":
+                return type_length(var_type)
 
+        return getattr(var_type, attr, None)
+
+    def emit_Attribute(adj, node):
+        val = adj.eval(node.value)
+
+        try:
             if isinstance(val, types.ModuleType) or isinstance(val, type):
                 out = getattr(val, node.attr)
 
@@ -1168,8 +1182,15 @@ class Adjoint:
 
             return Var(attr_name, attr_type)
 
-        except KeyError:
-            raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{val.label}' ({val.type})")
+        except (KeyError, AttributeError):
+            # Try resolving as type attribute
+            if isinstance(val, Var):
+                val = val.type
+            val = adj.resolve_type_attribute(val, node.attr)
+            if val is not None:
+                return val
+
+            raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{val.label}' ({type_repr(val.type)})")
 
     def emit_String(adj, node):
         # string constant
@@ -1261,35 +1282,17 @@ class Adjoint:
 
         adj.end_while()
 
-    def is_num(adj, a):
-        # simple constant
-        if isinstance(a, ast.Num):
-            return True
-        # expression of form -constant
-        elif isinstance(a, ast.UnaryOp) and isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num):
-            return True
-        else:
-            # try and resolve the expression to an object
-            # e.g.: wp.constant in the globals scope
-            obj, path = adj.resolve_path(a)
-            if warp.types.is_int(obj):
-                return True
-            else:
-                return False
-
     def eval_num(adj, a):
         if isinstance(a, ast.Num):
-            return a.n
-        elif isinstance(a, ast.UnaryOp) and isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num):
-            return -a.operand.n
-        else:
-            # try and resolve the expression to an object
-            # e.g.: wp.constant in the globals scope
-            obj, path = adj.resolve_path(a)
-            if warp.types.is_int(obj):
-                return obj
-            else:
-                return False
+            return True, a.n
+        if isinstance(a, ast.UnaryOp) and isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num):
+            return True, -a.operand.n
+
+        # try and resolve the expression to an object
+        # e.g.: wp.constant in the globals scope
+        obj, path = adj.resolve_static_expression(a)
+        return warp.types.is_int(obj), obj
+
 
     # detects whether a loop contains a break (or continue) statement
     def contains_break(adj, body):
@@ -1316,58 +1319,75 @@ class Adjoint:
             not isinstance(loop.iter, ast.Call)
             or not isinstance(loop.iter.func, ast.Name)
             or loop.iter.func.id != "range"
+            or len(loop.iter.args) == 0
+            or len(loop.iter.args) > 3
         ):
             return None
 
-        for a in loop.iter.args:
-            # if all range() arguments are numeric constants we will unroll
-            # note that this only handles trivial constants, it will not unroll
-            # constant compile-time expressions e.g.: range(0, 3*2)
-            if not adj.is_num(a):
-                return None
+        # if all range() arguments are numeric constants we will unroll
+        # note that this only handles trivial constants, it will not unroll
+        # constant compile-time expressions e.g.: range(0, 3*2)
 
-        # range(end)
-        if len(loop.iter.args) == 1:
-            start = 0
-            end = adj.eval_num(loop.iter.args[0])
-            step = 1
+        # Evaluate the arguments and check that they are numeric constants
+        # It is important to do that in one pass, so that if evaluating these arguments have side effects
+        # the code does not get generated more than once
+        range_args = [adj.eval_num(arg) for arg in loop.iter.args]
+        arg_is_numeric, arg_values = zip(*range_args)
 
-        # range(start, end)
-        elif len(loop.iter.args) == 2:
-            start = adj.eval_num(loop.iter.args[0])
-            end = adj.eval_num(loop.iter.args[1])
-            step = 1
+        if all(arg_is_numeric):
+            # All argument are numeric constants
 
-        # range(start, end, step)
-        elif len(loop.iter.args) == 3:
-            start = adj.eval_num(loop.iter.args[0])
-            end = adj.eval_num(loop.iter.args[1])
-            step = adj.eval_num(loop.iter.args[2])
+            # range(end)
+            if len(loop.iter.args) == 1:
+                start = 0
+                end = arg_values[0]
+                step = 1
 
-        # test if we're above max unroll count
-        max_iters = abs(end - start) // abs(step)
-        max_unroll = adj.builder.options["max_unroll"]
+            # range(start, end)
+            elif len(loop.iter.args) == 2:
+                start = arg_values[0]
+                end = arg_values[1]
+                step = 1
 
-        if max_iters > max_unroll:
-            if warp.config.verbose:
-                print(
-                    f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop."
-                )
-            return None
+            # range(start, end, step)
+            elif len(loop.iter.args) == 3:
+                start = arg_values[0]
+                end = arg_values[1]
+                step = arg_values[2]
 
-        if adj.contains_break(loop.body):
-            if warp.config.verbose:
-                print("Warning: 'break' or 'continue' found in loop body, will generate dynamic loop.")
-            return None
+            # test if we're above max unroll count
+            max_iters = abs(end - start) // abs(step)
+            max_unroll = adj.builder.options["max_unroll"]
 
-        # unroll
-        return range(start, end, step)
+            ok_to_unroll = True
+
+            if max_iters > max_unroll:
+                if warp.config.verbose:
+                    print(
+                        f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop."
+                    )
+                ok_to_unroll = False
+
+            elif adj.contains_break(loop.body):
+                if warp.config.verbose:
+                    print("Warning: 'break' or 'continue' found in loop body, will generate dynamic loop.")
+                ok_to_unroll = False
+
+            if ok_to_unroll:
+                return range(start, end, step)
+
+        # Unroll is not possible, range needs to be valuated dynamically
+        range_call = adj.add_call(
+            warp.context.builtin_functions["range"],
+            [adj.add_constant(val) if is_numeric else val for is_numeric, val in range_args],
+        )
+        return range_call
 
     def emit_For(adj, node):
         # try and unroll simple range() statements that use constant args
         unroll_range = adj.get_unroll_range(node)
 
-        if unroll_range:
+        if isinstance(unroll_range, range):
             for i in unroll_range:
                 const_iter = adj.add_constant(i)
                 var_iter = adj.add_call(warp.context.builtin_functions["int"], [const_iter])
@@ -1379,8 +1399,12 @@ class Adjoint:
 
         # otherwise generate a dynamic loop
         else:
-            # evaluate the Iterable
-            iter = adj.eval(node.iter)
+            # evaluate the Iterable -- only if not previously evaluated when trying to unroll
+            if unroll_range is not None:
+                # Range has already been evaluated when trying to unroll, do not re-evaluate
+                iter = unroll_range
+            else:
+                iter = adj.eval(node.iter)
 
             adj.symbols[node.target.id] = adj.begin_for(iter)
 
@@ -1425,7 +1449,7 @@ class Adjoint:
 
         # try and lookup function in globals by
         # resolving path (e.g.: module.submodule.attr)
-        func, path = adj.resolve_path(node.func)
+        func, path = adj.resolve_static_expression(node.func)
         templates = []
 
         if not isinstance(func, warp.context.Function):
@@ -1471,9 +1495,14 @@ class Adjoint:
             if isinstance(kw.value, ast.Num):
                 return kw.value.n
             elif isinstance(kw.value, ast.Tuple):
-                return tuple(adj.eval_num(e) for e in kw.value.elts)
+                arg_is_numeric, arg_values = zip(*(adj.eval_num(e) for e in kw.value.elts))
+                if not all(arg_is_numeric):
+                    raise RuntimeError(
+                        f"All elements of the tuple keyword argument '{kw.name}' must be numeric constants, got '{arg_values}'"
+                    )
+                return arg_values
             else:
-                return adj.resolve_path(kw.value)[0]
+                return adj.resolve_static_expression(kw.value)[0]
 
         kwds = {kw.arg: kwval(kw) for kw in node.keywords}
 
@@ -1754,21 +1783,13 @@ class Adjoint:
 
     # helper to evaluate expressions of the form
     # obj1.obj2.obj3.attr in the function's global scope
-    def resolve_path(adj, node):
-        modules = []
-
-        while isinstance(node, ast.Attribute):
-            modules.append(node.attr)
-            node = node.value
-
-        if isinstance(node, ast.Name):
-            modules.append(node.id)
-
-        # reverse list since ast presents it backward order
-        path = [*reversed(modules)]
-
+    def resolve_path(adj, path):
         if len(path) == 0:
-            return None, path
+            return None
+
+        # if root is overshadowed by local symbols, bail out
+        if path[0] in adj.symbols:
+            return None
 
         # try and evaluate object path
         try:
@@ -1789,8 +1810,8 @@ class Adjoint:
 
             vars_dict = {**adj.func.__globals__, **capturedvars}
             func = eval(".".join(path), vars_dict)
-            return func, path
-        except Exception:
+            return func
+        except Exception as e:
             pass
 
         # I added this so people can eg do this kind of thing
@@ -1803,15 +1824,76 @@ class Adjoint:
         # needs to be looked up by digging some information out of the
         # python object it actually came from.
 
-        # Before this fix, resolve_path was returning None, as the
+        # Before this fix, resolve_static_expression was returning None, as the
         # "vec3" symbol is not available. In this situation I'm assuming
         # it's a member of the warp module and trying to look it up:
         try:
             evalstr = ".".join(["warp"] + path)
             func = eval(evalstr, {"warp": warp})
-            return func, path
+            return func
         except Exception:
-            return None, path
+            pass
+
+        return None
+
+    # Evaluates a static expression that does not depend on runtime values
+    # if eval_types is True, try resolving the path using evaluated type information as well
+    def resolve_static_expression(adj, root_node, eval_types=True):
+        attributes = []
+
+        node = root_node
+        while isinstance(node, ast.Attribute):
+            attributes.append(node.attr)
+            node = node.value
+
+        if eval_types and isinstance(node, ast.Call):
+            # support for operators returning modules
+            # i.e. operator_name(*operator_args).x.y.z
+            operator_args = node.args
+            operator_name = getattr(node.func, "id", None)
+
+            if operator_name is None:
+                raise RuntimeError(
+                    f"Invalid operator call syntax, expected a plain name, got {ast.dump(node.func, annotate_fields=False)}"
+                )
+
+            if operator_name == "type":
+                if len(operator_args) != 1:
+                    raise RuntimeError(f"type() operator expects exactly one argument, got {len(operator_args)}")
+
+                # type() operator
+                var = adj.eval(operator_args[0])
+
+                if isinstance(var, Var):
+                    var_type = var.type
+                    # Allow accessing type attributes, for instance array.dtype
+                    while attributes:
+                        var_type = adj.resolve_type_attribute(var_type, attributes.pop())
+                    return var_type, [type_repr(var_type)]
+                else:
+                    raise RuntimeError(f"Cannot deduce the type of {var}")
+
+            raise RuntimeError(f"Unknown operator '{operator_name}'")
+
+        # reverse list since ast presents it backward order
+        path = [*reversed(attributes)]
+        if isinstance(node, ast.Name):
+            path.insert(0, node.id)
+
+        # Try resolving path from captured context
+        captured_obj = adj.resolve_path(path)
+        if captured_obj is not None:
+            return captured_obj, path
+
+        # Still nothing found, maybe this is a predefined type attribute like `dtype`
+        if eval_types:
+            try:
+                val = adj.eval(root_node)
+                return [val, type_repr(val)]
+            except Exception:
+                pass
+
+        return None, path
 
     # annotate generated code with the original source code line
     def set_lineno(adj, lineno):
