@@ -36,6 +36,11 @@ PROPS = (
     "inputs:clothEdgeDampingStiffness",
     "inputs:colliderContactDistance",
     "inputs:colliderContactQueryRange",
+    "inputs:springElasticStiffness",
+    "inputs:springDampingStiffness",
+    "inputs:springVisualize",
+    "inputs:springVisualizeColor",
+    "inputs:springVisualizeWidth",
     "inputs:groundEnabled",
     "inputs:groundAltitude",
 )

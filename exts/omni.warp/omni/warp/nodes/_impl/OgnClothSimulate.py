@@ -83,6 +83,16 @@ def update_contacts_kernel(
     out_points[tid] = points[tid] + velocities[tid] * sim_dt
 
 
+def basis_curve_points_from_springs_kernel(
+    points: wp.array(dtype=wp.vec3),
+    indices: wp.array(dtype=int),
+    out_points: wp.array(dtype=wp.vec3),
+):
+    tid = wp.tid()
+    idx = indices[tid]
+    out_points[tid] = points[idx]
+
+
 #   Internal State
 # ------------------------------------------------------------------------------
 
@@ -104,6 +114,7 @@ class InternalState:
         self.collider_points_1 = None
         self.graph = None
 
+        self.visualization_enabled = False
         self.sim_enabled = True
         self.time = 0.0
 
@@ -204,6 +215,16 @@ class InternalState:
             (len(builder.particle_mass),),
             avg_mass,
         )
+
+        # Register any spring constraint.
+        for src_idx, dst_idx in db.inputs.springIndexPairs:
+            builder.add_spring(
+                src_idx,
+                dst_idx,
+                ke=db.inputs.springElasticStiffness,
+                kd=db.inputs.springDampingStiffness,
+                control=1.0,
+            )
 
         if db.inputs.collider.valid:
             # Retrieve some data from the collider mesh.
@@ -514,6 +535,77 @@ def compute(db: OgnClothSimulateDatabase, device: wp.context.Device) -> None:
 
         # Increment the simulation tick.
         state.sim_tick += 1
+
+    # Clear any previous visualization data.
+    if state.visualization_enabled:
+        db.outputs.visualization.bundle.clear_contents()
+        state.visualization_enabled = False
+
+    # Each type of visualization goes into its own primitive.
+    visualization_prim = 0
+
+    # Visualize the spring constraints as curves.
+    if db.inputs.springVisualize and db.inputs.springIndexPairs.size > 0:
+        spring_indices = omni.warp.nodes.from_omni_graph(
+            db.inputs.springIndexPairs,
+            dtype=int,
+            shape=(db.inputs.springIndexPairs.size,)
+        )
+
+        # Create a new set of geometry curves within the output bundle.
+        omni.warp.nodes.basis_curves_create_bundle(
+            db.outputs.visualization,
+            len(db.inputs.springIndexPairs) * 2,
+            len(db.inputs.springIndexPairs),
+            type="linear",
+            xform=omni.warp.nodes.bundle_get_world_xform(db.outputs.cloth),
+            create_display_color=True,
+            create_widths=True,
+            child_idx=visualization_prim,
+        )
+
+        # Set the curve point positions by looking up the model's particles
+        # with the spring indices.
+        out_points = omni.warp.nodes.basis_curves_get_points(
+            db.outputs.visualization,
+            child_idx=visualization_prim,
+        )
+        wp.launch(
+            kernel=basis_curve_points_from_springs_kernel,
+            dim=len(out_points),
+            inputs=[
+                state.state_0.particle_q,
+                spring_indices,
+            ],
+            outputs=[
+                out_points,
+            ],
+        )
+
+        # Set the number of points per curve. Each curve represents a constraint
+        # between 2 points, so we set them all to a length of 2.
+        out_counts = omni.warp.nodes.basis_curves_get_curve_vertex_counts(
+            db.outputs.visualization,
+            child_idx=visualization_prim,
+        )
+        out_counts.fill_(2)
+
+        # Set the curve widths.
+        out_widths = omni.warp.nodes.basis_curves_get_widths(
+            db.outputs.visualization,
+            child_idx=visualization_prim,
+        )
+        out_widths.fill_(db.inputs.springVisualizeWidth)
+
+        # Set the curve colours.
+        out_colors = omni.warp.nodes.basis_curves_get_display_color(
+            db.outputs.visualization,
+            child_idx=visualization_prim,
+        )
+        out_colors.fill_(wp.vec3(db.inputs.springVisualizeColor))
+
+        # Store whether any visualization was last enabled.
+        state.visualization_enabled = True
 
     # Store whether the simulation was last enabled.
     state.sim_enabled = True
