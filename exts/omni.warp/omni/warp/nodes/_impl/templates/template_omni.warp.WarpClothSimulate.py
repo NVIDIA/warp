@@ -32,6 +32,8 @@ PROPS = (
     "inputs:clothTriElasticStiffness",
     "inputs:clothTriAreaStiffness",
     "inputs:clothTriDampingStiffness",
+    "inputs:clothTriDrag",
+    "inputs:clothTriLift",
     "inputs:clothEdgeBendingStiffness",
     "inputs:clothEdgeDampingStiffness",
     "inputs:colliderContactDistance",

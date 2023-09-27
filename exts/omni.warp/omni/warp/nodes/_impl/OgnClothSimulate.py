@@ -205,6 +205,8 @@ class InternalState:
             tri_ke=db.inputs.clothTriElasticStiffness * db.inputs.globalScale,
             tri_ka=db.inputs.clothTriAreaStiffness * db.inputs.globalScale,
             tri_kd=db.inputs.clothTriDampingStiffness * db.inputs.globalScale,
+            tri_drag=db.inputs.clothTriDrag * db.inputs.globalScale,
+            tri_lift=db.inputs.clothTriLift * db.inputs.globalScale,
             edge_ke=db.inputs.clothEdgeBendingStiffness * db.inputs.globalScale,
             edge_kd=db.inputs.clothEdgeDampingStiffness * db.inputs.globalScale,
         )

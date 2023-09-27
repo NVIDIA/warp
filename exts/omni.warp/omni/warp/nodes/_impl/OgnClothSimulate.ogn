@@ -117,6 +117,24 @@
                     "min": 0.0
                 }
             },
+            "clothTriDrag": {
+                "type": "float",
+                "description": "Triangle drag force. Multiple of the global scale value.",
+                "uiName": "Cloth Triangle Drag",
+                "default": 0.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "clothTriLift": {
+                "type": "float",
+                "description": "Triangle lift force. Multiple of the global scale value.",
+                "uiName": "Cloth Triangle Lift",
+                "default": 0.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
             "clothEdgeBendingStiffness": {
                 "type": "float",
                 "description": "Edge bending stiffness. Multiple of the global scale value.",
