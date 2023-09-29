@@ -1060,7 +1060,7 @@ def type_repr(t):
         return str(f"vector(length={t._shape_[0]}, dtype={t._wp_scalar_type_})")
     if type_is_matrix(t):
         return str(f"matrix(shape=({t._shape_[0]}, {t._shape_[1]}), dtype={t._wp_scalar_type_})")
-    if type_is_struct(t):
+    if isinstance(t, warp.codegen.Struct):
         return type_repr(t.cls)
     if t in scalar_types:
         return t.__name__
