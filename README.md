@@ -98,11 +98,12 @@ This will ensure symlinks inside ``exts/omni.warp`` work upon cloning.
 
 ## Omniverse
 
-A Warp Omniverse extension is available in the extension registry inside Omniverse Kit or Create:
+A Warp Omniverse extension is available in the extension registry inside Omniverse Kit or USD Composer:
 
 <img src="https://github.com/NVIDIA/warp/raw/main/docs/img/omniverse.png" width=550px/>
 
-Enabling the extension will automatically install and initialize the Warp Python module inside the Kit Python environment. Please see the [Omniverse Warp Documentation](http://docs.omniverse.nvidia.com/extensions/warp.html) for more details on how to use Warp in Omniverse.
+Enabling the extension will automatically install and initialize the Warp Python module inside the Kit Python environment.
+Please see the [Omniverse Warp Documentation](https://docs.omniverse.nvidia.com/extensions/latest/ext_warp.html) for more details on how to use Warp in Omniverse.
 
 ## Learn More
 

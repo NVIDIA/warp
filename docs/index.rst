@@ -89,12 +89,11 @@ Omniverse
 ---------
 
 A Warp Omniverse extension is available in the extension registry inside
-Omniverse Kit or Create:
+Omniverse Kit or USD Composer.
 
 Enabling the extension will automatically install and initialize the
 Warp Python module inside the Kit Python environment. Please see the
-`Omniverse Warp
-Documentation <http://docs.omniverse.nvidia.com/extensions/warp.html>`__
+`Omniverse Warp Documentation <https://docs.omniverse.nvidia.com/extensions/latest/ext_warp.html>`__
 for more details on how to use Warp in Omniverse.
 
 

@@ -102,8 +102,8 @@ class JointAxis:
         axis (3D vector): The axis that this JointAxis object describes
         limit_lower (float): The lower limit of the joint axis
         limit_upper (float): The upper limit of the joint axis
-        limit_ke (float): The elastic stiffness of the joint axis limits, only respected by SemiImplicitIntegrator
-        limit_kd (float): The damping stiffness of the joint axis limits, only respected by SemiImplicitIntegrator
+        limit_ke (float): The elastic stiffness of the joint axis limits, only respected by :class:`SemiImplicitIntegrator`
+        limit_kd (float): The damping stiffness of the joint axis limits, only respected by :class:`SemiImplicitIntegrator`
         target (float): The target position or velocity (depending on the mode, see `Joint modes`_) of the joint axis
         target_ke (float): The proportional gain of the joint axis target drive PD controller
         target_kd (float): The derivative gain of the joint axis target drive PD controller
@@ -363,9 +363,9 @@ class Model:
         particle_inv_mass (wp.array): Particle inverse mass, shape [particle_count], float
         particle_radius (wp.array): Particle radius, shape [particle_count], float
         particle_max_radius (float): Maximum particle radius (useful for HashGrid construction)
-        particle_ke (wp.array): Particle normal contact stiffness (used by SemiImplicitIntegrator), shape [particle_count], float
-        particle_kd (wp.array): Particle normal contact damping (used by SemiImplicitIntegrator), shape [particle_count], float
-        particle_kf (wp.array): Particle friction force stiffness (used by SemiImplicitIntegrator), shape [particle_count], float
+        particle_ke (wp.array): Particle normal contact stiffness (used by :class:`SemiImplicitIntegrator`), shape [particle_count], float
+        particle_kd (wp.array): Particle normal contact damping (used by :class:`SemiImplicitIntegrator`), shape [particle_count], float
+        particle_kf (wp.array): Particle friction force stiffness (used by :class:`SemiImplicitIntegrator`), shape [particle_count], float
         particle_mu (wp.array): Particle friction coefficient, shape [particle_count], float
         particle_cohesion (wp.array): Particle cohesion strength, shape [particle_count], float
         particle_adhesion (wp.array): Particle adhesion strength, shape [particle_count], float
@@ -858,7 +858,7 @@ class Model:
 
     @property
     def particle_radius(self):
-        """Array of per-particle radii"""
+        # Array of per-particle radii
         return self._particle_radius
 
     @particle_radius.setter
@@ -3012,7 +3012,7 @@ class ModelBuilder:
             The volume of the tetrahedron
 
         Note:
-            The tetrahedron is created with a rest-pose based on the particle's initial configruation
+            The tetrahedron is created with a rest-pose based on the particle's initial configuration
 
         """
         # compute basis for 2D rest pose
@@ -3265,7 +3265,6 @@ class ModelBuilder:
                         self.add_triangle(*tri1, tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
                         self.add_triangle(*tri2, tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
 
-        end_vertex = len(self.particle_q)
         end_tri = len(self.tri_indices)
 
         # bending constraints, could create these explicitly for a grid but this
@@ -3594,7 +3593,6 @@ class ModelBuilder:
         num_tets = int(len(indices) / 4)
 
         start_vertex = len(self.particle_q)
-        start_tri = len(self.tri_indices)
 
         # dict of open faces
         faces = {}
