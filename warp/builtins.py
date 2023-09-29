@@ -2044,7 +2044,8 @@ add_builtin(
 
 add_builtin(
     "curlnoise",
-    input_types={"state": uint32, "xy": vec2},
+    input_types={"state": uint32, "xy": vec2, "octaves": uint32, "lacunarity": float, "gain": float},
+    defaults={"octaves": 1, "lacunarity": 2.0, "gain": 0.5},
     value_type=vec2,
     group="Random",
     doc="Divergence-free vector field based on the gradient of a Perlin noise function.",
@@ -2052,7 +2053,8 @@ add_builtin(
 )
 add_builtin(
     "curlnoise",
-    input_types={"state": uint32, "xyz": vec3},
+    input_types={"state": uint32, "xyz": vec3, "octaves": uint32, "lacunarity": float, "gain": float},
+    defaults={"octaves": 1, "lacunarity": 2.0, "gain": 0.5},
     value_type=vec3,
     group="Random",
     doc="Divergence-free vector field based on the curl of three Perlin noise functions.",
@@ -2060,7 +2062,8 @@ add_builtin(
 )
 add_builtin(
     "curlnoise",
-    input_types={"state": uint32, "xyzt": vec4},
+    input_types={"state": uint32, "xyzt": vec4, "octaves": uint32, "lacunarity": float, "gain": float},
+    defaults={"octaves": 1, "lacunarity": 2.0, "gain": 0.5},
     value_type=vec3,
     group="Random",
     doc="Divergence-free vector field based on the curl of three Perlin noise functions.",

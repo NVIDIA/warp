@@ -8,8 +8,8 @@
 
 #pragma once
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846f
+#ifndef M_PI_F
+#define M_PI_F 3.14159265358979323846f
 #endif
 
 namespace wp
@@ -27,7 +27,7 @@ inline CUDA_CALLABLE float smootherstep_gradient(float t)
 
 inline CUDA_CALLABLE float smoothstep(float t)
 {
-    return t * t * (3.0 - t * 2.0);
+    return t * t * (3.f - t * 2.f);
 }
 
 inline CUDA_CALLABLE float smoothstep_gradient(float t)
@@ -51,17 +51,17 @@ inline CUDA_CALLABLE float interpolate_gradient(float a0, float a1, float t, flo
 
 inline CUDA_CALLABLE float random_gradient_1d(uint32 state, int ix)
 {
-    const uint32_t p1 = 73856093;
+    const uint32 p1 = 73856093;
     uint32 idx = ix*p1 + state;
     return randf(idx, -1.f, 1.f);
 }
 
 inline CUDA_CALLABLE vec2 random_gradient_2d(uint32 state, int ix, int iy)
 {
-    const uint32_t p1 = 73856093;
-    const uint32_t p2 = 19349663;
+    const uint32 p1 = 73856093;
+    const uint32 p2 = 19349663;
     uint32 idx = ix*p1 ^ iy*p2 + state;
-    float phi = randf(idx, 0.f, 2.f*M_PI);
+    float phi = randf(idx, 0.f, 2.f*M_PI_F);
     float x = cos(phi);
     float y = sin(phi);
     return vec2(x, y);
@@ -183,29 +183,29 @@ inline CUDA_CALLABLE vec2 noise_2d_gradient(uint32 state, int x0, int y0, int x1
 {
     float v00 = dot_grid_gradient_2d(state, x0, y0, dx, dy);
     float d_v00_dx = dot_grid_gradient_2d_gradient(state, x0, y0, 1.f, 0.f);
-    float d_v00_dy = dot_grid_gradient_2d_gradient(state, x0, y0, 0.0, 1.f);
+    float d_v00_dy = dot_grid_gradient_2d_gradient(state, x0, y0, 0.f, 1.f);
     
     float v10 = dot_grid_gradient_2d(state, x1, y0, dx-1.f, dy);
     float d_v10_dx = dot_grid_gradient_2d_gradient(state, x1, y0, 1.f, 0.f);
-    float d_v10_dy = dot_grid_gradient_2d_gradient(state, x1, y0, 0.0, 1.f);
+    float d_v10_dy = dot_grid_gradient_2d_gradient(state, x1, y0, 0.f, 1.f);
 
     float v01 = dot_grid_gradient_2d(state, x0, y1, dx, dy-1.f);
     float d_v01_dx = dot_grid_gradient_2d_gradient(state, x0, y1, 1.f, 0.f);
-    float d_v01_dy = dot_grid_gradient_2d_gradient(state, x0, y1, 0.0, 1.f);
+    float d_v01_dy = dot_grid_gradient_2d_gradient(state, x0, y1, 0.f, 1.f);
 
     float v11 = dot_grid_gradient_2d(state, x1, y1, dx-1.f, dy-1.f);
     float d_v11_dx = dot_grid_gradient_2d_gradient(state, x1, y1, 1.f, 0.f);
-    float d_v11_dy = dot_grid_gradient_2d_gradient(state, x1, y1, 0.0, 1.f);
+    float d_v11_dy = dot_grid_gradient_2d_gradient(state, x1, y1, 0.f, 1.f);
 
     float xi0 = interpolate(v00, v10, dx);
     float d_xi0_dx = interpolate_gradient(v00, v10, dx, d_v00_dx, d_v10_dx, 1.f);
-    float d_xi0_dy = interpolate_gradient(v00, v10, dx, d_v00_dy, d_v10_dy, 0.0);
+    float d_xi0_dy = interpolate_gradient(v00, v10, dx, d_v00_dy, d_v10_dy, 0.f);
 
     float xi1 = interpolate(v01, v11, dx);
     float d_xi1_dx = interpolate_gradient(v01, v11, dx, d_v01_dx, d_v11_dx, 1.f);
-    float d_xi1_dy = interpolate_gradient(v01, v11, dx, d_v01_dy, d_v11_dy, 0.0);
+    float d_xi1_dy = interpolate_gradient(v01, v11, dx, d_v01_dy, d_v11_dy, 0.f);
 
-    float gradient_x = interpolate_gradient(xi0, xi1, dy, d_xi0_dx, d_xi1_dx, 0.0);
+    float gradient_x = interpolate_gradient(xi0, xi1, dy, d_xi0_dx, d_xi1_dx, 0.f);
     float gradient_y = interpolate_gradient(xi0, xi1, dy, d_xi0_dy, d_xi1_dy, 1.f);
 
     return vec2(gradient_x, gradient_y);
@@ -830,78 +830,125 @@ inline CUDA_CALLABLE void adj_pnoise(uint32 state, const vec4& xyzt, int px, int
 
 // curl noise
 
-inline CUDA_CALLABLE vec2 curlnoise(uint32 state, const vec2& xy)
-{ 
-    float dx = xy[0] - floor(xy[0]);
-    float dy = xy[1] - floor(xy[1]);
-
-    int x0 = (int)floor(xy[0]); 
-    int y0 = (int)floor(xy[1]); 
-
-    int x1 = x0 + 1;
-    int y1 = y0 + 1;
-
-    vec2 grad_field = noise_2d_gradient(state, x0, y0, x1, y1, dx, dy);
-    return vec2(-grad_field[1], grad_field[0]);
-}
-inline CUDA_CALLABLE void adj_curlnoise(uint32 state, const vec2& xy, uint32& adj_state, vec2& adj_xy, const vec2& adj_ret) {}
-
-inline CUDA_CALLABLE vec3 curlnoise(uint32 state, const vec3& xyz)
+inline CUDA_CALLABLE vec2 curlnoise(uint32 state, const vec2& xy, const uint32 octaves, const float lacunarity, const float gain)
 {
-    float dx = xyz[0] - floor(xyz[0]);
-    float dy = xyz[1] - floor(xyz[1]);
-    float dz = xyz[2] - floor(xyz[2]);
+    vec2 curl_sum = vec2(0.f);
+    float freq = 1.f;
+    float amplitude = 1.f;
 
-    int x0 = (int)floor(xyz[0]);
-    int y0 = (int)floor(xyz[1]);
-    int z0 = (int)floor(xyz[2]);
+    for (int i = 0; i < octaves; i++)
+    {
+        vec2 pt = freq * xy;
+        float dx = pt[0] - floor(pt[0]);
+        float dy = pt[1] - floor(pt[1]);
 
-    int x1 = x0 + 1;
-    int y1 = y0 + 1;
-    int z1 = z0 + 1;
+        int x0 = (int)floor(pt[0]); 
+        int y0 = (int)floor(pt[1]); 
 
-    vec3 grad_field_1 = noise_3d_gradient(state, x0, y0, z0, x1, y1, z1, dx, dy, dz);
-    state = rand_init(state, 10019689);
-    vec3 grad_field_2 = noise_3d_gradient(state, x0, y0, z0, x1, y1, z1, dx, dy, dz);
-    state = rand_init(state, 13112221);
-    vec3 grad_field_3 = noise_3d_gradient(state, x0, y0, z0, x1, y1, z1, dx, dy, dz);
+        int x1 = x0 + 1;
+        int y1 = y0 + 1;
 
+        vec2 grad_field = noise_2d_gradient(state, x0, y0, x1, y1, dx, dy);
+        curl_sum += amplitude * grad_field;
+
+        amplitude *= gain;
+        freq *= lacunarity;
+    }
+    return vec2(-curl_sum[1], curl_sum[0]);
+}
+inline CUDA_CALLABLE void adj_curlnoise(uint32 state, const vec2& xy, const uint32 octaves, const float lacunarity, const float gain, uint32& adj_state, vec2& adj_xy, const uint32& adj_octaves, const float& adj_lacunarity, const float& adj_gain, const vec2& adj_ret) {}
+
+inline CUDA_CALLABLE vec3 curlnoise(uint32 state, const vec3& xyz, const uint32 octaves, const float lacunarity, const float gain)
+{
+    vec3 curl_sum_1 = vec3(0.f);
+    vec3 curl_sum_2 = vec3(0.f);
+    vec3 curl_sum_3 = vec3(0.f);
+    
+    float freq = 1.f;
+    float amplitude = 1.f;
+    
+    for(int i = 0; i < octaves; i++)
+    {
+        vec3 pt = freq * xyz;
+        float dx = pt[0] - floor(pt[0]);
+        float dy = pt[1] - floor(pt[1]);
+        float dz = pt[2] - floor(pt[2]);
+
+        int x0 = (int)floor(pt[0]);
+        int y0 = (int)floor(pt[1]);
+        int z0 = (int)floor(pt[2]);
+
+        int x1 = x0 + 1;
+        int y1 = y0 + 1;
+        int z1 = z0 + 1;
+
+        vec3 grad_field_1 = noise_3d_gradient(state, x0, y0, z0, x1, y1, z1, dx, dy, dz);
+        state = rand_init(state, 10019689);
+        vec3 grad_field_2 = noise_3d_gradient(state, x0, y0, z0, x1, y1, z1, dx, dy, dz);
+        state = rand_init(state, 13112221);
+        vec3 grad_field_3 = noise_3d_gradient(state, x0, y0, z0, x1, y1, z1, dx, dy, dz);
+        
+        curl_sum_1 += amplitude * grad_field_1;
+        curl_sum_2 += amplitude * grad_field_2;
+        curl_sum_3 += amplitude * grad_field_3;
+
+        amplitude *= gain;
+        freq *= lacunarity;
+    }
     
     return vec3(
-        grad_field_3[1] - grad_field_2[2],
-        grad_field_1[2] - grad_field_3[0],
-        grad_field_2[0] - grad_field_1[1]);
+        curl_sum_3[1] - curl_sum_2[2],
+        curl_sum_1[2] - curl_sum_3[0],
+        curl_sum_2[0] - curl_sum_1[1]);
 }
-inline CUDA_CALLABLE void adj_curlnoise(uint32 state, const vec3& xyz, uint32& adj_state, vec3& adj_xyz, const vec3& adj_ret) {}
+inline CUDA_CALLABLE void adj_curlnoise(uint32 state, const vec3& xyz, const uint32 octaves, const float lacunarity, const float gain, uint32& adj_state, vec3& adj_xyz, const uint32& adj_octaves, const float& adj_lacunarity, const float& adj_gain, vec3& adj_ret) {}
 
-inline CUDA_CALLABLE vec3 curlnoise(uint32 state, const vec4& xyzt)
+inline CUDA_CALLABLE vec3 curlnoise(uint32 state, const vec4& xyzt, const uint32 octaves, const float lacunarity, const float gain)
 {
-    float dx = xyzt[0] - floor(xyzt[0]);
-    float dy = xyzt[1] - floor(xyzt[1]);
-    float dz = xyzt[2] - floor(xyzt[2]);
-    float dt = xyzt[3] - floor(xyzt[3]);
+    vec4 curl_sum_1 = vec4(0.f);
+    vec4 curl_sum_2 = vec4(0.f);
+    vec4 curl_sum_3 = vec4(0.f);
+    
+    float freq = 1.f;
+    float amplitude = 1.f;
 
-    int x0 = (int)floor(xyzt[0]);
-    int y0 = (int)floor(xyzt[1]);
-    int z0 = (int)floor(xyzt[2]);
-    int t0 = (int)floor(xyzt[3]);
+    for(int i = 0; i < octaves; i++)
+    {
+        vec4 pt = freq * xyzt;
+        float dx = pt[0] - floor(pt[0]);
+        float dy = pt[1] - floor(pt[1]);
+        float dz = pt[2] - floor(pt[2]);
+        float dt = pt[3] - floor(pt[3]);
 
-    int x1 = x0 + 1;
-    int y1 = y0 + 1;
-    int z1 = z0 + 1;
-    int t1 = t0 + 1;
+        int x0 = (int)floor(pt[0]);
+        int y0 = (int)floor(pt[1]);
+        int z0 = (int)floor(pt[2]);
+        int t0 = (int)floor(pt[3]);
 
-    vec4 grad_field_1 = noise_4d_gradient(state, x0, y0, z0, t0, x1, y1, z1, t1, dx, dy, dz, dt);
-    state = rand_init(state, 10019689);
-    vec4 grad_field_2 = noise_4d_gradient(state, x0, y0, z0, t0, x1, y1, z1, t1, dx, dy, dz, dt);
-    state = rand_init(state, 13112221);
-    vec4 grad_field_3 = noise_4d_gradient(state, x0, y0, z0, t0, x1, y1, z1, t1, dx, dy, dz, dt);
+        int x1 = x0 + 1;
+        int y1 = y0 + 1;
+        int z1 = z0 + 1;
+        int t1 = t0 + 1;
+
+        vec4 grad_field_1 = noise_4d_gradient(state, x0, y0, z0, t0, x1, y1, z1, t1, dx, dy, dz, dt);
+        state = rand_init(state, 10019689);
+        vec4 grad_field_2 = noise_4d_gradient(state, x0, y0, z0, t0, x1, y1, z1, t1, dx, dy, dz, dt);
+        state = rand_init(state, 13112221);
+        vec4 grad_field_3 = noise_4d_gradient(state, x0, y0, z0, t0, x1, y1, z1, t1, dx, dy, dz, dt);
+
+        curl_sum_1 += amplitude * grad_field_1;
+        curl_sum_2 += amplitude * grad_field_2;
+        curl_sum_3 += amplitude * grad_field_3;
+
+        amplitude *= gain;
+        freq *= lacunarity;        
+    }
 
     return vec3(
-        grad_field_3[1] - grad_field_2[2],
-        grad_field_1[2] - grad_field_3[0],
-        grad_field_2[0] - grad_field_1[1]);
+        curl_sum_3[1] - curl_sum_2[2],
+        curl_sum_1[2] - curl_sum_3[0],
+        curl_sum_2[0] - curl_sum_1[1]);
 }
-inline CUDA_CALLABLE void adj_curlnoise(uint32 state, const vec4& xyzt, uint32& adj_state, vec4& adj_xyzt, const vec3& adj_ret) {}
+inline CUDA_CALLABLE void adj_curlnoise(uint32 state, const vec4& xyzt, const uint32 octaves, const float lacunarity, const float gain, uint32& adj_state, vec4& adj_xyzt, const uint32& adj_octaves, const float& adj_lacunarity, const float& adj_gain, const vec3& adj_ret) {}
 
 } // namespace wp
