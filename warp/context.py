@@ -3919,6 +3919,8 @@ def print_builtins(file):
 
     for t in warp.types.scalar_types:
         print(f".. class:: {t.__name__}", file=file)
+    # Manually add wp.bool since it's inconvenient to add to wp.types.scalar_types:
+    print(f".. class:: {warp.types.bool.__name__}", file=file)
 
     print("\n\nVector Types", file=file)
     print("------------", file=file)

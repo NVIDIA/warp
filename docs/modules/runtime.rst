@@ -3,19 +3,15 @@ Runtime Reference
 
 .. currentmodule:: warp
 
-.. .. toctree::
-..    :maxdepth: 2
-
-..    self
-..    devices
-..    profiling
-
-This section describes the Warp Python runtime API, how to manage memory, launch kernels, and high-level functionality for dealing with such as meshes and volumes. The APIs described in this section are intended to be used at *Python Scope* and  run inside for CPython interpreter. For a comprehensive list of functions available inside at *Kernel Scope*, please see the Kernel Reference section.
+This section describes the Warp Python runtime API, how to manage memory, launch kernels, and high-level functionality
+for dealing with such as meshes and volumes. The APIs described in this section are intended to be used at
+*Python Scope* and  run inside for CPython interpreter. For a comprehensive list of functions available inside at
+*Kernel Scope*, please see the :doc:`/modules/functions`.
 
 Kernels
 -------
 
-Kernels are launched with the ``warp.launch()`` function on a specific device (CPU/GPU)::
+Kernels are launched with the ``wp.launch()`` function on a specific device (CPU/GPU)::
 
    wp.launch(simple_kernel, dim=1024, inputs=[a, b, c], device="cuda")
 
@@ -154,6 +150,8 @@ Scalar Types
 The following scalar storage types are supported for array structures:
 
 +---------+------------------------+
+| bool    | boolean                |
++---------+------------------------+
 | int8    | signed byte            |
 +---------+------------------------+
 | uint8   | unsigned byte          |
@@ -181,7 +179,8 @@ Warp supports ``float`` and ``int`` as aliases for ``wp.float32`` and ``wp.int32
 Vectors
 #######
 
-Warp provides built-in math and geometry types for common simulation and graphics problems. A full reference for operators and functions for these types is available in the :any:`functions`.
+Warp provides built-in math and geometry types for common simulation and graphics problems.
+A full reference for operators and functions for these types is available in the :doc:`/modules/functions`.
 
 Warp supports vectors of numbers with an arbitrary length/numeric type. The built in concrete types are as follows:
 
@@ -446,7 +445,7 @@ Transforms can be constructed inside kernels from translation and rotation parts
       p = wp.transform_vector(t, wp.vec3(10.0, 0.5, 1.0))
 
 
-As with vectors and matrices, you can declare transform types with an arbitrary numeric type using ``warp.types.transformation()``, for example: ::
+As with vectors and matrices, you can declare transform types with an arbitrary numeric type using ``wp.types.transformation()``, for example: ::
 
    transformd = wp.types.transformation(dtype=wp.float64)
 
@@ -511,7 +510,7 @@ Constants
 
 In general, Warp kernels cannot access variables in the global Python interpreter state. One exception to this is for compile-time constants, which may be declared globally (or as class attributes) and folded into the kernel definition.
 
-Constants are defined using the ``warp.constant()`` function. An example is shown below::
+Constants are defined using the ``wp.constant()`` function. An example is shown below::
 
    TYPE_SPHERE = wp.constant(0)
    TYPE_CUBE = wp.constant(1)
@@ -594,7 +593,7 @@ Arithmetic Operators
 Meshes
 ------
 
-Warp provides a ``warp.Mesh`` class to manage triangle mesh data. To create a mesh users provide a points, indices and optionally a velocity array::
+Warp provides a ``wp.Mesh`` class to manage triangle mesh data. To create a mesh users provide a points, indices and optionally a velocity array::
 
    mesh = wp.Mesh(points, indices, velocities)
 
@@ -698,7 +697,7 @@ To support spatial neighbor queries Warp provides a ``HashGrid`` object that may
 
    grid.build(points=p, radius=r)
 
-Where ``p`` is an array of ``warp.vec3`` point positions, and ``r`` is the radius to use when building the grid. Neighbors can then be iterated over inside the kernel code as follows::
+Where ``p`` is an array of ``wp.vec3`` point positions, and ``r`` is the radius to use when building the grid. Neighbors can then be iterated over inside the kernel code as follows::
 
    @wp.kernel
    def sum(grid : wp.uint64,
@@ -741,7 +740,7 @@ By default Warp generates a forward and backward (adjoint) version of each kerne
 
    a = wp.zeros(1024, dtype=wp.vec3, device="cuda", requires_grad=True)
 
-The ``warp.Tape`` class can then be used to record kernel launches, and replay them to compute the gradient of a scalar loss function with respect to the kernel inputs::
+The ``wp.Tape`` class can then be used to record kernel launches, and replay them to compute the gradient of a scalar loss function with respect to the kernel inputs::
 
    tape = wp.Tape()
 
@@ -829,7 +828,7 @@ To differentiate a function :math:`h(x) = f(g(x))` that has a nested call to fun
 
 This implies that a function to be compatible with the autodiff engine needs to provide an implementation of its forward version
 :math:`\color{green}{g(x)}`, which we refer to as "replay" function (that matches the original function definition by default),
-and its derivative :math:`\color{blue}{g^\prime(x)}`, refered to as "grad".
+and its derivative :math:`\color{blue}{g^\prime(x)}`, referred to as "grad".
 
 Both the replay and the grad implementations can be customized by the user. They are defined as follows:
 
@@ -866,7 +865,7 @@ Both the replay and the grad implementations can be customized by the user. They
             wp.adjoint[inN] += ...
 
 .. note:: It is currently not possible to define custom replay or grad functions for functions that
-   have generic arguments, e.g. ``Any`` or ``warp.array(dtype=Any)``. Replay or grad functions that
+   have generic arguments, e.g. ``Any`` or ``wp.array(dtype=Any)``. Replay or grad functions that
    themselves use generic arguments are also not yet supported.
 
 Example 1: Custom Grad Function
@@ -1030,7 +1029,7 @@ Graphs
 
 Launching kernels from Python introduces significant additional overhead compared to C++ or native programs. To address this, Warp exposes the concept of `CUDA graphs <https://developer.nvidia.com/blog/cuda-graphs/>`_ to allow recording large batches of kernels and replaying them with very little CPU overhead.
 
-To record a series of kernel launches use the ``warp.capture_begin()`` and ``warp.capture_end()`` API as follows: ::
+To record a series of kernel launches use the ``wp.capture_begin()`` and ``wp.capture_end()`` API as follows: ::
 
    # begin capture
    wp.capture_begin()
