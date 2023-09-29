@@ -474,7 +474,7 @@ def runlength_encode(values, run_values, run_lengths, run_count=None, value_coun
     else:
         host_return = False
         if run_count.device != values.device:
-            raise RuntimeError("run_count storage devices does not match other arrays")
+            raise RuntimeError("run_count storage device does not match other arrays")
         if run_count.dtype != wp.int32:
             raise RuntimeError("run_count array must be of type int32")
 
