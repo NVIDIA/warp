@@ -1,7 +1,9 @@
 import numpy as np
 import warp as wp
 
-from warp.sparse import bsr_zeros, bsr_set_from_triplets, bsr_get_diag, bsr_diag, bsr_set_transpose, bsr_axpy, bsr_mm
+from warp.sparse import bsr_zeros, bsr_set_from_triplets, bsr_get_diag, bsr_diag, bsr_identity
+from warp.sparse import bsr_set_transpose, bsr_transposed
+from warp.sparse import bsr_axpy, bsr_mm, bsr_axpy_work_arrays, bsr_mm_work_arrays, bsr_mv
 from warp.tests.test_base import *
 
 wp.init()
@@ -84,7 +86,7 @@ def test_bsr_from_triplets(test, device):
     assert_np_equal(ref, res, 0.0001)
 
 
-def test_bsr_get_diag(test, device):
+def test_bsr_get_set_diag(test, device):
     block_shape = (3, 3)
     nrow = 4
     ncol = 4
@@ -106,10 +108,35 @@ def test_bsr_get_diag(test, device):
     assert_np_equal(diag_np[2], vals_np[4], tol=0.00001)
     assert_np_equal(diag_np[3], vals_np[3], tol=0.00001)
 
-    # Test round-trip
+    # Test set_diag/get_diag round-trips with various block types
+
+    # Array of blocks
     diag_bsr = bsr_diag(diag)
     diag = bsr_get_diag(diag_bsr)
     assert_np_equal(diag_np, diag.numpy())
+
+    diag_scalar_np = np.random.rand(nrow)
+    diag_scalar = wp.array(diag_scalar_np, device=device)
+    diag_bsr = bsr_diag(diag_scalar)
+    diag = bsr_get_diag(diag_bsr)
+    assert_np_equal(diag_scalar_np, diag.numpy(), tol=0.000001)
+
+    # Uniform block diagonal
+    diag_bsr = bsr_diag(diag=vals_np[0], rows_of_blocks=nrow, cols_of_blocks=nrow + 1)
+    assert diag_bsr.values.shape[0] == nrow
+    assert_np_equal(diag_bsr.values.numpy(), np.broadcast_to(vals_np[0], shape=(nrow, *block_shape)), tol=0.000001)
+
+    diag_bsr = bsr_diag(diag=float(diag_scalar_np[0]), rows_of_blocks=nrow, cols_of_blocks=nrow + 1)
+    assert diag_bsr.values.shape[0] == nrow
+    assert_np_equal(diag_bsr.values.numpy(), np.full(nrow, diag_scalar_np[0]), tol=0.000001)
+
+    # Identity matrix
+    diag_bsr = bsr_identity(nrow, block_type=wp.mat44, device=device)
+    assert diag_bsr.values.shape[0] == nrow
+    assert_np_equal(diag_bsr.values.numpy(), np.broadcast_to(np.eye(4), shape=(nrow, 4, 4)), tol=0.000001)
+
+    diag_csr = bsr_identity(nrow, block_type=wp.float64, device=device)
+    assert np.all(diag_csr.values.numpy() == np.ones(nrow, dtype=float))
 
 
 def make_test_bsr_transpose(block_shape, scalar_type):
@@ -146,8 +173,8 @@ def make_test_bsr_axpy(block_shape, scalar_type):
         ncol = 3
         nnz = 6
 
-        alpha = -1.0
-        beta = 2.0
+        alphas = [-1.0, 0.0, 1.0]
+        betas = [2.0, -1.0, 0.0]
 
         x_rows = wp.array(np.random.randint(0, nrow, nnz, dtype=int), dtype=int, device=device)
         x_cols = wp.array(np.random.randint(0, ncol, nnz, dtype=int), dtype=int, device=device)
@@ -165,10 +192,17 @@ def make_test_bsr_axpy(block_shape, scalar_type):
         y = bsr_zeros(nrow, ncol, wp.types.matrix(shape=block_shape, dtype=scalar_type), device=device)
         bsr_set_from_triplets(y, y_rows, y_cols, y_vals)
 
-        ref = alpha * _bsr_to_dense(x) + beta * _bsr_to_dense(y)
+        work_arrays = bsr_axpy_work_arrays()
+        for alpha, beta in zip(alphas, betas):
+            ref = alpha * _bsr_to_dense(x) + beta * _bsr_to_dense(y)
+            bsr_axpy(x, y, alpha, beta, work_arrays=work_arrays)
 
-        bsr_axpy(x, y, alpha, beta)
+            res = _bsr_to_dense(y)
+            assert_np_equal(ref, res, 0.0001)
 
+        # test aliasing
+        ref = 3.0 * _bsr_to_dense(y)
+        bsr_axpy(y, y, alpha=1.0, beta=2.0)
         res = _bsr_to_dense(y)
         assert_np_equal(ref, res, 0.0001)
 
@@ -191,8 +225,8 @@ def make_test_bsr_mm(block_shape, scalar_type):
 
         nnz = 6
 
-        alpha = -1.0
-        beta = 2.0
+        alphas = [-1.0, 0.0, 1.0]
+        betas = [2.0, -1.0, 0.0]
 
         x_rows = wp.array(np.random.randint(0, x_nrow, nnz, dtype=int), dtype=int, device=device)
         x_cols = wp.array(np.random.randint(0, x_ncol, nnz, dtype=int), dtype=int, device=device)
@@ -218,14 +252,86 @@ def make_test_bsr_mm(block_shape, scalar_type):
         z = bsr_zeros(z_nrow, z_ncol, wp.types.matrix(shape=z_block_shape, dtype=scalar_type), device=device)
         bsr_set_from_triplets(z, z_rows, z_cols, z_vals)
 
-        ref = alpha * (_bsr_to_dense(x) @ _bsr_to_dense(y)) + beta * _bsr_to_dense(z)
+        work_arrays = bsr_mm_work_arrays()
+        for alpha, beta in zip(alphas, betas):
+            ref = alpha * (_bsr_to_dense(x) @ _bsr_to_dense(y)) + beta * _bsr_to_dense(z)
 
-        bsr_mm(x, y, z, alpha, beta)
+            bsr_mm(x, y, z, alpha, beta, work_arrays=work_arrays)
+
+            res = _bsr_to_dense(z)
+            assert_np_equal(ref, res, 0.0001)
+
+        # test aliasing of matrix arguments
+        # x = alpha * z * x + beta * x
+        alpha, beta = alphas[0], betas[0]
+        ref = alpha * (_bsr_to_dense(z) @ _bsr_to_dense(x)) + beta * _bsr_to_dense(x)
+        bsr_mm(z, x, x, alpha, beta)
+
+        res = _bsr_to_dense(x)
+        assert_np_equal(ref, res, 0.0001)
+
+        # z = alpha * z * z + beta * z
+        ref = alpha * (_bsr_to_dense(z) @ _bsr_to_dense(z)) + beta * _bsr_to_dense(z)
+        bsr_mm(z, z, z, alpha, beta)
 
         res = _bsr_to_dense(z)
         assert_np_equal(ref, res, 0.0001)
 
     return test_bsr_mm
+
+
+def make_test_bsr_mv(block_shape, scalar_type):
+    def test_bsr_mv(test, device):
+        nrow = 2
+        ncol = 3
+        nnz = 6
+
+        alphas = [-1.0, 0.0, 1.0]
+        betas = [2.0, -1.0, 0.0]
+        np.random.seed(0)
+        A_rows = wp.array(np.random.randint(0, nrow, nnz, dtype=int), dtype=int, device=device)
+        A_cols = wp.array(np.random.randint(0, ncol, nnz, dtype=int), dtype=int, device=device)
+        A_vals = wp.array(np.random.rand(nnz, block_shape[0], block_shape[1]), dtype=scalar_type, device=device)
+        A_vals = A_vals.reshape((nnz, block_shape[0], block_shape[1]))
+
+        A = bsr_zeros(nrow, ncol, wp.types.matrix(shape=block_shape, dtype=scalar_type), device=device)
+        bsr_set_from_triplets(A, A_rows, A_cols, A_vals)
+
+        if block_shape[1] == 1:
+            x = wp.array(np.random.rand(ncol), dtype=scalar_type, device=device)
+        else:
+            x = wp.array(
+                np.random.rand(ncol, block_shape[1]),
+                dtype=wp.vec(length=block_shape[1], dtype=scalar_type),
+                device=device,
+            )
+
+        if block_shape[0] == 1:
+            y = wp.array(np.random.rand(nrow), dtype=scalar_type, device=device)
+        else:
+            y = wp.array(
+                np.random.rand(nrow, block_shape[0]),
+                dtype=wp.vec(length=block_shape[0], dtype=scalar_type),
+                device=device,
+            )
+
+        work_buffer = wp.empty_like(y)
+        for alpha, beta in zip(alphas, betas):
+            ref = alpha * _bsr_to_dense(A) @ x.numpy().flatten() + beta * y.numpy().flatten()
+            bsr_mv(A, x, y, alpha, beta, work_buffer=work_buffer)
+
+            res = y.numpy().flatten()
+            assert_np_equal(ref, res, 0.0001)
+
+        # test aliasing
+        alpha, beta = alphas[0], betas[0]
+        AAt = bsr_mm(A, bsr_transposed(A))
+        ref = alpha * _bsr_to_dense(AAt) @ y.numpy().flatten() + beta * y.numpy().flatten()
+        bsr_mv(AAt, y, y, alpha, beta)
+        res = y.numpy().flatten()
+        assert_np_equal(ref, res, 0.0001)
+
+    return test_bsr_mv
 
 
 def register(parent):
@@ -236,7 +342,7 @@ def register(parent):
 
     add_function_test(TestSparse, "test_csr_from_triplets", test_csr_from_triplets, devices=devices)
     add_function_test(TestSparse, "test_bsr_from_triplets", test_bsr_from_triplets, devices=devices)
-    add_function_test(TestSparse, "test_bsr_get_diag", test_bsr_get_diag, devices=devices)
+    add_function_test(TestSparse, "test_bsr_get_diag", test_bsr_get_set_diag, devices=devices)
 
     add_function_test(TestSparse, "test_csr_transpose", make_test_bsr_transpose((1, 1), wp.float32), devices=devices)
     add_function_test(
@@ -253,6 +359,10 @@ def register(parent):
     add_function_test(TestSparse, "test_csr_mm", make_test_bsr_mm((1, 1), wp.float32), devices=devices)
     add_function_test(TestSparse, "test_bsr_mm_1_3", make_test_bsr_mm((1, 3), wp.float32), devices=devices)
     add_function_test(TestSparse, "test_bsr_mm_3_3", make_test_bsr_mm((3, 3), wp.float64), devices=devices)
+
+    add_function_test(TestSparse, "test_csr_mv", make_test_bsr_mv((1, 1), wp.float32), devices=devices)
+    add_function_test(TestSparse, "test_bsr_mv_1_3", make_test_bsr_mv((1, 3), wp.float32), devices=devices)
+    add_function_test(TestSparse, "test_bsr_mv_3_3", make_test_bsr_mv((3, 3), wp.float64), devices=devices)
 
     return TestSparse
 

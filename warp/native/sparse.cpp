@@ -179,10 +179,10 @@ void bsr_transpose_host(int rows_per_block, int cols_per_block, int row_count, i
     const int block_size = rows_per_block * cols_per_block;
 
     void (*block_transpose_func)(const T *, T *, int, int) = bsr_dyn_block_transpose<T>;
-    switch (row_count)
+    switch (rows_per_block)
     {
     case 1:
-        switch (col_count)
+        switch (cols_per_block)
         {
         case 1:
             block_transpose_func = bsr_fixed_block_transpose<1, 1, T>;
@@ -196,7 +196,7 @@ void bsr_transpose_host(int rows_per_block, int cols_per_block, int row_count, i
         }
         break;
     case 2:
-        switch (col_count)
+        switch (cols_per_block)
         {
         case 1:
             block_transpose_func = bsr_fixed_block_transpose<2, 1, T>;
@@ -210,7 +210,7 @@ void bsr_transpose_host(int rows_per_block, int cols_per_block, int row_count, i
         }
         break;
     case 3:
-        switch (col_count)
+        switch (cols_per_block)
         {
         case 1:
             block_transpose_func = bsr_fixed_block_transpose<3, 1, T>;
