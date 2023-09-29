@@ -435,11 +435,6 @@ inline CUDA_CALLABLE void adj_clamp(T x, T a, T b, T& adj_x, T& adj_a, T& adj_b,
     else\
         adj_x += adj_ret;\
 }\
-inline CUDA_CALLABLE void adj_round(T x, T& adj_x, T adj_ret){ }\
-inline CUDA_CALLABLE void adj_rint(T x, T& adj_x, T adj_ret){ }\
-inline CUDA_CALLABLE void adj_trunc(T x, T& adj_x, T adj_ret){ }\
-inline CUDA_CALLABLE void adj_floor(T x, T& adj_x, T adj_ret){ }\
-inline CUDA_CALLABLE void adj_ceil(T x, T& adj_x, T adj_ret){ }\
 inline CUDA_CALLABLE T div(T a, T b)\
 {\
     DO_IF_FPCHECK(\
@@ -818,6 +813,21 @@ inline CUDA_CALLABLE float rint(float x) { return ::rintf(x); }
 inline CUDA_CALLABLE float trunc(float x) { return ::truncf(x); }
 inline CUDA_CALLABLE float floor(float x) { return ::floorf(x); }
 inline CUDA_CALLABLE float ceil(float x) { return ::ceilf(x); }
+inline CUDA_CALLABLE float frac(float x) { return x - trunc(x); }
+
+inline CUDA_CALLABLE double round(double x) { return ::round(x); }
+inline CUDA_CALLABLE double rint(double x) { return ::rint(x); }
+inline CUDA_CALLABLE double trunc(double x) { return ::trunc(x); }
+inline CUDA_CALLABLE double floor(double x) { return ::floor(x); }
+inline CUDA_CALLABLE double ceil(double x) { return ::ceil(x); }
+inline CUDA_CALLABLE double frac(double x) { return x - trunc(x); }
+
+inline CUDA_CALLABLE half round(half x) { return ::roundf(float(x)); }
+inline CUDA_CALLABLE half rint(half x) { return ::rintf(float(x)); }
+inline CUDA_CALLABLE half trunc(half x) { return ::truncf(float(x)); }
+inline CUDA_CALLABLE half floor(half x) { return ::floorf(float(x)); }
+inline CUDA_CALLABLE half ceil(half x) { return ::ceilf(float(x)); }
+inline CUDA_CALLABLE half frac(half x) { return float(x) - trunc(float(x)); }
 
 #define DECLARE_ADJOINTS(T)\
 inline CUDA_CALLABLE void adj_log(T a, T& adj_a, T adj_ret)\
@@ -971,7 +981,13 @@ inline CUDA_CALLABLE void adj_degrees(T x, T& adj_x, T adj_ret)\
 inline CUDA_CALLABLE void adj_radians(T x, T& adj_x, T adj_ret)\
 {\
     adj_x += DEG_TO_RAD * adj_ret;\
-}
+}\
+inline CUDA_CALLABLE void adj_round(T x, T& adj_x, T adj_ret){ }\
+inline CUDA_CALLABLE void adj_rint(T x, T& adj_x, T adj_ret){ }\
+inline CUDA_CALLABLE void adj_trunc(T x, T& adj_x, T adj_ret){ }\
+inline CUDA_CALLABLE void adj_floor(T x, T& adj_x, T adj_ret){ }\
+inline CUDA_CALLABLE void adj_ceil(T x, T& adj_x, T adj_ret){ }\
+inline CUDA_CALLABLE void adj_frac(T x, T& adj_x, T adj_ret){ }
 
 DECLARE_ADJOINTS(float16)
 DECLARE_ADJOINTS(float32)

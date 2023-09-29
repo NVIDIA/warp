@@ -783,6 +783,7 @@ def test_float_to_int(test, device, dtype, register_kernels=False):
             outputs[2, i] = wp.trunc(inputs[2, i])
             outputs[3, i] = wp.floor(inputs[3, i])
             outputs[4, i] = wp.ceil(inputs[4, i])
+            outputs[5, i] = wp.frac(inputs[5, i])
 
     kernel = getkernel(check_float_to_int, suffix=dtype.__name__)
     output_select_kernel = get_select_kernel2(wptype)
@@ -790,7 +791,7 @@ def test_float_to_int(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    inputs = wp.array(np.random.randn(5, 10).astype(dtype), dtype=wptype, requires_grad=True, device=device)
+    inputs = wp.array(np.random.randn(6, 10).astype(dtype), dtype=wptype, requires_grad=True, device=device)
     outputs = wp.zeros_like(inputs)
 
     wp.launch(kernel, dim=1, inputs=[inputs], outputs=[outputs], device=device)
@@ -800,6 +801,7 @@ def test_float_to_int(test, device, dtype, register_kernels=False):
     assert_np_equal(outputs.numpy()[2], np.trunc(inputs.numpy()[2]))
     assert_np_equal(outputs.numpy()[3], np.floor(inputs.numpy()[3]))
     assert_np_equal(outputs.numpy()[4], np.ceil(inputs.numpy()[4]))
+    assert_np_equal(outputs.numpy()[5], np.modf(inputs.numpy()[5])[0])
 
     # all the gradients should be zero as these functions are piecewise constant:
 
