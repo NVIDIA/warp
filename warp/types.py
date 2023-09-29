@@ -999,7 +999,7 @@ def type_scalar_type(dtype):
 def type_size_in_bytes(dtype):
     if dtype.__module__ == "ctypes":
         return ctypes.sizeof(dtype)
-    elif type_is_struct(dtype):
+    elif isinstance(dtype, warp.codegen.Struct):
         return ctypes.sizeof(dtype.ctype)
     elif dtype == float or dtype == int:
         return 4
@@ -1020,8 +1020,6 @@ def type_to_warp(dtype):
 
 
 def type_typestr(dtype):
-    from warp.codegen import Struct
-
     if dtype == bool:
         return "?"
     elif dtype == float16:
@@ -1046,7 +1044,7 @@ def type_typestr(dtype):
         return "<i8"
     elif dtype == uint64:
         return "<u8"
-    elif isinstance(dtype, Struct):
+    elif isinstance(dtype, warp.codegen.Struct):
         return f"|V{ctypes.sizeof(dtype.ctype)}"
     elif issubclass(dtype, ctypes.Array):
         return type_typestr(dtype._wp_scalar_type_)
@@ -1085,15 +1083,6 @@ def type_is_float(t):
         t = float32
 
     return t in float_types
-
-
-def type_is_struct(dtype):
-    from warp.codegen import Struct
-
-    if isinstance(dtype, Struct):
-        return True
-    else:
-        return False
 
 
 # returns True if the passed *type* is a vector
