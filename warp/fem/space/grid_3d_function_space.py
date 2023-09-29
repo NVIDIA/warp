@@ -6,6 +6,7 @@ from warp.fem.types import vec2i, vec3i
 from warp.fem.polynomial import Polynomial, lagrange_scales, quadrature_1d, is_closed
 
 from warp.fem.geometry import Grid3D
+from warp.fem.cache import cached_arg_value
 
 from .dof_mapper import DofMapper
 from .nodal_function_space import NodalFunctionSpace, NodalFunctionSpaceTrace
@@ -27,13 +28,15 @@ class Grid3DFunctionSpace(NodalFunctionSpace):
     def geometry(self) -> Grid3D:
         return self._grid
 
+    @cached_arg_value
     def space_arg_value(self, device):
         arg = self.SpaceArg()
         arg.geo_arg = self.geometry.side_arg_value(device)
+        cell_size = self._grid.cell_size
         arg.inv_cell_size = wp.vec3(
-            1.0 / self.geometry.cell_size[0],
-            1.0 / self.geometry.cell_size[1],
-            1.0 / self.geometry.cell_size[2],
+            1.0 / cell_size[0],
+            1.0 / cell_size[1],
+            1.0 / cell_size[2],
         )
 
         return arg
@@ -113,7 +116,6 @@ class Grid3DFunctionSpace(NodalFunctionSpace):
 
         corner = Grid3D.get_cell(res, cell_index) + Grid3DFunctionSpace._vertex_coords(vidx_in_cell)
         return Grid3D._from_3d_index(strides, corner)
-
 
 
 class Grid3DPiecewiseConstantSpace(Grid3DFunctionSpace):

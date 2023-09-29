@@ -157,6 +157,14 @@ Function spaces can then be partitioned according to the geometry partition usin
 The resulting :class:`.space.SpacePartition` object allows translating between space-wide and partition-wide node indices, 
 and differentiating interior, frontier and exterior nodes.
 
+Memory management
+^^^^^^^^^^^^^^^^^
+
+Several ``warp.fem`` functions require allocating temporary buffers to perform their computations. 
+If such functions are called many times in a tight loop, those many allocations and de-allocations may degrade performance.
+To overcome this issue, a :class:`.cache.TemporaryStore` object may be created to persist and re-use temporary allocations across calls,
+either globally using :func:`set_default_temporary_store` or at a per-function granularity using the corresponding argument.
+
 .. _Operators:
 
 Operators
@@ -265,3 +273,18 @@ Fields
 .. autoclass:: warp.fem.field.TrialField
    :members:
 
+
+Memory management
+-----------------
+
+.. autoclass:: warp.fem.cache.TemporaryStore
+   :members:
+
+.. autofunction:: warp.fem.cache.borrow_temporary
+
+.. autoclass:: warp.fem.cache.Temporary
+   :members:
+
+.. autofunction:: warp.fem.cache.borrow_temporary_like
+
+.. autofunction:: warp.fem.cache.set_default_temporary_store

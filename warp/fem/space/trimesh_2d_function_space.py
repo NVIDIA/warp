@@ -4,6 +4,7 @@ import numpy as np
 
 from warp.fem.types import ElementIndex, Coords, OUTSIDE, vec2i, vec3i
 from warp.fem.geometry import Trimesh2D
+from warp.fem.cache import cached_arg_value
 
 from .dof_mapper import DofMapper
 from .nodal_function_space import NodalFunctionSpace, NodalFunctionSpaceTrace
@@ -36,6 +37,7 @@ class Trimesh2DFunctionSpace(NodalFunctionSpace):
     def geometry(self) -> Trimesh2D:
         return self._mesh
 
+    @cached_arg_value
     def space_arg_value(self, device):
         arg = self.SpaceArg()
         arg.geo_arg = self.geometry.side_arg_value(device)

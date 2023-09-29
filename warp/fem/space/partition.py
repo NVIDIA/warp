@@ -5,6 +5,7 @@ import warp as wp
 from warp.fem.geometry import GeometryPartition, WholeGeometryPartition
 from warp.fem.utils import compress_node_indices, _iota_kernel
 from warp.fem.types import NULL_NODE_INDEX
+from warp.fem.cache import cached_arg_value, TemporaryStore, borrow_temporary, borrow_temporary_like
 
 from .function_space import FunctionSpace
 
@@ -70,9 +71,9 @@ class WholeSpacePartition(SpacePartition):
     def space_node_indices(self):
         """Return the global function space indices for nodes in this partition"""
         if self._node_indices is None:
-            self._node_indices = wp.empty(shape=(self.node_count(),), dtype=int)
-            wp.launch(kernel=_iota_kernel, dim=self._node_indices.shape, inputs=[self._node_indices, 1])
-        return self._node_indices
+            self._node_indices = borrow_temporary(temporary_store=None, shape=(self.node_count(),), dtype=int)
+            wp.launch(kernel=_iota_kernel, dim=self.node_count(), inputs=[self._node_indices.array, 1])
+        return self._node_indices.array
 
     def partition_arg_value(self, device):
         return WholeSpacePartition.PartitionArg()
@@ -105,37 +106,45 @@ class NodePartition(SpacePartition):
     class PartitionArg:
         space_to_partition: wp.array(dtype=int)
 
-    def __init__(self, space: FunctionSpace, geo_partition: GeometryPartition, with_halo: bool = True, device=None):
+    def __init__(
+        self,
+        space: FunctionSpace,
+        geo_partition: GeometryPartition,
+        with_halo: bool = True,
+        device=None,
+        temporary_store: TemporaryStore = None,
+    ):
         super().__init__(space, geo_partition=geo_partition)
 
-        self._compute_node_indices_from_sides(device, with_halo)
+        self._compute_node_indices_from_sides(device, with_halo, temporary_store)
 
     def node_count(self) -> int:
         """Returns number of nodes referenced by this partition, including exterior halo"""
-        return int(self._category_offsets[NodeCategory.HALO_OTHER_SIDE + 1])
+        return int(self._category_offsets.array.numpy()[NodeCategory.HALO_OTHER_SIDE + 1])
 
     def owned_node_count(self) -> int:
         """Returns number of nodes in this partition, excluding exterior halo"""
-        return int(self._category_offsets[NodeCategory.OWNED_FRONTIER + 1])
+        return int(self._category_offsets.array.numpy()[NodeCategory.OWNED_FRONTIER + 1])
 
     def interior_node_count(self) -> int:
         """Returns number of interior nodes in this partition"""
-        return int(self._category_offsets[NodeCategory.OWNED_INTERIOR + 1])
+        return int(self._category_offsets.array.numpy()[NodeCategory.OWNED_INTERIOR + 1])
 
     def space_node_indices(self):
         """Return the global function space indices for nodes in this partition"""
-        return self._node_indices
+        return self._node_indices.array
 
+    @cached_arg_value
     def partition_arg_value(self, device):
         arg = NodePartition.PartitionArg()
-        arg.space_to_partition = self._space_to_partition.to(device)
+        arg.space_to_partition = self._space_to_partition.array.to(device)
         return arg
 
     @wp.func
     def partition_node_index(args: PartitionArg, space_node_index: int):
         return args.space_to_partition[space_node_index]
 
-    def _compute_node_indices_from_sides(self, device, with_halo: bool):
+    def _compute_node_indices_from_sides(self, device, with_halo: bool, temporary_store: TemporaryStore):
         from warp.fem import cache
 
         trace_space = self.space.trace()
@@ -198,12 +207,13 @@ class NodePartition(SpacePartition):
             suffix=f"{self.geo_partition.name}_{self.space.name}",
         )
 
-        node_category = wp.empty(
+        node_category = borrow_temporary(
+            temporary_store,
             shape=(self.space.node_count(),),
             dtype=int,
             device=device,
         )
-        node_category.fill_(value=NodeCategory.EXTERIOR)
+        node_category.array.fill_(value=NodeCategory.EXTERIOR)
 
         wp.launch(
             dim=self.geo_partition.cell_count(),
@@ -211,7 +221,7 @@ class NodePartition(SpacePartition):
             inputs=[
                 self.geo_partition.cell_arg_value(device),
                 self.space.space_arg_value(device),
-                node_category,
+                node_category.array,
             ],
             device=device,
         )
@@ -223,7 +233,7 @@ class NodePartition(SpacePartition):
                 inputs=[
                     self.geo_partition.side_arg_value(device),
                     self.space.space_arg_value(device),
-                    node_category,
+                    node_category.array,
                 ],
                 device=device,
             )
@@ -234,29 +244,49 @@ class NodePartition(SpacePartition):
                 inputs=[
                     self.geo_partition.side_arg_value(device),
                     self.space.space_arg_value(device),
-                    node_category,
+                    node_category.array,
                 ],
                 device=device,
             )
 
-        self._finalize_node_indices(node_category)
+        self._finalize_node_indices(node_category.array, temporary_store)
 
-    def _finalize_node_indices(self, node_category: wp.array(dtype=int)):
+        node_category.release()
+
+    def _finalize_node_indices(self, node_category: wp.array(dtype=int), temporary_store: TemporaryStore):
         category_offsets, node_indices, _, __ = compress_node_indices(NodeCategory.COUNT, node_category)
-        self._category_offsets = category_offsets.numpy()
 
-        # Compute globla to local indices
-        self._space_to_partition = node_category  # Reuse array storage
+        # Copy offsets to cpu
+        device = node_category.device
+        self._category_offsets = borrow_temporary(
+            temporary_store,
+            shape=category_offsets.array.shape,
+            dtype=category_offsets.array.dtype,
+            pinned=device.is_cuda,
+            device="cpu",
+        )
+        wp.copy(src=category_offsets.array, dest=self._category_offsets.array)
+
+        if device.is_cuda:
+            # TODO switch to synchronize_event once available
+            wp.synchronize_stream(wp.get_stream())
+
+        category_offsets.release()
+
+        # Compute global to local indices
+        self._space_to_partition = borrow_temporary_like(node_indices, temporary_store)
         wp.launch(
             kernel=NodePartition._scatter_partition_indices,
             dim=self.space.node_count(),
-            device=self._space_to_partition.device,
-            inputs=[self.node_count(), node_indices, self._space_to_partition],
+            device=device,
+            inputs=[self.node_count(), node_indices.array, self._space_to_partition.array],
         )
 
-        # Copy to shrinked-to-fit array, save on memory
-        self._node_indices = wp.empty(shape=(self.node_count()), dtype=int, device=node_indices.device)
-        wp.copy(dest=self._node_indices, src=node_indices, count=self.node_count())
+        # Copy to shrinked-to-fit array
+        self._node_indices = borrow_temporary(temporary_store, shape=(self.node_count()), dtype=int, device=device)
+        wp.copy(dest=self._node_indices.array, src=node_indices.array, count=self.node_count())
+
+        node_indices.release()
 
     @wp.kernel
     def _scatter_partition_indices(
@@ -278,6 +308,7 @@ def make_space_partition(
     geometry_partition: Optional[GeometryPartition] = None,
     with_halo: bool = True,
     device=None,
+    temporary_store: TemporaryStore = None,
 ) -> SpacePartition:
     """Computes the substep of nodes from a function space that touch a geometry partition
 
@@ -292,6 +323,8 @@ def make_space_partition(
     """
 
     if geometry_partition is not None and geometry_partition.cell_count() < geometry_partition.geometry.cell_count():
-        return NodePartition(space, geometry_partition, with_halo=with_halo, device=device)
+        return NodePartition(
+            space, geometry_partition, with_halo=with_halo, device=device, temporary_store=temporary_store
+        )
 
     return WholeSpacePartition(space)

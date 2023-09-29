@@ -5,13 +5,12 @@ import warp as wp
 import re
 import ast
 
-from warp.sparse import BsrMatrix, bsr_zeros, bsr_set_from_triplets, bsr_copy, bsr_diag
+from warp.sparse import BsrMatrix, bsr_zeros, bsr_set_from_triplets, bsr_copy, bsr_assign
 from warp.types import type_length
 from warp.utils import array_cast
 from warp.codegen import get_annotations
 
 from warp.fem.domain import GeometryDomain
-from warp.fem.space import SpaceRestriction
 from warp.fem.field import (
     TestField,
     TrialField,
@@ -316,8 +315,11 @@ def _gen_value_struct(value_args: Dict[str, type]):
 def _get_trial_arg():
     pass
 
+
 def _get_test_arg():
     pass
+
+
 class PassFieldArgsToIntegrand(ast.NodeTransformer):
     def __init__(
         self,
@@ -476,26 +478,26 @@ def get_integrate_linear_kernel(
     quadrature: Quadrature,
     FieldStruct: wp.codegen.Struct,
     ValueStruct: wp.codegen.Struct,
-    test_space: SpaceRestriction,
+    test: TestField,
     accumulate_dtype,
 ):
     def integrate_kernel_fn(
         qp_arg: quadrature.Arg,
         domain_arg: domain.ElementArg,
         domain_index_arg: domain.ElementIndexArg,
-        test_arg: test_space.NodeArg,
+        test_arg: test.space_restriction.NodeArg,
         fields: FieldStruct,
         values: ValueStruct,
         result: wp.array2d(dtype=accumulate_dtype),
     ):
         local_node_index = wp.tid()
-        node_index = test_space.node_partition_index(test_arg, local_node_index)
-        element_count = test_space.node_element_count(test_arg, local_node_index)
+        node_index = test.space_restriction.node_partition_index(test_arg, local_node_index)
+        element_count = test.space_restriction.node_element_count(test_arg, local_node_index)
 
         trial_dof_index = NULL_DOF_INDEX
 
         for n in range(element_count):
-            node_element_index = test_space.node_element_index(test_arg, local_node_index, n)
+            node_element_index = test.space_restriction.node_element_index(test_arg, local_node_index, n)
             element_index = domain.element_index(domain_index_arg, node_element_index.domain_element_index)
 
             qp_point_count = quadrature.point_count(qp_arg, element_index)
@@ -506,7 +508,7 @@ def get_integrate_linear_kernel(
                 qp_weight = quadrature.point_weight(qp_arg, element_index, k)
                 vol = domain.element_measure(domain_arg, element_index, coords)
 
-                for i in range(test_space.space.VALUE_DOF_COUNT):
+                for i in range(test.space.VALUE_DOF_COUNT):
                     test_dof_index = DofIndex(node_element_index.node_index_in_element, i)
                     sample = Sample(element_index, coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
                     val = integrand_func(sample, fields, values)
@@ -584,7 +586,7 @@ def get_integrate_bilinear_kernel(
     quadrature: Quadrature,
     FieldStruct: wp.codegen.Struct,
     ValueStruct: wp.codegen.Struct,
-    test_space: SpaceRestriction,
+    test: TestField,
     trial: TrialField,
     accumulate_dtype,
 ):
@@ -594,7 +596,7 @@ def get_integrate_bilinear_kernel(
         qp_arg: quadrature.Arg,
         domain_arg: domain.ElementArg,
         domain_index_arg: domain.ElementIndexArg,
-        test_arg: test_space.NodeArg,
+        test_arg: test.space_restriction.NodeArg,
         trial_partition_arg: trial.space_partition.PartitionArg,
         fields: FieldStruct,
         values: ValueStruct,
@@ -605,11 +607,11 @@ def get_integrate_bilinear_kernel(
     ):
         test_local_node_index = wp.tid()
 
-        element_count = test_space.node_element_count(test_arg, test_local_node_index)
-        test_node_index = test_space.node_partition_index(test_arg, test_local_node_index)
+        element_count = test.space_restriction.node_element_count(test_arg, test_local_node_index)
+        test_node_index = test.space_restriction.node_partition_index(test_arg, test_local_node_index)
 
         for element in range(element_count):
-            test_element_index = test_space.node_element_index(test_arg, test_local_node_index, element)
+            test_element_index = test.space_restriction.node_element_index(test_arg, test_local_node_index, element)
             element_index = domain.element_index(domain_index_arg, test_element_index.domain_element_index)
             qp_point_count = quadrature.point_count(qp_arg, element_index)
 
@@ -625,7 +627,7 @@ def get_integrate_bilinear_kernel(
                 offset_cur = start_offset
 
                 for trial_n in range(NODES_PER_ELEMENT):
-                    for i in range(test_space.space.VALUE_DOF_COUNT):
+                    for i in range(test.space.VALUE_DOF_COUNT):
                         for j in range(trial.space.VALUE_DOF_COUNT):
                             test_dof_index = DofIndex(
                                 test_element_index.node_index_in_element,
@@ -749,7 +751,7 @@ def _generate_integrate_kernel(
     ValueStruct = _gen_value_struct(value_args)
 
     # Check if kernel exist in cache
-    kernel_suffix = f"_itg_{domain.name}_{FieldStruct.key}"
+    kernel_suffix = f"_itg_{wp.types.type_typestr(accumulate_dtype)}_{domain.name}_{FieldStruct.key}"
     if nodal:
         kernel_suffix += "_nodal"
     else:
@@ -800,7 +802,7 @@ def _generate_integrate_kernel(
                 quadrature,
                 FieldStruct,
                 ValueStruct,
-                test_space=test.space_restriction,
+                test=test,
                 accumulate_dtype=accumulate_dtype,
             )
     else:
@@ -820,7 +822,7 @@ def _generate_integrate_kernel(
                 quadrature,
                 FieldStruct,
                 ValueStruct,
-                test_space=test.space_restriction,
+                test=test,
                 trial=trial,
                 accumulate_dtype=accumulate_dtype,
             )
@@ -837,7 +839,7 @@ def _generate_integrate_kernel(
                 sample_name=sample_name,
                 domain_name=domain_name,
                 test_name=test_name,
-                trial_name=trial_name
+                trial_name=trial_name,
             )
         ],
     )
@@ -846,7 +848,7 @@ def _generate_integrate_kernel(
 
 
 def _launch_integrate_kernel(
-    kernel: wp.kernel,
+    kernel: wp.Kernel,
     FieldStruct: wp.codegen.Struct,
     ValueStruct: wp.codegen.Struct,
     domain: GeometryDomain,
@@ -857,16 +859,11 @@ def _launch_integrate_kernel(
     fields: Dict[str, FieldLike],
     values: Dict[str, Any],
     accumulate_dtype: type,
+    temporary_store: Optional[cache.TemporaryStore],
     output_dtype: type,
     output: Optional[Union[wp.array, BsrMatrix]],
     device,
-) -> wp.Kernel:
-    if output_dtype is None:
-        if output is not None:
-            output_dtype = output.dtype
-        else:
-            output_dtype = accumulate_dtype
-
+):
     # Set-up launch arguments
     domain_elt_arg = domain.element_arg_value(device=device)
     domain_elt_index_arg = domain.element_index_arg_value(device=device)
@@ -882,14 +879,19 @@ def _launch_integrate_kernel(
     for k, v in values.items():
         setattr(value_struct_values, k, v)
 
-    # Constant
+    # Constant form
     if test is None and trial is None:
-        if output is None or output.dtype != accumulate_dtype:
-            result = wp.zeros(shape=(1), device=device, dtype=output_dtype)
+        if output is not None and output.dtype == accumulate_dtype:
+            if output.size < 1:
+                raise RuntimeError("Output array must be of size at least 1")
+            accumulate_array = output
         else:
-            result = output
-            result.zero_()
+            accumulate_temporary = cache.borrow_temporary(
+                shape=(1), device=device, dtype=accumulate_dtype, temporary_store=temporary_store
+            )
+            accumulate_array = accumulate_temporary.array
 
+        accumulate_array.zero_()
         wp.launch(
             kernel=kernel,
             dim=domain.element_count(),
@@ -899,16 +901,17 @@ def _launch_integrate_kernel(
                 domain_elt_index_arg,
                 field_arg_values,
                 value_struct_values,
-                result,
+                accumulate_array,
             ],
             device=device,
         )
 
-        if output is None:
-            return output_dtype(result.numpy()[0])
+        if output == accumulate_array:
+            return output
+        elif output is None:
+            return accumulate_array.numpy()[0]
         else:
-            if output != result:
-                array_cast(in_array=result, out_array=output)
+            array_cast(in_array=accumulate_array, out_array=output)
             return output
 
     test_arg = test.space_restriction.node_arg(device=device)
@@ -916,23 +919,36 @@ def _launch_integrate_kernel(
     # Linear form
     if trial is None:
         if test.space.VALUE_DOF_COUNT == 1:
-            result_dtype = accumulate_dtype
+            accumulate_array_dtype = accumulate_dtype
         else:
-            result_dtype = wp.vec(length=test.space.VALUE_DOF_COUNT, dtype=accumulate_dtype)
+            accumulate_array_dtype = cache.cached_vec_type(length=test.space.VALUE_DOF_COUNT, dtype=accumulate_dtype)
 
-        result_array = wp.zeros(
-            shape=test.space_partition.node_count(),
-            dtype=result_dtype,
-            device=device,
-        )
+        if output is not None and output.size < test.space_partition.node_count():
+            raise RuntimeError(f"Output array must be of size at least {test.space_partition.node_count()}")
+
+        accumulate_in_place = wp.types.types_equal(accumulate_array_dtype, output_dtype)
+
+        # If an output array is provided with the correct type, accumulate directly into it
+        # Otherwise, grab a temporary array
+        if output is not None and accumulate_in_place:
+            accumulate_array = output
+        else:
+            accumulate_temporary = cache.borrow_temporary(
+                temporary_store=temporary_store,
+                shape=test.space_partition.node_count(),
+                dtype=accumulate_array_dtype,
+                device=device,
+            )
+            accumulate_array = accumulate_temporary.array
 
         # Launch the integration on the kernel on a 2d scalar view of the actual array
-        result_2d_view = wp.array(
+        accumulate_array.zero_()
+        accumulate_2d_view = wp.array(
             data=None,
-            ptr=result_array.ptr,
-            capacity=result_array.capacity,
+            ptr=accumulate_array.ptr,
+            capacity=accumulate_array.capacity,
             owner=False,
-            device=result_array.device,
+            device=accumulate_array.device,
             shape=(test.space_partition.node_count(), test.space.VALUE_DOF_COUNT),
             dtype=accumulate_dtype,
         )
@@ -947,7 +963,7 @@ def _launch_integrate_kernel(
                     test_arg,
                     field_arg_values,
                     value_struct_values,
-                    result_2d_view,
+                    accumulate_2d_view,
                 ],
                 device=device,
             )
@@ -962,21 +978,28 @@ def _launch_integrate_kernel(
                     test_arg,
                     field_arg_values,
                     value_struct_values,
-                    result_2d_view,
+                    accumulate_2d_view,
                 ],
                 device=device,
             )
 
-        if output_dtype == result_array.dtype:
-            return result_array
+        # Accumulate and output dtypes are simular -- return accumulation array directly
+        if output == accumulate_array:
+            return output
 
-        output_type_length = type_length(output_dtype)
-        if output_type_length == test.space.VALUE_DOF_COUNT:
-            cast_result = wp.empty(dtype=output_dtype, shape=result_array.shape)
+        if accumulate_in_place:
+            return accumulate_temporary.detach()
+
+        # Different types -- need to cast result
+        if output is not None:
+            cast_result = output
+        elif type_length(output_dtype) == test.space.VALUE_DOF_COUNT:
+            cast_result = wp.empty(dtype=output_dtype, shape=accumulate_array.shape, device=device)
         else:
-            cast_result = wp.empty(dtype=output_dtype, shape=result_2d_view.shape)
+            cast_result = wp.empty(dtype=output_dtype, shape=accumulate_2d_view.shape, device=device)
 
-        array_cast(in_array=result_array, out_array=cast_result)
+        array_cast(in_array=accumulate_array, out_array=cast_result)
+        accumulate_temporary.release()  # Do not wait for garbage collection
         return cast_result
 
     # Bilinear form
@@ -984,25 +1007,19 @@ def _launch_integrate_kernel(
     if test.space.VALUE_DOF_COUNT == 1 and trial.space.VALUE_DOF_COUNT == 1:
         block_type = accumulate_dtype
     else:
-        block_type = wp.types.matrix(
+        block_type = cache.cached_mat_type(
             shape=(test.space.VALUE_DOF_COUNT, trial.space.VALUE_DOF_COUNT), dtype=accumulate_dtype
         )
-
-    bsr_matrix = bsr_zeros(
-        rows_of_blocks=test.space_partition.node_count(),
-        cols_of_blocks=trial.space_partition.node_count(),
-        block_type=block_type,
-        device=device,
-    )
 
     if nodal:
         nnz = test.space_restriction.node_count()
     else:
         nnz = test.space_restriction.total_node_element_count() * trial.space.NODES_PER_ELEMENT
 
-    triplet_rows = wp.empty(n=nnz, dtype=int, device=device)
-    triplet_cols = wp.empty(n=nnz, dtype=int, device=device)
-    triplet_values = wp.zeros(
+    triplet_rows_temp = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)
+    triplet_cols_temp = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)
+    triplet_values_temp = cache.borrow_temporary(
+        temporary_store,
         shape=(
             nnz,
             test.space.VALUE_DOF_COUNT,
@@ -1011,6 +1028,11 @@ def _launch_integrate_kernel(
         dtype=accumulate_dtype,
         device=device,
     )
+    triplet_cols = triplet_cols_temp.array
+    triplet_rows = triplet_rows_temp.array
+    triplet_values = triplet_values_temp.array
+
+    triplet_values.zero_()
 
     if nodal:
         wp.launch(
@@ -1052,21 +1074,53 @@ def _launch_integrate_kernel(
             device=device,
         )
 
+    compress_in_place = accumulate_dtype == output_dtype
+
+    if output is not None:
+        if output.nrow != test.space_partition.node_count() or output.ncol != trial.space_partition.node_count():
+            raise RuntimeError(
+                f"Output matrix must have {test.space_partition.node_count()} rows and {trial.space_partition.node_count()} columns of blocks"
+            )
+
+    if output is not None and compress_in_place:
+        bsr_matrix = output
+    else:
+        bsr_matrix = bsr_zeros(
+            rows_of_blocks=test.space_partition.node_count(),
+            cols_of_blocks=trial.space_partition.node_count(),
+            block_type=block_type,
+            device=device,
+        )
+
     bsr_set_from_triplets(bsr_matrix, triplet_rows, triplet_cols, triplet_values)
-    return bsr_matrix if output_dtype == accumulate_dtype else bsr_copy(bsr_matrix, scalar_type=output_dtype)
+
+    # Do not wait for garbage collection
+    triplet_values_temp.release()
+    triplet_rows_temp.release()
+    triplet_cols_temp.release()
+
+    if compress_in_place:
+        return bsr_matrix
+
+    if output is None:
+        return bsr_copy(bsr_matrix, scalar_type=output_dtype)
+
+    bsr_assign(src=bsr_matrix, dest=output)
+    return output
 
 
 def integrate(
     integrand: Integrand,
-    domain: GeometryDomain = None,
-    quadrature: Quadrature = None,
+    domain: Optional[GeometryDomain] = None,
+    quadrature: Optional[Quadrature] = None,
     nodal: bool = False,
-    fields={},
-    values={},
+    fields: Dict[str, FieldLike] = {},
+    values: Dict[str, Any] = {},
+    accumulate_dtype: type = wp.float64,
+    output_dtype: Optional[type] = None,
+    output: Optional[Union[BsrMatrix, wp.array]] = None,
     device=None,
-    accumulate_dtype=wp.float64,
-    output_dtype=None,
-    output=None,
+    temporary_store: Optional[cache.TemporaryStore] = None,
 ):
     """
     Integrates a constant, linear or bilinear form, and returns a scalar, array, or sparse matrix, respectively.
@@ -1078,9 +1132,11 @@ def integrate(
         nodal: For linear or bilinear form only, use the test function nodes as the quadrature points. Assumes Lagrange interpolation functions are used, and no differential or DG operator is evaluated on the test or trial functions.
         fields: Discrete, test, and trial fields to be passed to the integrand. Keys in the dictionary must match integrand parameter names.
         values: Additional variable values to be passed to the integrand, can by of any type accepted by warp kernel launchs. Keys in the dictionary must match integrand parameter names.
-        device: Device on which to perform the integration
+        temporary_store: shared pool from which to allocate temporary arrays
         accumulate_dtype: Scalar type to be used for accumulating integration samples
-        output_dtype: Scalar type for returned results. If None, defaults to accumulate_dtype
+        output: Sparse matrix or warp array into which to store the result of the integration
+        output_dtype: Scalar type for returned results in `output` is notr provided. If None, defaults to `accumulate_dtype`
+        device: Device on which to perform the integration
     """
     if not isinstance(integrand, Integrand):
         raise ValueError("integrand must be tagged with @integrand decorator")
@@ -1120,6 +1176,18 @@ def integrate(
         elif domain != quadrature.domain:
             raise ValueError("Incompatible integration and quadrature domain")
 
+    # Canonicalize types
+    accumulate_dtype = wp.types.type_to_warp(accumulate_dtype)
+    if output is not None:
+        if isinstance(output, BsrMatrix):
+            output_dtype = output.scalar_type
+        else:
+            output_dtype = output.dtype
+    elif output_dtype is None:
+        output_dtype = accumulate_dtype
+    else:
+        output_dtype = wp.types.type_to_warp(output_dtype)
+
     kernel, FieldStruct, ValueStruct = _generate_integrate_kernel(
         integrand=integrand,
         domain=domain,
@@ -1145,6 +1213,7 @@ def integrate(
         fields=fields,
         values=values,
         accumulate_dtype=accumulate_dtype,
+        temporary_store=temporary_store,
         output_dtype=output_dtype,
         output=output,
         device=device,
@@ -1235,7 +1304,9 @@ def _generate_interpolate_kernel(integrand: Integrand, dest: FieldLike, fields: 
     ValueStruct = _gen_value_struct(value_args)
 
     # Check if kernel exist in cache
-    kernel_suffix = f"_itp_{FieldStruct.key}_{dest.domain.name}_{dest.space_restriction.space_partition.name}_{dest.space.name}"
+    kernel_suffix = (
+        f"_itp_{FieldStruct.key}_{dest.domain.name}_{dest.space_restriction.space_partition.name}_{dest.space.name}"
+    )
 
     kernel = cache.get_integrand_kernel(
         integrand=integrand,
@@ -1312,8 +1383,8 @@ def _launch_interpolate_kernel(
 def interpolate(
     integrand: Integrand,
     dest: Union[DiscreteField, FieldRestriction],
-    fields={},
-    values={},
+    fields: Dict[str, FieldLike] = {},
+    values: Dict[str, Any] = {},
     device=None,
 ):
     """

@@ -6,12 +6,22 @@ from warp.fem import utils, cache
 
 
 class TestField:
-    """Field defined over a space restriction that can be used as a test function"""
+    """Field defined over a space restriction that can be used as a test function.
 
-    def __init__(self, space_restriction: SpaceRestriction):
+    In order to reuse computations, it is possible to define the test field using a SpaceRestriction
+    defined for a different value type than the test function value type, as long as the node topology is similar.
+    """
+
+    def __init__(self, space_restriction: SpaceRestriction, space: FunctionSpace):
+        if space_restriction.domain.dimension() == space.DIMENSION - 1:
+            space = space.trace()
+
+        if space_restriction.domain.dimension() != space.DIMENSION:
+            raise ValueError("Incompatible space and domain dimensions")
+
+        self.space = space
         self.space_restriction = space_restriction
         self.space_partition = self.space_restriction.space_partition
-        self.space = self.space_restriction.space
         self.domain = self.space_restriction.domain
         self.name = self.space.name + "Test"
 

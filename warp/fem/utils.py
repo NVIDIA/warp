@@ -2,6 +2,7 @@ from typing import Any, Tuple
 
 import warp as wp
 from warp.utils import radix_sort_pairs, runlength_encode, array_scan
+from warp.fem.cache import borrow_temporary, borrow_temporary_like, TemporaryStore, Temporary
 
 from .types import vec6
 
@@ -76,8 +77,8 @@ def symmetric_part(x: wp.mat33):
 
 
 def compress_node_indices(
-    node_count: int, node_indices: wp.array(dtype=int)
-) -> Tuple[wp.array, wp.array, int, wp.array]:
+    node_count: int, node_indices: wp.array(dtype=int), temporary_store: TemporaryStore = None
+) -> Tuple[Temporary, Temporary, int, Temporary]:
     """
     Compress an unsorted list of node indices into:
      - a node_offsets array, giving for each node the start offset of corresponding indices in sorted_array_indices
@@ -87,8 +88,14 @@ def compress_node_indices(
     """
 
     index_count = node_indices.size
-    sorted_node_indices = wp.empty(2 * index_count, dtype=int, device=node_indices.device)
-    sorted_array_indices = wp.empty_like(sorted_node_indices)
+
+    sorted_node_indices_temp = borrow_temporary(
+        temporary_store, shape=2 * index_count, dtype=int, device=node_indices.device
+    )
+    sorted_array_indices_temp = borrow_temporary_like(sorted_node_indices_temp, temporary_store)
+
+    sorted_node_indices = sorted_node_indices_temp.array
+    sorted_array_indices = sorted_array_indices_temp.array
 
     wp.copy(dest=sorted_node_indices, src=node_indices, count=index_count)
 
@@ -104,14 +111,44 @@ def compress_node_indices(
     radix_sort_pairs(sorted_node_indices, sorted_array_indices, count=index_count)
 
     # Build prefix sum of number of elements per node
-    unique_node_indices = wp.empty(n=index_count, dtype=int, device=node_indices.device)
-    node_element_counts = wp.empty(n=index_count, dtype=int, device=node_indices.device)
-    unique_node_count = runlength_encode(
-        sorted_node_indices, unique_node_indices, node_element_counts, value_count=index_count
+    unique_node_indices_temp = borrow_temporary(
+        temporary_store, shape=index_count, dtype=int, device=node_indices.device
+    )
+    node_element_counts_temp = borrow_temporary(
+        temporary_store, shape=index_count, dtype=int, device=node_indices.device
     )
 
+    unique_node_indices = unique_node_indices_temp.array
+    node_element_counts = node_element_counts_temp.array
+
+    unique_node_count_dev = borrow_temporary(temporary_store, shape=(1,), dtype=int, device=sorted_node_indices.device)
+    runlength_encode(
+        sorted_node_indices,
+        unique_node_indices,
+        node_element_counts,
+        value_count=index_count,
+        run_count=unique_node_count_dev.array,
+    )
+
+    # Transfer unique node count to host
+    if node_indices.device.is_cuda:
+        unique_node_count_host = borrow_temporary(temporary_store, shape=(1,), dtype=int, pinned=True, device="cpu")
+        wp.copy(src=unique_node_count_dev.array, dest=unique_node_count_host.array, count=1)
+        wp.synchronize_stream(wp.get_stream())
+        unique_node_count_dev.release()
+        unique_node_count = int(unique_node_count_host.array.numpy()[0])
+        unique_node_count_host.release()
+    else:
+        unique_node_count = int(unique_node_count_dev.array.numpy()[0])
+        unique_node_count_dev.release()
+
     # Scatter seen run counts to global array of element count per node
-    node_offsets = wp.zeros(shape=(node_count + 1), device=node_element_counts.device, dtype=int)
+    node_offsets_temp = borrow_temporary(
+        temporary_store, shape=(node_count + 1), device=node_element_counts.device, dtype=int
+    )
+    node_offsets = node_offsets_temp.array
+
+    node_offsets.zero_()
     wp.launch(
         kernel=_scatter_node_counts,
         dim=unique_node_count,
@@ -122,51 +159,47 @@ def compress_node_indices(
     # Prefix sum of number of elements per node
     array_scan(node_offsets, node_offsets, inclusive=True)
 
-    return node_offsets, sorted_array_indices, unique_node_count, unique_node_indices
+    sorted_node_indices_temp.release()
+    node_element_counts_temp.release()
+
+    return node_offsets_temp, sorted_array_indices_temp, unique_node_count, unique_node_indices_temp
 
 
-_pinned_temp_count_buffer = {}
-
-
-def _get_pinned_temp_count_buffer(device):
-    device = str(device)
-    if device not in _pinned_temp_count_buffer:
-        _pinned_temp_count_buffer[device] = wp.empty(shape=(1,), dtype=int, pinned=True, device="cpu")
-
-    return _pinned_temp_count_buffer[device]
-
-
-def masked_indices(mask: wp.array(dtype=int), missing_index=-1) -> Tuple[wp.array, wp.array]:
+def masked_indices(
+    mask: wp.array, missing_index=-1, temporary_store: TemporaryStore = None
+) -> Tuple[Temporary, Temporary]:
     """
     From an array of boolean masks (must be either 0 or 1), returns:
       - The list of indices for which the mask is 1
       - A map associating to each element of the input mask array its local index if non-zero, or missing_index if zero.
     """
 
-    offsets = wp.empty_like(mask)
+    offsets_temp = borrow_temporary_like(mask, temporary_store)
+    offsets = offsets_temp.array
 
     wp.utils.array_scan(mask, offsets, inclusive=True)
 
     # Get back total counts on host
     if offsets.device.is_cuda:
-        masked_count = _get_pinned_temp_count_buffer(offsets.device)
-        wp.copy(dest=masked_count, src=offsets, src_offset=offsets.shape[0] - 1, count=1)
+        masked_count_temp = borrow_temporary(temporary_store, shape=1, dtype=int, pinned=True, device="cpu")
+        wp.copy(dest=masked_count_temp.array, src=offsets, src_offset=offsets.shape[0] - 1, count=1)
         wp.synchronize_stream(wp.get_stream())
-        masked_count = int(masked_count.numpy()[0])
+        masked_count = int(masked_count_temp.array.numpy()[0])
+        masked_count_temp.release()
     else:
         masked_count = int(offsets.numpy()[-1])
 
     # Convert counts to indices
-    indices = wp.empty(n=masked_count, device=mask.device, dtype=int)
+    indices_temp = borrow_temporary(temporary_store, shape=masked_count, device=mask.device, dtype=int)
 
     wp.launch(
         kernel=_masked_indices_kernel,
         dim=offsets.shape,
-        inputs=[missing_index, mask, offsets, indices, offsets],
+        inputs=[missing_index, mask, offsets, indices_temp.array, offsets],
         device=mask.device,
     )
 
-    return indices, offsets
+    return indices_temp, offsets_temp
 
 
 def array_axpy(x: wp.array, y: wp.array, alpha: float = 1.0, beta: float = 1.0):

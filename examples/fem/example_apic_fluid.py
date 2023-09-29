@@ -18,7 +18,10 @@ from warp.fem.integrate import integrate
 from warp.fem.operator import integrand, lookup, normal, grad, at_node, div
 from warp.fem.dirichlet import normalize_dirichlet_projector
 
-from warp.sparse import bsr_mv, bsr_copy, bsr_mm, bsr_transposed, BsrMatrix
+from warp.fem.cache import TemporaryStore, set_default_temporary_store, borrow_temporary
+
+from warp.sparse import bsr_mv, bsr_copy, bsr_mm, bsr_transposed, bsr_zeros, BsrMatrix 
+
 
 from bsr_utils import bsr_cg
 
@@ -233,6 +236,16 @@ class Example:
         normalize_dirichlet_projector(u_bd_projector)
         self.vel_bd_projector = u_bd_projector
 
+        # Storage for temporary variables
+        self.temporary_store = TemporaryStore()
+        set_default_temporary_store(self.temporary_store)
+
+        self._divergence_matrix = bsr_zeros(
+            self.strain_space.node_count(),
+            self.velocity_space.node_count(),
+            block_type=wp.mat(shape=(1, 3), dtype=float),
+        )
+
         # Warp.sim model
         self.model: Model = builder.finalize()
 
@@ -254,18 +267,28 @@ class Example:
                     domain=Cells(self.grid), positions=self.state_0.particle_q, measures=self.model.particle_mass
                 )
 
+                # Borrow some temporary arrays for storing integration results
+                inv_volume_temporary = borrow_temporary(
+                    self.temporary_store, shape=(self.fraction_space.node_count()), dtype=float
+                )
+                velocity_int_temporary = borrow_temporary(
+                    self.temporary_store, shape=(self.velocity_space.node_count()), dtype=wp.vec3
+                )
+                inv_volume = inv_volume_temporary.array
+                velocity_int = velocity_int_temporary.array
+
                 # Inverse volume fraction
-                fraction_test = make_test(space=self.fraction_space, domain=pic.domain)
-                inv_volume = integrate(
+                integrate(
                     integrate_fraction,
                     quadrature=pic,
-                    fields={"phi": fraction_test},
+                    fields={"phi": self.fraction_test},
                     accumulate_dtype=float,
+                    output=inv_volume,
                 )
                 wp.launch(kernel=invert_volume_kernel, dim=inv_volume.shape, inputs=[inv_volume])
 
                 # Velocity right-hand side
-                velocity_int = integrate(
+                integrate(
                     integrate_velocity,
                     quadrature=pic,
                     fields={"u": self.velocity_test},
@@ -276,7 +299,7 @@ class Example:
                         "gravity": self.model.gravity,
                     },
                     accumulate_dtype=float,
-                    output_dtype=wp.vec3,
+                    output=velocity_int,
                 )
 
                 # Compute constraint-free velocity
@@ -292,21 +315,21 @@ class Example:
                 bsr_mv(A=self.vel_bd_projector, x=velocity_int, y=self.velocity_field.dof_values, alpha=-1.0, beta=1.0)
 
                 # Divergence matrix
-                divergence_mat = integrate(
+                integrate(
                     divergence_form,
                     quadrature=pic,
                     fields={"u": self.velocity_trial, "psi": self.strain_test},
                     accumulate_dtype=float,
-                    output_dtype=float,
+                    output=self._divergence_matrix,
                 )
 
                 # Project matrix to enforce boundary conditions
-                divergence_mat_tmp = bsr_copy(divergence_mat)
-                bsr_mm(alpha=-1.0, x=divergence_mat_tmp, y=self.vel_bd_projector, z=divergence_mat, beta=1.0)
+                divergence_mat_tmp = bsr_copy(self._divergence_matrix)
+                bsr_mm(alpha=-1.0, x=divergence_mat_tmp, y=self.vel_bd_projector, z=self._divergence_matrix, beta=1.0)
 
                 # Solve unilateral incompressibility
                 solve_incompressibility(
-                    divergence_mat,
+                    self._divergence_matrix,
                     inv_volume,
                     self.pressure_field.dof_values,
                     self.velocity_field.dof_values,
