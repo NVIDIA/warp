@@ -30,7 +30,7 @@ Documentation = "https://nvidia.github.io/warp"
 Changelog = "https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-dev = ["flake8", "black", "isort", "nvtx", "furo"]
+dev = ["flake8", "black", "isort", "nvtx", "furo", "sphinx-copybutton"]
 
 [tool.setuptools.packages]
 find = {}

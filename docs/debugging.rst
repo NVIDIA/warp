@@ -33,7 +33,9 @@ Step-Through Debugging
 ----------------------
 
 It is possible to attach IDE debuggers such as Visual Studio to Warp processes to step through generated kernel code.
-Users should first compile the kernels in debug mode by setting ``wp.config.mode = "debug"``.
+Users should first compile the kernels in debug mode by setting::
+   
+   wp.config.mode = "debug"
 
 This setting ensures that line numbers, and debug symbols are generated correctly. After launching the Python process,
 the debugger should be attached, and a breakpoint inserted into the generated code.
@@ -43,7 +45,10 @@ the debugger should be attached, and a breakpoint inserted into the generated co
 Generated Code
 --------------
 
-The generated code for kernels is stored in a central cache location in the user's home directory, the cache location is printed at startup when ``wp.init()`` is called, for example::
+The generated code for kernels is stored in a central cache location in the user's home directory, the cache location
+is printed at startup when ``wp.init()`` is called, for example:
+
+.. code-block:: console
 
    Warp 0.8.1 initialized:
       CUDA Toolkit: 11.8, Driver: 11.8
@@ -53,7 +58,8 @@ The generated code for kernels is stored in a central cache location in the user
       "cuda:1" | NVIDIA GeForce RTX 2080 Ti (sm_75)
       Kernel cache: C:\Users\LukasW\AppData\Local\NVIDIA Corporation\warp\Cache\0.8.1
 
-The kernel cache has ``gen`` and ``bin`` folders that contain the generated C++/CUDA code and the compiled binaries respectively. Occasionally it can be useful to inspect the generated code for debugging / profiling.
+The kernel cache has ``gen`` and ``bin`` folders that contain the generated C++/CUDA code and the compiled binaries
+respectively. Occasionally it can be useful to inspect the generated code for debugging / profiling.
 
 Bounds Checking
 ---------------
@@ -68,7 +74,9 @@ It is possible to generate out-of-bounds memory access violations through poorly
 case the CUDA runtime will detect the violation and put the CUDA context into an error state. Subsequent kernel launches
 may silently fail which can lead to hard to diagnose issues.
 
-If a CUDA error is suspected a simple verification method is to enable ``wp.config.verify_cuda = True``.
+If a CUDA error is suspected a simple verification method is to enable::
+
+   wp.config.verify_cuda = True
 
 This setting will check the CUDA context after every operation to ensure that it is still valid. If an error is
 encountered it will raise an exception that often helps to narrow down the problematic kernel.

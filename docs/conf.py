@@ -12,16 +12,20 @@
 #
 import os
 import sys
+from datetime import date
+
+import warp as wp
 
 sys.path.insert(0, os.path.abspath(".."))
 
 # -- Project information -----------------------------------------------------
 
 project = "Warp"
-copyright = "2023, NVIDIA"
+copyright = f"{date.today().year}, NVIDIA"
 author = "NVIDIA"
 
-version = "1.0.0-beta.2"
+version = wp.__version__
+release = version
 
 # -- General configuration ---------------------------------------------------
 
@@ -34,9 +38,9 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.autosummary",
     "sphinx.ext.todo",
+    "sphinx_copybutton"
     # Third-party extensions:
     # 'sphinx_tabs.tabs',
-    # 'sphinx_copybutton'
     #    'autodocsumm'
 ]
 
@@ -62,6 +66,10 @@ intersphinx_mapping = {
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+
+# sphinx_copybutton settings
+copybutton_prompt_text = r">>> |\.\.\. |\$ "
+copybutton_prompt_is_regexp = True
 
 # -- Options for HTML output -------------------------------------------------
 

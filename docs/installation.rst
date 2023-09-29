@@ -49,7 +49,7 @@ tools are required:
 
 After cloning the repository, users should run:
 
-.. code-block:: sh
+.. code-block:: console
 
    $ python build_lib.py
 
@@ -60,7 +60,7 @@ without CUDA support. Alternatively, the path to the CUDA toolkit can be
 passed to the build command as ``--cuda_path="..."``. After building the
 Warp package should be installed using:
 
-.. code-block:: sh
+.. code-block:: console
 
    $ pip install -e .
 
@@ -70,7 +70,7 @@ reflected in the Python package.
 If you are cloning from Windows, please first ensure that you have
 enabled “Developer Mode” in Windows settings and symlinks in git:
 
-.. code-block:: sh
+.. code-block:: console
 
    $ git config --global core.symlinks true
 
