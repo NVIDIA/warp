@@ -114,6 +114,136 @@ def test_constructors(test, device, dtype, register_kernels=False):
         tape.zero()
 
 
+def test_casting_constructors(test, device, dtype, register_kernels=False):
+    np_type = np.dtype(dtype)
+    wp_type = wp.types.np_dtype_to_warp_type[np_type]
+    quat = wp.types.quaternion(dtype=wp_type)
+    
+    np16 = np.dtype(np.float16)
+    wp16 = wp.types.np_dtype_to_warp_type[np16]
+
+    np32 = np.dtype(np.float32)
+    wp32 = wp.types.np_dtype_to_warp_type[np32]
+
+    np64 = np.dtype(np.float64)
+    wp64 = wp.types.np_dtype_to_warp_type[np64]
+
+    def cast_float16(
+        a: wp.array(dtype=wp_type, ndim=2),
+        b: wp.array(dtype=wp16, ndim=2)
+    ):
+        tid = wp.tid()
+        
+        q1 = quat(a[tid,0], a[tid,1], a[tid,2], a[tid,3])
+        q2 = wp.quaternion(q1, dtype=wp16)
+
+        b[tid,0] = q2[0]
+        b[tid,1] = q2[1]
+        b[tid,2] = q2[2]
+        b[tid,3] = q2[3]
+
+    def cast_float32(
+        a: wp.array(dtype=wp_type, ndim=2),
+        b: wp.array(dtype=wp32, ndim=2)
+    ):
+        tid = wp.tid()
+        
+        q1 = quat(a[tid,0], a[tid,1], a[tid,2], a[tid,3])
+        q2 = wp.quaternion(q1, dtype=wp32)
+
+        b[tid,0] = q2[0]
+        b[tid,1] = q2[1]
+        b[tid,2] = q2[2]
+        b[tid,3] = q2[3]
+
+    def cast_float64(
+        a: wp.array(dtype=wp_type, ndim=2),
+        b: wp.array(dtype=wp64, ndim=2)
+    ):
+        tid = wp.tid()
+        
+        q1 = quat(a[tid,0], a[tid,1], a[tid,2], a[tid,3])
+        q2 = wp.quaternion(q1, dtype=wp64)
+
+        b[tid,0] = q2[0]
+        b[tid,1] = q2[1]
+        b[tid,2] = q2[2]
+        b[tid,3] = q2[3]
+
+    kernel_16 = getkernel(cast_float16, suffix=dtype.__name__)
+    kernel_32 = getkernel(cast_float32, suffix=dtype.__name__)
+    kernel_64 = getkernel(cast_float64, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    # check casting to float 16
+    a = wp.array(np.ones((1,4), dtype=np_type), dtype=wp_type, requires_grad=True, device=device)
+    b = wp.array(np.zeros((1,4), dtype=np16), dtype=wp16, requires_grad=True, device=device)
+    b_result = np.ones((1,4), dtype=np16)
+    b_grad = wp.array(np.ones((1,4), dtype=np16), dtype=wp16, device=device)
+    a_grad = wp.array(np.ones((1,4), dtype=np_type), dtype=wp_type, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            kernel=kernel_16,
+            dim=1,
+            inputs=[a,b],
+            device=device
+        )
+
+    tape.backward(grads={b:b_grad})
+    out = tape.gradients[a].numpy()
+
+    assert_np_equal(b.numpy(), b_result)
+    assert_np_equal(out, a_grad.numpy())
+    
+    # check casting to float 32
+    a = wp.array(np.ones((1,4), dtype=np_type), dtype=wp_type, requires_grad=True, device=device)
+    b = wp.array(np.zeros((1,4), dtype=np32), dtype=wp32, requires_grad=True, device=device)
+    b_result = np.ones((1,4), dtype=np32)
+    b_grad = wp.array(np.ones((1,4), dtype=np32), dtype=wp32, device=device)
+    a_grad = wp.array(np.ones((1,4), dtype=np_type), dtype=wp_type, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            kernel=kernel_32,
+            dim=1,
+            inputs=[a,b],
+            device=device
+        )
+
+    tape.backward(grads={b:b_grad})
+    out = tape.gradients[a].numpy()
+
+    assert_np_equal(b.numpy(), b_result)
+    assert_np_equal(out, a_grad.numpy())
+
+    # check casting to float 64
+    a = wp.array(np.ones((1,4), dtype=np_type), dtype=wp_type, requires_grad=True, device=device)
+    b = wp.array(np.zeros((1,4), dtype=np64), dtype=wp64, requires_grad=True, device=device)
+    b_result = np.ones((1,4), dtype=np64)
+    b_grad = wp.array(np.ones((1,4), dtype=np64), dtype=wp64, device=device)
+    a_grad = wp.array(np.ones((1,4), dtype=np_type), dtype=wp_type, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            kernel=kernel_64,
+            dim=1,
+            inputs=[a,b],
+            device=device
+        )
+
+    tape.backward(grads={b:b_grad})
+    out = tape.gradients[a].numpy()
+
+    assert_np_equal(b.numpy(), b_result)
+    assert_np_equal(out, a_grad.numpy())
+
+
 def test_inverse(test, device, dtype, register_kernels=False):
     np.random.seed(123)
 
@@ -1837,6 +1967,9 @@ def register(parent):
     for dtype in np_float_types:
         add_function_test_register_kernel(
             TestQuat, f"test_constructors_{dtype.__name__}", test_constructors, devices=devices, dtype=dtype
+        )
+        add_function_test_register_kernel(
+            TestQuat, f"test_casting_constructors_{dtype.__name__}", test_casting_constructors, devices=devices, dtype=dtype
         )
         add_function_test_register_kernel(
             TestQuat, f"test_anon_type_instance_{dtype.__name__}", test_anon_type_instance, devices=devices, dtype=dtype

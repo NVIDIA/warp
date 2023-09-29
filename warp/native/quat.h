@@ -19,6 +19,15 @@ struct quat_t
     // zero constructor for adjoint variable initialization
     inline CUDA_CALLABLE quat_t(Type x=Type(0), Type y=Type(0), Type z=Type(0), Type w=Type(0)) : x(x), y(y), z(z), w(w) {}    
     explicit inline CUDA_CALLABLE quat_t(const vec_t<3,Type>& v, Type w=Type(0)) : x(v[0]), y(v[1]), z(v[2]), w(w) {}
+    
+    template<typename OtherType>
+    explicit inline CUDA_CALLABLE quat_t(const quat_t<OtherType>& other)
+    {
+        x = static_cast<Type>(other.x);
+        y = static_cast<Type>(other.y);
+        z = static_cast<Type>(other.z);
+        w = static_cast<Type>(other.w);
+    }
 
     // imaginary part
     Type x;
@@ -73,7 +82,17 @@ inline CUDA_CALLABLE void adj_quat_t(const vec_t<3,Type>& v, Type w, vec_t<3,Typ
     adj_v[0] += adj_ret.x;
     adj_v[1] += adj_ret.y;
     adj_v[2] += adj_ret.z;
-    adj_w   += adj_ret.w;
+    adj_w    += adj_ret.w;
+}
+
+// casting constructor adjoint
+template<typename Type, typename OtherType>
+inline CUDA_CALLABLE void adj_quat_t(const quat_t<OtherType>& other, quat_t<OtherType>& adj_other, const quat_t<Type>& adj_ret)
+{
+    adj_other.x += static_cast<OtherType>(adj_ret.x);
+    adj_other.y += static_cast<OtherType>(adj_ret.y);
+    adj_other.z += static_cast<OtherType>(adj_ret.z);
+    adj_other.w += static_cast<OtherType>(adj_ret.w);
 }
 
 // forward methods

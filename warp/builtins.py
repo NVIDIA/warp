@@ -635,6 +635,13 @@ def vector_constructor_func(arg_types, kwds, templates):
                 )
 
             if "dtype" in kwds:
+                # casting constructor
+                if len(arg_types) == 1 and types_equal(arg_types[0], vector(length=Any, dtype=Scalar), match_generic=True):
+                    veclen = arg_types[0]._length_
+                    vectype = kwds["dtype"]
+                    templates.append(veclen)
+                    templates.append(vectype)
+                    return vector(length=veclen, dtype=vectype)
                 raise RuntimeError(
                     "vec() should not have dtype specified if numeric arguments are given, the dtype will be inferred from the argument types"
                 )
@@ -906,11 +913,15 @@ add_builtin(
 
 def quaternion_value_func(arg_types, kwds, templates):
     if arg_types is None:
-        return quaternion(dtype=Scalar)
+        return quaternion(dtype=Float)
 
-    # if constructing anonymous quat type then infer output type from arguments
     if len(templates) == 0:
-        dtype = infer_scalar_type(arg_types)
+        if "dtype" in kwds:
+            # casting constructor
+            dtype = kwds["dtype"]
+        else:
+            # if constructing anonymous quat type then infer output type from arguments
+            dtype = infer_scalar_type(arg_types)
         templates.append(dtype)
     else:
         # if constructing predeclared type then check arg_types match expectation
@@ -918,6 +929,18 @@ def quaternion_value_func(arg_types, kwds, templates):
             raise RuntimeError("Wrong scalar type for quat {} constructor".format(",".join(map(str, templates))))
 
     return quaternion(dtype=templates[0])
+
+
+def quat_cast_value_func(arg_types, kwds, templates):
+    if arg_types is None:
+        raise RuntimeError("Missing quaternion argument.")
+    if "dtype" not in kwds:
+        raise RuntimeError("Missing 'dtype' kwd.")
+
+    dtype = kwds["dtype"]
+    templates.append(dtype)
+
+    return quaternion(dtype=dtype)
 
 
 add_builtin(
@@ -947,6 +970,15 @@ add_builtin(
     group="Quaternion Math",
     doc="Create a quaternion using the supplied vector/scalar (type inferred from scalar type)",
     export=False,
+)
+add_builtin(
+    "quaternion",
+    input_types={"q": quaternion(dtype=Float)},
+    value_func=quat_cast_value_func,
+    native_func="quat_t",
+    group="Quaternion Math",
+    doc="Construct a quaternion of type dtype from another quaternion of a different dtype.",
+    export=False
 )
 
 

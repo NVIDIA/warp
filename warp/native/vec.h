@@ -33,7 +33,7 @@ struct vec_t
     {
         for( unsigned i=0; i < Length; ++i )
         {
-            c[i] = other[i];
+            c[i] = static_cast<Type>(other[i]);
         }
     }
 
@@ -645,7 +645,7 @@ inline CUDA_CALLABLE void adj_vec_t(const vec_t<Length, OtherType>& other, vec_t
 {
     for( unsigned i=0; i < Length; ++i )
     {
-        adj_other[i] += adj_ret[i];
+        adj_other[i] += static_cast<OtherType>(adj_ret[i]);
     }
 }
 
