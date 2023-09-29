@@ -642,9 +642,9 @@ WP_API void builtin_pnoise_uint32_float32_int32(uint32 state, float32 x, int32 p
 WP_API void builtin_pnoise_uint32_vec2f_int32_int32(uint32 state, vec2f xy, int32 px, int32 py, float* ret) { *ret = pnoise(state, xy, px, py); }
 WP_API void builtin_pnoise_uint32_vec3f_int32_int32_int32(uint32 state, vec3f xyz, int32 px, int32 py, int32 pz, float* ret) { *ret = pnoise(state, xyz, px, py, pz); }
 WP_API void builtin_pnoise_uint32_vec4f_int32_int32_int32_int32(uint32 state, vec4f xyzt, int32 px, int32 py, int32 pz, int32 pt, float* ret) { *ret = pnoise(state, xyzt, px, py, pz, pt); }
-WP_API void builtin_curlnoise_uint32_vec2f(uint32 state, vec2f xy, vec2f* ret) { *ret = curlnoise(state, xy); }
-WP_API void builtin_curlnoise_uint32_vec3f(uint32 state, vec3f xyz, vec3f* ret) { *ret = curlnoise(state, xyz); }
-WP_API void builtin_curlnoise_uint32_vec4f(uint32 state, vec4f xyzt, vec3f* ret) { *ret = curlnoise(state, xyzt); }
+WP_API void builtin_curlnoise_uint32_vec2f(uint32 state, vec2f xy, uint32 octaves, float lacunarity, float gain, vec2f* ret) { *ret = curlnoise(state, xy, octaves, lacunarity, gain); }
+WP_API void builtin_curlnoise_uint32_vec3f(uint32 state, vec3f xyz, uint32 octaves, float lacunarity, float gain, vec3f* ret) { *ret = curlnoise(state, xyz, octaves, lacunarity, gain); }
+WP_API void builtin_curlnoise_uint32_vec4f(uint32 state, vec4f xyzt, uint32 octaves, float lacunarity, float gain, vec3f* ret) { *ret = curlnoise(state, xyzt, octaves, lacunarity, gain); }
 WP_API void builtin_index_vec2h_int32(vec2h a, int32 i, float16* ret) { *ret = index(a, i); }
 WP_API void builtin_index_vec3h_int32(vec3h a, int32 i, float16* ret) { *ret = index(a, i); }
 WP_API void builtin_index_vec4h_int32(vec4h a, int32 i, float16* ret) { *ret = index(a, i); }
