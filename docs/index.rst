@@ -162,6 +162,7 @@ User's Guide
    modules/devices
    modules/profiling
    modules/interoperability
+   configuration
    debugging
    faq
 
