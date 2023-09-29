@@ -2,6 +2,7 @@ import warp as wp
 
 from warp.fem.types import ElementIndex, Coords, Sample, NULL_QP_INDEX, NULL_DOF_INDEX
 from warp.fem.types import vec2i, vec3i
+from warp.fem.cache import cached_arg_value
 
 from .geometry import Geometry
 from .element import Square, Cube
@@ -38,7 +39,12 @@ class Grid3D(Geometry):
 
     @property
     def extents(self) -> wp.vec3:
-        return self.bounds_hi - self.bounds_lo
+        # Avoid using native sub due to higher over of calling builtins from Python
+        return wp.vec3(
+            self.bounds_hi[0] - self.bounds_lo[0],
+            self.bounds_hi[1] - self.bounds_lo[1],
+            self.bounds_hi[2] - self.bounds_lo[2],
+        )
 
     @property
     def cell_size(self) -> wp.vec3:
@@ -192,11 +198,12 @@ class Grid3D(Geometry):
 
     # Geometry device interface
 
+    @cached_arg_value
     def cell_arg_value(self, device) -> CellArg:
         args = self.CellArg()
         args.res = self.res
-        args.cell_size = self.cell_size
         args.origin = self.bounds_lo
+        args.cell_size = self.cell_size
         return args
 
     @wp.func
@@ -247,9 +254,9 @@ class Grid3D(Geometry):
     def cell_normal(args: CellArg, s: Sample):
         return wp.vec3(0.0)
 
+    @cached_arg_value
     def side_arg_value(self, device) -> SideArg:
         args = self.SideArg()
-
         axis_dims = vec3i(
             self.res[1] * self.res[2],
             self.res[2] * self.res[0],

@@ -1,9 +1,11 @@
+from typing import Optional
 import warp as wp
 import numpy as np
 
 
 from warp.fem.types import ElementIndex, Coords, OUTSIDE, vec2i, vec3i, vec4i
 from warp.fem.geometry import Tetmesh
+from warp.fem.cache import cached_arg_value
 
 from .dof_mapper import DofMapper
 from .nodal_function_space import NodalFunctionSpace, NodalFunctionSpaceTrace
@@ -24,7 +26,12 @@ class TetmeshFunctionSpace(NodalFunctionSpace):
         edge_count: int
         face_count: int
 
-    def __init__(self, mesh: Tetmesh, dtype: type = float, dof_mapper: DofMapper = None):
+    def __init__(
+        self,
+        mesh: Tetmesh,
+        dtype: type = float,
+        dof_mapper: DofMapper = None,
+    ):
         super().__init__(dtype, dof_mapper)
         self._mesh = mesh
 
@@ -33,25 +40,22 @@ class TetmeshFunctionSpace(NodalFunctionSpace):
 
         self._compute_reference_transforms()
         self._compute_tet_face_indices()
-        self._compute_tet_edge_indices()
 
     @property
     def geometry(self) -> Tetmesh:
         return self._mesh
 
-    def edge_count(self):
-        return self._edge_vertex_indices.shape[0]
-
+    @cached_arg_value
     def space_arg_value(self, device):
         arg = self.SpaceArg()
         arg.geo_arg = self.geometry.side_arg_value(device)
         arg.reference_transforms = self._reference_transforms.to(device)
         arg.tet_face_indices = self._tet_face_indices.to(device)
-        arg.tet_edge_indices = self._tet_edge_indices.to(device)
+        arg.tet_edge_indices = self._mesh._tet_edge_indices.to(device)
 
         arg.vertex_count = self._mesh.vertex_count()
         arg.face_count = self._mesh.side_count()
-        arg.edge_count = self.edge_count()
+        arg.edge_count = self._mesh.edge_count()
         return arg
 
     class Trace(NodalFunctionSpaceTrace):
@@ -112,79 +116,6 @@ class TetmeshFunctionSpace(NodalFunctionSpace):
                 self._mesh._face_vertex_indices,
                 self._mesh.tet_vertex_indices,
                 self._tet_face_indices,
-            ],
-        )
-
-    def _compute_tet_edge_indices(self):
-        from warp.fem.utils import _get_pinned_temp_count_buffer
-        from warp.utils import array_scan
-
-        device = self._mesh.tet_vertex_indices.device
-
-        vertex_start_edge_count = wp.zeros(dtype=int, device=device, shape=self._mesh.vertex_count())
-        vertex_start_edge_offsets = wp.empty_like(vertex_start_edge_count)
-
-        vertex_edge_ends = wp.empty(dtype=int, device=device, shape=(6 * self._mesh.cell_count()))
-
-        # Count face edges starting at each vertex
-        wp.launch(
-            kernel=TetmeshFunctionSpace._count_starting_edges_kernel,
-            device=device,
-            dim=self._mesh.cell_count(),
-            inputs=[self._mesh.tet_vertex_indices, vertex_start_edge_count],
-        )
-
-        array_scan(in_array=vertex_start_edge_count, out_array=vertex_start_edge_offsets, inclusive=False)
-
-        # Count number of unique edges (deduplicate across faces)
-        vertex_unique_edge_count = vertex_start_edge_count
-        wp.launch(
-            kernel=TetmeshFunctionSpace._count_unique_starting_edges_kernel,
-            device=device,
-            dim=self._mesh.vertex_count(),
-            inputs=[
-                self._mesh._vertex_tet_offsets,
-                self._mesh._vertex_tet_indices,
-                self._mesh.tet_vertex_indices,
-                vertex_start_edge_offsets,
-                vertex_unique_edge_count,
-                vertex_edge_ends,
-            ],
-        )
-
-        vertex_unique_edge_offsets = wp.empty_like(vertex_start_edge_offsets)
-        array_scan(in_array=vertex_start_edge_count, out_array=vertex_unique_edge_offsets, inclusive=False)
-
-        # Get back edge count to host
-        if device.is_cuda:
-            edge_count = _get_pinned_temp_count_buffer(device)
-            # Last vertex will not own any edge, so its count will be zero; just fetching last prefix count is ok
-            wp.copy(dest=edge_count, src=vertex_unique_edge_offsets, src_offset=self._mesh.vertex_count() - 1, count=1)
-            wp.synchronize_stream(wp.get_stream())
-            edge_count = int(edge_count.numpy()[0])
-        else:
-            edge_count = int(vertex_unique_edge_offsets.numpy()[self._mesh.vertex_count() - 1])
-
-        self._edge_vertex_indices = wp.empty(shape=(edge_count,), dtype=vec2i, device=device)
-        self._tet_edge_indices = wp.empty(
-            dtype=int, device=self._mesh.tet_vertex_indices.device, shape=(self._mesh.cell_count(), 6)
-        )
-
-        # Compress edge data
-        wp.launch(
-            kernel=TetmeshFunctionSpace._compress_edges_kernel,
-            device=device,
-            dim=self._mesh.vertex_count(),
-            inputs=[
-                self._mesh._vertex_tet_offsets,
-                self._mesh._vertex_tet_indices,
-                self._mesh.tet_vertex_indices,
-                vertex_start_edge_offsets,
-                vertex_unique_edge_offsets,
-                vertex_unique_edge_count,
-                vertex_edge_ends,
-                self._edge_vertex_indices,
-                self._tet_edge_indices,
             ],
         )
 
@@ -257,146 +188,6 @@ class TetmeshFunctionSpace(NodalFunctionSpace):
             )
             t1_face = TetmeshFunctionSpace._find_face_index_in_tet(face_vtx, t1_vtx)
             tet_face_indices[t1, t1_face] = e
-
-    @wp.kernel
-    def _count_starting_edges_kernel(
-        tri_vertex_indices: wp.array2d(dtype=int), vertex_start_edge_count: wp.array(dtype=int)
-    ):
-        t = wp.tid()
-        for k in range(3):
-            v0 = tri_vertex_indices[t, k]
-            v1 = tri_vertex_indices[t, (k + 1) % 3]
-
-            if v0 < v1:
-                wp.atomic_add(vertex_start_edge_count, v0, 1)
-            else:
-                wp.atomic_add(vertex_start_edge_count, v1, 1)
-
-        for k in range(3):
-            v0 = tri_vertex_indices[t, k]
-            v1 = tri_vertex_indices[t, 3]
-
-            if v0 < v1:
-                wp.atomic_add(vertex_start_edge_count, v0, 1)
-            else:
-                wp.atomic_add(vertex_start_edge_count, v1, 1)
-
-    @wp.func
-    def _find(
-        needle: int,
-        values: wp.array(dtype=int),
-        beg: int,
-        end: int,
-    ):
-        for i in range(beg, end):
-            if values[i] == needle:
-                return i
-
-        return -1
-
-    @wp.kernel
-    def _count_unique_starting_edges_kernel(
-        vertex_tet_offsets: wp.array(dtype=int),
-        vertex_tet_indices: wp.array(dtype=int),
-        tet_vertex_indices: wp.array2d(dtype=int),
-        vertex_start_edge_offsets: wp.array(dtype=int),
-        vertex_start_edge_count: wp.array(dtype=int),
-        edge_ends: wp.array(dtype=int),
-    ):
-        v = wp.tid()
-
-        edge_beg = vertex_start_edge_offsets[v]
-
-        tet_beg = vertex_tet_offsets[v]
-        tet_end = vertex_tet_offsets[v + 1]
-
-        edge_cur = edge_beg
-
-        for tet in range(tet_beg, tet_end):
-            t = vertex_tet_indices[tet]
-
-            for k in range(3):
-                v0 = tet_vertex_indices[t, k]
-                v1 = tet_vertex_indices[t, (k + 1) % 3]
-
-                if v == wp.min(v0, v1):
-                    other_v = wp.max(v0, v1)
-                    if TetmeshFunctionSpace._find(other_v, edge_ends, edge_beg, edge_cur) == -1:
-                        edge_ends[edge_cur] = other_v
-                        edge_cur += 1
-
-            for k in range(3):
-                v0 = tet_vertex_indices[t, k]
-                v1 = tet_vertex_indices[t, 3]
-
-                if v == wp.min(v0, v1):
-                    other_v = wp.max(v0, v1)
-                    if TetmeshFunctionSpace._find(other_v, edge_ends, edge_beg, edge_cur) == -1:
-                        edge_ends[edge_cur] = other_v
-                        edge_cur += 1
-
-        vertex_start_edge_count[v] = edge_cur - edge_beg
-
-    @wp.kernel
-    def _compress_edges_kernel(
-        vertex_tet_offsets: wp.array(dtype=int),
-        vertex_tet_indices: wp.array(dtype=int),
-        tet_vertex_indices: wp.array2d(dtype=int),
-        vertex_start_edge_offsets: wp.array(dtype=int),
-        vertex_unique_edge_offsets: wp.array(dtype=int),
-        vertex_unique_edge_count: wp.array(dtype=int),
-        uncompressed_edge_ends: wp.array(dtype=int),
-        edge_vertex_indices: wp.array(dtype=vec2i),
-        tet_edge_indices: wp.array2d(dtype=int),
-    ):
-        v = wp.tid()
-
-        uncompressed_beg = vertex_start_edge_offsets[v]
-
-        unique_beg = vertex_unique_edge_offsets[v]
-        unique_count = vertex_unique_edge_count[v]
-
-        for e in range(unique_count):
-            src_index = uncompressed_beg + e
-            edge_index = unique_beg + e
-
-            edge_vertex_indices[edge_index] = vec2i(v, uncompressed_edge_ends[src_index])
-
-        tet_beg = vertex_tet_offsets[v]
-        tet_end = vertex_tet_offsets[v + 1]
-
-        for tet in range(tet_beg, tet_end):
-            t = vertex_tet_indices[tet]
-
-            for k in range(3):
-                v0 = tet_vertex_indices[t, k]
-                v1 = tet_vertex_indices[t, (k + 1) % 3]
-
-                if v == wp.min(v0, v1):
-                    other_v = wp.max(v0, v1)
-                    edge_id = (
-                        TetmeshFunctionSpace._find(
-                            other_v, uncompressed_edge_ends, uncompressed_beg, uncompressed_beg + unique_count
-                        )
-                        - uncompressed_beg
-                        + unique_beg
-                    )
-                    tet_edge_indices[t][k] = edge_id
-
-            for k in range(3):
-                v0 = tet_vertex_indices[t, k]
-                v1 = tet_vertex_indices[t, 3]
-
-                if v == wp.min(v0, v1):
-                    other_v = wp.max(v0, v1)
-                    edge_id = (
-                        TetmeshFunctionSpace._find(
-                            other_v, uncompressed_edge_ends, uncompressed_beg, uncompressed_beg + unique_count
-                        )
-                        - uncompressed_beg
-                        + unique_beg
-                    )
-                    tet_edge_indices[t][k + 3] = edge_id
 
 
 class TetmeshPiecewiseConstantSpace(TetmeshFunctionSpace):
@@ -1115,7 +906,7 @@ class TetmeshPolynomialSpace(TetmeshFunctionSpace):
 
         return (
             self._mesh.vertex_count()
-            + self.edge_count() * INTERIOR_NODES_PER_EDGE
+            + self._mesh.edge_count() * INTERIOR_NODES_PER_EDGE
             + self._mesh.side_count() * INTERIOR_NODES_PER_FACE
             + self._mesh.cell_count() * INTERIOR_NODES_PER_CELL
         )

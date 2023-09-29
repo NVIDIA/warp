@@ -36,21 +36,28 @@ def make_space_restriction(
     space_partition: Optional[SpacePartition] = None,
     domain: Optional[warp.fem.domain.GeometryDomain] = None,
     device=None,
+    temporary_store: "Optional[warp.fem.cache.TemporaryStore]" = None,
 ) -> SpaceRestriction:
     """
-    Restricts a function space to a Domain, i.e. a subset of its elements. 
+    Restricts a function space to a Domain, i.e. a subset of its elements.
 
     Args:
         space: the space to be restricted
         space_partition: if provided, the subset of nodes from ``space`` to consider
         domain: the domain to restrict the space to, defaults to all cells of the space geometry or partition.
+        device: device on which to perform and store computations
+        temporary_store: shared pool from which to allocate temporary arrays
     """
-    if domain is None:
-        if space_partition is None:
+    if space_partition is None:
+        if domain is None:
             domain = warp.fem.domain.Cells(geometry=space.geometry)
-        else:
-            domain = warp.fem.domain.Cells(geometry=space_partition.geo_partition)
-    return SpaceRestriction(space=space, space_partition=space_partition, domain=domain, device=device)
+        space_partition = make_space_partition(space, domain.geometry_partition)
+    elif domain is None:
+        domain = warp.fem.domain.Cells(geometry=space_partition.geo_partition)
+
+    return SpaceRestriction(
+        space=space, space_partition=space_partition, domain=domain, device=device, temporary_store=temporary_store
+    )
 
 
 def make_polynomial_space(

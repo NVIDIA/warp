@@ -4,6 +4,7 @@ import warp as wp
 
 from warp.fem.types import ElementIndex, NULL_ELEMENT_INDEX
 from warp.fem.utils import masked_indices
+from warp.fem.cache import cached_arg_value, TemporaryStore, borrow_temporary
 
 from .geometry import Geometry
 
@@ -107,19 +108,20 @@ class CellBasedGeometryPartition(GeometryPartition):
         frontier_side_indices: wp.array(dtype=int)
 
     def side_count(self) -> int:
-        return self._partition_side_indices.shape[0]
+        return self._partition_side_indices.array.shape[0]
 
     def boundary_side_count(self) -> int:
-        return self._boundary_side_indices.shape[0]
+        return self._boundary_side_indices.array.shape[0]
 
     def frontier_side_count(self) -> int:
-        return self._frontier_side_indices.shape[0]
+        return self._frontier_side_indices.array.shape[0]
 
+    @cached_arg_value
     def side_arg_value(self, device):
         arg = LinearGeometryPartition.SideArg()
-        arg.partition_side_indices = self._partition_side_indices.to(device)
-        arg.boundary_side_indices = self._boundary_side_indices.to(device)
-        arg.frontier_side_indices = self._frontier_side_indices.to(device)
+        arg.partition_side_indices = self._partition_side_indices.array.to(device)
+        arg.boundary_side_indices = self._boundary_side_indices.array.to(device)
+        arg.frontier_side_indices = self._frontier_side_indices.array.to(device)
         return arg
 
     @wp.func
@@ -138,10 +140,7 @@ class CellBasedGeometryPartition(GeometryPartition):
         return args.frontier_side_indices[frontier_side_index]
 
     def compute_side_indices_from_cells(
-        self,
-        cell_arg_value: Any,
-        cell_inclusion_test_func: wp.Function,
-        device,
+        self, cell_arg_value: Any, cell_inclusion_test_func: wp.Function, device, temporary_store: TemporaryStore = None
     ):
         from warp.fem import cache
 
@@ -176,39 +175,50 @@ class CellBasedGeometryPartition(GeometryPartition):
             suffix=f"{self.geometry.name}_{cell_inclusion_test_func.key}",
         )
 
-        partition_side_mask = wp.zeros(
+        partition_side_mask = borrow_temporary(
+            temporary_store,
             shape=(self.geometry.side_count(),),
             dtype=int,
             device=device,
         )
-        boundary_side_mask = wp.zeros(
+        boundary_side_mask = borrow_temporary(
+            temporary_store,
             shape=(self.geometry.side_count(),),
             dtype=int,
             device=device,
         )
-        frontier_side_mask = wp.zeros(
+        frontier_side_mask = borrow_temporary(
+            temporary_store,
             shape=(self.geometry.side_count(),),
             dtype=int,
             device=device,
         )
 
+        partition_side_mask.array.zero_()
+        boundary_side_mask.array.zero_()
+        frontier_side_mask.array.zero_()
+
         wp.launch(
-            dim=partition_side_mask.shape[0],
+            dim=partition_side_mask.array.shape[0],
             kernel=count_sides,
             inputs=[
                 self.geometry.side_arg_value(device),
                 cell_arg_value,
-                partition_side_mask,
-                boundary_side_mask,
-                frontier_side_mask,
+                partition_side_mask.array,
+                boundary_side_mask.array,
+                frontier_side_mask.array,
             ],
             device=device,
         )
 
         # Convert counts to indices
-        self._partition_side_indices, _ = masked_indices(partition_side_mask)
-        self._boundary_side_indices, _ = masked_indices(boundary_side_mask)
-        self._frontier_side_indices, _ = masked_indices(frontier_side_mask)
+        self._partition_side_indices, _ = masked_indices(partition_side_mask.array, temporary_store=temporary_store)
+        self._boundary_side_indices, _ = masked_indices(boundary_side_mask.array, temporary_store=temporary_store)
+        self._frontier_side_indices, _ = masked_indices(frontier_side_mask.array, temporary_store=temporary_store)
+
+        partition_side_mask.release()
+        boundary_side_mask.release()
+        frontier_side_mask.release()
 
 
 class LinearGeometryPartition(CellBasedGeometryPartition):
@@ -218,6 +228,7 @@ class LinearGeometryPartition(CellBasedGeometryPartition):
         partition_rank: int,
         partition_count: int,
         device=None,
+        temporary_store: TemporaryStore = None,
     ):
         """Creates a geometry partition by uniformly partionning cell indices
 
@@ -239,6 +250,7 @@ class LinearGeometryPartition(CellBasedGeometryPartition):
             self.cell_arg_value(device),
             LinearGeometryPartition._cell_inclusion_test,
             device,
+            temporary_store=temporary_store,
         )
 
     def cell_count(self) -> int:
@@ -278,7 +290,7 @@ class LinearGeometryPartition(CellBasedGeometryPartition):
 
 
 class ExplicitGeometryPartition(CellBasedGeometryPartition):
-    def __init__(self, geometry: Geometry, cell_mask: "wp.array(dtype=int)"):
+    def __init__(self, geometry: Geometry, cell_mask: "wp.array(dtype=int)", temporary_store: TemporaryStore = None):
         """Creates a geometry partition by uniformly partionning cell indices
 
         Args:
@@ -289,26 +301,28 @@ class ExplicitGeometryPartition(CellBasedGeometryPartition):
         super().__init__(geometry)
 
         self._cell_mask = cell_mask
-        self._cells, self._partition_cells = masked_indices(self._cell_mask)
+        self._cells, self._partition_cells = masked_indices(self._cell_mask, temporary_store=temporary_store)
 
         super().compute_side_indices_from_cells(
             self._cell_mask,
             ExplicitGeometryPartition._cell_inclusion_test,
             self._cell_mask.device,
+            temporary_store=temporary_store,
         )
 
     def cell_count(self) -> int:
-        return self._cells.shape[0]
+        return self._cells.array.shape[0]
 
     @wp.struct
     class CellArg:
         cell_index: wp.array(dtype=int)
         partition_cell_index: wp.array(dtype=int)
 
+    @cached_arg_value
     def cell_arg_value(self, device):
         arg = ExplicitGeometryPartition.CellArg()
-        arg.cell_index = self._cells.to(device)
-        arg.partition_cell_index = self._partition_cells.to(device)
+        arg.cell_index = self._cells.array.to(device)
+        arg.partition_cell_index = self._partition_cells.array.to(device)
         return arg
 
     @wp.func

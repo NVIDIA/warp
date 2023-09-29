@@ -1,7 +1,9 @@
+from typing import Optional
 import warp as wp
 
 from warp.fem.types import ElementIndex, Coords, vec2i, vec3i, Sample
 from warp.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, NULL_DOF_INDEX, NULL_QP_INDEX
+from warp.fem.cache import cached_arg_value, TemporaryStore, borrow_temporary, borrow_temporary_like
 
 from .geometry import Geometry
 from .element import Triangle, Tetrahedron
@@ -23,14 +25,16 @@ class TetmeshArg:
 class Tetmesh(Geometry):
     """Tetrahedral mesh geometry"""
 
-    def __init__(self, tet_vertex_indices: wp.array, positions: wp.array):
+    def __init__(
+        self, tet_vertex_indices: wp.array, positions: wp.array, temporary_store: Optional[TemporaryStore] = None
+    ):
         """
         Constructs a tetrahedral mesh.
 
         Args:
             tet_vertex_indices: warp array of shape (num_tets, 4) containing vertex indices for each tet
             positions: warp array of shape (num_vertices, 3) containing 3d position for each vertex
-
+            temporary_store: shared pool from which to allocate temporary arrays
         """
         self.dimension = 3
 
@@ -41,8 +45,10 @@ class Tetmesh(Geometry):
         self._face_tet_indices: wp.array = None
         self._vertex_tet_offsets: wp.array = None
         self._vertex_tet_indices: wp.array = None
+        self._tet_edge_indices: wp.array = None
+        self._edge_count = 0
 
-        self._build_topology()
+        self._build_topology(temporary_store)
 
     def cell_count(self):
         return self.tet_vertex_indices.shape[0]
@@ -52,6 +58,9 @@ class Tetmesh(Geometry):
 
     def side_count(self):
         return self._face_vertex_indices.shape[0]
+
+    def edge_count(self):
+        return self._edge_count
 
     def boundary_side_count(self):
         return self._boundary_face_indices.shape[0]
@@ -71,6 +80,7 @@ class Tetmesh(Geometry):
 
     # Geometry device interface
 
+    @cached_arg_value
     def cell_arg_value(self, device) -> CellArg:
         args = self.CellArg()
 
@@ -159,6 +169,7 @@ class Tetmesh(Geometry):
     def side_arg_value(self, device) -> SideArg:
         return self.cell_arg_value(device)
 
+    @cached_arg_value
     def side_index_arg_value(self, device) -> SideIndexArg:
         args = self.SideIndexArg()
 
@@ -279,31 +290,36 @@ class Tetmesh(Geometry):
     def side_outer_cell_index(arg: SideArg, side_index: ElementIndex):
         return arg.face_tet_indices[side_index][1]
 
-    def _build_topology(self):
-        from warp.fem.utils import compress_node_indices, masked_indices, _get_pinned_temp_count_buffer
+    def _build_topology(self, temporary_store: TemporaryStore):
+        from warp.fem.utils import compress_node_indices, masked_indices
         from warp.utils import array_scan
 
         device = self.tet_vertex_indices.device
 
-        self._vertex_tet_offsets, self._vertex_tet_indices, _, __ = compress_node_indices(
-            self.vertex_count(), self.tet_vertex_indices
+        vertex_tet_offsets, vertex_tet_indices, _, __ = compress_node_indices(
+            self.vertex_count(), self.tet_vertex_indices, temporary_store=temporary_store
         )
+        self._vertex_tet_offsets = vertex_tet_offsets.detach()
+        self._vertex_tet_indices = vertex_tet_indices.detach()
 
-        vertex_start_face_count = wp.zeros(dtype=int, device=device, shape=self.vertex_count())
-        vertex_start_face_offsets = wp.empty_like(vertex_start_face_count)
+        vertex_start_face_count = borrow_temporary(temporary_store, dtype=int, device=device, shape=self.vertex_count())
+        vertex_start_face_count.array.zero_()
+        vertex_start_face_offsets = borrow_temporary_like(vertex_start_face_count, temporary_store=temporary_store)
 
-        vertex_face_other_vs = wp.empty(dtype=vec2i, device=device, shape=(4 * self.cell_count()))
-        vertex_face_tets = wp.empty(dtype=int, device=device, shape=(4 * self.cell_count(), 2))
+        vertex_face_other_vs = borrow_temporary(
+            temporary_store, dtype=vec2i, device=device, shape=(4 * self.cell_count())
+        )
+        vertex_face_tets = borrow_temporary(temporary_store, dtype=int, device=device, shape=(4 * self.cell_count(), 2))
 
         # Count face edges starting at each vertex
         wp.launch(
             kernel=Tetmesh._count_starting_faces_kernel,
             device=device,
             dim=self.cell_count(),
-            inputs=[self.tet_vertex_indices, vertex_start_face_count],
+            inputs=[self.tet_vertex_indices, vertex_start_face_count.array],
         )
 
-        array_scan(in_array=vertex_start_face_count, out_array=vertex_start_face_offsets, inclusive=False)
+        array_scan(in_array=vertex_start_face_count.array, out_array=vertex_start_face_offsets.array, inclusive=False)
 
         # Count number of unique edges (deduplicate across faces)
         vertex_unique_face_count = vertex_start_face_count
@@ -315,30 +331,32 @@ class Tetmesh(Geometry):
                 self._vertex_tet_offsets,
                 self._vertex_tet_indices,
                 self.tet_vertex_indices,
-                vertex_start_face_offsets,
-                vertex_unique_face_count,
-                vertex_face_other_vs,
-                vertex_face_tets,
+                vertex_start_face_offsets.array,
+                vertex_unique_face_count.array,
+                vertex_face_other_vs.array,
+                vertex_face_tets.array,
             ],
         )
 
-        vertex_unique_face_offsets = wp.empty_like(vertex_start_face_offsets)
-        array_scan(in_array=vertex_start_face_count, out_array=vertex_unique_face_offsets, inclusive=False)
+        vertex_unique_face_offsets = borrow_temporary_like(vertex_start_face_offsets, temporary_store=temporary_store)
+        array_scan(in_array=vertex_start_face_count.array, out_array=vertex_unique_face_offsets.array, inclusive=False)
 
         # Get back edge count to host
         if device.is_cuda:
-            face_count = _get_pinned_temp_count_buffer(device)
+            face_count = borrow_temporary(temporary_store, shape=(1,), dtype=int, device="cpu", pinned=True)
             # Last vertex will not own any edge, so its count will be zero; just fetching last prefix count is ok
-            wp.copy(dest=face_count, src=vertex_unique_face_offsets, src_offset=self.vertex_count() - 1, count=1)
+            wp.copy(
+                dest=face_count.array, src=vertex_unique_face_offsets.array, src_offset=self.vertex_count() - 1, count=1
+            )
             wp.synchronize_stream(wp.get_stream())
-            face_count = int(face_count.numpy()[0])
+            face_count = int(face_count.array.numpy()[0])
         else:
-            face_count = int(vertex_unique_face_offsets.numpy()[self.vertex_count() - 1])
+            face_count = int(vertex_unique_face_offsets.array.numpy()[self.vertex_count() - 1])
 
         self._face_vertex_indices = wp.empty(shape=(face_count,), dtype=vec3i, device=device)
         self._face_tet_indices = wp.empty(shape=(face_count,), dtype=vec2i, device=device)
 
-        boundary_mask = wp.empty(shape=(face_count,), dtype=int, device=device)
+        boundary_mask = borrow_temporary(temporary_store, shape=(face_count,), dtype=int, device=device)
 
         # Compress edge data
         wp.launch(
@@ -346,16 +364,22 @@ class Tetmesh(Geometry):
             device=device,
             dim=self.vertex_count(),
             inputs=[
-                vertex_start_face_offsets,
-                vertex_unique_face_offsets,
-                vertex_unique_face_count,
-                vertex_face_other_vs,
-                vertex_face_tets,
+                vertex_start_face_offsets.array,
+                vertex_unique_face_offsets.array,
+                vertex_unique_face_count.array,
+                vertex_face_other_vs.array,
+                vertex_face_tets.array,
                 self._face_vertex_indices,
                 self._face_tet_indices,
-                boundary_mask,
+                boundary_mask.array,
             ],
         )
+
+        vertex_start_face_offsets.release()
+        vertex_unique_face_offsets.release()
+        vertex_unique_face_count.release()
+        vertex_face_other_vs.release()
+        vertex_face_tets.release()
 
         # Flip normals if necessary
         wp.launch(
@@ -365,7 +389,100 @@ class Tetmesh(Geometry):
             inputs=[self._face_vertex_indices, self._face_tet_indices, self.tet_vertex_indices, self.positions],
         )
 
-        self._boundary_face_indices, _ = masked_indices(boundary_mask)
+        boundary_face_indices, _ = masked_indices(boundary_mask.array)
+        self._boundary_face_indices = boundary_face_indices.detach()
+
+        # Finally, build list of edge indices for each tet
+        # This is not strictly necessary for implementing the Geometry interface, but required for equipping the
+        # tet mesh with most function spaces, so we might as well do it now
+        self._compute_tet_edges(temporary_store)
+
+    def _compute_tet_edges(self, temporary_store: TemporaryStore):
+        from warp.utils import array_scan
+
+        device = self.tet_vertex_indices.device
+
+        vertex_start_edge_count = borrow_temporary(
+            temporary_store, dtype=int, device=device, shape=self.vertex_count()
+        )
+        vertex_start_edge_count.array.zero_()
+        vertex_start_edge_offsets = borrow_temporary_like(vertex_start_edge_count, temporary_store=temporary_store)
+
+        vertex_edge_ends = borrow_temporary(
+            temporary_store, dtype=int, device=device, shape=(6 * self.cell_count())
+        )
+
+        # Count face edges starting at each vertex
+        wp.launch(
+            kernel=Tetmesh._count_starting_edges_kernel,
+            device=device,
+            dim=self.cell_count(),
+            inputs=[self.tet_vertex_indices, vertex_start_edge_count.array],
+        )
+
+        array_scan(in_array=vertex_start_edge_count.array, out_array=vertex_start_edge_offsets.array, inclusive=False)
+
+        # Count number of unique edges (deduplicate across faces)
+        vertex_unique_edge_count = vertex_start_edge_count
+        wp.launch(
+            kernel=Tetmesh._count_unique_starting_edges_kernel,
+            device=device,
+            dim=self.vertex_count(),
+            inputs=[
+                self._vertex_tet_offsets,
+                self._vertex_tet_indices,
+                self.tet_vertex_indices,
+                vertex_start_edge_offsets.array,
+                vertex_unique_edge_count.array,
+                vertex_edge_ends.array,
+            ],
+        )
+
+        vertex_unique_edge_offsets = borrow_temporary_like(
+            vertex_start_edge_offsets.array, temporary_store=temporary_store
+        )
+        array_scan(in_array=vertex_start_edge_count.array, out_array=vertex_unique_edge_offsets.array, inclusive=False)
+
+        # Get back edge count to host
+        if device.is_cuda:
+            edge_count = borrow_temporary(temporary_store, shape=(1,), dtype=int, device="cpu", pinned=True)
+            # Last vertex will not own any edge, so its count will be zero; just fetching last prefix count is ok
+            wp.copy(
+                dest=edge_count.array,
+                src=vertex_unique_edge_offsets.array,
+                src_offset=self.vertex_count() - 1,
+                count=1,
+            )
+            wp.synchronize_stream(wp.get_stream())
+            self._edge_count = int(edge_count.array.numpy()[0])
+        else:
+            self._edge_count = int(vertex_unique_edge_offsets.array.numpy()[self.vertex_count() - 1])
+
+        self._tet_edge_indices = wp.empty(
+            dtype=int, device=self.tet_vertex_indices.device, shape=(self.cell_count(), 6)
+        )
+
+        # Compress edge data
+        wp.launch(
+            kernel=Tetmesh._compress_edges_kernel,
+            device=device,
+            dim=self.vertex_count(),
+            inputs=[
+                self._vertex_tet_offsets,
+                self._vertex_tet_indices,
+                self.tet_vertex_indices,
+                vertex_start_edge_offsets.array,
+                vertex_unique_edge_offsets.array,
+                vertex_unique_edge_count.array,
+                vertex_edge_ends.array,
+                self._tet_edge_indices,
+            ],
+        )
+
+        vertex_start_edge_offsets.release()
+        vertex_unique_edge_offsets.release()
+        vertex_unique_edge_count.release()
+        vertex_edge_ends.release()
 
     @wp.kernel
     def _count_starting_faces_kernel(
@@ -381,7 +498,7 @@ class Tetmesh(Geometry):
                     wp.atomic_add(vertex_start_face_count, vm, 1)
 
     @wp.func
-    def _find(
+    def _find_face(
         needle: vec2i,
         values: wp.array(dtype=vec2i),
         beg: int,
@@ -427,7 +544,7 @@ class Tetmesh(Geometry):
                     other_v = vec2i(mid_v, max_v)
 
                     # Check if other_v has been seen
-                    seen_idx = Tetmesh._find(other_v, face_other_vs, face_beg, face_cur)
+                    seen_idx = Tetmesh._find_face(other_v, face_other_vs, face_beg, face_cur)
 
                     if seen_idx == -1:
                         face_other_vs[face_cur] = other_v
@@ -502,3 +619,136 @@ class Tetmesh(Geometry):
         # if face normal points toward first tet centroid, flip indices
         if wp.dot(tet_centroid - face_center, face_normal) > 0.0:
             face_vertex_indices[e] = vec3i(face_vidx[0], face_vidx[2], face_vidx[1])
+
+    @wp.kernel
+    def _count_starting_edges_kernel(
+        tri_vertex_indices: wp.array2d(dtype=int), vertex_start_edge_count: wp.array(dtype=int)
+    ):
+        t = wp.tid()
+        for k in range(3):
+            v0 = tri_vertex_indices[t, k]
+            v1 = tri_vertex_indices[t, (k + 1) % 3]
+
+            if v0 < v1:
+                wp.atomic_add(vertex_start_edge_count, v0, 1)
+            else:
+                wp.atomic_add(vertex_start_edge_count, v1, 1)
+
+        for k in range(3):
+            v0 = tri_vertex_indices[t, k]
+            v1 = tri_vertex_indices[t, 3]
+
+            if v0 < v1:
+                wp.atomic_add(vertex_start_edge_count, v0, 1)
+            else:
+                wp.atomic_add(vertex_start_edge_count, v1, 1)
+
+    @wp.func
+    def _find_edge(
+        needle: int,
+        values: wp.array(dtype=int),
+        beg: int,
+        end: int,
+    ):
+        for i in range(beg, end):
+            if values[i] == needle:
+                return i
+
+        return -1
+
+    @wp.kernel
+    def _count_unique_starting_edges_kernel(
+        vertex_tet_offsets: wp.array(dtype=int),
+        vertex_tet_indices: wp.array(dtype=int),
+        tet_vertex_indices: wp.array2d(dtype=int),
+        vertex_start_edge_offsets: wp.array(dtype=int),
+        vertex_start_edge_count: wp.array(dtype=int),
+        edge_ends: wp.array(dtype=int),
+    ):
+        v = wp.tid()
+
+        edge_beg = vertex_start_edge_offsets[v]
+
+        tet_beg = vertex_tet_offsets[v]
+        tet_end = vertex_tet_offsets[v + 1]
+
+        edge_cur = edge_beg
+
+        for tet in range(tet_beg, tet_end):
+            t = vertex_tet_indices[tet]
+
+            for k in range(3):
+                v0 = tet_vertex_indices[t, k]
+                v1 = tet_vertex_indices[t, (k + 1) % 3]
+
+                if v == wp.min(v0, v1):
+                    other_v = wp.max(v0, v1)
+                    if Tetmesh._find_edge(other_v, edge_ends, edge_beg, edge_cur) == -1:
+                        edge_ends[edge_cur] = other_v
+                        edge_cur += 1
+
+            for k in range(3):
+                v0 = tet_vertex_indices[t, k]
+                v1 = tet_vertex_indices[t, 3]
+
+                if v == wp.min(v0, v1):
+                    other_v = wp.max(v0, v1)
+                    if Tetmesh._find_edge(other_v, edge_ends, edge_beg, edge_cur) == -1:
+                        edge_ends[edge_cur] = other_v
+                        edge_cur += 1
+
+        vertex_start_edge_count[v] = edge_cur - edge_beg
+
+    @wp.kernel
+    def _compress_edges_kernel(
+        vertex_tet_offsets: wp.array(dtype=int),
+        vertex_tet_indices: wp.array(dtype=int),
+        tet_vertex_indices: wp.array2d(dtype=int),
+        vertex_start_edge_offsets: wp.array(dtype=int),
+        vertex_unique_edge_offsets: wp.array(dtype=int),
+        vertex_unique_edge_count: wp.array(dtype=int),
+        uncompressed_edge_ends: wp.array(dtype=int),
+        tet_edge_indices: wp.array2d(dtype=int),
+    ):
+        v = wp.tid()
+
+        uncompressed_beg = vertex_start_edge_offsets[v]
+
+        unique_beg = vertex_unique_edge_offsets[v]
+        unique_count = vertex_unique_edge_count[v]
+
+        tet_beg = vertex_tet_offsets[v]
+        tet_end = vertex_tet_offsets[v + 1]
+
+        for tet in range(tet_beg, tet_end):
+            t = vertex_tet_indices[tet]
+
+            for k in range(3):
+                v0 = tet_vertex_indices[t, k]
+                v1 = tet_vertex_indices[t, (k + 1) % 3]
+
+                if v == wp.min(v0, v1):
+                    other_v = wp.max(v0, v1)
+                    edge_id = (
+                        Tetmesh._find_edge(
+                            other_v, uncompressed_edge_ends, uncompressed_beg, uncompressed_beg + unique_count
+                        )
+                        - uncompressed_beg
+                        + unique_beg
+                    )
+                    tet_edge_indices[t][k] = edge_id
+
+            for k in range(3):
+                v0 = tet_vertex_indices[t, k]
+                v1 = tet_vertex_indices[t, 3]
+
+                if v == wp.min(v0, v1):
+                    other_v = wp.max(v0, v1)
+                    edge_id = (
+                        Tetmesh._find_edge(
+                            other_v, uncompressed_edge_ends, uncompressed_beg, uncompressed_beg + unique_count
+                        )
+                        - uncompressed_beg
+                        + unique_beg
+                    )
+                    tet_edge_indices[t][k + 3] = edge_id

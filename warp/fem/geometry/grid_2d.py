@@ -1,6 +1,7 @@
 import warp as wp
 
 from warp.fem.types import ElementIndex, Coords, vec2i, Sample, NULL_QP_INDEX, NULL_DOF_INDEX
+from warp.fem.cache import cached_arg_value
 
 from .geometry import Geometry
 from .element import Square, LinearEdge
@@ -35,8 +36,12 @@ class Grid2D(Geometry):
         self._res = res
 
     @property
-    def extents(self) -> wp.vec2:
-        return self.bounds_hi - self.bounds_lo
+    def extents(self) -> wp.vec3:
+        # Avoid using native sub due to higher over of calling builtins from Python
+        return wp.vec2(
+            self.bounds_hi[0] - self.bounds_lo[0],
+            self.bounds_hi[1] - self.bounds_lo[1],
+        )
 
     @property
     def cell_size(self) -> wp.vec2:
@@ -125,7 +130,6 @@ class Grid2D(Geometry):
             vec[Grid2D.ROTATION[axis, 1]],
         )
 
-
     @wp.func
     def side_index(arg: SideArg, side: Side):
         alt_axis = Grid2D.ROTATION[side.axis, 0]
@@ -159,6 +163,7 @@ class Grid2D(Geometry):
 
     # Geometry device interface
 
+    @cached_arg_value
     def cell_arg_value(self, device) -> CellArg:
         args = self.CellArg()
         args.res = self.res
@@ -211,9 +216,10 @@ class Grid2D(Geometry):
     def cell_normal(args: CellArg, s: Sample):
         return wp.vec2(0.0)
 
+    @cached_arg_value
     def side_arg_value(self, device) -> SideArg:
         args = self.SideArg()
-        
+
         args.axis_offsets = vec2i(
             0,
             self.res[0],
@@ -221,14 +227,14 @@ class Grid2D(Geometry):
         args.cell_count = self.cell_count()
         args.cell_arg = self.cell_arg_value(device)
         return args
-    
+
     def side_index_arg_value(self, device) -> SideIndexArg:
         return self.side_arg_value(device)
 
     @wp.func
     def boundary_side_index(args: SideArg, boundary_side_index: int):
         """Boundary side to side index"""
-        
+
         axis_side_index = boundary_side_index // 2
         border = boundary_side_index - 2 * axis_side_index
 

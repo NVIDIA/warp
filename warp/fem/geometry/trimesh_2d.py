@@ -1,7 +1,9 @@
+from typing import Optional
 import warp as wp
 
 from warp.fem.types import ElementIndex, Coords, vec2i, Sample
 from warp.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, NULL_DOF_INDEX, NULL_QP_INDEX
+from warp.fem.cache import cached_arg_value, TemporaryStore, borrow_temporary, borrow_temporary_like
 
 from .geometry import Geometry
 from .element import Triangle, LinearEdge
@@ -23,14 +25,14 @@ class Trimesh2DArg:
 class Trimesh2D(Geometry):
     """Two-dimensional triangular mesh geometry"""
 
-    def __init__(self, tri_vertex_indices: wp.array, positions: wp.array):
+    def __init__(self, tri_vertex_indices: wp.array, positions: wp.array, temporary_store: Optional[TemporaryStore] = None):
         """
         Constructs a two-dimensional triangular mesh.
 
         Args:
             tri_vertex_indices: warp array of shape (num_tris, 3) containing vertex indices for each tri
             positions: warp array of shape (num_vertices, 2) containing 2d position for each vertex
-
+            temporary_store: shared pool from which to allocate temporary arrays
         """
         self.dimension = 2
 
@@ -42,7 +44,7 @@ class Trimesh2D(Geometry):
         self._vertex_tri_offsets: wp.array = None
         self._vertex_tri_indices: wp.array = None
 
-        self._build_topology()
+        self._build_topology(temporary_store)
 
     def cell_count(self):
         return self.tri_vertex_indices.shape[0]
@@ -71,6 +73,7 @@ class Trimesh2D(Geometry):
 
     # Geometry device interface
 
+    @cached_arg_value
     def cell_arg_value(self, device) -> CellArg:
         args = self.CellArg()
 
@@ -152,6 +155,7 @@ class Trimesh2D(Geometry):
     def side_arg_value(self, device) -> SideArg:
         return self.cell_arg_value(device)
 
+    @cached_arg_value
     def side_index_arg_value(self, device) -> SideIndexArg:
         args = self.SideIndexArg()
 
@@ -256,31 +260,34 @@ class Trimesh2D(Geometry):
             tri_coords[start] + tri_coords[end] > 0.999, Coords(OUTSIDE), Coords(tri_coords[end], 0.0, 0.0)
         )
 
-    def _build_topology(self):
-        from warp.fem.utils import compress_node_indices, masked_indices, _get_pinned_temp_count_buffer
+    def _build_topology(self, temporary_store: TemporaryStore):
+        from warp.fem.utils import compress_node_indices, masked_indices
         from warp.utils import array_scan
 
         device = self.tri_vertex_indices.device
 
-        self._vertex_tri_offsets, self._vertex_tri_indices, _, __ = compress_node_indices(
-            self.vertex_count(), self.tri_vertex_indices
+        vertex_tri_offsets, vertex_tri_indices, _, __ = compress_node_indices(
+            self.vertex_count(), self.tri_vertex_indices, temporary_store=temporary_store
         )
+        self._vertex_tri_offsets = vertex_tri_offsets.detach()
+        self._vertex_tri_indices = vertex_tri_indices.detach()
 
-        vertex_start_edge_count = wp.zeros(dtype=int, device=device, shape=self.vertex_count())
-        vertex_start_edge_offsets = wp.empty_like(vertex_start_edge_count)
+        vertex_start_edge_count = borrow_temporary(temporary_store, dtype=int, device=device, shape=self.vertex_count())
+        vertex_start_edge_count.array.zero_()
+        vertex_start_edge_offsets = borrow_temporary_like(vertex_start_edge_count, temporary_store=temporary_store)
 
-        vertex_edge_ends = wp.empty(dtype=int, device=device, shape=(3 * self.cell_count()))
-        vertex_edge_tris = wp.empty(dtype=int, device=device, shape=(3 * self.cell_count(), 2))
+        vertex_edge_ends = borrow_temporary(temporary_store, dtype=int, device=device, shape=(3 * self.cell_count()))
+        vertex_edge_tris = borrow_temporary(temporary_store, dtype=int, device=device, shape=(3 * self.cell_count(), 2))
 
         # Count face edges starting at each vertex
         wp.launch(
             kernel=Trimesh2D._count_starting_edges_kernel,
             device=device,
             dim=self.cell_count(),
-            inputs=[self.tri_vertex_indices, vertex_start_edge_count],
+            inputs=[self.tri_vertex_indices, vertex_start_edge_count.array],
         )
 
-        array_scan(in_array=vertex_start_edge_count, out_array=vertex_start_edge_offsets, inclusive=False)
+        array_scan(in_array=vertex_start_edge_count.array, out_array=vertex_start_edge_offsets.array, inclusive=False)
 
         # Count number of unique edges (deduplicate across faces)
         vertex_unique_edge_count = vertex_start_edge_count
@@ -292,30 +299,32 @@ class Trimesh2D(Geometry):
                 self._vertex_tri_offsets,
                 self._vertex_tri_indices,
                 self.tri_vertex_indices,
-                vertex_start_edge_offsets,
-                vertex_unique_edge_count,
-                vertex_edge_ends,
-                vertex_edge_tris,
+                vertex_start_edge_offsets.array,
+                vertex_unique_edge_count.array,
+                vertex_edge_ends.array,
+                vertex_edge_tris.array,
             ],
         )
 
-        vertex_unique_edge_offsets = wp.empty_like(vertex_start_edge_offsets)
-        array_scan(in_array=vertex_start_edge_count, out_array=vertex_unique_edge_offsets, inclusive=False)
+        vertex_unique_edge_offsets = borrow_temporary_like(vertex_start_edge_offsets, temporary_store=temporary_store)
+        array_scan(in_array=vertex_start_edge_count.array, out_array=vertex_unique_edge_offsets.array, inclusive=False)
 
         # Get back edge count to host
         if device.is_cuda:
-            edge_count = _get_pinned_temp_count_buffer(device)
+            edge_count = borrow_temporary(temporary_store, shape=(1,), dtype=int, device="cpu", pinned=True)
             # Last vertex will not own any edge, so its count will be zero; just fetching last prefix count is ok
-            wp.copy(dest=edge_count, src=vertex_unique_edge_offsets, src_offset=self.vertex_count() - 1, count=1)
+            wp.copy(
+                dest=edge_count.array, src=vertex_unique_edge_offsets.array, src_offset=self.vertex_count() - 1, count=1
+            )
             wp.synchronize_stream(wp.get_stream())
-            edge_count = int(edge_count.numpy()[0])
+            edge_count = int(edge_count.array.numpy()[0])
         else:
-            edge_count = int(vertex_unique_edge_offsets.numpy()[self.vertex_count() - 1])
+            edge_count = int(vertex_unique_edge_offsets.array.numpy()[self.vertex_count() - 1])
 
         self._edge_vertex_indices = wp.empty(shape=(edge_count,), dtype=vec2i, device=device)
         self._edge_tri_indices = wp.empty(shape=(edge_count,), dtype=vec2i, device=device)
 
-        boundary_mask = wp.empty(shape=(edge_count,), dtype=int, device=device)
+        boundary_mask = borrow_temporary(temporary_store=temporary_store, shape=(edge_count,), dtype=int, device=device)
 
         # Compress edge data
         wp.launch(
@@ -323,16 +332,22 @@ class Trimesh2D(Geometry):
             device=device,
             dim=self.vertex_count(),
             inputs=[
-                vertex_start_edge_offsets,
-                vertex_unique_edge_offsets,
-                vertex_unique_edge_count,
-                vertex_edge_ends,
-                vertex_edge_tris,
+                vertex_start_edge_offsets.array,
+                vertex_unique_edge_offsets.array,
+                vertex_unique_edge_count.array,
+                vertex_edge_ends.array,
+                vertex_edge_tris.array,
                 self._edge_vertex_indices,
                 self._edge_tri_indices,
-                boundary_mask,
+                boundary_mask.array,
             ],
         )
+
+        vertex_start_edge_offsets.release()
+        vertex_unique_edge_offsets.release()
+        vertex_unique_edge_count.release()
+        vertex_edge_ends.release()
+        vertex_edge_tris.release()
 
         # Flip normals if necessary
         wp.launch(
@@ -342,7 +357,10 @@ class Trimesh2D(Geometry):
             inputs=[self._edge_vertex_indices, self._edge_tri_indices, self.tri_vertex_indices, self.positions],
         )
 
-        self._boundary_edge_indices, _ = masked_indices(boundary_mask)
+        boundary_edge_indices, _ = masked_indices(boundary_mask.array, temporary_store=temporary_store)
+        self._boundary_edge_indices = boundary_edge_indices.detach()
+
+        boundary_mask.release()
 
     @wp.kernel
     def _count_starting_edges_kernel(

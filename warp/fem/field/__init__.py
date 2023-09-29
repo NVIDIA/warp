@@ -42,6 +42,7 @@ def make_restriction(
 
 def make_test(
     space: Union[FunctionSpace, SpaceRestriction] = None,
+    space_restriction: SpaceRestriction = None,
     space_partition: SpacePartition = None,
     domain: GeometryDomain = None,
     device=None,
@@ -51,6 +52,7 @@ def make_test(
 
     Args:
         space: the function space or function space restriction
+        space_restriction: if ``space`` is a whole function space, its restriction to domain
         space_partition: if ``space`` is a whole function space, the optional subset of node indices to consider
         domain: if ``space`` is a whole function space, the optional subset of elements to consider
         device: Warp device on which to perform and store computations
@@ -59,19 +61,22 @@ def make_test(
         the test field
     """
 
-    if not isinstance(space, SpaceRestriction):
-        if space is None:
-            space = space_partition.space
+    if space_restriction is None:
+        if isinstance(space, SpaceRestriction):
+            space_restriction = space
+            space = space_restriction.space
+        else:
+            if space is None:
+                space = space_partition.space
 
-        if domain is None:
-            domain = Cells(geometry=space.geometry)
+            space_restriction = make_space_restriction(
+                space=space, space_partition=space_partition, domain=domain, device=device
+            )
 
-        if space_partition is None:
-            space_partition = make_space_partition(space, domain.geometry_partition)
+    elif space is None:
+        space = space_restriction.space
 
-        space = make_space_restriction(space=space, space_partition=space_partition, domain=domain, device=device)
-
-    return TestField(space)
+    return TestField(space_restriction=space_restriction, space=space)
 
 
 def make_trial(
@@ -100,10 +105,11 @@ def make_trial(
     if space is None:
         space = space_partition.space
 
-    if domain is None:
-        domain = Cells(geometry=space.geometry)
-
     if space_partition is None:
+        if domain is None:
+            domain = Cells(geometry=space.geometry)
         space_partition = make_space_partition(space, domain.geometry_partition)
+    elif domain is None:
+        domain = Cells(geometry=space_partition.geo_partition)
 
     return TrialField(space, space_partition, domain)

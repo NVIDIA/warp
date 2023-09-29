@@ -3,6 +3,7 @@ import warp as wp
 from warp.fem.domain import GeometryDomain
 from warp.fem.types import ElementIndex, Coords
 from warp.fem.utils import compress_node_indices
+from warp.fem.cache import cached_arg_value, TemporaryStore, borrow_temporary
 
 from .quadrature import Quadrature
 
@@ -21,13 +22,14 @@ class PicQuadrature(Quadrature):
         domain: GeometryDomain,
         positions: "wp.array()",
         measures: "wp.array(dtype=float)",
+        temporary_store: TemporaryStore = None,
     ):
         super().__init__(domain)
 
         self.positions = positions
         self.measures = measures
 
-        self._bin_particles()
+        self._bin_particles(temporary_store)
 
     @property
     def name(self):
@@ -52,12 +54,13 @@ class PicQuadrature(Quadrature):
         particle_fraction: wp.array(dtype=float)
         particle_coords: wp.array(dtype=Coords)
 
+    @cached_arg_value
     def arg_value(self, device) -> Arg:
         arg = PicQuadrature.Arg()
-        arg.cell_particle_offsets = self._cell_particle_offsets.to(device)
-        arg.cell_particle_indices = self._cell_particle_indices.to(device)
-        arg.particle_fraction = self._particle_fraction.to(device)
-        arg.particle_coords = self._particle_coords.to(device)
+        arg.cell_particle_offsets = self._cell_particle_offsets.array.to(device)
+        arg.cell_particle_indices = self._cell_particle_indices.array.to(device)
+        arg.particle_fraction = self._particle_fraction.array.to(device)
+        arg.particle_coords = self._particle_coords.array.to(device)
         return arg
 
     def total_point_count(self):
@@ -93,7 +96,7 @@ class PicQuadrature(Quadrature):
             kernel=PicQuadrature._fill_mask_kernel,
             dim=self.domain.geometry_element_count(),
             device=mask.device,
-            inputs=[self._cell_particle_offsets, mask],
+            inputs=[self._cell_particle_offsets.array, mask],
         )
 
     @wp.kernel
@@ -104,7 +107,7 @@ class PicQuadrature(Quadrature):
         i = wp.tid()
         element_mask[i] = wp.select(element_particle_offsets[i] == element_particle_offsets[i + 1], 1, 0)
 
-    def _bin_particles(self):
+    def _bin_particles(self, temporary_store: TemporaryStore):
         from warp.fem import cache
 
         def bin_particles_fn(
@@ -130,9 +133,13 @@ class PicQuadrature(Quadrature):
 
         device = self.positions.device
 
-        cell_index = wp.empty(shape=self.positions.shape, dtype=int, device=device)
-        self._particle_coords = wp.empty(shape=self.positions.shape, dtype=Coords, device=device)
-        self._particle_fraction = wp.empty(shape=self.positions.shape, dtype=float, device=device)
+        cell_index = borrow_temporary(temporary_store, shape=self.positions.shape, dtype=int, device=device)
+        self._particle_coords = borrow_temporary(
+            temporary_store, shape=self.positions.shape, dtype=Coords, device=device
+        )
+        self._particle_fraction = borrow_temporary(
+            temporary_store, shape=self.positions.shape, dtype=float, device=device
+        )
 
         wp.launch(
             dim=self.positions.shape[0],
@@ -141,13 +148,15 @@ class PicQuadrature(Quadrature):
                 self.domain.element_arg_value(device),
                 self.positions,
                 self.measures,
-                cell_index,
-                self._particle_coords,
-                self._particle_fraction,
+                cell_index.array,
+                self._particle_coords.array,
+                self._particle_fraction.array,
             ],
             device=device,
         )
 
         self._cell_particle_offsets, self._cell_particle_indices, self._cell_count, _ = compress_node_indices(
-            self.domain.geometry_element_count(), cell_index
+            self.domain.geometry_element_count(), cell_index.array
         )
+
+        cell_index.release()
