@@ -3,7 +3,7 @@ import warp as wp
 import numpy as np
 
 
-from warp.fem.types import ElementIndex, Coords, OUTSIDE, vec2i, vec3i, vec4i
+from warp.fem.types import ElementIndex, Coords, OUTSIDE
 from warp.fem.geometry import Tetmesh
 from warp.fem.cache import cached_arg_value
 
@@ -141,11 +141,11 @@ class TetmeshFunctionSpace(NodalFunctionSpace):
 
     @wp.func
     def _find_face_index_in_tet(
-        face_vtx: vec3i,
-        tet_vtx: vec4i,
+        face_vtx: wp.vec3i,
+        tet_vtx: wp.vec4i,
     ):
         for k in range(3):
-            tvk = vec3i(tet_vtx[k], tet_vtx[(k + 1) % 4], tet_vtx[(k + 2) % 4])
+            tvk = wp.vec3i(tet_vtx[k], tet_vtx[(k + 1) % 4], tet_vtx[(k + 2) % 4])
 
             # Use fact that face always start with min vertex
             min_t = wp.min(tvk)
@@ -161,8 +161,8 @@ class TetmeshFunctionSpace(NodalFunctionSpace):
 
     @wp.kernel
     def _compute_tet_face_indices_kernel(
-        face_tet_indices: wp.array(dtype=vec2i),
-        face_vertex_indices: wp.array(dtype=vec3i),
+        face_tet_indices: wp.array(dtype=wp.vec2i),
+        face_vertex_indices: wp.array(dtype=wp.vec3i),
         tet_vertex_indices: wp.array2d(dtype=int),
         tet_face_indices: wp.array2d(dtype=int),
     ):
@@ -172,7 +172,7 @@ class TetmeshFunctionSpace(NodalFunctionSpace):
         face_tets = face_tet_indices[e]
 
         t0 = face_tets[0]
-        t0_vtx = vec4i(
+        t0_vtx = wp.vec4i(
             tet_vertex_indices[t0, 0], tet_vertex_indices[t0, 1], tet_vertex_indices[t0, 2], tet_vertex_indices[t0, 3]
         )
         t0_face = TetmeshFunctionSpace._find_face_index_in_tet(face_vtx, t0_vtx)
@@ -180,7 +180,7 @@ class TetmeshFunctionSpace(NodalFunctionSpace):
 
         t1 = face_tets[1]
         if t1 != t0:
-            t1_vtx = vec4i(
+            t1_vtx = wp.vec4i(
                 tet_vertex_indices[t1, 0],
                 tet_vertex_indices[t1, 1],
                 tet_vertex_indices[t1, 2],
@@ -422,7 +422,7 @@ class TetmeshPolynomialShapeFunctions:
         def node_tet_coordinates(
             node_index_in_elt: int,
         ):
-            return vec3i(
+            return wp.vec3i(
                 NODE_TET_COORDS[node_index_in_elt, 0],
                 NODE_TET_COORDS[node_index_in_elt, 1],
                 NODE_TET_COORDS[node_index_in_elt, 2],

@@ -7,18 +7,16 @@ with homogeneous Neumann conditions on horizontal sides and homogeneous Dirichle
 import argparse
 
 import warp as wp
-import numpy as np
-
-from warp.fem.types import *
-from warp.fem.geometry import Grid3D, Tetmesh
-from warp.fem.space import make_polynomial_space
-from warp.fem.field import make_test, make_trial
-from warp.fem.domain import Cells, BoundarySides
-from warp.fem.integrate import integrate
-from warp.fem.operator import normal, integrand
-from warp.fem.dirichlet import project_linear_system
-
 from warp.sparse import bsr_axpy
+
+from warp.fem import Field, Sample, Domain
+from warp.fem import Grid3D, Tetmesh
+from warp.fem import make_polynomial_space
+from warp.fem import make_test, make_trial
+from warp.fem import Cells, BoundarySides
+from warp.fem import integrate
+from warp.fem import normal, integrand
+from warp.fem import project_linear_system
 
 from plot_utils import plot_3d_scatter
 from bsr_utils import bsr_cg
@@ -53,7 +51,7 @@ if __name__ == "__main__":
     parser.add_argument("--tet_mesh", action="store_true", help="Use a tetrahedral mesh")
     args = parser.parse_args()
 
-    res = vec3i(args.resolution, args.resolution // 2, args.resolution * 2)
+    res = wp.vec3i(args.resolution, args.resolution // 2, args.resolution * 2)
 
     if args.tet_mesh:
         pos, tet_vtx_indices = gen_tetmesh(

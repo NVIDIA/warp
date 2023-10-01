@@ -9,13 +9,13 @@ import argparse
 
 import warp as wp
 
-from warp.fem.types import *
-from warp.fem.geometry import Grid2D, Trimesh2D
-from warp.fem.field import make_test, make_trial
-from warp.fem.space import make_polynomial_space
-from warp.fem.domain import Cells
-from warp.fem.integrate import integrate, interpolate
-from warp.fem.operator import grad, integrand, lookup
+from warp.fem import Domain, Field, Sample
+from warp.fem import Grid2D, Trimesh2D
+from warp.fem import make_test, make_trial
+from warp.fem import make_polynomial_space
+from warp.fem import Cells
+from warp.fem import integrate, interpolate
+from warp.fem import grad, integrand, lookup
 
 from bsr_utils import bsr_to_scipy
 from plot_utils import plot_surface
@@ -95,10 +95,10 @@ if __name__ == "__main__":
     dt = 1.0 / (args.ang_vel * res)
 
     if args.tri_mesh:
-        positions, tri_vidx = gen_trimesh(res=vec2i(res))
+        positions, tri_vidx = gen_trimesh(res=wp.vec2i(res))
         geo = Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
     else:
-        geo = Grid2D(res=vec2i(res))
+        geo = Grid2D(res=wp.vec2i(res))
 
     domain = Cells(geometry=geo)
     scalar_space = make_polynomial_space(geo, degree=args.degree)

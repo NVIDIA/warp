@@ -14,15 +14,15 @@ import warp as wp
 
 import numpy as np
 
-from warp.fem.types import *
-from warp.fem.geometry import Grid2D, Trimesh2D
-from warp.fem.field import make_test, make_trial
-from warp.fem.space import make_polynomial_space
-from warp.fem.quadrature import RegularQuadrature
-from warp.fem.domain import Cells, BoundarySides
-from warp.fem.integrate import integrate
-from warp.fem.operator import integrand, D, div, lookup
-from warp.fem.dirichlet import project_linear_system, normalize_dirichlet_projector
+from warp.fem import Field, Sample, Domain
+from warp.fem import Grid2D, Trimesh2D
+from warp.fem import make_test, make_trial
+from warp.fem import make_polynomial_space
+from warp.fem import RegularQuadrature
+from warp.fem import Cells, BoundarySides
+from warp.fem import integrate
+from warp.fem import integrand, D, div, lookup
+from warp.fem import project_linear_system, normalize_dirichlet_projector
 from warp.fem.utils import array_axpy
 
 from warp.sparse import bsr_mm, bsr_mv, bsr_copy
@@ -109,10 +109,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.tri_mesh:
-        positions, tri_vidx = gen_trimesh(res=vec2i(args.resolution))
+        positions, tri_vidx = gen_trimesh(res=wp.vec2i(args.resolution))
         geo = Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
     else:
-        geo = Grid2D(res=vec2i(args.resolution))
+        geo = Grid2D(res=wp.vec2i(args.resolution))
 
     boundary = BoundarySides(geo)
 

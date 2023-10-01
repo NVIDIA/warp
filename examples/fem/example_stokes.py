@@ -13,13 +13,13 @@ import warp as wp
 
 import numpy as np
 
-from warp.fem.types import *
-from warp.fem.geometry import Grid2D, Trimesh2D
-from warp.fem.field import make_test, make_trial, make_restriction
-from warp.fem.space import make_polynomial_space
-from warp.fem.domain import Cells, BoundarySides
-from warp.fem.integrate import integrate, interpolate
-from warp.fem.operator import normal, integrand, D, div
+from warp.fem import Field, Domain, Sample
+from warp.fem import Grid2D, Trimesh2D
+from warp.fem import make_test, make_trial, make_restriction
+from warp.fem import make_polynomial_space
+from warp.fem import Cells, BoundarySides
+from warp.fem import integrate, interpolate
+from warp.fem import normal, integrand, D, div
 
 from plot_utils import plot_velocities, plot_surface
 from bsr_utils import bsr_to_scipy
@@ -88,10 +88,10 @@ if __name__ == "__main__":
     top_velocity = wp.vec2(args.top_velocity, 0.0)
 
     if args.tri_mesh:
-        positions, tri_vidx = gen_trimesh(res=vec2i(args.resolution))
+        positions, tri_vidx = gen_trimesh(res=wp.vec2i(args.resolution))
         geo = Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
     else:
-        geo = Grid2D(res=vec2i(args.resolution))
+        geo = Grid2D(res=wp.vec2i(args.resolution))
     
     domain = Cells(geometry=geo)
     boundary = BoundarySides(geo)

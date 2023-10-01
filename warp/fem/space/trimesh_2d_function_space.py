@@ -2,7 +2,7 @@ import warp as wp
 import numpy as np
 
 
-from warp.fem.types import ElementIndex, Coords, OUTSIDE, vec2i, vec3i
+from warp.fem.types import ElementIndex, Coords, OUTSIDE
 from warp.fem.geometry import Trimesh2D
 from warp.fem.cache import cached_arg_value
 
@@ -129,8 +129,8 @@ class Trimesh2DFunctionSpace(NodalFunctionSpace):
 
     @wp.func
     def _find_edge_index_in_tri(
-        edge_vtx: vec2i,
-        tri_vtx: vec3i,
+        edge_vtx: wp.vec2i,
+        tri_vtx: wp.vec3i,
     ):
         for k in range(2):
             if (edge_vtx[0] == tri_vtx[k] and edge_vtx[1] == tri_vtx[k + 1]) or (
@@ -141,8 +141,8 @@ class Trimesh2DFunctionSpace(NodalFunctionSpace):
 
     @wp.kernel
     def _compute_tri_edge_indices_kernel(
-        edge_tri_indices: wp.array(dtype=vec2i),
-        edge_vertex_indices: wp.array(dtype=vec2i),
+        edge_tri_indices: wp.array(dtype=wp.vec2i),
+        edge_vertex_indices: wp.array(dtype=wp.vec2i),
         tri_vertex_indices: wp.array2d(dtype=int),
         tri_edge_indices: wp.array2d(dtype=int),
     ):
@@ -152,13 +152,13 @@ class Trimesh2DFunctionSpace(NodalFunctionSpace):
         edge_tris = edge_tri_indices[e]
 
         t0 = edge_tris[0]
-        t0_vtx = vec3i(tri_vertex_indices[t0, 0], tri_vertex_indices[t0, 1], tri_vertex_indices[t0, 2])
+        t0_vtx = wp.vec3i(tri_vertex_indices[t0, 0], tri_vertex_indices[t0, 1], tri_vertex_indices[t0, 2])
         t0_edge = Trimesh2DFunctionSpace._find_edge_index_in_tri(edge_vtx, t0_vtx)
         tri_edge_indices[t0, t0_edge] = e
 
         t1 = edge_tris[1]
         if t1 != t0:
-            t1_vtx = vec3i(tri_vertex_indices[t1, 0], tri_vertex_indices[t1, 1], tri_vertex_indices[t1, 2])
+            t1_vtx = wp.vec3i(tri_vertex_indices[t1, 0], tri_vertex_indices[t1, 1], tri_vertex_indices[t1, 2])
             t1_edge = Trimesh2DFunctionSpace._find_edge_index_in_tri(edge_vtx, t1_vtx)
             tri_edge_indices[t1, t1_edge] = e
 
@@ -336,7 +336,7 @@ class Trimesh2DPolynomialShapeFunctions:
         def node_triangle_coordinates(
             node_index_in_elt: int,
         ):
-            return vec2i(NODE_TRIANGLE_COORDS[node_index_in_elt, 0], NODE_TRIANGLE_COORDS[node_index_in_elt, 1])
+            return wp.vec2i(NODE_TRIANGLE_COORDS[node_index_in_elt, 0], NODE_TRIANGLE_COORDS[node_index_in_elt, 1])
 
         from warp.fem import cache
 

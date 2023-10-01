@@ -2,7 +2,6 @@ import warp as wp
 import numpy as np
 
 from warp.fem.types import ElementIndex, Coords, OUTSIDE
-from warp.fem.types import vec2i, vec3i
 from warp.fem.polynomial import Polynomial, lagrange_scales, quadrature_1d, is_closed
 
 from warp.fem.geometry import Grid3D
@@ -100,7 +99,7 @@ class Grid3DFunctionSpace(NodalFunctionSpace):
         x = vidx_in_cell // 4
         y = (vidx_in_cell - 4 * x) // 2
         z = vidx_in_cell - 4 * x - 2 * y
-        return vec3i(x, y, z)
+        return wp.vec3i(x, y, z)
 
     @wp.func
     def _vertex_coords_f(vidx_in_cell: int):
@@ -112,7 +111,7 @@ class Grid3DFunctionSpace(NodalFunctionSpace):
     @wp.func
     def _vertex_index(args: SpaceArg, cell_index: ElementIndex, vidx_in_cell: int):
         res = args.geo_arg.cell_arg.res
-        strides = vec2i((res[1] + 1) * (res[2] + 1), res[2] + 1)
+        strides = wp.vec2i((res[1] + 1) * (res[2] + 1), res[2] + 1)
 
         corner = Grid3D.get_cell(res, cell_index) + Grid3DFunctionSpace._vertex_coords(vidx_in_cell)
         return Grid3D._from_3d_index(strides, corner)

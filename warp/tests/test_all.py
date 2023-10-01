@@ -127,6 +127,7 @@ def register_tests(parent):
     tests.append(warp.tests.test_mesh.register(parent))
     tests.append(warp.tests.test_fabricarray.register(parent))
     tests.append(warp.tests.test_bool.register(parent))
+    tests.append(warp.tests.test_fem.register(parent))
 
     return tests
 

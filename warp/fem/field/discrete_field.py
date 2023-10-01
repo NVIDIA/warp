@@ -60,12 +60,20 @@ class DiscreteField:
         """Device function evaluating the inner field gradient at a sample point"""
         raise NotImplementedError
 
+    def eval_div_inner(args: Any, s: "Sample"):
+        """Device function evaluating the inner field divergence at a sample point"""
+        raise NotImplementedError
+
     def eval_outer(args: Any, s: "Sample"):
         """Device function evaluating the outer field value at a sample point"""
         raise NotImplementedError
 
     def eval_grad_outer(args: Any, s: "Sample"):
         """Device function evaluating the outer field gradient at a sample point"""
+        raise NotImplementedError
+
+    def eval_div_outer(args: Any, s: "Sample"):
+        """Device function evaluating the outer field divergence at a sample point"""
         raise NotImplementedError
 
     @staticmethod

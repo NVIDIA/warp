@@ -10,21 +10,17 @@ import warp as wp
 from warp.tests.test_base import *
 
 
-from warp.fem.types import *
-from warp.fem.geometry import Grid2D, Trimesh2D, Tetmesh
+from warp.fem import Field, Sample, Domain, Coords
+from warp.fem import Grid2D, Grid3D, Trimesh2D, Tetmesh
+from warp.fem import make_polynomial_space, SymmetricTensorMapper, SkewSymmetricTensorMapper
+from warp.fem import make_test
+from warp.fem import Cells, BoundarySides
+from warp.fem import integrate
+from warp.fem import integrand, div, grad, curl, D, normal
+from warp.fem import RegularQuadrature
 from warp.fem.geometry.closest_point import project_on_tri_at_origin, project_on_tet_at_origin
-from warp.fem.space import make_polynomial_space, SymmetricTensorMapper
-from warp.fem.field import make_test
-from warp.fem.domain import Cells
-from warp.fem.integrate import integrate
-from warp.fem.operator import integrand
-from warp.fem.quadrature import RegularQuadrature
-from warp.fem.utils import unit_element
 
 wp.init()
-
-wp.config.mode = "debug"
-wp.config.verify_cuda = True
 
 
 @integrand
@@ -35,7 +31,7 @@ def linear_form(s: Sample, u: Field):
 def test_integrate_gradient(test_case, device):
     with wp.ScopedDevice(device):
         # Grid geometry
-        geo = Grid2D(res=vec2i(5))
+        geo = Grid2D(res=wp.vec2i(5))
 
         # Domain and function spaces
         domain = Cells(geometry=geo)
@@ -60,6 +56,147 @@ def test_integrate_gradient(test_case, device):
         rhs = integrate(linear_form, quadrature=quadrature, fields={"u": test})
 
         err = np.linalg.norm(rhs.numpy() - u.dof_values.grad.numpy())
+        test_case.assertLess(err, 1.0e-8)
+
+
+@integrand
+def vector_divergence_form(s: Sample, u: Field, q: Field):
+    return div(u, s) * q(s)
+
+
+@integrand
+def vector_grad_form(s: Sample, u: Field, q: Field):
+    return wp.dot(u(s), grad(q, s))
+
+
+@integrand
+def vector_boundary_form(domain: Domain, s: Sample, u: Field, q: Field):
+    return wp.dot(u(s) * q(s), normal(domain, s))
+
+
+def test_vector_divergence_theorem(test_case, device):
+    with wp.ScopedDevice(device):
+        # Grid geometry
+        geo = Grid2D(res=wp.vec2i(5))
+
+        # Domain and function spaces
+        interior = Cells(geometry=geo)
+        boundary = BoundarySides(geometry=geo)
+
+        vector_space = make_polynomial_space(geo, degree=2, dtype=wp.vec2)
+        scalar_space = make_polynomial_space(geo, degree=1, dtype=float)
+
+        u = vector_space.make_field()
+        u.dof_values = np.random.rand(u.dof_values.shape[0], 2)
+
+        # Divergence theorem
+        constant_one = scalar_space.make_field()
+        constant_one.dof_values.fill_(1.0)
+
+        interior_quadrature = RegularQuadrature(domain=interior, order=vector_space.degree)
+        boundary_quadrature = RegularQuadrature(domain=boundary, order=vector_space.degree)
+        div_int = integrate(vector_divergence_form, quadrature=interior_quadrature, fields={"u": u, "q": constant_one})
+        boundary_int = integrate(
+            vector_boundary_form, quadrature=boundary_quadrature, fields={"u": u.trace(), "q": constant_one.trace()}
+        )
+
+        test_case.assertAlmostEqual(div_int, boundary_int, places=5)
+
+        # Integration by parts
+        q = scalar_space.make_field()
+        q.dof_values = np.random.rand(q.dof_values.shape[0])
+
+        interior_quadrature = RegularQuadrature(domain=interior, order=vector_space.degree + scalar_space.degree)
+        boundary_quadrature = RegularQuadrature(domain=boundary, order=vector_space.degree + scalar_space.degree)
+        div_int = integrate(vector_divergence_form, quadrature=interior_quadrature, fields={"u": u, "q": q})
+        grad_int = integrate(vector_grad_form, quadrature=interior_quadrature, fields={"u": u, "q": q})
+        boundary_int = integrate(
+            vector_boundary_form, quadrature=boundary_quadrature, fields={"u": u.trace(), "q": q.trace()}
+        )
+
+        test_case.assertAlmostEqual(div_int + grad_int, boundary_int, places=5)
+
+
+@integrand
+def tensor_divergence_form(s: Sample, tau: Field, v: Field):
+    return wp.dot(div(tau, s), v(s))
+
+
+@integrand
+def tensor_grad_form(s: Sample, tau: Field, v: Field):
+    return wp.ddot(wp.transpose(tau(s)), grad(v, s))
+
+
+@integrand
+def tensor_boundary_form(domain: Domain, s: Sample, tau: Field, v: Field):
+    return wp.dot(tau(s) * v(s), normal(domain, s))
+
+
+def test_tensor_divergence_theorem(test_case, device):
+    with wp.ScopedDevice(device):
+        # Grid geometry
+        geo = Grid2D(res=wp.vec2i(5))
+
+        # Domain and function spaces
+        interior = Cells(geometry=geo)
+        boundary = BoundarySides(geometry=geo)
+
+        tensor_space = make_polynomial_space(geo, degree=2, dtype=wp.mat22)
+        vector_space = make_polynomial_space(geo, degree=1, dtype=wp.vec2)
+
+        tau = tensor_space.make_field()
+        tau.dof_values = np.random.rand(tau.dof_values.shape[0], 2, 2)
+
+        # Divergence theorem
+        constant_vec = vector_space.make_field()
+        constant_vec.dof_values.fill_(wp.vec2(0.5, 2.0))
+
+        interior_quadrature = RegularQuadrature(domain=interior, order=tensor_space.degree)
+        boundary_quadrature = RegularQuadrature(domain=boundary, order=tensor_space.degree)
+        div_int = integrate(
+            tensor_divergence_form, quadrature=interior_quadrature, fields={"tau": tau, "v": constant_vec}
+        )
+        boundary_int = integrate(
+            tensor_boundary_form, quadrature=boundary_quadrature, fields={"tau": tau.trace(), "v": constant_vec.trace()}
+        )
+
+        test_case.assertAlmostEqual(div_int, boundary_int, places=5)
+
+        # Integration by parts
+        v = vector_space.make_field()
+        v.dof_values = np.random.rand(v.dof_values.shape[0], 2)
+
+        interior_quadrature = RegularQuadrature(domain=interior, order=tensor_space.degree + vector_space.degree)
+        boundary_quadrature = RegularQuadrature(domain=boundary, order=tensor_space.degree + vector_space.degree)
+        div_int = integrate(tensor_divergence_form, quadrature=interior_quadrature, fields={"tau": tau, "v": v})
+        grad_int = integrate(tensor_grad_form, quadrature=interior_quadrature, fields={"tau": tau, "v": v})
+        boundary_int = integrate(
+            tensor_boundary_form, quadrature=boundary_quadrature, fields={"tau": tau.trace(), "v": v.trace()}
+        )
+
+        test_case.assertAlmostEqual(div_int + grad_int, boundary_int, places=5)
+
+
+@integrand
+def grad_decomposition(s: Sample, u: Field, v: Field):
+    return wp.length_sq(grad(u, s) * v(s) - D(u, s) * v(s) - wp.cross(curl(u, s), v(s)))
+
+
+def test_grad_decomposition(test_case, device):
+    with wp.ScopedDevice(device):
+        # Grid geometry
+        geo = Grid3D(res=wp.vec3i(5))
+
+        # Domain and function spaces
+        domain = Cells(geometry=geo)
+        quadrature = RegularQuadrature(domain=domain, order=4)
+
+        vector_space = make_polynomial_space(geo, degree=2, dtype=wp.vec3)
+        u = vector_space.make_field()
+
+        u.dof_values = np.random.rand(u.dof_values.shape[0], 3)
+
+        err = integrate(grad_decomposition, quadrature=quadrature, fields={"u": u, "v": u})
         test_case.assertLess(err, 1.0e-8)
 
 
@@ -273,7 +410,14 @@ def test_closest_point_queries(test_case, device):
         device=device,
     )
     expected_sq_dist = np.array([3.0, 0.0, 0.0, 3.0])
-    expected_coords = np.array([[0.0, 0.0, 0.0], [1.0/6.0, 1.0/6.0, 1.0/6.0], [1.0/3.0, 1.0/3.0, 1.0/3.0], [1.0/3.0, 1.0/3.0, 1.0/3.0]])
+    expected_coords = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [1.0 / 6.0, 1.0 / 6.0, 1.0 / 6.0],
+            [1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0],
+            [1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0],
+        ]
+    )
 
     sq_dist = wp.empty(shape=points.shape, dtype=float, device=device)
     coords = wp.empty(shape=points.shape, dtype=Coords, device=device)
@@ -281,8 +425,8 @@ def test_closest_point_queries(test_case, device):
         _test_closest_point_on_tet_kernel, dim=points.shape, device=device, inputs=[e0, e1, e2, points, sq_dist, coords]
     )
 
-    assert_np_equal(coords.numpy(), expected_coords, tol = 1.e-4)
-    assert_np_equal(sq_dist.numpy(), expected_sq_dist, tol = 1.e-4)
+    assert_np_equal(coords.numpy(), expected_coords, tol=1.0e-4)
+    assert_np_equal(sq_dist.numpy(), expected_sq_dist, tol=1.0e-4)
 
 
 def test_regular_quadrature(test_case, device):
@@ -319,6 +463,8 @@ def test_regular_quadrature(test_case, device):
 
 def test_dof_mapper(test_case, device):
     matrix_types = [wp.mat22, wp.mat33]
+
+    # Symmetric mapper
     for mapping in SymmetricTensorMapper.Mapping:
         for dtype in matrix_types:
             mapper = SymmetricTensorMapper(dtype, mapping=mapping)
@@ -339,6 +485,38 @@ def test_dof_mapper(test_case, device):
                 frob_norm2 = 0.5 * wp.ddot(mat, mat)
                 test_case.assertAlmostEqual(frob_norm2, 1.0, places=6)
 
+    # Skew-symmetric mapper
+    for dtype in matrix_types:
+        mapper = SkewSymmetricTensorMapper(dtype)
+        dof_dtype = mapper.dof_dtype
+
+        if hasattr(dof_dtype, "_length_"):
+            for k in range(dof_dtype._length_):
+                elem = np.array(dof_dtype(0.0))
+                elem[k] = 1.0
+                dof_vec = dof_dtype(elem)
+
+                mat = mapper.dof_to_value(dof_vec)
+                dof_round_trip = mapper.value_to_dof(mat)
+
+                # Check that value_to_dof(dof_to_value) is idempotent
+                assert_np_equal(np.array(dof_round_trip), np.array(dof_vec))
+
+                # Check that value is unitary for Frobenius norm 0.5 * |tau:tau|
+                frob_norm2 = 0.5 * wp.ddot(mat, mat)
+                test_case.assertAlmostEqual(frob_norm2, 1.0, places=6)
+        else:
+            dof_val = 1.0
+
+            mat = mapper.dof_to_value(dof_val)
+            dof_round_trip = mapper.value_to_dof(mat)
+
+            test_case.assertAlmostEqual(dof_round_trip, dof_val)
+
+            # Check that value is unitary for Frobenius norm 0.5 * |tau:tau|
+            frob_norm2 = 0.5 * wp.ddot(mat, mat)
+            test_case.assertAlmostEqual(frob_norm2, 1.0, places=6)
+
 
 def register(parent):
     devices = get_test_devices()
@@ -348,7 +526,10 @@ def register(parent):
 
     add_function_test(TestFem, "test_regular_quadrature", test_regular_quadrature)
     add_function_test(TestFem, "test_closest_point_queries", test_closest_point_queries)
+    add_function_test(TestFem, "test_grad_decomposition", test_grad_decomposition, devices=devices)
     add_function_test(TestFem, "test_integrate_gradient", test_integrate_gradient, devices=devices)
+    add_function_test(TestFem, "test_vector_divergence_theorem", test_vector_divergence_theorem, devices=devices)
+    add_function_test(TestFem, "test_tensor_divergence_theorem", test_tensor_divergence_theorem, devices=devices)
     add_function_test(TestFem, "test_triangle_mesh", test_triangle_mesh, devices=devices)
     add_function_test(TestFem, "test_tet_mesh", test_tet_mesh, devices=devices)
     add_function_test(TestFem, "test_dof_mapper", test_dof_mapper)

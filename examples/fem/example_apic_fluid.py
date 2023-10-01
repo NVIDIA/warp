@@ -1,5 +1,4 @@
 import os
-import math
 from typing import Any
 
 import warp as wp
@@ -8,20 +7,18 @@ import numpy as np
 import warp.sim.render
 from warp.sim import Model, State
 
-from warp.fem.geometry import Grid3D
-from warp.fem.domain import Cells, BoundarySides
-from warp.fem.space import make_polynomial_space
-from warp.fem.quadrature import PicQuadrature
-from warp.fem.field import make_test, make_trial
-from warp.fem.types import vec3i, Field, Sample, Domain
-from warp.fem.integrate import integrate
-from warp.fem.operator import integrand, lookup, normal, grad, at_node, div
-from warp.fem.dirichlet import normalize_dirichlet_projector
-
-from warp.fem.cache import TemporaryStore, set_default_temporary_store, borrow_temporary
-
 from warp.sparse import bsr_mv, bsr_copy, bsr_mm, bsr_transposed, bsr_zeros, BsrMatrix 
 
+from warp.fem import Grid3D
+from warp.fem import Cells, BoundarySides
+from warp.fem import make_polynomial_space
+from warp.fem import PicQuadrature
+from warp.fem import make_test, make_trial
+from warp.fem import Field, Sample, Domain
+from warp.fem import integrate
+from warp.fem import integrand, lookup, normal, grad, at_node, div
+from warp.fem import normalize_dirichlet_projector
+from warp.fem import TemporaryStore, set_default_temporary_store, borrow_temporary
 
 from bsr_utils import bsr_cg
 
@@ -202,7 +199,7 @@ class Example:
             radius_mean=self.radius,
         )
 
-        self.grid = Grid3D(vec3i(grid_res), grid_lo, grid_hi)
+        self.grid = Grid3D(wp.vec3i(grid_res), grid_lo, grid_hi)
 
         # Function spaces
         self.velocity_space = make_polynomial_space(self.grid, dtype=wp.vec3, degree=1)

@@ -4,22 +4,46 @@ import warp as wp
 from warp.utils import radix_sort_pairs, runlength_encode, array_scan
 from warp.fem.cache import borrow_temporary, borrow_temporary_like, TemporaryStore, Temporary
 
-from .types import vec6
-
 
 @wp.func
-def generalized_outer(x: Any, y: wp.vec2):
+def generalized_outer(x: Any, y: Any):
+    """Generalized outer product allowing for the first argument to be a scalar"""
     return wp.outer(x, y)
 
 
 @wp.func
-def generalized_outer(x: Any, y: wp.vec3):
-    return wp.outer(x, y)
-
-
-@wp.func
-def generalized_outer(x: Any, y: wp.float32):
+def generalized_outer(x: wp.float32, y: wp.vec2):
     return x * y
+
+
+@wp.func
+def generalized_outer(x: wp.float32, y: wp.vec3):
+    return x * y
+
+
+@wp.func
+def generalized_inner(x: Any, y: Any):
+    """Generalized inner product allowing for the first argument to be a tensor"""
+    return wp.dot(x, y)
+
+
+@wp.func
+def generalized_inner(x: wp.mat22, y: wp.vec2):
+    return x[0] * y[0] + x[1] * y[1]
+
+
+@wp.func
+def generalized_inner(x: wp.mat33, y: wp.vec3):
+    return x[0] * y[0] + x[1] * y[1] + x[2] * y[2]
+
+
+@wp.func
+def unit_element(template_type: Any, coord: int):
+    """Returns a instance of `template_type` with a single coordinate set to 1 in the canonical basis"""
+
+    t = type(template_type)(0.0)
+    t[coord] = 1.0
+    return t
 
 
 @wp.func
@@ -28,52 +52,42 @@ def unit_element(template_type: wp.float32, coord: int):
 
 
 @wp.func
-def unit_element(template_type: wp.vec2, coord: int):
-    t = wp.vec2(0.0)
-    t[coord] = 1.0
-    return t
-
-
-@wp.func
-def unit_element(template_type: wp.vec3, coord: int):
-    t = wp.vec3(0.0)
-    t[coord] = 1.0
-    return t
-
-
-@wp.func
-def unit_element(template_type: vec6, coord: int):
-    t = vec6(0.0)
-    t[coord] = 1.0
-    return t
-
-
-@wp.func
 def unit_element(template_type: wp.mat22, coord: int):
     t = wp.mat22(0.0)
-    t[coord // 2, coord % 2] = 1.0
+    row = coord // 2
+    col = coord - 2 * row
+    t[row, col] = 1.0
     return t
 
 
 @wp.func
 def unit_element(template_type: wp.mat33, coord: int):
-    t = wp.mat22(0.0)
-    t[coord // 3, coord % 3] = 1.0
+    t = wp.mat33(0.0)
+    row = coord // 3
+    col = coord - 3 * row
+    t[row, col] = 1.0
     return t
 
 
 @wp.func
-def symmetric_part(x: wp.mat22):
-    off_diag = 0.5 * (x[0, 1] + x[1, 0])
-    return wp.mat22(x[0, 0], off_diag, off_diag, x[1, 1])
+def symmetric_part(x: Any):
+    """Symmetric part of a square tensor"""
+    return 0.5 * (x + wp.transpose(x))
 
 
 @wp.func
-def symmetric_part(x: wp.mat33):
-    d = 0.5 * (x[1, 2] + x[2, 1])
-    e = 0.5 * (x[2, 0] + x[0, 2])
-    f = 0.5 * (x[0, 1] + x[1, 0])
-    return wp.mat33(x[0, 0], f, e, f, x[1, 1], d, e, d, x[2, 2])
+def skew_part(x: wp.mat22):
+    """Skew part of a 2x2 tensor as corresponding rotation angle"""
+    return 0.5 * (x[1, 0] - x[0, 1])
+
+
+@wp.func
+def skew_part(x: wp.mat33):
+    """Skew part of a 3x3 tensor as the corresponding rotation vector"""
+    a = 0.5 * (x[2, 1] - x[1, 2])
+    b = 0.5 * (x[0, 2] - x[2, 0])
+    c = 0.5 * (x[1, 0] - x[0, 1])
+    return wp.vec3(a, b, c)
 
 
 def compress_node_indices(
@@ -210,7 +224,7 @@ def array_axpy(x: wp.array, y: wp.array, alpha: float = 1.0, beta: float = 1.0):
     alpha = dtype(alpha)
     beta = dtype(beta)
 
-    if x.dtype != y.dtype or x.shape != y.shape or x.device != y.device:
+    if not wp.types.types_equal(x.dtype, y.dtype) or x.shape != y.shape or x.device != y.device:
         raise ValueError("x and y arrays must have same dat atype, shape and device")
 
     wp.launch(kernel=_array_axpy_kernel, dim=x.shape, device=x.device, inputs=[x, y, alpha, beta])

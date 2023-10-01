@@ -1,7 +1,6 @@
 import warp as wp
 
 from warp.fem.types import ElementIndex, Coords, Sample, NULL_QP_INDEX, NULL_DOF_INDEX
-from warp.fem.types import vec2i, vec3i
 from warp.fem.cache import cached_arg_value
 
 from .geometry import Geometry
@@ -10,7 +9,7 @@ from .element import Square, Cube
 
 @wp.struct
 class Grid3DCellArg:
-    res: vec3i
+    res: wp.vec3i
     cell_size: wp.vec3
     origin: wp.vec3
 
@@ -22,7 +21,7 @@ class Grid3D(Geometry):
     LOC_TO_WORLD = wp.constant(Permutation(0, 1, 2, 1, 2, 0, 2, 0, 1))
     WORLD_TO_LOC = wp.constant(Permutation(0, 1, 2, 2, 0, 1, 1, 2, 0))
 
-    def __init__(self, res: vec3i, bounds_lo: wp.vec3 = wp.vec3(0.0), bounds_hi: wp.vec3 = wp.vec3(1.0)):
+    def __init__(self, res: wp.vec3i, bounds_lo: wp.vec3 = wp.vec3(0.0), bounds_hi: wp.vec3 = wp.vec3(1.0)):
         """Constructs a dense 3D grid
 
         Args:
@@ -87,58 +86,58 @@ class Grid3D(Geometry):
 
     @property
     def strides(self):
-        return vec3i(self.res[1] * self.res[2], self.res[2], 1)
+        return wp.vec3i(self.res[1] * self.res[2], self.res[2], 1)
 
     # Utility device functions
 
     CellArg = Grid3DCellArg
-    Cell = vec3i
+    Cell = wp.vec3i
 
     @wp.func
-    def _to_3d_index(strides: vec2i, index: int):
+    def _to_3d_index(strides: wp.vec2i, index: int):
         x = index // strides[0]
         y = (index - strides[0] * x) // strides[1]
         z = index - strides[0] * x - strides[1] * y
-        return vec3i(x, y, z)
+        return wp.vec3i(x, y, z)
 
     @wp.func
-    def _from_3d_index(strides: vec2i, index: vec3i):
+    def _from_3d_index(strides: wp.vec2i, index: wp.vec3i):
         return strides[0] * index[0] + strides[1] * index[1] + index[2]
 
     @wp.func
-    def cell_index(res: vec3i, cell: Cell):
-        strides = vec2i(res[1] * res[2], res[2])
+    def cell_index(res: wp.vec3i, cell: Cell):
+        strides = wp.vec2i(res[1] * res[2], res[2])
         return Grid3D._from_3d_index(strides, cell)
 
     @wp.func
-    def get_cell(res: vec3i, cell_index: ElementIndex):
-        strides = vec2i(res[1] * res[2], res[2])
+    def get_cell(res: wp.vec3i, cell_index: ElementIndex):
+        strides = wp.vec2i(res[1] * res[2], res[2])
         return Grid3D._to_3d_index(strides, cell_index)
 
     @wp.struct
     class Side:
         axis: int  # normal
-        origin: vec3i  # index of vertex at corner (0,0,0)
+        origin: wp.vec3i  # index of vertex at corner (0,0,0)
 
     @wp.struct
     class SideArg:
         cell_count: int
-        axis_offsets: vec3i
+        axis_offsets: wp.vec3i
         cell_arg: Grid3DCellArg
 
     SideIndexArg = SideArg
 
     @wp.func
-    def _world_to_local(axis: int, vec: vec3i):
-        return vec3i(
+    def _world_to_local(axis: int, vec: wp.vec3i):
+        return wp.vec3i(
             vec[Grid3D.LOC_TO_WORLD[axis, 0]],
             vec[Grid3D.LOC_TO_WORLD[axis, 1]],
             vec[Grid3D.LOC_TO_WORLD[axis, 2]],
         )
 
     @wp.func
-    def _local_to_world(axis: int, vec: vec3i):
-        return vec3i(
+    def _local_to_world(axis: int, vec: wp.vec3i):
+        return wp.vec3i(
             vec[Grid3D.WORLD_TO_LOC[axis, 0]],
             vec[Grid3D.WORLD_TO_LOC[axis, 1]],
             vec[Grid3D.WORLD_TO_LOC[axis, 2]],
@@ -192,7 +191,7 @@ class Grid3D(Geometry):
         longitude = lat_long // latitude_res
         latitude = lat_long - longitude * latitude_res
 
-        origin_loc = vec3i(altitude, longitude, latitude)
+        origin_loc = wp.vec3i(altitude, longitude, latitude)
 
         return Grid3D.Side(axis, origin_loc)
 
@@ -257,12 +256,13 @@ class Grid3D(Geometry):
     @cached_arg_value
     def side_arg_value(self, device) -> SideArg:
         args = self.SideArg()
-        axis_dims = vec3i(
+
+        axis_dims = wp.vec3i(
             self.res[1] * self.res[2],
             self.res[2] * self.res[0],
             self.res[0] * self.res[1],
         )
-        args.axis_offsets = vec3i(
+        args.axis_offsets = wp.vec3i(
             0,
             axis_dims[0],
             axis_dims[0] + axis_dims[1],
@@ -296,7 +296,7 @@ class Grid3D(Geometry):
 
         altitude = border * args.cell_arg.res[axis]
 
-        side = Grid3D.Side(axis, vec3i(altitude, longitude, latitude))
+        side = Grid3D.Side(axis, wp.vec3i(altitude, longitude, latitude))
         return Grid3D.side_index(args, side)
 
     @wp.func
@@ -351,7 +351,7 @@ class Grid3D(Geometry):
         else:
             inner_alt = side.origin[0] - 1
 
-        inner_origin = vec3i(inner_alt, side.origin[1], side.origin[2])
+        inner_origin = wp.vec3i(inner_alt, side.origin[1], side.origin[2])
 
         cell = Grid3D._local_to_world(side.axis, inner_origin)
         return Grid3D.cell_index(arg.cell_arg.res, cell)
@@ -367,7 +367,7 @@ class Grid3D(Geometry):
         else:
             outer_alt = side.origin[0]
 
-        outer_origin = vec3i(outer_alt, side.origin[1], side.origin[2])
+        outer_origin = wp.vec3i(outer_alt, side.origin[1], side.origin[2])
 
         cell = Grid3D._local_to_world(side.axis, outer_origin)
         return Grid3D.cell_index(arg.cell_arg.res, cell)

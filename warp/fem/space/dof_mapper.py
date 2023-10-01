@@ -5,7 +5,7 @@ import math
 import warp as wp
 import warp.types
 
-from warp.fem.types import vec6
+vec6 = wp.types.vector(length=6, dtype=wp.float32)
 
 _SQRT_2 = wp.constant(math.sqrt(2.0))
 _SQRT_3 = wp.constant(math.sqrt(3.0))
@@ -65,7 +65,7 @@ class SymmetricTensorMapper(DofMapper):
             first the three diagonal terms, then off-diagonal coefficients"""
         DB16 = 1
         """Ordering that also separates normal from tangential coefficients:
-            first trace, then other diagonal terms, then off-diagonal coefficients.
+           first trace, then other diagonal terms, then off-diagonal coefficients.
            See [Daviet and Bertails-Descoubes 2016]"""
 
     def __init__(self, dtype: type, mapping: Mapping = Mapping.VOIGT):
@@ -187,3 +187,50 @@ class SymmetricTensorMapper(DofMapper):
         f = 0.5 * (val[1, 0] + val[0, 1])
 
         return vec6(a, b, c, d, e, f)
+
+
+class SkewSymmetricTensorMapper(DofMapper):
+    """Orthonormal isomorphism from R^{n (n-1)} to nxn skew-symmetric tensors,
+    using usual L2 norm for vectors and half Frobenius norm, (tau : tau)/2 for tensors.
+    """
+
+    def __init__(self, dtype: type):
+        self.value_dtype = dtype
+
+        if dtype == wp.mat22:
+            self.dof_dtype = float
+            self.DOF_SIZE = wp.constant(1)
+            self.dof_to_value = SkewSymmetricTensorMapper.dof_to_value_2d
+            self.value_to_dof = SkewSymmetricTensorMapper.value_to_dof_2d
+        elif dtype == wp.mat33:
+            self.dof_dtype = wp.vec3
+            self.DOF_SIZE = wp.constant(3)
+            self.dof_to_value = SkewSymmetricTensorMapper.dof_to_value_3d
+            self.value_to_dof = SkewSymmetricTensorMapper.value_to_dof_3d
+        else:
+            raise ValueError("Unsupported value dtype: ", dtype)
+
+    def __str__(self):
+        return f"{self.__class__.__name__}_{self.DOF_SIZE}"
+
+    @wp.func
+    def dof_to_value_2d(dof: float):
+        return wp.mat22(0.0, -dof, dof, 0.0)
+
+    @wp.func
+    def value_to_dof_2d(val: wp.mat22):
+        return 0.5 * (val[1, 0] - val[0, 1])
+
+    @wp.func
+    def dof_to_value_3d(dof: wp.vec3):
+        a = dof[0]
+        b = dof[1]
+        c = dof[2]
+        return wp.mat33(0.0, -c, b, c, 0.0, -a, -b, a, 0.0)
+
+    @wp.func
+    def value_to_dof_3d(val: wp.mat33):
+        a = 0.5 * (val[2, 1] - val[1, 2])
+        b = 0.5 * (val[0, 2] - val[2, 0])
+        c = 0.5 * (val[1, 0] - val[0, 1])
+        return wp.vec3(a, b, c)

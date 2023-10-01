@@ -7,14 +7,14 @@ This example computes a 3D weakly-compressible Stokes flow around a moving objec
 import warp as wp
 import numpy as np
 
-from warp.fem.types import *
-from warp.fem.geometry import Grid3D, ExplicitGeometryPartition
-from warp.fem.field import make_test, make_trial
-from warp.fem.space import make_polynomial_space, make_space_partition
-from warp.fem.domain import Cells
-from warp.fem.integrate import integrate, interpolate
-from warp.fem.operator import integrand, D, div
-from warp.fem.quadrature import PicQuadrature
+from warp.fem import Field, Domain, Sample
+from warp.fem import Grid3D, ExplicitGeometryPartition
+from warp.fem import make_test, make_trial
+from warp.fem import make_polynomial_space, make_space_partition
+from warp.fem import Cells
+from warp.fem import integrate, interpolate
+from warp.fem import integrand, D, div
+from warp.fem import PicQuadrature
 from warp.fem.utils import array_axpy
 
 from warp.sparse import bsr_mv
@@ -83,7 +83,7 @@ if __name__ == "__main__":
 
     res = 20
     geo = Grid3D(
-        res=vec3i(res, res, res),
+        res=wp.vec3i(res, res, res),
         bounds_lo=wp.vec3(0.0, 0.0, 0.0),
         bounds_hi=wp.vec3(1.0, 1.0, 1.0),
     )
