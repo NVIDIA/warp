@@ -26,6 +26,8 @@ class NodalField(DiscreteField):
         self.eval_outer = NodalField._make_eval_outer(self.EvalArg, self.space, read_node_value)
         self.eval_grad_inner = NodalField._make_eval_grad_inner(self.EvalArg, self.space, read_node_value)
         self.eval_grad_outer = NodalField._make_eval_grad_outer(self.EvalArg, self.space, read_node_value)
+        self.eval_div_inner = NodalField._make_eval_div_inner(self.EvalArg, self.space, read_node_value)
+        self.eval_div_outer = NodalField._make_eval_div_outer(self.EvalArg, self.space, read_node_value)
 
     def eval_arg_value(self, device):
         arg = self.EvalArg()
@@ -133,18 +135,41 @@ class NodalField(DiscreteField):
 
         def eval_grad_inner(args: EvalArg, s: Sample):
             res = utils.generalized_outer(
-                space.element_inner_weight_gradient(args.space_arg, s.element_index, s.element_coords, 0),
                 read_node_value(args, s.element_index, 0),
+                space.element_inner_weight_gradient(args.space_arg, s.element_index, s.element_coords, 0),
             )
 
             for k in range(1, NODES_PER_ELEMENT):
                 res += utils.generalized_outer(
-                    space.element_inner_weight_gradient(args.space_arg, s.element_index, s.element_coords, k),
                     read_node_value(args, s.element_index, k),
+                    space.element_inner_weight_gradient(args.space_arg, s.element_index, s.element_coords, k),
                 )
             return res
 
         return cache.get_func(eval_grad_inner, read_node_value.key)
+
+    @staticmethod
+    def _make_eval_div_inner(
+        EvalArg,
+        space: NodalFunctionSpace,
+        read_node_value: wp.Function,
+    ):
+        NODES_PER_ELEMENT = space.NODES_PER_ELEMENT
+
+        def eval_div_inner(args: EvalArg, s: Sample):
+            res = utils.generalized_inner(
+                read_node_value(args, s.element_index, 0),
+                space.element_inner_weight_gradient(args.space_arg, s.element_index, s.element_coords, 0),
+            )
+
+            for k in range(1, NODES_PER_ELEMENT):
+                res += utils.generalized_inner(
+                    read_node_value(args, s.element_index, k),
+                    space.element_inner_weight_gradient(args.space_arg, s.element_index, s.element_coords, k),
+                )
+            return res
+
+        return cache.get_func(eval_div_inner, read_node_value.key)
 
     @staticmethod
     def _make_eval_outer(
@@ -180,14 +205,36 @@ class NodalField(DiscreteField):
 
         def eval_grad_outer(args: EvalArg, s: Sample):
             res = utils.generalized_outer(
-                space.element_outer_weight_gradient(args.space_arg, s.element_index, s.element_coords, 0),
                 read_node_value(args, s.element_index, 0),
+                space.element_outer_weight_gradient(args.space_arg, s.element_index, s.element_coords, 0),
             )
             for k in range(1, NODES_PER_ELEMENT):
                 res += utils.generalized_outer(
-                    space.element_outer_weight_gradient(args.space_arg, s.element_index, s.element_coords, k),
                     read_node_value(args, s.element_index, k),
+                    space.element_outer_weight_gradient(args.space_arg, s.element_index, s.element_coords, k),
                 )
             return res
 
         return cache.get_func(eval_grad_outer, read_node_value.key)
+
+    @staticmethod
+    def _make_eval_div_outer(
+        EvalArg,
+        space: NodalFunctionSpace,
+        read_node_value: wp.Function,
+    ):
+        NODES_PER_ELEMENT = space.NODES_PER_ELEMENT
+
+        def eval_div_outer(args: EvalArg, s: Sample):
+            res = utils.generalized_inner(
+                read_node_value(args, s.element_index, 0),
+                space.element_outer_weight_gradient(args.space_arg, s.element_index, s.element_coords, 0),
+            )
+            for k in range(1, NODES_PER_ELEMENT):
+                res += utils.generalized_inner(
+                    read_node_value(args, s.element_index, k),
+                    space.element_outer_weight_gradient(args.space_arg, s.element_index, s.element_coords, k),
+                )
+            return res
+
+        return cache.get_func(eval_div_outer, read_node_value.key)

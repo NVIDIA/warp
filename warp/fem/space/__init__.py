@@ -1,8 +1,8 @@
 from typing import Optional
 
-import warp.fem.domain
-import warp.fem.geometry
-import warp.fem.polynomial
+import warp.fem.domain as _domain
+import warp.fem.geometry as _geometry
+import warp.fem.polynomial as _polynomial
 
 from .function_space import FunctionSpace
 from .nodal_function_space import NodalFunctionSpace
@@ -28,13 +28,13 @@ from .partition import SpacePartition, make_space_partition
 from .restriction import SpaceRestriction
 
 
-from .dof_mapper import DofMapper, IdentityMapper, SymmetricTensorMapper
+from .dof_mapper import DofMapper, IdentityMapper, SymmetricTensorMapper, SkewSymmetricTensorMapper
 
 
 def make_space_restriction(
     space: FunctionSpace,
     space_partition: Optional[SpacePartition] = None,
-    domain: Optional[warp.fem.domain.GeometryDomain] = None,
+    domain: Optional[_domain.GeometryDomain] = None,
     device=None,
     temporary_store: "Optional[warp.fem.cache.TemporaryStore]" = None,
 ) -> SpaceRestriction:
@@ -50,10 +50,10 @@ def make_space_restriction(
     """
     if space_partition is None:
         if domain is None:
-            domain = warp.fem.domain.Cells(geometry=space.geometry)
+            domain = _domain.Cells(geometry=space.geometry)
         space_partition = make_space_partition(space, domain.geometry_partition)
     elif domain is None:
-        domain = warp.fem.domain.Cells(geometry=space_partition.geo_partition)
+        domain = _domain.Cells(geometry=space_partition.geo_partition)
 
     return SpaceRestriction(
         space=space, space_partition=space_partition, domain=domain, device=device, temporary_store=temporary_store
@@ -61,12 +61,12 @@ def make_space_restriction(
 
 
 def make_polynomial_space(
-    geo: warp.fem.geometry.Geometry,
+    geo: _geometry.Geometry,
     dtype: type = float,
     dof_mapper: Optional[DofMapper] = None,
     degree: int = 1,
     discontinuous: bool = False,
-    family: Optional[warp.fem.polynomial.Polynomial] = None,
+    family: Optional[_polynomial.Polynomial] = None,
 ) -> FunctionSpace:
     """
     Equip elements of a geometry with a Lagrange polynomial function space
@@ -83,7 +83,7 @@ def make_polynomial_space(
         the constructed function space
     """
 
-    if isinstance(geo, warp.fem.geometry.Grid2D):
+    if isinstance(geo, _geometry.Grid2D):
         if degree == 0:
             return GridPiecewiseConstantSpace(geo, dtype=dtype, dof_mapper=dof_mapper)
 
@@ -92,7 +92,7 @@ def make_polynomial_space(
         else:
             return GridBipolynomialSpace(geo, dtype=dtype, dof_mapper=dof_mapper, degree=degree, family=family)
 
-    if isinstance(geo, warp.fem.geometry.Grid3D):
+    if isinstance(geo, _geometry.Grid3D):
         if degree == 0:
             return Grid3DPiecewiseConstantSpace(geo, dtype=dtype, dof_mapper=dof_mapper)
 
@@ -101,7 +101,7 @@ def make_polynomial_space(
         else:
             return GridTripolynomialSpace(geo, dtype=dtype, dof_mapper=dof_mapper, degree=degree, family=family)
 
-    if isinstance(geo, warp.fem.geometry.Trimesh2D):
+    if isinstance(geo, _geometry.Trimesh2D):
         if degree == 0:
             return Trimesh2DPiecewiseConstantSpace(geo, dtype=dtype, dof_mapper=dof_mapper)
 
@@ -110,7 +110,7 @@ def make_polynomial_space(
         else:
             return Trimesh2DPolynomialSpace(geo, dtype=dtype, dof_mapper=dof_mapper, degree=degree)
 
-    if isinstance(geo, warp.fem.geometry.Tetmesh):
+    if isinstance(geo, _geometry.Tetmesh):
         if degree == 0:
             return TetmeshPiecewiseConstantSpace(geo, dtype=dtype, dof_mapper=dof_mapper)
 

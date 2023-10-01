@@ -9,14 +9,14 @@ import math
 import warp as wp
 import numpy as np
 
-from warp.fem.types import *
-from warp.fem.geometry import Grid2D, ExplicitGeometryPartition
-from warp.fem.field import make_test, make_trial
-from warp.fem.space import make_polynomial_space, make_space_partition
-from warp.fem.domain import Cells
-from warp.fem.integrate import integrate, interpolate
-from warp.fem.operator import integrand, D, div
-from warp.fem.quadrature import PicQuadrature
+from warp.fem import Field, Sample, Domain
+from warp.fem import Grid2D, ExplicitGeometryPartition
+from warp.fem import make_test, make_trial
+from warp.fem import make_polynomial_space, make_space_partition
+from warp.fem import Cells
+from warp.fem import integrate, interpolate
+from warp.fem import integrand, D, div
+from warp.fem import PicQuadrature
 from warp.fem.utils import array_axpy
 
 from warp.utils import array_cast
@@ -87,7 +87,7 @@ if __name__ == "__main__":
 
     res = 50
     cell_size = 1.0 / res
-    geo = Grid2D(res=vec2i(res))
+    geo = Grid2D(res=wp.vec2i(res))
 
     vel = 1.0
     viscosity = 100.0
@@ -149,7 +149,7 @@ if __name__ == "__main__":
         quadrature=pic_quadrature,
         fields={"v": u_test},
         values={"particle_vel": particle_velocities},
-        output_dtype=wp.vec2d
+        output_dtype=wp.vec2d,
     )
 
     u_bd_matrix = integrate(mass_form, quadrature=pic_quadrature, fields={"u": u_trial, "v": u_test})

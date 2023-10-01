@@ -14,7 +14,7 @@ _key_re = re.compile("[^0-9a-zA-Z_]+")
 
 
 def get_func(func, suffix=""):
-    key = f"{func.__name__}_{suffix}"
+    key = f"{func.__qualname__}_{suffix}"
     key = _key_re.sub("", key)
 
     if key not in _func_cache:

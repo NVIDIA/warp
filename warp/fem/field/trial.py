@@ -28,8 +28,10 @@ class TrialField:
         self.eval_degree = TrialField._make_eval_degree(self.space)
         self.eval_inner = TrialField._make_eval_inner(self.space)
         self.eval_grad_inner = TrialField._make_eval_grad_inner(self.space)
+        self.eval_div_inner = TrialField._make_eval_div_inner(self.space)
         self.eval_outer = TrialField._make_eval_outer(self.space)
         self.eval_grad_outer = TrialField._make_eval_grad_outer(self.space)
+        self.eval_div_outer = TrialField._make_eval_div_outer(self.space)
         self.at_node = TrialField._make_at_node(self.space)
 
     def partition_node_count(self) -> int:
@@ -53,7 +55,7 @@ class TrialField:
 
     @staticmethod
     def _make_eval_inner(space: FunctionSpace):
-        def eval_trial(args: space.SpaceArg, s: Sample):
+        def eval_trial_inner(args: space.SpaceArg, s: Sample):
             weight = space.element_inner_weight(
                 args,
                 s.element_index,
@@ -62,7 +64,7 @@ class TrialField:
             )
             return weight * space.unit_dof_value(args, s.trial_dof)
 
-        return cache.get_func(eval_trial, space.name)
+        return cache.get_func(eval_trial_inner, space.name)
 
     @staticmethod
     def _make_eval_grad_inner(space: FunctionSpace):
@@ -70,7 +72,7 @@ class TrialField:
             # There is no Warp high-order tensor type to represent matrix gradients
             return None
 
-        def eval_nabla_trial(args: space.SpaceArg, s: Sample):
+        def eval_nabla_trial_inner(args: space.SpaceArg, s: Sample):
             nabla_weight = space.element_inner_weight_gradient(
                 args,
                 s.element_index,
@@ -78,11 +80,28 @@ class TrialField:
                 get_node_index_in_element(s.trial_dof),
             )
             return utils.generalized_outer(
-                nabla_weight,
                 space.unit_dof_value(args, s.trial_dof),
+                nabla_weight,
             )
 
-        return cache.get_func(eval_nabla_trial, space.name)
+        return cache.get_func(eval_nabla_trial_inner, space.name)
+
+    @staticmethod
+    def _make_eval_div_inner(space: FunctionSpace):
+
+        def eval_div_trial_inner(args: space.SpaceArg, s: Sample):
+            nabla_weight = space.element_inner_weight_gradient(
+                args,
+                s.element_index,
+                s.element_coords,
+                get_node_index_in_element(s.trial_dof),
+            )
+            return utils.generalized_inner(
+                space.unit_dof_value(args, s.trial_dof),
+                nabla_weight,
+            )
+
+        return cache.get_func(eval_div_trial_inner, space.name)
 
     @staticmethod
     def _make_eval_outer(space: FunctionSpace):
@@ -111,11 +130,31 @@ class TrialField:
                 get_node_index_in_element(s.trial_dof),
             )
             return utils.generalized_outer(
-                nabla_weight,
                 space.unit_dof_value(args, s.trial_dof),
+                nabla_weight,
             )
 
         return cache.get_func(eval_nabla_trial_outer, space.name)
+
+    @staticmethod
+    def _make_eval_div_outer(space: FunctionSpace):
+        if wp.types.type_is_matrix(space.dtype):
+            # There is no Warp high-order tensor type to represent matrix gradients
+            return None
+
+        def eval_div_trial_outer(args: space.SpaceArg, s: Sample):
+            nabla_weight = space.element_outer_weight_gradient(
+                args,
+                s.element_index,
+                s.element_coords,
+                get_node_index_in_element(s.trial_dof),
+            )
+            return utils.generalized_inner(
+                space.unit_dof_value(args, s.trial_dof),
+                nabla_weight,
+            )
+
+        return cache.get_func(eval_div_trial_outer, space.name)
 
     @staticmethod
     def _make_at_node(space: FunctionSpace):

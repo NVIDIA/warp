@@ -3,7 +3,6 @@ import numpy as np
 
 
 from warp.fem.types import ElementIndex, Coords, OUTSIDE
-from warp.fem.types import vec2i
 from warp.fem.polynomial import Polynomial, lagrange_scales, quadrature_1d, is_closed
 from warp.fem.geometry import Grid2D
 
@@ -95,7 +94,7 @@ class Grid2DFunctionSpace(NodalFunctionSpace):
     def _vertex_coords(vidx_in_cell: int):
         x = vidx_in_cell // 2
         y = vidx_in_cell - 2 * x
-        return vec2i(x, y)
+        return wp.vec2i(x, y)
 
     @wp.func
     def _vertex_coords_f(vidx_in_cell: int):

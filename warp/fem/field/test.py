@@ -28,8 +28,10 @@ class TestField:
         self.eval_degree = TestField._make_eval_degree(self.space)
         self.eval_inner = TestField._make_eval_inner(self.space)
         self.eval_grad_inner = TestField._make_eval_grad_inner(self.space)
+        self.eval_div_inner = TestField._make_eval_div_inner(self.space)
         self.eval_outer = TestField._make_eval_outer(self.space)
         self.eval_grad_outer = TestField._make_eval_grad_outer(self.space)
+        self.eval_div_outer = TestField._make_eval_div_outer(self.space)
         self.at_node = TestField._make_at_node(self.space)
 
     @property
@@ -50,7 +52,7 @@ class TestField:
 
     @staticmethod
     def _make_eval_inner(space: FunctionSpace):
-        def eval_test(args: space.SpaceArg, s: Sample):
+        def eval_test_inner(args: space.SpaceArg, s: Sample):
             weight = space.element_inner_weight(
                 args,
                 s.element_index,
@@ -59,7 +61,7 @@ class TestField:
             )
             return weight * space.unit_dof_value(args, s.test_dof)
 
-        return cache.get_func(eval_test, space.name)
+        return cache.get_func(eval_test_inner, space.name)
 
     @staticmethod
     def _make_eval_grad_inner(space: FunctionSpace):
@@ -75,11 +77,28 @@ class TestField:
                 get_node_index_in_element(s.test_dof),
             )
             return utils.generalized_outer(
-                nabla_weight,
                 space.unit_dof_value(args, s.test_dof),
+                nabla_weight,
             )
 
         return cache.get_func(eval_nabla_test_inner, space.name)
+
+    @staticmethod
+    def _make_eval_div_inner(space: FunctionSpace):
+
+        def eval_div_test_inner(args: space.SpaceArg, s: Sample):
+            nabla_weight = space.element_inner_weight_gradient(
+                args,
+                s.element_index,
+                s.element_coords,
+                get_node_index_in_element(s.test_dof),
+            )
+            return utils.generalized_inner(
+                space.unit_dof_value(args, s.test_dof),
+                nabla_weight,
+            )
+
+        return cache.get_func(eval_div_test_inner, space.name)
 
     @staticmethod
     def _make_eval_outer(space: FunctionSpace):
@@ -100,7 +119,7 @@ class TestField:
             # There is no Warp high-order tensor type to represent matrix gradients
             return None
 
-        def eval_nabla_test(args: space.SpaceArg, s: Sample):
+        def eval_nabla_test_outer(args: space.SpaceArg, s: Sample):
             nabla_weight = space.element_outer_weight_gradient(
                 args,
                 s.element_index,
@@ -108,11 +127,28 @@ class TestField:
                 get_node_index_in_element(s.test_dof),
             )
             return utils.generalized_outer(
-                nabla_weight,
                 space.unit_dof_value(args, s.test_dof),
+                nabla_weight,
             )
 
-        return cache.get_func(eval_nabla_test, space.name)
+        return cache.get_func(eval_nabla_test_outer, space.name)
+
+    @staticmethod
+    def _make_eval_div_outer(space: FunctionSpace):
+
+        def eval_div_test_outer(args: space.SpaceArg, s: Sample):
+            nabla_weight = space.element_outer_weight_gradient(
+                args,
+                s.element_index,
+                s.element_coords,
+                get_node_index_in_element(s.test_dof),
+            )
+            return utils.generalized_inner(
+                space.unit_dof_value(args, s.test_dof),
+                nabla_weight,
+            )
+
+        return cache.get_func(eval_div_test_outer, space.name)
 
     @staticmethod
     def _make_at_node(space: FunctionSpace):

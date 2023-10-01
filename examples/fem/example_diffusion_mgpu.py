@@ -5,16 +5,16 @@ This example illustrates using domain decomposition to solve a diffusion PDE ove
 from typing import Tuple
 
 import warp as wp
-
-from warp.fem.types import *
-from warp.fem.geometry import Grid2D, LinearGeometryPartition
-from warp.fem.space import make_polynomial_space, make_space_partition
-from warp.fem.field import make_test, make_trial
-from warp.fem.domain import Cells, BoundarySides
-from warp.fem.integrate import integrate
-from warp.fem.operator import integrand
-
 from warp.sparse import bsr_axpy, bsr_mv
+
+from warp.fem.types import Field, Sample
+from warp.fem import Grid2D, LinearGeometryPartition
+from warp.fem import make_polynomial_space, make_space_partition
+from warp.fem import make_test, make_trial
+from warp.fem import Cells, BoundarySides
+from warp.fem import integrate
+from warp.fem import integrand
+
 from warp.utils import array_cast
 
 from example_diffusion import linear_form, diffusion_form
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     wp.init()
     wp.set_module_options({"enable_backward": False})
 
-    geo = Grid2D(res=vec2i(25))
+    geo = Grid2D(res=wp.vec2i(25))
     bd_weight = 100.0
 
     scalar_space = make_polynomial_space(geo, degree=3)

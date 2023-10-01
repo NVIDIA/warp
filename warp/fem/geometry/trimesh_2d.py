@@ -1,7 +1,7 @@
 from typing import Optional
 import warp as wp
 
-from warp.fem.types import ElementIndex, Coords, vec2i, Sample
+from warp.fem.types import ElementIndex, Coords, Sample
 from warp.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, NULL_DOF_INDEX, NULL_QP_INDEX
 from warp.fem.cache import cached_arg_value, TemporaryStore, borrow_temporary, borrow_temporary_like
 
@@ -18,8 +18,8 @@ class Trimesh2DArg:
     vertex_tri_offsets: wp.array(dtype=int)
     vertex_tri_indices: wp.array(dtype=int)
 
-    edge_vertex_indices: wp.array(dtype=vec2i)
-    edge_tri_indices: wp.array(dtype=vec2i)
+    edge_vertex_indices: wp.array(dtype=wp.vec2i)
+    edge_tri_indices: wp.array(dtype=wp.vec2i)
 
 
 class Trimesh2D(Geometry):
@@ -321,8 +321,8 @@ class Trimesh2D(Geometry):
         else:
             edge_count = int(vertex_unique_edge_offsets.array.numpy()[self.vertex_count() - 1])
 
-        self._edge_vertex_indices = wp.empty(shape=(edge_count,), dtype=vec2i, device=device)
-        self._edge_tri_indices = wp.empty(shape=(edge_count,), dtype=vec2i, device=device)
+        self._edge_vertex_indices = wp.empty(shape=(edge_count,), dtype=wp.vec2i, device=device)
+        self._edge_tri_indices = wp.empty(shape=(edge_count,), dtype=wp.vec2i, device=device)
 
         boundary_mask = borrow_temporary(temporary_store=temporary_store, shape=(edge_count,), dtype=int, device=device)
 
@@ -438,8 +438,8 @@ class Trimesh2D(Geometry):
         vertex_unique_edge_count: wp.array(dtype=int),
         uncompressed_edge_ends: wp.array(dtype=int),
         uncompressed_edge_tris: wp.array2d(dtype=int),
-        edge_vertex_indices: wp.array(dtype=vec2i),
-        edge_tri_indices: wp.array(dtype=vec2i),
+        edge_vertex_indices: wp.array(dtype=wp.vec2i),
+        edge_tri_indices: wp.array(dtype=wp.vec2i),
         boundary_mask: wp.array(dtype=int),
     ):
         v = wp.tid()
@@ -452,11 +452,11 @@ class Trimesh2D(Geometry):
             src_index = start_beg + e
             edge_index = unique_beg + e
 
-            edge_vertex_indices[edge_index] = vec2i(v, uncompressed_edge_ends[src_index])
+            edge_vertex_indices[edge_index] = wp.vec2i(v, uncompressed_edge_ends[src_index])
 
             t0 = uncompressed_edge_tris[src_index, 0]
             t1 = uncompressed_edge_tris[src_index, 1]
-            edge_tri_indices[edge_index] = vec2i(t0, t1)
+            edge_tri_indices[edge_index] = wp.vec2i(t0, t1)
             if t0 == t1:
                 boundary_mask[edge_index] = 1
             else:
@@ -464,8 +464,8 @@ class Trimesh2D(Geometry):
 
     @wp.kernel
     def _flip_edge_normals(
-        edge_vertex_indices: wp.array(dtype=vec2i),
-        edge_tri_indices: wp.array(dtype=vec2i),
+        edge_vertex_indices: wp.array(dtype=wp.vec2i),
+        edge_tri_indices: wp.array(dtype=wp.vec2i),
         tri_vertex_indices: wp.array2d(dtype=int),
         positions: wp.array(dtype=wp.vec2),
     ):
@@ -487,4 +487,4 @@ class Trimesh2D(Geometry):
 
         # if edge normal points toward first triangle centroid, flip indices
         if wp.dot(tri_centroid - edge_center, edge_normal) > 0.0:
-            edge_vertex_indices[e] = vec2i(edge_vidx[1], edge_vidx[0])
+            edge_vertex_indices[e] = wp.vec2i(edge_vidx[1], edge_vidx[0])

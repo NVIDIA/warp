@@ -1,7 +1,7 @@
 from typing import Optional
 import warp as wp
 
-from warp.fem.types import ElementIndex, Coords, vec2i, vec3i, Sample
+from warp.fem.types import ElementIndex, Coords, Sample
 from warp.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, NULL_DOF_INDEX, NULL_QP_INDEX
 from warp.fem.cache import cached_arg_value, TemporaryStore, borrow_temporary, borrow_temporary_like
 
@@ -18,8 +18,8 @@ class TetmeshArg:
     vertex_tet_offsets: wp.array(dtype=int)
     vertex_tet_indices: wp.array(dtype=int)
 
-    face_vertex_indices: wp.array(dtype=vec3i)
-    face_tet_indices: wp.array(dtype=vec2i)
+    face_vertex_indices: wp.array(dtype=wp.vec3i)
+    face_tet_indices: wp.array(dtype=wp.vec2i)
 
 
 class Tetmesh(Geometry):
@@ -307,7 +307,7 @@ class Tetmesh(Geometry):
         vertex_start_face_offsets = borrow_temporary_like(vertex_start_face_count, temporary_store=temporary_store)
 
         vertex_face_other_vs = borrow_temporary(
-            temporary_store, dtype=vec2i, device=device, shape=(4 * self.cell_count())
+            temporary_store, dtype=wp.vec2i, device=device, shape=(4 * self.cell_count())
         )
         vertex_face_tets = borrow_temporary(temporary_store, dtype=int, device=device, shape=(4 * self.cell_count(), 2))
 
@@ -353,8 +353,8 @@ class Tetmesh(Geometry):
         else:
             face_count = int(vertex_unique_face_offsets.array.numpy()[self.vertex_count() - 1])
 
-        self._face_vertex_indices = wp.empty(shape=(face_count,), dtype=vec3i, device=device)
-        self._face_tet_indices = wp.empty(shape=(face_count,), dtype=vec2i, device=device)
+        self._face_vertex_indices = wp.empty(shape=(face_count,), dtype=wp.vec3i, device=device)
+        self._face_tet_indices = wp.empty(shape=(face_count,), dtype=wp.vec2i, device=device)
 
         boundary_mask = borrow_temporary(temporary_store, shape=(face_count,), dtype=int, device=device)
 
@@ -490,7 +490,7 @@ class Tetmesh(Geometry):
     ):
         t = wp.tid()
         for k in range(4):
-            vi = vec3i(tet_vertex_indices[t, k], tet_vertex_indices[t, (k + 1) % 4], tet_vertex_indices[t, (k + 2) % 4])
+            vi = wp.vec3i(tet_vertex_indices[t, k], tet_vertex_indices[t, (k + 1) % 4], tet_vertex_indices[t, (k + 2) % 4])
             vm = wp.min(vi)
 
             for i in range(3):
@@ -499,8 +499,8 @@ class Tetmesh(Geometry):
 
     @wp.func
     def _find_face(
-        needle: vec2i,
-        values: wp.array(dtype=vec2i),
+        needle: wp.vec2i,
+        values: wp.array(dtype=wp.vec2i),
         beg: int,
         end: int,
     ):
@@ -517,7 +517,7 @@ class Tetmesh(Geometry):
         tet_vertex_indices: wp.array2d(dtype=int),
         vertex_start_face_offsets: wp.array(dtype=int),
         vertex_start_face_count: wp.array(dtype=int),
-        face_other_vs: wp.array(dtype=vec2i),
+        face_other_vs: wp.array(dtype=wp.vec2i),
         face_tets: wp.array2d(dtype=int),
     ):
         v = wp.tid()
@@ -533,7 +533,7 @@ class Tetmesh(Geometry):
             t = vertex_tet_indices[tet]
 
             for k in range(4):
-                vi = vec3i(
+                vi = wp.vec3i(
                     tet_vertex_indices[t, k], tet_vertex_indices[t, (k + 1) % 4], tet_vertex_indices[t, (k + 2) % 4]
                 )
                 min_v = wp.min(vi)
@@ -541,7 +541,7 @@ class Tetmesh(Geometry):
                 if v == min_v:
                     max_v = wp.max(vi)
                     mid_v = vi[0] + vi[1] + vi[2] - min_v - max_v
-                    other_v = vec2i(mid_v, max_v)
+                    other_v = wp.vec2i(mid_v, max_v)
 
                     # Check if other_v has been seen
                     seen_idx = Tetmesh._find_face(other_v, face_other_vs, face_beg, face_cur)
@@ -561,10 +561,10 @@ class Tetmesh(Geometry):
         vertex_start_face_offsets: wp.array(dtype=int),
         vertex_unique_face_offsets: wp.array(dtype=int),
         vertex_unique_face_count: wp.array(dtype=int),
-        uncompressed_face_other_vs: wp.array(dtype=vec2i),
+        uncompressed_face_other_vs: wp.array(dtype=wp.vec2i),
         uncompressed_face_tets: wp.array2d(dtype=int),
-        face_vertex_indices: wp.array(dtype=vec3i),
-        face_tet_indices: wp.array(dtype=vec2i),
+        face_vertex_indices: wp.array(dtype=wp.vec3i),
+        face_tet_indices: wp.array(dtype=wp.vec2i),
         boundary_mask: wp.array(dtype=int),
     ):
         v = wp.tid()
@@ -577,7 +577,7 @@ class Tetmesh(Geometry):
             src_index = start_beg + f
             face_index = unique_beg + f
 
-            face_vertex_indices[face_index] = vec3i(
+            face_vertex_indices[face_index] = wp.vec3i(
                 v,
                 uncompressed_face_other_vs[src_index][0],
                 uncompressed_face_other_vs[src_index][1],
@@ -585,7 +585,7 @@ class Tetmesh(Geometry):
 
             t0 = uncompressed_face_tets[src_index, 0]
             t1 = uncompressed_face_tets[src_index, 1]
-            face_tet_indices[face_index] = vec2i(t0, t1)
+            face_tet_indices[face_index] = wp.vec2i(t0, t1)
             if t0 == t1:
                 boundary_mask[face_index] = 1
             else:
@@ -593,8 +593,8 @@ class Tetmesh(Geometry):
 
     @wp.kernel
     def _flip_face_normals(
-        face_vertex_indices: wp.array(dtype=vec3i),
-        face_tet_indices: wp.array(dtype=vec2i),
+        face_vertex_indices: wp.array(dtype=wp.vec3i),
+        face_tet_indices: wp.array(dtype=wp.vec2i),
         tet_vertex_indices: wp.array2d(dtype=int),
         positions: wp.array(dtype=wp.vec3),
     ):
@@ -618,7 +618,7 @@ class Tetmesh(Geometry):
 
         # if face normal points toward first tet centroid, flip indices
         if wp.dot(tet_centroid - face_center, face_normal) > 0.0:
-            face_vertex_indices[e] = vec3i(face_vidx[0], face_vidx[2], face_vidx[1])
+            face_vertex_indices[e] = wp.vec3i(face_vidx[0], face_vidx[2], face_vidx[1])
 
     @wp.kernel
     def _count_starting_edges_kernel(
