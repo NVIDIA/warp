@@ -69,6 +69,7 @@ import warp.tests.test_copy
 import warp.tests.test_mesh
 import warp.tests.test_fabricarray
 import warp.tests.test_bool
+import warp.tests.test_fem
 
 
 def register_tests(parent):
