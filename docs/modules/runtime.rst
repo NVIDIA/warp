@@ -4,14 +4,14 @@ Runtime Reference
 .. currentmodule:: warp
 
 This section describes the Warp Python runtime API, how to manage memory, launch kernels, and high-level functionality
-for dealing with such as meshes and volumes. The APIs described in this section are intended to be used at
-*Python Scope* and  run inside for CPython interpreter. For a comprehensive list of functions available inside at
-*Kernel Scope*, please see the :doc:`/modules/functions`.
+for dealing with objects such as meshes and volumes. The APIs described in this section are intended to be used at
+the *Python Scope* and  run inside for CPython interpreter. For a comprehensive list of functions available inside at
+the *Kernel Scope*, please see the :doc:`/modules/functions`.
 
 Kernels
 -------
 
-Kernels are launched with the ``wp.launch()`` function on a specific device (CPU/GPU)::
+Kernels are launched with the :func:`wp.launch() <warp.launch>` function on a specific device (CPU/GPU)::
 
    wp.launch(simple_kernel, dim=1024, inputs=[a, b, c], device="cuda")
 
@@ -38,6 +38,7 @@ Arrays are the fundamental memory abstraction in Warp; they are created through 
 
     wp.empty(shape=1024, dtype=wp.vec3, device="cpu")
     wp.zeros(shape=1024, dtype=float, device="cuda")
+    wp.full(shape=1024, value=10, dtype=int, device="cuda")
 
 
 Arrays can also be constructed directly from ``numpy`` ndarrays as follows: ::
@@ -78,7 +79,11 @@ Additionally, arrays can be copied directly between memory spaces: ::
    # copy from source CPU buffer to GPU
    wp.copy(dest_array, src_array)
 
-Multi-dimensional arrays
+.. autoclass:: array
+   :members:
+   :undoc-members:
+
+Multi-dimensional Arrays
 ########################
 
 Multi-dimensional arrays can be constructed by passing a tuple of sizes for each dimension, e.g.: the following constructs a 2d array of size 1024x16::
@@ -112,13 +117,12 @@ The following construction methods are provided for allocating zero-initialized 
 
 .. autofunction:: zeros
 .. autofunction:: zeros_like
+.. autofunction:: full
+.. autofunction:: full_like
 .. autofunction:: empty
 .. autofunction:: empty_like
 .. autofunction:: copy
 .. autofunction:: clone
-
-.. autoclass:: array
-   :members:
 
 Matrix Multiplication
 #####################

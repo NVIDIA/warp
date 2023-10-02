@@ -59,7 +59,7 @@ todo_emit_warnings = True
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
-    "numpy": ("http://docs.scipy.org/doc/numpy/", None),
+    "numpy": ("https://numpy.org/doc/stable", None),
 }
 
 # List of patterns, relative to source directory, that match files and
