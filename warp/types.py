@@ -1797,6 +1797,7 @@ class array(Array):
         return array._vars
 
     def zero_(self):
+        """Zeroes-out the array entires."""
         if self.is_contiguous:
             # simple memset is usually faster than generic fill
             self.device.memset(self.ptr, 0, self.size * type_size_in_bytes(self.dtype))
@@ -1804,6 +1805,32 @@ class array(Array):
             self.fill_(0)
 
     def fill_(self, value):
+        """Set all array entries to `value`
+
+        args:
+            value: The value to set every array entry to. Must be convertible to the array's ``dtype``.
+
+        Raises:
+            ValueError: If `value` cannot be converted to the array's ``dtype``.
+
+        Examples:
+            ``fill_()`` can take lists or other sequences when filling arrays of vectors or matrices.
+
+            >>> arr = wp.zeros(2, dtype=wp.mat22)
+            >>> arr.numpy()
+            array([[[0., 0.],
+                    [0., 0.]],
+            <BLANKLINE>
+                   [[0., 0.],
+                    [0., 0.]]], dtype=float32)
+            >>> arr.fill_([[1, 2], [3, 4]])
+            >>> arr.numpy()
+            array([[[1., 2.],
+                    [3., 4.]],
+            <BLANKLINE>
+                   [[1., 2.],
+                    [3., 4.]]], dtype=float32)
+        """
         if self.size == 0:
             return
 
@@ -1850,15 +1877,18 @@ class array(Array):
             else:
                 warp.context.runtime.core.array_fill_host(carr_ptr, ARRAY_TYPE_REGULAR, cvalue_ptr, cvalue_size)
 
-    # equivalent to wrapping src data in an array and copying to self
     def assign(self, src):
+        """Wraps ``src`` in an :class:`warp.array` if it is not already one and copies the contents to ``self``."""
         if is_array(src):
             warp.copy(self, src)
         else:
             warp.copy(self, array(data=src, dtype=self.dtype, copy=False, device="cpu"))
 
-    # convert array to ndarray (alias memory through array interface)
     def numpy(self):
+        """Converts the array to a :class:`numpy.ndarray` (aliasing memory through the array interface protocol)
+        If the array is on the GPU, a synchronous device-to-host copy (on the CUDA default stream) will be
+        automatically performed to ensure that any outstanding work is completed.
+        """
         if self.ptr:
             # use the CUDA default stream for synchronous behaviour with other streams
             with warp.ScopedStream(self.device.null_stream):
@@ -1879,12 +1909,16 @@ class array(Array):
                 npshape = self.shape
             return np.empty(npshape, dtype=npdtype)
 
-    # return a ctypes cast of the array address
-    # note #1: only CPU arrays support this method
-    # note #2: the array must be contiguous
-    # note #3: accesses to this object are *not* bounds checked
-    # note #4: for float16 types, a pointer to the internal uint16 representation is returned
     def cptr(self):
+        """Return a ctypes cast of the array address.
+
+        Notes:
+
+        #. Only CPU arrays support this method.
+        #. The array must be contiguous.
+        #. Accesses to this object are **not** bounds checked.
+        #. For ``float16`` types, a pointer to the internal ``uint16`` representation is returned.
+        """
         if not self.ptr:
             return None
 
@@ -1903,8 +1937,8 @@ class array(Array):
 
         return p
 
-    # returns a flattened list of items in the array as a Python list
     def list(self):
+        """Returns a flattened list of items in the array as a Python list."""
         a = self.numpy()
 
         if isinstance(self.dtype, warp.codegen.Struct):
@@ -1923,8 +1957,8 @@ class array(Array):
             # scalar
             return list(a.flatten())
 
-    # convert data from one device to another, nop if already on device
     def to(self, device):
+        """Returns a Warp array with this array's data moved to the specified device, no-op if already on device."""
         device = warp.get_device(device)
         if self.device == device:
             return self
@@ -1932,6 +1966,7 @@ class array(Array):
             return warp.clone(self, device=device)
 
     def flatten(self):
+        """Returns a zero-copy view of the array collapsed to 1-D. Only supported for contiguous arrays."""
         if self.ndim == 1:
             return self
 
@@ -1954,6 +1989,11 @@ class array(Array):
         return a
 
     def reshape(self, shape):
+        """Returns a reshaped array. Only supported for contiguous arrays.
+
+        Args:
+            shape : An int or tuple of ints specifying the shape of the returned array.
+        """
         if not self.is_contiguous:
             raise RuntimeError("Reshaping non-contiguous arrays is unsupported.")
 
@@ -2011,6 +2051,9 @@ class array(Array):
         return a
 
     def view(self, dtype):
+        """Returns a zero-copy view of this array's memory with a different data type.
+        ``dtype`` must have the same byte size of the array's native ``dtype``.
+        """
         if type_size_in_bytes(dtype) != type_size_in_bytes(self.dtype):
             raise RuntimeError("Cannot cast dtypes of unequal byte size")
 
@@ -2031,6 +2074,7 @@ class array(Array):
         return a
 
     def contiguous(self):
+        """Returns a contiguous array with this array's data. No-op if array is already contiguous."""
         if self.is_contiguous:
             return self
 
@@ -2038,8 +2082,14 @@ class array(Array):
         warp.copy(a, self)
         return a
 
-    # note: transpose operation will return an array with a non-contiguous access pattern
     def transpose(self, axes=None):
+        """Returns an zero-copy view of the array with axes transposed.
+
+        Note: The transpose operation will return an array with a non-contiguous access pattern.
+
+        Args:
+            axes (optional): Specifies the how the axes are permuted. If not specified, the axes order will be reversed.
+        """
         # noop if 1d array
         if self.ndim == 1:
             return self
