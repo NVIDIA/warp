@@ -1198,11 +1198,11 @@ class Adjoint:
         if hasattr(node, "is_adjoint"):
             node.value.is_adjoint = True
 
-        val = adj.eval(node.value)
+        aggregate = adj.eval(node.value)
 
         try:
-            if isinstance(val, types.ModuleType) or isinstance(val, type):
-                out = getattr(val, node.attr)
+            if isinstance(aggregate, types.ModuleType) or isinstance(aggregate, type):
+                out = getattr(aggregate, node.attr)
 
                 if warp.types.is_value(out):
                     return adj.add_constant(out)
@@ -1211,32 +1211,36 @@ class Adjoint:
 
             if hasattr(node, "is_adjoint"):
                 # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
-                attr_name = val.label + "." + node.attr
-                attr_type = val.type.vars[node.attr].type
+                attr_name = aggregate.label + "." + node.attr
+                attr_type = aggregate.type.vars[node.attr].type
 
                 return Var(attr_name, attr_type)
 
-            attr_type = Reference(strip_reference(val.type).vars[node.attr].type)
+            attr_type = Reference(strip_reference(aggregate.type).vars[node.attr].type)
             attr = adj.add_var(attr_type)
 
-            if is_reference(val.type):
-                adj.add_forward(f"{attr.emit(dereference=False)} = &({val.emit(dereference=False)}->{node.attr});")
-                adj.add_reverse(f"{val.emit_adj()}.{node.attr} = {attr.emit_adj()};")
+            if is_reference(aggregate.type):
+                adj.add_forward(
+                    f"{attr.emit(dereference=False)} = &({aggregate.emit(dereference=False)}->{node.attr});"
+                )
+                adj.add_reverse(f"{aggregate.emit_adj()}.{node.attr} = {attr.emit_adj()};")
             else:
-                adj.add_forward(f"{attr.emit(dereference=False)} = &({val.emit()}.{node.attr});")
-                adj.add_reverse(f"{val.emit_adj()}.{node.attr} = {attr.emit_adj()};")
+                adj.add_forward(f"{attr.emit(dereference=False)} = &({aggregate.emit()}.{node.attr});")
+                adj.add_reverse(f"{aggregate.emit_adj()}.{node.attr} = {attr.emit_adj()};")
 
             return attr
 
         except (KeyError, AttributeError):
             # Try resolving as type attribute
-            if isinstance(val, Var):
-                val = val.type
-            val = adj.resolve_type_attribute(val, node.attr)
-            if val is not None:
-                return val
+            if isinstance(aggregate, Var):
+                aggregate = aggregate.type
+            aggregate = adj.resolve_type_attribute(aggregate, node.attr)
+            if aggregate is not None:
+                return aggregate
 
-            raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{val.label}' ({type_repr(val.type)})")
+            raise RuntimeError(
+                f"Error, `{node.attr}` is not an attribute of '{aggregate.label}' ({type_repr(aggregate.type)})"
+            )
 
     def emit_String(adj, node):
         # string constant
@@ -1617,15 +1621,17 @@ class Adjoint:
 
     def emit_Assign(adj, node):
         if len(node.targets) != 1:
-            raise RuntimeError("Assigning the same value to multiple variable is not supported")
+            raise RuntimeError("Assigning the same value to multiple variables is not supported")
+
+        lhs = node.targets[0]
 
         # handle the case where we are assigning multiple output variables
-        if isinstance(node.targets[0], ast.Tuple):
+        if isinstance(lhs, ast.Tuple):
             # record the expected number of outputs on the node
             # we do this so we can decide which function to
             # call based on the number of expected outputs
             if isinstance(node.value, ast.Call):
-                node.value.expects = len(node.targets[0].elts)
+                node.value.expects = len(lhs.elts)
 
             # evaluate values
             if isinstance(node.value, ast.Tuple):
@@ -1634,7 +1640,7 @@ class Adjoint:
                 out = adj.eval(node.value)
 
             names = []
-            for v in node.targets[0].elts:
+            for v in lhs.elts:
                 if isinstance(v, ast.Name):
                     names.append(v.id)
                 else:
@@ -1659,21 +1665,21 @@ class Adjoint:
             return out
 
         # handles the case where we are assigning to an array index (e.g.: arr[i] = 2.0)
-        elif isinstance(node.targets[0], ast.Subscript):
-            if hasattr(node.targets[0].value, "attr") and node.targets[0].value.attr == "adjoint":
+        elif isinstance(lhs, ast.Subscript):
+            if hasattr(lhs.value, "attr") and lhs.value.attr == "adjoint":
                 # handle adjoint of a variable, i.e. wp.adjoint[var]
-                node.targets[0].slice.is_adjoint = True
-                src_var = adj.eval(node.targets[0].slice)
+                lhs.slice.is_adjoint = True
+                src_var = adj.eval(lhs.slice)
                 var = Var(f"adj_{src_var.label}", type=src_var.type, constant=None, prefix=False)
                 adj.symbols[var.label] = var
                 value = adj.eval(node.value)
                 adj.add_forward(f"{var.emit()} = {value.emit()};")
                 return var
 
-            target = adj.eval(node.targets[0].value)
+            target = adj.eval(lhs.value)
             value = adj.eval(node.value)
 
-            slice = node.targets[0].slice
+            slice = lhs.slice
             indices = []
 
             if isinstance(slice, ast.Tuple):
@@ -1702,7 +1708,7 @@ class Adjoint:
                 if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
                     line = adj.source.splitlines()[adj.lineno]
-                    node_source = adj.get_node_source(node.targets[0].value)
+                    node_source = adj.get_node_source(lhs.value)
                     print(
                         f"Warning: mutating {node_source} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n"
                     )
@@ -1712,9 +1718,9 @@ class Adjoint:
 
             return var
 
-        elif isinstance(node.targets[0], ast.Name):
+        elif isinstance(lhs, ast.Name):
             # symbol name
-            name = node.targets[0].id
+            name = lhs.id
 
             # evaluate rhs
             rhs = adj.eval(node.value)
@@ -1737,9 +1743,9 @@ class Adjoint:
             adj.symbols[name] = out
             return out
 
-        elif isinstance(node.targets[0], ast.Attribute):
+        elif isinstance(lhs, ast.Attribute):
             rhs = adj.eval(node.value)
-            attr = adj.emit_Attribute(node.targets[0])
+            attr = adj.emit_Attribute(lhs)
             adj.add_call(warp.context.builtin_functions["copy"], [attr, rhs])
 
             if warp.config.verbose and not adj.custom_reverse_mode:
