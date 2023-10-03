@@ -3,19 +3,15 @@ warp.fem
 
 .. currentmodule:: warp.fem
 
-..
-   .. toctree::
-   :maxdepth: 2
-
 The ``warp.fem`` module is designed to facilitate solving physical systems described as differential 
 equations. For example, it can solve PDEs for diffusion, convection, fluid flow, and elasticity problems 
-using finite element-based (FEM) Galerkin methods, and allows users to quickly experiment with various FEM
+using finite-element-based (FEM) Galerkin methods, and allows users to quickly experiment with various FEM
 formulations and discretization schemes.
 
 Integrands
 ----------
 
-The core functionality of the FEM toolkit is the ability to integrate constant, linear and bilinear forms 
+The core functionality of the FEM toolkit is the ability to integrate constant, linear, and bilinear forms 
 over various domains and using arbitrary interpolation basis.
 
 The main mechanism is the :py:func:`.integrand` decorator, for instance: ::
@@ -116,18 +112,18 @@ The following excerpt from the introductory example ``examples/fem/example_diffu
    arbitrary operations are permitted. However, the result of the form must remain linear in the test and trial fields.
 
 Introductory examples
-
 ---------------------
+
 ``warp.fem`` ships with a list of examples in the ``examples/fem`` directory illustrating common model problems.
 
  - ``example_diffusion.py``: 2D diffusion with homogenous Neumann and Dirichlet boundary conditions
      * ``example_diffusion_3d.py``: 3D variant of the diffusion problem
  - ``example_convection_diffusion.py``: 2D convection-diffusion using semi-Lagrangian advection
      * ``example_diffusion_dg0.py``: 2D convection-diffusion using finite-volume and upwind transport
-     * ``example_diffusion_dg.py``: 2D convection-diffusion using Discontinuous Galerkin aith upwind transport and Symmetric Interior Penalty
- - ``example_stokes.py``: 2D incompressible Stokes flow using mixed P_k/P_{k-1} elements
- - ``example_navier_stokes.py``: 2D Navier-Stokes flow using mixed P_k/P_{k-1} elements
- - ``example_mixed_elasticity.py``: 2D linear elasticity using mixed continuous/discontinuous P_k/P_{k-1}d elements
+     * ``example_diffusion_dg.py``: 2D convection-diffusion using Discontinuous Galerkin with upwind transport and Symmetric Interior Penalty
+ - ``example_stokes.py``: 2D incompressible Stokes flow using mixed :math:`P_k/P_{k-1}` elements
+ - ``example_navier_stokes.py``: 2D Navier-Stokes flow using mixed :math:`P_k/P_{k-1}` elements
+ - ``example_mixed_elasticity.py``: 2D linear elasticity using mixed continuous/discontinuous :math:`P_k/P_{(k-1)d}` elements
 
 
 Advanced usages
@@ -310,6 +306,5 @@ Memory management
 .. autoclass:: TemporaryStore
    :members:
 
-.. autoclass:: wap.fem.cache.Temporary
+.. autoclass:: warp.fem.cache.Temporary
    :members:
-
