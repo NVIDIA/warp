@@ -1194,6 +1194,19 @@ class Adjoint:
 
         return getattr(var_type, attr, None)
 
+    def vector_component_index(adj, component, vector_type):
+        if len(component) != 1:
+            raise AttributeError(f"Vector swizzle must be single character, got .{component}")
+
+        dim = vector_type._shape_[0]
+        swizzles = "xyzw"[0:dim]
+        if component not in swizzles:
+            raise AttributeError(f"Vector swizzle for {vector_type} must be one of {swizzles}, got {component}")
+
+        index = swizzles.index(component)
+        index = adj.add_constant(index)
+        return index
+
     def emit_Attribute(adj, node):
         if hasattr(node, "is_adjoint"):
             node.value.is_adjoint = True
@@ -1216,19 +1229,28 @@ class Adjoint:
 
                 return Var(attr_name, attr_type)
 
-            attr_type = Reference(strip_reference(aggregate.type).vars[node.attr].type)
-            attr = adj.add_var(attr_type)
+            aggregate_type = strip_reference(aggregate.type)
 
-            if is_reference(aggregate.type):
-                adj.add_forward(
-                    f"{attr.emit(dereference=False)} = &({aggregate.emit(dereference=False)}->{node.attr});"
-                )
-                adj.add_reverse(f"{aggregate.emit_adj()}.{node.attr} = {attr.emit_adj()};")
+            # reading a vector component
+            if type_is_vector(aggregate_type):
+                index = adj.vector_component_index(node.attr, aggregate_type)
+
+                return adj.add_call(warp.context.builtin_functions["index"], [aggregate, index])
+
             else:
-                adj.add_forward(f"{attr.emit(dereference=False)} = &({aggregate.emit()}.{node.attr});")
-                adj.add_reverse(f"{aggregate.emit_adj()}.{node.attr} = {attr.emit_adj()};")
+                attr_type = Reference(aggregate_type.vars[node.attr].type)
+                attr = adj.add_var(attr_type)
 
-            return attr
+                if is_reference(aggregate.type):
+                    adj.add_forward(
+                        f"{attr.emit(dereference=False)} = &({aggregate.emit(dereference=False)}->{node.attr});"
+                    )
+                    adj.add_reverse(f"{aggregate.emit_adj()}.{node.attr} = {attr.emit_adj()};")
+                else:
+                    adj.add_forward(f"{attr.emit(dereference=False)} = &({aggregate.emit()}.{node.attr});")
+                    adj.add_reverse(f"{aggregate.emit_adj()}.{node.attr} = {attr.emit_adj()};")
+
+                return attr
 
         except (KeyError, AttributeError):
             # Try resolving as type attribute
@@ -1745,14 +1767,24 @@ class Adjoint:
 
         elif isinstance(lhs, ast.Attribute):
             rhs = adj.eval(node.value)
-            attr = adj.emit_Attribute(lhs)
-            adj.add_call(warp.context.builtin_functions["copy"], [attr, rhs])
+            aggregate = adj.eval(lhs.value)
+            aggregate_type = strip_reference(aggregate.type)
 
-            if warp.config.verbose and not adj.custom_reverse_mode:
-                lineno = adj.lineno + adj.fun_lineno
-                line = adj.source.splitlines()[adj.lineno]
-                msg = f'Warning: detected mutated struct {attr.label} during function "{adj.fun_name}" at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n'
-                print(msg)
+            # assigning to a vector component
+            if type_is_vector(aggregate_type):
+                index = adj.vector_component_index(lhs.attr, aggregate_type)
+
+                adj.add_call(warp.context.builtin_functions["indexset"], [aggregate, index, rhs])
+
+            else:
+                attr = adj.emit_Attribute(lhs)
+                adj.add_call(warp.context.builtin_functions["copy"], [attr, rhs])
+
+                if warp.config.verbose and not adj.custom_reverse_mode:
+                    lineno = adj.lineno + adj.fun_lineno
+                    line = adj.source.splitlines()[adj.lineno]
+                    msg = f'Warning: detected mutated struct {attr.label} during function "{adj.fun_name}" at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n'
+                    print(msg)
 
         else:
             raise RuntimeError("Error, unsupported assignment statement.")
