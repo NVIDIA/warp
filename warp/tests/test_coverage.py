@@ -7,6 +7,7 @@ cover = coverage.Coverage(source=os.path.join(os.path.dirname(__file__), "test_m
                                 "setup.py",
                                 os.path.join("warp", "stubs.py"),
                                 os.path.join("warp", "tests", "*.py"),
+                                os.path.join("warp", "thirdparty", "appdirs.py"),
                                 os.path.join("warp", "fem", "*.py"),
                                 os.path.join("warp", "fem", "field", "*.py"),
                                 os.path.join("warp", "fem", "geometry", "*.py"),
