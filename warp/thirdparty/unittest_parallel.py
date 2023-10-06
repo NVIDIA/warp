@@ -540,7 +540,7 @@ def set_worker_cache(args, temp_dir):
             cache_root_dir = os.path.join(os.getenv("WARP_CACHE_ROOT"), f"{wp.config.version}-{pid}")
         else:
             cache_root_dir = appdirs.user_cache_dir(
-                appname="warp", appauthor="NVIDIA Corporation", version=f"{wp.config.version}-{pid}"
+                appname="warp", appauthor="NVIDIA", version=f"{wp.config.version}-{pid}"
             )
 
         wp.config.kernel_cache_dir = cache_root_dir
