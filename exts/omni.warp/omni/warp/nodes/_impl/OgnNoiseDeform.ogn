@@ -1,0 +1,122 @@
+{
+    "WarpNoiseDeform": {
+        "version": 1,
+        "categoryDefinitions": "../../../../config/warp_categories.json",
+        "description": "Deforms points using a noise.",
+        "categories": ["warp"],
+        "language": "Python",
+        "uiName": "Noise Deform",
+        "cudaPointers": "cpu",
+        "inputs": {
+            "execIn": {
+                "type": "execution",
+                "description": "Input execution."
+            },
+            "mode": {
+                "type": "token",
+                "uiName": "Mode",
+                "description": "Allows to apply the noise only on a partial subset of the geometries, as described by the upAxis, base, and falloff attributes.",
+                "metadata": {
+                    "allowedTokens": {
+                        "Global": "global",
+                        "Partial": "partial"
+                    }
+                },
+                "default": "global"
+            },
+            "upAxis": {
+                "type": "token",
+                "uiName": "Up Axis",
+                "description": "Axis along which the base and falloff attributes are defined in. This must be expressed in the local space of the points being deformed.",
+                "metadata": {
+                    "allowedTokens": {
+                        "PosX": "+X",
+                        "PosY": "+Y",
+                        "PosZ": "+Z",
+                        "NegX": "-X",
+                        "NegY": "-Y",
+                        "NegZ": "-Z"
+                    }
+                },
+                "default": "PosY"
+            },
+            "base": {
+                "type": "float",
+                "uiName": "Base",
+                "description": "Base location of the deformation along the given axis. Below this value, points won't be deformed, which for example helps rooting the base of an asset onto the ground.",
+                "default": 0.0
+            },
+            "falloff": {
+                "type": "float",
+                "uiName": "Falloff",
+                "description": "Distance falloff of the deformation starting from the given base value. Beyond this value, points will be fully deformed.",
+                "default": 0.0
+            },
+            "func": {
+                "type": "token",
+                "uiName": "Function",
+                "description": "Noise function.",
+                "metadata": {
+                    "allowedTokens": [
+                        "perlin",
+                        "curl"
+                    ]
+                },
+                "default": "perlin"
+            },
+            "cellSize": {
+                "type": "float",
+                "uiName": "Cell Size",
+                "description": "Cell size of the noise.",
+                "default": 100.0
+            },
+            "speed": {
+                "type": "float",
+                "uiName": "Speed",
+                "description": "Speed of the animated noise.",
+                "default": 1.0
+            },
+            "amplitude": {
+                "type": "float",
+                "uiName": "Amplitude",
+                "description": "Amplitude of the deformation.",
+                "default": 10.0
+            },
+            "axisAmplitude": {
+                "type": "float[3]",
+                "uiName": "Axis Amplitude",
+                "description": "Amplitude of the deformation along the differnt axis.",
+                "default": [1.0, 1.0, 1.0]
+            },
+            "seed": {
+                "type": "int",
+                "uiName": "Seed",
+                "description": "Seed used to generate the noise.",
+                "default": 0
+            },
+            "time": {
+                "type": "double",
+                "uiName": "Time",
+                "description": "Time."
+            },
+            "prims": {
+                "type": "bundle",
+                "uiName": "Primitives",
+                "description": "Primitives.",
+                "memoryType": "cuda"
+            }
+        },
+        "outputs": {
+            "execOut": {
+                "type": "execution",
+                "description": "Output execution."
+            },
+            "prims": {
+                "type": "bundle",
+                "uiName": "Primitives",
+                "description": "Primitives.",
+                "memoryType": "cuda"
+            }
+        }
+    }
+}
