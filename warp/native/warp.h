@@ -214,6 +214,7 @@ extern "C"
 
     WP_API int cuda_driver_version();   // CUDA driver version
     WP_API int cuda_toolkit_version();  // CUDA Toolkit version used to build Warp
+    WP_API bool cuda_driver_is_initialized();
 
     WP_API int nvrtc_supported_arch_count();
     WP_API void nvrtc_supported_archs(int* archs);
