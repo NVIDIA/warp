@@ -982,6 +982,10 @@ class Adjoint:
 
             return output
 
+    def add_builtin_call(adj, func_name, args, min_outputs=None, templates=[], kwds=None):
+        func = warp.context.builtin_functions[func_name]
+        return adj.add_call(func, args, min_outputs, templates, kwds)
+
     def add_return(adj, var):
         if var is None or len(var) == 0:
             adj.add_forward("return;", f"goto label{adj.label_count};")
@@ -1034,7 +1038,7 @@ class Adjoint:
         adj.add_forward(f"if (iter_cmp({iter.emit()}) == 0) goto for_end_{cond_block.label};")
 
         # evaluate iter
-        val = adj.add_call(warp.context.builtin_functions["iter_next"], [iter])
+        val = adj.add_builtin_call("iter_next", [iter])
 
         adj.begin_block()
 
@@ -1182,7 +1186,7 @@ class Adjoint:
 
             if var1 != var2:
                 # insert a phi function that selects var1, var2 based on cond
-                out = adj.add_call(warp.context.builtin_functions["select"], [cond, var1, var2])
+                out = adj.add_builtin_call("select", [cond, var1, var2])
                 adj.symbols[sym] = out
 
         symbols_prev = adj.symbols.copy()
@@ -1206,7 +1210,7 @@ class Adjoint:
             if var1 != var2:
                 # insert a phi function that selects var1, var2 based on cond
                 # note the reversed order of vars since we want to use !cond as our select
-                out = adj.add_call(warp.context.builtin_functions["select"], [cond, var2, var1])
+                out = adj.add_builtin_call("select", [cond, var2, var1])
                 adj.symbols[sym] = out
 
     def emit_Compare(adj, node):
@@ -1313,7 +1317,7 @@ class Adjoint:
             if type_is_vector(aggregate_type):
                 index = adj.vector_component_index(node.attr, aggregate_type)
 
-                return adj.add_call(warp.context.builtin_functions["index"], [aggregate, index])
+                return adj.add_builtin_call("index", [aggregate, index])
 
             else:
                 attr_type = Reference(aggregate_type.vars[node.attr].type)
@@ -1384,18 +1388,16 @@ class Adjoint:
         right = adj.eval(node.right)
 
         name = builtin_operators[type(node.op)]
-        func = warp.context.builtin_functions[name]
 
-        return adj.add_call(func, [left, right])
+        return adj.add_builtin_call(name, [left, right])
 
     def emit_UnaryOp(adj, node):
         # evaluate unary op arguments
         arg = adj.eval(node.operand)
 
         name = builtin_operators[type(node.op)]
-        func = warp.context.builtin_functions[name]
 
-        return adj.add_call(func, [arg])
+        return adj.add_builtin_call(name, [arg])
 
     def materialize_redefinitions(adj, symbols):
         # detect symbols with conflicting definitions (assigned inside the for loop)
@@ -1417,7 +1419,7 @@ class Adjoint:
                     )
 
                 # overwrite the old variable value (violates SSA)
-                adj.add_call(warp.context.builtin_functions["copy"], [var1, var2])
+                adj.add_builtin_call("copy", [var1, var2])
 
                 # reset the symbol to point to the original variable
                 adj.symbols[sym] = var1
@@ -1530,8 +1532,8 @@ class Adjoint:
                 return range(start, end, step)
 
         # Unroll is not possible, range needs to be valuated dynamically
-        range_call = adj.add_call(
-            warp.context.builtin_functions["range"],
+        range_call = adj.add_builtin_call(
+            "range",
             [adj.add_constant(val) if is_numeric else val for is_numeric, val in range_args],
         )
         return range_call
@@ -1543,7 +1545,7 @@ class Adjoint:
         if isinstance(unroll_range, range):
             for i in unroll_range:
                 const_iter = adj.add_constant(i)
-                var_iter = adj.add_call(warp.context.builtin_functions["int"], [const_iter])
+                var_iter = adj.add_builtin_call("int", [const_iter])
                 adj.symbols[node.target.id] = var_iter
 
                 # eval body
@@ -1712,14 +1714,14 @@ class Adjoint:
         if is_array(target_type):
             if len(indices) == target_type.ndim:
                 # handles array loads (where each dimension has an index specified)
-                out = adj.add_call(warp.context.builtin_functions["address"], [target, *indices])
+                out = adj.add_builtin_call("address", [target, *indices])
             else:
                 # handles array views (fewer indices than dimensions)
-                out = adj.add_call(warp.context.builtin_functions["view"], [target, *indices])
+                out = adj.add_builtin_call("view", [target, *indices])
 
         else:
             # handles non-array type indexing, e.g: vec3, mat33, etc
-            out = adj.add_call(warp.context.builtin_functions["index"], [target, *indices])
+            out = adj.add_builtin_call("index", [target, *indices])
 
         return out
 
@@ -1802,10 +1804,10 @@ class Adjoint:
             target_type = strip_reference(target.type)
 
             if is_array(target_type):
-                adj.add_call(warp.context.builtin_functions["store"], [target, *indices, value])
+                adj.add_builtin_call("store", [target, *indices, value])
 
             elif type_is_vector(target_type) or type_is_matrix(target_type):
-                adj.add_call(warp.context.builtin_functions["indexset"], [target, *indices, value])
+                adj.add_builtin_call("indexset", [target, *indices, value])
 
                 if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
@@ -1835,7 +1837,7 @@ class Adjoint:
             # handle simple assignment case (a = b), where we generate a value copy rather than reference
             if isinstance(node.value, ast.Name) or is_reference(rhs.type):
                 out = adj.add_var(strip_reference(rhs.type))
-                adj.add_call(warp.context.builtin_functions["copy"], [out, rhs])
+                adj.add_builtin_call("copy", [out, rhs])
             else:
                 out = rhs
 
@@ -1851,11 +1853,11 @@ class Adjoint:
             if type_is_vector(aggregate_type):
                 index = adj.vector_component_index(lhs.attr, aggregate_type)
 
-                adj.add_call(warp.context.builtin_functions["indexset"], [aggregate, index, rhs])
+                adj.add_builtin_call("indexset", [aggregate, index, rhs])
 
             else:
                 attr = adj.emit_Attribute(lhs)
-                adj.add_call(warp.context.builtin_functions["copy"], [attr, rhs])
+                adj.add_builtin_call("copy", [attr, rhs])
 
                 if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
@@ -1886,7 +1888,7 @@ class Adjoint:
             adj.return_var = tuple()
             for ret in var:
                 out = adj.add_var(strip_reference(ret.type))
-                adj.add_call(warp.context.builtin_functions["copy"], [out, ret])
+                adj.add_builtin_call("copy", [out, ret])
                 adj.return_var += (out,)
 
         adj.add_return(adj.return_var)
