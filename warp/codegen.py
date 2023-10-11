@@ -470,7 +470,7 @@ class Var:
     def ctype(self, value_type=False):
         return Var.type_to_ctype(self.type, value_type)
 
-    def emit(self, prefix: str = "var", dereference: bool = True):
+    def emit(self, prefix: str = "var", dereference: bool = False):
         star = "*" if is_reference(self.type) and dereference else ""
         if self.prefix:
             return f"{star}{prefix}_{self.label}"
@@ -478,7 +478,7 @@ class Var:
             return f"{star}{self.label}"
 
     def emit_adj(self):
-        return self.emit("adj", dereference=False)
+        return self.emit("adj")
 
 
 class Block:
@@ -768,7 +768,7 @@ class Adjoint:
     def add_comp(adj, op_strings, left, comps):
         output = adj.add_var(builtins.bool)
 
-        s = output.emit() + " = " + ("(" * len(comps)) + left.emit() + " "
+        s = output.emit(dereference=True) + " = " + ("(" * len(comps)) + left.emit(dereference=True) + " "
 
         comp_index = 0
         prev_comp_chainable = False
@@ -778,13 +778,13 @@ class Adjoint:
             if comp_chainable and prev_comp_chainable:
                 # We  restrict chaining to operands of the same type
                 if comps[comp_index - 1].type is comp.type:
-                    s += "&& (" + comps[comp_index - 1].emit() + " " + op + " " + comp.emit() + ")) "
+                    s += "&& (" + comps[comp_index - 1].emit(dereference=True) + " " + op + " " + comp.emit(dereference=True) + ")) "
                 else:
                     raise WarpCodegenTypeError(
                         f"Cannot chain comparisons of unequal types: {comps[comp_index - 1].type} {op} {comp.type}."
                     )
             else:
-                s += op + " " + comp.emit() + ") "
+                s += op + " " + comp.emit(dereference=True) + ") "
 
             prev_comp_chainable = comp_chainable
             comp_index += 1
@@ -797,7 +797,12 @@ class Adjoint:
 
     def add_bool_op(adj, op_string, exprs):
         output = adj.add_var(builtins.bool)
-        command = output.emit() + " = " + (" " + op_string + " ").join([expr.emit() for expr in exprs]) + ";"
+        command = (
+            output.emit(dereference=True)
+            + " = "
+            + (" " + op_string + " ").join([expr.emit(dereference=True) for expr in exprs])
+            + ";"
+        )
         adj.add_forward(command)
 
         return output
@@ -980,11 +985,11 @@ class Adjoint:
         if var is None or len(var) == 0:
             adj.add_forward("return;", f"goto label{adj.label_count};")
         elif len(var) == 1:
-            adj.add_forward(f"return {var[0].emit()};", f"goto label{adj.label_count};")
+            adj.add_forward(f"return {var[0].emit(dereference=True)};", f"goto label{adj.label_count};")
             adj.add_reverse("adj_" + str(var[0]) + " += adj_ret;")
         else:
             for i, v in enumerate(var):
-                adj.add_forward(f"ret_{i} = {v.emit()};")
+                adj.add_forward(f"ret_{i} = {v.emit(dereference=True)};")
                 adj.add_reverse(f"adj_{v} += adj_ret_{i};")
             adj.add_forward("return;", f"goto label{adj.label_count};")
 
@@ -994,7 +999,7 @@ class Adjoint:
 
     # define an if statement
     def begin_if(adj, cond):
-        adj.add_forward(f"if ({cond.emit()}) {{")
+        adj.add_forward(f"if ({cond.emit(dereference=True)}) {{")
         adj.add_reverse("}")
 
         adj.indent()
@@ -1003,10 +1008,10 @@ class Adjoint:
         adj.dedent()
 
         adj.add_forward("}")
-        adj.add_reverse(f"if ({cond.emit()}) {{")
+        adj.add_reverse(f"if ({cond.emit(dereference=True)}) {{")
 
     def begin_else(adj, cond):
-        adj.add_forward(f"if (!{cond.emit()}) {{")
+        adj.add_forward(f"if (!{cond.emit(dereference=True)}) {{")
         adj.add_reverse("}")
 
         adj.indent()
@@ -1015,7 +1020,7 @@ class Adjoint:
         adj.dedent()
 
         adj.add_forward("}")
-        adj.add_reverse(f"if (!{cond.emit()}) {{")
+        adj.add_reverse(f"if (!{cond.emit(dereference=True)}) {{")
 
     # define a for-loop
     def begin_for(adj, iter):
@@ -1025,7 +1030,7 @@ class Adjoint:
         adj.indent()
 
         # evaluate cond
-        adj.add_forward(f"if (iter_cmp({iter.emit()}) == 0) goto for_end_{cond_block.label};")
+        adj.add_forward(f"if (iter_cmp({iter.emit(dereference=True)}) == 0) goto for_end_{cond_block.label};")
 
         # evaluate iter
         val = adj.add_call(warp.context.builtin_functions["iter_next"], [iter])
@@ -1091,7 +1096,7 @@ class Adjoint:
 
         c = adj.eval(cond)
 
-        cond_block.body_forward.append(f"if (({c.emit()}) == false) goto while_end_{cond_block.label};")
+        cond_block.body_forward.append(f"if (({c.emit(dereference=True)}) == false) goto while_end_{cond_block.label};")
 
         # being block around loop
         adj.begin_block()
@@ -1314,12 +1319,10 @@ class Adjoint:
                 attr = adj.add_var(attr_type)
 
                 if is_reference(aggregate.type):
-                    adj.add_forward(
-                        f"{attr.emit(dereference=False)} = &({aggregate.emit(dereference=False)}->{node.attr});"
-                    )
+                    adj.add_forward(f"{attr.emit()} = &({aggregate.emit()}->{node.attr});")
                     adj.add_reverse(f"{aggregate.emit_adj()}.{node.attr} = {attr.emit_adj()};")
                 else:
-                    adj.add_forward(f"{attr.emit(dereference=False)} = &({aggregate.emit()}.{node.attr});")
+                    adj.add_forward(f"{attr.emit()} = &({aggregate.emit()}.{node.attr});")
                     adj.add_reverse(f"{aggregate.emit_adj()}.{node.attr} = {attr.emit_adj()};")
 
                 return attr
@@ -2393,7 +2396,7 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu"):
 
     for var in adj.variables:
         if var.constant is None:
-            s += f"    {var.ctype()} {var.emit(dereference=False)};\n"
+            s += f"    {var.ctype()} {var.emit()};\n"
         else:
             s += f"    const {var.ctype()} {var.emit()} = {constant_str(var.constant)};\n"
 
@@ -2449,7 +2452,7 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
 
     for var in adj.variables:
         if var.constant is None:
-            s += f"    {var.ctype()} {var.emit(dereference=False)};\n"
+            s += f"    {var.ctype()} {var.emit()};\n"
         else:
             s += f"    const {var.ctype()} {var.emit()} = {constant_str(var.constant)};\n"
 
