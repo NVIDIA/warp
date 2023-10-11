@@ -768,7 +768,7 @@ class Adjoint:
     def add_comp(adj, op_strings, left, comps):
         output = adj.add_var(builtins.bool)
 
-        s = output.emit(dereference=True) + " = " + ("(" * len(comps)) + left.emit(dereference=True) + " "
+        s = output.emit() + " = " + ("(" * len(comps)) + left.emit(dereference=True) + " "
 
         comp_index = 0
         prev_comp_chainable = False
@@ -798,10 +798,7 @@ class Adjoint:
     def add_bool_op(adj, op_string, exprs):
         output = adj.add_var(builtins.bool)
         command = (
-            output.emit(dereference=True)
-            + " = "
-            + (" " + op_string + " ").join([expr.emit(dereference=True) for expr in exprs])
-            + ";"
+            output.emit() + " = " + (" " + op_string + " ").join([expr.emit(dereference=True) for expr in exprs]) + ";"
         )
         adj.add_forward(command)
 
@@ -1030,7 +1027,7 @@ class Adjoint:
         adj.indent()
 
         # evaluate cond
-        adj.add_forward(f"if (iter_cmp({iter.emit(dereference=True)}) == 0) goto for_end_{cond_block.label};")
+        adj.add_forward(f"if (iter_cmp({iter.emit()}) == 0) goto for_end_{cond_block.label};")
 
         # evaluate iter
         val = adj.add_call(warp.context.builtin_functions["iter_next"], [iter])
