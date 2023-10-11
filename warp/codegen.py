@@ -1762,8 +1762,6 @@ class Adjoint:
 
                 adj.symbols[name] = rhs
 
-            return out
-
         # handles the case where we are assigning to an array index (e.g.: arr[i] = 2.0)
         elif isinstance(lhs, ast.Subscript):
             if hasattr(lhs.value, "attr") and lhs.value.attr == "adjoint":
@@ -1774,7 +1772,7 @@ class Adjoint:
                 adj.symbols[var.label] = var
                 value = adj.eval(node.value)
                 adj.add_forward(f"{var.emit()} = {value.emit()};")
-                return var
+                return
 
             target = adj.eval(lhs.value)
             value = adj.eval(node.value)
@@ -1816,8 +1814,6 @@ class Adjoint:
             else:
                 raise WarpCodegenError("Can only subscript assign array, vector, and matrix types")
 
-            return var
-
         elif isinstance(lhs, ast.Name):
             # symbol name
             name = lhs.id
@@ -1841,7 +1837,6 @@ class Adjoint:
 
             # update symbol map (assumes lhs is a Name node)
             adj.symbols[name] = out
-            return out
 
         elif isinstance(lhs, ast.Attribute):
             rhs = adj.eval(node.value)
