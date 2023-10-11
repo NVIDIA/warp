@@ -778,7 +778,15 @@ class Adjoint:
             if comp_chainable and prev_comp_chainable:
                 # We  restrict chaining to operands of the same type
                 if comps[comp_index - 1].type is comp.type:
-                    s += "&& (" + comps[comp_index - 1].emit(dereference=True) + " " + op + " " + comp.emit(dereference=True) + ")) "
+                    s += (
+                        "&& ("
+                        + comps[comp_index - 1].emit(dereference=True)
+                        + " "
+                        + op
+                        + " "
+                        + comp.emit(dereference=True)
+                        + ")) "
+                    )
                 else:
                     raise WarpCodegenTypeError(
                         f"Cannot chain comparisons of unequal types: {comps[comp_index - 1].type} {op} {comp.type}."
@@ -807,87 +815,80 @@ class Adjoint:
     def resolve_func(adj, func, args, min_outputs, templates, kwds):
         arg_types = [strip_reference(a.type) for a in args if not isinstance(a, warp.context.Function)]
 
+        if not func.is_builtin():
+            # user-defined function
+            return func.get_overload(arg_types)
+
         # if func is overloaded then perform overload resolution here
         # we validate argument types before they go to generated native code
-        resolved_func = None
+        for f in func.overloads:
+            # skip type checking for variadic functions
+            if not f.variadic:
+                # check argument counts match are compatible (may be some default args)
+                if len(f.input_types) < len(args):
+                    continue
 
-        if func.is_builtin():
-            for f in func.overloads:
-                # skip type checking for variadic functions
-                if not f.variadic:
-                    # check argument counts match are compatible (may be some default args)
-                    if len(f.input_types) < len(args):
-                        continue
-
-                    def match_args(args, f):
-                        # check argument types equal
-                        for i, (arg_name, arg_type) in enumerate(f.input_types.items()):
-                            # if arg type registered as Any, treat as
-                            # template allowing any type to match
-                            if arg_type == Any:
-                                continue
-
-                            # handle function refs as a special case
-                            if arg_type == Callable and type(args[i]) is warp.context.Function:
-                                continue
-
-                            # look for default values for missing args
-                            if i >= len(args):
-                                if arg_name not in f.defaults:
-                                    return False
-                            else:
-                                # otherwise check arg type matches input variable type
-                                if not types_equal(arg_type, strip_reference(args[i].type), match_generic=True):
-                                    return False
-
-                        return True
-
-                    if not match_args(args, f):
-                        continue
-
-                # check output dimensions match expectations
-                if min_outputs:
-                    try:
-                        value_type = f.value_func(args, kwds, templates)
-                        if not hasattr(value_type, "__len__") or len(value_type) != min_outputs:
+                def match_args(args, f):
+                    # check argument types equal
+                    for i, (arg_name, arg_type) in enumerate(f.input_types.items()):
+                        # if arg type registered as Any, treat as
+                        # template allowing any type to match
+                        if arg_type == Any:
                             continue
-                    except Exception:
-                        # value func may fail if the user has given
-                        # incorrect args, so we need to catch this
+
+                        # handle function refs as a special case
+                        if arg_type == Callable and type(args[i]) is warp.context.Function:
+                            continue
+
+                        # look for default values for missing args
+                        if i >= len(args):
+                            if arg_name not in f.defaults:
+                                return False
+                        else:
+                            # otherwise check arg type matches input variable type
+                            if not types_equal(arg_type, strip_reference(args[i].type), match_generic=True):
+                                return False
+
+                    return True
+
+                if not match_args(args, f):
+                    continue
+
+            # check output dimensions match expectations
+            if min_outputs:
+                try:
+                    value_type = f.value_func(args, kwds, templates)
+                    if not hasattr(value_type, "__len__") or len(value_type) != min_outputs:
                         continue
+                except Exception:
+                    # value func may fail if the user has given
+                    # incorrect args, so we need to catch this
+                    continue
 
-                # found a match, use it
-                resolved_func = f
-                break
+            # found a match, use it
+            return f
 
-        else:
-            # user-defined function
-            resolved_func = func.get_overload(arg_types)
+        # unresolved function, report error
+        arg_types = []
 
-        # report error if not resolved
-        if resolved_func is None:
-            arg_types = []
+        for x in args:
+            if isinstance(x, Var):
+                # shorten Warp primitive type names
+                if isinstance(x.type, list):
+                    if len(x.type) != 1:
+                        raise WarpCodegenError("Argument must not be the result from a multi-valued function")
+                    arg_type = x.type[0]
+                else:
+                    arg_type = x.type
 
-            for x in args:
-                if isinstance(x, Var):
-                    # shorten Warp primitive type names
-                    if isinstance(x.type, list):
-                        if len(x.type) != 1:
-                            raise WarpCodegenError("Argument must not be the result from a multi-valued function")
-                        arg_type = x.type[0]
-                    else:
-                        arg_type = x.type
+                arg_types.append(type_repr(arg_type))
 
-                    arg_types.append(type_repr(arg_type))
+            if isinstance(x, warp.context.Function):
+                arg_types.append("function")
 
-                if isinstance(x, warp.context.Function):
-                    arg_types.append("function")
-
-            raise WarpCodegenError(
-                f"Couldn't find function overload for '{func.key}' that matched inputs with types: [{', '.join(arg_types)}]"
-            )
-
-        return resolved_func
+        raise WarpCodegenError(
+            f"Couldn't find function overload for '{func.key}' that matched inputs with types: [{', '.join(arg_types)}]"
+        )
 
     def add_call(adj, func, args, min_outputs=None, templates=[], kwds=None):
         func = adj.resolve_func(func, args, min_outputs, templates, kwds)
