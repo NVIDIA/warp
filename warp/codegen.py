@@ -804,7 +804,7 @@ class Adjoint:
 
         return output
 
-    def add_call(adj, func, args, min_outputs=None, templates=[], kwds=None):
+    def resolve_func(adj, func, args, min_outputs, templates, kwds):
         arg_types = [strip_reference(a.type) for a in args if not isinstance(a, warp.context.Function)]
 
         # if func is overloaded then perform overload resolution here
@@ -887,12 +887,15 @@ class Adjoint:
                 f"Couldn't find function overload for '{func.key}' that matched inputs with types: [{', '.join(arg_types)}]"
             )
 
-        func = resolved_func
+        return resolved_func
+
+    def add_call(adj, func, args, min_outputs=None, templates=[], kwds=None):
+        func = adj.resolve_func(func, args, min_outputs, templates, kwds)
 
         # push any default values onto args
         for i, (arg_name, arg_type) in enumerate(func.input_types.items()):
             if i >= len(args):
-                if arg_name in f.defaults:
+                if arg_name in func.defaults:
                     const = adj.add_constant(func.defaults[arg_name])
                     args.append(const)
                 else:
@@ -903,14 +906,14 @@ class Adjoint:
             adj.builder.build_function(func)
 
         # evaluate the function type based on inputs
-
-        value_type = func.value_func(arg_types, kwds, templates)
+        arg_types = [strip_reference(a.type) for a in args if not isinstance(a, warp.context.Function)]
+        return_type = func.value_func(arg_types, kwds, templates)
 
         func_name = compute_type_str(func.native_func, templates)
 
         use_initializer_list = func.initializer_list_func(args, templates)
 
-        if value_type is None:
+        if return_type is None:
             # handles expression (zero output) functions, e.g.: void do_something();
 
             forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(args, use_initializer_list)});"
@@ -932,12 +935,12 @@ class Adjoint:
 
             return None
 
-        elif not isinstance(value_type, list) or len(value_type) == 1:
+        elif not isinstance(return_type, list) or len(return_type) == 1:
             # handle simple function (one output)
 
-            if isinstance(value_type, list):
-                value_type = value_type[0]
-            output = adj.add_var(value_type)
+            if isinstance(return_type, list):
+                return_type = return_type[0]
+            output = adj.add_var(return_type)
             forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(args, use_initializer_list)});"
             replay_call = forward_call
             if func.custom_replay_func is not None:
@@ -959,7 +962,7 @@ class Adjoint:
         else:
             # handle multiple value functions
 
-            output = [adj.add_var(v) for v in value_type]
+            output = [adj.add_var(v) for v in return_type]
             forward_call = (
                 f"{func.namespace}{func_name}({adj.format_forward_call_args(args + output, use_initializer_list)});"
             )
