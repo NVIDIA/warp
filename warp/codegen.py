@@ -1328,9 +1328,9 @@ class Adjoint:
             # Try resolving as type attribute
             if isinstance(aggregate, Var):
                 aggregate = aggregate.type
-            aggregate = adj.resolve_type_attribute(aggregate, node.attr)
-            if aggregate is not None:
-                return aggregate
+            attribute = adj.resolve_type_attribute(aggregate, node.attr)
+            if attribute is not None:
+                return attribute
 
             raise WarpCodegenError(
                 f"Error, `{node.attr}` is not an attribute of '{aggregate.label}' ({type_repr(aggregate.type)})"
