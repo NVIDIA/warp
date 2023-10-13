@@ -1818,7 +1818,7 @@ class Adjoint:
             target_type = strip_reference(target.type)
 
             if is_array(target_type):
-                adj.add_builtin_call("store", [target, *indices, value])
+                adj.add_builtin_call("array_store", [target, *indices, value])
 
             elif type_is_vector(target_type) or type_is_matrix(target_type):
                 adj.add_builtin_call("indexset", [target, *indices, value])

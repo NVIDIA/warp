@@ -2268,8 +2268,8 @@ add_builtin(
 )
 
 
-# does argument checking and type propagation for load()
-def load_value_func(arg_types, kwds, _):
+# does argument checking and type propagation for address()
+def address_value_func(arg_types, kwds, _):
     if not is_array(arg_types[0]):
         raise RuntimeError("load() argument 0 must be an array")
 
@@ -2289,7 +2289,7 @@ def load_value_func(arg_types, kwds, _):
     # check index types
     for t in arg_types[1:]:
         if not type_is_int(t):
-            raise RuntimeError(f"load() index arguments must be of integer type, got index of type {t}")
+            raise RuntimeError(f"address() index arguments must be of integer type, got index of type {t}")
 
     return Reference(arg_types[0].dtype)
 
@@ -2323,11 +2323,11 @@ def view_value_func(arg_types, kwds, _):
         return type(arg_types[0])(dtype=dtype, ndim=ndim)
 
 
-# does argument checking and type propagation for store()
-def store_value_func(arg_types, kwds, _):
+# does argument checking and type propagation for array_store()
+def array_store_value_func(arg_types, kwds, _):
     # check target type
     if not is_array(arg_types[0]):
-        raise RuntimeError("store() argument 0 must be an array")
+        raise RuntimeError("array_store() argument 0 must be an array")
 
     num_indices = len(arg_types[1:-1])
     num_dims = arg_types[0].ndim
@@ -2344,20 +2344,20 @@ def store_value_func(arg_types, kwds, _):
     # check index types
     for t in arg_types[1:-1]:
         if not type_is_int(t):
-            raise RuntimeError(f"store() index arguments must be of integer type, got index of type {t}")
+            raise RuntimeError(f"array_store() index arguments must be of integer type, got index of type {t}")
 
     # check value type
     if not types_equal(arg_types[-1], arg_types[0].dtype):
         raise RuntimeError(
-            f"store() value argument type ({arg_types[2]}) must be of the same type as the array ({arg_types[0].dtype})"
+            f"array_store() value argument type ({arg_types[2]}) must be of the same type as the array ({arg_types[0].dtype})"
         )
 
     return None
 
 
-add_builtin("address", variadic=True, hidden=True, value_func=load_value_func, group="Utility")
+add_builtin("address", variadic=True, hidden=True, value_func=address_value_func, group="Utility")
 add_builtin("view", variadic=True, hidden=True, value_func=view_value_func, group="Utility")
-add_builtin("store", variadic=True, hidden=True, value_func=store_value_func, skip_replay=True, group="Utility")
+add_builtin("array_store", variadic=True, hidden=True, value_func=array_store_value_func, skip_replay=True, group="Utility")
 
 
 def atomic_op_value_func(arg_types, kwds, _):
