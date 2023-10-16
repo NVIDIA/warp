@@ -2355,9 +2355,28 @@ def array_store_value_func(arg_types, kwds, _):
     return None
 
 
+# does argument checking for store()
+def store_value_func(arg_types, kwds, _):
+    # we already stripped the Reference from the argument type prior to this call
+    if not types_equal(arg_types[0], arg_types[1]):
+        raise RuntimeError(f"store() value argument type ({arg_types[1]}) must be of the same type as the reference")
+
+    return None
+
+
 add_builtin("address", variadic=True, hidden=True, value_func=address_value_func, group="Utility")
 add_builtin("view", variadic=True, hidden=True, value_func=view_value_func, group="Utility")
-add_builtin("array_store", variadic=True, hidden=True, value_func=array_store_value_func, skip_replay=True, group="Utility")
+add_builtin(
+    "array_store", variadic=True, hidden=True, value_func=array_store_value_func, skip_replay=True, group="Utility"
+)
+add_builtin(
+    "store",
+    input_types={"address": Reference, "value": Any},
+    hidden=True,
+    value_func=store_value_func,
+    skip_replay=True,
+    group="Utility",
+)
 
 
 def atomic_op_value_func(arg_types, kwds, _):

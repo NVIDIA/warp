@@ -849,6 +849,9 @@ class Adjoint:
                         if arg_type == Callable and type(args[i]) is warp.context.Function:
                             continue
 
+                        if arg_type == Reference and is_reference(args[i].type):
+                            continue
+
                         # look for default values for missing args
                         if i >= len(args):
                             if arg_name not in f.defaults:
@@ -1871,7 +1874,10 @@ class Adjoint:
 
             else:
                 attr = adj.emit_Attribute(lhs)
-                adj.add_builtin_call("copy", [attr, rhs])
+                if is_reference(attr.type):
+                    adj.add_builtin_call("store", [attr, rhs])
+                else:
+                    adj.add_builtin_call("copy", [attr, rhs])
 
                 if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno

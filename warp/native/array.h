@@ -19,6 +19,12 @@ namespace wp
     printf(")\n"); \
     assert(0); \
 
+#define FP_VERIFY_FWD(value) \
+    if (!isfinite(value)) { \
+        printf("%s:%d - %s(addr", __FILE__, __LINE__, __FUNCTION__); \
+        FP_ASSERT_FWD(value) \
+    } \
+
 #define FP_VERIFY_FWD_1(value) \
     if (!isfinite(value)) { \
         printf("%s:%d - %s(arr, %d) ", __FILE__, __LINE__, __FUNCTION__, i); \
@@ -41,6 +47,13 @@ namespace wp
     if (!isfinite(value)) { \
         printf("%s:%d - %s(arr, %d, %d, %d, %d) ", __FILE__, __LINE__, __FUNCTION__, i, j, k, l); \
         FP_ASSERT_FWD(value) \
+    } \
+
+#define FP_VERIFY_ADJ(value, adj_value) \
+    if (!isfinite(value) || !isfinite(adj_value)) \
+    { \
+        printf("%s:%d - %s(addr",  __FILE__, __LINE__, __FUNCTION__); \
+        FP_ASSERT_ADJ(value, adj_value); \
     } \
 
 #define FP_VERIFY_ADJ_1(value, adj_value) \
@@ -74,11 +87,13 @@ namespace wp
 
 #else
 
+#define FP_VERIFY_FWD(value) {}
 #define FP_VERIFY_FWD_1(value) {}
 #define FP_VERIFY_FWD_2(value) {}
 #define FP_VERIFY_FWD_3(value) {}
 #define FP_VERIFY_FWD_4(value) {}
 
+#define FP_VERIFY_ADJ(value, adj_value) {}
 #define FP_VERIFY_ADJ_1(value, adj_value) {}
 #define FP_VERIFY_ADJ_2(value, adj_value) {}
 #define FP_VERIFY_ADJ_3(value, adj_value) {}
@@ -707,6 +722,14 @@ inline CUDA_CALLABLE void array_store(const A<T>& buf, int i, int j, int k, int 
     index(buf, i, j, k, l) = value;
 }
 
+template<typename T>
+inline CUDA_CALLABLE void store(T* address, T value)
+{
+    FP_VERIFY_FWD(value)
+
+    *address = value;
+}
+
 // select operator to check for array being null
 template <typename T1, typename T2>
 CUDA_CALLABLE inline T2 select(const array_t<T1>& arr, const T2& a, const T2& b) { return arr.data?b:a; }
@@ -800,6 +823,13 @@ inline CUDA_CALLABLE void adj_array_store(const array_t<T>& buf, int i, int j, i
         adj_value += index_grad(buf, i, j, k, l);
 
     FP_VERIFY_ADJ_4(value, adj_value)
+}
+
+template<typename T>
+inline CUDA_CALLABLE void adj_store(const T* address, T value, const T& adj_address, T& adj_value)
+{
+	// nop; generic store() operations are not differentiable, only array_store() is
+    FP_VERIFY_ADJ(value, adj_value)
 }
 
 template<typename T>
