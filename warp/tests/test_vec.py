@@ -574,6 +574,150 @@ def test_constructors(test, device, dtype, register_kernels=False):
     assert_np_equal(v54.numpy()[0], 2 * input.numpy()[13], tol=tol)
 
 
+def test_anon_constructor_error_dtype_keyword_missing(test, device):
+    @wp.kernel
+    def kernel():
+        wp.vector(length=123)
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"vec\(\) must have dtype as a keyword argument if it has no positional arguments, e.g.: wp.vector\(length=5, dtype=wp.float32\)$",
+    ):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[],
+            device=device,
+        )
+
+
+def test_anon_constructor_error_length_mismatch(test, device):
+    @wp.kernel
+    def kernel():
+        wp.vector(
+            wp.vector(length=2, dtype=float),
+            length=3,
+            dtype=float,
+        )
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Incompatible vector lengths for casting copy constructor, 3 vs 2$",
+    ):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[],
+            device=device,
+        )
+
+
+def test_anon_constructor_error_numeric_arg_missing_1(test, device):
+    @wp.kernel
+    def kernel():
+        wp.vector(1.0, 2.0, length=12345)
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"vec\(\) must have one scalar argument or the dtype keyword argument if the length keyword argument is specified, e.g.: wp.vec\(1.0, length=5\)$",
+    ):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[],
+            device=device,
+        )
+
+
+def test_anon_constructor_error_numeric_arg_missing_2(test, device):
+    @wp.kernel
+    def kernel():
+        wp.vector()
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"vec\(\) must have at least one numeric argument, if it's length, dtype is not specified$",
+    ):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[],
+            device=device,
+        )
+
+
+def test_anon_constructor_error_dtype_keyword_extraneous(test, device):
+    @wp.kernel
+    def kernel():
+        wp.vector(1.0, 2.0, 3.0, dtype=float)
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"vec\(\) should not have dtype specified if numeric arguments are given, the dtype will be inferred from the argument types$",
+    ):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[],
+            device=device,
+        )
+
+
+def test_anon_constructor_error_numeric_args_mismatch(test, device):
+    @wp.kernel
+    def kernel():
+        wp.vector(1.0, 2)
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"All numeric arguments to vec\(\) constructor should have the same "
+        r"type, expected 2 arg_types of type <class 'warp.types.float32'>, "
+        r"received <class 'warp.types.float32'>,<class 'warp.types.int32'>$",
+    ):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[],
+            device=device,
+        )
+
+
+def test_tpl_constructor_error_incompatible_sizes(test, device):
+    @wp.kernel
+    def kernel():
+        wp.vec3(wp.vec2(1.0, 2.0))
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Incompatible matrix sizes for casting copy constructor, 3 vs 2"
+    ):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[],
+            device=device,
+        )
+
+
+def test_tpl_constructor_error_numeric_args_mismatch(test, device):
+    @wp.kernel
+    def kernel():
+        wp.vec2(1.0, 2)
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"All numeric arguments to vec\(\) constructor should have the same "
+        r"type, expected 2 arg_types of type <class 'warp.types.float32'>, "
+        r"received <class 'warp.types.float32'>,<class 'warp.types.int32'>$",
+    ):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[],
+            device=device,
+        )
+
+
 def test_indexing(test, device, dtype, register_kernels=False):
     np.random.seed(123)
 
@@ -3027,6 +3171,55 @@ def register(parent):
         add_function_test_register_kernel(
             TestVec, f"test_casting_constructors_{dtype.__name__}", test_casting_constructors, devices=devices, dtype=dtype
         )
+
+    add_function_test(
+        TestVec,
+        "test_anon_constructor_error_dtype_keyword_missing",
+        test_anon_constructor_error_dtype_keyword_missing,
+        devices=devices,
+    )
+    add_function_test(
+        TestVec,
+        "test_anon_constructor_error_length_mismatch",
+        test_anon_constructor_error_length_mismatch,
+        devices=devices,
+    )
+    add_function_test(
+        TestVec,
+        "test_anon_constructor_error_numeric_arg_missing_1",
+        test_anon_constructor_error_numeric_arg_missing_1,
+        devices=devices,
+    )
+    add_function_test(
+        TestVec,
+        "test_anon_constructor_error_numeric_arg_missing_2",
+        test_anon_constructor_error_numeric_arg_missing_2,
+        devices=devices,
+    )
+    add_function_test(
+        TestVec,
+        "test_anon_constructor_error_dtype_keyword_extraneous",
+        test_anon_constructor_error_dtype_keyword_extraneous,
+        devices=devices,
+    )
+    add_function_test(
+        TestVec,
+        "test_anon_constructor_error_numeric_args_mismatch",
+        test_anon_constructor_error_numeric_args_mismatch,
+        devices=devices,
+    )
+    add_function_test(
+        TestVec,
+        "test_tpl_constructor_error_incompatible_sizes",
+        test_tpl_constructor_error_incompatible_sizes,
+        devices=devices,
+    )
+    add_function_test(
+        TestVec,
+        "test_tpl_constructor_error_numeric_args_mismatch",
+        test_tpl_constructor_error_numeric_args_mismatch,
+        devices=devices,
+    )
 
     for dtype in np_scalar_types:
         add_function_test(TestVec, f"test_arrays_{dtype.__name__}", test_arrays, devices=devices, dtype=dtype)
