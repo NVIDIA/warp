@@ -55,6 +55,12 @@ class Sample:
     """For bilinear form assembly, index of the trial degree-of-freedom currently being considered"""
 
 
+@wp.func
+def make_free_sample(element_index: ElementIndex, element_coords: Coords):
+    """Returns a :class:`Sample` that is not associated to any quadrature point or dof"""
+    return Sample(element_index, element_coords, NULL_QP_INDEX, 0.0, NULL_DOF_INDEX, NULL_DOF_INDEX)
+
+
 class Field:
     """
     Tag for field-like integrand arguments

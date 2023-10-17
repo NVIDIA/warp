@@ -47,6 +47,7 @@ class GeometryDomain:
         """Kind of elements that this domain contains (cells or sides)"""
         raise NotImplementedError
 
+    @property
     def dimension(self) -> int:
         """Dimension of the elements of the domain"""
         raise NotImplementedError
@@ -106,6 +107,7 @@ class Cells(GeometryDomain):
     def element_kind(self) -> GeometryDomain.ElementKind:
         return GeometryDomain.ElementKind.CELL
 
+    @property
     def dimension(self) -> int:
         return self.geometry.dimension
 
@@ -168,6 +170,7 @@ class Sides(GeometryDomain):
     def element_kind(self) -> GeometryDomain.ElementKind:
         return GeometryDomain.ElementKind.SIDE
 
+    @property
     def dimension(self) -> int:
         return self.geometry.dimension - 1
 

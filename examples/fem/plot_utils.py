@@ -8,7 +8,7 @@ def plot_grid_surface(field, axes=None):
     if axes is None:
         fig, axes = plt.subplots(subplot_kw={"projection": "3d"})
 
-    node_positions = field.space.node_positions()
+    node_positions = field.space.node_grid()
 
     # Make data.
     X = node_positions[0]
@@ -27,10 +27,10 @@ def plot_tri_surface(field, axes=None):
     if axes is None:
         fig, axes = plt.subplots(subplot_kw={"projection": "3d"})
 
-    node_positions = field.space.node_positions()
+    node_positions = field.space.node_positions().array.numpy()
 
     triangulation = Triangulation(
-        x=node_positions[0], y=node_positions[1], triangles=field.space.node_triangulation()
+        x=node_positions[:, 0], y=node_positions[:, 1], triangles=field.space.node_triangulation()
     )
 
     Z = field.dof_values.numpy()
@@ -46,7 +46,7 @@ def plot_scatter_surface(field, axes=None):
     if axes is None:
         fig, axes = plt.subplots(subplot_kw={"projection": "3d"})
 
-    X, Y = field.space.node_positions()
+    X, Y = field.space.node_positions().array.numpy().T
 
     # Make data.
     Z = field.dof_values.numpy().reshape(X.shape)
@@ -72,7 +72,7 @@ def plot_grid_color(field, axes=None):
     if axes is None:
         fig, axes = plt.subplots()
 
-    node_positions = field.space.node_positions()
+    node_positions = field.space.node_grid()
 
     # Make data.
     X = node_positions[0]
@@ -89,11 +89,11 @@ def plot_velocities(field, axes=None):
     if axes is None:
         fig, axes = plt.subplots()
 
-    node_positions = field.space.node_positions()
+    node_positions = field.space.node_positions().array.numpy()
 
     # Make data.
-    X = node_positions[0]
-    Y = node_positions[1]
+    X = node_positions[:, 0]
+    Y = node_positions[:, 1]
 
     vel = field.dof_values.numpy()
     u = np.ascontiguousarray(vel[:, 0])
@@ -111,7 +111,7 @@ def plot_grid_streamlines(field, axes=None):
     if axes is None:
         fig, axes = plt.subplots()
 
-    node_positions = field.space.node_positions()
+    node_positions = field.space.node_grid()
 
     # Make data.
     X = node_positions[0][:, 0]
@@ -136,7 +136,7 @@ def plot_3d_scatter(field, axes=None):
     if axes is None:
         fig, axes = plt.subplots(subplot_kw={"projection": "3d"})
 
-    X, Y, Z = field.space.node_positions()
+    X, Y, Z = field.space.node_positions().array.numpy().T
 
     # Make data.
     f = field.dof_values.numpy().reshape(X.shape)
@@ -151,7 +151,7 @@ def plot_3d_velocities(field, axes=None):
     if axes is None:
         fig, axes = plt.subplots(subplot_kw={"projection": "3d"})
 
-    X, Y, Z = field.space.node_positions()
+    X, Y, Z = field.space.node_positions().array.numpy().T
 
     vel = field.dof_values.numpy()
     u = np.ascontiguousarray(vel[:, 0])

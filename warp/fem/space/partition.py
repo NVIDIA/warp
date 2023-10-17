@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import warp as wp
 
@@ -7,6 +7,7 @@ from warp.fem.utils import compress_node_indices, _iota_kernel
 from warp.fem.types import NULL_NODE_INDEX
 from warp.fem.cache import cached_arg_value, TemporaryStore, borrow_temporary, borrow_temporary_like
 
+from .topology import SpaceTopology
 from .function_space import FunctionSpace
 
 
@@ -17,8 +18,8 @@ class SpacePartition:
     class PartitionArg:
         pass
 
-    def __init__(self, space: FunctionSpace, geo_partition: GeometryPartition):
-        self.space = space
+    def __init__(self, space_topology: SpaceTopology, geo_partition: GeometryPartition):
+        self.space_topology = space_topology
         self.geo_partition = geo_partition
 
     def node_count(self):
@@ -36,7 +37,8 @@ class SpacePartition:
     def partition_arg_value(self, device):
         pass
 
-    def partition_node_index(args: Any, space_node_index: int):
+    @staticmethod
+    def partition_node_index(args: "PartitionArg", space_node_index: int):
         """Returns the index in the partition of a function space node, or -1 if it does not exist"""
 
     def __str__(self) -> str:
@@ -52,21 +54,21 @@ class WholeSpacePartition(SpacePartition):
     class PartitionArg:
         pass
 
-    def __init__(self, space: FunctionSpace):
-        super().__init__(space, WholeGeometryPartition(space.geometry))
+    def __init__(self, space_topology: SpaceTopology):
+        super().__init__(space_topology, WholeGeometryPartition(space_topology.geometry))
         self._node_indices = None
 
     def node_count(self):
         """Returns number of nodes in this partition"""
-        return self.space.node_count()
+        return self.space_topology.node_count()
 
     def owned_node_count(self) -> int:
         """Returns number of nodes in this partition, excluding exterior halo"""
-        return self.space.node_count()
+        return self.space_topology.node_count()
 
     def interior_node_count(self) -> int:
         """Returns number of interior nodes in this partition"""
-        return self.space.node_count()
+        return self.space_topology.node_count()
 
     def space_node_indices(self):
         """Return the global function space indices for nodes in this partition"""
@@ -83,7 +85,7 @@ class WholeSpacePartition(SpacePartition):
         return space_node_index
 
     def __eq__(self, other: SpacePartition) -> bool:
-        return isinstance(other, SpacePartition) and self.space == other.space
+        return isinstance(other, SpacePartition) and self.space_topology == other.space_topology
 
 
 class NodeCategory:
@@ -108,13 +110,13 @@ class NodePartition(SpacePartition):
 
     def __init__(
         self,
-        space: FunctionSpace,
+        space_topology: SpaceTopology,
         geo_partition: GeometryPartition,
         with_halo: bool = True,
         device=None,
         temporary_store: TemporaryStore = None,
     ):
-        super().__init__(space, geo_partition=geo_partition)
+        super().__init__(space_topology=space_topology, geo_partition=geo_partition)
 
         self._compute_node_indices_from_sides(device, with_halo, temporary_store)
 
@@ -147,13 +149,15 @@ class NodePartition(SpacePartition):
     def _compute_node_indices_from_sides(self, device, with_halo: bool, temporary_store: TemporaryStore):
         from warp.fem import cache
 
-        trace_space = self.space.trace()
-        NODES_PER_CELL = self.space.NODES_PER_ELEMENT
-        NODES_PER_SIDE = trace_space.NODES_PER_ELEMENT
+        trace_topology = self.space_topology.trace()
+        NODES_PER_CELL = self.space_topology.NODES_PER_ELEMENT
+        NODES_PER_SIDE = trace_topology.NODES_PER_ELEMENT
 
-        def node_category_from_cells_fn(
+        @cache.dynamic_kernel(suffix=f"{self.geo_partition.name}_{self.space_topology.name}")
+        def node_category_from_cells_kernel(
+            geo_arg: self.geo_partition.geometry.CellArg,
             geo_partition_arg: self.geo_partition.CellArg,
-            space_arg: self.space.SpaceArg,
+            space_arg: self.space_topology.TopologyArg,
             node_mask: wp.array(dtype=int),
         ):
             partition_cell_index = wp.tid()
@@ -161,12 +165,14 @@ class NodePartition(SpacePartition):
             cell_index = self.geo_partition.cell_index(geo_partition_arg, partition_cell_index)
 
             for n in range(NODES_PER_CELL):
-                space_nidx = self.space.element_node_index(space_arg, cell_index, n)
+                space_nidx = self.space_topology.element_node_index(geo_arg, space_arg, cell_index, n)
                 node_mask[space_nidx] = NodeCategory.OWNED_INTERIOR
 
-        def node_category_from_owned_sides_fn(
+        @cache.dynamic_kernel(suffix=f"{self.geo_partition.name}_{self.space_topology.name}")
+        def node_category_from_owned_sides_kernel(
+            geo_arg: self.geo_partition.geometry.SideArg,
             geo_partition_arg: self.geo_partition.SideArg,
-            space_arg: trace_space.SpaceArg,
+            space_arg: trace_topology.TopologyArg,
             node_mask: wp.array(dtype=int),
         ):
             partition_side_index = wp.tid()
@@ -174,13 +180,16 @@ class NodePartition(SpacePartition):
             side_index = self.geo_partition.side_index(geo_partition_arg, partition_side_index)
 
             for n in range(NODES_PER_SIDE):
-                space_nidx = trace_space.element_node_index(space_arg, side_index, n)
+                space_nidx = trace_topology.element_node_index(geo_arg, space_arg, side_index, n)
+
                 if node_mask[space_nidx] == NodeCategory.EXTERIOR:
                     node_mask[space_nidx] = NodeCategory.HALO_LOCAL_SIDE
 
-        def node_category_from_frontier_sides_fn(
+        @cache.dynamic_kernel(suffix=f"{self.geo_partition.name}_{self.space_topology.name}")
+        def node_category_from_frontier_sides_kernel(
+            geo_arg: self.geo_partition.geometry.SideArg,
             geo_partition_arg: self.geo_partition.SideArg,
-            space_arg: trace_space.SpaceArg,
+            space_arg: trace_topology.TopologyArg,
             node_mask: wp.array(dtype=int),
         ):
             frontier_side_index = wp.tid()
@@ -188,28 +197,15 @@ class NodePartition(SpacePartition):
             side_index = self.geo_partition.frontier_side_index(geo_partition_arg, frontier_side_index)
 
             for n in range(NODES_PER_SIDE):
-                space_nidx = trace_space.element_node_index(space_arg, side_index, n)
+                space_nidx = trace_topology.element_node_index(geo_arg, space_arg, side_index, n)
                 if node_mask[space_nidx] == NodeCategory.EXTERIOR:
                     node_mask[space_nidx] = NodeCategory.HALO_OTHER_SIDE
                 elif node_mask[space_nidx] == NodeCategory.OWNED_INTERIOR:
                     node_mask[space_nidx] = NodeCategory.OWNED_FRONTIER
 
-        node_category_from_cells_kernel = cache.get_kernel(
-            node_category_from_cells_fn,
-            suffix=f"{self.geo_partition.name}_{self.space.name}",
-        )
-        node_category_from_owned_sides_kernel = cache.get_kernel(
-            node_category_from_owned_sides_fn,
-            suffix=f"{self.geo_partition.name}_{self.space.name}",
-        )
-        node_category_from_frontier_sides_kernel = cache.get_kernel(
-            node_category_from_frontier_sides_fn,
-            suffix=f"{self.geo_partition.name}_{self.space.name}",
-        )
-
         node_category = borrow_temporary(
             temporary_store,
-            shape=(self.space.node_count(),),
+            shape=(self.space_topology.node_count(),),
             dtype=int,
             device=device,
         )
@@ -219,8 +215,9 @@ class NodePartition(SpacePartition):
             dim=self.geo_partition.cell_count(),
             kernel=node_category_from_cells_kernel,
             inputs=[
+                self.geo_partition.geometry.cell_arg_value(device),
                 self.geo_partition.cell_arg_value(device),
-                self.space.space_arg_value(device),
+                self.space_topology.topo_arg_value(device),
                 node_category.array,
             ],
             device=device,
@@ -231,8 +228,9 @@ class NodePartition(SpacePartition):
                 dim=self.geo_partition.side_count(),
                 kernel=node_category_from_owned_sides_kernel,
                 inputs=[
+                    self.geo_partition.geometry.side_arg_value(device),
                     self.geo_partition.side_arg_value(device),
-                    self.space.space_arg_value(device),
+                    self.space_topology.topo_arg_value(device),
                     node_category.array,
                 ],
                 device=device,
@@ -242,8 +240,9 @@ class NodePartition(SpacePartition):
                 dim=self.geo_partition.frontier_side_count(),
                 kernel=node_category_from_frontier_sides_kernel,
                 inputs=[
+                    self.geo_partition.geometry.side_arg_value(device),
                     self.geo_partition.side_arg_value(device),
-                    self.space.space_arg_value(device),
+                    self.space_topology.topo_arg_value(device),
                     node_category.array,
                 ],
                 device=device,
@@ -277,7 +276,7 @@ class NodePartition(SpacePartition):
         self._space_to_partition = borrow_temporary_like(node_indices, temporary_store)
         wp.launch(
             kernel=NodePartition._scatter_partition_indices,
-            dim=self.space.node_count(),
+            dim=self.space_topology.node_count(),
             device=device,
             inputs=[self.node_count(), node_indices.array, self._space_to_partition.array],
         )
@@ -304,17 +303,21 @@ class NodePartition(SpacePartition):
 
 
 def make_space_partition(
-    space: FunctionSpace,
+    space: Optional[FunctionSpace] = None,
     geometry_partition: Optional[GeometryPartition] = None,
+    space_topology: Optional[SpaceTopology] = None,
     with_halo: bool = True,
     device=None,
     temporary_store: TemporaryStore = None,
 ) -> SpacePartition:
-    """Computes the substep of nodes from a function space that touch a geometry partition
+    """Computes the subset of nodes from a function space topology that touch a geometry partition
+
+    Either `space_topology` or `space` must be provided (and will be considered in that order).
 
     Args:
-        space: the function space to consider
+        space: (deprecated) the function space defining the topology if `space_topology` is ``None``.
         geometry_partition: The subset of the space geometry.  If not provided, use the whole geometry.
+        space_topology: the topology of the function space to consider. If ``None``, deduced from `space`.
         with_halo: if True, include the halo nodes (nodes from exterior frontier cells to the partition)
         device: Warp device on which to perform and store computations
 
@@ -322,9 +325,19 @@ def make_space_partition(
         the resulting space partition
     """
 
-    if geometry_partition is not None and geometry_partition.cell_count() < geometry_partition.geometry.cell_count():
-        return NodePartition(
-            space, geometry_partition, with_halo=with_halo, device=device, temporary_store=temporary_store
-        )
+    if space_topology is None:
+        space_topology = space.topology
 
-    return WholeSpacePartition(space)
+    space_topology = space_topology.full_space_topology()
+
+    if geometry_partition is not None:
+        if geometry_partition.cell_count() < geometry_partition.geometry.cell_count():
+            return NodePartition(
+                space_topology=space_topology,
+                geo_partition=geometry_partition,
+                with_halo=with_halo,
+                device=device,
+                temporary_store=temporary_store,
+            )
+
+    return WholeSpacePartition(space_topology)

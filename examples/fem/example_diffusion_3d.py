@@ -11,7 +11,7 @@ from warp.sparse import bsr_axpy
 
 from warp.fem import Field, Sample, Domain
 from warp.fem import Grid3D, Tetmesh
-from warp.fem import make_polynomial_space
+from warp.fem import make_polynomial_space, ElementBasis
 from warp.fem import make_test, make_trial
 from warp.fem import Cells, BoundarySides
 from warp.fem import integrate
@@ -46,6 +46,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--resolution", type=int, default=10)
     parser.add_argument("--degree", type=int, default=2)
+    parser.add_argument("--serendipity", action="store_true", default=False)
     parser.add_argument("--viscosity", type=float, default=2.0)
     parser.add_argument("--boundary_compliance", type=float, default=0, help="Dirichlet boundary condition compliance")
     parser.add_argument("--tet_mesh", action="store_true", help="Use a tetrahedral mesh")
@@ -69,7 +70,8 @@ if __name__ == "__main__":
 
     # Domain and function spaces
     domain = Cells(geometry=geo)
-    scalar_space = make_polynomial_space(geo, degree=args.degree)
+    element_basis = ElementBasis.SERENDIPITY if args.serendipity else None
+    scalar_space = make_polynomial_space(geo, degree=args.degree, element_basis=element_basis)
 
     # Right-hand-side
     test = make_test(space=scalar_space, domain=domain)
