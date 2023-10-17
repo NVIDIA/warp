@@ -544,8 +544,19 @@ class Adjoint:
             # this is to avoid registering false references to overshadowed modules
             adj.symbols[name] = arg
 
+        # There are cases where a same module might be rebuilt multiple times,
+        # for example when kernels are nested inside of functions, or when
+        # a kernel's launch raises an exception. Ideally we'd always want to
+        # avoid rebuilding kernels but some corner cases seem to depend on it,
+        # so we only avoid rebuilding kernels that errored out to give a chance
+        # for unit testing errors being spit out from kernels.
+        adj.skip_build = False
+
     # generate function ssa form and adjoint
     def build(adj, builder):
+        if adj.skip_build:
+            return
+
         adj.builder = builder
 
         adj.symbols = {}  # map from symbols to adjoint variables
@@ -583,6 +594,7 @@ class Adjoint:
                 ex, data, traceback = sys.exc_info()
                 e = ex(";".join([msg] + [str(a) for a in data.args])).with_traceback(traceback)
             finally:
+                adj.skip_build = True
                 raise e
 
         if builder is not None:
