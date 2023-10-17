@@ -134,6 +134,15 @@ inline CUDA_CALLABLE vec3 sample_unit_cube(uint32& state)
     return vec3(x, y, z);
 }
 
+inline CUDA_CALLABLE vec4 sample_unit_hypercube(uint32& state)
+{
+    float a = randf(state) - 0.5f;
+    float b = randf(state) - 0.5f;
+    float c = randf(state) - 0.5f;
+    float d = randf(state) - 0.5f;
+    return vec4(a, b, c, d);
+}
+
 inline CUDA_CALLABLE void adj_sample_cdf(uint32& state, const array_t<float>& cdf, uint32& adj_state, array_t<float>& adj_cdf, const int& adj_ret) {}
 inline CUDA_CALLABLE void adj_sample_triangle(uint32& state, uint32& adj_state, const vec2& adj_ret) {}
 inline CUDA_CALLABLE void adj_sample_unit_ring(uint32& state, uint32& adj_state, const vec2& adj_ret) {}
@@ -144,6 +153,7 @@ inline CUDA_CALLABLE void adj_sample_unit_hemisphere_surface(uint32& state, uint
 inline CUDA_CALLABLE void adj_sample_unit_hemisphere(uint32& state, uint32& adj_state, const vec3& adj_ret) {}
 inline CUDA_CALLABLE void adj_sample_unit_square(uint32& state, uint32& adj_state, const vec2& adj_ret) {}
 inline CUDA_CALLABLE void adj_sample_unit_cube(uint32& state, uint32& adj_state, const vec3& adj_ret) {}
+inline CUDA_CALLABLE void adj_sample_unit_hypercube(uint32& state, uint32& adj_state, const vec3& adj_ret) {}
 
 /*
  * log-gamma function to support some of these distributions. The
