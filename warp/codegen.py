@@ -1091,7 +1091,7 @@ class Adjoint:
         for f in node.body:
             adj.eval(f)
 
-        if adj.return_var is not None:
+        if adj.return_var is not None and len(adj.return_var) == 1:
             if not isinstance(node.body[-1], ast.Return):
                 adj.add_forward("return {};", skip_replay=True)
 
