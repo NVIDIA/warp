@@ -65,16 +65,14 @@ def get_annotations(obj: Any) -> Mapping[str, Any]:
 def struct_instance_repr_recursive(inst: StructInstance, depth: int) -> str:
     indent = "\t"
 
-    if inst._cls.ctype._fields_ == [("_dummy_", ctypes.c_int)]:
+    # handle empty structs
+    if len(inst._cls.vars) == 0:
         return f"{inst._cls.key}()"
 
     lines = []
     lines.append(f"{inst._cls.key}(")
 
     for field_name, _ in inst._cls.ctype._fields_:
-        if field_name == "_dummy_":
-            continue
-
         field_value = getattr(inst, field_name, None)
 
         if isinstance(field_value, StructInstance):
@@ -240,7 +238,7 @@ class Struct:
 
         class StructType(ctypes.Structure):
             # if struct is empty, add a dummy field to avoid launch errors on CPU device ("ffi_prep_cif failed")
-            _fields_ = fields or [("_dummy_", ctypes.c_int)]
+            _fields_ = fields or [("_dummy_", ctypes.c_byte)]
 
         self.ctype = StructType
 
@@ -2273,8 +2271,13 @@ def codegen_struct(struct, device="cpu", indent_size=4):
 
     body = []
     indent_block = " " * indent_size
-    for label, var in struct.vars.items():
-        body.append(var.ctype() + " " + label + ";\n")
+
+    if len(struct.vars) > 0:
+        for label, var in struct.vars.items():
+            body.append(var.ctype() + " " + label + ";\n")
+    else:
+        # for empty structs, emit the dummy attribute to avoid any compiler-specific alignment issues
+        body.append("char _dummy_;\n")
 
     forward_args = []
     reverse_args = []
