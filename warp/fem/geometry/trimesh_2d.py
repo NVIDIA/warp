@@ -1,8 +1,8 @@
 from typing import Optional
 import warp as wp
 
-from warp.fem.types import ElementIndex, Coords, Sample
-from warp.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, NULL_DOF_INDEX, NULL_QP_INDEX
+from warp.fem.types import ElementIndex, Coords, Sample, make_free_sample
+from warp.fem.types import NULL_ELEMENT_INDEX, OUTSIDE
 from warp.fem.cache import cached_arg_value, TemporaryStore, borrow_temporary, borrow_temporary_like
 
 from .geometry import Geometry
@@ -11,13 +11,21 @@ from .closest_point import project_on_tri_at_origin
 
 
 @wp.struct
-class Trimesh2DArg:
+class Trimesh2DCellArg:
     tri_vertex_indices: wp.array2d(dtype=int)
     positions: wp.array(dtype=wp.vec2)
 
+    # for neighbor cell lookup
     vertex_tri_offsets: wp.array(dtype=int)
     vertex_tri_indices: wp.array(dtype=int)
 
+    # for transforming reference gradient
+    reference_transforms: wp.array(dtype=wp.mat22f)
+
+
+@wp.struct
+class Trimesh2DSideArg:
+    cell_arg: Trimesh2DCellArg
     edge_vertex_indices: wp.array(dtype=wp.vec2i)
     edge_tri_indices: wp.array(dtype=wp.vec2i)
 
@@ -25,7 +33,11 @@ class Trimesh2DArg:
 class Trimesh2D(Geometry):
     """Two-dimensional triangular mesh geometry"""
 
-    def __init__(self, tri_vertex_indices: wp.array, positions: wp.array, temporary_store: Optional[TemporaryStore] = None):
+    dimension = 2
+
+    def __init__(
+        self, tri_vertex_indices: wp.array, positions: wp.array, temporary_store: Optional[TemporaryStore] = None
+    ):
         """
         Constructs a two-dimensional triangular mesh.
 
@@ -34,7 +46,6 @@ class Trimesh2D(Geometry):
             positions: warp array of shape (num_vertices, 2) containing 2d position for each vertex
             temporary_store: shared pool from which to allocate temporary arrays
         """
-        self.dimension = 2
 
         self.tri_vertex_indices = tri_vertex_indices
         self.positions = positions
@@ -43,8 +54,10 @@ class Trimesh2D(Geometry):
         self._edge_tri_indices: wp.array = None
         self._vertex_tri_offsets: wp.array = None
         self._vertex_tri_indices: wp.array = None
-
         self._build_topology(temporary_store)
+
+        self._reference_transforms: wp.array = None
+        self._compute_reference_transforms()
 
     def cell_count(self):
         return self.tri_vertex_indices.shape[0]
@@ -64,8 +77,16 @@ class Trimesh2D(Geometry):
     def reference_side(self) -> LinearEdge:
         return LinearEdge()
 
-    CellArg = Trimesh2DArg
-    SideArg = Trimesh2DArg
+    @property
+    def edge_tri_indices(self) -> wp.array:
+        return self._edge_tri_indices
+
+    @property
+    def edge_vertex_indices(self) -> wp.array:
+        return self._edge_vertex_indices
+
+    CellArg = Trimesh2DCellArg
+    SideArg = Trimesh2DSideArg
 
     @wp.struct
     class SideIndexArg:
@@ -79,10 +100,9 @@ class Trimesh2D(Geometry):
 
         args.tri_vertex_indices = self.tri_vertex_indices.to(device)
         args.positions = self.positions.to(device)
-        args.edge_vertex_indices = self._edge_vertex_indices.to(device)
-        args.edge_tri_indices = self._edge_tri_indices.to(device)
         args.vertex_tri_offsets = self._vertex_tri_offsets.to(device)
         args.vertex_tri_indices = self._vertex_tri_indices.to(device)
+        args.reference_transforms = self._reference_transforms.to(device)
 
         return args
 
@@ -125,7 +145,7 @@ class Trimesh2D(Geometry):
                     closest_tri = tri
                     closest_coords = coords
 
-        return Sample(closest_tri, closest_coords, NULL_QP_INDEX, 0.0, NULL_DOF_INDEX, NULL_DOF_INDEX)
+        return make_free_sample(closest_tri, closest_coords)
 
     @wp.func
     def cell_measure(args: CellArg, cell_index: ElementIndex, coords: Coords):
@@ -152,8 +172,14 @@ class Trimesh2D(Geometry):
     def cell_normal(args: CellArg, s: Sample):
         return wp.vec2(0.0)
 
-    def side_arg_value(self, device) -> SideArg:
-        return self.cell_arg_value(device)
+    @wp.func
+    def cell_transform_reference_gradient(
+        cell_arg: Trimesh2DCellArg,
+        element_index: ElementIndex,
+        coords: Coords,
+        grad: wp.vec2,
+    ):
+        return cell_arg.reference_transforms[element_index] * grad
 
     @cached_arg_value
     def side_index_arg_value(self, device) -> SideIndexArg:
@@ -169,18 +195,28 @@ class Trimesh2D(Geometry):
 
         return args.boundary_edge_indices[boundary_side_index]
 
+    @cached_arg_value
+    def side_arg_value(self, device) -> CellArg:
+        args = self.SideArg()
+
+        args.cell_arg = self.cell_arg_value(device)
+        args.edge_vertex_indices = self._edge_vertex_indices.to(device)
+        args.edge_tri_indices = self._edge_tri_indices.to(device)
+
+        return args
+
     @wp.func
     def side_position(args: SideArg, s: Sample):
         edge_idx = args.edge_vertex_indices[s.element_index]
-        return (1.0 - s.element_coords[0]) * args.positions[edge_idx[0]] + s.element_coords[0] * args.positions[
-            edge_idx[1]
-        ]
+        return (1.0 - s.element_coords[0]) * args.cell_arg.positions[edge_idx[0]] + s.element_coords[
+            0
+        ] * args.cell_arg.positions[edge_idx[1]]
 
     @wp.func
     def side_measure(args: SideArg, side_index: ElementIndex, coords: Coords):
         edge_idx = args.edge_vertex_indices[side_index]
-        v0 = args.positions[edge_idx[0]]
-        v1 = args.positions[edge_idx[1]]
+        v0 = args.cell_arg.positions[edge_idx[0]]
+        v1 = args.cell_arg.positions[edge_idx[1]]
         return wp.length(v1 - v0)
 
     @wp.func
@@ -192,15 +228,15 @@ class Trimesh2D(Geometry):
         inner = Trimesh2D.side_inner_cell_index(args, s.element_index)
         outer = Trimesh2D.side_outer_cell_index(args, s.element_index)
         return Trimesh2D.side_measure(args, s) / wp.min(
-            Trimesh2D.cell_measure(args, inner, Coords()),
-            Trimesh2D.cell_measure(args, outer, Coords()),
+            Trimesh2D.cell_measure(args.cell_arg, inner, Coords()),
+            Trimesh2D.cell_measure(args.cell_arg, outer, Coords()),
         )
 
     @wp.func
     def side_normal(args: SideArg, s: Sample):
         edge_idx = args.edge_vertex_indices[s.element_index]
-        v0 = args.positions[edge_idx[0]]
-        v1 = args.positions[edge_idx[1]]
+        v0 = args.cell_arg.positions[edge_idx[0]]
+        v1 = args.cell_arg.positions[edge_idx[1]]
         e = v1 - v0
 
         return wp.normalize(wp.vec2(-e[1], e[0]))
@@ -216,7 +252,7 @@ class Trimesh2D(Geometry):
     @wp.func
     def edge_to_tri_coords(args: SideArg, side_index: ElementIndex, tri_index: ElementIndex, side_coords: Coords):
         edge_vidx = args.edge_vertex_indices[side_index]
-        tri_vidx = args.tri_vertex_indices[tri_index]
+        tri_vidx = args.cell_arg.tri_vertex_indices[tri_index]
 
         v0 = tri_vidx[0]
         v1 = tri_vidx[1]
@@ -242,9 +278,24 @@ class Trimesh2D(Geometry):
         return Coords(cx, cy, cz)
 
     @wp.func
-    def tri_to_edge_coords(args: SideArg, side_index: ElementIndex, tri_index: ElementIndex, tri_coords: Coords):
+    def side_inner_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        inner_cell_index = Trimesh2D.side_inner_cell_index(args, side_index)
+        return Trimesh2D.edge_to_tri_coords(args, side_index, inner_cell_index, side_coords)
+
+    @wp.func
+    def side_outer_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        outer_cell_index = Trimesh2D.side_outer_cell_index(args, side_index)
+        return Trimesh2D.edge_to_tri_coords(args, side_index, outer_cell_index, side_coords)
+
+    @wp.func
+    def side_from_cell_coords(
+        args: SideArg,
+        side_index: ElementIndex,
+        tri_index: ElementIndex,
+        tri_coords: Coords,
+    ):
         edge_vidx = args.edge_vertex_indices[side_index]
-        tri_vidx = args.tri_vertex_indices[tri_index]
+        tri_vidx = args.cell_arg.tri_vertex_indices[tri_index]
 
         start = int(2)
         end = int(2)
@@ -259,6 +310,10 @@ class Trimesh2D(Geometry):
         return wp.select(
             tri_coords[start] + tri_coords[end] > 0.999, Coords(OUTSIDE), Coords(tri_coords[end], 0.0, 0.0)
         )
+
+    @wp.func
+    def side_to_cell_arg(side_arg: SideArg):
+        return side_arg.cell_arg
 
     def _build_topology(self, temporary_store: TemporaryStore):
         from warp.fem.utils import compress_node_indices, masked_indices
@@ -361,6 +416,16 @@ class Trimesh2D(Geometry):
         self._boundary_edge_indices = boundary_edge_indices.detach()
 
         boundary_mask.release()
+
+    def _compute_reference_transforms(self):
+        self._reference_transforms = wp.empty(dtype=wp.mat22f, device=self.positions.device, shape=(self.cell_count()))
+
+        wp.launch(
+            kernel=Trimesh2D._compute_reference_transforms_kernel,
+            dim=self._reference_transforms.shape,
+            device=self._reference_transforms.device,
+            inputs=[self.tri_vertex_indices, self.positions, self._reference_transforms],
+        )
 
     @wp.kernel
     def _count_starting_edges_kernel(
@@ -488,3 +553,21 @@ class Trimesh2D(Geometry):
         # if edge normal points toward first triangle centroid, flip indices
         if wp.dot(tri_centroid - edge_center, edge_normal) > 0.0:
             edge_vertex_indices[e] = wp.vec2i(edge_vidx[1], edge_vidx[0])
+
+    @wp.kernel
+    def _compute_reference_transforms_kernel(
+        tri_vertex_indices: wp.array2d(dtype=int),
+        positions: wp.array(dtype=wp.vec2f),
+        transforms: wp.array(dtype=wp.mat22f),
+    ):
+        t = wp.tid()
+
+        p0 = positions[tri_vertex_indices[t, 0]]
+        p1 = positions[tri_vertex_indices[t, 1]]
+        p2 = positions[tri_vertex_indices[t, 2]]
+
+        e1 = p1 - p0
+        e2 = p2 - p0
+
+        mat = wp.mat22(e1, e2)
+        transforms[t] = wp.transpose(wp.inverse(mat))

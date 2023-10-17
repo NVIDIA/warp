@@ -16,7 +16,7 @@ import numpy as np
 from warp.fem import Field, Domain, Sample
 from warp.fem import Grid2D, Trimesh2D
 from warp.fem import make_test, make_trial, make_restriction
-from warp.fem import make_polynomial_space
+from warp.fem import make_polynomial_space, ElementBasis
 from warp.fem import Cells, BoundarySides
 from warp.fem import integrate, interpolate
 from warp.fem import normal, integrand, D, div
@@ -83,6 +83,7 @@ if __name__ == "__main__":
     parser.add_argument("--viscosity", type=float, default=1.0)
     parser.add_argument("--boundary_strength", type=float, default=100.0)
     parser.add_argument("--tri_mesh", action="store_true", help="Use a triangular mesh")
+    parser.add_argument("--nonconforming_pressures", action="store_true", help="For grid, use non-conforming pressure (Q_d/P_{d-1})")
     args = parser.parse_args()
     
     top_velocity = wp.vec2(args.top_velocity, 0.0)
@@ -96,9 +97,12 @@ if __name__ == "__main__":
     domain = Cells(geometry=geo)
     boundary = BoundarySides(geo)
 
-    # Function spaces -- Q_d for vel, Q_{d-1} for pressure
+    # Function spaces -- Q_d for vel, P_{d-1} for pressure
     u_space = make_polynomial_space(geo, degree=args.degree, dtype=wp.vec2)
-    p_space = make_polynomial_space(geo, degree=args.degree-1)
+    if not args.tri_mesh and args.nonconforming_pressures:
+        p_space = make_polynomial_space(geo, degree=args.degree-1, element_basis=ElementBasis.NONCONFORMING_POLYNOMIAL)
+    else:
+        p_space = make_polynomial_space(geo, degree=args.degree-1)
 
     # Interpolate initial condition on boundary (mostly for testing)
     f = u_space.make_field()

@@ -1,6 +1,8 @@
 from typing import Any, Tuple
 
 import warp as wp
+import numpy as np
+
 from warp.utils import radix_sort_pairs, runlength_encode, array_scan
 from warp.fem.cache import borrow_temporary, borrow_temporary_like, TemporaryStore, Temporary
 
@@ -265,3 +267,172 @@ def _masked_indices_kernel(
 def _array_axpy_kernel(x: wp.array(dtype=Any), y: wp.array(dtype=Any), alpha: Any, beta: Any):
     i = wp.tid()
     y[i] = beta * y[i] + alpha * x[i]
+
+
+def grid_to_tris(Nx: int, Ny: int):
+    """Constructs a triangular mesh topology by dividing each cell of a dense 2D grid into two triangles.
+
+    The resulting triangles will be oriented counter-clockwise assuming that `y` is the fastest moving index direction
+
+    Args:
+        Nx: Resolution of the grid along `x` dimension
+        Ny: Resolution of the grid along `y` dimension
+
+    Returns:
+        Array of shape (2 * Nx * Ny, 3) containing vertex indices for each triangle
+    """
+
+    cx, cy = np.meshgrid(np.arange(Nx, dtype=int), np.arange(Ny, dtype=int), indexing="ij")
+
+    vidx = np.transpose(
+        np.array(
+            [
+                (Ny + 1) * cx + cy,
+                (Ny + 1) * (cx + 1) + cy,
+                (Ny + 1) * (cx + 1) + (cy + 1),
+                (Ny + 1) * cx + cy,
+                (Ny + 1) * (cx + 1) + (cy + 1),
+                (Ny + 1) * (cx) + (cy + 1),
+            ]
+        )
+    ).reshape((-1, 3))
+
+    return vidx
+
+
+def grid_to_tets(Nx: int, Ny: int, Nz: int):
+    """Constructs a tetrahedral mesh topology by diving each cell of a dense 3D grid into five tetrahedrons
+
+    The resulting tets have positive volume assuming that `z` is the fastest moving index direction
+
+    Args:
+        Nx: Resolution of the grid along `x` dimension
+        Ny: Resolution of the grid along `y` dimension
+        Nz: Resolution of the grid along `z` dimension
+
+    Returns:
+        Array of shape (5 * Nx * Ny * Nz, 4) containing vertex indices for each tet
+    """
+
+    # Global node indices for each cell
+    cx, cy, cz = np.meshgrid(
+        np.arange(Nx, dtype=int), np.arange(Ny, dtype=int), np.arange(Nz, dtype=int), indexing="ij"
+    )
+
+    grid_vidx = np.array(
+        [
+            (Ny + 1) * (Nz + 1) * cx + (Nz + 1) * cy + cz,
+            (Ny + 1) * (Nz + 1) * cx + (Nz + 1) * cy + cz + 1,
+            (Ny + 1) * (Nz + 1) * cx + (Nz + 1) * (cy + 1) + cz,
+            (Ny + 1) * (Nz + 1) * cx + (Nz + 1) * (cy + 1) + cz + 1,
+            (Ny + 1) * (Nz + 1) * (cx + 1) + (Nz + 1) * cy + cz,
+            (Ny + 1) * (Nz + 1) * (cx + 1) + (Nz + 1) * cy + cz + 1,
+            (Ny + 1) * (Nz + 1) * (cx + 1) + (Nz + 1) * (cy + 1) + cz,
+            (Ny + 1) * (Nz + 1) * (cx + 1) + (Nz + 1) * (cy + 1) + cz + 1,
+        ]
+    )
+
+    # decompose grid cells into 5 tets
+    tet_vidx = np.array(
+        [
+            [0, 1, 2, 4],
+            [3, 2, 1, 7],
+            [5, 1, 7, 4],
+            [6, 7, 4, 2],
+            [4, 1, 2, 7],
+        ]
+    )
+
+    # Convert to 3d index coordinates
+    vidx_coords = np.array(
+        [
+            [0, 0, 0],
+            [0, 0, 1],
+            [0, 1, 0],
+            [0, 1, 1],
+            [1, 0, 0],
+            [1, 0, 1],
+            [1, 1, 0],
+            [1, 1, 1],
+        ]
+    )
+    tet_coords = vidx_coords[tet_vidx]
+
+    # Symmetry bits for each cell
+    ox, oy, oz = np.meshgrid(
+        np.arange(Nx, dtype=int) % 2, np.arange(Ny, dtype=int) % 2, np.arange(Nz, dtype=int) % 2, indexing="ij"
+    )
+    tet_coords = np.broadcast_to(tet_coords, shape=(*ox.shape, *tet_coords.shape))
+
+    # Flip coordinates according to symmetry
+    ox_bk = np.broadcast_to(ox.reshape(*ox.shape, 1, 1), tet_coords.shape[:-1])
+    oy_bk = np.broadcast_to(oy.reshape(*oy.shape, 1, 1), tet_coords.shape[:-1])
+    oz_bk = np.broadcast_to(oz.reshape(*oz.shape, 1, 1), tet_coords.shape[:-1])
+
+    tet_coords_x = tet_coords[..., 0] ^ ox_bk
+    tet_coords_y = tet_coords[..., 1] ^ oy_bk
+    tet_coords_z = tet_coords[..., 2] ^ oz_bk
+
+    # Back to local vertex indices
+    corner_indices = 4 * tet_coords_x + 2 * tet_coords_y + tet_coords_z
+
+    # Now go from cell-local to global node indices
+    # There must be a nicer way than this, but for small grids this works
+
+    corner_indices = corner_indices.reshape(-1, 4)
+
+    grid_vidx = grid_vidx.reshape((8, -1, 1))
+    grid_vidx = np.broadcast_to(grid_vidx, shape=(8, grid_vidx.shape[1], 5))
+    grid_vidx = grid_vidx.reshape((8, -1))
+
+    node_indices = np.arange(corner_indices.shape[0])
+    tet_grid_vidx = np.transpose(
+        [
+            grid_vidx[corner_indices[:, 0], node_indices],
+            grid_vidx[corner_indices[:, 1], node_indices],
+            grid_vidx[corner_indices[:, 2], node_indices],
+            grid_vidx[corner_indices[:, 3], node_indices],
+        ]
+    )
+
+    return tet_grid_vidx
+
+
+def grid_to_hexes(Nx: int, Ny: int, Nz: int):
+    """Constructs a hexahedral mesh topology from a dense 3D grid
+
+    The resulting hexes will be indexed following usual convention assuming that `z` is the fastest moving index direction
+    (counter-clokwise bottom vertices, then counter-clockwise top vertices)
+
+    Args:
+        Nx: Resolution of the grid along `x` dimension
+        Ny: Resolution of the grid along `y` dimension
+        Nz: Resolution of the grid along `z` dimension
+
+    Returns:
+        Array of shape (Nx * Ny * Nz, 8) containing vertex indices for each hexaedron
+    """
+
+    hex_vtx = np.array(
+        [
+            [0, 0, 0],
+            [1, 0, 0],
+            [1, 1, 0],
+            [0, 1, 0],
+            [0, 0, 1],
+            [1, 0, 1],
+            [1, 1, 1],
+            [0, 1, 1],
+        ]
+    ).T
+
+    hexes = np.stack(np.meshgrid(np.arange(0, Nx), np.arange(0, Ny), np.arange(0, Nz), indexing="ij"))
+
+    hexes_vtx_shape = (*hexes.shape, hex_vtx.shape[1])
+    hexes_vtx = np.broadcast_to(hexes.reshape(*hexes.shape, 1), hexes_vtx_shape) + np.broadcast_to(
+        hex_vtx.reshape(3, 1, 1, 1, hex_vtx.shape[1]), hexes_vtx_shape
+    )
+
+    hexes_vtx_indices = hexes_vtx[0] * (Nz + 1) * (Ny + 1) + hexes_vtx[1] * (Nz + 1) + hexes_vtx[2]
+
+    return hexes_vtx_indices.reshape(-1, 8)

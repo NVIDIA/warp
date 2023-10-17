@@ -163,7 +163,7 @@ def _translate_integrand(integrand: Integrand, field_args: Dict[str, FieldLike])
     for arg in argspec.args:
         arg_type = argspec.annotations[arg]
         if arg_type == Field:
-            annotations[arg] = field_args[arg].EvalArg
+            annotations[arg] = field_args[arg].ElementEvalArg
         elif arg_type == Domain:
             annotations[arg] = field_args[arg].ElementArg
         else:
@@ -173,8 +173,7 @@ def _translate_integrand(integrand: Integrand, field_args: Dict[str, FieldLike])
     transformer = IntegrandTransformer(integrand, field_args)
 
     def is_field_like(f):
-        # WAR for isinstance not supporting Union in Python < 3.10
-        return any(isinstance(f, field_class) for field_class in FieldLike.__args__)
+        return isinstance(f, FieldLike)
 
     suffix = "_".join([f.name for f in field_args.values() if is_field_like(f)])
     key = integrand.name + suffix
@@ -264,18 +263,14 @@ def _gen_field_struct(field_args: Dict[str, FieldLike]):
         setattr(Fields, name, arg.EvalArg())
         annotations[name] = arg.EvalArg
 
-    Fields.__qualname__ = (
-        Fields.__name__
-        + "_"
-        + "_".join([f"{name}_{arg_struct.cls.__qualname__}" for name, arg_struct in annotations.items()])
-    )
-
     try:
         Fields.__annotations__ = annotations
     except AttributeError:
         setattr(Fields.__dict__, "__annotations__", annotations)
 
-    return cache.get_struct(Fields)
+    suffix = "_".join([f"{name}_{arg_struct.cls.__qualname__}" for name, arg_struct in annotations.items()])
+
+    return cache.get_struct(Fields, suffix=suffix)
 
 
 def _gen_value_struct(value_args: Dict[str, type]):
@@ -298,18 +293,14 @@ def _gen_value_struct(value_args: Dict[str, type]):
             return arg_type_name(arg_type.cls)
         return getattr(arg_type, "__name__", str(arg_type))
 
-    Values.__qualname__ = (
-        Values.__name__
-        + "_"
-        + "_".join([f"{name}_{arg_type_name(arg_type)}" for name, arg_type in annotations.items()])
-    )
-
     try:
         Values.__annotations__ = annotations
     except AttributeError:
         setattr(Values.__dict__, "__annotations__", annotations)
 
-    return cache.get_struct(Values)
+    suffix = "_".join([f"{name}_{arg_type_name(arg_type)}" for name, arg_type in annotations.items()])
+
+    return cache.get_struct(Values, suffix=suffix)
 
 
 def _get_trial_arg():
@@ -318,6 +309,16 @@ def _get_trial_arg():
 
 def _get_test_arg():
     pass
+
+
+class _FieldWrappers:
+    pass
+
+
+def _register_integrand_field_wrappers(integrand_func: wp.Function, fields: Dict[str, FieldLike]):
+    integrand_func._field_wrappers = _FieldWrappers()
+    for name, field in fields.items():
+        setattr(integrand_func._field_wrappers, name, field.ElementEvalArg)
 
 
 class PassFieldArgsToIntegrand(ast.NodeTransformer):
@@ -335,6 +336,7 @@ class PassFieldArgsToIntegrand(ast.NodeTransformer):
         values_var_name: str = "values",
         domain_var_name: str = "domain_arg",
         sample_var_name: str = "sample",
+        field_wrappers_attr: str = "_field_wrappers",
     ):
         self._arg_names = arg_names
         self._field_args = field_args
@@ -348,6 +350,7 @@ class PassFieldArgsToIntegrand(ast.NodeTransformer):
         self._values_var_name = values_var_name
         self._domain_var_name = domain_var_name
         self._sample_var_name = sample_var_name
+        self._field_wrappers_attr = field_wrappers_attr
 
     def visit_Call(self, call: ast.Call):
         call = self.generic_visit(call)
@@ -368,10 +371,25 @@ class PassFieldArgsToIntegrand(ast.NodeTransformer):
                     )
                 elif arg in self._field_args:
                     call.args.append(
-                        ast.Attribute(
-                            value=ast.Name(id=self._fields_var_name, ctx=ast.Load()),
-                            attr=arg,
-                            ctx=ast.Load(),
+                        ast.Call(
+                            func=ast.Attribute(
+                                value=ast.Attribute(
+                                    value=ast.Name(id=self._func_name, ctx=ast.Load()),
+                                    attr=self._field_wrappers_attr,
+                                    ctx=ast.Load(),
+                                ),
+                                attr=arg,
+                                ctx=ast.Load(),
+                            ),
+                            args=[
+                                ast.Name(id=self._domain_var_name, ctx=ast.Load()),
+                                ast.Attribute(
+                                    value=ast.Name(id=self._fields_var_name, ctx=ast.Load()),
+                                    attr=arg,
+                                    ctx=ast.Load(),
+                                ),
+                            ],
+                            keywords=[],
                         )
                     )
                 elif arg in self._value_args:
@@ -548,6 +566,7 @@ def get_integrate_linear_nodal_kernel(
             element_index = domain.element_index(domain_index_arg, node_element_index.domain_element_index)
 
             coords = test.space.node_coords_in_element(
+                domain_arg,
                 _get_test_arg(),
                 element_index,
                 node_element_index.node_index_in_element,
@@ -555,6 +574,7 @@ def get_integrate_linear_nodal_kernel(
 
             if coords[0] != OUTSIDE:
                 node_weight = test.space.node_quadrature_weight(
+                    domain_arg,
                     _get_test_arg(),
                     element_index,
                     node_element_index.node_index_in_element,
@@ -590,7 +610,7 @@ def get_integrate_bilinear_kernel(
     trial: TrialField,
     accumulate_dtype,
 ):
-    NODES_PER_ELEMENT = trial.space.NODES_PER_ELEMENT
+    NODES_PER_ELEMENT = trial.space.topology.NODES_PER_ELEMENT
 
     def integrate_kernel_fn(
         qp_arg: quadrature.Arg,
@@ -598,6 +618,7 @@ def get_integrate_bilinear_kernel(
         domain_index_arg: domain.ElementIndexArg,
         test_arg: test.space_restriction.NodeArg,
         trial_partition_arg: trial.space_partition.PartitionArg,
+        trial_topology_arg: trial.space_partition.space_topology.TopologyArg,
         fields: FieldStruct,
         values: ValueStruct,
         row_offsets: wp.array(dtype=int),
@@ -654,7 +675,7 @@ def get_integrate_bilinear_kernel(
             for trial_n in range(NODES_PER_ELEMENT):
                 trial_node_index = trial.space_partition.partition_node_index(
                     trial_partition_arg,
-                    trial.space.element_node_index(_get_trial_arg(), element_index, trial_n),
+                    trial.space.topology.element_node_index(domain_arg, trial_topology_arg, element_index, trial_n),
                 )
 
                 triplet_rows[offset_cur] = test_node_index
@@ -694,6 +715,7 @@ def get_integrate_bilinear_nodal_kernel(
             element_index = domain.element_index(domain_index_arg, node_element_index.domain_element_index)
 
             coords = test.space.node_coords_in_element(
+                domain_arg,
                 _get_test_arg(),
                 element_index,
                 node_element_index.node_index_in_element,
@@ -701,6 +723,7 @@ def get_integrate_bilinear_nodal_kernel(
 
             if coords[0] != OUTSIDE:
                 node_weight = test.space.node_quadrature_weight(
+                    domain_arg,
                     _get_test_arg(),
                     element_index,
                     node_element_index.node_index_in_element,
@@ -741,6 +764,7 @@ def _generate_integrate_kernel(
     trial_name: str,
     fields: Dict[str, FieldLike],
     accumulate_dtype: type,
+    kernel_options: Dict[str, Any] = {},
 ) -> wp.Kernel:
     # Extract field arguments from integrand
     field_args, value_args, domain_name, sample_name = _get_integrand_field_arguments(
@@ -775,6 +799,8 @@ def _generate_integrate_kernel(
         integrand,
         field_args,
     )
+
+    _register_integrand_field_wrappers(integrand_func, fields)
 
     if test is None and trial is None:
         integrate_kernel_fn = get_integrate_constant_kernel(
@@ -831,6 +857,7 @@ def _generate_integrate_kernel(
         integrand=integrand,
         kernel_fn=integrate_kernel_fn,
         suffix=kernel_suffix,
+        kernel_options=kernel_options,
         code_transformers=[
             PassFieldArgsToIntegrand(
                 arg_names=integrand.argspec.args,
@@ -887,7 +914,11 @@ def _launch_integrate_kernel(
             accumulate_array = output
         else:
             accumulate_temporary = cache.borrow_temporary(
-                shape=(1), device=device, dtype=accumulate_dtype, temporary_store=temporary_store
+                shape=(1),
+                device=device,
+                dtype=accumulate_dtype,
+                temporary_store=temporary_store,
+                requires_grad=output is not None and output.requires_grad,
             )
             accumulate_array = accumulate_temporary.array
 
@@ -938,20 +969,26 @@ def _launch_integrate_kernel(
                 shape=test.space_partition.node_count(),
                 dtype=accumulate_array_dtype,
                 device=device,
+                requires_grad=output is not None and output.requires_grad,
             )
             accumulate_array = accumulate_temporary.array
 
         # Launch the integration on the kernel on a 2d scalar view of the actual array
         accumulate_array.zero_()
-        accumulate_2d_view = wp.array(
-            data=None,
-            ptr=accumulate_array.ptr,
-            capacity=accumulate_array.capacity,
-            owner=False,
-            device=accumulate_array.device,
-            shape=(test.space_partition.node_count(), test.space.VALUE_DOF_COUNT),
-            dtype=accumulate_dtype,
-        )
+
+        def as_2d_array(array):
+            return wp.array(
+                data=None,
+                ptr=array.ptr,
+                capacity=array.capacity,
+                owner=False,
+                device=array.device,
+                shape=(test.space_partition.node_count(), test.space.VALUE_DOF_COUNT),
+                dtype=accumulate_dtype,
+                grad=None if array.grad is None else as_2d_array(array.grad),
+            )
+
+        accumulate_2d_view = as_2d_array(accumulate_array)
 
         if nodal:
             wp.launch(
@@ -994,9 +1031,19 @@ def _launch_integrate_kernel(
         if output is not None:
             cast_result = output
         elif type_length(output_dtype) == test.space.VALUE_DOF_COUNT:
-            cast_result = wp.empty(dtype=output_dtype, shape=accumulate_array.shape, device=device)
+            cast_result = wp.empty(
+                dtype=output_dtype,
+                shape=accumulate_array.shape,
+                device=device,
+                requires_grad=accumulate_array.requires_grad,
+            )
         else:
-            cast_result = wp.empty(dtype=output_dtype, shape=accumulate_2d_view.shape, device=device)
+            cast_result = wp.empty(
+                dtype=output_dtype,
+                shape=accumulate_2d_view.shape,
+                device=device,
+                requires_grad=accumulate_array.requires_grad,
+            )
 
         array_cast(in_array=accumulate_array, out_array=cast_result)
         accumulate_temporary.release()  # Do not wait for garbage collection
@@ -1014,7 +1061,7 @@ def _launch_integrate_kernel(
     if nodal:
         nnz = test.space_restriction.node_count()
     else:
-        nnz = test.space_restriction.total_node_element_count() * trial.space.NODES_PER_ELEMENT
+        nnz = test.space_restriction.total_node_element_count() * trial.space.topology.NODES_PER_ELEMENT
 
     triplet_rows_temp = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)
     triplet_cols_temp = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)
@@ -1055,6 +1102,7 @@ def _launch_integrate_kernel(
         offsets = test.space_restriction.partition_element_offsets()
 
         trial_partition_arg = trial.space_partition.partition_arg_value(device)
+        trial_topology_arg = trial.space_partition.space_topology.topo_arg_value(device)
         wp.launch(
             kernel=kernel,
             dim=test.space_restriction.node_count(),
@@ -1064,6 +1112,7 @@ def _launch_integrate_kernel(
                 domain_elt_index_arg,
                 test_arg,
                 trial_partition_arg,
+                trial_topology_arg,
                 field_arg_values,
                 value_struct_values,
                 offsets,
@@ -1121,12 +1170,13 @@ def integrate(
     output: Optional[Union[BsrMatrix, wp.array]] = None,
     device=None,
     temporary_store: Optional[cache.TemporaryStore] = None,
+    kernel_options: Dict[str, Any] = {},
 ):
     """
     Integrates a constant, linear or bilinear form, and returns a scalar, array, or sparse matrix, respectively.
 
     Args:
-        integrand: Form to be integrated, must have `wp.integrand` decorator
+        integrand: Form to be integrated, must have :func:`integrand` decorator
         domain: Integration domain. If None, deduced from fields
         quadrature: Quadrature formula. If None, deduced from domain and fields degree.
         nodal: For linear or bilinear form only, use the test function nodes as the quadrature points. Assumes Lagrange interpolation functions are used, and no differential or DG operator is evaluated on the test or trial functions.
@@ -1137,9 +1187,10 @@ def integrate(
         output: Sparse matrix or warp array into which to store the result of the integration
         output_dtype: Scalar type for returned results in `output` is notr provided. If None, defaults to `accumulate_dtype`
         device: Device on which to perform the integration
+        kernel_options: Overloaded options to be passed to the kernel builder (e.g, ``{"enable_backwards": True}``)
     """
     if not isinstance(integrand, Integrand):
-        raise ValueError("integrand must be tagged with @integrand decorator")
+        raise ValueError("integrand must be tagged with @warp.fem.integrand decorator")
 
     test, test_name, trial, trial_name = _get_test_and_trial_fields(fields)
 
@@ -1167,11 +1218,7 @@ def integrate(
             )
     else:
         if quadrature is None:
-            order = 0
-            if test is not None:
-                order += test.space.degree
-            if trial is not None:
-                order += trial.space.degree
+            order = sum(field.degree for field in fields.values())
             quadrature = RegularQuadrature(domain=domain, order=order)
         elif domain != quadrature.domain:
             raise ValueError("Incompatible integration and quadrature domain")
@@ -1199,6 +1246,7 @@ def integrate(
         trial_name=trial_name,
         fields=fields,
         accumulate_dtype=accumulate_dtype,
+        kernel_options=kernel_options,
     )
 
     return _launch_integrate_kernel(
@@ -1259,6 +1307,7 @@ def get_interpolate_kernel(
             element_index = domain.element_index(domain_index_arg, node_element_index.domain_element_index)
 
             coords = dest.space.node_coords_in_element(
+                domain_arg,
                 dest_eval_arg.space_arg,
                 element_index,
                 node_element_index.node_index_in_element,
@@ -1266,7 +1315,6 @@ def get_interpolate_kernel(
 
             if coords[0] != OUTSIDE:
                 vol = domain.element_measure(domain_arg, element_index, coords)
-
                 sample = Sample(
                     element_index,
                     coords,
@@ -1299,6 +1347,8 @@ def _generate_interpolate_kernel(integrand: Integrand, dest: FieldLike, fields: 
         integrand,
         field_args,
     )
+
+    _register_integrand_field_wrappers(integrand_func, fields)
 
     FieldStruct = _gen_field_struct(field_args)
     ValueStruct = _gen_value_struct(value_args)
@@ -1391,7 +1441,7 @@ def interpolate(
     Interpolates a function and assigns the result to a discrete field.
 
     Args:
-        integrand: Function to be interpolated, must have `wp.integrand` decorator
+        integrand: Function to be interpolated, must have :func:`integrand` decorator
         dest: Discrete field, or restriction of a discrete field to a domain, to which the interpolation result will be assigned
         fields: Discrete fields to be passed to the integrand. Keys in the dictionary must match integrand parameters names.
         values: Additional variable values to be passed to the integrand, can by of any type accepted by warp kernel launchs. Keys in the dictionary must match integrand parameter names.

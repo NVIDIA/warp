@@ -5,6 +5,7 @@ from warp.fem.polynomial import Polynomial, quadrature_1d
 
 
 class Element:
+
     @staticmethod
     def instantiate_quadrature(order: int, family: Polynomial) -> Tuple[List[Coords], List[float]]:
         """Returns a quadrature of a given order for a prototypical element"""
@@ -25,6 +26,7 @@ def _point_count_from_order(order: int, family: Polynomial):
 
 
 class Cube(Element):
+
     @staticmethod
     def instantiate_quadrature(order: int, family: Polynomial):
         if family is None:
@@ -40,6 +42,7 @@ class Cube(Element):
 
 
 class Square(Element):
+
     @staticmethod
     def instantiate_quadrature(order: int, family: Polynomial):
         if family is None:
@@ -55,6 +58,7 @@ class Square(Element):
 
 
 class LinearEdge(Element):
+
     @staticmethod
     def instantiate_quadrature(order: int, family: Polynomial):
         if family is None:
@@ -68,6 +72,7 @@ class LinearEdge(Element):
 
 
 class Triangle(Element):
+
     @staticmethod
     def instantiate_quadrature(order: int, family: Polynomial):
         if family is not None:
@@ -406,6 +411,7 @@ class Triangle(Element):
 
 
 class Tetrahedron(Element):
+
     @staticmethod
     def instantiate_quadrature(order: int, family: Polynomial):
         if family is not None:
@@ -435,7 +441,6 @@ class Tetrahedron(Element):
         # https://doi.org/10.1016/j.cam.2012.03.032
 
         # TODO: add Witherden and Vincent 2015,
-
 
         if order <= 1:
             weights = [1.0]

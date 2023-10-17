@@ -11,7 +11,7 @@ import numpy as np
 from warp.fem import Sample, Field, Domain
 from warp.fem import Grid2D, Trimesh2D
 from warp.fem import make_test, make_trial
-from warp.fem import make_polynomial_space, SymmetricTensorMapper
+from warp.fem import make_polynomial_space, SymmetricTensorMapper, ElementBasis
 from warp.fem import Cells, BoundarySides
 from warp.fem import integrate
 from warp.fem import normal, integrand, D
@@ -94,6 +94,9 @@ if __name__ == "__main__":
     parser.add_argument("--young_modulus", type=float, default=1.0)
     parser.add_argument("--poisson_ratio", type=float, default=0.5)
     parser.add_argument("--tri_mesh", action="store_true", help="Use a triangular mesh")
+    parser.add_argument(
+        "--nonconforming_stresses", action="store_true", help="For grid, use non-conforming stresses (Q_d/P_d)"
+    )
     args = parser.parse_args()
 
     if args.tri_mesh:
@@ -117,11 +120,12 @@ if __name__ == "__main__":
 
     domain = Cells(geometry=geo)
 
-    # Function spaces -- Q_k for displacement, Q_{k-1}d for stress
-    u_space = make_polynomial_space(geo, degree=args.degree, dtype=wp.vec2)
+    # Function spaces -- S_k for displacement, Q_{k-1}d for stress
+    u_space = make_polynomial_space(geo, degree=args.degree, dtype=wp.vec2, element_basis=ElementBasis.SERENDIPITY)
     # Store stress degrees of freedom as symmetric tensors (3 dof) rather than full 2x2 matrices
+    tau_basis = ElementBasis.NONCONFORMING_POLYNOMIAL if args.nonconforming_stresses else ElementBasis.LAGRANGE
     tau_space = make_polynomial_space(
-        geo, degree=args.degree - 1, discontinuous=True, dof_mapper=SymmetricTensorMapper(wp.mat22)
+        geo, degree=args.degree - 1, discontinuous=True, element_basis=tau_basis, dof_mapper=SymmetricTensorMapper(wp.mat22)
     )
 
     # Displacement boundary conditions
