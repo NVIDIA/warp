@@ -1,6 +1,8 @@
-from typing import Callable, Optional, Union, Tuple
+from typing import Callable, Optional, Union, Tuple, Dict, Any
+from copy import copy
 import bisect
 import re
+
 
 import warp as wp
 
@@ -9,13 +11,16 @@ _kernel_cache = dict()
 _struct_cache = dict()
 _func_cache = dict()
 
-
 _key_re = re.compile("[^0-9a-zA-Z_]+")
 
 
-def get_func(func, suffix=""):
-    key = f"{func.__qualname__}_{suffix}"
-    key = _key_re.sub("", key)
+def _make_key(obj, suffix: str, use_qualified_name):
+    base_name = obj.__qualname__ if use_qualified_name else obj.__name__
+    return _key_re.sub("", f"{base_name}_{suffix}")
+
+
+def get_func(func, suffix: str, use_qualified_name: bool = False):
+    key = _make_key(func, suffix, use_qualified_name)
 
     if key not in _func_cache:
         _func_cache[key] = wp.Function(
@@ -30,27 +35,50 @@ def get_func(func, suffix=""):
     return _func_cache[key]
 
 
-def get_kernel(func, suffix=""):
-    key = _key_re.sub("", f"{func.__name__}_{suffix}")
+def dynamic_func(suffix: str, use_qualified_name=False):
+    def wrap_func(func: Callable):
+        return get_func(func, suffix=suffix, use_qualified_name=use_qualified_name)
+
+    return wrap_func
+
+
+def get_kernel(func, suffix: str, use_qualified_name: bool = False):
+    key = _make_key(func, suffix, use_qualified_name)
 
     if key not in _kernel_cache:
-        module = wp.get_module(func.__module__)
+        module = wp.get_module(f"{func.__module__}.dynamic.{key}")
         _kernel_cache[key] = wp.Kernel(func=func, key=key, module=module)
     return _kernel_cache[key]
 
 
-def get_struct(Fields):
-    key = _key_re.sub("", Fields.__qualname__)
+def dynamic_kernel(suffix: str, use_qualified_name=False):
+    def wrap_kernel(func: Callable):
+        return get_kernel(func, suffix=suffix, use_qualified_name=use_qualified_name)
+
+    return wrap_kernel
+
+
+def get_struct(struct: type, suffix: str, use_qualified_name: bool = False):
+    key = _make_key(struct, suffix, use_qualified_name)
+    # used in codegen
+    struct.__qualname__ = key
 
     if key not in _struct_cache:
-        module = wp.get_module(Fields.__module__)
+        module = wp.get_module(struct.__module__)
         _struct_cache[key] = wp.codegen.Struct(
-            cls=Fields,
+            cls=struct,
             key=key,
             module=module,
         )
 
     return _struct_cache[key]
+
+
+def dynamic_struct(suffix: str, use_qualified_name=False):
+    def wrap_struct(struct: type):
+        return get_struct(struct, suffix=suffix, use_qualified_name=use_qualified_name)
+
+    return wrap_struct
 
 
 def get_integrand_function(
@@ -78,6 +106,7 @@ def get_integrand_kernel(
     integrand: "warp.fem.operator.Integrand",
     suffix: str,
     kernel_fn: Optional[Callable] = None,
+    kernel_options: Dict[str, Any] = {},
     code_transformers=[],
 ):
     key = _key_re.sub("", f"{integrand.name}_{suffix}")
@@ -87,7 +116,9 @@ def get_integrand_kernel(
             return None
 
         module = wp.get_module(f"{integrand.module.name}.{integrand.name}")
-        module.options = integrand.module.options
+        module.options = copy(integrand.module.options)
+        module.options.update(kernel_options)
+
         _kernel_cache[key] = wp.Kernel(func=kernel_fn, key=key, module=module, code_transformers=code_transformers)
     return _kernel_cache[key]
 
@@ -212,7 +243,7 @@ class TemporaryStore:
             self._pool = []  # Currently available arrays for borrowing, ordered by size
             self._allocs = {}  # All allocated arrays, including borrowed ones
 
-        def borrow(self, shape, dtype):
+        def borrow(self, shape, dtype, requires_grad: bool):
             size = 1
             if isinstance(shape, int):
                 shape = (shape,)
@@ -228,13 +259,18 @@ class TemporaryStore:
                 # Big enough array found, remove from pool
                 array = self._pool[index][1]
                 self._pool.pop(index)
+                if requires_grad and array.grad is None:
+                    array.requires_grad = True
                 return Temporary(pool=self, array=array, shape=shape, dtype=dtype)
 
             # No big enough array found, allocate new one
             if len(self._pool) > 0:
                 grow_factor = 1.5
                 size = max(int(self._pool[-1][0] * grow_factor), size)
-            array = wp.empty(shape=(size,), dtype=self.dtype, pinned=self.pinned, device=self.device)
+
+            array = wp.empty(
+                shape=(size,), dtype=self.dtype, pinned=self.pinned, device=self.device, requires_grad=requires_grad
+            )
             self._allocs[array.ptr] = array
             return Temporary(pool=self, array=array, shape=shape, dtype=dtype)
 
@@ -250,7 +286,7 @@ class TemporaryStore:
     def clear(self):
         self._temporaries = {}
 
-    def borrow(self, shape, dtype, pinned=False, device=None) -> Temporary:
+    def borrow(self, shape, dtype, pinned: bool = False, device=None, requires_grad: bool = False) -> Temporary:
         dtype = wp.types.type_to_warp(dtype)
         device = wp.get_device(device)
 
@@ -267,7 +303,7 @@ class TemporaryStore:
             pool = TemporaryStore.Pool(value_type, device, pinned=pinned)
             self._temporaries[key] = pool
 
-        return pool.borrow(dtype=dtype, shape=shape)
+        return pool.borrow(dtype=dtype, shape=shape, requires_grad=requires_grad)
 
 
 def set_default_temporary_store(temporary_store: Optional[TemporaryStore]):
@@ -284,6 +320,7 @@ def borrow_temporary(
     shape: Union[int, Tuple[int]],
     dtype: type,
     pinned: bool = False,
+    requires_grad: bool = False,
     device=None,
 ) -> Temporary:
     """
@@ -304,9 +341,11 @@ def borrow_temporary(
         temporary_store = TemporaryStore._default_store
 
     if temporary_store is None:
-        return Temporary(array=wp.empty(shape=shape, dtype=dtype, pinned=pinned, device=device))
+        return Temporary(
+            array=wp.empty(shape=shape, dtype=dtype, pinned=pinned, device=device, requires_grad=requires_grad)
+        )
 
-    return temporary_store.borrow(shape=shape, dtype=dtype, device=device, pinned=pinned)
+    return temporary_store.borrow(shape=shape, dtype=dtype, device=device, pinned=pinned, requires_grad=requires_grad)
 
 
 def borrow_temporary_like(
@@ -323,5 +362,10 @@ def borrow_temporary_like(
     if isinstance(array, Temporary):
         array = array.array
     return borrow_temporary(
-        temporary_store=temporary_store, shape=array.shape, dtype=array.dtype, pinned=array.pinned, device=array.device
+        temporary_store=temporary_store,
+        shape=array.shape,
+        dtype=array.dtype,
+        pinned=array.pinned,
+        device=array.device,
+        requires_grad=array.requires_grad,
     )

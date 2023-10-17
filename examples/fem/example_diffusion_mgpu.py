@@ -124,17 +124,17 @@ if __name__ == "__main__":
             domain = Cells(geometry=geo_partition)
 
             # Right-hand-side
-            test = make_test(space_partition=space_partition, domain=domain)
+            test = make_test(space=scalar_space, space_partition=space_partition, domain=domain)
             rhs = integrate(linear_form, fields={"v": test})
 
             # Weakly-imposed boundary conditions on all sides
             boundary = BoundarySides(geometry=geo_partition)
-            bd_test = make_test(space_partition=space_partition, domain=boundary)
-            bd_trial = make_trial(space_partition=space_partition, domain=boundary)
+            bd_test = make_test(space=scalar_space, space_partition=space_partition, domain=boundary)
+            bd_trial = make_trial(space=scalar_space, space_partition=space_partition, domain=boundary)
             bd_matrix = integrate(mass_form, fields={"u": bd_trial, "v": bd_test})
 
             # Diffusion form
-            trial = make_trial(space_partition=space_partition, domain=domain)
+            trial = make_trial(space=scalar_space, space_partition=space_partition, domain=domain)
             matrix = integrate(diffusion_form, fields={"u": trial, "v": test}, values={"nu": 1.0})
 
             bsr_axpy(y=matrix, x=bd_matrix, alpha=bd_weight)

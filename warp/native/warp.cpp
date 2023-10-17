@@ -945,6 +945,7 @@ void array_fill_device(void* context, void* arr, int arr_type, const void* value
 
 WP_API int cuda_driver_version() { return 0; }
 WP_API int cuda_toolkit_version() { return 0; }
+WP_API bool cuda_driver_is_initialized() { return false; }
 
 WP_API int nvrtc_supported_arch_count() { return 0; }
 WP_API void nvrtc_supported_archs(int* archs) {}

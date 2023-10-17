@@ -1605,13 +1605,13 @@ class ContextGuard:
     def __enter__(self):
         if self.device.is_cuda:
             runtime.core.cuda_context_push_current(self.device.context)
-        elif is_cuda_available():
+        elif is_cuda_driver_initialized():
             self.saved_context = runtime.core.cuda_context_get_current()
 
     def __exit__(self, exc_type, exc_value, traceback):
         if self.device.is_cuda:
             runtime.core.cuda_context_pop_current()
-        elif is_cuda_available():
+        elif is_cuda_driver_initialized():
             runtime.core.cuda_context_set_current(self.saved_context)
 
 
@@ -2262,6 +2262,8 @@ class Runtime:
         self.core.cuda_driver_version.restype = ctypes.c_int
         self.core.cuda_toolkit_version.argtypes = None
         self.core.cuda_toolkit_version.restype = ctypes.c_int
+        self.core.cuda_driver_is_initialized.argtypes = None
+        self.core.cuda_driver_is_initialized.restype = ctypes.c_bool
 
         self.core.nvrtc_supported_arch_count.argtypes = None
         self.core.nvrtc_supported_arch_count.restype = ctypes.c_int
@@ -2613,6 +2615,21 @@ def is_cuda_available():
 
 def is_device_available(device):
     return device in get_devices()
+
+
+def is_cuda_driver_initialized() -> bool:
+    """Returns ``True`` if the CUDA driver is initialized.
+
+    This is a stricter test than ``is_cuda_available()`` since a CUDA driver
+    call to ``cuCtxGetCurrent`` is made, and the result is compared to
+    `CUDA_SUCCESS`. Note that `CUDA_SUCCESS` is returned by ``cuCtxGetCurrent``
+    even if there is no context bound to the calling CPU thread.
+
+    This can be helpful in cases in which ``cuInit()`` was called before a fork.
+    """
+    assert_initialized()
+
+    return runtime.core.cuda_driver_is_initialized()
 
 
 def get_devices() -> List[Device]:
@@ -3451,7 +3468,7 @@ def synchronize():
     or memory copies have completed.
     """
 
-    if is_cuda_available():
+    if is_cuda_driver_initialized():
         # save the original context to avoid side effects
         saved_context = runtime.core.cuda_context_get_current()
 
@@ -3509,7 +3526,7 @@ def force_load(device: Union[Device, str, List[Device], List[str]] = None, modul
         modules: List of modules to load.  If None, load all imported modules.
     """
 
-    if is_cuda_available():
+    if is_cuda_driver_initialized():
         # save original context to avoid side effects
         saved_context = runtime.core.cuda_context_get_current()
 

@@ -16,20 +16,20 @@ over various domains and using arbitrary interpolation basis.
 
 The main mechanism is the :py:func:`.integrand` decorator, for instance: ::
 
-      @integrand
-      def linear_form(
-         s: Sample,
-         v: Field,
-      ):
-         return v(s)
+    @integrand
+    def linear_form(
+        s: Sample,
+        v: Field,
+    ):
+        return v(s)
 
 
-      @integrand
-      def diffusion_form(s: Sample, u: Field, v: Field, nu: float):
-         return nu * wp.dot(
+    @integrand
+    def diffusion_form(s: Sample, u: Field, v: Field, nu: float):
+        return nu * wp.dot(
             grad(u, s),
             grad(v, s),
-         )
+        )
 
 Integrands are normal warp kernels, meaning any usual warp function can be used. 
 However, they accept a few special parameters:
@@ -63,7 +63,7 @@ Basic workflow
 The typical steps for solving a linear PDE are as follow:
 
  - Define a :class:`.Geometry` (grid, mesh, etc). At the moment, 2D and 3D regular grids, triangle and tetrahedron meshes are supported.
- - Define one or more :class:`.FunctionSpace`, by equipping the geometry elements with shape functions. See :func:`.make_polynomial_space`. At the moment, Lagrange polynomial shape functions up to order 3 are supported.
+ - Define one or more :class:`.FunctionSpace`, by equipping the geometry elements with shape functions. See :func:`.make_polynomial_space`. At the moment, continuous/discontinuous Lagrange (:math:`P_{k[d]}, Q_{k[d]}`) and Serendipity (:math:`S_k`) shape functions of order :math:`k \leq 3` are supported.
  - Define an integration :class:`.GeometryDomain`, for instance the geometry's cells (:class:`.Cells`) or boundary sides (:class:`.BoundarySides`).
  - Integrate linear forms to build the system's right-hand-side. Define a test function over the function space using :func:`.make_test`,
    a :class:`.Quadrature` formula (or let the module choose one based on the function space degree), and call :func:`.integrate` with the linear form integrand.
@@ -77,39 +77,39 @@ The typical steps for solving a linear PDE are as follow:
 
 The following excerpt from the introductory example ``examples/fem/example_diffusion.py`` outlines this procedure: ::
 
-      # Grid geometry
-      geo = Grid2D(n=50, cell_size=2)
+    # Grid geometry
+    geo = Grid2D(n=50, cell_size=2)
 
-      # Domain and function spaces
-      domain = Cells(geometry=geo)
-      scalar_space = make_polynomial_space(geo, degree=3)
+    # Domain and function spaces
+    domain = Cells(geometry=geo)
+    scalar_space = make_polynomial_space(geo, degree=3)
 
-      # Right-hand-side (forcing term)
-      test = make_test(space=scalar_space, domain=domain)
-      rhs = integrate(linear_form, fields={"v": test})
+    # Right-hand-side (forcing term)
+    test = make_test(space=scalar_space, domain=domain)
+    rhs = integrate(linear_form, fields={"v": test})
 
-      # Weakly-imposed boundary conditions on Y sides
-      boundary = BoundarySides(geo)
-      bd_test = make_test(space=scalar_space, domain=boundary)
-      bd_trial = make_trial(space=scalar_space, domain=boundary)
-      bd_matrix = integrate(y_mass_form, fields={"u": bd_trial, "v": bd_test})
+    # Weakly-imposed boundary conditions on Y sides
+    boundary = BoundarySides(geo)
+    bd_test = make_test(space=scalar_space, domain=boundary)
+    bd_trial = make_trial(space=scalar_space, domain=boundary)
+    bd_matrix = integrate(y_mass_form, fields={"u": bd_trial, "v": bd_test})
 
-      # Diffusion form
-      trial = make_trial(space=scalar_space, domain=domain)
-      matrix = integrate(diffusion_form, fields={"u": trial, "v": test}, values={"nu": viscosity})
+    # Diffusion form
+    trial = make_trial(space=scalar_space, domain=domain)
+    matrix = integrate(diffusion_form, fields={"u": trial, "v": test}, values={"nu": viscosity})
 
-      # Assemble linear system (add diffusion and boundary condition matrices)
-      bsr_axpy(x=bd_matrix, y=matrix, alpha=boundary_strength, beta=1)
+    # Assemble linear system (add diffusion and boundary condition matrices)
+    bsr_axpy(x=bd_matrix, y=matrix, alpha=boundary_strength, beta=1)
 
-      # Solve linear system using Conjugate Gradient
-      x = wp.zeros_like(rhs)
-      bsr_cg(matrix, b=rhs, x=x)
+    # Solve linear system using Conjugate Gradient
+    x = wp.zeros_like(rhs)
+    bsr_cg(matrix, b=rhs, x=x)
 
 
 .. note::
-   The :func:`.integrate` function does not check that the passed integrands are actually linear or bilinear forms; it is up to the user to ensure that they are.
-   To solve non-linear PDEs, one can use an iterative procedure and pass the current value of the studied function :class:`.DiscreteField` argument to the integrand, on which
-   arbitrary operations are permitted. However, the result of the form must remain linear in the test and trial fields.
+    The :func:`.integrate` function does not check that the passed integrands are actually linear or bilinear forms; it is up to the user to ensure that they are.
+    To solve non-linear PDEs, one can use an iterative procedure and pass the current value of the studied function :class:`.DiscreteField` argument to the integrand, on which
+    arbitrary operations are permitted. However, the result of the form must remain linear in the test and trial fields.
 
 Introductory examples
 ---------------------
@@ -121,9 +121,9 @@ Introductory examples
  - ``example_convection_diffusion.py``: 2D convection-diffusion using semi-Lagrangian advection
      * ``example_diffusion_dg0.py``: 2D convection-diffusion using finite-volume and upwind transport
      * ``example_diffusion_dg.py``: 2D convection-diffusion using Discontinuous Galerkin with upwind transport and Symmetric Interior Penalty
- - ``example_stokes.py``: 2D incompressible Stokes flow using mixed :math:`P_k/P_{k-1}` elements
+ - ``example_stokes.py``: 2D incompressible Stokes flow using mixed :math:`P_k/P_{k-1}` or :math:`Q_k/P_{(k-1)d}` elements
  - ``example_navier_stokes.py``: 2D Navier-Stokes flow using mixed :math:`P_k/P_{k-1}` elements
- - ``example_mixed_elasticity.py``: 2D linear elasticity using mixed continuous/discontinuous :math:`P_k/P_{(k-1)d}` elements
+ - ``example_mixed_elasticity.py``: 2D linear elasticity using mixed continuous/discontinuous :math:`S_k/P_{(k-1)d}` elements
 
 
 Advanced usages
@@ -206,68 +206,64 @@ Integration
 Geometry
 --------
 
-.. autoclass:: Geometry
-   :members:
-
 .. autoclass:: Grid2D
+   :show-inheritance:
 
 .. autoclass:: Trimesh2D
+   :show-inheritance:
 
 .. autoclass:: Grid3D
+   :show-inheritance:
 
 .. autoclass:: Tetmesh
-
-.. autoclass:: GeometryPartition
-   :members:
+   :show-inheritance:
 
 .. autoclass:: LinearGeometryPartition
 
 .. autoclass:: ExplicitGeometryPartition
 
-.. autoclass:: GeometryDomain
-   :members:
-
 .. autoclass:: Cells
+   :show-inheritance:
 
 .. autoclass:: Sides
+   :show-inheritance:
 
 .. autoclass:: BoundarySides
+   :show-inheritance:
 
 .. autoclass:: FrontierSides
+   :show-inheritance:
 
-.. autoclass:: Quadrature
+.. autoclass:: Polynomial
    :members:
 
 .. autoclass:: RegularQuadrature
+   :show-inheritance:
 
 .. autoclass:: PicQuadrature
+   :show-inheritance:
 
 Function Spaces
 ---------------
 
 .. autofunction:: make_polynomial_space
 
+.. autofunction:: make_polynomial_basis_space
+
+.. autofunction:: make_collocated_function_space
+
 .. autofunction:: make_space_partition
 
 .. autofunction:: make_space_restriction
 
-.. autoclass:: FunctionSpace
-   :members:
-
-.. autoclass:: SpacePartition
-   :members:
-
-.. autoclass:: SpaceRestriction
-   :members:
-
-.. autoclass:: DofMapper
+.. autoclass:: ElementBasis
    :members:
 
 .. autoclass:: SymmetricTensorMapper
-   :members:
+   :show-inheritance:
 
 .. autoclass:: SkewSymmetricTensorMapper
-   :members:
+   :show-inheritance:
 
 Fields
 ------
@@ -277,15 +273,6 @@ Fields
 .. autofunction:: make_trial
 
 .. autofunction:: make_restriction
-
-.. autoclass:: DiscreteField
-   :members:
-
-.. autoclass:: warp.fem.field.FieldRestriction
-
-.. autoclass:: warp.fem.field.TestField
-
-.. autoclass:: warp.fem.field.TrialField
 
 Boundary Conditions
 -------------------
@@ -303,8 +290,62 @@ Memory management
 
 .. autofunction:: borrow_temporary_like
 
+
+Interfaces
+----------
+
+Interface classes are not meant to be constructed directly, but can be derived from extend the built-in functionality.
+
+.. autoclass:: Geometry
+   :members: cell_count, side_count, boundary_side_count
+
+.. autoclass:: GeometryPartition
+   :members: cell_count, side_count, boundary_side_count, frontier_side_count
+
+.. autoclass:: GeometryDomain
+   :members: ElementKind, element_kind, dimension, element_count
+
+.. autoclass:: Quadrature
+   :members: domain, total_point_count
+
+.. autoclass:: FunctionSpace
+   :members: dtype, topology, geometry, dimension, degree, trace, make_field
+
+.. autoclass:: SpaceTopology
+   :members: dimension, geometry, node_count, element_node_indices, trace
+
+.. autoclass:: BasisSpace
+   :members: topology, geometry, shape, node_positions
+
+.. autoclass:: warp.fem.space.shape.ShapeFunction
+
+.. autoclass:: SpacePartition
+   :members: node_count, owned_node_count, interior_node_count, space_node_indices
+
+.. autoclass:: SpaceRestriction
+   :members: node_count
+
+.. autoclass:: DofMapper
+
+.. autoclass:: FieldLike
+
+.. autoclass:: DiscreteField
+   :show-inheritance:
+   :members: dof_values, trace
+
+.. autoclass:: warp.fem.field.FieldRestriction
+
+.. autoclass:: warp.fem.field.SpaceField
+   :show-inheritance:
+
+.. autoclass:: warp.fem.field.TestField
+   :show-inheritance:
+
+.. autoclass:: warp.fem.field.TrialField
+   :show-inheritance:
+
 .. autoclass:: TemporaryStore
-   :members:
+   :members: clear
 
 .. autoclass:: warp.fem.cache.Temporary
-   :members:
+   :members: array, detach, release

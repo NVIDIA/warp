@@ -72,7 +72,7 @@ ensure that the ``usd-core`` package is installed using:
 
 ::
 
-   pip install usd-core
+    pip install usd-core
 
 USD files can be viewed or rendered inside NVIDIA
 `Omniverse <https://developer.nvidia.com/omniverse>`__,
@@ -83,7 +83,7 @@ Built-in unit tests can be run from the command-line as follows:
 
 ::
 
-   python -m warp.tests
+    python -m warp.tests
 
 Omniverse
 ---------
@@ -132,14 +132,14 @@ If you use Warp in your research please use the following citation:
 
 .. code:: bibtex
 
-   @misc{warp2022,
-      title= {Warp: A High-performance Python Framework for GPU Simulation and Graphics},
-      author = {Miles Macklin},
-      month = {March},
-      year = {2022},
-      note= {NVIDIA GPU Technology Conference (GTC)},
-      howpublished = {\url{https://github.com/nvidia/warp}}
-   }
+    @misc{warp2022,
+        title= {Warp: A High-performance Python Framework for GPU Simulation and Graphics},
+        author = {Miles Macklin},
+        month = {March},
+        year = {2022},
+        note= {NVIDIA GPU Technology Conference (GTC)},
+        howpublished = {\url{https://github.com/nvidia/warp}}
+    }
 
 License
 -------
@@ -154,44 +154,44 @@ User's Guide
 ------------
 
 .. toctree::
-   :maxdepth: 2
-   :caption: User's Guide
+    :maxdepth: 2
+    :caption: User's Guide
 
-   installation
-   basics
-   modules/devices
-   modules/profiling
-   modules/interoperability
-   configuration
-   debugging
-   faq
+    installation
+    basics
+    modules/devices
+    modules/profiling
+    modules/interoperability
+    configuration
+    debugging
+    faq
 
 API Reference
 -------------
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Core Reference
+    :maxdepth: 2
+    :caption: Core Reference
    
-   modules/runtime
-   modules/functions
+    modules/runtime
+    modules/functions
    
 Simulation Reference
 --------------------
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Simulation Reference
+    :maxdepth: 2
+    :caption: Simulation Reference
    
-   modules/sim
-   modules/sparse
-   modules/fem
+    modules/sim
+    modules/sparse
+    modules/fem
 
 .. toctree::
-   :hidden:
-   :caption: Project Links
+    :hidden:
+    :caption: Project Links
 
-   GitHub <https://github.com/NVIDIA/warp>
-   PyPI <https://pypi.org/project/warp-lang>
-   Discord <https://discord.com/channels/827959428476174346/953756751977648148>
+    GitHub <https://github.com/NVIDIA/warp>
+    PyPI <https://pypi.org/project/warp-lang>
+    Discord <https://discord.com/channels/827959428476174346/953756751977648148>
    

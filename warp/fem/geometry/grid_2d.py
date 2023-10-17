@@ -1,6 +1,6 @@
 import warp as wp
 
-from warp.fem.types import ElementIndex, Coords, Sample, NULL_QP_INDEX, NULL_DOF_INDEX
+from warp.fem.types import ElementIndex, Coords, Sample, make_free_sample, OUTSIDE
 from warp.fem.cache import cached_arg_value
 
 from .geometry import Geometry
@@ -16,6 +16,8 @@ class Grid2DCellArg:
 
 class Grid2D(Geometry):
     """Two-dimensional regular grid geometry"""
+        
+    dimension = 2
 
     Permutation = wp.types.matrix(shape=(2, 2), dtype=int)
     ROTATION = wp.constant(Permutation(0, 1, 1, 0))
@@ -29,7 +31,6 @@ class Grid2D(Geometry):
             bounds_up: Position of the upper bound of the axis-aligned grid
         """
 
-        self.dimension = 2
         self.bounds_lo = bounds_lo
         self.bounds_hi = bounds_hi
 
@@ -194,7 +195,7 @@ class Grid2D(Geometry):
         coords = Coords(x - x_cell, y - y_cell, 0.0)
         cell_index = Grid2D.cell_index(args.res, Grid2D.Cell(int(x_cell), int(y_cell)))
 
-        return Sample(cell_index, coords, NULL_QP_INDEX, 0.0, NULL_DOF_INDEX, NULL_DOF_INDEX)
+        return make_free_sample(cell_index, coords)
 
     @wp.func
     def cell_lookup(args: CellArg, pos: wp.vec2, guess: Sample):
@@ -215,6 +216,10 @@ class Grid2D(Geometry):
     @wp.func
     def cell_normal(args: CellArg, s: Sample):
         return wp.vec2(0.0)
+
+    @wp.func
+    def cell_transform_reference_gradient(args: CellArg, cell_index: ElementIndex, coords: Coords, ref_grad: wp.vec2):
+        return wp.cw_div(ref_grad, args.cell_size)
 
     @cached_arg_value
     def side_arg_value(self, device) -> SideArg:
@@ -319,3 +324,48 @@ class Grid2D(Geometry):
 
         cell = Grid2D._rotate(side.axis, outer_origin)
         return Grid2D.cell_index(arg.cell_arg.res, cell)
+
+    @wp.func
+    def side_inner_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        side = Grid2D.get_side(args, side_index)
+
+        if side.origin[0] == 0:
+            inner_alt = 0.0
+        else:
+            inner_alt = 1.0
+
+        coords = Grid2D._rotate(side.axis, wp.vec2(inner_alt, side_coords[0]))
+        return Coords(coords[0], coords[1], 0.0)
+
+    @wp.func
+    def side_outer_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        side = Grid2D.get_side(args, side_index)
+
+        alt_axis = Grid2D.ROTATION[side.axis, 0]
+        if side.origin[0] == args.cell_arg.res[alt_axis]:
+            outer_alt = 1.0
+        else:
+            outer_alt = 0.0
+
+        coords = Grid2D._rotate(side.axis, wp.vec2(outer_alt, side_coords[0]))
+        return Coords(coords[0], coords[1], 0.0)
+
+    @wp.func
+    def side_from_cell_coords(
+        args: SideArg,
+        side_index: ElementIndex,
+        element_index: ElementIndex,
+        element_coords: Coords,
+    ):
+        side = Grid2D.get_side(args, side_index)
+        cell = Grid2D.get_cell(args.cell_arg.res, element_index)
+
+        if float(side.origin[0] - cell[side.axis]) == element_coords[side.axis]:
+            long_axis = Grid2D.ROTATION[side.axis, 1]
+            return Coords(element_coords[long_axis], 0.0, 0.0)
+
+        return Coords(OUTSIDE)
+
+    @wp.func
+    def side_to_cell_arg(side_arg: SideArg):
+        return side_arg.cell_arg

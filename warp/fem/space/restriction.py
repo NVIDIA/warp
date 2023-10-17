@@ -12,24 +12,25 @@ wp.set_module_options({"enable_backward": False})
 
 
 class SpaceRestriction:
-    """Restriction of a space to a given GeometryDomain"""
+    """Restriction of a space partition to a given GeometryDomain"""
 
     def __init__(
         self,
-        space: FunctionSpace,
-        domain: GeometryDomain,
         space_partition: SpacePartition,
+        domain: GeometryDomain,
         device=None,
         temporary_store: TemporaryStore = None,
     ):
-        if domain.dimension() == space.DIMENSION - 1:
-            space = space.trace()
+        space_topology = space_partition.space_topology
 
-        if domain.dimension() != space.DIMENSION:
+        if domain.dimension == space_topology.dimension - 1:
+            space_topology = space_topology.trace()
+
+        if domain.dimension != space_topology.dimension:
             raise ValueError("Incompatible space and domain dimensions")
 
-        self.space = space
         self.space_partition = space_partition
+        self.space_topology = space_topology
         self.domain = domain
 
         self._compute_node_element_indices(device=device, temporary_store=temporary_store)
@@ -37,25 +38,22 @@ class SpaceRestriction:
     def _compute_node_element_indices(self, device, temporary_store: TemporaryStore):
         from warp.fem import cache
 
-        NODES_PER_ELEMENT = self.space.NODES_PER_ELEMENT
+        NODES_PER_ELEMENT = self.space_topology.NODES_PER_ELEMENT
 
-        def fill_element_node_indices_fn(
+        @cache.dynamic_kernel(suffix=f"{self.domain.name}_{self.space_topology.name}_{self.space_partition.name}")
+        def fill_element_node_indices(
+            element_arg: self.domain.ElementArg,
             domain_index_arg: self.domain.ElementIndexArg,
-            space_arg: self.space.SpaceArg,
+            topo_arg: self.space_topology.TopologyArg,
             partition_arg: self.space_partition.PartitionArg,
             element_node_indices: wp.array2d(dtype=int),
         ):
             domain_element_index = wp.tid()
             element_index = self.domain.element_index(domain_index_arg, domain_element_index)
             for n in range(NODES_PER_ELEMENT):
-                space_nidx = self.space.element_node_index(space_arg, element_index, n)
+                space_nidx = self.space_topology.element_node_index(element_arg, topo_arg, element_index, n)
                 partition_nidx = self.space_partition.partition_node_index(partition_arg, space_nidx)
                 element_node_indices[domain_element_index, n] = partition_nidx
-
-        fill_element_node_indices = cache.get_kernel(
-            fill_element_node_indices_fn,
-            suffix=f"{self.domain.name}_{self.space.name}_{self.space_partition.name}",
-        )
 
         element_node_indices = borrow_temporary(
             temporary_store,
@@ -67,8 +65,9 @@ class SpaceRestriction:
             dim=element_node_indices.array.shape[0],
             kernel=fill_element_node_indices,
             inputs=[
+                self.domain.element_arg_value(device),
                 self.domain.element_index_arg_value(device),
-                self.space.space_arg_value(device),
+                self.space_topology.topo_arg_value(device),
                 self.space_partition.partition_arg_value(device),
                 element_node_indices.array,
             ],
@@ -92,7 +91,12 @@ class SpaceRestriction:
         wp.launch(
             kernel=SpaceRestriction._split_vertex_element_index,
             dim=flattened_node_indices.shape,
-            inputs=[NODES_PER_ELEMENT, node_array_indices.array, self._dof_element_indices.array, self._dof_indices_in_element.array],
+            inputs=[
+                NODES_PER_ELEMENT,
+                node_array_indices.array,
+                self._dof_element_indices.array,
+                self._dof_indices_in_element.array,
+            ],
             device=flattened_node_indices.device,
         )
 

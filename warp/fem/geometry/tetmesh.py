@@ -1,8 +1,8 @@
 from typing import Optional
 import warp as wp
 
-from warp.fem.types import ElementIndex, Coords, Sample
-from warp.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, NULL_DOF_INDEX, NULL_QP_INDEX
+from warp.fem.types import ElementIndex, Coords, Sample, make_free_sample
+from warp.fem.types import NULL_ELEMENT_INDEX, OUTSIDE
 from warp.fem.cache import cached_arg_value, TemporaryStore, borrow_temporary, borrow_temporary_like
 
 from .geometry import Geometry
@@ -11,19 +11,29 @@ from .closest_point import project_on_tet_at_origin
 
 
 @wp.struct
-class TetmeshArg:
+class TetmeshCellArg:
     tet_vertex_indices: wp.array2d(dtype=int)
     positions: wp.array(dtype=wp.vec3)
 
+    # for neighbor cell lookup
     vertex_tet_offsets: wp.array(dtype=int)
     vertex_tet_indices: wp.array(dtype=int)
 
+    # for transforming reference gradient
+    reference_transforms: wp.array(dtype=wp.mat33f)
+
+
+@wp.struct
+class TetmeshSideArg:
+    cell_arg: TetmeshCellArg
     face_vertex_indices: wp.array(dtype=wp.vec3i)
     face_tet_indices: wp.array(dtype=wp.vec2i)
 
 
 class Tetmesh(Geometry):
     """Tetrahedral mesh geometry"""
+
+    dimension = 3
 
     def __init__(
         self, tet_vertex_indices: wp.array, positions: wp.array, temporary_store: Optional[TemporaryStore] = None
@@ -36,7 +46,6 @@ class Tetmesh(Geometry):
             positions: warp array of shape (num_vertices, 3) containing 3d position for each vertex
             temporary_store: shared pool from which to allocate temporary arrays
         """
-        self.dimension = 3
 
         self.tet_vertex_indices = tet_vertex_indices
         self.positions = positions
@@ -47,8 +56,10 @@ class Tetmesh(Geometry):
         self._vertex_tet_indices: wp.array = None
         self._tet_edge_indices: wp.array = None
         self._edge_count = 0
-
         self._build_topology(temporary_store)
+
+        self._reference_transforms: wp.array = None
+        self._compute_reference_transforms()
 
     def cell_count(self):
         return self.tet_vertex_indices.shape[0]
@@ -60,19 +71,35 @@ class Tetmesh(Geometry):
         return self._face_vertex_indices.shape[0]
 
     def edge_count(self):
+        if self._tet_edge_indices is None:
+            self._compute_tet_edges()
         return self._edge_count
 
     def boundary_side_count(self):
         return self._boundary_face_indices.shape[0]
 
-    def reference_cell(self) -> Triangle:
+    def reference_cell(self) -> Tetrahedron:
         return Tetrahedron()
 
     def reference_side(self) -> Triangle:
         return Triangle()
 
-    CellArg = TetmeshArg
-    SideArg = TetmeshArg
+    @property
+    def tet_edge_indices(self) -> wp.array:
+        if self._tet_edge_indices is None:
+            self._compute_tet_edges()
+        return self._tet_edge_indices
+
+    @property
+    def face_tet_indices(self) -> wp.array:
+        return self._face_tet_indices
+
+    @property
+    def face_vertex_indices(self) -> wp.array:
+        return self._face_vertex_indices
+
+    CellArg = TetmeshCellArg
+    SideArg = TetmeshSideArg
 
     @wp.struct
     class SideIndexArg:
@@ -86,10 +113,9 @@ class Tetmesh(Geometry):
 
         args.tet_vertex_indices = self.tet_vertex_indices.to(device)
         args.positions = self.positions.to(device)
-        args.face_vertex_indices = self._face_vertex_indices.to(device)
-        args.face_tet_indices = self._face_tet_indices.to(device)
         args.vertex_tet_offsets = self._vertex_tet_offsets.to(device)
         args.vertex_tet_indices = self._vertex_tet_indices.to(device)
+        args.reference_transforms = self._reference_transforms.to(device)
 
         return args
 
@@ -135,7 +161,7 @@ class Tetmesh(Geometry):
                     closest_tet = tet
                     closest_coords = coords
 
-        return Sample(closest_tet, closest_coords, NULL_QP_INDEX, 0.0, NULL_DOF_INDEX, NULL_DOF_INDEX)
+        return make_free_sample(closest_tet, closest_coords)
 
     @wp.func
     def cell_measure(args: CellArg, cell_index: ElementIndex, coords: Coords):
@@ -166,8 +192,14 @@ class Tetmesh(Geometry):
     def cell_normal(args: CellArg, s: Sample):
         return wp.vec3(0.0)
 
-    def side_arg_value(self, device) -> SideArg:
-        return self.cell_arg_value(device)
+    @wp.func
+    def cell_transform_reference_gradient(
+        cell_arg: TetmeshCellArg,
+        element_index: ElementIndex,
+        coords: Coords,
+        grad: wp.vec3,
+    ):
+        return cell_arg.reference_transforms[element_index] * grad
 
     @cached_arg_value
     def side_index_arg_value(self, device) -> SideIndexArg:
@@ -183,21 +215,31 @@ class Tetmesh(Geometry):
 
         return args.boundary_face_indices[boundary_side_index]
 
+    @cached_arg_value
+    def side_arg_value(self, device) -> CellArg:
+        args = self.SideArg()
+
+        args.cell_arg = self.cell_arg_value(device)
+        args.face_vertex_indices = self._face_vertex_indices.to(device)
+        args.face_tet_indices = self._face_tet_indices.to(device)
+
+        return args
+
     @wp.func
     def side_position(args: SideArg, s: Sample):
         face_idx = args.face_vertex_indices[s.element_index]
         return (
-            s.element_coords[0] * args.positions[face_idx[0]]
-            + s.element_coords[1] * args.positions[face_idx[1]]
-            + s.element_coords[2] * args.positions[face_idx[2]]
+            s.element_coords[0] * args.cell_arg.positions[face_idx[0]]
+            + s.element_coords[1] * args.cell_arg.positions[face_idx[1]]
+            + s.element_coords[2] * args.cell_arg.positions[face_idx[2]]
         )
 
     @wp.func
     def side_measure(args: SideArg, side_index: ElementIndex, coords: Coords):
         face_idx = args.face_vertex_indices[side_index]
-        v0 = args.positions[face_idx[0]]
-        v1 = args.positions[face_idx[1]]
-        v2 = args.positions[face_idx[2]]
+        v0 = args.cell_arg.positions[face_idx[0]]
+        v1 = args.cell_arg.positions[face_idx[1]]
+        v2 = args.cell_arg.positions[face_idx[2]]
 
         return 0.5 * wp.length(wp.cross(v1 - v0, v2 - v0))
 
@@ -210,26 +252,34 @@ class Tetmesh(Geometry):
         inner = Tetmesh.side_inner_cell_index(args, s.element_index)
         outer = Tetmesh.side_outer_cell_index(args, s.element_index)
         return Tetmesh.side_measure(args, s) / wp.min(
-            Tetmesh.cell_measure(args, inner, Coords()),
-            Tetmesh.cell_measure(args, outer, Coords()),
+            Tetmesh.cell_measure(args.cell_arg, inner, Coords()),
+            Tetmesh.cell_measure(args.cell_arg, outer, Coords()),
         )
 
     @wp.func
     def side_normal(args: SideArg, s: Sample):
         face_idx = args.face_vertex_indices[s.element_index]
-        v0 = args.positions[face_idx[0]]
-        v1 = args.positions[face_idx[1]]
-        v2 = args.positions[face_idx[2]]
+        v0 = args.cell_arg.positions[face_idx[0]]
+        v1 = args.cell_arg.positions[face_idx[1]]
+        v2 = args.cell_arg.positions[face_idx[2]]
 
         return wp.normalize(wp.cross(v1 - v0, v2 - v0))
+
+    @wp.func
+    def side_inner_cell_index(arg: SideArg, side_index: ElementIndex):
+        return arg.face_tet_indices[side_index][0]
+
+    @wp.func
+    def side_outer_cell_index(arg: SideArg, side_index: ElementIndex):
+        return arg.face_tet_indices[side_index][1]
 
     @wp.func
     def face_to_tet_coords(args: SideArg, side_index: ElementIndex, tet_index: ElementIndex, side_coords: Coords):
         fvi = args.face_vertex_indices[side_index]
 
-        tv1 = args.tet_vertex_indices[tet_index, 1]
-        tv2 = args.tet_vertex_indices[tet_index, 2]
-        tv3 = args.tet_vertex_indices[tet_index, 3]
+        tv1 = args.cell_arg.tet_vertex_indices[tet_index, 1]
+        tv2 = args.cell_arg.tet_vertex_indices[tet_index, 2]
+        tv3 = args.cell_arg.tet_vertex_indices[tet_index, 3]
 
         c1 = float(0.0)
         c2 = float(0.0)
@@ -246,12 +296,22 @@ class Tetmesh(Geometry):
         return Coords(c1, c2, c3)
 
     @wp.func
-    def tet_to_face_coords(args: SideArg, side_index: ElementIndex, tet_index: ElementIndex, tet_coords: Coords):
+    def side_inner_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        inner_cell_index = Tetmesh.side_inner_cell_index(args, side_index)
+        return Tetmesh.face_to_tet_coords(args, side_index, inner_cell_index, side_coords)
+
+    @wp.func
+    def side_outer_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        outer_cell_index = Tetmesh.side_outer_cell_index(args, side_index)
+        return Tetmesh.face_to_tet_coords(args, side_index, outer_cell_index, side_coords)
+
+    @wp.func
+    def side_from_cell_coords(args: SideArg, side_index: ElementIndex, tet_index: ElementIndex, tet_coords: Coords):
         fvi = args.face_vertex_indices[side_index]
 
-        tv1 = args.tet_vertex_indices[tet_index, 1]
-        tv2 = args.tet_vertex_indices[tet_index, 2]
-        tv3 = args.tet_vertex_indices[tet_index, 3]
+        tv1 = args.cell_arg.tet_vertex_indices[tet_index, 1]
+        tv2 = args.cell_arg.tet_vertex_indices[tet_index, 2]
+        tv3 = args.cell_arg.tet_vertex_indices[tet_index, 3]
 
         if tv1 == fvi[0]:
             c0 = tet_coords[0]
@@ -283,12 +343,8 @@ class Tetmesh(Geometry):
         return wp.select(c0 + c1 + c2 > 0.999, Coords(OUTSIDE), Coords(c0, c1, c2))
 
     @wp.func
-    def side_inner_cell_index(arg: SideArg, side_index: ElementIndex):
-        return arg.face_tet_indices[side_index][0]
-
-    @wp.func
-    def side_outer_cell_index(arg: SideArg, side_index: ElementIndex):
-        return arg.face_tet_indices[side_index][1]
+    def side_to_cell_arg(side_arg: SideArg):
+        return side_arg.cell_arg
 
     def _build_topology(self, temporary_store: TemporaryStore):
         from warp.fem.utils import compress_node_indices, masked_indices
@@ -392,25 +448,16 @@ class Tetmesh(Geometry):
         boundary_face_indices, _ = masked_indices(boundary_mask.array)
         self._boundary_face_indices = boundary_face_indices.detach()
 
-        # Finally, build list of edge indices for each tet
-        # This is not strictly necessary for implementing the Geometry interface, but required for equipping the
-        # tet mesh with most function spaces, so we might as well do it now
-        self._compute_tet_edges(temporary_store)
-
-    def _compute_tet_edges(self, temporary_store: TemporaryStore):
+    def _compute_tet_edges(self, temporary_store: Optional[TemporaryStore] = None):
         from warp.utils import array_scan
 
         device = self.tet_vertex_indices.device
 
-        vertex_start_edge_count = borrow_temporary(
-            temporary_store, dtype=int, device=device, shape=self.vertex_count()
-        )
+        vertex_start_edge_count = borrow_temporary(temporary_store, dtype=int, device=device, shape=self.vertex_count())
         vertex_start_edge_count.array.zero_()
         vertex_start_edge_offsets = borrow_temporary_like(vertex_start_edge_count, temporary_store=temporary_store)
 
-        vertex_edge_ends = borrow_temporary(
-            temporary_store, dtype=int, device=device, shape=(6 * self.cell_count())
-        )
+        vertex_edge_ends = borrow_temporary(temporary_store, dtype=int, device=device, shape=(6 * self.cell_count()))
 
         # Count face edges starting at each vertex
         wp.launch(
@@ -484,13 +531,25 @@ class Tetmesh(Geometry):
         vertex_unique_edge_count.release()
         vertex_edge_ends.release()
 
+    def _compute_reference_transforms(self):
+        self._reference_transforms = wp.empty(dtype=wp.mat33f, device=self.positions.device, shape=(self.cell_count()))
+
+        wp.launch(
+            kernel=Tetmesh._compute_reference_transforms_kernel,
+            dim=self._reference_transforms.shape,
+            device=self._reference_transforms.device,
+            inputs=[self.tet_vertex_indices, self.positions, self._reference_transforms],
+        )
+
     @wp.kernel
     def _count_starting_faces_kernel(
         tet_vertex_indices: wp.array2d(dtype=int), vertex_start_face_count: wp.array(dtype=int)
     ):
         t = wp.tid()
         for k in range(4):
-            vi = wp.vec3i(tet_vertex_indices[t, k], tet_vertex_indices[t, (k + 1) % 4], tet_vertex_indices[t, (k + 2) % 4])
+            vi = wp.vec3i(
+                tet_vertex_indices[t, k], tet_vertex_indices[t, (k + 1) % 4], tet_vertex_indices[t, (k + 2) % 4]
+            )
             vm = wp.min(vi)
 
             for i in range(3):
@@ -752,3 +811,23 @@ class Tetmesh(Geometry):
                         + unique_beg
                     )
                     tet_edge_indices[t][k + 3] = edge_id
+
+    @wp.kernel
+    def _compute_reference_transforms_kernel(
+        tet_vertex_indices: wp.array2d(dtype=int),
+        positions: wp.array(dtype=wp.vec3f),
+        transforms: wp.array(dtype=wp.mat33f),
+    ):
+        t = wp.tid()
+
+        p0 = positions[tet_vertex_indices[t, 0]]
+        p1 = positions[tet_vertex_indices[t, 1]]
+        p2 = positions[tet_vertex_indices[t, 2]]
+        p3 = positions[tet_vertex_indices[t, 3]]
+
+        e1 = p1 - p0
+        e2 = p2 - p0
+        e3 = p3 - p0
+
+        mat = wp.mat33(e1, e2, e3)
+        transforms[t] = wp.transpose(wp.inverse(mat))

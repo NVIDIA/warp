@@ -13,8 +13,13 @@ wp.set_module_options({"enable_backward": False})
 
 
 class GeometryPartition:
-
     """Base class for geometry partitions, i.e. subset of cells and sides"""
+
+    class CellArg:
+        pass
+
+    class SideArg:
+        pass
 
     def __init__(self, geometry: Geometry):
         self.geometry = geometry
@@ -41,6 +46,37 @@ class GeometryPartition:
 
     def __str__(self) -> str:
         return self.name
+
+    def cell_arg_value(self, device):
+        raise NotImplementedError()
+
+    def side_arg_value(self, device):
+        raise NotImplementedError()
+
+    @staticmethod
+    def cell_index(args: CellArg, partition_cell_index: int):
+        """Index in the geometry of a partition cell"""
+        raise NotImplementedError()
+
+    @staticmethod
+    def partition_cell_index(args: CellArg, cell_index: int):
+        """Index of a geometry cell in the partition (or ``NULL_ELEMENT_INDEX``)"""
+        raise NotImplementedError()
+
+    @staticmethod
+    def side_index(args: SideArg, partition_side_index: int):
+        """Partition side to side index"""
+        raise NotImplementedError()
+
+    @staticmethod
+    def boundary_side_index(args: SideArg, boundary_side_index: int):
+        """Boundary side to side index"""
+        raise NotImplementedError()
+
+    @staticmethod
+    def frontier_side_index(args: SideArg, frontier_side_index: int):
+        """Frontier side to side index"""
+        raise NotImplementedError()
 
 
 class WholeGeometryPartition(GeometryPartition):
@@ -144,9 +180,12 @@ class CellBasedGeometryPartition(GeometryPartition):
     ):
         from warp.fem import cache
 
-        def count_side_fn(
+        cell_arg_type = next(iter(cell_inclusion_test_func.input_types.values()))
+
+        @cache.dynamic_kernel(suffix=f"{self.geometry.name}_{cell_inclusion_test_func.key}")
+        def count_sides(
             geo_arg: self.geometry.SideArg,
-            cell_arg_value: Any,
+            cell_arg_value: cell_arg_type,
             partition_side_mask: wp.array(dtype=int),
             boundary_side_mask: wp.array(dtype=int),
             frontier_side_mask: wp.array(dtype=int),
@@ -169,11 +208,6 @@ class CellBasedGeometryPartition(GeometryPartition):
             if inner_in != outer_in:
                 # Exactly one neighbor in partition; count as frontier side
                 frontier_side_mask[side_index] = 1
-
-        count_sides = cache.get_kernel(
-            count_side_fn,
-            suffix=f"{self.geometry.name}_{cell_inclusion_test_func.key}",
-        )
 
         partition_side_mask = borrow_temporary(
             temporary_store,

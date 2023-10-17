@@ -12,7 +12,7 @@ from warp.sparse import bsr_axpy
 
 from warp.fem import Sample, Field, Domain
 from warp.fem import Grid2D, Trimesh2D
-from warp.fem import make_polynomial_space
+from warp.fem import make_polynomial_space, ElementBasis
 from warp.fem import make_test, make_trial
 from warp.fem import Cells, BoundarySides
 from warp.fem import integrate
@@ -26,7 +26,6 @@ from bsr_utils import bsr_cg
 from mesh_utils import gen_trimesh
 
 import matplotlib.pyplot as plt
-
 
 @integrand
 def linear_form(
@@ -68,12 +67,14 @@ def y_boundary_projector_form(
 
 
 if __name__ == "__main__":
+
     wp.init()
     wp.set_module_options({"enable_backward": False})
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--resolution", type=int, default=50)
     parser.add_argument("--degree", type=int, default=2)
+    parser.add_argument("--serendipity", action="store_true", default=False)
     parser.add_argument("--viscosity", type=float, default=2.0)
     parser.add_argument("--boundary_value", type=float, default=5.0)
     parser.add_argument("--boundary_compliance", type=float, default=0, help="Dirichlet boundary condition compliance")
@@ -89,11 +90,13 @@ if __name__ == "__main__":
 
     # Domain and function spaces
     domain = Cells(geometry=geo)
-    scalar_space = make_polynomial_space(geo, degree=args.degree)
+    element_basis = ElementBasis.SERENDIPITY if args.serendipity else None
+    scalar_space = make_polynomial_space(geo, degree=args.degree, element_basis=element_basis)
 
     # Right-hand-side (forcing term)
     test = make_test(space=scalar_space, domain=domain)
     rhs = integrate(linear_form, fields={"v": test})
+
 
     # Diffusion form
     trial = make_trial(space=scalar_space, domain=domain)

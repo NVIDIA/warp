@@ -2,7 +2,7 @@ from typing import Any
 
 import warp as wp
 
-from warp.fem import domain
+from warp.fem import domain, cache
 from warp.fem.types import ElementIndex, Coords
 
 from ..polynomial import Polynomial
@@ -32,14 +32,17 @@ class Quadrature:
         """Total number of quadrature points over the domain"""
         pass
 
+    @staticmethod
     def point_count(arg: Any, element_index: ElementIndex):
         """Number of quadrature points for a given element"""
         pass
 
+    @staticmethod
     def point_coords(arg: Any, element_index: ElementIndex, qp_index: int):
         """Coordinates in element of the qp_index'th quadrature point"""
         pass
 
+    @staticmethod
     def point_weight(arg: Any, element_index: ElementIndex, qp_index: int):
         """Weight of the qp_index'th quadrature point"""
         pass
@@ -72,8 +75,8 @@ class RegularQuadrature(Quadrature):
         POINTS = wp.constant(CoordMat(self.points))
         WEIGHTS = wp.constant(WeightVec(self.weights))
 
-        self.point_count = self._make_point_count(N)
-        self.point_index = self._make_point_index(N)
+        self.point_count = self._make_point_count(N, self.name)
+        self.point_index = self._make_point_index(N, self.name)
         self.point_coords = self._make_point_coords(POINTS, self.name)
         self.point_weight = self._make_point_weight(WEIGHTS, self.name)
 
@@ -106,37 +109,33 @@ class RegularQuadrature(Quadrature):
         return arg
 
     @staticmethod
-    def _make_point_count(N):
+    def _make_point_count(N, name):
+        @cache.dynamic_func(suffix=name)
         def point_count(arg: RegularQuadrature.Arg, element_index: ElementIndex):
             return N
 
-        from warp.fem.cache import get_func
-
-        return get_func(point_count, str(N))
+        return point_count
 
     @staticmethod
     def _make_point_coords(POINTS, name):
+        @cache.dynamic_func(suffix=name)
         def point_coords(arg: RegularQuadrature.Arg, element_index: ElementIndex, index: int):
             return Coords(POINTS[index, 0], POINTS[index, 1], POINTS[index, 2])
 
-        from warp.fem.cache import get_func
-
-        return get_func(point_coords, name)
+        return point_coords
 
     @staticmethod
     def _make_point_weight(WEIGHTS, name):
+        @cache.dynamic_func(suffix=name)
         def point_weight(arg: RegularQuadrature.Arg, element_index: ElementIndex, index: int):
             return WEIGHTS[index]
 
-        from warp.fem.cache import get_func
-
-        return get_func(point_weight, name)
+        return point_weight
 
     @staticmethod
-    def _make_point_index(N):
+    def _make_point_index(N, name):
+        @cache.dynamic_func(suffix=name)
         def point_index(arg: RegularQuadrature.Arg, element_index: ElementIndex, index: int):
             return N * element_index + index
-
-        from warp.fem.cache import get_func
-
-        return get_func(point_index, str(N))
+    
+        return point_index

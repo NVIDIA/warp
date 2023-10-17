@@ -431,6 +431,170 @@ def test_constructors(test, device, dtype, register_kernels=False):
             tape.zero()
 
 
+def test_anon_constructor_error_shape_keyword_missing(test, device):
+    @wp.kernel
+    def kernel():
+        wp.matrix(1.0, 2.0, 3.0)
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"shape keyword must be specified when calling matrix\(\) function$",
+    ):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[],
+            device=device,
+        )
+
+
+def test_anon_constructor_error_dtype_keyword_missing(test, device):
+    @wp.kernel
+    def kernel():
+        wp.matrix(shape=(3, 3))
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"matrix\(\) must have dtype as a keyword argument if it has no "
+        r"positional arguments$",
+    ):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[],
+            device=device,
+        )
+
+
+def test_anon_constructor_error_shape_mismatch(test, device):
+    @wp.kernel
+    def kernel():
+        wp.matrix(
+            wp.matrix(shape=(1, 2), dtype=float),
+            shape=(3, 4),
+            dtype=float,
+        )
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Incompatible matrix sizes for casting copy constructor, "
+        r"\(3, 4\) vs \(1, 2\)$",
+    ):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[],
+            device=device,
+        )
+
+
+def test_anon_constructor_error_invalid_arg_count(test, device):
+    @wp.kernel
+    def kernel():
+        wp.matrix(1.0, 2.0, 3.0, shape=(2, 2), dtype=float)
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Wrong number of arguments for matrix\(\) function, must initialize "
+        r"with either a scalar value, or m\*n values$",
+    ):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[],
+            device=device,
+        )
+
+
+def test_tpl_constructor_error_incompatible_sizes(test, device):
+    @wp.kernel
+    def kernel():
+        wp.mat33(wp.mat22(1.0, 2.0, 3.0, 4.0))
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Incompatible matrix sizes for casting copy constructor, "
+        r"\(3, 3\) vs \(2, 2\)$",
+    ):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[],
+            device=device,
+        )
+
+
+def test_tpl_constructor_error_invalid_scalar_type(test, device):
+    @wp.kernel
+    def kernel():
+        wp.mat22(1, 2, 3, 4)
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Wrong scalar type for mat 2,2,<class 'warp.types.float32'> constructor$",
+    ):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[],
+            device=device,
+        )
+
+
+def test_tpl_constructor_error_invalid_vector_count(test, device):
+    @wp.kernel
+    def kernel():
+        wp.mat22(wp.vec3(1.0, 2.0, 3.0))
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Wrong number of vectors when attempting to construct a matrix "
+        r"with column vectors$",
+    ):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[],
+            device=device,
+        )
+
+
+def test_tpl_constructor_error_invalid_vector_shape(test, device):
+    @wp.kernel
+    def kernel():
+        wp.mat22(wp.vec3(1.0, 2.0, 3.0), wp.vec3(4.0, 5.0, 6.0))
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Wrong vector row count when attempting to construct a matrix "
+        r"with column vectors$",
+    ):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[],
+            device=device,
+        )
+
+
+def test_tpl_constructor_error_invalid_arg_count(test, device):
+    @wp.kernel
+    def kernel():
+        wp.mat22(1.0, 2.0, 3.0)
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Wrong number of scalars when attempting to construct a matrix "
+        r"from a list of components$",
+    ):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[],
+            device=device,
+        )
+
+
 def test_quat_constructor(test, device, dtype, register_kernels=False):
     np.random.seed(123)
 
@@ -4097,6 +4261,61 @@ def register(parent):
         add_function_test_register_kernel(
             TestMat, f"test_subtraction_{dtype.__name__}", test_subtraction, devices=devices, dtype=dtype
         )
+
+    add_function_test(
+        TestMat,
+        "test_anon_constructor_error_shape_keyword_missing",
+        test_anon_constructor_error_shape_keyword_missing,
+        devices=devices,
+    )
+    add_function_test(
+        TestMat,
+        "test_anon_constructor_error_dtype_keyword_missing",
+        test_anon_constructor_error_dtype_keyword_missing,
+        devices=devices,
+    )
+    add_function_test(
+        TestMat,
+        "test_anon_constructor_error_shape_mismatch",
+        test_anon_constructor_error_shape_mismatch,
+        devices=devices,
+    )
+    add_function_test(
+        TestMat,
+        "test_anon_constructor_error_invalid_arg_count",
+        test_anon_constructor_error_invalid_arg_count,
+        devices=devices,
+    )
+    add_function_test(
+        TestMat,
+        "test_tpl_constructor_error_incompatible_sizes",
+        test_tpl_constructor_error_incompatible_sizes,
+        devices=devices,
+    )
+    add_function_test(
+        TestMat,
+        "test_tpl_constructor_error_invalid_scalar_type",
+        test_tpl_constructor_error_invalid_scalar_type,
+        devices=devices,
+    )
+    add_function_test(
+        TestMat,
+        "test_tpl_constructor_error_invalid_vector_count",
+        test_tpl_constructor_error_invalid_vector_count,
+        devices=devices,
+    )
+    add_function_test(
+        TestMat,
+        "test_tpl_constructor_error_invalid_vector_shape",
+        test_tpl_constructor_error_invalid_vector_shape,
+        devices=devices,
+    )
+    add_function_test(
+        TestMat,
+        "test_tpl_constructor_error_invalid_arg_count",
+        test_tpl_constructor_error_invalid_arg_count,
+        devices=devices,
+    )
 
     for dtype in np_scalar_types:
         add_function_test(TestMat, f"test_arrays_{dtype.__name__}", test_arrays, devices=devices, dtype=dtype)

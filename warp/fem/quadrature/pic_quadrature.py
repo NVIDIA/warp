@@ -110,7 +110,8 @@ class PicQuadrature(Quadrature):
     def _bin_particles(self, temporary_store: TemporaryStore):
         from warp.fem import cache
 
-        def bin_particles_fn(
+        @cache.dynamic_kernel(suffix=f"{self.domain.name}")
+        def bin_particles(
             cell_arg_value: self.domain.ElementArg,
             positions: wp.array(dtype=self.positions.dtype),
             measures: wp.array(dtype=float),
@@ -125,11 +126,6 @@ class PicQuadrature(Quadrature):
 
             cell_coords[p] = sample.element_coords
             cell_fraction[p] = measures[p] / self.domain.element_measure(cell_arg_value, sample)
-
-        bin_particles = cache.get_kernel(
-            bin_particles_fn,
-            suffix=f"{self.domain.name}",
-        )
 
         device = self.positions.device
 
