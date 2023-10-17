@@ -16,20 +16,20 @@ over various domains and using arbitrary interpolation basis.
 
 The main mechanism is the :py:func:`.integrand` decorator, for instance: ::
 
-      @integrand
-      def linear_form(
-         s: Sample,
-         v: Field,
-      ):
-         return v(s)
+    @integrand
+    def linear_form(
+        s: Sample,
+        v: Field,
+    ):
+        return v(s)
 
 
-      @integrand
-      def diffusion_form(s: Sample, u: Field, v: Field, nu: float):
-         return nu * wp.dot(
+    @integrand
+    def diffusion_form(s: Sample, u: Field, v: Field, nu: float):
+        return nu * wp.dot(
             grad(u, s),
             grad(v, s),
-         )
+        )
 
 Integrands are normal warp kernels, meaning any usual warp function can be used. 
 However, they accept a few special parameters:
@@ -77,39 +77,39 @@ The typical steps for solving a linear PDE are as follow:
 
 The following excerpt from the introductory example ``examples/fem/example_diffusion.py`` outlines this procedure: ::
 
-      # Grid geometry
-      geo = Grid2D(n=50, cell_size=2)
+    # Grid geometry
+    geo = Grid2D(n=50, cell_size=2)
 
-      # Domain and function spaces
-      domain = Cells(geometry=geo)
-      scalar_space = make_polynomial_space(geo, degree=3)
+    # Domain and function spaces
+    domain = Cells(geometry=geo)
+    scalar_space = make_polynomial_space(geo, degree=3)
 
-      # Right-hand-side (forcing term)
-      test = make_test(space=scalar_space, domain=domain)
-      rhs = integrate(linear_form, fields={"v": test})
+    # Right-hand-side (forcing term)
+    test = make_test(space=scalar_space, domain=domain)
+    rhs = integrate(linear_form, fields={"v": test})
 
-      # Weakly-imposed boundary conditions on Y sides
-      boundary = BoundarySides(geo)
-      bd_test = make_test(space=scalar_space, domain=boundary)
-      bd_trial = make_trial(space=scalar_space, domain=boundary)
-      bd_matrix = integrate(y_mass_form, fields={"u": bd_trial, "v": bd_test})
+    # Weakly-imposed boundary conditions on Y sides
+    boundary = BoundarySides(geo)
+    bd_test = make_test(space=scalar_space, domain=boundary)
+    bd_trial = make_trial(space=scalar_space, domain=boundary)
+    bd_matrix = integrate(y_mass_form, fields={"u": bd_trial, "v": bd_test})
 
-      # Diffusion form
-      trial = make_trial(space=scalar_space, domain=domain)
-      matrix = integrate(diffusion_form, fields={"u": trial, "v": test}, values={"nu": viscosity})
+    # Diffusion form
+    trial = make_trial(space=scalar_space, domain=domain)
+    matrix = integrate(diffusion_form, fields={"u": trial, "v": test}, values={"nu": viscosity})
 
-      # Assemble linear system (add diffusion and boundary condition matrices)
-      bsr_axpy(x=bd_matrix, y=matrix, alpha=boundary_strength, beta=1)
+    # Assemble linear system (add diffusion and boundary condition matrices)
+    bsr_axpy(x=bd_matrix, y=matrix, alpha=boundary_strength, beta=1)
 
-      # Solve linear system using Conjugate Gradient
-      x = wp.zeros_like(rhs)
-      bsr_cg(matrix, b=rhs, x=x)
+    # Solve linear system using Conjugate Gradient
+    x = wp.zeros_like(rhs)
+    bsr_cg(matrix, b=rhs, x=x)
 
 
 .. note::
-   The :func:`.integrate` function does not check that the passed integrands are actually linear or bilinear forms; it is up to the user to ensure that they are.
-   To solve non-linear PDEs, one can use an iterative procedure and pass the current value of the studied function :class:`.DiscreteField` argument to the integrand, on which
-   arbitrary operations are permitted. However, the result of the form must remain linear in the test and trial fields.
+    The :func:`.integrate` function does not check that the passed integrands are actually linear or bilinear forms; it is up to the user to ensure that they are.
+    To solve non-linear PDEs, one can use an iterative procedure and pass the current value of the studied function :class:`.DiscreteField` argument to the integrand, on which
+    arbitrary operations are permitted. However, the result of the form must remain linear in the test and trial fields.
 
 Introductory examples
 ---------------------

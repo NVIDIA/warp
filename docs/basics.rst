@@ -118,9 +118,9 @@ User Functions
 
 Users can write their own functions using the ``@wp.func`` decorator, for example::
 
-   @wp.func
-   def square(x: float):
-      return x*x
+    @wp.func
+    def square(x: float):
+        return x*x
 
 User functions can be called freely from within kernels inside the same module and accept arrays as inputs. 
 

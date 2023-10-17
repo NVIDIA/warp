@@ -13,10 +13,10 @@ the ``cpu`` device this will return a zero-copy view onto the underlying Warp al
 Warp CPU arrays also implement  the ``__array_interface__`` protocol and so can be used to construct NumPy arrays
 directly::
 
-   w = wp.array([1.0, 2.0, 3.0], dtype=float, device="cpu")
-   a = np.array(w)
-   print(a)   
-   > [1. 2. 3.]
+    w = wp.array([1.0, 2.0, 3.0], dtype=float, device="cpu")
+    a = np.array(w)
+    print(a)   
+    > [1. 2. 3.]
 
 .. _pytorch-interop:
 
@@ -25,15 +25,15 @@ PyTorch
 
 Warp provides helper functions to convert arrays to/from PyTorch. Please see the ``warp.torch`` module for more details. Example usage is shown below::
 
-   import warp.torch
+    import warp.torch
 
-   w = wp.array([1.0, 2.0, 3.0], dtype=float, device="cpu")
+    w = wp.array([1.0, 2.0, 3.0], dtype=float, device="cpu")
 
-   # convert to Torch tensor
-   t = warp.to_torch(w)
+    # convert to Torch tensor
+    t = warp.to_torch(w)
 
-   # convert from Torch tensor
-   w = warp.from_torch(t)
+    # convert from Torch tensor
+    w = warp.from_torch(t)
 
 These helper functions allow the conversion of Warp arrays to/from PyTorch tensors without copying the underlying data.
 At the same time, if available, gradient arrays and tensors are converted to/from PyTorch autograd tensors, allowing the use of Warp arrays
