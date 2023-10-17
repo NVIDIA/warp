@@ -2975,7 +2975,7 @@ def matmul(
         1,
     )
     if not ret:
-        raise RuntimeError("Matmul failed.")
+        raise RuntimeError("matmul failed.")
 
 
 def adj_matmul(
@@ -3177,7 +3177,7 @@ def batched_matmul(
 
     if runtime.tape:
         runtime.tape.record_func(
-            backward=lambda: adj_matmul(
+            backward=lambda: adj_batched_matmul(
                 a, b, c, a.grad, b.grad, c.grad, d.grad, alpha, beta, allow_tf32x3_arith, device
             ),
             arrays=[a, b, c, d],
@@ -3315,7 +3315,7 @@ def adj_batched_matmul(
         batch_count,
     )
     if not ret:
-        raise RuntimeError("adj_matmul failed.")
+        raise RuntimeError("adj_batched_matmul failed.")
 
     # adj_b
     ret = runtime.core.cutlass_gemm(
@@ -3336,7 +3336,7 @@ def adj_batched_matmul(
         batch_count,
     )
     if not ret:
-        raise RuntimeError("adj_matmul failed.")
+        raise RuntimeError("adj_batched_matmul failed.")
 
     # adj_c
     ret = runtime.core.cutlass_gemm(
@@ -3357,7 +3357,7 @@ def adj_batched_matmul(
         batch_count,
     )
     if not ret:
-        raise RuntimeError("adj_matmul failed.")
+        raise RuntimeError("adj_batched_matmul failed.")
 
 
 class HashGrid:
