@@ -7,16 +7,16 @@ Printing Values
 Often one of the best debugging methods is to simply print values from kernels. Warp supports printing all built-in
 types using the ``print()`` function, e.g.::
 
-   v = wp.vec3(1.0, 2.0, 3.0)
+    v = wp.vec3(1.0, 2.0, 3.0)
 
-   print(v)   
+    print(v)   
 
 In addition, formatted C-style printing is available through the ``wp.printf()`` function, e.g.::
 
-   x = 1.0
-   i = 2
+    x = 1.0
+    i = 2
 
-   wp.printf("A float value %f, an int value: %d", x, i)
+    wp.printf("A float value %f, an int value: %d", x, i)
 
 .. note:: Formatted printing is only available for scalar types (e.g.: ``int`` and ``float``) not vector types.
 
@@ -26,7 +26,7 @@ Printing Launches
 For complex applications it can be difficult to understand the order-of-operations that lead to a bug. To help diagnose
 these issues Warp supports a simple option to print out all launches and arguments to the console::
 
-   wp.config.print_launches = True
+    wp.config.print_launches = True
 
 
 Step-Through Debugging
@@ -35,7 +35,7 @@ Step-Through Debugging
 It is possible to attach IDE debuggers such as Visual Studio to Warp processes to step through generated kernel code.
 Users should first compile the kernels in debug mode by setting::
    
-   wp.config.mode = "debug"
+    wp.config.mode = "debug"
 
 This setting ensures that line numbers, and debug symbols are generated correctly. After launching the Python process,
 the debugger should be attached, and a breakpoint inserted into the generated code.
@@ -50,13 +50,13 @@ is printed at startup when ``wp.init()`` is called, for example:
 
 .. code-block:: console
 
-   Warp 0.8.1 initialized:
-      CUDA Toolkit: 11.8, Driver: 11.8
-      Devices:
-      "cpu"    | AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD
-      "cuda:0" | NVIDIA GeForce RTX 3090 (sm_86)
-      "cuda:1" | NVIDIA GeForce RTX 2080 Ti (sm_75)
-      Kernel cache: C:\Users\LukasW\AppData\Local\NVIDIA Corporation\warp\Cache\0.8.1
+    Warp 0.8.1 initialized:
+        CUDA Toolkit: 11.8, Driver: 11.8
+        Devices:
+        "cpu"    | AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD
+        "cuda:0" | NVIDIA GeForce RTX 3090 (sm_86)
+        "cuda:1" | NVIDIA GeForce RTX 2080 Ti (sm_75)
+        Kernel cache: C:\Users\LukasW\AppData\Local\NVIDIA Corporation\warp\Cache\0.8.1
 
 The kernel cache has ``gen`` and ``bin`` folders that contain the generated C++/CUDA code and the compiled binaries
 respectively. Occasionally it can be useful to inspect the generated code for debugging / profiling.
@@ -76,7 +76,7 @@ may silently fail which can lead to hard to diagnose issues.
 
 If a CUDA error is suspected a simple verification method is to enable::
 
-   wp.config.verify_cuda = True
+    wp.config.verify_cuda = True
 
 This setting will check the CUDA context after every operation to ensure that it is still valid. If an error is
 encountered it will raise an exception that often helps to narrow down the problematic kernel.

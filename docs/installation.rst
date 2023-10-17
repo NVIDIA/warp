@@ -51,7 +51,7 @@ After cloning the repository, users should run:
 
 .. code-block:: console
 
-   $ python build_lib.py
+    $ python build_lib.py
 
 This will generate the ``warp.dll`` / ``warp.so`` core library
 respectively. When building manually users should ensure that their
@@ -62,7 +62,7 @@ Warp package should be installed using:
 
 .. code-block:: console
 
-   $ pip install -e .
+    $ pip install -e .
 
 Which ensures that subsequent modifications to the library will be
 reflected in the Python package.
@@ -72,6 +72,6 @@ enabled “Developer Mode” in Windows settings and symlinks in Git:
 
 .. code-block:: console
 
-   $ git config --global core.symlinks true
+    $ git config --global core.symlinks true
 
 This will ensure symlinks inside ``exts/omni.warp`` work upon cloning.

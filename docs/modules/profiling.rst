@@ -5,14 +5,14 @@ Profiling
 
 .. code-block:: python
 
-   with wp.ScopedTimer("grid build"):
-      self.grid.build(self.x, self.point_radius)
+    with wp.ScopedTimer("grid build"):
+        self.grid.build(self.x, self.point_radius)
 
 This results in a printout at runtime to the standard output stream like:
 
 .. code-block:: console
 
-   grid build took 0.06 ms
+    grid build took 0.06 ms
 
 The ``wp.ScopedTimer`` object does not synchronize (e.g. by calling ``wp.synchronize()``)
 upon exiting the ``with`` statement, so this can lead to misleading numbers if the body
@@ -23,15 +23,15 @@ to ``nvtx.start_range()`` and ``nvtx.end_range()``:
 
 .. code-block:: python
 
-   with wp.ScopedTimer("grid build", use_nvtx=True, color="cyan"):
-      self.grid.build(self.x, self.point_radius)
+    with wp.ScopedTimer("grid build", use_nvtx=True, color="cyan"):
+        self.grid.build(self.x, self.point_radius)
 
 These range annotations can then be collected by a tool like `NVIDIA Nsight Systems <https://developer.nvidia.com/nsight-systems>`_
 for visualization on a timeline, e.g.:
 
 .. code-block:: console
    
-   $ nsys profile python warp_application.py
+    $ nsys profile python warp_application.py
 
 This code snippet also demonstrates the use of the ``color`` argument to specify a color
 for the range, which may be a number representing the ARGB value or a recognized string
@@ -43,10 +43,10 @@ An equivalent way to create an NVTX range without using ``wp.ScopedTimer`` is:
 
 .. code-block:: python
 
-   import nvtx
+    import nvtx
 
-   with nvtx.annotate("grid build", color="cyan"):
-      self.grid.build(self.x, self.point_radius)
+    with nvtx.annotate("grid build", color="cyan"):
+        self.grid.build(self.x, self.point_radius)
 
 This form may be more convenient if the user does not need to frequently switch
 between timer and NVTX capabilities of ``wp.ScopedTimer``. 
