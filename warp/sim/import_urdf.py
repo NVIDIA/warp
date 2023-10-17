@@ -47,7 +47,7 @@ def parse_urdf(
     Args:
         urdf_filename (str): The filename of the URDF file to parse.
         builder (ModelBuilder): The :class:`ModelBuilder` to add the bodies and joints to.
-        xform (wp.transform): The transform to apply to the root body.
+        xform (:ref:`transform <transform>`): The transform to apply to the root body.
         floating (bool): If True, the root body is a free joint. If False, the root body is connected via a fixed joint to the world, unless a `base_joint` is defined.
         base_joint (Union[str, dict]): The joint by which the root body is connected to the world. This can be either a string defining the joint axes of a D6 joint with comma-separated positional and angular axis names (e.g. "px,py,rz" for a D6 joint with linear axes in x, y and an angular axis in z) or a dict with joint parameters (see :meth:`ModelBuilder.add_joint`).
         density (float): The density of the shapes in kg/m^3 which will be used to calculate the body mass and inertia.

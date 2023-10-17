@@ -44,7 +44,7 @@ def parse_mjcf(
     Args:
         mjcf_filename (str): The filename of the MuJoCo file to parse.
         builder (ModelBuilder): The :class:`ModelBuilder` to add the bodies and joints to.
-        xform (wp.transform): The transform to apply to the imported mechanism.
+        xform (:ref:`transform <transform>`): The transform to apply to the imported mechanism.
         density (float): The density of the shapes in kg/m^3 which will be used to calculate the body mass and inertia.
         stiffness (float): The stiffness of the joints.
         damping (float): The damping of the joints.

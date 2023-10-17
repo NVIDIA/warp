@@ -58,6 +58,7 @@ class Robot:
                 contact_mu=0.75,
                 limit_ke=1.0e3,
                 limit_kd=1.0e1,
+                up_axis="y",
             )
 
             coord_count = 15
