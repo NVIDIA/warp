@@ -353,6 +353,54 @@ def test_complex(test, device):
             raise AssertionError(f"Unexpected result, got: {f} expected: {expected}")
 
 
+@wp.struct
+class Svec:
+    a: wp.uint32
+    b: wp.vec2f
+
+
+@wp.struct
+class Fvec:
+    x: wp.vec2f
+    s: Svec
+    y: wp.int32
+
+
+@wp.kernel
+def swizzle_kernel(foos: wp.array(dtype=Fvec)):
+    i = wp.tid()
+
+    foos[i].x += wp.vec2f(1.0, 2.0)
+    foos[i].y = wp.int32(3)
+    foos[i].s.b = wp.vec2f(4.0, 5.0)
+    foos[i].s.b.y = wp.float32(6.0)
+    foos[i].s.b.x = foos[i].x.y
+    foos[i].s.a = wp.uint32(foos[i].y)
+
+
+def test_swizzle(test, device):
+    foos = wp.zeros((10,), dtype=Fvec, device=device)
+
+    wp.launch(
+        kernel=swizzle_kernel,
+        dim=(10,),
+        inputs=[foos],
+        device=device,
+    )
+    wp.synchronize()
+
+    expected = Fvec()
+    expected.x = wp.vec2f(1.0, 2.0)
+    expected.y = 3
+    expected.s.b = wp.vec2f(4.0, 5.0)
+    expected.s.b.y = 6.0
+    expected.s.b.x = expected.x.y
+    expected.s.a = expected.y
+    for f in foos.list():
+        if f.x != expected.x or f.y != expected.y or f.s.a != expected.s.a or f.s.b != expected.s.b:
+            raise AssertionError(f"Unexpected result, got: {f} expected: {expected}")
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -370,6 +418,7 @@ def register(parent):
     add_function_test(TestLValue, "test_array_struct_assign", test_array_struct_assign, devices=devices)
     add_function_test(TestLValue, "test_array_struct_struct_assign", test_array_struct_struct_assign, devices=devices)
     add_function_test(TestLValue, "test_complex", test_complex, devices=devices)
+    add_function_test(TestLValue, "test_swizzle", test_swizzle, devices=devices)
 
     return TestLValue
 
