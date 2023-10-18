@@ -14,8 +14,9 @@
 #
 ###########################################################################
 
-import numpy as np
 import os
+
+import numpy as np
 
 import warp as wp
 import warp.sim
@@ -25,19 +26,7 @@ wp.init()
 
 
 class Example:
-    frame_dt = 1.0 / 100.0
-
-    episode_duration = 5.0  # seconds
-    episode_frames = int(episode_duration / frame_dt)
-
-    sim_substeps = 32  # 5
-    sim_dt = frame_dt / sim_substeps
-    sim_steps = int(episode_duration / sim_dt)
-
-    sim_time = 0.0
-    render_time = 0.0
-
-    def __init__(self, stage=None, render=True):
+    def __init__(self, stage):
         self.chain_length = 8
         self.chain_width = 1.0
         self.chain_types = [
@@ -48,8 +37,16 @@ class Example:
             wp.sim.JOINT_COMPOUND,
         ]
 
-        self.enable_rendering = render
         builder = wp.sim.ModelBuilder()
+
+        self.sim_time = 0.0
+        self.frame_dt = 1.0 / 100.0
+
+        episode_duration = 5.0  # seconds
+        self.episode_frames = int(episode_duration / self.frame_dt)
+
+        self.sim_substeps = 32  # 5
+        self.sim_dt = self.frame_dt / self.sim_substeps
 
         for c, t in enumerate(self.chain_types):
             # start a new articulation
@@ -67,7 +64,7 @@ class Example:
                 b = builder.add_body(origin=wp.transform([i, 0.0, c * 1.0], wp.quat_identity()), armature=0.1)
 
                 # create shape
-                s = builder.add_shape_box(
+                builder.add_shape_box(
                     pos=(self.chain_width * 0.5, 0.0, 0.0),
                     hx=self.chain_width * 0.5,
                     hy=0.1,
@@ -137,62 +134,55 @@ class Example:
 
         self.integrator = wp.sim.XPBDIntegrator(iterations=5)
 
-        # -----------------------
-        # set up Usd renderer
-        self.renderer = None
-        if render:
-            self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=20.0)
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=20.0)
 
-    def update(self):
-        for _ in range(self.sim_substeps):
-            self.state_0.clear_forces()
-            self.integrator.simulate(self.model, self.state_0, self.state_1, self.sim_dt)
-            self.state_0, self.state_1 = self.state_1, self.state_0
-
-    def render(self, is_live=False):
-        time = 0.0 if is_live else self.sim_time
-
-        self.renderer.begin_frame(time)
-        self.renderer.render(self.state_0)
-        self.renderer.end_frame()
-
-    def run(self, render=True):
-        # ---------------
-        # run simulation
-
-        self.sim_time = 0.0
         self.state_0 = self.model.state()
         self.state_1 = self.model.state()
 
         wp.sim.eval_fk(self.model, self.model.joint_q, self.model.joint_qd, None, self.state_0)
 
-        profiler = {}
+        self.use_graph = wp.get_device().is_cuda
+        self.graph = None
 
-        # create update graph
-        wp.capture_begin()
+        if self.use_graph:
+            # create update graph
+            wp.capture_begin()
+            self.update()
+            self.graph = wp.capture_end()
 
-        # simulate
-        self.update()
+    def update(self):
+        with wp.ScopedTimer("simulate", active=True):
+            if self.use_graph is False or self.graph is None:
+                for _ in range(self.sim_substeps):
+                    self.state_0.clear_forces()
+                    self.integrator.simulate(self.model, self.state_0, self.state_1, self.sim_dt)
+                    self.state_0, self.state_1 = self.state_1, self.state_0
+            else:
+                wp.capture_launch(self.graph)
 
-        graph = wp.capture_end()
-
-        # simulate
-        with wp.ScopedTimer("simulate", detailed=False, print=False, active=True, dict=profiler):
-            for f in range(0, self.episode_frames):
-                with wp.ScopedTimer("simulate", active=True):
-                    wp.capture_launch(graph)
+            if not wp.get_device().is_capturing:
                 self.sim_time += self.frame_dt
 
-                if self.enable_rendering:
-                    with wp.ScopedTimer("render", active=True):
-                        self.render()
+    def render(self, is_live=False):
+        with wp.ScopedTimer("render", active=True):
+            time = 0.0 if is_live else self.sim_time
 
-            wp.synchronize()
-            if self.enable_rendering:
-                self.renderer.save()
+            self.renderer.begin_frame(time)
+            self.renderer.render(self.state_0)
+            self.renderer.end_frame()
 
 
 if __name__ == "__main__":
     stage = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_chain.usd")
-    robot = Example(stage, render=True)
-    robot.run()
+    example = Example(stage)
+
+    profiler = {}
+
+    with wp.ScopedTimer("simulate", detailed=False, print=False, active=True, dict=profiler):
+        for _ in range(example.episode_frames):
+            example.update()
+            example.render()
+
+        wp.synchronize()
+
+    example.renderer.save()

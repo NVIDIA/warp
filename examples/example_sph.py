@@ -6,25 +6,26 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 ###########################################################################
-# Example Smooth Particle Hydrodynamics
+# Example Smoothed Particle Hydrodynamics
 #
-# Shows how to implement a SPH
+# Shows how to implement a SPH fluid simulation.
+#
 # Neighbors are found using the wp.HashGrid class, and
 # wp.hash_grid_query(), wp.hash_grid_query_next() kernel methods.
 #
 # Reference Publication
-# Müller, Matthias, David Charypar, and Markus H. Gross.
+# Matthias Müller, David Charypar, and Markus H. Gross.
 # "Particle-based fluid simulation for interactive applications."
 # Symposium on Computer animation. Vol. 2. 2003.
 #
 ###########################################################################
 
+import os
+
 import numpy as np
 
 import warp as wp
 import warp.render
-
-import os
 
 wp.init()
 
@@ -314,7 +315,7 @@ class Example:
 
     def update(self):
         with wp.ScopedTimer("simulate", active=True):
-            for s in range(self.sim_step_to_frame_ratio):
+            for _ in range(self.sim_step_to_frame_ratio):
                 with wp.ScopedTimer("grid build", active=False):
                     # build grid
                     self.grid.build(self.x, self.smoothing_length)
@@ -359,6 +360,8 @@ class Example:
                     # drift
                     wp.launch(kernel=drift, dim=self.n, inputs=[self.x, self.v, self.dt])
 
+            self.sim_time += self.frame_dt
+
     def render(self, is_live=False):
         with wp.ScopedTimer("render", active=True):
             time = 0.0 if is_live else self.sim_time
@@ -366,8 +369,6 @@ class Example:
             self.renderer.begin_frame(time)
             self.renderer.render_points(points=self.x.numpy(), radius=self.smoothing_length, name="points")
             self.renderer.end_frame()
-
-        self.sim_time += self.frame_dt
 
 
 if __name__ == "__main__":

@@ -13,13 +13,12 @@
 #
 ##############################################################################
 
-import matplotlib.pyplot as plt
+import os
+
+import numpy as np
 from pxr import Usd, UsdGeom
 
 import warp as wp
-import numpy as np
-
-import os
 
 wp.init()
 
@@ -54,7 +53,7 @@ def draw(mesh: wp.uint64, cam_pos: wp.vec3, width: int, height: int, pixels: wp.
 
 
 class Example:
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.width = 1024
         self.height = 1024
         self.cam_pos = (0.0, 1.0, 2.0)
@@ -75,7 +74,7 @@ class Example:
     def update(self):
         pass
 
-    def render(self, is_live=False):
+    def render(self):
         with wp.ScopedTimer("render"):
             wp.launch(
                 kernel=draw,
@@ -83,14 +82,16 @@ class Example:
                 inputs=[self.mesh.id, self.cam_pos, self.width, self.height, self.pixels],
             )
 
-            wp.synchronize_device()
-
-        plt.imshow(
-            self.pixels.numpy().reshape((self.height, self.width, 3)), origin="lower", interpolation="antialiased"
-        )
-        plt.show()
-
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
     example = Example()
     example.render()
+
+    wp.synchronize_device()
+
+    plt.imshow(
+        example.pixels.numpy().reshape((example.height, example.width, 3)), origin="lower", interpolation="antialiased"
+    )
+    plt.show()

@@ -16,8 +16,8 @@
 #
 ###########################################################################
 
-import os
 import math
+import os
 
 import numpy as np
 
@@ -28,21 +28,31 @@ import warp.sim.render
 wp.init()
 
 
-class Robot:
-    frame_dt = 1.0 / 60.0
+@wp.kernel
+def compute_endeffector_position(
+    body_q: wp.array(dtype=wp.transform),
+    num_links: int,
+    ee_link_index: int,
+    ee_link_offset: wp.vec3,
+    ee_pos: wp.array(dtype=wp.vec3),
+):
+    tid = wp.tid()
+    ee_pos[tid] = wp.transform_point(body_q[tid * num_links + ee_link_index], ee_link_offset)
 
-    render_time = 0.0
 
-    # step size to use for the IK updates
-    step_size = 0.1
-
-    def __init__(self, render=True, num_envs=1, device=None):
+class Example:
+    def __init__(self, stage=None, enable_rendering=True, num_envs=1, device=None):
         builder = wp.sim.ModelBuilder()
-
-        self.render = render
 
         self.num_envs = num_envs
         self.device = device
+
+        self.frame_dt = 1.0 / 60.0
+
+        self.render_time = 0.0
+
+        # step size to use for the IK updates
+        self.step_size = 0.1
 
         articulation_builder = wp.sim.ModelBuilder()
 
@@ -97,31 +107,24 @@ class Robot:
 
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
-        # -----------------------
-        # set up Usd renderer
-        if self.render:
-            self.renderer = wp.sim.render.SimRenderer(
-                self.model, os.path.join(os.path.dirname(__file__), "outputs/example_jacobian_ik.usd")
-            )
+        self.enable_rendering = enable_rendering
+        self.renderer = None
+        if enable_rendering:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage)
 
         self.ee_pos = wp.zeros(self.num_envs, dtype=wp.vec3, device=device, requires_grad=True)
 
-    @wp.kernel
-    def compute_endeffector_position(
-        body_q: wp.array(dtype=wp.transform),
-        num_links: int,
-        ee_link_index: int,
-        ee_link_offset: wp.vec3,
-        ee_pos: wp.array(dtype=wp.vec3),
-    ):
-        tid = wp.tid()
-        ee_pos[tid] = wp.transform_point(body_q[tid * num_links + ee_link_index], ee_link_offset)
+        self.state = self.model.state(requires_grad=True)
+
+        self.targets = self.target_origin.copy()
+
+        self.profiler = {}
 
     def compute_ee_position(self):
         # computes the end-effector position from the current joint angles
         wp.sim.eval_fk(self.model, self.model.joint_q, self.model.joint_qd, None, self.state)
         wp.launch(
-            self.compute_endeffector_position,
+            compute_endeffector_position,
             dim=self.num_envs,
             inputs=[self.state.body_q, self.num_links, self.ee_link_index, self.ee_link_offset],
             outputs=[self.ee_pos],
@@ -163,12 +166,38 @@ class Robot:
                 jacobians[e, :, i] = (f_plus - f_minus) / (2 * eps)
         return jacobians
 
-    def run(self, render=True):
-        profiler = {}
+    def update(self):
+        with wp.ScopedTimer("jacobian", print=False, active=True, dict=self.profiler):
+            # compute jacobian
+            jacobians = self.compute_jacobian()
+            # jacobians = self.compute_fd_jacobian()
 
-        self.state = self.model.state(requires_grad=True)
+        # compute error
+        self.ee_pos_np = self.compute_ee_position().numpy()
+        error = self.targets - self.ee_pos_np
+        self.error = error.reshape(self.num_envs, 3, 1)
 
-        if render:
+        # compute Jacobian transpose update
+        delta_q = np.matmul(jacobians.transpose(0, 2, 1), self.error)
+
+        self.model.joint_q = wp.array(
+            self.model.joint_q.numpy() + self.step_size * delta_q.flatten(),
+            dtype=wp.float32,
+            device=self.device,
+            requires_grad=True,
+        )
+
+    def render(self):
+        if self.enable_rendering:
+            self.renderer.begin_frame(self.render_time)
+            self.renderer.render(self.state)
+            self.renderer.render_points("targets", self.targets, radius=0.05)
+            self.renderer.render_points("ee_pos", self.ee_pos_np, radius=0.05)
+            self.renderer.end_frame()
+            self.render_time += self.frame_dt
+
+    def run(self):
+        if self.enable_rendering:
             print("autodiff:")
             print(self.compute_jacobian())
             print("finite diff:")
@@ -176,45 +205,18 @@ class Robot:
 
         for _ in range(5):
             # select new random target points
-            targets = self.target_origin.copy()
-            targets[:, 1:] += np.random.uniform(-0.5, 0.5, size=(self.num_envs, 2))
+            self.targets = self.target_origin.copy()
+            self.targets[:, 1:] += np.random.uniform(-0.5, 0.5, size=(self.num_envs, 2))
 
             for iter in range(50):
-                with wp.ScopedTimer("jacobian", print=False, active=True, dict=profiler):
-                    # compute jacobian
-                    jacobians = self.compute_jacobian()
-                    # jacobians = self.compute_fd_jacobian()
+                self.update()
+                self.render()
+                print("iter:", iter, "error:", self.error.mean())
 
-                # compute error
-                ee_pos = self.compute_ee_position().numpy()
-                error = targets - ee_pos
-                error = error.reshape(self.num_envs, 3, 1)
+        if self.enable_rendering:
+            self.renderer.save()
 
-                # compute Jacobian transpose update
-                delta_q = np.matmul(jacobians.transpose(0, 2, 1), error)
-
-                self.model.joint_q = wp.array(
-                    self.model.joint_q.numpy() + self.step_size * delta_q.flatten(),
-                    dtype=wp.float32,
-                    device=self.device,
-                    requires_grad=True,
-                )
-
-                # render
-                if render:
-                    self.render_time += self.frame_dt
-
-                    self.renderer.begin_frame(self.render_time)
-                    self.renderer.render(self.state)
-                    self.renderer.render_points("targets", targets, radius=0.05)
-                    self.renderer.render_points("ee_pos", ee_pos, radius=0.05)
-                    self.renderer.end_frame()
-
-                    self.renderer.save()
-
-                    print("iter:", iter, "error:", error.mean())
-
-        avg_time = np.array(profiler["jacobian"]).mean()
+        avg_time = np.array(self.profiler["jacobian"]).mean()
         avg_steps_second = 1000.0 * float(self.num_envs) / avg_time
 
         print(f"envs: {self.num_envs} steps/second {avg_steps_second} avg_time {avg_time}")
@@ -222,37 +224,39 @@ class Robot:
         return 1000.0 * float(self.num_envs) / avg_time
 
 
-profile = False
+if __name__ == "__main__":
+    profile = False
 
-if profile:
-    env_count = 2
-    env_times = []
-    env_size = []
+    if profile:
+        env_count = 2
+        env_times = []
+        env_size = []
 
-    for i in range(12):
-        robot = Robot(render=False, num_envs=env_count)
-        steps_per_second = robot.run(render=False)
+        for i in range(12):
+            example = Example(enable_rendering=False, num_envs=env_count)
+            steps_per_second = example.run()
 
-        env_size.append(env_count)
-        env_times.append(steps_per_second)
+            env_size.append(env_count)
+            env_times.append(steps_per_second)
 
-        env_count *= 2
+            env_count *= 2
 
-    # dump times
-    for i in range(len(env_times)):
-        print(f"envs: {env_size[i]} steps/second: {env_times[i]}")
+        # dump times
+        for i in range(len(env_times)):
+            print(f"envs: {env_size[i]} steps/second: {env_times[i]}")
 
-    # plot
-    import matplotlib.pyplot as plt
+        # plot
+        import matplotlib.pyplot as plt
 
-    plt.figure(1)
-    plt.plot(env_size, env_times)
-    plt.xscale("log")
-    plt.xlabel("Number of Envs")
-    plt.yscale("log")
-    plt.ylabel("Steps/Second")
-    plt.show()
+        plt.figure(1)
+        plt.plot(env_size, env_times)
+        plt.xscale("log")
+        plt.xlabel("Number of Envs")
+        plt.yscale("log")
+        plt.ylabel("Steps/Second")
+        plt.show()
 
-else:
-    robot = Robot(render=True, num_envs=10)
-    robot.run()
+    else:
+        stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_jacobian_ik.usd")
+        example = Example(stage_path, enable_rendering=True, num_envs=10)
+        example.run()
