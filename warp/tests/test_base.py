@@ -135,10 +135,15 @@ def assert_np_equal(result, expect, tol=0.0):
             )
 
 
-def create_test_func(func, device, **kwargs):
+# if check_output is True any output to stdout will be treated as an error
+def create_test_func(func, device, check_output, **kwargs):
+    
     # pass args to func
     def test_func(self):
-        with CheckOutput(self):
+        if check_output:
+            with CheckOutput(self):
+                func(self, device, **kwargs)
+        else:
             func(self, device, **kwargs)
 
     return test_func
@@ -156,12 +161,12 @@ def sanitize_identifier(s):
         return re.sub("\W|^(?=\d)", "_", s)
 
 
-def add_function_test(cls, name, func, devices=None, **kwargs):
+def add_function_test(cls, name, func, devices=None, check_output=True, **kwargs):
     if devices is None:
-        setattr(cls, name, create_test_func(func, None, **kwargs))
+        setattr(cls, name, create_test_func(func, None, check_output, **kwargs))
     else:
         for device in devices:
-            setattr(cls, name + "_" + sanitize_identifier(device), create_test_func(func, device, **kwargs))
+            setattr(cls, name + "_" + sanitize_identifier(device), create_test_func(func, device, check_output, **kwargs))
 
 
 def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devices=None):

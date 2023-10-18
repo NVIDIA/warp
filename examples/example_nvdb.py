@@ -15,10 +15,11 @@
 #
 ###########################################################################
 
-import os
 import math
+import os
 
 import numpy as np
+
 import warp as wp
 import warp.render
 
@@ -49,7 +50,6 @@ def simulate(
     positions: wp.array(dtype=wp.vec3),
     velocities: wp.array(dtype=wp.vec3),
     volume: wp.uint64,
-    restitution: float,
     margin: float,
     dt: float,
 ):
@@ -62,12 +62,12 @@ def simulate(
     xpred = x + v * dt
     xpred_local = wp.volume_world_to_index(volume, xpred)
 
-    #d = wp.volume_sample_f(volume, xpred_local, wp.Volume.LINEAR)
+    # d = wp.volume_sample_f(volume, xpred_local, wp.Volume.LINEAR)
     n = wp.vec3()
     d = wp.volume_sample_grad_f(volume, xpred_local, wp.Volume.LINEAR, n)
 
     if d < margin:
-        #n = volume_grad(volume, xpred)
+        # n = volume_grad(volume, xpred)
         n = wp.normalize(n)
         err = d - margin
 
@@ -91,14 +91,14 @@ class Example:
         self.num_particles = 10000
 
         self.sim_steps = 1000
-        self.sim_dt = 1.0 / 60.0
+        frame_dt = 1.0 / 60.0
         self.sim_substeps = 3
+        self.sim_dt = frame_dt / self.sim_substeps
 
         self.sim_time = 0.0
         self.sim_timers = {}
         self.sim_render = True
 
-        self.sim_restitution = 0.0
         self.sim_margin = 15.0
 
         self.renderer = wp.render.UsdRenderer(stage, up_axis="z")
@@ -116,9 +116,11 @@ class Example:
         # create Volume object
         self.volume = wp.Volume.load_from_nvdb(file)
 
+        file.close()
+
     def update(self):
         with wp.ScopedTimer("simulate", detailed=False, dict=self.sim_timers):
-            for s in range(self.sim_substeps):
+            for _ in range(self.sim_substeps):
                 wp.launch(
                     kernel=simulate,
                     dim=self.num_particles,
@@ -126,13 +128,11 @@ class Example:
                         self.positions,
                         self.velocities,
                         self.volume.id,
-                        self.sim_restitution,
                         self.sim_margin,
-                        self.sim_dt / float(self.sim_substeps),
+                        self.sim_dt,
                     ],
                 )
-
-            wp.synchronize_device()
+                self.sim_time += self.sim_dt
 
     def render(self, is_live=False):
         with wp.ScopedTimer("render", detailed=False):
@@ -150,8 +150,6 @@ class Example:
             self.renderer.render_points(name="points", points=self.positions.numpy(), radius=self.sim_margin)
 
             self.renderer.end_frame()
-
-        self.sim_time += self.sim_dt
 
 
 if __name__ == "__main__":

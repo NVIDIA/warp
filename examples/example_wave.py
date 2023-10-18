@@ -13,8 +13,8 @@
 #
 ###########################################################################
 
-import os
 import math
+import os
 
 import warp as wp
 import warp.render
@@ -111,9 +111,9 @@ def grid_update(heights: wp.array(dtype=float), vertices: wp.array(dtype=wp.vec3
 
 
 class Example:
-    def __init__(self, stage):
-        self.sim_width = 128
-        self.sim_height = 128
+    def __init__(self, stage, resx, resy):
+        self.sim_width = resx
+        self.sim_height = resy
 
         self.sim_fps = 60.0
         self.sim_substeps = 16
@@ -163,14 +163,14 @@ class Example:
         self.sim_grid1 = wp.zeros(self.sim_width * self.sim_height, dtype=float)
         self.sim_verts = wp.array(vertices, dtype=wp.vec3)
 
-        # create surface displacment around a point
+        # create surface displacement around a point
         self.cx = self.sim_width / 2 + math.sin(self.sim_time) * self.sim_width / 3
         self.cy = self.sim_height / 2 + math.cos(self.sim_time) * self.sim_height / 3
 
     def update(self):
         with wp.ScopedTimer("simulate", active=True):
             for s in range(self.sim_substeps):
-                # create surface displacment around a point
+                # create surface displacement around a point
                 self.cx = self.sim_width / 2 + math.sin(self.sim_time) * self.sim_width / 3
                 self.cy = self.sim_height / 2 + math.cos(self.sim_time) * self.sim_height / 3
 
@@ -235,7 +235,7 @@ class Example:
 if __name__ == "__main__":
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_wave.usd")
 
-    example = Example(stage_path)
+    example = Example(stage_path, resx=128, resy=128)
 
     for i in range(example.sim_frames):
         example.update()

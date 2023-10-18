@@ -5,15 +5,16 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import argparse
+import os
+from enum import Enum
+from typing import Tuple
+
+import numpy as np
+
 import warp as wp
 import warp.sim
 import warp.sim.render
-
-import argparse
-import os
-import numpy as np
-from enum import Enum
-from typing import Tuple
 
 wp.init()
 
@@ -225,7 +226,8 @@ class Environment:
                 show_rigid_contact_points=self.show_rigid_contact_points,
                 contact_points_radius=self.contact_points_radius,
                 show_joints=self.show_joints,
-                **self.opengl_render_settings)
+                **self.opengl_render_settings,
+            )
             if self.use_tiled_rendering and self.num_envs > 1:
                 floor_id = self.model.shape_count - 1
                 # all shapes except the floor
@@ -315,10 +317,7 @@ class Environment:
         if self.use_graph_capture:
             # create update graph
             wp.capture_begin()
-
-            # simulate
             self.update()
-
             graph = wp.capture_end()
 
         if self.plot_body_coords:

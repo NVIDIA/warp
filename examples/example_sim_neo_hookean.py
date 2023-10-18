@@ -13,8 +13,8 @@
 #
 ###########################################################################
 
-import os
 import math
+import os
 
 import warp as wp
 import warp.sim
@@ -23,22 +23,54 @@ import warp.sim.render
 wp.init()
 
 
+@wp.kernel
+def twist_points(
+    rest: wp.array(dtype=wp.vec3), points: wp.array(dtype=wp.vec3), mass: wp.array(dtype=float), xform: wp.transform
+):
+    tid = wp.tid()
+
+    r = rest[tid]
+    p = points[tid]
+    m = mass[tid]
+
+    # twist the top layer of particles in the beam
+    if m == 0 and p[1] != 0.0:
+        points[tid] = wp.transform_point(xform, r)
+
+
+@wp.kernel
+def compute_volume(points: wp.array(dtype=wp.vec3), indices: wp.array2d(dtype=int), volume: wp.array(dtype=float)):
+    tid = wp.tid()
+
+    i = indices[tid, 0]
+    j = indices[tid, 1]
+    k = indices[tid, 2]
+    l = indices[tid, 3]
+
+    x0 = points[i]
+    x1 = points[j]
+    x2 = points[k]
+    x3 = points[l]
+
+    x10 = x1 - x0
+    x20 = x2 - x0
+    x30 = x3 - x0
+
+    v = wp.dot(x10, wp.cross(x20, x30)) / 6.0
+
+    wp.atomic_add(volume, 0, v)
+
+
 class Example:
     def __init__(self, stage):
-        self.sim_width = 8
-        self.sim_height = 8
-
-        self.sim_fps = 60.0
+        sim_fps = 60.0
         self.sim_substeps = 64
-        self.sim_duration = 5.0
-        self.sim_frames = int(self.sim_duration * self.sim_fps)
-        self.sim_dt = (1.0 / self.sim_fps) / self.sim_substeps
+        sim_duration = 5.0
+        self.sim_frames = int(sim_duration * sim_fps)
+        self.sim_dt = (1.0 / sim_fps) / self.sim_substeps
         self.sim_time = 0.0
-        self.sim_render = True
-        self.sim_iterations = 1
-        self.sim_relaxation = 1.0
-        self.lift_speed = 2.5 / self.sim_duration * 2.0  # from Smith et al.
-        self.rot_speed = math.pi / self.sim_duration
+        self.lift_speed = 2.5 / sim_duration * 2.0  # from Smith et al.
+        self.rot_speed = math.pi / sim_duration
 
         builder = wp.sim.ModelBuilder()
 
@@ -88,12 +120,12 @@ class Example:
                 wp.quat_from_axis_angle((0.0, 1.0, 0.0), self.rot_speed * self.sim_time),
             )
             wp.launch(
-                kernel=self.twist_points,
+                kernel=twist_points,
                 dim=len(self.state_0.particle_q),
                 inputs=[self.rest.particle_q, self.state_0.particle_q, self.model.particle_mass, xform],
             )
 
-            for s in range(self.sim_substeps):
+            for _ in range(self.sim_substeps):
                 self.state_0.clear_forces()
                 self.state_1.clear_forces()
 
@@ -105,7 +137,7 @@ class Example:
 
             self.volume.zero_()
             wp.launch(
-                kernel=self.compute_volume,
+                kernel=compute_volume,
                 dim=self.model.tet_count,
                 inputs=[self.state_0.particle_q, self.model.tet_indices, self.volume],
             )
@@ -117,42 +149,6 @@ class Example:
             self.renderer.begin_frame(time)
             self.renderer.render(self.state_0)
             self.renderer.end_frame()
-
-    @wp.kernel
-    def twist_points(
-        rest: wp.array(dtype=wp.vec3), points: wp.array(dtype=wp.vec3), mass: wp.array(dtype=float), xform: wp.transform
-    ):
-        tid = wp.tid()
-
-        r = rest[tid]
-        p = points[tid]
-        m = mass[tid]
-
-        # twist the top layer of particles in the beam
-        if m == 0 and p[1] != 0.0:
-            points[tid] = wp.transform_point(xform, r)
-
-    @wp.kernel
-    def compute_volume(points: wp.array(dtype=wp.vec3), indices: wp.array2d(dtype=int), volume: wp.array(dtype=float)):
-        tid = wp.tid()
-
-        i = indices[tid, 0]
-        j = indices[tid, 1]
-        k = indices[tid, 2]
-        l = indices[tid, 3]
-
-        x0 = points[i]
-        x1 = points[j]
-        x2 = points[k]
-        x3 = points[l]
-
-        x10 = x1 - x0
-        x20 = x2 - x0
-        x30 = x3 - x0
-
-        v = wp.dot(x10, wp.cross(x20, x30)) / 6.0
-
-        wp.atomic_add(volume, 0, v)
 
 
 if __name__ == "__main__":

@@ -15,14 +15,13 @@
 #
 ###########################################################################
 
+import os
+
 import numpy as np
+from pxr import Usd, UsdGeom
 
 import warp as wp
 import warp.render
-
-from pxr import Usd, UsdGeom
-
-import os
 
 wp.init()
 
@@ -46,7 +45,6 @@ def simulate(
     positions: wp.array(dtype=wp.vec3),
     velocities: wp.array(dtype=wp.vec3),
     mesh: wp.uint64,
-    restitution: float,
     margin: float,
     dt: float,
 ):
@@ -96,7 +94,6 @@ class Example:
         self.sim_time = 0.0
         self.sim_timers = {}
 
-        self.sim_restitution = 0.0
         self.sim_margin = 0.1
 
         self.renderer = wp.render.UsdRenderer(stage)
@@ -128,15 +125,10 @@ class Example:
             wp.launch(
                 kernel=simulate,
                 dim=self.num_particles,
-                inputs=[
-                    self.positions,
-                    self.velocities,
-                    self.mesh.id,
-                    self.sim_restitution,
-                    self.sim_margin,
-                    self.sim_dt,
-                ],
+                inputs=[self.positions, self.velocities, self.mesh.id, self.sim_margin, self.sim_dt],
             )
+
+            self.sim_time += self.sim_dt
 
     def render(self, is_live=False):
         with wp.ScopedTimer("render", detailed=False):
@@ -146,8 +138,6 @@ class Example:
             self.renderer.render_mesh(name="mesh", points=self.mesh.points.numpy(), indices=self.mesh.indices.numpy())
             self.renderer.render_points(name="points", points=self.positions.numpy(), radius=self.sim_margin)
             self.renderer.end_frame()
-
-        self.sim_time += self.sim_dt
 
 
 if __name__ == "__main__":

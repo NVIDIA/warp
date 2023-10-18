@@ -14,12 +14,12 @@
 #
 ###########################################################################
 
+import os
+
 import numpy as np
 
 import warp as wp
 import warp.render
-
-import os
 
 wp.init()
 
@@ -152,7 +152,7 @@ class Example:
         if self.use_graph:
             wp.capture_begin()
 
-            for s in range(self.sim_substeps):
+            for _ in range(self.sim_substeps):
                 with wp.ScopedTimer("forces", active=False):
                     wp.launch(
                         kernel=apply_forces,
@@ -186,12 +186,14 @@ class Example:
                 with wp.ScopedTimer("solve", active=False):
                     wp.capture_launch(self.graph)
 
+                self.sim_time += self.frame_dt
+
             else:
                 with wp.ScopedTimer("grid build", active=False):
                     self.grid.build(self.x, self.point_radius)
 
                 with wp.ScopedTimer("solve", active=False):
-                    for s in range(self.sim_substeps):
+                    for _ in range(self.sim_substeps):
                         wp.launch(
                             kernel=apply_forces,
                             dim=len(self.x),
@@ -212,8 +214,7 @@ class Example:
                             dim=len(self.x),
                             inputs=[self.x, self.v, self.f, (0.0, -9.8, 0.0), self.sim_dt, self.inv_mass],
                         )
-
-                wp.synchronize()
+                        self.sim_time += self.sim_dt
 
     def render(self, is_live=False):
         with wp.ScopedTimer("render", active=True):
@@ -222,8 +223,6 @@ class Example:
             self.renderer.begin_frame(time)
             self.renderer.render_points(points=self.x.numpy(), radius=self.point_radius, name="points")
             self.renderer.end_frame()
-
-        self.sim_time += self.frame_dt
 
     # creates a grid of particles
     def particle_grid(self, dim_x, dim_y, dim_z, lower, radius, jitter):
