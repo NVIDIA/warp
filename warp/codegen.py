@@ -1853,8 +1853,7 @@ class Adjoint:
 
             # handle simple assignment case (a = b), where we generate a value copy rather than reference
             if isinstance(node.value, ast.Name) or is_reference(rhs.type):
-                out = adj.add_var(strip_reference(rhs.type))
-                adj.add_builtin_call("copy", [out, rhs])
+                out = adj.add_builtin_call("copy", [rhs])
             else:
                 out = rhs
 
@@ -1907,8 +1906,7 @@ class Adjoint:
         if var is not None:
             adj.return_var = tuple()
             for ret in var:
-                out = adj.add_var(strip_reference(ret.type))
-                adj.add_builtin_call("copy", [out, ret])
+                out = adj.add_builtin_call("copy", [ret])
                 adj.return_var += (out,)
 
         adj.add_return(adj.return_var)

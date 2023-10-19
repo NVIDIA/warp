@@ -2236,7 +2236,14 @@ add_builtin(
 )
 
 
-add_builtin("copy", variadic=True, hidden=True, export=False, group="Utility")
+add_builtin(
+    "copy",
+    input_types={"value": Any},
+    value_func=lambda arg_types, kwds, _: arg_types[0],
+    hidden=True,
+    export=False,
+    group="Utility",
+)
 add_builtin("assign", variadic=True, hidden=True, export=False, group="Utility")
 add_builtin(
     "select",

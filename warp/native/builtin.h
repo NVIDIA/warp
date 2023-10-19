@@ -1023,13 +1023,13 @@ CUDA_CALLABLE inline void adj_select(const C& cond, const T& a, const T& b, C& a
 }
 
 template <typename T>
-CUDA_CALLABLE inline void copy(T& dest, const T& src)
+CUDA_CALLABLE inline T copy(const T& src)
 {
-    dest = src;
+    return src;
 }
 
 template <typename T>
-CUDA_CALLABLE inline void adj_copy(T& dest, const T& src, T& adj_dest, T& adj_src)
+CUDA_CALLABLE inline void adj_copy(const T& src, T& adj_src, T& adj_dest)
 {
     adj_src = adj_dest;
     adj_dest = T{};
