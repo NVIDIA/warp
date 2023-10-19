@@ -92,7 +92,7 @@ CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float
         return false;
 
     int stack[32];
-    stack[0] = mesh.bvh.root;
+    stack[0] = *mesh.bvh.root;
 
     int count = 1;
 
@@ -280,7 +280,7 @@ CUDA_CALLABLE inline bool mesh_query_point_no_sign(uint64_t id, const vec3& poin
         return false;
 
     int stack[32];
-    stack[0] = mesh.bvh.root;
+    stack[0] = *mesh.bvh.root;
 
     int count = 1;
 
@@ -463,7 +463,7 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_normal(uint64_t id, const vec3& 
     if (mesh.bvh.num_nodes == 0)
         return false;
     int stack[32];
-    stack[0] = mesh.bvh.root;
+    stack[0] = *mesh.bvh.root;
     int count = 1;
     float min_dist = max_dist;
     int min_face;
@@ -690,7 +690,7 @@ CUDA_CALLABLE inline float solid_angle_iterative(uint64_t id, const vec3& p, con
     int stack[32];
     int at_child[32]; // 0 for left, 1 for right, 2 for done	
     float angle[32]; 
-    stack[0] = mesh.bvh.root;	
+    stack[0] = *mesh.bvh.root;	
     at_child[0] = 0;
 
     int count = 1;
@@ -770,7 +770,7 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_winding_number(uint64_t id, cons
         return false;
 
     int stack[32];
-    stack[0] = mesh.bvh.root;
+    stack[0] = *mesh.bvh.root;
 
     int count = 1;
 
@@ -1002,7 +1002,7 @@ CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const v
         return false;
 
     int stack[32];
-    stack[0] = mesh.bvh.root;
+    stack[0] = *mesh.bvh.root;
     int count = 1;
 
     vec3 rcp_dir = vec3(1.0f/dir[0], 1.0f/dir[1], 1.0f/dir[2]);
@@ -1182,7 +1182,7 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(
 
     // optimization: make the latest
     
-    query.stack[0] = mesh.bvh.root;
+    query.stack[0] = *mesh.bvh.root;
     query.count = 1;
     query.input_lower = lower;
     query.input_upper = upper;

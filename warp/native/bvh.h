@@ -125,7 +125,7 @@ struct BVH
 	int max_nodes;
     int num_nodes;
 
-	int root;
+	int* root;
 
     vec3* lowers;
 	vec3* uppers;
@@ -267,7 +267,7 @@ CUDA_CALLABLE inline bvh_query_t bvh_query(
 
     // optimization: make the latest
 	
-	query.stack[0] = bvh.root;
+	query.stack[0] = *bvh.root;
 	query.count = 1;
     query.input_lower = lower;
     query.input_upper = upper;

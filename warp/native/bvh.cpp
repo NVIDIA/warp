@@ -52,9 +52,10 @@ void MedianBVHBuilder::build(BVH& bvh, const bounds3* items, int n)
     bvh.node_uppers = new BVHPackedNodeHalf[bvh.max_nodes];
     bvh.node_parents = new int[bvh.max_nodes];
     bvh.node_counts = NULL;
-
+    
     // root is always in first slot for top down builders
-    bvh.root = 0;
+    bvh.root = new int[1];
+    bvh.root[0] = 0;
 
     if (n == 0)
         return;
@@ -413,9 +414,14 @@ void bvh_destroy_host(BVH& bvh)
     delete[] bvh.node_uppers;
     delete[] bvh.node_parents;
 	delete[] bvh.bounds;
+    delete[] bvh.root;
 
     bvh.node_lowers = NULL;
     bvh.node_uppers = NULL;
+    bvh.node_parents = NULL;
+    bvh.bounds = NULL;
+    bvh.root = NULL;
+
     bvh.max_nodes = 0;
     bvh.num_nodes = 0;
     bvh.num_bounds = 0;
@@ -430,6 +436,7 @@ void bvh_destroy_device(BVH& bvh)
     free_device(WP_CURRENT_CONTEXT, bvh.node_parents); bvh.node_parents = NULL;
     free_device(WP_CURRENT_CONTEXT, bvh.node_counts); bvh.node_counts = NULL;
     free_device(WP_CURRENT_CONTEXT, bvh.bounds); bvh.bounds = NULL;
+    free_device(WP_CURRENT_CONTEXT, bvh.root); bvh.root = NULL;
 }
 
 BVH bvh_clone(void* context, const BVH& bvh_host)
@@ -445,15 +452,19 @@ BVH bvh_clone(void* context, const BVH& bvh_host)
     bvh_device.node_parents = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh_host.max_nodes);
     bvh_device.node_counts = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh_host.max_nodes);
 	bvh_device.bounds = (bounds3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(bounds3)*bvh_host.num_bounds);
+    bvh_device.root = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int));
 
     // copy host data to device
     memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device.node_lowers, bvh_host.node_lowers, sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
     memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device.node_uppers, bvh_host.node_uppers, sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
     memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device.node_parents, bvh_host.node_parents, sizeof(int)*bvh_host.max_nodes);
 	memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device.bounds, bvh_host.bounds, sizeof(bounds3)*bvh_host.num_bounds);
+    memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device.root, bvh_host.root, sizeof(int));
 
     return bvh_device;
 }
+
+
 
 void bvh_refit_recursive(BVH& bvh, int index, const bounds3* bounds)
 {
@@ -550,7 +561,7 @@ uint64_t bvh_create_host(vec3* lowers, vec3* uppers, int num_bounds)
     bvh->uppers = uppers;
     bvh->num_bounds = num_bounds;
 
-    bvh->bounds = new bounds3[num_bounds];  
+    bvh->bounds = new bounds3[num_bounds];
 
     for (int i=0; i < num_bounds; ++i)
     {
@@ -564,47 +575,7 @@ uint64_t bvh_create_host(vec3* lowers, vec3* uppers, int num_bounds)
     return (uint64_t)bvh;
 }
 
-uint64_t bvh_create_device(void* context, vec3* lowers, vec3* uppers, int num_bounds)
-{
-    ContextGuard guard(context);
 
-    // todo: BVH creation only on CPU at the moment so temporarily bring all the data back to host
-    vec3* lowers_host = (vec3*)alloc_host(sizeof(vec3)*num_bounds);
-    vec3* uppers_host = (vec3*)alloc_host(sizeof(vec3)*num_bounds);
-    bounds3* bounds_host = (bounds3*)alloc_host(sizeof(bounds3)*num_bounds);
-
-    memcpy_d2h(WP_CURRENT_CONTEXT, lowers_host, lowers, sizeof(vec3)*num_bounds);
-    memcpy_d2h(WP_CURRENT_CONTEXT, uppers_host, uppers, sizeof(vec3)*num_bounds);
-    cuda_context_synchronize(WP_CURRENT_CONTEXT);
-
-    for (int i=0; i < num_bounds; ++i)
-    {
-        bounds_host[i] = bounds3();
-        bounds_host[i].lower = lowers_host[i];
-        bounds_host[i].upper = uppers_host[i];
-    }
-
-    BVH bvh_host = bvh_create(bounds_host, num_bounds);
-    bvh_host.context = context ? context : cuda_context_get_current();
-	bvh_host.bounds = bounds_host;
-    bvh_host.num_bounds = num_bounds;        
-    BVH bvh_device_clone = bvh_clone(WP_CURRENT_CONTEXT, bvh_host);
-
-	bvh_device_clone.lowers = lowers;		// managed by the user
-	bvh_device_clone.uppers = uppers;		// managed by the user
-
-    BVH* bvh_device = (BVH*)alloc_device(WP_CURRENT_CONTEXT, sizeof(BVH));
-    memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device, &bvh_device_clone, sizeof(BVH));
-
-    bvh_destroy_host(bvh_host);
-    free_host(lowers_host);
-    free_host(uppers_host);
-
-    uint64_t bvh_id = (uint64_t)bvh_device;
-    bvh_add_descriptor(bvh_id, bvh_device_clone);
-
-    return bvh_id;
-}
 
 void bvh_refit_host(uint64_t id)
 {
