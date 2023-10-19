@@ -375,6 +375,15 @@ def ceil(x: Float) -> Float:
 
 
 @over
+def frac(x: Float) -> Float:
+    """
+    Retrieve the fractional part of x.
+        In other words, it discards the integer part of x and is equivalent to ``x - trunc(x)``.
+    """
+    ...
+
+
+@over
 def dot(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Scalar:
     """
     Compute the dot product between two vectors.
@@ -1462,7 +1471,7 @@ def pnoise(state: uint32, xyzt: vec4f, px: int32, py: int32, pz: int32, pt: int3
 
 
 @over
-def curlnoise(state: uint32, xy: vec2f) -> vec2f:
+def curlnoise(state: uint32, xy: vec2f, octaves: uint32, lacunarity: float32, gain: float32) -> vec2f:
     """
     Divergence-free vector field based on the gradient of a Perlin noise function.
     """
@@ -1470,7 +1479,7 @@ def curlnoise(state: uint32, xy: vec2f) -> vec2f:
 
 
 @over
-def curlnoise(state: uint32, xyz: vec3f) -> vec3f:
+def curlnoise(state: uint32, xyz: vec3f, octaves: uint32, lacunarity: float32, gain: float32) -> vec3f:
     """
     Divergence-free vector field based on the curl of three Perlin noise functions.
     """
@@ -1478,7 +1487,7 @@ def curlnoise(state: uint32, xyz: vec3f) -> vec3f:
 
 
 @over
-def curlnoise(state: uint32, xyzt: vec4f) -> vec3f:
+def curlnoise(state: uint32, xyzt: vec4f, octaves: uint32, lacunarity: float32, gain: float32) -> vec3f:
     """
     Divergence-free vector field based on the curl of three Perlin noise functions.
     """

@@ -1,6 +1,6 @@
 [package]
 # Semantic Versioning is used: https://semver.org/
-version = "1.0.0-beta.2"
+version = "1.0.0-beta.3"
 authors = ["NVIDIA"]
 title = "Warp"
 description="Provides the core Warp Python module for Omniverse"
