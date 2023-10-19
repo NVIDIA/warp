@@ -31,9 +31,9 @@ name = "omni.warp.core"
 pyCoverageOmit = [
     "warp/stubs.py",
     "warp/sim/render.py",
-    "warp/sim/integrator_euler.py",
-    "warp/sim/optimizer.py",
-    "warp/render.py"
+    "warp/render.py",
+    "warp/fem/*.py",
+    "warp/tests/*.py"
 ]
 pyCoverageThreshold = 40
 timeout = 900

@@ -31,6 +31,23 @@ def warn(message, category=None, stacklevel=1):
         warnings.warn(message, category, stacklevel + 1)  # Increment stacklevel by 1 since we are in a wrapper
 
 
+# expand a 7-vec to a tuple of arrays
+def transform_expand(t):
+    return wp.transform(np.array(t[0:3]), np.array(t[3:7]))
+
+@wp.func
+def quat_between_vectors(a: wp.vec3, b: wp.vec3) -> wp.quat:
+    """
+    Compute the quaternion that rotates vector a to vector b
+    """
+    a = wp.normalize(a)
+    b = wp.normalize(b)
+    c = wp.cross(a, b)
+    d = wp.dot(a, b)
+    q = wp.quat(c[0], c[1], c[2], 1.0 + d)
+    return wp.normalize(q)
+
+
 def array_scan(in_array, out_array, inclusive=True):
     if in_array.device != out_array.device:
         raise RuntimeError("Array storage devices do not match")

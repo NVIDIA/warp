@@ -68,10 +68,11 @@ class Example:
         with wp.ScopedTimer("simulate", active=True):
             self.model.particle_grid.build(self.state_0.particle_q, self.radius * 2.0)
 
-            for s in range(self.sim_substeps):
+            for _ in range(self.sim_substeps):
                 self.state_0.clear_forces()
 
                 self.integrator.simulate(self.model, self.state_0, self.state_1, self.sim_dt)
+                self.sim_time += self.frame_dt
 
                 # swap states
                 (self.state_0, self.state_1) = (self.state_1, self.state_0)
@@ -84,15 +85,13 @@ class Example:
             self.renderer.render(self.state_0)
             self.renderer.end_frame()
 
-        self.sim_time += self.frame_dt
-
 
 if __name__ == "__main__":
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_granular.usd")
 
     example = Example(stage_path)
 
-    for i in range(example.frame_count):
+    for _ in range(example.frame_count):
         example.update()
         example.render()
 

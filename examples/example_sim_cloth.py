@@ -14,20 +14,19 @@
 ###########################################################################
 
 import argparse
-import os
 import math
+import os
 from enum import Enum
 
 import numpy as np
+from pxr import Usd, UsdGeom
 
 import warp as wp
-
 import warp.sim
 import warp.sim.render
 
-from pxr import Usd, UsdGeom
-
 wp.init()
+
 
 class IntegratorType(Enum):
     EULER = "euler"
@@ -36,9 +35,9 @@ class IntegratorType(Enum):
     def __str__(self):
         return self.value
 
+
 class Example:
     def __init__(self, stage):
-
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument(
             "--integrator",
@@ -59,10 +58,11 @@ class Example:
         self.sim_substeps = 32
         self.sim_duration = 5.0
         self.sim_frames = int(self.sim_duration * self.sim_fps)
-        self.sim_dt = (1.0 / self.sim_fps) / self.sim_substeps
+        self.frame_dt = 1.0 / self.sim_fps
+        self.sim_dt = self.frame_dt / self.sim_substeps
         self.sim_time = 0.0
         self.sim_use_graph = wp.get_device().is_cuda
-        self.simulate_timer = wp.ScopedTimer("simulate", dict={})
+        self.profiler = {}
 
         builder = wp.sim.ModelBuilder()
 
@@ -131,34 +131,29 @@ class Example:
         self.state_1 = self.model.state()
 
         self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=40.0)
+        self.graph = None
 
         if self.sim_use_graph:
             # create update graph
             wp.capture_begin()
-
-            wp.sim.collide(self.model, self.state_0)
-
-            for s in range(self.sim_substeps):
-                self.state_0.clear_forces()
-
-                self.integrator.simulate(self.model, self.state_0, self.state_1, self.sim_dt)
-
-                # swap states
-                (self.state_0, self.state_1) = (self.state_1, self.state_0)
-
+            self.update()
             self.graph = wp.capture_end()
 
     def update(self):
-        with self.simulate_timer:
-            if self.sim_use_graph:
+        with wp.ScopedTimer("simulate", dict=self.profiler):
+            if self.sim_use_graph and self.graph:
                 wp.capture_launch(self.graph)
+                self.sim_time += self.frame_dt
             else:
                 wp.sim.collide(self.model, self.state_0)
 
-                for s in range(self.sim_substeps):
+                for _ in range(self.sim_substeps):
                     self.state_0.clear_forces()
 
                     self.integrator.simulate(self.model, self.state_0, self.state_1, self.sim_dt)
+
+                    if not wp.get_device().is_capturing:
+                        self.sim_time += self.sim_dt
 
                     # swap states
                     (self.state_0, self.state_1) = (self.state_1, self.state_0)
@@ -171,8 +166,6 @@ class Example:
             self.renderer.render(self.state_0)
             self.renderer.end_frame()
 
-        self.sim_time += 1.0 / self.sim_fps
-
 
 if __name__ == "__main__":
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_cloth.usd")
@@ -183,7 +176,7 @@ if __name__ == "__main__":
         example.update()
         example.render()
 
-    frame_times = example.simulate_timer.dict["simulate"]
+    frame_times = example.profiler["simulate"]
     print("\nAverage frame sim time: {:.2f} ms".format(sum(frame_times) / len(frame_times)))
 
     example.renderer.save()

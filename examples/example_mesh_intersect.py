@@ -12,15 +12,16 @@
 #
 ##############################################################################
 
+import os
+
+import numpy as np
+from pxr import Usd, UsdGeom
+
 import warp as wp
 import warp.render
 
-import numpy as np
-
 np.random.seed(42)
 
-from pxr import Usd, UsdGeom
-import os
 
 wp.init()
 
@@ -124,12 +125,10 @@ class Example:
                 dim=self.query_num_faces * self.query_count,
                 inputs=[self.mesh_0.id, self.mesh_1.id, self.query_num_faces, self.array_xforms, self.array_result],
             )
-            wp.synchronize()
 
-    def render(self, is_live=False):
+    def render(self):
         # bring results back to host
         result = self.array_result.numpy()
-        print(result)
 
         with wp.ScopedTimer("render", active=True):
             self.renderer.begin_frame(0.0)

@@ -48,7 +48,7 @@ class Example:
 
     def update(self):
         with wp.ScopedTimer("simulate"):
-            for s in range(self.sim_substeps):
+            for _ in range(self.sim_substeps):
                 wp.sim.collide(self.model, self.state_0)
 
                 self.state_0.clear_forces()

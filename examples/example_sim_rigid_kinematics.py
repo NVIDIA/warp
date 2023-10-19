@@ -13,8 +13,8 @@
 #
 ###########################################################################
 
-import os
 import math
+import os
 
 import numpy as np
 
@@ -25,24 +25,13 @@ import warp.sim.render
 wp.init()
 
 
-class Robot:
-    frame_dt = 1.0 / 60.0
+class Example:
+    def __init__(self, stage, num_envs=1, device=None, verbose=False):
+        self.verbose = verbose
 
-    episode_duration = 2.0  # seconds
-    episode_frames = int(episode_duration / frame_dt)
-
-    sim_substeps = 10
-    sim_dt = frame_dt / sim_substeps
-    sim_steps = int(episode_duration / sim_dt)
-
-    sim_time = 0.0
-    render_time = 0.0
-
-    def __init__(self, render=True, num_envs=1, device=None):
         builder = wp.sim.ModelBuilder()
 
-        self.render = render
-
+        self.sim_time = 0.0
         self.num_envs = num_envs
 
         for i in range(num_envs):
@@ -85,20 +74,11 @@ class Robot:
 
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
-        # -----------------------
-        # set up Usd renderer
-        if self.render:
-            self.renderer = wp.sim.render.SimRenderer(
-                self.model,
-                os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_kinematics.usd"),
-                scaling=50.0,
-            )
+        self.renderer = wp.sim.render.SimRenderer(path=stage, model=self.model, scaling=50.0)
 
-    def run(self):
-        # ---------------
-        # run simulation
+        self.frame_dt = 1.0 / 60.0
 
-        self.sim_time = 0.0
+    def update(self):
         self.state = self.model.state()
 
         # save a copy of joint values
@@ -115,18 +95,26 @@ class Robot:
         q_err = q_fk - q_ik.numpy()
         qd_err = qd_fk - qd_ik.numpy()
 
-        if self.render:
-            self.renderer.begin_frame(self.render_time)
-            self.renderer.render(self.state)
-            self.renderer.end_frame()
-            self.renderer.save()
-
-        print(q_err)
-        print(qd_err)
+        if self.verbose:
+            print(f"q_err = {q_err}")
+            print(f"qd_err = {qd_err}")
 
         assert np.abs(q_err).max() < 1.0e-6
         assert np.abs(qd_err).max() < 1.0e-6
 
+        self.sim_time += self.frame_dt
 
-robot = Robot(render=False, num_envs=1)
-robot.run()
+    def render(self):
+        self.renderer.begin_frame(self.sim_time)
+        self.renderer.render(self.state)
+        self.renderer.end_frame()
+
+
+if __name__ == "__main__":
+    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_kinematics.usd")
+
+    example = Example(stage_path, num_envs=1, verbose=True)
+    example.update()
+    example.render()
+
+    example.renderer.save()

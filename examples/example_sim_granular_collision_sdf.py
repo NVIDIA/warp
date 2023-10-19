@@ -6,20 +6,22 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 ###########################################################################
-# Example Sim Granular
+# Example Sim Granular Collision SDF
 #
 # Shows how to set up a particle-based granular material model using the
-# wp.sim.ModelBuilder().
+# wp.sim.ModelBuilder(). This version shows how to create collision geometry
+# objects from SDFs.
 #
 ###########################################################################
 
+import math
 import os
+
+import numpy as np
 
 import warp as wp
 import warp.sim
 import warp.sim.render
-import math
-import numpy as np
 
 wp.init()
 
@@ -52,10 +54,13 @@ class Example:
             mass=0.1,
             jitter=self.radius * 0.1,
         )
-        rock_vdb = wp.Volume.load_from_nvdb(
-            open(os.path.join(os.path.dirname(__file__), "assets/rocks.nvdb"), "rb").read())
+        rock_file = open(os.path.join(os.path.dirname(__file__), "assets/rocks.nvdb"), "rb")
+        rock_vdb = wp.Volume.load_from_nvdb(rock_file.read())
+        rock_file.close()
+
         rock_sdf = wp.sim.SDF(rock_vdb)
-        s = builder.add_shape_sdf(
+
+        builder.add_shape_sdf(
             ke=1.0e4,
             kd=1000.0,
             kf=1000.0,
@@ -64,7 +69,8 @@ class Example:
             body=-1,
             pos=(0.0, 0.0, 0.0),
             rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), -0.5 * math.pi),
-            scale=(0.01, 0.01, 0.01))
+            scale=(0.01, 0.01, 0.01),
+        )
 
         mins = np.array([-3.0, -3.0, -3.0])
         voxel_size = 0.2
@@ -86,7 +92,7 @@ class Example:
         self.sphere_pos = (3.0, 15.0, 0.0)
         self.sphere_scale = 1.0
         self.sphere_radius = rad
-        s = builder.add_shape_sdf(
+        builder.add_shape_sdf(
             ke=1.0e4,
             kd=1000.0,
             kf=1000.0,
@@ -94,7 +100,8 @@ class Example:
             sdf=sphere_sdf,
             body=-1,
             pos=self.sphere_pos,
-            scale=(self.sphere_scale, self.sphere_scale, self.sphere_scale))
+            scale=(self.sphere_scale, self.sphere_scale, self.sphere_scale),
+        )
 
         self.model = builder.finalize()
         self.model.particle_kf = 25.0
@@ -113,13 +120,15 @@ class Example:
         with wp.ScopedTimer("simulate", active=True):
             self.model.particle_grid.build(self.state_0.particle_q, self.radius * 2.0)
 
-            for s in range(self.sim_substeps):
+            for _ in range(self.sim_substeps):
                 self.state_0.clear_forces()
                 wp.sim.collide(self.model, self.state_0)
                 self.integrator.simulate(self.model, self.state_0, self.state_1, self.sim_dt)
 
                 # swap states
                 (self.state_0, self.state_1) = (self.state_1, self.state_0)
+
+            self.sim_time += self.frame_dt
 
     def render(self, is_live=False):
         with wp.ScopedTimer("render", active=True):
@@ -132,18 +141,20 @@ class Example:
                 name="collision",
                 path=os.path.join(os.path.dirname(__file__), "assets/rocks.usd"),
                 pos=(0.0, 0.0, 0.0),
-                rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), -0.5 * math.pi) *
-                wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi),
+                rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), -0.5 * math.pi)
+                * wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi),
                 scale=(0.01, 0.01, 0.01),
             )
 
-            self.renderer.render_sphere(name="sphere", pos=self.sphere_pos,
-                                        radius=self.sphere_scale * self.sphere_radius, rot=(0.0, 0.0, 0.0, 1.0))
+            self.renderer.render_sphere(
+                name="sphere",
+                pos=self.sphere_pos,
+                radius=self.sphere_scale * self.sphere_radius,
+                rot=(0.0, 0.0, 0.0, 1.0),
+            )
 
             self.renderer.render(self.state_0)
             self.renderer.end_frame()
-
-        self.sim_time += self.frame_dt
 
 
 if __name__ == "__main__":
@@ -151,7 +162,7 @@ if __name__ == "__main__":
 
     example = Example(stage_path)
 
-    for i in range(example.frame_count):
+    for _ in range(example.frame_count):
         example.update()
         example.render()
 
