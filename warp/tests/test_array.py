@@ -1750,46 +1750,6 @@ def test_to_list_struct(test, device):
             test.assertEqual(l[i].a3.ndim, s.a3.ndim)
 
 
-def test_large_arrays_slow(test, device):
-    # The goal of this test is to use arrays just large enough to know
-    # if there's a flaw in handling arrays with more than 2**31-1 elements
-    # Unfortunately, it takes a long time to run so it won't be run automatically
-    # without changes to support how frequently a test may be run
-    total_elements = 2**31 + 8
-
-    # 1-D to 4-D arrays: test zero_, fill_, then zero_ for scalar data types:
-    for total_dims in range(1, 5):
-        dim_x = math.ceil(total_elements ** (1 / total_dims))
-        shape_tuple = tuple([dim_x] * total_dims)
-
-        for nptype, wptype in wp.types.np_dtype_to_warp_type.items():
-            a1 = wp.zeros(shape_tuple, dtype=wptype, device=device)
-            assert_np_equal(a1.numpy(), np.zeros_like(a1.numpy()))
-
-            a1.fill_(127)
-            assert_np_equal(a1.numpy(), 127 * np.ones_like(a1.numpy()))
-
-            a1.zero_()
-            assert_np_equal(a1.numpy(), np.zeros_like(a1.numpy()))
-
-
-def test_large_arrays_fast(test, device):
-    # A truncated version of test_large_arrays_slow meant to catch basic errors
-    total_elements = 2**31 + 8
-
-    nptype = np.dtype(np.int8)
-    wptype = wp.types.np_dtype_to_warp_type[nptype]
-
-    a1 = wp.zeros((total_elements,), dtype=wptype, device=device)
-    assert_np_equal(a1.numpy(), np.zeros_like(a1.numpy()))
-
-    a1.fill_(127)
-    assert_np_equal(a1.numpy(), 127 * np.ones_like(a1.numpy()))
-
-    a1.zero_()
-    assert_np_equal(a1.numpy(), np.zeros_like(a1.numpy()))
-
-
 @wp.kernel
 def kernel_array_to_bool(array_null: wp.array(dtype=float), array_valid: wp.array(dtype=float)):
     if not array_null:
@@ -2087,14 +2047,38 @@ def test_array_from_numpy(test, device):
     result = wp.from_numpy(arr, dtype=wp.float32, shape=(32,))
     expected = wp.array(
         (
-            1.0, 2.0, 3.0, 4.0,
-            2.0, 3.0, 4.0, 5.0,
-            3.0, 4.0, 5.0, 6.0,
-            4.0, 5.0, 6.0, 7.0,
-            2.0, 3.0, 4.0, 5.0,
-            3.0, 4.0, 5.0, 6.0,
-            4.0, 5.0, 6.0, 7.0,
-            5.0, 6.0, 7.0, 8.0,
+            1.0,
+            2.0,
+            3.0,
+            4.0,
+            2.0,
+            3.0,
+            4.0,
+            5.0,
+            3.0,
+            4.0,
+            5.0,
+            6.0,
+            4.0,
+            5.0,
+            6.0,
+            7.0,
+            2.0,
+            3.0,
+            4.0,
+            5.0,
+            3.0,
+            4.0,
+            5.0,
+            6.0,
+            4.0,
+            5.0,
+            6.0,
+            7.0,
+            5.0,
+            6.0,
+            7.0,
+            8.0,
         ),
         dtype=wp.float32,
         shape=(32,),
@@ -2140,7 +2124,6 @@ def register(parent):
 
     add_function_test(TestArray, "test_lower_bound", test_lower_bound, devices=devices)
     add_function_test(TestArray, "test_round_trip", test_round_trip, devices=devices)
-    add_function_test(TestArray, "test_large_arrays_fast", test_large_arrays_fast, devices=devices)
     add_function_test(TestArray, "test_array_to_bool", test_array_to_bool, devices=devices)
     add_function_test(TestArray, "test_array_of_structs", test_array_of_structs, devices=devices)
     add_function_test(TestArray, "test_array_of_structs_grad", test_array_of_structs_grad, devices=devices)

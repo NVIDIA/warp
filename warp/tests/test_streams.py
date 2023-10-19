@@ -46,6 +46,11 @@ def test_stream_arg_implicit_sync(test, device):
 
     new_stream = wp.Stream(device)
 
+    # Exercise code path
+    wp.set_stream(new_stream, device)
+
+    test.assertTrue(wp.get_device(device).has_stream)
+
     # launch work on new stream
     wp.launch(inc, dim=a.size, inputs=[a], stream=new_stream)
     wp.copy(b, a, stream=new_stream)
@@ -279,6 +284,27 @@ def test_stream_scope_wait_stream(test, device):
         assert_np_equal(d.numpy(), np.full(N, fill_value=4.0))
 
 
+def test_stream_exceptions(test, device):
+    cpu_device = wp.get_device("cpu")
+
+    # Can't set the stream on a CPU device
+    with test.assertRaises(RuntimeError):
+        stream0 = wp.Stream()
+        cpu_device.stream = stream0
+
+    # Can't create a stream on the CPU
+    with test.assertRaises(RuntimeError):
+        wp.Stream(device="cpu")
+
+    # Can't create an event with CPU device
+    with test.assertRaises(RuntimeError):
+        wp.Event(device=cpu_device)
+
+    # Can't get the stream on a CPU device
+    with test.assertRaises(RuntimeError):
+        cpu_stream = cpu_device.stream  # noqa: F841
+
+
 def test_stream_arg_graph_mgpu(test, device):
     # resources on GPU 0
     stream0 = wp.get_stream("cuda:0")
@@ -384,6 +410,7 @@ def register(parent):
     add_function_test(TestStreams, "test_stream_scope_synchronize", test_stream_scope_synchronize, devices=devices)
     add_function_test(TestStreams, "test_stream_scope_wait_event", test_stream_scope_wait_event, devices=devices)
     add_function_test(TestStreams, "test_stream_scope_wait_stream", test_stream_scope_wait_stream, devices=devices)
+    add_function_test(TestStreams, "test_stream_exceptions", test_stream_exceptions, devices=devices)
 
     if len(devices) > 1:
         add_function_test(TestStreams, "test_stream_arg_graph_mgpu", test_stream_arg_graph_mgpu)

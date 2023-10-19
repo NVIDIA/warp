@@ -179,17 +179,17 @@ def vector(length, dtype):
         def __rmul__(self, x):
             return warp.mul(x, self)
 
-        def __div__(self, y):
+        def __truediv__(self, y):
             return warp.div(self, y)
 
         def __rdiv__(self, x):
             return warp.div(x, self)
 
-        def __pos__(self, y):
-            return warp.pos(self, y)
+        def __pos__(self):
+            return warp.pos(self)
 
-        def __neg__(self, y):
-            return warp.neg(self, y)
+        def __neg__(self):
+            return warp.neg(self)
 
         def __str__(self):
             return f"[{', '.join(map(str, self))}]"
@@ -301,17 +301,17 @@ def matrix(shape, dtype):
         def __rmatmul__(self, x):
             return warp.mul(x, self)
 
-        def __div__(self, y):
+        def __truediv__(self, y):
             return warp.div(self, y)
 
         def __rdiv__(self, x):
             return warp.div(x, self)
 
-        def __pos__(self, y):
-            return warp.pos(self, y)
+        def __pos__(self):
+            return warp.pos(self)
 
-        def __neg__(self, y):
-            return warp.neg(self, y)
+        def __neg__(self):
+            return warp.neg(self)
 
         def __str__(self):
             row_str = []
@@ -2623,6 +2623,7 @@ class Volume:
             pass
 
     def array(self):
+        """Returns the raw memory buffer of the Volume as an array"""
         buf = ctypes.c_void_p(0)
         size = ctypes.c_uint64(0)
         if self.device.is_cpu:
