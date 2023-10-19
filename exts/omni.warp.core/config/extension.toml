@@ -30,10 +30,16 @@ name = "omni.warp.core"
 [[test]]
 pyCoverageOmit = [
     "warp/stubs.py",
-    "warp/sim/render.py",
-    "warp/render.py",
-    "warp/fem/*.py",
-    "warp/tests/*.py"
+    "warp/jax.py",
+    "warp/torch.py",
+    "warp/build.py",
+    "warp/build_dll.py",
+    "warp/sim/**",
+    "warp/render/**",
+    "warp/optim/**",
+    "warp/fem/**",
+    "warp/thirdparty/**",
+    "warp/tests/**"
 ]
 pyCoverageThreshold = 40
 timeout = 900

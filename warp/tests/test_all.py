@@ -21,6 +21,7 @@ import warp.tests.test_compile_consts
 import warp.tests.test_conditional
 import warp.tests.test_copy
 import warp.tests.test_ctypes
+import warp.tests.test_devices
 import warp.tests.test_dlpack
 import warp.tests.test_examples
 import warp.tests.test_fabricarray
@@ -30,10 +31,12 @@ import warp.tests.test_fp16
 import warp.tests.test_func
 import warp.tests.test_generics
 import warp.tests.test_grad
+import warp.tests.test_grad_customs
 import warp.tests.test_hash_grid
 import warp.tests.test_import
 import warp.tests.test_indexedarray
 import warp.tests.test_intersect
+import warp.tests.test_large
 import warp.tests.test_launch
 import warp.tests.test_lerp
 import warp.tests.test_lvalue
@@ -46,6 +49,7 @@ import warp.tests.test_mesh_query_point
 import warp.tests.test_mesh_query_ray
 import warp.tests.test_mlp
 import warp.tests.test_model
+import warp.tests.test_modules_lite
 import warp.tests.test_multigpu
 import warp.tests.test_noise
 import warp.tests.test_operators
@@ -92,9 +96,11 @@ def register_tests(parent):
     tests.append(warp.tests.test_volume.register(parent))
     tests.append(warp.tests.test_mlp.register(parent))
     tests.append(warp.tests.test_grad.register(parent))
+    tests.append(warp.tests.test_grad_customs.register(parent))
     tests.append(warp.tests.test_intersect.register(parent))
     tests.append(warp.tests.test_array.register(parent))
     tests.append(warp.tests.test_launch.register(parent))
+    tests.append(warp.tests.test_large.register(parent))
     tests.append(warp.tests.test_import.register(parent))
     tests.append(warp.tests.test_func.register(parent))
     tests.append(warp.tests.test_fp16.register(parent))
@@ -131,6 +137,8 @@ def register_tests(parent):
     tests.append(warp.tests.test_examples.register(parent))  # Needs to be before test_fem for now
     tests.append(warp.tests.test_fem.register(parent))
     tests.append(warp.tests.test_lvalue.register(parent))
+    tests.append(warp.tests.test_devices.register(parent))
+    tests.append(warp.tests.test_modules_lite.register(parent))
 
     return tests
 

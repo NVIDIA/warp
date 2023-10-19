@@ -118,6 +118,26 @@ def test_native_func_export(test, device):
         tol=1.0e-3,
     )
 
+    v = wp.vec2(0.0)
+    v += wp.vec2(1.0, 1.0)
+    assert(v == wp.vec2(1.0, 1.0))
+    v -= wp.vec2(1.0, 1.0)
+    assert(v == wp.vec2(0.0, 0.0))
+    v = wp.vec2(2.0, 2.0) - wp.vec2(1.0, 1.0)
+    assert(v == wp.vec2(1.0, 1.0))
+    v *= 2.0
+    assert(v == wp.vec2(2.0, 2.0))
+    v = v * 2.0
+    assert(v == wp.vec2(4.0, 4.0))
+    v = v / 2.0
+    assert(v == wp.vec2(2.0, 2.0))
+    v /= 2.0
+    assert(v == wp.vec2(1.0, 1.0))
+    v = -v
+    assert(v == wp.vec2(-1.0, -1.0))
+    v = +v
+    assert(v == wp.vec2(-1.0, -1.0))
+
     m22 = wp.mat22(1.0, 2.0, 3.0, 4.0)
     m22 = m22 + m22
 
@@ -133,6 +153,27 @@ def test_native_func_export(test, device):
     f = wp.sin(math.pi * 0.5)
     test.assertAlmostEqual(f, 1.0, places=3)
 
+    m = wp.mat22(0.0, 0.0, 0.0, 0.0)
+    m += wp.mat22(1.0, 1.0, 1.0, 1.0)
+    assert(m == wp.mat22(1.0, 1.0, 1.0, 1.0))
+    m -= wp.mat22(1.0, 1.0, 1.0, 1.0)
+    assert(m == wp.mat22(0.0, 0.0, 0.0, 0.0))
+    m = wp.mat22(2.0, 2.0, 2.0, 2.0) - wp.mat22(1.0, 1.0, 1.0, 1.0)
+    assert(m == wp.mat22(1.0, 1.0, 1.0, 1.0))
+    m *= 2.0
+    assert(m == wp.mat22(2.0, 2.0, 2.0, 2.0))
+    m = m * 2.0
+    assert(m == wp.mat22(4.0, 4.0, 4.0, 4.0))
+    m = m / 2.0
+    assert(m == wp.mat22(2.0, 2.0, 2.0, 2.0))
+    m /= 2.0
+    assert(m == wp.mat22(1.0, 1.0, 1.0, 1.0))
+    m = -m
+    assert(m == wp.mat22(-1.0, -1.0, -1.0, -1.0))
+    m = +m
+    assert(m == wp.mat22(-1.0, -1.0, -1.0, -1.0))
+    m = m * m
+    assert(m == wp.mat22(2.0, 2.0, 2.0, 2.0))
 
 def test_user_func_export(test, device):
     # tests calling overloaded user-defined functions from Python

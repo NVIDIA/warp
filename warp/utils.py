@@ -225,7 +225,7 @@ def array_inner(a, b, out=None, count=None, axis=None):
         raise RuntimeError("Array storage sizes do not match")
 
     if a.device != b.device:
-        raise RuntimeError("Array storage sizes do not match")
+        raise RuntimeError("Array storage devices do not match")
 
     if a.dtype != b.dtype:
         raise RuntimeError("Array data types do not match")

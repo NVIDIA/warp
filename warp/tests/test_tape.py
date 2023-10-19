@@ -6,6 +6,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import numpy as np
+
 import warp as wp
 from warp.tests.test_base import *
 
@@ -19,11 +20,17 @@ def mul_constant(x: wp.array(dtype=float), y: wp.array(dtype=float)):
     y[tid] = x[tid] * 2.0
 
 
+@wp.struct
+class Multiplicands:
+    x: wp.array(dtype=float)
+    y: wp.array(dtype=float)
+
+
 @wp.kernel
-def mul_variable(x: wp.array(dtype=float), y: wp.array(dtype=float), z: wp.array(dtype=float)):
+def mul_variable(mutiplicands: Multiplicands, z: wp.array(dtype=float)):
     tid = wp.tid()
 
-    z[tid] = x[tid] * y[tid]
+    z[tid] = mutiplicands.x[tid] * mutiplicands.y[tid]
 
 
 @wp.kernel
@@ -65,12 +72,13 @@ def test_tape_mul_variable(test, device):
 
     # record onto tape
     with tape:
-        # input data
-        x = wp.array(np.ones(dim) * 16.0, dtype=wp.float32, device=device, requires_grad=True)
-        y = wp.array(np.ones(dim) * 32.0, dtype=wp.float32, device=device, requires_grad=True)
-        z = wp.zeros_like(x)
+        # input data (Note: We're intentionally testing structs in tapes here)
+        multiplicands = Multiplicands()
+        multiplicands.x = wp.array(np.ones(dim) * 16.0, dtype=wp.float32, device=device, requires_grad=True)
+        multiplicands.y = wp.array(np.ones(dim) * 32.0, dtype=wp.float32, device=device, requires_grad=True)
+        z = wp.zeros_like(multiplicands.x)
 
-        wp.launch(kernel=mul_variable, dim=dim, inputs=[x, y], outputs=[z], device=device)
+        wp.launch(kernel=mul_variable, dim=dim, inputs=[multiplicands], outputs=[z], device=device)
 
     # loss = wp.sum(x)
     z.grad = wp.array(np.ones(dim), device=device, dtype=wp.float32)
@@ -79,16 +87,21 @@ def test_tape_mul_variable(test, device):
     tape.backward()
 
     # grad_x=y, grad_y=x
-    assert_np_equal(tape.gradients[x].numpy(), y.numpy())
-    assert_np_equal(tape.gradients[y].numpy(), x.numpy())
+    assert_np_equal(tape.gradients[multiplicands].x.numpy(), multiplicands.y.numpy())
+    assert_np_equal(tape.gradients[multiplicands].y.numpy(), multiplicands.x.numpy())
 
     # run backward again with different incoming gradient
     # should accumulate the same gradients again onto output
     # so gradients = 2.0*prev
     tape.backward()
 
-    assert_np_equal(tape.gradients[x].numpy(), y.numpy() * 2.0)
-    assert_np_equal(tape.gradients[y].numpy(), x.numpy() * 2.0)
+    assert_np_equal(tape.gradients[multiplicands].x.numpy(), multiplicands.y.numpy() * 2.0)
+    assert_np_equal(tape.gradients[multiplicands].y.numpy(), multiplicands.x.numpy() * 2.0)
+
+    # Clear launches and zero out the gradients
+    tape.reset()
+    assert_np_equal(tape.gradients[multiplicands].x.numpy(), np.zeros_like(tape.gradients[multiplicands].x.numpy()))
+    test.assertFalse(tape.launches)
 
 
 def test_tape_dot_product(test, device):
@@ -112,6 +125,13 @@ def test_tape_dot_product(test, device):
     assert_np_equal(tape.gradients[y].numpy(), x.numpy())
 
 
+def test_tape_no_nested_tapes(test, device):
+    with test.assertRaises(RuntimeError):
+        with wp.Tape():
+            with wp.Tape():
+                pass
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -121,6 +141,7 @@ def register(parent):
     add_function_test(TestTape, "test_tape_mul_constant", test_tape_mul_constant, devices=devices)
     add_function_test(TestTape, "test_tape_mul_variable", test_tape_mul_variable, devices=devices)
     add_function_test(TestTape, "test_tape_dot_product", test_tape_dot_product, devices=devices)
+    add_function_test(TestTape, "test_tape_no_nested_tapes", test_tape_no_nested_tapes, devices=devices)
 
     return TestTape
 
