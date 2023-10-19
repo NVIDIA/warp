@@ -1427,7 +1427,7 @@ class Adjoint:
                 if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
                     line = adj.source.splitlines()[adj.lineno]
-                    msg = f'Warning: detected mutated variable {sym} during a dynamic for-loop in function "{adj.fun_name}" at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n'
+                    msg = f'Warning: detected mutated variable {sym} during a dynamic for-loop in function "{adj.fun_name}" at {adj.filename}:{lineno}: this may not be a differentiable operation.\n{line}\n'
                     print(msg)
 
                 if var1.constant is not None:
@@ -1436,7 +1436,7 @@ class Adjoint:
                     )
 
                 # overwrite the old variable value (violates SSA)
-                adj.add_builtin_call("copy", [var1, var2])
+                adj.add_builtin_call("assign", [var1, var2])
 
                 # reset the symbol to point to the original variable
                 adj.symbols[sym] = var1
@@ -1877,7 +1877,7 @@ class Adjoint:
                 if is_reference(attr.type):
                     adj.add_builtin_call("store", [attr, rhs])
                 else:
-                    adj.add_builtin_call("copy", [attr, rhs])
+                    adj.add_builtin_call("assign", [attr, rhs])
 
                 if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno

@@ -2237,6 +2237,7 @@ add_builtin(
 
 
 add_builtin("copy", variadic=True, hidden=True, export=False, group="Utility")
+add_builtin("assign", variadic=True, hidden=True, export=False, group="Utility")
 add_builtin(
     "select",
     input_types={"cond": bool, "arg1": Any, "arg2": Any},

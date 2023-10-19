@@ -1031,7 +1031,21 @@ CUDA_CALLABLE inline void copy(T& dest, const T& src)
 template <typename T>
 CUDA_CALLABLE inline void adj_copy(T& dest, const T& src, T& adj_dest, T& adj_src)
 {
-    // nop, this is non-differentiable operation since it violates SSA
+    adj_src = adj_dest;
+    adj_dest = T{};
+}
+
+template <typename T>
+CUDA_CALLABLE inline void assign(T& dest, const T& src)
+{
+    dest = src;
+}
+
+template <typename T>
+CUDA_CALLABLE inline void adj_assign(T& dest, const T& src, T& adj_dest, T& adj_src)
+{
+    // this is generally a non-differentiable operation since it violates SSA,
+    // except in read-modify-write statements which are reversible through backpropagation
     adj_src = adj_dest;
     adj_dest = T{};
 }
