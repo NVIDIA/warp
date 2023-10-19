@@ -49,6 +49,8 @@ def test_marching_cubes(test, device):
 
     test.assertTrue(np.max(error) < 1.0)
 
+    iso.resize(nx=dim*2, ny=dim*2, nz=dim*2, max_verts=max_verts, max_tris=max_tris)
+
 
 def register(parent):
     devices = ["cuda"]

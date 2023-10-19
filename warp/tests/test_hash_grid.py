@@ -97,27 +97,28 @@ def test_hashgrid_query(test, device):
         counts_arr = wp.zeros(len(points), dtype=int, device=device)
         counts_arr_ref = wp.zeros(len(points), dtype=int, device=device)
 
-        with wp.ScopedTimer("brute", active=print_enabled):
-            wp.launch(
-                kernel=count_neighbors_reference,
-                dim=len(points) * len(points),
-                inputs=[query_radius, points_arr, counts_arr_ref, len(points)],
-                device=device,
-            )
-            wp.synchronize()
+        profiler = {}
 
-        with wp.ScopedTimer("grid build", active=print_enabled):
-            grid.build(points_arr, cell_radius)
-            wp.synchronize()
+        with wp.ScopedTimer("grid operations", print=print_enabled, dict=profiler, synchronize=True):
+            with wp.ScopedTimer("brute", print=print_enabled, dict=profiler, synchronize=True):
+                wp.launch(
+                    kernel=count_neighbors_reference,
+                    dim=len(points) * len(points),
+                    inputs=[query_radius, points_arr, counts_arr_ref, len(points)],
+                    device=device,
+                )
+                wp.synchronize()
 
-        with wp.ScopedTimer("grid query", active=print_enabled):
-            wp.launch(
-                kernel=count_neighbors,
-                dim=len(points),
-                inputs=[grid.id, query_radius, points_arr, counts_arr],
-                device=device,
-            )
-            wp.synchronize()
+            with wp.ScopedTimer("grid build", print=print_enabled, dict=profiler, synchronize=True):
+                grid.build(points_arr, cell_radius)
+
+            with wp.ScopedTimer("grid query", print=print_enabled, dict=profiler, synchronize=True):
+                wp.launch(
+                    kernel=count_neighbors,
+                    dim=len(points),
+                    inputs=[grid.id, query_radius, points_arr, counts_arr],
+                    device=device,
+                )
 
         counts = counts_arr.numpy()
         counts_ref = counts_arr_ref.numpy()
@@ -143,5 +144,6 @@ def register(parent):
 
 
 if __name__ == "__main__":
+    wp.force_load()
     c = register(unittest.TestCase)
     unittest.main(verbosity=2, failfast=False)
