@@ -8,6 +8,7 @@
 import ast
 import ctypes
 import hashlib
+import gc
 import inspect
 import os
 import platform
@@ -3653,6 +3654,9 @@ def capture_begin(device: Devicelike = None, stream=None, force_module_load=True
         force_load(device)
 
     device.is_capturing = True
+
+    # trigger garbage collection to avoid older allocations getting collected during graph capture
+    gc.collect()
 
     with warp.ScopedStream(stream):
         runtime.core.cuda_graph_begin_capture(device.context)
