@@ -1824,7 +1824,8 @@ class Adjoint:
                 adj.add_builtin_call("array_store", [target, *indices, value])
 
             elif type_is_vector(target_type) or type_is_matrix(target_type):
-                adj.add_builtin_call("indexset", [target, *indices, value])
+                attr = adj.add_builtin_call("indexref", [target, *indices])
+                adj.add_builtin_call("store", [attr, value])
 
                 if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
@@ -1869,7 +1870,8 @@ class Adjoint:
             if type_is_vector(aggregate_type):
                 index = adj.vector_component_index(lhs.attr, aggregate_type)
 
-                adj.add_builtin_call("indexset", [aggregate, index, rhs])
+                attr = adj.add_builtin_call("indexref", [aggregate, index])
+                adj.add_builtin_call("store", [attr, rhs])
 
             else:
                 attr = adj.emit_Attribute(lhs)

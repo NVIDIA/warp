@@ -397,21 +397,21 @@ inline CUDA_CALLABLE Type index(const vec_t<Length, Type> & a, int idx)
 }
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void indexset(vec_t<Length, Type>& v, int idx, Type value)
+inline CUDA_CALLABLE Type* indexref(vec_t<Length, Type>& v, int idx)
 {
 #ifndef NDEBUG
     if (idx < 0 || idx >= Length)
     {
-        printf("vec store %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        printf("vec index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
 
-    v[idx] = value;
+    return &v[idx];
 }
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_indexset(vec_t<Length, Type>& v, int idx, const Type& value,
+inline CUDA_CALLABLE void adj_indexref(vec_t<Length, Type>& v, int idx,
                                        vec_t<Length, Type>& adj_v, int adj_idx, const Type& adj_value)
 {
     // nop

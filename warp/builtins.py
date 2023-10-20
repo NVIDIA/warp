@@ -2624,67 +2624,47 @@ add_builtin(
 add_builtin("index", input_types={"s": shape_t, "i": int}, value_type=int, hidden=True, group="Utility")
 
 
-def vector_indexset_element_value_func(arg_types, kwds, _):
+def vector_indexref_element_value_func(arg_types, kwds, _):
     vec_type = arg_types[0]
     # index_type = arg_types[1]
-    value_type = arg_types[2]
+    value_type = vec_type._wp_scalar_type_
 
-    if value_type is not vec_type._wp_scalar_type_:
-        raise RuntimeError(
-            f"Trying to assign type '{type_repr(value_type)}' to element of a vector with type '{type_repr(vec_type)}'"
-        )
-
-    return None
+    return Reference(value_type)
 
 
 # implements vector[index] = value
 add_builtin(
-    "indexset",
-    input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
-    value_func=vector_indexset_element_value_func,
+    "indexref",
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": int},
+    value_func=vector_indexref_element_value_func,
     hidden=True,
     group="Utility",
     skip_replay=True,
 )
 
 
-def matrix_indexset_element_value_func(arg_types, kwds, _):
+def matrix_indexref_element_value_func(arg_types, kwds, _):
     mat_type = arg_types[0]
     # row_type = arg_types[1]
     # col_type = arg_types[2]
-    value_type = arg_types[3]
+    value_type = mat_type._wp_scalar_type_
 
-    if value_type is not mat_type._wp_scalar_type_:
-        raise RuntimeError(
-            f"Trying to assign type '{type_repr(value_type)}' to element of a matrix with type '{type_repr(mat_type)}'"
-        )
-
-    return None
+    return Reference(value_type)
 
 
-def matrix_indexset_row_value_func(arg_types, kwds, _):
+def matrix_indexref_row_value_func(arg_types, kwds, _):
     mat_type = arg_types[0]
-    # row_type = arg_types[1]
-    value_type = arg_types[2]
+    row_type = mat_type._wp_row_type_
+    # value_type = arg_types[2]
 
-    if value_type._shape_[0] != mat_type._shape_[1]:
-        raise RuntimeError(
-            f"Trying to assign vector with length {value_type._length} to matrix with shape {mat_type._shape}, vector length must match the number of matrix columns."
-        )
-
-    if value_type._wp_scalar_type_ is not mat_type._wp_scalar_type_:
-        raise RuntimeError(
-            f"Trying to assign vector of type '{type_repr(value_type)}' to row of matrix of type '{type_repr(mat_type)}'"
-        )
-
-    return None
+    return Reference(row_type)
 
 
 # implements matrix[i] = row
 add_builtin(
-    "indexset",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "value": vector(length=Any, dtype=Scalar)},
-    value_func=matrix_indexset_row_value_func,
+    "indexref",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int},
+    value_func=matrix_indexref_row_value_func,
     hidden=True,
     group="Utility",
     skip_replay=True,
@@ -2692,9 +2672,9 @@ add_builtin(
 
 # implements matrix[i,j] = scalar
 add_builtin(
-    "indexset",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int, "value": Scalar},
-    value_func=matrix_indexset_element_value_func,
+    "indexref",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int},
+    value_func=matrix_indexref_element_value_func,
     hidden=True,
     group="Utility",
     skip_replay=True,
