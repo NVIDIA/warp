@@ -730,6 +730,15 @@ inline CUDA_CALLABLE void store(T* address, T value)
     *address = value;
 }
 
+template<typename T>
+inline CUDA_CALLABLE T load(T* address)
+{
+    T value = *address;
+    FP_VERIFY_FWD(value)
+
+    return value;
+}
+
 // select operator to check for array being null
 template <typename T1, typename T2>
 CUDA_CALLABLE inline T2 select(const array_t<T1>& arr, const T2& a, const T2& b) { return arr.data?b:a; }
@@ -830,6 +839,12 @@ inline CUDA_CALLABLE void adj_store(const T* address, T value, const T& adj_addr
 {
 	// nop; generic store() operations are not differentiable, only array_store() is
     FP_VERIFY_ADJ(value, adj_value)
+}
+
+template<typename T>
+inline CUDA_CALLABLE void adj_load(const T* address, const T& adj_address, T& adj_value)
+{
+    // nop; generic load() operations are not differentiable
 }
 
 template<typename T>
