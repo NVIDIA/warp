@@ -470,8 +470,7 @@ class Var:
     def ctype(self, value_type=False):
         return Var.type_to_ctype(self.type, value_type)
 
-    def emit(self, prefix: str = "var", dereference: bool = False):
-        star = "*" if is_reference(self.type) and dereference else ""
+    def emit(self, prefix: str = "var", star=""):
         if self.prefix:
             return f"{star}{prefix}_{self.label}"
         else:
@@ -777,7 +776,8 @@ class Adjoint:
     def add_comp(adj, op_strings, left, comps):
         output = adj.add_var(builtins.bool)
 
-        s = output.emit() + " = " + ("(" * len(comps)) + left.emit(dereference=True) + " "
+        star = "*" if is_reference(left.type) else ""
+        s = output.emit() + " = " + ("(" * len(comps)) + left.emit(star=star) + " "
 
         comp_index = 0
         prev_comp_chainable = False
@@ -787,21 +787,15 @@ class Adjoint:
             if comp_chainable and prev_comp_chainable:
                 # We  restrict chaining to operands of the same type
                 if comps[comp_index - 1].type is comp.type:
-                    s += (
-                        "&& ("
-                        + comps[comp_index - 1].emit(dereference=True)
-                        + " "
-                        + op
-                        + " "
-                        + comp.emit(dereference=True)
-                        + ")) "
-                    )
+                    star = "*" if is_reference(comp.type) else ""
+                    s += "&& (" + comps[comp_index - 1].emit(star=star) + " " + op + " " + comp.emit(star=star) + ")) "
                 else:
                     raise WarpCodegenTypeError(
                         f"Cannot chain comparisons of unequal types: {comps[comp_index - 1].type} {op} {comp.type}."
                     )
             else:
-                s += op + " " + comp.emit(dereference=True) + ") "
+                star = "*" if is_reference(comp.type) else ""
+                s += op + " " + comp.emit(star=star) + ") "
 
             prev_comp_chainable = comp_chainable
             comp_index += 1
@@ -815,7 +809,10 @@ class Adjoint:
     def add_bool_op(adj, op_string, exprs):
         output = adj.add_var(builtins.bool)
         command = (
-            output.emit() + " = " + (" " + op_string + " ").join([expr.emit(dereference=True) for expr in exprs]) + ";"
+            output.emit()
+            + " = "
+            + (" " + op_string + " ").join([expr.emit(star="*" if is_reference(expr.type) else "") for expr in exprs])
+            + ";"
         )
         adj.add_forward(command)
 
@@ -1007,11 +1004,11 @@ class Adjoint:
         if var is None or len(var) == 0:
             adj.add_forward("return;", f"goto label{adj.label_count};")
         elif len(var) == 1:
-            adj.add_forward(f"return {var[0].emit(dereference=True)};", f"goto label{adj.label_count};")
+            adj.add_forward(f"return {var[0].emit()};", f"goto label{adj.label_count};")
             adj.add_reverse("adj_" + str(var[0]) + " += adj_ret;")
         else:
             for i, v in enumerate(var):
-                adj.add_forward(f"ret_{i} = {v.emit(dereference=True)};")
+                adj.add_forward(f"ret_{i} = {v.emit()};")
                 adj.add_reverse(f"adj_{v} += adj_ret_{i};")
             adj.add_forward("return;", f"goto label{adj.label_count};")
 
@@ -1021,7 +1018,8 @@ class Adjoint:
 
     # define an if statement
     def begin_if(adj, cond):
-        adj.add_forward(f"if ({cond.emit(dereference=True)}) {{")
+        star = "*" if is_reference(cond.type) else ""
+        adj.add_forward(f"if ({cond.emit(star=star)}) {{")
         adj.add_reverse("}")
 
         adj.indent()
@@ -1030,10 +1028,12 @@ class Adjoint:
         adj.dedent()
 
         adj.add_forward("}")
-        adj.add_reverse(f"if ({cond.emit(dereference=True)}) {{")
+        star = "*" if is_reference(cond.type) else ""
+        adj.add_reverse(f"if ({cond.emit(star=star)}) {{")
 
     def begin_else(adj, cond):
-        adj.add_forward(f"if (!{cond.emit(dereference=True)}) {{")
+        star = "*" if is_reference(cond.type) else ""
+        adj.add_forward(f"if (!{cond.emit(star=star)}) {{")
         adj.add_reverse("}")
 
         adj.indent()
@@ -1042,7 +1042,8 @@ class Adjoint:
         adj.dedent()
 
         adj.add_forward("}")
-        adj.add_reverse(f"if (!{cond.emit(dereference=True)}) {{")
+        star = "*" if is_reference(cond.type) else ""
+        adj.add_reverse(f"if (!{cond.emit(star=star)}) {{")
 
     # define a for-loop
     def begin_for(adj, iter):
@@ -1118,7 +1119,7 @@ class Adjoint:
 
         c = adj.eval(cond)
 
-        cond_block.body_forward.append(f"if (({c.emit(dereference=True)}) == false) goto while_end_{cond_block.label};")
+        cond_block.body_forward.append(f"if (({c.emit()}) == false) goto while_end_{cond_block.label};")
 
         # being block around loop
         adj.begin_block()
