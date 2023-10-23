@@ -693,7 +693,7 @@ class Adjoint:
         formatted_var = adj.format_args("var", param_types, args)
         formatted_out = []
         if has_output_args and len(args_out) > 1:
-            formatted_out = adj.format_args("var", param_types, args_out)
+            formatted_out = adj.format_args("var", param_types, args_out, adjoints=True)
         formatted_var_adj = adj.format_args(
             "&adj" if use_initializer_list else "adj",
             param_types,
