@@ -156,10 +156,18 @@ def vector(length, dtype):
                 raise KeyError(f"Invalid key {key}, expected int or slice")
 
         def __getattr__(self, name):
-            return self.__getitem__("xyzw".index(name))
+            idx = "xyzw".find(name)
+            if idx != -1:
+                return self.__getitem__(idx)
+
+            return self.__getattribute__(name)
 
         def __setattr__(self, name, value):
-            return self.__setitem__("xyzw".index(name), value)
+            idx = "xyzw".find(name)
+            if idx != -1:
+                return self.__setitem__(idx, value)
+
+            return super().__setattr__(name, value)
 
         def __add__(self, y):
             return warp.add(self, y)
