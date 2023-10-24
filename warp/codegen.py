@@ -674,6 +674,12 @@ class Adjoint:
 
     # generates argument string for a forward function call
     def format_forward_call_args(adj, param_types, args, use_initializer_list):
+        args = [
+            adj.load(a)
+            if not ((param_types[i] == Reference or param_types[i] == Callable) if i < len(param_types) else False)
+            else a
+            for i, a in enumerate(args)
+        ]
         arg_str = ", ".join(adj.format_args("var", param_types, args))
         if use_initializer_list:
             return f"{{{arg_str}}}"
@@ -1825,7 +1831,11 @@ class Adjoint:
                 adj.add_builtin_call("array_store", [target, *indices, value])
 
             elif type_is_vector(target_type) or type_is_matrix(target_type):
-                attr = adj.add_builtin_call("indexref", [target, *indices])
+                if is_reference(target.type):
+                    attr = adj.add_builtin_call("indexref2", [target, *indices])
+                else:
+                    attr = adj.add_builtin_call("indexref", [target, *indices])
+
                 adj.add_builtin_call("store", [attr, value])
 
                 if warp.config.verbose and not adj.custom_reverse_mode:
@@ -1871,7 +1881,11 @@ class Adjoint:
             if type_is_vector(aggregate_type):
                 index = adj.vector_component_index(lhs.attr, aggregate_type)
 
-                attr = adj.add_builtin_call("indexref", [aggregate, index])
+                if is_reference(aggregate.type):
+                    attr = adj.add_builtin_call("indexref2", [aggregate, index])
+                else:
+                    attr = adj.add_builtin_call("indexref", [aggregate, index])
+
                 adj.add_builtin_call("store", [attr, rhs])
 
             else:

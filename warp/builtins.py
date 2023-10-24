@@ -2396,7 +2396,6 @@ add_builtin(
     input_types={"address": Reference},
     hidden=True,
     value_func=load_value_func,
-    skip_replay=True,
     group="Utility",
 )
 
@@ -2646,10 +2645,19 @@ def vector_indexref_element_value_func(arg_types, kwds, _):
     return Reference(value_type)
 
 
-# implements vector[index] = value
+# implements &vector[index]
 add_builtin(
     "indexref",
     input_types={"a": vector(length=Any, dtype=Scalar), "i": int},
+    value_func=vector_indexref_element_value_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+)
+# implements &(*vector)[index]
+add_builtin(
+    "indexref2",
+    input_types={"a": Reference, "i": int},
     value_func=vector_indexref_element_value_func,
     hidden=True,
     group="Utility",

@@ -411,6 +411,20 @@ inline CUDA_CALLABLE Type* indexref(vec_t<Length, Type>& v, int idx)
 }
 
 template<unsigned Length, typename Type>
+inline CUDA_CALLABLE Type* indexref2(vec_t<Length, Type>* v, int idx)
+{
+#ifndef NDEBUG
+    if (idx < 0 || idx >= Length)
+    {
+        printf("vec store %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    return &((*v)[idx]);
+}
+
+template<unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_indexref(vec_t<Length, Type>& v, int idx,
                                        vec_t<Length, Type>& adj_v, int adj_idx, const Type& adj_value)
 {
@@ -418,6 +432,12 @@ inline CUDA_CALLABLE void adj_indexref(vec_t<Length, Type>& v, int idx,
 }
 
 
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_indexref2(vec_t<Length, Type>* v, int idx, 
+                                       vec_t<Length, Type>& adj_v, int adj_idx, const Type& adj_value)
+{
+    // nop
+}
 
 
 template<unsigned Length, typename Type>
