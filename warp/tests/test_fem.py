@@ -737,19 +737,21 @@ def register(parent):
     class TestFem(parent):
         pass
 
-    add_function_test(TestFem, "test_regular_quadrature", test_regular_quadrature)
-    add_function_test(TestFem, "test_closest_point_queries", test_closest_point_queries)
-    add_function_test(TestFem, "test_grad_decomposition", test_grad_decomposition, devices=devices)
-    add_function_test(TestFem, "test_integrate_gradient", test_integrate_gradient, devices=devices)
-    add_function_test(TestFem, "test_vector_divergence_theorem", test_vector_divergence_theorem, devices=devices)
-    add_function_test(TestFem, "test_tensor_divergence_theorem", test_tensor_divergence_theorem, devices=devices)
-    add_function_test(TestFem, "test_triangle_mesh", test_triangle_mesh, devices=devices)
-    add_function_test(TestFem, "test_tet_mesh", test_tet_mesh, devices=devices)
-    add_function_test(TestFem, "test_dof_mapper", test_dof_mapper)
-    add_function_test(TestFem, "test_square_shape_functions", test_square_shape_functions)
-    add_function_test(TestFem, "test_cube_shape_functions", test_cube_shape_functions)
-    add_function_test(TestFem, "test_tri_shape_functions", test_tri_shape_functions)
-    add_function_test(TestFem, "test_tet_shape_functions", test_tet_shape_functions)
+    if wp.is_cuda_available():
+            
+        add_function_test(TestFem, "test_regular_quadrature", test_regular_quadrature)
+        add_function_test(TestFem, "test_closest_point_queries", test_closest_point_queries)
+        add_function_test(TestFem, "test_grad_decomposition", test_grad_decomposition, devices=devices)
+        add_function_test(TestFem, "test_integrate_gradient", test_integrate_gradient, devices=devices)
+        add_function_test(TestFem, "test_vector_divergence_theorem", test_vector_divergence_theorem, devices=devices)
+        add_function_test(TestFem, "test_tensor_divergence_theorem", test_tensor_divergence_theorem, devices=devices)
+        add_function_test(TestFem, "test_triangle_mesh", test_triangle_mesh, devices=devices)
+        add_function_test(TestFem, "test_tet_mesh", test_tet_mesh, devices=devices)
+        add_function_test(TestFem, "test_dof_mapper", test_dof_mapper)
+        add_function_test(TestFem, "test_square_shape_functions", test_square_shape_functions)
+        add_function_test(TestFem, "test_cube_shape_functions", test_cube_shape_functions)
+        add_function_test(TestFem, "test_tri_shape_functions", test_tri_shape_functions)
+        add_function_test(TestFem, "test_tet_shape_functions", test_tet_shape_functions)
 
     return TestFem
 
