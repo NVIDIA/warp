@@ -48,6 +48,8 @@ def kernel_step_with_copy(state_in: State, state_out: State, model: Model):
 
 
 def test_step(test, device):
+    rng = np.random.default_rng(123)
+
     dim = 5
 
     dt = 0.01
@@ -62,9 +64,8 @@ def test_step(test, device):
     model.dt = dt
     model.gravity = wp.vec3(0, 0, -9.81)
 
-    np.random.seed(0)
-    x = np.random.normal(size=(dim, 3))
-    v = np.random.normal(size=(dim, 3))
+    x = rng.normal(size=(dim, 3))
+    v = rng.normal(size=(dim, 3))
 
     x_expected = x + (v + gravity / m[:, None] * dt) * dt
 
@@ -93,13 +94,14 @@ def kernel_loss(x: wp.array(dtype=wp.vec3), loss: wp.array(dtype=float)):
 
 
 def test_step_grad(test, device):
+    rng = np.random.default_rng(123)
+
     dim = 5
 
     dt = 0.01
     gravity = np.array([0, 0, -9.81])
 
-    np.random.seed(0)
-    m = np.random.rand(dim) + 0.1
+    m = rng.random(size=dim) + 0.1
 
     m_model = wp.array(m, dtype=float, device=device, requires_grad=True)
 
@@ -108,8 +110,8 @@ def test_step_grad(test, device):
     model.dt = dt
     model.gravity = wp.vec3(0, 0, -9.81)
 
-    x = np.random.normal(size=(dim, 3))
-    v = np.random.normal(size=(dim, 3))
+    x = rng.normal(size=(dim, 3))
+    v = rng.normal(size=(dim, 3))
 
     x_in = wp.array(x, dtype=wp.vec3, device=device, requires_grad=True)
     v_in = wp.array(v, dtype=wp.vec3, device=device, requires_grad=True)
@@ -405,78 +407,78 @@ def test_nested_array_struct(test, device):
 
 @wp.struct
 class EmptyNest1:
-    a : Empty
-    z : int
+    a: Empty
+    z: int
 
 
 @wp.struct
 class EmptyNest2:
-    a : Empty
-    b : Empty
-    z : int
+    a: Empty
+    b: Empty
+    z: int
 
 
 @wp.struct
 class EmptyNest3:
-    a : Empty
-    b : Empty
-    c : Empty
-    z : int
+    a: Empty
+    b: Empty
+    c: Empty
+    z: int
 
 
 @wp.struct
 class EmptyNest4:
-    a : Empty
-    b : Empty
-    c : Empty
-    d : Empty
-    z : int
+    a: Empty
+    b: Empty
+    c: Empty
+    d: Empty
+    z: int
 
 
 @wp.struct
 class EmptyNest5:
-    a : Empty
-    b : Empty
-    c : Empty
-    d : Empty
-    e : Empty
-    z : int
+    a: Empty
+    b: Empty
+    c: Empty
+    d: Empty
+    e: Empty
+    z: int
 
 
 @wp.struct
 class EmptyNest6:
-    a : Empty
-    b : Empty
-    c : Empty
-    d : Empty
-    e : Empty
-    f : Empty
-    z : int
+    a: Empty
+    b: Empty
+    c: Empty
+    d: Empty
+    e: Empty
+    f: Empty
+    z: int
 
 
 @wp.struct
 class EmptyNest7:
-    a : Empty
-    b : Empty
-    c : Empty
-    d : Empty
-    e : Empty
-    f : Empty
-    g : Empty
-    z : int
+    a: Empty
+    b: Empty
+    c: Empty
+    d: Empty
+    e: Empty
+    f: Empty
+    g: Empty
+    z: int
 
 
 @wp.struct
 class EmptyNest8:
-    a : Empty
-    b : Empty
-    c : Empty
-    d : Empty
-    e : Empty
-    f : Empty
-    g : Empty
-    h : Empty
-    z : int
+    a: Empty
+    b: Empty
+    c: Empty
+    d: Empty
+    e: Empty
+    f: Empty
+    g: Empty
+    h: Empty
+    z: int
 
 
 @wp.kernel

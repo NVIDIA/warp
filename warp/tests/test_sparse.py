@@ -48,12 +48,14 @@ def _bsr_to_dense(bsr):
 
 
 def test_csr_from_triplets(test, device):
+    rng = np.random.default_rng(123)
+
     shape = (8, 6)
     n = 100
 
-    rows = wp.array(np.random.randint(0, shape[0], n, dtype=int), dtype=int, device=device)
-    cols = wp.array(np.random.randint(0, shape[1], n, dtype=int), dtype=int, device=device)
-    vals = wp.array(np.random.rand(n), dtype=float, device=device)
+    rows = wp.array(rng.integers(0, high=shape[0], size=n, dtype=int), dtype=int, device=device)
+    cols = wp.array(rng.integers(0, high=shape[1], size=n, dtype=int), dtype=int, device=device)
+    vals = wp.array(rng.random(size=n), dtype=float, device=device)
 
     ref = _triplets_to_dense(shape, rows, cols, vals)
 
@@ -66,15 +68,17 @@ def test_csr_from_triplets(test, device):
 
 
 def test_bsr_from_triplets(test, device):
+    rng = np.random.default_rng(123)
+
     block_shape = (3, 2)
     nrow = 4
     ncol = 9
     shape = (block_shape[0] * nrow, block_shape[1] * ncol)
     n = 50
 
-    rows = wp.array(np.random.randint(0, nrow, n, dtype=int), dtype=int, device=device)
-    cols = wp.array(np.random.randint(0, ncol, n, dtype=int), dtype=int, device=device)
-    vals = wp.array(np.random.rand(n, block_shape[0], block_shape[1]), dtype=float, device=device)
+    rows = wp.array(rng.integers(0, high=nrow, size=n, dtype=int), dtype=int, device=device)
+    cols = wp.array(rng.integers(0, high=ncol, size=n, dtype=int), dtype=int, device=device)
+    vals = wp.array(rng.random(size=(n, block_shape[0], block_shape[1])), dtype=float, device=device)
 
     ref = _triplets_to_dense(shape, rows, cols, vals)
 
@@ -87,6 +91,8 @@ def test_bsr_from_triplets(test, device):
 
 
 def test_bsr_get_set_diag(test, device):
+    rng = np.random.default_rng(123)
+
     block_shape = (3, 3)
     nrow = 4
     ncol = 4
@@ -94,7 +100,7 @@ def test_bsr_get_set_diag(test, device):
 
     rows = wp.array([0, 1, 2, 3, 2, 1], dtype=int, device=device)
     cols = wp.array([1, 1, 1, 3, 2, 2], dtype=int, device=device)
-    vals_np = np.random.rand(nnz, block_shape[0], block_shape[1])
+    vals_np = rng.random(size=(nnz, block_shape[0], block_shape[1]))
     vals = wp.array(vals_np, dtype=float, device=device)
 
     bsr = bsr_zeros(nrow, ncol, wp.types.matrix(shape=block_shape, dtype=float), device=device)
@@ -115,7 +121,7 @@ def test_bsr_get_set_diag(test, device):
     diag = bsr_get_diag(diag_bsr)
     assert_np_equal(diag_np, diag.numpy())
 
-    diag_scalar_np = np.random.rand(nrow)
+    diag_scalar_np = rng.random(size=nrow)
     diag_scalar = wp.array(diag_scalar_np, device=device)
     diag_bsr = bsr_diag(diag_scalar)
     diag = bsr_get_diag(diag_bsr)
@@ -169,6 +175,8 @@ def make_test_bsr_transpose(block_shape, scalar_type):
 
 def make_test_bsr_axpy(block_shape, scalar_type):
     def test_bsr_axpy(test, device):
+        rng = np.random.default_rng(123)
+
         nrow = 2
         ncol = 3
         nnz = 6
@@ -176,17 +184,17 @@ def make_test_bsr_axpy(block_shape, scalar_type):
         alphas = [-1.0, 0.0, 1.0]
         betas = [2.0, -1.0, 0.0]
 
-        x_rows = wp.array(np.random.randint(0, nrow, nnz, dtype=int), dtype=int, device=device)
-        x_cols = wp.array(np.random.randint(0, ncol, nnz, dtype=int), dtype=int, device=device)
-        x_vals = wp.array(np.random.rand(nnz, block_shape[0], block_shape[1]), dtype=scalar_type, device=device)
+        x_rows = wp.array(rng.integers(0, high=nrow, size=nnz, dtype=int), dtype=int, device=device)
+        x_cols = wp.array(rng.integers(0, high=ncol, size=nnz, dtype=int), dtype=int, device=device)
+        x_vals = wp.array(rng.random(size=(nnz, block_shape[0], block_shape[1])), dtype=scalar_type, device=device)
         x_vals = x_vals.reshape((nnz, block_shape[0], block_shape[1]))
 
         x = bsr_zeros(nrow, ncol, wp.types.matrix(shape=block_shape, dtype=scalar_type), device=device)
         bsr_set_from_triplets(x, x_rows, x_cols, x_vals)
 
-        y_rows = wp.array(np.random.randint(0, nrow, nnz, dtype=int), dtype=int, device=device)
-        y_cols = wp.array(np.random.randint(0, ncol, nnz, dtype=int), dtype=int, device=device)
-        y_vals = wp.array(np.random.rand(nnz, block_shape[0], block_shape[1]), dtype=scalar_type, device=device)
+        y_rows = wp.array(rng.integers(0, high=nrow, size=nnz, dtype=int), dtype=int, device=device)
+        y_cols = wp.array(rng.integers(0, high=ncol, size=nnz, dtype=int), dtype=int, device=device)
+        y_vals = wp.array(rng.random(size=(nnz, block_shape[0], block_shape[1])), dtype=scalar_type, device=device)
         y_vals = y_vals.reshape((nnz, block_shape[0], block_shape[1]))
 
         y = bsr_zeros(nrow, ncol, wp.types.matrix(shape=block_shape, dtype=scalar_type), device=device)
@@ -211,6 +219,8 @@ def make_test_bsr_axpy(block_shape, scalar_type):
 
 def make_test_bsr_mm(block_shape, scalar_type):
     def test_bsr_mm(test, device):
+        rng = np.random.default_rng(123)
+
         x_nrow = 3
         x_ncol = 2
         x_block_shape = block_shape
@@ -228,25 +238,25 @@ def make_test_bsr_mm(block_shape, scalar_type):
         alphas = [-1.0, 0.0, 1.0]
         betas = [2.0, -1.0, 0.0]
 
-        x_rows = wp.array(np.random.randint(0, x_nrow, nnz, dtype=int), dtype=int, device=device)
-        x_cols = wp.array(np.random.randint(0, x_ncol, nnz, dtype=int), dtype=int, device=device)
-        x_vals = wp.array(np.random.rand(nnz, x_block_shape[0], x_block_shape[1]), dtype=scalar_type, device=device)
+        x_rows = wp.array(rng.integers(0, high=x_nrow, size=nnz, dtype=int), dtype=int, device=device)
+        x_cols = wp.array(rng.integers(0, high=x_ncol, size=nnz, dtype=int), dtype=int, device=device)
+        x_vals = wp.array(rng.random(size=(nnz, x_block_shape[0], x_block_shape[1])), dtype=scalar_type, device=device)
         x_vals = x_vals.reshape((nnz, x_block_shape[0], x_block_shape[1]))
 
         x = bsr_zeros(x_nrow, x_ncol, wp.types.matrix(shape=x_block_shape, dtype=scalar_type), device=device)
         bsr_set_from_triplets(x, x_rows, x_cols, x_vals)
 
-        y_rows = wp.array(np.random.randint(0, y_nrow, nnz, dtype=int), dtype=int, device=device)
-        y_cols = wp.array(np.random.randint(0, y_ncol, nnz, dtype=int), dtype=int, device=device)
-        y_vals = wp.array(np.random.rand(nnz, y_block_shape[0], y_block_shape[1]), dtype=scalar_type, device=device)
+        y_rows = wp.array(rng.integers(0, high=y_nrow, size=nnz, dtype=int), dtype=int, device=device)
+        y_cols = wp.array(rng.integers(0, high=y_ncol, size=nnz, dtype=int), dtype=int, device=device)
+        y_vals = wp.array(rng.random(size=(nnz, y_block_shape[0], y_block_shape[1])), dtype=scalar_type, device=device)
         y_vals = y_vals.reshape((nnz, y_block_shape[0], y_block_shape[1]))
 
         y = bsr_zeros(y_nrow, y_ncol, wp.types.matrix(shape=y_block_shape, dtype=scalar_type), device=device)
         bsr_set_from_triplets(y, y_rows, y_cols, y_vals)
 
-        z_rows = wp.array(np.random.randint(0, z_nrow, nnz, dtype=int), dtype=int, device=device)
-        z_cols = wp.array(np.random.randint(0, z_ncol, nnz, dtype=int), dtype=int, device=device)
-        z_vals = wp.array(np.random.rand(nnz, z_block_shape[0], z_block_shape[1]), dtype=scalar_type, device=device)
+        z_rows = wp.array(rng.integers(0, high=z_nrow, size=nnz, dtype=int), dtype=int, device=device)
+        z_cols = wp.array(rng.integers(0, high=z_ncol, size=nnz, dtype=int), dtype=int, device=device)
+        z_vals = wp.array(rng.random(size=(nnz, z_block_shape[0], z_block_shape[1])), dtype=scalar_type, device=device)
         z_vals = z_vals.reshape((nnz, z_block_shape[0], z_block_shape[1]))
 
         z = bsr_zeros(z_nrow, z_ncol, wp.types.matrix(shape=z_block_shape, dtype=scalar_type), device=device)
@@ -282,35 +292,36 @@ def make_test_bsr_mm(block_shape, scalar_type):
 
 def make_test_bsr_mv(block_shape, scalar_type):
     def test_bsr_mv(test, device):
+        rng = np.random.default_rng(123)
+
         nrow = 2
         ncol = 3
         nnz = 6
 
         alphas = [-1.0, 0.0, 1.0]
         betas = [2.0, -1.0, 0.0]
-        np.random.seed(0)
-        A_rows = wp.array(np.random.randint(0, nrow, nnz, dtype=int), dtype=int, device=device)
-        A_cols = wp.array(np.random.randint(0, ncol, nnz, dtype=int), dtype=int, device=device)
-        A_vals = wp.array(np.random.rand(nnz, block_shape[0], block_shape[1]), dtype=scalar_type, device=device)
+        A_rows = wp.array(rng.integers(0, high=nrow, size=nnz, dtype=int), dtype=int, device=device)
+        A_cols = wp.array(rng.integers(0, high=ncol, size=nnz, dtype=int), dtype=int, device=device)
+        A_vals = wp.array(rng.random(size=(nnz, block_shape[0], block_shape[1])), dtype=scalar_type, device=device)
         A_vals = A_vals.reshape((nnz, block_shape[0], block_shape[1]))
 
         A = bsr_zeros(nrow, ncol, wp.types.matrix(shape=block_shape, dtype=scalar_type), device=device)
         bsr_set_from_triplets(A, A_rows, A_cols, A_vals)
 
         if block_shape[1] == 1:
-            x = wp.array(np.random.rand(ncol), dtype=scalar_type, device=device)
+            x = wp.array(rng.random(size=ncol), dtype=scalar_type, device=device)
         else:
             x = wp.array(
-                np.random.rand(ncol, block_shape[1]),
+                rng.random(size=(ncol, block_shape[1])),
                 dtype=wp.vec(length=block_shape[1], dtype=scalar_type),
                 device=device,
             )
 
         if block_shape[0] == 1:
-            y = wp.array(np.random.rand(nrow), dtype=scalar_type, device=device)
+            y = wp.array(rng.random(size=nrow), dtype=scalar_type, device=device)
         else:
             y = wp.array(
-                np.random.rand(nrow, block_shape[0]),
+                rng.random(size=(nrow, block_shape[0])),
                 dtype=wp.vec(length=block_shape[0], dtype=scalar_type),
                 device=device,
             )

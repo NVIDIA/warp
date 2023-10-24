@@ -14,11 +14,13 @@ wp.init()
 
 
 def test_array_scan(test, device):
+    rng = np.random.default_rng(123)
+
     for dtype in (int, float):
         if dtype == int:
-            values = np.random.randint(-1e6, 1e6, 100000, dtype=dtype)
+            values = rng.integers(-1e6, high=1e6, size=100000, dtype=dtype)
         else:
-            values = np.random.uniform(-1, 1, 100000)
+            values = rng.uniform(low=-1e6, high=1e6, size=100000)
 
         expected = np.cumsum(values)
 
@@ -314,27 +316,46 @@ def register(parent):
     add_function_test(TestUtils, "test_array_scan_error_devices_mismatch", test_array_scan_error_devices_mismatch)
     add_function_test(TestUtils, "test_array_scan_error_sizes_mismatch", test_array_scan_error_sizes_mismatch)
     add_function_test(TestUtils, "test_array_scan_error_dtypes_mismatch", test_array_scan_error_dtypes_mismatch)
-    add_function_test(TestUtils, "test_array_scan_error_unsupported_dtype", test_array_scan_error_unsupported_dtype, devices=devices)
+    add_function_test(
+        TestUtils, "test_array_scan_error_unsupported_dtype", test_array_scan_error_unsupported_dtype, devices=devices
+    )
     add_function_test(TestUtils, "test_radix_sort_pairs", test_radix_sort_pairs, devices=devices)
-    add_function_test(TestUtils, "test_radix_sort_pairs_error_devices_mismatch", test_radix_sort_pairs_error_devices_mismatch)
-    add_function_test(TestUtils, "test_radix_sort_pairs_error_insufficient_storage", test_radix_sort_pairs_error_insufficient_storage)
-    add_function_test(TestUtils, "test_radix_sort_pairs_error_unsupported_dtype", test_radix_sort_pairs_error_unsupported_dtype, devices=devices)
+    add_function_test(
+        TestUtils, "test_radix_sort_pairs_error_devices_mismatch", test_radix_sort_pairs_error_devices_mismatch
+    )
+    add_function_test(
+        TestUtils, "test_radix_sort_pairs_error_insufficient_storage", test_radix_sort_pairs_error_insufficient_storage
+    )
+    add_function_test(
+        TestUtils,
+        "test_radix_sort_pairs_error_unsupported_dtype",
+        test_radix_sort_pairs_error_unsupported_dtype,
+        devices=devices,
+    )
     add_function_test(TestUtils, "test_array_sum", test_array_sum, devices=devices)
     add_function_test(TestUtils, "test_array_sum_error_out_device_mismatch", test_array_sum_error_out_device_mismatch)
     add_function_test(TestUtils, "test_array_sum_error_out_dtype_mismatch", test_array_sum_error_out_dtype_mismatch)
     add_function_test(TestUtils, "test_array_sum_error_out_shape_mismatch", test_array_sum_error_out_shape_mismatch)
-    add_function_test(TestUtils, "test_array_sum_error_unsupported_dtype", test_array_sum_error_unsupported_dtype, devices=devices)
+    add_function_test(
+        TestUtils, "test_array_sum_error_unsupported_dtype", test_array_sum_error_unsupported_dtype, devices=devices
+    )
     add_function_test(TestUtils, "test_array_inner", test_array_inner, devices=devices)
     add_function_test(TestUtils, "test_array_inner_error_sizes_mismatch", test_array_inner_error_sizes_mismatch)
     add_function_test(TestUtils, "test_array_inner_error_devices_mismatch", test_array_inner_error_devices_mismatch)
     add_function_test(TestUtils, "test_array_inner_error_dtypes_mismatch", test_array_inner_error_dtypes_mismatch)
-    add_function_test(TestUtils, "test_array_inner_error_out_device_mismatch", test_array_inner_error_out_device_mismatch)
+    add_function_test(
+        TestUtils, "test_array_inner_error_out_device_mismatch", test_array_inner_error_out_device_mismatch
+    )
     add_function_test(TestUtils, "test_array_inner_error_out_dtype_mismatch", test_array_inner_error_out_dtype_mismatch)
     add_function_test(TestUtils, "test_array_inner_error_out_shape_mismatch", test_array_inner_error_out_shape_mismatch)
-    add_function_test(TestUtils, "test_array_inner_error_unsupported_dtype", test_array_inner_error_unsupported_dtype, devices=devices)
+    add_function_test(
+        TestUtils, "test_array_inner_error_unsupported_dtype", test_array_inner_error_unsupported_dtype, devices=devices
+    )
     add_function_test(TestUtils, "test_array_cast", test_array_cast, devices=devices)
     add_function_test(TestUtils, "test_array_cast_error_devices_mismatch", test_array_cast_error_devices_mismatch)
-    add_function_test(TestUtils, "test_array_cast_error_unsupported_partial_cast", test_array_cast_error_unsupported_partial_cast)
+    add_function_test(
+        TestUtils, "test_array_cast_error_unsupported_partial_cast", test_array_cast_error_unsupported_partial_cast
+    )
     return TestUtils
 
 

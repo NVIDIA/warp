@@ -317,7 +317,7 @@ def gradcheck(func, func_name, inputs, device, eps=1e-4, tol=1e-2):
 
 
 def test_vector_math_grad(test, device):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     # test unary operations
     for dim, vec_type in [(2, wp.vec2), (3, wp.vec3), (4, wp.vec4), (4, wp.quat)]:
@@ -333,14 +333,14 @@ def test_vector_math_grad(test, device):
 
         # run the tests with 5 different random inputs
         for _ in range(5):
-            x = wp.array(np.random.randn(1, dim).astype(np.float32), dtype=vec_type, device=device)
+            x = wp.array(rng.random(size=(1, dim), dtype=np.float32), dtype=vec_type, device=device)
             gradcheck(check_length, f"check_length_{vec_type.__name__}", [x], device)
             gradcheck(check_length_sq, f"check_length_sq_{vec_type.__name__}", [x], device)
             gradcheck(check_normalize, f"check_normalize_{vec_type.__name__}", [x], device)
 
 
 def test_matrix_math_grad(test, device):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     # test unary operations
     for dim, mat_type in [(2, wp.mat22), (3, wp.mat33), (4, wp.mat44)]:
@@ -353,13 +353,13 @@ def test_matrix_math_grad(test, device):
 
         # run the tests with 5 different random inputs
         for _ in range(5):
-            x = wp.array(np.random.randn(1, dim, dim).astype(np.float32), ndim=1, dtype=mat_type, device=device)
+            x = wp.array(rng.random(size=(1, dim, dim), dtype=np.float32), ndim=1, dtype=mat_type, device=device)
             gradcheck(check_determinant, f"check_length_{mat_type.__name__}", [x], device)
             gradcheck(check_trace, f"check_length_sq_{mat_type.__name__}", [x], device)
 
 
 def test_3d_math_grad(test, device):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     # test binary operations
     def check_cross(vs: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
@@ -409,7 +409,9 @@ def test_3d_math_grad(test, device):
 
     # run the tests with 5 different random inputs
     for _ in range(5):
-        x = wp.array(np.random.randn(2, 3).astype(np.float32), dtype=wp.vec3, device=device, requires_grad=True)
+        x = wp.array(
+            rng.standard_normal(size=(2, 3), dtype=np.float32), dtype=wp.vec3, device=device, requires_grad=True
+        )
         gradcheck(check_cross, "check_cross_3d", [x], device)
         gradcheck(check_dot, "check_dot_3d", [x], device)
         gradcheck(check_mat33, "check_mat33_3d", [x], device, eps=2e-2)
@@ -420,7 +422,7 @@ def test_3d_math_grad(test, device):
 
 
 def test_multi_valued_function_grad(test, device):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     @wp.func
     def multi_valued(x: float, y: float, z: float):
@@ -435,7 +437,9 @@ def test_multi_valued_function_grad(test, device):
 
     # run the tests with 5 different random inputs
     for _ in range(5):
-        x = wp.array(np.random.randn(2, 3).astype(np.float32), dtype=wp.vec3, device=device, requires_grad=True)
+        x = wp.array(
+            rng.standard_normal(size=(2, 3), dtype=np.float32), dtype=wp.vec3, device=device, requires_grad=True
+        )
         gradcheck(check_multi_valued, "check_multi_valued_3d", [x], device)
 
 

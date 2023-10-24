@@ -5,7 +5,6 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
 import math
 import unittest
 from typing import Any
@@ -87,6 +86,8 @@ def _create_fabric_array_interface(data: wp.array, attrib: str, bucket_sizes: li
             raise RuntimeError("Bucket sizes don't add up to the size of data array")
 
     elif data.size > 0:
+        rng = np.random.default_rng(123)
+
         # generate random bucket sizes
         bucket_min = 1
         bucket_max = math.ceil(0.5 * data.size)
@@ -95,7 +96,7 @@ def _create_fabric_array_interface(data: wp.array, attrib: str, bucket_sizes: li
 
         bucket_sizes = []
         while size_remaining >= bucket_max:
-            bucket_size = np.random.randint(bucket_min, bucket_max)
+            bucket_size = rng.integers(bucket_min, high=bucket_max, dtype=int)
             bucket_sizes.append(bucket_size)
             size_remaining -= bucket_size
 
@@ -156,6 +157,8 @@ def _create_fabric_array_array_interface(data: list, attrib: str, bucket_sizes: 
             raise RuntimeError("Bucket sizes don't add up to the number of given arrays")
 
     else:
+        rng = np.random.default_rng(123)
+
         # generate random bucket sizes
         bucket_min = 1
         bucket_max = math.ceil(0.5 * num_arrays)
@@ -164,7 +167,7 @@ def _create_fabric_array_array_interface(data: list, attrib: str, bucket_sizes: 
 
         bucket_sizes = []
         while size_remaining >= bucket_max:
-            bucket_size = np.random.randint(bucket_min, bucket_max)
+            bucket_size = rng.integers(bucket_min, high=bucket_max, dtype=int)
             bucket_sizes.append(bucket_size)
             size_remaining -= bucket_size
 
