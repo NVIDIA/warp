@@ -227,7 +227,10 @@ class Function:
                                         f"Error calling function '{f.key}', parameter for argument '{arg_name}' has type '{type(a)}' but expected '{arg_type}'"
                                     )
 
-                                x.value = a
+                                # Cast the value to its argument type to make sure that it can be assigned to the field of the `ValueArg` struct.
+                                # This could error otherwise when, for example, the field type is set to `vec3i` while the value is of type
+                                # `vector(length=3, dtype=int)`, even though both types are semantically identical.
+                                x.value = arg_type(a)
 
                             params.append(x)
 

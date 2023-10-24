@@ -718,6 +718,21 @@ def test_tpl_constructor_error_numeric_args_mismatch(test, device):
         )
 
 
+def test_tpl_ops_with_anon(test, device):
+    mat22f = wp.mat((2, 2), dtype=float)
+    vec3i = wp.vec(3, dtype=int)
+
+    m = mat22f(1.0, 2.0, 3.0, 4.0)
+    m += wp.mat22f(2.0, 3.0, 4.0, 5.0)
+    m -= wp.mat22f(3.0, 4.0, 5.0, 6.0)
+    test.assertSequenceEqual(m, ((0.0, 1.0), (2.0, 3.0)))
+
+    v = wp.vec3i(1, 2, 3)
+    v += vec3i(2, 3, 4)
+    v -= vec3i(3, 4, 5)
+    test.assertSequenceEqual(v, (0, 1, 2))
+
+
 def test_indexing(test, device, dtype, register_kernels=False):
     np.random.seed(123)
 
@@ -3220,6 +3235,7 @@ def register(parent):
         test_tpl_constructor_error_numeric_args_mismatch,
         devices=devices,
     )
+    add_function_test(TestVec, "test_tpl_ops_with_anon", test_tpl_ops_with_anon)
 
     for dtype in np_scalar_types:
         add_function_test(TestVec, f"test_arrays_{dtype.__name__}", test_arrays, devices=devices, dtype=dtype)
