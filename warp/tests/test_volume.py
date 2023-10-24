@@ -621,26 +621,30 @@ def register(parent):
                     np.testing.assert_equal([0.25] * 3, voxel_size)
 
         def test_volume_from_numpy(self):
-            mins = np.array([-3.0, -3.0, -3.0])
-            voxel_size = 0.2
-            maxs = np.array([3.0, 3.0, 3.0])
-            nums = np.ceil((maxs - mins) / (voxel_size)).astype(dtype=int)
-            center = np.array([0.0, 0.0, 0.0])
-            rad = 2.5
-            sphere_sdf_np = np.zeros(tuple(nums))
-            for x in range(nums[0]):
-                for y in range(nums[1]):
-                    for z in range(nums[2]):
-                        pos = mins + voxel_size * np.array([x, y, z])
-                        dis = np.linalg.norm(pos - center)
-                        sphere_sdf_np[x, y, z] = dis - rad
-            sphere_vdb = wp.Volume.load_from_numpy(sphere_sdf_np, mins, voxel_size, rad + 3.0 * voxel_size)
 
-            self.assertNotEqual(sphere_vdb.id, 0)
+            # Volume.allocate_from_tiles() is only available with CUDA
+            if wp.is_cuda_available():
 
-            sphere_vdb_array = sphere_vdb.array()
-            self.assertEqual(sphere_vdb_array.dtype, wp.uint8)
-            self.assertFalse(sphere_vdb_array.owner)
+                mins = np.array([-3.0, -3.0, -3.0])
+                voxel_size = 0.2
+                maxs = np.array([3.0, 3.0, 3.0])
+                nums = np.ceil((maxs - mins) / (voxel_size)).astype(dtype=int)
+                center = np.array([0.0, 0.0, 0.0])
+                rad = 2.5
+                sphere_sdf_np = np.zeros(tuple(nums))
+                for x in range(nums[0]):
+                    for y in range(nums[1]):
+                        for z in range(nums[2]):
+                            pos = mins + voxel_size * np.array([x, y, z])
+                            dis = np.linalg.norm(pos - center)
+                            sphere_sdf_np[x, y, z] = dis - rad
+                sphere_vdb = wp.Volume.load_from_numpy(sphere_sdf_np, mins, voxel_size, rad + 3.0 * voxel_size)
+
+                self.assertNotEqual(sphere_vdb.id, 0)
+
+                sphere_vdb_array = sphere_vdb.array()
+                self.assertEqual(sphere_vdb_array.dtype, wp.uint8)
+                self.assertFalse(sphere_vdb_array.owner)
 
     for device in devices:
         points_jittered_np = point_grid + rng.uniform(-0.5, 0.5, size=point_grid.shape)
