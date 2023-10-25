@@ -97,7 +97,7 @@ template <typename T> void array_sum_host(const T *ptr_a, T *ptr_out, int count,
         accumulate_func = dyn_len_sum<T>;
     }
 
-    *ptr_out = 0.0f;
+    memset(ptr_out, 0, sizeof(T)*type_length);
     for (int i = 0; i < count; ++i)
         accumulate_func(ptr_a + i * stride, ptr_out, type_length);
 }
