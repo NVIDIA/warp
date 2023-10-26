@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## [1.0.0-beta.3] - 2023-10-19
+
+- Add support for code coverage scans (test_coverage.py), coverage at 85% in omni.warp.core
+- Add support for named component access for vector types, e.g.: `a = v.x`
+- Add support for lvalue expressions, e.g.: `array[i] += b`
+- Add casting constructors for matrix and vector types
+- Add support for `type()` operator that can be used to return type inside kernels
+- Add support for grid-stride kernels to support kernels with > 2^31-1 thread blocks
+- Fix for multi-process initialization warnings
+- Fix alignment issues with empty `wp.struct`
+- Fix for return statement warning with tuple-returning functions
+- Fix for `wp.batched_matmul()` registering the wrong function in the Tape
+- Fix and document for `wp.sim` forward + inverse kinematics
+- Fix for `wp.func` to return a default value if function does not return on all control paths
+- Refactor `wp.fem` support for new basis functions, decoupled function spaces
+- Optimizations for `wp.noise` functions, up to 10x faster in most cases
+- Optimizations for `type_size_in_bytes()` used in array construction
+
 ## [1.0.0-beta.2] - 2023-09-01
 
 - Fix for passing bool into `wp.func` functions

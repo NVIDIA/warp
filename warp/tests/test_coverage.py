@@ -1,18 +1,20 @@
-import coverage
 import os
 
-cover = coverage.Coverage(source=os.path.join(os.path.dirname(__file__), "test_misc.py"),
-                          omit=["build*.py",
-                                "copyright.py",
-                                "setup.py",
-                                os.path.join("warp", "stubs.py"),
-                                os.path.join("warp", "tests", "*.py"),
-                                os.path.join("warp", "thirdparty", "appdirs.py"),
-                                os.path.join("warp", "fem", "*.py"),
-                                os.path.join("warp", "fem", "field", "*.py"),
-                                os.path.join("warp", "fem", "geometry", "*.py"),
-                                os.path.join("warp", "fem", "quadrature", "*.py"),
-                                os.path.join("warp", "fem", "space", "*.py")])
+import coverage
+
+cover = coverage.Coverage(
+    source=["warp", "warp.sim", "warp.render"],
+    omit=[
+        "build*.py",
+        "copyright.py",
+        "setup.py",
+        os.path.join("warp", "stubs.py"),
+        os.path.join("warp", "tests", "*.py"),
+        os.path.join("warp", "thirdparty", "appdirs.py"),
+        os.path.join("warp", "fem", "**", "*.py"),
+        os.path.join("warp", "render", "render_opengl.py"),
+    ],
+)
 
 cover.config.disable_warnings = [
     "module-not-measured",
@@ -25,8 +27,10 @@ cover.exclude("@wp")
 cover.exclude("@warp")
 cover.start()
 
-import test_all
+import test_all  # noqa: E402
+
 test_all.run()
+
 
 cover.stop()
 cover.save()

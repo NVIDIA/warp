@@ -5,10 +5,10 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import numpy as np
+
 import warp as wp
 from warp.tests.test_base import *
-
-import numpy as np
 
 wp.init()
 
@@ -61,6 +61,7 @@ def test_volume_sample_linear_f(volume: wp.uint64, points: wp.array(dtype=wp.vec
 
     expect_near(wp.volume_sample_f(volume, p, wp.Volume.LINEAR), expected, 2.0e-4)
 
+
 @wp.kernel
 def test_volume_sample_grad_linear_f(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
     tid = wp.tid()
@@ -74,14 +75,15 @@ def test_volume_sample_grad_linear_f(volume: wp.uint64, points: wp.array(dtype=w
 
     if abs(p[0]) > 10.0 or abs(p[1]) > 10.0 or abs(p[2]) > 10.0:
         return  # not testing against background values
-    
+
     grad = wp.vec3(0.0, 0.0, 0.0)
     val = wp.volume_sample_grad_f(volume, p, wp.Volume.LINEAR, grad)
-    
+
     expect_near(val, expected_val, 2.0e-4)
     expect_near(grad[0], expected_gx, 2.0e-4)
     expect_near(grad[1], expected_gy, 2.0e-4)
     expect_near(grad[2], expected_gz, 2.0e-4)
+
 
 @wp.kernel
 def test_volume_sample_local_f_linear_values(
@@ -91,23 +93,25 @@ def test_volume_sample_local_f_linear_values(
     p = points[tid]
     values[tid] = wp.volume_sample_f(volume, p, wp.Volume.LINEAR)
 
+
 @wp.kernel
 def test_volume_sample_grad_local_f_linear_values(
-    volume: wp.uint64, points: wp.array(dtype=wp.vec3), values: wp.array(dtype=wp.float32), case_num:int
+    volume: wp.uint64, points: wp.array(dtype=wp.vec3), values: wp.array(dtype=wp.float32), case_num: int
 ):
     tid = wp.tid()
     p = points[tid]
 
-    grad = wp.vec3(0.0, 0.0, 0.0)    
+    grad = wp.vec3(0.0, 0.0, 0.0)
     val = wp.volume_sample_grad_f(volume, p, wp.Volume.LINEAR, grad)
-    if case_num == 0:
-        values[tid] = val
-    elif case_num == 1:
-        values[tid] = grad[0]
+    
+    if case_num == 1:
+        val = grad[0]
     elif case_num == 2:
-        values[tid] = grad[1]
+        val = grad[1]
     elif case_num == 3:
-        values[tid] = grad[2]
+        val = grad[2]
+    values[tid] = val
+
 
 @wp.kernel
 def test_volume_sample_world_f_linear_values(
@@ -121,22 +125,24 @@ def test_volume_sample_world_f_linear_values(
 
 @wp.kernel
 def test_volume_sample_grad_world_f_linear_values(
-    volume: wp.uint64, points: wp.array(dtype=wp.vec3), values: wp.array(dtype=wp.float32), case_num:int
+    volume: wp.uint64, points: wp.array(dtype=wp.vec3), values: wp.array(dtype=wp.float32), case_num: int
 ):
     tid = wp.tid()
     q = points[tid]
     p = wp.volume_world_to_index(volume, q)
 
-    grad = wp.vec3(0.0, 0.0, 0.0)    
+    grad = wp.vec3(0.0, 0.0, 0.0)
     val = wp.volume_sample_grad_f(volume, p, wp.Volume.LINEAR, grad)
-    if case_num == 0:
-        values[tid] = val
-    elif case_num == 1:
-        values[tid] = grad[0]
+    
+    if case_num == 1:
+        val = grad[0]
     elif case_num == 2:
-        values[tid] = grad[1]
+        val = grad[1]
     elif case_num == 3:
-        values[tid] = grad[2]
+        val = grad[2]
+
+    values[tid] = val
+
 
 # vec3f volume tests
 @wp.kernel
@@ -613,6 +619,32 @@ def register(parent):
 
                     np.testing.assert_equal(test_volume_tiles, tiles_sorted)
                     np.testing.assert_equal([0.25] * 3, voxel_size)
+
+        def test_volume_from_numpy(self):
+
+            # Volume.allocate_from_tiles() is only available with CUDA
+            if wp.is_cuda_available():
+
+                mins = np.array([-3.0, -3.0, -3.0])
+                voxel_size = 0.2
+                maxs = np.array([3.0, 3.0, 3.0])
+                nums = np.ceil((maxs - mins) / (voxel_size)).astype(dtype=int)
+                center = np.array([0.0, 0.0, 0.0])
+                rad = 2.5
+                sphere_sdf_np = np.zeros(tuple(nums))
+                for x in range(nums[0]):
+                    for y in range(nums[1]):
+                        for z in range(nums[2]):
+                            pos = mins + voxel_size * np.array([x, y, z])
+                            dis = np.linalg.norm(pos - center)
+                            sphere_sdf_np[x, y, z] = dis - rad
+                sphere_vdb = wp.Volume.load_from_numpy(sphere_sdf_np, mins, voxel_size, rad + 3.0 * voxel_size)
+
+                self.assertNotEqual(sphere_vdb.id, 0)
+
+                sphere_vdb_array = sphere_vdb.array()
+                self.assertEqual(sphere_vdb_array.dtype, wp.uint8)
+                self.assertFalse(sphere_vdb_array.owner)
 
     for device in devices:
         points_jittered_np = point_grid + rng.uniform(-0.5, 0.5, size=point_grid.shape)

@@ -65,6 +65,7 @@ class Example:
         with wp.ScopedTimer("simulate", active=True):
             self.state.clear_forces()
             self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
+            self.sim_time += self.sim_dt
 
     def render(self, is_live=False):
         with wp.ScopedTimer("render", active=True):
@@ -73,8 +74,6 @@ class Example:
             self.renderer.begin_frame(time)
             self.renderer.render(self.state)
             self.renderer.end_frame()
-
-        self.sim_time += self.sim_dt
 
 
 if __name__ == "__main__":

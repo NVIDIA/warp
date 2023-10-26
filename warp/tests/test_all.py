@@ -5,72 +5,75 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import unittest
 import os
+import unittest
 
 import warp as wp
+import warp.tests.test_adam
+import warp.tests.test_arithmetic
+import warp.tests.test_array
+import warp.tests.test_atomic
+import warp.tests.test_bool
+import warp.tests.test_bvh
+import warp.tests.test_closest_point_edge_edge
+import warp.tests.test_codegen
+import warp.tests.test_compile_consts
+import warp.tests.test_conditional
+import warp.tests.test_copy
+import warp.tests.test_ctypes
+import warp.tests.test_devices
+import warp.tests.test_dlpack
+import warp.tests.test_examples
+import warp.tests.test_fabricarray
+import warp.tests.test_fast_math
+import warp.tests.test_fem
+import warp.tests.test_fp16
+import warp.tests.test_func
+import warp.tests.test_generics
+import warp.tests.test_grad
+import warp.tests.test_grad_customs
+import warp.tests.test_hash_grid
+import warp.tests.test_import
+import warp.tests.test_indexedarray
+import warp.tests.test_intersect
+import warp.tests.test_large
+import warp.tests.test_launch
+import warp.tests.test_lerp
+import warp.tests.test_lvalue
+import warp.tests.test_mat
+import warp.tests.test_math
+import warp.tests.test_matmul
+import warp.tests.test_mesh
+import warp.tests.test_mesh_query_aabb
+import warp.tests.test_mesh_query_point
+import warp.tests.test_mesh_query_ray
+import warp.tests.test_mlp
+import warp.tests.test_model
+import warp.tests.test_modules_lite
+import warp.tests.test_multigpu
+import warp.tests.test_noise
+import warp.tests.test_operators
+import warp.tests.test_options
+import warp.tests.test_pinned
+import warp.tests.test_quat
+import warp.tests.test_rand
+import warp.tests.test_reload
+import warp.tests.test_rounding
+import warp.tests.test_smoothstep
+import warp.tests.test_sparse
+import warp.tests.test_spatial
+import warp.tests.test_streams
+import warp.tests.test_struct
+import warp.tests.test_tape
+import warp.tests.test_torch
+import warp.tests.test_transient_module
+import warp.tests.test_vec
+import warp.tests.test_volume
+from warp.tests.test_base import get_test_devices
 
 # Uncomment to run the tests on all devices
 # import warp.tests.test_base
 # warp.tests.test_base.test_mode = "all"
-
-from warp.tests.test_base import get_test_devices
-
-import warp.tests.test_codegen
-import warp.tests.test_mesh_query_aabb
-import warp.tests.test_mesh_query_point
-import warp.tests.test_mesh_query_ray
-import warp.tests.test_bvh
-import warp.tests.test_conditional
-import warp.tests.test_operators
-import warp.tests.test_rounding
-import warp.tests.test_hash_grid
-import warp.tests.test_ctypes
-import warp.tests.test_rand
-import warp.tests.test_noise
-import warp.tests.test_tape
-import warp.tests.test_compile_consts
-import warp.tests.test_volume
-import warp.tests.test_mlp
-import warp.tests.test_grad
-import warp.tests.test_intersect
-import warp.tests.test_array
-import warp.tests.test_launch
-import warp.tests.test_import
-import warp.tests.test_func
-import warp.tests.test_fp16
-import warp.tests.test_reload
-import warp.tests.test_struct
-import warp.tests.test_closest_point_edge_edge
-import warp.tests.test_multigpu
-import warp.tests.test_quat
-import warp.tests.test_atomic
-import warp.tests.test_adam
-import warp.tests.test_transient_module
-import warp.tests.test_lerp
-import warp.tests.test_smoothstep
-import warp.tests.test_model
-import warp.tests.test_fast_math
-import warp.tests.test_streams
-import warp.tests.test_torch
-import warp.tests.test_pinned
-import warp.tests.test_matmul
-import warp.tests.test_options
-import warp.tests.test_dlpack
-import warp.tests.test_vec
-import warp.tests.test_mat
-import warp.tests.test_arithmetic
-import warp.tests.test_spatial
-import warp.tests.test_sparse
-import warp.tests.test_math
-import warp.tests.test_generics
-import warp.tests.test_indexedarray
-import warp.tests.test_copy
-import warp.tests.test_mesh
-import warp.tests.test_fabricarray
-import warp.tests.test_bool
-import warp.tests.test_fem
-import warp.tests.test_lvalue
 
 
 def register_tests(parent):
@@ -93,9 +96,11 @@ def register_tests(parent):
     tests.append(warp.tests.test_volume.register(parent))
     tests.append(warp.tests.test_mlp.register(parent))
     tests.append(warp.tests.test_grad.register(parent))
+    tests.append(warp.tests.test_grad_customs.register(parent))
     tests.append(warp.tests.test_intersect.register(parent))
     tests.append(warp.tests.test_array.register(parent))
     tests.append(warp.tests.test_launch.register(parent))
+    tests.append(warp.tests.test_large.register(parent))
     tests.append(warp.tests.test_import.register(parent))
     tests.append(warp.tests.test_func.register(parent))
     tests.append(warp.tests.test_fp16.register(parent))
@@ -129,8 +134,11 @@ def register_tests(parent):
     tests.append(warp.tests.test_mesh.register(parent))
     tests.append(warp.tests.test_fabricarray.register(parent))
     tests.append(warp.tests.test_bool.register(parent))
+    tests.append(warp.tests.test_examples.register(parent))  # Needs to be before test_fem for now
     tests.append(warp.tests.test_fem.register(parent))
     tests.append(warp.tests.test_lvalue.register(parent))
+    tests.append(warp.tests.test_devices.register(parent))
+    tests.append(warp.tests.test_modules_lite.register(parent))
 
     return tests
 
@@ -194,7 +202,7 @@ class TeamCityTestRunner(unittest.TextTestRunner):
         if self.running_in_teamcity:
             print(f"##teamcity[testSuiteFinished name='{name}']")
             if not result.wasSuccessful():
-                print(f"##teamcity[buildStatus status='FAILURE']")
+                print("##teamcity[buildStatus status='FAILURE']")
 
         return result
 

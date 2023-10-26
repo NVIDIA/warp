@@ -18,10 +18,6 @@ import math
 import warp as wp
 import warp.render
 
-import matplotlib
-import matplotlib.pyplot as plt
-import matplotlib.animation as anim
-
 wp.init()
 
 grid_width = wp.constant(256)
@@ -168,7 +164,7 @@ def init(rho: wp.array2d(dtype=float), u: wp.array2d(dtype=wp.vec2), radius: int
 
 
 class Example:
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.sim_fps = 60.0
         self.sim_substeps = 2
         self.iterations = 100
@@ -192,22 +188,12 @@ class Example:
         # capture pressure solve as a CUDA graph
         if self.device.is_cuda:
             wp.capture_begin()
-            self.solve()
+            self.pressure_iterations()
             self.graph = wp.capture_end()
 
     def update(self):
-        pass
-
-    def solve(self):
-        for i in range(self.iterations):
-            wp.launch(pressure_solve, dim=self.p0.shape, inputs=[self.p0, self.p1, self.div])
-
-            # swap pressure fields
-            (self.p0, self.p1) = (self.p1, self.p0)
-
-    def render(self, img, i):
         with wp.ScopedTimer("update"):
-            for i in range(self.sim_substeps):
+            for _ in range(self.sim_substeps):
                 shape = (grid_width, grid_height)
                 dt = self.sim_dt
 
@@ -230,7 +216,7 @@ class Example:
                     wp.capture_launch(self.graph)
 
                 else:
-                    self.solve()
+                    self.pressure_iterations()
 
                 # velocity update
                 wp.launch(pressure_apply, dim=shape, inputs=[self.p0, self.u0])
@@ -244,20 +230,39 @@ class Example:
 
                 self.sim_time += dt
 
-        # plot
+    def render(self):
+        pass
+
+    def pressure_iterations(self):
+        for _ in range(self.iterations):
+            wp.launch(pressure_solve, dim=self.p0.shape, inputs=[self.p0, self.p1, self.div])
+
+            # swap pressure fields
+            (self.p0, self.p1) = (self.p1, self.p0)
+
+    def update_and_render_frame(self, frame_num=None, img=None):
+        self.update()
+
         with wp.ScopedTimer("render"):
-            img.set_array(self.rho0.numpy())
+            if img:
+                img.set_array(self.rho0.numpy())
 
         return (img,)
 
 
 if __name__ == "__main__":
+    import matplotlib
+    import matplotlib.animation as anim
+    import matplotlib.pyplot as plt
+
     example = Example()
 
     fig = plt.figure()
 
     img = plt.imshow(example.rho0.numpy(), origin="lower", animated=True, interpolation="antialiased")
     img.set_norm(matplotlib.colors.Normalize(0.0, 1.0))
-    seq = anim.FuncAnimation(fig, lambda i: example.render(img, i), frames=100000, blit=True, interval=8, repeat=False)
+    seq = anim.FuncAnimation(
+        fig, example.update_and_render_frame, fargs=(img,), frames=100000, blit=True, interval=8, repeat=False
+    )
 
     plt.show()

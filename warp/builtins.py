@@ -257,15 +257,6 @@ add_builtin(
     doc="""Calculate the smallest integer that is greater than or equal to x.""",
 )
 
-add_builtin(
-    "frac",
-    input_types={"x": Float},
-    value_func=sametype_value_func(Float),
-    group="Scalar Math",
-    doc="""Retrieve the fractional part of x.
-    In other words, it discards the integer part of x and is equivalent to ``x - trunc(x)``.""",
-)
-
 
 def infer_scalar_type(arg_types):
     if arg_types is None:

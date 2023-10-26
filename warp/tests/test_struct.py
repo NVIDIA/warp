@@ -5,6 +5,7 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+from typing import Any
 import numpy as np
 import warp as wp
 from warp.tests.test_base import *
@@ -402,6 +403,128 @@ def test_nested_array_struct(test, device):
     wp.launch(struct2_reader, dim=2, inputs=[struct])
 
 
+@wp.struct
+class EmptyNest1:
+    a : Empty
+    z : int
+
+
+@wp.struct
+class EmptyNest2:
+    a : Empty
+    b : Empty
+    z : int
+
+
+@wp.struct
+class EmptyNest3:
+    a : Empty
+    b : Empty
+    c : Empty
+    z : int
+
+
+@wp.struct
+class EmptyNest4:
+    a : Empty
+    b : Empty
+    c : Empty
+    d : Empty
+    z : int
+
+
+@wp.struct
+class EmptyNest5:
+    a : Empty
+    b : Empty
+    c : Empty
+    d : Empty
+    e : Empty
+    z : int
+
+
+@wp.struct
+class EmptyNest6:
+    a : Empty
+    b : Empty
+    c : Empty
+    d : Empty
+    e : Empty
+    f : Empty
+    z : int
+
+
+@wp.struct
+class EmptyNest7:
+    a : Empty
+    b : Empty
+    c : Empty
+    d : Empty
+    e : Empty
+    f : Empty
+    g : Empty
+    z : int
+
+
+@wp.struct
+class EmptyNest8:
+    a : Empty
+    b : Empty
+    c : Empty
+    d : Empty
+    e : Empty
+    f : Empty
+    g : Empty
+    h : Empty
+    z : int
+
+
+@wp.kernel
+def empty_nest_kernel(s: Any):
+    wp.expect_eq(s.z, 42)
+
+
+wp.overload(empty_nest_kernel, [EmptyNest1])
+wp.overload(empty_nest_kernel, [EmptyNest2])
+wp.overload(empty_nest_kernel, [EmptyNest3])
+wp.overload(empty_nest_kernel, [EmptyNest4])
+wp.overload(empty_nest_kernel, [EmptyNest5])
+wp.overload(empty_nest_kernel, [EmptyNest6])
+wp.overload(empty_nest_kernel, [EmptyNest7])
+wp.overload(empty_nest_kernel, [EmptyNest8])
+
+
+def test_nested_empty_struct(test, device):
+    with wp.ScopedDevice(device):
+        e1 = EmptyNest1()
+        e1.z = 42
+        e2 = EmptyNest2()
+        e2.z = 42
+        e3 = EmptyNest3()
+        e3.z = 42
+        e4 = EmptyNest4()
+        e4.z = 42
+        e5 = EmptyNest5()
+        e5.z = 42
+        e6 = EmptyNest6()
+        e6.z = 42
+        e7 = EmptyNest7()
+        e7.z = 42
+        e8 = EmptyNest8()
+        e8.z = 42
+
+        wp.launch(empty_nest_kernel, dim=1, inputs=[e1])
+        wp.launch(empty_nest_kernel, dim=1, inputs=[e2])
+        wp.launch(empty_nest_kernel, dim=1, inputs=[e3])
+        wp.launch(empty_nest_kernel, dim=1, inputs=[e4])
+        wp.launch(empty_nest_kernel, dim=1, inputs=[e5])
+        wp.launch(empty_nest_kernel, dim=1, inputs=[e6])
+        wp.launch(empty_nest_kernel, dim=1, inputs=[e7])
+        wp.launch(empty_nest_kernel, dim=1, inputs=[e8])
+
+        wp.synchronize_device()
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -422,6 +545,7 @@ def register(parent):
     add_kernel_test(TestStruct, kernel=test_return, name="test_return", dim=1, inputs=[], devices=devices)
     add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
     add_function_test(TestStruct, "test_nested_array_struct", test_nested_array_struct, devices=devices)
+    add_function_test(TestStruct, "test_nested_empty_struct", test_nested_empty_struct, devices=devices)
     add_function_test(TestStruct, "test_struct_math_conversions", test_struct_math_conversions, devices=devices)
     add_function_test(
         TestStruct, "test_struct_default_attributes_python", test_struct_default_attributes_python, devices=devices

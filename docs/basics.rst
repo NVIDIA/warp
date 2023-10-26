@@ -79,6 +79,49 @@ Then, inside the kernel we can retrieve a 2D thread index as follows::
     # write out a color value for each pixel
     color[i, j] = wp.vec3(r, g, b)
 
+Example: Changing the kernel cache directory
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following example illustrates how the location for generated and compiled
+kernel code can be changed before and after calling ``wp.init()``.
+
+.. code:: python
+
+    import os
+
+    import warp as wp
+
+    example_dir = os.path.dirname(os.path.realpath(__file__))
+
+    # set default cache directory before wp.init()
+    wp.config.kernel_cache_dir = os.path.join(example_dir, "tmp", "warpcache1")
+
+    wp.init()
+
+    print("+++ Current cache directory: ", wp.config.kernel_cache_dir)
+
+    # change cache directory after wp.init()
+    wp.build.init_kernel_cache(os.path.join(example_dir, "tmp", "warpcache2"))
+
+    print("+++ Current cache directory: ", wp.config.kernel_cache_dir)
+
+    # clear kernel cache (forces fresh kernel builds every time)
+    wp.build.clear_kernel_cache()
+
+
+    @wp.kernel
+    def basic(x: wp.array(dtype=float)):
+        tid = wp.tid()
+        x[tid] = float(tid)
+
+
+    device = "cpu"
+    n = 10
+    x = wp.zeros(n, dtype=float, device=device)
+
+    wp.launch(kernel=basic, dim=n, inputs=[x], device=device)
+    print(x.numpy())
+
 Arrays
 ------
 

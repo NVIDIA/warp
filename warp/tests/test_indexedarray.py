@@ -36,7 +36,7 @@ def test_indexedarray_1d(test, device):
 
     indices = wp.array([1, 3, 5, 7, 9], dtype=int, device=device)
 
-    iarr = wp.indexedarray(arr, [indices])
+    iarr = wp.indexedarray1d(arr, [indices])
 
     test.assertEqual(iarr.dtype, arr.dtype)
     test.assertEqual(iarr.ndim, 1)
@@ -72,7 +72,7 @@ def test_indexedarray_2d(test, device):
     indices0 = wp.array([1, 3], dtype=int, device=device)
     indices1 = wp.array([2, 4, 8], dtype=int, device=device)
 
-    iarr = wp.indexedarray(arr, [indices0, indices1])
+    iarr = wp.indexedarray2d(arr, [indices0, indices1])
 
     test.assertEqual(iarr.dtype, arr.dtype)
     test.assertEqual(iarr.ndim, 2)
@@ -112,7 +112,7 @@ def test_indexedarray_3d(test, device):
     indices1 = wp.array([2, 4, 8], dtype=int, device=device)
     indices2 = wp.array([0, 5], dtype=int, device=device)
 
-    iarr = wp.indexedarray(arr, [indices0, indices1, indices2])
+    iarr = wp.indexedarray3d(arr, [indices0, indices1, indices2])
 
     test.assertEqual(iarr.dtype, arr.dtype)
     test.assertEqual(iarr.ndim, 3)
@@ -157,7 +157,7 @@ def test_indexedarray_4d(test, device):
     indices2 = wp.array([0, 5], dtype=int, device=device)
     indices3 = wp.array([6, 7, 9], dtype=int, device=device)
 
-    iarr = wp.indexedarray(arr, [indices0, indices1, indices2, indices3])
+    iarr = wp.indexedarray4d(arr, [indices0, indices1, indices2, indices3])
 
     test.assertEqual(iarr.dtype, arr.dtype)
     test.assertEqual(iarr.ndim, 4)

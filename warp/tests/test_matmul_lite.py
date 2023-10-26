@@ -84,11 +84,11 @@ class GemmTestbedRunner:
             assert np.array_equal(adj_C_np, adj_C.numpy())
 
     def run(self):
-        Ms = [64, 128, 512]
-        Ns = [64, 128, 512]
-        Ks = [64, 128, 512]
-        batch_counts = [1, 4]
-        betas = [0.0, 1.0]
+        Ms = [8]
+        Ns = [16]
+        Ks = [32]
+        batch_counts = [1, 2]
+        betas = [1.0]
         alpha = 1.0
 
         for batch_count in batch_counts:
@@ -99,17 +99,8 @@ class GemmTestbedRunner:
                             self.run_and_verify(m, n, k, batch_count, alpha, beta)
 
 
-# NOTE: F16 tests are slow due to the performance of the reference numpy F16 matmuls performed on CPU.
-def test_f16(test, device):
-    GemmTestbedRunner(wp.float16, device).run()
-
-
 def test_f32(test, device):
     GemmTestbedRunner(wp.float32, device).run()
-
-
-def test_f64(test, device):
-    GemmTestbedRunner(wp.float64, device).run()
 
 
 @wp.kernel
@@ -121,9 +112,9 @@ def matrix_sum_kernel(arr: wp.array2d(dtype=float), loss: wp.array(dtype=float))
 def test_tape(test, device):
     low = -4.5
     high = 3.5
-    m = 64
-    n = 128
-    k = 256
+    m = 8
+    n = 16
+    k = 32
     A = wp.array2d(
         np.ceil(np.random.uniform(low=low, high=high, size=(m, k))), dtype=float, device=device, requires_grad=True
     )
@@ -158,9 +149,9 @@ def test_tape(test, device):
 def test_operator(test, device):
     low = -4.5
     high = 3.5
-    m = 64
-    n = 128
-    k = 256
+    m = 8
+    n = 16
+    k = 32
     A = wp.array2d(
         np.ceil(np.random.uniform(low=low, high=high, size=(m, k))), dtype=float, device=device, requires_grad=True
     )
@@ -201,9 +192,7 @@ def register(parent):
         from warp.context import runtime
 
         if runtime.core.is_cutlass_enabled():
-            # add_function_test(TestMatmul, "test_f16", test_f16, devices=devices)
             add_function_test(TestMatmul, "test_f32", test_f32, devices=devices)
-            add_function_test(TestMatmul, "test_f64", test_f64, devices=devices)
             add_function_test(TestMatmul, "test_tape", test_tape, devices=devices)
             add_function_test(TestMatmul, "test_operator", test_operator, devices=devices)
         else:

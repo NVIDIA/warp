@@ -65,6 +65,7 @@ from warp.context import RegisteredGLBuffer
 
 from warp.tape import Tape
 from warp.utils import ScopedTimer, ScopedDevice, ScopedStream
+from warp.utils import transform_expand, quat_between_vectors
 
 from warp.torch import from_torch, to_torch
 from warp.torch import device_from_torch, device_to_torch

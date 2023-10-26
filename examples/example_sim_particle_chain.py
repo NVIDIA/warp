@@ -13,8 +13,8 @@
 #
 ###########################################################################
 
-import os
 import math
+import os
 
 import warp as wp
 import warp.sim
@@ -59,7 +59,7 @@ class Example:
 
     def update(self):
         with wp.ScopedTimer("simulate"):
-            for s in range(self.sim_substeps):
+            for _ in range(self.sim_substeps):
                 self.state_0.clear_forces()
                 self.state_1.clear_forces()
 
