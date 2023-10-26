@@ -704,11 +704,22 @@ Users may update mesh vertex positions at runtime simply by modifying the points
 Volumes
 -------
 
-Sparse volumes are incredibly useful for representing grid data over large domains, such as signed distance fields (SDFs) for complex objects, or velocities for large-scale fluid flow. Warp supports reading sparse volumetric grids stored using the `NanoVDB <https://developer.nvidia.com/nanovdb>`_ standard. Users can access voxels directly, or use built-in closest point or trilinear interpolation to sample grid data from world or local-space.
+Sparse volumes are incredibly useful for representing grid data over large domains, such as signed distance fields
+(SDFs) for complex objects, or velocities for large-scale fluid flow. Warp supports reading sparse volumetric grids
+stored using the `NanoVDB <https://developer.nvidia.com/nanovdb>`_ standard. Users can access voxels directly
+or use built-in closest-point or trilinear interpolation to sample grid data from world or local space.
 
+Volume objects can be created directly from Warp arrays containing a NanoVDB grid, from the contents of a
+standard ``.nvdb`` file using :func:`load_from_nvdb() <warp.Volume.load_from_nvdb>`,
+or from a dense 3D NumPy array using :func:`load_from_numpy() <warp.Volume.load_from_numpy>`.
 
-Volume object can be created directly from Warp arrays containing a NanoVDB grid or from the contents of a standard ``.nvdb`` file, using the ``load_from_nvdb`` method.
+Volumes can also be created using :func:`allocate() <warp.Volume.allocate>` or
+:func:`allocate_by_tiles() <warp.Volume.allocate_by_tiles>`. The values for a Volume object can be modified in a Warp
+kernel using :func:`wp.volume_store_f() <warp.volume_store_f>`, :func:`wp.volume_store_v() <warp.volume_store_v>`, and
+:func:`wp.volume_store_i() <warp.volume_store_i>`.
 
+.. note::
+    Warp does not currently support modifying the topology of sparse volumes at runtime.
 
 Below we give an example of creating a Volume object from an existing NanoVDB file::
 
@@ -719,9 +730,11 @@ Below we give an example of creating a Volume object from an existing NanoVDB fi
     volume = wp.Volume.load_from_nvdb(file, device="cpu")
 
 .. note::
-    Files written by the NanoVDB library, commonly marked by the ``.nvdb`` extension, can contain multiple grids with various compression methods, but a ``Volume`` object represents a single NanoVDB grid therefore only files with a single grid are supported. NanoVDB's uncompressed and zip compressed file formats are supported.
+    Files written by the NanoVDB library, commonly marked by the ``.nvdb`` extension, can contain multiple grids with
+    various compression methods, but a :class:`Volume` object represents a single NanoVDB grid therefore only files with
+    a single grid are supported. NanoVDB's uncompressed and zip-compressed file formats are supported.
 
-To sample the volume inside a kernel we pass a reference to it by id, and use the built-in sampling modes::
+To sample the volume inside a kernel we pass a reference to it by ID, and use the built-in sampling modes::
 
     @wp.kernel
     def sample_grid(volume: wp.uint64,
@@ -742,12 +755,9 @@ To sample the volume inside a kernel we pass a reference to it by id, and use th
         # write result
         samples[tid] = f
 
-
-
-.. note:: Warp does not currently support modifying sparse-volumes at runtime. We expect to address this in a future update. Users should create volumes using standard VDB tools such as OpenVDB, Blender, Houdini, etc.
-
 .. autoclass:: Volume
     :members:
+    :undoc-members:
 
 .. seealso:: `Reference <functions.html#volumes>`__ for the volume functions available in kernels.
 

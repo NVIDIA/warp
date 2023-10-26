@@ -164,6 +164,7 @@ User's Guide
     modules/interoperability
     configuration
     debugging
+    limitations
     faq
 
 API Reference
