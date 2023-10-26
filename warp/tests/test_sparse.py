@@ -1,7 +1,7 @@
 import numpy as np
 import warp as wp
 
-from warp.sparse import bsr_zeros, bsr_set_from_triplets, bsr_get_diag, bsr_diag, bsr_identity
+from warp.sparse import bsr_zeros, bsr_set_from_triplets, bsr_get_diag, bsr_diag, bsr_identity, bsr_copy, bsr_scale
 from warp.sparse import bsr_set_transpose, bsr_transposed
 from warp.sparse import bsr_axpy, bsr_mm, bsr_axpy_work_arrays, bsr_mm_work_arrays, bsr_mv
 from warp.tests.test_base import *
@@ -59,10 +59,11 @@ def test_csr_from_triplets(test, device):
 
     csr = bsr_zeros(shape[0], shape[1], float, device=device)
     bsr_set_from_triplets(csr, rows, cols, vals)
+    test.assertEqual(csr.block_size, 1)
 
     res = _bsr_to_dense(csr)
 
-    assert_np_equal(ref, res, 0.0001)
+    assert_np_equal(res, ref, 0.0001)
 
 
 def test_bsr_from_triplets(test, device):
@@ -80,10 +81,11 @@ def test_bsr_from_triplets(test, device):
 
     bsr = bsr_zeros(nrow, ncol, wp.types.matrix(shape=block_shape, dtype=float), device=device)
     bsr_set_from_triplets(bsr, rows, cols, vals)
+    test.assertEqual(bsr.block_size, block_shape[0] * block_shape[1])
 
     res = _bsr_to_dense(bsr)
 
-    assert_np_equal(ref, res, 0.0001)
+    assert_np_equal(res, ref, 0.0001)
 
 
 def test_bsr_get_set_diag(test, device):
@@ -112,7 +114,7 @@ def test_bsr_get_set_diag(test, device):
 
     # Array of blocks
     diag_bsr = bsr_diag(diag)
-    diag = bsr_get_diag(diag_bsr)
+    bsr_get_diag(diag_bsr, out=diag)
     assert_np_equal(diag_np, diag.numpy())
 
     diag_scalar_np = np.random.rand(nrow)
@@ -122,6 +124,11 @@ def test_bsr_get_set_diag(test, device):
     assert_np_equal(diag_scalar_np, diag.numpy(), tol=0.000001)
 
     # Uniform block diagonal
+
+    with test.assertRaisesRegex(ValueError, "BsrMatrix block type must be either warp matrix or scalar"):
+        # 1d block type -- invalid
+        diag_bsr = bsr_diag(diag=vals_np[0, 0], rows_of_blocks=nrow, cols_of_blocks=nrow + 1)
+
     diag_bsr = bsr_diag(diag=vals_np[0], rows_of_blocks=nrow, cols_of_blocks=nrow + 1)
     assert diag_bsr.values.shape[0] == nrow
     assert_np_equal(diag_bsr.values.numpy(), np.broadcast_to(vals_np[0], shape=(nrow, *block_shape)), tol=0.000001)
@@ -161,10 +168,34 @@ def make_test_bsr_transpose(block_shape, scalar_type):
         bsr_set_transpose(dest=bsr_transposed, src=bsr)
 
         res = _bsr_to_dense(bsr_transposed)
+        assert_np_equal(res, ref, 0.0001)
 
-        assert_np_equal(ref, res, 0.0001)
+        if block_shape[0] != block_shape[-1]:
+            # test incompatible block shape
+            with test.assertRaisesRegex(ValueError, "Destination block shape must be"):
+                bsr_set_transpose(dest=bsr, src=bsr)
 
     return test_bsr_transpose
+
+
+def test_bsr_copy_scale(test, device):
+    nrow = 6
+    bsize = 2
+
+    diag_bsr = bsr_diag(diag=np.eye(bsize, dtype=float) * 2.0, rows_of_blocks=nrow)
+    diag_copy = bsr_copy(diag_bsr, scalar_type=wp.float64)
+
+    test.assertTrue(wp.types.types_equal(diag_copy.values.dtype, wp.mat(shape=(bsize, bsize), dtype=wp.float64)))
+    bsr_scale(x=diag_copy, alpha=0.5)
+
+    res = _bsr_to_dense(diag_copy)
+    ref = np.eye(nrow * bsize)
+    assert_np_equal(res, ref, 0.0001)
+
+    bsr_scale(x=diag_copy, alpha=0.0)
+    test.assertEqual(diag_copy.nrow, nrow)
+    test.assertEqual(diag_copy.ncol, nrow)
+    test.assertEqual(diag_copy.nnz, 0)
 
 
 def make_test_bsr_axpy(block_shape, scalar_type):
@@ -195,16 +226,24 @@ def make_test_bsr_axpy(block_shape, scalar_type):
         work_arrays = bsr_axpy_work_arrays()
         for alpha, beta in zip(alphas, betas):
             ref = alpha * _bsr_to_dense(x) + beta * _bsr_to_dense(y)
-            bsr_axpy(x, y, alpha, beta, work_arrays=work_arrays)
+            if beta == 0.0:
+                y = bsr_axpy(x, alpha=alpha, beta=beta, work_arrays=work_arrays)
+            else:
+                bsr_axpy(x, y, alpha, beta, work_arrays=work_arrays)
 
             res = _bsr_to_dense(y)
-            assert_np_equal(ref, res, 0.0001)
+            assert_np_equal(res, ref, 0.0001)
 
         # test aliasing
         ref = 3.0 * _bsr_to_dense(y)
         bsr_axpy(y, y, alpha=1.0, beta=2.0)
         res = _bsr_to_dense(y)
-        assert_np_equal(ref, res, 0.0001)
+        assert_np_equal(res, ref, 0.0001)
+
+        # test incompatible shapes
+        y.ncol = y.ncol + 1
+        with test.assertRaisesRegex(ValueError, "Matrices must have the same number of rows and columns"):
+            bsr_axpy(x, y)
 
     return test_bsr_axpy
 
@@ -259,7 +298,7 @@ def make_test_bsr_mm(block_shape, scalar_type):
             bsr_mm(x, y, z, alpha, beta, work_arrays=work_arrays)
 
             res = _bsr_to_dense(z)
-            assert_np_equal(ref, res, 0.0001)
+            assert_np_equal(res, ref, 0.0001)
 
         # test aliasing of matrix arguments
         # x = alpha * z * x + beta * x
@@ -268,14 +307,23 @@ def make_test_bsr_mm(block_shape, scalar_type):
         bsr_mm(z, x, x, alpha, beta)
 
         res = _bsr_to_dense(x)
-        assert_np_equal(ref, res, 0.0001)
+        assert_np_equal(res, ref, 0.0001)
 
         # z = alpha * z * z + beta * z
         ref = alpha * (_bsr_to_dense(z) @ _bsr_to_dense(z)) + beta * _bsr_to_dense(z)
         bsr_mm(z, z, z, alpha, beta)
 
         res = _bsr_to_dense(z)
-        assert_np_equal(ref, res, 0.0001)
+        assert_np_equal(res, ref, 0.0001)
+
+        # test incompatible shapes
+        if block_shape[0] != block_shape[-1]:
+            with test.assertRaisesRegex(ValueError, "Incompatible block sizes"):
+                bsr_mm(z, y)
+
+        y.ncol = y.ncol * 2
+        with test.assertRaisesRegex(ValueError, "Incompatible number of rows/columns"):
+            bsr_mm(y, z)
 
     return test_bsr_mm
 
@@ -318,10 +366,13 @@ def make_test_bsr_mv(block_shape, scalar_type):
         work_buffer = wp.empty_like(y)
         for alpha, beta in zip(alphas, betas):
             ref = alpha * _bsr_to_dense(A) @ x.numpy().flatten() + beta * y.numpy().flatten()
-            bsr_mv(A, x, y, alpha, beta, work_buffer=work_buffer)
+            if beta == 0.0:
+                y = bsr_mv(A, x, alpha=alpha, beta=beta, work_buffer=work_buffer)
+            else:
+                bsr_mv(A, x, y, alpha, beta, work_buffer=work_buffer)
 
             res = y.numpy().flatten()
-            assert_np_equal(ref, res, 0.0001)
+            assert_np_equal(res, ref, 0.0001)
 
         # test aliasing
         alpha, beta = alphas[0], betas[0]
@@ -329,7 +380,16 @@ def make_test_bsr_mv(block_shape, scalar_type):
         ref = alpha * _bsr_to_dense(AAt) @ y.numpy().flatten() + beta * y.numpy().flatten()
         bsr_mv(AAt, y, y, alpha, beta)
         res = y.numpy().flatten()
-        assert_np_equal(ref, res, 0.0001)
+        assert_np_equal(res, ref, 0.0001)
+
+        A.ncol = A.ncol + 1
+        with test.assertRaisesRegex(ValueError, "Number of columns"):
+            bsr_mv(A, x, y)
+        
+        A.ncol = A.ncol - 1
+        A.nrow = A.nrow - 1
+        with test.assertRaisesRegex(ValueError, "Number of rows"):
+            bsr_mv(A, x, y)
 
     return test_bsr_mv
 
@@ -343,6 +403,7 @@ def register(parent):
     add_function_test(TestSparse, "test_csr_from_triplets", test_csr_from_triplets, devices=devices)
     add_function_test(TestSparse, "test_bsr_from_triplets", test_bsr_from_triplets, devices=devices)
     add_function_test(TestSparse, "test_bsr_get_diag", test_bsr_get_set_diag, devices=devices)
+    add_function_test(TestSparse, "test_bsr_copy_scale", test_bsr_copy_scale, devices=devices)
 
     add_function_test(TestSparse, "test_csr_transpose", make_test_bsr_transpose((1, 1), wp.float32), devices=devices)
     add_function_test(

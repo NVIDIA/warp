@@ -63,7 +63,7 @@ def bsr_matrix_t(dtype: BlockType):
     dtype = wp.types.type_to_warp(dtype)
 
     if not warp.types.type_is_matrix(dtype) and not dtype in warp.types.scalar_types:
-        raise RuntimeError(
+        raise ValueError(
             f"BsrMatrix block type must be either warp matrix or scalar; got {warp.types.type_repr(dtype)}"
         )
 
@@ -651,7 +651,7 @@ class bsr_axpy_work_arrays:
 
 def bsr_axpy(
     x: BsrMatrix[BlockType[Rows, Cols, Scalar]],
-    y: Optional[BsrMatrix[BlockType[Rows, Cols, Scalar]]],
+    y: Optional[BsrMatrix[BlockType[Rows, Cols, Scalar]]] = None,
     alpha: Scalar = 1.0,
     beta: Scalar = 1.0,
     work_arrays: Optional[bsr_axpy_work_arrays] = None,
@@ -671,13 +671,13 @@ def bsr_axpy(
 
     if y is None:
         # If not output matrix is provided, allocate it for convenience
-        y = bsr_zeros(x.nrow, x.ncol, block_type=x.block_type, device=x.values.device)
+        y = bsr_zeros(x.nrow, x.ncol, block_type=x.values.dtype, device=x.values.device)
         beta = 0.0
 
     # Handle easy cases first
     if beta == 0.0 or y.nnz == 0:
         bsr_assign(src=x, dest=y)
-        return bsr_scale(x, alpha=alpha)
+        return bsr_scale(y, alpha=alpha)
 
     if alpha == 0.0 or x.nnz == 0:
         return bsr_scale(y, alpha=beta)
@@ -948,10 +948,14 @@ def bsr_mm(
     if x.scalar_type != y.scalar_type or x.scalar_type != z.scalar_type:
         raise ValueError("Matrices must have the same scalar type")
 
-    if x.block_shape[0] != z.block_shape[0] or y.block_shape[1] != z.block_shape[1]:
-        raise ValueError("Incompatible blocks sizes for matrix multiplication")
+    if (
+        x.block_shape[0] != z.block_shape[0]
+        or y.block_shape[1] != z.block_shape[1]
+        or x.block_shape[1] != y.block_shape[0]
+    ):
+        raise ValueError("Incompatible block sizes for matrix multiplication")
 
-    if x.nrow != z.nrow or z.ncol != y.ncol:
+    if x.nrow != z.nrow or z.ncol != y.ncol or x.ncol != y.nrow:
         raise ValueError("Incompatible number of rows/columns for matrix multiplication")
 
     device = z.values.device
@@ -1164,7 +1168,7 @@ def bsr_mv(
         beta = A.scalar_type(beta)
 
     if A.values.device != x.device or A.values.device != y.device:
-        raise ValueError("A, x and y must reide on the same device")
+        raise ValueError("A, x and y must reside on the same device")
 
     if x.shape[0] != A.ncol:
         raise ValueError("Number of columns of A must match number of rows of x")
