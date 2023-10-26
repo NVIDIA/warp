@@ -52,6 +52,10 @@ builtin_operators[ast.Invert] = "invert"
 builtin_operators[ast.LShift] = "lshift"
 builtin_operators[ast.RShift] = "rshift"
 
+base_type_names_with_builtin_adj_funcs = (
+    "bool",
+) + tuple(x.__name__ for x in scalar_types)
+
 
 def get_annotations(obj: Any) -> Mapping[str, Any]:
     """Alternative to `inspect.get_annotations()` for Python 3.9 and older."""
@@ -376,16 +380,17 @@ def strip_reference(arg):
 
 
 def compute_type_str(base_name, template_params):
-    if template_params is None or len(template_params) == 0:
+    if not template_params:
         return base_name
-    else:
 
-        def param2str(p):
-            if isinstance(p, int):
-                return str(p)
-            return p.__name__
+    def param2str(p):
+        if isinstance(p, int):
+            return str(p)
+        elif hasattr(p, "_type_"):
+            return f"wp::{p.__name__}"
+        return p.__name__
 
-        return f"{base_name}<{','.join(map(param2str, template_params))}>"
+    return f"{base_name}<{','.join(map(param2str, template_params))}>"
 
 
 class Var:
@@ -409,12 +414,14 @@ class Var:
     def type_to_ctype(t, value_type=False):
         if is_array(t):
             if hasattr(t.dtype, "_wp_generic_type_str_"):
-                dtypestr = compute_type_str(t.dtype._wp_generic_type_str_, t.dtype._wp_type_params_)
+                dtypestr = compute_type_str(f"wp::{t.dtype._wp_generic_type_str_}", t.dtype._wp_type_params_)
             elif isinstance(t.dtype, Struct):
                 dtypestr = make_full_qualified_name(t.dtype.cls)
+            elif t.dtype.__name__ in ("bool", "int", "float"):
+                dtypestr = t.dtype.__name__
             else:
-                dtypestr = str(t.dtype.__name__)
-            classstr = type(t).__name__
+                dtypestr = f"wp::{t.dtype.__name__}"
+            classstr = f"wp::{type(t).__name__}"
             return f"{classstr}_t<{dtypestr}>"
         elif isinstance(t, Struct):
             return make_full_qualified_name(t.cls)
@@ -424,9 +431,11 @@ class Var:
             else:
                 return Var.type_to_ctype(t.value_type)
         elif hasattr(t, "_wp_generic_type_str_"):
-            return compute_type_str(t._wp_generic_type_str_, t._wp_type_params_)
+            return compute_type_str(f"wp::{t._wp_generic_type_str_}", t._wp_type_params_)
+        elif t.__name__ in ("bool", "int", "float"):
+            return t.__name__
         else:
-            return str(t.__name__)
+            return f"wp::{t.__name__}"
 
     def ctype(self, value_type=False):
         return Var.type_to_ctype(self.type, value_type)
@@ -893,7 +902,10 @@ class Adjoint:
             if not func.missing_grad and len(args):
                 arg_str = adj.format_reverse_call_args(args, [output], {}, {}, use_initializer_list)
                 if arg_str is not None:
-                    reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
+                    if func_name in base_type_names_with_builtin_adj_funcs:
+                        reverse_call = f"wp::adj_{func.native_func}({arg_str});"
+                    else:
+                        reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
                     adj.add_reverse(reverse_call)
 
             return output
@@ -2019,12 +2031,10 @@ cpu_module_header = """
 #define int(x) cast_int(x)
 #define adj_int(x, adj_x, adj_ret) adj_cast_int(x, adj_x, adj_ret)
 
-#define builtin_tid1d() wp::tid(s_threadIdx)
-#define builtin_tid2d(x, y) wp::tid(x, y, s_threadIdx, dim)
-#define builtin_tid3d(x, y, z) wp::tid(x, y, z, s_threadIdx, dim)
-#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, s_threadIdx, dim)
-
-using namespace wp;
+#define builtin_tid1d() wp::tid(wp::s_threadIdx)
+#define builtin_tid2d(x, y) wp::tid(x, y, wp::s_threadIdx, dim)
+#define builtin_tid3d(x, y, z) wp::tid(x, y, z, wp::s_threadIdx, dim)
+#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, wp::s_threadIdx, dim)
 
 """
 
@@ -2043,8 +2053,6 @@ cuda_module_header = """
 #define builtin_tid2d(x, y) wp::tid(x, y, _idx, dim)
 #define builtin_tid3d(x, y, z) wp::tid(x, y, z, _idx, dim)
 #define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, _idx, dim)
-
-using namespace wp;
 
 """
 
@@ -2153,7 +2161,7 @@ WP_API void {name}_cpu_forward(
 {{
     for (size_t i=0; i < dim.size; ++i)
     {{
-        s_threadIdx = i;
+        wp::s_threadIdx = i;
 
         {name}_cpu_kernel_forward(
             {forward_params});
@@ -2165,7 +2173,7 @@ WP_API void {name}_cpu_backward(
 {{
     for (size_t i=0; i < dim.size; ++i)
     {{
-        s_threadIdx = i;
+        wp::s_threadIdx = i;
 
         {name}_cpu_kernel_backward(
             {reverse_params});
@@ -2288,10 +2296,12 @@ def codegen_struct(struct, device="cpu", indent_size=4):
 
     # forward args
     for label, var in struct.vars.items():
-        forward_args.append(f"{var.ctype()} const& {label} = {{}}")
-        reverse_args.append(f"{var.ctype()} const&")
+        var_ctype = var.ctype()
+        forward_args.append(f"{var_ctype} const& {label} = {{}}")
+        reverse_args.append(f"{var_ctype} const&")
 
-        atomic_add_body.append(f"{indent_block}adj_atomic_add(&p->{label}, t.{label});\n")
+        namespace = "wp::" if var_ctype.startswith("wp::") or var_ctype == "bool" else ""
+        atomic_add_body.append(f"{indent_block}{namespace}adj_atomic_add(&p->{label}, t.{label});\n")
 
         prefix = f"{indent_block}," if forward_initializers else ":"
         forward_initializers.append(f"{indent_block}{prefix} {label}{{{label}}}\n")
@@ -2510,8 +2520,8 @@ def codegen_kernel(kernel, device, options):
 
     adj = kernel.adj
 
-    forward_args = ["launch_bounds_t dim"]
-    reverse_args = ["launch_bounds_t dim"]
+    forward_args = ["wp::launch_bounds_t dim"]
+    reverse_args = ["wp::launch_bounds_t dim"]
 
     # forward args
     for arg in adj.args:
@@ -2560,7 +2570,7 @@ def codegen_module(kernel, device="cpu"):
     adj = kernel.adj
 
     # build forward signature
-    forward_args = ["launch_bounds_t dim"]
+    forward_args = ["wp::launch_bounds_t dim"]
     forward_params = ["dim"]
 
     for arg in adj.args:

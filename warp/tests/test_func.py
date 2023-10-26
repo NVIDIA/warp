@@ -252,6 +252,16 @@ def test_func_defaults():
     wp.expect_near(1.0, 1.1, 0.5)
 
 
+@wp.func
+def sign(x: float):
+    return 123.0
+
+
+@wp.kernel
+def test_builtin_shadowing():
+    wp.expect_eq(sign(1.23), 123.0)
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -266,6 +276,7 @@ def register(parent):
     add_function_test(TestFunc, func=test_func_closure_capture, name="test_func_closure_capture", devices=devices)
     add_function_test(TestFunc, func=test_multi_valued_func, name="test_multi_valued_func", devices=devices)
     add_kernel_test(TestFunc, kernel=test_func_defaults, name="test_func_defaults", dim=1, devices=devices)
+    add_kernel_test(TestFunc, kernel=test_builtin_shadowing, name="test_builtin_shadowing", dim=1, devices=devices)
 
     return TestFunc
 
