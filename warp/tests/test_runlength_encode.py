@@ -8,9 +8,11 @@ wp.init()
 
 
 def test_runlength_encode_int(test, device):
+    rng = np.random.default_rng(123)
+
     n = 1000
 
-    values_np = np.sort(np.random.randint(-10, 10, n, dtype=int))
+    values_np = np.sort(rng.integers(-10, high=10, size=n, dtype=int))
 
     unique_values_np, unique_counts_np = np.unique(values_np, return_counts=True)
 
@@ -139,13 +141,40 @@ def register(parent):
         pass
 
     add_function_test(TestRunlengthEncode, "test_runlength_encode_int", test_runlength_encode_int, devices=devices)
-    add_function_test(TestRunlengthEncode, "test_runlength_encode_error_devices_mismatch", test_runlength_encode_error_devices_mismatch)
-    add_function_test(TestRunlengthEncode, "test_runlength_encode_error_insufficient_storage", test_runlength_encode_error_insufficient_storage)
-    add_function_test(TestRunlengthEncode, "test_runlength_encode_error_dtypes_mismatch", test_runlength_encode_error_dtypes_mismatch)
-    add_function_test(TestRunlengthEncode, "test_runlength_encode_error_run_length_unsupported_dtype", test_runlength_encode_error_run_length_unsupported_dtype)
-    add_function_test(TestRunlengthEncode, "test_runlength_encode_error_run_count_device_mismatch", test_runlength_encode_error_run_count_device_mismatch)
-    add_function_test(TestRunlengthEncode, "test_runlength_encode_error_run_count_unsupported_dtype", test_runlength_encode_error_run_count_unsupported_dtype)
-    add_function_test(TestRunlengthEncode, "test_runlength_encode_error_unsupported_dtype", test_runlength_encode_error_unsupported_dtype, devices=devices)
+    add_function_test(
+        TestRunlengthEncode,
+        "test_runlength_encode_error_devices_mismatch",
+        test_runlength_encode_error_devices_mismatch,
+    )
+    add_function_test(
+        TestRunlengthEncode,
+        "test_runlength_encode_error_insufficient_storage",
+        test_runlength_encode_error_insufficient_storage,
+    )
+    add_function_test(
+        TestRunlengthEncode, "test_runlength_encode_error_dtypes_mismatch", test_runlength_encode_error_dtypes_mismatch
+    )
+    add_function_test(
+        TestRunlengthEncode,
+        "test_runlength_encode_error_run_length_unsupported_dtype",
+        test_runlength_encode_error_run_length_unsupported_dtype,
+    )
+    add_function_test(
+        TestRunlengthEncode,
+        "test_runlength_encode_error_run_count_device_mismatch",
+        test_runlength_encode_error_run_count_device_mismatch,
+    )
+    add_function_test(
+        TestRunlengthEncode,
+        "test_runlength_encode_error_run_count_unsupported_dtype",
+        test_runlength_encode_error_run_count_unsupported_dtype,
+    )
+    add_function_test(
+        TestRunlengthEncode,
+        "test_runlength_encode_error_unsupported_dtype",
+        test_runlength_encode_error_unsupported_dtype,
+        devices=devices,
+    )
 
     return TestRunlengthEncode
 

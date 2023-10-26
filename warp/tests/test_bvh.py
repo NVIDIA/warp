@@ -5,13 +5,11 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
 import numpy as np
 
 import warp as wp
 from warp.tests.test_base import *
 
-np.random.seed(42)
 
 wp.init()
 
@@ -71,9 +69,11 @@ def intersect_ray_aabb(start, dir, lower, upper):
 
 
 def test_bvh(test, type, device):
+    rng = np.random.default_rng(123)
+
     num_bounds = 100
-    lowers = np.random.rand(num_bounds, 3) * 5.0
-    uppers = lowers + np.random.rand(num_bounds, 3) * 5.0
+    lowers = rng.random(size=(num_bounds, 3)) * 5.0
+    uppers = lowers + rng.random(size=(num_bounds, 3)) * 5.0
 
     device_lowers = wp.array(lowers, dtype=wp.vec3, device=device)
     device_uppers = wp.array(uppers, dtype=wp.vec3, device=device)
@@ -114,8 +114,8 @@ def test_bvh(test, type, device):
             test.assertEqual(host_intersected, device_intersected[i])
 
         if test_case == 0:
-            lowers = np.random.rand(num_bounds, 3) * 5.0
-            uppers = lowers + np.random.rand(num_bounds, 3) * 5.0
+            lowers = rng.random(size=(num_bounds, 3)) * 5.0
+            uppers = lowers + rng.random(size=(num_bounds, 3)) * 5.0
             wp.copy(device_lowers, wp.array(lowers, dtype=wp.vec3))
             wp.copy(device_uppers, wp.array(uppers, dtype=wp.vec3))
             bvh.refit()

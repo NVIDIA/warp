@@ -78,6 +78,8 @@ def vector_boundary_form(domain: Domain, s: Sample, u: Field, q: Field):
 
 
 def test_vector_divergence_theorem(test_case, device):
+    rng = np.random.default_rng(123)
+
     with wp.ScopedDevice(device):
         # Grid geometry
         geo = Grid2D(res=wp.vec2i(5))
@@ -90,7 +92,7 @@ def test_vector_divergence_theorem(test_case, device):
         scalar_space = make_polynomial_space(geo, degree=1, dtype=float)
 
         u = vector_space.make_field()
-        u.dof_values = np.random.rand(u.dof_values.shape[0], 2)
+        u.dof_values = rng.random(size=(u.dof_values.shape[0], 2))
 
         # Divergence theorem
         constant_one = scalar_space.make_field()
@@ -107,7 +109,7 @@ def test_vector_divergence_theorem(test_case, device):
 
         # Integration by parts
         q = scalar_space.make_field()
-        q.dof_values = np.random.rand(q.dof_values.shape[0])
+        q.dof_values = rng.random(size=q.dof_values.shape[0])
 
         interior_quadrature = RegularQuadrature(domain=interior, order=vector_space.degree + scalar_space.degree)
         boundary_quadrature = RegularQuadrature(domain=boundary, order=vector_space.degree + scalar_space.degree)
@@ -136,6 +138,8 @@ def tensor_boundary_form(domain: Domain, s: Sample, tau: Field, v: Field):
 
 
 def test_tensor_divergence_theorem(test_case, device):
+    rng = np.random.default_rng(123)
+
     with wp.ScopedDevice(device):
         # Grid geometry
         geo = Grid2D(res=wp.vec2i(5))
@@ -148,7 +152,7 @@ def test_tensor_divergence_theorem(test_case, device):
         vector_space = make_polynomial_space(geo, degree=1, dtype=wp.vec2)
 
         tau = tensor_space.make_field()
-        tau.dof_values = np.random.rand(tau.dof_values.shape[0], 2, 2)
+        tau.dof_values = rng.random(size=(tau.dof_values.shape[0], 2, 2))
 
         # Divergence theorem
         constant_vec = vector_space.make_field()
@@ -167,7 +171,7 @@ def test_tensor_divergence_theorem(test_case, device):
 
         # Integration by parts
         v = vector_space.make_field()
-        v.dof_values = np.random.rand(v.dof_values.shape[0], 2)
+        v.dof_values = rng.random(size=(v.dof_values.shape[0], 2))
 
         interior_quadrature = RegularQuadrature(domain=interior, order=tensor_space.degree + vector_space.degree)
         boundary_quadrature = RegularQuadrature(domain=boundary, order=tensor_space.degree + vector_space.degree)
@@ -186,6 +190,8 @@ def grad_decomposition(s: Sample, u: Field, v: Field):
 
 
 def test_grad_decomposition(test_case, device):
+    rng = np.random.default_rng(123)
+
     with wp.ScopedDevice(device):
         # Grid geometry
         geo = Grid3D(res=wp.vec3i(5))
@@ -197,7 +203,7 @@ def test_grad_decomposition(test_case, device):
         vector_space = make_polynomial_space(geo, degree=2, dtype=wp.vec3)
         u = vector_space.make_field()
 
-        u.dof_values = np.random.rand(u.dof_values.shape[0], 3)
+        u.dof_values = rng.random(size=(u.dof_values.shape[0], 3))
 
         err = integrate(grad_decomposition, quadrature=quadrature, fields={"u": u, "v": u})
         test_case.assertLess(err, 1.0e-8)
@@ -500,7 +506,7 @@ def test_shape_function_trace(test_case, shape: shape.ShapeFunction, CENTER_COOR
         for n in range(NODE_COUNT):
             coords = node_coords_fn(n)
 
-            if wp.abs(coords[0]) < 1.e-6:
+            if wp.abs(coords[0]) < 1.0e-6:
                 w = trace_node_quadrature_weight_fn(n)
                 sum_node_qp += w
                 sum_node_qp_coords += w * node_coords_fn(n)
@@ -738,7 +744,6 @@ def register(parent):
         pass
 
     if wp.is_cuda_available():
-            
         add_function_test(TestFem, "test_regular_quadrature", test_regular_quadrature)
         add_function_test(TestFem, "test_closest_point_queries", test_closest_point_queries)
         add_function_test(TestFem, "test_grad_decomposition", test_grad_decomposition, devices=devices)

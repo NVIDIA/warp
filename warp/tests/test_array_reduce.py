@@ -11,9 +11,11 @@ def make_test_array_sum(dtype):
     N = 1000
 
     def test_array_sum(test, device):
+        rng = np.random.default_rng(123)
+
         cols = wp.types.type_length(dtype)
 
-        values_np = np.random.rand(N, cols)
+        values_np = rng.random(size=(N, cols))
         values = wp.array(values_np, device=device, dtype=dtype)
 
         vsum = array_sum(values)
@@ -32,7 +34,9 @@ def make_test_array_sum_axis(dtype):
     N = I * J * K
 
     def test_array_sum(test, device):
-        values_np = np.random.rand(I, J, K)
+        rng = np.random.default_rng(123)
+
+        values_np = rng.random(size=(I, J, K))
         values = wp.array(values_np, shape=(I, J, K), device=device, dtype=dtype)
 
         for axis in range(3):
@@ -48,10 +52,12 @@ def make_test_array_inner(dtype):
     N = 1000
 
     def test_array_inner(test, device):
+        rng = np.random.default_rng(123)
+
         cols = wp.types.type_length(dtype)
 
-        a_np = np.random.rand(N, cols)
-        b_np = np.random.rand(N, cols)
+        a_np = rng.random(size=(N, cols))
+        b_np = rng.random(size=(N, cols))
 
         a = wp.array(a_np, device=device, dtype=dtype)
         b = wp.array(b_np, device=device, dtype=dtype)
@@ -72,8 +78,10 @@ def make_test_array_inner_axis(dtype):
     N = I * J * K
 
     def test_array_inner(test, device):
-        a_np = np.random.rand(I, J, K)
-        b_np = np.random.rand(I, J, K)
+        rng = np.random.default_rng(123)
+
+        a_np = rng.random(size=(I, J, K))
+        b_np = rng.random(size=(I, J, K))
 
         a = wp.array(a_np, shape=(I, J, K), device=device, dtype=dtype)
         b = wp.array(b_np, shape=(I, J, K), device=device, dtype=dtype)

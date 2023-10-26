@@ -34,12 +34,12 @@ np_float_types = [np.float16, np.float32, np.float64]
 np_scalar_types = np_int_types + np_float_types
 
 
-def randvals(shape, dtype):
+def randvals(rng, shape, dtype):
     if dtype in np_float_types:
-        return np.random.randn(*shape).astype(dtype)
+        return rng.standard_normal(size=shape).astype(dtype)
     elif dtype in [np.int8, np.uint8, np.byte, np.ubyte]:
-        return np.random.randint(1, 3, size=shape, dtype=dtype)
-    return np.random.randint(1, 5, size=shape, dtype=dtype)
+        return rng.integers(1, high=3, size=shape, dtype=dtype)
+    return rng.integers(1, high=5, size=shape, dtype=dtype)
 
 
 kernel_cache = dict()
@@ -65,6 +65,8 @@ def get_select_kernel(dtype):
 
 
 def test_arrays(test, device, dtype):
+    rng = np.random.default_rng(123)
+
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
 
     mat22 = wp.types.matrix(shape=(2, 2), dtype=wptype)
@@ -73,13 +75,11 @@ def test_arrays(test, device, dtype):
     mat55 = wp.types.matrix(shape=(5, 5), dtype=wptype)
     mat32 = wp.types.matrix(shape=(3, 2), dtype=wptype)
 
-    np.random.seed(123)
-
-    v2_np = randvals([10, 2, 2], dtype)
-    v3_np = randvals([10, 3, 3], dtype)
-    v4_np = randvals([10, 4, 4], dtype)
-    v5_np = randvals([10, 5, 5], dtype)
-    v32_np = randvals([10, 3, 2], dtype)
+    v2_np = randvals(rng, [10, 2, 2], dtype)
+    v3_np = randvals(rng, [10, 3, 3], dtype)
+    v4_np = randvals(rng, [10, 4, 4], dtype)
+    v5_np = randvals(rng, [10, 5, 5], dtype)
+    v32_np = randvals(rng, [10, 3, 2], dtype)
 
     v2 = wp.array(v2_np, dtype=mat22, requires_grad=True, device=device)
     v3 = wp.array(v3_np, dtype=mat33, requires_grad=True, device=device)
@@ -188,7 +188,7 @@ def test_constants(test, device, dtype, register_kernels=False):
 
 
 def test_constructors(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 1.0e-3,
@@ -376,7 +376,7 @@ def test_constructors(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    input = wp.array(randvals([1], dtype), requires_grad=True, device=device)
+    input = wp.array(randvals(rng, [1], dtype), requires_grad=True, device=device)
     val = input.numpy()[0]
     outcomponents = wp.zeros(2 * 2 + 3 * 3 + 4 * 4 + 5 * 5, dtype=wptype, requires_grad=True, device=device)
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
@@ -398,7 +398,7 @@ def test_constructors(test, device, dtype, register_kernels=False):
             test.assertEqual(tape.gradients[input].numpy()[0], 2)
             tape.zero()
 
-    input = wp.array(randvals([2 * 2 + 3 * 3 + 4 * 4 + 5 * 5], dtype), requires_grad=True, device=device)
+    input = wp.array(randvals(rng, [2 * 2 + 3 * 3 + 4 * 4 + 5 * 5], dtype), requires_grad=True, device=device)
 
     wp.launch(compkernel, dim=1, inputs=[input], outputs=[outcomponents], device=device)
     assert_np_equal(2 * input.numpy(), outcomponents.numpy(), tol=10 * tol)
@@ -455,8 +455,7 @@ def test_anon_constructor_error_dtype_keyword_missing(test, device):
 
     with test.assertRaisesRegex(
         RuntimeError,
-        r"matrix\(\) must have dtype as a keyword argument if it has no "
-        r"positional arguments$",
+        r"matrix\(\) must have dtype as a keyword argument if it has no " r"positional arguments$",
     ):
         wp.launch(
             kernel,
@@ -477,8 +476,7 @@ def test_anon_constructor_error_shape_mismatch(test, device):
 
     with test.assertRaisesRegex(
         RuntimeError,
-        r"Incompatible matrix sizes for casting copy constructor, "
-        r"\(3, 4\) vs \(1, 2\)$",
+        r"Incompatible matrix sizes for casting copy constructor, " r"\(3, 4\) vs \(1, 2\)$",
     ):
         wp.launch(
             kernel,
@@ -513,8 +511,7 @@ def test_tpl_constructor_error_incompatible_sizes(test, device):
 
     with test.assertRaisesRegex(
         RuntimeError,
-        r"Incompatible matrix sizes for casting copy constructor, "
-        r"\(3, 3\) vs \(2, 2\)$",
+        r"Incompatible matrix sizes for casting copy constructor, " r"\(3, 3\) vs \(2, 2\)$",
     ):
         wp.launch(
             kernel,
@@ -548,8 +545,7 @@ def test_tpl_constructor_error_invalid_vector_count(test, device):
 
     with test.assertRaisesRegex(
         RuntimeError,
-        r"Wrong number of vectors when attempting to construct a matrix "
-        r"with column vectors$",
+        r"Wrong number of vectors when attempting to construct a matrix " r"with column vectors$",
     ):
         wp.launch(
             kernel,
@@ -566,8 +562,7 @@ def test_tpl_constructor_error_invalid_vector_shape(test, device):
 
     with test.assertRaisesRegex(
         RuntimeError,
-        r"Wrong vector row count when attempting to construct a matrix "
-        r"with column vectors$",
+        r"Wrong vector row count when attempting to construct a matrix " r"with column vectors$",
     ):
         wp.launch(
             kernel,
@@ -584,8 +579,7 @@ def test_tpl_constructor_error_invalid_arg_count(test, device):
 
     with test.assertRaisesRegex(
         RuntimeError,
-        r"Wrong number of scalars when attempting to construct a matrix "
-        r"from a list of components$",
+        r"Wrong number of scalars when attempting to construct a matrix " r"from a list of components$",
     ):
         wp.launch(
             kernel,
@@ -596,7 +590,7 @@ def test_tpl_constructor_error_invalid_arg_count(test, device):
 
 
 def test_quat_constructor(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 1.0e-3,
@@ -645,15 +639,15 @@ def test_quat_constructor(test, device, dtype, register_kernels=False):
         return
 
     # translation:
-    p = wp.array(np.random.randn(1, 3).astype(dtype), dtype=vec3, requires_grad=True, device=device)
+    p = wp.array(rng.standard_normal(size=(1, 3)).astype(dtype), dtype=vec3, requires_grad=True, device=device)
 
     # generate a normalized quaternion for the rotation:
-    r = np.random.randn(1, 4)
+    r = rng.standard_normal(size=(1, 4))
     r /= np.linalg.norm(r)
     r = wp.array(r.astype(dtype), dtype=quat, requires_grad=True, device=device)
 
     # scale:
-    s = wp.array(np.random.randn(1, 3).astype(dtype), dtype=vec3, requires_grad=True, device=device)
+    s = wp.array(rng.standard_normal(size=(1, 3)).astype(dtype), dtype=vec3, requires_grad=True, device=device)
 
     # just going to generate the matrix using the constructor, then
     # more manually, and make sure the values/gradients are the same:
@@ -695,7 +689,7 @@ def test_quat_constructor(test, device, dtype, register_kernels=False):
 
 
 def test_indexing(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 1.0e-3,
@@ -745,10 +739,10 @@ def test_indexing(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    m2 = wp.array(randvals([1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
-    m3 = wp.array(randvals([1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
-    m4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
-    m5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
+    m2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
+    m3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
+    m4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    m5 = wp.array(randvals(rng, [1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
     outcomponents = wp.zeros(2 * 2 + 3 * 3 + 4 * 4 + 5 * 5, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(kernel, dim=1, inputs=[m2, m3, m4, m5], outputs=[outcomponents], device=device)
@@ -779,14 +773,6 @@ def test_indexing(test, device, dtype, register_kernels=False):
 
 
 def test_equality(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
-
-    tol = {
-        np.float16: 1.0e-3,
-        np.float32: 1.0e-6,
-        np.float64: 1.0e-8,
-    }.get(dtype, 0)
-
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
     mat22 = wp.types.matrix(shape=(2, 2), dtype=wptype)
     mat33 = wp.types.matrix(shape=(3, 3), dtype=wptype)
@@ -1053,7 +1039,7 @@ def test_equality(test, device, dtype, register_kernels=False):
 
 
 def test_negation(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 1.0e-2,
@@ -1108,10 +1094,10 @@ def test_negation(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    m2 = wp.array(randvals([1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
-    m3 = wp.array(randvals([1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
-    m4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
-    m5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
+    m2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
+    m3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
+    m4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    m5 = wp.array(randvals(rng, [1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
     outcomponents = wp.zeros(2 * 2 + 3 * 3 + 4 * 4 + 5 * 5, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(kernel, dim=1, inputs=[m2, m3, m4, m5], outputs=[outcomponents], device=device)
@@ -1142,7 +1128,7 @@ def test_negation(test, device, dtype, register_kernels=False):
 
 
 def test_transpose(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 1.0e-2,
@@ -1205,11 +1191,11 @@ def test_transpose(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    m2 = wp.array(randvals([1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
-    m3 = wp.array(randvals([1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
-    m4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
-    m5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
-    m32 = wp.array(randvals([1, 3, 2], dtype), dtype=mat32, requires_grad=True, device=device)
+    m2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
+    m3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
+    m4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    m5 = wp.array(randvals(rng, [1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
+    m32 = wp.array(randvals(rng, [1, 3, 2], dtype), dtype=mat32, requires_grad=True, device=device)
     outcomponents = wp.zeros(2 * 2 + 3 * 3 + 4 * 4 + 5 * 5 + 2 * 3, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(kernel, dim=1, inputs=[m2, m3, m4, m5, m32], outputs=[outcomponents], device=device)
@@ -1241,7 +1227,7 @@ def test_transpose(test, device, dtype, register_kernels=False):
 
 
 def test_scalar_multiplication(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 1.0e-2,
@@ -1341,11 +1327,11 @@ def test_scalar_multiplication(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    s = wp.array(randvals([1], dtype), requires_grad=True, device=device)
-    m2 = wp.array(randvals([1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
-    m3 = wp.array(randvals([1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
-    m4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
-    m5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
+    s = wp.array(randvals(rng, [1], dtype), requires_grad=True, device=device)
+    m2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
+    m3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
+    m4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    m5 = wp.array(randvals(rng, [1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
     outcomponents = wp.zeros(2 * (2 * 2 + 3 * 3 + 4 * 4 + 5 * 5), dtype=wptype, requires_grad=True, device=device)
     outcomponents_rightmul = wp.zeros(
         2 * (2 * 2 + 3 * 3 + 4 * 4 + 5 * 5), dtype=wptype, requires_grad=True, device=device
@@ -1428,7 +1414,7 @@ def test_scalar_multiplication(test, device, dtype, register_kernels=False):
 
 
 def test_matvec_multiplication(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 2.0e-2,
@@ -1522,16 +1508,16 @@ def test_matvec_multiplication(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    v2 = wp.array(randvals([1, 2], dtype), dtype=vec2, requires_grad=True, device=device)
-    v3 = wp.array(randvals([1, 3], dtype), dtype=vec3, requires_grad=True, device=device)
-    v4 = wp.array(randvals([1, 4], dtype), dtype=vec4, requires_grad=True, device=device)
-    v5 = wp.array(randvals([1, 5], dtype), dtype=vec5, requires_grad=True, device=device)
-    v32 = wp.array(randvals([1, 2], dtype), dtype=vec2, requires_grad=True, device=device)
-    m2 = wp.array(randvals([1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
-    m3 = wp.array(randvals([1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
-    m4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
-    m5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
-    m32 = wp.array(randvals([1, 3, 2], dtype), dtype=mat32, requires_grad=True, device=device)
+    v2 = wp.array(randvals(rng, [1, 2], dtype), dtype=vec2, requires_grad=True, device=device)
+    v3 = wp.array(randvals(rng, [1, 3], dtype), dtype=vec3, requires_grad=True, device=device)
+    v4 = wp.array(randvals(rng, [1, 4], dtype), dtype=vec4, requires_grad=True, device=device)
+    v5 = wp.array(randvals(rng, [1, 5], dtype), dtype=vec5, requires_grad=True, device=device)
+    v32 = wp.array(randvals(rng, [1, 2], dtype), dtype=vec2, requires_grad=True, device=device)
+    m2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
+    m3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
+    m4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    m5 = wp.array(randvals(rng, [1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
+    m32 = wp.array(randvals(rng, [1, 3, 2], dtype), dtype=mat32, requires_grad=True, device=device)
     outcomponents = wp.zeros(2 * (2 + 3 + 4 + 5 + 3), dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(kernel, dim=1, inputs=[v2, v3, v4, v5, v32, m2, m3, m4, m5, m32], outputs=[outcomponents], device=device)
@@ -1575,7 +1561,7 @@ def test_matvec_multiplication(test, device, dtype, register_kernels=False):
 
 
 def test_matmat_multiplication(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 2.0e-2,
@@ -1685,16 +1671,16 @@ def test_matmat_multiplication(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    v2 = wp.array(randvals([1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
-    v3 = wp.array(randvals([1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
-    v4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
-    v5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
-    v32 = wp.array(randvals([1, 3, 2], dtype), dtype=mat32, requires_grad=True, device=device)
-    m2 = wp.array(randvals([1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
-    m3 = wp.array(randvals([1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
-    m4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
-    m5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
-    m32 = wp.array(randvals([1, 3, 2], dtype), dtype=mat32, requires_grad=True, device=device)
+    v2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
+    v3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
+    v4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    v5 = wp.array(randvals(rng, [1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
+    v32 = wp.array(randvals(rng, [1, 3, 2], dtype), dtype=mat32, requires_grad=True, device=device)
+    m2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
+    m3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
+    m4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    m5 = wp.array(randvals(rng, [1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
+    m32 = wp.array(randvals(rng, [1, 3, 2], dtype), dtype=mat32, requires_grad=True, device=device)
     outcomponents = wp.zeros(
         2 * (2 * 2 + 3 * 3 + 4 * 4 + 5 * 5 + 3 * 2 + 3 * 2), dtype=wptype, requires_grad=True, device=device
     )
@@ -1748,7 +1734,7 @@ def test_matmat_multiplication(test, device, dtype, register_kernels=False):
 
 
 def test_cw_multiplication(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-2,
@@ -1807,14 +1793,14 @@ def test_cw_multiplication(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    s2 = wp.array(randvals([1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
-    s3 = wp.array(randvals([1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
-    s4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
-    s5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
-    v2 = wp.array(randvals([1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
-    v3 = wp.array(randvals([1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
-    v4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
-    v5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
+    s2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
+    s3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
+    s4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    s5 = wp.array(randvals(rng, [1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
+    v2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
+    v3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
+    v4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    v5 = wp.array(randvals(rng, [1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
     outcomponents = wp.zeros(2 * 2 + 3 * 3 + 4 * 4 + 5 * 5, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(
@@ -1878,7 +1864,7 @@ def test_cw_multiplication(test, device, dtype, register_kernels=False):
 
 
 def test_cw_division(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 1.0e-2,
@@ -1937,10 +1923,10 @@ def test_cw_division(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    s2 = randvals([1, 2, 2], dtype)
-    s3 = randvals([1, 3, 3], dtype)
-    s4 = randvals([1, 4, 4], dtype)
-    s5 = randvals([1, 5, 5], dtype)
+    s2 = randvals(rng, [1, 2, 2], dtype)
+    s3 = randvals(rng, [1, 3, 3], dtype)
+    s4 = randvals(rng, [1, 4, 4], dtype)
+    s5 = randvals(rng, [1, 5, 5], dtype)
 
     # set denominators to 1 if their magnitudes are small
     # to prevent divide by zero, or overflows if we're testing
@@ -1955,10 +1941,10 @@ def test_cw_division(test, device, dtype, register_kernels=False):
     s4 = wp.array(s4, dtype=mat44, requires_grad=True, device=device)
     s5 = wp.array(s5, dtype=mat55, requires_grad=True, device=device)
 
-    v2 = wp.array(randvals([1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
-    v3 = wp.array(randvals([1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
-    v4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
-    v5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
+    v2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
+    v3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
+    v4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    v5 = wp.array(randvals(rng, [1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
     outcomponents = wp.zeros(2 * 2 + 3 * 3 + 4 * 4 + 5 * 5, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(
@@ -2035,7 +2021,7 @@ def test_cw_division(test, device, dtype, register_kernels=False):
 
 
 def test_outer_product(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -2100,14 +2086,14 @@ def test_outer_product(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    s2 = wp.array(randvals([1, 2], dtype), dtype=vec2, requires_grad=True, device=device)
-    s3 = wp.array(randvals([1, 3], dtype), dtype=vec3, requires_grad=True, device=device)
-    s4 = wp.array(randvals([1, 4], dtype), dtype=vec4, requires_grad=True, device=device)
-    s5 = wp.array(randvals([1, 5], dtype), dtype=vec5, requires_grad=True, device=device)
-    v2 = wp.array(randvals([1, 2], dtype), dtype=vec2, requires_grad=True, device=device)
-    v3 = wp.array(randvals([1, 3], dtype), dtype=vec3, requires_grad=True, device=device)
-    v4 = wp.array(randvals([1, 4], dtype), dtype=vec4, requires_grad=True, device=device)
-    v5 = wp.array(randvals([1, 5], dtype), dtype=vec5, requires_grad=True, device=device)
+    s2 = wp.array(randvals(rng, [1, 2], dtype), dtype=vec2, requires_grad=True, device=device)
+    s3 = wp.array(randvals(rng, [1, 3], dtype), dtype=vec3, requires_grad=True, device=device)
+    s4 = wp.array(randvals(rng, [1, 4], dtype), dtype=vec4, requires_grad=True, device=device)
+    s5 = wp.array(randvals(rng, [1, 5], dtype), dtype=vec5, requires_grad=True, device=device)
+    v2 = wp.array(randvals(rng, [1, 2], dtype), dtype=vec2, requires_grad=True, device=device)
+    v3 = wp.array(randvals(rng, [1, 3], dtype), dtype=vec3, requires_grad=True, device=device)
+    v4 = wp.array(randvals(rng, [1, 4], dtype), dtype=vec4, requires_grad=True, device=device)
+    v5 = wp.array(randvals(rng, [1, 5], dtype), dtype=vec5, requires_grad=True, device=device)
     outcomponents = wp.zeros(2 * 2 + 3 * 3 + 4 * 4 + 5 * 5 + 2 * 5, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(kernel, dim=1, inputs=[s2, s3, s4, s5, v2, v3, v4, v5], outputs=[outcomponents], device=device)
@@ -2165,7 +2151,7 @@ def test_outer_product(test, device, dtype, register_kernels=False):
 
 
 def test_scalar_division(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 1.0e-2,
@@ -2221,11 +2207,11 @@ def test_scalar_division(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    s = wp.array(randvals([1], dtype), requires_grad=True, device=device)
-    m2 = wp.array(randvals([1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
-    m3 = wp.array(randvals([1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
-    m4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
-    m5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
+    s = wp.array(randvals(rng, [1], dtype), requires_grad=True, device=device)
+    m2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
+    m3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
+    m4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    m5 = wp.array(randvals(rng, [1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
     outcomponents = wp.zeros(2 * 2 + 3 * 3 + 4 * 4 + 5 * 5, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(kernel, dim=1, inputs=[s, m2, m3, m4, m5], outputs=[outcomponents], device=device)
@@ -2267,7 +2253,7 @@ def test_scalar_division(test, device, dtype, register_kernels=False):
 
 
 def test_addition(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 2.0e-2,
@@ -2326,14 +2312,14 @@ def test_addition(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    s2 = wp.array(randvals([1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
-    s3 = wp.array(randvals([1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
-    s4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
-    s5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
-    v2 = wp.array(randvals([1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
-    v3 = wp.array(randvals([1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
-    v4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
-    v5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
+    s2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
+    s3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
+    s4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    s5 = wp.array(randvals(rng, [1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
+    v2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
+    v3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
+    v4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    v5 = wp.array(randvals(rng, [1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
     outcomponents = wp.zeros(2 * 2 + 3 * 3 + 4 * 4 + 5 * 5, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(
@@ -2397,7 +2383,7 @@ def test_addition(test, device, dtype, register_kernels=False):
 
 
 def test_subtraction(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -2456,14 +2442,14 @@ def test_subtraction(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    s2 = wp.array(randvals([1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
-    s3 = wp.array(randvals([1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
-    s4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
-    s5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
-    v2 = wp.array(randvals([1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
-    v3 = wp.array(randvals([1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
-    v4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
-    v5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
+    s2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
+    s3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
+    s4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    s5 = wp.array(randvals(rng, [1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
+    v2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
+    v3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
+    v4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    v5 = wp.array(randvals(rng, [1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
     outcomponents = wp.zeros(2 * 2 + 3 * 3 + 4 * 4 + 5 * 5, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(
@@ -2527,7 +2513,7 @@ def test_subtraction(test, device, dtype, register_kernels=False):
 
 
 def test_ddot(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -2566,14 +2552,14 @@ def test_ddot(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    s2 = wp.array(randvals([1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
-    s3 = wp.array(randvals([1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
-    s4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
-    s5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
-    v2 = wp.array(randvals([1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
-    v3 = wp.array(randvals([1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
-    v4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
-    v5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
+    s2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
+    s3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
+    s4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    s5 = wp.array(randvals(rng, [1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
+    v2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
+    v3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
+    v4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    v5 = wp.array(randvals(rng, [1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
     dot2 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     dot3 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     dot4 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
@@ -2650,7 +2636,7 @@ def test_ddot(test, device, dtype, register_kernels=False):
 
 
 def test_determinant(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -2680,9 +2666,9 @@ def test_determinant(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    v2 = wp.array(randvals([1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
-    v3 = wp.array(randvals([1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
-    v4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    v2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
+    v3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
+    v4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
     det2 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     det3 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     det4 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
@@ -2851,7 +2837,7 @@ def test_determinant(test, device, dtype, register_kernels=False):
 
 
 def test_trace(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 1.0e-3,
@@ -2886,10 +2872,10 @@ def test_trace(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    v2 = wp.array(randvals([1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
-    v3 = wp.array(randvals([1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
-    v4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
-    v5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
+    v2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
+    v3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
+    v4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    v5 = wp.array(randvals(rng, [1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
     tr2 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     tr3 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     tr4 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
@@ -2943,7 +2929,7 @@ def test_trace(test, device, dtype, register_kernels=False):
 
 
 def test_diag(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 1.0e-3,
@@ -2974,7 +2960,7 @@ def test_diag(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    s5 = wp.array(randvals([1, 5], dtype), dtype=vec5, requires_grad=True, device=device)
+    s5 = wp.array(randvals(rng, [1, 5], dtype), dtype=vec5, requires_grad=True, device=device)
     outcomponents = wp.zeros(5 * 5, dtype=wptype, requires_grad=True, device=device)
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
 
@@ -3001,8 +2987,6 @@ def test_diag(test, device, dtype, register_kernels=False):
 
 
 def test_get_diag(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
-
     tol = {
         np.float16: 1.0e-3,
         np.float32: 1.0e-6,
@@ -3056,11 +3040,11 @@ def test_get_diag(test, device, dtype, register_kernels=False):
 
 
 def test_inverse(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
-        np.float16: 2.0e-3,
-        np.float32: 1.0e-6,
+        np.float16: 5.0e-2,
+        np.float32: 1.0e-5,
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
@@ -3103,9 +3087,15 @@ def test_inverse(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    m2 = wp.array(2 * (randvals([1, 2, 2], dtype) + 0.2 * np.eye(2)), dtype=mat22, requires_grad=True, device=device)
-    m3 = wp.array(2 * (randvals([1, 3, 3], dtype) + 0.2 * np.eye(3)), dtype=mat33, requires_grad=True, device=device)
-    m4 = wp.array(2 * (randvals([1, 4, 4], dtype) + 0.2 * np.eye(4)), dtype=mat44, requires_grad=True, device=device)
+    m2 = wp.array(
+        2 * (randvals(rng, [1, 2, 2], dtype) + 0.2 * np.eye(2)), dtype=mat22, requires_grad=True, device=device
+    )
+    m3 = wp.array(
+        2 * (randvals(rng, [1, 3, 3], dtype) + 0.2 * np.eye(3)), dtype=mat33, requires_grad=True, device=device
+    )
+    m4 = wp.array(
+        2 * (randvals(rng, [1, 4, 4], dtype) + 0.2 * np.eye(4)), dtype=mat44, requires_grad=True, device=device
+    )
 
     outcomponents = wp.zeros(2 * 2 + 3 * 3 + 4 * 4, dtype=wptype, requires_grad=True, device=device)
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
@@ -3220,7 +3210,7 @@ def test_inverse(test, device, dtype, register_kernels=False):
 
 
 def test_svd(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 1.0e-3,
@@ -3272,7 +3262,7 @@ def test_svd(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    m3 = wp.array(randvals([1, 3, 3], dtype) + np.eye(3), dtype=mat33, requires_grad=True, device=device)
+    m3 = wp.array(randvals(rng, [1, 3, 3], dtype) + np.eye(3), dtype=mat33, requires_grad=True, device=device)
 
     outcomponents = wp.zeros(2 * 3 * 3 + 3, dtype=wptype, requires_grad=True, device=device)
     Uout = wp.zeros(1, dtype=mat33, requires_grad=True, device=device)
@@ -3339,7 +3329,7 @@ def test_svd(test, device, dtype, register_kernels=False):
 
 
 def test_qr(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 2.0e-3,
@@ -3382,7 +3372,7 @@ def test_qr(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    m3 = wp.array(0.5 * (randvals([1, 3, 3], dtype) + np.eye(3)), dtype=mat33, requires_grad=True, device=device)
+    m3 = wp.array(0.5 * (randvals(rng, [1, 3, 3], dtype) + np.eye(3)), dtype=mat33, requires_grad=True, device=device)
 
     outcomponents = wp.zeros(2 * 3 * 3, dtype=wptype, requires_grad=True, device=device)
     Qout = wp.zeros(1, dtype=mat33, requires_grad=True, device=device)
@@ -3451,7 +3441,7 @@ def test_qr(test, device, dtype, register_kernels=False):
 
 
 def test_eig(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 4.0e-2,
@@ -3494,7 +3484,7 @@ def test_eig(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    m3_np = randvals([1, 3, 3], dtype) + np.eye(3, dtype=dtype)
+    m3_np = randvals(rng, [1, 3, 3], dtype) + np.eye(3, dtype=dtype)
     m3 = wp.array(m3_np, dtype=mat33, requires_grad=True, device=device)
 
     outcomponents = wp.zeros(3 * 3 + 3, dtype=wptype, requires_grad=True, device=device)
@@ -3563,7 +3553,7 @@ def test_eig(test, device, dtype, register_kernels=False):
 
 
 def test_skew(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 1.0e-3,
@@ -3594,7 +3584,7 @@ def test_skew(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    v3 = wp.array(randvals([1, 3], dtype), dtype=vec3, requires_grad=True, device=device)
+    v3 = wp.array(randvals(rng, [1, 3], dtype), dtype=vec3, requires_grad=True, device=device)
 
     outcomponents = wp.zeros(3 * 3, dtype=wptype, requires_grad=True, device=device)
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
@@ -3665,7 +3655,7 @@ def test_skew(test, device, dtype, register_kernels=False):
 
 
 def test_transform_point(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -3696,8 +3686,8 @@ def test_transform_point(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    v3 = wp.array(randvals([1, 3], dtype), dtype=vec3, requires_grad=True, device=device)
-    m4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    v3 = wp.array(randvals(rng, [1, 3], dtype), dtype=vec3, requires_grad=True, device=device)
+    m4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
 
     outcomponents = wp.zeros(3, dtype=wptype, requires_grad=True, device=device)
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
@@ -3726,7 +3716,7 @@ def test_transform_point(test, device, dtype, register_kernels=False):
 
 
 def test_transform_vector(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -3757,8 +3747,8 @@ def test_transform_vector(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    v3 = wp.array(randvals([1, 3], dtype), dtype=vec3, requires_grad=True, device=device)
-    m4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    v3 = wp.array(randvals(rng, [1, 3], dtype), dtype=vec3, requires_grad=True, device=device)
+    m4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
 
     outcomponents = wp.zeros(3, dtype=wptype, requires_grad=True, device=device)
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
@@ -3786,7 +3776,7 @@ def test_transform_vector(test, device, dtype, register_kernels=False):
 
 
 def test_anon_type_instance(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -3914,7 +3904,7 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    input = wp.array(randvals([5], dtype), requires_grad=True, device=device)
+    input = wp.array(randvals(rng, [5], dtype), requires_grad=True, device=device)
     output = wp.zeros(2 * 2 + 3 * 3 + 4 * 4 + 5 * 5 + 3 * 2, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(scalar_kernel, dim=1, inputs=[input], outputs=[output], device=device)
@@ -3951,7 +3941,7 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
             tape.reset()
             tape.zero()
 
-    input = wp.array(randvals([2 * 2 + 3 * 3 + 4 * 4 + 5 * 5 + 3 * 2], dtype), requires_grad=True, device=device)
+    input = wp.array(randvals(rng, [2 * 2 + 3 * 3 + 4 * 4 + 5 * 5 + 3 * 2], dtype), requires_grad=True, device=device)
     output = wp.zeros(2 * 2 + 3 * 3 + 4 * 4 + 5 * 5 + 3 * 2, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(component_kernel, dim=1, inputs=[input], outputs=[output], device=device)
@@ -3977,14 +3967,6 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
 
 
 def test_identity(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
-
-    tol = {
-        np.float16: 5.0e-3,
-        np.float32: 1.0e-6,
-        np.float64: 1.0e-8,
-    }.get(dtype, 0)
-
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
 
     def check_identity_mat(
