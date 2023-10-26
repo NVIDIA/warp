@@ -2,15 +2,15 @@
 # Semantic Versioning is used: https://semver.org/
 version = "1.0.0-beta.3"
 authors = ["NVIDIA"]
-title = "Warp"
-description="Provides the core Warp Python module for Omniverse"
+title = "Warp Core"
+description="The core Warp Python module"
 readme  = "docs/README.md"
 repository="https://github.com/nvidia/warp"
 category = "core"
 keywords = ["warp", "simulation"]
 changelog="docs/CHANGELOG.md"
 
-preview_image = "data/preview.png"
+# preview_image = "data/preview.png"
 icon = "data/icon.png"
 
 # Watch files for hot reloading (only works for Python files)
