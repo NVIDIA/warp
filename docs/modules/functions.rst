@@ -1266,6 +1266,20 @@ Geometry
    :param bary_v: Returns the barycentric v coordinate of the closest point
 
 
+.. function:: mesh_query_furthest_point_no_sign(id: uint64, point: vec3f, min_dist: float32, face: int32, bary_u: float32, bary_v: float32) -> bool
+
+   Computes the furthest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point > ``min_dist`` is found.
+
+   This method does not compute the sign of the point (inside/outside) which makes it faster than other point query methods.
+
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param min_dist: Mesh faces below this distance will not be considered by the query
+   :param face: Returns the index of the furthest face
+   :param bary_u: Returns the barycentric u coordinate of the furthest point
+   :param bary_v: Returns the barycentric v coordinate of the furthest point
+
+
 .. function:: mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, inside: float32, face: int32, bary_u: float32, bary_v: float32, epsilon: float32) -> bool
 
    Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
