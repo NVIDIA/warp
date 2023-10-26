@@ -49,12 +49,14 @@ def constant(x):
     global _constant_hash
 
     # hash the constant value
-    if isinstance(x, int):
+    if isinstance(x, builtins.bool):
+        # This needs to come before the check for `int` since all boolean
+        # values are also instances of `int`.
+        _constant_hash.update(struct.pack("?", x))
+    elif isinstance(x, int):
         _constant_hash.update(struct.pack("<q", x))
     elif isinstance(x, float):
         _constant_hash.update(struct.pack("<d", x))
-    elif isinstance(x, builtins.bool):
-        _constant_hash.update(struct.pack("?", x))
     elif isinstance(x, float16):
         # float16 is a special case
         p = ctypes.pointer(ctypes.c_float(x.value))
