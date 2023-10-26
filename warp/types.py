@@ -177,14 +177,8 @@ def vector(length, dtype):
         def __add__(self, y):
             return warp.add(self, y)
 
-        def __radd__(self, y):
-            return warp.add(self, y)
-
         def __sub__(self, y):
             return warp.sub(self, y)
-
-        def __rsub__(self, x):
-            return warp.sub(x, self)
 
         def __mul__(self, y):
             return warp.mul(self, y)
@@ -195,7 +189,7 @@ def vector(length, dtype):
         def __truediv__(self, y):
             return warp.div(self, y)
 
-        def __rdiv__(self, x):
+        def __rtruediv__(self, x):
             return warp.div(x, self)
 
         def __pos__(self):
@@ -293,14 +287,8 @@ def matrix(shape, dtype):
         def __add__(self, y):
             return warp.add(self, y)
 
-        def __radd__(self, y):
-            return warp.add(self, y)
-
         def __sub__(self, y):
             return warp.sub(self, y)
-
-        def __rsub__(self, x):
-            return warp.sub(x, self)
 
         def __mul__(self, y):
             return warp.mul(self, y)
@@ -317,7 +305,7 @@ def matrix(shape, dtype):
         def __truediv__(self, y):
             return warp.div(self, y)
 
-        def __rdiv__(self, x):
+        def __rtruediv__(self, x):
             return warp.div(x, self)
 
         def __pos__(self):

@@ -3230,6 +3230,13 @@ add_builtin(
 )
 add_builtin(
     "div",
+    input_types={"x": Scalar, "y": vector(length=Any, dtype=Scalar)},
+    value_func=scalar_mul_value_func(vector(length=Any, dtype=Scalar)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "div",
     input_types={"x": matrix(shape=(Any, Any), dtype=Scalar), "y": Scalar},
     value_func=scalar_mul_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
     doc="",
@@ -3237,7 +3244,21 @@ add_builtin(
 )
 add_builtin(
     "div",
+    input_types={"x": Scalar, "y": matrix(shape=(Any, Any), dtype=Scalar)},
+    value_func=scalar_mul_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "div",
     input_types={"x": quaternion(dtype=Scalar), "y": Scalar},
+    value_func=scalar_mul_value_func(quaternion(dtype=Scalar)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "div",
+    input_types={"x": Scalar, "y": quaternion(dtype=Scalar)},
     value_func=scalar_mul_value_func(quaternion(dtype=Scalar)),
     doc="",
     group="Operators",

@@ -159,6 +159,31 @@ def test_components(test, device, dtype):
     test.assertEqual(m[1, 2], 18)
 
 
+def test_py_arithmetic_ops(test, device, dtype):
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+
+    def make_mat(*args):
+        if wptype in wp.types.int_types:
+            # Cast to the correct integer type to simulate wrapping.
+            return tuple(tuple(wptype._type_(x).value for x in row) for row in args)
+
+        return args
+
+    mat_cls = wp.mat((3, 3), wptype)
+
+    m = mat_cls(((-1, 2, 3), (4, -5, 6), (7, 8, -9)))
+    test.assertSequenceEqual(+m, make_mat((-1, 2, 3), (4, -5, 6), (7, 8, -9)))
+    test.assertSequenceEqual(-m, make_mat((1, -2, -3), (-4, 5, -6), (-7, -8, 9)))
+    test.assertSequenceEqual(m + mat_cls((5, 5, 5) * 3), make_mat((4, 7, 8), (9, 0, 11), (12, 13, -4)))
+    test.assertSequenceEqual(m - mat_cls((5, 5, 5) * 3), make_mat((-6, -3, -2), (-1, -10, 1), (2, 3, -14)))
+
+    m = mat_cls(((2, 4, 6), (8, 10, 12), (14, 16, 18)))
+    test.assertSequenceEqual(m * wptype(2), make_mat((4, 8, 12), (16, 20, 24), (28, 32, 36)))
+    test.assertSequenceEqual(wptype(2) * m, make_mat((4, 8, 12), (16, 20, 24), (28, 32, 36)))
+    test.assertSequenceEqual(m / wptype(2), make_mat((1, 2, 3), (4, 5, 6), (7, 8, 9)))
+    test.assertSequenceEqual(wptype(5040) / m, make_mat((2520, 1260, 840), (630, 504, 420), (360, 315, 280)))
+
+
 def test_constants(test, device, dtype, register_kernels=False):
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
     mat22 = wp.types.matrix(shape=(2, 2), dtype=wptype)
@@ -4412,6 +4437,9 @@ def register(parent):
         )
 
     for dtype in np_float_types:
+        add_function_test(
+            TestMat, f"test_py_arithmetic_ops_{dtype.__name__}", test_py_arithmetic_ops, devices=None, dtype=dtype
+        )
         add_function_test_register_kernel(
             TestMat, f"test_quat_constructor_{dtype.__name__}", test_quat_constructor, devices=devices, dtype=dtype
         )

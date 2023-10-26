@@ -176,6 +176,31 @@ def test_components(test, device, dtype):
     test.assertEqual(v[2], 15)
 
 
+def test_py_arithmetic_ops(test, device, dtype):
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+
+    def make_vec(*args):
+        if wptype in wp.types.int_types:
+            # Cast to the correct integer type to simulate wrapping.
+            return tuple(wptype._type_(x).value for x in args)
+
+        return args
+
+    vec_cls = wp.vec(3, wptype)
+
+    v = vec_cls(1, -2, 3)
+    test.assertSequenceEqual(+v, make_vec(1, -2, 3))
+    test.assertSequenceEqual(-v, make_vec(-1, 2, -3))
+    test.assertSequenceEqual(v + vec_cls(5, 5, 5), make_vec(6, 3, 8))
+    test.assertSequenceEqual(v - vec_cls(5, 5, 5), make_vec(-4, -7, -2))
+
+    v = vec_cls(2, 4, 6)
+    test.assertSequenceEqual(v * wptype(2), make_vec(4, 8, 12))
+    test.assertSequenceEqual(wptype(2) * v, make_vec(4, 8, 12))
+    test.assertSequenceEqual(v / wptype(2), make_vec(1, 2, 3))
+    test.assertSequenceEqual(wptype(24) / v, make_vec(12, 6, 4))
+
+
 def test_anon_type_instance(test, device, dtype, register_kernels=False):
     rng = np.random.default_rng(123)
 
@@ -3205,6 +3230,9 @@ def register(parent):
     for dtype in np_scalar_types:
         add_function_test(TestVec, f"test_arrays_{dtype.__name__}", test_arrays, devices=devices, dtype=dtype)
         add_function_test(TestVec, f"test_components_{dtype.__name__}", test_components, devices=None, dtype=dtype)
+        add_function_test(
+            TestVec, f"test_py_arithmetic_ops_{dtype.__name__}", test_py_arithmetic_ops, devices=None, dtype=dtype
+        )
         add_function_test_register_kernel(
             TestVec, f"test_constructors_{dtype.__name__}", test_constructors, devices=devices, dtype=dtype
         )

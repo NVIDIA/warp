@@ -437,7 +437,22 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> div(const mat_t<Rows,Cols,Type>& a, T
         }
     }
 
-    return t;   
+    return t;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> div(Type b, const mat_t<Rows,Cols,Type>& a)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = b / a.data[i][j];
+        }
+    }
+
+    return t;
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
@@ -452,7 +467,7 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> mul(const mat_t<Rows,Cols,Type>& a, T
         }
     }
 
-    return t;   
+    return t;
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
@@ -940,6 +955,20 @@ inline CUDA_CALLABLE void adj_div(const mat_t<Rows,Cols,Type>& a, Type s, mat_t<
         for (unsigned j=0; j < Cols; ++j)
         {
             adj_a.data[i][j] += adj_ret.data[i][j] / s;
+        }
+    }
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_div(Type s, const mat_t<Rows,Cols,Type>& a, Type& adj_s, mat_t<Rows,Cols,Type>& adj_a, const mat_t<Rows,Cols,Type>& adj_ret)
+{
+    adj_s -= tensordot(a , adj_ret)/ (s * s); // - a / s^2
+
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            adj_a.data[i][j] += s / adj_ret.data[i][j];
         }
     }
 }

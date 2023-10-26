@@ -285,9 +285,38 @@ inline CUDA_CALLABLE vec_t<2, Type> div(vec_t<2, Type> a, Type s)
 }
 
 template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length, Type> div(Type s, vec_t<Length, Type> a)
+{
+    vec_t<Length, Type> ret;
+    for (unsigned i=0; i < Length; ++i)
+    {
+        ret[i] = s / a[i];
+    }
+    return ret;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec_t<3, Type> div(Type s, vec_t<3, Type> a)
+{
+    return vec_t<3, Type>(s/a.c[0],s/a.c[1],s/a.c[2]);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec_t<2, Type> div(Type s, vec_t<2, Type> a)
+{
+    return vec_t<2, Type>(s/a.c[0],s/a.c[1]);
+}
+
+template<unsigned Length, typename Type>
 inline CUDA_CALLABLE vec_t<Length, Type> operator / (vec_t<Length, Type> a, Type s)
 {
     return div(a,s);
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length, Type> operator / (Type s, vec_t<Length, Type> a)
+{
+    return div(s, a);
 }
 
 // component wise division
@@ -722,6 +751,27 @@ inline CUDA_CALLABLE void adj_div(vec_t<Length, Type> a, Type s, vec_t<Length, T
     for( unsigned i=0; i < Length; ++i )
     {
         adj_a[i] += adj_ret[i] / s;
+    }
+
+#if FP_CHECK
+    if (!isfinite(a) || !isfinite(s) || !isfinite(adj_a) || !isfinite(adj_s) || !isfinite(adj_ret))
+    {
+        // \TODO: How shall we implement this error message?
+        // printf("adj_div((%f %f %f %f), %f, (%f %f %f %f), %f, (%f %f %f %f)\n", a.x, a.y, a.z, a.w, s, adj_a.x, adj_a.y, adj_a.z, adj_a.w, adj_s, adj_ret.x, adj_ret.y, adj_ret.z, adj_ret.w);
+        assert(0);
+    }
+#endif
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_div(Type s, vec_t<Length, Type> a, Type& adj_s, vec_t<Length, Type>& adj_a, const vec_t<Length, Type>& adj_ret)
+{
+
+    adj_s -= dot(a , adj_ret)/ (s * s); // - a / s^2
+
+    for( unsigned i=0; i < Length; ++i )
+    {
+        adj_a[i] += s / adj_ret[i];
     }
 
 #if FP_CHECK
