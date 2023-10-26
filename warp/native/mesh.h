@@ -88,9 +88,6 @@ CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float
 {
     Mesh mesh = mesh_get(id);
 
-    if (mesh.bvh.num_nodes == 0)
-        return false;
-
     int stack[32];
     stack[0] = *mesh.bvh.root;
 
@@ -276,9 +273,6 @@ CUDA_CALLABLE inline bool mesh_query_point_no_sign(uint64_t id, const vec3& poin
 {
     Mesh mesh = mesh_get(id);
 
-    if (mesh.bvh.num_nodes == 0)
-        return false;
-
     int stack[32];
     stack[0] = *mesh.bvh.root;
 
@@ -460,8 +454,7 @@ CUDA_CALLABLE inline bool mesh_query_point_no_sign(uint64_t id, const vec3& poin
 CUDA_CALLABLE inline bool mesh_query_point_sign_normal(uint64_t id, const vec3& point, float max_dist, float& inside, int& face, float& u, float& v, const float epsilon = 1e-3f)
 {
     Mesh mesh = mesh_get(id);
-    if (mesh.bvh.num_nodes == 0)
-        return false;
+
     int stack[32];
     stack[0] = *mesh.bvh.root;
     int count = 1;
@@ -685,8 +678,7 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_normal(uint64_t id, const vec3& 
 CUDA_CALLABLE inline float solid_angle_iterative(uint64_t id, const vec3& p, const float accuracy_sq)
 {
     Mesh mesh = mesh_get(id);
-    if (mesh.bvh.num_nodes == 0)
-        return 0.0f;
+
     int stack[32];
     int at_child[32]; // 0 for left, 1 for right, 2 for done	
     float angle[32]; 
@@ -765,9 +757,6 @@ CUDA_CALLABLE inline float mesh_query_winding_number(uint64_t id, const vec3& p,
 CUDA_CALLABLE inline bool mesh_query_point_sign_winding_number(uint64_t id, const vec3& point, float max_dist, float& inside, int& face, float& u, float& v, const float accuracy, const float winding_number_threshold)
 {
     Mesh mesh = mesh_get(id);
-
-    if (mesh.bvh.num_nodes == 0)
-        return false;
 
     int stack[32];
     stack[0] = *mesh.bvh.root;
@@ -998,9 +987,6 @@ CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const v
 {
     Mesh mesh = mesh_get(id);
 
-    if (mesh.bvh.num_nodes == 0)
-        return false;
-
     int stack[32];
     stack[0] = *mesh.bvh.root;
     int count = 1;
@@ -1170,17 +1156,7 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(
     query.face = -1;
 
     Mesh mesh = mesh_get(id);
-
     query.mesh = mesh;
-    
-    // if no bvh nodes, return empty query.
-    if (mesh.bvh.num_nodes == 0)
-    {
-        query.count = 0;
-        return query;
-    }
-
-    // optimization: make the latest
     
     query.stack[0] = *mesh.bvh.root;
     query.count = 1;

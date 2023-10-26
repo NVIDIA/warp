@@ -123,8 +123,8 @@ struct BVH
 	
 	int max_depth;
 	int max_nodes;
-    int num_nodes;
-
+	int num_nodes;
+	
 	int* root;
 
     vec3* lowers;
@@ -257,16 +257,7 @@ CUDA_CALLABLE inline bvh_query_t bvh_query(
 	query.bvh = bvh;
 	query.is_ray = is_ray;
 
-
-    // if no bvh nodes, return empty query.
-    if (bvh.num_nodes == 0)
-    {
-		query.count = 0;
-		return query;
-	}
-
-    // optimization: make the latest
-	
+    // optimization: make the latest	
 	query.stack[0] = *bvh.root;
 	query.count = 1;
     query.input_lower = lower;

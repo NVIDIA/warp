@@ -114,7 +114,7 @@ void bvh_refit_device(BVH& bvh, const bounds3* b)
     // clear child counters
     memset_device(WP_CURRENT_CONTEXT, bvh.node_counts, 0, sizeof(int)*bvh.max_nodes);
 
-    wp_launch_device(WP_CURRENT_CONTEXT, bvh_refit_kernel, bvh.max_nodes, (bvh.max_nodes, bvh.node_parents, bvh.node_counts, bvh.node_lowers, bvh.node_uppers, b));
+    wp_launch_device(WP_CURRENT_CONTEXT, bvh_refit_kernel, bvh.num_bounds, (bvh.num_bounds, bvh.node_parents, bvh.node_counts, bvh.node_lowers, bvh.node_uppers, b));
 }
 
 __global__ void set_bounds_from_lowers_and_uppers(int n, bounds3* b, const vec3* lowers, const vec3* uppers)
@@ -166,26 +166,6 @@ private:
 
 ////////////////////////////////////////////////////////
 
-
-// build kernels
-__global__ void CalculateTriangleBounds(const vec3* __restrict__ vertices, const int* __restrict__ indices, int numTris, vec4* __restrict__ lowers, vec4* __restrict__ uppers)
-{
-    const int index = blockIdx.x*blockDim.x + threadIdx.x;
-
-    if (index < numTris)
-    {
-        vec3 p = vec3(vertices[indices[index * 3 + 0]]);
-        vec3 q = vec3(vertices[indices[index * 3 + 1]]);
-        vec3 r = vec3(vertices[indices[index * 3 + 2]]);
-
-        vec3 lower = min(p, min(q, r));
-        vec3 upper = max(p, max(q, r));
-
-        // use vec4 type for 16-byte stores
-        ((vec4*)lowers)[index] = vec4(lower[0], lower[1], lower[2], 0.0f);
-        ((vec4*)uppers)[index] = vec4(upper[0], upper[1], upper[2], 0.0f);
-    }
-}
 
 
 __global__ void CalculateMortonCodes(const vec3* __restrict__ item_lowers, const vec3* __restrict__ item_uppers, const int* __restrict__ item_priorities, int n, const vec3* grid_lower, const vec3* grid_inv_edges, int* __restrict__ indices, int* __restrict__ keys)
@@ -255,7 +235,7 @@ __global__ void BuildLeaves(const vec3* __restrict__ item_lowers, const vec3* __
 // there is one thread launched per-leaf node, each thread calculates it's parent node and assigns
 // itself to either the left or right parent slot, the last child to complete the parent and moves
 // up the hierarchy
-__global__ void BuildHierarchy(int n, int* root, const int* __restrict__ deltas,  int* __restrict__ num_children, volatile int* __restrict__ range_lefts, volatile int* __restrict__ range_rights, volatile BVHPackedNodeHalf* __restrict__ lowers, volatile BVHPackedNodeHalf* __restrict__ uppers)
+__global__ void BuildHierarchy(int n, int* root, const int* __restrict__ deltas,  int* __restrict__ num_children, volatile int* __restrict__ range_lefts, volatile int* __restrict__ range_rights, volatile int* __restrict__ parents, volatile BVHPackedNodeHalf* __restrict__ lowers, volatile BVHPackedNodeHalf* __restrict__ uppers)
 {
     int index = blockDim.x*blockIdx.x + threadIdx.x;
 
@@ -272,6 +252,8 @@ __global__ void BuildHierarchy(int n, int* root, const int* __restrict__ deltas,
             if (left == 0 && right == n-1)
             {					
                 *root = index;
+                parents[index] = -1;
+
                 break;
             }
 
@@ -284,6 +266,7 @@ __global__ void BuildHierarchy(int n, int* root, const int* __restrict__ deltas,
                 parent = right + internal_offset;
 
                 // set parent left child
+                parents[index] = parent;
                 lowers[parent].i = index;				
                 range_lefts[parent] = left;
 
@@ -297,6 +280,7 @@ __global__ void BuildHierarchy(int n, int* root, const int* __restrict__ deltas,
                 parent = left + internal_offset - 1;
                 
                 // set parent right child
+                parents[index] = parent;
                 uppers[parent].i = index;
                 range_rights[parent] = right;
 
@@ -433,12 +417,10 @@ LinearBVHBuilderGPU::~LinearBVHBuilderGPU()
 
 void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* item_uppers, const int* item_priorities, int num_items, bounds3* total_bounds)
 {
-    const int max_nodes = 2*num_items;
-
     if (num_items > max_items)
     {
         const int items_to_alloc = (num_items*3)/2;
-        const int nodes_to_alloc = (max_nodes*3)/2;
+        const int nodes_to_alloc = (bvh.max_nodes*3)/2;
 
         // reallocate temporary storage if necessary
         free_device(WP_CURRENT_CONTEXT, indices);
@@ -458,9 +440,6 @@ void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* i
         max_items = items_to_alloc;
     }
 
-    const int kNumThreadsPerBlock = 256;
-    const int kNumBlocks = (num_items+kNumThreadsPerBlock-1)/kNumThreadsPerBlock;
-
     // if total bounds supplied by the host then we just 
     // compute our edge length and upload it to the GPU directly
     if (total_bounds)
@@ -471,44 +450,44 @@ void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* i
 
         vec3 invEdges = vec3(1.0f/edges[0], 1.0f/edges[1], 1.0f/edges[2]);
         
-        check_cuda(cudaMemcpyAsync(total_lower, &total_bounds->lower[0], sizeof(vec3), cudaMemcpyHostToDevice));
-        check_cuda(cudaMemcpyAsync(total_upper, &total_bounds->upper[0], sizeof(vec3), cudaMemcpyHostToDevice));
-        check_cuda(cudaMemcpyAsync(total_inv_edges, &invEdges[0], sizeof(vec3), cudaMemcpyHostToDevice));
+        memcpy_h2d(WP_CURRENT_CONTEXT, total_lower, &total_bounds->lower[0], sizeof(vec3));
+        memcpy_h2d(WP_CURRENT_CONTEXT, total_upper, &total_bounds->upper[0], sizeof(vec3));
+        memcpy_h2d(WP_CURRENT_CONTEXT, total_inv_edges, &invEdges[0], sizeof(vec3));
     }
     else
     {
-        static const vec3 upper(-FLT_MAX);
-        static const vec3 lower(FLT_MAX);
+        static vec3 upper(-FLT_MAX);
+        static vec3 lower(FLT_MAX);
 
-        check_cuda(cudaMemcpyAsync(total_lower, &lower, sizeof(lower), cudaMemcpyHostToDevice));
-        check_cuda(cudaMemcpyAsync(total_upper, &upper, sizeof(upper), cudaMemcpyHostToDevice));
+        memcpy_h2d(WP_CURRENT_CONTEXT, total_lower, &lower, sizeof(lower));
+        memcpy_h2d(WP_CURRENT_CONTEXT, total_upper, &upper, sizeof(upper));
 
-        // compute the bounds bounds_union on the GPU
-        ComputeTotalBounds<<<kNumBlocks, kNumThreadsPerBlock>>>(item_lowers, item_uppers, total_lower, total_upper, num_items);
+        // compute the total bounds on the GPU
+        wp_launch_device(WP_CURRENT_CONTEXT, ComputeTotalBounds, num_items, (item_lowers, item_uppers, total_lower, total_upper, num_items));
 
         // compute the total edge length
-        ComputeTotalInvEdges<<<1, 1>>>(total_lower, total_upper, total_inv_edges);
+        wp_launch_device(WP_CURRENT_CONTEXT, ComputeTotalInvEdges, 1, (total_lower, total_upper, total_inv_edges));
     }
 
     // assign 30-bit Morton code based on the centroid of each triangle and bounds for each leaf
-    CalculateMortonCodes<<<kNumBlocks, kNumThreadsPerBlock>>>(item_lowers, item_uppers, item_priorities, num_items, total_lower, total_inv_edges, indices, keys);
+    wp_launch_device(WP_CURRENT_CONTEXT, CalculateMortonCodes, num_items, (item_lowers, item_uppers, item_priorities, num_items, total_lower, total_inv_edges, indices, keys));
     
     // sort items based on Morton key (note the 32-bit sort key corresponds to the template parameter to morton3, i.e. 3x9 bit keys combined)
     radix_sort_pairs_device(WP_CURRENT_CONTEXT, keys, indices, num_items);
 
     // calculate deltas between adjacent keys
-    CalculateKeyDeltas<<<kNumBlocks, kNumThreadsPerBlock>>>(keys, deltas, num_items-1);
+    wp_launch_device(WP_CURRENT_CONTEXT, CalculateKeyDeltas, num_items, (keys, deltas, num_items-1));
 
     // initialize leaf nodes
-    BuildLeaves<<<kNumBlocks, kNumThreadsPerBlock>>>(item_lowers, item_uppers, num_items, indices, range_lefts, range_rights, bvh.node_lowers, bvh.node_uppers);
+    wp_launch_device(WP_CURRENT_CONTEXT, BuildLeaves, num_items, (item_lowers, item_uppers, num_items, indices, range_lefts, range_rights, bvh.node_lowers, bvh.node_uppers));
 
 #if 1
     
     // reset children count, this is our atomic counter so we know when an internal node is complete, only used during building
-    check_cuda(cudaMemsetAsync(num_children, 0, sizeof(int)*max_nodes));
+    memset_device(WP_CURRENT_CONTEXT, num_children, 0, sizeof(int)*bvh.max_nodes);
 
     // build the tree and internal node bounds
-    BuildHierarchy<<<kNumBlocks, kNumThreadsPerBlock>>>(num_items, bvh.root, deltas, num_children, range_lefts, range_rights, bvh.node_lowers, bvh.node_uppers);
+    wp_launch_device(WP_CURRENT_CONTEXT, BuildHierarchy, num_items, (num_items, bvh.root, deltas, num_children, range_lefts, range_rights, bvh.node_parents, bvh.node_lowers, bvh.node_uppers));
 
 #else
 
@@ -642,6 +621,17 @@ void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* i
 
 }
 
+void bvh_destroy_device(wp::BVH& bvh)
+{
+    ContextGuard guard(bvh.context);
+
+    free_device(WP_CURRENT_CONTEXT, bvh.node_lowers); bvh.node_lowers = NULL;
+    free_device(WP_CURRENT_CONTEXT, bvh.node_uppers); bvh.node_uppers = NULL;
+    free_device(WP_CURRENT_CONTEXT, bvh.node_parents); bvh.node_parents = NULL;
+    free_device(WP_CURRENT_CONTEXT, bvh.node_counts); bvh.node_counts = NULL;
+    free_device(WP_CURRENT_CONTEXT, bvh.bounds); bvh.bounds = NULL;
+    free_device(WP_CURRENT_CONTEXT, bvh.root); bvh.root = NULL;
+}
 
 } // namespace wp
 
@@ -690,23 +680,25 @@ uint64_t bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, in
 	// bvh_device_clone.lowers = lowers;		// managed by the user
 	// bvh_device_clone.uppers = uppers;		// managed by the user
 
-    const int max_nodes = 2*num_items;
 
     wp::BVH bvh_host;
 
-    bvh_host.node_lowers = (wp::BVHPackedNodeHalf*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::BVHPackedNodeHalf)*max_nodes);
-    bvh_host.node_uppers = (wp::BVHPackedNodeHalf*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::BVHPackedNodeHalf)*max_nodes);
-    bvh_host.node_parents = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*max_nodes);
-    bvh_host.node_counts = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*max_nodes);
+    bvh_host.num_bounds = num_items;
+    bvh_host.max_nodes = 2*num_items;
+    bvh_host.node_lowers = (wp::BVHPackedNodeHalf*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::BVHPackedNodeHalf)*bvh_host.max_nodes);
+    bvh_host.node_uppers = (wp::BVHPackedNodeHalf*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::BVHPackedNodeHalf)*bvh_host.max_nodes);
+    bvh_host.node_parents = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh_host.max_nodes);
+    bvh_host.node_counts = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh_host.max_nodes);
 	bvh_host.bounds = (wp::bounds3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::bounds3)*num_items);
     bvh_host.root = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int));
 
-    static wp::LinearBVHBuilderGPU builder;
+    bvh_host.context = context ? context : cuda_context_get_current();
 
-    //void build(BVH& bvh, const vec4* lowers, const vec4* uppers, const int* priorities, int n, bounds3* total_bounds);
-    builder.build(bvh_host, lowers, uppers, NULL, num_items, NULL);
+    static wp::LinearBVHBuilderGPU* builder = new wp::LinearBVHBuilderGPU();
+    builder->build(bvh_host, lowers, uppers, NULL, num_items, NULL);
 
-    printf("Built on GPU\n");
+    // wp::LinearBVHBuilderGPU builder;
+    // builder.build(bvh_host, lowers, uppers, NULL, num_items, NULL);
 
     // create device-side BVH descriptor
     wp::BVH* bvh_device = (wp::BVH*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::BVH));
@@ -716,4 +708,16 @@ uint64_t bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, in
     wp::bvh_add_descriptor(bvh_id, bvh_host);
 
     return bvh_id;
+}
+
+
+void bvh_destroy_device(uint64_t id)
+{
+    wp::BVH bvh;
+    if (wp::bvh_get_descriptor(id, bvh))
+    {
+        wp::bvh_destroy_device(bvh);
+        
+        wp::bvh_rem_descriptor(id);
+    }
 }

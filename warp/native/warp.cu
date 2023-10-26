@@ -302,7 +302,7 @@ void memset_device(void* context, void* dest, int value, size_t n)
 {
     ContextGuard guard(context);
 
-    if ((n%4) > 0)
+    if (true)// ((n%4) > 0)
     {
         // for unaligned lengths fallback to CUDA memset
         check_cuda(cudaMemsetAsync(dest, value, n, get_current_stream()));

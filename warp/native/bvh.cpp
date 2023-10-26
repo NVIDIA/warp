@@ -46,7 +46,6 @@ void MedianBVHBuilder::build(BVH& bvh, const bounds3* items, int n)
 {
     bvh.max_depth = 0;
     bvh.max_nodes = 2*n-1;
-    bvh.num_nodes = 0;
 
     bvh.node_lowers = new BVHPackedNodeHalf[bvh.max_nodes];
     bvh.node_uppers = new BVHPackedNodeHalf[bvh.max_nodes];
@@ -279,7 +278,6 @@ void LinearBVHBuilderCPU::build(BVH& bvh, const bounds3* items, int n)
 
 	bvh.node_lowers = new BVHPackedNodeHalf[bvh.max_nodes];
 	bvh.node_uppers = new BVHPackedNodeHalf[bvh.max_nodes];
-	bvh.num_nodes = 0;
 
 	// root is always in first slot for top down builders
 	bvh.root = 0;
@@ -423,21 +421,9 @@ void bvh_destroy_host(BVH& bvh)
     bvh.root = NULL;
 
     bvh.max_nodes = 0;
-    bvh.num_nodes = 0;
     bvh.num_bounds = 0;
 }
 
-void bvh_destroy_device(BVH& bvh)
-{
-    ContextGuard guard(bvh.context);
-
-    free_device(WP_CURRENT_CONTEXT, bvh.node_lowers); bvh.node_lowers = NULL;
-    free_device(WP_CURRENT_CONTEXT, bvh.node_uppers); bvh.node_uppers = NULL;
-    free_device(WP_CURRENT_CONTEXT, bvh.node_parents); bvh.node_parents = NULL;
-    free_device(WP_CURRENT_CONTEXT, bvh.node_counts); bvh.node_counts = NULL;
-    free_device(WP_CURRENT_CONTEXT, bvh.bounds); bvh.bounds = NULL;
-    free_device(WP_CURRENT_CONTEXT, bvh.root); bvh.root = NULL;
-}
 
 BVH bvh_clone(void* context, const BVH& bvh_host)
 {
@@ -598,16 +584,6 @@ void bvh_destroy_host(uint64_t id)
     delete bvh;
 }
 
-
-void bvh_destroy_device(uint64_t id)
-{
-    BVH bvh;
-    if (bvh_get_descriptor(id, bvh))
-    {
-        bvh_destroy_device(bvh);
-        mesh_rem_descriptor(id);
-    }
-}
 
 // stubs for non-CUDA platforms
 #if !WP_ENABLE_CUDA

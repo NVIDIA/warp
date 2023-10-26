@@ -131,80 +131,6 @@ uint64_t mesh_create_host(array_t<wp::vec3> points, array_t<wp::vec3> velocities
     return (uint64_t)m;
 }
 
-uint64_t mesh_create_device(void* context, array_t<wp::vec3> points, array_t<wp::vec3> velocities, array_t<int> indices, int num_points, int num_tris, int support_winding_number)
-{
-    ContextGuard guard(context);
-
-    Mesh mesh(points, velocities, indices, num_points, num_tris);
-
-    mesh.context = context ? context : cuda_context_get_current();
-
-    // mesh.points = array_t<vec3>(points, num_points, points_grad);
-    // mesh.velocities = array_t<vec3>(velocities, num_points, velocities_grad);
-    // mesh.indices = array_t<int>(indices, num_tris, 3);
-
-    // mesh.num_points = num_points;
-    // mesh.num_tris = num_tris;
-
-    {
-        // todo: BVH creation only on CPU at the moment so temporarily bring all the data back to host
-        vec3* points_host = (vec3*)alloc_host(sizeof(vec3)*num_points);
-        int* indices_host = (int*)alloc_host(sizeof(int)*num_tris*3);
-        bounds3* bounds_host = (bounds3*)alloc_host(sizeof(bounds3)*num_tris);
-
-        memcpy_d2h(WP_CURRENT_CONTEXT, points_host, points, sizeof(vec3)*num_points);
-        memcpy_d2h(WP_CURRENT_CONTEXT, indices_host, indices, sizeof(int)*num_tris*3);
-        cuda_context_synchronize(WP_CURRENT_CONTEXT);
-
-        float sum = 0.0;
-        for (int i=0; i < num_tris; ++i)
-        {
-            bounds_host[i] = bounds3();
-            wp::vec3 p0 = points_host[indices_host[i*3+0]];
-            wp::vec3 p1 = points_host[indices_host[i*3+1]];
-            wp::vec3 p2 = points_host[indices_host[i*3+2]];
-            bounds_host[i].add_point(p0);
-            bounds_host[i].add_point(p1);
-            bounds_host[i].add_point(p2);
-            sum += length(p0-p1) + length(p0-p2) + length(p2-p1);
-        }
-        mesh.average_edge_length = sum / (num_tris*3);
-
-        BVH bvh_host = bvh_create(bounds_host, num_tris);
-        BVH bvh_device = bvh_clone(WP_CURRENT_CONTEXT, bvh_host);
-
-        bvh_destroy_host(bvh_host);
-
-        // save gpu-side copy of bounds
-        mesh.bounds = (bounds3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(bounds3)*num_tris);
-        memcpy_h2d(WP_CURRENT_CONTEXT, mesh.bounds, bounds_host, sizeof(bounds3)*num_tris);
-
-        free_host(points_host);
-        free_host(indices_host);
-        free_host(bounds_host);
-
-        mesh.bvh = bvh_device;
-
-        if (support_winding_number)
-        {
-            int num_bvh_nodes = 2*num_tris-1;
-            mesh.solid_angle_props = (SolidAngleProps*)alloc_device(WP_CURRENT_CONTEXT, sizeof(SolidAngleProps)*num_bvh_nodes);
-        }        
-    }
-
-    Mesh* mesh_device = (Mesh*)alloc_device(WP_CURRENT_CONTEXT, sizeof(Mesh));
-    memcpy_h2d(WP_CURRENT_CONTEXT, mesh_device, &mesh, sizeof(Mesh));
-    
-    // save descriptor
-    uint64_t mesh_id = (uint64_t)mesh_device;
-    mesh_add_descriptor(mesh_id, mesh);
-
-    if (support_winding_number) 
-    {
-        mesh_refit_device(mesh_id);
-    }
-    return mesh_id;
-}
 
 void mesh_destroy_host(uint64_t id)
 {
@@ -217,25 +143,6 @@ void mesh_destroy_host(uint64_t id)
     bvh_destroy_host(m->bvh);
 
     delete m;
-}
-
-void mesh_destroy_device(uint64_t id)
-{
-    Mesh mesh;
-    if (mesh_get_descriptor(id, mesh))
-    {
-        ContextGuard guard(mesh.context);
-
-        bvh_destroy_device(mesh.bvh);
-
-        free_device(WP_CURRENT_CONTEXT, mesh.bounds);
-        free_device(WP_CURRENT_CONTEXT, (Mesh*)id);
-
-        if (mesh.solid_angle_props) {
-            free_device(WP_CURRENT_CONTEXT, mesh.solid_angle_props);
-        }
-        mesh_rem_descriptor(id);
-    }
 }
 
 void mesh_refit_host(uint64_t id)
