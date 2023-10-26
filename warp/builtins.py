@@ -1511,16 +1511,16 @@ add_builtin(
     },
     value_type=builtins.bool,
     group="Geometry",
-    doc="""Computes the furthest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point > ``min_dist`` is found.
+    doc="""Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point > ``min_dist`` is found.
 
    This method does not compute the sign of the point (inside/outside) which makes it faster than other point query methods.
 
    :param id: The mesh identifier
    :param point: The point in space to query
    :param max_dist: Mesh faces above this distance will not be considered by the query
-   :param face: Returns the index of the furthest face
-   :param bary_u: Returns the barycentric u coordinate of the furthest point
-   :param bary_v: Returns the barycentric v coordinate of the furthest point""",
+   :param face: Returns the index of the closest face
+   :param bary_u: Returns the barycentric u coordinate of the closest point
+   :param bary_v: Returns the barycentric v coordinate of the closest point""",
 )
 
 add_builtin(
