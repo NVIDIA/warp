@@ -401,6 +401,20 @@ def test_swizzle(test, device):
             raise AssertionError(f"Unexpected result, got: {f} expected: {expected}")
 
 
+def test_swizzle_error_invalid_attribute(test, device):
+    v = wp.vec3(1, 2, 3)
+    with test.assertRaisesRegex(
+        AttributeError,
+        r"'vec3f' object has no attribute 'foo'$",
+    ):
+        v.foo
+
+    try:
+        v.bar = 123
+    except AttributeError:
+        test.fail()
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -419,6 +433,7 @@ def register(parent):
     add_function_test(TestLValue, "test_array_struct_struct_assign", test_array_struct_struct_assign, devices=devices)
     add_function_test(TestLValue, "test_complex", test_complex, devices=devices)
     add_function_test(TestLValue, "test_swizzle", test_swizzle, devices=devices)
+    add_function_test(TestLValue, "test_swizzle_error_invalid_attribute", test_swizzle_error_invalid_attribute)
 
     return TestLValue
 
