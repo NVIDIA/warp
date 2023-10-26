@@ -141,8 +141,6 @@ public:
     ~LinearBVHBuilderGPU();
 
     // takes a bvh (host ref), and pointers to the GPU lower and upper bounds for each triangle
-    // the priorities array allows specifying a 5-bit [0-31] value priority such that lower priority
-    // leaves will always be returned first
     void build(BVH& bvh, const vec3* lowers, const vec3* uppers, const int* priorities, int n, bounds3* total_bounds);
 
 private:
@@ -168,7 +166,7 @@ private:
 
 
 
-__global__ void CalculateMortonCodes(const vec3* __restrict__ item_lowers, const vec3* __restrict__ item_uppers, const int* __restrict__ item_priorities, int n, const vec3* grid_lower, const vec3* grid_inv_edges, int* __restrict__ indices, int* __restrict__ keys)
+__global__ void compute_morton_codes(const vec3* __restrict__ item_lowers, const vec3* __restrict__ item_uppers, int n, const vec3* grid_lower, const vec3* grid_inv_edges, int* __restrict__ indices, int* __restrict__ keys)
 {
     const int index = blockDim.x*blockIdx.x + threadIdx.x;
 
@@ -181,13 +179,8 @@ __global__ void CalculateMortonCodes(const vec3* __restrict__ item_lowers, const
 
         vec3 local = cw_mul((center-grid_lower[0]), grid_inv_edges[0]);
         
-        // 9-bit Morton codes stored in lower 27bits (512^3 effective resolution)
-        // 5-bit priority code stored in the upper 5-bits
-        int key = morton3<512>(local[0], local[1], local[2]);
-
-        // we invert priorities (so that higher priority items appear first in sorted order)
-        if (item_priorities)
-            key |= (~item_priorities[index])<<27;
+        // 10-bit Morton codes stored in lower 30bits (1024^3 effective resolution)
+        int key = morton3<1024>(local[0], local[1], local[2]);
 
         indices[index] = index;
         keys[index] = key;
@@ -195,7 +188,7 @@ __global__ void CalculateMortonCodes(const vec3* __restrict__ item_lowers, const
 }
 
 // calculate the index of the first differing bit between two adjacent Morton keys
-__global__ void CalculateKeyDeltas(const int* __restrict__ keys, int* __restrict__ deltas, int n)
+__global__ void compute_key_deltas(const int* __restrict__ keys, int* __restrict__ deltas, int n)
 {
     const int index = blockDim.x*blockIdx.x + threadIdx.x;
 
@@ -210,7 +203,7 @@ __global__ void CalculateKeyDeltas(const int* __restrict__ keys, int* __restrict
     }
 }
 
-__global__ void BuildLeaves(const vec3* __restrict__ item_lowers, const vec3* __restrict__ item_uppers, int n, const int* __restrict__ indices, int* __restrict__ range_lefts, int* __restrict__ range_rights, BVHPackedNodeHalf* __restrict__ lowers, BVHPackedNodeHalf* __restrict__ uppers)
+__global__ void build_leaves(const vec3* __restrict__ item_lowers, const vec3* __restrict__ item_uppers, int n, const int* __restrict__ indices, int* __restrict__ range_lefts, int* __restrict__ range_rights, BVHPackedNodeHalf* __restrict__ lowers, BVHPackedNodeHalf* __restrict__ uppers)
 {
     const int index = blockDim.x*blockIdx.x + threadIdx.x;
 
@@ -235,7 +228,7 @@ __global__ void BuildLeaves(const vec3* __restrict__ item_lowers, const vec3* __
 // there is one thread launched per-leaf node, each thread calculates it's parent node and assigns
 // itself to either the left or right parent slot, the last child to complete the parent and moves
 // up the hierarchy
-__global__ void BuildHierarchy(int n, int* root, const int* __restrict__ deltas,  int* __restrict__ num_children, volatile int* __restrict__ range_lefts, volatile int* __restrict__ range_rights, volatile int* __restrict__ parents, volatile BVHPackedNodeHalf* __restrict__ lowers, volatile BVHPackedNodeHalf* __restrict__ uppers)
+__global__ void build_hierarchy(int n, int* root, const int* __restrict__ deltas,  int* __restrict__ num_children, volatile int* __restrict__ range_lefts, volatile int* __restrict__ range_rights, volatile int* __restrict__ parents, volatile BVHPackedNodeHalf* __restrict__ lowers, volatile BVHPackedNodeHalf* __restrict__ uppers)
 {
     int index = blockDim.x*blockIdx.x + threadIdx.x;
 
@@ -337,7 +330,7 @@ __global__ void BuildHierarchy(int n, int* root, const int* __restrict__ deltas,
 CUDA_CALLABLE inline vec3 Vec3Max(const vec3& a, const vec3& b) { return wp::max(a, b); }
 CUDA_CALLABLE inline vec3 Vec3Min(const vec3& a, const vec3& b) { return wp::min(a, b); }
 
-__global__ void ComputeTotalBounds(const vec3* item_lowers, const vec3* item_uppers, vec3* total_lower, vec3* total_upper, int num_items)
+__global__ void compute_total_bounds(const vec3* item_lowers, const vec3* item_uppers, vec3* total_lower, vec3* total_upper, int num_items)
 {
      typedef cub::BlockReduce<vec3, 256> BlockReduce;
 
@@ -370,7 +363,7 @@ __global__ void ComputeTotalBounds(const vec3* item_lowers, const vec3* item_upp
 }
 
 // compute inverse edge length, this is just done on the GPU to avoid a CPU->GPU sync point
-__global__ void ComputeTotalInvEdges(const vec3* total_lower, const vec3* total_upper, vec3* total_inv_edges)
+__global__ void compute_total_inv_edges(const vec3* total_lower, const vec3* total_upper, vec3* total_inv_edges)
 {
     vec3 edges = (total_upper[0]-total_lower[0]);
     edges += vec3(0.0001f);
@@ -448,11 +441,11 @@ void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* i
         vec3 edges = (*total_bounds).edges();
         edges += vec3(0.0001f);
 
-        vec3 invEdges = vec3(1.0f/edges[0], 1.0f/edges[1], 1.0f/edges[2]);
+        vec3 inv_edges = vec3(1.0f/edges[0], 1.0f/edges[1], 1.0f/edges[2]);
         
         memcpy_h2d(WP_CURRENT_CONTEXT, total_lower, &total_bounds->lower[0], sizeof(vec3));
         memcpy_h2d(WP_CURRENT_CONTEXT, total_upper, &total_bounds->upper[0], sizeof(vec3));
-        memcpy_h2d(WP_CURRENT_CONTEXT, total_inv_edges, &invEdges[0], sizeof(vec3));
+        memcpy_h2d(WP_CURRENT_CONTEXT, total_inv_edges, &inv_edges[0], sizeof(vec3));
     }
     else
     {
@@ -463,23 +456,23 @@ void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* i
         memcpy_h2d(WP_CURRENT_CONTEXT, total_upper, &upper, sizeof(upper));
 
         // compute the total bounds on the GPU
-        wp_launch_device(WP_CURRENT_CONTEXT, ComputeTotalBounds, num_items, (item_lowers, item_uppers, total_lower, total_upper, num_items));
+        wp_launch_device(WP_CURRENT_CONTEXT, compute_total_bounds, num_items, (item_lowers, item_uppers, total_lower, total_upper, num_items));
 
         // compute the total edge length
-        wp_launch_device(WP_CURRENT_CONTEXT, ComputeTotalInvEdges, 1, (total_lower, total_upper, total_inv_edges));
+        wp_launch_device(WP_CURRENT_CONTEXT, compute_total_inv_edges, 1, (total_lower, total_upper, total_inv_edges));
     }
 
     // assign 30-bit Morton code based on the centroid of each triangle and bounds for each leaf
-    wp_launch_device(WP_CURRENT_CONTEXT, CalculateMortonCodes, num_items, (item_lowers, item_uppers, item_priorities, num_items, total_lower, total_inv_edges, indices, keys));
+    wp_launch_device(WP_CURRENT_CONTEXT, compute_morton_codes, num_items, (item_lowers, item_uppers, num_items, total_lower, total_inv_edges, indices, keys));
     
     // sort items based on Morton key (note the 32-bit sort key corresponds to the template parameter to morton3, i.e. 3x9 bit keys combined)
     radix_sort_pairs_device(WP_CURRENT_CONTEXT, keys, indices, num_items);
 
     // calculate deltas between adjacent keys
-    wp_launch_device(WP_CURRENT_CONTEXT, CalculateKeyDeltas, num_items, (keys, deltas, num_items-1));
+    wp_launch_device(WP_CURRENT_CONTEXT, compute_key_deltas, num_items, (keys, deltas, num_items-1));
 
     // initialize leaf nodes
-    wp_launch_device(WP_CURRENT_CONTEXT, BuildLeaves, num_items, (item_lowers, item_uppers, num_items, indices, range_lefts, range_rights, bvh.node_lowers, bvh.node_uppers));
+    wp_launch_device(WP_CURRENT_CONTEXT, build_leaves, num_items, (item_lowers, item_uppers, num_items, indices, range_lefts, range_rights, bvh.node_lowers, bvh.node_uppers));
 
 #if 1
     
@@ -487,11 +480,11 @@ void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* i
     memset_device(WP_CURRENT_CONTEXT, num_children, 0, sizeof(int)*bvh.max_nodes);
 
     // build the tree and internal node bounds
-    wp_launch_device(WP_CURRENT_CONTEXT, BuildHierarchy, num_items, (num_items, bvh.root, deltas, num_children, range_lefts, range_rights, bvh.node_parents, bvh.node_lowers, bvh.node_uppers));
+    wp_launch_device(WP_CURRENT_CONTEXT, build_hierarchy, num_items, (num_items, bvh.root, deltas, num_children, range_lefts, range_rights, bvh.node_parents, bvh.node_lowers, bvh.node_uppers));
 
 #else
 
-    // Reference CPU implementation of BuildHierarchy()
+    // Reference CPU implementation of build_hierarchy()
 
     std::vector<int> indices(num_items);
     std::vector<int> keys(num_items);

@@ -162,7 +162,7 @@ CUDA_CALLABLE inline BVHPackedNodeHalf make_node(const vec3& bound, int child, b
     return n;
 }
 
-// variation of make_node through volatile pointers used in BuildHierarchy
+// variation of make_node through volatile pointers used in build_hierarchy
 CUDA_CALLABLE inline void make_node(volatile BVHPackedNodeHalf* n, const vec3& bound, int child, bool leaf)
 {
     n->x = bound[0];
