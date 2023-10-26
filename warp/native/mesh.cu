@@ -293,6 +293,8 @@ void mesh_refit_device(uint64_t id)
     {
         ContextGuard guard(m.context);
 
+        wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_triangle_bounds, m.num_tris, (m.num_tris, m.points, m.indices, m.bounds));
+
         if (m.solid_angle_props) 
         {
             // we compute mesh the average edge length
