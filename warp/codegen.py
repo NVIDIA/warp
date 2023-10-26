@@ -1923,8 +1923,8 @@ class Adjoint:
         if var is not None:
             adj.return_var = tuple()
             for ret in var:
-                out = adj.add_builtin_call("copy", [ret])
-                adj.return_var += (out,)
+                ret = adj.load(ret)
+                adj.return_var += (ret,)
 
         adj.add_return(adj.return_var)
 
