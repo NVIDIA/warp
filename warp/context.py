@@ -3655,8 +3655,8 @@ def capture_begin(device: Devicelike = None, stream=None, force_module_load=True
 
     device.is_capturing = True
 
-    # trigger garbage collection to avoid older allocations getting collected during graph capture
-    gc.collect()
+    # disable garbage collection to avoid older allocations getting collected during graph capture
+    gc.disable()
 
     with warp.ScopedStream(stream):
         runtime.core.cuda_graph_begin_capture(device.context)
@@ -3680,6 +3680,9 @@ def capture_end(device: Devicelike = None, stream=None) -> Graph:
         graph = runtime.core.cuda_graph_end_capture(device.context)
 
     device.is_capturing = False
+
+    # re-enable GC
+    gc.enable()
 
     if graph is None:
         raise RuntimeError(
