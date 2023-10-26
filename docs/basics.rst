@@ -79,6 +79,8 @@ Then, inside the kernel we can retrieve a 2D thread index as follows::
     # write out a color value for each pixel
     color[i, j] = wp.vec3(r, g, b)
 
+.. _example-cache-management:
+
 Example: Changing the kernel cache directory
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -206,14 +208,7 @@ Tuple initialization is not supported, instead variables should be explicitly ty
     a = wp.vec3(1.0, 2.0, 3.0) 
 
 
-Unsupported Features
-^^^^^^^^^^^^^^^^^^^^
+Limitations and Unsupported Features
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To achieve good performance on GPUs some dynamic language features are not supported:
-
-* Lambda functions
-* List comprehensions
-* Exceptions
-* Recursion
-* Runtime evaluation of expressions, e.g.: eval()
-* Dynamic structures such as lists, sets, dictionaries, etc
+See :doc:`limitations` for a list of Warp limitations and unsupported features.

@@ -5,6 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+from __future__ import annotations
+
 import builtins
 import ctypes
 import hashlib
@@ -1177,7 +1179,7 @@ def types_equal(a, b, match_generic=False):
         and a._wp_generic_type_str_ == b._wp_generic_type_str_
     ):
         return all([are_equal(p1, p2) for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_)])
-    if is_array(a) and type(a) == type(b):
+    if is_array(a) and type(a) is type(b):
         return True
     else:
         return are_equal(a, b)
@@ -2570,15 +2572,13 @@ class Mesh:
 
 
 class Volume:
+    #: Enum value to specify nearest-neighbor interpolation during sampling
     CLOSEST = constant(0)
+    #: Enum value to specify trilinear interpolation during sampling
     LINEAR = constant(1)
 
     def __init__(self, data: array):
         """Class representing a sparse grid.
-
-        Attributes:
-            CLOSEST (int): Enum value to specify nearest-neighbor interpolation during sampling
-            LINEAR (int): Enum value to specify trilinear interpolation during sampling
 
         Args:
             data (:class:`warp.array`): Array of bytes representing the volume in NanoVDB format
@@ -2624,7 +2624,7 @@ class Volume:
         except Exception:
             pass
 
-    def array(self):
+    def array(self) -> array:
         """Returns the raw memory buffer of the Volume as an array"""
         buf = ctypes.c_void_p(0)
         size = ctypes.c_uint64(0)
@@ -2634,7 +2634,7 @@ class Volume:
             self.context.core.volume_get_buffer_info_device(self.id, ctypes.byref(buf), ctypes.byref(size))
         return array(ptr=buf.value, dtype=uint8, shape=size.value, device=self.device, owner=False)
 
-    def get_tiles(self):
+    def get_tiles(self) -> array:
         if self.id == 0:
             raise RuntimeError("Invalid Volume")
 
@@ -2647,7 +2647,7 @@ class Volume:
         num_tiles = size.value // (3 * 4)
         return array(ptr=buf.value, dtype=int32, shape=(num_tiles, 3), device=self.device, owner=True)
 
-    def get_voxel_size(self):
+    def get_voxel_size(self) -> Tuple[float, float, float]:
         if self.id == 0:
             raise RuntimeError("Invalid Volume")
 
@@ -2656,7 +2656,7 @@ class Volume:
         return (dx.value, dy.value, dz.value)
 
     @classmethod
-    def load_from_nvdb(cls, file_or_buffer, device=None):
+    def load_from_nvdb(cls, file_or_buffer, device=None) -> Volume:
         """Creates a Volume object from a NanoVDB file or in-memory buffer.
 
         Returns:
@@ -2692,14 +2692,18 @@ class Volume:
         return cls(data_array)
 
     @classmethod
-    def load_from_numpy(cls, ndarray: np.array, min_world=(0.0, 0.0, 0.0), voxel_size=1.0, bg_value=0.0, device=None):
+    def load_from_numpy(
+        cls, ndarray: np.array, min_world=(0.0, 0.0, 0.0), voxel_size=1.0, bg_value=0.0, device=None
+    ) -> Volume:
         """Creates a Volume object from a dense 3D NumPy array.
 
+        This function is only supported for CUDA devices.
+
         Args:
-            min_world: The 3D coordinate of the lower corner of the volume
-            voxel_size: The size of each voxel in spatial coordinates
+            min_world: The 3D coordinate of the lower corner of the volume.
+            voxel_size: The size of each voxel in spatial coordinates.
             bg_value: Background value
-            device: The device to create the volume on, e.g.: "cpu", or "cuda:0"
+            device: The CUDA device to create the volume on, e.g.: "cuda" or "cuda:0".
 
         Returns:
 
@@ -2754,7 +2758,7 @@ class Volume:
                 inputs=[volume.id, warp.array(padded_array, dtype=warp.vec3, device=device)],
                 device=device,
             )
-        elif type(bg_value) == int:
+        elif isinstance(bg_value, int):
             warp.launch(
                 warp.utils.copy_dense_volume_to_nano_vdb_i,
                 dim=shape,
@@ -2781,8 +2785,10 @@ class Volume:
         translation=(0.0, 0.0, 0.0),
         points_in_world_space=False,
         device=None,
-    ):
+    ) -> Volume:
         """Allocate a new Volume based on the bounding box defined by min and max.
+
+        This function is only supported for CUDA devices.
 
         Allocate a volume that is large enough to contain voxels [min[0], min[1], min[2]] - [max[0], max[1], max[2]], inclusive.
         If points_in_world_space is true, then min and max are first converted to index space with the given voxel size and
@@ -2792,12 +2798,12 @@ class Volume:
         the resulting tiles will be available in the new volume.
 
         Args:
-            min (array-like): Lower 3D-coordinates of the bounding box in index space or world space, inclusive
-            max (array-like): Upper 3D-coordinates of the bounding box in index space or world space, inclusive
-            voxel_size (float): Voxel size of the new volume
+            min (array-like): Lower 3D coordinates of the bounding box in index space or world space, inclusive.
+            max (array-like): Upper 3D coordinates of the bounding box in index space or world space, inclusive.
+            voxel_size (float): Voxel size of the new volume.
             bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type, a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
-            translation (array-like): translation between the index and world spaces
-            device (Devicelike): Device the array lives on
+            translation (array-like): translation between the index and world spaces.
+            device (Devicelike): The CUDA device to create the volume on, e.g.: "cuda" or "cuda:0".
 
         """
         if points_in_world_space:
@@ -2822,8 +2828,10 @@ class Volume:
     @classmethod
     def allocate_by_tiles(
         cls, tile_points: array, voxel_size: float, bg_value=0.0, translation=(0.0, 0.0, 0.0), device=None
-    ):
+    ) -> Volume:
         """Allocate a new Volume with active tiles for each point tile_points.
+
+        This function is only supported for CUDA devices.
 
         The smallest unit of allocation is a dense tile of 8x8x8 voxels.
         This is the primary method for allocating sparse volumes. It uses an array of points indicating the tiles that must be allocated.
@@ -2834,13 +2842,13 @@ class Volume:
 
         Args:
             tile_points (:class:`warp.array`): Array of positions that define the tiles to be allocated.
-                The array can be a 2d, N-by-3 array of :class:`warp.int32` values, indicating index space positions,
+                The array can be a 2D, N-by-3 array of :class:`warp.int32` values, indicating index space positions,
                 or can be a 1D array of :class:`warp.vec3` values, indicating world space positions.
                 Repeated points per tile are allowed and will be efficiently deduplicated.
-            voxel_size (float): Voxel size of the new volume
+            voxel_size (float): Voxel size of the new volume.
             bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type, a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
-            translation (array-like): translation between the index and world spaces
-            device (Devicelike): Device the array lives on
+            translation (array-like): Translation between the index and world spaces.
+            device (Devicelike): The CUDA device to create the volume on, e.g.: "cuda" or "cuda:0".
 
         """
         from warp.context import runtime
@@ -2877,7 +2885,7 @@ class Volume:
                 translation[2],
                 in_world_space,
             )
-        elif type(bg_value) == int:
+        elif isinstance(bg_value, int):
             volume.id = volume.context.core.volume_i_from_tiles_device(
                 volume.device.context,
                 ctypes.c_void_p(tile_points.ptr),
@@ -3566,7 +3574,7 @@ def type_matches_template(arg_type, template_type):
         return True
     elif is_array(template_type):
         # ensure the argument type is a non-generic array with matching dtype and dimensionality
-        if type(arg_type) != type(template_type):
+        if type(arg_type) is not type(template_type):
             return False
         if not type_matches_template(arg_type.dtype, template_type.dtype):
             return False
