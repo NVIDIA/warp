@@ -589,6 +589,20 @@ def test_tpl_constructor_error_invalid_arg_count(test, device):
         )
 
 
+def test_tpl_ops_with_anon(test, device):
+    mat22f = wp.mat((2, 2), dtype=float)
+
+    m = wp.mat22f(1.0, 2.0, 3.0, 4.0)
+    m += mat22f(2.0, 3.0, 4.0, 5.0)
+    m -= mat22f(3.0, 4.0, 5.0, 6.0)
+    test.assertSequenceEqual(m, ((0.0, 1.0), (2.0, 3.0)))
+
+    m = mat22f(1.0, 2.0, 3.0, 4.0)
+    m += wp.mat22f(2.0, 3.0, 4.0, 5.0)
+    m -= wp.mat22f(3.0, 4.0, 5.0, 6.0)
+    test.assertSequenceEqual(m, ((0.0, 1.0), (2.0, 3.0)))
+
+
 def test_quat_constructor(test, device, dtype, register_kernels=False):
     rng = np.random.default_rng(123)
 
@@ -4298,6 +4312,7 @@ def register(parent):
         test_tpl_constructor_error_invalid_arg_count,
         devices=devices,
     )
+    add_function_test(TestMat, "test_tpl_ops_with_anon", test_tpl_ops_with_anon)
 
     for dtype in np_scalar_types:
         add_function_test(TestMat, f"test_arrays_{dtype.__name__}", test_arrays, devices=devices, dtype=dtype)
