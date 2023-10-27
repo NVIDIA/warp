@@ -15,29 +15,7 @@
 namespace wp
 {
 
-__global__ void compute_triangle_bounds(int n, const vec3* points, const int* indices, bounds3* b)
-{
-    const int tid = blockIdx.x*blockDim.x + threadIdx.x;
-
-    if (tid < n)
-    {
-        // if leaf then update bounds
-        int i = indices[tid*3+0];
-        int j = indices[tid*3+1];
-        int k = indices[tid*3+2];
-
-        vec3 p = points[i];
-        vec3 q = points[j];
-        vec3 r = points[k];
-
-        vec3 lower = min(min(p, q), r);
-        vec3 upper = max(max(p, q), r);
-
-        b[tid] = bounds3(lower, upper);
-    }
-}
-
-__global__ void compute_triangle_lower_upper(int n, const vec3* points, const int* indices, vec3* lowers, vec3* uppers)
+__global__ void compute_triangle_bounds(int n, const vec3* points, const int* indices, vec3* lowers, vec3* uppers)
 {
     const int tid = blockIdx.x*blockDim.x + threadIdx.x;
 
@@ -59,7 +37,6 @@ __global__ void compute_triangle_lower_upper(int n, const vec3* points, const in
         uppers[tid] = upper;
     }
 }
-
 
 __global__ void compute_mesh_edge_lengths(int n, const vec3* points, const int* indices, float* edge_lengths)
 {
@@ -182,7 +159,7 @@ void bvh_refit_with_solid_angle_device(BVH& bvh, Mesh& mesh)
     // clear child counters
     memset_device(WP_CURRENT_CONTEXT, bvh.node_counts, 0, sizeof(int)*bvh.max_nodes);
 
-    wp_launch_device(WP_CURRENT_CONTEXT, bvh_refit_with_solid_angle_kernel, bvh.num_bounds, (bvh.num_bounds, bvh.node_parents, bvh.node_counts, bvh.node_lowers, bvh.node_uppers, mesh.points, mesh.indices, mesh.solid_angle_props));
+    wp_launch_device(WP_CURRENT_CONTEXT, bvh_refit_with_solid_angle_kernel, bvh.num_items, (bvh.num_items, bvh.node_parents, bvh.node_counts, bvh.node_lowers, bvh.node_uppers, mesh.points, mesh.indices, mesh.solid_angle_props));
 }
 
 } // namespace wp
@@ -226,20 +203,13 @@ uint64_t mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::arr
         // bvh_destroy_host(bvh_host);
 
         // create lower upper arrays expected by GPU BVH builder
-        wp::vec3* lowers = (wp::vec3*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3)*num_tris);
-        wp::vec3* uppers = (wp::vec3*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3)*num_tris);
+        mesh.lowers = (wp::vec3*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3)*num_tris);
+        mesh.uppers = (wp::vec3*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3)*num_tris);
 
-        wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_triangle_lower_upper, num_tris, (num_tris, points.data, indices.data, lowers, uppers));
+        wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_triangle_bounds, num_tris, (num_tris, points.data, indices.data, mesh.lowers, mesh.uppers));
 
-        uint64_t bvh_id = bvh_create_device(mesh.context, lowers, uppers, num_tris);
+        uint64_t bvh_id = bvh_create_device(mesh.context, mesh.lowers, mesh.uppers, num_tris);
         wp::bvh_get_descriptor(bvh_id, mesh.bvh);
-
-        free_temp_device(WP_CURRENT_CONTEXT, lowers);
-        free_temp_device(WP_CURRENT_CONTEXT, uppers);
-
-        // save gpu-side copy of bounds
-        mesh.bounds = (wp::bounds3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::bounds3)*num_tris);
-        wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_triangle_bounds, num_tris, (num_tris, points, indices, mesh.bounds));
 
         if (support_winding_number)
         {
@@ -268,9 +238,10 @@ void mesh_destroy_device(uint64_t id)
     {
         ContextGuard guard(mesh.context);
 
-        bvh_destroy_device(mesh.bvh);
+        wp::bvh_destroy_device(mesh.bvh);
 
-        free_device(WP_CURRENT_CONTEXT, mesh.bounds);
+        free_device(WP_CURRENT_CONTEXT, mesh.lowers);
+        free_device(WP_CURRENT_CONTEXT, mesh.uppers);
         free_device(WP_CURRENT_CONTEXT, (wp::Mesh*)id);
 
         if (mesh.solid_angle_props) {
@@ -293,7 +264,7 @@ void mesh_refit_device(uint64_t id)
     {
         ContextGuard guard(m.context);
 
-        wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_triangle_bounds, m.num_tris, (m.num_tris, m.points, m.indices, m.bounds));
+        wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_triangle_bounds, m.num_tris, (m.num_tris, m.points, m.indices, m.lowers, m.uppers));
 
         if (m.solid_angle_props) 
         {
@@ -302,22 +273,21 @@ void mesh_refit_device(uint64_t id)
             // since it relies on an epsilon for welding
 
             // re-use bounds memory temporarily for computing edge lengths
-            float* length_tmp_ptr = (float*)m.bounds;
+            float* length_tmp_ptr = (float*)m.lowers;
             wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_mesh_edge_lengths, m.num_tris, (m.num_tris, m.points, m.indices, length_tmp_ptr));
             
             scan_device(length_tmp_ptr, length_tmp_ptr, m.num_tris, true);
                 
             wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_average_mesh_edge_length, 1, (m.num_tris, length_tmp_ptr, (wp::Mesh*)id));
-            wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_triangle_bounds, m.num_tris, (m.num_tris, m.points, m.indices, m.bounds));
+            wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_triangle_bounds, m.num_tris, (m.num_tris, m.points, m.indices, m.lowers, m.uppers));
 
             // update solid angle data
             bvh_refit_with_solid_angle_device(m.bvh, m);            
         }
         else 
         {
-            bvh_refit_device(m.bvh, m.bounds);
+            bvh_refit_device(m.bvh);
         }
     }
-
 }
 

@@ -25,22 +25,24 @@
 namespace wp
 {
 
-__global__ void bvh_refit_kernel(int n, const int* __restrict__ parents, int* __restrict__ child_count, BVHPackedNodeHalf* __restrict__ lowers, BVHPackedNodeHalf* __restrict__ uppers, const bounds3* bounds)
+__global__ void bvh_refit_kernel(int n, const int* __restrict__ parents, int* __restrict__ child_count, BVHPackedNodeHalf* __restrict__ node_lowers, BVHPackedNodeHalf* __restrict__ node_uppers, const vec3* item_lowers, const vec3* item_uppers)
 {
     int index = blockDim.x*blockIdx.x + threadIdx.x;
 
     if (index < n)
     {
-        bool leaf = lowers[index].b;
+        bool leaf = node_lowers[index].b;
 
         if (leaf)
         {
             // update the leaf node
-            const int leaf_index = lowers[index].i;
-            const bounds3& b = bounds[leaf_index];
+            const int leaf_index = node_lowers[index].i;
 
-            make_node(lowers+index, b.lower, leaf_index, true);
-            make_node(uppers+index, b.upper, 0, false);
+            vec3 lower = item_lowers[leaf_index];
+            vec3 upper = item_uppers[leaf_index];
+
+            make_node(node_lowers+index, lower, leaf_index, true);
+            make_node(node_uppers+index, upper, 0, false);
         }
         else
         {
@@ -66,33 +68,33 @@ __global__ void bvh_refit_kernel(int n, const int* __restrict__ parents, int* __
             // then update its bounds and move onto the the next parent in the hierarchy
             if (finished == 1)
             {
-                const int left_child = lowers[parent].i;
-                const int right_child = uppers[parent].i;
+                const int left_child = node_lowers[parent].i;
+                const int right_child = node_uppers[parent].i;
 
-                vec3 left_lower = vec3(lowers[left_child].x,
-                                       lowers[left_child].y, 
-                                       lowers[left_child].z);
+                vec3 left_lower = vec3(node_lowers[left_child].x,
+                                       node_lowers[left_child].y, 
+                                       node_lowers[left_child].z);
 
-                vec3 left_upper = vec3(uppers[left_child].x,
-                                       uppers[left_child].y, 
-                                       uppers[left_child].z);
+                vec3 left_upper = vec3(node_uppers[left_child].x,
+                                       node_uppers[left_child].y, 
+                                       node_uppers[left_child].z);
 
-                vec3 right_lower = vec3(lowers[right_child].x,
-                                        lowers[right_child].y,
-                                        lowers[right_child].z);
+                vec3 right_lower = vec3(node_lowers[right_child].x,
+                                        node_lowers[right_child].y,
+                                        node_lowers[right_child].z);
 
 
-                vec3 right_upper = vec3(uppers[right_child].x, 
-                                        uppers[right_child].y, 
-                                        uppers[right_child].z);
+                vec3 right_upper = vec3(node_uppers[right_child].x, 
+                                        node_uppers[right_child].y, 
+                                        node_uppers[right_child].z);
 
                 // union of child bounds
                 vec3 lower = min(left_lower, right_lower);
                 vec3 upper = max(left_upper, right_upper);
                 
                 // write new BVH nodes
-                make_node(lowers+parent, lower, left_child, false);
-                make_node(uppers+parent, upper, right_child, false);
+                make_node(node_lowers+parent, lower, left_child, false);
+                make_node(node_uppers+parent, upper, right_child, false);
 
                 // move onto processing the parent
                 index = parent;
@@ -107,24 +109,14 @@ __global__ void bvh_refit_kernel(int n, const int* __restrict__ parents, int* __
 }
 
 
-void bvh_refit_device(BVH& bvh, const bounds3* b)
+void bvh_refit_device(BVH& bvh)
 {
     ContextGuard guard(bvh.context);
 
     // clear child counters
     memset_device(WP_CURRENT_CONTEXT, bvh.node_counts, 0, sizeof(int)*bvh.max_nodes);
 
-    wp_launch_device(WP_CURRENT_CONTEXT, bvh_refit_kernel, bvh.num_bounds, (bvh.num_bounds, bvh.node_parents, bvh.node_counts, bvh.node_lowers, bvh.node_uppers, b));
-}
-
-__global__ void set_bounds_from_lowers_and_uppers(int n, bounds3* b, const vec3* lowers, const vec3* uppers)
-{
-    const int tid = blockIdx.x*blockDim.x + threadIdx.x;
-
-    if (tid < n)
-    {
-        b[tid] = bounds3(lowers[tid], uppers[tid]);
-    }
+    wp_launch_device(WP_CURRENT_CONTEXT, bvh_refit_kernel, bvh.num_items, (bvh.num_items, bvh.node_parents, bvh.node_counts, bvh.node_lowers, bvh.node_uppers, bvh.item_lowers, bvh.item_uppers));
 }
 
 
@@ -141,7 +133,7 @@ public:
     ~LinearBVHBuilderGPU();
 
     // takes a bvh (host ref), and pointers to the GPU lower and upper bounds for each triangle
-    void build(BVH& bvh, const vec3* lowers, const vec3* uppers, const int* priorities, int n, bounds3* total_bounds);
+    void build(BVH& bvh, const vec3* item_lowers, const vec3* item_uppers, int num_items, bounds3* total_bounds);
 
 private:
 
@@ -408,7 +400,7 @@ LinearBVHBuilderGPU::~LinearBVHBuilderGPU()
 
 
 
-void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* item_uppers, const int* item_priorities, int num_items, bounds3* total_bounds)
+void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* item_uppers, int num_items, bounds3* total_bounds)
 {
     if (num_items > max_items)
     {
@@ -622,13 +614,10 @@ void bvh_destroy_device(wp::BVH& bvh)
     free_device(WP_CURRENT_CONTEXT, bvh.node_uppers); bvh.node_uppers = NULL;
     free_device(WP_CURRENT_CONTEXT, bvh.node_parents); bvh.node_parents = NULL;
     free_device(WP_CURRENT_CONTEXT, bvh.node_counts); bvh.node_counts = NULL;
-    free_device(WP_CURRENT_CONTEXT, bvh.bounds); bvh.bounds = NULL;
     free_device(WP_CURRENT_CONTEXT, bvh.root); bvh.root = NULL;
 }
 
 } // namespace wp
-
-
 
 
 void bvh_refit_device(uint64_t id)
@@ -637,61 +626,31 @@ void bvh_refit_device(uint64_t id)
     if (bvh_get_descriptor(id, bvh))
     {
         ContextGuard guard(bvh.context);
-        wp_launch_device(WP_CURRENT_CONTEXT, wp::set_bounds_from_lowers_and_uppers, bvh.num_bounds, (bvh.num_bounds, bvh.bounds, bvh.lowers, bvh.uppers));
 
-        bvh_refit_device(bvh, bvh.bounds);
+        bvh_refit_device(bvh);
     }
-
 }
 
 uint64_t bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items)
 {
     ContextGuard guard(context);
 
-    // // todo: BVH creation only on CPU at the moment so temporarily bring all the data back to host
-    // vec3* lowers_host = (vec3*)alloc_host(sizeof(vec3)*num_bounds);
-    // vec3* uppers_host = (vec3*)alloc_host(sizeof(vec3)*num_bounds);
-    // bounds3* bounds_host = (bounds3*)alloc_host(sizeof(bounds3)*num_bounds);
-
-    // memcpy_d2h(WP_CURRENT_CONTEXT, lowers_host, lowers, sizeof(vec3)*num_bounds);
-    // memcpy_d2h(WP_CURRENT_CONTEXT, uppers_host, uppers, sizeof(vec3)*num_bounds);
-    // cuda_context_synchronize(WP_CURRENT_CONTEXT);
-
-    // for (int i=0; i < num_bounds; ++i)
-    // {
-    //     bounds_host[i] = bounds3();
-    //     bounds_host[i].lower = lowers_host[i];
-    //     bounds_host[i].upper = uppers_host[i];
-    // }
-
-    // BVH bvh_host = bvh_create(bounds_host, num_bounds);
-    // bvh_host.context = context ? context : cuda_context_get_current();
-	// bvh_host.bounds = bounds_host;
-    // bvh_host.num_bounds = num_bounds;        
-    // BVH bvh_device_clone = bvh_clone(WP_CURRENT_CONTEXT, bvh_host);
-
-	// bvh_device_clone.lowers = lowers;		// managed by the user
-	// bvh_device_clone.uppers = uppers;		// managed by the user
-
-
     wp::BVH bvh_host;
-
-    bvh_host.num_bounds = num_items;
+    bvh_host.num_items = num_items;
     bvh_host.max_nodes = 2*num_items;
     bvh_host.node_lowers = (wp::BVHPackedNodeHalf*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::BVHPackedNodeHalf)*bvh_host.max_nodes);
     bvh_host.node_uppers = (wp::BVHPackedNodeHalf*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::BVHPackedNodeHalf)*bvh_host.max_nodes);
     bvh_host.node_parents = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh_host.max_nodes);
     bvh_host.node_counts = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh_host.max_nodes);
-	bvh_host.bounds = (wp::bounds3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::bounds3)*num_items);
     bvh_host.root = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int));
+    bvh_host.item_lowers = lowers;
+    bvh_host.item_uppers = uppers;
 
     bvh_host.context = context ? context : cuda_context_get_current();
 
+    // todo: provide a mechanism to free this memory, currently will live until process exit?
     static wp::LinearBVHBuilderGPU* builder = new wp::LinearBVHBuilderGPU();
-    builder->build(bvh_host, lowers, uppers, NULL, num_items, NULL);
-
-    // wp::LinearBVHBuilderGPU builder;
-    // builder.build(bvh_host, lowers, uppers, NULL, num_items, NULL);
+    builder->build(bvh_host, lowers, uppers, num_items, NULL);
 
     // create device-side BVH descriptor
     wp::BVH* bvh_device = (wp::BVH*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::BVH));
@@ -710,7 +669,9 @@ void bvh_destroy_device(uint64_t id)
     if (wp::bvh_get_descriptor(id, bvh))
     {
         wp::bvh_destroy_device(bvh);
-        
         wp::bvh_rem_descriptor(id);
+
+        // free descriptor
+        free_device(WP_CURRENT_CONTEXT, (void*)id);
     }
 }

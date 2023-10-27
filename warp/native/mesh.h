@@ -26,7 +26,9 @@ struct Mesh
 
     array_t<int> indices;
 
-    bounds3* bounds;
+    vec3* lowers;
+    vec3* uppers;
+
     SolidAngleProps* solid_angle_props;
 
     int num_points;
@@ -40,7 +42,8 @@ struct Mesh
     inline CUDA_CALLABLE Mesh(int id = 0) 
     {
         // for backward a = 0 initialization syntax
-        bounds = nullptr;
+        lowers = nullptr;
+        uppers = nullptr;
         num_points = 0;
         num_tris = 0;
         context = nullptr;
@@ -57,7 +60,8 @@ struct Mesh
         void* context = nullptr
     ) : points(points), velocities(velocities), indices(indices), num_points(num_points), num_tris(num_tris), context(context)
     {
-        bounds = nullptr;
+        lowers = nullptr;
+        uppers = nullptr;
         solid_angle_props = nullptr;
         average_edge_length = 0.0f;
     }

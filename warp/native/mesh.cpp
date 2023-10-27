@@ -103,7 +103,8 @@ uint64_t mesh_create_host(array_t<wp::vec3> points, array_t<wp::vec3> velocities
 {
     Mesh* m = new Mesh(points, velocities, indices, num_points, num_tris);
 
-    m->bounds = new bounds3[num_tris];
+    m->lowers = new vec3[num_tris];
+    m->uppers = new vec3[num_tris];
 
     float sum = 0.0;
     for (int i=0; i < num_tris; ++i)
@@ -111,15 +112,23 @@ uint64_t mesh_create_host(array_t<wp::vec3> points, array_t<wp::vec3> velocities
         wp::vec3& p0 = points[indices[i*3+0]];
         wp::vec3& p1 = points[indices[i*3+1]];
         wp::vec3& p2 = points[indices[i*3+2]];
-        m->bounds[i].add_point(p0);
-        m->bounds[i].add_point(p1);
-        m->bounds[i].add_point(p2);
+        
+        // compute triangle bounds
+        bounds3 b;       
+        b.add_point(p0);
+        b.add_point(p1);
+        b.add_point(p2);
+
+        m->lowers[i] = b.lower;
+        m->uppers[i] = b.upper;
+
+        // compute edge lengths
         sum += length(p0-p1) + length(p0-p2) + length(p2-p1);
     }
     m->average_edge_length = sum / (num_tris*3);
 
-    m->bvh = bvh_create(m->bounds, num_tris);
-
+    m->bvh = *(wp::BVH*)bvh_create_host(m->lowers, m->uppers, num_tris);
+    
     if (support_winding_number) 
     {
         // Let's first compute the sold
@@ -136,7 +145,9 @@ void mesh_destroy_host(uint64_t id)
 {
     Mesh* m = (Mesh*)(id);
 
-    delete[] m->bounds;
+    delete[] m->lowers;
+    delete[] m->uppers;
+
     if (m->solid_angle_props) {
         delete [] m->solid_angle_props;
     }
@@ -152,13 +163,19 @@ void mesh_refit_host(uint64_t id)
     float sum = 0.0;
     for (int i=0; i < m->num_tris; ++i)
     {
-        m->bounds[i] = bounds3();
         wp::vec3 p0 = m->points.data[m->indices.data[i*3+0]];
         wp::vec3 p1 = m->points.data[m->indices.data[i*3+1]];
         wp::vec3 p2 = m->points.data[m->indices.data[i*3+2]];
-        m->bounds[i].add_point(p0);
-        m->bounds[i].add_point(p1);
-        m->bounds[i].add_point(p2);
+
+        // compute triangle bounds
+        bounds3 b;       
+        b.add_point(p0);
+        b.add_point(p1);
+        b.add_point(p2);
+
+        m->lowers[i] = b.lower;
+        m->uppers[i] = b.upper;
+
         sum += length(p0-p1) + length(p0-p2) + length(p2-p1);
     }
     m->average_edge_length = sum / (m->num_tris*3);
@@ -170,7 +187,7 @@ void mesh_refit_host(uint64_t id)
     }
     else
     {
-        bvh_refit_host(m->bvh, m->bounds);
+        bvh_refit_host(m->bvh);
     }
 }
 
