@@ -145,10 +145,14 @@ def test_native_func_export(test, device):
     test.assertEqual(str(m22), "[[2.0, 4.0],\n [6.0, 8.0]]")
 
     t = wp.transform(
-        wp.vec3(0.0, 0.0, 0.0),
-        wp.quat(0.0, 0.0, 0.0, 1.0),
+        wp.vec3(1.0, 2.0, 3.0),
+        wp.quat(4.0, 5.0, 6.0, 7.0),
     )
-    assert_np_equal(np.array([*t]), np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]))
+    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+    test.assertSequenceEqual(t * (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0), (396.0, 432.0, 720.0, 56.0, 70.0, 84.0, -28.0))
+    test.assertSequenceEqual(
+        t * wp.transform((1.0, 2.0, 3.0), (4.0, 5.0, 6.0, 7.0)), (396.0, 432.0, 720.0, 56.0, 70.0, 84.0, -28.0)
+    )
 
     f = wp.sin(math.pi * 0.5)
     test.assertAlmostEqual(f, 1.0, places=3)
