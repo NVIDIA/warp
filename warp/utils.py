@@ -6,11 +6,10 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import cProfile
-import math
 import sys
 import timeit
 import warnings
-from typing import Any, Tuple, Union
+from typing import Any
 
 import numpy as np
 
@@ -448,9 +447,6 @@ class MeshAdjacency:
             edge = MeshEdge(i0, i1, o, -1, f, -1)
 
         self.edges[key] = edge
-
-    def opposite_vertex(self, edge):
-        pass
 
 
 def mem_report(): #pragma: no cover

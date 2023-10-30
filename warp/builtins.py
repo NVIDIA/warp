@@ -618,7 +618,7 @@ def vector_constructor_func(arg_types, kwds, templates):
                 veclen = kwds["length"]
                 vectype = arg_types[0]
                 if getattr(vectype, "_wp_generic_type_str_", None) == "vec_t":
-                    # constructor from another matrix
+                    # constructor from another vector
                     if vectype._length_ != veclen:
                         raise RuntimeError(
                             f"Incompatible vector lengths for casting copy constructor, {veclen} vs {vectype._length_}"
