@@ -7,9 +7,10 @@
 
 import ast
 import ctypes
-import hashlib
 import gc
+import hashlib
 import inspect
+import io
 import os
 import platform
 import sys
@@ -548,7 +549,7 @@ def func(f):
     name = warp.codegen.make_full_qualified_name(f)
 
     m = get_module(f.__module__)
-    func = Function(
+    Function(
         func=f, key=name, namespace="", module=m, value_func=None
     )  # value_type not known yet, will be inferred during Adjoint.build()
 
@@ -3115,9 +3116,9 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             # - in forward passes, array types have to match
             # - in backward passes, indexed array gradients are regular arrays
             if adjoint:
-                array_matches = type(value) == warp.array
+                array_matches = isinstance(value, warp.array)
             else:
-                array_matches = type(value) == type(arg_type)
+                array_matches = type(value) is type(arg_type)
 
             if not array_matches:
                 adj = "adjoint " if adjoint else ""
@@ -4035,6 +4036,8 @@ def export_stubs(file):  # pragma: no cover
     print("Quaternion = Generic[Float]", file=file)
     print("Transformation = Generic[Float]", file=file)
     print("Array = Generic[DType]", file=file)
+    print("FabricArray = Generic[DType]", file=file)
+    print("IndexedFabricArray = Generic[DType]", file=file)
 
     # prepend __init__.py
     with open(os.path.join(os.path.dirname(file.name), "__init__.py")) as header_file:
@@ -4072,7 +4075,7 @@ def export_stubs(file):  # pragma: no cover
             print("    ...\n\n", file=file)
 
 
-def export_builtins(file):  # pragma: no cover
+def export_builtins(file: io.TextIOBase):  # pragma: no cover
     def ctype_str(t):
         if isinstance(t, int):
             return "int"
@@ -4080,6 +4083,9 @@ def export_builtins(file):  # pragma: no cover
             return "float"
         else:
             return t.__name__
+
+    file.write("namespace wp {\n\n")
+    file.write('extern "C" {\n\n')
 
     for k, g in builtin_functions.items():
         for f in g.overloads:
@@ -4113,16 +4119,16 @@ def export_builtins(file):  # pragma: no cover
                 continue
 
             if args == "":
-                print(
-                    f"WP_API void {f.mangled_name}({return_type}* ret) {{ *ret = wp::{f.key}({params}); }}", file=file
-                )
+                file.write(f"WP_API void {f.mangled_name}({return_type}* ret) {{ *ret = wp::{f.key}({params}); }}\n")
             elif return_type == "None":
-                print(f"WP_API void {f.mangled_name}({args}) {{ wp::{f.key}({params}); }}", file=file)
+                file.write(f"WP_API void {f.mangled_name}({args}) {{ wp::{f.key}({params}); }}\n")
             else:
-                print(
-                    f"WP_API void {f.mangled_name}({args}, {return_type}* ret) {{ *ret = wp::{f.key}({params}); }}",
-                    file=file,
+                file.write(
+                    f"WP_API void {f.mangled_name}({args}, {return_type}* ret) {{ *ret = wp::{f.key}({params}); }}\n"
                 )
+
+    file.write('\n}  // extern "C"\n\n')
+    file.write("}  // namespace wp\n")
 
 
 # initialize global runtime

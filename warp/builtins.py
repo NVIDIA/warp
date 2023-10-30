@@ -6,10 +6,10 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import builtins
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Tuple
 
-from warp.types import *
 from warp.codegen import Reference
+from warp.types import *
 
 from .context import add_builtin
 
@@ -48,7 +48,7 @@ add_builtin(
     "clamp",
     input_types={"x": Scalar, "a": Scalar, "b": Scalar},
     value_func=sametype_value_func(Scalar),
-    doc="Clamp the value of x to the range [a, b].",
+    doc="Clamp the value of ``x`` to the range [a, b].",
     group="Scalar Math",
 )
 
@@ -56,14 +56,14 @@ add_builtin(
     "abs",
     input_types={"x": Scalar},
     value_func=sametype_value_func(Scalar),
-    doc="Return the absolute value of x.",
+    doc="Return the absolute value of ``x``.",
     group="Scalar Math",
 )
 add_builtin(
     "sign",
     input_types={"x": Scalar},
     value_func=sametype_value_func(Scalar),
-    doc="Return -1 if x < 0, return 1 otherwise.",
+    doc="Return -1 if ``x`` < 0, return 1 otherwise.",
     group="Scalar Math",
 )
 
@@ -71,14 +71,14 @@ add_builtin(
     "step",
     input_types={"x": Scalar},
     value_func=sametype_value_func(Scalar),
-    doc="Return 1.0 if x < 0.0, return 0.0 otherwise.",
+    doc="Return 1.0 if ``x`` < 0.0, return 0.0 otherwise.",
     group="Scalar Math",
 )
 add_builtin(
     "nonzero",
     input_types={"x": Scalar},
     value_func=sametype_value_func(Scalar),
-    doc="Return 1.0 if x is not equal to zero, return 0.0 otherwise.",
+    doc="Return 1.0 if ``x`` is not equal to zero, return 0.0 otherwise.",
     group="Scalar Math",
 )
 
@@ -86,91 +86,91 @@ add_builtin(
     "sin",
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
-    doc="Return the sine of x in radians.",
+    doc="Return the sine of ``x`` in radians.",
     group="Scalar Math",
 )
 add_builtin(
     "cos",
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
-    doc="Return the cosine of x in radians.",
+    doc="Return the cosine of ``x`` in radians.",
     group="Scalar Math",
 )
 add_builtin(
     "acos",
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
-    doc="Return arccos of x in radians. Inputs are automatically clamped to [-1.0, 1.0].",
+    doc="Return arccos of ``x`` in radians. Inputs are automatically clamped to [-1.0, 1.0].",
     group="Scalar Math",
 )
 add_builtin(
     "asin",
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
-    doc="Return arcsin of x in radians. Inputs are automatically clamped to [-1.0, 1.0].",
+    doc="Return arcsin of ``x`` in radians. Inputs are automatically clamped to [-1.0, 1.0].",
     group="Scalar Math",
 )
 add_builtin(
     "sqrt",
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
-    doc="Return the sqrt of x, where x is positive.",
+    doc="Return the sqrt of ``x``, where ``x`` is positive.",
     group="Scalar Math",
 )
 add_builtin(
     "tan",
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
-    doc="Return tangent of x in radians.",
+    doc="Return the tangent of ``x`` in radians.",
     group="Scalar Math",
 )
 add_builtin(
     "atan",
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
-    doc="Return arctan of x.",
+    doc="Return the arctangent of ``x`` in radians.",
     group="Scalar Math",
 )
 add_builtin(
     "atan2",
     input_types={"y": Float, "x": Float},
     value_func=sametype_value_func(Float),
-    doc="Return atan2 of x.",
+    doc="Return the 2-argument arctangent, atan2, of the point ``(x, y)`` in radians.",
     group="Scalar Math",
 )
 add_builtin(
     "sinh",
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
-    doc="Return the sinh of x.",
+    doc="Return the sinh of ``x``.",
     group="Scalar Math",
 )
 add_builtin(
     "cosh",
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
-    doc="Return the cosh of x.",
+    doc="Return the cosh of ``x``.",
     group="Scalar Math",
 )
 add_builtin(
     "tanh",
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
-    doc="Return the tanh of x.",
+    doc="Return the tanh of ``x``.",
     group="Scalar Math",
 )
 add_builtin(
     "degrees",
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
-    doc="Convert radians into degrees.",
+    doc="Convert ``x`` from radians into degrees.",
     group="Scalar Math",
 )
 add_builtin(
     "radians",
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
-    doc="Convert degrees into radians.",
+    doc="Convert ``x`` from degrees into radians.",
     group="Scalar Math",
 )
 
@@ -178,35 +178,35 @@ add_builtin(
     "log",
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
-    doc="Return the natural log (base-e) of x, where x is positive.",
+    doc="Return the natural logarithm (base-e) of ``x``, where ``x`` is positive.",
     group="Scalar Math",
 )
 add_builtin(
     "log2",
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
-    doc="Return the natural log (base-2) of x, where x is positive.",
+    doc="Return the binary logarithm (base-2) of ``x``, where ``x`` is positive.",
     group="Scalar Math",
 )
 add_builtin(
     "log10",
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
-    doc="Return the natural log (base-10) of x, where x is positive.",
+    doc="Return the common logarithm (base-10) of ``x``, where ``x`` is positive.",
     group="Scalar Math",
 )
 add_builtin(
     "exp",
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
-    doc="Return base-e exponential, e^x.",
+    doc="Return the value of the exponential function :math:`e^x`.",
     group="Scalar Math",
 )
 add_builtin(
     "pow",
     input_types={"x": Float, "y": Float},
     value_func=sametype_value_func(Float),
-    doc="Return the result of x raised to power of y.",
+    doc="Return the result of ``x`` raised to power of ``y``.",
     group="Scalar Math",
 )
 
@@ -215,9 +215,9 @@ add_builtin(
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
     group="Scalar Math",
-    doc="""Calculate the nearest integer value, rounding halfway cases away from zero.
-    This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
-    Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.""",
+    doc="""Return the nearest integer value to ``x``, rounding halfway cases away from zero.
+   This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like :func:`warp.rint()`.
+   Differs from :func:`numpy.round()`, which behaves the same way as :func:`numpy.rint()`.""",
 )
 
 add_builtin(
@@ -225,9 +225,8 @@ add_builtin(
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
     group="Scalar Math",
-    doc="""Calculate the nearest integer value, rounding halfway cases to nearest even integer.
-    It is generally faster than ``warp.round()``.
-    Equivalent to ``numpy.rint()``.""",
+    doc="""Return the nearest integer value to ``x``, rounding halfway cases to nearest even integer.
+   It is generally faster than :func:`warp.round()`. Equivalent to :func:`numpy.rint()`.""",
 )
 
 add_builtin(
@@ -235,10 +234,10 @@ add_builtin(
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
     group="Scalar Math",
-    doc="""Calculate the nearest integer that is closer to zero than x.
-    In other words, it discards the fractional part of x.
-    It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
-    Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.""",
+    doc="""Return the nearest integer that is closer to zero than ``x``.
+   In other words, it discards the fractional part of ``x``.
+   It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
+   Equivalent to :func:`numpy.trunc()` and :func:`numpy.fix()`.""",
 )
 
 add_builtin(
@@ -246,7 +245,7 @@ add_builtin(
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
     group="Scalar Math",
-    doc="""Calculate the largest integer that is less than or equal to x.""",
+    doc="""Return the largest integer that is less than or equal to ``x``.""",
 )
 
 add_builtin(
@@ -254,7 +253,7 @@ add_builtin(
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
     group="Scalar Math",
-    doc="""Calculate the smallest integer that is greater than or equal to x.""",
+    doc="""Return the smallest integer that is greater than or equal to ``x``.""",
 )
 
 
@@ -308,14 +307,14 @@ add_builtin(
     "min",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
     value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
-    doc="Return the element wise minimum of two vectors.",
+    doc="Return the element-wise minimum of two vectors.",
     group="Vector Math",
 )
 add_builtin(
     "max",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
     value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
-    doc="Return the element wise maximum of two vectors.",
+    doc="Return the element-wise maximum of two vectors.",
     group="Vector Math",
 )
 
@@ -323,14 +322,14 @@ add_builtin(
     "min",
     input_types={"v": vector(length=Any, dtype=Scalar)},
     value_func=sametype_scalar_value_func,
-    doc="Return the minimum element of a vector.",
+    doc="Return the minimum element of a vector ``v``.",
     group="Vector Math",
 )
 add_builtin(
     "max",
     input_types={"v": vector(length=Any, dtype=Scalar)},
     value_func=sametype_scalar_value_func,
-    doc="Return the maximum element of a vector.",
+    doc="Return the maximum element of a vector ``v``.",
     group="Vector Math",
 )
 
@@ -338,7 +337,7 @@ add_builtin(
     "argmin",
     input_types={"v": vector(length=Any, dtype=Scalar)},
     value_func=lambda arg_types, kwds, _: warp.uint32,
-    doc="Return the index of the minimum element of a vector.",
+    doc="Return the index of the minimum element of a vector ``v``.",
     group="Vector Math",
     missing_grad=True,
 )
@@ -346,7 +345,7 @@ add_builtin(
     "argmax",
     input_types={"v": vector(length=Any, dtype=Scalar)},
     value_func=lambda arg_types, kwds, _: warp.uint32,
-    doc="Return the index of the maximum element of a vector.",
+    doc="Return the index of the maximum element of a vector ``v``.",
     group="Vector Math",
     missing_grad=True,
 )
@@ -366,7 +365,7 @@ add_builtin(
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
     value_func=value_func_outer,
     group="Vector Math",
-    doc="Compute the outer product x*y^T for two vec2 objects.",
+    doc="Compute the outer product ``x*y^T`` for two vectors.",
 )
 
 add_builtin(
@@ -374,14 +373,14 @@ add_builtin(
     input_types={"x": vector(length=3, dtype=Scalar), "y": vector(length=3, dtype=Scalar)},
     value_func=sametype_value_func(vector(length=3, dtype=Scalar)),
     group="Vector Math",
-    doc="Compute the cross product of two 3d vectors.",
+    doc="Compute the cross product of two 3D vectors.",
 )
 add_builtin(
     "skew",
     input_types={"x": vector(length=3, dtype=Scalar)},
     value_func=lambda arg_types, kwds, _: matrix(shape=(3, 3), dtype=arg_types[0]._wp_scalar_type_),
     group="Vector Math",
-    doc="Compute the skew symmetric matrix for a 3d vector.",
+    doc="Compute the skew-symmetric 3x3 matrix for a 3D vector ``x``.",
 )
 
 add_builtin(
@@ -389,42 +388,42 @@ add_builtin(
     input_types={"x": vector(length=Any, dtype=Float)},
     value_func=sametype_scalar_value_func,
     group="Vector Math",
-    doc="Compute the length of a vector.",
+    doc="Compute the length of a vector ``x``.",
 )
 add_builtin(
     "length",
     input_types={"x": quaternion(dtype=Float)},
     value_func=sametype_scalar_value_func,
     group="Vector Math",
-    doc="Compute the length of a quaternion.",
+    doc="Compute the length of a quaternion ``x``.",
 )
 add_builtin(
     "length_sq",
     input_types={"x": vector(length=Any, dtype=Scalar)},
     value_func=sametype_scalar_value_func,
     group="Vector Math",
-    doc="Compute the squared length of a 2d vector.",
+    doc="Compute the squared length of a 2D vector ``x``.",
 )
 add_builtin(
     "length_sq",
     input_types={"x": quaternion(dtype=Scalar)},
     value_func=sametype_scalar_value_func,
     group="Vector Math",
-    doc="Compute the squared length of a quaternion.",
+    doc="Compute the squared length of a quaternion ``x``.",
 )
 add_builtin(
     "normalize",
     input_types={"x": vector(length=Any, dtype=Float)},
     value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
     group="Vector Math",
-    doc="Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.",
+    doc="Compute the normalized value of ``x``. If ``length(x)`` is 0 then the zero vector is returned.",
 )
 add_builtin(
     "normalize",
     input_types={"x": quaternion(dtype=Float)},
     value_func=sametype_value_func(quaternion(dtype=Scalar)),
     group="Vector Math",
-    doc="Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.",
+    doc="Compute the normalized value of ``x``. If ``length(x)`` is 0, then the zero quaternion is returned.",
 )
 
 add_builtin(
@@ -434,7 +433,7 @@ add_builtin(
         shape=(arg_types[0]._shape_[1], arg_types[0]._shape_[0]), dtype=arg_types[0]._wp_scalar_type_
     ),
     group="Vector Math",
-    doc="Return the transpose of the matrix m",
+    doc="Return the transpose of the matrix ``m``.",
 )
 
 
@@ -449,7 +448,7 @@ add_builtin(
     input_types={"m": matrix(shape=(2, 2), dtype=Float)},
     value_func=value_func_mat_inv,
     group="Vector Math",
-    doc="Return the inverse of a 2x2 matrix m",
+    doc="Return the inverse of a 2x2 matrix ``m``.",
 )
 
 add_builtin(
@@ -457,7 +456,7 @@ add_builtin(
     input_types={"m": matrix(shape=(3, 3), dtype=Float)},
     value_func=value_func_mat_inv,
     group="Vector Math",
-    doc="Return the inverse of a 3x3 matrix m",
+    doc="Return the inverse of a 3x3 matrix ``m``.",
 )
 
 add_builtin(
@@ -465,7 +464,7 @@ add_builtin(
     input_types={"m": matrix(shape=(4, 4), dtype=Float)},
     value_func=value_func_mat_inv,
     group="Vector Math",
-    doc="Return the inverse of a 4x4 matrix m",
+    doc="Return the inverse of a 4x4 matrix ``m``.",
 )
 
 
@@ -480,7 +479,7 @@ add_builtin(
     input_types={"m": matrix(shape=(2, 2), dtype=Float)},
     value_func=value_func_mat_det,
     group="Vector Math",
-    doc="Return the determinant of a 2x2 matrix m",
+    doc="Return the determinant of a 2x2 matrix ``m``.",
 )
 
 add_builtin(
@@ -488,7 +487,7 @@ add_builtin(
     input_types={"m": matrix(shape=(3, 3), dtype=Float)},
     value_func=value_func_mat_det,
     group="Vector Math",
-    doc="Return the determinant of a 3x3 matrix m",
+    doc="Return the determinant of a 3x3 matrix ``m``.",
 )
 
 add_builtin(
@@ -496,7 +495,7 @@ add_builtin(
     input_types={"m": matrix(shape=(4, 4), dtype=Float)},
     value_func=value_func_mat_det,
     group="Vector Math",
-    doc="Return the determinant of a 4x4 matrix m",
+    doc="Return the determinant of a 4x4 matrix ``m``.",
 )
 
 
@@ -513,7 +512,7 @@ add_builtin(
     input_types={"m": matrix(shape=(Any, Any), dtype=Scalar)},
     value_func=value_func_mat_trace,
     group="Vector Math",
-    doc="Return the trace of the matrix m",
+    doc="Return the trace of the matrix ``m``.",
 )
 
 
@@ -529,7 +528,7 @@ add_builtin(
     input_types={"d": vector(length=Any, dtype=Scalar)},
     value_func=value_func_diag,
     group="Vector Math",
-    doc="Returns a matrix with the components of the vector d on the diagonal",
+    doc="Returns a matrix with the components of the vector ``d`` on the diagonal.",
 )
 
 
@@ -549,7 +548,7 @@ add_builtin(
     input_types={"m": matrix(shape=(Any, Any), dtype=Scalar)},
     value_func=value_func_get_diag,
     group="Vector Math",
-    doc="Returns a vector containing the diagonal elements of the square matrix.",
+    doc="Returns a vector containing the diagonal elements of the square matrix ``m``.",
 )
 
 add_builtin(
@@ -557,14 +556,14 @@ add_builtin(
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
     value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
     group="Vector Math",
-    doc="Component wise multiply of two 2d vectors.",
+    doc="Component-wise multiplication of two 2D vectors.",
 )
 add_builtin(
     "cw_div",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
     value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
     group="Vector Math",
-    doc="Component wise division of two 2d vectors.",
+    doc="Component-wise division of two 2D vectors.",
 )
 
 add_builtin(
@@ -572,14 +571,14 @@ add_builtin(
     input_types={"x": matrix(shape=(Any, Any), dtype=Scalar), "y": matrix(shape=(Any, Any), dtype=Scalar)},
     value_func=sametype_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
     group="Vector Math",
-    doc="Component wise multiply of two 2d vectors.",
+    doc="Component-wise multiplication of two 2D vectors.",
 )
 add_builtin(
     "cw_div",
     input_types={"x": matrix(shape=(Any, Any), dtype=Scalar), "y": matrix(shape=(Any, Any), dtype=Scalar)},
     value_func=sametype_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
     group="Vector Math",
-    doc="Component wise division of two 2d vectors.",
+    doc="Component-wise division of two 2D vectors.",
 )
 
 
@@ -637,7 +636,9 @@ def vector_constructor_func(arg_types, kwds, templates):
 
             if "dtype" in kwds:
                 # casting constructor
-                if len(arg_types) == 1 and types_equal(arg_types[0], vector(length=Any, dtype=Scalar), match_generic=True):
+                if len(arg_types) == 1 and types_equal(
+                    arg_types[0], vector(length=Any, dtype=Scalar), match_generic=True
+                ):
                     veclen = arg_types[0]._length_
                     vectype = kwds["dtype"]
                     templates.append(veclen)
@@ -791,7 +792,7 @@ add_builtin(
     initializer_list_func=matrix_initlist_func,
     value_func=matrix_constructor_func,
     native_func="mat_t",
-    doc="Construct a matrix, if positional arg_types are not given then matrix will be zero-initialized.",
+    doc="Construct a matrix. If the positional ``arg_types`` are not given, then matrix will be zero-initialized.",
     group="Vector Math",
     export=False,
 )
@@ -858,7 +859,8 @@ add_builtin(
     },
     value_func=matrix_transform_value_func,
     native_func="mat_t",
-    doc="""Construct a 4x4 transformation matrix that applies the transformations as Translation(pos)*Rotation(rot)*Scale(scale) when applied to column vectors, i.e.: y = (TRS)*x""",
+    doc="""Construct a 4x4 transformation matrix that applies the transformations as
+   Translation(pos)*Rotation(rot)*Scale(scale) when applied to column vectors, i.e.: y = (TRS)*x""",
     group="Vector Math",
     export=False,
 )
@@ -877,8 +879,8 @@ add_builtin(
     value_type=None,
     group="Vector Math",
     export=False,
-    doc="""Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
-   while the left and right basis vectors are returned in U and V.""",
+    doc="""Compute the SVD of a 3x3 matrix ``A``. The singular values are returned in ``sigma``,
+   while the left and right basis vectors are returned in ``U`` and ``V``.""",
 )
 
 add_builtin(
@@ -891,7 +893,8 @@ add_builtin(
     value_type=None,
     group="Vector Math",
     export=False,
-    doc="""Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returned in R.""",
+    doc="""Compute the QR decomposition of a 3x3 matrix ``A``. The orthogonal matrix is returned in ``Q``,
+   while the upper triangular matrix is returned in ``R``.""",
 )
 
 add_builtin(
@@ -904,7 +907,8 @@ add_builtin(
     value_type=None,
     group="Vector Math",
     export=False,
-    doc="""Compute the eigendecomposition of a 3x3 matrix. The eigenvectors are returned as the columns of Q, while the corresponding eigenvalues are returned in d.""",
+    doc="""Compute the eigendecomposition of a 3x3 matrix ``A``. The eigenvectors are returned as the columns of ``Q``,
+   while the corresponding eigenvalues are returned in ``d``.""",
 )
 
 # ---------------------------------
@@ -949,7 +953,7 @@ add_builtin(
     value_func=quaternion_value_func,
     native_func="quat_t",
     group="Quaternion Math",
-    doc="""Construct a zero-initialized quaternion, quaternions are laid out as
+    doc="""Construct a zero-initialized quaternion. Quaternions are laid out as
    [ix, iy, iz, r], where ix, iy, iz are the imaginary part, and r the real part.""",
     export=False,
 )
@@ -959,7 +963,7 @@ add_builtin(
     value_func=quaternion_value_func,
     native_func="quat_t",
     group="Quaternion Math",
-    doc="Create a quaternion using the supplied components (type inferred from component type)",
+    doc="Create a quaternion using the supplied components (type inferred from component type).",
     export=False,
 )
 add_builtin(
@@ -968,7 +972,7 @@ add_builtin(
     value_func=quaternion_value_func,
     native_func="quat_t",
     group="Quaternion Math",
-    doc="Create a quaternion using the supplied vector/scalar (type inferred from scalar type)",
+    doc="Create a quaternion using the supplied vector/scalar (type inferred from scalar type).",
     export=False,
 )
 add_builtin(
@@ -978,7 +982,7 @@ add_builtin(
     native_func="quat_t",
     group="Quaternion Math",
     doc="Construct a quaternion of type dtype from another quaternion of a different dtype.",
-    export=False
+    export=False,
 )
 
 
@@ -1054,7 +1058,7 @@ add_builtin(
     input_types={"q": quaternion(dtype=Float), "p": vector(length=3, dtype=Float)},
     value_func=lambda arg_types, kwds, _: vector(length=3, dtype=infer_scalar_type(arg_types)),
     group="Quaternion Math",
-    doc="Rotate a vector the inverse of a quaternion.",
+    doc="Rotate a vector by the inverse of a quaternion.",
 )
 add_builtin(
     "quat_slerp",
@@ -1106,7 +1110,7 @@ add_builtin(
     value_func=transform_constructor_value_func,
     native_func="transform_t",
     group="Transformations",
-    doc="Construct a rigid body transformation with translation part p and rotation q.",
+    doc="Construct a rigid-body transformation with translation part ``p`` and rotation ``q``.",
     export=False,
 )
 
@@ -1140,14 +1144,14 @@ add_builtin(
     input_types={"t": transformation(dtype=Float)},
     value_func=lambda arg_types, kwds, _: vector(length=3, dtype=infer_scalar_type(arg_types)),
     group="Transformations",
-    doc="Return the translational part of a transform.",
+    doc="Return the translational part of a transform ``t``.",
 )
 add_builtin(
     "transform_get_rotation",
     input_types={"t": transformation(dtype=Float)},
     value_func=lambda arg_types, kwds, _: quaternion(dtype=infer_scalar_type(arg_types)),
     group="Transformations",
-    doc="Return the rotational part of a transform.",
+    doc="Return the rotational part of a transform ``t``.",
 )
 add_builtin(
     "transform_multiply",
@@ -1161,39 +1165,43 @@ add_builtin(
     input_types={"t": transformation(dtype=Scalar), "p": vector(length=3, dtype=Scalar)},
     value_func=lambda arg_types, kwds, _: vector(length=3, dtype=infer_scalar_type(arg_types)),
     group="Transformations",
-    doc="Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).",
+    doc="Apply the transform to a point ``p`` treating the homogenous coordinate as w=1 (translation and rotation).",
 )
 add_builtin(
     "transform_point",
     input_types={"m": matrix(shape=(4, 4), dtype=Scalar), "p": vector(length=3, dtype=Scalar)},
     value_func=lambda arg_types, kwds, _: vector(length=3, dtype=infer_scalar_type(arg_types)),
     group="Vector Math",
-    doc="""Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
-   note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
-   then users should transpose the transformation matrix before calling this method.""",
+    doc="""Apply the transform to a point ``p`` treating the homogenous coordinate as w=1.
+   The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``.
+   Note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``.
+   If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
+   matrix before calling this method.""",
 )
 add_builtin(
     "transform_vector",
     input_types={"t": transformation(dtype=Scalar), "v": vector(length=3, dtype=Scalar)},
     value_func=lambda arg_types, kwds, _: vector(length=3, dtype=infer_scalar_type(arg_types)),
     group="Transformations",
-    doc="Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).",
+    doc="Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0 (rotation only).",
 )
 add_builtin(
     "transform_vector",
     input_types={"m": matrix(shape=(4, 4), dtype=Scalar), "v": vector(length=3, dtype=Scalar)},
     value_func=lambda arg_types, kwds, _: vector(length=3, dtype=infer_scalar_type(arg_types)),
     group="Vector Math",
-    doc="""Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
-   note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
-   then users should transpose the transformation matrix before calling this method.""",
+    doc="""Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0.
+   The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
+   note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``.
+   If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
+   matrix before calling this method.""",
 )
 add_builtin(
     "transform_inverse",
     input_types={"t": transformation(dtype=Float)},
     value_func=sametype_value_func(transformation(dtype=Float)),
     group="Transformations",
-    doc="Compute the inverse of the transform.",
+    doc="Compute the inverse of the transformation ``t``.",
 )
 # ---------------------------------
 # Spatial Math
@@ -1219,7 +1227,7 @@ add_builtin(
     value_func=spatial_vector_constructor_value_func,
     native_func="vec_t",
     group="Spatial Math",
-    doc="Construct a 6d screw vector from two 3d vectors.",
+    doc="Construct a 6D screw vector from two 3D vectors.",
     export=False,
 )
 
@@ -1237,21 +1245,21 @@ add_builtin(
     input_types={"a": vector(length=6, dtype=Float), "b": vector(length=6, dtype=Float)},
     value_func=sametype_scalar_value_func,
     group="Spatial Math",
-    doc="Compute the dot product of two 6d screw vectors.",
+    doc="Compute the dot product of two 6D screw vectors.",
 )
 add_builtin(
     "spatial_cross",
     input_types={"a": vector(length=6, dtype=Float), "b": vector(length=6, dtype=Float)},
     value_func=sametype_value_func(vector(length=6, dtype=Float)),
     group="Spatial Math",
-    doc="Compute the cross-product of two 6d screw vectors.",
+    doc="Compute the cross product of two 6D screw vectors.",
 )
 add_builtin(
     "spatial_cross_dual",
     input_types={"a": vector(length=6, dtype=Float), "b": vector(length=6, dtype=Float)},
     value_func=sametype_value_func(vector(length=6, dtype=Float)),
     group="Spatial Math",
-    doc="Compute the dual cross-product of two 6d screw vectors.",
+    doc="Compute the dual cross product of two 6D screw vectors.",
 )
 
 add_builtin(
@@ -1259,14 +1267,14 @@ add_builtin(
     input_types={"a": vector(length=6, dtype=Float)},
     value_func=lambda arg_types, kwds, _: vector(length=3, dtype=arg_types[0]._wp_scalar_type_),
     group="Spatial Math",
-    doc="Return the top (first) part of a 6d screw vector.",
+    doc="Return the top (first) part of a 6D screw vector.",
 )
 add_builtin(
     "spatial_bottom",
     input_types={"a": vector(length=6, dtype=Float)},
     value_func=lambda arg_types, kwds, _: vector(length=3, dtype=arg_types[0]._wp_scalar_type_),
     group="Spatial Math",
-    doc="Return the bottom (second) part of a 6d screw vector.",
+    doc="Return the bottom (second) part of a 6D screw vector.",
 )
 
 add_builtin(
@@ -1420,16 +1428,18 @@ add_builtin(
     },
     value_type=None,
     skip_replay=True,
-    doc="""Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``. 
+    doc="""Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``.
 
    :param weights: A layer's network weights with dimensions ``(m, n)``.
    :param bias: An array with dimensions ``(n)``.
    :param activation: A ``wp.func`` function that takes a single scalar float as input and returns a scalar float as output
-   :param index: The batch item to process, typically each thread will process 1 item in the batch, in this case index should be ``wp.tid()``
+   :param index: The batch item to process, typically each thread will process one item in the batch, in which case
+                 index should be ``wp.tid()``
    :param x: The feature matrix with dimensions ``(n, b)``
    :param out: The network output with dimensions ``(m, b)``
 
-   :note: Feature and output matrices are transposed compared to some other frameworks such as PyTorch. All matrices are assumed to be stored in flattened row-major memory layout (NumPy default).""",
+   :note: Feature and output matrices are transposed compared to some other frameworks such as PyTorch.
+          All matrices are assumed to be stored in flattened row-major memory layout (NumPy default).""",
     group="Utility",
 )
 
@@ -1442,12 +1452,12 @@ add_builtin(
     input_types={"id": uint64, "lower": vec3, "upper": vec3},
     value_type=bvh_query_t,
     group="Geometry",
-    doc="""Construct an axis-aligned bounding box query against a bvh object. This query can be used to iterate over all bounds
-   inside a bvh. Returns an object that is used to track state during bvh traversal.
-    
-   :param id: The bvh identifier
-   :param lower: The lower bound of the bounding box in bvh space
-   :param upper: The upper bound of the bounding box in bvh space""",
+    doc="""Construct an axis-aligned bounding box query against a BVH object. This query can be used to iterate over all bounds
+   inside a BVH. Returns an object that is used to track state during BVH traversal.
+
+   :param id: The BVH identifier
+   :param lower: The lower bound of the bounding box in BVH space
+   :param upper: The upper bound of the bounding box in BVH space""",
 )
 
 add_builtin(
@@ -1455,12 +1465,12 @@ add_builtin(
     input_types={"id": uint64, "start": vec3, "dir": vec3},
     value_type=bvh_query_t,
     group="Geometry",
-    doc="""Construct a ray query against a bvh object. This query can be used to iterate over all bounds
-   that intersect the ray. Returns an object that is used to track state during bvh traversal.
-    
-   :param id: The bvh identifier
-   :param start: The start of the ray in bvh space
-   :param dir: The direction of the ray in bvh space""",
+    doc="""Construct a ray query against a BVH object. This query can be used to iterate over all bounds
+   that intersect the ray. Returns an object that is used to track state during BVH traversal.
+
+   :param id: The BVH identifier
+   :param start: The start of the ray in BVH space
+   :param dir: The direction of the ray in BVH space""",
 )
 
 add_builtin(
@@ -1468,8 +1478,8 @@ add_builtin(
     input_types={"query": bvh_query_t, "index": int},
     value_type=builtins.bool,
     group="Geometry",
-    doc="""Move to the next bound returned by the query. The index of the current bound is stored in ``index``, returns ``False``
-   if there are no more overlapping bound.""",
+    doc="""Move to the next bound returned by the query.
+   The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.""",
 )
 
 add_builtin(
@@ -1485,15 +1495,17 @@ add_builtin(
     },
     value_type=builtins.bool,
     group="Geometry",
-    doc="""Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
+    doc="""Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space. Returns ``True`` if a point < ``max_dist`` is found.
 
-   Identifies the sign of the distance using additional ray-casts to determine if the point is inside or outside. This method is relatively robust, but
-   does increase computational cost. See below for additional sign determination methods.
+   Identifies the sign of the distance using additional ray-casts to determine if the point is inside or outside.
+   This method is relatively robust, but does increase computational cost.
+   See below for additional sign determination methods.
 
    :param id: The mesh identifier
    :param point: The point in space to query
    :param max_dist: Mesh faces above this distance will not be considered by the query
-   :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise. Note that mesh must be watertight for this to be robust
+   :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise.
+                  Note that mesh must be watertight for this to be robust
    :param face: Returns the index of the closest face
    :param bary_u: Returns the barycentric u coordinate of the closest point
    :param bary_v: Returns the barycentric v coordinate of the closest point""",
@@ -1511,7 +1523,7 @@ add_builtin(
     },
     value_type=builtins.bool,
     group="Geometry",
-    doc="""Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
+    doc="""Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space. Returns ``True`` if a point < ``max_dist`` is found.
 
    This method does not compute the sign of the point (inside/outside) which makes it faster than other point query methods.
 
@@ -1538,19 +1550,22 @@ add_builtin(
     defaults={"epsilon": 1.0e-3},
     value_type=builtins.bool,
     group="Geometry",
-    doc="""Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
-    
-   Identifies the sign of the distance (inside/outside) using the angle-weighted pseudo normal. This approach to sign determination is robust for well conditioned meshes
-   that are watertight and non-self intersecting, it is also comparatively fast to compute.
+    doc="""Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space. Returns ``True`` if a point < ``max_dist`` is found.
+
+   Identifies the sign of the distance (inside/outside) using the angle-weighted pseudo normal.
+   This approach to sign determination is robust for well conditioned meshes that are watertight and non-self intersecting.
+   It is also comparatively fast to compute.
 
    :param id: The mesh identifier
    :param point: The point in space to query
    :param max_dist: Mesh faces above this distance will not be considered by the query
-   :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise. Note that mesh must be watertight for this to be robust
+   :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise.
+                  Note that mesh must be watertight for this to be robust
    :param face: Returns the index of the closest face
    :param bary_u: Returns the barycentric u coordinate of the closest point
    :param bary_v: Returns the barycentric v coordinate of the closest point
-   :param epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3""",
+   :param epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a
+                   fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3""",
 )
 
 add_builtin(
@@ -1569,22 +1584,23 @@ add_builtin(
     defaults={"accuracy": 2.0, "threshold": 0.5},
     value_type=builtins.bool,
     group="Geometry",
-    doc="""Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found. 
-    
+    doc="""Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
+
    Identifies the sign using the winding number of the mesh relative to the query point. This method of sign determination is robust for poorly conditioned meshes
    and provides a smooth approximation to sign even when the mesh is not watertight. This method is the most robust and accurate of the sign determination meshes
    but also the most expensive.
-     
-    Note that the Mesh object must be constructed with ``suport_winding_number=True`` for this method to return correct results.
+
+   .. note:: The :class:`Mesh` object must be constructed with ``support_winding_number=True`` for this method to return correct results.
 
    :param id: The mesh identifier
    :param point: The point in space to query
    :param max_dist: Mesh faces above this distance will not be considered by the query
-   :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise. Note that mesh must be watertight for this to be robust
+   :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise.
+                  Note that mesh must be watertight for this to be robust
    :param face: Returns the index of the closest face
    :param bary_u: Returns the barycentric u coordinate of the closest point
    :param bary_v: Returns the barycentric v coordinate of the closest point
-   :param accuracy: Accuracy for computing the winding number with fast winding number method utilizing second order dipole approximation, default 2.0
+   :param accuracy: Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation, default 2.0
    :param threshold: The threshold of the winding number to be considered inside, default 0.5""",
 )
 
@@ -1604,7 +1620,7 @@ add_builtin(
     },
     value_type=builtins.bool,
     group="Geometry",
-    doc="""Computes the closest ray hit on the mesh with identifier `id`, returns ``True`` if a point < ``max_t`` is found.
+    doc="""Computes the closest ray hit on the :class:`Mesh` with identifier ``id``, returns ``True`` if a point < ``max_t`` is found.
 
    :param id: The mesh identifier
    :param start: The start point of the ray
@@ -1623,9 +1639,10 @@ add_builtin(
     input_types={"id": uint64, "lower": vec3, "upper": vec3},
     value_type=mesh_query_aabb_t,
     group="Geometry",
-    doc="""Construct an axis-aligned bounding box query against a mesh object. This query can be used to iterate over all triangles
-   inside a volume. Returns an object that is used to track state during mesh traversal.
-    
+    doc="""Construct an axis-aligned bounding box query against a :class:`Mesh`.
+   This query can be used to iterate over all triangles inside a volume.
+   Returns an object that is used to track state during mesh traversal.
+
    :param id: The mesh identifier
    :param lower: The lower bound of the bounding box in mesh space
    :param upper: The upper bound of the bounding box in mesh space""",
@@ -1636,8 +1653,8 @@ add_builtin(
     input_types={"query": mesh_query_aabb_t, "index": int},
     value_type=builtins.bool,
     group="Geometry",
-    doc="""Move to the next triangle overlapping the query bounding box. The index of the current face is stored in ``index``, returns ``False``
-   if there are no more overlapping triangles.""",
+    doc="""Move to the next triangle overlapping the query bounding box.
+   The index of the current face is stored in ``index``, returns ``False`` if there are no more overlapping triangles.""",
 )
 
 add_builtin(
@@ -1645,7 +1662,7 @@ add_builtin(
     input_types={"id": uint64, "face": int, "bary_u": float, "bary_v": float},
     value_type=vec3,
     group="Geometry",
-    doc="""Evaluates the position on the mesh given a face index, and barycentric coordinates.""",
+    doc="""Evaluates the position on the :class:`Mesh` given a face index and barycentric coordinates.""",
 )
 
 add_builtin(
@@ -1653,7 +1670,7 @@ add_builtin(
     input_types={"id": uint64, "face": int, "bary_u": float, "bary_v": float},
     value_type=vec3,
     group="Geometry",
-    doc="""Evaluates the velocity on the mesh given a face index, and barycentric coordinates.""",
+    doc="""Evaluates the velocity on the :class:`Mesh` given a face index and barycentric coordinates.""",
 )
 
 add_builtin(
@@ -1661,8 +1678,8 @@ add_builtin(
     input_types={"id": uint64, "point": vec3, "max_dist": float},
     value_type=hash_grid_query_t,
     group="Geometry",
-    doc="""Construct a point query against a hash grid. This query can be used to iterate over all neighboring points withing a 
-   fixed radius from the query point. Returns an object that is used to track state during neighbor traversal.""",
+    doc="Construct a point query against a :class:`HashGrid`. This query can be used to iterate over all neighboring points "
+    "within a fixed radius from the query point. Returns an object that is used to track state during neighbor traversal.",
 )
 
 add_builtin(
@@ -1679,8 +1696,10 @@ add_builtin(
     input_types={"id": uint64, "index": int},
     value_type=int,
     group="Geometry",
-    doc="""Return the index of a point in the grid, this can be used to re-order threads such that grid 
-   traversal occurs in a spatially coherent order.""",
+    doc="""Return the index of a point in the :class:`HashGrid`. This can be used to reorder threads such that grid
+   traversal occurs in a spatially coherent order.
+
+   Returns -1 if the :class:`HashGrid` has not been reserved.""",
 )
 
 add_builtin(
@@ -1779,7 +1798,8 @@ add_builtin(
     input_types={"id": uint64, "uvw": vec3, "sampling_mode": int},
     value_type=float,
     group="Volumes",
-    doc="""Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""",
+    doc="""Sample the volume given by ``id`` at the volume local-space point ``uvw``.
+   Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`""",
 )
 
 add_builtin(
@@ -1787,7 +1807,8 @@ add_builtin(
     input_types={"id": uint64, "uvw": vec3, "sampling_mode": int, "grad": vec3},
     value_type=float,
     group="Volumes",
-    doc="""Sample the volume and its gradient given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""",
+    doc="""Sample the volume and its gradient given by ``id`` at the volume local-space point ``uvw``. 
+   Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`""",
 )
 
 add_builtin(
@@ -1795,14 +1816,15 @@ add_builtin(
     input_types={"id": uint64, "i": int, "j": int, "k": int},
     value_type=float,
     group="Volumes",
-    doc="""Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""",
+    doc="""Returns the value of voxel with coordinates ``i``, ``j``, ``k``.
+   If the voxel at this index does not exist, this function returns the background value""",
 )
 
 add_builtin(
     "volume_store_f",
     input_types={"id": uint64, "i": int, "j": int, "k": int, "value": float},
     group="Volumes",
-    doc="""Store the value at voxel with coordinates ``i``, ``j``, ``k``.""",
+    doc="""Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.""",
 )
 
 add_builtin(
@@ -1810,7 +1832,8 @@ add_builtin(
     input_types={"id": uint64, "uvw": vec3, "sampling_mode": int},
     value_type=vec3,
     group="Volumes",
-    doc="""Sample the vector volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""",
+    doc="""Sample the vector volume given by ``id`` at the volume local-space point ``uvw``.
+   Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`""",
 )
 
 add_builtin(
@@ -1818,14 +1841,15 @@ add_builtin(
     input_types={"id": uint64, "i": int, "j": int, "k": int},
     value_type=vec3,
     group="Volumes",
-    doc="""Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""",
+    doc="""Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``.
+   If the voxel at this index does not exist, this function returns the background value.""",
 )
 
 add_builtin(
     "volume_store_v",
     input_types={"id": uint64, "i": int, "j": int, "k": int, "value": vec3},
     group="Volumes",
-    doc="""Store the value at voxel with coordinates ``i``, ``j``, ``k``.""",
+    doc="""Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.""",
 )
 
 add_builtin(
@@ -1833,7 +1857,7 @@ add_builtin(
     input_types={"id": uint64, "uvw": vec3},
     value_type=int,
     group="Volumes",
-    doc="""Sample the int32 volume given by ``id`` at the volume local-space point ``uvw``. """,
+    doc="""Sample the :class:`int32` volume given by ``id`` at the volume local-space point ``uvw``. """,
 )
 
 add_builtin(
@@ -1841,14 +1865,15 @@ add_builtin(
     input_types={"id": uint64, "i": int, "j": int, "k": int},
     value_type=int,
     group="Volumes",
-    doc="""Returns the int32 value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""",
+    doc="""Returns the :class:`int32` value of voxel with coordinates ``i``, ``j``, ``k``.
+   If the voxel at this index does not exist, this function returns the background value.""",
 )
 
 add_builtin(
     "volume_store_i",
     input_types={"id": uint64, "i": int, "j": int, "k": int, "value": int},
     group="Volumes",
-    doc="""Store the value at voxel with coordinates ``i``, ``j``, ``k``.""",
+    doc="""Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.""",
 )
 
 add_builtin(
@@ -1856,28 +1881,28 @@ add_builtin(
     input_types={"id": uint64, "uvw": vec3},
     value_type=vec3,
     group="Volumes",
-    doc="""Transform a point defined in volume index space to world space given the volume's intrinsic affine transformation.""",
+    doc="""Transform a point ``uvw`` defined in volume index space to world space given the volume's intrinsic affine transformation.""",
 )
 add_builtin(
     "volume_world_to_index",
     input_types={"id": uint64, "xyz": vec3},
     value_type=vec3,
     group="Volumes",
-    doc="""Transform a point defined in volume world space to the volume's index space, given the volume's intrinsic affine transformation.""",
+    doc="""Transform a point ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation.""",
 )
 add_builtin(
     "volume_index_to_world_dir",
     input_types={"id": uint64, "uvw": vec3},
     value_type=vec3,
     group="Volumes",
-    doc="""Transform a direction defined in volume index space to world space given the volume's intrinsic affine transformation.""",
+    doc="""Transform a direction ``uvw`` defined in volume index space to world space given the volume's intrinsic affine transformation.""",
 )
 add_builtin(
     "volume_world_to_index_dir",
     input_types={"id": uint64, "xyz": vec3},
     value_type=vec3,
     group="Volumes",
-    doc="""Transform a direction defined in volume world space to the volume's index space, given the volume's intrinsic affine transformation.""",
+    doc="""Transform a direction ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation.""",
 )
 
 
@@ -1897,7 +1922,7 @@ add_builtin(
     input_types={"seed": int, "offset": int},
     value_type=uint32,
     group="Random",
-    doc="""Initialize a new random number generator given a user-defined seed and an offset. 
+    doc="""Initialize a new random number generator given a user-defined seed and an offset.
    This alternative constructor can be useful in parallel programs, where a kernel as a whole should share a seed,
    but each thread should generate uncorrelated values. In this case usage should be ``r = rand_init(seed, tid)``""",
 )
@@ -1907,31 +1932,31 @@ add_builtin(
     input_types={"state": uint32},
     value_type=int,
     group="Random",
-    doc="Return a random integer between [0, 2^32)",
+    doc="Return a random integer in the range [0, 2^32).",
 )
 add_builtin(
     "randi",
     input_types={"state": uint32, "min": int, "max": int},
     value_type=int,
     group="Random",
-    doc="Return a random integer between [min, max)",
+    doc="Return a random integer between [min, max).",
 )
 add_builtin(
     "randf",
     input_types={"state": uint32},
     value_type=float,
     group="Random",
-    doc="Return a random float between [0.0, 1.0)",
+    doc="Return a random float between [0.0, 1.0).",
 )
 add_builtin(
     "randf",
     input_types={"state": uint32, "min": float, "max": float},
     value_type=float,
     group="Random",
-    doc="Return a random float between [min, max)",
+    doc="Return a random float between [min, max).",
 )
 add_builtin(
-    "randn", input_types={"state": uint32}, value_type=float, group="Random", doc="Sample a normal distribution"
+    "randn", input_types={"state": uint32}, value_type=float, group="Random", doc="Sample a normal distribution."
 )
 
 add_builtin(
@@ -1939,70 +1964,70 @@ add_builtin(
     input_types={"state": uint32, "cdf": array(dtype=float)},
     value_type=int,
     group="Random",
-    doc="Inverse transform sample a cumulative distribution function",
+    doc="Inverse-transform sample a cumulative distribution function.",
 )
 add_builtin(
     "sample_triangle",
     input_types={"state": uint32},
     value_type=vec2,
     group="Random",
-    doc="Uniformly sample a triangle. Returns sample barycentric coordinates",
+    doc="Uniformly sample a triangle. Returns sample barycentric coordinates.",
 )
 add_builtin(
     "sample_unit_ring",
     input_types={"state": uint32},
     value_type=vec2,
     group="Random",
-    doc="Uniformly sample a ring in the xy plane",
+    doc="Uniformly sample a ring in the xy plane.",
 )
 add_builtin(
     "sample_unit_disk",
     input_types={"state": uint32},
     value_type=vec2,
     group="Random",
-    doc="Uniformly sample a disk in the xy plane",
+    doc="Uniformly sample a disk in the xy plane.",
 )
 add_builtin(
     "sample_unit_sphere_surface",
     input_types={"state": uint32},
     value_type=vec3,
     group="Random",
-    doc="Uniformly sample a unit sphere surface",
+    doc="Uniformly sample a unit sphere surface.",
 )
 add_builtin(
     "sample_unit_sphere",
     input_types={"state": uint32},
     value_type=vec3,
     group="Random",
-    doc="Uniformly sample a unit sphere",
+    doc="Uniformly sample a unit sphere.",
 )
 add_builtin(
     "sample_unit_hemisphere_surface",
     input_types={"state": uint32},
     value_type=vec3,
     group="Random",
-    doc="Uniformly sample a unit hemisphere surface",
+    doc="Uniformly sample a unit hemisphere surface.",
 )
 add_builtin(
     "sample_unit_hemisphere",
     input_types={"state": uint32},
     value_type=vec3,
     group="Random",
-    doc="Uniformly sample a unit hemisphere",
+    doc="Uniformly sample a unit hemisphere.",
 )
 add_builtin(
     "sample_unit_square",
     input_types={"state": uint32},
     value_type=vec2,
     group="Random",
-    doc="Uniformly sample a unit square",
+    doc="Uniformly sample a unit square.",
 )
 add_builtin(
     "sample_unit_cube",
     input_types={"state": uint32},
     value_type=vec3,
     group="Random",
-    doc="Uniformly sample a unit cube",
+    doc="Uniformly sample a unit cube.",
 )
 
 add_builtin(
@@ -2011,9 +2036,9 @@ add_builtin(
     value_type=uint32,
     group="Random",
     doc="""Generate a random sample from a Poisson distribution.
-    
-    :param state: RNG state
-    :param lam: The expected value of the distribution""",
+
+   :param state: RNG state
+   :param lam: The expected value of the distribution""",
 )
 
 add_builtin(
@@ -2021,28 +2046,28 @@ add_builtin(
     input_types={"state": uint32, "x": float},
     value_type=float,
     group="Random",
-    doc="Non-periodic Perlin-style noise in 1d.",
+    doc="Non-periodic Perlin-style noise in 1D.",
 )
 add_builtin(
     "noise",
     input_types={"state": uint32, "xy": vec2},
     value_type=float,
     group="Random",
-    doc="Non-periodic Perlin-style noise in 2d.",
+    doc="Non-periodic Perlin-style noise in 2D.",
 )
 add_builtin(
     "noise",
     input_types={"state": uint32, "xyz": vec3},
     value_type=float,
     group="Random",
-    doc="Non-periodic Perlin-style noise in 3d.",
+    doc="Non-periodic Perlin-style noise in 3D.",
 )
 add_builtin(
     "noise",
     input_types={"state": uint32, "xyzt": vec4},
     value_type=float,
     group="Random",
-    doc="Non-periodic Perlin-style noise in 4d.",
+    doc="Non-periodic Perlin-style noise in 4D.",
 )
 
 add_builtin(
@@ -2050,28 +2075,28 @@ add_builtin(
     input_types={"state": uint32, "x": float, "px": int},
     value_type=float,
     group="Random",
-    doc="Periodic Perlin-style noise in 1d.",
+    doc="Periodic Perlin-style noise in 1D.",
 )
 add_builtin(
     "pnoise",
     input_types={"state": uint32, "xy": vec2, "px": int, "py": int},
     value_type=float,
     group="Random",
-    doc="Periodic Perlin-style noise in 2d.",
+    doc="Periodic Perlin-style noise in 2D.",
 )
 add_builtin(
     "pnoise",
     input_types={"state": uint32, "xyz": vec3, "px": int, "py": int, "pz": int},
     value_type=float,
     group="Random",
-    doc="Periodic Perlin-style noise in 3d.",
+    doc="Periodic Perlin-style noise in 3D.",
 )
 add_builtin(
     "pnoise",
     input_types={"state": uint32, "xyzt": vec4, "px": int, "py": int, "pz": int, "pt": int},
     value_type=float,
     group="Random",
-    doc="Periodic Perlin-style noise in 4d.",
+    doc="Periodic Perlin-style noise in 4D.",
 )
 
 add_builtin(
@@ -2109,7 +2134,7 @@ add_builtin(
     namespace="",
     variadic=True,
     group="Utility",
-    doc="Allows printing formatted strings, using C-style format specifiers.",
+    doc="Allows printing formatted strings using C-style format specifiers.",
 )
 
 add_builtin("print", input_types={"value": Any}, doc="Print variable to stdout", export=False, group="Utility")
@@ -2129,9 +2154,10 @@ add_builtin(
     "tid",
     input_types={},
     value_type=int,
+    export=False,
     group="Utility",
-    doc="""Return the current thread index. Note that this is the *global* index of the thread in the range [0, dim) 
-   where dim is the parameter passed to kernel launch.""",
+    doc="""Return the current thread index for a 1D kernel launch. Note that this is the *global* index of the thread in the range [0, dim)
+   where dim is the parameter passed to kernel launch. This function may not be called from user-defined Warp functions.""",
     namespace="",
     native_func="builtin_tid1d",
 )
@@ -2141,7 +2167,8 @@ add_builtin(
     input_types={},
     value_type=[int, int],
     group="Utility",
-    doc="""Return the current thread indices for a 2d kernel launch. Use ``i,j = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.""",
+    doc="""Return the current thread indices for a 2D kernel launch. Use ``i,j = wp.tid()`` syntax to retrieve the
+   coordinates inside the kernel thread grid. This function may not be called from user-defined Warp functions.""",
     namespace="",
     native_func="builtin_tid2d",
 )
@@ -2151,7 +2178,8 @@ add_builtin(
     input_types={},
     value_type=[int, int, int],
     group="Utility",
-    doc="""Return the current thread indices for a 3d kernel launch. Use ``i,j,k = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.""",
+    doc="""Return the current thread indices for a 3D kernel launch. Use ``i,j,k = wp.tid()`` syntax to retrieve the
+   coordinates inside the kernel thread grid. This function may not be called from user-defined Warp functions.""",
     namespace="",
     native_func="builtin_tid3d",
 )
@@ -2161,7 +2189,8 @@ add_builtin(
     input_types={},
     value_type=[int, int, int, int],
     group="Utility",
-    doc="""Return the current thread indices for a 4d kernel launch. Use ``i,j,k,l = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.""",
+    doc="""Return the current thread indices for a 4D kernel launch. Use ``i,j,k,l = wp.tid()`` syntax to retrieve the
+   coordinates inside the kernel thread grid. This function may not be called from user-defined Warp functions.""",
     namespace="",
     native_func="builtin_tid4d",
 )
@@ -2172,14 +2201,14 @@ add_builtin(
     "select",
     input_types={"cond": bool, "arg1": Any, "arg2": Any},
     value_func=lambda arg_types, kwds, _: arg_types[1],
-    doc="Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``",
+    doc="Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``",
     group="Utility",
 )
 add_builtin(
     "select",
     input_types={"cond": builtins.bool, "arg1": Any, "arg2": Any},
     value_func=lambda args, kwds, _: args[1].type,
-    doc="Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``",
+    doc="Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``",
     group="Utility",
 )
 for t in int_types:
@@ -2187,14 +2216,14 @@ for t in int_types:
         "select",
         input_types={"cond": t, "arg1": Any, "arg2": Any},
         value_func=lambda arg_types, kwds, _: arg_types[1],
-        doc="Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``",
+        doc="Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``",
         group="Utility",
     )
 add_builtin(
     "select",
     input_types={"arr": array(dtype=Any), "arg1": Any, "arg2": Any},
     value_func=lambda arg_types, kwds, _: arg_types[1],
-    doc="Select between two arguments, if array is null then return ``arg1``, otherwise return ``arg2``",
+    doc="Select between two arguments, if ``arr`` is null then return ``arg1``, otherwise return ``arg2``",
     group="Utility",
 )
 
@@ -2330,7 +2359,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"a": array_type(dtype=Any), "i": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Atomically add ``value`` onto the array at location given by index.",
+        doc="Atomically add ``value`` onto ``a[i]``.",
         group="Utility",
         skip_replay=True,
     )
@@ -2339,7 +2368,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"a": array_type(dtype=Any), "i": int, "j": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Atomically add ``value`` onto the array at location given by indices.",
+        doc="Atomically add ``value`` onto ``a[i,j]``.",
         group="Utility",
         skip_replay=True,
     )
@@ -2348,7 +2377,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"a": array_type(dtype=Any), "i": int, "j": int, "k": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Atomically add ``value`` onto the array at location given by indices.",
+        doc="Atomically add ``value`` onto ``a[i,j,k]``.",
         group="Utility",
         skip_replay=True,
     )
@@ -2357,7 +2386,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"a": array_type(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Atomically add ``value`` onto the array at location given by indices.",
+        doc="Atomically add ``value`` onto ``a[i,j,k,l]``.",
         group="Utility",
         skip_replay=True,
     )
@@ -2367,7 +2396,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"a": array_type(dtype=Any), "i": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Atomically subtract ``value`` onto the array at location given by index.",
+        doc="Atomically subtract ``value`` onto ``a[i]``.",
         group="Utility",
         skip_replay=True,
     )
@@ -2376,7 +2405,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"a": array_type(dtype=Any), "i": int, "j": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Atomically subtract ``value`` onto the array at location given by indices.",
+        doc="Atomically subtract ``value`` onto ``a[i,j]``.",
         group="Utility",
         skip_replay=True,
     )
@@ -2385,7 +2414,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"a": array_type(dtype=Any), "i": int, "j": int, "k": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Atomically subtract ``value`` onto the array at location given by indices.",
+        doc="Atomically subtract ``value`` onto ``a[i,j,k]``.",
         group="Utility",
         skip_replay=True,
     )
@@ -2394,7 +2423,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"a": array_type(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Atomically subtract ``value`` onto the array at location given by indices.",
+        doc="Atomically subtract ``value`` onto ``a[i,j,k,l]``.",
         group="Utility",
         skip_replay=True,
     )
@@ -2404,7 +2433,8 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"a": array_type(dtype=Any), "i": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.",
+        doc="Compute the minimum of ``value`` and ``a[i]`` and atomically update the array.\n\n"
+        "Note that for vectors and matrices the operation is only atomic on a per-component basis.",
         group="Utility",
         skip_replay=True,
     )
@@ -2413,7 +2443,8 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"a": array_type(dtype=Any), "i": int, "j": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.",
+        doc="Compute the minimum of ``value`` and ``a[i,j]`` and atomically update the array.\n\n"
+        "Note that for vectors and matrices the operation is only atomic on a per-component basis.",
         group="Utility",
         skip_replay=True,
     )
@@ -2422,7 +2453,8 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"a": array_type(dtype=Any), "i": int, "j": int, "k": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.",
+        doc="Compute the minimum of ``value`` and ``a[i,j,k]`` and atomically update the array.\n\n"
+        "Note that for vectors and matrices the operation is only atomic on a per-component basis.",
         group="Utility",
         skip_replay=True,
     )
@@ -2431,7 +2463,8 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"a": array_type(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.",
+        doc="Compute the minimum of ``value`` and ``a[i,j,k,l]`` and atomically update the array.\n\n"
+        "Note that for vectors and matrices the operation is only atomic on a per-component basis.",
         group="Utility",
         skip_replay=True,
     )
@@ -2441,7 +2474,8 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"a": array_type(dtype=Any), "i": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.",
+        doc="Compute the maximum of ``value`` and ``a[i]`` and atomically update the array.\n\n"
+        "Note that for vectors and matrices the operation is only atomic on a per-component basis.",
         group="Utility",
         skip_replay=True,
     )
@@ -2450,7 +2484,8 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"a": array_type(dtype=Any), "i": int, "j": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.",
+        doc="Compute the maximum of ``value`` and ``a[i,j]`` and atomically update the array.\n\n"
+        "Note that for vectors and matrices the operation is only atomic on a per-component basis.",
         group="Utility",
         skip_replay=True,
     )
@@ -2459,7 +2494,8 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"a": array_type(dtype=Any), "i": int, "j": int, "k": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.",
+        doc="Compute the maximum of ``value`` and ``a[i,j,k]`` and atomically update the array.\n\n"
+        "Note that for vectors and matrices the operation is only atomic on a per-component basis.",
         group="Utility",
         skip_replay=True,
     )
@@ -2468,7 +2504,8 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"a": array_type(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.",
+        doc="Compute the maximum of ``value`` and ``a[i,j,k,l]`` and atomically update the array.\n\n"
+        "Note that for vectors and matrices the operation is only atomic on a per-component basis.",
         group="Utility",
         skip_replay=True,
     )
@@ -2522,7 +2559,7 @@ add_builtin("index", input_types={"s": shape_t, "i": int}, value_type=int, hidde
 
 def vector_indexset_element_value_func(arg_types, kwds, _):
     vec_type = arg_types[0]
-    index_type = arg_types[1]
+    # index_type = arg_types[1]
     value_type = arg_types[2]
 
     if value_type is not vec_type._wp_scalar_type_:
@@ -2546,8 +2583,8 @@ add_builtin(
 
 def matrix_indexset_element_value_func(arg_types, kwds, _):
     mat_type = arg_types[0]
-    row_type = arg_types[1]
-    col_type = arg_types[2]
+    # row_type = arg_types[1]
+    # col_type = arg_types[2]
     value_type = arg_types[3]
 
     if value_type is not mat_type._wp_scalar_type_:
@@ -2560,7 +2597,7 @@ def matrix_indexset_element_value_func(arg_types, kwds, _):
 
 def matrix_indexset_row_value_func(arg_types, kwds, _):
     mat_type = arg_types[0]
-    row_type = arg_types[1]
+    # row_type = arg_types[1]
     value_type = arg_types[2]
 
     if value_type._shape_[0] != mat_type._shape_[1]:
@@ -2603,7 +2640,7 @@ for t in scalar_types + vector_types:
         "expect_eq",
         input_types={"arg1": t, "arg2": t},
         value_type=None,
-        doc="Prints an error to stdout if arg1 and arg2 are not equal",
+        doc="Prints an error to stdout if ``arg1`` and ``arg2`` are not equal",
         group="Utility",
         hidden=True,
     )
@@ -2619,7 +2656,7 @@ add_builtin(
     "expect_eq",
     input_types={"arg1": vector(length=Any, dtype=Scalar), "arg2": vector(length=Any, dtype=Scalar)},
     value_func=expect_eq_val_func,
-    doc="Prints an error to stdout if arg1 and arg2 are not equal",
+    doc="Prints an error to stdout if ``arg1`` and ``arg2`` are not equal",
     group="Utility",
     hidden=True,
 )
@@ -2627,7 +2664,7 @@ add_builtin(
     "expect_neq",
     input_types={"arg1": vector(length=Any, dtype=Scalar), "arg2": vector(length=Any, dtype=Scalar)},
     value_func=expect_eq_val_func,
-    doc="Prints an error to stdout if arg1 and arg2 are equal",
+    doc="Prints an error to stdout if ``arg1`` and ``arg2`` are equal",
     group="Utility",
     hidden=True,
 )
@@ -2636,7 +2673,7 @@ add_builtin(
     "expect_eq",
     input_types={"arg1": matrix(shape=(Any, Any), dtype=Scalar), "arg2": matrix(shape=(Any, Any), dtype=Scalar)},
     value_func=expect_eq_val_func,
-    doc="Prints an error to stdout if arg1 and arg2 are not equal",
+    doc="Prints an error to stdout if ``arg1`` and ``arg2`` are not equal",
     group="Utility",
     hidden=True,
 )
@@ -2644,7 +2681,7 @@ add_builtin(
     "expect_neq",
     input_types={"arg1": matrix(shape=(Any, Any), dtype=Scalar), "arg2": matrix(shape=(Any, Any), dtype=Scalar)},
     value_func=expect_eq_val_func,
-    doc="Prints an error to stdout if arg1 and arg2 are equal",
+    doc="Prints an error to stdout if ``arg1`` and ``arg2`` are equal",
     group="Utility",
     hidden=True,
 )
@@ -2653,14 +2690,15 @@ add_builtin(
     "lerp",
     input_types={"a": Float, "b": Float, "t": Float},
     value_func=sametype_value_func(Float),
-    doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``",
+    doc="Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``",
     group="Utility",
 )
 add_builtin(
     "smoothstep",
     input_types={"edge0": Float, "edge1": Float, "x": Float},
     value_func=sametype_value_func(Float),
-    doc="Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping",
+    doc="""Smoothly interpolate between two values ``edge0`` and ``edge1`` using a factor ``x``,
+   and return a result between 0 and 1 using a cubic Hermite interpolation after clamping.""",
     group="Utility",
 )
 
@@ -2684,28 +2722,28 @@ add_builtin(
     "lerp",
     input_types={"a": vector(length=Any, dtype=Float), "b": vector(length=Any, dtype=Float), "t": Float},
     value_func=lerp_value_func(vector(length=Any, dtype=Float)),
-    doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``",
+    doc="Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``",
     group="Utility",
 )
 add_builtin(
     "lerp",
     input_types={"a": matrix(shape=(Any, Any), dtype=Float), "b": matrix(shape=(Any, Any), dtype=Float), "t": Float},
     value_func=lerp_value_func(matrix(shape=(Any, Any), dtype=Float)),
-    doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``",
+    doc="Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``",
     group="Utility",
 )
 add_builtin(
     "lerp",
     input_types={"a": quaternion(dtype=Float), "b": quaternion(dtype=Float), "t": Float},
     value_func=lerp_value_func(quaternion(dtype=Float)),
-    doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``",
+    doc="Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``",
     group="Utility",
 )
 add_builtin(
     "lerp",
     input_types={"a": transformation(dtype=Float), "b": transformation(dtype=Float), "t": Float},
     value_func=lerp_value_func(transformation(dtype=Float)),
-    doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``",
+    doc="Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``",
     group="Utility",
 )
 
@@ -2715,14 +2753,14 @@ add_builtin(
     input_types={"arg1": Float, "arg2": Float, "tolerance": Float},
     defaults={"tolerance": 1.0e-6},
     value_type=None,
-    doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude",
+    doc="Prints an error to stdout if ``arg1`` and ``arg2`` are not closer than tolerance in magnitude",
     group="Utility",
 )
 add_builtin(
     "expect_near",
     input_types={"arg1": vec3, "arg2": vec3, "tolerance": float},
     value_type=None,
-    doc="Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude",
+    doc="Prints an error to stdout if any element of ``arg1`` and ``arg2`` are not closer than tolerance in magnitude",
     group="Utility",
 )
 
@@ -2733,14 +2771,14 @@ add_builtin(
     "lower_bound",
     input_types={"arr": array(dtype=Scalar), "value": Scalar},
     value_type=int,
-    doc="Search a sorted array for the closest element greater than or equal to value.",
+    doc="Search a sorted array ``arr`` for the closest element greater than or equal to ``value``.",
 )
 
 add_builtin(
     "lower_bound",
     input_types={"arr": array(dtype=Scalar), "arr_begin": int, "arr_end": int, "value": Scalar},
     value_type=int,
-    doc="Search a sorted array range [arr_begin, arr_end) for the closest element greater than or equal to value.",
+    doc="Search a sorted array ``arr`` in the range [arr_begin, arr_end) for the closest element greater than or equal to ``value``.",
 )
 
 # ---------------------------------
@@ -3036,7 +3074,6 @@ add_builtin(
 )
 
 add_builtin("unot", input_types={"b": builtins.bool}, value_type=builtins.bool, doc="", group="Operators")
-add_builtin("unot", input_types={"b": bool}, value_type=builtins.bool, doc="", group="Operators")
 for t in int_types:
     add_builtin("unot", input_types={"b": t}, value_type=builtins.bool, doc="", group="Operators")
 
