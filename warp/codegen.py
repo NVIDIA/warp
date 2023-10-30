@@ -20,6 +20,27 @@ from typing import Any, Callable, Mapping
 import warp.config
 from warp.types import *
 
+
+class WarpCodegenError(RuntimeError):
+    def __init__(self, message):
+        super().__init__(message)
+
+
+class WarpCodegenTypeError(TypeError):
+    def __init__(self, message):
+        super().__init__(message)
+
+
+class WarpCodegenAttributeError(AttributeError):
+    def __init__(self, message):
+        super().__init__(message)
+
+
+class WarpCodegenKeyError(KeyError):
+    def __init__(self, message):
+        super().__init__(message)
+
+
 # map operator to function name
 builtin_operators = {}
 
@@ -526,13 +547,13 @@ class Adjoint:
         if overload_annotations is None:
             # use source-level argument annotations
             if len(argspec.annotations) < len(argspec.args):
-                raise RuntimeError(f"Incomplete argument annotations on function {adj.fun_name}")
+                raise WarpCodegenError(f"Incomplete argument annotations on function {adj.fun_name}")
             adj.arg_types = argspec.annotations
         else:
             # use overload argument annotations
             for arg_name in argspec.args:
                 if arg_name not in overload_annotations:
-                    raise RuntimeError(f"Incomplete overload annotations for function {adj.fun_name}")
+                    raise WarpCodegenError(f"Incomplete overload annotations for function {adj.fun_name}")
             adj.arg_types = overload_annotations.copy()
 
         adj.args = []
@@ -638,7 +659,7 @@ class Adjoint:
             elif isinstance(a, Var):
                 arg_strs.append(a.emit(prefix))
             else:
-                raise TypeError(f"Arguments must be variables or functions, got {type(a)}")
+                raise WarpCodegenTypeError(f"Arguments must be variables or functions, got {type(a)}")
 
         return arg_strs
 
@@ -824,7 +845,7 @@ class Adjoint:
                     # shorten Warp primitive type names
                     if isinstance(x.type, list):
                         if len(x.type) != 1:
-                            raise Exception("Argument must not be the result from a multi-valued function")
+                            raise WarpCodegenError("Argument must not be the result from a multi-valued function")
                         arg_type = x.type[0]
                     else:
                         arg_type = x.type
@@ -834,7 +855,7 @@ class Adjoint:
                 if isinstance(x, warp.context.Function):
                     arg_types.append("function")
 
-            raise Exception(
+            raise WarpCodegenError(
                 f"Couldn't find function overload for '{func.key}' that matched inputs with types: [{', '.join(arg_types)}]"
             )
 
@@ -1178,7 +1199,7 @@ class Adjoint:
         elif isinstance(op, ast.Or):
             func = "||"
         else:
-            raise KeyError(f"Op {op} is not supported")
+            raise WarpCodegenKeyError(f"Op {op} is not supported")
 
         return adj.add_bool_op(func, [adj.eval(expr) for expr in node.values])
 
@@ -1198,7 +1219,7 @@ class Adjoint:
             obj = capturedvars.get(str(node.id), None)
 
         if obj is None:
-            raise KeyError("Referencing undefined symbol: " + str(node.id))
+            raise WarpCodegenKeyError("Referencing undefined symbol: " + str(node.id))
 
         if warp.types.is_value(obj):
             # evaluate constant
@@ -1222,12 +1243,14 @@ class Adjoint:
 
     def vector_component_index(adj, component, vector_type):
         if len(component) != 1:
-            raise AttributeError(f"Vector swizzle must be single character, got .{component}")
+            raise WarpCodegenAttributeError(f"Vector swizzle must be single character, got .{component}")
 
         dim = vector_type._shape_[0]
         swizzles = "xyzw"[0:dim]
         if component not in swizzles:
-            raise AttributeError(f"Vector swizzle for {vector_type} must be one of {swizzles}, got {component}")
+            raise WarpCodegenAttributeError(
+                f"Vector swizzle for {vector_type} must be one of {swizzles}, got {component}"
+            )
 
         index = swizzles.index(component)
         index = adj.add_constant(index)
@@ -1286,7 +1309,7 @@ class Adjoint:
             if aggregate is not None:
                 return aggregate
 
-            raise RuntimeError(
+            raise WarpCodegenError(
                 f"Error, `{node.attr}` is not an attribute of '{aggregate.label}' ({type_repr(aggregate.type)})"
             )
 
@@ -1311,7 +1334,7 @@ class Adjoint:
         elif node.value is False:
             return adj.add_constant(False)
         elif node.value is None:
-            raise TypeError("None type unsupported")
+            raise WarpCodegenTypeError("None type unsupported")
 
     def emit_Constant(adj, node):
         if isinstance(node, ast.Str):
@@ -1356,7 +1379,7 @@ class Adjoint:
                     print(msg)
 
                 if var1.constant is not None:
-                    raise Exception(
+                    raise WarpCodegenError(
                         f"Error mutating a constant {sym} inside a dynamic loop, use the following syntax: pi = float(3.141) to declare a dynamic variable"
                     )
 
@@ -1535,7 +1558,7 @@ class Adjoint:
             if hasattr(node.func, "attr") and node.func.attr == "tid":
                 lineno = adj.lineno + adj.fun_lineno
                 line = adj.source.splitlines()[adj.lineno]
-                raise RuntimeError(
+                raise WarpCodegenError(
                     "tid() may only be called from a Warp kernel, not a Warp function. "
                     "Instead, obtain the indices from a @wp.kernel and pass them as "
                     f"arguments to the function {adj.fun_name}, {adj.filename}:{lineno}:\n{line}\n"
@@ -1551,7 +1574,7 @@ class Adjoint:
 
         if not isinstance(func, warp.context.Function):
             if len(path) == 0:
-                raise RuntimeError(f"Unrecognized syntax for function call, path not valid: '{node.func}'")
+                raise WarpCodegenError(f"Unrecognized syntax for function call, path not valid: '{node.func}'")
 
             attr = path[-1]
             caller = func
@@ -1576,7 +1599,7 @@ class Adjoint:
                 func = caller.initializer()
 
             if func is None:
-                raise RuntimeError(
+                raise WarpCodegenError(
                     f"Could not find function {'.'.join(path)} as a built-in or user-defined function. Note that user functions must be annotated with a @wp.func decorator to be called from a kernel."
                 )
 
@@ -1594,7 +1617,7 @@ class Adjoint:
             elif isinstance(kw.value, ast.Tuple):
                 arg_is_numeric, arg_values = zip(*(adj.eval_num(e) for e in kw.value.elts))
                 if not all(arg_is_numeric):
-                    raise RuntimeError(
+                    raise WarpCodegenError(
                         f"All elements of the tuple keyword argument '{kw.name}' must be numeric constants, got '{arg_values}'"
                     )
                 return arg_values
@@ -1669,7 +1692,7 @@ class Adjoint:
 
     def emit_Assign(adj, node):
         if len(node.targets) != 1:
-            raise RuntimeError("Assigning the same value to multiple variables is not supported")
+            raise WarpCodegenError("Assigning the same value to multiple variables is not supported")
 
         lhs = node.targets[0]
 
@@ -1692,19 +1715,19 @@ class Adjoint:
                 if isinstance(v, ast.Name):
                     names.append(v.id)
                 else:
-                    raise RuntimeError(
+                    raise WarpCodegenError(
                         "Multiple return functions can only assign to simple variables, e.g.: x, y = func()"
                     )
 
             if len(names) != len(out):
-                raise RuntimeError(
+                raise WarpCodegenError(
                     f"Multiple return functions need to receive all their output values, incorrect number of values to unpack (expected {len(out)}, got {len(names)})"
                 )
 
             for name, rhs in zip(names, out):
                 if name in adj.symbols:
                     if not types_equal(rhs.type, adj.symbols[name].type):
-                        raise TypeError(
+                        raise WarpCodegenTypeError(
                             f"Error, assigning to existing symbol {name} ({adj.symbols[name].type}) with different type ({rhs.type})"
                         )
 
@@ -1762,7 +1785,7 @@ class Adjoint:
                     )
 
             else:
-                raise RuntimeError("Can only subscript assign array, vector, and matrix types")
+                raise WarpCodegenError("Can only subscript assign array, vector, and matrix types")
 
             return var
 
@@ -1776,7 +1799,7 @@ class Adjoint:
             # check type matches if symbol already defined
             if name in adj.symbols:
                 if not types_equal(strip_reference(rhs.type), adj.symbols[name].type):
-                    raise TypeError(
+                    raise WarpCodegenTypeError(
                         f"Error, assigning to existing symbol {name} ({adj.symbols[name].type}) with different type ({rhs.type})"
                     )
 
@@ -1813,7 +1836,7 @@ class Adjoint:
                     print(msg)
 
         else:
-            raise RuntimeError("Error, unsupported assignment statement.")
+            raise WarpCodegenError("Error, unsupported assignment statement.")
 
     def emit_Return(adj, node):
         if node.value is None:
@@ -1827,7 +1850,7 @@ class Adjoint:
             old_ctypes = tuple(v.ctype(value_type=True) for v in adj.return_var)
             new_ctypes = tuple(v.ctype(value_type=True) for v in var)
             if old_ctypes != new_ctypes:
-                raise TypeError(
+                raise WarpCodegenTypeError(
                     f"Error, function returned different types, previous: [{', '.join(old_ctypes)}], new [{', '.join(new_ctypes)}]"
                 )
 
@@ -1961,13 +1984,13 @@ class Adjoint:
             operator_name = getattr(node.func, "id", None)
 
             if operator_name is None:
-                raise RuntimeError(
+                raise WarpCodegenError(
                     f"Invalid operator call syntax, expected a plain name, got {ast.dump(node.func, annotate_fields=False)}"
                 )
 
             if operator_name == "type":
                 if len(operator_args) != 1:
-                    raise RuntimeError(f"type() operator expects exactly one argument, got {len(operator_args)}")
+                    raise WarpCodegenError(f"type() operator expects exactly one argument, got {len(operator_args)}")
 
                 # type() operator
                 var = adj.eval(operator_args[0])
@@ -1979,9 +2002,9 @@ class Adjoint:
                         var_type = adj.resolve_type_attribute(var_type, attributes.pop())
                     return var_type, [type_repr(var_type)]
                 else:
-                    raise RuntimeError(f"Cannot deduce the type of {var}")
+                    raise WarpCodegenError(f"Cannot deduce the type of {var}")
 
-            raise RuntimeError(f"Unknown operator '{operator_name}'")
+            raise WarpCodegenError(f"Unknown operator '{operator_name}'")
 
         # reverse list since ast presents it backward order
         path = [*reversed(attributes)]
