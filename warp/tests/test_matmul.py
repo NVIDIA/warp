@@ -4,7 +4,6 @@ import unittest
 import warp as wp
 from warp.tests.test_base import *
 
-np.random.seed(0)
 
 wp.init()
 
@@ -15,18 +14,14 @@ class GemmTestbedRunner:
         self.device = device
 
     def alloc(self, m, n, k, batch_count):
+        rng = np.random.default_rng(123)
+
         low = -4.5
         high = 3.5
         if batch_count == 1:
-            A = wp.array2d(
-                np.ceil(np.random.uniform(low=low, high=high, size=(m, k))), dtype=self.dtype, device=self.device
-            )
-            B = wp.array2d(
-                np.ceil(np.random.uniform(low=low, high=high, size=(k, n))), dtype=self.dtype, device=self.device
-            )
-            C = wp.array2d(
-                np.ceil(np.random.uniform(low=low, high=high, size=(m, n))), dtype=self.dtype, device=self.device
-            )
+            A = wp.array2d(np.ceil(rng.uniform(low=low, high=high, size=(m, k))), dtype=self.dtype, device=self.device)
+            B = wp.array2d(np.ceil(rng.uniform(low=low, high=high, size=(k, n))), dtype=self.dtype, device=self.device)
+            C = wp.array2d(np.ceil(rng.uniform(low=low, high=high, size=(m, n))), dtype=self.dtype, device=self.device)
             D = wp.array2d(np.zeros((m, n)), dtype=self.dtype, device=self.device)
             adj_A = wp.array2d(np.zeros((m, k)), dtype=self.dtype, device=self.device)
             adj_B = wp.array2d(np.zeros((k, n)), dtype=self.dtype, device=self.device)
@@ -34,17 +29,17 @@ class GemmTestbedRunner:
             adj_D = wp.array2d(np.ones((m, n)), dtype=self.dtype, device=self.device)
         else:
             A = wp.array2d(
-                np.ceil(np.random.uniform(low=low, high=high, size=(batch_count, m, k))),
+                np.ceil(rng.uniform(low=low, high=high, size=(batch_count, m, k))),
                 dtype=self.dtype,
                 device=self.device,
             )
             B = wp.array2d(
-                np.ceil(np.random.uniform(low=low, high=high, size=(batch_count, k, n))),
+                np.ceil(rng.uniform(low=low, high=high, size=(batch_count, k, n))),
                 dtype=self.dtype,
                 device=self.device,
             )
             C = wp.array2d(
-                np.ceil(np.random.uniform(low=low, high=high, size=(batch_count, m, n))),
+                np.ceil(rng.uniform(low=low, high=high, size=(batch_count, m, n))),
                 dtype=self.dtype,
                 device=self.device,
             )
@@ -119,19 +114,21 @@ def matrix_sum_kernel(arr: wp.array2d(dtype=float), loss: wp.array(dtype=float))
 
 
 def test_tape(test, device):
+    rng = np.random.default_rng(123)
+
     low = -4.5
     high = 3.5
     m = 64
     n = 128
     k = 256
     A = wp.array2d(
-        np.ceil(np.random.uniform(low=low, high=high, size=(m, k))), dtype=float, device=device, requires_grad=True
+        np.ceil(rng.uniform(low=low, high=high, size=(m, k))), dtype=float, device=device, requires_grad=True
     )
     B = wp.array2d(
-        np.ceil(np.random.uniform(low=low, high=high, size=(k, n))), dtype=float, device=device, requires_grad=True
+        np.ceil(rng.uniform(low=low, high=high, size=(k, n))), dtype=float, device=device, requires_grad=True
     )
     C = wp.array2d(
-        np.ceil(np.random.uniform(low=low, high=high, size=(m, n))), dtype=float, device=device, requires_grad=True
+        np.ceil(rng.uniform(low=low, high=high, size=(m, n))), dtype=float, device=device, requires_grad=True
     )
     D = wp.array2d(np.zeros((m, n)), dtype=float, device=device, requires_grad=True)
     loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
@@ -156,16 +153,18 @@ def test_tape(test, device):
 
 
 def test_operator(test, device):
+    rng = np.random.default_rng(123)
+
     low = -4.5
     high = 3.5
     m = 64
     n = 128
     k = 256
     A = wp.array2d(
-        np.ceil(np.random.uniform(low=low, high=high, size=(m, k))), dtype=float, device=device, requires_grad=True
+        np.ceil(rng.uniform(low=low, high=high, size=(m, k))), dtype=float, device=device, requires_grad=True
     )
     B = wp.array2d(
-        np.ceil(np.random.uniform(low=low, high=high, size=(k, n))), dtype=float, device=device, requires_grad=True
+        np.ceil(rng.uniform(low=low, high=high, size=(k, n))), dtype=float, device=device, requires_grad=True
     )
     loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
 

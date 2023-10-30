@@ -4,7 +4,7 @@
 version = "1.0.0-beta.3"
 authors = ["NVIDIA"]
 title = "Warp"
-description="A Python framework for high-performance simulation and graphics programming"
+description="Warp OmniGraph Nodes and Sample Scenes"
 readme  = "docs/README.md"
 repository="https://github.com/nvidia/warp"
 category = "graph"

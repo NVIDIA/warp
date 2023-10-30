@@ -7,9 +7,10 @@
 
 import ast
 import ctypes
-import hashlib
 import gc
+import hashlib
 import inspect
+import io
 import os
 import platform
 import sys
@@ -227,7 +228,13 @@ class Function:
                                         f"Error calling function '{f.key}', parameter for argument '{arg_name}' has type '{type(a)}' but expected '{arg_type}'"
                                     )
 
-                                x.value = a
+                                if isinstance(a, arg_type):
+                                    x.value = a
+                                else:
+                                    # Cast the value to its argument type to make sure that it can be assigned to the field of the `ValueArg` struct.
+                                    # This could error otherwise when, for example, the field type is set to `vec3i` while the value is of type
+                                    # `vector(length=3, dtype=int)`, even though both types are semantically identical.
+                                    x.value = arg_type(a)
 
                             params.append(x)
 
@@ -542,7 +549,7 @@ def func(f):
     name = warp.codegen.make_full_qualified_name(f)
 
     m = get_module(f.__module__)
-    func = Function(
+    Function(
         func=f, key=name, namespace="", module=m, value_func=None
     )  # value_type not known yet, will be inferred during Adjoint.build()
 
@@ -3109,9 +3116,9 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             # - in forward passes, array types have to match
             # - in backward passes, indexed array gradients are regular arrays
             if adjoint:
-                array_matches = type(value) == warp.array
+                array_matches = isinstance(value, warp.array)
             else:
-                array_matches = type(value) == type(arg_type)
+                array_matches = type(value) is type(arg_type)
 
             if not array_matches:
                 adj = "adjoint " if adjoint else ""
@@ -3655,8 +3662,8 @@ def capture_begin(device: Devicelike = None, stream=None, force_module_load=True
 
     device.is_capturing = True
 
-    # trigger garbage collection to avoid older allocations getting collected during graph capture
-    gc.collect()
+    # disable garbage collection to avoid older allocations getting collected during graph capture
+    gc.disable()
 
     with warp.ScopedStream(stream):
         runtime.core.cuda_graph_begin_capture(device.context)
@@ -3680,6 +3687,9 @@ def capture_end(device: Devicelike = None, stream=None) -> Graph:
         graph = runtime.core.cuda_graph_end_capture(device.context)
 
     device.is_capturing = False
+
+    # re-enable GC
+    gc.enable()
 
     if graph is None:
         raise RuntimeError(
@@ -4026,6 +4036,8 @@ def export_stubs(file):  # pragma: no cover
     print("Quaternion = Generic[Float]", file=file)
     print("Transformation = Generic[Float]", file=file)
     print("Array = Generic[DType]", file=file)
+    print("FabricArray = Generic[DType]", file=file)
+    print("IndexedFabricArray = Generic[DType]", file=file)
 
     # prepend __init__.py
     with open(os.path.join(os.path.dirname(file.name), "__init__.py")) as header_file:
@@ -4063,7 +4075,7 @@ def export_stubs(file):  # pragma: no cover
             print("    ...\n\n", file=file)
 
 
-def export_builtins(file):  # pragma: no cover
+def export_builtins(file: io.TextIOBase):  # pragma: no cover
     def ctype_str(t):
         if isinstance(t, int):
             return "int"
@@ -4071,6 +4083,9 @@ def export_builtins(file):  # pragma: no cover
             return "float"
         else:
             return t.__name__
+
+    file.write("namespace wp {\n\n")
+    file.write('extern "C" {\n\n')
 
     for k, g in builtin_functions.items():
         for f in g.overloads:
@@ -4104,16 +4119,16 @@ def export_builtins(file):  # pragma: no cover
                 continue
 
             if args == "":
-                print(
-                    f"WP_API void {f.mangled_name}({return_type}* ret) {{ *ret = wp::{f.key}({params}); }}", file=file
-                )
+                file.write(f"WP_API void {f.mangled_name}({return_type}* ret) {{ *ret = wp::{f.key}({params}); }}\n")
             elif return_type == "None":
-                print(f"WP_API void {f.mangled_name}({args}) {{ wp::{f.key}({params}); }}", file=file)
+                file.write(f"WP_API void {f.mangled_name}({args}) {{ wp::{f.key}({params}); }}\n")
             else:
-                print(
-                    f"WP_API void {f.mangled_name}({args}, {return_type}* ret) {{ *ret = wp::{f.key}({params}); }}",
-                    file=file,
+                file.write(
+                    f"WP_API void {f.mangled_name}({args}, {return_type}* ret) {{ *ret = wp::{f.key}({params}); }}\n"
                 )
+
+    file.write('\n}  // extern "C"\n\n')
+    file.write("}  // namespace wp\n")
 
 
 # initialize global runtime

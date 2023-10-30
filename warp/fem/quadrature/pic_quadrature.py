@@ -1,3 +1,5 @@
+from typing import Any
+
 import warp as wp
 
 from warp.fem.domain import GeometryDomain
@@ -67,22 +69,22 @@ class PicQuadrature(Quadrature):
         return self.positions.shape[0]
 
     @wp.func
-    def point_count(arg: Arg, element_index: ElementIndex):
-        return arg.cell_particle_offsets[element_index + 1] - arg.cell_particle_offsets[element_index]
+    def point_count(elt_arg: Any, qp_arg: Arg, element_index: ElementIndex):
+        return qp_arg.cell_particle_offsets[element_index + 1] - qp_arg.cell_particle_offsets[element_index]
 
     @wp.func
-    def point_coords(arg: Arg, element_index: ElementIndex, index: int):
-        particle_index = arg.cell_particle_indices[arg.cell_particle_offsets[element_index] + index]
-        return arg.particle_coords[particle_index]
+    def point_coords(elt_arg: Any, qp_arg: Arg, element_index: ElementIndex, index: int):
+        particle_index = qp_arg.cell_particle_indices[qp_arg.cell_particle_offsets[element_index] + index]
+        return qp_arg.particle_coords[particle_index]
 
     @wp.func
-    def point_weight(arg: Arg, element_index: ElementIndex, index: int):
-        particle_index = arg.cell_particle_indices[arg.cell_particle_offsets[element_index] + index]
-        return arg.particle_fraction[particle_index]
+    def point_weight(elt_arg: Any, qp_arg: Arg, element_index: ElementIndex, index: int):
+        particle_index = qp_arg.cell_particle_indices[qp_arg.cell_particle_offsets[element_index] + index]
+        return qp_arg.particle_fraction[particle_index]
 
     @wp.func
-    def point_index(arg: Arg, element_index: ElementIndex, index: int):
-        particle_index = arg.cell_particle_indices[arg.cell_particle_offsets[element_index] + index]
+    def point_index(elt_arg: Any, qp_arg: Arg, element_index: ElementIndex, index: int):
+        particle_index = qp_arg.cell_particle_indices[qp_arg.cell_particle_offsets[element_index] + index]
         return particle_index
 
     def fill_element_mask(self, mask: "wp.array(dtype=int)"):

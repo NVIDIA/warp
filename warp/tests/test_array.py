@@ -5,10 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import math
 import unittest
 
-# include parent path
 import numpy as np
 
 import warp as wp
@@ -1454,16 +1452,17 @@ def test_full_struct(test, device):
 
 
 def test_round_trip(test, device):
+    rng = np.random.default_rng(123)
     dim_x = 4
 
     for nptype, wptype in wp.types.np_dtype_to_warp_type.items():
-        a_np = np.random.randn(dim_x).astype(nptype)
+        a_np = rng.standard_normal(size=dim_x).astype(nptype)
         a = wp.array(a_np, device=device)
         test.assertEqual(a.dtype, wptype)
 
         assert_np_equal(a.numpy(), a_np)
 
-        v_np = np.random.randn(dim_x, 3).astype(nptype)
+        v_np = rng.standard_normal(size=(dim_x, 3)).astype(nptype)
         v = wp.array(v_np, dtype=wp.types.vector(3, wptype), device=device)
 
         assert_np_equal(v.numpy(), v_np)

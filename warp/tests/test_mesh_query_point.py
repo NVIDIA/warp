@@ -5,14 +5,12 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
 import numpy as np
 import math
 
 import warp as wp
 from warp.tests.test_base import *
 
-np.random.seed(42)
 
 wp.init()
 
@@ -237,9 +235,11 @@ def sample_mesh_brute(
 
 # constructs a grid of evenly spaced particles
 def particle_grid(dim_x, dim_y, dim_z, lower, radius, jitter):
+    rng = np.random.default_rng(123)
+
     points = np.meshgrid(np.linspace(0, dim_x, dim_x), np.linspace(0, dim_y, dim_y), np.linspace(0, dim_z, dim_z))
     points_t = np.array((points[0], points[1], points[2])).T * radius * 2.0 + np.array(lower)
-    points_t = points_t + np.random.rand(*points_t.shape) * radius * jitter
+    points_t = points_t + rng.random(points_t.shape) * radius * jitter
 
     return points_t.reshape((-1, 3))
 

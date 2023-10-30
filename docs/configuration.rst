@@ -37,7 +37,8 @@ Basic Global Settings
 |                    |         |             | and/or after various operations. **Has performance implications.**       |
 +--------------------+---------+-------------+--------------------------------------------------------------------------+
 |``verify_cuda``     | Boolean | ``False``   | If ``True``, Warp will check for CUDA errors after every launch and      |
-|                    |         |             | memory operation. **Has performance implications.**                      |
+|                    |         |             | memory operation. CUDA error verification cannot be used during graph    |
+|                    |         |             | capture. **Has performance implications.**                               |              
 +--------------------+---------+-------------+--------------------------------------------------------------------------+
 |``print_launches``  | Boolean | ``False``   | If ``True``, Warp will print details of every kernel launch to standard  |
 |                    |         |             | out (e.g. launch dimensions, inputs, outputs, device, etc.).             |
@@ -102,7 +103,10 @@ The options for a module can also be queried using ``wp.get_module_options()``.
 |``mode``            | String  | Global      | Controls whether to compile the module's kernels in debug or release     |
 |                    |         | setting     | mode by default. Valid choices are ``"release"`` or ``"debug"``.         |
 +--------------------+---------+-------------+--------------------------------------------------------------------------+
-|``max_unroll``      | Integer | 16          | The maximum fixed-size loop to unroll.                                   |
+|``max_unroll``      | Integer | 16          | The maximum fixed-size loop to unroll. Note that ``max_unroll`` does not |
+|                    |         |             | consider the total number of iterations in nested loops. This can result |
+|                    |         |             | in a large amount of automatically generated code if each nested loop is |
+|                    |         |             | below the ``max_unroll`` threshold.                                      |
 +--------------------+---------+-------------+--------------------------------------------------------------------------+
 |``enable_backward`` | Boolean | Global      | If ``True``, backward passes of kernels will be compiled by default.     |
 |                    |         | setting     | Valid choices are ``"release"`` or ``"debug"``.                          |

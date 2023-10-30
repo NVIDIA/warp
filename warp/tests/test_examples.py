@@ -81,6 +81,25 @@ def register(parent):
         add_example_test(TestExamples, name="example_sim_trajopt", options={})
         add_example_test(TestExamples, name="example_sph", options={})
         add_example_test(TestExamples, name="example_wave", options={"resx": 256, "resy": 256})
+        add_example_test(TestExamples, name="fem.example_diffusion_mgpu", options={"quiet": True, "num_frames": 1})
+
+    # The following examples do not need cuda
+    add_example_test(TestExamples, name="fem.example_apic_fluid", options={"quiet": True, "res": [16, 16, 16]})
+    add_example_test(
+        TestExamples,
+        name="fem.example_diffusion",
+        options={"quiet": True, "resolution": 10, "tri_mesh": True, "num_frames": 1},
+    )
+    add_example_test(
+        TestExamples, name="fem.example_diffusion_3d", options={"quiet": True, "resolution": 10, "num_frames": 1}
+    )
+    add_example_test(TestExamples, name="fem.example_convection_diffusion", options={"quiet": True, "resolution": 20})
+    add_example_test(
+        TestExamples,
+        name="fem.example_mixed_elasticity",
+        options={"quiet": True, "nonconforming_stresses": True, "num_frames": 1},
+    )
+    add_example_test(TestExamples, name="fem.example_stokes_transfer", options={"quiet": True, "num_frames": 1})
 
     return TestExamples
 

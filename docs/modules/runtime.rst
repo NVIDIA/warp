@@ -5,31 +5,52 @@ Runtime Reference
 
 This section describes the Warp Python runtime API, how to manage memory, launch kernels, and high-level functionality
 for dealing with objects such as meshes and volumes. The APIs described in this section are intended to be used at
-the *Python Scope* and  run inside for CPython interpreter. For a comprehensive list of functions available inside at
-the *Kernel Scope*, please see the :doc:`/modules/functions`.
+the *Python Scope* and run inside the CPython interpreter. For a comprehensive list of functions available at
+the *Kernel Scope*, please see the :doc:`functions` section.
 
 Kernels
 -------
 
-Kernels are launched with the :func:`wp.launch() <warp.launch>` function on a specific device (CPU/GPU)::
+Kernels are launched with the :func:`wp.launch() <launch>` function on a specific device (CPU/GPU)::
 
     wp.launch(simple_kernel, dim=1024, inputs=[a, b, c], device="cuda")
 
-Kernels may be launched with multi-dimensional grid bounds. In this case threads are not assigned a single index, but a coordinate in of an n-dimensional grid, e.g.::
+Kernels may be launched with multi-dimensional grid bounds. In this case threads are not assigned a single index,
+but a coordinate in an n-dimensional grid, e.g.::
 
     wp.launch(complex_kernel, dim=(128, 128, 3), ...)
 
-Launches a 3d grid of threads with dimension 128x128x3. To retrieve the 3d index for each thread use the following syntax::
+Launches a 3D grid of threads with dimension 128 x 128 x 3. To retrieve the 3D index for each thread use the following syntax::
 
     i,j,k = wp.tid()
 
 .. note::
-    Currently kernels launched on ``cpu`` devices will be executed in serial. Kernels launched on ``cuda`` devices will be launched in parallel with a fixed block-size.
+    Currently kernels launched on CPU devices will be executed in serial.
+    Kernels launched on CUDA devices will be launched in parallel with a fixed block-size.
 
 .. note::
     Note that all the kernel inputs must live on the target device, or a runtime exception will be raised.
 
 .. autofunction:: launch
+
+Large Kernel Launches
+#####################
+
+A limitation of Warp is that each dimension of the grid used to launch a kernel must be representable as a 32-bit
+signed integer. Therefore, no single dimension of a grid should exceed :math:`2^{31}-1`.
+
+Warp also currently uses a fixed block size of 256 (CUDA) threads per block.
+By default, Warp will try to process one element from the Warp grid in one CUDA thread.
+This is not always possible for kernels launched with multi-dimensional grid bounds, as there are
+`hardware limitations <https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications-technical-specifications-per-compute-capability>`_
+on CUDA block dimensions.
+
+Warp will automatically resort to using
+`grid-stride loops <https://developer.nvidia.com/blog/cuda-pro-tip-write-flexible-kernels-grid-stride-loops/>`_ when
+it is not possible for a CUDA thread to process only one element from the Warp grid
+When this happens, some CUDA threads may process more than one element from the Warp grid.
+Users can also set the ``max_blocks`` parameter to fine-tune the grid-striding behavior of kernels, even for kernels that are otherwise
+able to process one Warp-grid element per CUDA thread. 
 
 Arrays
 ------
@@ -61,7 +82,7 @@ Note that for multi-dimensional data the ``dtype`` parameter must be specified e
     # initialize as an array of vec3 objects
     a = wp.array(r, dtype=wp.vec3, device="cuda")
 
-If the shapes are incompatible an error will be raised.
+If the shapes are incompatible, an error will be raised.
 
 
 Arrays can be moved between devices using the ``array.to()`` method: ::
@@ -500,11 +521,11 @@ Struct attributes must be annotated with their respective type. They can be cons
     # pass to our compute kernel
     wp.launch(compute, dim=10, inputs=[s])
 
-Arrays of structs can zero initialized as follows::
+An array of structs can be zero-initialized as follows::
 
     a = wp.zeros(shape=10, dtype=MyStruct)
 
-Or initialized from a list of struct objects::
+An array of structs can also be initialized from a list of struct objects::
 
     a = wp.array([MyStruct(), MyStruct(), MyStruct()], dtype=MyStruct)
 
@@ -566,9 +587,14 @@ Example: Using a custom struct in gradient computation
 Type Conversions
 ################
 
-Warp is particularly strict regarding type conversions and does not perform *any* implicit conversion between numeric types. The user is responsible for ensuring types for most arithmetic operators match, e.g.: ``x = float(0.0) + int(4)`` will result in an error. This can be surprising for users that are accustomed to C-style conversions but avoids a class of common bugs that result from implicit conversions.
+Warp is particularly strict regarding type conversions and does not perform *any* implicit conversion between numeric types.
+The user is responsible for ensuring types for most arithmetic operators match, e.g.: ``x = float(0.0) + int(4)`` will result in an error.
+This can be surprising for users that are accustomed to C-style conversions but avoids a class of common bugs that result from implicit conversions.
 
-.. note:: Warp does not currently perform implicit type conversions between numeric types. Users should explicitly cast variables to compatible types using constructors like ``int()``, ``float()``, ``wp.float16()``, ``wp.uint8()`` etc.
+.. note::
+    Warp does not currently perform implicit type conversions between numeric types.
+    Users should explicitly cast variables to compatible types using constructors like
+    ``int()``, ``float()``, ``wp.float16()``, ``wp.uint8()``, etc.
 
 Constants
 ---------
@@ -612,8 +638,9 @@ Boolean Operators
 +--------------+--------------------------------------+
 
 .. note::
-
-    Expressions such as ``if (a and b):`` currently do not perform short-circuit evaluation. In this case ``b`` will also be evaluated even when ``a`` is ``False``. Users should take care to ensure that secondary conditions are safe to evaluate (e.g.: do not index out of bounds) in all cases.
+    Expressions such as ``if (a and b):`` currently do not perform short-circuit evaluation.
+    In this case ``b`` will also be evaluated even when ``a`` is ``False``.
+    Users should take care to ensure that secondary conditions are safe to evaluate (e.g.: do not index out of bounds) in all cases.
 
 
 Comparison Operators
@@ -653,7 +680,152 @@ Arithmetic Operators
 +-----------+--------------------------+
 
 .. note::
-    Since implicit conversions are not performed arguments types to operators should match. Users should use type constructors, e.g.: ``float()``, ``int()``, ``wp.int64(), etc`` to cast variables to the correct type. Also note that the multiplication expression ``a * b`` is used to represent scalar multiplication and matrix multiplication. Currently the ``@`` operator is not supported in this version.
+    Since implicit conversions are not performed arguments types to operators should match.
+    Users should use type constructors, e.g.: ``float()``, ``int()``, ``wp.int64()``, etc. to cast variables
+    to the correct type. Also note that the multiplication expression ``a * b`` is used to represent scalar
+    multiplication and matrix multiplication. The ``@`` operator is not currently supported.
+
+Graphs
+-----------
+
+Launching kernels from Python introduces significant additional overhead compared to C++ or native programs.
+To address this, Warp exposes the concept of `CUDA graphs <https://developer.nvidia.com/blog/cuda-graphs/>`_
+to allow recording large batches of kernels and replaying them with very little CPU overhead.
+
+To record a series of kernel launches use the :func:`wp.capture_begin() <capture_begin>` and
+:func:`wp.capture_end() <capture_end>` API as follows:
+
+.. code:: python
+
+    # begin capture
+    wp.capture_begin()
+
+    try:
+        # record launches
+        for i in range(100):
+            wp.launch(kernel=compute1, inputs=[a, b], device="cuda")
+    finally:
+        # end capture and return a graph object
+        graph = wp.capture_end()
+
+We strongly recommend the use of the the try-finally pattern when capturing graphs because
+:func:`wp.capture_begin <capture_begin>` disables Python garbage collection so that Warp objects are not
+garbage-collected during graph capture (CUDA does not allow memory to be deallocated during graph capture).
+:func:`wp.capture_end <capture_end>` reenables garbage collection.
+
+Once a graph has been constructed it can be executed: ::
+
+    wp.capture_launch(graph)
+
+Note that only launch calls are recorded in the graph, any Python executed outside of the kernel code will not be recorded.
+Typically it is only beneficial to use CUDA graphs when the graph will be reused or launched multiple times.
+
+.. autofunction:: capture_begin
+.. autofunction:: capture_end
+.. autofunction:: capture_launch
+
+Bounding Value Hierarchies (BVH)
+--------------------------------
+
+The :class:`wp.Bvh <Bvh>` class can be used to create a BVH for a group of bounding volumes. This object can then be traversed
+to determine which parts are intersected by a ray using :func:`bvh_query_ray` and which parts are fully contained
+within a certain bounding volume using :func:`bvh_query_aabb`.
+
+The following snippet demonstrates how to create a :class:`wp.Bvh <Bvh>` object from 100 random bounding volumes:
+
+.. code:: python
+
+    rng = np.random.default_rng(123)
+
+    num_bounds = 100
+    lowers = rng.random(size=(num_bounds, 3)) * 5.0
+    uppers = lowers + rng.random(size=(num_bounds, 3)) * 5.0
+
+    device_lowers = wp.array(lowers, dtype=wp.vec3, device="cuda:0")
+    device_uppers = wp.array(uppers, dtype=wp.vec3, device="cuda:0")
+
+    bvh = wp.Bvh(device_lowers, device_uppers)
+
+.. autoclass:: Bvh
+    :members:
+
+Example: BVH Ray Traversal
+##########################
+
+An example of performing a ray traversal on the data structure is as follows:
+
+.. code:: python
+
+    @wp.kernel
+    def bvh_query_ray(
+        bvh_id: wp.uint64,
+        start: wp.vec3,
+        dir: wp.vec3,
+        bounds_intersected: wp.array(dtype=wp.bool),
+    ):
+        query = wp.bvh_query_ray(bvh_id, start, dir)
+        bounds_nr = wp.int32(0)
+
+        while wp.bvh_query_next(query, bounds_nr):
+            # The ray intersects the volume with index bounds_nr
+            bounds_intersected[bounds_nr] = True
+
+
+    bounds_intersected = wp.zeros(shape=(num_bounds), dtype=wp.bool, device="cuda:0")
+    query_start = wp.vec3(0.0, 0.0, 0.0)
+    query_dir = wp.normalize(wp.vec3(1.0, 1.0, 1.0))
+
+    wp.launch(
+        kernel=bvh_query_ray,
+        dim=1,
+        inputs=[bvh.id, query_start, query_dir, bounds_intersected],
+        device="cuda:0",
+    )
+
+The Warp kernel ``bvh_query_ray`` is launched with a single thread, provided the unique :class:`uint64`
+identifier of the :class:`wp.Bvh <Bvh>` object, parameters describing the ray, and an array to store the results.
+In ``bvh_query_ray``, :func:`wp.bvh_query_ray() <bvh_query_ray>` is called once to obtain an object that is stored in the
+variable ``query``. An integer is also allocated as ``bounds_nr`` to store the volume index of the traversal.
+A while statement is used for the actual traversal using :func:`wp.bvh_query_next() <bvh_query_next>`,
+which returns ``True`` as long as there are intersecting bounds.
+
+Example: BVH Volume Traversal
+#############################
+
+Similar to the ray-traversal example, we can perform volume traversal to find the volumes that are fully contained
+within a specified bounding box.
+
+.. code:: python
+
+    @wp.kernel
+    def bvh_query_aabb(
+        bvh_id: wp.uint64,
+        lower: wp.vec3,
+        upper: wp.vec3,
+        bounds_intersected: wp.array(dtype=wp.bool),
+    ):
+        query = wp.bvh_query_aabb(bvh_id, lower, upper)
+        bounds_nr = wp.int32(0)
+
+        while wp.bvh_query_next(query, bounds_nr):
+            # The volume with index bounds_nr is fully contained
+            # in the (lower,upper) bounding box
+            bounds_intersected[bounds_nr] = True
+
+
+    bounds_intersected = wp.zeros(shape=(num_bounds), dtype=wp.bool, device="cuda:0")
+    query_lower = wp.vec3(4.0, 4.0, 4.0)
+    query_upper = wp.vec3(6.0, 6.0, 6.0)
+
+    wp.launch(
+        kernel=bvh_query_aabb,
+        dim=1,
+        inputs=[bvh.id, query_lower, query_upper, bounds_intersected],
+        device="cuda:0",
+    )
+
+The kernel is nearly identical to the ray-traversal example, except we obtain ``query`` using
+:func:`wp.bvh_query_aabb() <bvh_query_aabb>`.
 
 Meshes
 ------
@@ -665,7 +837,8 @@ Warp provides a ``wp.Mesh`` class to manage triangle mesh data. To create a mesh
 .. note::
     Mesh objects maintain references to their input geometry buffers. All buffers should live on the same device.
 
-Meshes can be passed to kernels using their ``id`` attribute which uniquely identifies the mesh by a unique ``uint64`` value. Once inside a kernel you can perform geometric queries against the mesh such as ray-casts or closest point lookups::
+Meshes can be passed to kernels using their ``id`` attribute which uniquely identifies the mesh by a unique ``uint64`` value.
+Once inside a kernel you can perform geometric queries against the mesh such as ray-casts or closest point lookups::
 
     @wp.kernel
     def raycast(mesh: wp.uint64,
@@ -693,63 +866,14 @@ Meshes can be passed to kernels using their ``id`` attribute which uniquely iden
         ray_hit[tid] = color
 
 
-Users may update mesh vertex positions at runtime simply by modifying the points buffer. After modifying point locations users should call ``Mesh.refit()`` to rebuild the bounding volume hierarchy (BVH) structure and ensure that queries work correctly.
+Users may update mesh vertex positions at runtime simply by modifying the points buffer.
+After modifying point locations users should call ``Mesh.refit()`` to rebuild the bounding volume hierarchy (BVH) structure and ensure that queries work correctly.
 
 .. note::
-    Updating Mesh topology (indices) at runtime is not currently supported, users should instead re-create a new Mesh object.
+    Updating Mesh topology (indices) at runtime is not currently supported. Users should instead recreate a new Mesh object.
 
 .. autoclass:: Mesh
     :members:
-
-Volumes
--------
-
-Sparse volumes are incredibly useful for representing grid data over large domains, such as signed distance fields (SDFs) for complex objects, or velocities for large-scale fluid flow. Warp supports reading sparse volumetric grids stored using the `NanoVDB <https://developer.nvidia.com/nanovdb>`_ standard. Users can access voxels directly, or use built-in closest point or trilinear interpolation to sample grid data from world or local-space.
-
-
-Volume object can be created directly from Warp arrays containing a NanoVDB grid or from the contents of a standard ``.nvdb`` file, using the ``load_from_nvdb`` method.
-
-
-Below we give an example of creating a Volume object from an existing NanoVDB file::
-
-    # open NanoVDB file on disk
-    file = open("mygrid.nvdb", "rb")
-
-    # create Volume object
-    volume = wp.Volume.load_from_nvdb(file, device="cpu")
-
-.. note::
-    Files written by the NanoVDB library, commonly marked by the ``.nvdb`` extension, can contain multiple grids with various compression methods, but a ``Volume`` object represents a single NanoVDB grid therefore only files with a single grid are supported. NanoVDB's uncompressed and zip compressed file formats are supported.
-
-To sample the volume inside a kernel we pass a reference to it by id, and use the built-in sampling modes::
-
-    @wp.kernel
-    def sample_grid(volume: wp.uint64,
-                    points: wp.array(dtype=wp.vec3),
-                    samples: wp.array(dtype=float)):
-
-        tid = wp.tid()
-
-        # load sample point in world-space
-        p = points[tid]
-
-        # transform position to the volume's local-space
-        q = wp.volume_world_to_index(volume, p)
-
-        # sample volume with trilinear interpolation
-        f = wp.volume_sample_f(volume, q, wp.Volume.LINEAR)
-
-        # write result
-        samples[tid] = f
-
-
-
-.. note:: Warp does not currently support modifying sparse-volumes at runtime. We expect to address this in a future update. Users should create volumes using standard VDB tools such as OpenVDB, Blender, Houdini, etc.
-
-.. autoclass:: Volume
-    :members:
-
-.. seealso:: `Reference <functions.html#volumes>`__ for the volume functions available in kernels.
 
 Hash Grids
 ----------
@@ -762,7 +886,11 @@ To support spatial neighbor queries Warp provides a ``HashGrid`` object that may
 
     grid.build(points=p, radius=r)
 
-Where ``p`` is an array of ``wp.vec3`` point positions, and ``r`` is the radius to use when building the grid. Neighbors can then be iterated over inside the kernel code as follows::
+``p`` is an array of ``wp.vec3`` point positions, and ``r`` is the radius to use when building the grid.
+Neighbors can then be iterated over inside the kernel code using :func:`wp.hash_grid_query() <hash_grid_query>`
+and :func:`wp.hash_grid_query_next() <hash_grid_query_next>` as follows:
+
+.. code:: python
 
     @wp.kernel
     def sum(grid : wp.uint64,
@@ -792,16 +920,82 @@ Where ``p`` is an array of ``wp.vec3`` point positions, and ``r`` is the radius 
 
         output[tid] = sum
 
-.. note:: The ``HashGrid`` query will give back all points in *cells* that fall inside the query radius. When there are hash conflicts it means that some points outside of query radius will be returned, and users should check the distance themselves inside their kernels. The reason the query doesn't do the check itself for each returned point is because it's common for kernels to compute the distance themselves, so it would redundant to check/compute the distance twice.
+.. note::
+    The ``HashGrid`` query will give back all points in *cells* that fall inside the query radius.
+    When there are hash conflicts it means that some points outside of query radius will be returned, and users should
+    check the distance themselves inside their kernels. The reason the query doesn't do the check itself for each
+    returned point is because it's common for kernels to compute the distance themselves, so it would redundant to
+    check/compute the distance twice.
 
 
 .. autoclass:: HashGrid
     :members:
 
+Volumes
+-------
+
+Sparse volumes are incredibly useful for representing grid data over large domains, such as signed distance fields
+(SDFs) for complex objects, or velocities for large-scale fluid flow. Warp supports reading sparse volumetric grids
+stored using the `NanoVDB <https://developer.nvidia.com/nanovdb>`_ standard. Users can access voxels directly
+or use built-in closest-point or trilinear interpolation to sample grid data from world or local space.
+
+Volume objects can be created directly from Warp arrays containing a NanoVDB grid, from the contents of a
+standard ``.nvdb`` file using :func:`load_from_nvdb() <warp.Volume.load_from_nvdb>`,
+or from a dense 3D NumPy array using :func:`load_from_numpy() <warp.Volume.load_from_numpy>`.
+
+Volumes can also be created using :func:`allocate() <warp.Volume.allocate>` or
+:func:`allocate_by_tiles() <warp.Volume.allocate_by_tiles>`. The values for a Volume object can be modified in a Warp
+kernel using :func:`wp.volume_store_f() <warp.volume_store_f>`, :func:`wp.volume_store_v() <warp.volume_store_v>`, and
+:func:`wp.volume_store_i() <warp.volume_store_i>`.
+
+.. note::
+    Warp does not currently support modifying the topology of sparse volumes at runtime.
+
+Below we give an example of creating a Volume object from an existing NanoVDB file::
+
+    # open NanoVDB file on disk
+    file = open("mygrid.nvdb", "rb")
+
+    # create Volume object
+    volume = wp.Volume.load_from_nvdb(file, device="cpu")
+
+.. note::
+    Files written by the NanoVDB library, commonly marked by the ``.nvdb`` extension, can contain multiple grids with
+    various compression methods, but a :class:`Volume` object represents a single NanoVDB grid therefore only files with
+    a single grid are supported. NanoVDB's uncompressed and zip-compressed file formats are supported.
+
+To sample the volume inside a kernel we pass a reference to it by ID, and use the built-in sampling modes::
+
+    @wp.kernel
+    def sample_grid(volume: wp.uint64,
+                    points: wp.array(dtype=wp.vec3),
+                    samples: wp.array(dtype=float)):
+
+        tid = wp.tid()
+
+        # load sample point in world-space
+        p = points[tid]
+
+        # transform position to the volume's local-space
+        q = wp.volume_world_to_index(volume, p)
+
+        # sample volume with trilinear interpolation
+        f = wp.volume_sample_f(volume, q, wp.Volume.LINEAR)
+
+        # write result
+        samples[tid] = f
+
+.. autoclass:: Volume
+    :members:
+    :undoc-members:
+
+.. seealso:: `Reference <functions.html#volumes>`__ for the volume functions available in kernels.
+
 Differentiability
 -----------------
 
-By default Warp generates a forward and backward (adjoint) version of each kernel definition. Buffers that participate in the chain of computation should be created with ``requires_grad=True``, for example::
+By default, Warp generates a forward and backward (adjoint) version of each kernel definition.
+Buffers that participate in the chain of computation should be created with ``requires_grad=True``, for example::
 
     a = wp.zeros(1024, dtype=wp.vec3, device="cuda", requires_grad=True)
 
@@ -818,22 +1012,26 @@ The ``wp.Tape`` class can then be used to record kernel launches, and replay the
     # reverse pass
     tape.backward(l)
 
-After the backward pass has completed the gradients with respect to the inputs are available via a mapping in the Tape object: ::
+After the backward pass has completed, the gradients with respect to the inputs are available via a mapping in the :class:`wp.Tape <Tape>` object::
 
     # gradient of loss with respect to input a
     print(tape.gradients[a])
 
-Note that gradients are accumulated on the participating buffers, so if you wish to re-use the same buffers for multiple backward passes you should first zero the gradients::
+Note that gradients are accumulated on the participating buffers, so if you wish to reuse the same buffers for multiple backward passes you should first zero the gradients::
 
     tape.zero()
 
 .. note::
 
-    Warp uses a source-code transformation approach to auto-differentiation. In this approach the backwards pass must keep a record of intermediate values computed during the forward pass. This imposes some restrictions on what kernels can do and still be differentiable:
+    Warp uses a source-code transformation approach to auto-differentiation.
+    In this approach, the backwards pass must keep a record of intermediate values computed during the forward pass.
+    This imposes some restrictions on what kernels can do and still be differentiable:
 
-    * Dynamic loops should not mutate any previously declared local variable. This means the loop must be side-effect free. A simple way to ensure this is to move the loop body into a separate function. Static loops that are unrolled at compile time do not have this restriction and can perform any computation.
+    * Dynamic loops should not mutate any previously declared local variable. This means the loop must be side-effect free.
+      A simple way to ensure this is to move the loop body into a separate function.
+      Static loops that are unrolled at compile time do not have this restriction and can perform any computation.
 
-    * Kernels should not overwrite any previously used array values except to perform simple linear add/subtract operations (e.g.: via ``wp.atomic_add()``)
+    * Kernels should not overwrite any previously used array values except to perform simple linear add/subtract operations (e.g. via :func:`wp.atomic_add() <atomic_add>`)
 
 .. autoclass:: Tape
     :members:
@@ -981,7 +1179,8 @@ decorating the custom gradient code via ``@wp.func_grad(safe_sqrt)``::
 Example 2: Custom Replay Function
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In the following, we increment an array index in each thread via ``wp.atomic_add`` and compute the square root of an input array at the incremented index. ::
+In the following, we increment an array index in each thread via :func:`wp.atomic_add() <atomic_add>` and compute
+the square root of an input array at the incremented index::
 
     @wp.kernel
     def test_add(counter: wp.array(dtype=int), input: wp.array(dtype=float), output: wp.array(dtype=float)):
@@ -1025,12 +1224,12 @@ The output of the above code is:
     output:      [1.  1.4142135  1.7320508  2.  2.236068  2.4494898  2.6457512  2.828427]
     input.grad:  [4. 0. 0. 0. 0. 0. 0. 0.]
 
-The gradient of the input is incorrect because the backward pass involving the atomic operation ``wp.atomic_add`` does not know which thread ID corresponds
+The gradient of the input is incorrect because the backward pass involving the atomic operation ``wp.atomic_add()`` does not know which thread ID corresponds
 to which input value.
-The index returned by the adjoint of ``wp.atomic_add`` is always zero so that the gradient the first entry of the input array,
+The index returned by the adjoint of ``wp.atomic_add()`` is always zero so that the gradient the first entry of the input array,
 i.e. :math:`\frac{1}{2\sqrt{1}} = 0.5`, is accumulated ``dim`` times (hence ``input.grad[0] == 4.0`` and all other entries zero).
 
-To fix this, we define a new Warp function ``reversible_increment`` with a custom *replay* definition that stores the thread ID in a separate array::
+To fix this, we define a new Warp function ``reversible_increment()`` with a custom *replay* definition that stores the thread ID in a separate array::
 
     @wp.func
     def reversible_increment(
@@ -1057,12 +1256,12 @@ To fix this, we define a new Warp function ``reversible_increment`` with a custo
         return thread_values[tid]
 
 
-Instead of running the ``reversible_increment`` function, the custom replay code in function ``replay_reversible_increment`` is now executed
-during forward phase in the backward pass of the function calling ``reversible_increment``.
+Instead of running ``reversible_increment()``, the custom replay code in ``replay_reversible_increment()`` is now executed
+during forward phase in the backward pass of the function calling ``reversible_increment()``.
 We first stored the array index to each thread ID in the forward pass, and now we retrieve the array index for each thread ID in the backward pass.
 That way, the backward pass can reproduce the same addition operation as in the forward pass with exactly the same operands per thread.
 
-.. note:: The function signature of the custom replay code must match the forward function signature.
+.. warning:: The function signature of the custom replay code must match the forward function signature.
 
 To use our function we write the following kernel::
 
@@ -1088,31 +1287,57 @@ for the input array:
     output:      [1.   1.4142135   1.7320508   2.    2.236068   2.4494898   2.6457512   2.828427  ]
     input.grad:  [0.5  0.35355338  0.28867513  0.25  0.2236068  0.20412414  0.18898225  0.17677669]
 
+Profiling
+---------
 
-Graphs
------------
+``wp.ScopedTimer`` objects can be used to gain some basic insight into the performance of Warp applications:
 
-Launching kernels from Python introduces significant additional overhead compared to C++ or native programs. To address this, Warp exposes the concept of `CUDA graphs <https://developer.nvidia.com/blog/cuda-graphs/>`_ to allow recording large batches of kernels and replaying them with very little CPU overhead.
+.. code:: python
 
-To record a series of kernel launches use the ``wp.capture_begin()`` and ``wp.capture_end()`` API as follows: ::
+    with wp.ScopedTimer("grid build"):
+        self.grid.build(self.x, self.point_radius)
 
-    # begin capture
-    wp.capture_begin()
+This results in a printout at runtime to the standard output stream like:
 
-    # record launches
-    for i in range(100):
-        wp.launch(kernel=compute1, inputs=[a, b], device="cuda")
+.. code:: console
 
-    # end capture and return a graph object
-    graph = wp.capture_end()
+    grid build took 0.06 ms
 
+The ``wp.ScopedTimer`` object does not synchronize (e.g. by calling ``wp.synchronize()``)
+upon exiting the ``with`` statement, so this can lead to misleading numbers if the body
+of the ``with`` statement launches device kernels.
 
-Once a graph has been constructed it can be executed: ::
+When a ``wp.ScopedTimer`` object is passed ``use_nvtx=True`` as an argument, the timing functionality is replaced by calls
+to ``nvtx.start_range()`` and ``nvtx.end_range()``:
 
-    wp.capture_launch(graph)
+.. code:: python
 
-Note that only launch calls are recorded in the graph, any Python executed outside of the kernel code will not be recorded. Typically it only makes sense to use CUDA graphs when the graph will be reused / launched multiple times.
+    with wp.ScopedTimer("grid build", use_nvtx=True, color="cyan"):
+        self.grid.build(self.x, self.point_radius)
 
-.. autofunction:: capture_begin
-.. autofunction:: capture_end
-.. autofunction:: capture_launch
+These range annotations can then be collected by a tool like `NVIDIA Nsight Systems <https://developer.nvidia.com/nsight-systems>`_
+for visualization on a timeline, e.g.:
+
+.. code:: console
+   
+    $ nsys profile python warp_application.py
+
+This code snippet also demonstrates the use of the ``color`` argument to specify a color
+for the range, which may be a number representing the ARGB value or a recognized string
+(refer to `colors.py <https://github.com/NVIDIA/NVTX/blob/release-v3/python/nvtx/colors.py>`_ for
+additional color examples).
+The `nvtx module <https://github.com/NVIDIA/NVTX>`_ must be
+installed in the Python environment for this capability to work.
+An equivalent way to create an NVTX range without using ``wp.ScopedTimer`` is:
+
+.. code:: python
+
+    import nvtx
+
+    with nvtx.annotate("grid build", color="cyan"):
+        self.grid.build(self.x, self.point_radius)
+
+This form may be more convenient if the user does not need to frequently switch
+between timer and NVTX capabilities of ``wp.ScopedTimer``. 
+
+.. autoclass:: warp.ScopedTimer

@@ -97,7 +97,7 @@ class IntegrandTransformer(ast.NodeTransformer):
             operator = arg_type.call_operator
 
             call.func = ast.Attribute(
-                value=_path_to_ast_attribute(arg_type.__qualname__),
+                value=_path_to_ast_attribute(f"{arg_type.__module__}.{arg_type.__qualname__}"),
                 attr="call_operator",
                 ctx=ast.Load(),
             )
@@ -176,7 +176,6 @@ def _translate_integrand(integrand: Integrand, field_args: Dict[str, FieldLike])
         return isinstance(f, FieldLike)
 
     suffix = "_".join([f.name for f in field_args.values() if is_field_like(f)])
-    key = integrand.name + suffix
 
     func = cache.get_integrand_function(
         integrand=integrand,
@@ -440,11 +439,11 @@ def get_integrate_null_kernel(
         test_dof_index = NULL_DOF_INDEX
         trial_dof_index = NULL_DOF_INDEX
 
-        qp_point_count = quadrature.point_count(qp_arg, element_index)
+        qp_point_count = quadrature.point_count(domain_arg, qp_arg, element_index)
         for k in range(qp_point_count):
-            qp_index = quadrature.point_index(qp_arg, element_index, k)
-            qp_coords = quadrature.point_coords(qp_arg, element_index, k)
-            qp_weight = quadrature.point_weight(qp_arg, element_index, k)
+            qp_index = quadrature.point_index(domain_arg, qp_arg, element_index, k)
+            qp_coords = quadrature.point_coords(domain_arg, qp_arg, element_index, k)
+            qp_weight = quadrature.point_weight(domain_arg, qp_arg, element_index, k)
             sample = Sample(element_index, qp_coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
             integrand_func(sample, fields, values)
 
@@ -473,11 +472,11 @@ def get_integrate_constant_kernel(
         test_dof_index = NULL_DOF_INDEX
         trial_dof_index = NULL_DOF_INDEX
 
-        qp_point_count = quadrature.point_count(qp_arg, element_index)
+        qp_point_count = quadrature.point_count(domain_arg, qp_arg, element_index)
         for k in range(qp_point_count):
-            qp_index = quadrature.point_index(qp_arg, element_index, k)
-            coords = quadrature.point_coords(qp_arg, element_index, k)
-            qp_weight = quadrature.point_weight(qp_arg, element_index, k)
+            qp_index = quadrature.point_index(domain_arg, qp_arg, element_index, k)
+            coords = quadrature.point_coords(domain_arg, qp_arg, element_index, k)
+            qp_weight = quadrature.point_weight(domain_arg, qp_arg, element_index, k)
             vol = domain.element_measure(domain_arg, element_index, coords)
 
             sample = Sample(element_index, coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
@@ -518,12 +517,12 @@ def get_integrate_linear_kernel(
             node_element_index = test.space_restriction.node_element_index(test_arg, local_node_index, n)
             element_index = domain.element_index(domain_index_arg, node_element_index.domain_element_index)
 
-            qp_point_count = quadrature.point_count(qp_arg, element_index)
+            qp_point_count = quadrature.point_count(domain_arg, qp_arg, element_index)
             for k in range(qp_point_count):
-                qp_index = quadrature.point_index(qp_arg, element_index, k)
-                coords = quadrature.point_coords(qp_arg, element_index, k)
+                qp_index = quadrature.point_index(domain_arg, qp_arg, element_index, k)
+                coords = quadrature.point_coords(domain_arg, qp_arg, element_index, k)
 
-                qp_weight = quadrature.point_weight(qp_arg, element_index, k)
+                qp_weight = quadrature.point_weight(domain_arg, qp_arg, element_index, k)
                 vol = domain.element_measure(domain_arg, element_index, coords)
 
                 for i in range(test.space.VALUE_DOF_COUNT):
@@ -634,15 +633,15 @@ def get_integrate_bilinear_kernel(
         for element in range(element_count):
             test_element_index = test.space_restriction.node_element_index(test_arg, test_local_node_index, element)
             element_index = domain.element_index(domain_index_arg, test_element_index.domain_element_index)
-            qp_point_count = quadrature.point_count(qp_arg, element_index)
+            qp_point_count = quadrature.point_count(domain_arg, qp_arg, element_index)
 
             start_offset = (row_offsets[test_node_index] + element) * NODES_PER_ELEMENT
 
             for k in range(qp_point_count):
-                qp_index = quadrature.point_index(qp_arg, element_index, k)
-                coords = quadrature.point_coords(qp_arg, element_index, k)
+                qp_index = quadrature.point_index(domain_arg, qp_arg, element_index, k)
+                coords = quadrature.point_coords(domain_arg, qp_arg, element_index, k)
 
-                qp_weight = quadrature.point_weight(qp_arg, element_index, k)
+                qp_weight = quadrature.point_weight(domain_arg, qp_arg, element_index, k)
                 vol = domain.element_measure(domain_arg, element_index, coords)
 
                 offset_cur = start_offset

@@ -170,23 +170,6 @@ class GridDGBipolynomialBasisSpace(Grid2DBasisSpace):
 
         super().__init__(shape=shape, topology=topology)
 
-    def node_grid(self):
-        res = self._grid.res
-
-        cell_coords = np.array(self._shape.LOBATTO_COORDS)
-
-        grid_coords_x = np.repeat(np.arange(0, res[0], dtype=float), len(cell_coords)) + np.tile(
-            cell_coords, reps=res[0]
-        )
-        X = grid_coords_x * self._grid.cell_size[0] + self._grid.origin[0]
-
-        grid_coords_y = np.repeat(np.arange(0, res[1], dtype=float), len(cell_coords)) + np.tile(
-            cell_coords, reps=res[1]
-        )
-        Y = grid_coords_y * self._grid.cell_size[1] + self._grid.origin[1]
-
-        return np.meshgrid(X, Y, indexing="ij")
-
 
 class GridSerendipitySpaceTopology(Grid2DSpaceTopology):
     def __init__(self, grid: Grid2D, shape: SquareSerendipityShapeFunctions):

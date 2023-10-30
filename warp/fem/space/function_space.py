@@ -67,7 +67,7 @@ class FunctionSpace:
     def make_field(self, space_partition=None):
         """Creates a zero-initialized discrete field over the function space holding values for all degrees of freedom of nodes in a space partition
 
-        Args:
+        space_arg:
             space_partition: If provided, the subset of nodes to consider
 
         See also: :func:`make_space_partition`
@@ -75,45 +75,64 @@ class FunctionSpace:
         raise NotImplementedError
 
     @staticmethod
-    def unit_dof_value(args: "SpaceArg", dof: DofIndex):
+    def unit_dof_value(elt_arg: "SpaceTopology.ElementArg", space_arg: "SpaceArg", dof: DofIndex):
         """Unit value for a given degree of freedom. Typically a rank-1 tensor"""
         raise NotImplementedError
 
     @staticmethod
-    def node_coords_in_element(args: "SpaceArg", element_index: ElementIndex, node_index_in_elt: int):
+    def node_coords_in_element(
+        elt_arg: "SpaceTopology.ElementArg", space_arg: "SpaceArg", element_index: ElementIndex, node_index_in_elt: int
+    ):
         """Coordinates inside element of a given node"""
         raise NotImplementedError
 
     @staticmethod
-    def node_quadrature_weight(args: "SpaceArg", element_index: ElementIndex, node_index_in_elt: int):
+    def node_quadrature_weight(
+        elt_arg: "SpaceTopology.ElementArg", space_arg: "SpaceArg", element_index: ElementIndex, node_index_in_elt: int
+    ):
         """Weight of a given node when used as a quadrature point"""
         raise NotImplementedError
 
     @staticmethod
-    def element_inner_weight(args: "SpaceArg", element_index: ElementIndex, coords: Coords, node_index_in_elt: int):
+    def element_inner_weight(
+        elt_arg: "SpaceTopology.ElementArg",
+        space_arg: "SpaceArg",
+        element_index: ElementIndex,
+        coords: Coords,
+        node_index_in_elt: int,
+    ):
         """Inner weight for a node at given coordinates"""
         raise NotImplementedError
 
     @staticmethod
     def element_inner_weight_gradient(
-        args: "SpaceArg", element_index: ElementIndex, coords: Coords, node_index_in_elt: int
+        elt_arg: "SpaceTopology.ElementArg",
+        space_arg: "SpaceArg",
+        element_index: ElementIndex,
+        coords: Coords,
+        node_index_in_elt: int,
     ):
         """Inner weight gradient for a node at given coordinates"""
         raise NotImplementedError
 
     @staticmethod
-    def element_outer_weight(args: "SpaceArg", element_index: ElementIndex, coords: Coords, node_index_in_elt: int):
+    def element_outer_weight(
+        elt_arg: "SpaceTopology.ElementArg",
+        space_arg: "SpaceArg",
+        element_index: ElementIndex,
+        coords: Coords,
+        node_index_in_elt: int,
+    ):
         """Outer weight for a node at given coordinates"""
         raise NotImplementedError
 
     @staticmethod
     def element_outer_weight_gradient(
-        args: "SpaceArg", element_index: ElementIndex, coords: Coords, node_index_in_elt: int
+        elt_arg: "SpaceTopology.ElementArg",
+        space_arg: "SpaceArg",
+        element_index: ElementIndex,
+        coords: Coords,
+        node_index_in_elt: int,
     ):
         """Outer weight gradient for a node at given coordinates"""
-        raise NotImplementedError
-
-    @staticmethod
-    def space_to_geo_side_arg(args: "SpaceArg") -> "Geometry.SideArg":
-        """Consructs a :class:`Geometry.SideArg` argument struct from a space argument struct"""
         raise NotImplementedError

@@ -38,8 +38,9 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.autosummary",
     "sphinx.ext.todo",
-    "sphinx_copybutton"
+    "sphinx.ext.extlinks",  # Markup to shorten external links
     # Third-party extensions:
+    "sphinx_copybutton"
     # 'sphinx_tabs.tabs',
     #    'autodocsumm'
 ]
@@ -60,6 +61,10 @@ todo_emit_warnings = True
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "numpy": ("https://numpy.org/doc/stable", None),
+}
+
+extlinks = {
+    "github": ("https://github.com/NVIDIA/warp/blob/main/%s", "%s"),
 }
 
 # List of patterns, relative to source directory, that match files and
