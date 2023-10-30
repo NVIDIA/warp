@@ -135,7 +135,7 @@ Particle-based quadrature
 The :class:`.PicQuadrature` provides a way to define Particle-In-Cell quadratures from a set or arbitrary particles,
 which can be helpful to develop MPM-like methods.
 The particles are automatically bucketed to the geometry cells when the quadrature is initialized.
-This is illustrated by the ``example_stokes_transfer[_3d].py`` and ``example_apic_fluid.py`` examples.
+This is illustrated by the ``example_stokes_transfer.py`` and ``example_apic_fluid.py`` examples.
 
 Partitioning
 ^^^^^^^^^^^^
@@ -238,6 +238,9 @@ Geometry
    :members:
 
 .. autoclass:: RegularQuadrature
+   :show-inheritance:
+
+.. autoclass:: NodalQuadrature
    :show-inheritance:
 
 .. autoclass:: PicQuadrature

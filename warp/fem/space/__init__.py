@@ -192,7 +192,7 @@ def make_polynomial_basis_space(
 
 def make_collocated_function_space(
     basis_space: BasisSpace, dtype: type = float, dof_mapper: Optional[DofMapper] = None
-) -> FunctionSpace:
+) -> CollocatedFunctionSpace:
     """
     Constructs a function space from a basis space and a value type, such that all degrees of freedom of the value type are stored at each of the basis nodes.
 
@@ -215,7 +215,7 @@ def make_polynomial_space(
     element_basis: Optional[ElementBasis] = None,
     discontinuous: bool = False,
     family: Optional[_polynomial.Polynomial] = None,
-) -> FunctionSpace:
+) -> CollocatedFunctionSpace:
     """
     Equips a geometry with a collocated, polynomial function space.
     Equivalent to successive calls to :func:`make_polynomial_basis_space` and `make_collocated_function_space`.

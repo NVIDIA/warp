@@ -126,6 +126,10 @@ class WholeGeometryPartition(GeometryPartition):
     def _identity_element_index(args: Any, idx: ElementIndex):
         return idx
 
+    @property
+    def name(self) -> str:
+        return self.geometry.name
+
 
 class CellBasedGeometryPartition(GeometryPartition):
     """Geometry partition based on a subset of cells. Interior, boundary and frontier sides are automatically categorized."""

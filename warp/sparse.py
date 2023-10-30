@@ -1188,7 +1188,7 @@ def bsr_mv(
         wp.copy(dest=work_buffer, src=y, count=y.size)
         x = work_buffer
 
-    # Promote scalar vectors to length-1 vecs
+    # Promote scalar vectors to length-1 vecs and conversely
     if warp.types.type_is_matrix(A.values.dtype):
         if A.block_shape[0] == 1:
             if y.dtype == A.scalar_type:
@@ -1196,6 +1196,13 @@ def bsr_mv(
         if A.block_shape[1] == 1:
             if x.dtype == A.scalar_type:
                 x = x.view(dtype=wp.vec(length=1, dtype=A.scalar_type))
+    else:
+        if A.block_shape[0] == 1:
+            if y.dtype != A.scalar_type:
+                y = y.view(dtype=A.scalar_type)
+        if A.block_shape[1] == 1:
+            if x.dtype != A.scalar_type:
+                x = x.view(dtype=A.scalar_type)
 
     wp.launch(
         kernel=_bsr_mv_kernel,
