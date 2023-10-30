@@ -7,7 +7,7 @@ from .space import DofMapper, SkewSymmetricTensorMapper, SymmetricTensorMapper
 from .space import SpaceTopology, SpacePartition, SpaceRestriction, make_space_partition, make_space_restriction
 
 from .domain import GeometryDomain, Cells, Sides, BoundarySides, FrontierSides
-from .quadrature import Quadrature, RegularQuadrature, PicQuadrature
+from .quadrature import Quadrature, RegularQuadrature, NodalQuadrature, PicQuadrature
 from .polynomial import Polynomial
 
 from .field import FieldLike, DiscreteField, make_test, make_trial, make_restriction

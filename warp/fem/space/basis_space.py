@@ -1,3 +1,5 @@
+from typing import Optional
+
 import warp as wp
 
 from warp.fem.types import ElementIndex, Coords, make_free_sample
@@ -21,7 +23,6 @@ class BasisSpace:
     class BasisArg:
         """Argument structure to be passed to device functions"""
 
-        _: int  # FIXME Workaround for issues with empty structs
         pass
 
     def __init__(self, topology: SpaceTopology, shape: ShapeFunction):
@@ -63,7 +64,7 @@ class BasisSpace:
 
     # Helpers for generating node positions
 
-    def node_positions(self, temporary_store: cache.TemporaryStore = None, device=None) -> cache.Temporary:
+    def node_positions(self, out: Optional[wp.array] = None) -> wp.array:
         """Returns a temporary array containing the world position for each node"""
 
         NODES_PER_ELEMENT = self.NODES_PER_ELEMENT
@@ -90,20 +91,27 @@ class BasisSpace:
 
                 node_positions[node_index] = pos
 
-        node_positions = cache.borrow_temporary(
-            temporary_store,
-            shape=self.topology.node_count(),
-            dtype=pos_type,
-            device=device,
-        )
+        shape = (self.topology.node_count(),)
+        if out is None:
+            node_positions = wp.empty(
+                shape=shape,
+                dtype=pos_type,
+            )
+        else:
+            if out.shape != shape or not wp.types.types_equal(pos_type, out.dtype):
+                raise ValueError(
+                    f"Out node positions array must have shape {shape} and data type {wp.types.type_repr(post_type)}"
+                )
+            node_positions = out
+
         wp.launch(
             dim=self.geometry.cell_count(),
             kernel=fill_node_positions,
             inputs=[
-                self.geometry.cell_arg_value(device=node_positions.array.device),
-                self.basis_arg_value(device=node_positions.array.device),
-                self.topology.topo_arg_value(device=node_positions.array.device),
-                node_positions.array,
+                self.geometry.cell_arg_value(device=node_positions.device),
+                self.basis_arg_value(device=node_positions.device),
+                self.topology.topo_arg_value(device=node_positions.device),
+                node_positions,
             ],
         )
 
@@ -178,21 +186,21 @@ class BasisSpace:
         return TraceBasisSpace(self)
 
     def _node_triangulation(self):
-        element_node_indices = self._topology.element_node_indices().array.numpy()
+        element_node_indices = self._topology.element_node_indices().numpy()
         element_triangles = self._shape.element_node_triangulation()
 
         tri_indices = element_node_indices[:, element_triangles].reshape(-1, 3)
         return tri_indices
 
     def _node_tets(self):
-        element_node_indices = self._topology.element_node_indices().array.numpy()
+        element_node_indices = self._topology.element_node_indices().numpy()
         element_tets = self._shape.element_node_tets()
 
         tet_indices = element_node_indices[:, element_tets].reshape(-1, 4)
         return tet_indices
 
     def _node_hexes(self):
-        element_node_indices = self._topology.element_node_indices().array.numpy()
+        element_node_indices = self._topology.element_node_indices().numpy()
         element_hexes = self._shape.element_node_hexes()
 
         hex_indices = element_node_indices[:, element_hexes].reshape(-1, 8)

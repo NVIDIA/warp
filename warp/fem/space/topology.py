@@ -1,3 +1,5 @@
+from typing import Optional
+
 import warp as wp
 
 from warp.fem.types import ElementIndex
@@ -27,7 +29,6 @@ class SpaceTopology:
     class TopologyArg:
         """Structure containing arguments to be passed to device functions"""
 
-        _: int  # Work around some issues when passing multiple empty structs
         pass
 
     def __init__(self, geometry: Geometry, nodes_per_element: int):
@@ -63,7 +64,7 @@ class SpaceTopology:
         """Global node index for a given node in a given element"""
         raise NotImplementedError
 
-    def element_node_indices(self, temporary_store: cache.TemporaryStore = None, device=None) -> cache.Temporary:
+    def element_node_indices(self, out: Optional[wp.array] = None) -> wp.array:
         """Returns a temporary array containing the global index for each node of each element"""
 
         NODES_PER_ELEMENT = self.NODES_PER_ELEMENT
@@ -80,20 +81,26 @@ class SpaceTopology:
                     geo_cell_arg, topo_arg, element_index, n
                 )
 
-        element_node_indices = cache.borrow_temporary(
-            temporary_store,
-            shape=(self.geometry.cell_count(), NODES_PER_ELEMENT),
-            dtype=int,
-            device=device,
-        )
+        shape = (self.geometry.cell_count(), NODES_PER_ELEMENT)
+        if out is None:
+            element_node_indices = wp.empty(
+                shape=shape,
+                dtype=int,
+            )
+        else:
+            if out.shape != shape or out.dtype != wp.int32:
+                raise ValueError(f"Out element node idices array must have shape {shape} and data type 'int32'")
+            element_node_indices = out
+
         wp.launch(
-            dim=element_node_indices.array.shape[0],
+            dim=element_node_indices.shape[0],
             kernel=fill_element_node_indices,
             inputs=[
-                self.geometry.cell_arg_value(device=element_node_indices.array.device),
-                self.topo_arg_value(device=element_node_indices.array.device),
-                element_node_indices.array,
+                self.geometry.cell_arg_value(device=element_node_indices.device),
+                self.topo_arg_value(device=element_node_indices.device),
+                element_node_indices,
             ],
+            device=element_node_indices.device,
         )
 
         return element_node_indices

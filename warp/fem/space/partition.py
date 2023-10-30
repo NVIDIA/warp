@@ -87,6 +87,10 @@ class WholeSpacePartition(SpacePartition):
     def __eq__(self, other: SpacePartition) -> bool:
         return isinstance(other, SpacePartition) and self.space_topology == other.space_topology
 
+    @property
+    def name(self) -> str:
+        return "Whole"
+
 
 class NodeCategory:
     OWNED_INTERIOR = wp.constant(0)

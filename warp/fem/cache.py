@@ -15,7 +15,7 @@ _key_re = re.compile("[^0-9a-zA-Z_]+")
 
 
 def _make_key(obj, suffix: str, use_qualified_name):
-    base_name = obj.__qualname__ if use_qualified_name else obj.__name__
+    base_name = f"{obj.__module__}.{obj.__qualname__}" if use_qualified_name else obj.__name__
     return _key_re.sub("", f"{base_name}_{suffix}")
 
 
@@ -46,7 +46,11 @@ def get_kernel(func, suffix: str, use_qualified_name: bool = False):
     key = _make_key(func, suffix, use_qualified_name)
 
     if key not in _kernel_cache:
-        module = wp.get_module(f"{func.__module__}.dynamic.{key}")
+        # Avoid creating too long file names -- can lead to issues on Windows
+        # We could hash the key, but prefer to keep it human-readable
+        module_name = f"{func.__module__}.dyn.{key}"
+        module_name = module_name[:128] if len(module_name) > 128 else module_name
+        module = wp.get_module(module_name)
         _kernel_cache[key] = wp.Kernel(func=func, key=key, module=module)
     return _kernel_cache[key]
 
@@ -87,7 +91,7 @@ def get_integrand_function(
     annotations=None,
     code_transformers=[],
 ):
-    key = _key_re.sub("", f"{integrand.name}_{suffix}")
+    key = _make_key(integrand.func, suffix, use_qualified_name=True)
 
     if key not in _func_cache:
         _func_cache[key] = wp.Function(
@@ -109,7 +113,7 @@ def get_integrand_kernel(
     kernel_options: Dict[str, Any] = {},
     code_transformers=[],
 ):
-    key = _key_re.sub("", f"{integrand.name}_{suffix}")
+    key = _make_key(integrand.func, suffix, use_qualified_name=True)
 
     if key not in _kernel_cache:
         if kernel_fn is None:
@@ -241,6 +245,7 @@ class TemporaryStore:
             self.pinned = pinned
 
             self._pool = []  # Currently available arrays for borrowing, ordered by size
+            self._pool_sizes = []  # Sizes of available arrays for borrowing, ascending
             self._allocs = {}  # All allocated arrays, including borrowed ones
 
         def borrow(self, shape, dtype, requires_grad: bool):
@@ -251,14 +256,13 @@ class TemporaryStore:
                 size *= d
 
             index = bisect.bisect_left(
-                a=self._pool,
+                a=self._pool_sizes,
                 x=size,
-                key=lambda x: x[0],
             )
             if index < len(self._pool):
                 # Big enough array found, remove from pool
-                array = self._pool[index][1]
-                self._pool.pop(index)
+                array = self._pool.pop(index)
+                self._pool_sizes.pop(index)
                 if requires_grad and array.grad is None:
                     array.requires_grad = True
                 return Temporary(pool=self, array=array, shape=shape, dtype=dtype)
@@ -266,7 +270,7 @@ class TemporaryStore:
             # No big enough array found, allocate new one
             if len(self._pool) > 0:
                 grow_factor = 1.5
-                size = max(int(self._pool[-1][0] * grow_factor), size)
+                size = max(int(self._pool_sizes[-1] * grow_factor), size)
 
             array = wp.empty(
                 shape=(size,), dtype=self.dtype, pinned=self.pinned, device=self.device, requires_grad=requires_grad
@@ -275,7 +279,13 @@ class TemporaryStore:
             return Temporary(pool=self, array=array, shape=shape, dtype=dtype)
 
         def redeem(self, array):
-            bisect.insort(self._pool, x=(array.size, array), key=lambda x: x[0])
+            # Insert back array into available pool
+            index = bisect.bisect_left(
+                a=self._pool_sizes,
+                x=array.size,
+            )
+            self._pool.insert(index, array)
+            self._pool_sizes.insert(index, array.size)
 
         def detach(self, array):
             del self._allocs[array.ptr]
