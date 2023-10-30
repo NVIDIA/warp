@@ -30,6 +30,7 @@ import warp.tests.test_hash_grid
 import warp.tests.test_indexedarray
 import warp.tests.test_launch
 import warp.tests.test_marching_cubes
+import warp.tests.test_mat_lite
 import warp.tests.test_math
 import warp.tests.test_matmul_lite
 import warp.tests.test_mesh
@@ -41,12 +42,16 @@ import warp.tests.test_noise
 import warp.tests.test_operators
 import warp.tests.test_quat
 import warp.tests.test_rand
+import warp.tests.test_reload
 import warp.tests.test_rounding
 import warp.tests.test_runlength_encode
 import warp.tests.test_sparse
 import warp.tests.test_streams
 import warp.tests.test_tape
+import warp.tests.test_transient_module
+import warp.tests.test_types
 import warp.tests.test_utils
+import warp.tests.test_vec_lite
 import warp.tests.test_volume
 import warp.tests.test_volume_write
 
@@ -86,6 +91,7 @@ test_clss = (
     warp.tests.test_indexedarray.register(BaseTestCase),
     warp.tests.test_launch.register(BaseTestCase),
     warp.tests.test_marching_cubes.register(BaseTestCase),
+    warp.tests.test_mat_lite.register(BaseTestCase),
     warp.tests.test_math.register(BaseTestCase),
     warp.tests.test_matmul_lite.register(BaseTestCase),
     warp.tests.test_mesh.register(BaseTestCase),
@@ -97,14 +103,18 @@ test_clss = (
     warp.tests.test_operators.register(BaseTestCase),
     warp.tests.test_quat.register(BaseTestCase),
     warp.tests.test_rand.register(BaseTestCase),
+    warp.tests.test_reload.register(BaseTestCase),
     warp.tests.test_rounding.register(BaseTestCase),
     warp.tests.test_runlength_encode.register(BaseTestCase),
     warp.tests.test_sparse.register(BaseTestCase),
     warp.tests.test_streams.register(BaseTestCase),
     warp.tests.test_tape.register(BaseTestCase),
+    warp.tests.test_transient_module.register(BaseTestCase),
+    warp.tests.test_types.register(BaseTestCase),
     warp.tests.test_utils.register(BaseTestCase),
+    warp.tests.test_vec_lite.register(BaseTestCase),
     warp.tests.test_volume_write.register(BaseTestCase),
-    warp.tests.test_volume.register(BaseTestCase),
+    warp.tests.test_volume.register(BaseTestCase)
 )
 
 # Each test class needs to be defined at the module level to be found by

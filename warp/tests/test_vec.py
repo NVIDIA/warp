@@ -3027,6 +3027,14 @@ def test_conversions(test, device, dtype, register_kernels=False):
     wp.launch(kernel, dim=1, inputs=[v0, v1, v2, v3], device=device)
 
 
+@wp.kernel
+def test_vector_constructor_value_func():
+    a = wp.vec2()
+    b = wp.vector(a, dtype=wp.float16)
+    c = wp.vector(a)
+    d = wp.vector(a, length=2)
+
+
 # Test matrix constructors using explicit type (float16)
 # note that these tests are specifically not using generics / closure
 # args to create kernels dynamically (like the rest of this file)
@@ -3094,6 +3102,7 @@ def register(parent):
     class TestVec(parent):
         pass
 
+    add_kernel_test(TestVec, test_vector_constructor_value_func, dim=1, devices=devices)
     add_kernel_test(TestVec, test_constructors_explicit_precision, dim=1, devices=devices)
     add_kernel_test(TestVec, test_constructors_default_precision, dim=1, devices=devices)
     add_kernel_test(TestVec, test_constructors_constant_length, dim=1, devices=devices)
