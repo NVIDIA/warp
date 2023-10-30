@@ -39,8 +39,8 @@ These helper functions allow the conversion of Warp arrays to/from PyTorch tenso
 At the same time, if available, gradient arrays and tensors are converted to/from PyTorch autograd tensors, allowing the use of Warp arrays
 in PyTorch autograd computations.
 
-Optimization example using ``warp.from_torch``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Example: Optimization using ``warp.from_torch()``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 An example usage of minimizing a loss function over an array of 2D points written in Warp via PyTorch's Adam optimizer using ``warp.from_torch`` is as follows::
 
@@ -79,8 +79,8 @@ An example usage of minimizing a loss function over an array of 2D points writte
         wp.launch(loss, dim=len(xs), inputs=[wp_xs], outputs=[wp_l], device=wp_xs.device)
         print(f"{i}\tloss: {l.item()}")
 
-Optimization example using ``warp.to_torch``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Example: Optimization using ``warp.to_torch``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Less code is needed when we declare the optimization variables directly in Warp and use ``warp.to_torch`` to convert them to PyTorch tensors.
 Here, we revisit the same example from above where now only a single conversion to a torch tensor is needed to supply Adam with the optimization variables::
@@ -126,11 +126,13 @@ Warp GPU arrays support the ``__cuda_array_interface__`` protocol for sharing da
 Currently this is one-directional, so that Warp arrays can be used as input to any framework that also supports the
 ``__cuda_array_interface__`` protocol, but not the other way around.
 
+.. _jax-interop:
+
 JAX
 ---
 
-Interop with JAX arrays is supported through the following methods, internally these use the DLPack protocol to exchange
-data in a zero-copy way with JAX.
+Interoperability with JAX arrays is supported through the following methods.
+Internally these use the DLPack protocol to exchange data in a zero-copy way with JAX.
 
 .. automodule:: warp.jax
     :members:

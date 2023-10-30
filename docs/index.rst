@@ -150,8 +150,8 @@ Warp is provided under the NVIDIA Source Code License (NVSCL), please see
 Please contact `omniverse-license-questions@nvidia.com <mailto:omniverse-license-questions@nvidia.com>`_ for
 commercial licensing inquires.
 
-User's Guide
-------------
+Full Table of Contents
+----------------------
 
 .. toctree::
     :maxdepth: 2
@@ -160,15 +160,11 @@ User's Guide
     installation
     basics
     modules/devices
-    modules/profiling
     modules/interoperability
     configuration
     debugging
     limitations
     faq
-
-API Reference
--------------
 
 .. toctree::
     :maxdepth: 2
@@ -177,9 +173,6 @@ API Reference
     modules/runtime
     modules/functions
    
-Simulation Reference
---------------------
-
 .. toctree::
     :maxdepth: 2
     :caption: Simulation Reference
@@ -195,4 +188,5 @@ Simulation Reference
     GitHub <https://github.com/NVIDIA/warp>
     PyPI <https://pypi.org/project/warp-lang>
     Discord <https://discord.com/channels/827959428476174346/953756751977648148>
-   
+
+:ref:`Full Index <genindex>`
