@@ -113,7 +113,7 @@ struct BVHPackedNodeHalf
 };
 
 struct BVH
-{
+{		
     BVHPackedNodeHalf* node_lowers;
     BVHPackedNodeHalf* node_uppers;
 
@@ -123,32 +123,21 @@ struct BVH
 	
 	int max_depth;
 	int max_nodes;
-    int num_nodes;
+	int num_nodes;
+	
+	// pointer (CPU or GPU) to a single integer index in node_lowers, node_uppers
+	// representing the root of the tree, this is not always the first node
+	// for bottom-up builders
+	int* root;
 
-	int root;
+	// item bounds are not owned by the BVH but by the caller
+    vec3* item_lowers;
+	vec3* item_uppers;
+	int num_items;
 
-    vec3* lowers;
-	vec3* uppers;
-	bounds3* bounds;
-	int num_bounds;
-
+	// cuda context
 	void* context;
 };
-
-#if !defined(__CUDA_ARCH__)
-
-BVH bvh_create(const bounds3* bounds, int num_bounds);
-
-void bvh_destroy_host(BVH& bvh);
-void bvh_destroy_device(BVH& bvh);
-
-void bvh_refit_host(BVH& bvh, const bounds3* bounds);
-void bvh_refit_device(BVH& bvh, const bounds3* bounds);
-
-// copy host BVH to device
-BVH bvh_clone(void* context, const BVH& bvh_host);
-
-#endif  // !__CUDA_ARCH__
 
 CUDA_CALLABLE inline BVHPackedNodeHalf make_node(const vec3& bound, int child, bool leaf)
 {
@@ -162,7 +151,7 @@ CUDA_CALLABLE inline BVHPackedNodeHalf make_node(const vec3& bound, int child, b
     return n;
 }
 
-// variation of make_node through volatile pointers used in BuildHierarchy
+// variation of make_node through volatile pointers used in build_hierarchy
 CUDA_CALLABLE inline void make_node(volatile BVHPackedNodeHalf* n, const vec3& bound, int child, bool leaf)
 {
     n->x = bound[0];
@@ -211,7 +200,7 @@ CUDA_CALLABLE inline BVH bvh_get(uint64_t id)
 CUDA_CALLABLE inline int bvh_get_num_bounds(uint64_t id)
 {
 	BVH bvh = bvh_get(id);
-	return bvh.num_bounds;
+	return bvh.num_items;
 }
 
 
@@ -257,17 +246,8 @@ CUDA_CALLABLE inline bvh_query_t bvh_query(
 	query.bvh = bvh;
 	query.is_ray = is_ray;
 
-
-    // if no bvh nodes, return empty query.
-    if (bvh.num_nodes == 0)
-    {
-		query.count = 0;
-		return query;
-	}
-
-    // optimization: make the latest
-	
-	query.stack[0] = bvh.root;
+    // optimization: make the latest	
+	query.stack[0] = *bvh.root;
 	query.count = 1;
     query.input_lower = lower;
     query.input_upper = upper;
@@ -422,17 +402,19 @@ CUDA_CALLABLE inline void adj_bvh_query_next(bvh_query_t& query, int& index, bvh
 
 }
 
-
-
-
 CUDA_CALLABLE bool bvh_get_descriptor(uint64_t id, BVH& bvh);
 CUDA_CALLABLE void bvh_add_descriptor(uint64_t id, const BVH& bvh);
 CUDA_CALLABLE void bvh_rem_descriptor(uint64_t id);
 
+#if !__CUDA_ARCH__
 
+void bvh_destroy_host(wp::BVH& bvh);
+void bvh_refit_host(wp::BVH& bvh);
 
+void bvh_destroy_device(wp::BVH& bvh);
+void bvh_refit_device(uint64_t id);
 
-
+#endif
 
 } // namespace wp
 
