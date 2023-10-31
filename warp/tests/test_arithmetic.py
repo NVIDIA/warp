@@ -463,9 +463,9 @@ def test_special_funcs(test, device, dtype, register_kernels=False):
     rng = np.random.default_rng(123)
 
     tol = {
-        np.float16: 2.0e-2,
-        np.float32: 2.0e-6,
-        np.float64: 2.0e-8,
+        np.float16: 1.0e-2,
+        np.float32: 1.0e-6,
+        np.float64: 1.0e-8,
     }.get(dtype, 0)
 
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
@@ -498,8 +498,8 @@ def test_special_funcs(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    invals = np.random.randn(15, 10).astype(dtype)
-    invals[[0, 1, 2, 7]] = 0.1 + np.abs(invals[[0, 1, 2, 7]])
+    invals = rng.normal(size=(15, 10)).astype(dtype)
+    invals[[0, 1, 2, 7, 14]] = 0.1 + np.abs(invals[[0, 1, 2, 7, 14]])
     invals[12] = np.clip(invals[12], -0.9, 0.9)
     invals[13] = np.clip(invals[13], -0.9, 0.9)
     inputs = wp.array(invals, dtype=wptype, requires_grad=True, device=device)
@@ -706,7 +706,8 @@ def test_special_funcs(test, device, dtype, register_kernels=False):
 
             tape.backward(loss=out)
             expected = np.zeros_like(inputs.numpy())
-            expected[14, i] = (2.0 / 3.0) * (1.0 / np.cbrt(np.power(inputs.numpy()[14, i], 2.0)))
+            cbrt = np.cbrt(inputs.numpy()[14, i], dtype=np.dtype(dtype))
+            expected[14, i] = (2.0 / 3.0) * (1.0 / (cbrt * cbrt))
             assert_np_equal(tape.gradients[inputs].numpy(), expected, tol=tol)
             tape.zero()
 
