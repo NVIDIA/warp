@@ -6,17 +6,14 @@ import warp.types
 from warp.sparse import BsrMatrix, bsr_zeros, bsr_get_diag, bsr_mv
 from warp.utils import array_inner
 
-try:
-    from scipy.sparse import csr_array, bsr_array
-except ImportError:
-    # WAR for older scipy
+
+def bsr_to_scipy(matrix: BsrMatrix) -> "scipy.sparse.bsr_array":
     try:
-        from scipy.sparse import csr_matrix as csr_array, bsr_matrix as bsr_array
+        from scipy.sparse import csr_array, bsr_array
     except ImportError:
-        pass
+        # WAR for older scipy
+        from scipy.sparse import csr_matrix as csr_array, bsr_matrix as bsr_array
 
-
-def bsr_to_scipy(matrix: BsrMatrix) -> "bsr_array":
     if matrix.block_shape == (1, 1):
         return csr_array(
             (
@@ -37,7 +34,13 @@ def bsr_to_scipy(matrix: BsrMatrix) -> "bsr_array":
     )
 
 
-def scipy_to_bsr(sp: Union["bsr_array", "csr_array"], device=None, dtype=None) -> BsrMatrix:
+def scipy_to_bsr(sp: Union["scipy.sparse.bsr_array", "scipy.sparse.csr_array"], device=None, dtype=None) -> BsrMatrix:
+    try:
+        from scipy.sparse import csr_array
+    except ImportError:
+        # WAR for older scipy
+        from scipy.sparse import csr_matrix as csr_array
+
     if dtype is None:
         dtype = warp.types.np_dtype_to_warp_type[sp.dtype]
 
@@ -246,7 +249,7 @@ def invert_diagonal_bsr_mass_matrix(A: BsrMatrix):
     scale = A.scalar_type(A.block_shape[0])
     values = A.values
     if not wp.types.type_is_matrix(values.dtype):
-        values = values.view(dtype=wp.mat(shape=(1,1), dtype=A.scalar_type))
+        values = values.view(dtype=wp.mat(shape=(1, 1), dtype=A.scalar_type))
 
     wp.launch(kernel=_block_diagonal_mass_invert, dim=A.nrow, inputs=[values, scale], device=values.device)
 

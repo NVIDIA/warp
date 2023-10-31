@@ -99,6 +99,22 @@ def test_transform_multiply(test, device, n):
     wp.launch(transform_multiply, dim=n, inputs=[xforms, a], device=device)
 
 
+transformf = wp.types.transformation(dtype=wp.float32)
+
+@wp.kernel
+def test_transformation_constructor():
+    a = wp.transformation(wp.vec3(0.0), wp.quat_identity())
+    b = transformf(wp.vec3(0.0), wp.quat_identity())
+    c = wp.transform_identity(dtype=wp.float64)
+
+
+spatial_vector = wp.types.vector(length=6, dtype=wp.float32)
+
+@wp.kernel
+def test_spatial_vector_constructor():
+    a = wp.spatial_vector(wp.vec3(0.0), wp.vec3(0.0))
+
+
 # construct kernel + test harness for given matrix / vector types
 def make_matrix_test(dim, matrix, vector):
     def test_matrix_kernel(
@@ -553,6 +569,16 @@ def register(parent):
     add_function_test(TestCTypes, "test_mat22", test_mat22, devices=devices)
     add_function_test(TestCTypes, "test_mat33", test_mat33, devices=devices)
     add_function_test(TestCTypes, "test_mat44", test_mat44, devices=devices)
+    add_kernel_test(TestCTypes,
+                    name="test_transformation_constructor",
+                    kernel=test_transformation_constructor,
+                    dim=1,
+                    devices=devices)
+    add_kernel_test(TestCTypes,
+                    name="test_spatial_vector_constructor",
+                    kernel=test_spatial_vector_constructor,
+                    dim=1,
+                    devices=devices)
     add_kernel_test(
         TestCTypes,
         name="test_scalar_arg_types",

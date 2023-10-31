@@ -490,6 +490,7 @@ def test_special_funcs(test, device, dtype, register_kernels=False):
             outputs[11, i] = wptype(2) * wp.tanh(inputs[11, i])
             outputs[12, i] = wptype(2) * wp.acos(inputs[12, i])
             outputs[13, i] = wptype(2) * wp.asin(inputs[13, i])
+            outputs[14, i] = wptype(2) * wp.cbrt(inputs[14, i])
 
     kernel = getkernel(check_special_funcs, suffix=dtype.__name__)
     output_select_kernel = get_select_kernel2(wptype)
@@ -497,7 +498,7 @@ def test_special_funcs(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    invals = rng.standard_normal(size=(14, 10)).astype(dtype)
+    invals = np.random.randn(15, 10).astype(dtype)
     invals[[0, 1, 2, 7]] = 0.1 + np.abs(invals[[0, 1, 2, 7]])
     invals[12] = np.clip(invals[12], -0.9, 0.9)
     invals[13] = np.clip(invals[13], -0.9, 0.9)
@@ -520,6 +521,7 @@ def test_special_funcs(test, device, dtype, register_kernels=False):
     assert_np_equal(outputs.numpy()[11], 2 * np.tanh(inputs.numpy()[11]), tol=tol)
     assert_np_equal(outputs.numpy()[12], 2 * np.arccos(inputs.numpy()[12]), tol=tol)
     assert_np_equal(outputs.numpy()[13], 2 * np.arcsin(inputs.numpy()[13]), tol=tol)
+    assert_np_equal(outputs.numpy()[14], 2 * np.cbrt(inputs.numpy()[14]), tol=tol)
 
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     if dtype in np_float_types:
@@ -694,6 +696,18 @@ def test_special_funcs(test, device, dtype, register_kernels=False):
             expected = np.zeros_like(inputs.numpy())
             expected[13, i] = 2.0 / np.sqrt(1 - inputs.numpy()[13, i] ** 2)
             assert_np_equal(tape.gradients[inputs].numpy(), expected, tol=6 * tol)
+            tape.zero()
+
+            # cbrt:
+            tape = wp.Tape()
+            with tape:
+                wp.launch(kernel, dim=1, inputs=[inputs], outputs=[outputs], device=device)
+                wp.launch(output_select_kernel, dim=1, inputs=[outputs, 14, i], outputs=[out], device=device)
+
+            tape.backward(loss=out)
+            expected = np.zeros_like(inputs.numpy())
+            expected[14, i] = (2.0 / 3.0) * (1.0 / np.cbrt(np.power(inputs.numpy()[14, i], 2.0)))
+            assert_np_equal(tape.gradients[inputs].numpy(), expected, tol=tol)
             tape.zero()
 
 

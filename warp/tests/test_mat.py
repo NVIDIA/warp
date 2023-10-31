@@ -589,6 +589,20 @@ def test_tpl_constructor_error_invalid_arg_count(test, device):
         )
 
 
+def test_tpl_ops_with_anon(test, device):
+    mat22f = wp.mat((2, 2), dtype=float)
+
+    m = wp.mat22f(1.0, 2.0, 3.0, 4.0)
+    m += mat22f(2.0, 3.0, 4.0, 5.0)
+    m -= mat22f(3.0, 4.0, 5.0, 6.0)
+    test.assertSequenceEqual(m, ((0.0, 1.0), (2.0, 3.0)))
+
+    m = mat22f(1.0, 2.0, 3.0, 4.0)
+    m += wp.mat22f(2.0, 3.0, 4.0, 5.0)
+    m -= wp.mat22f(3.0, 4.0, 5.0, 6.0)
+    test.assertSequenceEqual(m, ((0.0, 1.0), (2.0, 3.0)))
+
+
 def test_quat_constructor(test, device, dtype, register_kernels=False):
     rng = np.random.default_rng(123)
 
@@ -4122,6 +4136,21 @@ def test_constructors_explicit_precision():
             wp.expect_eq(custom[i, j], wp.float16(i) * wp.float16(2.0) + wp.float16(j))
 
 
+mat32d = wp.mat(shape=(3,2), dtype=wp.float64)
+
+@wp.kernel
+def test_matrix_constructor_value_func():
+    a = wp.mat22()
+    b = wp.matrix(a, shape=(2,2))
+    c = mat32d()
+    d = mat32d(c, shape=(3,2))
+    e = mat32d(wp.float64(1.0), wp.float64(2.0),
+               wp.float64(1.0), wp.float64(2.0),
+               wp.float64(1.0), wp.float64(2.0))
+    f = mat32d(wp.vec3d(wp.float64(1.0), wp.float64(2.0), wp.float64(3.0)),
+               wp.vec3d(wp.float64(1.0), wp.float64(2.0), wp.float64(3.0)))
+
+
 # Same as above but with a default (float/int) type
 # which tests some different code paths that
 # need to ensure types are correctly canonicalized
@@ -4193,6 +4222,7 @@ def register(parent):
     add_kernel_test(TestMat, test_constructors_explicit_precision, dim=1, devices=devices)
     add_kernel_test(TestMat, test_constructors_default_precision, dim=1, devices=devices)
     add_kernel_test(TestMat, test_constructors_constant_shape, dim=1, devices=devices)
+    add_kernel_test(TestMat, test_matrix_constructor_value_func, dim=1, devices=devices)
 
     mat103 = wp.types.matrix(shape=(10, 3), dtype=float)
     add_kernel_test(
@@ -4298,6 +4328,7 @@ def register(parent):
         test_tpl_constructor_error_invalid_arg_count,
         devices=devices,
     )
+    add_function_test(TestMat, "test_tpl_ops_with_anon", test_tpl_ops_with_anon)
 
     for dtype in np_scalar_types:
         add_function_test(TestMat, f"test_arrays_{dtype.__name__}", test_arrays, devices=devices, dtype=dtype)

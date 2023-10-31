@@ -83,8 +83,8 @@ class CollocatedFunctionSpace(FunctionSpace):
     def node_count(self):
         return self.topology.node_count()
 
-    def node_positions(self, temporary_store: cache.TemporaryStore = None, device=None) -> cache.Temporary:
-        return self._basis.node_positions(temporary_store, device=device)
+    def node_positions(self, out:Optional[wp.array] = None) -> wp.array:
+        return self._basis.node_positions(out=out)
 
     def trace(self) -> "CollocatedFunctionSpace":
         return CollocatedFunctionSpaceTrace(self)

@@ -787,6 +787,10 @@ inline CUDA_CALLABLE half sqrt(half x)
     return ::sqrtf(float(x));
 }
 
+inline CUDA_CALLABLE float cbrt(float x) { return ::cbrtf(x); }
+inline CUDA_CALLABLE double cbrt(double x) { return ::cbrt(x); }
+inline CUDA_CALLABLE half cbrt(half x) { return ::cbrtf(float(x)); }
+
 inline CUDA_CALLABLE float tan(float x) { return ::tanf(x); }
 inline CUDA_CALLABLE float sinh(float x) { return ::sinhf(x);}
 inline CUDA_CALLABLE float cosh(float x) { return ::coshf(x);}
@@ -968,6 +972,16 @@ inline CUDA_CALLABLE void adj_sqrt(T x, T& adj_x, T adj_ret)\
     DO_IF_FPCHECK(if (!isfinite(adj_x))\
     {\
         printf("%s:%d - adj_sqrt(%f, %f, %f)\n", __FILE__, __LINE__, float(x), float(adj_x), float(adj_ret));\
+        assert(0);\
+    })\
+}\
+inline CUDA_CALLABLE void adj_cbrt(T x, T& adj_x, T adj_ret)\
+{\
+    T cbrt_x = cbrt(x);\
+    adj_x += (T(1)/T(3))*(T(1)/(cbrt_x*cbrt_x))*adj_ret;\
+    DO_IF_FPCHECK(if (!isfinite(adj_x))\
+    {\
+        printf("%s:%d - adj_cbrt(%f, %f, %f)\n", __FILE__, __LINE__, float(x), float(adj_x), float(adj_ret));\
         assert(0);\
     })\
 }\
