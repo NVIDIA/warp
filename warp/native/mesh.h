@@ -85,6 +85,55 @@ CUDA_CALLABLE inline float distance_to_aabb_sq(const vec3& p, const vec3& lower,
     return length_sq(p-cp);
 }
 
+CUDA_CALLABLE inline float furthest_distance_to_aabb_sq(const vec3& p, const vec3& lower, const vec3& upper)
+{
+    vec3 c0 = vec3(lower[0], lower[1], lower[2]);
+    vec3 c1 = vec3(lower[0], lower[1], upper[2]);
+    vec3 c2 = vec3(lower[0], upper[1], lower[2]);
+    vec3 c3 = vec3(lower[0], upper[1], upper[2]);
+    vec3 c4 = vec3(upper[0], lower[1], lower[2]);
+    vec3 c5 = vec3(upper[0], lower[1], upper[2]);
+    vec3 c6 = vec3(upper[0], upper[1], lower[2]);
+    vec3 c7 = vec3(upper[0], upper[1], upper[2]);
+    
+    float max_dist_sq = 0.0;
+    float d;
+
+    d = length_sq(p-c0);
+    if (d > max_dist_sq)
+        max_dist_sq = d;
+
+    d = length_sq(p-c1);
+    if (d > max_dist_sq)
+        max_dist_sq = d;
+
+    d = length_sq(p-c2);
+    if (d > max_dist_sq)
+        max_dist_sq = d;
+
+    d = length_sq(p-c3);
+    if (d > max_dist_sq)
+        max_dist_sq = d;
+
+    d = length_sq(p-c4);
+    if (d > max_dist_sq)
+        max_dist_sq = d;
+
+    d = length_sq(p-c5);
+    if (d > max_dist_sq)
+        max_dist_sq = d;
+
+    d = length_sq(p-c6);
+    if (d > max_dist_sq)
+        max_dist_sq = d;
+
+    d = length_sq(p-c7);
+    if (d > max_dist_sq)
+        max_dist_sq = d;
+
+    return max_dist_sq;
+}
+
 CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p);
 
 // returns true if there is a point (strictly) < distance max_dist
@@ -463,7 +512,7 @@ CUDA_CALLABLE inline bool mesh_query_furthest_point_no_sign(uint64_t id, const v
         return false;
 
     int stack[32];
-    stack[0] = mesh.bvh.root;
+    stack[0] = *mesh.bvh.root;
 
     int count = 1;
 
@@ -489,7 +538,9 @@ CUDA_CALLABLE inline bool mesh_query_furthest_point_no_sign(uint64_t id, const v
         BVHPackedNodeHalf upper = mesh.bvh.node_uppers[nodeIndex];
     
         // re-test distance
-        float node_dist_sq = distance_to_aabb_sq(point, vec3(lower.x, lower.y, lower.z), vec3(upper.x, upper.y, upper.z));
+        float node_dist_sq = furthest_distance_to_aabb_sq(point, vec3(lower.x, lower.y, lower.z), vec3(upper.x, upper.y, upper.z));
+        
+        // if maximum distance to this node is less than our existing furthest max then skip
         if (node_dist_sq < max_dist_sq)
         {
 #if BVH_DEBUG			
@@ -564,8 +615,8 @@ CUDA_CALLABLE inline bool mesh_query_furthest_point_no_sign(uint64_t id, const v
             BVHPackedNodeHalf right_lower = mesh.bvh.node_lowers[right_index];
             BVHPackedNodeHalf right_upper = mesh.bvh.node_uppers[right_index];
 
-            float left_dist_sq = distance_to_aabb_sq(point, vec3(left_lower.x, left_lower.y, left_lower.z), vec3(left_upper.x, left_upper.y, left_upper.z));
-            float right_dist_sq = distance_to_aabb_sq(point, vec3(right_lower.x, right_lower.y, right_lower.z), vec3(right_upper.x, right_upper.y, right_upper.z));
+            float left_dist_sq = furthest_distance_to_aabb_sq(point, vec3(left_lower.x, left_lower.y, left_lower.z), vec3(left_upper.x, left_upper.y, left_upper.z));
+            float right_dist_sq = furthest_distance_to_aabb_sq(point, vec3(right_lower.x, right_lower.y, right_lower.z), vec3(right_upper.x, right_upper.y, right_upper.z));
 
             float left_score = left_dist_sq;
             float right_score = right_dist_sq;

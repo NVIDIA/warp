@@ -114,14 +114,14 @@ add_builtin(
     "sqrt",
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
-    doc="Return the sqrt of ``x``, where ``x`` is positive.",
+    doc="Return the square root of ``x``, where ``x`` is positive.",
     group="Scalar Math",
 )
 add_builtin(
     "cbrt",
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
-    doc="Return the cbrt of x.",
+    doc="Return the cube root of ``x``.",
     group="Scalar Math",
 )
 add_builtin(
@@ -1554,13 +1554,13 @@ add_builtin(
     },
     value_type=builtins.bool,
     group="Geometry",
-    doc="""Computes the furthest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``min_dist`` is found.
+    doc="""Computes the furthest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point > ``min_dist`` is found.
 
-   This method does not compute the sign of the point (inside/outside) which makes it faster than other point query methods.
+   This method does not compute the sign of the point (inside/outside).
 
    :param id: The mesh identifier
    :param point: The point in space to query
-   :param min_dist: Mesh faces above this distance will not be considered by the query
+   :param min_dist: Mesh faces below this distance will not be considered by the query
    :param face: Returns the index of the furthest face
    :param bary_u: Returns the barycentric u coordinate of the furthest point
    :param bary_v: Returns the barycentric v coordinate of the furthest point""",
