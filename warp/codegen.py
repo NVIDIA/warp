@@ -73,9 +73,21 @@ builtin_operators[ast.Invert] = "invert"
 builtin_operators[ast.LShift] = "lshift"
 builtin_operators[ast.RShift] = "rshift"
 
-base_type_names_with_builtin_adj_funcs = (
-    "bool",
-) + tuple(x.__name__ for x in scalar_types)
+comparison_chain_strings = [
+    builtin_operators[ast.Gt],
+    builtin_operators[ast.Lt],
+    builtin_operators[ast.LtE],
+    builtin_operators[ast.GtE],
+    builtin_operators[ast.Eq],
+    builtin_operators[ast.NotEq],
+]
+
+
+def op_str_is_chainable(op: str) -> builtins.bool:
+    return op in comparison_chain_strings
+
+
+base_type_names_with_builtin_adj_funcs = ("bool",) + tuple(x.__name__ for x in scalar_types)
 
 
 def get_annotations(obj: Any) -> Mapping[str, Any]:
@@ -645,7 +657,7 @@ class Adjoint:
         arg_strs = []
 
         for a in args:
-            if type(a) == warp.context.Function:
+            if isinstance(a, warp.context.Function):
                 # functions don't have a var_ prefix so strip it off here
                 if prefix == "var":
                     arg_strs.append(a.key)
@@ -760,8 +772,25 @@ class Adjoint:
         output = adj.add_var(builtins.bool)
 
         s = output.emit() + " = " + ("(" * len(comps)) + left.emit() + " "
+
+        comp_index = 0
+        prev_comp_chainable = False
+
         for op, comp in zip(op_strings, comps):
-            s += op + " " + comp.emit() + ") "
+            comp_chainable = op_str_is_chainable(op)
+            if comp_chainable and prev_comp_chainable:
+                # We  restrict chaining to operands of the same type
+                if comps[comp_index - 1].type is comp.type:
+                    s += "&& (" + comps[comp_index - 1].emit() + " " + op + " " + comp.emit() + ")) "
+                else:
+                    raise WarpCodegenTypeError(
+                        f"Cannot chain comparisons of unequal types: {comps[comp_index - 1].type} {op} {comp.type}."
+                    )
+            else:
+                s += op + " " + comp.emit() + ") "
+
+            prev_comp_chainable = comp_chainable
+            comp_index += 1
 
         s = s.rstrip() + ";"
 
@@ -1060,7 +1089,7 @@ class Adjoint:
 
     # define a while loop
     def begin_while(adj, cond):
-        # evaulate condition in its own block
+        # evaluate condition in its own block
         # so we can control replay
         cond_block = adj.begin_block()
         adj.loop_blocks.append(cond_block)
@@ -1942,7 +1971,7 @@ class Adjoint:
             vars_dict = {**adj.func.__globals__, **capturedvars}
             func = eval(".".join(path), vars_dict)
             return func
-        except Exception as e:
+        except Exception:
             pass
 
         # I added this so people can eg do this kind of thing

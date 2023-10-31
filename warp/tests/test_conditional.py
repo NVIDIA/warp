@@ -5,17 +5,10 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
-import os
-import sys
-import numpy as np
-import math
-import ctypes
+import unittest
 
 import warp as wp
 from warp.tests.test_base import *
-
-import unittest
 
 wp.init()
 
@@ -138,6 +131,89 @@ def test_bool_param_conditional(foo: bool):
     wp.expect_eq(x, 123)
 
 
+@wp.kernel
+def test_conditional_chain_basic():
+    x = -1
+
+    if 0 < x < 1:
+        success = False
+    else:
+        success = True
+    wp.expect_eq(success, True)
+
+
+@wp.kernel
+def test_conditional_chain_empty_range():
+    x = -1
+    y = 4
+
+    if -2 <= x <= 10 <= y:
+        success = False
+    else:
+        success = True
+    wp.expect_eq(success, True)
+
+
+@wp.kernel
+def test_conditional_chain_faker():
+    x = -1
+
+    # Not actually a chained inequality
+    if (-2 < x) < (1 > 0):
+        success = False
+    else:
+        success = True
+    wp.expect_eq(success, True)
+
+
+@wp.kernel
+def test_conditional_chain_and():
+    x = -1
+
+    if (-2 < x < 0) and (-1 <= x <= -1):
+        success = True
+    else:
+        success = False
+    wp.expect_eq(success, True)
+
+
+@wp.kernel
+def test_conditional_chain_eqs():
+    x = wp.int32(10)
+    y = 10
+    z = -10
+
+    if x == y != z:
+        success = True
+    else:
+        success = False
+    wp.expect_eq(success, True)
+
+
+@wp.kernel
+def test_conditional_chain_mixed():
+    x = 0
+
+    if x < 10 == 1:
+        success = False
+    else:
+        success = True
+    wp.expect_eq(success, True)
+
+
+def test_conditional_unequal_types(test: unittest.TestCase, device):
+    # The bad kernel must be in a separate module, otherwise the current module would fail to load
+    from warp.tests.test_conditional_unequal_types_kernels import unequal_types_kernel
+
+    with test.assertRaises(TypeError):
+        wp.launch(unequal_types_kernel, dim=(1,), inputs=[], device=device)
+
+    # remove all references to the bad module so that subsequent calls to wp.force_load()
+    # won't try to load it unless we explicitly re-import it again
+    del wp.context.user_modules["warp.tests.test_conditional_unequal_types_kernels"]
+    del sys.modules["warp.tests.test_conditional_unequal_types_kernels"]
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -153,6 +229,15 @@ def register(parent):
     add_kernel_test(TestConditional, kernel=test_int_logical_not, dim=1, devices=devices)
     add_kernel_test(TestConditional, kernel=test_int_conditional_assign_overload, dim=1, devices=devices)
     add_kernel_test(TestConditional, kernel=test_bool_param_conditional, dim=1, inputs=[True], devices=devices)
+    add_kernel_test(TestConditional, kernel=test_conditional_chain_basic, dim=1, devices=devices)
+    add_kernel_test(TestConditional, kernel=test_conditional_chain_empty_range, dim=1, devices=devices)
+    add_kernel_test(TestConditional, kernel=test_conditional_chain_faker, dim=1, devices=devices)
+    add_kernel_test(TestConditional, kernel=test_conditional_chain_and, dim=1, devices=devices)
+    add_kernel_test(TestConditional, kernel=test_conditional_chain_eqs, dim=1, devices=devices)
+    add_kernel_test(TestConditional, kernel=test_conditional_chain_mixed, dim=1, devices=devices)
+    add_function_test(
+        TestConditional, "test_conditional_unequal_types", test_conditional_unequal_types, devices=devices
+    )
 
     return TestConditional
 
