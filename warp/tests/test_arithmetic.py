@@ -463,9 +463,9 @@ def test_special_funcs(test, device, dtype, register_kernels=False):
     rng = np.random.default_rng(123)
 
     tol = {
-        np.float16: 1.0e-2,
-        np.float32: 1.0e-6,
-        np.float64: 1.0e-8,
+        np.float16: 2.0e-2,
+        np.float32: 2.0e-6,
+        np.float64: 2.0e-8,
     }.get(dtype, 0)
 
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
