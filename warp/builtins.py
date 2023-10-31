@@ -2640,7 +2640,7 @@ add_builtin(
     skip_replay=True,
 )
 
-for t in scalar_types + vector_types:
+for t in scalar_types + vector_types + [builtins.bool]:
     if "vec" in t.__name__ or "mat" in t.__name__:
         continue
     add_builtin(
