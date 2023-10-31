@@ -118,6 +118,13 @@ add_builtin(
     group="Scalar Math",
 )
 add_builtin(
+    "cbrt",
+    input_types={"x": Float},
+    value_func=sametype_value_func(Float),
+    doc="Return the cbrt of x.",
+    group="Scalar Math",
+)
+add_builtin(
     "tan",
     input_types={"x": Float},
     value_func=sametype_value_func(Float),
