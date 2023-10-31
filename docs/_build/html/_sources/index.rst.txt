@@ -72,7 +72,7 @@ ensure that the ``usd-core`` package is installed using:
 
 ::
 
-   pip install usd-core
+    pip install usd-core
 
 USD files can be viewed or rendered inside NVIDIA
 `Omniverse <https://developer.nvidia.com/omniverse>`__,
@@ -83,18 +83,17 @@ Built-in unit tests can be run from the command-line as follows:
 
 ::
 
-   python -m warp.tests
+    python -m warp.tests
 
 Omniverse
 ---------
 
 A Warp Omniverse extension is available in the extension registry inside
-Omniverse Kit or Create:
+Omniverse Kit or USD Composer.
 
 Enabling the extension will automatically install and initialize the
 Warp Python module inside the Kit Python environment. Please see the
-`Omniverse Warp
-Documentation <http://docs.omniverse.nvidia.com/extensions/warp.html>`__
+`Omniverse Warp Documentation <https://docs.omniverse.nvidia.com/extensions/latest/ext_warp.html>`__
 for more details on how to use Warp in Omniverse.
 
 
@@ -133,14 +132,14 @@ If you use Warp in your research please use the following citation:
 
 .. code:: bibtex
 
-   @misc{warp2022,
-      title= {Warp: A High-performance Python Framework for GPU Simulation and Graphics},
-      author = {Miles Macklin},
-      month = {March},
-      year = {2022},
-      note= {NVIDIA GPU Technology Conference (GTC)},
-      howpublished = {\url{https://github.com/nvidia/warp}}
-   }
+    @misc{warp2022,
+        title= {Warp: A High-performance Python Framework for GPU Simulation and Graphics},
+        author = {Miles Macklin},
+        month = {March},
+        year = {2022},
+        note= {NVIDIA GPU Technology Conference (GTC)},
+        howpublished = {\url{https://github.com/nvidia/warp}}
+    }
 
 License
 -------
@@ -151,47 +150,43 @@ Warp is provided under the NVIDIA Source Code License (NVSCL), please see
 Please contact `omniverse-license-questions@nvidia.com <mailto:omniverse-license-questions@nvidia.com>`_ for
 commercial licensing inquires.
 
-User's Guide
-------------
+Full Table of Contents
+----------------------
 
 .. toctree::
-   :maxdepth: 2
-   :caption: User's Guide
+    :maxdepth: 2
+    :caption: User's Guide
 
-   installation
-   basics
-   modules/devices
-   modules/profiling
-   modules/interoperability
-   debugging
-   faq
-
-API Reference
--------------
+    installation
+    basics
+    modules/devices
+    modules/interoperability
+    configuration
+    debugging
+    limitations
+    faq
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Core Reference
+    :maxdepth: 2
+    :caption: Core Reference
    
-   modules/runtime
-   modules/functions
+    modules/runtime
+    modules/functions
    
-Simulation Reference
---------------------
+.. toctree::
+    :maxdepth: 2
+    :caption: Simulation Reference
+   
+    modules/sim
+    modules/sparse
+    modules/fem
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Simulation Reference
-   
-   modules/sim
-   modules/sparse
-   modules/fem
+    :hidden:
+    :caption: Project Links
 
-.. toctree::
-   :hidden:
-   :caption: Project Links
+    GitHub <https://github.com/NVIDIA/warp>
+    PyPI <https://pypi.org/project/warp-lang>
+    Discord <https://discord.com/channels/827959428476174346/953756751977648148>
 
-   GitHub <https://github.com/NVIDIA/warp>
-   PyPI <https://pypi.org/project/warp-lang>
-   Discord <https://discord.com/channels/827959428476174346/953756751977648148>
-   
+:ref:`Full Index <genindex>`
