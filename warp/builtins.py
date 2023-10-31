@@ -3106,6 +3106,23 @@ def mul_matvec_value_func(arg_types, kwds, _):
     return vector(length=arg_types[0]._shape_[0], dtype=arg_types[0]._wp_scalar_type_)
 
 
+def mul_vecmat_value_func(arg_types, kwds, _):
+    if arg_types is None:
+        return vector(length=Any, dtype=Scalar)
+
+    if arg_types[1]._wp_scalar_type_ != arg_types[0]._wp_scalar_type_:
+        raise RuntimeError(
+            f"Can't multiply vector and matrix with different types {arg_types[1]._wp_scalar_type_}, {arg_types[0]._wp_scalar_type_}"
+        )
+
+    if arg_types[1]._shape_[0] != arg_types[0]._length_:
+        raise RuntimeError(
+            f"Can't multiply vector with length {arg_types[0]._length_} and matrix of shape {arg_types[1]._shape_}"
+        )
+
+    return vector(length=arg_types[1]._shape_[1], dtype=arg_types[1]._wp_scalar_type_)
+
+
 def mul_matmat_value_func(arg_types, kwds, _):
     if arg_types is None:
         return matrix(length=Any, dtype=Scalar)
@@ -3177,6 +3194,13 @@ add_builtin(
     "mul",
     input_types={"x": matrix(shape=(Any, Any), dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
     value_func=mul_matvec_value_func,
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "mul",
+    input_types={"x": vector(length=Any, dtype=Scalar), "y": matrix(shape=(Any, Any), dtype=Scalar)},
+    value_func=mul_vecmat_value_func,
     doc="",
     group="Operators",
 )
