@@ -58,7 +58,28 @@ def parse_usd(
         export_usda (bool): If True and the filename is a URL, export the downloaded USD file to a USDA file.
 
     Returns:
-        dict: Dictionary with the following entries: "fps": USD stage frames per second. "duration": Difference between end time code and start time code of the USD stage. "up_axis": Upper-case string of the stage up axis.
+        dict: Dictionary with the following entries:
+
+        .. list-table::
+            :widths: 25 75
+
+            * - "fps"
+              - USD stage frames per second
+            * - "duration"
+              - Difference between end time code and start time code of the USD stage
+            * - "up_axis"
+              - Upper-case string of the stage's up axis ("X", "Y", or "Z")
+            * - "path_shape_map"
+              - Mapping from prim path (str) of the UsdGeom to the respective shape index in :class:`ModelBuilder`
+            * - "path_body_map"
+              - Mapping from prim path (str) of a rigid body prim (e.g. that implements the PhysicsRigidBodyAPI) to the respective body index in :class:`ModelBuilder`
+            * - "path_shape_scale"
+              - Mapping from prim path (str) of the UsdGeom to its respective 3D world scale
+            * - "mass_unit"
+              - The stage's Kilograms Per Unit (KGPU) definition (1.0 by default)
+            * - "linear_unit"
+              - The stage's Meters Per Unit (MPU) definition (1.0 by default)
+
 
     Note:
         This importer is experimental and only supports a subset of the USD Physics schema. Please report any issues you encounter.
@@ -432,11 +453,7 @@ def parse_usd(
                 return
 
         type_name = str(prim.GetTypeName())
-        if (
-            type_name.endswith("Joint")
-            or type_name.endswith("Light")
-            or type_name.endswith("Material")
-        ):
+        if type_name.endswith("Joint") or type_name.endswith("Light") or type_name.endswith("Material"):
             return
         if verbose:
             print(f"parse_prim {prim.GetPath()} ({type_name})")
