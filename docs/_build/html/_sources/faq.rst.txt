@@ -52,30 +52,30 @@ conversion to NumPy will automatically synchronize:
 
 .. code:: python
 
-   # run some kernels
-   wp.launch(kernel_1, dim, [array_x, array_y], device="cuda")
-   wp.launch(kernel_2, dim, [array_y, array_z], device="cuda")
+    # run some kernels
+    wp.launch(kernel_1, dim, [array_x, array_y], device="cuda")
+    wp.launch(kernel_2, dim, [array_y, array_z], device="cuda")
 
-   # bring data back to host (and implicitly synchronize)
-   x = array_z.numpy()
+    # bring data back to host (and implicitly synchronize)
+    x = array_z.numpy()
 
 The *only* case where manual synchronization is needed is when copies
 are being performed back to CPU asynchronously, e.g.:
 
 .. code:: python
 
-   # copy data back to cpu from gpu, all copies will happen asynchronously to Python
-   wp.copy(cpu_array_1, gpu_array_1)
-   wp.copy(cpu_array_2, gpu_array_2)
-   wp.copy(cpu_array_3, gpu_array_3)
+    # copy data back to cpu from gpu, all copies will happen asynchronously to Python
+    wp.copy(cpu_array_1, gpu_array_1)
+    wp.copy(cpu_array_2, gpu_array_2)
+    wp.copy(cpu_array_3, gpu_array_3)
 
-   # ensure that the copies have finished
-   wp.synchronize()
+    # ensure that the copies have finished
+    wp.synchronize()
 
-   # return a numpy wrapper around the cpu arrays, note there is no implicit synchronization here
-   a1 = cpu_array_1.numpy()
-   a2 = cpu_array_2.numpy()
-   a3 = cpu_array_3.numpy()
+    # return a numpy wrapper around the cpu arrays, note there is no implicit synchronization here
+    a1 = cpu_array_1.numpy()
+    a2 = cpu_array_2.numpy()
+    a3 = cpu_array_3.numpy()
 
 What happens when you differentiate a function like ``wp.abs(x)``?
 ------------------------------------------------------------------

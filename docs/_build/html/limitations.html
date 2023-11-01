@@ -3,10 +3,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Basics" href="basics.html" /><link rel="prev" title="NVIDIA Warp Documentation" href="index.html" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="FAQ" href="faq.html" /><link rel="prev" title="Debugging" href="debugging.html" />
 
     <!-- Generated with Sphinx 7.2.6 and Furo 2023.08.19 -->
-        <title>Installation - Warp 1.0.0-beta.4</title>
+        <title>Limitations - Warp 1.0.0-beta.4</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
@@ -174,13 +174,13 @@
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">User's Guide</span></p>
 <ul class="current">
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/devices.html">Devices</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a></li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Runtime Settings</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
-<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
@@ -232,63 +232,63 @@
           </label>
         </div>
         <article role="main">
-          <section id="installation">
-<h1>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h1>
-<p>The easiest way is to install Warp is from <a class="reference external" href="https://pypi.org/project/warp-lang">PyPi</a>:</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>warp-lang
-</pre></div>
-</div>
-<p>Pre-built binary packages for Windows, Linux and macOS are also available on the <a class="reference external" href="https://github.com/NVIDIA/warp/releases">Releases</a> page. To install in your local Python environment extract the archive and run the following command from the root directory:</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>.
-</pre></div>
-</div>
-<section id="dependencies">
-<h2>Dependencies<a class="headerlink" href="#dependencies" title="Link to this heading">#</a></h2>
-<p>Warp supports Python versions 3.7 or later and requires <a class="reference external" href="https://numpy.org">NumPy</a> to be installed.</p>
-<p>The following optional dependencies are required to support certain features:</p>
+          <section id="limitations">
+<h1>Limitations<a class="headerlink" href="#limitations" title="Link to this heading">#</a></h1>
+<p>This section summarizes various limitations and currently unsupported features in Warp.
+Requests for new features can be made at <a class="reference external" href="https://github.com/NVIDIA/warp/discussions">GitHub Discussions</a>,
+and issues can be opened at <a class="reference external" href="https://github.com/NVIDIA/warp/issues">GitHub Issues</a>.</p>
+<section id="unsupported-features">
+<h2>Unsupported Features<a class="headerlink" href="#unsupported-features" title="Link to this heading">#</a></h2>
+<p>To achieve good performance on GPUs some dynamic language features are not supported:</p>
 <ul class="simple">
-<li><p><a class="reference external" href="https://pypi.org/project/usd-core">usd-core</a>: Required for some Warp examples, <code class="docutils literal notranslate"><span class="pre">warp.sim.parse_usd()</span></code>, and <code class="docutils literal notranslate"><span class="pre">warp.render.UsdRenderer</span></code>.</p></li>
-<li><p><a class="reference external" href="https://jax.readthedocs.io/en/latest/installation.html">JAX</a>: Required for JAX interoperability (see <a class="reference internal" href="modules/interoperability.html#jax-interop"><span class="std std-ref">JAX</span></a>).</p></li>
-<li><p><a class="reference external" href="https://pytorch.org/get-started/locally/">PyTorch</a>: Required for PyTorch interoperability (see <a class="reference internal" href="modules/interoperability.html#pytorch-interop"><span class="std std-ref">PyTorch</span></a>).</p></li>
-<li><p><a class="reference external" href="https://github.com/NVIDIA/NVTX#python">NVTX for Python</a>: Required to use <a class="reference internal" href="modules/runtime.html#warp.ScopedTimer" title="warp.ScopedTimer"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedTimer(use_nvtx=True)</span></code></a>.</p></li>
-</ul>
-<p>Building the Warp documentation requires:</p>
-<ul class="simple">
-<li><p><a class="reference external" href="https://www.sphinx-doc.org">Sphinx</a></p></li>
-<li><p><a class="reference external" href="https://github.com/pradyunsg/furo">Furo</a></p></li>
-<li><p><a class="reference external" href="https://sphinx-copybutton.readthedocs.io/en/latest/index.html">Sphinx-copybutton</a></p></li>
+<li><p>Lambda functions</p></li>
+<li><p>List comprehensions</p></li>
+<li><p>Exceptions</p></li>
+<li><p>Recursion</p></li>
+<li><p>Runtime evaluation of expressions, e.g.: eval()</p></li>
+<li><p>Dynamic structures such as lists, sets, dictionaries, etc.</p></li>
 </ul>
 </section>
-<section id="building-from-source">
-<h2>Building from source<a class="headerlink" href="#building-from-source" title="Link to this heading">#</a></h2>
-<p>For developers who want to build the library themselves the following tools are required:</p>
+<section id="kernels">
+<h2>Kernels<a class="headerlink" href="#kernels" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p>Microsoft Visual Studio (Windows), minimum version 2019</p></li>
-<li><p>GCC (Linux), minimum version 7.2</p></li>
-<li><p><a class="reference external" href="https://developer.nvidia.com/cuda-toolkit">CUDA Toolkit</a>, minimum version 11.5</p></li>
-<li><p><a class="reference external" href="https://git-lfs.com">Git Large File Storage</a></p></li>
+<li><p>Strings cannot be passed into kernels.</p></li>
+<li><p>Short-circuit evaluation is not supported.</p></li>
+<li><p><a class="reference internal" href="modules/functions.html#warp.atomic_add" title="warp.atomic_add"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.atomic_add()</span></code></a> does not support <code class="docutils literal notranslate"><span class="pre">wp.int64</span></code>.</p></li>
+<li><p><a class="reference internal" href="modules/functions.html#warp.tid" title="warp.tid"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tid()</span></code></a> cannot be called from user functions.</p></li>
+<li><p>CUDA thread blocks use a fixed size 256 threads per block.</p></li>
 </ul>
-<p>If you are cloning from Windows, please first ensure that you have
-enabled “Developer Mode” in Windows settings and symlinks in Git:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>core.symlinks<span class="w"> </span><span class="nb">true</span>
-</pre></div>
-</div>
-<p>This will ensure symlinks inside <code class="docutils literal notranslate"><span class="pre">exts/omni.warp.core</span></code> work upon cloning.</p>
-<p>After cloning the repository, users should run:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>python<span class="w"> </span>build_lib.py
-</pre></div>
-</div>
-<p>This will generate the <code class="docutils literal notranslate"><span class="pre">warp.dll</span></code> / <code class="docutils literal notranslate"><span class="pre">warp.so</span></code> core library
-respectively. When building manually, users should ensure that their
-<code class="docutils literal notranslate"><span class="pre">CUDA_PATH</span></code> environment variable is set, otherwise Warp will be built
-without CUDA support. Alternatively, the path to the CUDA Toolkit can be
-passed to the build command as <code class="docutils literal notranslate"><span class="pre">--cuda_path=&quot;...&quot;</span></code>. After building, the
-Warp package should be installed using:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
-</pre></div>
-</div>
-<p>Which ensures that subsequent modifications to the library will be
-reflected in the Python package.</p>
+</section>
+<section id="arrays">
+<h2>Arrays<a class="headerlink" href="#arrays" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>Arrays can have a maximum of four dimensions.</p></li>
+<li><p>Each dimension of a Warp array cannot be greater than the maximum value representable by a 32-bit signed integer,
+<span class="math notranslate nohighlight">\(2^{31}-1\)</span>.</p></li>
+<li><p>There are currently no data types that support complex numbers.</p></li>
+</ul>
+</section>
+<section id="structs">
+<h2>Structs<a class="headerlink" href="#structs" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>Structs cannot have generic members, i.e. of type <code class="docutils literal notranslate"><span class="pre">typing.Any</span></code>.</p></li>
+</ul>
+</section>
+<section id="volumes">
+<h2>Volumes<a class="headerlink" href="#volumes" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>The sparse-volume <em>topology</em> cannot be changed after the tiles for the <a class="reference internal" href="modules/runtime.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> have been allocated.</p></li>
+</ul>
+</section>
+<section id="multiple-processes">
+<h2>Multiple Processes<a class="headerlink" href="#multiple-processes" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>A CUDA context created in the parent process cannot be used in a <em>forked</em> child process.
+Use the spawn start method instead, or avoid creating CUDA contexts in the parent process.</p></li>
+<li><p>There can be issues with using same user kernel cache directory when running with multiple processes.
+A workaround is to use a separate cache directory for every process.
+See <a class="reference internal" href="basics.html#example-cache-management"><span class="std std-ref">Example: Changing the kernel cache directory</span></a> for how the cache directory may be changed.</p></li>
+</ul>
 </section>
 </section>
 
@@ -297,23 +297,23 @@ reflected in the Python package.</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="basics.html">
+          <a class="next-page" href="faq.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Basics</div>
+                <div class="title">FAQ</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="index.html">
+          <a class="prev-page" href="debugging.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Home</div>
+                <div class="title">Debugging</div>
                 
               </div>
             </a>
@@ -353,9 +353,13 @@ reflected in the Python package.</p>
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">Installation</a><ul>
-<li><a class="reference internal" href="#dependencies">Dependencies</a></li>
-<li><a class="reference internal" href="#building-from-source">Building from source</a></li>
+<li><a class="reference internal" href="#">Limitations</a><ul>
+<li><a class="reference internal" href="#unsupported-features">Unsupported Features</a></li>
+<li><a class="reference internal" href="#kernels">Kernels</a></li>
+<li><a class="reference internal" href="#arrays">Arrays</a></li>
+<li><a class="reference internal" href="#structs">Structs</a></li>
+<li><a class="reference internal" href="#volumes">Volumes</a></li>
+<li><a class="reference internal" href="#multiple-processes">Multiple Processes</a></li>
 </ul>
 </li>
 </ul>
@@ -373,5 +377,6 @@ reflected in the Python package.</p>
     <script src="_static/scripts/furo.js?v=32e29ea5"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="_static/copybutton.js?v=fd10adb8"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     </body>
 </html>

@@ -238,6 +238,9 @@ WP_API void builtin_asin_float64(float64 x, float64* ret) { *ret = wp::asin(x); 
 WP_API void builtin_sqrt_float16(float16 x, float16* ret) { *ret = wp::sqrt(x); }
 WP_API void builtin_sqrt_float32(float32 x, float32* ret) { *ret = wp::sqrt(x); }
 WP_API void builtin_sqrt_float64(float64 x, float64* ret) { *ret = wp::sqrt(x); }
+WP_API void builtin_cbrt_float16(float16 x, float16* ret) { *ret = wp::cbrt(x); }
+WP_API void builtin_cbrt_float32(float32 x, float32* ret) { *ret = wp::cbrt(x); }
+WP_API void builtin_cbrt_float64(float64 x, float64* ret) { *ret = wp::cbrt(x); }
 WP_API void builtin_tan_float16(float16 x, float16* ret) { *ret = wp::tan(x); }
 WP_API void builtin_tan_float32(float32 x, float32* ret) { *ret = wp::tan(x); }
 WP_API void builtin_tan_float64(float64 x, float64* ret) { *ret = wp::tan(x); }
@@ -742,6 +745,7 @@ WP_API void builtin_bvh_query_ray_uint64_vec3f_vec3f(uint64 id, vec3f start, vec
 WP_API void builtin_bvh_query_next_bvh_query_t_int32(bvh_query_t query, int32 index, bool* ret) { *ret = wp::bvh_query_next(query, index); }
 WP_API void builtin_mesh_query_point_uint64_vec3f_float32_float32_int32_float32_float32(uint64 id, vec3f point, float32 max_dist, float32 inside, int32 face, float32 bary_u, float32 bary_v, bool* ret) { *ret = wp::mesh_query_point(id, point, max_dist, inside, face, bary_u, bary_v); }
 WP_API void builtin_mesh_query_point_no_sign_uint64_vec3f_float32_int32_float32_float32(uint64 id, vec3f point, float32 max_dist, int32 face, float32 bary_u, float32 bary_v, bool* ret) { *ret = wp::mesh_query_point_no_sign(id, point, max_dist, face, bary_u, bary_v); }
+WP_API void builtin_mesh_query_furthest_point_no_sign_uint64_vec3f_float32_int32_float32_float32(uint64 id, vec3f point, float32 min_dist, int32 face, float32 bary_u, float32 bary_v, bool* ret) { *ret = wp::mesh_query_furthest_point_no_sign(id, point, min_dist, face, bary_u, bary_v); }
 WP_API void builtin_mesh_query_point_sign_normal_uint64_vec3f_float32_float32_int32_float32_float32_float32(uint64 id, vec3f point, float32 max_dist, float32 inside, int32 face, float32 bary_u, float32 bary_v, float32 epsilon, bool* ret) { *ret = wp::mesh_query_point_sign_normal(id, point, max_dist, inside, face, bary_u, bary_v, epsilon); }
 WP_API void builtin_mesh_query_point_sign_winding_number_uint64_vec3f_float32_float32_int32_float32_float32_float32_float32(uint64 id, vec3f point, float32 max_dist, float32 inside, int32 face, float32 bary_u, float32 bary_v, float32 accuracy, float32 threshold, bool* ret) { *ret = wp::mesh_query_point_sign_winding_number(id, point, max_dist, inside, face, bary_u, bary_v, accuracy, threshold); }
 WP_API void builtin_mesh_query_ray_uint64_vec3f_vec3f_float32_float32_float32_float32_float32_vec3f_int32(uint64 id, vec3f start, vec3f dir, float32 max_t, float32 t, float32 bary_u, float32 bary_v, float32 sign, vec3f normal, int32 face, bool* ret) { *ret = wp::mesh_query_ray(id, start, dir, max_t, t, bary_u, bary_v, sign, normal, face); }

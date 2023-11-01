@@ -259,6 +259,8 @@ float expf(float);
 double exp(double);
 float sqrtf(float);
 double sqrt(double);
+float cbrtf(float);
+double cbrt(double);
 float powf(float, float);
 double pow(double, double);
 float floorf(float);

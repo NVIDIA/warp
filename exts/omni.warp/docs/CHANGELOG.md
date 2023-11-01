@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [1.0.0-beta.4] - 2023-11-01
+
+- Add `wp.cbrt()` for cube root calculation
+- Add `wp.mesh_furthest_point_no_sign()` to compute furthest point on a surface from a query point
+- Add support for GPU BVH builds, 10-100x faster than CPU builds for large meshes
+- Add support for chained comparisons, i.e.: `0 < x < 2`
+- Add support for running `warp.fem` examples headless
+- Fix for unit test determinism
+- Fix for possible GC collection of array during graph capture
+- Fix for `wp.utils.array_sum()` output initialization when used with vector types
+- Coverage and documentation updates
+  
 ## [1.0.0-beta.3] - 2023-10-19
 
 - Add support for code coverage scans (test_coverage.py), coverage at 85% in omni.warp.core

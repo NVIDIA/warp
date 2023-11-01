@@ -5,12 +5,13 @@
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Installation" href="installation.html" />
 
-    <!-- Generated with Sphinx 7.2.2 and Furo 2023.08.19 -->
-        <title>Warp 1.0.0-beta.2</title>
+    <!-- Generated with Sphinx 7.2.6 and Furo 2023.08.19 -->
+        <title>Warp 1.0.0-beta.4</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=112ea5a1" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=44d7c754" />
     
     
 
@@ -136,7 +137,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="#"><div class="brand">Warp 1.0.0-beta.2</div></a>
+      <a href="#"><div class="brand">Warp 1.0.0-beta.4</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -163,7 +164,7 @@
     <img class="sidebar-logo only-dark" src="_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 1.0.0-beta.2</span>
+  <span class="sidebar-brand-text">Warp 1.0.0-beta.4</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -176,9 +177,10 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/devices.html">Devices</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modules/profiling.html">Profiling</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Runtime Settings</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
@@ -307,11 +309,10 @@ recommended as it has limited support for time-sampled animations.</p>
 <section id="omniverse">
 <h2>Omniverse<a class="headerlink" href="#omniverse" title="Link to this heading">#</a></h2>
 <p>A Warp Omniverse extension is available in the extension registry inside
-Omniverse Kit or Create:</p>
+Omniverse Kit or USD Composer.</p>
 <p>Enabling the extension will automatically install and initialize the
 Warp Python module inside the Kit Python environment. Please see the
-<a class="reference external" href="http://docs.omniverse.nvidia.com/extensions/warp.html">Omniverse Warp
-Documentation</a>
+<a class="reference external" href="https://docs.omniverse.nvidia.com/extensions/latest/ext_warp.html">Omniverse Warp Documentation</a>
 for more details on how to use Warp in Omniverse.</p>
 </section>
 <section id="learn-more">
@@ -346,12 +347,12 @@ al. <a class="reference external" href="https://gradsim.github.io">(2021)</a></
 <h2>Citing<a class="headerlink" href="#citing" title="Link to this heading">#</a></h2>
 <p>If you use Warp in your research please use the following citation:</p>
 <div class="highlight-bibtex notranslate"><div class="highlight"><pre><span></span><span class="nc">@misc</span><span class="p">{</span><span class="nl">warp2022</span><span class="p">,</span>
-<span class="w">   </span><span class="na">title</span><span class="p">=</span><span class="w"> </span><span class="s">{Warp: A High-performance Python Framework for GPU Simulation and Graphics}</span><span class="p">,</span>
-<span class="w">   </span><span class="na">author</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{Miles Macklin}</span><span class="p">,</span>
-<span class="w">   </span><span class="na">month</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{March}</span><span class="p">,</span>
-<span class="w">   </span><span class="na">year</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{2022}</span><span class="p">,</span>
-<span class="w">   </span><span class="na">note</span><span class="p">=</span><span class="w"> </span><span class="s">{NVIDIA GPU Technology Conference (GTC)}</span><span class="p">,</span>
-<span class="w">   </span><span class="na">howpublished</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{\url{https://github.com/nvidia/warp}}</span>
+<span class="w">    </span><span class="na">title</span><span class="p">=</span><span class="w"> </span><span class="s">{Warp: A High-performance Python Framework for GPU Simulation and Graphics}</span><span class="p">,</span>
+<span class="w">    </span><span class="na">author</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{Miles Macklin}</span><span class="p">,</span>
+<span class="w">    </span><span class="na">month</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{March}</span><span class="p">,</span>
+<span class="w">    </span><span class="na">year</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{2022}</span><span class="p">,</span>
+<span class="w">    </span><span class="na">note</span><span class="p">=</span><span class="w"> </span><span class="s">{NVIDIA GPU Technology Conference (GTC)}</span><span class="p">,</span>
+<span class="w">    </span><span class="na">howpublished</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{\url{https://github.com/nvidia/warp}}</span>
 <span class="p">}</span>
 </pre></div>
 </div>
@@ -363,8 +364,8 @@ al. <a class="reference external" href="https://gradsim.github.io">(2021)</a></
 <p>Please contact <a class="reference external" href="mailto:omniverse-license-questions&#37;&#52;&#48;nvidia&#46;com">omniverse-license-questions<span>&#64;</span>nvidia<span>&#46;</span>com</a> for
 commercial licensing inquires.</p>
 </section>
-<section id="user-s-guide">
-<h2>User’s Guide<a class="headerlink" href="#user-s-guide" title="Link to this heading">#</a></h2>
+<section id="full-table-of-contents">
+<h2>Full Table of Contents<a class="headerlink" href="#full-table-of-contents" title="Link to this heading">#</a></h2>
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">User's Guide</span></p>
 <ul>
@@ -390,16 +391,18 @@ commercial licensing inquires.</p>
 <li class="toctree-l2"><a class="reference internal" href="modules/devices.html#custom-cuda-contexts">Custom CUDA Contexts</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="modules/profiling.html">Profiling</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="modules/profiling.html#warp.ScopedTimer"><code class="docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a></li>
-</ul>
-</li>
 <li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#numpy">NumPy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#pytorch">PyTorch</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#cupy-numba">CuPy/Numba</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#jax">JAX</a></li>
-<li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#dlpack">DLPack</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#module-warp.dlpack">DLPack</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Runtime Settings</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#global-settings">Global Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#module-settings">Module Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#kernel-settings">Kernel Settings</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a><ul>
@@ -409,6 +412,15 @@ commercial licensing inquires.</p>
 <li class="toctree-l2"><a class="reference internal" href="debugging.html#generated-code">Generated Code</a></li>
 <li class="toctree-l2"><a class="reference internal" href="debugging.html#bounds-checking">Bounds Checking</a></li>
 <li class="toctree-l2"><a class="reference internal" href="debugging.html#cuda-verification">CUDA Verification</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="limitations.html#unsupported-features">Unsupported Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="limitations.html#kernels">Kernels</a></li>
+<li class="toctree-l2"><a class="reference internal" href="limitations.html#arrays">Arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="limitations.html#structs">Structs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="limitations.html#volumes">Volumes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="limitations.html#multiple-processes">Multiple Processes</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a><ul>
@@ -422,9 +434,6 @@ commercial licensing inquires.</p>
 </li>
 </ul>
 </div>
-</section>
-<section id="api-reference">
-<h2>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading">#</a></h2>
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
 <ul>
@@ -434,11 +443,13 @@ commercial licensing inquires.</p>
 <li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#data-types">Data Types</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#constants">Constants</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#operators">Operators</a></li>
-<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#meshes">Meshes</a></li>
-<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#volumes">Volumes</a></li>
-<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#hash-grids">Hash Grids</a></li>
-<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#differentiability">Differentiability</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#graphs">Graphs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#bounding-value-hierarchies-bvh">Bounding Value Hierarchies (BVH)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#meshes">Meshes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#hash-grids">Hash Grids</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#volumes">Volumes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#differentiability">Differentiability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#profiling">Profiling</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="modules/functions.html">Kernel Reference</a><ul>
@@ -460,15 +471,13 @@ commercial licensing inquires.</p>
 </li>
 </ul>
 </div>
-</section>
-<section id="simulation-reference">
-<h2>Simulation Reference<a class="headerlink" href="#simulation-reference" title="Link to this heading">#</a></h2>
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">Simulation Reference</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="modules/sim.html">warp.sim</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="modules/sim.html#model">Model</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/sim.html#state">State</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/sim.html#forward-inverse-kinematics">Forward / Inverse Kinematics</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/sim.html#integrators">Integrators</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/sim.html#importers">Importers</a></li>
 </ul>
@@ -487,12 +496,16 @@ commercial licensing inquires.</p>
 <li class="toctree-l2"><a class="reference internal" href="modules/fem.html#geometry">Geometry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/fem.html#function-spaces">Function Spaces</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/fem.html#fields">Fields</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/fem.html#boundary-conditions">Boundary Conditions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/fem.html#id2">Memory management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/fem.html#interfaces">Interfaces</a></li>
 </ul>
 </li>
 </ul>
 </div>
 <div class="toctree-wrapper compound">
 </div>
+<p><a class="reference internal" href="genindex.html"><span class="std std-ref">Full Index</span></a></p>
 </section>
 </section>
 
@@ -541,9 +554,11 @@ commercial licensing inquires.</p>
       
     </aside>
   </div>
-</div><script src="_static/documentation_options.js?v=5929fcd5"></script>
+</div><script src="_static/documentation_options.js?v=54a451be"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=32e29ea5"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=fd10adb8"></script>
     </body>
 </html>

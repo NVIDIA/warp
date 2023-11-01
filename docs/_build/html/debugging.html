@@ -3,14 +3,15 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="FAQ" href="faq.html" /><link rel="prev" title="Interoperability" href="modules/interoperability.html" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Limitations" href="limitations.html" /><link rel="prev" title="Runtime Settings" href="configuration.html" />
 
-    <!-- Generated with Sphinx 7.2.2 and Furo 2023.08.19 -->
-        <title>Debugging - Warp 1.0.0-beta.2</title>
+    <!-- Generated with Sphinx 7.2.6 and Furo 2023.08.19 -->
+        <title>Debugging - Warp 1.0.0-beta.4</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=112ea5a1" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=44d7c754" />
     
     
 
@@ -136,7 +137,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Warp 1.0.0-beta.2</div></a>
+      <a href="index.html"><div class="brand">Warp 1.0.0-beta.4</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -163,7 +164,7 @@
     <img class="sidebar-logo only-dark" src="_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 1.0.0-beta.2</span>
+  <span class="sidebar-brand-text">Warp 1.0.0-beta.4</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -176,9 +177,10 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/devices.html">Devices</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modules/profiling.html">Profiling</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Runtime Settings</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
@@ -264,27 +266,33 @@ these issues Warp supports a simple option to print out all launches and argumen
 <section id="step-through-debugging">
 <h2>Step-Through Debugging<a class="headerlink" href="#step-through-debugging" title="Link to this heading">#</a></h2>
 <p>It is possible to attach IDE debuggers such as Visual Studio to Warp processes to step through generated kernel code.
-Users should first compile the kernels in debug mode by setting <code class="docutils literal notranslate"><span class="pre">wp.config.mode</span> <span class="pre">=</span> <span class="pre">&quot;debug&quot;</span></code>.</p>
+Users should first compile the kernels in debug mode by setting:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;debug&quot;</span>
+</pre></div>
+</div>
 <p>This setting ensures that line numbers, and debug symbols are generated correctly. After launching the Python process,
 the debugger should be attached, and a breakpoint inserted into the generated code.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Generated kernel code is not a 1:1 correspondence with the original Python code, but individual operations can still be replayed and variables inspected.</p>
 </div>
+<p>Also see <a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/tests/test_debug.py">warp/tests/test_debug.py</a> for an example of how to debug Warp kernel code running on the CPU.</p>
 </section>
 <section id="generated-code">
 <h2>Generated Code<a class="headerlink" href="#generated-code" title="Link to this heading">#</a></h2>
-<p>The generated code for kernels is stored in a central cache location in the user’s home directory, the cache location is printed at startup when <code class="docutils literal notranslate"><span class="pre">wp.init()</span></code> is called, for example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Warp</span> <span class="mf">0.8.1</span> <span class="n">initialized</span><span class="p">:</span>
-   <span class="n">CUDA</span> <span class="n">Toolkit</span><span class="p">:</span> <span class="mf">11.8</span><span class="p">,</span> <span class="n">Driver</span><span class="p">:</span> <span class="mf">11.8</span>
-   <span class="n">Devices</span><span class="p">:</span>
-   <span class="s2">&quot;cpu&quot;</span>    <span class="o">|</span> <span class="n">AMD64</span> <span class="n">Family</span> <span class="mi">25</span> <span class="n">Model</span> <span class="mi">33</span> <span class="n">Stepping</span> <span class="mi">0</span><span class="p">,</span> <span class="n">AuthenticAMD</span>
-   <span class="s2">&quot;cuda:0&quot;</span> <span class="o">|</span> <span class="n">NVIDIA</span> <span class="n">GeForce</span> <span class="n">RTX</span> <span class="mi">3090</span> <span class="p">(</span><span class="n">sm_86</span><span class="p">)</span>
-   <span class="s2">&quot;cuda:1&quot;</span> <span class="o">|</span> <span class="n">NVIDIA</span> <span class="n">GeForce</span> <span class="n">RTX</span> <span class="mi">2080</span> <span class="n">Ti</span> <span class="p">(</span><span class="n">sm_75</span><span class="p">)</span>
-   <span class="n">Kernel</span> <span class="n">cache</span><span class="p">:</span> <span class="n">C</span><span class="p">:</span>\<span class="n">Users</span>\<span class="n">LukasW</span>\<span class="n">AppData</span>\<span class="n">Local</span>\<span class="n">NVIDIA</span> <span class="n">Corporation</span>\<span class="n">warp</span>\<span class="n">Cache</span>\<span class="mf">0.8.1</span>
+<p>The generated code for kernels is stored in a central cache location in the user’s home directory, the cache location
+is printed at startup when <code class="docutils literal notranslate"><span class="pre">wp.init()</span></code> is called, for example:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">Warp 0.8.1 initialized:</span>
+<span class="go">    CUDA Toolkit: 11.8, Driver: 11.8</span>
+<span class="go">    Devices:</span>
+<span class="go">    &quot;cpu&quot;    | AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD</span>
+<span class="go">    &quot;cuda:0&quot; | NVIDIA GeForce RTX 3090 (sm_86)</span>
+<span class="go">    &quot;cuda:1&quot; | NVIDIA GeForce RTX 2080 Ti (sm_75)</span>
+<span class="go">    Kernel cache: C:\Users\LukasW\AppData\Local\NVIDIA Corporation\warp\Cache\0.8.1</span>
 </pre></div>
 </div>
-<p>The kernel cache has <code class="docutils literal notranslate"><span class="pre">gen</span></code> and <code class="docutils literal notranslate"><span class="pre">bin</span></code> folders that contain the generated C++/CUDA code and the compiled binaries respectively. Occasionally it can be useful to inspect the generated code for debugging / profiling.</p>
+<p>The kernel cache has <code class="docutils literal notranslate"><span class="pre">gen</span></code> and <code class="docutils literal notranslate"><span class="pre">bin</span></code> folders that contain the generated C++/CUDA code and the compiled binaries
+respectively. Occasionally it can be useful to inspect the generated code for debugging / profiling.</p>
 </section>
 <section id="bounds-checking">
 <h2>Bounds Checking<a class="headerlink" href="#bounds-checking" title="Link to this heading">#</a></h2>
@@ -296,7 +304,10 @@ shape.</p>
 <p>It is possible to generate out-of-bounds memory access violations through poorly formed kernel code or inputs. In this
 case the CUDA runtime will detect the violation and put the CUDA context into an error state. Subsequent kernel launches
 may silently fail which can lead to hard to diagnose issues.</p>
-<p>If a CUDA error is suspected a simple verification method is to enable <code class="docutils literal notranslate"><span class="pre">wp.config.verify_cuda</span> <span class="pre">=</span> <span class="pre">True</span></code>.</p>
+<p>If a CUDA error is suspected a simple verification method is to enable:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">verify_cuda</span> <span class="o">=</span> <span class="kc">True</span>
+</pre></div>
+</div>
 <p>This setting will check the CUDA context after every operation to ensure that it is still valid. If an error is
 encountered it will raise an exception that often helps to narrow down the problematic kernel.</p>
 <div class="admonition note">
@@ -311,23 +322,23 @@ encountered it will raise an exception that often helps to narrow down the probl
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="faq.html">
+          <a class="next-page" href="limitations.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">FAQ</div>
+                <div class="title">Limitations</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="modules/interoperability.html">
+          <a class="prev-page" href="configuration.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Interoperability</div>
+                <div class="title">Runtime Settings</div>
                 
               </div>
             </a>
@@ -385,9 +396,11 @@ encountered it will raise an exception that often helps to narrow down the probl
       
     </aside>
   </div>
-</div><script src="_static/documentation_options.js?v=5929fcd5"></script>
+</div><script src="_static/documentation_options.js?v=54a451be"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=32e29ea5"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=fd10adb8"></script>
     </body>
 </html>
