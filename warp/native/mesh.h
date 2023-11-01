@@ -508,9 +508,6 @@ CUDA_CALLABLE inline bool mesh_query_furthest_point_no_sign(uint64_t id, const v
 {
     Mesh mesh = mesh_get(id);
 
-    if (mesh.bvh.num_nodes == 0)
-        return false;
-
     int stack[32];
     stack[0] = *mesh.bvh.root;
 
