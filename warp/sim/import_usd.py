@@ -10,33 +10,37 @@ import numpy as np
 import re
 
 import warp as wp
-from . import ModelBuilder
 
 
 def parse_usd(
-    filename,
-    builder: ModelBuilder,
+    builder,
+    filename: str = None,
+    stage=None,
     default_density=1.0e3,
     only_load_enabled_rigid_bodies=False,
     only_load_enabled_joints=True,
     default_ke=1e5,
     default_kd=250.0,
     default_kf=500.0,
-    default_mu=0.0,
+    default_mu=0.6,
     default_restitution=0.0,
     default_thickness=0.0,
     joint_limit_ke=100.0,
     joint_limit_kd=10.0,
+    invert_rotations=False,
     verbose=False,
     ignore_paths=[],
     export_usda=False,
 ):
     """
-    Parses a USD file containing UsdPhysics schema definitions for rigid-body articulations and adds the bodies, shapes and joints to the given ModelBuilder.
+    Parses a Universal Scene Description (USD) stage containing UsdPhysics schema definitions for rigid-body articulations and adds the bodies, shapes and joints to the given ModelBuilder.
+
+    The USD description has to be either a path (file name or URL) given via the `filename` argument, or an existing USD stage instance that implements the `UsdStage <https://openusd.org/dev/api/class_usd_stage.html>`_ interface.
 
     Args:
-        filename (str): The file path or URL to the USD file to parse.
         builder (ModelBuilder): The :class:`ModelBuilder` to add the bodies and joints to.
+        filename (str): The file path or URL to the USD file to parse.
+        stage (pxr.UsdStage): An existing USD stage instance to parse.
         default_density (float): The default density to use for bodies without a density attribute.
         only_load_enabled_rigid_bodies (bool): If True, only rigid bodies which do not have `physics:rigidBodyEnabled` set to False are loaded.
         only_load_enabled_joints (bool): If True, only joints which do not have `physics:jointEnabled` set to False are loaded.
@@ -48,6 +52,7 @@ def parse_usd(
         default_thickness (float): The thickness to add to the shape geometry.
         joint_limit_ke (float): The default stiffness to use for joint limits, only considered by SemiImplicitIntegrator.
         joint_limit_kd (float): The default damping to use for joint limits, only considered by SemiImplicitIntegrator.
+        invert_rotations (bool): If True, inverts any rotations defined in the shape transforms.
         verbose (bool): If True, print additional information about the parsed USD file.
         ignore_paths (List[str]): A list of regular expressions matching prim paths to ignore.
         export_usda (bool): If True and the filename is a URL, export the downloaded USD file to a USDA file.
@@ -62,72 +67,6 @@ def parse_usd(
         from pxr import Usd, UsdGeom, UsdPhysics
     except ImportError:
         raise ImportError("Failed to import pxr. Please install USD.")
-
-    if filename.startswith("http://") or filename.startswith("https://"):
-        # download file
-        import requests
-        import os
-        import datetime
-
-        response = requests.get(filename, allow_redirects=True)
-        if response.status_code != 200:
-            raise RuntimeError(f"Failed to download USD file. Status code: {response.status_code}")
-        file = response.content
-        dot = os.path.extsep
-        base = os.path.basename(filename)
-        url_folder = os.path.dirname(filename)
-        base_name = dot.join(base.split(dot)[:-1])
-        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        folder_name = os.path.join(".usd_cache", f"{base_name}_{timestamp}")
-        os.makedirs(folder_name, exist_ok=True)
-        target_filename = os.path.join(folder_name, base)
-        with open(target_filename, "wb") as f:
-            f.write(file)
-
-        stage = Usd.Stage.Open(target_filename, Usd.Stage.LoadNone)
-        stage_str = stage.GetRootLayer().ExportToString()
-        print(f"Downloaded USD file to {target_filename}.")
-        if export_usda:
-            usda_filename = os.path.join(folder_name, base_name + ".usda")
-            with open(usda_filename, "w") as f:
-                f.write(stage_str)
-                print(f"Exported USDA file to {usda_filename}.")
-
-        # parse referenced USD files like `references = @./franka_collisions.usd@`
-        downloaded = set()
-        for match in re.finditer(r"references.=.@(.*?)@", stage_str):
-            refname = match.group(1)
-            if refname.startswith("./"):
-                refname = refname[2:]
-            if refname in downloaded:
-                continue
-            try:
-                response = requests.get(f"{url_folder}/{refname}", allow_redirects=True)
-                if response.status_code != 200:
-                    print(f"Failed to download reference {refname}. Status code: {response.status_code}")
-                    continue
-                file = response.content
-                refdir = os.path.dirname(refname)
-                if refdir:
-                    os.makedirs(os.path.join(folder_name, refdir), exist_ok=True)
-                ref_filename = os.path.join(folder_name, refname)
-                with open(ref_filename, "wb") as f:
-                    f.write(file)
-                downloaded.add(refname)
-                print(f"Downloaded USD reference {refname} to {ref_filename}.")
-                if export_usda:
-                    ref_stage = Usd.Stage.Open(ref_filename, Usd.Stage.LoadNone)
-                    ref_stage_str = ref_stage.GetRootLayer().ExportToString()
-                    base = os.path.basename(ref_filename)
-                    base_name = dot.join(base.split(dot)[:-1])
-                    usda_filename = os.path.join(folder_name, base_name + ".usda")
-                    with open(usda_filename, "w") as f:
-                        f.write(ref_stage_str)
-                        print(f"Exported USDA file to {usda_filename}.")
-            except Exception:
-                print(f"Failed to download {refname}.")
-
-        filename = target_filename
 
     def get_attribute(prim, name):
         if "*" in name:
@@ -156,7 +95,10 @@ def parse_usd(
         if not attr or not attr.HasAuthoredValue():
             return default
         val = attr.Get()
-        quat = wp.quat(*val.imaginary, val.real)
+        if invert_rotations:
+            quat = wp.quat(*val.imaginary, -val.real)
+        else:
+            quat = wp.quat(*val.imaginary, val.real)
         l = wp.length(quat)
         if np.isfinite(l) and l > 0.0:
             return quat
@@ -182,20 +124,95 @@ def parse_usd(
         axis["XYZ".index(s.upper())] = 1.0
         return axis
 
-    stage = Usd.Stage.Open(filename, Usd.Stage.LoadAll)
-    if UsdPhysics.StageHasAuthoredKilogramsPerUnit(stage):
-        mass_unit = UsdPhysics.GetStageKilogramsPerUnit(stage)
-    else:
-        mass_unit = 1.0
-    if UsdGeom.StageHasAuthoredMetersPerUnit(stage):
-        linear_unit = UsdGeom.GetStageMetersPerUnit(stage)
-    else:
-        linear_unit = 1.0
+    if stage is None:
+        if filename.startswith("http://") or filename.startswith("https://"):
+            # download file
+            import requests
+            import os
+            import datetime
+
+            response = requests.get(filename, allow_redirects=True)
+            if response.status_code != 200:
+                raise RuntimeError(f"Failed to download USD file. Status code: {response.status_code}")
+            file = response.content
+            dot = os.path.extsep
+            base = os.path.basename(filename)
+            url_folder = os.path.dirname(filename)
+            base_name = dot.join(base.split(dot)[:-1])
+            timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+            folder_name = os.path.join(".usd_cache", f"{base_name}_{timestamp}")
+            os.makedirs(folder_name, exist_ok=True)
+            target_filename = os.path.join(folder_name, base)
+            with open(target_filename, "wb") as f:
+                f.write(file)
+
+            stage = Usd.Stage.Open(target_filename, Usd.Stage.LoadNone)
+            stage_str = stage.GetRootLayer().ExportToString()
+            print(f"Downloaded USD file to {target_filename}.")
+            if export_usda:
+                usda_filename = os.path.join(folder_name, base_name + ".usda")
+                with open(usda_filename, "w") as f:
+                    f.write(stage_str)
+                    print(f"Exported USDA file to {usda_filename}.")
+
+            # parse referenced USD files like `references = @./franka_collisions.usd@`
+            downloaded = set()
+            for match in re.finditer(r"references.=.@(.*?)@", stage_str):
+                refname = match.group(1)
+                if refname.startswith("./"):
+                    refname = refname[2:]
+                if refname in downloaded:
+                    continue
+                try:
+                    response = requests.get(f"{url_folder}/{refname}", allow_redirects=True)
+                    if response.status_code != 200:
+                        print(f"Failed to download reference {refname}. Status code: {response.status_code}")
+                        continue
+                    file = response.content
+                    refdir = os.path.dirname(refname)
+                    if refdir:
+                        os.makedirs(os.path.join(folder_name, refdir), exist_ok=True)
+                    ref_filename = os.path.join(folder_name, refname)
+                    with open(ref_filename, "wb") as f:
+                        f.write(file)
+                    downloaded.add(refname)
+                    print(f"Downloaded USD reference {refname} to {ref_filename}.")
+                    if export_usda:
+                        ref_stage = Usd.Stage.Open(ref_filename, Usd.Stage.LoadNone)
+                        ref_stage_str = ref_stage.GetRootLayer().ExportToString()
+                        base = os.path.basename(ref_filename)
+                        base_name = dot.join(base.split(dot)[:-1])
+                        usda_filename = os.path.join(folder_name, base_name + ".usda")
+                        with open(usda_filename, "w") as f:
+                            f.write(ref_stage_str)
+                            print(f"Exported USDA file to {usda_filename}.")
+                except Exception:
+                    print(f"Failed to download {refname}.")
+
+            filename = target_filename
+
+        stage = Usd.Stage.Open(filename, Usd.Stage.LoadAll)
+
+    mass_unit = 1.0
+    try:
+        if UsdPhysics.StageHasAuthoredKilogramsPerUnit(stage):
+            mass_unit = UsdPhysics.GetStageKilogramsPerUnit(stage)
+    except:
+        pass
+    linear_unit = 1.0
+    try:
+        if UsdGeom.StageHasAuthoredMetersPerUnit(stage):
+            linear_unit = UsdGeom.GetStageMetersPerUnit(stage)
+    except:
+        pass
 
     def parse_xform(prim):
         xform = UsdGeom.Xform(prim)
         mat = np.array(xform.GetLocalTransformation(), dtype=np.float32)
-        rot = wp.quat_from_matrix(wp.mat33(mat[:3, :3].flatten()))
+        if invert_rotations:
+            rot = wp.quat_from_matrix(wp.mat33(mat[:3, :3].T.flatten()))
+        else:
+            rot = wp.quat_from_matrix(wp.mat33(mat[:3, :3].flatten()))
         pos = mat[3, :3] * linear_unit
         scale = np.ones(3, dtype=np.float32)
         for op in xform.GetOrderedXformOps():
@@ -276,12 +293,18 @@ def parse_usd(
         else:
             joint_data["linear_axes"].append(axis)
 
-    upaxis = str2axis(UsdGeom.GetStageUpAxis(stage))
+    axis_str = "Y"
+    try:
+        axis_str = UsdGeom.GetStageUpAxis(stage)
+    except:
+        pass
+    upaxis = str2axis(axis_str)
 
     shape_types = {"Cube", "Sphere", "Mesh", "Capsule", "Plane", "Cylinder", "Cone"}
 
     path_body_map = {}
     path_shape_map = {}
+    path_shape_scale = {}
     # maps prim path name to its world transform
     path_world_poses = {}
     # transform from body frame to where the actual joint child frame is
@@ -376,21 +399,27 @@ def parse_usd(
             materials[path] = material
 
         elif type_name == "PhysicsScene":
-            scene = UsdPhysics.Scene(prim)
-            g_vec = scene.GetGravityDirectionAttr()
-            g_mag = scene.GetGravityMagnitudeAttr()
-            if g_mag.HasAuthoredValue() and np.isfinite(g_mag.Get()):
-                builder.gravity = g_mag.Get() * linear_unit
-            if g_vec.HasAuthoredValue() and np.linalg.norm(g_vec.Get()) > 0.0:
-                builder.up_vector = np.array(g_vec.Get(), dtype=np.float32)  # TODO flip sign?
-            else:
-                builder.up_vector = upaxis
+            try:
+                scene = UsdPhysics.Scene(prim)
+                g_vec = scene.GetGravityDirectionAttr()
+                g_mag = scene.GetGravityMagnitudeAttr()
+                if g_mag.HasAuthoredValue() and np.isfinite(g_mag.Get()):
+                    builder.gravity = -np.abs(g_mag.Get() * linear_unit)
+                if g_vec.HasAuthoredValue() and np.linalg.norm(g_vec.Get()) > 0.0:
+                    builder.up_vector = np.array(g_vec.Get(), dtype=np.float32)
+                    if np.any(builder.up_vector < 0.0):
+                        builder.up_vector = -builder.up_vector
+                else:
+                    builder.up_vector = upaxis
+            except:
+                pass
 
     def parse_prim(prim, incoming_xform, incoming_scale, parent_body: int = -1):
         nonlocal builder
         nonlocal joint_data
         nonlocal path_body_map
         nonlocal path_shape_map
+        nonlocal path_shape_scale
         nonlocal path_world_poses
         nonlocal prim_joint_xforms
         nonlocal path_collision_filters
@@ -406,10 +435,15 @@ def parse_usd(
         if (
             type_name.endswith("Joint")
             or type_name.endswith("Light")
-            or type_name.endswith("Scene")
             or type_name.endswith("Material")
         ):
             return
+        if verbose:
+            print(f"parse_prim {prim.GetPath()} ({type_name})")
+        if type_name == "PhysicsScene":
+            # in case the PhysicsScene has bodies as children...
+            for child in prim.GetChildren():
+                parse_prim(child, incoming_xform, incoming_scale, parent_body)
 
         schemas = set(prim.GetAppliedSchemas())
         children_refs = prim.GetChildren()
@@ -725,6 +759,7 @@ def parse_usd(
 
             path_body_map[path] = body_id
             path_shape_map[path] = shape_id
+            path_shape_scale[path] = scale
 
             if prim.HasRelationship("physics:filteredPairs"):
                 other_paths = prim.GetRelationship("physics:filteredPairs").GetTargets()
@@ -791,4 +826,9 @@ def parse_usd(
         "fps": stage.GetFramesPerSecond(),
         "duration": stage.GetEndTimeCode() - stage.GetStartTimeCode(),
         "up_axis": UsdGeom.GetStageUpAxis(stage).upper(),
+        "path_shape_map": path_shape_map,
+        "path_body_map": path_body_map,
+        "path_shape_scale": path_shape_scale,
+        "mass_unit": mass_unit,
+        "linear_unit": linear_unit,
     }

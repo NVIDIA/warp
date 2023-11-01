@@ -45,8 +45,8 @@ class UsdEnvironment(Environment):
 
     def create_articulation(self, builder):
         settings = wp.sim.parse_usd(
-            "http://omniverse-content-staging.s3-us-west-2.amazonaws.com/Assets/Isaac/2022.2.1/Isaac/Robots/Franka/franka_instanceable.usd",
             builder,
+            filename="http://omniverse-content-staging.s3-us-west-2.amazonaws.com/Assets/Isaac/2022.2.1/Isaac/Robots/Franka/franka_instanceable.usd",
             default_thickness=0.01,
             # ignore collision meshes from Franka robot
             ignore_paths=[".*collisions.*"],
