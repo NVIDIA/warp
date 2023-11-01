@@ -244,7 +244,10 @@ class Function:
                         else:
                             try:
                                 # try to pack as a scalar type
-                                params.append(arg_type._type_(a))
+                                if arg_type == warp.types.float16:
+                                    params.append(arg_type._type_(warp.types.float_to_half_bits(a)))
+                                else:
+                                    params.append(arg_type._type_(a))
                             except Exception:
                                 raise RuntimeError(
                                     f"Error calling function {f.key}, unable to pack function parameter type {type(a)} for param {arg_name}, expected {arg_type}"
@@ -264,10 +267,11 @@ class Function:
                             # scalar type
                             return dtype._type_
 
-                    value_type = type_ctype(f.value_func(None, None, None))
+                    value_type = f.value_func(None, None, None)
+                    value_ctype = type_ctype(value_type)
 
                     # construct return value (passed by address)
-                    ret = value_type()
+                    ret = value_ctype()
                     ret_addr = ctypes.c_void_p(ctypes.addressof(ret))
 
                     params.append(ret_addr)
@@ -275,9 +279,11 @@ class Function:
                     c_func = getattr(warp.context.runtime.core, f.mangled_name)
                     c_func(*params)
 
-                    if issubclass(value_type, ctypes.Array) or issubclass(value_type, ctypes.Structure):
+                    if issubclass(value_ctype, ctypes.Array) or issubclass(value_ctype, ctypes.Structure):
                         # return vector types as ctypes
                         return ret
+                    elif value_type == warp.types.float16:
+                        return warp.types.half_bits_to_float(ret.value)
 
                     # return scalar types as int/float
                     return ret.value
