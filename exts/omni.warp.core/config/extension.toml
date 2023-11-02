@@ -10,7 +10,7 @@ category = "core"
 keywords = ["warp", "simulation"]
 changelog="docs/CHANGELOG.md"
 
-# preview_image = "data/preview.png"
+preview_image = "data/preview.png"
 icon = "data/icon.png"
 
 # Watch files for hot reloading (only works for Python files)
