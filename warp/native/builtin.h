@@ -251,8 +251,6 @@ CUDA_CALLABLE inline void adj_int8(T, T&, int8) {}
 template <typename T>
 CUDA_CALLABLE inline void adj_uint8(T, T&, uint8) {}
 template <typename T>
-CUDA_CALLABLE inline void adj_bool(T, T&, bool) {}
-template <typename T>
 CUDA_CALLABLE inline void adj_int16(T, T&, int16) {}
 template <typename T>
 CUDA_CALLABLE inline void adj_uint16(T, T&, uint16) {}
@@ -1260,6 +1258,14 @@ inline CUDA_CALLABLE int atomic_min(int* address, int val)
 
 } // namespace wp
 
+
+// bool and printf are defined outside of the wp namespace in crt.h, hence
+// their adjoint counterparts are also defined in the global namespace.
+template <typename T>
+CUDA_CALLABLE inline void adj_bool(T, T&, bool) {}
+inline CUDA_CALLABLE void adj_printf(const char* fmt, ...) {}
+
+
 #include "vec.h"
 #include "mat.h"
 #include "quat.h"
@@ -1422,10 +1428,6 @@ template<typename Type>
 inline CUDA_CALLABLE void adj_print(transform_t<Type> t, transform_t<Type>& adj_t) {}
 
 inline CUDA_CALLABLE void adj_print(str t, str& adj_t) {}
-
-
-// printf defined globally in crt.h
-inline CUDA_CALLABLE void adj_printf(const char* fmt, ...) {}
 
 
 template <typename T>

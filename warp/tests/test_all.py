@@ -55,6 +55,7 @@ import warp.tests.test_noise
 import warp.tests.test_operators
 import warp.tests.test_options
 import warp.tests.test_pinned
+import warp.tests.test_print
 import warp.tests.test_quat
 import warp.tests.test_rand
 import warp.tests.test_reload
@@ -119,6 +120,7 @@ def register_tests(parent):
     tests.append(warp.tests.test_streams.register(parent))
     tests.append(warp.tests.test_torch.register(parent))
     tests.append(warp.tests.test_pinned.register(parent))
+    tests.append(warp.tests.test_print.register(parent))
     tests.append(warp.tests.test_matmul.register(parent))
     tests.append(warp.tests.test_options.register(parent))
     tests.append(warp.tests.test_dlpack.register(parent))

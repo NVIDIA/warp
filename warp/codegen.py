@@ -87,9 +87,6 @@ def op_str_is_chainable(op: str) -> builtins.bool:
     return op in comparison_chain_strings
 
 
-base_type_names_with_builtin_adj_funcs = ("bool",) + tuple(x.__name__ for x in scalar_types)
-
-
 def get_annotations(obj: Any) -> Mapping[str, Any]:
     """Alternative to `inspect.get_annotations()` for Python 3.9 and older."""
     # See https://docs.python.org/3/howto/annotations.html#accessing-the-annotations-dict-of-an-object-in-python-3-9-and-older
@@ -952,10 +949,7 @@ class Adjoint:
             if not func.missing_grad and len(args):
                 arg_str = adj.format_reverse_call_args(args, [output], {}, {}, use_initializer_list)
                 if arg_str is not None:
-                    if func_name in base_type_names_with_builtin_adj_funcs:
-                        reverse_call = f"wp::adj_{func.native_func}({arg_str});"
-                    else:
-                        reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
+                    reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
                     adj.add_reverse(reverse_call)
 
             return output
