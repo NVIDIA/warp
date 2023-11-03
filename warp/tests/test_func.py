@@ -179,6 +179,18 @@ def test_native_func_export(test, device):
     m = m * m
     assert(m == wp.mat22(2.0, 2.0, 2.0, 2.0))
 
+
+def test_native_function_error_resolution(test, device):
+    a = wp.mat22f(1.0, 2.0, 3.0, 4.0)
+    b = wp.mat22d(1.0, 2.0, 3.0, 4.0)
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"^Couldn't find a function 'mul' compatible with "
+        r"the arguments 'mat22f, mat22d'$",
+    ):
+        a * b
+
+
 def test_user_func_export(test, device):
     # tests calling overloaded user-defined functions from Python
     i = custom(1)
@@ -276,6 +288,7 @@ def register(parent):
     add_function_test(TestFunc, func=test_return_func, name="test_return_func", devices=devices)
     add_kernel_test(TestFunc, kernel=test_override_func, name="test_override_func", dim=1, devices=devices)
     add_function_test(TestFunc, func=test_native_func_export, name="test_native_func_export", devices=["cpu"])
+    add_function_test(TestFunc, func=test_native_function_error_resolution, name="test_native_function_error_resolution", devices=["cpu"])
     add_function_test(TestFunc, func=test_user_func_export, name="test_user_func_export", devices=["cpu"])
     add_function_test(TestFunc, func=test_func_closure_capture, name="test_func_closure_capture", devices=devices)
     add_function_test(TestFunc, func=test_multi_valued_func, name="test_multi_valued_func", devices=devices)

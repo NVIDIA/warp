@@ -172,9 +172,6 @@ class Function:
         # from within a kernel (experimental).
 
         if self.is_builtin() and self.mangled_name:
-            # store last error during overload resolution
-            error = None
-
             for f in self.overloads:
                 if f.generic:
                     continue
@@ -275,22 +272,18 @@ class Function:
                     if issubclass(value_type, ctypes.Array) or issubclass(value_type, ctypes.Structure):
                         # return vector types as ctypes
                         return ret
-                    else:
-                        # return scalar types as int/float
-                        return ret.value
 
-                except Exception as e:
+                    # return scalar types as int/float
+                    return ret.value
+                except Exception:
                     # couldn't pack values to match this overload
-                    # store error and move onto the next one
-                    error = e
                     continue
 
             # overload resolution or call failed
-            # raise the last exception encountered
-            if error:
-                raise error
-            else:
-                raise RuntimeError(f"Error calling function '{f.key}'.")
+            raise RuntimeError(
+                f"Couldn't find a function '{self.key}' compatible with "
+                f"the arguments '{', '.join(type(x).__name__ for x in args)}'"
+            )
 
         elif hasattr(self, "user_overloads") and len(self.user_overloads):
             # user-defined function with overloads
