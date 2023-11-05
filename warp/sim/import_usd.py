@@ -13,9 +13,8 @@ import warp as wp
 
 
 def parse_usd(
+    source,
     builder,
-    filename: str = None,
-    stage=None,
     default_density=1.0e3,
     only_load_enabled_rigid_bodies=False,
     only_load_enabled_joints=True,
@@ -30,17 +29,15 @@ def parse_usd(
     invert_rotations=False,
     verbose=False,
     ignore_paths=[],
-    export_usda=False,
 ):
     """
     Parses a Universal Scene Description (USD) stage containing UsdPhysics schema definitions for rigid-body articulations and adds the bodies, shapes and joints to the given ModelBuilder.
 
-    The USD description has to be either a path (file name or URL) given via the `filename` argument, or an existing USD stage instance that implements the `UsdStage <https://openusd.org/dev/api/class_usd_stage.html>`_ interface.
+    The USD description has to be either a path (file name or URL), or an existing USD stage instance that implements the `UsdStage <https://openusd.org/dev/api/class_usd_stage.html>`_ interface.
 
     Args:
+        source (str | pxr.UsdStage): The file path to the USD file, or an existing USD stage instance.
         builder (ModelBuilder): The :class:`ModelBuilder` to add the bodies and joints to.
-        filename (str): The file path or URL to the USD file to parse.
-        stage (pxr.UsdStage): An existing USD stage instance to parse.
         default_density (float): The default density to use for bodies without a density attribute.
         only_load_enabled_rigid_bodies (bool): If True, only rigid bodies which do not have `physics:rigidBodyEnabled` set to False are loaded.
         only_load_enabled_joints (bool): If True, only joints which do not have `physics:jointEnabled` set to False are loaded.
@@ -55,7 +52,6 @@ def parse_usd(
         invert_rotations (bool): If True, inverts any rotations defined in the shape transforms.
         verbose (bool): If True, print additional information about the parsed USD file.
         ignore_paths (List[str]): A list of regular expressions matching prim paths to ignore.
-        export_usda (bool): If True and the filename is a URL, export the downloaded USD file to a USDA file.
 
     Returns:
         dict: Dictionary with the following entries:
@@ -87,7 +83,7 @@ def parse_usd(
     try:
         from pxr import Usd, UsdGeom, UsdPhysics
     except ImportError:
-        raise ImportError("Failed to import pxr. Please install USD.")
+        raise ImportError("Failed to import pxr. Please install USD (e.g. via `pip install usd-core`).")
 
     def get_attribute(prim, name):
         if "*" in name:
@@ -145,74 +141,10 @@ def parse_usd(
         axis["XYZ".index(s.upper())] = 1.0
         return axis
 
-    if stage is None:
-        if filename.startswith("http://") or filename.startswith("https://"):
-            # download file
-            import requests
-            import os
-            import datetime
-
-            response = requests.get(filename, allow_redirects=True)
-            if response.status_code != 200:
-                raise RuntimeError(f"Failed to download USD file. Status code: {response.status_code}")
-            file = response.content
-            dot = os.path.extsep
-            base = os.path.basename(filename)
-            url_folder = os.path.dirname(filename)
-            base_name = dot.join(base.split(dot)[:-1])
-            timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-            folder_name = os.path.join(".usd_cache", f"{base_name}_{timestamp}")
-            os.makedirs(folder_name, exist_ok=True)
-            target_filename = os.path.join(folder_name, base)
-            with open(target_filename, "wb") as f:
-                f.write(file)
-
-            stage = Usd.Stage.Open(target_filename, Usd.Stage.LoadNone)
-            stage_str = stage.GetRootLayer().ExportToString()
-            print(f"Downloaded USD file to {target_filename}.")
-            if export_usda:
-                usda_filename = os.path.join(folder_name, base_name + ".usda")
-                with open(usda_filename, "w") as f:
-                    f.write(stage_str)
-                    print(f"Exported USDA file to {usda_filename}.")
-
-            # parse referenced USD files like `references = @./franka_collisions.usd@`
-            downloaded = set()
-            for match in re.finditer(r"references.=.@(.*?)@", stage_str):
-                refname = match.group(1)
-                if refname.startswith("./"):
-                    refname = refname[2:]
-                if refname in downloaded:
-                    continue
-                try:
-                    response = requests.get(f"{url_folder}/{refname}", allow_redirects=True)
-                    if response.status_code != 200:
-                        print(f"Failed to download reference {refname}. Status code: {response.status_code}")
-                        continue
-                    file = response.content
-                    refdir = os.path.dirname(refname)
-                    if refdir:
-                        os.makedirs(os.path.join(folder_name, refdir), exist_ok=True)
-                    ref_filename = os.path.join(folder_name, refname)
-                    with open(ref_filename, "wb") as f:
-                        f.write(file)
-                    downloaded.add(refname)
-                    print(f"Downloaded USD reference {refname} to {ref_filename}.")
-                    if export_usda:
-                        ref_stage = Usd.Stage.Open(ref_filename, Usd.Stage.LoadNone)
-                        ref_stage_str = ref_stage.GetRootLayer().ExportToString()
-                        base = os.path.basename(ref_filename)
-                        base_name = dot.join(base.split(dot)[:-1])
-                        usda_filename = os.path.join(folder_name, base_name + ".usda")
-                        with open(usda_filename, "w") as f:
-                            f.write(ref_stage_str)
-                            print(f"Exported USDA file to {usda_filename}.")
-                except Exception:
-                    print(f"Failed to download {refname}.")
-
-            filename = target_filename
-
-        stage = Usd.Stage.Open(filename, Usd.Stage.LoadAll)
+    if isinstance(source, str):
+        stage = Usd.Stage.Open(source, Usd.Stage.LoadAll)
+    else:
+        stage = source
 
     mass_unit = 1.0
     try:
@@ -849,3 +781,86 @@ def parse_usd(
         "mass_unit": mass_unit,
         "linear_unit": linear_unit,
     }
+
+
+def resolve_usd_from_url(url: str, target_folder_name: str = None, export_usda: bool = False):
+    """
+    Downloads a USD file from a URL and resolves all references to other USD files to be downloaded to the given target folder.
+
+    Args:
+        url (str): URL to the USD file.
+        target_folder_name (str): Target folder name. If None, a timestamped folder will be created in the current directory.
+        export_usda (bool): If True, converts each downloaded USD file to USDA and saves the additional USDA file in the target folder with the same base name as the original USD file.
+
+    Returns:
+        str: File path to the downloaded USD file.
+    """
+    import requests
+    import datetime
+    import os
+
+    try:
+        from pxr import Usd
+    except ImportError:
+        raise ImportError("Failed to import pxr. Please install USD (e.g. via `pip install usd-core`).")
+
+    response = requests.get(url, allow_redirects=True)
+    if response.status_code != 200:
+        raise RuntimeError(f"Failed to download USD file. Status code: {response.status_code}")
+    file = response.content
+    dot = os.path.extsep
+    base = os.path.basename(url)
+    url_folder = os.path.dirname(url)
+    base_name = dot.join(base.split(dot)[:-1])
+    if target_folder_name is None:
+        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        target_folder_name = os.path.join(".usd_cache", f"{base_name}_{timestamp}")
+    os.makedirs(target_folder_name, exist_ok=True)
+    target_filename = os.path.join(target_folder_name, base)
+    with open(target_filename, "wb") as f:
+        f.write(file)
+
+    stage = Usd.Stage.Open(target_filename, Usd.Stage.LoadNone)
+    stage_str = stage.GetRootLayer().ExportToString()
+    print(f"Downloaded USD file to {target_filename}.")
+    if export_usda:
+        usda_filename = os.path.join(target_folder_name, base_name + ".usda")
+        with open(usda_filename, "w") as f:
+            f.write(stage_str)
+            print(f"Exported USDA file to {usda_filename}.")
+
+    # parse referenced USD files like `references = @./franka_collisions.usd@`
+    downloaded = set()
+    for match in re.finditer(r"references.=.@(.*?)@", stage_str):
+        refname = match.group(1)
+        if refname.startswith("./"):
+            refname = refname[2:]
+        if refname in downloaded:
+            continue
+        try:
+            response = requests.get(f"{url_folder}/{refname}", allow_redirects=True)
+            if response.status_code != 200:
+                print(f"Failed to download reference {refname}. Status code: {response.status_code}")
+                continue
+            file = response.content
+            refdir = os.path.dirname(refname)
+            if refdir:
+                os.makedirs(os.path.join(target_folder_name, refdir), exist_ok=True)
+            ref_filename = os.path.join(target_folder_name, refname)
+            if not os.path.exists(ref_filename):
+                with open(ref_filename, "wb") as f:
+                    f.write(file)
+            downloaded.add(refname)
+            print(f"Downloaded USD reference {refname} to {ref_filename}.")
+            if export_usda:
+                ref_stage = Usd.Stage.Open(ref_filename, Usd.Stage.LoadNone)
+                ref_stage_str = ref_stage.GetRootLayer().ExportToString()
+                base = os.path.basename(ref_filename)
+                base_name = dot.join(base.split(dot)[:-1])
+                usda_filename = os.path.join(target_folder_name, base_name + ".usda")
+                with open(usda_filename, "w") as f:
+                    f.write(ref_stage_str)
+                    print(f"Exported USDA file to {usda_filename}.")
+        except Exception:
+            print(f"Failed to download {refname}.")
+    return target_filename

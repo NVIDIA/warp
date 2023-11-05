@@ -153,3 +153,5 @@ Warp sim supports the loading of simulation models from URDF, MuJoCo (MJCF), and
 .. autofunction:: parse_mjcf
 
 .. autofunction:: parse_usd
+
+.. autofunction:: resolve_usd_from_url
