@@ -649,10 +649,10 @@ class Adjoint:
         return s
 
     # generates a list of formatted args
-    def format_args(adj, prefix, param_types, args, adjoints=False):
+    def format_args(adj, prefix, args):
         arg_strs = []
 
-        for i, a in enumerate(args):
+        for a in args:
             if isinstance(a, warp.context.Function):
                 # functions don't have a var_ prefix so strip it off here
                 if prefix == "var":
@@ -660,11 +660,7 @@ class Adjoint:
                 else:
                     arg_strs.append(f"{prefix}_{a.key}")
             elif is_reference(a.type):
-                pass_ref = (param_types[i] == Reference) if i < len(param_types) else False
-                if not pass_ref and not adjoints:
-                    arg_strs.append(f"*{prefix}_{a}")
-                else:
-                    arg_strs.append(f"{prefix}_{a}")
+                arg_strs.append(f"{prefix}_{a}")
             elif isinstance(a, Var):
                 arg_strs.append(a.emit(prefix))
             else:
@@ -673,8 +669,8 @@ class Adjoint:
         return arg_strs
 
     # generates argument string for a forward function call
-    def format_forward_call_args(adj, param_types, args, use_initializer_list):
-        arg_str = ", ".join(adj.format_args("var", param_types, args))
+    def format_forward_call_args(adj, args, use_initializer_list):
+        arg_str = ", ".join(adj.format_args("var", args))
         if use_initializer_list:
             return f"{{{arg_str}}}"
         return arg_str
@@ -682,24 +678,21 @@ class Adjoint:
     # generates argument string for a reverse function call
     def format_reverse_call_args(
         adj,
-        param_types,
         args_var,
         args,
         args_out,
         use_initializer_list,
         has_output_args=True,
     ):
-        formatted_var = adj.format_args("var", param_types, args_var)
+        formatted_var = adj.format_args("var", args_var)
         formatted_out = []
         if has_output_args and len(args_out) > 1:
-            formatted_out = adj.format_args("var", param_types, args_out, adjoints=True)
+            formatted_out = adj.format_args("var", args_out)
         formatted_var_adj = adj.format_args(
             "&adj" if use_initializer_list else "adj",
-            param_types,
             args,
-            adjoints=True,
         )
-        formatted_out_adj = adj.format_args("adj", param_types, args_out, adjoints=True)
+        formatted_out_adj = adj.format_args("adj", args_out)
 
         if len(formatted_var_adj) == 0 and len(formatted_out_adj) == 0:
             # there are no adjoint arguments, so we don't need to call the reverse function
@@ -934,10 +927,12 @@ class Adjoint:
             output = None
             output_list = []
 
-            forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(param_types, args_var, use_initializer_list)});"
+            forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
             replay_call = forward_call
             if func.custom_replay_func is not None:
-                replay_call = f"{func.namespace}replay_{func_name}({adj.format_forward_call_args(param_types, args_var, use_initializer_list)});"
+                replay_call = (
+                    f"{func.namespace}replay_{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
+                )
 
         elif not isinstance(return_type, list) or len(return_type) == 1:
             # handle simple function (one output)
@@ -947,10 +942,10 @@ class Adjoint:
             output = adj.add_var(return_type)
             output_list = [output]
 
-            forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(param_types, args_var, use_initializer_list)});"
+            forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
             replay_call = forward_call
             if func.custom_replay_func is not None:
-                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(param_types, args_var, use_initializer_list)});"
+                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
 
         else:
             # handle multiple value functions
@@ -958,7 +953,9 @@ class Adjoint:
             output = [adj.add_var(v) for v in return_type]
             output_list = output
 
-            forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(param_types, args_var + output, use_initializer_list)});"
+            forward_call = (
+                f"{func.namespace}{func_name}({adj.format_forward_call_args(args_var + output, use_initializer_list)});"
+            )
             replay_call = forward_call
 
         if func.skip_replay:
@@ -969,7 +966,6 @@ class Adjoint:
         if not func.missing_grad and len(args):
             reverse_has_output_args = len(output_list) > 1 and func.custom_grad_func is None
             arg_str = adj.format_reverse_call_args(
-                param_types,
                 args_var,
                 args,
                 output_list,
