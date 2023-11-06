@@ -391,7 +391,7 @@ void bvh_destroy_host(uint64_t id)
 // stubs for non-CUDA platforms
 #if !WP_ENABLE_CUDA
 
-uint64_t bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items) {}
+uint64_t bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items) { return 0; }
 void bvh_refit_device(uint64_t id) {}
 void bvh_destroy_device(uint64_t id) {}
 
