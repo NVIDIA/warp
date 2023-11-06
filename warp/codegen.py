@@ -937,10 +937,6 @@ class Adjoint:
             replay_call = forward_call
             if func.custom_replay_func is not None:
                 replay_call = f"{func.namespace}replay_{func_name}({adj.format_forward_call_args(param_types, args, use_initializer_list)});"
-            if func.skip_replay:
-                adj.add_forward(forward_call, replay="// " + replay_call)
-            else:
-                adj.add_forward(forward_call, replay=replay_call)
 
         elif not isinstance(return_type, list) or len(return_type) == 1:
             # handle simple function (one output)
@@ -954,18 +950,18 @@ class Adjoint:
             if func.custom_replay_func is not None:
                 replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(param_types, args, use_initializer_list)});"
 
-            if func.skip_replay:
-                adj.add_forward(forward_call, replay="// " + replay_call)
-            else:
-                adj.add_forward(forward_call, replay=replay_call)
-
         else:
             # handle multiple value functions
 
             output = [adj.add_var(v) for v in return_type]
             output_list = output
             forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(param_types, args + output, use_initializer_list)});"
-            adj.add_forward(forward_call)
+            replay_call = forward_call
+
+        if func.skip_replay:
+            adj.add_forward(forward_call, replay="// " + replay_call)
+        else:
+            adj.add_forward(forward_call, replay=replay_call)
 
         if not func.missing_grad and len(args):
             reverse_has_output_args = len(output_list) > 1 and func.custom_grad_func is None
