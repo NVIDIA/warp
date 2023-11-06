@@ -934,6 +934,7 @@ class Adjoint:
             # handles expression (zero output) functions, e.g.: void do_something();
 
             output = None
+            output_list = []
             forward_call = (
                 f"{func.namespace}{func_name}({adj.format_forward_call_args(param_types, args, use_initializer_list)});"
             )
@@ -945,18 +946,13 @@ class Adjoint:
             else:
                 adj.add_forward(forward_call, replay=replay_call)
 
-            if not func.missing_grad and len(args):
-                arg_str = adj.format_reverse_call_args(param_types, args, [], {}, {}, use_initializer_list)
-                if arg_str is not None:
-                    reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
-                    adj.add_reverse(reverse_call)
-
         elif not isinstance(return_type, list) or len(return_type) == 1:
             # handle simple function (one output)
 
             if isinstance(return_type, list):
                 return_type = return_type[0]
             output = adj.add_var(return_type)
+            output_list = [output]
             forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(param_types, args, use_initializer_list)});"
             replay_call = forward_call
             if func.custom_replay_func is not None:
@@ -967,32 +963,28 @@ class Adjoint:
             else:
                 adj.add_forward(forward_call, replay=replay_call)
 
-            if not func.missing_grad and len(args):
-                arg_str = adj.format_reverse_call_args(param_types, args, [output], {}, {}, use_initializer_list)
-                if arg_str is not None:
-                    reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
-                    adj.add_reverse(reverse_call)
-
         else:
             # handle multiple value functions
 
             output = [adj.add_var(v) for v in return_type]
+            output_list = output
             forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(param_types, args + output, use_initializer_list)});"
             adj.add_forward(forward_call)
 
-            if not func.missing_grad and len(args):
-                arg_str = adj.format_reverse_call_args(
-                    param_types,
-                    args,
-                    output,
-                    {},
-                    {},
-                    use_initializer_list,
-                    has_output_args=func.custom_grad_func is None,
-                )
-                if arg_str is not None:
-                    reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
-                    adj.add_reverse(reverse_call)
+        if not func.missing_grad and len(args):
+            reverse_has_output_args = len(output_list) > 1 and func.custom_grad_func is None
+            arg_str = adj.format_reverse_call_args(
+                param_types,
+                args,
+                output_list,
+                {},
+                {},
+                use_initializer_list,
+                has_output_args=reverse_has_output_args,
+            )
+            if arg_str is not None:
+                reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
+                adj.add_reverse(reverse_call)
 
         return output
 
