@@ -691,8 +691,6 @@ class Adjoint:
         param_types,
         args,
         args_out,
-        non_adjoint_args,
-        non_adjoint_outputs,
         use_initializer_list,
         has_output_args=True,
     ):
@@ -703,12 +701,10 @@ class Adjoint:
         formatted_var_adj = adj.format_args(
             "&adj" if use_initializer_list else "adj",
             param_types,
-            [a for i, a in enumerate(args) if i not in non_adjoint_args],
+            args,
             adjoints=True,
         )
-        formatted_out_adj = adj.format_args(
-            "adj", param_types, [a for i, a in enumerate(args_out) if i not in non_adjoint_outputs], adjoints=True
-        )
+        formatted_out_adj = adj.format_args("adj", param_types, args_out, adjoints=True)
 
         if len(formatted_var_adj) == 0 and len(formatted_out_adj) == 0:
             # there are no adjoint arguments, so we don't need to call the reverse function
@@ -977,8 +973,6 @@ class Adjoint:
                 param_types,
                 args,
                 output_list,
-                {},
-                {},
                 use_initializer_list,
                 has_output_args=reverse_has_output_args,
             )
