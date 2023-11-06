@@ -933,6 +933,7 @@ class Adjoint:
         if return_type is None:
             # handles expression (zero output) functions, e.g.: void do_something();
 
+            output = None
             forward_call = (
                 f"{func.namespace}{func_name}({adj.format_forward_call_args(param_types, args, use_initializer_list)});"
             )
@@ -949,8 +950,6 @@ class Adjoint:
                 if arg_str is not None:
                     reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
                     adj.add_reverse(reverse_call)
-
-            return None
 
         elif not isinstance(return_type, list) or len(return_type) == 1:
             # handle simple function (one output)
@@ -974,8 +973,6 @@ class Adjoint:
                     reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
                     adj.add_reverse(reverse_call)
 
-            return output
-
         else:
             # handle multiple value functions
 
@@ -997,10 +994,7 @@ class Adjoint:
                     reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
                     adj.add_reverse(reverse_call)
 
-            if len(output) == 1:
-                return output[0]
-
-            return output
+        return output
 
     def add_builtin_call(adj, func_name, args, min_outputs=None, templates=[], kwds=None):
         func = warp.context.builtin_functions[func_name]
