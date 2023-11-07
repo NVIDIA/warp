@@ -1311,6 +1311,12 @@ class Module:
                 for func in module.functions.values():
                     s = func.adj.source
                     ch.update(bytes(s, "utf-8"))
+                    if func.custom_grad_func:
+                        s = func.custom_grad_func.adj.source
+                        ch.update(bytes(s, "utf-8"))
+                    if func.custom_replay_func:
+                        s = func.custom_replay_func.adj.source
+                        ch.update(bytes(s, "utf-8"))
 
                 # kernel source
                 for kernel in module.kernels.values():
