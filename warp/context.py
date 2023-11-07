@@ -1304,10 +1304,18 @@ class Module:
                 for func in module.functions.values():
                     s = func.adj.source
                     ch.update(bytes(s, "utf-8"))
+                    # cache func arg types
+                    for arg, arg_type in func.adj.arg_types.items():
+                        s = f"{arg}: {get_type_name(arg_type)}"
+                        ch.update(bytes(s, "utf-8"))
 
                 # kernel source
                 for kernel in module.kernels.values():
                     ch.update(bytes(kernel.adj.source, "utf-8"))
+                    # cache kernel arg types
+                    for arg, arg_type in kernel.adj.arg_types.items():
+                        s = f"{arg}: {get_type_name(arg_type)}"
+                        ch.update(bytes(s, "utf-8"))
                     # for generic kernels the Python source is always the same,
                     # but we hash the type signatures of all the overloads
                     if kernel.is_generic:
