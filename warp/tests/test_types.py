@@ -5,9 +5,6 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import contextlib
-import io
-import inspect
 import unittest
 
 from warp.tests.test_base import *
@@ -44,39 +41,213 @@ def test_constant_error_invalid_type(test, device):
         wp.constant((1, 2, 3))
 
 
-def test_vector(test, device):
-    for dtype in (int, float, wp.float16):
-        vec_cls = wp.vec(3, dtype)
+def test_vector(test, device, dtype):
+    def make_scalar(x):
+        # Cast to the correct integer type to simulate wrapping.
+        if dtype in wp.types.int_types:
+            return dtype._type_(x).value
 
-        v = vec_cls(1, 2, 3)
-        test.assertEqual(v[0], 1)
-        test.assertSequenceEqual(v[0:2], (1, 2))
-        test.assertSequenceEqual(v, (1, 2, 3))
+        return x
 
-        v[0] = -1
-        test.assertEqual(v[0], -1)
-        test.assertSequenceEqual(v[0:2], (-1, 2))
-        test.assertSequenceEqual(v, (-1, 2, 3))
+    def make_vec(*args):
+        if dtype in wp.types.int_types:
+            # Cast to the correct integer type to simulate wrapping.
+            return tuple(dtype._type_(x).value for x in args)
 
-        v[1:3] = (-2, -3)
-        test.assertEqual(v[0], -1)
-        test.assertSequenceEqual(v[0:2], (-1, -2))
-        test.assertSequenceEqual(v, (-1, -2, -3))
+        return args
 
-        v += vec_cls(1, 1, 1)
-        test.assertSequenceEqual(v, (0, -1, -2))
+    vec3_cls = wp.vec(3, dtype)
+    vec4_cls = wp.vec(4, dtype)
+
+    v = vec4_cls(1, 2, 3, 4)
+    test.assertEqual(v[0], make_scalar(1))
+    test.assertEqual(v.x, make_scalar(1))
+    test.assertEqual(v.y, make_scalar(2))
+    test.assertEqual(v.z, make_scalar(3))
+    test.assertEqual(v.w, make_scalar(4))
+    test.assertSequenceEqual(v[0:2], make_vec(1, 2))
+    test.assertSequenceEqual(v, make_vec(1, 2, 3, 4))
+
+    v[0] = -1
+    test.assertEqual(v[0], make_scalar(-1))
+    test.assertEqual(v.x, make_scalar(-1))
+    test.assertEqual(v.y, make_scalar(2))
+    test.assertEqual(v.z, make_scalar(3))
+    test.assertEqual(v.w, make_scalar(4))
+    test.assertSequenceEqual(v[0:2], make_vec(-1, 2))
+    test.assertSequenceEqual(v, make_vec(-1, 2, 3, 4))
+
+    v[1:3] = (-2, -3)
+    test.assertEqual(v[0], make_scalar(-1))
+    test.assertEqual(v.x, make_scalar(-1))
+    test.assertEqual(v.y, make_scalar(-2))
+    test.assertEqual(v.z, make_scalar(-3))
+    test.assertEqual(v.w, make_scalar(4))
+    test.assertSequenceEqual(v[0:2], make_vec(-1, -2))
+    test.assertSequenceEqual(v, make_vec(-1, -2, -3, 4))
+
+    v.x = 1
+    test.assertEqual(v[0], make_scalar(1))
+    test.assertEqual(v.x, make_scalar(1))
+    test.assertEqual(v.y, make_scalar(-2))
+    test.assertEqual(v.z, make_scalar(-3))
+    test.assertEqual(v.w, make_scalar(4))
+    test.assertSequenceEqual(v[0:2], make_vec(1, -2))
+    test.assertSequenceEqual(v, make_vec(1, -2, -3, 4))
+
+    v = vec3_cls(2, 4, 6)
+    test.assertSequenceEqual(+v, make_vec(2, 4, 6))
+    test.assertSequenceEqual(-v, make_vec(-2, -4, -6))
+    test.assertSequenceEqual(v + vec3_cls(1, 1, 1), make_vec(3, 5, 7))
+    test.assertSequenceEqual(v - vec3_cls(1, 1, 1), make_vec(1, 3, 5))
+    test.assertSequenceEqual(v * dtype(2), make_vec(4, 8, 12))
+    test.assertSequenceEqual(dtype(2) * v, make_vec(4, 8, 12))
+    test.assertSequenceEqual(v / dtype(2), make_vec(1, 2, 3))
+    test.assertSequenceEqual(dtype(12) / v, make_vec(6, 3, 2))
+
+
+def test_matrix(test, device, dtype):
+    def make_scalar(x):
+        # Cast to the correct integer type to simulate wrapping.
+        if dtype in wp.types.int_types:
+            return dtype._type_(x).value
+
+        return x
+
+    def make_vec(*args):
+        if dtype in wp.types.int_types:
+            # Cast to the correct integer type to simulate wrapping.
+            return tuple(dtype._type_(x).value for x in args)
+
+        return args
+
+    def make_mat(*args):
+        if dtype in wp.types.int_types:
+            # Cast to the correct integer type to simulate wrapping.
+            return tuple(tuple(dtype._type_(x).value for x in row) for row in args)
+
+        return args
+
+    mat22_cls = wp.mat((2, 2), dtype)
+    mat33_cls = wp.mat((3, 3), dtype)
+
+    m = mat33_cls(((1, 2, 3), (4, 5, 6), (7, 8, 9)))
+    test.assertEqual(m[0][0], make_scalar(1))
+    test.assertEqual(m[0][1], make_scalar(2))
+    test.assertEqual(m[0][2], make_scalar(3))
+    test.assertEqual(m[1][0], make_scalar(4))
+    test.assertEqual(m[1][1], make_scalar(5))
+    test.assertEqual(m[1][2], make_scalar(6))
+    test.assertEqual(m[2][0], make_scalar(7))
+    test.assertEqual(m[2][1], make_scalar(8))
+    test.assertEqual(m[2][2], make_scalar(9))
+    test.assertEqual(m[0, 0], make_scalar(1))
+    test.assertEqual(m[0, 1], make_scalar(2))
+    test.assertEqual(m[0, 2], make_scalar(3))
+    test.assertEqual(m[1, 0], make_scalar(4))
+    test.assertEqual(m[1, 1], make_scalar(5))
+    test.assertEqual(m[1, 2], make_scalar(6))
+    test.assertEqual(m[2, 0], make_scalar(7))
+    test.assertEqual(m[2, 1], make_scalar(8))
+    test.assertEqual(m[2, 2], make_scalar(9))
+    test.assertSequenceEqual(m[0], make_vec(1, 2, 3))
+    test.assertSequenceEqual(m[1], make_vec(4, 5, 6))
+    test.assertSequenceEqual(m[2], make_vec(7, 8, 9))
+    test.assertSequenceEqual(m[0][1:3], make_vec(2, 3))
+    test.assertSequenceEqual(m[1][0:2], make_vec(4, 5))
+    test.assertSequenceEqual(m[2][0:3], make_vec(7, 8, 9))
+    # test.assertSequenceEqual(m[0, 1:3], make_vec(2, 3))
+    # test.assertSequenceEqual(m[1, 0:2], make_vec(4, 5))
+    # test.assertSequenceEqual(m[2, 0:3], make_vec(7, 8, 9))
+    test.assertSequenceEqual(m, make_mat((1, 2, 3), (4, 5, 6), (7, 8, 9)))
+
+    m[1, 0] = -4
+    test.assertEqual(m[0][0], make_scalar(1))
+    test.assertEqual(m[0][1], make_scalar(2))
+    test.assertEqual(m[0][2], make_scalar(3))
+    test.assertEqual(m[1][0], make_scalar(-4))
+    test.assertEqual(m[1][1], make_scalar(5))
+    test.assertEqual(m[1][2], make_scalar(6))
+    test.assertEqual(m[2][0], make_scalar(7))
+    test.assertEqual(m[2][1], make_scalar(8))
+    test.assertEqual(m[2][2], make_scalar(9))
+    test.assertEqual(m[0, 0], make_scalar(1))
+    test.assertEqual(m[0, 1], make_scalar(2))
+    test.assertEqual(m[0, 2], make_scalar(3))
+    test.assertEqual(m[1, 0], make_scalar(-4))
+    test.assertEqual(m[1, 1], make_scalar(5))
+    test.assertEqual(m[1, 2], make_scalar(6))
+    test.assertEqual(m[2, 0], make_scalar(7))
+    test.assertEqual(m[2, 1], make_scalar(8))
+    test.assertEqual(m[2, 2], make_scalar(9))
+    test.assertSequenceEqual(m[0], make_vec(1, 2, 3))
+    test.assertSequenceEqual(m[1], make_vec(-4, 5, 6))
+    test.assertSequenceEqual(m[2], make_vec(7, 8, 9))
+    test.assertSequenceEqual(m[0][1:3], make_vec(2, 3))
+    test.assertSequenceEqual(m[1][0:2], make_vec(-4, 5))
+    test.assertSequenceEqual(m[2][0:3], make_vec(7, 8, 9))
+    # test.assertSequenceEqual(m[0, 1:3], make_vec(2, 3))
+    # test.assertSequenceEqual(m[1, 0:2], make_vec(-4, 5))
+    # test.assertSequenceEqual(m[2, 0:3], make_vec(7, 8, 9))
+    test.assertSequenceEqual(m, make_mat((1, 2, 3), (-4, 5, 6), (7, 8, 9)))
+
+    m[2] = (-7, 8, -9)
+    test.assertEqual(m[0][0], make_scalar(1))
+    test.assertEqual(m[0][1], make_scalar(2))
+    test.assertEqual(m[0][2], make_scalar(3))
+    test.assertEqual(m[1][0], make_scalar(-4))
+    test.assertEqual(m[1][1], make_scalar(5))
+    test.assertEqual(m[1][2], make_scalar(6))
+    test.assertEqual(m[2][0], make_scalar(-7))
+    test.assertEqual(m[2][1], make_scalar(8))
+    test.assertEqual(m[2][2], make_scalar(-9))
+    test.assertEqual(m[0, 0], make_scalar(1))
+    test.assertEqual(m[0, 1], make_scalar(2))
+    test.assertEqual(m[0, 2], make_scalar(3))
+    test.assertEqual(m[1, 0], make_scalar(-4))
+    test.assertEqual(m[1, 1], make_scalar(5))
+    test.assertEqual(m[1, 2], make_scalar(6))
+    test.assertEqual(m[2, 0], make_scalar(-7))
+    test.assertEqual(m[2, 1], make_scalar(8))
+    test.assertEqual(m[2, 2], make_scalar(-9))
+    test.assertSequenceEqual(m[0], make_vec(1, 2, 3))
+    test.assertSequenceEqual(m[1], make_vec(-4, 5, 6))
+    test.assertSequenceEqual(m[2], make_vec(-7, 8, -9))
+    test.assertSequenceEqual(m[0][1:3], make_vec(2, 3))
+    test.assertSequenceEqual(m[1][0:2], make_vec(-4, 5))
+    test.assertSequenceEqual(m[2][0:3], make_vec(-7, 8, -9))
+    # test.assertSequenceEqual(m[0, 1:3], make_vec(2, 3))
+    # test.assertSequenceEqual(m[1, 0:2], make_vec(-4, 5))
+    # test.assertSequenceEqual(m[2, 0:3], make_vec(-7, 8, -9))
+    test.assertSequenceEqual(m, make_mat((1, 2, 3), (-4, 5, 6), (-7, 8, -9)))
+
+    m = mat22_cls(2, 4, 6, 8)
+    test.assertSequenceEqual(+m, make_mat((2, 4), (6, 8)))
+    test.assertSequenceEqual(-m, make_mat((-2, -4), (-6, -8)))
+    test.assertSequenceEqual(m + mat22_cls(1, 1, 1, 1), make_mat((3, 5), (7, 9)))
+    test.assertSequenceEqual(m - mat22_cls(1, 1, 1, 1), make_mat((1, 3), (5, 7)))
+    test.assertSequenceEqual(m * dtype(2), make_mat((4, 8), (12, 16)))
+    test.assertSequenceEqual(dtype(2) * m, make_mat((4, 8), (12, 16)))
+    test.assertSequenceEqual(m / dtype(2), make_mat((1, 2), (3, 4)))
+    test.assertSequenceEqual(dtype(24) / m, make_mat((12, 6), (4, 3)))
 
 
 def register(parent):
     devices = get_test_devices()
 
-    class TestUtils(parent):
+    class TestTypes(parent):
         pass
 
-    add_function_test(TestUtils, "test_constant", test_constant)
-    add_function_test(TestUtils, "test_constant_error_invalid_type", test_constant_error_invalid_type)
-    add_function_test(TestUtils, "test_vector", test_vector)
-    return TestUtils
+    add_function_test(TestTypes, "test_constant", test_constant)
+    add_function_test(TestTypes, "test_constant_error_invalid_type", test_constant_error_invalid_type)
+
+    for dtype in tuple(wp.types.scalar_types) + (int, float):
+        add_function_test(TestTypes, f"test_vector_{dtype.__name__}", test_vector, devices=None, dtype=dtype)
+
+    for dtype in tuple(wp.types.float_types) + (float,):
+        add_function_test(TestTypes, f"test_matrix_{dtype.__name__}", test_matrix, devices=None, dtype=dtype)
+
+    return TestTypes
 
 
 if __name__ == "__main__":

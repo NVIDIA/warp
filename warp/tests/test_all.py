@@ -14,6 +14,7 @@ import warp.tests.test_arithmetic
 import warp.tests.test_array
 import warp.tests.test_atomic
 import warp.tests.test_bool
+import warp.tests.test_builtins_resolution
 import warp.tests.test_bvh
 import warp.tests.test_closest_point_edge_edge
 import warp.tests.test_codegen
@@ -85,6 +86,7 @@ def register_tests(parent):
     tests.append(warp.tests.test_mesh_query_aabb.register(parent))
     tests.append(warp.tests.test_mesh_query_point.register(parent))
     tests.append(warp.tests.test_mesh_query_ray.register(parent))
+    tests.append(warp.tests.test_builtins_resolution.register(parent))
     tests.append(warp.tests.test_bvh.register(parent))
     tests.append(warp.tests.test_conditional.register(parent))
     tests.append(warp.tests.test_operators.register(parent))

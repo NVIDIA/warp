@@ -177,8 +177,14 @@ def vector(length, dtype):
         def __add__(self, y):
             return warp.add(self, y)
 
+        def __radd__(self, y):
+            return warp.add(y, self)
+
         def __sub__(self, y):
             return warp.sub(self, y)
+
+        def __rsub__(self, y):
+            return warp.sub(y, self)
 
         def __mul__(self, y):
             return warp.mul(self, y)
@@ -287,8 +293,14 @@ def matrix(shape, dtype):
         def __add__(self, y):
             return warp.add(self, y)
 
+        def __radd__(self, y):
+            return warp.add(y, self)
+
         def __sub__(self, y):
             return warp.sub(self, y)
+
+        def __rsub__(self, y):
+            return warp.sub(y, self)
 
         def __mul__(self, y):
             return warp.mul(self, y)
