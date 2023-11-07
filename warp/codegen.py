@@ -1681,7 +1681,6 @@ class Adjoint:
             var = adj.eval(node.slice)
             var_name = var.label
             var = Var(f"adj_{var_name}", type=var.type, constant=None, prefix=False)
-            adj.symbols[var.label] = var
             return var
 
         target = adj.eval(node.value)
@@ -1771,7 +1770,6 @@ class Adjoint:
                 lhs.slice.is_adjoint = True
                 src_var = adj.eval(lhs.slice)
                 var = Var(f"adj_{src_var.label}", type=src_var.type, constant=None, prefix=False)
-                adj.symbols[var.label] = var
                 value = adj.eval(node.value)
                 adj.add_forward(f"{var.emit()} = {value.emit()};")
                 return var
