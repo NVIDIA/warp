@@ -515,6 +515,52 @@ def test_mesh_grad(test, device):
     assert np.allclose(ad_grad, fd_grad, atol=1e-3)
 
 
+@wp.func
+def name_clash(a: float, b: float) -> float:
+    return a + b
+
+
+@wp.func_grad(name_clash)
+def adj_name_clash(a: float, b: float, adj_ret: float):
+    # names `adj_a` and `adj_b` must not clash with function args of generated function
+    adj_a = 0.0
+    adj_b = 0.0
+    if a < 0.0:
+        adj_a = adj_ret
+    if b > 0.0:
+        adj_b = adj_ret
+
+    wp.adjoint[a] += adj_a
+    wp.adjoint[b] += adj_b
+
+
+@wp.kernel
+def name_clash_kernel(
+    input_a: wp.array(dtype=float),
+    input_b: wp.array(dtype=float),
+    output: wp.array(dtype=float),
+):
+    tid = wp.tid()
+    output[tid] = name_clash(input_a[tid], input_b[tid])
+
+
+def test_name_clash(test, device):
+    # tests that no name clashes occur when variable names such as `adj_a` are used in custom gradient code
+    with wp.ScopedDevice(device):
+        input_a = wp.array([1.0, -2.0, 3.0], dtype=wp.float32, requires_grad=True)
+        input_b = wp.array([4.0, 5.0, -6.0], dtype=wp.float32, requires_grad=True)
+        output = wp.zeros(3, dtype=wp.float32, requires_grad=True)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(name_clash_kernel, dim=len(input_a), inputs=[input_a, input_b], outputs=[output])
+
+        tape.backward(grads={output: wp.array(np.ones(len(input_a), dtype=np.float32))})
+
+        assert_np_equal(input_a.grad.numpy(), np.array([0.0, 1.0, 0.0]))
+        assert_np_equal(input_b.grad.numpy(), np.array([1.0, 1.0, 0.0]))
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -533,6 +579,7 @@ def register(parent):
     add_function_test(TestGrad, "test_3d_math_grad", test_3d_math_grad, devices=devices)
     add_function_test(TestGrad, "test_multi_valued_function_grad", test_multi_valued_function_grad, devices=devices)
     add_function_test(TestGrad, "test_mesh_grad", test_mesh_grad, devices=devices)
+    add_function_test(TestGrad, "test_name_clash", test_name_clash, devices=devices)
 
     return TestGrad
 
