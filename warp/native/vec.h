@@ -397,7 +397,7 @@ inline CUDA_CALLABLE Type extract(const vec_t<Length, Type> & a, int idx)
 }
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE Type* indexref(vec_t<Length, Type>& v, int idx)
+inline CUDA_CALLABLE Type* index(vec_t<Length, Type>& v, int idx)
 {
 #ifndef NDEBUG
     if (idx < 0 || idx >= Length)
@@ -411,7 +411,7 @@ inline CUDA_CALLABLE Type* indexref(vec_t<Length, Type>& v, int idx)
 }
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE Type* indexref2(vec_t<Length, Type>* v, int idx)
+inline CUDA_CALLABLE Type* indexref(vec_t<Length, Type>* v, int idx)
 {
 #ifndef NDEBUG
     if (idx < 0 || idx >= Length)
@@ -425,7 +425,7 @@ inline CUDA_CALLABLE Type* indexref2(vec_t<Length, Type>* v, int idx)
 }
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_indexref(vec_t<Length, Type>& v, int idx,
+inline CUDA_CALLABLE void adj_index(vec_t<Length, Type>& v, int idx,
                                        vec_t<Length, Type>& adj_v, int adj_idx, const Type& adj_value)
 {
     // nop
@@ -433,7 +433,7 @@ inline CUDA_CALLABLE void adj_indexref(vec_t<Length, Type>& v, int idx,
 
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_indexref2(vec_t<Length, Type>* v, int idx, 
+inline CUDA_CALLABLE void adj_indexref(vec_t<Length, Type>* v, int idx, 
                                        vec_t<Length, Type>& adj_v, int adj_idx, const Type& adj_value)
 {
     // nop

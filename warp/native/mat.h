@@ -327,7 +327,7 @@ inline CUDA_CALLABLE Type extract(const mat_t<Rows,Cols,Type>& m, int row, int c
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE vec_t<Cols, Type>* indexref(mat_t<Rows,Cols,Type>& m, int row)
+inline CUDA_CALLABLE vec_t<Cols, Type>* index(mat_t<Rows,Cols,Type>& m, int row)
 {
 #ifndef NDEBUG
     if (row < 0 || row >= Rows)
@@ -341,7 +341,7 @@ inline CUDA_CALLABLE vec_t<Cols, Type>* indexref(mat_t<Rows,Cols,Type>& m, int r
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE Type* indexref(mat_t<Rows,Cols,Type>& m, int row, int col)
+inline CUDA_CALLABLE Type* index(mat_t<Rows,Cols,Type>& m, int row, int col)
 {
 #ifndef NDEBUG
     if (row < 0 || row >= Rows)
@@ -360,14 +360,14 @@ inline CUDA_CALLABLE Type* indexref(mat_t<Rows,Cols,Type>& m, int row, int col)
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_indexref(const mat_t<Rows,Cols,Type>& m, int row,
+inline CUDA_CALLABLE void adj_index(const mat_t<Rows,Cols,Type>& m, int row,
                                        const mat_t<Rows,Cols,Type>& adj_m, int adj_row, const vec_t<Cols, Type>& adj_value)
 {
     // nop
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_indexref(const mat_t<Rows,Cols,Type>& m, int row, int col,
+inline CUDA_CALLABLE void adj_index(const mat_t<Rows,Cols,Type>& m, int row, int col,
                                        const mat_t<Rows,Cols,Type>& adj_m, int adj_row, int adj_col, Type adj_value)
 {
     // nop

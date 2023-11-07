@@ -927,12 +927,12 @@ class Adjoint:
             output = None
             output_list = []
 
-            forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
+            forward_call = (
+                f"{func.namespace}{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
+            )
             replay_call = forward_call
             if func.custom_replay_func is not None:
-                replay_call = (
-                    f"{func.namespace}replay_{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
-                )
+                replay_call = f"{func.namespace}replay_{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
 
         elif not isinstance(return_type, list) or len(return_type) == 1:
             # handle simple function (one output)
@@ -1808,9 +1808,9 @@ class Adjoint:
 
             elif type_is_vector(target_type) or type_is_matrix(target_type):
                 if is_reference(target.type):
-                    attr = adj.add_builtin_call("indexref2", [target, *indices])
-                else:
                     attr = adj.add_builtin_call("indexref", [target, *indices])
+                else:
+                    attr = adj.add_builtin_call("index", [target, *indices])
 
                 adj.add_builtin_call("store", [attr, value])
 
@@ -1858,9 +1858,9 @@ class Adjoint:
                 index = adj.vector_component_index(lhs.attr, aggregate_type)
 
                 if is_reference(aggregate.type):
-                    attr = adj.add_builtin_call("indexref2", [aggregate, index])
-                else:
                     attr = adj.add_builtin_call("indexref", [aggregate, index])
+                else:
+                    attr = adj.add_builtin_call("index", [aggregate, index])
 
                 adj.add_builtin_call("store", [attr, rhs])
 

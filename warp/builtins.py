@@ -2647,7 +2647,7 @@ def vector_indexref_element_value_func(arg_types, kwds, _):
 
 # implements &vector[index]
 add_builtin(
-    "indexref",
+    "index",
     input_types={"a": vector(length=Any, dtype=Scalar), "i": int},
     value_func=vector_indexref_element_value_func,
     hidden=True,
@@ -2656,7 +2656,7 @@ add_builtin(
 )
 # implements &(*vector)[index]
 add_builtin(
-    "indexref2",
+    "indexref",
     input_types={"a": Reference, "i": int},
     value_func=vector_indexref_element_value_func,
     hidden=True,
@@ -2684,7 +2684,7 @@ def matrix_indexref_row_value_func(arg_types, kwds, _):
 
 # implements matrix[i] = row
 add_builtin(
-    "indexref",
+    "index",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int},
     value_func=matrix_indexref_row_value_func,
     hidden=True,
@@ -2694,7 +2694,7 @@ add_builtin(
 
 # implements matrix[i,j] = scalar
 add_builtin(
-    "indexref",
+    "index",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int},
     value_func=matrix_indexref_element_value_func,
     hidden=True,
