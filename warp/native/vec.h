@@ -383,7 +383,7 @@ inline CUDA_CALLABLE Type tensordot(vec_t<Length, Type> a, vec_t<Length, Type> b
 
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE Type index(const vec_t<Length, Type> & a, int idx)
+inline CUDA_CALLABLE Type extract(const vec_t<Length, Type> & a, int idx)
 {
 #ifndef NDEBUG
     if (idx < 0 || idx >= Length)
@@ -836,7 +836,7 @@ inline CUDA_CALLABLE void adj_dot(vec_t<3, Type> a, vec_t<3, Type> b, vec_t<3, T
 
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_index(const vec_t<Length, Type> & a, int idx, vec_t<Length, Type> & adj_a, int & adj_idx, Type & adj_ret)
+inline CUDA_CALLABLE void adj_extract(const vec_t<Length, Type> & a, int idx, vec_t<Length, Type> & adj_a, int & adj_idx, Type & adj_ret)
 {
 #ifndef NDEBUG
     if (idx < 0 || idx > Length)

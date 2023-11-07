@@ -1317,7 +1317,7 @@ class Adjoint:
             if type_is_vector(aggregate_type):
                 index = adj.vector_component_index(node.attr, aggregate_type)
 
-                return adj.add_builtin_call("index", [aggregate, index])
+                return adj.add_builtin_call("extract", [aggregate, index])
 
             else:
                 attr_type = Reference(aggregate_type.vars[node.attr].type)
@@ -1721,7 +1721,7 @@ class Adjoint:
 
         else:
             # handles non-array type indexing, e.g: vec3, mat33, etc
-            out = adj.add_builtin_call("index", [target, *indices])
+            out = adj.add_builtin_call("extract", [target, *indices])
 
         return out
 

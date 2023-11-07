@@ -298,7 +298,7 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> atomic_max(mat_t<Rows,Cols,Type> * ad
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE vec_t<Cols,Type> index(const mat_t<Rows,Cols,Type>& m, int row)
+inline CUDA_CALLABLE vec_t<Cols,Type> extract(const mat_t<Rows,Cols,Type>& m, int row)
 {
     vec_t<Cols,Type> ret;
     for(unsigned i=0; i < Cols; ++i)
@@ -309,7 +309,7 @@ inline CUDA_CALLABLE vec_t<Cols,Type> index(const mat_t<Rows,Cols,Type>& m, int 
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE Type index(const mat_t<Rows,Cols,Type>& m, int row, int col)
+inline CUDA_CALLABLE Type extract(const mat_t<Rows,Cols,Type>& m, int row, int col)
 {
 #ifndef NDEBUG
     if (row < 0 || row >= Rows)
@@ -861,14 +861,14 @@ inline CUDA_CALLABLE vec_t<3,Type> transform_vector(const mat_t<4,4,Type>& m, co
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_index(const mat_t<Rows,Cols,Type>& m, int row, mat_t<Rows,Cols,Type>& adj_m, int& adj_row, const vec_t<Cols,Type>& adj_ret)
+inline CUDA_CALLABLE void adj_extract(const mat_t<Rows,Cols,Type>& m, int row, mat_t<Rows,Cols,Type>& adj_m, int& adj_row, const vec_t<Cols,Type>& adj_ret)
 {
     for( unsigned col=0; col < Cols; ++col )
         adj_m.data[row][col] += adj_ret[col];
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
-inline void CUDA_CALLABLE adj_index(const mat_t<Rows,Cols,Type>& m, int row, int col, mat_t<Rows,Cols,Type>& adj_m, int& adj_row, int& adj_col, Type adj_ret)
+inline void CUDA_CALLABLE adj_extract(const mat_t<Rows,Cols,Type>& m, int row, int col, mat_t<Rows,Cols,Type>& adj_m, int& adj_row, int& adj_col, Type adj_ret)
 {
 #ifndef NDEBUG
     if (row < 0 || row > Rows)

@@ -2597,14 +2597,14 @@ def index_value_func(arg_types, kwds, _):
 
 
 add_builtin(
-    "index",
+    "extract",
     input_types={"a": vector(length=Any, dtype=Scalar), "i": int},
     value_func=index_value_func,
     hidden=True,
     group="Utility",
 )
 add_builtin(
-    "index",
+    "extract",
     input_types={"a": quaternion(dtype=Scalar), "i": int},
     value_func=index_value_func,
     hidden=True,
@@ -2612,14 +2612,14 @@ add_builtin(
 )
 
 add_builtin(
-    "index",
+    "extract",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int},
     value_func=lambda arg_types, kwds, _: vector(length=arg_types[0]._shape_[1], dtype=arg_types[0]._wp_scalar_type_),
     hidden=True,
     group="Utility",
 )
 add_builtin(
-    "index",
+    "extract",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int},
     value_func=index_value_func,
     hidden=True,
@@ -2627,14 +2627,14 @@ add_builtin(
 )
 
 add_builtin(
-    "index",
+    "extract",
     input_types={"a": transformation(dtype=Scalar), "i": int},
     value_func=index_value_func,
     hidden=True,
     group="Utility",
 )
 
-add_builtin("index", input_types={"s": shape_t, "i": int}, value_type=int, hidden=True, group="Utility")
+add_builtin("extract", input_types={"s": shape_t, "i": int}, value_type=int, hidden=True, group="Utility")
 
 
 def vector_indexref_element_value_func(arg_types, kwds, _):

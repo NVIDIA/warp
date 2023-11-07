@@ -265,13 +265,13 @@ inline CUDA_CALLABLE Type tensordot(const transform_t<Type>& a, const transform_
 }
 
 template<typename Type>
-inline CUDA_CALLABLE Type index(const transform_t<Type>& t, int i)
+inline CUDA_CALLABLE Type extract(const transform_t<Type>& t, int i)
 {
     return t[i];
 }
 
 template<typename Type>
-inline void CUDA_CALLABLE adj_index(const transform_t<Type>& t, int i, transform_t<Type>& adj_t, int& adj_i, Type adj_ret)
+inline void CUDA_CALLABLE adj_extract(const transform_t<Type>& t, int i, transform_t<Type>& adj_t, int& adj_i, Type adj_ret)
 {
     adj_t[i] += adj_ret;
 }
