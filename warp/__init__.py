@@ -35,7 +35,7 @@ from warp.types import matmul, adj_matmul, batched_matmul, adj_batched_matmul, f
 from warp.types import vector as vec
 from warp.types import matrix as mat
 
-from warp.context import init, func, func_grad, func_replay, kernel, struct, overload
+from warp.context import init, func, func_grad, func_replay, func_native, kernel, struct, overload
 from warp.context import is_cpu_available, is_cuda_available, is_device_available
 from warp.context import get_devices, get_preferred_device
 from warp.context import get_cuda_devices, get_cuda_device_count, get_cuda_device, map_cuda_device, unmap_cuda_device

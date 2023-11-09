@@ -70,6 +70,8 @@ class Function:
         native_func=None,
         defaults=None,
         custom_replay_func=None,
+        native_snippet=None,
+        adj_native_snippet=None,
         skip_forward_codegen=False,
         skip_reverse_codegen=False,
         custom_reverse_num_input_args=-1,
@@ -92,6 +94,8 @@ class Function:
         self.defaults = defaults
         # Function instance for a custom implementation of the replay pass
         self.custom_replay_func = custom_replay_func
+        self.native_snippet = native_snippet
+        self.adj_native_snippet = adj_native_snippet
         self.custom_grad_func = None
 
         if initializer_list_func is None:
@@ -548,6 +552,23 @@ def func(f):
 
     # return the top of the list of overloads for this key
     return m.functions[name]
+
+
+def func_native(snippet, adj_snippet=None):
+    """
+    Decorator to register custom cuda snippet, @func_native
+    """ 
+    def snippet_func(f):
+        name = warp.codegen.make_full_qualified_name(f)
+
+        m = get_module(f.__module__)
+        func = Function(
+            func=f, key=name, namespace="", module=m, native_snippet=snippet, adj_native_snippet=adj_snippet
+        )  # cuda snippets do not have a return value_type
+
+        return m.functions[name]
+
+    return snippet_func
 
 
 def func_grad(forward_fn):
@@ -1115,9 +1136,14 @@ class ModuleBuilder:
 
         # code-gen all imported functions
         for func in self.functions.keys():
-            source += warp.codegen.codegen_func(
-                func.adj, c_func_name=func.native_func, device=device, options=self.options
-            )
+            if func.native_snippet is None:
+                source += warp.codegen.codegen_func(
+                    func.adj, c_func_name=func.native_func, device=device, options=self.options
+                )
+            else:
+                source += warp.codegen.codegen_snippet(
+                    func.adj, name=func.key, snippet=func.native_snippet, adj_snippet=func.adj_native_snippet
+                )
 
         for kernel in self.module.kernels.values():
             # each kernel gets an entry point in the module
