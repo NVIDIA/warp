@@ -556,7 +556,7 @@ def func(f):
 
 def func_native(snippet, adj_snippet=None):
     """
-    Decorator to register custom cuda snippet, @func_native
+    Decorator to register native code snippet, @func_native
     """ 
     def snippet_func(f):
         name = warp.codegen.make_full_qualified_name(f)
