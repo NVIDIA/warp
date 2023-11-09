@@ -1351,6 +1351,10 @@ class Adjoint:
             adj.symbols[key] = out
             return out
 
+    def emit_Ellipsis(adj, node):
+        # stubbed @wp.native_func
+        return
+
     def emit_NameConstant(adj, node):
         if node.value is True:
             return adj.add_constant(True)
@@ -1364,6 +1368,8 @@ class Adjoint:
             return adj.emit_String(node)
         elif isinstance(node, ast.Num):
             return adj.emit_Num(node)
+        elif isinstance(node, ast.Ellipsis):
+            return adj.emit_Ellipsis(node)
         else:
             assert isinstance(node, ast.NameConstant)
             return adj.emit_NameConstant(node)
@@ -2555,6 +2561,56 @@ def codegen_func(adj, c_func_name: str, device="cpu", options={}):
             filename=adj.filename,
             lineno=adj.fun_lineno,
         )
+
+    return s
+
+
+def codegen_snippet(adj, name, snippet, adj_snippet):
+
+    forward_args = []
+    reverse_args = []
+
+    # forward args
+    for i, arg in enumerate(adj.args):
+        s = f"{arg.ctype()} {arg.emit().replace('var_', '')}"
+        forward_args.append(s)
+        reverse_args.append(s)
+
+    # reverse args
+    for i, arg in enumerate(adj.args):
+        if isinstance(arg.type, indexedarray):
+            _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
+            reverse_args.append(_arg.ctype() + " & adj_" + arg.label)
+        else:
+            reverse_args.append(arg.ctype() + " & adj_" + arg.label)
+
+    forward_template = cuda_forward_function_template
+    reverse_template = cuda_reverse_function_template
+
+    s = ""
+    s += forward_template.format(
+        name=name,
+        return_type="void",
+        forward_args=indent(forward_args),
+        forward_body=snippet,
+        filename=adj.filename,
+        lineno=adj.fun_lineno,
+    )
+
+    if adj_snippet:
+        reverse_body = adj_snippet
+    else:
+        reverse_body = ""
+
+    s += reverse_template.format(
+        name=name,
+        return_type="void",
+        reverse_args=indent(reverse_args),
+        forward_body=snippet,
+        reverse_body=reverse_body,
+        filename=adj.filename,
+        lineno=adj.fun_lineno,
+    )
 
     return s
 
