@@ -86,7 +86,7 @@ def register(parent):
         TestDevices, "test_devices_unmap_imaginary_device", test_devices_unmap_imaginary_device, devices=devices
     )
     add_function_test(TestDevices, "test_devices_verify_cuda_device", test_devices_verify_cuda_device, devices=devices)
-    
+
     if wp.is_cuda_available():
         add_function_test(TestDevices, "test_devices_can_access_self", test_devices_can_access_self, devices=devices)
 
@@ -94,5 +94,6 @@ def register(parent):
 
 
 if __name__ == "__main__":
+    wp.build.clear_kernel_cache()
     _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

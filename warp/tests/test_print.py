@@ -32,10 +32,10 @@ def test_print(test, device):
 
     test.assertRegex(
         s,
-        fr"1{os.linesep}"
-        fr"this is a string{os.linesep}"
-        fr"this is a float 457\.500000{os.linesep}"
-        fr"this is an int 123",
+        rf"1{os.linesep}"
+        rf"this is a string{os.linesep}"
+        rf"this is a float 457\.500000{os.linesep}"
+        rf"this is an int 123",
     )
 
 
@@ -51,5 +51,6 @@ def register(parent):
 
 
 if __name__ == "__main__":
+    wp.build.clear_kernel_cache()
     _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

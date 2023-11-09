@@ -396,7 +396,7 @@ def make_test_bsr_mv(block_shape, scalar_type):
         A.ncol = A.ncol + 1
         with test.assertRaisesRegex(ValueError, "Number of columns"):
             bsr_mv(A, x, y)
-        
+
         A.ncol = A.ncol - 1
         A.nrow = A.nrow - 1
         with test.assertRaisesRegex(ValueError, "Number of rows"):
@@ -440,5 +440,6 @@ def register(parent):
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

@@ -107,5 +107,6 @@ def register(parent):
 
 
 if __name__ == "__main__":
+    wp.build.clear_kernel_cache()
     _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

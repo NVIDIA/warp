@@ -11,19 +11,20 @@ from warp.tests.test_base import *
 
 wp.init()
 
-mat32d = wp.mat(shape=(3,2), dtype=wp.float64)
+mat32d = wp.mat(shape=(3, 2), dtype=wp.float64)
+
 
 @wp.kernel
 def test_matrix_constructor_value_func():
     a = wp.mat22()
-    b = wp.matrix(a, shape=(2,2))
+    b = wp.matrix(a, shape=(2, 2))
     c = mat32d()
-    d = mat32d(c, shape=(3,2))
-    e = mat32d(wp.float64(1.0), wp.float64(2.0),
-               wp.float64(1.0), wp.float64(2.0),
-               wp.float64(1.0), wp.float64(2.0))
-    f = mat32d(wp.vec3d(wp.float64(1.0), wp.float64(2.0), wp.float64(3.0)),
-               wp.vec3d(wp.float64(1.0), wp.float64(2.0), wp.float64(3.0)))
+    d = mat32d(c, shape=(3, 2))
+    e = mat32d(wp.float64(1.0), wp.float64(2.0), wp.float64(1.0), wp.float64(2.0), wp.float64(1.0), wp.float64(2.0))
+    f = mat32d(
+        wp.vec3d(wp.float64(1.0), wp.float64(2.0), wp.float64(3.0)),
+        wp.vec3d(wp.float64(1.0), wp.float64(2.0), wp.float64(3.0)),
+    )
 
 
 # Test matrix constructors using explicit type (float16)
@@ -110,5 +111,6 @@ def register(parent):
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2, failfast=True)

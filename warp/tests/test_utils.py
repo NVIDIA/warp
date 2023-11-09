@@ -21,7 +21,7 @@ def test_warn(test, device):
         frame_info = inspect.getframeinfo(inspect.currentframe())
         wp.utils.warn("hello, world!")
 
-    expected = "{}:{}: UserWarning: hello, world!\n  wp.utils.warn(\"hello, world!\")\n".format(
+    expected = '{}:{}: UserWarning: hello, world!\n  wp.utils.warn("hello, world!")\n'.format(
         frame_info.filename,
         frame_info.lineno + 1,
     )
@@ -336,7 +336,7 @@ def test_mesh_adjacency(test, device):
     )
     adj = wp.utils.MeshAdjacency(triangles, len(triangles))
     expected_edges = {
-        (0, 3): (0, 3, 1,  2, 0,  1),
+        (0, 3): (0, 3, 1, 2, 0, 1),
         (1, 3): (3, 1, 0, -1, 0, -1),
         (0, 1): (1, 0, 3, -1, 0, -1),
         (0, 2): (0, 2, 3, -1, 1, -1),
@@ -423,7 +423,9 @@ def register(parent):
     )
     add_function_test(TestUtils, "test_array_cast", test_array_cast, devices=devices)
     add_function_test(TestUtils, "test_array_cast_error_devices_mismatch", test_array_cast_error_devices_mismatch)
-    add_function_test(TestUtils, "test_array_cast_error_unsupported_partial_cast", test_array_cast_error_unsupported_partial_cast)
+    add_function_test(
+        TestUtils, "test_array_cast_error_unsupported_partial_cast", test_array_cast_error_unsupported_partial_cast
+    )
     add_function_test(TestUtils, "test_mesh_adjacency", test_mesh_adjacency)
     add_function_test(TestUtils, "test_mesh_adjacency_error_manifold", test_mesh_adjacency_error_manifold)
     add_function_test(TestUtils, "test_scoped_timer", test_scoped_timer)
@@ -431,5 +433,6 @@ def register(parent):
 
 
 if __name__ == "__main__":
+    wp.build.clear_kernel_cache()
     _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

@@ -87,13 +87,12 @@ def register(parent):
     class TestDebug(parent):
         pass
 
-    wp.build.clear_kernel_cache()
-
     add_kernel_test(TestDebug, name="test_breakpoint", kernel=test_breakpoint, dim=1, inputs=[10], devices=["cpu"])
 
     return TestDebug
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2, failfast=True)
