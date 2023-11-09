@@ -1271,6 +1271,7 @@ class array(Array):
         self._grad = None
         # __array_interface__ or __cuda_array_interface__, evaluated lazily and cached
         self._array_interface = None
+        self.is_transposed = False
 
         # canonicalize dtype
         if dtype == int:
@@ -2140,6 +2141,8 @@ class array(Array):
             grad=None if self.grad is None else self.grad.transpose(axes=axes),
         )
 
+        a.is_transposed = not self.is_transposed
+
         a._ref = self
         return a
 
@@ -2960,6 +2963,11 @@ def matmul(
             "wp.matmul currently only supports operation between {A, B, C, D} matrices of the same type."
         )
 
+    if (not a.is_contiguous and not a.is_transposed) or (not b.is_contiguous and not b.is_transposed) or (not c.is_contiguous) or (not d.is_contiguous):
+        raise RuntimeError(
+            "wp.matmul is only valid for contiguous arrays, with the exception that A and/or B may be transposed."
+        )
+
     m = a.shape[0]
     n = b.shape[1]
     k = a.shape[1]
@@ -2994,8 +3002,8 @@ def matmul(
         ctypes.c_void_p(d.ptr),
         alpha,
         beta,
-        True,
-        True,
+        not a.is_transposed,
+        not b.is_transposed,
         allow_tf32x3_arith,
         1,
     )
@@ -3064,6 +3072,19 @@ def adj_matmul(
             "wp.adj_matmul currently only supports operation between {A, B, C, adj_D, adj_A, adj_B, adj_C} matrices of the same type."
         )
 
+    if (
+        (not a.is_contiguous and not a.is_transposed)
+        or (not b.is_contiguous and not b.is_transposed)
+        or (not c.is_contiguous)
+        or (not adj_a.is_contiguous and not adj_a.is_transposed)
+        or (not adj_b.is_contiguous and not adj_b.is_transposed)
+        or (not adj_c.is_contiguous)
+        or (not adj_d.is_contiguous)
+    ):
+        raise RuntimeError(
+            "wp.matmul is only valid for contiguous arrays, with the exception that A and/or B and their associated adjoints may be transposed."
+        )
+    
     m = a.shape[0]
     n = b.shape[1]
     k = a.shape[1]
@@ -3092,46 +3113,88 @@ def adj_matmul(
     cc = device.arch
 
     # adj_a
-    ret = runtime.core.cutlass_gemm(
-        cc,
-        m,
-        k,
-        n,
-        type_typestr(a.dtype).encode(),
-        ctypes.c_void_p(adj_d.ptr),
-        ctypes.c_void_p(b.ptr),
-        ctypes.c_void_p(a.ptr),
-        ctypes.c_void_p(adj_a.ptr),
-        alpha,
-        0.0,
-        True,
-        False,
-        allow_tf32x3_arith,
-        1,
-    )
-    if not ret:
-        raise RuntimeError("adj_matmul failed.")
+    if not a.is_transposed:
+        ret = runtime.core.cutlass_gemm(
+            cc,
+            m,
+            k,
+            n,
+            type_typestr(a.dtype).encode(),
+            ctypes.c_void_p(adj_d.ptr),
+            ctypes.c_void_p(b.ptr),
+            ctypes.c_void_p(a.ptr),
+            ctypes.c_void_p(adj_a.ptr),
+            alpha,
+            0.0,
+            True,
+            b.is_transposed,
+            allow_tf32x3_arith,
+            1,
+        )
+        if not ret:
+            raise RuntimeError("adj_matmul failed.")
+    else:
+        ret = runtime.core.cutlass_gemm(
+            cc,
+            k,
+            m,
+            n,
+            type_typestr(a.dtype).encode(),
+            ctypes.c_void_p(b.ptr),
+            ctypes.c_void_p(adj_d.ptr),
+            ctypes.c_void_p(a.ptr),
+            ctypes.c_void_p(adj_a.ptr),
+            alpha,
+            0.0,
+            not b.is_transposed,
+            False,
+            allow_tf32x3_arith,
+            1,
+        )
+        if not ret:
+            raise RuntimeError("adj_matmul failed.")
 
     # adj_b
-    ret = runtime.core.cutlass_gemm(
-        cc,
-        k,
-        n,
-        m,
-        type_typestr(a.dtype).encode(),
-        ctypes.c_void_p(a.ptr),
-        ctypes.c_void_p(adj_d.ptr),
-        ctypes.c_void_p(b.ptr),
-        ctypes.c_void_p(adj_b.ptr),
-        alpha,
-        0.0,
-        False,
-        True,
-        allow_tf32x3_arith,
-        1,
-    )
-    if not ret:
-        raise RuntimeError("adj_matmul failed.")
+    if not b.is_transposed:
+        ret = runtime.core.cutlass_gemm(
+            cc,
+            k,
+            n,
+            m,
+            type_typestr(a.dtype).encode(),
+            ctypes.c_void_p(a.ptr),
+            ctypes.c_void_p(adj_d.ptr),
+            ctypes.c_void_p(b.ptr),
+            ctypes.c_void_p(adj_b.ptr),
+            alpha,
+            0.0,
+            a.is_transposed,
+            True,
+            allow_tf32x3_arith,
+            1,
+        )
+        if not ret:
+            raise RuntimeError("adj_matmul failed.")
+    else:
+        ret = runtime.core.cutlass_gemm(
+            cc,
+            n,
+            k,
+            m,
+            type_typestr(a.dtype).encode(),
+            ctypes.c_void_p(adj_d.ptr),
+            ctypes.c_void_p(a.ptr),
+            ctypes.c_void_p(b.ptr),
+            ctypes.c_void_p(adj_b.ptr),
+            alpha,
+            0.0,
+            False,
+            not a.is_transposed,
+            allow_tf32x3_arith,
+            1,
+        )
+        if not ret:
+            raise RuntimeError("adj_matmul failed.")        
 
     # adj_c
     ret = runtime.core.cutlass_gemm(
@@ -3146,8 +3209,8 @@ def adj_matmul(
         ctypes.c_void_p(adj_c.ptr),
         0.0,
         beta,
-        True,
-        True,
+        not a.is_transposed,
+        not b.is_transposed,
         allow_tf32x3_arith,
         1,
     )
@@ -3191,6 +3254,11 @@ def batched_matmul(
             "wp.batched_matmul currently only supports operation between {A, B, C, D} matrices of the same type."
         )
 
+    if (not a.is_contiguous and not a.is_transposed) or (not b.is_contiguous and not b.is_transposed) or (not c.is_contiguous) or (not d.is_contiguous):
+        raise RuntimeError(
+            "wp.matmul is only valid for contiguous arrays, with the exception that A and/or B may be transposed."
+        )
+
     m = a.shape[1]
     n = b.shape[2]
     k = a.shape[2]
@@ -3213,26 +3281,55 @@ def batched_matmul(
         d.assign(alpha * np.matmul(a.numpy(), b.numpy()) + beta * c.numpy())
         return
 
+    # handle case in which batch_count exceeds max_batch_count, which is a CUDA array size maximum
+    max_batch_count = 65535
+    iters = int(batch_count / max_batch_count)
+    remainder = batch_count % max_batch_count
+
     cc = device.arch
+    for i in range(iters):
+        idx_start = i * max_batch_count
+        idx_end = (i + 1) * max_batch_count if i < iters - 1 else batch_count
+        ret = runtime.core.cutlass_gemm(
+            cc,
+            m,
+            n,
+            k,
+            type_typestr(a.dtype).encode(),
+            ctypes.c_void_p(a[idx_start:idx_end,:,:].ptr),
+            ctypes.c_void_p(b[idx_start:idx_end,:,:].ptr),
+            ctypes.c_void_p(c[idx_start:idx_end,:,:].ptr),
+            ctypes.c_void_p(d[idx_start:idx_end,:,:].ptr),
+            alpha,
+            beta,
+            not a.is_transposed,
+            not b.is_transposed,
+            allow_tf32x3_arith,
+            max_batch_count,
+        )
+        if not ret:
+            raise RuntimeError("Batched matmul failed.")
+    
+    idx_start = iters * max_batch_count
     ret = runtime.core.cutlass_gemm(
         cc,
         m,
         n,
         k,
         type_typestr(a.dtype).encode(),
-        ctypes.c_void_p(a.ptr),
-        ctypes.c_void_p(b.ptr),
-        ctypes.c_void_p(c.ptr),
-        ctypes.c_void_p(d.ptr),
+        ctypes.c_void_p(a[idx_start:,:,:].ptr),
+        ctypes.c_void_p(b[idx_start:,:,:].ptr),
+        ctypes.c_void_p(c[idx_start:,:,:].ptr),
+        ctypes.c_void_p(d[idx_start:,:,:].ptr),
         alpha,
         beta,
-        True,
-        True,
+        not a.is_transposed,
+        not b.is_transposed,
         allow_tf32x3_arith,
-        batch_count,
+        remainder,
     )
     if not ret:
-        raise RuntimeError("Batched matmul failed.")
+        raise RuntimeError("Batched matmul failed.")    
 
 
 def adj_batched_matmul(
@@ -3312,6 +3409,19 @@ def adj_batched_matmul(
             )
         )
 
+    if (
+        (not a.is_contiguous and not a.is_transposed)
+        or (not b.is_contiguous and not b.is_transposed)
+        or (not c.is_contiguous)
+        or (not adj_a.is_contiguous and not adj_a.is_transposed)
+        or (not adj_b.is_contiguous and not adj_b.is_transposed)
+        or (not adj_c.is_contiguous)
+        or (not adj_d.is_contiguous)
+    ):
+        raise RuntimeError(
+            "wp.matmul is only valid for contiguous arrays, with the exception that A and/or B and their associated adjoints may be transposed."
+        )
+
     # cpu fallback if no cuda devices found
     if device == "cpu":
         adj_a.assign(alpha * np.matmul(adj_d.numpy(), b.numpy().transpose((0, 2, 1))))
@@ -3319,49 +3429,207 @@ def adj_batched_matmul(
         adj_c.assign(beta * adj_d.numpy())
         return
 
+    # handle case in which batch_count exceeds max_batch_count, which is a CUDA array size maximum
+    max_batch_count = 65535
+    iters = int(batch_count / max_batch_count)
+    remainder = batch_count % max_batch_count
+
     cc = device.arch
 
+    for i in range(iters):
+        idx_start = i * max_batch_count
+        idx_end = (i + 1) * max_batch_count if i < iters - 1 else batch_count
+
+        # adj_a
+        if not a.is_transposed:
+            ret = runtime.core.cutlass_gemm(
+                cc,
+                m,
+                k,
+                n,
+                type_typestr(a.dtype).encode(),
+                ctypes.c_void_p(adj_d[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(b[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(a[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(adj_a[idx_start:idx_end,:,:].ptr),
+                alpha,
+                0.0,
+                True,
+                b.is_transposed,
+                allow_tf32x3_arith,
+                max_batch_count,
+            )
+            if not ret:
+                raise RuntimeError("adj_matmul failed.")
+        else:
+            ret = runtime.core.cutlass_gemm(
+                cc,
+                k,
+                m,
+                n,
+                type_typestr(a.dtype).encode(),
+                ctypes.c_void_p(b[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(adj_d[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(a[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(adj_a[idx_start:idx_end,:,:].ptr),
+                alpha,
+                0.0,
+                not b.is_transposed,
+                False,
+                allow_tf32x3_arith,
+                max_batch_count,
+            )
+            if not ret:
+                raise RuntimeError("adj_matmul failed.")
+
+        # adj_b
+        if not b.is_transposed:
+            ret = runtime.core.cutlass_gemm(
+                cc,
+                k,
+                n,
+                m,
+                type_typestr(a.dtype).encode(),
+                ctypes.c_void_p(a[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(adj_d[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(b[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(adj_b[idx_start:idx_end,:,:].ptr),
+                alpha,
+                0.0,
+                a.is_transposed,
+                True,
+                allow_tf32x3_arith,
+                max_batch_count,
+            )
+            if not ret:
+                raise RuntimeError("adj_matmul failed.")
+        else:
+            ret = runtime.core.cutlass_gemm(
+                cc,
+                n,
+                k,
+                m,
+                type_typestr(a.dtype).encode(),
+                ctypes.c_void_p(adj_d[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(a[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(b[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(adj_b[idx_start:idx_end,:,:].ptr),
+                alpha,
+                0.0,
+                False,
+                not a.is_transposed,
+                allow_tf32x3_arith,
+                max_batch_count,
+            )
+            if not ret:
+                raise RuntimeError("adj_matmul failed.")   
+
+        # adj_c
+        ret = runtime.core.cutlass_gemm(
+            cc,
+            m,
+            n,
+            k,
+            type_typestr(a.dtype).encode(),
+            ctypes.c_void_p(a[idx_start:idx_end,:,:].ptr),
+            ctypes.c_void_p(b[idx_start:idx_end,:,:].ptr),
+            ctypes.c_void_p(adj_d[idx_start:idx_end,:,:].ptr),
+            ctypes.c_void_p(adj_c[idx_start:idx_end,:,:].ptr),
+            0.0,
+            beta,
+            not a.is_transposed,
+            not b.is_transposed,
+            allow_tf32x3_arith,
+            max_batch_count,
+        )
+        if not ret:
+            raise RuntimeError("adj_batched_matmul failed.")
+    
+    idx_start = iters * max_batch_count
+    
     # adj_a
-    ret = runtime.core.cutlass_gemm(
-        cc,
-        m,
-        k,
-        n,
-        type_typestr(a.dtype).encode(),
-        ctypes.c_void_p(adj_d.ptr),
-        ctypes.c_void_p(b.ptr),
-        ctypes.c_void_p(a.ptr),
-        ctypes.c_void_p(adj_a.ptr),
-        alpha,
-        0.0,
-        True,
-        False,
-        allow_tf32x3_arith,
-        batch_count,
-    )
-    if not ret:
-        raise RuntimeError("adj_batched_matmul failed.")
+    if not a.is_transposed:
+        ret = runtime.core.cutlass_gemm(
+            cc,
+            m,
+            k,
+            n,
+            type_typestr(a.dtype).encode(),
+            ctypes.c_void_p(adj_d[idx_start:,:,:].ptr),
+            ctypes.c_void_p(b[idx_start:,:,:].ptr),
+            ctypes.c_void_p(a[idx_start:,:,:].ptr),
+            ctypes.c_void_p(adj_a[idx_start:,:,:].ptr),
+            alpha,
+            0.0,
+            True,
+            b.is_transposed,
+            allow_tf32x3_arith,
+            remainder,
+        )
+        if not ret:
+            raise RuntimeError("adj_matmul failed.")
+    else:
+        ret = runtime.core.cutlass_gemm(
+            cc,
+            k,
+            m,
+            n,
+            type_typestr(a.dtype).encode(),
+            ctypes.c_void_p(b[idx_start:,:,:].ptr),
+            ctypes.c_void_p(adj_d[idx_start:,:,:].ptr),
+            ctypes.c_void_p(a[idx_start:,:,:].ptr),
+            ctypes.c_void_p(adj_a[idx_start:,:,:].ptr),
+            alpha,
+            0.0,
+            not b.is_transposed,
+            False,
+            allow_tf32x3_arith,
+            remainder,
+        )
+        if not ret:
+            raise RuntimeError("adj_matmul failed.")
 
     # adj_b
-    ret = runtime.core.cutlass_gemm(
-        cc,
-        k,
-        n,
-        m,
-        type_typestr(a.dtype).encode(),
-        ctypes.c_void_p(a.ptr),
-        ctypes.c_void_p(adj_d.ptr),
-        ctypes.c_void_p(b.ptr),
-        ctypes.c_void_p(adj_b.ptr),
-        alpha,
-        0.0,
-        False,
-        True,
-        allow_tf32x3_arith,
-        batch_count,
-    )
-    if not ret:
-        raise RuntimeError("adj_batched_matmul failed.")
+    if not b.is_transposed:
+        ret = runtime.core.cutlass_gemm(
+            cc,
+            k,
+            n,
+            m,
+            type_typestr(a.dtype).encode(),
+            ctypes.c_void_p(a[idx_start:,:,:].ptr),
+            ctypes.c_void_p(adj_d[idx_start:,:,:].ptr),
+            ctypes.c_void_p(b[idx_start:,:,:].ptr),
+            ctypes.c_void_p(adj_b[idx_start:,:,:].ptr),
+            alpha,
+            0.0,
+            a.is_transposed,
+            True,
+            allow_tf32x3_arith,
+            remainder,
+        )
+        if not ret:
+            raise RuntimeError("adj_matmul failed.")
+    else:
+        ret = runtime.core.cutlass_gemm(
+            cc,
+            n,
+            k,
+            m,
+            type_typestr(a.dtype).encode(),
+            ctypes.c_void_p(adj_d[idx_start:,:,:].ptr),
+            ctypes.c_void_p(a[idx_start:,:,:].ptr),
+            ctypes.c_void_p(b[idx_start:,:,:].ptr),
+            ctypes.c_void_p(adj_b[idx_start:,:,:].ptr),
+            alpha,
+            0.0,
+            False,
+            not a.is_transposed,
+            allow_tf32x3_arith,
+            remainder,
+        )
+        if not ret:
+            raise RuntimeError("adj_matmul failed.")   
 
     # adj_c
     ret = runtime.core.cutlass_gemm(
@@ -3370,20 +3638,19 @@ def adj_batched_matmul(
         n,
         k,
         type_typestr(a.dtype).encode(),
-        ctypes.c_void_p(a.ptr),
-        ctypes.c_void_p(b.ptr),
-        ctypes.c_void_p(adj_d.ptr),
-        ctypes.c_void_p(adj_c.ptr),
+        ctypes.c_void_p(a[idx_start:,:,:].ptr),
+        ctypes.c_void_p(b[idx_start:,:,:].ptr),
+        ctypes.c_void_p(adj_d[idx_start:,:,:].ptr),
+        ctypes.c_void_p(adj_c[idx_start:,:,:].ptr),
         0.0,
         beta,
-        True,
-        True,
+        not a.is_transposed,
+        not b.is_transposed,
         allow_tf32x3_arith,
-        batch_count,
+        remainder,
     )
     if not ret:
         raise RuntimeError("adj_batched_matmul failed.")
-
 
 class HashGrid:
     def __init__(self, dim_x, dim_y, dim_z, device=None):
