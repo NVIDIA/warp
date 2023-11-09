@@ -61,6 +61,7 @@ import warp.tests.test_rand
 import warp.tests.test_reload
 import warp.tests.test_rounding
 import warp.tests.test_smoothstep
+import warp.tests.test_snippet
 import warp.tests.test_sparse
 import warp.tests.test_spatial
 import warp.tests.test_streams
@@ -141,6 +142,7 @@ def register_tests(parent):
     tests.append(warp.tests.test_lvalue.register(parent))
     tests.append(warp.tests.test_devices.register(parent))
     tests.append(warp.tests.test_modules_lite.register(parent))
+    tests.append(warp.tests.test_snippet.register(parent))
 
     return tests
 
