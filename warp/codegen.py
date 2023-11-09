@@ -1931,6 +1931,7 @@ class Adjoint:
         ast.AugAssign: emit_AugAssign,
         ast.Tuple: emit_Tuple,
         ast.Pass: emit_Pass,
+        ast.Ellipsis: emit_Ellipsis
     }
 
     def eval(adj, node):

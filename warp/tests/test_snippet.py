@@ -1,6 +1,7 @@
 import warp as wp
 from warp.tests.test_base import *
 import numpy as np
+import unittest
 
 wp.init()
 
@@ -131,14 +132,17 @@ def test_cpu_snippet(test, device):
 
 
 def register(parent):
-    cuda_device = [wp.get_cuda_device()]
-
+    
     class TestSnippets(parent):
         pass
 
-    add_function_test(TestSnippets, "test_basic", test_basic, devices=cuda_device)
-    add_function_test(TestSnippets, "test_shared_memory", test_shared_memory, devices=cuda_device)
-    add_function_test(TestSnippets, "test_cpu_snippet", test_cpu_snippet, devices=["cpu"])
+    if wp.is_cuda_available():
+        cuda_device = [wp.get_cuda_device()]
+        add_function_test(TestSnippets, "test_basic", test_basic, devices=cuda_device)
+        add_function_test(TestSnippets, "test_shared_memory", test_shared_memory, devices=cuda_device)
+    
+    if wp.is_cpu_available():
+        add_function_test(TestSnippets, "test_cpu_snippet", test_cpu_snippet, devices=["cpu"])
 
     return TestSnippets
 
