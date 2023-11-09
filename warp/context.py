@@ -1905,7 +1905,7 @@ class Runtime:
 
         self.core = self.load_dll(warp_lib)
 
-        if llvm_lib and os.path.exists(llvm_lib):
+        if os.path.exists(llvm_lib):
             self.llvm = self.load_dll(llvm_lib)
             # setup c-types for warp-clang.dll
             self.llvm.lookup.restype = ctypes.c_uint64
@@ -2496,8 +2496,13 @@ class Runtime:
                 dll = ctypes.CDLL(dll_path, winmode=0)
             else:
                 dll = ctypes.CDLL(dll_path)
-        except OSError:
-            raise RuntimeError(f"Failed to load the shared library '{dll_path}'")
+        except OSError as e:
+            if "GLIBCXX" in str(e):
+                raise RuntimeError(f"Failed to load the shared library '{dll_path}'.\n"
+                                   "The execution environment's libstdc++ runtime is older than the version the Warp library was built for.\n"
+                                   "See https://nvidia.github.io/warp/_build/html/installation.html#conda-environments for details.") from e
+            else:
+                raise RuntimeError(f"Failed to load the shared library '{dll_path}'") from e
         return dll
 
     def get_device(self, ident: Devicelike = None) -> Device:
