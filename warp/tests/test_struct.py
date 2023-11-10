@@ -10,6 +10,8 @@ import numpy as np
 import warp as wp
 from warp.tests.test_base import *
 
+from warp.fem import Sample as StructFromAnotherModule
+
 import unittest
 
 wp.init()
@@ -527,6 +529,27 @@ def test_nested_empty_struct(test, device):
         wp.synchronize_device()
 
 
+@wp.struct
+class DependentModuleImport_A:
+    s: StructFromAnotherModule
+
+
+@wp.struct
+class DependentModuleImport_B:
+    s: StructFromAnotherModule
+
+
+@wp.struct
+class DependentModuleImport_C:
+    a: DependentModuleImport_A
+    b: DependentModuleImport_B
+
+
+@wp.kernel
+def test_dependent_module_import(c: DependentModuleImport_C):
+    wp.tid()  # nop, we're just testing codegen
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -587,6 +610,15 @@ def register(parent):
             inputs=[wp.zeros(10, dtype=int, device=device)],
             devices=[device],
         )
+
+    add_kernel_test(
+        TestStruct,
+        kernel=test_dependent_module_import,
+        name="test_dependent_module_import",
+        dim=1,
+        inputs=[DependentModuleImport_C()],
+        devices=devices,
+    )
 
     return TestStruct
 
