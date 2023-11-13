@@ -1,17 +1,16 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Copyright (c) 2005-2010 ActiveState Software Inc.
 # Copyright (c) 2013 Eddy Petrișor
 
 """Utilities for determining application-specific dirs.
 
-See <http://github.com/ActiveState/appdirs> for details and usage.
+See <https://github.com/ActiveState/appdirs> for details and usage.
 """
 # Dev Notes:
 # - MSDN on where to store app data files:
 #   http://support.microsoft.com/default.aspx?scid=kb;en-us;310294#XSLTH3194121123120121120120
 # - Mac OS X: http://developer.apple.com/documentation/MacOSX/Conceptual/BPFileSystem/index.html
-# - XDG spec for Un*x: http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
+# - XDG spec for Un*x: https://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
 
 __version__ = "1.4.4"
 __version_info__ = tuple(int(segment) for segment in __version__.split("."))
@@ -77,7 +76,7 @@ def user_data_dir(appname=None, appauthor=None, version=None, roaming=False):
     if system == "win32":
         if appauthor is None:
             appauthor = appname
-        const = roaming and "CSIDL_APPDATA" or "CSIDL_LOCAL_APPDATA"
+        const = "CSIDL_APPDATA" if roaming else "CSIDL_LOCAL_APPDATA"
         path = os.path.normpath(_get_win_folder(const))
         if appname:
             if appauthor is not False:
@@ -184,15 +183,19 @@ def user_config_dir(appname=None, appauthor=None, version=None, roaming=False):
             for a discussion of issues.
 
     Typical user config directories are:
-        Mac OS X:               same as user_data_dir
+        Mac OS X:               ~/Library/Preferences/<AppName>
         Unix:                   ~/.config/<AppName>     # or in $XDG_CONFIG_HOME, if defined
         Win *:                  same as user_data_dir
 
     For Unix, we follow the XDG spec and support $XDG_CONFIG_HOME.
     That means, by default "~/.config/<AppName>".
     """
-    if system in ["win32", "darwin"]:
+    if system == "win32":
         path = user_data_dir(appname, appauthor, None, roaming)
+    elif system == "darwin":
+        path = os.path.expanduser("~/Library/Preferences/")
+        if appname:
+            path = os.path.join(path, appname)
     else:
         path = os.getenv("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
         if appname:
@@ -232,10 +235,14 @@ def site_config_dir(appname=None, appauthor=None, version=None, multipath=False)
 
     WARNING: Do not use this on Windows. See the Vista-Fail note above for why.
     """
-    if system in ["win32", "darwin"]:
+    if system == "win32":
         path = site_data_dir(appname, appauthor)
         if appname and version:
             path = os.path.join(path, version)
+    elif system == "darwin":
+        path = os.path.expanduser("/Library/Preferences")
+        if appname:
+            path = os.path.join(path, appname)
     else:
         # XDG default for $XDG_CONFIG_DIRS
         # only first, if multipath is False
@@ -466,35 +473,6 @@ def _get_win_folder_from_registry(csidl_name):
     return dir
 
 
-def _get_win_folder_with_pywin32(csidl_name):
-    from win32com.shell import shellcon, shell
-
-    dir = shell.SHGetFolderPath(0, getattr(shellcon, csidl_name), 0, 0)
-    # Try to make this a unicode path because SHGetFolderPath does
-    # not return unicode strings when there is unicode data in the
-    # path.
-    try:
-        dir = unicode(dir)
-
-        # Downgrade to short path name if have highbit chars. See
-        # <http://bugs.activestate.com/show_bug.cgi?id=85099>.
-        has_high_char = False
-        for c in dir:
-            if ord(c) > 255:
-                has_high_char = True
-                break
-        if has_high_char:
-            try:
-                import win32api
-
-                dir = win32api.GetShortPathName(dir)
-            except ImportError:
-                pass
-    except UnicodeError:
-        pass
-    return dir
-
-
 def _get_win_folder_with_ctypes(csidl_name):
     import ctypes
 
@@ -549,23 +527,36 @@ def _get_win_folder_with_jna(csidl_name):
     return dir
 
 
+def _get_win_folder_from_environ(csidl_name):
+    env_var_name = {
+        "CSIDL_APPDATA": "APPDATA",
+        "CSIDL_COMMON_APPDATA": "ALLUSERSPROFILE",
+        "CSIDL_LOCAL_APPDATA": "LOCALAPPDATA",
+    }[csidl_name]
+
+    return os.environ[env_var_name]
+
+
 if system == "win32":
     try:
-        import win32com.shell
-
-        _get_win_folder = _get_win_folder_with_pywin32
+        from ctypes import windll
     except ImportError:
         try:
-            from ctypes import windll
-
-            _get_win_folder = _get_win_folder_with_ctypes
+            import com.sun.jna
         except ImportError:
             try:
-                import com.sun.jna
-
-                _get_win_folder = _get_win_folder_with_jna
+                if PY3:
+                    import winreg as _winreg
+                else:
+                    import _winreg
             except ImportError:
+                _get_win_folder = _get_win_folder_from_environ
+            else:
                 _get_win_folder = _get_win_folder_from_registry
+        else:
+            _get_win_folder = _get_win_folder_with_jna
+    else:
+        _get_win_folder = _get_win_folder_with_ctypes
 
 
 # ---- self test code
