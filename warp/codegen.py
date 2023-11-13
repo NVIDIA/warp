@@ -1952,50 +1952,38 @@ class Adjoint:
         if path[0] in adj.symbols:
             return None
 
-        # try and evaluate object path
-        try:
-            # Look up the closure info and append it to adj.func.__globals__
-            # in case you want to define a kernel inside a function and refer
-            # to variables you've declared inside that function:
-            extract_contents = (
-                lambda contents: contents
-                if isinstance(contents, warp.context.Function) or not callable(contents)
-                else contents
+        if path[0] in __builtins__:
+            return __builtins__[path[0]]
+
+        # Look up the closure info and append it to adj.func.__globals__
+        # in case you want to define a kernel inside a function and refer
+        # to variables you've declared inside that function:
+        extract_contents = (
+            lambda contents: contents
+            if isinstance(contents, warp.context.Function) or not callable(contents)
+            else contents
+        )
+        capturedvars = dict(
+            zip(
+                adj.func.__code__.co_freevars,
+                [extract_contents(c.cell_contents) for c in (adj.func.__closure__ or [])],
             )
-            capturedvars = dict(
-                zip(
-                    adj.func.__code__.co_freevars,
-                    [extract_contents(c.cell_contents) for c in (adj.func.__closure__ or [])],
-                )
-            )
+        )
+        vars_dict = {**adj.func.__globals__, **capturedvars}
 
-            vars_dict = {**adj.func.__globals__, **capturedvars}
-            func = eval(".".join(path), vars_dict)
-            return func
-        except Exception:
-            pass
+        if path[0] in vars_dict:
+            func = vars_dict[path[0]]
 
-        # I added this so people can eg do this kind of thing
-        # in a kernel:
+        # Support Warp types in kernels without the module suffix (e.g. v = vec3(0.0,0.2,0.4)):
+        else:
+            func = getattr(warp, path[0], None)
 
-        # v = vec3(0.0,0.2,0.4)
+        if func:
+            for i in range(1, len(path)):
+                if hasattr(func, path[i]):
+                    func = getattr(func, path[i])
 
-        # vec3 is now an alias and is not in warp.context.builtin_functions.
-        # This means it can't be directly looked up in Adjoint.add_call, and
-        # needs to be looked up by digging some information out of the
-        # python object it actually came from.
-
-        # Before this fix, resolve_static_expression was returning None, as the
-        # "vec3" symbol is not available. In this situation I'm assuming
-        # it's a member of the warp module and trying to look it up:
-        try:
-            evalstr = ".".join(["warp"] + path)
-            func = eval(evalstr, {"warp": warp})
-            return func
-        except Exception:
-            pass
-
-        return None
+        return func
 
     # Evaluates a static expression that does not depend on runtime values
     # if eval_types is True, try resolving the path using evaluated type information as well
@@ -2050,7 +2038,9 @@ class Adjoint:
         if eval_types:
             try:
                 val = adj.eval(root_node)
-                return [val, type_repr(val)]
+                if val:
+                    return [val, type_repr(val)]
+
             except Exception:
                 pass
 
@@ -2567,7 +2557,6 @@ def codegen_func(adj, c_func_name: str, device="cpu", options={}):
 
 
 def codegen_snippet(adj, name, snippet, adj_snippet):
-
     forward_args = []
     reverse_args = []
 
