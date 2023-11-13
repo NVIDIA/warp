@@ -20,6 +20,7 @@ import numpy as np
 import warp
 
 # type hints
+T = TypeVar("T")
 Length = TypeVar("Length", bound=int)
 Rows = TypeVar("Rows")
 Cols = TypeVar("Cols")
@@ -28,15 +29,27 @@ DType = TypeVar("DType")
 Int = TypeVar("Int")
 Float = TypeVar("Float")
 Scalar = TypeVar("Scalar")
-Vector = Generic[Length, Scalar]
-Matrix = Generic[Rows, Cols, Scalar]
-Quaternion = Generic[Float]
-Transformation = Generic[Float]
 
-DType = TypeVar("DType")
-Array = Generic[DType]
 
-T = TypeVar("T")
+class Vector(Generic[Length, Scalar]):
+    pass
+
+
+class Matrix(Generic[Rows, Cols, Scalar]):
+    pass
+
+
+class Quaternion(Generic[Float]):
+    pass
+
+
+class Transformation(Generic[Float]):
+    pass
+
+
+class Array(Generic[DType]):
+    pass
+
 
 # shared hash for all constants
 _constant_hash = hashlib.sha256()
@@ -112,6 +125,7 @@ def vector(length, dtype):
         _wp_scalar_type_ = dtype
         _wp_type_params_ = [length, dtype]
         _wp_generic_type_str_ = "vec_t"
+        _wp_generic_type_hint_ = Vector
         _wp_constructor_ = "vector"
 
         # special handling for float16 type: in this case, data is stored
@@ -294,6 +308,7 @@ def matrix(shape, dtype):
         _wp_scalar_type_ = dtype
         _wp_type_params_ = [shape[0], shape[1], dtype]
         _wp_generic_type_str_ = "mat_t"
+        _wp_generic_type_hint_ = Matrix
         _wp_constructor_ = "matrix"
 
         _wp_row_type_ = vector(0 if shape[1] == Any else shape[1], dtype)
@@ -718,6 +733,7 @@ def quaternion(dtype=Any):
     ret = quat_t
     ret._wp_type_params_ = [dtype]
     ret._wp_generic_type_str_ = "quat_t"
+    ret._wp_generic_type_hint_ = Quaternion
     ret._wp_constructor_ = "quaternion"
 
     return ret
@@ -753,6 +769,7 @@ def transformation(dtype=Any):
         )
         _wp_type_params_ = [dtype]
         _wp_generic_type_str_ = "transform_t"
+        _wp_generic_type_hint_ = Transformation
         _wp_constructor_ = "transformation"
 
         def __init__(self, *args, **kwargs):
@@ -1405,18 +1422,12 @@ def type_is_float(t):
 
 # returns True if the passed *type* is a vector
 def type_is_vector(t):
-    if hasattr(t, "_wp_generic_type_str_") and t._wp_generic_type_str_ == "vec_t":
-        return True
-    else:
-        return False
+    return getattr(t, "_wp_generic_type_hint_", None) is Vector
 
 
 # returns True if the passed *type* is a matrix
 def type_is_matrix(t):
-    if hasattr(t, "_wp_generic_type_str_") and t._wp_generic_type_str_ == "mat_t":
-        return True
-    else:
-        return False
+    return getattr(t, "_wp_generic_type_hint_", None) is Matrix
 
 
 # returns true for all value types (int, float, bool, scalars, vectors, matrices)

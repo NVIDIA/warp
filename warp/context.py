@@ -4850,24 +4850,24 @@ def type_str(t):
         return f"FabricArray[{type_str(t.dtype)}]"
     elif isinstance(t, warp.indexedfabricarray):
         return f"IndexedFabricArray[{type_str(t.dtype)}]"
-    elif hasattr(t, "_wp_generic_type_str_"):
-        generic_type = t._wp_generic_type_str_
+    elif hasattr(t, "_wp_generic_type_hint_"):
+        generic_type = t._wp_generic_type_hint_
 
         # for concrete vec/mat types use the short name
         if t in warp.types.vector_types:
             return t.__name__
 
         # for generic vector / matrix type use a Generic type hint
-        if generic_type == "vec_t":
+        if generic_type == warp.types.Vector:
             # return f"Vector"
             return f"Vector[{type_str(t._wp_type_params_[0])},{type_str(t._wp_scalar_type_)}]"
-        elif generic_type == "quat_t":
+        elif generic_type == warp.types.Quaternion:
             # return f"Quaternion"
             return f"Quaternion[{type_str(t._wp_scalar_type_)}]"
-        elif generic_type == "mat_t":
+        elif generic_type == warp.types.Matrix:
             # return f"Matrix"
             return f"Matrix[{type_str(t._wp_type_params_[0])},{type_str(t._wp_type_params_[1])},{type_str(t._wp_scalar_type_)}]"
-        elif generic_type == "transform_t":
+        elif generic_type == warp.types.Transformation:
             # return f"Transformation"
             return f"Transformation[{type_str(t._wp_scalar_type_)}]"
         else:

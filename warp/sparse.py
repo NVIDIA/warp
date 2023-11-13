@@ -3,14 +3,14 @@ from typing import Any, Generic, Optional, Tuple, TypeVar, Union
 import warp as wp
 import warp.types
 import warp.utils
-from warp.types import Array, Cols, Matrix, Rows, Scalar, Vector
+from warp.types import Array, Cols, Rows, Scalar, Vector
 
 # typing hints
 
 _BlockType = TypeVar("BlockType")
 
 
-class _MatrixBlockType(Matrix):
+class _MatrixBlockType(Generic[Rows, Cols, Scalar]):
     pass
 
 

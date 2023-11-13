@@ -664,7 +664,7 @@ def vector_constructor_func(arg_types, kwds, templates):
                 # value initialization e.g.: wp.vec(1.0, length=5)
                 veclen = kwds["length"]
                 vectype = arg_types[0]
-                if getattr(vectype, "_wp_generic_type_str_", None) == "vec_t":
+                if type_is_vector(vectype):
                     # constructor from another vector
                     if vectype._length_ != veclen:
                         raise RuntimeError(
@@ -701,7 +701,7 @@ def vector_constructor_func(arg_types, kwds, templates):
             veclen = len(arg_types)
             vectype = arg_types[0]
 
-            if len(arg_types) == 1 and getattr(vectype, "_wp_generic_type_str_", None) == "vec_t":
+            if len(arg_types) == 1 and type_is_vector(vectype):
                 # constructor from another vector
                 veclen = vectype._length_
                 vectype = vectype._wp_scalar_type_
@@ -717,7 +717,7 @@ def vector_constructor_func(arg_types, kwds, templates):
     else:
         # construction of a predeclared type, e.g.: vec5d
         veclen, vectype = templates
-        if len(arg_types) == 1 and getattr(arg_types[0], "_wp_generic_type_str_", None) == "vec_t":
+        if len(arg_types) == 1 and type_is_vector(arg_types[0]):
             # constructor from another vector
             if arg_types[0]._length_ != veclen:
                 raise RuntimeError(
@@ -767,7 +767,7 @@ def matrix_constructor_func(arg_types, kwds, templates):
             shape = kwds["shape"]
             dtype = arg_types[0]
 
-            if len(arg_types) == 1 and getattr(dtype, "_wp_generic_type_str_", None) == "mat_t":
+            if len(arg_types) == 1 and type_is_matrix(dtype):
                 # constructor from another matrix
                 if arg_types[0]._shape_ != shape:
                     raise RuntimeError(
@@ -789,7 +789,7 @@ def matrix_constructor_func(arg_types, kwds, templates):
         dtype = templates[2]
 
         if len(arg_types) > 0:
-            if len(arg_types) == 1 and getattr(arg_types[0], "_wp_generic_type_str_", None) == "mat_t":
+            if len(arg_types) == 1 and type_is_matrix(arg_types[0]):
                 # constructor from another matrix with same dimension but possibly different type
                 if arg_types[0]._shape_ != shape:
                     raise RuntimeError(
@@ -801,7 +801,7 @@ def matrix_constructor_func(arg_types, kwds, templates):
                     raise RuntimeError("Wrong scalar type for mat {} constructor".format(",".join(map(str, templates))))
 
                 # check vector arg type matches declared type
-                if all(hasattr(a, "_wp_generic_type_str_") and a._wp_generic_type_str_ == "vec_t" for a in arg_types):
+                if all(type_is_vector(a) for a in arg_types):
                     cols = len(arg_types)
                     if shape[1] != cols:
                         raise RuntimeError(
