@@ -28,6 +28,14 @@ import warp.tests.test_reference_reference as test_reference_reference
 wp.init()
 
 
+def reload_module(module):
+    # Clearing the .pyc file associated with a module is a necessary workaround
+    # for `importlib.reload` to work as expected when run from within Kit.
+    cache_file = importlib.util.cache_from_source(module.__file__)
+    os.remove(cache_file)
+    importlib.reload(module)
+
+
 def test_redefine(test, device):
     # --------------------------------------------
     # first pass
@@ -107,7 +115,7 @@ def test_reload(test, device):
     f.flush()
     f.close()
 
-    importlib.reload(test_square)
+    reload_module(test_square)
     test_square.run(expect=4.0, device=device)  # 2*2=4
 
     f = open(os.path.abspath(os.path.join(os.path.dirname(__file__), "test_square.py")), "w")
@@ -116,7 +124,7 @@ def test_reload(test, device):
     f.close()
 
     # reload module, this should trigger all of the funcs / kernels to be updated
-    importlib.reload(test_square)
+    reload_module(test_square)
     test_square.run(expect=16.0, device=device)  # 4*4 = 16
 
 

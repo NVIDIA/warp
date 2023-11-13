@@ -103,7 +103,7 @@ test_clss = (
     warp.tests.test_operators.register(BaseTestCase),
     warp.tests.test_quat.register(BaseTestCase),
     warp.tests.test_rand.register(BaseTestCase),
-    #warp.tests.test_reload.register(BaseTestCase),
+    warp.tests.test_reload.register(BaseTestCase),
     warp.tests.test_rounding.register(BaseTestCase),
     warp.tests.test_runlength_encode.register(BaseTestCase),
     warp.tests.test_sparse.register(BaseTestCase),
