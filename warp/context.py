@@ -11,6 +11,8 @@ import functools
 import hashlib
 import inspect
 import io
+import itertools
+import operator
 import os
 import platform
 import sys
@@ -38,14 +40,16 @@ def create_value_func(type):
 
 def get_function_args(func):
     """Ensures that all function arguments are annotated and returns a dictionary mapping from argument name to its type."""
-    import inspect
-
     argspec = inspect.getfullargspec(func)
 
     # use source-level argument annotations
     if len(argspec.annotations) < len(argspec.args):
         raise RuntimeError(f"Incomplete argument annotations on function {func.__qualname__}")
     return argspec.annotations
+
+
+complex_type_hints = (Any, Callable, Tuple)
+sequence_types = (list, tuple)
 
 
 class Function:
@@ -240,11 +244,11 @@ class Function:
             return False
 
         # only export simple types that don't use arrays
-        for _k, v in self.input_types.items():
-            if isinstance(v, warp.array) or v == Any or v == Callable or v == Tuple:
+        for v in self.input_types.values():
+            if isinstance(v, warp.array) or v in complex_type_hints:
                 return False
 
-        if type(self.value_type) is tuple:
+        if type(self.value_type) in sequence_types:
             return False
 
         return True
@@ -271,7 +275,7 @@ class Function:
 
             # make sure variadic overloads appear last so non variadic
             # ones are matched first:
-            self.overloads.sort(key=lambda f: f.variadic)
+            self.overloads.sort(key=operator.attrgetter("variadic"))
 
         else:
             # get function signature based on the input types
@@ -938,6 +942,24 @@ def overload(kernel, arg_types=None):
 builtin_functions = {}
 
 
+def get_generic_vtypes():
+    # get a list of existing generic vector types (includes matrices and stuff)
+    # so we can match arguments against them:
+    generic_vtypes = tuple(x for x in warp.types.vector_types if hasattr(x, "_wp_generic_type_str_"))
+
+    # deduplicate identical types:
+    typedict = {(t._wp_generic_type_str_, str(t._wp_type_params_)): t for t in generic_vtypes}
+    return tuple(typedict[k] for k in sorted(typedict.keys()))
+
+
+generic_vtypes = get_generic_vtypes()
+
+
+scalar_types = {}
+scalar_types.update({x: x for x in warp.types.scalar_types})
+scalar_types.update({x: x._wp_scalar_type_ for x in warp.types.vector_types})
+
+
 def add_builtin(
     key,
     input_types=None,
@@ -977,76 +999,67 @@ def add_builtin(
 
     # Add specialized versions of this builtin if it's generic by matching arguments against
     # hard coded types. We do this so you can use hard coded warp types outside kernels:
-    generic = any(warp.types.type_is_generic(x) for x in input_types.values())
+    generic = False
+    for x in input_types.values():
+        if warp.types.type_is_generic(x):
+            generic = True
+            break
+
     if generic and export:
-        # get a list of existing generic vector types (includes matrices and stuff)
-        # so we can match arguments against them:
-        generic_vtypes = [x for x in warp.types.vector_types if hasattr(x, "_wp_generic_type_str_")]
-
-        # deduplicate identical types:
-        def typekey(t):
-            return f"{t._wp_generic_type_str_}_{t._wp_type_params_}"
-
-        typedict = {typekey(t): t for t in generic_vtypes}
-        generic_vtypes = [typedict[k] for k in sorted(typedict.keys())]
-
         # collect the parent type names of all the generic arguments:
-        def generic_names(l):
-            for t in l:
-                if hasattr(t, "_wp_generic_type_str_"):
-                    yield t._wp_generic_type_str_
-                elif warp.types.type_is_generic_scalar(t):
-                    yield t.__name__
-
-        genericset = set(generic_names(input_types.values()))
+        genericset = set()
+        for t in input_types.values():
+            if hasattr(t, "_wp_generic_type_hint_"):
+                genericset.add(t._wp_generic_type_hint_)
+            elif warp.types.type_is_generic_scalar(t):
+                genericset.add(t)
 
         # for each of those type names, get a list of all hard coded types derived
         # from them:
-        def derived(name):
-            if name == "Float":
-                return warp.types.float_types
-            elif name == "Scalar":
-                return warp.types.scalar_types
-            elif name == "Int":
-                return warp.types.int_types
-            return [x for x in generic_vtypes if x._wp_generic_type_str_ == name]
+        gtypes = []
+        for t in genericset:
+            if t is warp.types.Float:
+                value = warp.types.float_types
+            elif t == warp.types.Scalar:
+                value = warp.types.scalar_types
+            elif t == warp.types.Int:
+                value = warp.types.int_types
+            else:
+                value = tuple(x for x in generic_vtypes if x._wp_generic_type_hint_ == t)
 
-        gtypes = {k: derived(k) for k in genericset}
+            gtypes.append((t, value))
 
         # find the scalar data types supported by all the arguments by intersecting
         # sets:
-        def scalar_type(t):
-            if t in warp.types.scalar_types:
-                return t
-            return [p for p in t._wp_type_params_ if p in warp.types.scalar_types][0]
-
-        scalartypes = [{scalar_type(x) for x in gtypes[k]} for k in gtypes.keys()]
+        scalartypes = tuple({scalar_types[x] for x in v} for _, v in gtypes)
         if scalartypes:
-            scalartypes = scalartypes.pop().intersection(*scalartypes)
-
-        scalartypes = list(scalartypes)
-        scalartypes.sort(key=str)
+            scalartypes = set.intersection(*scalartypes)
+        scalartypes = sorted(scalartypes, key=str)
 
         # generate function calls for each of these scalar types:
         for stype in scalartypes:
             # find concrete types for this scalar type (eg if the scalar type is float32
             # this dict will look something like this:
             # {"vec":[wp.vec2,wp.vec3,wp.vec4], "mat":[wp.mat22,wp.mat33,wp.mat44]})
-            consistenttypes = {k: [x for x in v if scalar_type(x) == stype] for k, v in gtypes.items()}
-
-            def typelist(param, stype=stype, consistenttypes=consistenttypes):
-                if warp.types.type_is_generic_scalar(param):
-                    return [stype]
-                if hasattr(param, "_wp_generic_type_str_"):
-                    l = consistenttypes[param._wp_generic_type_str_]
-                    return [x for x in l if warp.types.types_equal(param, x, match_generic=True)]
-                return [param]
+            consistenttypes = {k: tuple(x for x in v if scalar_types[x] == stype) for k, v in gtypes}
 
             # gotta try generating function calls for all combinations of these argument types
             # now.
-            import itertools
+            typelists = []
+            for param in input_types.values():
+                if warp.types.type_is_generic_scalar(param):
+                    l = (stype,)
+                elif hasattr(param, "_wp_generic_type_hint_"):
+                    l = tuple(
+                        x
+                        for x in consistenttypes[param._wp_generic_type_hint_]
+                        if warp.types.types_equal(param, x, match_generic=True)
+                    )
+                else:
+                    l = (param,)
 
-            typelists = [typelist(param) for param in input_types.values()]
+                typelists.append(l)
+
             for argtypes in itertools.product(*typelists):
                 # Some of these argument lists won't work, eg if the function is mul(), we won't be
                 # able to do a matrix vector multiplication for a mat22 and a vec3. The `constraint`
@@ -1059,13 +1072,13 @@ def add_builtin(
 
                 # The return_type might just be vector_t(length=3,dtype=wp.float32), so we've got to match that
                 # in the list of hard coded types so it knows it's returning one of them:
-                if hasattr(return_type, "_wp_generic_type_str_"):
-                    return_type_match = [
+                if hasattr(return_type, "_wp_generic_type_hint_"):
+                    return_type_match = tuple(
                         x
                         for x in generic_vtypes
-                        if x._wp_generic_type_str_ == return_type._wp_generic_type_str_
+                        if x._wp_generic_type_hint_ == return_type._wp_generic_type_hint_
                         and x._wp_type_params_ == return_type._wp_type_params_
-                    ]
+                    )
                     if not return_type_match:
                         continue
                     return_type = return_type_match[0]
@@ -4870,10 +4883,10 @@ def type_str(t):
         elif generic_type == warp.types.Transformation:
             # return f"Transformation"
             return f"Transformation[{type_str(t._wp_scalar_type_)}]"
-        else:
-            raise TypeError("Invalid vector or matrix dimensions")
-    else:
-        return t.__name__
+
+        raise TypeError("Invalid vector or matrix dimensions")
+
+    return t.__name__
 
 
 def print_function(f, file, noentry=False):  # pragma: no cover

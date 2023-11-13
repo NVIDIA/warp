@@ -1032,12 +1032,12 @@ spatial_vector = spatial_vectorf
 spatial_matrix = spatial_matrixf
 
 
-int_types = [int8, uint8, int16, uint16, int32, uint32, int64, uint64]
-float_types = [float16, float32, float64]
+int_types = (int8, uint8, int16, uint16, int32, uint32, int64, uint64)
+float_types = (float16, float32, float64)
 scalar_types = int_types + float_types
-scalar_and_bool_types = scalar_types + [bool]
+scalar_and_bool_types = scalar_types + (bool,)
 
-vector_types = [
+vector_types = (
     vec2b,
     vec2ub,
     vec2s,
@@ -1092,7 +1092,7 @@ vector_types = [
     spatial_matrixh,
     spatial_matrixf,
     spatial_matrixd,
-]
+)
 
 np_dtype_to_warp_type = {
     # Numpy scalar types
@@ -1430,12 +1430,12 @@ def type_is_matrix(t):
     return getattr(t, "_wp_generic_type_hint_", None) is Matrix
 
 
+value_types = (int, float, builtins.bool) + scalar_types
+
+
 # returns true for all value types (int, float, bool, scalars, vectors, matrices)
 def type_is_value(x):
-    if (x == int) or (x == float) or (x == builtins.bool) or (x in scalar_types) or issubclass(x, ctypes.Array):
-        return True
-    else:
-        return False
+    return x in value_types or issubclass(x, ctypes.Array)
 
 
 # equivalent of the above but for values
@@ -1456,6 +1456,41 @@ def is_array(a):
     return isinstance(a, array_types)
 
 
+def scalars_equal(a, b, match_generic):
+    if match_generic:
+        if a == Any or b == Any:
+            return True
+        if a == Scalar and b in scalar_and_bool_types:
+            return True
+        if b == Scalar and a in scalar_and_bool_types:
+            return True
+        if a == Scalar and b == Scalar:
+            return True
+        if a == Float and b in float_types:
+            return True
+        if b == Float and a in float_types:
+            return True
+        if a == Float and b == Float:
+            return True
+
+    # convert to canonical types
+    if a == float:
+        a = float32
+    elif a == int:
+        a = int32
+    elif a == builtins.bool:
+        a = bool
+
+    if b == float:
+        b = float32
+    elif b == int:
+        b = int32
+    elif b == builtins.bool:
+        b = bool
+
+    return a == b
+
+
 def types_equal(a, b, match_generic=False):
     # convert to canonical types
     if a == float:
@@ -1472,50 +1507,17 @@ def types_equal(a, b, match_generic=False):
     elif b == builtins.bool:
         b = bool
 
-    def are_equal(p1, p2):
-        if match_generic:
-            if p1 == Any or p2 == Any:
-                return True
-            if p1 == Scalar and p2 in scalar_and_bool_types:
-                return True
-            if p2 == Scalar and p1 in scalar_and_bool_types:
-                return True
-            if p1 == Scalar and p2 == Scalar:
-                return True
-            if p1 == Float and p2 in float_types:
-                return True
-            if p2 == Float and p1 in float_types:
-                return True
-            if p1 == Float and p2 == Float:
-                return True
+    if getattr(a, "_wp_generic_type_hint_", "a") is getattr(b, "_wp_generic_type_hint_", "b"):
+        for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_):
+            if not scalars_equal(p1, p2, match_generic):
+                return False
 
-        # convert to canonical types
-        if p1 == float:
-            p1 = float32
-        elif p1 == int:
-            p1 = int32
-        elif p1 == builtins.bool:
-            p1 = bool
+        return True
 
-        if p2 == float:
-            p2 = float32
-        elif p2 == int:
-            p2 = int32
-        elif p2 == builtins.bool:
-            p2 = bool
-
-        return p1 == p2
-
-    if (
-        hasattr(a, "_wp_generic_type_str_")
-        and hasattr(b, "_wp_generic_type_str_")
-        and a._wp_generic_type_str_ == b._wp_generic_type_str_
-    ):
-        return all(are_equal(p1, p2) for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_))
     if is_array(a) and type(a) is type(b):
         return True
-    else:
-        return are_equal(a, b)
+
+    return scalars_equal(a, b, match_generic)
 
 
 def strides_from_shape(shape: Tuple, dtype):
@@ -4232,12 +4234,17 @@ class MarchingCubes:
         self.indices.size = num_tris.value * 3
 
 
+generic_types = (Any, Scalar, Float, Int)
+
+
 def type_is_generic(t):
-    if t in (Any, Scalar, Float, Int):
+    if t in generic_types:
         return True
-    elif is_array(t):
+
+    if is_array(t):
         return type_is_generic(t.dtype)
-    elif hasattr(t, "_wp_scalar_type_"):
+
+    if hasattr(t, "_wp_scalar_type_"):
         # vector/matrix type, check if dtype is generic
         if type_is_generic(t._wp_scalar_type_):
             return True
@@ -4245,8 +4252,8 @@ def type_is_generic(t):
         for d in t._shape_:
             if d == 0:
                 return True
-    else:
-        return False
+
+    return False
 
 
 def type_is_generic_scalar(t):
@@ -4322,7 +4329,7 @@ def infer_argument_types(args, template_types, arg_names=None):
             arg_types.append(arg_type(dtype=arg.dtype, ndim=arg.ndim))
         elif arg_type in warp.types.scalar_and_bool_types:
             arg_types.append(arg_type)
-        elif arg_type in [int, float]:
+        elif arg_type in (int, float):
             # canonicalize type
             arg_types.append(warp.types.type_to_warp(arg_type))
         elif hasattr(arg_type, "_wp_scalar_type_"):

@@ -2477,7 +2477,7 @@ def address_value_func(arg_types, kwds, _):
     if not is_array(arg_types[0]):
         raise RuntimeError("load() argument 0 must be an array")
 
-    num_indices = len(arg_types[1:])
+    num_indices = len(arg_types) - 1
     num_dims = arg_types[0].ndim
 
     if num_indices < num_dims:
@@ -2504,7 +2504,7 @@ def view_value_func(arg_types, kwds, _):
         raise RuntimeError("view() argument 0 must be an array")
 
     # check array dim big enough to support view
-    num_indices = len(arg_types[1:])
+    num_indices = len(arg_types) - 1
     num_dims = arg_types[0].ndim
 
     if num_indices >= num_dims:
@@ -2906,7 +2906,7 @@ add_builtin(
     skip_replay=True,
 )
 
-for t in scalar_types + vector_types + [bool]:
+for t in scalar_types + vector_types + (bool,):
     if "vec" in t.__name__ or "mat" in t.__name__:
         continue
     add_builtin(
