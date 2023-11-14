@@ -42,7 +42,12 @@ def dynamic_func(suffix: str, use_qualified_name=False):
     return wrap_func
 
 
-def get_kernel(func, suffix: str, use_qualified_name: bool = False):
+def get_kernel(
+    func,
+    suffix: str,
+    use_qualified_name: bool = False,
+    kernel_options: Dict[str, Any] = {},
+):
     key = _make_key(func, suffix, use_qualified_name)
 
     if key not in _kernel_cache:
@@ -51,13 +56,15 @@ def get_kernel(func, suffix: str, use_qualified_name: bool = False):
         module_name = f"{func.__module__}.dyn.{key}"
         module_name = module_name[:128] if len(module_name) > 128 else module_name
         module = wp.get_module(module_name)
+        module.options = copy(wp.get_module(func.__module__).options)
+        module.options.update(kernel_options)
         _kernel_cache[key] = wp.Kernel(func=func, key=key, module=module)
     return _kernel_cache[key]
 
 
-def dynamic_kernel(suffix: str, use_qualified_name=False):
+def dynamic_kernel(suffix: str, use_qualified_name=False, kernel_options: Dict[str, Any] = {}):
     def wrap_kernel(func: Callable):
-        return get_kernel(func, suffix=suffix, use_qualified_name=use_qualified_name)
+        return get_kernel(func, suffix=suffix, use_qualified_name=use_qualified_name, kernel_options=kernel_options)
 
     return wrap_kernel
 

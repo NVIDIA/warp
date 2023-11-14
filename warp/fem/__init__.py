@@ -1,4 +1,4 @@
-from .geometry import Geometry, Grid2D, Trimesh2D, Grid3D, Tetmesh
+from .geometry import Geometry, Grid2D, Trimesh2D, Quadmesh2D, Grid3D, Tetmesh, Hexmesh
 from .geometry import GeometryPartition, LinearGeometryPartition, ExplicitGeometryPartition
 
 from .space import FunctionSpace, make_polynomial_space, ElementBasis
@@ -15,7 +15,7 @@ from .field import FieldLike, DiscreteField, make_test, make_trial, make_restric
 from .integrate import integrate, interpolate
 
 from .operator import integrand
-from .operator import position, normal, lookup, measure, measure_ratio
+from .operator import position, normal, lookup, measure, measure_ratio, deformation_gradient
 from .operator import inner, grad, div, outer, grad_outer, div_outer
 from .operator import degree, at_node
 from .operator import D, curl, jump, average, grad_jump, grad_average

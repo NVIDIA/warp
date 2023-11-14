@@ -38,6 +38,22 @@ from .tetmesh_function_space import (
     TetmeshDGPolynomialBasisSpace,
     TetmeshNonConformingPolynomialBasisSpace,
 )
+from .quadmesh_2d_function_space import (
+    Quadmesh2DPiecewiseConstantBasis,
+    Quadmesh2DBipolynomialBasisSpace,
+    Quadmesh2DDGBipolynomialBasisSpace,
+    Quadmesh2DSerendipityBasisSpace,
+    Quadmesh2DDGSerendipityBasisSpace,
+    Quadmesh2DPolynomialBasisSpace,
+)
+from .hexmesh_function_space import (
+    HexmeshPiecewiseConstantBasis,
+    HexmeshTripolynomialBasisSpace,
+    HexmeshDGTripolynomialBasisSpace,
+    HexmeshSerendipityBasisSpace,
+    HexmeshDGSerendipityBasisSpace,
+    HexmeshPolynomialBasisSpace,
+)
 
 from .partition import SpacePartition, make_space_partition
 from .restriction import SpaceRestriction
@@ -118,10 +134,13 @@ def make_polynomial_basis_space(
     Returns:
         the constructed basis space
     """
+
+    base_geo = geo.base if isinstance(geo, _geometry.DeformedGeometry) else geo
+
     if element_basis is None:
         element_basis = ElementBasis.LAGRANGE
 
-    if isinstance(geo, _geometry.Grid2D):
+    if isinstance(base_geo, _geometry.Grid2D):
         if degree == 0:
             return GridPiecewiseConstantBasis(geo)
 
@@ -139,7 +158,7 @@ def make_polynomial_basis_space(
         else:
             return GridBipolynomialBasisSpace(geo, degree=degree, family=family)
 
-    if isinstance(geo, _geometry.Grid3D):
+    if isinstance(base_geo, _geometry.Grid3D):
         if degree == 0:
             return Grid3DPiecewiseConstantBasis(geo)
 
@@ -157,7 +176,7 @@ def make_polynomial_basis_space(
         else:
             return GridTripolynomialBasisSpace(geo, degree=degree, family=family)
 
-    if isinstance(geo, _geometry.Trimesh2D):
+    if isinstance(base_geo, _geometry.Trimesh2D):
         if degree == 0:
             return Trimesh2DPiecewiseConstantBasis(geo)
 
@@ -172,7 +191,7 @@ def make_polynomial_basis_space(
         else:
             return Trimesh2DPolynomialBasisSpace(geo, degree=degree)
 
-    if isinstance(geo, _geometry.Tetmesh):
+    if isinstance(base_geo, _geometry.Tetmesh):
         if degree == 0:
             return TetmeshPiecewiseConstantBasis(geo)
 
@@ -186,6 +205,42 @@ def make_polynomial_basis_space(
             return TetmeshDGPolynomialBasisSpace(geo, degree=degree)
         else:
             return TetmeshPolynomialBasisSpace(geo, degree=degree)
+
+    if isinstance(base_geo, _geometry.Quadmesh2D):
+        if degree == 0:
+            return Quadmesh2DPiecewiseConstantBasis(geo)
+
+        if element_basis == ElementBasis.SERENDIPITY and degree > 1:
+            if discontinuous:
+                return Quadmesh2DDGSerendipityBasisSpace(geo, degree=degree, family=family)
+            else:
+                return Quadmesh2DSerendipityBasisSpace(geo, degree=degree, family=family)
+
+        if element_basis == ElementBasis.NONCONFORMING_POLYNOMIAL:
+            return Quadmesh2DPolynomialBasisSpace(geo, degree=degree)
+
+        if discontinuous:
+            return Quadmesh2DDGBipolynomialBasisSpace(geo, degree=degree, family=family)
+        else:
+            return Quadmesh2DBipolynomialBasisSpace(geo, degree=degree, family=family)
+
+    if isinstance(base_geo, _geometry.Hexmesh):
+        if degree == 0:
+            return HexmeshPiecewiseConstantBasis(geo)
+
+        if element_basis == ElementBasis.SERENDIPITY and degree > 1:
+            if discontinuous:
+                return HexmeshDGSerendipityBasisSpace(geo, degree=degree, family=family)
+            else:
+                return HexmeshSerendipityBasisSpace(geo, degree=degree, family=family)
+
+        if element_basis == ElementBasis.NONCONFORMING_POLYNOMIAL:
+            return HexmeshPolynomialBasisSpace(geo, degree=degree)
+
+        if discontinuous:
+            return HexmeshDGTripolynomialBasisSpace(geo, degree=degree, family=family)
+        else:
+            return HexmeshTripolynomialBasisSpace(geo, degree=degree, family=family)
 
     raise NotImplementedError()
 

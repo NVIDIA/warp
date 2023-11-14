@@ -21,7 +21,7 @@ try:
 except ImportError:
     from example_diffusion import diffusion_form, linear_form
     from bsr_utils import bsr_cg
-    from mesh_utils import gen_tetmesh
+    from mesh_utils import gen_tetmesh, gen_hexmesh
     from plot_utils import Plot
 
 
@@ -44,7 +44,7 @@ class Example:
     parser.add_argument("--serendipity", action="store_true", default=False)
     parser.add_argument("--viscosity", type=float, default=2.0)
     parser.add_argument("--boundary_compliance", type=float, default=0, help="Dirichlet boundary condition compliance")
-    parser.add_argument("--tet_mesh", action="store_true", help="Use a tetrahedral mesh")
+    parser.add_argument("--mesh", choices=("grid", "tet", "hex"), default="grid", help="Mesh type")
 
     def __init__(self, stage=None, quiet=False, args=None, **kwargs):
         if args is None:
@@ -56,13 +56,20 @@ class Example:
 
         res = wp.vec3i(args.resolution, args.resolution // 2, args.resolution * 2)
 
-        if args.tet_mesh:
+        if args.mesh == "tet":
             pos, tet_vtx_indices = gen_tetmesh(
                 res=res,
                 bounds_lo=wp.vec3(0.0, 0.0, 0.0),
                 bounds_hi=wp.vec3(1.0, 0.5, 2.0),
             )
             self._geo = fem.Tetmesh(tet_vtx_indices, pos)
+        elif args.mesh == "hex":
+            pos, hex_vtx_indices = gen_hexmesh(
+                res=res,
+                bounds_lo=wp.vec3(0.0, 0.0, 0.0),
+                bounds_hi=wp.vec3(1.0, 0.5, 2.0),
+            )
+            self._geo = fem.Hexmesh(hex_vtx_indices, pos)
         else:
             self._geo = fem.Grid3D(
                 res=res,
@@ -75,7 +82,7 @@ class Example:
         self._scalar_space = fem.make_polynomial_space(self._geo, degree=args.degree, element_basis=element_basis)
 
         # Scalar field over our function space
-        self._scalar_field = self._scalar_space.make_field()
+        self._scalar_field: fem.DiscreteField = self._scalar_space.make_field()
 
         self.renderer = Plot(stage)
 

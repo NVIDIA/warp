@@ -20,7 +20,7 @@ class TetmeshCellArg:
     vertex_tet_indices: wp.array(dtype=int)
 
     # for transforming reference gradient
-    reference_transforms: wp.array(dtype=wp.mat33f)
+    deformation_gradients: wp.array(dtype=wp.mat33f)
 
 
 @wp.struct
@@ -28,6 +28,9 @@ class TetmeshSideArg:
     cell_arg: TetmeshCellArg
     face_vertex_indices: wp.array(dtype=wp.vec3i)
     face_tet_indices: wp.array(dtype=wp.vec2i)
+
+
+_mat32 = wp.mat(shape=(3, 2), dtype=float)
 
 
 class Tetmesh(Geometry):
@@ -58,8 +61,8 @@ class Tetmesh(Geometry):
         self._edge_count = 0
         self._build_topology(temporary_store)
 
-        self._reference_transforms: wp.array = None
-        self._compute_reference_transforms()
+        self._deformation_gradients: wp.array = None
+        self._compute_deformation_gradients()
 
     def cell_count(self):
         return self.tet_vertex_indices.shape[0]
@@ -115,7 +118,7 @@ class Tetmesh(Geometry):
         args.positions = self.positions.to(device)
         args.vertex_tet_offsets = self._vertex_tet_offsets.to(device)
         args.vertex_tet_indices = self._vertex_tet_indices.to(device)
-        args.reference_transforms = self._reference_transforms.to(device)
+        args.deformation_gradients = self._deformation_gradients.to(device)
 
         return args
 
@@ -129,6 +132,14 @@ class Tetmesh(Geometry):
             + s.element_coords[1] * args.positions[tet_idx[2]]
             + s.element_coords[2] * args.positions[tet_idx[3]]
         )
+
+    @wp.func
+    def cell_deformation_gradient(args: CellArg, s: Sample):
+        return args.deformation_gradients[s.element_index]
+
+    @wp.func
+    def cell_inverse_deformation_gradient(args: CellArg, s: Sample):
+        return wp.inverse(args.deformation_gradients[s.element_index])
 
     @wp.func
     def _project_on_tet(args: CellArg, pos: wp.vec3, tet_index: int):
@@ -164,25 +175,8 @@ class Tetmesh(Geometry):
         return make_free_sample(closest_tet, closest_coords)
 
     @wp.func
-    def cell_measure(args: CellArg, cell_index: ElementIndex, coords: Coords):
-        tet_idx = args.tet_vertex_indices[cell_index]
-
-        v0 = args.positions[tet_idx[0]]
-        v1 = args.positions[tet_idx[1]]
-        v2 = args.positions[tet_idx[2]]
-        v3 = args.positions[tet_idx[3]]
-
-        mat = wp.mat33(
-            v1 - v0,
-            v2 - v0,
-            v3 - v0,
-        )
-
-        return wp.abs(wp.determinant(mat)) / 6.0
-
-    @wp.func
     def cell_measure(args: CellArg, s: Sample):
-        return Tetmesh.cell_measure(args, s.element_index, s.element_coords)
+        return wp.abs(wp.determinant(args.deformation_gradients[s.element_index])) / 6.0
 
     @wp.func
     def cell_measure_ratio(args: CellArg, s: Sample):
@@ -191,15 +185,6 @@ class Tetmesh(Geometry):
     @wp.func
     def cell_normal(args: CellArg, s: Sample):
         return wp.vec3(0.0)
-
-    @wp.func
-    def cell_transform_reference_gradient(
-        cell_arg: TetmeshCellArg,
-        element_index: ElementIndex,
-        coords: Coords,
-        grad: wp.vec3,
-    ):
-        return cell_arg.reference_transforms[element_index] * grad
 
     @cached_arg_value
     def side_index_arg_value(self, device) -> SideIndexArg:
@@ -235,35 +220,47 @@ class Tetmesh(Geometry):
         )
 
     @wp.func
-    def side_measure(args: SideArg, side_index: ElementIndex, coords: Coords):
+    def _side_vecs(args: SideArg, side_index: ElementIndex):
         face_idx = args.face_vertex_indices[side_index]
         v0 = args.cell_arg.positions[face_idx[0]]
         v1 = args.cell_arg.positions[face_idx[1]]
         v2 = args.cell_arg.positions[face_idx[2]]
 
-        return 0.5 * wp.length(wp.cross(v1 - v0, v2 - v0))
+        return v1 - v0, v2 - v0
+
+    @wp.func
+    def side_deformation_gradient(args: SideArg, s: Sample):
+        e1, e2 = Tetmesh._side_vecs(args, s.element_index)
+        return _mat32(e1, e2)
+
+    @wp.func
+    def side_inner_inverse_deformation_gradient(args: SideArg, s: Sample):
+        cell_index = Tetmesh.side_inner_cell_index(args, s.element_index)
+        return wp.inverse(args.cell_arg.deformation_gradients[cell_index])
+
+    @wp.func
+    def side_outer_inverse_deformation_gradient(args: SideArg, s: Sample):
+        cell_index = Tetmesh.side_outer_cell_index(args, s.element_index)
+        return wp.inverse(args.cell_arg.deformation_gradients[cell_index])
 
     @wp.func
     def side_measure(args: SideArg, s: Sample):
-        return Tetmesh.side_measure(args, s.element_index, s.element_coords)
+        e1, e2 = Tetmesh._side_vecs(args, s.element_index)
+        return 0.5 * wp.length(wp.cross(e1, e2))
 
     @wp.func
     def side_measure_ratio(args: SideArg, s: Sample):
         inner = Tetmesh.side_inner_cell_index(args, s.element_index)
         outer = Tetmesh.side_outer_cell_index(args, s.element_index)
         return Tetmesh.side_measure(args, s) / wp.min(
-            Tetmesh.cell_measure(args.cell_arg, inner, Coords()),
-            Tetmesh.cell_measure(args.cell_arg, outer, Coords()),
+            Tetmesh.cell_measure(args.cell_arg, make_free_sample(inner, Coords())),
+            Tetmesh.cell_measure(args.cell_arg, make_free_sample(outer, Coords())),
         )
 
     @wp.func
     def side_normal(args: SideArg, s: Sample):
-        face_idx = args.face_vertex_indices[s.element_index]
-        v0 = args.cell_arg.positions[face_idx[0]]
-        v1 = args.cell_arg.positions[face_idx[1]]
-        v2 = args.cell_arg.positions[face_idx[2]]
-
-        return wp.normalize(wp.cross(v1 - v0, v2 - v0))
+        e1, e2 = Tetmesh._side_vecs(args, s.element_index)
+        return wp.normalize(wp.cross(e1, e2))
 
     @wp.func
     def side_inner_cell_index(arg: SideArg, side_index: ElementIndex):
@@ -531,14 +528,14 @@ class Tetmesh(Geometry):
         vertex_unique_edge_count.release()
         vertex_edge_ends.release()
 
-    def _compute_reference_transforms(self):
-        self._reference_transforms = wp.empty(dtype=wp.mat33f, device=self.positions.device, shape=(self.cell_count()))
+    def _compute_deformation_gradients(self):
+        self._deformation_gradients = wp.empty(dtype=wp.mat33f, device=self.positions.device, shape=(self.cell_count()))
 
         wp.launch(
-            kernel=Tetmesh._compute_reference_transforms_kernel,
-            dim=self._reference_transforms.shape,
-            device=self._reference_transforms.device,
-            inputs=[self.tet_vertex_indices, self.positions, self._reference_transforms],
+            kernel=Tetmesh._compute_deformation_gradients_kernel,
+            dim=self._deformation_gradients.shape,
+            device=self._deformation_gradients.device,
+            inputs=[self.tet_vertex_indices, self.positions, self._deformation_gradients],
         )
 
     @wp.kernel
@@ -813,7 +810,7 @@ class Tetmesh(Geometry):
                     tet_edge_indices[t][k + 3] = edge_id
 
     @wp.kernel
-    def _compute_reference_transforms_kernel(
+    def _compute_deformation_gradients_kernel(
         tet_vertex_indices: wp.array2d(dtype=int),
         positions: wp.array(dtype=wp.vec3f),
         transforms: wp.array(dtype=wp.mat33f),
@@ -829,5 +826,4 @@ class Tetmesh(Geometry):
         e2 = p2 - p0
         e3 = p3 - p0
 
-        mat = wp.mat33(e1, e2, e3)
-        transforms[t] = wp.transpose(wp.inverse(mat))
+        transforms[t] = wp.mat33(e1, e2, e3)

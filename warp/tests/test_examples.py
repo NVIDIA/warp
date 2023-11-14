@@ -87,16 +87,21 @@ def register(parent):
     add_example_test(
         TestExamples,
         name="fem.example_diffusion",
-        options={"quiet": True, "resolution": 10, "tri_mesh": True, "num_frames": 1},
+        options={"quiet": True, "resolution": 10, "mesh": "tri", "num_frames": 1},
     )
     add_example_test(
         TestExamples, name="fem.example_diffusion_3d", options={"quiet": True, "resolution": 10, "num_frames": 1}
+    )
+    add_example_test(
+        TestExamples,
+        name="fem.example_deformed_geometry",
+        options={"quiet": True, "resolution": 10, "num_frames": 1, "mesh": "tri"},
     )
     add_example_test(TestExamples, name="fem.example_convection_diffusion", options={"quiet": True, "resolution": 20})
     add_example_test(
         TestExamples,
         name="fem.example_mixed_elasticity",
-        options={"quiet": True, "nonconforming_stresses": True, "num_frames": 1},
+        options={"quiet": True, "nonconforming_stresses": True, "mesh": "quad", "num_frames": 1},
     )
     add_example_test(TestExamples, name="fem.example_stokes_transfer", options={"quiet": True, "num_frames": 1})
 

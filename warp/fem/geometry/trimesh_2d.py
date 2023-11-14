@@ -19,8 +19,7 @@ class Trimesh2DCellArg:
     vertex_tri_offsets: wp.array(dtype=int)
     vertex_tri_indices: wp.array(dtype=int)
 
-    # for transforming reference gradient
-    reference_transforms: wp.array(dtype=wp.mat22f)
+    deformation_gradients: wp.array(dtype=wp.mat22f)
 
 
 @wp.struct
@@ -56,8 +55,8 @@ class Trimesh2D(Geometry):
         self._vertex_tri_indices: wp.array = None
         self._build_topology(temporary_store)
 
-        self._reference_transforms: wp.array = None
-        self._compute_reference_transforms()
+        self._deformation_gradients: wp.array = None
+        self._compute_deformation_gradients()
 
     def cell_count(self):
         return self.tri_vertex_indices.shape[0]
@@ -102,7 +101,7 @@ class Trimesh2D(Geometry):
         args.positions = self.positions.to(device)
         args.vertex_tri_offsets = self._vertex_tri_offsets.to(device)
         args.vertex_tri_indices = self._vertex_tri_indices.to(device)
-        args.reference_transforms = self._reference_transforms.to(device)
+        args.deformation_gradients = self._deformation_gradients.to(device)
 
         return args
 
@@ -114,6 +113,14 @@ class Trimesh2D(Geometry):
             + s.element_coords[1] * args.positions[tri_idx[1]]
             + s.element_coords[2] * args.positions[tri_idx[2]]
         )
+
+    @wp.func
+    def cell_deformation_gradient(args: CellArg, s: Sample):
+        return args.deformation_gradients[s.element_index]
+
+    @wp.func
+    def cell_inverse_deformation_gradient(args: CellArg, s: Sample):
+        return wp.inverse(args.deformation_gradients[s.element_index])
 
     @wp.func
     def _project_on_tri(args: CellArg, pos: wp.vec2, tri_index: int):
@@ -148,38 +155,12 @@ class Trimesh2D(Geometry):
         return make_free_sample(closest_tri, closest_coords)
 
     @wp.func
-    def cell_measure(args: CellArg, cell_index: ElementIndex, coords: Coords):
-        tri_idx = args.tri_vertex_indices[cell_index]
-
-        v0 = args.positions[tri_idx[0]]
-        v1 = args.positions[tri_idx[1]]
-        v2 = args.positions[tri_idx[2]]
-
-        e1 = v1 - v0
-        e2 = v2 - v0
-
-        return 0.5 * wp.abs(e1[0] * e2[1] - e1[1] * e2[0])
-
-    @wp.func
     def cell_measure(args: CellArg, s: Sample):
-        return Trimesh2D.cell_measure(args, s.element_index, s.element_coords)
-
-    @wp.func
-    def cell_measure_ratio(args: CellArg, s: Sample):
-        return 1.0
+        return 0.5 * wp.abs(wp.determinant(args.deformation_gradients[s.element_index]))
 
     @wp.func
     def cell_normal(args: CellArg, s: Sample):
         return wp.vec2(0.0)
-
-    @wp.func
-    def cell_transform_reference_gradient(
-        cell_arg: Trimesh2DCellArg,
-        element_index: ElementIndex,
-        coords: Coords,
-        grad: wp.vec2,
-    ):
-        return cell_arg.reference_transforms[element_index] * grad
 
     @cached_arg_value
     def side_index_arg_value(self, device) -> SideIndexArg:
@@ -213,23 +194,36 @@ class Trimesh2D(Geometry):
         ] * args.cell_arg.positions[edge_idx[1]]
 
     @wp.func
-    def side_measure(args: SideArg, side_index: ElementIndex, coords: Coords):
-        edge_idx = args.edge_vertex_indices[side_index]
+    def side_deformation_gradient(args: SideArg, s: Sample):
+        edge_idx = args.edge_vertex_indices[s.element_index]
         v0 = args.cell_arg.positions[edge_idx[0]]
         v1 = args.cell_arg.positions[edge_idx[1]]
-        return wp.length(v1 - v0)
+        return v1 - v0
+
+    @wp.func
+    def side_inner_inverse_deformation_gradient(args: SideArg, s: Sample):
+        cell_index = Trimesh2D.side_inner_cell_index(args, s.element_index)
+        return wp.inverse(args.cell_arg.deformation_gradients[cell_index])
+
+    @wp.func
+    def side_outer_inverse_deformation_gradient(args: SideArg, s: Sample):
+        cell_index = Trimesh2D.side_outer_cell_index(args, s.element_index)
+        return wp.inverse(args.cell_arg.deformation_gradients[cell_index])
 
     @wp.func
     def side_measure(args: SideArg, s: Sample):
-        return Trimesh2D.side_measure(args, s.element_index, s.element_coords)
+        edge_idx = args.edge_vertex_indices[s.element_index]
+        v0 = args.cell_arg.positions[edge_idx[0]]
+        v1 = args.cell_arg.positions[edge_idx[1]]
+        return wp.length(v1 - v0)
 
     @wp.func
     def side_measure_ratio(args: SideArg, s: Sample):
         inner = Trimesh2D.side_inner_cell_index(args, s.element_index)
         outer = Trimesh2D.side_outer_cell_index(args, s.element_index)
         return Trimesh2D.side_measure(args, s) / wp.min(
-            Trimesh2D.cell_measure(args.cell_arg, inner, Coords()),
-            Trimesh2D.cell_measure(args.cell_arg, outer, Coords()),
+            Trimesh2D.cell_measure(args.cell_arg, make_free_sample(inner, Coords())),
+            Trimesh2D.cell_measure(args.cell_arg, make_free_sample(outer, Coords())),
         )
 
     @wp.func
@@ -417,14 +411,14 @@ class Trimesh2D(Geometry):
 
         boundary_mask.release()
 
-    def _compute_reference_transforms(self):
-        self._reference_transforms = wp.empty(dtype=wp.mat22f, device=self.positions.device, shape=(self.cell_count()))
+    def _compute_deformation_gradients(self):
+        self._deformation_gradients = wp.empty(dtype=wp.mat22f, device=self.positions.device, shape=(self.cell_count()))
 
         wp.launch(
-            kernel=Trimesh2D._compute_reference_transforms_kernel,
-            dim=self._reference_transforms.shape,
-            device=self._reference_transforms.device,
-            inputs=[self.tri_vertex_indices, self.positions, self._reference_transforms],
+            kernel=Trimesh2D._compute_deformation_gradients_kernel,
+            dim=self._deformation_gradients.shape,
+            device=self._deformation_gradients.device,
+            inputs=[self.tri_vertex_indices, self.positions, self._deformation_gradients],
         )
 
     @wp.kernel
@@ -555,7 +549,7 @@ class Trimesh2D(Geometry):
             edge_vertex_indices[e] = wp.vec2i(edge_vidx[1], edge_vidx[0])
 
     @wp.kernel
-    def _compute_reference_transforms_kernel(
+    def _compute_deformation_gradients_kernel(
         tri_vertex_indices: wp.array2d(dtype=int),
         positions: wp.array(dtype=wp.vec2f),
         transforms: wp.array(dtype=wp.mat22f),
@@ -569,5 +563,4 @@ class Trimesh2D(Geometry):
         e1 = p1 - p0
         e2 = p2 - p0
 
-        mat = wp.mat22(e1, e2)
-        transforms[t] = wp.transpose(wp.inverse(mat))
+        transforms[t] = wp.mat22(e1, e2)

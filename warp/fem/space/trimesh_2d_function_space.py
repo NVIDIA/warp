@@ -4,7 +4,7 @@ from warp.fem.types import ElementIndex, Coords
 from warp.fem.geometry import Trimesh2D
 from warp.fem import cache
 
-from .topology import SpaceTopology, DiscontinuousSpaceTopologyMixin
+from .topology import SpaceTopology, DiscontinuousSpaceTopologyMixin, forward_base_topology
 from .basis_space import BasisSpace, TraceBasisSpace
 
 from .shape import ShapeFunction, ConstantShapeFunction
@@ -192,7 +192,7 @@ class Trimesh2DPolynomialBasisSpace(Trimesh2DBasisSpace):
         degree: int,
     ):
         shape = Triangle2DPolynomialShapeFunctions(degree)
-        topology = Trimesh2DPolynomialSpaceTopology(mesh, shape)
+        topology = forward_base_topology(Trimesh2DPolynomialSpaceTopology, mesh, shape)
 
         super().__init__(topology, shape)
 

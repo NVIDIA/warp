@@ -15,9 +15,12 @@ class Grid3DCellArg:
     origin: wp.vec3
 
 
+_mat32 = wp.mat(shape=(3, 2), dtype=float)
+
+
 class Grid3D(Geometry):
     """Three-dimensional regular grid geometry"""
-        
+
     dimension = 3
 
     Permutation = wp.types.matrix(shape=(3, 3), dtype=int)
@@ -219,6 +222,14 @@ class Grid3D(Geometry):
         )
 
     @wp.func
+    def cell_deformation_gradient(args: CellArg, s: Sample):
+        return wp.diag(args.cell_size)
+
+    @wp.func
+    def cell_inverse_deformation_gradient(args: CellArg, s: Sample):
+        return wp.diag(wp.cw_div(wp.vec3(1.0), args.cell_size))
+
+    @wp.func
     def cell_lookup(args: CellArg, pos: wp.vec3):
         loc_pos = wp.cw_div(pos - args.origin, args.cell_size)
         x = wp.clamp(loc_pos[0], 0.0, float(args.res[0]))
@@ -239,16 +250,8 @@ class Grid3D(Geometry):
         return Grid3D.cell_lookup(args, pos)
 
     @wp.func
-    def cell_measure(args: CellArg, cell_index: ElementIndex, coords: Coords):
-        return args.cell_size[0] * args.cell_size[1] * args.cell_size[2]
-
-    @wp.func
     def cell_measure(args: CellArg, s: Sample):
-        return Grid3D.cell_measure(args, s.element_index, s.element_coords)
-
-    @wp.func
-    def cell_measure_ratio(args: CellArg, s: Sample):
-        return 1.0
+        return args.cell_size[0] * args.cell_size[1] * args.cell_size[2]
 
     @wp.func
     def cell_normal(args: CellArg, s: Sample):
@@ -308,9 +311,11 @@ class Grid3D(Geometry):
     def side_position(args: SideArg, s: Sample):
         side = Grid3D.get_side(args, s.element_index)
 
+        coord0 = wp.select(side.origin[0] == 0, s.element_coords[0], 1.0 - s.element_coords[0])
+
         local_pos = wp.vec3(
             float(side.origin[0]),
-            float(side.origin[1]) + s.element_coords[0],
+            float(side.origin[1]) + coord0,
             float(side.origin[2]) + s.element_coords[1],
         )
 
@@ -319,15 +324,30 @@ class Grid3D(Geometry):
         return pos
 
     @wp.func
-    def side_measure(args: SideArg, side_index: ElementIndex, coords: Coords):
-        side = Grid3D.get_side(args, side_index)
-        long_axis = Grid3D.LOC_TO_WORLD[side.axis, 1]
-        lat_axis = Grid3D.LOC_TO_WORLD[side.axis, 2]
-        return args.cell_arg.cell_size[long_axis] * args.cell_arg.cell_size[lat_axis]
+    def side_deformation_gradient(args: SideArg, s: Sample):
+        side = Grid3D.get_side(args, s.element_index)
+
+        sign = wp.select(side.origin[0] == 0, 1.0, -1.0)
+
+        return _mat32(
+            wp.cw_mul(Grid3D._local_to_world(side.axis, wp.vec3(0.0, sign, 0.0)), args.cell_arg.cell_size),
+            wp.cw_mul(Grid3D._local_to_world(side.axis, wp.vec3(0.0, 0.0, 1.0)), args.cell_arg.cell_size),
+        )
+
+    @wp.func
+    def side_inner_inverse_deformation_gradient(args: SideArg, s: Sample):
+        return Grid3D.cell_inverse_deformation_gradient(args.cell_arg, s)
+
+    @wp.func
+    def side_outer_inverse_deformation_gradient(args: SideArg, s: Sample):
+        return Grid3D.cell_inverse_deformation_gradient(args.cell_arg, s)
 
     @wp.func
     def side_measure(args: SideArg, s: Sample):
-        return Grid3D.side_measure(args, s.element_index, s.element_coords)
+        side = Grid3D.get_side(args, s.element_index)
+        long_axis = Grid3D.LOC_TO_WORLD[side.axis, 1]
+        lat_axis = Grid3D.LOC_TO_WORLD[side.axis, 2]
+        return args.cell_arg.cell_size[long_axis] * args.cell_arg.cell_size[lat_axis]
 
     @wp.func
     def side_measure_ratio(args: SideArg, s: Sample):
@@ -339,10 +359,7 @@ class Grid3D(Geometry):
     def side_normal(args: SideArg, s: Sample):
         side = Grid3D.get_side(args, s.element_index)
 
-        if side.origin[0] == 0:
-            sign = -1.0
-        else:
-            sign = 1.0
+        sign = wp.select(side.origin[0] == 0, 1.0, -1.0)
 
         local_n = wp.vec3(sign, 0.0, 0.0)
         return Grid3D._local_to_world(side.axis, local_n)
@@ -351,10 +368,7 @@ class Grid3D(Geometry):
     def side_inner_cell_index(arg: SideArg, side_index: ElementIndex):
         side = Grid3D.get_side(arg, side_index)
 
-        if side.origin[0] == 0:
-            inner_alt = 0
-        else:
-            inner_alt = side.origin[0] - 1
+        inner_alt = wp.select(side.origin[0] == 0, side.origin[0] - 1, 0)
 
         inner_origin = wp.vec3i(inner_alt, side.origin[1], side.origin[2])
 
@@ -367,10 +381,9 @@ class Grid3D(Geometry):
 
         alt_axis = Grid3D.LOC_TO_WORLD[side.axis, 0]
 
-        if side.origin[0] == arg.cell_arg.res[alt_axis]:
-            outer_alt = arg.cell_arg.res[alt_axis] - 1
-        else:
-            outer_alt = side.origin[0]
+        outer_alt = wp.select(
+            side.origin[0] == arg.cell_arg.res[alt_axis], side.origin[0], arg.cell_arg.res[alt_axis] - 1
+        )
 
         outer_origin = wp.vec3i(outer_alt, side.origin[1], side.origin[2])
 
@@ -381,24 +394,22 @@ class Grid3D(Geometry):
     def side_inner_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
         side = Grid3D.get_side(args, side_index)
 
-        if side.origin[0] == 0:
-            inner_alt = 0.0
-        else:
-            inner_alt = 1.0
+        inner_alt = wp.select(side.origin[0] == 0, 1.0, 0.0)
 
-        return Grid3D._local_to_world(side.axis, wp.vec3(inner_alt, side_coords[0], side_coords[1]))
+        side_coord0 = wp.select(side.origin[0] == 0, side_coords[0], 1.0 - side_coords[0])
+
+        return Grid3D._local_to_world(side.axis, wp.vec3(inner_alt, side_coord0, side_coords[1]))
 
     @wp.func
     def side_outer_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
         side = Grid3D.get_side(args, side_index)
 
         alt_axis = Grid3D.LOC_TO_WORLD[side.axis, 0]
-        if side.origin[0] == args.cell_arg.res[alt_axis]:
-            outer_alt = 1.0
-        else:
-            outer_alt = 0.0
+        outer_alt = wp.select(side.origin[0] == args.cell_arg.res[alt_axis], 0.0, 1.0)
 
-        return Grid3D._local_to_world(side.axis, wp.vec3(outer_alt, side_coords[0], side_coords[1]))
+        side_coord0 = wp.select(side.origin[0] == 0, side_coords[0], 1.0 - side_coords[0])
+
+        return Grid3D._local_to_world(side.axis, wp.vec3(outer_alt, side_coord0, side_coords[1]))
 
     @wp.func
     def side_from_cell_coords(
@@ -413,7 +424,9 @@ class Grid3D(Geometry):
         if float(side.origin[0] - cell[side.axis]) == element_coords[side.axis]:
             long_axis = Grid3D.LOC_TO_WORLD[side.axis, 1]
             lat_axis = Grid3D.LOC_TO_WORLD[side.axis, 2]
-            return Coords(element_coords[long_axis], element_coords[lat_axis], 0.0)
+            long_coord = element_coords[long_axis]
+            long_coord = wp.select(side.origin[0] == 0, long_coord, 1.0 - long_coord)
+            return Coords(long_coord, element_coords[lat_axis], 0.0)
 
         return Coords(OUTSIDE)
 

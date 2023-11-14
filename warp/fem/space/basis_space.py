@@ -4,7 +4,7 @@ import warp as wp
 
 from warp.fem.types import ElementIndex, Coords, make_free_sample
 from warp.fem.geometry import Geometry
-from warp.fem import cache
+from warp.fem import cache, utils
 
 from .topology import SpaceTopology
 from .shape import ShapeFunction
@@ -60,7 +60,7 @@ class BasisSpace:
 
     @property
     def name(self):
-        return f"{self.__class__.__qualname__}_{self._shape.name}"
+        return f"{self.topology.name}_{self._shape.name}"
 
     # Helpers for generating node positions
 
@@ -73,7 +73,7 @@ class BasisSpace:
 
         node_coords_in_element = self.make_node_coords_in_element()
 
-        @cache.dynamic_kernel(suffix=self.name)
+        @cache.dynamic_kernel(suffix=self.name, kernel_options={"max_unroll": 4, "enable_backward": False})
         def fill_node_positions(
             geo_cell_arg: self.geometry.CellArg,
             basis_arg: self.BasisArg,
@@ -100,7 +100,7 @@ class BasisSpace:
         else:
             if out.shape != shape or not wp.types.types_equal(pos_type, out.dtype):
                 raise ValueError(
-                    f"Out node positions array must have shape {shape} and data type {wp.types.type_repr(post_type)}"
+                    f"Out node positions array must have shape {shape} and data type {wp.types.type_repr(pos_type)}"
                 )
             node_positions = out
 
@@ -156,6 +156,7 @@ class BasisSpace:
             coords: Coords,
             node_index_in_elt: int,
         ):
+            a = self.BasisArg()
             return shape_element_inner_weight(coords, node_index_in_elt)
 
         return element_inner_weight
@@ -174,8 +175,7 @@ class BasisSpace:
             coords: Coords,
             node_index_in_elt: int,
         ):
-            grad = shape_element_inner_weight_gradient(coords, node_index_in_elt)
-            return self.geometry.cell_transform_reference_gradient(elt_arg, element_index, coords, grad)
+            return shape_element_inner_weight_gradient(coords, node_index_in_elt)
 
         return element_inner_weight_gradient
 
@@ -337,7 +337,9 @@ class TraceBasisSpace(BasisSpace):
 
             cell_coords = self.geometry.side_inner_cell_coords(geo_side_arg, element_index, coords)
             geo_cell_arg = self.geometry.side_to_cell_arg(geo_side_arg)
-            return cell_inner_weight_gradient(geo_cell_arg, basis_arg, cell_index, cell_coords, index_in_cell)
+            return cell_inner_weight_gradient(
+                geo_cell_arg, basis_arg, cell_index, cell_coords, index_in_cell 
+            )
 
         return trace_element_inner_weight_gradient
 
@@ -358,9 +360,10 @@ class TraceBasisSpace(BasisSpace):
                 return grad_vec_type(0.0)
 
             cell_coords = self.geometry.side_outer_cell_coords(geo_side_arg, element_index, coords)
-
             geo_cell_arg = self.geometry.side_to_cell_arg(geo_side_arg)
-            return cell_outer_weight_gradient(geo_cell_arg, basis_arg, cell_index, cell_coords, index_in_cell)
+            return cell_outer_weight_gradient(
+                geo_cell_arg, basis_arg, cell_index, cell_coords, index_in_cell 
+            )
 
         return trace_element_outer_weight_gradient
 

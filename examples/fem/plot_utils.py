@@ -32,7 +32,7 @@ def plot_tri_surface(field, axes=None):
         fig, axes = plt.subplots(subplot_kw={"projection": "3d"})
 
     node_positions = field.space.node_positions().numpy()
-
+    
     triangulation = Triangulation(
         x=node_positions[:, 0], y=node_positions[:, 1], triangles=field.space.node_triangulation()
     )
