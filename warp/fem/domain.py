@@ -90,6 +90,9 @@ class GeometryDomain:
     element_position: wp.Function
     """Device function returning the element position at a sample point"""
 
+    element_deformation_gradient: wp.Function
+    """Device function returning the gradient of the position with respect to the element's reference space"""
+
     element_normal: wp.Function
     """Device function returning the element normal at a sample point"""
 
@@ -141,6 +144,10 @@ class Cells(GeometryDomain):
     @property
     def element_position(self) -> wp.Function:
         return self.geometry.cell_position
+
+    @property
+    def element_deformation_gradient(self) -> wp.Function:
+        return self.geometry.cell_deformation_gradient
 
     @property
     def element_measure(self) -> wp.Function:
@@ -204,6 +211,10 @@ class Sides(GeometryDomain):
     @property
     def element_position(self) -> wp.Function:
         return self.geometry.side_position
+
+    @property
+    def element_deformation_gradient(self) -> wp.Function:
+        return self.geometry.side_deformation_gradient
 
     @property
     def element_measure(self) -> wp.Function:

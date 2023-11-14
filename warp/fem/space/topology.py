@@ -1,9 +1,9 @@
-from typing import Optional
+from typing import Optional, Type
 
 import warp as wp
 
 from warp.fem.types import ElementIndex
-from warp.fem.geometry import Geometry
+from warp.fem.geometry import Geometry, DeformedGeometry
 from warp.fem import cache
 
 
@@ -111,6 +111,11 @@ class SpaceTopology:
         """Trace of the function space over lower-dimensional elements of the geometry"""
 
         return TraceSpaceTopology(self)
+
+    @property
+    def is_trace(self) -> bool:
+        """Whether this topology is defined on the trace of the geometry"""
+        return self.dimension == self.geometry.dimension - 1
 
     def full_space_topology(self) -> "SpaceTopology":
         """Returns the full space topology from which this topology is derived"""
@@ -235,3 +240,46 @@ class DiscontinuousSpaceTopologyMixin:
             return NODES_PER_ELEMENT * element_index + node_index_in_elt
 
         return element_node_index
+
+
+class DeformedGeometrySpaceTopology(SpaceTopology):
+    def __init__(self, geometry: DeformedGeometry, base_topology: SpaceTopology):
+        super().__init__(geometry, base_topology.NODES_PER_ELEMENT)
+
+        self.base = base_topology
+        self.node_count = self.base.node_count
+        self.topo_arg_value = self.base.topo_arg_value
+        self.TopologyArg = self.base.TopologyArg
+
+        self.element_node_index = self._make_element_node_index()
+
+    @property
+    def name(self):
+        return f"{self.base.name}_{self.geometry.field.name}"
+
+    def _make_element_node_index(self):
+        @cache.dynamic_func(suffix=self.name)
+        def element_node_index(
+            elt_arg: self.geometry.CellArg,
+            topo_arg: self.TopologyArg,
+            element_index: ElementIndex,
+            node_index_in_elt: int,
+        ):
+            return self.base.element_node_index(elt_arg.elt_arg, topo_arg, element_index, node_index_in_elt)
+
+        return element_node_index
+
+
+def forward_base_topology(topology_class: Type[SpaceTopology], geometry: Geometry, *args, **kwargs) -> SpaceTopology:
+    """
+    If `geometry` is *not* a :class:`DeformedGeometry`, constructs a normal instance of `topology_class` over `geometry`, forwarding additional arguments.
+
+    If `geometry` *is* a :class:`DeformedGeometry`, constructs an instance of `topology_class` over the base (undeformed) geometry of `geometry`, then warp it
+    in a :class:`DeformedGeometrySpaceTopology` forwarding the calls to the underlying topology.
+    """
+
+    if isinstance(geometry, DeformedGeometry):
+        base_topo = topology_class(geometry.base, *args, **kwargs)
+        return DeformedGeometrySpaceTopology(geometry, base_topo)
+
+    return topology_class(geometry, *args, **kwargs)

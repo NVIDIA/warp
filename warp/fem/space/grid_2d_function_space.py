@@ -6,7 +6,7 @@ from warp.fem.polynomial import Polynomial, is_closed
 from warp.fem.geometry import Grid2D
 from warp.fem import cache
 
-from .topology import SpaceTopology, DiscontinuousSpaceTopologyMixin
+from .topology import SpaceTopology, DiscontinuousSpaceTopologyMixin, forward_base_topology
 from .basis_space import BasisSpace, TraceBasisSpace
 
 from .shape import ShapeFunction, ConstantShapeFunction
@@ -57,7 +57,10 @@ class GridPiecewiseConstantBasis(Grid2DBasisSpace):
         topology = Grid2DDiscontinuousSpaceTopology(grid, shape)
         super().__init__(shape=shape, topology=topology)
 
-    def node_grid(self):
+        if isinstance(grid, Grid2D):
+            self.node_grid = self._node_grid
+
+    def _node_grid(self):
         res = self._grid.res
 
         X = (np.arange(0, res[0], dtype=float) + 0.5) * self._grid.cell_size[0] + self._grid.origin[0]
@@ -131,11 +134,14 @@ class GridBipolynomialBasisSpace(Grid2DBasisSpace):
             raise ValueError("A closed polynomial family is required to define a continuous function space")
 
         shape = SquareBipolynomialShapeFunctions(degree, family=family)
-        topology = GridBipolynomialSpaceTopology(grid, shape)
+        topology = forward_base_topology(GridBipolynomialSpaceTopology, grid, shape)
 
         super().__init__(topology, shape)
 
-    def node_grid(self):
+        if isinstance(grid, Grid2D):
+            self.node_grid = self._node_grid
+
+    def _node_grid(self):
         res = self._grid.res
 
         cell_coords = np.array(self._shape.LOBATTO_COORDS)[:-1]
@@ -228,7 +234,7 @@ class GridSerendipityBasisSpace(Grid2DBasisSpace):
             family = Polynomial.LOBATTO_GAUSS_LEGENDRE
 
         shape = SquareSerendipityShapeFunctions(degree, family=family)
-        topology = GridSerendipitySpaceTopology(grid, shape=shape)
+        topology = forward_base_topology(GridSerendipitySpaceTopology, grid, shape=shape)
 
         super().__init__(topology=topology, shape=shape)
 

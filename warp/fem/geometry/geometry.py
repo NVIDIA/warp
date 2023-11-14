@@ -3,6 +3,8 @@ from typing import Any
 import warp as wp
 
 from warp.fem.types import Sample, ElementIndex, Coords
+from warp.fem import cache
+
 from .element import Element
 
 
@@ -62,6 +64,18 @@ class Geometry:
         raise NotImplementedError
 
     @staticmethod
+    def cell_deformation_gradient(args: "Geometry.CellArg", s: "Sample"):
+        """Device function returning the transpose of the gradient of world position with respect to reference cell"""
+        raise NotImplementedError
+
+    @staticmethod
+    def cell_inverse_deformation_gradient(args: "Geometry.CellArg", cell_index: ElementIndex, coords: Coords):
+        """Device function returning the matrix right-transforming a gradient w.r.t. cell space to a gradient w.r.t. world space
+        (i.e. the inverse deformation gradient)
+        """
+        raise NotImplementedError
+
+    @staticmethod
     def cell_lookup(args: "Geometry.CellArg", pos: Any):
         """Device function returning the cell sample point corresponding to a world position"""
         raise NotImplementedError
@@ -72,32 +86,19 @@ class Geometry:
         raise NotImplementedError
 
     @staticmethod
-    def cell_measure(args: "Geometry.CellArg", cell_index: ElementIndex, coords: Coords):
-        """Device function returning the determinant of the position gradient (e.g. volume, area) at given coordinates"""
-        raise NotImplementedError
-
-    @staticmethod
     def cell_measure(args: "Geometry.CellArg", s: "Sample"):
         """Device function returning the measure determinant (e.g. volume, area) at a given point"""
         raise NotImplementedError
 
-    @staticmethod
-    def cell_measure_ratio(args: "Geometry.CellArg", s: "Sample"):
-        """Device function returning the ratio of the measure of a side to that of its neighbour cells"""
-        raise NotImplementedError
+    @wp.func
+    def cell_measure_ratio(args: Any, s: Sample):
+        return 1.0
 
     @staticmethod
     def cell_normal(args: "Geometry.CellArg", s: "Sample"):
         """Device function returning the element normal at a sample point.
 
         For elements with the same dimension as the embedding space, this will be zero."""
-        raise NotImplementedError
-
-    @staticmethod
-    def cell_transform_reference_gradient(args: "Geometry.CellArg", cell_index: ElementIndex, coords: Coords, ref_grad: Any):
-        """Device function transforming a gradient w.r.t reference element coordinates into a gradient w.r.t. world coordinates.
-        I.e, left-applies the inverse of the world position gradient w.r.t reference element coordinates.
-        """
         raise NotImplementedError
 
     @staticmethod
@@ -116,8 +117,22 @@ class Geometry:
         raise NotImplementedError
 
     @staticmethod
-    def side_measure(args: "Geometry.SideArg", cell_index: ElementIndex, coords: Coords):
-        """Device function returning the measure determinant (e.g. volume, area) at a given point"""
+    def side_deformation_gradient(args: "Geometry.CellArg", s: "Sample"):
+        """Device function returning the gradient of world position with respect to reference cell"""
+        raise NotImplementedError
+
+    @staticmethod
+    def side_inner_inverse_deformation_gradient(args: "Geometry.CellArg", side_index: ElementIndex, coords: Coords):
+        """Device function returning the matrix right-transforming a gradient w.r.t. inner cell space to a gradient w.r.t. world space
+        (i.e. the inverse deformation gradient)
+        """
+        raise NotImplementedError
+
+    @staticmethod
+    def side_outer_inverse_deformation_gradient(args: "Geometry.CellArg", side_index: ElementIndex, coords: Coords):
+        """Device function returning the matrix right-transforming a gradient w.r.t. outer cell space to a gradient w.r.t. world space
+        (i.e. the inverse deformation gradient)
+        """
         raise NotImplementedError
 
     @staticmethod

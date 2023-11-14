@@ -62,7 +62,7 @@ def normalize_dirichlet_projector(projector_matrix: BsrMatrix, fixed_value: Opti
 
 
 def project_system_rhs(
-    system_matrix: BsrMatrix, system_rhs: wp.array, projector_matrix: BsrMatrix, fixed_value: wp.array
+    system_matrix: BsrMatrix, system_rhs: wp.array, projector_matrix: BsrMatrix, fixed_value: Optional[wp.array] = None
 ):
     """Projects the right-hand-side of a linear system to enforce Dirichlet boundary conditions
 
@@ -72,7 +72,11 @@ def project_system_rhs(
     rhs_tmp = wp.empty_like(system_rhs)
     rhs_tmp.assign(system_rhs)
 
-    bsr_mv(A=projector_matrix, x=fixed_value, y=system_rhs, alpha=1.0, beta=0.0)
+    if fixed_value is None:
+        system_rhs.zero_()
+    else:
+        bsr_mv(A=projector_matrix, x=fixed_value, y=system_rhs, alpha=1.0, beta=0.0)
+
     bsr_mv(A=system_matrix, x=system_rhs, y=rhs_tmp, alpha=-1.0, beta=1.0)
 
     # here rhs_tmp = system_rhs - system_matrix * projector * fixed_value
@@ -99,7 +103,7 @@ def project_linear_system(
     system_matrix: BsrMatrix,
     system_rhs: wp.array,
     projector_matrix: BsrMatrix,
-    fixed_value: wp.array,
+    fixed_value: Optional[wp.array] = None,
     normalize_projector=True,
 ):
     """

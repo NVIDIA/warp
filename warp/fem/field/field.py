@@ -4,6 +4,7 @@ import warp as wp
 
 from warp.fem.types import Sample
 from warp.fem.space import FunctionSpace, SpacePartition
+from warp.fem.geometry import Geometry, DeformedGeometry
 
 
 class FieldLike:
@@ -142,3 +143,7 @@ class DiscreteField(SpaceField):
     @property
     def name(self) -> str:
         return f"{self.__class__.__qualname__}_{self.space.name}_{self.space_partition.name}"
+
+    def make_deformed_geometry(self) -> Geometry:
+        """Returns a deformed version of the underlying geometry using this field's values as displacement"""
+        return DeformedGeometry(self)

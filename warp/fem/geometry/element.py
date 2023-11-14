@@ -5,6 +5,9 @@ from warp.fem.polynomial import Polynomial, quadrature_1d
 
 
 class Element:
+    def measure() -> float:
+        """Measure (area, volume, ...) of the reference element"""
+        raise NotImplementedError
 
     @staticmethod
     def instantiate_quadrature(order: int, family: Polynomial) -> Tuple[List[Coords], List[float]]:
@@ -26,6 +29,9 @@ def _point_count_from_order(order: int, family: Polynomial):
 
 
 class Cube(Element):
+    @staticmethod
+    def measure() -> float:
+        return 1.0
 
     @staticmethod
     def instantiate_quadrature(order: int, family: Polynomial):
@@ -42,6 +48,9 @@ class Cube(Element):
 
 
 class Square(Element):
+    @staticmethod
+    def measure() -> float:
+        return 1.0
 
     @staticmethod
     def instantiate_quadrature(order: int, family: Polynomial):
@@ -58,6 +67,9 @@ class Square(Element):
 
 
 class LinearEdge(Element):
+    @staticmethod
+    def measure() -> float:
+        return 1.0
 
     @staticmethod
     def instantiate_quadrature(order: int, family: Polynomial):
@@ -72,6 +84,9 @@ class LinearEdge(Element):
 
 
 class Triangle(Element):
+    @staticmethod
+    def measure() -> float:
+        return 0.5
 
     @staticmethod
     def instantiate_quadrature(order: int, family: Polynomial):
@@ -411,6 +426,9 @@ class Triangle(Element):
 
 
 class Tetrahedron(Element):
+    @staticmethod
+    def measure() -> float:
+        return 1.0 / 6.0
 
     @staticmethod
     def instantiate_quadrature(order: int, family: Polynomial):

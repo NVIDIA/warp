@@ -62,7 +62,7 @@ Basic workflow
 
 The typical steps for solving a linear PDE are as follow:
 
- - Define a :class:`.Geometry` (grid, mesh, etc). At the moment, 2D and 3D regular grids, triangle and tetrahedron meshes are supported.
+ - Define a :class:`.Geometry` (grid, mesh, etc). At the moment, 2D and 3D regular grids, triangle, quadrilateral, tetrahedron and hexahedron meshes are supported.
  - Define one or more :class:`.FunctionSpace`, by equipping the geometry elements with shape functions. See :func:`.make_polynomial_space`. At the moment, continuous/discontinuous Lagrange (:math:`P_{k[d]}, Q_{k[d]}`) and Serendipity (:math:`S_k`) shape functions of order :math:`k \leq 3` are supported.
  - Define an integration :class:`.GeometryDomain`, for instance the geometry's cells (:class:`.Cells`) or boundary sides (:class:`.BoundarySides`).
  - Integrate linear forms to build the system's right-hand-side. Define a test function over the function space using :func:`.make_test`,
@@ -129,6 +129,31 @@ Introductory examples
 Advanced usages
 ---------------
 
+High-order (curved) geometries
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It is possible to convert any :class:`.Geometry` (grids and explicit meshes) into a curved, high-order variant by deforming them 
+with an arbitrary-order displacement field using the :meth:`~.DiscreteField.make_deformed_geometry` method. 
+The process looks as follow: ::
+
+   # Define a base geometry
+   base_geo = fem.Grid3D(res=resolution)
+
+   # Define a displacement field on the base geometry
+   deformation_space = fem.make_polynomial_space(base_geo, degree=deformation_degree, dtype=wp.vec3)
+   deformation_field = deformation_space.make_field()
+
+   # Populate the field value by interpolating an expression
+   fem.interpolate(deformation_field_expr, dest=deformation_field)
+
+   # Construct the deformed geometry from the displacement field
+   deform_geo = deformation_field.make_deformed_geometry()
+
+   # Define new function spaces on the deformed geometry
+   scalar_space = fem.make_polynomial_space(deformed_geo, degree=scalar_space_degree)
+
+See also ``example_deformed_geometry.py`` for a complete example.
+
 Particle-based quadrature
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -168,6 +193,7 @@ Operators
 .. autofunction:: lookup(domain: Domain, x)
 .. autofunction:: measure(domain: Domain, s: Sample)
 .. autofunction:: measure_ratio(domain: Domain, s: Sample)
+.. autofunction:: deformation_gradient(domain: Domain, s: Sample)
 
 .. autofunction:: degree(f: Field)
 .. autofunction:: inner(f: Field, s: Sample)
@@ -212,10 +238,16 @@ Geometry
 .. autoclass:: Trimesh2D
    :show-inheritance:
 
+.. autoclass:: Quadmesh2D
+   :show-inheritance:
+
 .. autoclass:: Grid3D
    :show-inheritance:
 
 .. autoclass:: Tetmesh
+   :show-inheritance:
+
+.. autoclass:: Hexmesh
    :show-inheritance:
 
 .. autoclass:: LinearGeometryPartition
@@ -334,7 +366,7 @@ Interface classes are not meant to be constructed directly, but can be derived f
 
 .. autoclass:: DiscreteField
    :show-inheritance:
-   :members: dof_values, trace
+   :members: dof_values, trace, make_deformed_geometry
 
 .. autoclass:: warp.fem.field.FieldRestriction
 

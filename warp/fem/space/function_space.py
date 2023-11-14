@@ -25,6 +25,13 @@ class FunctionSpace:
     def __init__(self, topology: SpaceTopology):
         self._topology = topology
 
+        if self._topology.is_trace:
+            self.element_inner_reference_gradient_transform = self.geometry.side_inner_inverse_deformation_gradient
+            self.element_outer_reference_gradient_transform = self.geometry.side_outer_inverse_deformation_gradient
+        else:
+            self.element_inner_reference_gradient_transform = self.geometry.cell_inverse_deformation_gradient
+            self.element_outer_reference_gradient_transform = self.geometry.cell_inverse_deformation_gradient
+
     def node_count(self) -> int:
         """Number of nodes in the interpolation basis"""
         raise NotImplementedError
@@ -112,7 +119,7 @@ class FunctionSpace:
         coords: Coords,
         node_index_in_elt: int,
     ):
-        """Inner weight gradient for a node at given coordinates"""
+        """Inner weight gradient w.r.t. reference space for a node at given coordinates"""
         raise NotImplementedError
 
     @staticmethod
@@ -134,5 +141,5 @@ class FunctionSpace:
         coords: Coords,
         node_index_in_elt: int,
     ):
-        """Outer weight gradient for a node at given coordinates"""
+        """Outer weight gradient w.r.t reference space for a node at given coordinates"""
         raise NotImplementedError

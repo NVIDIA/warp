@@ -14,11 +14,11 @@ from warp.sparse import bsr_transposed, bsr_mm
 try:
     from .plot_utils import Plot
     from .bsr_utils import bsr_cg, invert_diagonal_bsr_mass_matrix
-    from .mesh_utils import gen_trimesh
+    from .mesh_utils import gen_trimesh, gen_quadmesh
 except ImportError:
     from plot_utils import Plot
     from bsr_utils import bsr_cg, invert_diagonal_bsr_mass_matrix
-    from mesh_utils import gen_trimesh
+    from mesh_utils import gen_trimesh, gen_quadmesh
 
 
 @wp.func
@@ -85,7 +85,7 @@ class Example:
     parser.add_argument("--displacement", type=float, default=0.1)
     parser.add_argument("--young_modulus", type=float, default=1.0)
     parser.add_argument("--poisson_ratio", type=float, default=0.5)
-    parser.add_argument("--tri_mesh", action="store_true", help="Use a triangular mesh")
+    parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type")
     parser.add_argument(
         "--nonconforming_stresses", action="store_true", help="For grid, use non-conforming stresses (Q_d/P_d)"
     )
@@ -99,9 +99,12 @@ class Example:
         self._quiet = quiet
 
         # Grid or triangle mesh geometry
-        if args.tri_mesh:
+        if args.mesh == "tri":
             positions, tri_vidx = gen_trimesh(res=wp.vec2i(args.resolution))
             self._geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
+        elif args.mesh == "quad":
+            positions, quad_vidx = gen_quadmesh(res=wp.vec2i(args.resolution))
+            self._geo = fem.Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions)
         else:
             self._geo = fem.Grid2D(res=wp.vec2i(args.resolution))
 

@@ -22,7 +22,7 @@ from warp.fem.field import (
 from warp.fem.quadrature import Quadrature, RegularQuadrature
 from warp.fem.operator import Operator, Integrand
 from warp.fem import cache
-from warp.fem.types import Domain, Field, Sample, DofIndex, NULL_DOF_INDEX, OUTSIDE
+from warp.fem.types import Domain, Field, Sample, DofIndex, NULL_DOF_INDEX, OUTSIDE, make_free_sample
 
 
 def _resolve_path(func, node):
@@ -477,9 +477,10 @@ def get_integrate_constant_kernel(
             qp_index = quadrature.point_index(domain_arg, qp_arg, element_index, k)
             coords = quadrature.point_coords(domain_arg, qp_arg, element_index, k)
             qp_weight = quadrature.point_weight(domain_arg, qp_arg, element_index, k)
-            vol = domain.element_measure(domain_arg, element_index, coords)
-
+            
             sample = Sample(element_index, coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
+            vol = domain.element_measure(domain_arg, sample)
+
             val = integrand_func(sample, fields, values)
 
             elem_sum += accumulate_dtype(qp_weight * vol * val)
@@ -523,7 +524,7 @@ def get_integrate_linear_kernel(
                 coords = quadrature.point_coords(domain_arg, qp_arg, element_index, k)
 
                 qp_weight = quadrature.point_weight(domain_arg, qp_arg, element_index, k)
-                vol = domain.element_measure(domain_arg, element_index, coords)
+                vol = domain.element_measure(domain_arg, make_free_sample(element_index, coords))
 
                 for i in range(test.space.VALUE_DOF_COUNT):
                     test_dof_index = DofIndex(node_element_index.node_index_in_element, i)
@@ -579,7 +580,6 @@ def get_integrate_linear_nodal_kernel(
                     node_element_index.node_index_in_element,
                 )
 
-                vol = domain.element_measure(domain_arg, element_index, coords)
                 test_dof_index = DofIndex(node_element_index.node_index_in_element, dof)
 
                 sample = Sample(
@@ -590,6 +590,7 @@ def get_integrate_linear_nodal_kernel(
                     test_dof_index,
                     trial_dof_index,
                 )
+                vol = domain.element_measure(domain_arg, sample)
                 val = integrand_func(sample, fields, values)
 
                 val_sum += accumulate_dtype(node_weight * vol * val)
@@ -642,7 +643,7 @@ def get_integrate_bilinear_kernel(
                 coords = quadrature.point_coords(domain_arg, qp_arg, element_index, k)
 
                 qp_weight = quadrature.point_weight(domain_arg, qp_arg, element_index, k)
-                vol = domain.element_measure(domain_arg, element_index, coords)
+                vol = domain.element_measure(domain_arg, make_free_sample(element_index, coords))
 
                 offset_cur = start_offset
 
@@ -728,7 +729,6 @@ def get_integrate_bilinear_nodal_kernel(
                     node_element_index.node_index_in_element,
                 )
 
-                vol = domain.element_measure(domain_arg, element_index, coords)
 
                 test_dof_index = DofIndex(node_element_index.node_index_in_element, test_dof)
                 trial_dof_index = DofIndex(node_element_index.node_index_in_element, trial_dof)
@@ -741,6 +741,7 @@ def get_integrate_bilinear_nodal_kernel(
                     test_dof_index,
                     trial_dof_index,
                 )
+                vol = domain.element_measure(domain_arg, sample)
                 val = integrand_func(sample, fields, values)
 
                 val_sum += accumulate_dtype(node_weight * vol * val)
@@ -1186,7 +1187,7 @@ def integrate(
         output: Sparse matrix or warp array into which to store the result of the integration
         output_dtype: Scalar type for returned results in `output` is notr provided. If None, defaults to `accumulate_dtype`
         device: Device on which to perform the integration
-        kernel_options: Overloaded options to be passed to the kernel builder (e.g, ``{"enable_backwards": True}``)
+        kernel_options: Overloaded options to be passed to the kernel builder (e.g, ``{"enable_backward": True}``)
     """
     if not isinstance(integrand, Integrand):
         raise ValueError("integrand must be tagged with @warp.fem.integrand decorator")
@@ -1313,7 +1314,6 @@ def get_interpolate_kernel(
             )
 
             if coords[0] != OUTSIDE:
-                vol = domain.element_measure(domain_arg, element_index, coords)
                 sample = Sample(
                     element_index,
                     coords,
@@ -1322,6 +1322,7 @@ def get_interpolate_kernel(
                     test_dof_index,
                     trial_dof_index,
                 )
+                vol = domain.element_measure(domain_arg, sample)
                 val = integrand_func(sample, fields, values)
 
                 vol_sum += vol

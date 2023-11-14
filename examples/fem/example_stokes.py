@@ -18,11 +18,11 @@ import warp.fem as fem
 try:
     from .plot_utils import Plot
     from .bsr_utils import bsr_to_scipy
-    from .mesh_utils import gen_trimesh
+    from .mesh_utils import gen_trimesh, gen_quadmesh
 except ImportError:
     from plot_utils import Plot
     from bsr_utils import bsr_to_scipy
-    from mesh_utils import gen_trimesh
+    from mesh_utils import gen_trimesh, gen_quadmesh
 
 # Need to solve a saddle-point system, use scipy for simplicity
 from scipy.sparse import bmat
@@ -76,7 +76,7 @@ class Example:
     parser.add_argument("--top_velocity", type=float, default=1.0)
     parser.add_argument("--viscosity", type=float, default=1.0)
     parser.add_argument("--boundary_strength", type=float, default=100.0)
-    parser.add_argument("--tri_mesh", action="store_true", help="Use a triangular mesh")
+    parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type")
     parser.add_argument(
         "--nonconforming_pressures", action="store_true", help="For grid, use non-conforming pressure (Q_d/P_{d-1})"
     )
@@ -90,15 +90,18 @@ class Example:
         self._quiet = quiet
 
         # Grid or triangle mesh geometry
-        if args.tri_mesh:
+        if args.mesh == "tri":
             positions, tri_vidx = gen_trimesh(res=wp.vec2i(args.resolution))
             geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
+        elif args.mesh == "quad":
+            positions, quad_vidx = gen_quadmesh(res=wp.vec2i(args.resolution))
+            geo = fem.Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions)
         else:
             geo = fem.Grid2D(res=wp.vec2i(args.resolution))
 
         # Function spaces -- Q_d for vel, P_{d-1} for pressure
         u_space = fem.make_polynomial_space(geo, degree=args.degree, dtype=wp.vec2)
-        if not args.tri_mesh and args.nonconforming_pressures:
+        if args.mesh != "tri" and args.nonconforming_pressures:
             p_space = fem.make_polynomial_space(
                 geo, degree=args.degree - 1, element_basis=fem.ElementBasis.NONCONFORMING_POLYNOMIAL
             )

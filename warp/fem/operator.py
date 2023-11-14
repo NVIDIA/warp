@@ -62,20 +62,35 @@ def normal(domain: Domain, s: Sample):
     pass
 
 
+@operator(resolver=lambda dmn: dmn.element_deformation_gradient)
+def deformation_gradient(domain: Domain, s: Sample):
+    """Evaluates the gradient of the domain position with respect to the element reference space at the sample point `s`"""
+    pass
+
+
 @operator(resolver=lambda dmn: dmn.element_lookup)
-def lookup(domain: Domain, x: Any):
-    """Looks-up the sample point corresponding to a world position `x`, projecting to the closest point on the domain"""
+def lookup(domain: Domain, x: Any) -> Sample:
+    """Looks-up the sample point corresponding to a world position `x`, projecting to the closest point on the domain.
+
+    Arg:
+        x: world position of the point to look-up in the geometry
+        guess: (optional) :class:`Sample` initial guess, may help perform the query
+
+    Notes:
+        Currently this operator is only fully supported for :class:`Grid2D` and :class:`Grid3D` geometries.
+        For :class:`TriangleMesh2D` and :class:`Tetmesh` geometries, the operator requires providing `guess`.
+    """
     pass
 
 
 @operator(resolver=lambda dmn: dmn.element_measure)
-def measure(domain: Domain, s: Sample):
+def measure(domain: Domain, s: Sample) -> float:
     """Returns the measure (volume, area, or length) determinant of an element at a sample point `s`"""
     pass
 
 
 @operator(resolver=lambda dmn: dmn.element_measure_ratio)
-def measure_ratio(domain: Domain, s: Sample):
+def measure_ratio(domain: Domain, s: Sample) -> float:
     """Returns the maximum ratio between the measure of this element and that of higher-dimensional neighbours."""
     pass
 
