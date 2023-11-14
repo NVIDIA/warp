@@ -1079,8 +1079,7 @@ class ModuleBuilder:
         while stack:
             s = stack.pop()
 
-            if s not in structs:
-                structs.append(s)
+            structs.append(s)
 
             for var in s.vars.values():
                 if isinstance(var.type, warp.codegen.Struct):
