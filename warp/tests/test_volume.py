@@ -105,14 +105,14 @@ def test_volume_sample_grad_local_f_linear_values(
 
     grad = wp.vec3(0.0, 0.0, 0.0)
     val = wp.volume_sample_grad_f(volume, p, wp.Volume.LINEAR, grad)
-
-    if case_num == 1:
-        val = grad[0]
+    if case_num == 0:
+        values[tid] = val
+    elif case_num == 1:
+        values[tid] = grad[0]
     elif case_num == 2:
-        val = grad[1]
+        values[tid] = grad[1]
     elif case_num == 3:
-        val = grad[2]
-    values[tid] = val
+        values[tid] = grad[2]
 
 
 @wp.kernel
@@ -135,15 +135,14 @@ def test_volume_sample_grad_world_f_linear_values(
 
     grad = wp.vec3(0.0, 0.0, 0.0)
     val = wp.volume_sample_grad_f(volume, p, wp.Volume.LINEAR, grad)
-
-    if case_num == 1:
-        val = grad[0]
+    if case_num == 0:
+        values[tid] = val
+    elif case_num == 1:
+        values[tid] = grad[0]
     elif case_num == 2:
-        val = grad[1]
+        values[tid] = grad[1]
     elif case_num == 3:
-        val = grad[2]
-
-    values[tid] = val
+        values[tid] = grad[2]
 
 
 # vec3f volume tests
