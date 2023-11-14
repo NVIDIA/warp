@@ -10,6 +10,7 @@ from __future__ import annotations
 import builtins
 import ctypes
 import hashlib
+import inspect
 import struct
 import zlib
 from typing import Any, Callable, Generic, List, Tuple, TypeVar, Union
@@ -529,15 +530,55 @@ class quatd(quaternion(dtype=float64)):
 
 def transformation(dtype=Any):
     class transform_t(vector(length=7, dtype=dtype)):
+        _wp_init_from_components_sig_ = inspect.Signature(
+            (
+                inspect.Parameter(
+                    "p",
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    default=(0.0, 0.0, 0.0),
+                ),
+                inspect.Parameter(
+                    "q",
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    default=(0.0, 0.0, 0.0, 1.0),
+                ),
+            ),
+        )
         _wp_type_params_ = [dtype]
         _wp_generic_type_str_ = "transform_t"
         _wp_constructor_ = "transformation"
 
-        def __init__(self, p=(0.0, 0.0, 0.0), q=(0.0, 0.0, 0.0, 1.0)):
-            super().__init__()
+        def __init__(self, *args, **kwargs):
+            if len(args) == 1 and len(kwargs) == 0:
+                if getattr(args[0], "_wp_generic_type_str_") == self._wp_generic_type_str_:
+                    # Copy constructor.
+                    super().__init__(*args[0])
+                    return
 
-            self[0:3] = vector(length=3, dtype=dtype)(*p)
-            self[3:7] = quaternion(dtype=dtype)(*q)
+            try:
+                # For backward compatibility, try to check if the arguments
+                # match the original signature that'd allow initializing
+                # the `p` and `q` components separately.
+                bound_args = self._wp_init_from_components_sig_.bind(*args, **kwargs)
+                bound_args.apply_defaults()
+                p, q = bound_args.args
+            except (TypeError, ValueError):
+                # Fallback to the vector's constructor.
+                super().__init__(*args)
+                return
+
+            # Even if the arguments match the original “from components”
+            # signature, we still need to make sure that they represent
+            # sequences that can be unpacked.
+            if hasattr(p, "__len__") and hasattr(q, "__len__"):
+                # Initialize from the `p` and `q` components.
+                super().__init__()
+                self[0:3] = vector(length=3, dtype=dtype)(*p)
+                self[3:7] = quaternion(dtype=dtype)(*q)
+                return
+
+            # Fallback to the vector's constructor.
+            super().__init__(*args)
 
         @property
         def p(self):
@@ -1175,6 +1216,17 @@ def types_equal(a, b, match_generic=False):
                 return True
             if p1 == Float and p2 == Float:
                 return True
+
+        # convert to canonical types
+        if p1 == float:
+            p1 = float32
+        elif p1 == int:
+            p1 = int32
+
+        if p2 == float:
+            p2 = float32
+        elif b == int:
+            p2 = int32
 
         if p1 in compatible_bool_types and p2 in compatible_bool_types:
             return True
