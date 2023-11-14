@@ -1,5 +1,6 @@
 import numpy as np
 import warp as wp
+import unittest
 
 from warp.sparse import bsr_zeros, bsr_set_from_triplets, bsr_get_diag, bsr_diag, bsr_identity, bsr_copy, bsr_scale
 from warp.sparse import bsr_set_transpose, bsr_transposed
@@ -154,6 +155,8 @@ def test_bsr_get_set_diag(test, device):
 
 def make_test_bsr_transpose(block_shape, scalar_type):
     def test_bsr_transpose(test, device):
+        rng = np.random.default_rng(123)
+
         nrow = 4
         ncol = 5
         nnz = 6
@@ -161,7 +164,7 @@ def make_test_bsr_transpose(block_shape, scalar_type):
         rows = wp.array([0, 1, 2, 3, 2, 1], dtype=int, device=device)
         cols = wp.array([1, 4, 1, 3, 0, 2], dtype=int, device=device)
 
-        vals_np = np.random.rand(nnz, block_shape[0], block_shape[1])
+        vals_np = rng.random(size=(nnz, block_shape[0], block_shape[1]))
         vals = wp.array(vals_np, dtype=scalar_type, device=device).reshape((nnz, block_shape[0], block_shape[1]))
 
         bsr = bsr_zeros(nrow, ncol, wp.types.matrix(shape=block_shape, dtype=scalar_type), device=device)
