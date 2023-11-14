@@ -2236,7 +2236,15 @@ add_builtin(
 )
 
 
-add_builtin("copy", variadic=True, hidden=True, export=False, group="Utility")
+add_builtin(
+    "copy",
+    input_types={"value": Any},
+    value_func=lambda arg_types, kwds, _: arg_types[0],
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+add_builtin("assign", variadic=True, hidden=True, export=False, group="Utility")
 add_builtin(
     "select",
     input_types={"cond": bool, "arg1": Any, "arg2": Any},
@@ -2268,8 +2276,8 @@ add_builtin(
 )
 
 
-# does argument checking and type propagation for load()
-def load_value_func(arg_types, kwds, _):
+# does argument checking and type propagation for address()
+def address_value_func(arg_types, kwds, _):
     if not is_array(arg_types[0]):
         raise RuntimeError("load() argument 0 must be an array")
 
@@ -2289,7 +2297,7 @@ def load_value_func(arg_types, kwds, _):
     # check index types
     for t in arg_types[1:]:
         if not type_is_int(t):
-            raise RuntimeError(f"load() index arguments must be of integer type, got index of type {t}")
+            raise RuntimeError(f"address() index arguments must be of integer type, got index of type {t}")
 
     return Reference(arg_types[0].dtype)
 
@@ -2323,11 +2331,11 @@ def view_value_func(arg_types, kwds, _):
         return type(arg_types[0])(dtype=dtype, ndim=ndim)
 
 
-# does argument checking and type propagation for store()
-def store_value_func(arg_types, kwds, _):
+# does argument checking and type propagation for array_store()
+def array_store_value_func(arg_types, kwds, _):
     # check target type
     if not is_array(arg_types[0]):
-        raise RuntimeError("store() argument 0 must be an array")
+        raise RuntimeError("array_store() argument 0 must be an array")
 
     num_indices = len(arg_types[1:-1])
     num_dims = arg_types[0].ndim
@@ -2344,20 +2352,52 @@ def store_value_func(arg_types, kwds, _):
     # check index types
     for t in arg_types[1:-1]:
         if not type_is_int(t):
-            raise RuntimeError(f"store() index arguments must be of integer type, got index of type {t}")
+            raise RuntimeError(f"array_store() index arguments must be of integer type, got index of type {t}")
 
     # check value type
     if not types_equal(arg_types[-1], arg_types[0].dtype):
         raise RuntimeError(
-            f"store() value argument type ({arg_types[2]}) must be of the same type as the array ({arg_types[0].dtype})"
+            f"array_store() value argument type ({arg_types[2]}) must be of the same type as the array ({arg_types[0].dtype})"
         )
 
     return None
 
 
-add_builtin("address", variadic=True, hidden=True, value_func=load_value_func, group="Utility")
+# does argument checking for store()
+def store_value_func(arg_types, kwds, _):
+    # we already stripped the Reference from the argument type prior to this call
+    if not types_equal(arg_types[0], arg_types[1]):
+        raise RuntimeError(f"store() value argument type ({arg_types[1]}) must be of the same type as the reference")
+
+    return None
+
+
+# does type propagation for load()
+def load_value_func(arg_types, kwds, _):
+    # we already stripped the Reference from the argument type prior to this call
+    return arg_types[0]
+
+
+add_builtin("address", variadic=True, hidden=True, value_func=address_value_func, group="Utility")
 add_builtin("view", variadic=True, hidden=True, value_func=view_value_func, group="Utility")
-add_builtin("store", variadic=True, hidden=True, value_func=store_value_func, skip_replay=True, group="Utility")
+add_builtin(
+    "array_store", variadic=True, hidden=True, value_func=array_store_value_func, skip_replay=True, group="Utility"
+)
+add_builtin(
+    "store",
+    input_types={"address": Reference, "value": Any},
+    hidden=True,
+    value_func=store_value_func,
+    skip_replay=True,
+    group="Utility",
+)
+add_builtin(
+    "load",
+    input_types={"address": Reference},
+    hidden=True,
+    value_func=load_value_func,
+    group="Utility",
+)
 
 
 def atomic_op_value_func(arg_types, kwds, _):
@@ -2557,14 +2597,14 @@ def index_value_func(arg_types, kwds, _):
 
 
 add_builtin(
-    "index",
+    "extract",
     input_types={"a": vector(length=Any, dtype=Scalar), "i": int},
     value_func=index_value_func,
     hidden=True,
     group="Utility",
 )
 add_builtin(
-    "index",
+    "extract",
     input_types={"a": quaternion(dtype=Scalar), "i": int},
     value_func=index_value_func,
     hidden=True,
@@ -2572,14 +2612,14 @@ add_builtin(
 )
 
 add_builtin(
-    "index",
+    "extract",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int},
     value_func=lambda arg_types, kwds, _: vector(length=arg_types[0]._shape_[1], dtype=arg_types[0]._wp_scalar_type_),
     hidden=True,
     group="Utility",
 )
 add_builtin(
-    "index",
+    "extract",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int},
     value_func=index_value_func,
     hidden=True,
@@ -2587,77 +2627,66 @@ add_builtin(
 )
 
 add_builtin(
-    "index",
+    "extract",
     input_types={"a": transformation(dtype=Scalar), "i": int},
     value_func=index_value_func,
     hidden=True,
     group="Utility",
 )
 
-add_builtin("index", input_types={"s": shape_t, "i": int}, value_type=int, hidden=True, group="Utility")
+add_builtin("extract", input_types={"s": shape_t, "i": int}, value_type=int, hidden=True, group="Utility")
 
 
-def vector_indexset_element_value_func(arg_types, kwds, _):
+def vector_indexref_element_value_func(arg_types, kwds, _):
     vec_type = arg_types[0]
     # index_type = arg_types[1]
-    value_type = arg_types[2]
+    value_type = vec_type._wp_scalar_type_
 
-    if value_type is not vec_type._wp_scalar_type_:
-        raise RuntimeError(
-            f"Trying to assign type '{type_repr(value_type)}' to element of a vector with type '{type_repr(vec_type)}'"
-        )
-
-    return None
+    return Reference(value_type)
 
 
-# implements vector[index] = value
+# implements &vector[index]
 add_builtin(
-    "indexset",
-    input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
-    value_func=vector_indexset_element_value_func,
+    "index",
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": int},
+    value_func=vector_indexref_element_value_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+)
+# implements &(*vector)[index]
+add_builtin(
+    "indexref",
+    input_types={"a": Reference, "i": int},
+    value_func=vector_indexref_element_value_func,
     hidden=True,
     group="Utility",
     skip_replay=True,
 )
 
 
-def matrix_indexset_element_value_func(arg_types, kwds, _):
+def matrix_indexref_element_value_func(arg_types, kwds, _):
     mat_type = arg_types[0]
     # row_type = arg_types[1]
     # col_type = arg_types[2]
-    value_type = arg_types[3]
+    value_type = mat_type._wp_scalar_type_
 
-    if value_type is not mat_type._wp_scalar_type_:
-        raise RuntimeError(
-            f"Trying to assign type '{type_repr(value_type)}' to element of a matrix with type '{type_repr(mat_type)}'"
-        )
-
-    return None
+    return Reference(value_type)
 
 
-def matrix_indexset_row_value_func(arg_types, kwds, _):
+def matrix_indexref_row_value_func(arg_types, kwds, _):
     mat_type = arg_types[0]
-    # row_type = arg_types[1]
-    value_type = arg_types[2]
+    row_type = mat_type._wp_row_type_
+    # value_type = arg_types[2]
 
-    if value_type._shape_[0] != mat_type._shape_[1]:
-        raise RuntimeError(
-            f"Trying to assign vector with length {value_type._length} to matrix with shape {mat_type._shape}, vector length must match the number of matrix columns."
-        )
-
-    if value_type._wp_scalar_type_ is not mat_type._wp_scalar_type_:
-        raise RuntimeError(
-            f"Trying to assign vector of type '{type_repr(value_type)}' to row of matrix of type '{type_repr(mat_type)}'"
-        )
-
-    return None
+    return Reference(row_type)
 
 
 # implements matrix[i] = row
 add_builtin(
-    "indexset",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "value": vector(length=Any, dtype=Scalar)},
-    value_func=matrix_indexset_row_value_func,
+    "index",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int},
+    value_func=matrix_indexref_row_value_func,
     hidden=True,
     group="Utility",
     skip_replay=True,
@@ -2665,9 +2694,9 @@ add_builtin(
 
 # implements matrix[i,j] = scalar
 add_builtin(
-    "indexset",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int, "value": Scalar},
-    value_func=matrix_indexset_element_value_func,
+    "index",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int},
+    value_func=matrix_indexref_element_value_func,
     hidden=True,
     group="Utility",
     skip_replay=True,

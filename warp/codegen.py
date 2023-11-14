@@ -470,15 +470,14 @@ class Var:
     def ctype(self, value_type=False):
         return Var.type_to_ctype(self.type, value_type)
 
-    def emit(self, prefix: str = "var", dereference: bool = True):
-        star = "*" if is_reference(self.type) and dereference else ""
+    def emit(self, prefix: str = "var"):
         if self.prefix:
-            return f"{star}{prefix}_{self.label}"
+            return f"{prefix}_{self.label}"
         else:
-            return f"{star}{self.label}"
+            return self.label
 
     def emit_adj(self):
-        return self.emit("adj", dereference=False)
+        return self.emit("adj")
 
 
 class Block:
@@ -650,7 +649,7 @@ class Adjoint:
         return s
 
     # generates a list of formatted args
-    def format_args(adj, prefix, args, adjoints=False):
+    def format_args(adj, prefix, args):
         arg_strs = []
 
         for a in args:
@@ -661,10 +660,7 @@ class Adjoint:
                 else:
                     arg_strs.append(f"{prefix}_{a.key}")
             elif is_reference(a.type):
-                if not adjoints:
-                    arg_strs.append(f"*{prefix}_{a}")
-                else:
-                    arg_strs.append(f"{prefix}_{a}")
+                arg_strs.append(f"{prefix}_{a}")
             elif isinstance(a, Var):
                 arg_strs.append(a.emit(prefix))
             else:
@@ -681,20 +677,22 @@ class Adjoint:
 
     # generates argument string for a reverse function call
     def format_reverse_call_args(
-        adj, args, args_out, non_adjoint_args, non_adjoint_outputs, use_initializer_list, has_output_args=True
+        adj,
+        args_var,
+        args,
+        args_out,
+        use_initializer_list,
+        has_output_args=True,
     ):
-        formatted_var = adj.format_args("var", args)
+        formatted_var = adj.format_args("var", args_var)
         formatted_out = []
         if has_output_args and len(args_out) > 1:
             formatted_out = adj.format_args("var", args_out)
         formatted_var_adj = adj.format_args(
             "&adj" if use_initializer_list else "adj",
-            [a for i, a in enumerate(args) if i not in non_adjoint_args],
-            adjoints=True,
+            args,
         )
-        formatted_out_adj = adj.format_args(
-            "adj", [a for i, a in enumerate(args_out) if i not in non_adjoint_outputs], adjoints=True
-        )
+        formatted_out_adj = adj.format_args("adj", args_out)
 
         if len(formatted_var_adj) == 0 and len(formatted_out_adj) == 0:
             # there are no adjoint arguments, so we don't need to call the reverse function
@@ -765,29 +763,36 @@ class Adjoint:
         output = adj.add_var(type=type(n), constant=n)
         return output
 
+    def load(adj, var):
+        if is_reference(var.type):
+            var = adj.add_builtin_call("load", [var])
+        return var
+
     def add_comp(adj, op_strings, left, comps):
         output = adj.add_var(builtins.bool)
 
+        left = adj.load(left)
         s = output.emit() + " = " + ("(" * len(comps)) + left.emit() + " "
 
-        comp_index = 0
-        prev_comp_chainable = False
+        prev_comp = None
 
         for op, comp in zip(op_strings, comps):
             comp_chainable = op_str_is_chainable(op)
-            if comp_chainable and prev_comp_chainable:
+            if comp_chainable and prev_comp:
                 # We  restrict chaining to operands of the same type
-                if comps[comp_index - 1].type is comp.type:
-                    s += "&& (" + comps[comp_index - 1].emit() + " " + op + " " + comp.emit() + ")) "
+                if prev_comp.type is comp.type:
+                    prev_comp = adj.load(prev_comp)
+                    comp = adj.load(comp)
+                    s += "&& (" + prev_comp.emit() + " " + op + " " + comp.emit() + ")) "
                 else:
                     raise WarpCodegenTypeError(
-                        f"Cannot chain comparisons of unequal types: {comps[comp_index - 1].type} {op} {comp.type}."
+                        f"Cannot chain comparisons of unequal types: {prev_comp.type} {op} {comp.type}."
                     )
             else:
+                comp = adj.load(comp)
                 s += op + " " + comp.emit() + ") "
 
-            prev_comp_chainable = comp_chainable
-            comp_index += 1
+            prev_comp = comp
 
         s = s.rstrip() + ";"
 
@@ -796,101 +801,101 @@ class Adjoint:
         return output
 
     def add_bool_op(adj, op_string, exprs):
+        exprs = [adj.load(expr) for expr in exprs]
         output = adj.add_var(builtins.bool)
         command = output.emit() + " = " + (" " + op_string + " ").join([expr.emit() for expr in exprs]) + ";"
         adj.add_forward(command)
 
         return output
 
-    def add_call(adj, func, args, min_outputs=None, templates=[], kwds=None):
+    def resolve_func(adj, func, args, min_outputs, templates, kwds):
         arg_types = [strip_reference(a.type) for a in args if not isinstance(a, warp.context.Function)]
+
+        if not func.is_builtin():
+            # user-defined function
+            return func.get_overload(arg_types)
 
         # if func is overloaded then perform overload resolution here
         # we validate argument types before they go to generated native code
-        resolved_func = None
+        for f in func.overloads:
+            # skip type checking for variadic functions
+            if not f.variadic:
+                # check argument counts match are compatible (may be some default args)
+                if len(f.input_types) < len(args):
+                    continue
 
-        if func.is_builtin():
-            for f in func.overloads:
-                # skip type checking for variadic functions
-                if not f.variadic:
-                    # check argument counts match are compatible (may be some default args)
-                    if len(f.input_types) < len(args):
-                        continue
-
-                    def match_args(args, f):
-                        # check argument types equal
-                        for i, (arg_name, arg_type) in enumerate(f.input_types.items()):
-                            # if arg type registered as Any, treat as
-                            # template allowing any type to match
-                            if arg_type == Any:
-                                continue
-
-                            # handle function refs as a special case
-                            if arg_type == Callable and type(args[i]) is warp.context.Function:
-                                continue
-
-                            # look for default values for missing args
-                            if i >= len(args):
-                                if arg_name not in f.defaults:
-                                    return False
-                            else:
-                                # otherwise check arg type matches input variable type
-                                if not types_equal(arg_type, strip_reference(args[i].type), match_generic=True):
-                                    return False
-
-                        return True
-
-                    if not match_args(args, f):
-                        continue
-
-                # check output dimensions match expectations
-                if min_outputs:
-                    try:
-                        value_type = f.value_func(args, kwds, templates)
-                        if not hasattr(value_type, "__len__") or len(value_type) != min_outputs:
+                def match_args(args, f):
+                    # check argument types equal
+                    for i, (arg_name, arg_type) in enumerate(f.input_types.items()):
+                        # if arg type registered as Any, treat as
+                        # template allowing any type to match
+                        if arg_type == Any:
                             continue
-                    except Exception:
-                        # value func may fail if the user has given
-                        # incorrect args, so we need to catch this
+
+                        # handle function refs as a special case
+                        if arg_type == Callable and type(args[i]) is warp.context.Function:
+                            continue
+
+                        if arg_type == Reference and is_reference(args[i].type):
+                            continue
+
+                        # look for default values for missing args
+                        if i >= len(args):
+                            if arg_name not in f.defaults:
+                                return False
+                        else:
+                            # otherwise check arg type matches input variable type
+                            if not types_equal(arg_type, strip_reference(args[i].type), match_generic=True):
+                                return False
+
+                    return True
+
+                if not match_args(args, f):
+                    continue
+
+            # check output dimensions match expectations
+            if min_outputs:
+                try:
+                    value_type = f.value_func(args, kwds, templates)
+                    if not hasattr(value_type, "__len__") or len(value_type) != min_outputs:
                         continue
+                except Exception:
+                    # value func may fail if the user has given
+                    # incorrect args, so we need to catch this
+                    continue
 
-                # found a match, use it
-                resolved_func = f
-                break
+            # found a match, use it
+            return f
 
-        else:
-            # user-defined function
-            resolved_func = func.get_overload(arg_types)
+        # unresolved function, report error
+        arg_types = []
 
-        # report error if not resolved
-        if resolved_func is None:
-            arg_types = []
+        for x in args:
+            if isinstance(x, Var):
+                # shorten Warp primitive type names
+                if isinstance(x.type, list):
+                    if len(x.type) != 1:
+                        raise WarpCodegenError("Argument must not be the result from a multi-valued function")
+                    arg_type = x.type[0]
+                else:
+                    arg_type = x.type
 
-            for x in args:
-                if isinstance(x, Var):
-                    # shorten Warp primitive type names
-                    if isinstance(x.type, list):
-                        if len(x.type) != 1:
-                            raise WarpCodegenError("Argument must not be the result from a multi-valued function")
-                        arg_type = x.type[0]
-                    else:
-                        arg_type = x.type
+                arg_types.append(type_repr(arg_type))
 
-                    arg_types.append(type_repr(arg_type))
+            if isinstance(x, warp.context.Function):
+                arg_types.append("function")
 
-                if isinstance(x, warp.context.Function):
-                    arg_types.append("function")
+        raise WarpCodegenError(
+            f"Couldn't find function overload for '{func.key}' that matched inputs with types: [{', '.join(arg_types)}]"
+        )
 
-            raise WarpCodegenError(
-                f"Couldn't find function overload for '{func.key}' that matched inputs with types: [{', '.join(arg_types)}]"
-            )
-
-        func = resolved_func
+    def add_call(adj, func, args, min_outputs=None, templates=[], kwds=None):
+        func = adj.resolve_func(func, args, min_outputs, templates, kwds)
 
         # push any default values onto args
         for i, (arg_name, arg_type) in enumerate(func.input_types.items()):
             if i >= len(args):
-                if arg_name in f.defaults:
+                if arg_name in func.defaults:
                     const = adj.add_constant(func.defaults[arg_name])
                     args.append(const)
                 else:
@@ -901,80 +906,81 @@ class Adjoint:
             adj.builder.build_function(func)
 
         # evaluate the function type based on inputs
-
-        value_type = func.value_func(arg_types, kwds, templates)
+        arg_types = [strip_reference(a.type) for a in args if not isinstance(a, warp.context.Function)]
+        return_type = func.value_func(arg_types, kwds, templates)
 
         func_name = compute_type_str(func.native_func, templates)
+        param_types = list(func.input_types.values())
 
         use_initializer_list = func.initializer_list_func(args, templates)
 
-        if value_type is None:
+        args_var = [
+            adj.load(a)
+            if not ((param_types[i] == Reference or param_types[i] == Callable) if i < len(param_types) else False)
+            else a
+            for i, a in enumerate(args)
+        ]
+
+        if return_type is None:
             # handles expression (zero output) functions, e.g.: void do_something();
 
-            forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(args, use_initializer_list)});"
+            output = None
+            output_list = []
+
+            forward_call = (
+                f"{func.namespace}{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
+            )
             replay_call = forward_call
             if func.custom_replay_func is not None:
-                replay_call = (
-                    f"{func.namespace}replay_{func_name}({adj.format_forward_call_args(args, use_initializer_list)});"
-                )
-            if func.skip_replay:
-                adj.add_forward(forward_call, replay="// " + replay_call)
-            else:
-                adj.add_forward(forward_call, replay=replay_call)
+                replay_call = f"{func.namespace}replay_{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
 
-            if not func.missing_grad and len(args):
-                arg_str = adj.format_reverse_call_args(args, [], {}, {}, use_initializer_list)
-                if arg_str is not None:
-                    reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
-                    adj.add_reverse(reverse_call)
-
-            return None
-
-        elif not isinstance(value_type, list) or len(value_type) == 1:
+        elif not isinstance(return_type, list) or len(return_type) == 1:
             # handle simple function (one output)
 
-            if isinstance(value_type, list):
-                value_type = value_type[0]
-            output = adj.add_var(value_type)
-            forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(args, use_initializer_list)});"
+            if isinstance(return_type, list):
+                return_type = return_type[0]
+            output = adj.add_var(return_type)
+            output_list = [output]
+
+            forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
             replay_call = forward_call
             if func.custom_replay_func is not None:
-                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(args, use_initializer_list)});"
-
-            if func.skip_replay:
-                adj.add_forward(forward_call, replay="// " + replay_call)
-            else:
-                adj.add_forward(forward_call, replay=replay_call)
-
-            if not func.missing_grad and len(args):
-                arg_str = adj.format_reverse_call_args(args, [output], {}, {}, use_initializer_list)
-                if arg_str is not None:
-                    reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
-                    adj.add_reverse(reverse_call)
-
-            return output
+                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
 
         else:
             # handle multiple value functions
 
-            output = [adj.add_var(v) for v in value_type]
+            output = [adj.add_var(v) for v in return_type]
+            output_list = output
+
             forward_call = (
-                f"{func.namespace}{func_name}({adj.format_forward_call_args(args + output, use_initializer_list)});"
+                f"{func.namespace}{func_name}({adj.format_forward_call_args(args_var + output, use_initializer_list)});"
             )
-            adj.add_forward(forward_call)
+            replay_call = forward_call
 
-            if not func.missing_grad and len(args):
-                arg_str = adj.format_reverse_call_args(
-                    args, output, {}, {}, use_initializer_list, has_output_args=func.custom_grad_func is None
-                )
-                if arg_str is not None:
-                    reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
-                    adj.add_reverse(reverse_call)
+        if func.skip_replay:
+            adj.add_forward(forward_call, replay="// " + replay_call)
+        else:
+            adj.add_forward(forward_call, replay=replay_call)
 
-            if len(output) == 1:
-                return output[0]
+        if not func.missing_grad and len(args):
+            reverse_has_output_args = len(output_list) > 1 and func.custom_grad_func is None
+            arg_str = adj.format_reverse_call_args(
+                args_var,
+                args,
+                output_list,
+                use_initializer_list,
+                has_output_args=reverse_has_output_args,
+            )
+            if arg_str is not None:
+                reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
+                adj.add_reverse(reverse_call)
 
-            return output
+        return output
+
+    def add_builtin_call(adj, func_name, args, min_outputs=None, templates=[], kwds=None):
+        func = warp.context.builtin_functions[func_name]
+        return adj.add_call(func, args, min_outputs, templates, kwds)
 
     def add_return(adj, var):
         if var is None or len(var) == 0:
@@ -994,6 +1000,7 @@ class Adjoint:
 
     # define an if statement
     def begin_if(adj, cond):
+        cond = adj.load(cond)
         adj.add_forward(f"if ({cond.emit()}) {{")
         adj.add_reverse("}")
 
@@ -1003,9 +1010,11 @@ class Adjoint:
         adj.dedent()
 
         adj.add_forward("}")
+        cond = adj.load(cond)
         adj.add_reverse(f"if ({cond.emit()}) {{")
 
     def begin_else(adj, cond):
+        cond = adj.load(cond)
         adj.add_forward(f"if (!{cond.emit()}) {{")
         adj.add_reverse("}")
 
@@ -1015,6 +1024,7 @@ class Adjoint:
         adj.dedent()
 
         adj.add_forward("}")
+        cond = adj.load(cond)
         adj.add_reverse(f"if (!{cond.emit()}) {{")
 
     # define a for-loop
@@ -1028,7 +1038,7 @@ class Adjoint:
         adj.add_forward(f"if (iter_cmp({iter.emit()}) == 0) goto for_end_{cond_block.label};")
 
         # evaluate iter
-        val = adj.add_call(warp.context.builtin_functions["iter_next"], [iter])
+        val = adj.add_builtin_call("iter_next", [iter])
 
         adj.begin_block()
 
@@ -1176,7 +1186,7 @@ class Adjoint:
 
             if var1 != var2:
                 # insert a phi function that selects var1, var2 based on cond
-                out = adj.add_call(warp.context.builtin_functions["select"], [cond, var1, var2])
+                out = adj.add_builtin_call("select", [cond, var1, var2])
                 adj.symbols[sym] = out
 
         symbols_prev = adj.symbols.copy()
@@ -1200,7 +1210,7 @@ class Adjoint:
             if var1 != var2:
                 # insert a phi function that selects var1, var2 based on cond
                 # note the reversed order of vars since we want to use !cond as our select
-                out = adj.add_call(warp.context.builtin_functions["select"], [cond, var2, var1])
+                out = adj.add_builtin_call("select", [cond, var2, var1])
                 adj.symbols[sym] = out
 
     def emit_Compare(adj, node):
@@ -1307,19 +1317,17 @@ class Adjoint:
             if type_is_vector(aggregate_type):
                 index = adj.vector_component_index(node.attr, aggregate_type)
 
-                return adj.add_call(warp.context.builtin_functions["index"], [aggregate, index])
+                return adj.add_builtin_call("extract", [aggregate, index])
 
             else:
                 attr_type = Reference(aggregate_type.vars[node.attr].type)
                 attr = adj.add_var(attr_type)
 
                 if is_reference(aggregate.type):
-                    adj.add_forward(
-                        f"{attr.emit(dereference=False)} = &({aggregate.emit(dereference=False)}->{node.attr});"
-                    )
+                    adj.add_forward(f"{attr.emit()} = &({aggregate.emit()}->{node.attr});")
                     adj.add_reverse(f"{aggregate.emit_adj()}.{node.attr} = {attr.emit_adj()};")
                 else:
-                    adj.add_forward(f"{attr.emit(dereference=False)} = &({aggregate.emit()}.{node.attr});")
+                    adj.add_forward(f"{attr.emit()} = &({aggregate.emit()}.{node.attr});")
                     adj.add_reverse(f"{aggregate.emit_adj()}.{node.attr} = {attr.emit_adj()};")
 
                 return attr
@@ -1328,9 +1336,9 @@ class Adjoint:
             # Try resolving as type attribute
             if isinstance(aggregate, Var):
                 aggregate = aggregate.type
-            aggregate = adj.resolve_type_attribute(aggregate, node.attr)
-            if aggregate is not None:
-                return aggregate
+            attribute = adj.resolve_type_attribute(aggregate, node.attr)
+            if attribute is not None:
+                return attribute
 
             raise WarpCodegenError(
                 f"Error, `{node.attr}` is not an attribute of '{aggregate.label}' ({type_repr(aggregate.type)})"
@@ -1380,18 +1388,16 @@ class Adjoint:
         right = adj.eval(node.right)
 
         name = builtin_operators[type(node.op)]
-        func = warp.context.builtin_functions[name]
 
-        return adj.add_call(func, [left, right])
+        return adj.add_builtin_call(name, [left, right])
 
     def emit_UnaryOp(adj, node):
         # evaluate unary op arguments
         arg = adj.eval(node.operand)
 
         name = builtin_operators[type(node.op)]
-        func = warp.context.builtin_functions[name]
 
-        return adj.add_call(func, [arg])
+        return adj.add_builtin_call(name, [arg])
 
     def materialize_redefinitions(adj, symbols):
         # detect symbols with conflicting definitions (assigned inside the for loop)
@@ -1404,7 +1410,7 @@ class Adjoint:
                 if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
                     line = adj.source.splitlines()[adj.lineno]
-                    msg = f'Warning: detected mutated variable {sym} during a dynamic for-loop in function "{adj.fun_name}" at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n'
+                    msg = f'Warning: detected mutated variable {sym} during a dynamic for-loop in function "{adj.fun_name}" at {adj.filename}:{lineno}: this may not be a differentiable operation.\n{line}\n'
                     print(msg)
 
                 if var1.constant is not None:
@@ -1413,7 +1419,7 @@ class Adjoint:
                     )
 
                 # overwrite the old variable value (violates SSA)
-                adj.add_call(warp.context.builtin_functions["copy"], [var1, var2])
+                adj.add_builtin_call("assign", [var1, var2])
 
                 # reset the symbol to point to the original variable
                 adj.symbols[sym] = var1
@@ -1526,8 +1532,8 @@ class Adjoint:
                 return range(start, end, step)
 
         # Unroll is not possible, range needs to be valuated dynamically
-        range_call = adj.add_call(
-            warp.context.builtin_functions["range"],
+        range_call = adj.add_builtin_call(
+            "range",
             [adj.add_constant(val) if is_numeric else val for is_numeric, val in range_args],
         )
         return range_call
@@ -1539,7 +1545,7 @@ class Adjoint:
         if isinstance(unroll_range, range):
             for i in unroll_range:
                 const_iter = adj.add_constant(i)
-                var_iter = adj.add_call(warp.context.builtin_functions["int"], [const_iter])
+                var_iter = adj.add_builtin_call("int", [const_iter])
                 adj.symbols[node.target.id] = var_iter
 
                 # eval body
@@ -1708,14 +1714,14 @@ class Adjoint:
         if is_array(target_type):
             if len(indices) == target_type.ndim:
                 # handles array loads (where each dimension has an index specified)
-                out = adj.add_call(warp.context.builtin_functions["address"], [target, *indices])
+                out = adj.add_builtin_call("address", [target, *indices])
             else:
                 # handles array views (fewer indices than dimensions)
-                out = adj.add_call(warp.context.builtin_functions["view"], [target, *indices])
+                out = adj.add_builtin_call("view", [target, *indices])
 
         else:
             # handles non-array type indexing, e.g: vec3, mat33, etc
-            out = adj.add_call(warp.context.builtin_functions["index"], [target, *indices])
+            out = adj.add_builtin_call("extract", [target, *indices])
 
         return out
 
@@ -1762,8 +1768,6 @@ class Adjoint:
 
                 adj.symbols[name] = rhs
 
-            return out
-
         # handles the case where we are assigning to an array index (e.g.: arr[i] = 2.0)
         elif isinstance(lhs, ast.Subscript):
             if hasattr(lhs.value, "attr") and lhs.value.attr == "adjoint":
@@ -1774,7 +1778,7 @@ class Adjoint:
                 adj.symbols[var.label] = var
                 value = adj.eval(node.value)
                 adj.add_forward(f"{var.emit()} = {value.emit()};")
-                return var
+                return
 
             target = adj.eval(lhs.value)
             value = adj.eval(node.value)
@@ -1800,10 +1804,15 @@ class Adjoint:
             target_type = strip_reference(target.type)
 
             if is_array(target_type):
-                adj.add_call(warp.context.builtin_functions["store"], [target, *indices, value])
+                adj.add_builtin_call("array_store", [target, *indices, value])
 
             elif type_is_vector(target_type) or type_is_matrix(target_type):
-                adj.add_call(warp.context.builtin_functions["indexset"], [target, *indices, value])
+                if is_reference(target.type):
+                    attr = adj.add_builtin_call("indexref", [target, *indices])
+                else:
+                    attr = adj.add_builtin_call("index", [target, *indices])
+
+                adj.add_builtin_call("store", [attr, value])
 
                 if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
@@ -1815,8 +1824,6 @@ class Adjoint:
 
             else:
                 raise WarpCodegenError("Can only subscript assign array, vector, and matrix types")
-
-            return var
 
         elif isinstance(lhs, ast.Name):
             # symbol name
@@ -1834,14 +1841,12 @@ class Adjoint:
 
             # handle simple assignment case (a = b), where we generate a value copy rather than reference
             if isinstance(node.value, ast.Name) or is_reference(rhs.type):
-                out = adj.add_var(strip_reference(rhs.type))
-                adj.add_call(warp.context.builtin_functions["copy"], [out, rhs])
+                out = adj.add_builtin_call("copy", [rhs])
             else:
                 out = rhs
 
             # update symbol map (assumes lhs is a Name node)
             adj.symbols[name] = out
-            return out
 
         elif isinstance(lhs, ast.Attribute):
             rhs = adj.eval(node.value)
@@ -1852,11 +1857,19 @@ class Adjoint:
             if type_is_vector(aggregate_type):
                 index = adj.vector_component_index(lhs.attr, aggregate_type)
 
-                adj.add_call(warp.context.builtin_functions["indexset"], [aggregate, index, rhs])
+                if is_reference(aggregate.type):
+                    attr = adj.add_builtin_call("indexref", [aggregate, index])
+                else:
+                    attr = adj.add_builtin_call("index", [aggregate, index])
+
+                adj.add_builtin_call("store", [attr, rhs])
 
             else:
                 attr = adj.emit_Attribute(lhs)
-                adj.add_call(warp.context.builtin_functions["copy"], [attr, rhs])
+                if is_reference(attr.type):
+                    adj.add_builtin_call("store", [attr, rhs])
+                else:
+                    adj.add_builtin_call("assign", [attr, rhs])
 
                 if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
@@ -1886,9 +1899,8 @@ class Adjoint:
         if var is not None:
             adj.return_var = tuple()
             for ret in var:
-                out = adj.add_var(strip_reference(ret.type))
-                adj.add_call(warp.context.builtin_functions["copy"], [out, ret])
-                adj.return_var += (out,)
+                ret = adj.load(ret)
+                adj.return_var += (ret,)
 
         adj.add_return(adj.return_var)
 
@@ -2389,7 +2401,7 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu"):
 
     for var in adj.variables:
         if var.constant is None:
-            s += f"    {var.ctype()} {var.emit(dereference=False)};\n"
+            s += f"    {var.ctype()} {var.emit()};\n"
         else:
             s += f"    const {var.ctype()} {var.emit()} = {constant_str(var.constant)};\n"
 
@@ -2445,7 +2457,7 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
 
     for var in adj.variables:
         if var.constant is None:
-            s += f"    {var.ctype()} {var.emit(dereference=False)};\n"
+            s += f"    {var.ctype()} {var.emit()};\n"
         else:
             s += f"    const {var.ctype()} {var.emit()} = {constant_str(var.constant)};\n"
 
