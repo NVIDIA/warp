@@ -840,8 +840,8 @@ def test_shape_function_gradient(test_case, shape: shape.ShapeFunction, coord_sa
 
     @dynamic_kernel(suffix=shape.name, kernel_options={"enable_backward": False})
     def finite_difference_test():
-        i, n = w_p.tid()
-        rng_state = w_p.rand_init(1234, i)
+        i, n = wp.tid()
+        rng_state = wp.rand_init(1234, i)
 
         coords = coord_sampler(rng_state)
 
