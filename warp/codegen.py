@@ -1681,9 +1681,6 @@ class Adjoint:
         templates = []
 
         if not isinstance(func, warp.context.Function):
-            if len(path) == 0:
-                raise WarpCodegenError(f"Unknown function or operator: '{node.func.func.id}'")
-
             attr = path[-1]
             caller = func
             func = None
@@ -2117,11 +2114,11 @@ class Adjoint:
                                 f"{attr_name} is not an attribute of {type_repr(prev_type)}"
                             )
 
-                    return var_type, [type_repr(var_type)]
+                    return var_type, [str(var_type)]
                 else:
                     raise WarpCodegenError(f"Cannot deduce the type of {var}")
 
-        # reverse list since ast presents it backward order
+        # reverse list since ast presents it in backward order
         path = [*reversed(attributes)]
         if isinstance(node, ast.Name):
             path.insert(0, node.id)
@@ -2133,13 +2130,8 @@ class Adjoint:
 
         # Still nothing found, maybe this is a predefined type attribute like `dtype`
         if eval_types:
-            try:
-                val = adj.eval(root_node)
-                if val:
-                    return [val, type_repr(val)]
-
-            except Exception:
-                pass
+            val = adj.eval(root_node)
+            return [val, path]
 
         return None, path
 
