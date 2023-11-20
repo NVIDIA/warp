@@ -432,7 +432,7 @@ class Function:
             return None
 
     def __repr__(self):
-        inputs_str = ", ".join([f"{k}: {v.__name__}" for k, v in self.input_types.items()])
+        inputs_str = ", ".join([f"{k}: {warp.types.type_repr(v)}" for k, v in self.input_types.items()])
         return f"<Function {self.key}({inputs_str})>"
 
 

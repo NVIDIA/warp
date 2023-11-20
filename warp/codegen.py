@@ -620,7 +620,7 @@ class Adjoint:
             adj.eval(adj.tree.body[0])
         except Exception as e:
             try:
-                if isinstance(e, KeyError) and e.args[0].__module__ == "ast":
+                if isinstance(e, KeyError) and getattr(e.args[0], "__module__", None) == "ast":
                     msg = f'Syntax error: unsupported construct "ast.{e.args[0].__name__}"'
                 else:
                     msg = "Error"
@@ -813,59 +813,61 @@ class Adjoint:
 
         if not func.is_builtin():
             # user-defined function
-            return func.get_overload(arg_types)
-
-        # if func is overloaded then perform overload resolution here
-        # we validate argument types before they go to generated native code
-        for f in func.overloads:
-            # skip type checking for variadic functions
-            if not f.variadic:
-                # check argument counts match are compatible (may be some default args)
-                if len(f.input_types) < len(args):
-                    continue
-
-                def match_args(args, f):
-                    # check argument types equal
-                    for i, (arg_name, arg_type) in enumerate(f.input_types.items()):
-                        # if arg type registered as Any, treat as
-                        # template allowing any type to match
-                        if arg_type == Any:
-                            continue
-
-                        # handle function refs as a special case
-                        if arg_type == Callable and type(args[i]) is warp.context.Function:
-                            continue
-
-                        if arg_type == Reference and is_reference(args[i].type):
-                            continue
-
-                        # look for default values for missing args
-                        if i >= len(args):
-                            if arg_name not in f.defaults:
-                                return False
-                        else:
-                            # otherwise check arg type matches input variable type
-                            if not types_equal(arg_type, strip_reference(args[i].type), match_generic=True):
-                                return False
-
-                    return True
-
-                if not match_args(args, f):
-                    continue
-
-            # check output dimensions match expectations
-            if min_outputs:
-                try:
-                    value_type = f.value_func(args, kwds, templates)
-                    if not hasattr(value_type, "__len__") or len(value_type) != min_outputs:
+            overload = func.get_overload(arg_types)
+            if overload is not None:
+                return overload
+        else:
+            # if func is overloaded then perform overload resolution here
+            # we validate argument types before they go to generated native code
+            for f in func.overloads:
+                # skip type checking for variadic functions
+                if not f.variadic:
+                    # check argument counts match are compatible (may be some default args)
+                    if len(f.input_types) < len(args):
                         continue
-                except Exception:
-                    # value func may fail if the user has given
-                    # incorrect args, so we need to catch this
-                    continue
 
-            # found a match, use it
-            return f
+                    def match_args(args, f):
+                        # check argument types equal
+                        for i, (arg_name, arg_type) in enumerate(f.input_types.items()):
+                            # if arg type registered as Any, treat as
+                            # template allowing any type to match
+                            if arg_type == Any:
+                                continue
+
+                            # handle function refs as a special case
+                            if arg_type == Callable and type(args[i]) is warp.context.Function:
+                                continue
+
+                            if arg_type == Reference and is_reference(args[i].type):
+                                continue
+
+                            # look for default values for missing args
+                            if i >= len(args):
+                                if arg_name not in f.defaults:
+                                    return False
+                            else:
+                                # otherwise check arg type matches input variable type
+                                if not types_equal(arg_type, strip_reference(args[i].type), match_generic=True):
+                                    return False
+
+                        return True
+
+                    if not match_args(args, f):
+                        continue
+
+                # check output dimensions match expectations
+                if min_outputs:
+                    try:
+                        value_type = f.value_func(args, kwds, templates)
+                        if not hasattr(value_type, "__len__") or len(value_type) != min_outputs:
+                            continue
+                    except Exception:
+                        # value func may fail if the user has given
+                        # incorrect args, so we need to catch this
+                        continue
+
+                # found a match, use it
+                return f
 
         # unresolved function, report error
         arg_types = []
@@ -1334,15 +1336,17 @@ class Adjoint:
 
         except (KeyError, AttributeError):
             # Try resolving as type attribute
-            if isinstance(aggregate, Var):
-                aggregate = aggregate.type
-            attribute = adj.resolve_type_attribute(aggregate, node.attr)
-            if attribute is not None:
-                return attribute
+            aggregate_type = strip_reference(aggregate.type) if isinstance(aggregate, Var) else aggregate
 
-            raise WarpCodegenError(
-                f"Error, `{node.attr}` is not an attribute of '{aggregate.label}' ({type_repr(aggregate.type)})"
-            )
+            type_attribute = adj.resolve_type_attribute(aggregate_type, node.attr)
+            if type_attribute is not None:
+                return type_attribute
+
+            if isinstance(aggregate, Var):
+                raise WarpCodegenAttributeError(
+                    f"Error, `{node.attr}` is not an attribute of '{aggregate.label}' ({type_repr(aggregate.type)})"
+                )
+            raise WarpCodegenAttributeError(f"Error, `{node.attr}` is not an attribute of '{aggregate}'")
 
     def emit_String(adj, node):
         # string constant
@@ -2029,7 +2033,14 @@ class Adjoint:
                     var_type = strip_reference(var.type)
                     # Allow accessing type attributes, for instance array.dtype
                     while attributes:
-                        var_type = adj.resolve_type_attribute(var_type, attributes.pop())
+                        attr_name = attributes.pop()
+                        var_type, prev_type = adj.resolve_type_attribute(var_type, attr_name), var_type
+
+                        if var_type is None:
+                            raise WarpCodegenAttributeError(
+                                f"{attr_name} is not an attribute of {type_repr(prev_type)}"
+                            )
+
                     return var_type, [type_repr(var_type)]
                 else:
                     raise WarpCodegenError(f"Cannot deduce the type of {var}")

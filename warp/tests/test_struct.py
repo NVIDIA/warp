@@ -223,6 +223,20 @@ def test_nested_struct(test, device):
     )
 
 
+def test_struct_attribute_error(test, device):
+    @wp.kernel
+    def kernel(foo: Foo):
+        _ = foo.nonexisting
+
+    with test.assertRaisesRegex(AttributeError, r"`nonexisting` is not an attribute of 'foo' \([\w.]+\.Foo\)$"):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[Foo()],
+            device=device,
+        )
+
+
 @wp.kernel
 def test_struct_instantiate(data: wp.array(dtype=int)):
     baz = Baz(data, wp.vec3(0.0, 0.0, 26.0))
@@ -568,6 +582,7 @@ def register(parent):
         devices=devices,
     )
     add_kernel_test(TestStruct, kernel=test_return, name="test_return", dim=1, inputs=[], devices=devices)
+    add_function_test(TestStruct, "test_struct_attribute_error", test_struct_attribute_error, devices=devices)
     add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
     add_function_test(TestStruct, "test_nested_array_struct", test_nested_array_struct, devices=devices)
     add_function_test(TestStruct, "test_nested_empty_struct", test_nested_empty_struct, devices=devices)
