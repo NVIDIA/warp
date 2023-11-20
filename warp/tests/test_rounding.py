@@ -5,6 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import unittest
+
 import warp as wp
 from warp.tests.test_base import *
 
@@ -86,7 +88,9 @@ def test_rounding(test, device):
     x_ceil = wp.empty(N, dtype=float, device=device)
     x_frac = wp.empty(N, dtype=float, device=device)
 
-    wp.launch(kernel=test_kernel, dim=N, inputs=[x, x_round, x_rint, x_trunc, x_cast, x_floor, x_ceil, x_frac], device=device)
+    wp.launch(
+        kernel=test_kernel, dim=N, inputs=[x, x_round, x_rint, x_trunc, x_cast, x_floor, x_ceil, x_frac], device=device
+    )
 
     wp.synchronize()
 
