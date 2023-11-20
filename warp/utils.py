@@ -34,6 +34,7 @@ def warn(message, category=None, stacklevel=1):
 def transform_expand(t):
     return wp.transform(np.array(t[0:3]), np.array(t[3:7]))
 
+
 @wp.func
 def quat_between_vectors(a: wp.vec3, b: wp.vec3) -> wp.quat:
     """
@@ -57,6 +58,9 @@ def array_scan(in_array, out_array, inclusive=True):
     if in_array.dtype != out_array.dtype:
         raise RuntimeError("Array data types do not match")
 
+    if in_array.size == 0:
+        return
+
     from warp.context import runtime
 
     if in_array.device.is_cpu:
@@ -78,6 +82,9 @@ def array_scan(in_array, out_array, inclusive=True):
 def radix_sort_pairs(keys, values, count: int):
     if keys.device != values.device:
         raise RuntimeError("Array storage devices do not match")
+
+    if count == 0:
+        return
 
     if keys.size < 2 * count or values.size < 2 * count:
         raise RuntimeError("Array storage must be large enough to contain 2*count elements")
@@ -115,14 +122,19 @@ def runlength_encode(values, run_values, run_lengths, run_count=None, value_coun
     # User can provide a device output array for storing the number of runs
     # For convenience, if no such array is provided, number of runs is returned on host
     if run_count is None:
-        host_return = True
+        if value_count == 0:
+            return 0
         run_count = wp.empty(shape=(1,), dtype=int, device=values.device)
+        host_return = True
     else:
-        host_return = False
         if run_count.device != values.device:
             raise RuntimeError("run_count storage device does not match other arrays")
         if run_count.dtype != wp.int32:
             raise RuntimeError("run_count array must be of type int32")
+        if value_count == 0:
+            run_count.zero_()
+            return 0
+        host_return = False
 
     from warp.context import runtime
 
@@ -177,6 +189,12 @@ def array_sum(values, out=None, value_count=None, axis=None):
             raise RuntimeError(f"out array should have type {values.dtype.__name__}")
         if out.shape != output_shape:
             raise RuntimeError(f"out array should have shape {output_shape}")
+
+    if value_count == 0:
+        out.zero_()
+        if axis is None and host_return:
+            return out.numpy()[0]
+        return out
 
     from warp.context import runtime
 
@@ -260,6 +278,12 @@ def array_inner(a, b, out=None, count=None, axis=None):
             raise RuntimeError(f"out array should have type {scalar_type.__name__}")
         if out.shape != output_shape:
             raise RuntimeError(f"out array should have shape {output_shape}")
+
+    if count == 0:
+        if axis is None and host_return:
+            return 0.0
+        out.zero_()
+        return out
 
     from warp.context import runtime
 

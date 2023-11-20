@@ -65,6 +65,12 @@ def test_array_scan(test, device):
         test.assertTrue(error_exc <= tolerance)
 
 
+def test_array_scan_empty(test, device):
+    values = wp.array((), dtype=int, device=device)
+    result = wp.array((), dtype=int, device=device)
+    wp.utils.array_scan(values, result)
+
+
 def test_array_scan_error_devices_mismatch(test, device):
     values = wp.zeros(123, dtype=int, device="cpu")
     result = wp.zeros_like(values, device="cuda:0")
@@ -111,6 +117,12 @@ def test_radix_sort_pairs(test, device):
     wp.utils.radix_sort_pairs(keys, values, 8)
     assert_np_equal(keys.numpy()[:8], np.array((1, 2, 3, 4, 5, 6, 7, 8)))
     assert_np_equal(values.numpy()[:8], np.array((5, 2, 8, 4, 7, 6, 1, 3)))
+
+
+def test_radix_sort_pairs_empty(test, device):
+    keys = wp.array((), dtype=int, device=device)
+    values = wp.array((), dtype=int, device=device)
+    wp.utils.radix_sort_pairs(keys, values, 0)
 
 
 def test_radix_sort_pairs_error_devices_mismatch(test, device):
@@ -383,6 +395,7 @@ def register(parent):
     add_function_test(TestUtils, "test_warn", test_warn)
     add_function_test(TestUtils, "test_transform_expand", test_transform_expand)
     add_function_test(TestUtils, "test_array_scan", test_array_scan, devices=devices)
+    add_function_test(TestUtils, "test_array_scan_empty", test_array_scan_empty, devices=devices)
     add_function_test(TestUtils, "test_array_scan_error_devices_mismatch", test_array_scan_error_devices_mismatch)
     add_function_test(TestUtils, "test_array_scan_error_sizes_mismatch", test_array_scan_error_sizes_mismatch)
     add_function_test(TestUtils, "test_array_scan_error_dtypes_mismatch", test_array_scan_error_dtypes_mismatch)
@@ -390,6 +403,7 @@ def register(parent):
         TestUtils, "test_array_scan_error_unsupported_dtype", test_array_scan_error_unsupported_dtype, devices=devices
     )
     add_function_test(TestUtils, "test_radix_sort_pairs", test_radix_sort_pairs, devices=devices)
+    add_function_test(TestUtils, "test_radix_sort_pairs_empty", test_radix_sort_pairs_empty, devices=devices)
     add_function_test(
         TestUtils, "test_radix_sort_pairs_error_devices_mismatch", test_radix_sort_pairs_error_devices_mismatch
     )

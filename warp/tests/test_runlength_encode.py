@@ -1,3 +1,6 @@
+from functools import partial
+import unittest
+
 import numpy as np
 import warp as wp
 
@@ -7,10 +10,8 @@ from warp.tests.test_base import *
 wp.init()
 
 
-def test_runlength_encode_int(test, device):
+def test_runlength_encode_int(test, device, n):
     rng = np.random.default_rng(123)
-
-    n = 1000
 
     values_np = np.sort(rng.integers(-10, high=10, size=n, dtype=int))
 
@@ -140,7 +141,12 @@ def register(parent):
     class TestRunlengthEncode(parent):
         pass
 
-    add_function_test(TestRunlengthEncode, "test_runlength_encode_int", test_runlength_encode_int, devices=devices)
+    add_function_test(
+        TestRunlengthEncode, "test_runlength_encode_int", partial(test_runlength_encode_int, n=100), devices=devices
+    )
+    add_function_test(
+        TestRunlengthEncode, "test_runlength_encode_empty", partial(test_runlength_encode_int, n=0), devices=devices
+    )
     add_function_test(
         TestRunlengthEncode,
         "test_runlength_encode_error_devices_mismatch",

@@ -92,6 +92,15 @@ def test_bsr_from_triplets(test, device):
 
     assert_np_equal(res, ref, 0.0001)
 
+    # test zero-length inputs
+    bsr_set_from_triplets(
+        bsr,
+        wp.array([], dtype=int, device=device),
+        wp.array([], dtype=int, device=device),
+        wp.array([], shape=(0, block_shape[0], block_shape[1]), dtype=float, device=device),
+    )
+    test.assertEqual(bsr.nnz, 0)
+
 
 def test_bsr_get_set_diag(test, device):
     rng = np.random.default_rng(123)
