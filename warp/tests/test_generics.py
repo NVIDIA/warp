@@ -457,6 +457,36 @@ def test_generic_type_as_argument(test, device):
         wp.synchronize()
 
 
+def test_type_operator_mispell(test, device):
+    @wp.kernel
+    def kernel():
+        i = wp.tid()
+        _ = typez(i)(0)
+
+    with test.assertRaisesRegex(RuntimeError, r"Unknown operator 'typez'$"):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[],
+            device=device,
+        )
+
+
+def test_type_attribute_error(test, device):
+    @wp.kernel
+    def kernel():
+        a = wp.vec3(0.0)
+        _ = a.dtype.shape
+
+    with test.assertRaisesRegex(AttributeError, r"`shape` is not an attribute of '<class 'warp.types.float32'>'"):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[],
+            device=device,
+        )
+
+
 def register(parent):
     class TestGenerics(parent):
         pass
@@ -524,6 +554,9 @@ def register(parent):
         inputs=[bar],
         devices=devices,
     )
+
+    add_function_test(TestGenerics, "test_type_operator_mispell", test_type_operator_mispell, devices=devices)
+    add_function_test(TestGenerics, "test_type_attribute_error", test_type_attribute_error, devices=devices)
 
     return TestGenerics
 
