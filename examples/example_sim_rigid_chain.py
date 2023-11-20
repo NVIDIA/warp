@@ -65,7 +65,7 @@ class Example:
 
                 # create shape
                 builder.add_shape_box(
-                    pos=(self.chain_width * 0.5, 0.0, 0.0),
+                    pos=wp.vec3(self.chain_width * 0.5, 0.0, 0.0),
                     hx=self.chain_width * 0.5,
                     hy=0.1,
                     hz=0.1,

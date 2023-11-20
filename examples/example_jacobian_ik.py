@@ -87,7 +87,7 @@ class Example:
             builder.add_builder(
                 articulation_builder,
                 xform=wp.transform(
-                    np.array((i * 2.0, 4.0, 0.0)), wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi * 0.5)
+                    wp.vec3(i * 2.0, 4.0, 0.0), wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), -math.pi * 0.5)
                 ),
             )
             self.target_origin.append((i * 2.0, 4.0, 0.0))

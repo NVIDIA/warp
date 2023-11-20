@@ -150,9 +150,15 @@ def parse_mjcf(
 
     def parse_vec(attrib, key, default):
         if key in attrib:
-            return np.fromstring(attrib[key], sep=" ")
+            out = np.fromstring(attrib[key], sep=" ", dtype=np.float32)
         else:
-            return np.array(default)
+            out = np.array(default, dtype=np.float32)
+
+        length = len(out)
+        if length == 1:
+            return wp.vec(len(default), wp.float32)(out[0], out[0], out[0])
+
+        return wp.vec(length, wp.float32)(out)
 
     def parse_orientation(attrib):
         if "quat" in attrib:
@@ -397,19 +403,19 @@ def parse_mjcf(
                 if "fromto" in geom_attrib:
                     geom_fromto = parse_vec(geom_attrib, "fromto", (0.0, 0.0, 0.0, 1.0, 0.0, 0.0))
 
-                    start = geom_fromto[0:3] * scale
-                    end = geom_fromto[3:6] * scale
+                    start = wp.vec3(geom_fromto[0:3]) * scale
+                    end = wp.vec3(geom_fromto[3:6]) * scale
 
                     # compute rotation to align the Warp capsule (along x-axis), with mjcf fromto direction
                     axis = wp.normalize(end - start)
-                    angle = math.acos(np.dot(axis, (0.0, 1.0, 0.0)))
-                    axis = wp.normalize(np.cross(axis, (0.0, 1.0, 0.0)))
+                    angle = math.acos(wp.dot(axis, wp.vec3(0.0, 1.0, 0.0)))
+                    axis = wp.normalize(wp.cross(axis, wp.vec3(0.0, 1.0, 0.0)))
 
                     geom_pos = (start + end) * 0.5
                     geom_rot = wp.quat_from_axis_angle(axis, -angle)
 
                     geom_radius = geom_size[0]
-                    geom_height = np.linalg.norm(end - start) * 0.5
+                    geom_height = wp.length(end - start) * 0.5
                     geom_up_axis = 1
 
                 else:

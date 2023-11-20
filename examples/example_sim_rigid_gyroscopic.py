@@ -36,7 +36,7 @@ class Example:
 
         # axis shape
         builder.add_shape_box(
-            pos=(0.3 * self.scale, 0.0, 0.0),
+            pos=wp.vec3(0.3 * self.scale, 0.0, 0.0),
             hx=0.25 * self.scale,
             hy=0.1 * self.scale,
             hz=0.1 * self.scale,
@@ -46,7 +46,7 @@ class Example:
 
         # tip shape
         builder.add_shape_box(
-            pos=(0.0, 0.0, 0.0), hx=0.05 * self.scale, hy=0.2 * self.scale, hz=1.0 * self.scale, density=100.0, body=b
+            pos=wp.vec3(0.0, 0.0, 0.0), hx=0.05 * self.scale, hy=0.2 * self.scale, hz=1.0 * self.scale, density=100.0, body=b
         )
 
         # initial spin

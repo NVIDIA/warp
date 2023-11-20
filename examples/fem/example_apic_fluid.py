@@ -169,10 +169,10 @@ class Example:
         grid_cell_volume = np.prod(grid_cell_size)
 
         PARTICLES_PER_CELL_DIM = 3
-        self.radius = np.max(grid_cell_size) / (2 * PARTICLES_PER_CELL_DIM)
+        self.radius = float(np.max(grid_cell_size) / (2 * PARTICLES_PER_CELL_DIM))
 
         particle_grid_res = np.array(particle_fill_frac * grid_res * PARTICLES_PER_CELL_DIM, dtype=int)
-        particle_grid_offset = self.radius * np.ones(3)
+        particle_grid_offset = wp.vec3(self.radius, self.radius, self.radius)
 
         np.random.seed(0)
         builder = wp.sim.ModelBuilder()
@@ -183,9 +183,9 @@ class Example:
             cell_x=self.radius * 2.0,
             cell_y=self.radius * 2.0,
             cell_z=self.radius * 2.0,
-            pos=(0.0, 0.0, 0.0) + particle_grid_offset,
+            pos=wp.vec3(0.0, 0.0, 0.0) + particle_grid_offset,
             rot=wp.quat_identity(),
-            vel=(0.0, 0.0, 0.0),
+            vel=wp.vec3(0.0, 0.0, 0.0),
             mass=grid_cell_volume / PARTICLES_PER_CELL_DIM**3,
             jitter=self.radius * 1.0,
             radius_mean=self.radius,

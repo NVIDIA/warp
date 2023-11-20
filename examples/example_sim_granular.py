@@ -44,9 +44,9 @@ class Example:
             cell_x=self.radius * 2.0,
             cell_y=self.radius * 2.0,
             cell_z=self.radius * 2.0,
-            pos=(0.0, 1.0, 0.0),
+            pos=wp.vec3(0.0, 1.0, 0.0),
             rot=wp.quat_identity(),
-            vel=(5.0, 0.0, 0.0),
+            vel=wp.vec3(5.0, 0.0, 0.0),
             mass=0.1,
             jitter=self.radius * 0.1,
         )

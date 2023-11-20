@@ -38,13 +38,13 @@ class Example:
         builder = wp.sim.ModelBuilder()
 
         # anchor
-        builder.add_particle((0.0, 1.0, 0.0), (0.0, 0.0, 0.0), 0.0)
+        builder.add_particle(wp.vec3(0.0, 1.0, 0.0), wp.vec3(0.0, 0.0, 0.0), 0.0)
 
         # chain
         for i in range(1, 10):
             radius = math.sqrt(i) * 0.2
             mass = math.pi * radius * radius * radius
-            builder.add_particle((i, 1.0, 0.0), (0.0, 0.0, 0.0), mass, radius=radius)
+            builder.add_particle(wp.vec3(i, 1.0, 0.0), wp.vec3(0.0, 0.0, 0.0), mass, radius=radius)
             builder.add_spring(i - 1, i, 1.0e6, 0.0, 0)
 
         self.model = builder.finalize()

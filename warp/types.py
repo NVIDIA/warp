@@ -582,11 +582,11 @@ def transformation(dtype=Any):
 
         @property
         def p(self):
-            return self[0:3]
+            return vec3(self[0:3])
 
         @property
         def q(self):
-            return self[3:7]
+            return quat(self[3:7])
 
     return transform_t
 

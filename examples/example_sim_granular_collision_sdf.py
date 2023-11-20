@@ -48,9 +48,9 @@ class Example:
             cell_x=self.radius * 2.0,
             cell_y=self.radius * 2.0,
             cell_z=self.radius * 2.0,
-            pos=(0.0, 20.0, 0.0),
+            pos=wp.vec3(0.0, 20.0, 0.0),
             rot=wp.quat_identity(),
-            vel=(2.0, 0.0, 0.0),
+            vel=wp.vec3(2.0, 0.0, 0.0),
             mass=0.1,
             jitter=self.radius * 0.1,
         )
@@ -67,9 +67,9 @@ class Example:
             mu=0.5,
             sdf=rock_sdf,
             body=-1,
-            pos=(0.0, 0.0, 0.0),
-            rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), -0.5 * math.pi),
-            scale=(0.01, 0.01, 0.01),
+            pos=wp.vec3(0.0, 0.0, 0.0),
+            rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), -0.5 * math.pi),
+            scale=wp.vec3(0.01, 0.01, 0.01),
         )
 
         mins = np.array([-3.0, -3.0, -3.0])
@@ -89,7 +89,7 @@ class Example:
         sphere_vdb = wp.Volume.load_from_numpy(sphere_sdf_np, mins, voxel_size, rad + 3.0 * voxel_size)
         sphere_sdf = wp.sim.SDF(sphere_vdb)
 
-        self.sphere_pos = (3.0, 15.0, 0.0)
+        self.sphere_pos = wp.vec3(3.0, 15.0, 0.0)
         self.sphere_scale = 1.0
         self.sphere_radius = rad
         builder.add_shape_sdf(
@@ -100,7 +100,7 @@ class Example:
             sdf=sphere_sdf,
             body=-1,
             pos=self.sphere_pos,
-            scale=(self.sphere_scale, self.sphere_scale, self.sphere_scale),
+            scale=wp.vec3(self.sphere_scale, self.sphere_scale, self.sphere_scale),
         )
 
         self.model = builder.finalize()
@@ -136,21 +136,21 @@ class Example:
 
             self.renderer.begin_frame(time)
 
-            # Note the extra wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi) is because .usd is oriented differently from .nvdb
+            # Note the extra wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), math.pi) is because .usd is oriented differently from .nvdb
             self.renderer.render_ref(
                 name="collision",
                 path=os.path.join(os.path.dirname(__file__), "assets/rocks.usd"),
-                pos=(0.0, 0.0, 0.0),
-                rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), -0.5 * math.pi)
-                * wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi),
-                scale=(0.01, 0.01, 0.01),
+                pos=wp.vec3(0.0, 0.0, 0.0),
+                rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), -0.5 * math.pi)
+                * wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), math.pi),
+                scale=wp.vec3(0.01, 0.01, 0.01),
             )
 
             self.renderer.render_sphere(
                 name="sphere",
                 pos=self.sphere_pos,
                 radius=self.sphere_scale * self.sphere_radius,
-                rot=(0.0, 0.0, 0.0, 1.0),
+                rot=wp.quat(0.0, 0.0, 0.0, 1.0),
             )
 
             self.renderer.render(self.state_0)

@@ -95,7 +95,7 @@ class Example:
             builder.add_joint_revolute(
                 parent=parent,
                 child=b,
-                axis=(0.0, 0.0, 1.0),
+                axis=wp.vec3(0.0, 0.0, 1.0),
                 parent_xform=parent_joint_xform,
                 child_xform=wp.transform_identity(),
                 limit_lower=-np.deg2rad(60.0),
@@ -108,12 +108,12 @@ class Example:
 
             if i == chain_length - 1:
                 # create end effector
-                builder.add_shape_sphere(pos=(0.0, 0.0, 0.0), radius=0.1, density=10.0, body=b)
+                builder.add_shape_sphere(pos=wp.vec3(0.0, 0.0, 0.0), radius=0.1, density=10.0, body=b)
 
             else:
                 # create shape
                 builder.add_shape_box(
-                    pos=(chain_width * 0.5, 0.0, 0.0), hx=chain_width * 0.5, hy=0.1, hz=0.1, density=10.0, body=b
+                    pos=wp.vec3(chain_width * 0.5, 0.0, 0.0), hx=chain_width * 0.5, hy=0.1, hz=0.1, density=10.0, body=b
                 )
 
         # finalize model
