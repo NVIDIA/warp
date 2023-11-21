@@ -1,3 +1,4 @@
+import unittest
 import numpy as np
 import warp as wp
 
@@ -46,6 +47,14 @@ def make_test_array_sum_axis(dtype):
             assert_np_equal(vsum.numpy() / N, ref_vsum / N, 0.0001)
 
     return test_array_sum
+
+
+def test_array_sum_empty(test, device):
+    values = wp.array([], device=device, dtype=wp.vec2)
+    assert_np_equal(array_sum(values), np.zeros(2))
+
+    values = wp.array([], shape=(0, 3), device=device, dtype=float)
+    assert_np_equal(array_sum(values, axis=0).numpy(), np.zeros(3))
 
 
 def make_test_array_inner(dtype):
@@ -101,6 +110,14 @@ def make_test_array_inner_axis(dtype):
     return test_array_inner
 
 
+def test_array_inner_empty(test, device):
+    values = wp.array([], device=device, dtype=wp.vec2)
+    test.assertEqual(array_inner(values, values), 0.0)
+
+    values = wp.array([], shape=(0, 3), device=device, dtype=float)
+    assert_np_equal(array_inner(values, values, axis=0).numpy(), np.zeros(3))
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -110,15 +127,18 @@ def register(parent):
     add_function_test(TestArraySym, "test_array_sum_double", make_test_array_sum(wp.float64), devices=devices)
     add_function_test(TestArraySym, "test_array_sum_vec3", make_test_array_sum(wp.vec3), devices=devices)
     add_function_test(TestArraySym, "test_array_sum_axis_float", make_test_array_sum_axis(wp.float32), devices=devices)
+    add_function_test(TestArraySym, "test_array_sum_empty", test_array_sum_empty, devices=devices)
     add_function_test(TestArraySym, "test_array_inner_double", make_test_array_inner(wp.float64), devices=devices)
     add_function_test(TestArraySym, "test_array_inner_vec3", make_test_array_inner(wp.vec3), devices=devices)
     add_function_test(
         TestArraySym, "test_array_inner_axis_float", make_test_array_inner_axis(wp.float32), devices=devices
     )
+    add_function_test(TestArraySym, "test_array_inner_empty", test_array_inner_empty, devices=devices)
 
     return TestArraySym
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

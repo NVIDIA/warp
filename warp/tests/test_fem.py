@@ -5,23 +5,28 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import math
+import unittest
+
 import numpy as np
 import warp as wp
 from warp.tests.test_base import *
 
 
 from warp.fem import Field, Sample, Domain, Coords
-from warp.fem import Grid2D, Grid3D, Trimesh2D, Tetmesh
+from warp.fem import Grid2D, Grid3D, Trimesh2D, Tetmesh, Quadmesh2D, Hexmesh, Geometry
 from warp.fem import make_polynomial_space, SymmetricTensorMapper, SkewSymmetricTensorMapper
 from warp.fem import make_test
-from warp.fem import Cells, BoundarySides
-from warp.fem import integrate
+from warp.fem import Cells, Sides, BoundarySides
+from warp.fem import integrate, interpolate
 from warp.fem import integrand, div, grad, curl, D, normal
 from warp.fem import RegularQuadrature, Polynomial
+from warp.fem.types import make_free_sample
 from warp.fem.geometry.closest_point import project_on_tri_at_origin, project_on_tet_at_origin
+from warp.fem.geometry import DeformedGeometry
 from warp.fem.space import shape
 from warp.fem.cache import dynamic_kernel
-from warp.fem.utils import grid_to_tets, grid_to_tris
+from warp.fem.utils import grid_to_tets, grid_to_tris, grid_to_quads, grid_to_hexes
 
 wp.init()
 
@@ -100,9 +105,17 @@ def test_vector_divergence_theorem(test_case, device):
 
         interior_quadrature = RegularQuadrature(domain=interior, order=vector_space.degree)
         boundary_quadrature = RegularQuadrature(domain=boundary, order=vector_space.degree)
-        div_int = integrate(vector_divergence_form, quadrature=interior_quadrature, fields={"u": u, "q": constant_one})
+        div_int = integrate(
+            vector_divergence_form,
+            quadrature=interior_quadrature,
+            fields={"u": u, "q": constant_one},
+            kernel_options={"enable_backward": False},
+        )
         boundary_int = integrate(
-            vector_boundary_form, quadrature=boundary_quadrature, fields={"u": u.trace(), "q": constant_one.trace()}
+            vector_boundary_form,
+            quadrature=boundary_quadrature,
+            fields={"u": u.trace(), "q": constant_one.trace()},
+            kernel_options={"enable_backward": False},
         )
 
         test_case.assertAlmostEqual(div_int, boundary_int, places=5)
@@ -113,10 +126,23 @@ def test_vector_divergence_theorem(test_case, device):
 
         interior_quadrature = RegularQuadrature(domain=interior, order=vector_space.degree + scalar_space.degree)
         boundary_quadrature = RegularQuadrature(domain=boundary, order=vector_space.degree + scalar_space.degree)
-        div_int = integrate(vector_divergence_form, quadrature=interior_quadrature, fields={"u": u, "q": q})
-        grad_int = integrate(vector_grad_form, quadrature=interior_quadrature, fields={"u": u, "q": q})
+        div_int = integrate(
+            vector_divergence_form,
+            quadrature=interior_quadrature,
+            fields={"u": u, "q": q},
+            kernel_options={"enable_backward": False},
+        )
+        grad_int = integrate(
+            vector_grad_form,
+            quadrature=interior_quadrature,
+            fields={"u": u, "q": q},
+            kernel_options={"enable_backward": False},
+        )
         boundary_int = integrate(
-            vector_boundary_form, quadrature=boundary_quadrature, fields={"u": u.trace(), "q": q.trace()}
+            vector_boundary_form,
+            quadrature=boundary_quadrature,
+            fields={"u": u.trace(), "q": q.trace()},
+            kernel_options={"enable_backward": False},
         )
 
         test_case.assertAlmostEqual(div_int + grad_int, boundary_int, places=5)
@@ -161,10 +187,16 @@ def test_tensor_divergence_theorem(test_case, device):
         interior_quadrature = RegularQuadrature(domain=interior, order=tensor_space.degree)
         boundary_quadrature = RegularQuadrature(domain=boundary, order=tensor_space.degree)
         div_int = integrate(
-            tensor_divergence_form, quadrature=interior_quadrature, fields={"tau": tau, "v": constant_vec}
+            tensor_divergence_form,
+            quadrature=interior_quadrature,
+            fields={"tau": tau, "v": constant_vec},
+            kernel_options={"enable_backward": False},
         )
         boundary_int = integrate(
-            tensor_boundary_form, quadrature=boundary_quadrature, fields={"tau": tau.trace(), "v": constant_vec.trace()}
+            tensor_boundary_form,
+            quadrature=boundary_quadrature,
+            fields={"tau": tau.trace(), "v": constant_vec.trace()},
+            kernel_options={"enable_backward": False},
         )
 
         test_case.assertAlmostEqual(div_int, boundary_int, places=5)
@@ -175,10 +207,23 @@ def test_tensor_divergence_theorem(test_case, device):
 
         interior_quadrature = RegularQuadrature(domain=interior, order=tensor_space.degree + vector_space.degree)
         boundary_quadrature = RegularQuadrature(domain=boundary, order=tensor_space.degree + vector_space.degree)
-        div_int = integrate(tensor_divergence_form, quadrature=interior_quadrature, fields={"tau": tau, "v": v})
-        grad_int = integrate(tensor_grad_form, quadrature=interior_quadrature, fields={"tau": tau, "v": v})
+        div_int = integrate(
+            tensor_divergence_form,
+            quadrature=interior_quadrature,
+            fields={"tau": tau, "v": v},
+            kernel_options={"enable_backward": False},
+        )
+        grad_int = integrate(
+            tensor_grad_form,
+            quadrature=interior_quadrature,
+            fields={"tau": tau, "v": v},
+            kernel_options={"enable_backward": False},
+        )
         boundary_int = integrate(
-            tensor_boundary_form, quadrature=boundary_quadrature, fields={"tau": tau.trace(), "v": v.trace()}
+            tensor_boundary_form,
+            quadrature=boundary_quadrature,
+            fields={"tau": tau.trace(), "v": v.trace()},
+            kernel_options={"enable_backward": False},
         )
 
         test_case.assertAlmostEqual(div_int + grad_int, boundary_int, places=5)
@@ -220,6 +265,17 @@ def _gen_trimesh(N):
     return wp.array(positions, dtype=wp.vec2), wp.array(vidx, dtype=int)
 
 
+def _gen_quadmesh(N):
+    x = np.linspace(0.0, 1.0, N + 1)
+    y = np.linspace(0.0, 1.0, N + 1)
+
+    positions = np.transpose(np.meshgrid(x, y, indexing="ij")).reshape(-1, 2)
+
+    vidx = grid_to_quads(N, N)
+
+    return wp.array(positions, dtype=wp.vec2), wp.array(vidx, dtype=int)
+
+
 def _gen_tetmesh(N):
     x = np.linspace(0.0, 1.0, N + 1)
     y = np.linspace(0.0, 1.0, N + 1)
@@ -230,6 +286,129 @@ def _gen_tetmesh(N):
     vidx = grid_to_tets(N, N, N)
 
     return wp.array(positions, dtype=wp.vec3), wp.array(vidx, dtype=int)
+
+
+def _gen_hexmesh(N):
+    x = np.linspace(0.0, 1.0, N + 1)
+    y = np.linspace(0.0, 1.0, N + 1)
+    z = np.linspace(0.0, 1.0, N + 1)
+
+    positions = np.transpose(np.meshgrid(x, y, z, indexing="ij")).reshape(-1, 3)
+
+    vidx = grid_to_hexes(N, N, N)
+
+    return wp.array(positions, dtype=wp.vec3), wp.array(vidx, dtype=int)
+
+
+def _launch_test_geometry_kernel(geo: Geometry, device):
+    @dynamic_kernel(suffix=geo.name, kernel_options={"enable_backward": False})
+    def test_geo_cells_kernel(
+        cell_arg: geo.CellArg,
+        qps: wp.array(dtype=Coords),
+        qp_weights: wp.array(dtype=float),
+        cell_measures: wp.array(dtype=float),
+    ):
+        cell_index, q = wp.tid()
+
+        coords = qps[q]
+        s = make_free_sample(cell_index, coords)
+
+        wp.atomic_add(cell_measures, cell_index, geo.cell_measure(cell_arg, s) * qp_weights[q])
+
+    REF_MEASURE = geo.reference_side().measure()
+
+    @dynamic_kernel(suffix=geo.name, kernel_options={"enable_backward": False, "max_unroll": 1})
+    def test_geo_sides_kernel(
+        side_arg: geo.SideArg,
+        qps: wp.array(dtype=Coords),
+        qp_weights: wp.array(dtype=float),
+        side_measures: wp.array(dtype=float),
+    ):
+        side_index, q = wp.tid()
+
+        coords = qps[q]
+        s = make_free_sample(side_index, coords)
+
+        cell_arg = geo.side_to_cell_arg(side_arg)
+        inner_cell_index = geo.side_inner_cell_index(side_arg, side_index)
+        outer_cell_index = geo.side_outer_cell_index(side_arg, side_index)
+        inner_cell_coords = geo.side_inner_cell_coords(side_arg, side_index, coords)
+        outer_cell_coords = geo.side_outer_cell_coords(side_arg, side_index, coords)
+
+        inner_s = make_free_sample(inner_cell_index, inner_cell_coords)
+        outer_s = make_free_sample(outer_cell_index, outer_cell_coords)
+
+        pos_side = geo.side_position(side_arg, s)
+        pos_inner = geo.cell_position(cell_arg, inner_s)
+        pos_outer = geo.cell_position(cell_arg, outer_s)
+
+        for k in range(type(pos_side).length):
+            wp.expect_near(pos_side[k], pos_inner[k], 0.0001)
+            wp.expect_near(pos_side[k], pos_outer[k], 0.0001)
+
+        inner_side_coords = geo.side_from_cell_coords(side_arg, side_index, inner_cell_index, inner_cell_coords)
+        outer_side_coords = geo.side_from_cell_coords(side_arg, side_index, outer_cell_index, outer_cell_coords)
+
+        wp.expect_near(coords, inner_side_coords, 0.0001)
+        wp.expect_near(coords, outer_side_coords, 0.0001)
+
+        vol = geo.side_measure(side_arg, s)
+        wp.atomic_add(side_measures, side_index, vol * qp_weights[q])
+
+        # test consistency of side normal, measure, and deformation gradient
+        F = geo.side_deformation_gradient(side_arg, s)
+        F_det = DeformedGeometry._side_measure(F)
+        wp.expect_near(F_det * REF_MEASURE, vol)
+
+        nor = geo.side_normal(side_arg, s)
+        F_cross = DeformedGeometry._side_normal(F)
+
+        for k in range(type(pos_side).length):
+            wp.expect_near(F_cross[k], nor[k], 0.0001)
+
+    cell_measures = wp.zeros(dtype=float, device=device, shape=geo.cell_count())
+
+    cell_quadrature = RegularQuadrature(Cells(geo), order=2)
+    cell_qps = wp.array(cell_quadrature.points, dtype=Coords, device=device)
+    cell_qp_weights = wp.array(cell_quadrature.weights, dtype=float, device=device)
+
+    wp.launch(
+        kernel=test_geo_cells_kernel,
+        dim=(geo.cell_count(), cell_qps.shape[0]),
+        inputs=[geo.cell_arg_value(device), cell_qps, cell_qp_weights, cell_measures],
+        device=device,
+    )
+
+    side_measures = wp.zeros(dtype=float, device=device, shape=geo.side_count())
+
+    side_quadrature = RegularQuadrature(Sides(geo), order=2)
+    side_qps = wp.array(side_quadrature.points, dtype=Coords, device=device)
+    side_qp_weights = wp.array(side_quadrature.weights, dtype=float, device=device)
+
+    wp.launch(
+        kernel=test_geo_sides_kernel,
+        dim=(geo.side_count(), side_qps.shape[0]),
+        inputs=[geo.side_arg_value(device), side_qps, side_qp_weights, side_measures],
+        device=device,
+    )
+
+    return side_measures, cell_measures
+
+
+def test_grid_2d(test_case, device):
+    N = 3
+
+    geo = Grid2D(res=wp.vec2i(N))
+
+    test_case.assertEqual(geo.cell_count(), N**2)
+    test_case.assertEqual(geo.vertex_count(), (N + 1) ** 2)
+    test_case.assertEqual(geo.side_count(), 2 * (N + 1) * N)
+    test_case.assertEqual(geo.boundary_side_count(), 4 * N)
+
+    side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
+
+    assert_np_equal(side_measures.numpy(), np.full(side_measures.shape, 1.0 / (N)), tol=1.0e-4)
+    assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 1.0 / (N**2)), tol=1.0e-4)
 
 
 def test_triangle_mesh(test_case, device):
@@ -245,6 +424,47 @@ def test_triangle_mesh(test_case, device):
     test_case.assertEqual(geo.side_count(), 2 * (N + 1) * N + (N**2))
     test_case.assertEqual(geo.boundary_side_count(), 4 * N)
 
+    side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
+
+    assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 0.5 / (N**2)), tol=1.0e-4)
+    test_case.assertAlmostEqual(np.sum(side_measures.numpy()), 2 * (N + 1) + N * math.sqrt(2.0), places=4)
+
+
+def test_quad_mesh(test_case, device):
+    N = 3
+
+    with wp.ScopedDevice(device):
+        positions, quad_vidx = _gen_quadmesh(N)
+
+    geo = Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions)
+
+    test_case.assertEqual(geo.cell_count(), N**2)
+    test_case.assertEqual(geo.vertex_count(), (N + 1) ** 2)
+    test_case.assertEqual(geo.side_count(), 2 * (N + 1) * N)
+    test_case.assertEqual(geo.boundary_side_count(), 4 * N)
+
+    side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
+
+    assert_np_equal(side_measures.numpy(), np.full(side_measures.shape, 1.0 / (N)), tol=1.0e-4)
+    assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 1.0 / (N**2)), tol=1.0e-4)
+
+
+def test_grid_3d(test_case, device):
+    N = 3
+
+    geo = Grid3D(res=wp.vec3i(N))
+
+    test_case.assertEqual(geo.cell_count(), (N) ** 3)
+    test_case.assertEqual(geo.vertex_count(), (N + 1) ** 3)
+    test_case.assertEqual(geo.side_count(), 3 * (N + 1) * N**2)
+    test_case.assertEqual(geo.boundary_side_count(), 6 * N * N)
+    test_case.assertEqual(geo.edge_count(), 3 * N * (N + 1) ** 2)
+
+    side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
+
+    assert_np_equal(side_measures.numpy(), np.full(side_measures.shape, 1.0 / (N**2)), tol=1.0e-4)
+    assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 1.0 / (N**3)), tol=1.0e-4)
+
 
 def test_tet_mesh(test_case, device):
     N = 3
@@ -258,6 +478,103 @@ def test_tet_mesh(test_case, device):
     test_case.assertEqual(geo.vertex_count(), (N + 1) ** 3)
     test_case.assertEqual(geo.side_count(), 6 * (N + 1) * N**2 + (N**3) * 4)
     test_case.assertEqual(geo.boundary_side_count(), 12 * N * N)
+    test_case.assertEqual(geo.edge_count(), 3 * N * (N + 1) * (2 * N + 1))
+
+    side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
+
+    test_case.assertAlmostEqual(np.sum(cell_measures.numpy()), 1.0, places=4)
+    test_case.assertAlmostEqual(np.sum(side_measures.numpy()), 0.5 * 6 * (N + 1) + N * 2 * math.sqrt(3.0), places=4)
+
+
+def test_hex_mesh(test_case, device):
+    N = 3
+
+    with wp.ScopedDevice(device):
+        positions, tet_vidx = _gen_hexmesh(N)
+
+    geo = Hexmesh(hex_vertex_indices=tet_vidx, positions=positions)
+
+    test_case.assertEqual(geo.cell_count(), (N) ** 3)
+    test_case.assertEqual(geo.vertex_count(), (N + 1) ** 3)
+    test_case.assertEqual(geo.side_count(), 3 * (N + 1) * N**2)
+    test_case.assertEqual(geo.boundary_side_count(), 6 * N * N)
+    test_case.assertEqual(geo.edge_count(), 3 * N * (N + 1) ** 2)
+
+    side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
+
+    assert_np_equal(side_measures.numpy(), np.full(side_measures.shape, 1.0 / (N**2)), tol=1.0e-4)
+    assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 1.0 / (N**3)), tol=1.0e-4)
+
+
+@integrand
+def _rigid_deformation_field(s: Sample, domain: Domain, translation: wp.vec3, rotation: wp.vec3, scale: float):
+    q = wp.quat_from_axis_angle(wp.normalize(rotation), wp.length(rotation))
+    return translation + scale * wp.quat_rotate(q, domain(s)) - domain(s)
+
+
+def test_deformed_geometry(test_case, device):
+    N = 3
+
+    with wp.ScopedDevice(device):
+        positions, tet_vidx = _gen_tetmesh(N)
+
+    geo = Tetmesh(tet_vertex_indices=tet_vidx, positions=positions)
+
+    translation = [1.0, 2.0, 3.0]
+    rotation = [0.0, math.pi / 4.0, 0.0]
+    scale = 2.0
+
+    vector_space = make_polynomial_space(geo, dtype=wp.vec3, degree=2)
+    pos_field = vector_space.make_field()
+    interpolate(
+        _rigid_deformation_field,
+        dest=pos_field,
+        values={"translation": translation, "rotation": rotation, "scale": scale},
+    )
+
+    deformed_geo = pos_field.make_deformed_geometry()
+
+    # rigidly-deformed geometry
+
+    test_case.assertEqual(geo.cell_count(), 5 * (N) ** 3)
+    test_case.assertEqual(geo.vertex_count(), (N + 1) ** 3)
+    test_case.assertEqual(geo.side_count(), 6 * (N + 1) * N**2 + (N**3) * 4)
+    test_case.assertEqual(geo.boundary_side_count(), 12 * N * N)
+
+    side_measures, cell_measures = _launch_test_geometry_kernel(deformed_geo, device)
+
+    test_case.assertAlmostEqual(np.sum(cell_measures.numpy()), scale**3, places=4)
+    test_case.assertAlmostEqual(
+        np.sum(side_measures.numpy()), scale**2 * (0.5 * 6 * (N + 1) + N * 2 * math.sqrt(3.0)), places=4
+    )
+
+    @wp.kernel
+    def _test_deformed_geometry_normal(
+        geo_index_arg: geo.SideIndexArg, geo_arg: geo.SideArg, def_arg: deformed_geo.SideArg, rotation: wp.vec3
+    ):
+        i = wp.tid()
+        side_index = deformed_geo.boundary_side_index(geo_index_arg, i)
+
+        s = make_free_sample(side_index, Coords(0.5, 0.5, 0.0))
+        geo_n = geo.side_normal(geo_arg, s)
+        def_n = deformed_geo.side_normal(def_arg, s)
+
+        q = wp.quat_from_axis_angle(wp.normalize(rotation), wp.length(rotation))
+        wp.expect_near(wp.quat_rotate(q, geo_n), def_n, 0.001)
+
+    wp.launch(
+        _test_deformed_geometry_normal,
+        dim=geo.boundary_side_count(),
+        device=device,
+        inputs=[
+            geo.side_index_arg_value(device),
+            geo.side_arg_value(device),
+            deformed_geo.side_arg_value(device),
+            rotation,
+        ],
+    )
+
+    wp.synchronize()
 
 
 @wp.kernel
@@ -447,7 +764,7 @@ def test_shape_function_weight(test_case, shape: shape.ShapeFunction, coord_samp
     node_coords_fn = shape.make_node_coords_in_element()
 
     # Weight at node should be 1
-    @dynamic_kernel(suffix=shape.name)
+    @dynamic_kernel(suffix=shape.name, kernel_options={"enable_backward": False})
     def node_unity_test():
         n = wp.tid()
         node_w = weight_fn(node_coords_fn(n), n)
@@ -459,7 +776,7 @@ def test_shape_function_weight(test_case, shape: shape.ShapeFunction, coord_samp
     # Sum of weighted quadrature coords should be element center (order 1)
     node_quadrature_weight_fn = shape.make_node_quadrature_weight()
 
-    @dynamic_kernel(suffix=shape.name)
+    @dynamic_kernel(suffix=shape.name, kernel_options={"enable_backward": False})
     def node_quadrature_unity_test():
         sum_node_qp = float(0.0)
         sum_node_qp_coords = Coords(0.0)
@@ -474,7 +791,7 @@ def test_shape_function_weight(test_case, shape: shape.ShapeFunction, coord_samp
 
     wp.launch(node_quadrature_unity_test, dim=1, inputs=[])
 
-    @dynamic_kernel(suffix=shape.name)
+    @dynamic_kernel(suffix=shape.name, kernel_options={"enable_backward": False})
     def partition_of_unity_test():
         rng_state = wp.rand_init(4321, wp.tid())
         coords = coord_sampler(rng_state)
@@ -498,7 +815,7 @@ def test_shape_function_trace(test_case, shape: shape.ShapeFunction, CENTER_COOR
     # Sum of weighted quadrature coords should be element center (order 1)
     trace_node_quadrature_weight_fn = shape.make_trace_node_quadrature_weight()
 
-    @dynamic_kernel(suffix=shape.name)
+    @dynamic_kernel(suffix=shape.name, kernel_options={"enable_backward": False})
     def trace_node_quadrature_unity_test():
         sum_node_qp = float(0.0)
         sum_node_qp_coords = Coords(0.0)
@@ -521,7 +838,7 @@ def test_shape_function_gradient(test_case, shape: shape.ShapeFunction, coord_sa
     weight_fn = shape.make_element_inner_weight()
     weight_gradient_fn = shape.make_element_inner_weight_gradient()
 
-    @dynamic_kernel(suffix=shape.name)
+    @dynamic_kernel(suffix=shape.name, kernel_options={"enable_backward": False})
     def finite_difference_test():
         i, n = wp.tid()
         rng_state = wp.rand_init(1234, i)
@@ -531,15 +848,15 @@ def test_shape_function_gradient(test_case, shape: shape.ShapeFunction, coord_sa
         epsilon = 0.003
         param_delta, coords_delta = coord_delta_sampler(epsilon, rng_state)
 
-        wp = weight_fn(coords + coords_delta, n)
-        wm = weight_fn(coords - coords_delta, n)
+        w_p = weight_fn(coords + coords_delta, n)
+        w_m = weight_fn(coords - coords_delta, n)
 
         gp = weight_gradient_fn(coords + coords_delta, n)
         gm = weight_gradient_fn(coords - coords_delta, n)
 
         # 2nd-order finite-difference test
         # See Schroeder 2019, Practical course on computing derivatives in code
-        delta_ref = wp - wm
+        delta_ref = w_p - w_m
         delta_est = wp.dot(gp + gm, param_delta)
 
         # wp.printf("%d %f %f \n", n, delta_ref, delta_est)
@@ -690,8 +1007,8 @@ def test_tri_shape_functions(test_case, device):
     test_shape_function_weight(test_case, P_2d, tri_coord_sampler, TRI_CENTER_COORDS)
     test_shape_function_weight(test_case, P_3d, tri_coord_sampler, TRI_CENTER_COORDS)
     test_shape_function_gradient(test_case, P_1d, tri_coord_sampler, tri_coord_delta_sampler)
-    # test_shape_function_gradient(test_case, P_2d, tri_coord_sampler, tri_coord_delta_sampler)
-    # test_shape_function_gradient(test_case, P_3d, tri_coord_sampler, tri_coord_delta_sampler)
+    test_shape_function_gradient(test_case, P_2d, tri_coord_sampler, tri_coord_delta_sampler)
+    test_shape_function_gradient(test_case, P_3d, tri_coord_sampler, tri_coord_delta_sampler)
 
     wp.synchronize()
 
@@ -749,8 +1066,13 @@ def register(parent):
     add_function_test(TestFem, "test_integrate_gradient", test_integrate_gradient, devices=devices)
     add_function_test(TestFem, "test_vector_divergence_theorem", test_vector_divergence_theorem, devices=devices)
     add_function_test(TestFem, "test_tensor_divergence_theorem", test_tensor_divergence_theorem, devices=devices)
+    add_function_test(TestFem, "test_grid_2d", test_grid_2d, devices=devices)
     add_function_test(TestFem, "test_triangle_mesh", test_triangle_mesh, devices=devices)
+    add_function_test(TestFem, "test_quad_mesh", test_quad_mesh, devices=devices)
+    add_function_test(TestFem, "test_grid_3d", test_grid_3d, devices=devices)
     add_function_test(TestFem, "test_tet_mesh", test_tet_mesh, devices=devices)
+    add_function_test(TestFem, "test_hex_mesh", test_hex_mesh, devices=devices)
+    add_function_test(TestFem, "test_deformed_geometry", test_deformed_geometry, devices=devices)
     add_function_test(TestFem, "test_dof_mapper", test_dof_mapper)
     add_function_test(TestFem, "test_square_shape_functions", test_square_shape_functions)
     add_function_test(TestFem, "test_cube_shape_functions", test_cube_shape_functions)
@@ -761,5 +1083,6 @@ def register(parent):
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

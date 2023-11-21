@@ -44,8 +44,11 @@ class UsdEnvironment(Environment):
     plot_body_coords = False
 
     def create_articulation(self, builder):
-        settings = wp.sim.parse_usd(
+        usd_filename = wp.sim.resolve_usd_from_url(
             "http://omniverse-content-staging.s3-us-west-2.amazonaws.com/Assets/Isaac/2022.2.1/Isaac/Robots/Franka/franka_instanceable.usd",
+            target_folder_name=".panda_usd_files")
+        settings = wp.sim.parse_usd(
+            usd_filename,
             builder,
             default_thickness=0.01,
             # ignore collision meshes from Franka robot

@@ -85,9 +85,10 @@ class TestField(SpaceField):
                 s.element_coords,
                 get_node_index_in_element(s.test_dof),
             )
+            grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
             return utils.generalized_outer(
                 self.space.unit_dof_value(args.elt_arg, args.eval_arg, s.test_dof),
-                nabla_weight,
+                utils.apply_right(nabla_weight, grad_transform),
             )
 
         return eval_nabla_test_inner
@@ -105,9 +106,10 @@ class TestField(SpaceField):
                 s.element_coords,
                 get_node_index_in_element(s.test_dof),
             )
+            grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
             return utils.generalized_inner(
                 self.space.unit_dof_value(args.elt_arg, args.eval_arg, s.test_dof),
-                nabla_weight,
+                utils.apply_right(nabla_weight, grad_transform),
             )
 
         return eval_div_test_inner
@@ -139,9 +141,10 @@ class TestField(SpaceField):
                 s.element_coords,
                 get_node_index_in_element(s.test_dof),
             )
+            grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
             return utils.generalized_outer(
                 self.space.unit_dof_value(args.elt_arg, args.eval_arg, s.test_dof),
-                nabla_weight,
+                utils.apply_right(nabla_weight, grad_transform),
             )
 
         return eval_nabla_test_outer
@@ -159,9 +162,10 @@ class TestField(SpaceField):
                 s.element_coords,
                 get_node_index_in_element(s.test_dof),
             )
+            grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
             return utils.generalized_inner(
                 self.space.unit_dof_value(args.elt_arg, args.eval_arg, s.test_dof),
-                nabla_weight,
+                utils.apply_right(nabla_weight, grad_transform),
             )
 
         return eval_div_test_outer

@@ -17,12 +17,14 @@ from warp.fem.utils import array_axpy
 # Make sure that works both when imported as module and run as standalone file
 try:
     from .bsr_utils import bsr_cg
-    from .mesh_utils import gen_trimesh
+    from .mesh_utils import gen_trimesh, gen_quadmesh
     from .plot_utils import Plot
 except ImportError:
     from bsr_utils import bsr_cg
-    from mesh_utils import gen_trimesh
+    from mesh_utils import gen_trimesh, gen_quadmesh
     from plot_utils import Plot
+
+wp.set_module_options({"enable_backward": False})
 
 
 @fem.integrand
@@ -72,7 +74,7 @@ class Example:
     parser.add_argument("--viscosity", type=float, default=2.0)
     parser.add_argument("--boundary_value", type=float, default=5.0)
     parser.add_argument("--boundary_compliance", type=float, default=0, help="Dirichlet boundary condition compliance")
-    parser.add_argument("--tri_mesh", action="store_true", help="Use a triangular mesh")
+    parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type")
 
     def __init__(self, stage=None, quiet=False, args=None, **kwargs):
         if args is None:
@@ -83,9 +85,12 @@ class Example:
         self._quiet = quiet
 
         # Grid or triangle mesh geometry
-        if args.tri_mesh:
+        if args.mesh == "tri":
             positions, tri_vidx = gen_trimesh(res=wp.vec2i(args.resolution))
             self._geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
+        elif args.mesh == "quad":
+            positions, quad_vidx = gen_quadmesh(res=wp.vec2i(args.resolution))
+            self._geo = fem.Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions)
         else:
             self._geo = fem.Grid2D(res=wp.vec2i(args.resolution))
 
@@ -146,7 +151,6 @@ class Example:
 
 if __name__ == "__main__":
     wp.init()
-    wp.set_module_options({"enable_backward": False})
 
     args = Example.parser.parse_args()
 

@@ -6,7 +6,7 @@ from warp.fem.polynomial import Polynomial, is_closed
 from warp.fem.geometry import Grid3D
 from warp.fem import cache
 
-from .topology import SpaceTopology, DiscontinuousSpaceTopologyMixin
+from .topology import SpaceTopology, DiscontinuousSpaceTopologyMixin, forward_base_topology
 from .basis_space import BasisSpace, TraceBasisSpace
 
 from .shape import ShapeFunction, ConstantShapeFunction
@@ -58,7 +58,10 @@ class Grid3DPiecewiseConstantBasis(Grid3DBasisSpace):
         topology = Grid3DDiscontinuousSpaceTopology(grid, shape)
         super().__init__(shape=shape, topology=topology)
 
-    def node_grid(self):
+        if isinstance(grid, Grid3D):
+            self.node_grid = self._node_grid
+
+    def _node_grid(self):
         X = (np.arange(0, self.geometry.res[0], dtype=float) + 0.5) * self._grid.cell_size[0] + self._grid.bounds_lo[0]
         Y = (np.arange(0, self.geometry.res[1], dtype=float) + 0.5) * self._grid.cell_size[1] + self._grid.bounds_lo[1]
         Z = (np.arange(0, self.geometry.res[2], dtype=float) + 0.5) * self._grid.cell_size[2] + self._grid.bounds_lo[2]
@@ -136,11 +139,14 @@ class GridTripolynomialBasisSpace(Grid3DBasisSpace):
             raise ValueError("A closed polynomial family is required to define a continuous function space")
 
         shape = CubeTripolynomialShapeFunctions(degree, family=family)
-        topology = GridTripolynomialSpaceTopology(grid, shape)
+        topology = forward_base_topology(GridTripolynomialSpaceTopology, grid, shape)
 
         super().__init__(topology, shape)
 
-    def node_grid(self):
+        if isinstance(grid, Grid3D):
+            self.node_grid = self._node_grid
+
+    def _node_grid(self):
         res = self._grid.res
 
         cell_coords = np.array(self._shape.LOBATTO_COORDS)[:-1]
@@ -267,7 +273,7 @@ class Grid3DSerendipityBasisSpace(Grid3DBasisSpace):
             family = Polynomial.LOBATTO_GAUSS_LEGENDRE
 
         shape = CubeSerendipityShapeFunctions(degree, family=family)
-        topology = Grid3DSerendipitySpaceTopology(grid, shape=shape)
+        topology = forward_base_topology(Grid3DSerendipitySpaceTopology, grid, shape=shape)
 
         super().__init__(topology=topology, shape=shape)
 

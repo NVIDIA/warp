@@ -1,5 +1,6 @@
 import numpy as np
 import warp as wp
+import unittest
 
 from warp.sparse import bsr_zeros, bsr_set_from_triplets, bsr_get_diag, bsr_diag, bsr_identity, bsr_copy, bsr_scale
 from warp.sparse import bsr_set_transpose, bsr_transposed
@@ -91,6 +92,15 @@ def test_bsr_from_triplets(test, device):
 
     assert_np_equal(res, ref, 0.0001)
 
+    # test zero-length inputs
+    bsr_set_from_triplets(
+        bsr,
+        wp.array([], dtype=int, device=device),
+        wp.array([], dtype=int, device=device),
+        wp.array([], shape=(0, block_shape[0], block_shape[1]), dtype=float, device=device),
+    )
+    test.assertEqual(bsr.nnz, 0)
+
 
 def test_bsr_get_set_diag(test, device):
     rng = np.random.default_rng(123)
@@ -154,6 +164,8 @@ def test_bsr_get_set_diag(test, device):
 
 def make_test_bsr_transpose(block_shape, scalar_type):
     def test_bsr_transpose(test, device):
+        rng = np.random.default_rng(123)
+
         nrow = 4
         ncol = 5
         nnz = 6
@@ -161,7 +173,7 @@ def make_test_bsr_transpose(block_shape, scalar_type):
         rows = wp.array([0, 1, 2, 3, 2, 1], dtype=int, device=device)
         cols = wp.array([1, 4, 1, 3, 0, 2], dtype=int, device=device)
 
-        vals_np = np.random.rand(nnz, block_shape[0], block_shape[1])
+        vals_np = rng.random(size=(nnz, block_shape[0], block_shape[1]))
         vals = wp.array(vals_np, dtype=scalar_type, device=device).reshape((nnz, block_shape[0], block_shape[1]))
 
         bsr = bsr_zeros(nrow, ncol, wp.types.matrix(shape=block_shape, dtype=scalar_type), device=device)
@@ -396,7 +408,7 @@ def make_test_bsr_mv(block_shape, scalar_type):
         A.ncol = A.ncol + 1
         with test.assertRaisesRegex(ValueError, "Number of columns"):
             bsr_mv(A, x, y)
-        
+
         A.ncol = A.ncol - 1
         A.nrow = A.nrow - 1
         with test.assertRaisesRegex(ValueError, "Number of rows"):
@@ -440,5 +452,6 @@ def register(parent):
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

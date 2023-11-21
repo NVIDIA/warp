@@ -103,7 +103,7 @@ def test_volume_sample_grad_local_f_linear_values(
 
     grad = wp.vec3(0.0, 0.0, 0.0)
     val = wp.volume_sample_grad_f(volume, p, wp.Volume.LINEAR, grad)
-    
+
     if case_num == 1:
         val = grad[0]
     elif case_num == 2:
@@ -111,7 +111,6 @@ def test_volume_sample_grad_local_f_linear_values(
     elif case_num == 3:
         val = grad[2]
     values[tid] = val
-
 
 
 @wp.kernel
@@ -134,7 +133,7 @@ def test_volume_sample_grad_world_f_linear_values(
 
     grad = wp.vec3(0.0, 0.0, 0.0)
     val = wp.volume_sample_grad_f(volume, p, wp.Volume.LINEAR, grad)
-    
+
     if case_num == 1:
         val = grad[0]
     elif case_num == 2:
@@ -622,10 +621,8 @@ def register(parent):
                     np.testing.assert_equal([0.25] * 3, voxel_size)
 
         def test_volume_from_numpy(self):
-
             # Volume.allocate_from_tiles() is only available with CUDA
             if wp.is_cuda_available():
-
                 mins = np.array([-3.0, -3.0, -3.0])
                 voxel_size = 0.2
                 maxs = np.array([3.0, 3.0, 3.0])
@@ -722,6 +719,7 @@ def register(parent):
 
 
 if __name__ == "__main__":
+    wp.build.clear_kernel_cache()
     wp.force_load()
-    c = register(unittest.TestCase)
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

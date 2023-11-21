@@ -5,7 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import unittest
+import ctypes
+import ctypes.util
 import os
 import sys
 
@@ -17,6 +18,15 @@ import warp as wp
 #   "unique" - run on CPU and all unique GPU arches
 #   "all" - run on all devices
 test_mode = "basic"
+
+try:
+    if sys.platform == "win32":
+        LIBC = ctypes.CDLL("ucrtbase.dll")
+    else:
+        LIBC = ctypes.CDLL(ctypes.util.find_library("c"))
+except OSError:
+    print("Failed to load the standard C library")
+    LIBC = None
 
 
 def get_test_devices(mode=None):
@@ -57,6 +67,12 @@ def get_test_devices(mode=None):
 # redirects and captures all stdout output (including from C-libs)
 class StdOutCapture:
     def begin(self):
+        # Flush the stream buffers managed by libc.
+        # This is needed at the moment due to Carbonite not flushing the logs
+        # being printed out when extensions are starting up.
+        if LIBC is not None:
+            LIBC.fflush(None)
+
         # save original
         self.saved = sys.stdout
         self.target = os.dup(self.saved.fileno())

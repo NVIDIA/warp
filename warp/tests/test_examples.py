@@ -50,7 +50,6 @@ def register(parent):
 
     # TODO: Test CPU and GPU versions
     if wp.is_cuda_available():
-        
         add_example_test(TestExamples, name="example_dem", options={})
         add_example_test(TestExamples, name="example_diffray", options={})
         add_example_test(TestExamples, name="example_fluid", options={})
@@ -64,7 +63,7 @@ def register(parent):
         add_example_test(TestExamples, name="example_sim_cartpole", options={})
         add_example_test(TestExamples, name="example_sim_cloth", options={})
         add_example_test(TestExamples, name="example_sim_fk_grad", options={})
-        #add_example_test(TestExamples, name="example_sim_fk_grad_torch", options={})   # disabling due to failure on TC machines that have torch but not CUDA torch
+        # add_example_test(TestExamples, name="example_sim_fk_grad_torch", options={})   # disabling due to failure on TC machines that have torch but not CUDA torch
         add_example_test(TestExamples, name="example_sim_grad_bounce", options={})
         add_example_test(TestExamples, name="example_sim_grad_cloth", options={})
         add_example_test(TestExamples, name="example_sim_granular", options={})
@@ -88,16 +87,21 @@ def register(parent):
     add_example_test(
         TestExamples,
         name="fem.example_diffusion",
-        options={"quiet": True, "resolution": 10, "tri_mesh": True, "num_frames": 1},
+        options={"quiet": True, "resolution": 10, "mesh": "tri", "num_frames": 1},
     )
     add_example_test(
         TestExamples, name="fem.example_diffusion_3d", options={"quiet": True, "resolution": 10, "num_frames": 1}
+    )
+    add_example_test(
+        TestExamples,
+        name="fem.example_deformed_geometry",
+        options={"quiet": True, "resolution": 10, "num_frames": 1, "mesh": "tri"},
     )
     add_example_test(TestExamples, name="fem.example_convection_diffusion", options={"quiet": True, "resolution": 20})
     add_example_test(
         TestExamples,
         name="fem.example_mixed_elasticity",
-        options={"quiet": True, "nonconforming_stresses": True, "num_frames": 1},
+        options={"quiet": True, "nonconforming_stresses": True, "mesh": "quad", "num_frames": 1},
     )
     add_example_test(TestExamples, name="fem.example_stokes_transfer", options={"quiet": True, "num_frames": 1})
 
@@ -110,6 +114,6 @@ if __name__ == "__main__":
     # force rebuild of all kernels
     wp.build.clear_kernel_cache()
 
-    c = register(unittest.TestCase)
+    _ = register(unittest.TestCase)
 
     unittest.main(verbosity=2, failfast=True)

@@ -32,7 +32,7 @@ Building the Warp documentation requires:
 * `Sphinx-copybutton <https://sphinx-copybutton.readthedocs.io/en/latest/index.html>`_
 
 Building from source
------------------------------------
+--------------------
 
 For developers who want to build the library themselves the following tools are required:
 
@@ -69,3 +69,25 @@ Warp package should be installed using:
 
 Which ensures that subsequent modifications to the library will be
 reflected in the Python package.
+
+Conda environments
+------------------
+
+Some modules, such as ``usd-core``, don't support the latest Python version.
+To manage running Warp and other projects on different Python versions one can
+make use of an environment management system such as
+`Conda <https://docs.conda.io/>`_.
+
+**WARNING:** When building and running Warp in a different environment, make sure
+the build environment has the same C++ runtime library version, or an older
+one, than the execution environment. Otherwise Warp's shared libraries may end
+up looking for a newer runtime library version than the one available in the
+execution environment. For example on Linux this error could occur:
+
+``OSError: <...>/libstdc++.so.6: version `GLIBCXX_3.4.30' not found (required by <...>/warp/warp/bin/warp.so)``
+
+This can be solved by installing a newer C++ runtime version in the runtime
+conda environment using ``conda install -c conda-forge libstdcxx-ng=12.1`` or
+newer. Or, the build environment's C++ toolchain can be downgraded using
+``conda install -c conda-forge libstdcxx-ng=8.5``. Or, one can ``activate`` or
+``deactivate`` conda environments as needed for building vs. running Warp.

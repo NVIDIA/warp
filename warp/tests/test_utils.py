@@ -21,7 +21,7 @@ def test_warn(test, device):
         frame_info = inspect.getframeinfo(inspect.currentframe())
         wp.utils.warn("hello, world!")
 
-    expected = "{}:{}: UserWarning: hello, world!\n  wp.utils.warn(\"hello, world!\")\n".format(
+    expected = '{}:{}: UserWarning: hello, world!\n  wp.utils.warn("hello, world!")\n'.format(
         frame_info.filename,
         frame_info.lineno + 1,
     )
@@ -63,6 +63,12 @@ def test_array_scan(test, device):
 
         test.assertTrue(error_inc <= tolerance)
         test.assertTrue(error_exc <= tolerance)
+
+
+def test_array_scan_empty(test, device):
+    values = wp.array((), dtype=int, device=device)
+    result = wp.array((), dtype=int, device=device)
+    wp.utils.array_scan(values, result)
 
 
 def test_array_scan_error_devices_mismatch(test, device):
@@ -111,6 +117,12 @@ def test_radix_sort_pairs(test, device):
     wp.utils.radix_sort_pairs(keys, values, 8)
     assert_np_equal(keys.numpy()[:8], np.array((1, 2, 3, 4, 5, 6, 7, 8)))
     assert_np_equal(values.numpy()[:8], np.array((5, 2, 8, 4, 7, 6, 1, 3)))
+
+
+def test_radix_sort_pairs_empty(test, device):
+    keys = wp.array((), dtype=int, device=device)
+    values = wp.array((), dtype=int, device=device)
+    wp.utils.radix_sort_pairs(keys, values, 0)
 
 
 def test_radix_sort_pairs_error_devices_mismatch(test, device):
@@ -336,7 +348,7 @@ def test_mesh_adjacency(test, device):
     )
     adj = wp.utils.MeshAdjacency(triangles, len(triangles))
     expected_edges = {
-        (0, 3): (0, 3, 1,  2, 0,  1),
+        (0, 3): (0, 3, 1, 2, 0, 1),
         (1, 3): (3, 1, 0, -1, 0, -1),
         (0, 1): (1, 0, 3, -1, 0, -1),
         (0, 2): (0, 2, 3, -1, 1, -1),
@@ -383,6 +395,7 @@ def register(parent):
     add_function_test(TestUtils, "test_warn", test_warn)
     add_function_test(TestUtils, "test_transform_expand", test_transform_expand)
     add_function_test(TestUtils, "test_array_scan", test_array_scan, devices=devices)
+    add_function_test(TestUtils, "test_array_scan_empty", test_array_scan_empty, devices=devices)
     add_function_test(TestUtils, "test_array_scan_error_devices_mismatch", test_array_scan_error_devices_mismatch)
     add_function_test(TestUtils, "test_array_scan_error_sizes_mismatch", test_array_scan_error_sizes_mismatch)
     add_function_test(TestUtils, "test_array_scan_error_dtypes_mismatch", test_array_scan_error_dtypes_mismatch)
@@ -390,6 +403,7 @@ def register(parent):
         TestUtils, "test_array_scan_error_unsupported_dtype", test_array_scan_error_unsupported_dtype, devices=devices
     )
     add_function_test(TestUtils, "test_radix_sort_pairs", test_radix_sort_pairs, devices=devices)
+    add_function_test(TestUtils, "test_radix_sort_pairs_empty", test_radix_sort_pairs_empty, devices=devices)
     add_function_test(
         TestUtils, "test_radix_sort_pairs_error_devices_mismatch", test_radix_sort_pairs_error_devices_mismatch
     )
@@ -423,7 +437,9 @@ def register(parent):
     )
     add_function_test(TestUtils, "test_array_cast", test_array_cast, devices=devices)
     add_function_test(TestUtils, "test_array_cast_error_devices_mismatch", test_array_cast_error_devices_mismatch)
-    add_function_test(TestUtils, "test_array_cast_error_unsupported_partial_cast", test_array_cast_error_unsupported_partial_cast)
+    add_function_test(
+        TestUtils, "test_array_cast_error_unsupported_partial_cast", test_array_cast_error_unsupported_partial_cast
+    )
     add_function_test(TestUtils, "test_mesh_adjacency", test_mesh_adjacency)
     add_function_test(TestUtils, "test_mesh_adjacency_error_manifold", test_mesh_adjacency_error_manifold)
     add_function_test(TestUtils, "test_scoped_timer", test_scoped_timer)
@@ -431,5 +447,6 @@ def register(parent):
 
 
 if __name__ == "__main__":
+    wp.build.clear_kernel_cache()
     _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

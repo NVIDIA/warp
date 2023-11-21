@@ -340,7 +340,7 @@ inline CUDA_CALLABLE quat_t<Type> quat_from_matrix(const mat_t<3,3,Type>& m)
 }
 
 template<typename Type>
-inline CUDA_CALLABLE Type index(const quat_t<Type>& a, int idx)
+inline CUDA_CALLABLE Type extract(const quat_t<Type>& a, int idx)
 {
 #if FP_CHECK
     if (idx < 0 || idx > 3)
@@ -376,7 +376,7 @@ CUDA_CALLABLE inline void adj_lerp(const quat_t<Type>& a, const quat_t<Type>& b,
 }
 
 template<typename Type>
-inline CUDA_CALLABLE void adj_index(const quat_t<Type>& a, int idx, quat_t<Type>& adj_a, int & adj_idx, Type & adj_ret)
+inline CUDA_CALLABLE void adj_extract(const quat_t<Type>& a, int idx, quat_t<Type>& adj_a, int & adj_idx, Type & adj_ret)
 {
 #if FP_CHECK
     if (idx < 0 || idx > 3)
@@ -386,7 +386,7 @@ inline CUDA_CALLABLE void adj_index(const quat_t<Type>& a, int idx, quat_t<Type>
     }
 #endif
 
-    // See wp::index(const quat_t<Type>& a, int idx) note
+    // See wp::extract(const quat_t<Type>& a, int idx) note
     if (idx == 0)       {adj_a.x += adj_ret;}
     else if (idx == 1)  {adj_a.y += adj_ret;}
     else if (idx == 2)  {adj_a.z += adj_ret;}

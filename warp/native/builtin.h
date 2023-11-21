@@ -251,8 +251,6 @@ CUDA_CALLABLE inline void adj_int8(T, T&, int8) {}
 template <typename T>
 CUDA_CALLABLE inline void adj_uint8(T, T&, uint8) {}
 template <typename T>
-CUDA_CALLABLE inline void adj_bool(T, T&, bool) {}
-template <typename T>
 CUDA_CALLABLE inline void adj_int16(T, T&, int16) {}
 template <typename T>
 CUDA_CALLABLE inline void adj_uint16(T, T&, uint16) {}
@@ -817,18 +815,21 @@ inline CUDA_CALLABLE float rint(float x) { return ::rintf(x); }
 inline CUDA_CALLABLE float trunc(float x) { return ::truncf(x); }
 inline CUDA_CALLABLE float floor(float x) { return ::floorf(x); }
 inline CUDA_CALLABLE float ceil(float x) { return ::ceilf(x); }
+inline CUDA_CALLABLE float frac(float x) { return x - trunc(x); }
 
 inline CUDA_CALLABLE double round(double x) { return ::round(x); }
 inline CUDA_CALLABLE double rint(double x) { return ::rint(x); }
 inline CUDA_CALLABLE double trunc(double x) { return ::trunc(x); }
 inline CUDA_CALLABLE double floor(double x) { return ::floor(x); }
 inline CUDA_CALLABLE double ceil(double x) { return ::ceil(x); }
+inline CUDA_CALLABLE double frac(double x) { return x - trunc(x); }
 
 inline CUDA_CALLABLE half round(half x) { return ::roundf(float(x)); }
 inline CUDA_CALLABLE half rint(half x) { return ::rintf(float(x)); }
 inline CUDA_CALLABLE half trunc(half x) { return ::truncf(float(x)); }
 inline CUDA_CALLABLE half floor(half x) { return ::floorf(float(x)); }
 inline CUDA_CALLABLE half ceil(half x) { return ::ceilf(float(x)); }
+inline CUDA_CALLABLE half frac(half x) { return float(x) - trunc(float(x)); }
 
 #define DECLARE_ADJOINTS(T)\
 inline CUDA_CALLABLE void adj_log(T a, T& adj_a, T adj_ret)\
@@ -997,7 +998,8 @@ inline CUDA_CALLABLE void adj_round(T x, T& adj_x, T adj_ret){ }\
 inline CUDA_CALLABLE void adj_rint(T x, T& adj_x, T adj_ret){ }\
 inline CUDA_CALLABLE void adj_trunc(T x, T& adj_x, T adj_ret){ }\
 inline CUDA_CALLABLE void adj_floor(T x, T& adj_x, T adj_ret){ }\
-inline CUDA_CALLABLE void adj_ceil(T x, T& adj_x, T adj_ret){ }
+inline CUDA_CALLABLE void adj_ceil(T x, T& adj_x, T adj_ret){ }\
+inline CUDA_CALLABLE void adj_frac(T x, T& adj_x, T adj_ret){ }
 
 DECLARE_ADJOINTS(float16)
 DECLARE_ADJOINTS(float32)
@@ -1021,15 +1023,29 @@ CUDA_CALLABLE inline void adj_select(const C& cond, const T& a, const T& b, C& a
 }
 
 template <typename T>
-CUDA_CALLABLE inline void copy(T& dest, const T& src)
+CUDA_CALLABLE inline T copy(const T& src)
+{
+    return src;
+}
+
+template <typename T>
+CUDA_CALLABLE inline void adj_copy(const T& src, T& adj_src, T& adj_dest)
+{
+    adj_src = adj_dest;
+    adj_dest = T{};
+}
+
+template <typename T>
+CUDA_CALLABLE inline void assign(T& dest, const T& src)
 {
     dest = src;
 }
 
 template <typename T>
-CUDA_CALLABLE inline void adj_copy(T& dest, const T& src, T& adj_dest, T& adj_src)
+CUDA_CALLABLE inline void adj_assign(T& dest, const T& src, T& adj_dest, T& adj_src)
 {
-    // nop, this is non-differentiable operation since it violates SSA
+    // this is generally a non-differentiable operation since it violates SSA,
+    // except in read-modify-write statements which are reversible through backpropagation
     adj_src = adj_dest;
     adj_dest = T{};
 }
@@ -1260,6 +1276,14 @@ inline CUDA_CALLABLE int atomic_min(int* address, int val)
 
 } // namespace wp
 
+
+// bool and printf are defined outside of the wp namespace in crt.h, hence
+// their adjoint counterparts are also defined in the global namespace.
+template <typename T>
+CUDA_CALLABLE inline void adj_bool(T, T&, bool) {}
+inline CUDA_CALLABLE void adj_printf(const char* fmt, ...) {}
+
+
 #include "vec.h"
 #include "mat.h"
 #include "quat.h"
@@ -1422,10 +1446,6 @@ template<typename Type>
 inline CUDA_CALLABLE void adj_print(transform_t<Type> t, transform_t<Type>& adj_t) {}
 
 inline CUDA_CALLABLE void adj_print(str t, str& adj_t) {}
-
-
-// printf defined globally in crt.h
-inline CUDA_CALLABLE void adj_printf(const char* fmt, ...) {}
 
 
 template <typename T>

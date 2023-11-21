@@ -10,8 +10,23 @@ from warp.fem import cache
 
 from .tet_shape_function import TetrahedronPolynomialShapeFunctions
 
+_CUBE_EDGE_INDICES = wp.constant(
+    wp.mat(shape=(3, 4), dtype=int)(
+        [
+            [0, 4, 2, 6],
+            [3, 1, 7, 5],
+            [8, 11, 9, 10],
+        ]
+    )
+)
+
 
 class CubeTripolynomialShapeFunctions:
+    VERTEX = 0
+    EDGE = 1
+    FACE = 2
+    INTERIOR = 3
+
     def __init__(self, degree: int, family: Polynomial):
         self.family = family
 
@@ -28,6 +43,7 @@ class CubeTripolynomialShapeFunctions:
         self.LAGRANGE_SCALE = wp.constant(NodeVec(lagrange_scale))
 
         self._node_ijk = self._make_node_ijk()
+        self.node_type_and_type_index = self._make_node_type_and_type_index()
 
     @property
     def name(self) -> str:
@@ -53,6 +69,69 @@ class CubeTripolynomialShapeFunctions:
             return node_i, node_j, node_k
 
         return cache.get_func(node_ijk, self.name)
+
+    def _make_node_type_and_type_index(self):
+        ORDER = wp.constant(self.ORDER)
+
+        @cache.dynamic_func(suffix=self.name)
+        def node_type_and_type_index(
+            node_index_in_elt: int,
+        ):
+            i, j, k = self._node_ijk(node_index_in_elt)
+
+            zi = wp.select(i == 0, 0, 1)
+            zj = wp.select(j == 0, 0, 1)
+            zk = wp.select(k == 0, 0, 1)
+
+            mi = wp.select(i == ORDER, 0, 1)
+            mj = wp.select(j == ORDER, 0, 1)
+            mk = wp.select(k == ORDER, 0, 1)
+
+            if zi + mi == 1:
+                if zj + mj == 1:
+                    if zk + mk == 1:
+                        # vertex
+                        type_instance = mi * 4 + mj * 2 + mk
+                        return CubeTripolynomialShapeFunctions.VERTEX, type_instance, 0
+
+                    # z edge
+                    type_instance = _CUBE_EDGE_INDICES[2, mi * 2 + mj]
+                    type_index = k - 1
+                    return CubeTripolynomialShapeFunctions.EDGE, type_instance, type_index
+
+                if zk + mk == 1:
+                    # y edge
+                    type_instance = _CUBE_EDGE_INDICES[1, mk * 2 + mi]
+                    type_index = j - 1
+                    return CubeTripolynomialShapeFunctions.EDGE, type_instance, type_index
+
+                # x face
+                type_instance = mi
+                type_index = wp.select(mi == 1, (j - 1) * (ORDER - 1) + k - 1, (k - 1) * (ORDER - 1) + j - 1)
+                return CubeTripolynomialShapeFunctions.FACE, type_instance, type_index
+
+            if zj + mj == 1:
+                if zk + mk == 1:
+                    # x edge
+                    type_instance = _CUBE_EDGE_INDICES[0, mj * 2 + mk]
+                    type_index = i - 1
+                    return CubeTripolynomialShapeFunctions.EDGE, type_instance, type_index
+
+                # y face
+                type_instance = 2 + mj
+                type_index = wp.select(mj == 1, (i - 1) * (ORDER - 1) + k - 1, (k - 1) * (ORDER - 1) + i - 1)
+                return CubeTripolynomialShapeFunctions.FACE, type_instance, type_index
+
+            if zk + mk == 1:
+                # z face
+                type_instance = 4 + mk
+                type_index = wp.select(mk == 1, (j - 1) * (ORDER - 1) + i - 1, (i - 1) * (ORDER - 1) + j - 1)
+                return CubeTripolynomialShapeFunctions.FACE, type_instance, type_index
+
+            type_index = ((i - 1) * (ORDER - 1) + (j - 1)) * (ORDER - 1) + k - 1
+            return CubeTripolynomialShapeFunctions.INTERIOR, 0, type_index
+
+        return node_type_and_type_index
 
     def make_node_coords_in_element(self):
         LOBATTO_COORDS = self.LOBATTO_COORDS
@@ -315,6 +394,13 @@ class CubeSerendipityShapeFunctions:
     @wp.func
     def _edge_axis(node_type: int):
         return node_type - CubeSerendipityShapeFunctions.EDGE_X
+
+    @wp.func
+    def _cube_edge_index(node_type: int, type_index: int):
+        index_in_side = type_index // 4
+        side_offset = type_index - 4 * index_in_side
+
+        return _CUBE_EDGE_INDICES[node_type - CubeSerendipityShapeFunctions.EDGE_X, side_offset], index_in_side
 
     def _get_node_lobatto_indices(self):
         ORDER = self.ORDER

@@ -25,6 +25,7 @@ def test_kernel(
     x_cast: wp.array(dtype=float),
     x_floor: wp.array(dtype=float),
     x_ceil: wp.array(dtype=float),
+    x_frac: wp.array(dtype=float),
 ):
     tid = wp.tid()
 
@@ -34,6 +35,7 @@ def test_kernel(
     x_cast[tid] = float(int(x[tid]))
     x_floor[tid] = wp.floor(x[tid])
     x_ceil[tid] = wp.ceil(x[tid])
+    x_frac[tid] = wp.frac(x[tid])
 
 
 def test_rounding(test, device):
@@ -82,8 +84,9 @@ def test_rounding(test, device):
     x_cast = wp.empty(N, dtype=float, device=device)
     x_floor = wp.empty(N, dtype=float, device=device)
     x_ceil = wp.empty(N, dtype=float, device=device)
+    x_frac = wp.empty(N, dtype=float, device=device)
 
-    wp.launch(kernel=test_kernel, dim=N, inputs=[x, x_round, x_rint, x_trunc, x_cast, x_floor, x_ceil], device=device)
+    wp.launch(kernel=test_kernel, dim=N, inputs=[x, x_round, x_rint, x_trunc, x_cast, x_floor, x_ceil, x_frac], device=device)
 
     wp.synchronize()
 
@@ -93,46 +96,47 @@ def test_rounding(test, device):
     nx_cast = x_cast.numpy().reshape(N)
     nx_floor = x_floor.numpy().reshape(N)
     nx_ceil = x_ceil.numpy().reshape(N)
+    nx_frac = x_frac.numpy().reshape(N)
 
-    tab = np.stack([nx, nx_round, nx_rint, nx_trunc, nx_cast, nx_floor, nx_ceil], axis=1)
+    tab = np.stack([nx, nx_round, nx_rint, nx_trunc, nx_cast, nx_floor, nx_ceil, nx_frac], axis=1)
 
     golden = np.array(
         [
-            [4.9, 5.0, 5.0, 4.0, 4.0, 4.0, 5.0],
-            [4.5, 5.0, 4.0, 4.0, 4.0, 4.0, 5.0],
-            [4.1, 4.0, 4.0, 4.0, 4.0, 4.0, 5.0],
-            [3.9, 4.0, 4.0, 3.0, 3.0, 3.0, 4.0],
-            [3.5, 4.0, 4.0, 3.0, 3.0, 3.0, 4.0],
-            [3.1, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0],
-            [2.9, 3.0, 3.0, 2.0, 2.0, 2.0, 3.0],
-            [2.5, 3.0, 2.0, 2.0, 2.0, 2.0, 3.0],
-            [2.1, 2.0, 2.0, 2.0, 2.0, 2.0, 3.0],
-            [1.9, 2.0, 2.0, 1.0, 1.0, 1.0, 2.0],
-            [1.5, 2.0, 2.0, 1.0, 1.0, 1.0, 2.0],
-            [1.1, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0],
-            [0.9, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0],
-            [0.5, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-            [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-            [-0.1, -0.0, -0.0, -0.0, 0.0, -1.0, -0.0],
-            [-0.5, -1.0, -0.0, -0.0, 0.0, -1.0, -0.0],
-            [-0.9, -1.0, -1.0, -0.0, 0.0, -1.0, -0.0],
-            [-1.1, -1.0, -1.0, -1.0, -1.0, -2.0, -1.0],
-            [-1.5, -2.0, -2.0, -1.0, -1.0, -2.0, -1.0],
-            [-1.9, -2.0, -2.0, -1.0, -1.0, -2.0, -1.0],
-            [-2.1, -2.0, -2.0, -2.0, -2.0, -3.0, -2.0],
-            [-2.5, -3.0, -2.0, -2.0, -2.0, -3.0, -2.0],
-            [-2.9, -3.0, -3.0, -2.0, -2.0, -3.0, -2.0],
-            [-3.1, -3.0, -3.0, -3.0, -3.0, -4.0, -3.0],
-            [-3.5, -4.0, -4.0, -3.0, -3.0, -4.0, -3.0],
-            [-3.9, -4.0, -4.0, -3.0, -3.0, -4.0, -3.0],
-            [-4.1, -4.0, -4.0, -4.0, -4.0, -5.0, -4.0],
-            [-4.5, -5.0, -4.0, -4.0, -4.0, -5.0, -4.0],
-            [-4.9, -5.0, -5.0, -4.0, -4.0, -5.0, -4.0],
+            [4.9, 5.0, 5.0, 4.0, 4.0, 4.0, 5.0, 0.9],
+            [4.5, 5.0, 4.0, 4.0, 4.0, 4.0, 5.0, 0.5],
+            [4.1, 4.0, 4.0, 4.0, 4.0, 4.0, 5.0, 0.1],
+            [3.9, 4.0, 4.0, 3.0, 3.0, 3.0, 4.0, 0.9],
+            [3.5, 4.0, 4.0, 3.0, 3.0, 3.0, 4.0, 0.5],
+            [3.1, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0, 0.1],
+            [2.9, 3.0, 3.0, 2.0, 2.0, 2.0, 3.0, 0.9],
+            [2.5, 3.0, 2.0, 2.0, 2.0, 2.0, 3.0, 0.5],
+            [2.1, 2.0, 2.0, 2.0, 2.0, 2.0, 3.0, 0.1],
+            [1.9, 2.0, 2.0, 1.0, 1.0, 1.0, 2.0, 0.9],
+            [1.5, 2.0, 2.0, 1.0, 1.0, 1.0, 2.0, 0.5],
+            [1.1, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 0.1],
+            [0.9, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.9],
+            [0.5, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.5],
+            [0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.1],
+            [-0.1, -0.0, -0.0, -0.0, 0.0, -1.0, -0.0, -0.1],
+            [-0.5, -1.0, -0.0, -0.0, 0.0, -1.0, -0.0, -0.5],
+            [-0.9, -1.0, -1.0, -0.0, 0.0, -1.0, -0.0, -0.9],
+            [-1.1, -1.0, -1.0, -1.0, -1.0, -2.0, -1.0, -0.1],
+            [-1.5, -2.0, -2.0, -1.0, -1.0, -2.0, -1.0, -0.5],
+            [-1.9, -2.0, -2.0, -1.0, -1.0, -2.0, -1.0, -0.9],
+            [-2.1, -2.0, -2.0, -2.0, -2.0, -3.0, -2.0, -0.1],
+            [-2.5, -3.0, -2.0, -2.0, -2.0, -3.0, -2.0, -0.5],
+            [-2.9, -3.0, -3.0, -2.0, -2.0, -3.0, -2.0, -0.9],
+            [-3.1, -3.0, -3.0, -3.0, -3.0, -4.0, -3.0, -0.1],
+            [-3.5, -4.0, -4.0, -3.0, -3.0, -4.0, -3.0, -0.5],
+            [-3.9, -4.0, -4.0, -3.0, -3.0, -4.0, -3.0, -0.9],
+            [-4.1, -4.0, -4.0, -4.0, -4.0, -5.0, -4.0, -0.1],
+            [-4.5, -5.0, -4.0, -4.0, -4.0, -5.0, -4.0, -0.5],
+            [-4.9, -5.0, -5.0, -4.0, -4.0, -5.0, -4.0, -0.9],
         ],
         dtype=np.float32,
     )
 
-    assert_np_equal(tab, golden)
+    assert_np_equal(tab, golden, tol=1e-6)
 
     if print_results:
         np.set_printoptions(formatter={"float": lambda x: "{:6.1f}".format(x).replace(".0", ".")})
@@ -149,8 +153,9 @@ def test_rounding(test, device):
         nx_fix = np.fix(nx)
         nx_floor = np.floor(nx)
         nx_ceil = np.ceil(nx)
+        nx_frac = np.modf(nx)[0]
 
-        tab = np.stack([nx, nx_round, nx_rint, nx_trunc, nx_fix, nx_floor, nx_ceil], axis=1)
+        tab = np.stack([nx, nx_round, nx_rint, nx_trunc, nx_fix, nx_floor, nx_ceil, nx_frac], axis=1)
         print("   %5s %5s %5s %5s %5s %5s %5s" % ("x ", "round", "rint", "trunc", "fix", "floor", "ceil"))
         print(tab)
         print("----------------------------------------------")
@@ -168,5 +173,6 @@ def register(parent):
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

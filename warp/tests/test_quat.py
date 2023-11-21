@@ -2025,5 +2025,5 @@ def register(parent):
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    c = register(unittest.TestCase)
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

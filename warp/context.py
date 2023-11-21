@@ -70,6 +70,8 @@ class Function:
         native_func=None,
         defaults=None,
         custom_replay_func=None,
+        native_snippet=None,
+        adj_native_snippet=None,
         skip_forward_codegen=False,
         skip_reverse_codegen=False,
         custom_reverse_num_input_args=-1,
@@ -92,6 +94,8 @@ class Function:
         self.defaults = defaults
         # Function instance for a custom implementation of the replay pass
         self.custom_replay_func = custom_replay_func
+        self.native_snippet = native_snippet
+        self.adj_native_snippet = adj_native_snippet
         self.custom_grad_func = None
 
         if initializer_list_func is None:
@@ -172,9 +176,6 @@ class Function:
         # from within a kernel (experimental).
 
         if self.is_builtin() and self.mangled_name:
-            # store last error during overload resolution
-            error = None
-
             for f in self.overloads:
                 if f.generic:
                     continue
@@ -275,22 +276,18 @@ class Function:
                     if issubclass(value_type, ctypes.Array) or issubclass(value_type, ctypes.Structure):
                         # return vector types as ctypes
                         return ret
-                    else:
-                        # return scalar types as int/float
-                        return ret.value
 
-                except Exception as e:
+                    # return scalar types as int/float
+                    return ret.value
+                except Exception:
                     # couldn't pack values to match this overload
-                    # store error and move onto the next one
-                    error = e
                     continue
 
             # overload resolution or call failed
-            # raise the last exception encountered
-            if error:
-                raise error
-            else:
-                raise RuntimeError(f"Error calling function '{f.key}'.")
+            raise RuntimeError(
+                f"Couldn't find a function '{self.key}' compatible with "
+                f"the arguments '{', '.join(type(x).__name__ for x in args)}'"
+            )
 
         elif hasattr(self, "user_overloads") and len(self.user_overloads):
             # user-defined function with overloads
@@ -435,7 +432,7 @@ class Function:
             return None
 
     def __repr__(self):
-        inputs_str = ", ".join([f"{k}: {v.__name__}" for k, v in self.input_types.items()])
+        inputs_str = ", ".join([f"{k}: {warp.types.type_repr(v)}" for k, v in self.input_types.items()])
         return f"<Function {self.key}({inputs_str})>"
 
 
@@ -555,6 +552,23 @@ def func(f):
 
     # return the top of the list of overloads for this key
     return m.functions[name]
+
+
+def func_native(snippet, adj_snippet=None):
+    """
+    Decorator to register native code snippet, @func_native
+    """ 
+    def snippet_func(f):
+        name = warp.codegen.make_full_qualified_name(f)
+
+        m = get_module(f.__module__)
+        func = Function(
+            func=f, key=name, namespace="", module=m, native_snippet=snippet, adj_native_snippet=adj_snippet
+        )  # cuda snippets do not have a return value_type
+
+        return m.functions[name]
+
+    return snippet_func
 
 
 def func_grad(forward_fn):
@@ -1065,8 +1079,7 @@ class ModuleBuilder:
         while stack:
             s = stack.pop()
 
-            if s not in structs:
-                structs.append(s)
+            structs.append(s)
 
             for var in s.vars.values():
                 if isinstance(var.type, warp.codegen.Struct):
@@ -1122,9 +1135,14 @@ class ModuleBuilder:
 
         # code-gen all imported functions
         for func in self.functions.keys():
-            source += warp.codegen.codegen_func(
-                func.adj, c_func_name=func.native_func, device=device, options=self.options
-            )
+            if func.native_snippet is None:
+                source += warp.codegen.codegen_func(
+                    func.adj, c_func_name=func.native_func, device=device, options=self.options
+                )
+            else:
+                source += warp.codegen.codegen_snippet(
+                    func.adj, name=func.key, snippet=func.native_snippet, adj_snippet=func.adj_native_snippet
+                )
 
         for kernel in self.module.kernels.values():
             # each kernel gets an entry point in the module
@@ -1311,16 +1329,25 @@ class Module:
                 for func in module.functions.values():
                     s = func.adj.source
                     ch.update(bytes(s, "utf-8"))
+
                     if func.custom_grad_func:
                         s = func.custom_grad_func.adj.source
                         ch.update(bytes(s, "utf-8"))
                     if func.custom_replay_func:
                         s = func.custom_replay_func.adj.source
+                        
+                    # cache func arg types
+                    for arg, arg_type in func.adj.arg_types.items():
+                        s = f"{arg}: {get_type_name(arg_type)}"
                         ch.update(bytes(s, "utf-8"))
 
                 # kernel source
                 for kernel in module.kernels.values():
                     ch.update(bytes(kernel.adj.source, "utf-8"))
+                    # cache kernel arg types
+                    for arg, arg_type in kernel.adj.arg_types.items():
+                        s = f"{arg}: {get_type_name(arg_type)}"
+                        ch.update(bytes(s, "utf-8"))
                     # for generic kernels the Python source is always the same,
                     # but we hash the type signatures of all the overloads
                     if kernel.is_generic:
@@ -1910,7 +1937,7 @@ class Runtime:
 
         self.core = self.load_dll(warp_lib)
 
-        if llvm_lib and os.path.exists(llvm_lib):
+        if os.path.exists(llvm_lib):
             self.llvm = self.load_dll(llvm_lib)
             # setup c-types for warp-clang.dll
             self.llvm.lookup.restype = ctypes.c_uint64
@@ -2501,8 +2528,13 @@ class Runtime:
                 dll = ctypes.CDLL(dll_path, winmode=0)
             else:
                 dll = ctypes.CDLL(dll_path)
-        except OSError:
-            raise RuntimeError(f"Failed to load the shared library '{dll_path}'")
+        except OSError as e:
+            if "GLIBCXX" in str(e):
+                raise RuntimeError(f"Failed to load the shared library '{dll_path}'.\n"
+                                   "The execution environment's libstdc++ runtime is older than the version the Warp library was built for.\n"
+                                   "See https://nvidia.github.io/warp/_build/html/installation.html#conda-environments for details.") from e
+            else:
+                raise RuntimeError(f"Failed to load the shared library '{dll_path}'") from e
         return dll
 
     def get_device(self, ident: Devicelike = None) -> Device:

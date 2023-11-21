@@ -10,6 +10,8 @@ import numpy as np
 import warp as wp
 from warp.tests.test_base import *
 
+from warp.fem import Sample as StructFromAnotherModule
+
 import unittest
 
 wp.init()
@@ -219,6 +221,20 @@ def test_nested_struct(test, device):
         foo.bar.baz.data,
         wp.array((260, 262, 264), dtype=int, device=device),
     )
+
+
+def test_struct_attribute_error(test, device):
+    @wp.kernel
+    def kernel(foo: Foo):
+        _ = foo.nonexisting
+
+    with test.assertRaisesRegex(AttributeError, r"`nonexisting` is not an attribute of 'foo' \([\w.]+\.Foo\)$"):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[Foo()],
+            device=device,
+        )
 
 
 @wp.kernel
@@ -527,6 +543,27 @@ def test_nested_empty_struct(test, device):
         wp.synchronize_device()
 
 
+@wp.struct
+class DependentModuleImport_A:
+    s: StructFromAnotherModule
+
+
+@wp.struct
+class DependentModuleImport_B:
+    s: StructFromAnotherModule
+
+
+@wp.struct
+class DependentModuleImport_C:
+    a: DependentModuleImport_A
+    b: DependentModuleImport_B
+
+
+@wp.kernel
+def test_dependent_module_import(c: DependentModuleImport_C):
+    wp.tid()  # nop, we're just testing codegen
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -545,6 +582,7 @@ def register(parent):
         devices=devices,
     )
     add_kernel_test(TestStruct, kernel=test_return, name="test_return", dim=1, inputs=[], devices=devices)
+    add_function_test(TestStruct, "test_struct_attribute_error", test_struct_attribute_error, devices=devices)
     add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
     add_function_test(TestStruct, "test_nested_array_struct", test_nested_array_struct, devices=devices)
     add_function_test(TestStruct, "test_nested_empty_struct", test_nested_empty_struct, devices=devices)
@@ -588,9 +626,19 @@ def register(parent):
             devices=[device],
         )
 
+    add_kernel_test(
+        TestStruct,
+        kernel=test_dependent_module_import,
+        name="test_dependent_module_import",
+        dim=1,
+        inputs=[DependentModuleImport_C()],
+        devices=devices,
+    )
+
     return TestStruct
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

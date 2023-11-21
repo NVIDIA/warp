@@ -99,7 +99,7 @@ class RegularQuadrature(Quadrature):
     @property
     def name(self):
         return (
-            f"{self.__class__.__name__}_{self.domain.reference_element().__class__.__name__}_{self.family}_{self.order}"
+            f"{self.__class__.__name__}_{self.domain.name}_{self.family}_{self.order}"
         )
 
     def total_point_count(self):

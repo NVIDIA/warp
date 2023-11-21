@@ -205,6 +205,9 @@ def bsr_set_from_triplets(
         raise ValueError("Number of dimension for values array should be 1 or 3")
 
     nnz = rows.shape[0]
+    if nnz == 0:
+        bsr_set_zero(dest)
+        return
 
     # Increase dest array sizes if needed
     _bsr_ensure_fits(dest, nnz=nnz)

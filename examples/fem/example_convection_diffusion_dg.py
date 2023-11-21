@@ -17,7 +17,7 @@ from warp.sparse import bsr_axpy
 # Make sure that works both when imported as module and run as standalone file
 try:
     from .bsr_utils import bsr_to_scipy
-    from .mesh_utils import gen_trimesh
+    from .mesh_utils import gen_trimesh, gen_quadmesh
     from .plot_utils import Plot
     from .example_convection_diffusion import (
         initial_condition,
@@ -27,7 +27,7 @@ try:
     )
 except ImportError:
     from bsr_utils import bsr_to_scipy
-    from mesh_utils import gen_trimesh
+    from mesh_utils import gen_trimesh, gen_quadmesh
     from plot_utils import Plot
     from example_convection_diffusion import (
         initial_condition,
@@ -83,7 +83,7 @@ class Example:
     parser.add_argument("--num_frames", type=int, default=100)
     parser.add_argument("--viscosity", type=float, default=0.001)
     parser.add_argument("--ang_vel", type=float, default=1.0)
-    parser.add_argument("--tri_mesh", action="store_true", help="Use a triangular mesh")
+    parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type")
 
     def __init__(self, stage=None, quiet=False, args=None, **kwargs):
         if args is None:
@@ -97,11 +97,14 @@ class Example:
         self.sim_dt = 1.0 / (args.ang_vel * res)
         self.current_frame = 0
 
-        if args.tri_mesh:
-            positions, tri_vidx = gen_trimesh(res=wp.vec2i(res))
+        if args.mesh == "tri":
+            positions, tri_vidx = gen_trimesh(res=wp.vec2i(args.resolution))
             geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
+        elif args.mesh == "quad":
+            positions, quad_vidx = gen_quadmesh(res=wp.vec2i(args.resolution))
+            geo = fem.Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions)
         else:
-            geo = fem.Grid2D(res=wp.vec2i(res))
+            geo = fem.Grid2D(res=wp.vec2i(args.resolution))
 
         domain = fem.Cells(geometry=geo)
         sides = fem.Sides(geo)
