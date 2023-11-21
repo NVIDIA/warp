@@ -52,6 +52,71 @@ When this happens, some CUDA threads may process more than one element from the 
 Users can also set the ``max_blocks`` parameter to fine-tune the grid-striding behavior of kernels, even for kernels that are otherwise
 able to process one Warp-grid element per CUDA thread. 
 
+Runtime Kernel Specialization
+#############################
+
+It is often desirable to specialize kernels for different types, constants, or functions.
+We can achieve this through the use of runtime kernel specialization using Python closures.
+
+For example, we might require a variety of kernels that execute particular functions for each item in an array.
+We might also want this function call to be valid for a variety of data types. Making use of closure and generics, we can generate
+these kernels using a single kernel definition: ::
+
+    def make_kernel(func, dtype):
+        def closure_kernel_fn(data: wp.array(dtype=dtype), out: wp.array(dtype=dtype)):
+            tid = wp.tid()
+            out[tid] = func(data[tid])
+
+        return wp.Kernel(closure_kernel_fn)
+
+In practice, we might use our kernel generator, ``make_kernel()`` as follows: ::
+
+    @wp.func
+    def sqr(x: Any) -> Any:
+        return x * x
+
+    @wp.func
+    def cube(x: Any) -> Any:
+        return sqr(x) * x
+
+    sqr_float = make_kernel(sqr, wp.float32)
+    cube_double = make_kernel(cube, wp.float64)
+
+    arr = [1.0, 2.0, 3.0]
+    N = len(arr)
+
+    data_float = wp.array(arr, dtype=wp.float32, device=device)
+    data_double = wp.array(arr, dtype=wp.float64, device=device)
+
+    out_float = wp.zeros(N, dtype=wp.float32, device=device)
+    out_double = wp.zeros(N, dtype=wp.float64, device=device)
+
+    wp.launch(sqr_float, dim=N, inputs=[data_float], outputs=[out_float], device=device)
+    wp.launch(cube_double, dim=N, inputs=[data_double], outputs=[out_double], device=device)
+
+We can specialize kernel definitions over warp constants similarly. The following generates kernels that add a specified constant
+to a generic-typed array value: ::
+
+    def make_add_kernel(key, constant):
+        def closure_kernel_fn(data: wp.array(dtype=Any), out: wp.array(dtype=Any)):
+            tid = wp.tid()
+            out[tid] = data[tid] + constant
+
+        return wp.Kernel(closure_kernel_fn, key=key)
+
+    add_ones_int = make_add_kernel("add_one", wp.constant(1))
+    add_ones_vec3 = make_add_kernel("add_ones_vec3", wp.constant(wp.vec3(1.0, 1.0, 1.0)))
+
+    a = wp.zeros(2, dtype=int)
+    b = wp.zeros(2, dtype=wp.vec3)
+
+    a_out = wp.zeros_like(a)
+    b_out = wp.zeros_like(b)
+
+    wp.launch(add_ones_int, dim=a.size, inputs=[a], outputs=[a_out], device=device)
+    wp.launch(add_ones_vec3, dim=b.size, inputs=[b], outputs=[b_out], device=device)
+
+
 Arrays
 ------
 

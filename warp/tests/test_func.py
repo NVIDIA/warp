@@ -252,8 +252,7 @@ def test_func_closure_capture(test, device):
             f = func(data[wp.tid()])
             wp.expect_eq(f, expected)
 
-        key = f"test_func_closure_capture_{func.key}"
-        return wp.Kernel(func=closure_kernel_fn, key=key, module=wp.get_module(closure_kernel_fn.__module__))
+        return wp.Kernel(func=closure_kernel_fn)
 
     sqr_closure = make_closure_kernel(sqr)
     cube_closure = make_closure_kernel(cube)

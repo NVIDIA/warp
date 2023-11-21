@@ -73,8 +73,7 @@ def test_constant_closure_capture(test, device):
         def closure_kernel_fn(expected: int):
             wp.expect_eq(cst, expected)
 
-        key = f"test_constant_closure_capture_{cst}"
-        return wp.Kernel(func=closure_kernel_fn, key=key, module=wp.get_module(closure_kernel_fn.__module__))
+        return wp.Kernel(func=closure_kernel_fn)
 
     one_closure = make_closure_kernel(Foobar.ONE)
     two_closure = make_closure_kernel(Foobar.TWO)

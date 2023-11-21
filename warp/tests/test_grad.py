@@ -275,8 +275,7 @@ def gradcheck(func, func_name, inputs, device, eps=1e-4, tol=1e-2):
     numerical gradient computed using finite differences.
     """
 
-    module = wp.get_module(func.__module__)
-    kernel = wp.Kernel(func=func, key=func_name, module=module)
+    kernel = wp.Kernel(func=func, key=func_name)
 
     def f(xs):
         # call the kernel without taping for finite differences
@@ -474,11 +473,9 @@ def test_mesh_grad(test, device):
         c = mesh.points[k]
         return wp.length(wp.cross(b - a, c - a)) * 0.5
 
+    @wp.kernel
     def compute_area(mesh_id: wp.uint64, out: wp.array(dtype=wp.float32)):
         wp.atomic_add(out, 0, compute_triangle_area(mesh_id, wp.tid()))
-
-    module = wp.get_module(compute_area.__module__)
-    kernel = wp.Kernel(func=compute_area, key="compute_area", module=module)
 
     num_tris = int(len(indices) / 3)
 
@@ -486,7 +483,7 @@ def test_mesh_grad(test, device):
     tape = wp.Tape()
     output = wp.zeros(1, dtype=wp.float32, device=device, requires_grad=True)
     with tape:
-        wp.launch(kernel, dim=num_tris, inputs=[mesh.id], outputs=[output], device=device)
+        wp.launch(compute_area, dim=num_tris, inputs=[mesh.id], outputs=[output], device=device)
 
     tape.backward(loss=output)
 
@@ -503,13 +500,13 @@ def test_mesh_grad(test, device):
             pos = wp.array(pos_np, dtype=wp.vec3, device=device)
             mesh = wp.Mesh(points=pos, indices=indices)
             output.zero_()
-            wp.launch(kernel, dim=num_tris, inputs=[mesh.id], outputs=[output], device=device)
+            wp.launch(compute_area, dim=num_tris, inputs=[mesh.id], outputs=[output], device=device)
             f1 = output.numpy()[0]
             pos_np[i, j] -= 2 * eps
             pos = wp.array(pos_np, dtype=wp.vec3, device=device)
             mesh = wp.Mesh(points=pos, indices=indices)
             output.zero_()
-            wp.launch(kernel, dim=num_tris, inputs=[mesh.id], outputs=[output], device=device)
+            wp.launch(compute_area, dim=num_tris, inputs=[mesh.id], outputs=[output], device=device)
             f2 = output.numpy()[0]
             pos_np[i, j] += eps
             fd_grad[i, j] = (f1 - f2) / (2 * eps)
