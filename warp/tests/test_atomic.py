@@ -34,8 +34,7 @@ def make_atomic_test(type):
     # register a custom kernel (no decorator) function
     # this lets us register the same function definition
     # against multiple symbols, with different arg types
-    module = wp.get_module(test_atomic_kernel.__module__)
-    kernel = wp.Kernel(func=test_atomic_kernel, key=f"test_atomic_{type.__name__}_kernel", module=module)
+    kernel = wp.Kernel(func=test_atomic_kernel, key=f"test_atomic_{type.__name__}_kernel")
 
     def test_atomic(test, device):
         n = 1024

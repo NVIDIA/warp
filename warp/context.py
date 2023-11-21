@@ -444,10 +444,20 @@ class KernelHooks:
 
 # caches source and compiled entry points for a kernel (will be populated after module loads)
 class Kernel:
-    def __init__(self, func, key, module, options=None, code_transformers=[]):
+    def __init__(self, func, key=None, module=None, options=None, code_transformers=[]):
         self.func = func
-        self.module = module
-        self.key = key
+
+        if module is None:
+            self.module = get_module(func.__module__)
+        else:
+            self.module = module
+
+        if key is None:
+            unique_key = self.module.generate_unique_kernel_key(func.__name__)
+            self.key = unique_key
+        else:
+            self.key = key
+
         self.options = {} if options is None else options
 
         self.adj = warp.codegen.Adjoint(func, transformers=code_transformers)
@@ -468,8 +478,8 @@ class Kernel:
         # argument indices by name
         self.arg_indices = dict((a.label, i) for i, a in enumerate(self.adj.args))
 
-        if module:
-            module.register_kernel(self)
+        if self.module:
+            self.module.register_kernel(self)
 
     def infer_argument_types(self, args):
         template_types = list(self.adj.arg_types.values())
@@ -557,7 +567,8 @@ def func(f):
 def func_native(snippet, adj_snippet=None):
     """
     Decorator to register native code snippet, @func_native
-    """ 
+    """
+
     def snippet_func(f):
         name = warp.codegen.make_full_qualified_name(f)
 
@@ -1222,6 +1233,10 @@ class Module:
 
         self.content_hash = None
 
+        # number of times module auto-generates kernel key for user
+        # used to ensure unique kernel keys
+        self.count = 0
+
     def register_struct(self, struct):
         self.structs[struct.key] = struct
 
@@ -1263,6 +1278,11 @@ class Module:
 
         # for a reload of module on next launch
         self.unload()
+
+    def generate_unique_kernel_key(self, key):
+        unique_key = f"{key}_{self.count}"
+        self.count += 1
+        return unique_key
 
     # collect all referenced functions / structs
     # given the AST of a function or kernel
@@ -2523,9 +2543,11 @@ class Runtime:
                 dll = ctypes.CDLL(dll_path)
         except OSError as e:
             if "GLIBCXX" in str(e):
-                raise RuntimeError(f"Failed to load the shared library '{dll_path}'.\n"
-                                   "The execution environment's libstdc++ runtime is older than the version the Warp library was built for.\n"
-                                   "See https://nvidia.github.io/warp/_build/html/installation.html#conda-environments for details.") from e
+                raise RuntimeError(
+                    f"Failed to load the shared library '{dll_path}'.\n"
+                    "The execution environment's libstdc++ runtime is older than the version the Warp library was built for.\n"
+                    "See https://nvidia.github.io/warp/_build/html/installation.html#conda-environments for details."
+                ) from e
             else:
                 raise RuntimeError(f"Failed to load the shared library '{dll_path}'") from e
         return dll

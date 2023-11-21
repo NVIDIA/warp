@@ -13,10 +13,9 @@ kernel_cache = dict()
 
 
 def getkernel(func, suffix=""):
-    module = wp.get_module(func.__module__)
     key = func.__name__ + "_" + suffix
     if key not in kernel_cache:
-        kernel_cache[key] = wp.Kernel(func=func, key=key, module=module)
+        kernel_cache[key] = wp.Kernel(func=func, key=key)
     return kernel_cache[key]
 
 
