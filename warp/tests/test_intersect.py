@@ -1,3 +1,5 @@
+import unittest
+
 import warp as wp
 import numpy as np
 from warp.tests.test_base import *

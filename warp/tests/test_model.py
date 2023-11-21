@@ -5,6 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import unittest
+
 import warp as wp
 from warp.tests.test_base import *
 from warp.sim import ModelBuilder

@@ -149,9 +149,6 @@ private:
     vec3* total_lower;
     vec3* total_upper;
     vec3* total_inv_edges;
-
-    int max_items;
-
 };
 
 ////////////////////////////////////////////////////////
@@ -372,58 +369,33 @@ LinearBVHBuilderGPU::LinearBVHBuilderGPU()
     , range_lefts(NULL)
     , range_rights(NULL)
     , num_children(NULL)
-    , max_items(0)
     , total_lower(NULL)
     , total_upper(NULL)
     , total_inv_edges(NULL)
 {
-    total_lower = (vec3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3));
-    total_upper = (vec3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3));
-    total_inv_edges = (vec3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3));
+    total_lower = (vec3*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(vec3));
+    total_upper = (vec3*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(vec3));
+    total_inv_edges = (vec3*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(vec3));
 }
 
 LinearBVHBuilderGPU::~LinearBVHBuilderGPU()
 {
-    free_device(WP_CURRENT_CONTEXT, indices);
-    free_device(WP_CURRENT_CONTEXT, keys);
-    free_device(WP_CURRENT_CONTEXT, deltas);
-
-    free_device(WP_CURRENT_CONTEXT, range_lefts);
-    free_device(WP_CURRENT_CONTEXT, range_rights);
-    free_device(WP_CURRENT_CONTEXT, num_children);
-
-    free_device(WP_CURRENT_CONTEXT, total_lower);
-    free_device(WP_CURRENT_CONTEXT, total_upper);
-    free_device(WP_CURRENT_CONTEXT, total_inv_edges);
-
+    free_temp_device(WP_CURRENT_CONTEXT, total_lower);
+    free_temp_device(WP_CURRENT_CONTEXT, total_upper);
+    free_temp_device(WP_CURRENT_CONTEXT, total_inv_edges);
 }
 
 
 
 void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* item_uppers, int num_items, bounds3* total_bounds)
 {
-    if (num_items > max_items)
-    {
-        const int items_to_alloc = (num_items*3)/2;
-        const int nodes_to_alloc = (bvh.max_nodes*3)/2;
-
-        // reallocate temporary storage if necessary
-        free_device(WP_CURRENT_CONTEXT, indices);
-        free_device(WP_CURRENT_CONTEXT, keys);
-        free_device(WP_CURRENT_CONTEXT, deltas);
-        free_device(WP_CURRENT_CONTEXT, range_lefts);
-        free_device(WP_CURRENT_CONTEXT, range_rights);
-        free_device(WP_CURRENT_CONTEXT, num_children);
-
-        indices = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*items_to_alloc*2); 	// *2 for radix sort
-        keys = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*items_to_alloc*2);	    // *2 for radix sort
-        deltas = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*items_to_alloc);    	// highest differenting bit between keys for item i and i+1
-        range_lefts = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*nodes_to_alloc);
-        range_rights = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*nodes_to_alloc);
-        num_children = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*nodes_to_alloc);
-
-        max_items = items_to_alloc;
-    }
+    // allocate temporary memory used during  building
+    indices = (int*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(int)*num_items*2); 	// *2 for radix sort
+    keys = (int*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(int)*num_items*2);	    // *2 for radix sort
+    deltas = (int*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(int)*num_items);    	// highest differenting bit between keys for item i and i+1
+    range_lefts = (int*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh.max_nodes);
+    range_rights = (int*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh.max_nodes);
+    num_children = (int*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh.max_nodes);
 
     // if total bounds supplied by the host then we just 
     // compute our edge length and upload it to the GPU directly
@@ -465,8 +437,6 @@ void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* i
 
     // initialize leaf nodes
     wp_launch_device(WP_CURRENT_CONTEXT, build_leaves, num_items, (item_lowers, item_uppers, num_items, indices, range_lefts, range_rights, bvh.node_lowers, bvh.node_uppers));
-
-#if 1
     
     // reset children count, this is our atomic counter so we know when an internal node is complete, only used during building
     memset_device(WP_CURRENT_CONTEXT, num_children, 0, sizeof(int)*bvh.max_nodes);
@@ -474,135 +444,14 @@ void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* i
     // build the tree and internal node bounds
     wp_launch_device(WP_CURRENT_CONTEXT, build_hierarchy, num_items, (num_items, bvh.root, deltas, num_children, range_lefts, range_rights, bvh.node_parents, bvh.node_lowers, bvh.node_uppers));
 
-#else
+    // free temporary memory
+    free_temp_device(WP_CURRENT_CONTEXT, indices);
+    free_temp_device(WP_CURRENT_CONTEXT, keys);
+    free_temp_device(WP_CURRENT_CONTEXT, deltas);
 
-    // Reference CPU implementation of build_hierarchy()
-
-    std::vector<int> indices(num_items);
-    std::vector<int> keys(num_items);
-    std::vector<int> deltas(num_items-1);
-    std::vector<BVHPackedNodeHalf> lowers(bvh.max_nodes);
-    std::vector<BVHPackedNodeHalf> uppers(bvh.max_nodes);
-
-    std::vector<int> range_lefts(bvh.max_nodes);
-    std::vector<int> range_rights(bvh.max_nodes);
-    std::vector<int> num_children(bvh.max_nodes);
-
-    check_cuda(cudaMemcpy(&indices[0], mIndices, sizeof(int)*num_items, cudaMemcpyDeviceToHost));
-    check_cuda(cudaMemcpy(&keys[0], mKeys, sizeof(int)*num_items, cudaMemcpyDeviceToHost));
-    check_cuda(cudaMemcpy(&deltas[0], mDeltas, sizeof(int)*(num_items-1), cudaMemcpyDeviceToHost));
-
-    check_cuda(cudaMemcpy(&lowers[0], bvh.node_lowers, bvh.max_nodes*sizeof(BVHPackedNodeHalf), cudaMemcpyDeviceToHost));
-    check_cuda(cudaMemcpy(&uppers[0], bvh.node_uppers, bvh.max_nodes*sizeof(BVHPackedNodeHalf), cudaMemcpyDeviceToHost));
-
-    // zero child pointers for internal nodes so we can do checking
-    for (int i=num_items; i < bvh.max_nodes; ++i)
-    {
-        lowers[i].i = 0;
-        uppers[i].i = 0;
-    }
-
-    const int internal_offset = num_items;
-    int rootNode = -1;
-
-    // initialize leaf ranges [left, right]
-    for (int i=0; i < num_items; ++i)
-    {
-        range_lefts[i] = i;
-        range_rights[i] = i;
-    }
-
-    for (int i=num_items; i < max_nodes;++i)
-    {
-        range_lefts[i] = -1;
-        range_rights[i] = -1;
-    }
-    
-    for (int i=0; i < num_items && rootNode == -1; ++i)
-    {
-        int index = i;
-
-        for (;;)
-        {
-            int left = range_lefts[index];
-            int right = range_rights[index];
-
-            int parent;
-
-            if (left == 0 || (right != num_items-1 && deltas[right] < deltas[left-1]))
-            {
-                parent = right + internal_offset;
-
-                // check that no other node has assigned itself to the parent
-                assert(lowers[parent].i == 0);
-                assert(range_lefts[parent] == -1);
-                
-                // set parent's left child
-                lowers[parent].i = index;
-                
-                range_lefts[parent] = left;
-                num_children[parent]++;
-            }
-            else
-            {
-                parent = left + internal_offset - 1;
-                
-                // check that no other node has assigned itself to the parent
-                assert(uppers[parent].i == 0);
-                assert(range_rights[parent] == -1);
-
-                // set parent's right child
-                uppers[parent].i = index;
-
-                range_rights[parent] = right;
-                num_children[parent]++;
-            }
-
-            assert(num_children[parent] <= 2);
-
-            // assign bounds to parent
-            if (num_children[parent] == 2)
-            {
-                const int left_child = lowers[parent].i;
-                const int right_child = uppers[parent].i;
-
-                vec3 lower = Min(vec3(&lowers[left_child][0]), vec3(&lowers[right_child][0]));
-                vec3 upper = Max(vec3(&uppers[left_child][0]), vec3(&uppers[right_child][0]));
-                
-                lowers[parent] = { lower[0], lower[1], lower[2], (unsigned int)left_child, 0 };
-                uppers[parent] = { upper[0], upper[1], upper[2], (unsigned int)right_child, 0 };
-
-                // store index of root node
-                if (range_lefts[parent] == 0 && range_rights[parent] == num_items-1 && num_children[parent] == 2)
-                {					
-                    rootNode = parent;
-                    break;
-                }
-
-                index = parent;
-            }
-            else
-            {
-                // parent not ready, terminate
-                break;
-            }
-        }
-    }
-
-    for (int i=num_items; i < max_nodes-1; ++i)
-    {
-        assert(lowers[i].i != rootNode);
-        assert(uppers[i].i != rootNode);
-
-        assert(num_children[i] == 2);
-
-    }
-
-    check_cuda(cudaMemcpy(bvh.node_lowers, &lowers[0], sizeof(BVHPackedNodeHalf)*bvh.max_nodes, cudaMemcpyHostToDevice));
-    check_cuda(cudaMemcpy(bvh.node_uppers, &uppers[0], sizeof(BVHPackedNodeHalf)*bvh.max_nodes, cudaMemcpyHostToDevice));
-    check_cuda(cudaMemcpy(bvh.root, &rootNode, sizeof(int), cudaMemcpyHostToDevice));
-
-#endif
+    free_temp_device(WP_CURRENT_CONTEXT, range_lefts);
+    free_temp_device(WP_CURRENT_CONTEXT, range_rights);
+    free_temp_device(WP_CURRENT_CONTEXT, num_children);
 
 }
 
@@ -648,9 +497,8 @@ uint64_t bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, in
 
     bvh_host.context = context ? context : cuda_context_get_current();
 
-    // todo: provide a mechanism to free this memory, currently will live until process exit?
-    static wp::LinearBVHBuilderGPU* builder = new wp::LinearBVHBuilderGPU();
-    builder->build(bvh_host, lowers, uppers, num_items, NULL);
+    wp::LinearBVHBuilderGPU builder;
+    builder.build(bvh_host, lowers, uppers, num_items, NULL);
 
     // create device-side BVH descriptor
     wp::BVH* bvh_device = (wp::BVH*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::BVH));
