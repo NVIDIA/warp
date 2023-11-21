@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="warp.sparse" href="sparse.html" /><link rel="prev" title="Kernel Reference" href="functions.html" />
 
     <!-- Generated with Sphinx 7.2.6 and Furo 2023.08.19 -->
-        <title>warp.sim - Warp 1.0.0-beta.4</title>
+        <title>warp.sim - Warp 1.0.0-beta.5</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
@@ -137,7 +137,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">Warp 1.0.0-beta.4</div></a>
+      <a href="../index.html"><div class="brand">Warp 1.0.0-beta.5</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -164,7 +164,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 1.0.0-beta.4</span>
+  <span class="sidebar-brand-text">Warp 1.0.0-beta.5</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -3243,12 +3243,13 @@ may be used to advance the simulation state forward in time.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.sim.parse_usd">
-<span class="sig-prename descclassname"><span class="pre">warp.sim.</span></span><span class="sig-name descname"><span class="pre">parse_usd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">builder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">only_load_enabled_rigid_bodies</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">only_load_enabled_joints</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_ke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">250.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_kf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_restitution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_thickness</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">joint_limit_ke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">joint_limit_kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_paths</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">export_usda</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.parse_usd" title="Link to this definition">#</a></dt>
-<dd><p>Parses a USD file containing UsdPhysics schema definitions for rigid-body articulations and adds the bodies, shapes and joints to the given ModelBuilder.</p>
+<span class="sig-prename descclassname"><span class="pre">warp.sim.</span></span><span class="sig-name descname"><span class="pre">parse_usd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">builder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">only_load_enabled_rigid_bodies</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">only_load_enabled_joints</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_ke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">250.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_kf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_restitution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_thickness</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">joint_limit_ke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">joint_limit_kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">invert_rotations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_paths</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.parse_usd" title="Link to this definition">#</a></dt>
+<dd><p>Parses a Universal Scene Description (USD) stage containing UsdPhysics schema definitions for rigid-body articulations and adds the bodies, shapes and joints to the given ModelBuilder.</p>
+<p>The USD description has to be either a path (file name or URL), or an existing USD stage instance that implements the <a class="reference external" href="https://openusd.org/dev/api/class_usd_stage.html">UsdStage</a> interface.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>filename</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><em>str</em></a>) – The file path or URL to the USD file to parse.</p></li>
+<li><p><strong>source</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><em>str</em></a><em> | </em><em>pxr.UsdStage</em>) – The file path to the USD file, or an existing USD stage instance.</p></li>
 <li><p><strong>builder</strong> (<a class="reference internal" href="#warp.sim.ModelBuilder" title="warp.sim.ModelBuilder"><em>ModelBuilder</em></a>) – The <a class="reference internal" href="#warp.sim.ModelBuilder" title="warp.sim.ModelBuilder"><code class="xref py py-class docutils literal notranslate"><span class="pre">ModelBuilder</span></code></a> to add the bodies and joints to.</p></li>
 <li><p><strong>default_density</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><em>float</em></a>) – The default density to use for bodies without a density attribute.</p></li>
 <li><p><strong>only_load_enabled_rigid_bodies</strong> (<a class="reference internal" href="functions.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If True, only rigid bodies which do not have <cite>physics:rigidBodyEnabled</cite> set to False are loaded.</p></li>
@@ -3261,13 +3262,48 @@ may be used to advance the simulation state forward in time.</p>
 <li><p><strong>default_thickness</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><em>float</em></a>) – The thickness to add to the shape geometry.</p></li>
 <li><p><strong>joint_limit_ke</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><em>float</em></a>) – The default stiffness to use for joint limits, only considered by SemiImplicitIntegrator.</p></li>
 <li><p><strong>joint_limit_kd</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><em>float</em></a>) – The default damping to use for joint limits, only considered by SemiImplicitIntegrator.</p></li>
+<li><p><strong>invert_rotations</strong> (<a class="reference internal" href="functions.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If True, inverts any rotations defined in the shape transforms.</p></li>
 <li><p><strong>verbose</strong> (<a class="reference internal" href="functions.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If True, print additional information about the parsed USD file.</p></li>
 <li><p><strong>ignore_paths</strong> (<em>List</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><em>str</em></a><em>]</em>) – A list of regular expressions matching prim paths to ignore.</p></li>
-<li><p><strong>export_usda</strong> (<a class="reference internal" href="functions.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If True and the filename is a URL, export the downloaded USD file to a USDA file.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Dictionary with the following entries: “fps”: USD stage frames per second. “duration”: Difference between end time code and start time code of the USD stage. “up_axis”: Upper-case string of the stage up axis.</p>
+<dd class="field-even"><p><p>Dictionary with the following entries:</p>
+<div class="table-wrapper colwidths-given docutils container">
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 75.0%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>”fps”</p></td>
+<td><p>USD stage frames per second</p></td>
+</tr>
+<tr class="row-even"><td><p>”duration”</p></td>
+<td><p>Difference between end time code and start time code of the USD stage</p></td>
+</tr>
+<tr class="row-odd"><td><p>”up_axis”</p></td>
+<td><p>Upper-case string of the stage’s up axis (“X”, “Y”, or “Z”)</p></td>
+</tr>
+<tr class="row-even"><td><p>”path_shape_map”</p></td>
+<td><p>Mapping from prim path (str) of the UsdGeom to the respective shape index in <a class="reference internal" href="#warp.sim.ModelBuilder" title="warp.sim.ModelBuilder"><code class="xref py py-class docutils literal notranslate"><span class="pre">ModelBuilder</span></code></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>”path_body_map”</p></td>
+<td><p>Mapping from prim path (str) of a rigid body prim (e.g. that implements the PhysicsRigidBodyAPI) to the respective body index in <a class="reference internal" href="#warp.sim.ModelBuilder" title="warp.sim.ModelBuilder"><code class="xref py py-class docutils literal notranslate"><span class="pre">ModelBuilder</span></code></a></p></td>
+</tr>
+<tr class="row-even"><td><p>”path_shape_scale”</p></td>
+<td><p>Mapping from prim path (str) of the UsdGeom to its respective 3D world scale</p></td>
+</tr>
+<tr class="row-odd"><td><p>”mass_unit”</p></td>
+<td><p>The stage’s Kilograms Per Unit (KGPU) definition (1.0 by default)</p></td>
+</tr>
+<tr class="row-even"><td><p>”linear_unit”</p></td>
+<td><p>The stage’s Meters Per Unit (MPU) definition (1.0 by default)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.12)">dict</a></p>
@@ -3277,6 +3313,27 @@ may be used to advance the simulation state forward in time.</p>
 <p class="admonition-title">Note</p>
 <p>This importer is experimental and only supports a subset of the USD Physics schema. Please report any issues you encounter.</p>
 </div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sim.resolve_usd_from_url">
+<span class="sig-prename descclassname"><span class="pre">warp.sim.</span></span><span class="sig-name descname"><span class="pre">resolve_usd_from_url</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">url</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_folder_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">export_usda</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.resolve_usd_from_url" title="Link to this definition">#</a></dt>
+<dd><p>Downloads a USD file from a URL and resolves all references to other USD files to be downloaded to the given target folder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>url</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><em>str</em></a>) – URL to the USD file.</p></li>
+<li><p><strong>target_folder_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><em>str</em></a>) – Target folder name. If None, a timestamped folder will be created in the current directory.</p></li>
+<li><p><strong>export_usda</strong> (<a class="reference internal" href="functions.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If True, converts each downloaded USD file to USDA and saves the additional USDA file in the target folder with the same base name as the original USD file.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>File path to the downloaded USD file.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)">str</a></p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
@@ -3579,6 +3636,7 @@ may be used to advance the simulation state forward in time.</p>
 <li><a class="reference internal" href="#warp.sim.parse_urdf"><code class="docutils literal notranslate"><span class="pre">parse_urdf()</span></code></a></li>
 <li><a class="reference internal" href="#warp.sim.parse_mjcf"><code class="docutils literal notranslate"><span class="pre">parse_mjcf()</span></code></a></li>
 <li><a class="reference internal" href="#warp.sim.parse_usd"><code class="docutils literal notranslate"><span class="pre">parse_usd()</span></code></a></li>
+<li><a class="reference internal" href="#warp.sim.resolve_usd_from_url"><code class="docutils literal notranslate"><span class="pre">resolve_usd_from_url()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -3592,7 +3650,7 @@ may be used to advance the simulation state forward in time.</p>
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=54a451be"></script>
+</div><script src="../_static/documentation_options.js?v=f0dcd5a7"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/scripts/furo.js?v=32e29ea5"></script>

@@ -283,6 +283,12 @@ Scalar Math
    Return the smallest integer that is greater than or equal to ``x``.
 
 
+.. function:: frac(x: Float) -> Float
+
+   Retrieve the fractional part of x.
+    In other words, it discards the integer part of x and is equivalent to ``x - trunc(x)``.
+
+
 
 
 Vector Math

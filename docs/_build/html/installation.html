@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Basics" href="basics.html" /><link rel="prev" title="NVIDIA Warp Documentation" href="index.html" />
 
     <!-- Generated with Sphinx 7.2.6 and Furo 2023.08.19 -->
-        <title>Installation - Warp 1.0.0-beta.4</title>
+        <title>Installation - Warp 1.0.0-beta.5</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
@@ -137,7 +137,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Warp 1.0.0-beta.4</div></a>
+      <a href="index.html"><div class="brand">Warp 1.0.0-beta.5</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -164,7 +164,7 @@
     <img class="sidebar-logo only-dark" src="_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 1.0.0-beta.4</span>
+  <span class="sidebar-brand-text">Warp 1.0.0-beta.5</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -290,6 +290,24 @@ Warp package should be installed using:</p>
 <p>Which ensures that subsequent modifications to the library will be
 reflected in the Python package.</p>
 </section>
+<section id="conda-environments">
+<h2>Conda environments<a class="headerlink" href="#conda-environments" title="Link to this heading">#</a></h2>
+<p>Some modules, such as <code class="docutils literal notranslate"><span class="pre">usd-core</span></code>, don’t support the latest Python version.
+To manage running Warp and other projects on different Python versions one can
+make use of an environment management system such as
+<a class="reference external" href="https://docs.conda.io/">Conda</a>.</p>
+<p><strong>WARNING:</strong> When building and running Warp in a different environment, make sure
+the build environment has the same C++ runtime library version, or an older
+one, than the execution environment. Otherwise Warp’s shared libraries may end
+up looking for a newer runtime library version than the one available in the
+execution environment. For example on Linux this error could occur:</p>
+<p><code class="docutils literal notranslate"><span class="pre">OSError:</span> <span class="pre">&lt;...&gt;/libstdc++.so.6:</span> <span class="pre">version</span> <span class="pre">`GLIBCXX_3.4.30'</span> <span class="pre">not</span> <span class="pre">found</span> <span class="pre">(required</span> <span class="pre">by</span> <span class="pre">&lt;...&gt;/warp/warp/bin/warp.so)</span></code></p>
+<p>This can be solved by installing a newer C++ runtime version in the runtime
+conda environment using <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span> <span class="pre">-c</span> <span class="pre">conda-forge</span> <span class="pre">libstdcxx-ng=12.1</span></code> or
+newer. Or, the build environment’s C++ toolchain can be downgraded using
+<code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span> <span class="pre">-c</span> <span class="pre">conda-forge</span> <span class="pre">libstdcxx-ng=8.5</span></code>. Or, one can <code class="docutils literal notranslate"><span class="pre">activate</span></code> or
+<code class="docutils literal notranslate"><span class="pre">deactivate</span></code> conda environments as needed for building vs. running Warp.</p>
+</section>
 </section>
 
         </article>
@@ -356,6 +374,7 @@ reflected in the Python package.</p>
 <li><a class="reference internal" href="#">Installation</a><ul>
 <li><a class="reference internal" href="#dependencies">Dependencies</a></li>
 <li><a class="reference internal" href="#building-from-source">Building from source</a></li>
+<li><a class="reference internal" href="#conda-environments">Conda environments</a></li>
 </ul>
 </li>
 </ul>
@@ -367,7 +386,7 @@ reflected in the Python package.</p>
       
     </aside>
   </div>
-</div><script src="_static/documentation_options.js?v=54a451be"></script>
+</div><script src="_static/documentation_options.js?v=f0dcd5a7"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=32e29ea5"></script>

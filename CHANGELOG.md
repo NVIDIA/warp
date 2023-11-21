@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## [1.0.0-beta.5] - 2023-11-22
+
+- Fix for kernel caching when function argument types change
+- Fix code-gen ordering of dependent structs
+- Fix for `wp.Mesh` build on MGPU systems
+- Fix for name clash bug with adjoint code: https://github.com/NVIDIA/warp/issues/154 
+- Add `wp.frac()` for returning the fractional part of a floating point value
+- Add support for custom native CUDA snippets using `@wp.func_native` decorator
+- Add support for batched matmul with batch size > 2^16-1
+- Add support for tranposed CUTLASS `wp.matmul()` and additional error checking
+- Add support for quad and hex meshes in `wp.fem`
+- Detect and warn when C++ runtime doesn't match compiler during build, e.g.: libstdc++.so.6: version `GLIBCXX_3.4.30' not found
+- Documentation update for `wp.BVH`
+- Documentaiton and simplified API for runtime kernel specialization `wp.Kernel`
+
 ## [1.0.0-beta.4] - 2023-11-01
 
 - Add `wp.cbrt()` for cube root calculation
@@ -54,7 +69,7 @@
 - Add support for `wp.volume_sample_grad_f()` which returns the value + gradient efficiently from an NVDB volume
 - Add support for LLVM fp16 intrinsics for half-precision arithmetic
 - Add implementation of stochastic gradient descent, see `wp.optim.SGD`
-- Add `warp.fem` framework for solving weak-form PDE problems (see https://gdaviet.gitlab-master-pages.nvidia.com/warp/modules/fem.html)
+- Add `warp.fem` framework for solving weak-form PDE problems (see https://nvidia.github.io/warp/_build/html/modules/fem.html)
 - Optimizations for `omni.warp` extension load time (2.2s to 625ms cold start)
 - Make all `omni.ui` dependencies optional so that Warp unit tests can run headless
 - Deprecation of `wp.tid()` outside of kernel functions, users should pass `tid()` values to `wp.func` functions explicitly

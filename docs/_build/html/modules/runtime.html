@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Kernel Reference" href="functions.html" /><link rel="prev" title="FAQ" href="../faq.html" />
 
     <!-- Generated with Sphinx 7.2.6 and Furo 2023.08.19 -->
-        <title>Runtime Reference - Warp 1.0.0-beta.4</title>
+        <title>Runtime Reference - Warp 1.0.0-beta.5</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
@@ -137,7 +137,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">Warp 1.0.0-beta.4</div></a>
+      <a href="../index.html"><div class="brand">Warp 1.0.0-beta.5</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -164,7 +164,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 1.0.0-beta.4</span>
+  <span class="sidebar-brand-text">Warp 1.0.0-beta.5</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -2302,6 +2302,87 @@ for the input array:</p>
 </section>
 </section>
 </section>
+<section id="custom-native-functions">
+<h2>Custom Native Functions<a class="headerlink" href="#custom-native-functions" title="Link to this heading">#</a></h2>
+<p>Users may insert native C++/CUDA code in Warp kernels using <code class="docutils literal notranslate"><span class="pre">&#64;func_native</span></code> decorated functions.
+These accept native code as strings that get compiled after code generation, and are called within <code class="docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code> functions.
+For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    __shared__ int s[128];</span>
+
+<span class="s2">    s[tid] = d[tid];</span>
+<span class="s2">    __syncthreads();</span>
+<span class="s2">    d[tid] = s[N - tid - 1];</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">reverse</span><span class="p">(</span><span class="n">d</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span> <span class="n">N</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">tid</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="o">...</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span> <span class="nf">reverse_kernel</span><span class="p">(</span><span class="n">d</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span> <span class="n">N</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">reverse</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">tid</span><span class="p">)</span>
+
+<span class="n">N</span> <span class="o">=</span> <span class="mi">128</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">reverse_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">N</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">,</span> <span class="n">N</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Notice the use of shared memory here: the Warp library does not expose shared memory as a feature, but the CUDA compiler will
+readily accept the above snippet. This means CUDA features not exposed in Warp are still accessible in Warp scripts.
+Warp kernels meant for the CPU won’t be able to leverage CUDA features of course, but this same mechanism supports pure C++ snippets as well.</p>
+<p>Please bear in mind the following: the thread index in your snippet should be computed in a <code class="docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code> and passed to your snippet,
+as in the above example. This means your <code class="docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code> function signature should include the variables used in your snippet,
+as well as a thread index of type <code class="docutils literal notranslate"><span class="pre">int</span></code>. The function body itself should be stubbed with <code class="docutils literal notranslate"><span class="pre">...</span></code> (the snippet will be inserted during compilation).</p>
+<p>Should you wish to record your native function on the tape and then subsequently rewind the tape, you must include an adjoint snippet
+alongside your snippet as an additional input to the decorator, as in the following example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">out[tid] = a * x[tid] + y[tid];</span>
+<span class="s2">&quot;&quot;&quot;</span>
+<span class="n">adj_snippet</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">adj_a = x[tid] * adj_out[tid];</span>
+<span class="s2">adj_x[tid] = a * adj_out[tid];</span>
+<span class="s2">adj_y[tid] = adj_out[tid];</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="p">,</span> <span class="n">adj_snippet</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">saxpy</span><span class="p">(</span>
+    <span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+    <span class="n">y</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+    <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+    <span class="n">tid</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="o">...</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span> <span class="nf">saxpy_kernel</span><span class="p">(</span>
+    <span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+    <span class="n">y</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+    <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="p">):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">saxpy</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">tid</span><span class="p">)</span>
+
+<span class="n">N</span> <span class="o">=</span> <span class="mi">128</span>
+<span class="n">a</span> <span class="o">=</span> <span class="mf">2.0</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+<span class="n">adj_out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+<span class="n">tape</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span>
+
+<span class="k">with</span> <span class="n">tape</span><span class="p">:</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">saxpy_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">N</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+<span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">grads</span><span class="o">=</span><span class="p">{</span><span class="n">out</span><span class="p">:</span> <span class="n">adj_out</span><span class="p">})</span>
+</pre></div>
+</div>
+</section>
 <section id="profiling">
 <h2>Profiling<a class="headerlink" href="#profiling" title="Link to this heading">#</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">wp.ScopedTimer</span></code> objects can be used to gain some basic insight into the performance of Warp applications:</p>
@@ -2568,6 +2649,7 @@ between timer and NVTX capabilities of <code class="docutils literal notranslate
 </li>
 </ul>
 </li>
+<li><a class="reference internal" href="#custom-native-functions">Custom Native Functions</a></li>
 <li><a class="reference internal" href="#profiling">Profiling</a><ul>
 <li><a class="reference internal" href="#warp.ScopedTimer"><code class="docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a><ul>
 <li><a class="reference internal" href="#warp.ScopedTimer.elapsed"><code class="docutils literal notranslate"><span class="pre">ScopedTimer.elapsed</span></code></a></li>
@@ -2586,7 +2668,7 @@ between timer and NVTX capabilities of <code class="docutils literal notranslate
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=54a451be"></script>
+</div><script src="../_static/documentation_options.js?v=f0dcd5a7"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/scripts/furo.js?v=32e29ea5"></script>

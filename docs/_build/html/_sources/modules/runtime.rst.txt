@@ -1287,6 +1287,89 @@ for the input array:
     output:      [1.   1.4142135   1.7320508   2.    2.236068   2.4494898   2.6457512   2.828427  ]
     input.grad:  [0.5  0.35355338  0.28867513  0.25  0.2236068  0.20412414  0.18898225  0.17677669]
 
+Custom Native Functions
+-----------------------
+
+Users may insert native C++/CUDA code in Warp kernels using ``@func_native`` decorated functions.
+These accept native code as strings that get compiled after code generation, and are called within ``@wp.kernel`` functions.
+For example::
+
+    snippet = """
+        __shared__ int s[128];
+
+        s[tid] = d[tid];
+        __syncthreads();
+        d[tid] = s[N - tid - 1];
+        """
+
+    @wp.func_native(snippet)
+    def reverse(d: wp.array(dtype=int), N: int, tid: int):
+        ...
+
+    @wp.kernel
+    def reverse_kernel(d: wp.array(dtype=int), N: int):
+        tid = wp.tid()
+        reverse(d, N, tid)
+
+    N = 128
+    x = wp.array(np.arange(N, dtype=int), dtype=int, device=device)
+
+    wp.launch(kernel=reverse_kernel, dim=N, inputs=[x, N], device=device)
+
+Notice the use of shared memory here: the Warp library does not expose shared memory as a feature, but the CUDA compiler will
+readily accept the above snippet. This means CUDA features not exposed in Warp are still accessible in Warp scripts.
+Warp kernels meant for the CPU won't be able to leverage CUDA features of course, but this same mechanism supports pure C++ snippets as well.
+
+Please bear in mind the following: the thread index in your snippet should be computed in a ``@wp.kernel`` and passed to your snippet,
+as in the above example. This means your ``@wp.func_native`` function signature should include the variables used in your snippet, 
+as well as a thread index of type ``int``. The function body itself should be stubbed with ``...`` (the snippet will be inserted during compilation).
+
+Should you wish to record your native function on the tape and then subsequently rewind the tape, you must include an adjoint snippet
+alongside your snippet as an additional input to the decorator, as in the following example::
+
+    snippet = """
+    out[tid] = a * x[tid] + y[tid];
+    """
+    adj_snippet = """
+    adj_a = x[tid] * adj_out[tid];
+    adj_x[tid] = a * adj_out[tid];
+    adj_y[tid] = adj_out[tid];
+    """
+
+    @wp.func_native(snippet, adj_snippet)
+    def saxpy(
+        a: wp.float32,
+        x: wp.array(dtype=wp.float32),
+        y: wp.array(dtype=wp.float32),
+        out: wp.array(dtype=wp.float32),
+        tid: int,
+    ):
+        ...
+
+    @wp.kernel
+    def saxpy_kernel(
+        a: wp.float32,
+        x: wp.array(dtype=wp.float32),
+        y: wp.array(dtype=wp.float32),
+        out: wp.array(dtype=wp.float32)
+    ):
+        tid = wp.tid()
+        saxpy(a, x, y, out, tid)
+
+    N = 128
+    a = 2.0
+    x = wp.array(np.arange(N, dtype=np.float32), dtype=wp.float32, device=device, requires_grad=True)
+    y = wp.zeros_like(x1)
+    out = wp.array(np.arange(N, dtype=np.float32), dtype=wp.float32, device=device)
+    adj_out = wp.array(np.ones(N, dtype=np.float32), dtype=wp.float32, device=device)
+
+    tape = wp.Tape()
+
+    with tape:
+        wp.launch(kernel=saxpy_kernel, dim=N, inputs=[a, x, y], outputs=[out], device=device)
+
+    tape.backward(grads={out: adj_out})
+
 Profiling
 ---------
 

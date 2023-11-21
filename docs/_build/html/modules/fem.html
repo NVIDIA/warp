@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="prev" title="warp.sparse" href="sparse.html" />
 
     <!-- Generated with Sphinx 7.2.6 and Furo 2023.08.19 -->
-        <title>warp.fem - Warp 1.0.0-beta.4</title>
+        <title>warp.fem - Warp 1.0.0-beta.5</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
@@ -137,7 +137,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">Warp 1.0.0-beta.4</div></a>
+      <a href="../index.html"><div class="brand">Warp 1.0.0-beta.5</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -164,7 +164,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 1.0.0-beta.4</span>
+  <span class="sidebar-brand-text">Warp 1.0.0-beta.5</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -294,7 +294,7 @@ passed as a dictionary in the <cite>values</cite> argument of the launcher funct
 <p>The typical steps for solving a linear PDE are as follow:</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>Define a <a class="reference internal" href="#warp.fem.Geometry" title="warp.fem.Geometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">Geometry</span></code></a> (grid, mesh, etc). At the moment, 2D and 3D regular grids, triangle and tetrahedron meshes are supported.</p></li>
+<li><p>Define a <a class="reference internal" href="#warp.fem.Geometry" title="warp.fem.Geometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">Geometry</span></code></a> (grid, mesh, etc). At the moment, 2D and 3D regular grids, triangle, quadrilateral, tetrahedron and hexahedron meshes are supported.</p></li>
 <li><p>Define one or more <a class="reference internal" href="#warp.fem.FunctionSpace" title="warp.fem.FunctionSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">FunctionSpace</span></code></a>, by equipping the geometry elements with shape functions. See <a class="reference internal" href="#warp.fem.make_polynomial_space" title="warp.fem.make_polynomial_space"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_polynomial_space()</span></code></a>. At the moment, continuous/discontinuous Lagrange (<span class="math notranslate nohighlight">\(P_{k[d]}, Q_{k[d]}\)</span>) and Serendipity (<span class="math notranslate nohighlight">\(S_k\)</span>) shape functions of order <span class="math notranslate nohighlight">\(k \leq 3\)</span> are supported.</p></li>
 <li><p>Define an integration <a class="reference internal" href="#warp.fem.GeometryDomain" title="warp.fem.GeometryDomain"><code class="xref py py-class docutils literal notranslate"><span class="pre">GeometryDomain</span></code></a>, for instance the geometry’s cells (<a class="reference internal" href="#warp.fem.Cells" title="warp.fem.Cells"><code class="xref py py-class docutils literal notranslate"><span class="pre">Cells</span></code></a>) or boundary sides (<a class="reference internal" href="#warp.fem.BoundarySides" title="warp.fem.BoundarySides"><code class="xref py py-class docutils literal notranslate"><span class="pre">BoundarySides</span></code></a>).</p></li>
 <li><p>Integrate linear forms to build the system’s right-hand-side. Define a test function over the function space using <a class="reference internal" href="#warp.fem.make_test" title="warp.fem.make_test"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_test()</span></code></a>,
@@ -372,6 +372,30 @@ arbitrary operations are permitted. However, the result of the form must remain 
 </section>
 <section id="advanced-usages">
 <h2>Advanced usages<a class="headerlink" href="#advanced-usages" title="Link to this heading">#</a></h2>
+<section id="high-order-curved-geometries">
+<h3>High-order (curved) geometries<a class="headerlink" href="#high-order-curved-geometries" title="Link to this heading">#</a></h3>
+<p>It is possible to convert any <a class="reference internal" href="#warp.fem.Geometry" title="warp.fem.Geometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">Geometry</span></code></a> (grids and explicit meshes) into a curved, high-order variant by deforming them
+with an arbitrary-order displacement field using the <a class="reference internal" href="#warp.fem.DiscreteField.make_deformed_geometry" title="warp.fem.DiscreteField.make_deformed_geometry"><code class="xref py py-meth docutils literal notranslate"><span class="pre">make_deformed_geometry()</span></code></a> method.
+The process looks as follow:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Define a base geometry</span>
+<span class="n">base_geo</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">Grid3D</span><span class="p">(</span><span class="n">res</span><span class="o">=</span><span class="n">resolution</span><span class="p">)</span>
+
+<span class="c1"># Define a displacement field on the base geometry</span>
+<span class="n">deformation_space</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">make_polynomial_space</span><span class="p">(</span><span class="n">base_geo</span><span class="p">,</span> <span class="n">degree</span><span class="o">=</span><span class="n">deformation_degree</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>
+<span class="n">deformation_field</span> <span class="o">=</span> <span class="n">deformation_space</span><span class="o">.</span><span class="n">make_field</span><span class="p">()</span>
+
+<span class="c1"># Populate the field value by interpolating an expression</span>
+<span class="n">fem</span><span class="o">.</span><span class="n">interpolate</span><span class="p">(</span><span class="n">deformation_field_expr</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="n">deformation_field</span><span class="p">)</span>
+
+<span class="c1"># Construct the deformed geometry from the displacement field</span>
+<span class="n">deform_geo</span> <span class="o">=</span> <span class="n">deformation_field</span><span class="o">.</span><span class="n">make_deformed_geometry</span><span class="p">()</span>
+
+<span class="c1"># Define new function spaces on the deformed geometry</span>
+<span class="n">scalar_space</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">make_polynomial_space</span><span class="p">(</span><span class="n">deformed_geo</span><span class="p">,</span> <span class="n">degree</span><span class="o">=</span><span class="n">scalar_space_degree</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>See also <code class="docutils literal notranslate"><span class="pre">example_deformed_geometry.py</span></code> for a complete example.</p>
+</section>
 <section id="particle-based-quadrature">
 <h3>Particle-based quadrature<a class="headerlink" href="#particle-based-quadrature" title="Link to this heading">#</a></h3>
 <p>The <a class="reference internal" href="#warp.fem.PicQuadrature" title="warp.fem.PicQuadrature"><code class="xref py py-class docutils literal notranslate"><span class="pre">PicQuadrature</span></code></a> provides a way to define Particle-In-Cell quadratures from a set or arbitrary particles,
@@ -415,7 +439,15 @@ either globally using <a class="reference internal" href="#warp.fem.set_default_
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.fem.lookup">
 <span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.Domain" title="warp.fem.Domain"><span class="pre">Domain</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.lookup" title="Link to this definition">#</a></dt>
-<dd><p>Looks-up the sample point corresponding to a world position <cite>x</cite>, projecting to the closest point on the domain</p>
+<dd><p>Looks-up the sample point corresponding to a world position <cite>x</cite>, projecting to the closest point on the domain.</p>
+<dl class="simple">
+<dt>Arg:</dt><dd><p>x: world position of the point to look-up in the geometry
+guess: (optional) <a class="reference internal" href="#warp.fem.Sample" title="warp.fem.Sample"><code class="xref py py-class docutils literal notranslate"><span class="pre">Sample</span></code></a> initial guess, may help perform the query</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Currently this operator is only fully supported for <a class="reference internal" href="#warp.fem.Grid2D" title="warp.fem.Grid2D"><code class="xref py py-class docutils literal notranslate"><span class="pre">Grid2D</span></code></a> and <a class="reference internal" href="#warp.fem.Grid3D" title="warp.fem.Grid3D"><code class="xref py py-class docutils literal notranslate"><span class="pre">Grid3D</span></code></a> geometries.
+For <code class="xref py py-class docutils literal notranslate"><span class="pre">TriangleMesh2D</span></code> and <a class="reference internal" href="#warp.fem.Tetmesh" title="warp.fem.Tetmesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tetmesh</span></code></a> geometries, the operator requires providing <cite>guess</cite>.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -428,6 +460,12 @@ either globally using <a class="reference internal" href="#warp.fem.set_default_
 <dt class="sig sig-object py" id="warp.fem.measure_ratio">
 <span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">measure_ratio</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.Domain" title="warp.fem.Domain"><span class="pre">Domain</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.Sample" title="warp.fem.Sample"><span class="pre">Sample</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.measure_ratio" title="Link to this definition">#</a></dt>
 <dd><p>Returns the maximum ratio between the measure of this element and that of higher-dimensional neighbours.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.fem.deformation_gradient">
+<span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">deformation_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.Domain" title="warp.fem.Domain"><span class="pre">Domain</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.fem.Sample" title="warp.fem.Sample"><span class="pre">Sample</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.deformation_gradient" title="Link to this definition">#</a></dt>
+<dd><p>Evaluates the gradient of the domain position with respect to the element reference space at the sample point <cite>s</cite></p>
 </dd></dl>
 
 <dl class="py function">
@@ -546,7 +584,7 @@ either globally using <a class="reference internal" href="#warp.fem.set_default_
 <li><p><strong>output</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.types.array"><em>array</em></a><em> | </em><a class="reference internal" href="sparse.html#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a><em> | </em><em>None</em>) – Sparse matrix or warp array into which to store the result of the integration</p></li>
 <li><p><strong>output_dtype</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.12)"><em>type</em></a><em> | </em><em>None</em>) – Scalar type for returned results in <cite>output</cite> is notr provided. If None, defaults to <cite>accumulate_dtype</cite></p></li>
 <li><p><strong>device</strong> – Device on which to perform the integration</p></li>
-<li><p><strong>kernel_options</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.12)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><em>Any</em></a><em>]</em>) – Overloaded options to be passed to the kernel builder (e.g, <code class="docutils literal notranslate"><span class="pre">{&quot;enable_backwards&quot;:</span> <span class="pre">True}</span></code>)</p></li>
+<li><p><strong>kernel_options</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.12)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><em>Any</em></a><em>]</em>) – Overloaded options to be passed to the kernel builder (e.g, <code class="docutils literal notranslate"><span class="pre">{&quot;enable_backward&quot;:</span> <span class="pre">True}</span></code>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -637,6 +675,23 @@ either globally using <a class="reference internal" href="#warp.fem.set_default_
 </dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.Quadmesh2D">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">Quadmesh2D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">quad_vertex_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.Quadmesh2D" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#warp.fem.Geometry" title="warp.fem.geometry.geometry.Geometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">Geometry</span></code></a></p>
+<p>Two-dimensional quadrilateral mesh geometry</p>
+<p>Constructs a two-dimensional quadrilateral mesh.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>quad_vertex_indices</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.types.array"><em>array</em></a>) – warp array of shape (num_tris, 4) containing vertex indices for each quad, in counter-clockwise order</p></li>
+<li><p><strong>positions</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.types.array"><em>array</em></a>) – warp array of shape (num_vertices, 2) containing 2d position for each vertex</p></li>
+<li><p><strong>temporary_store</strong> (<a class="reference internal" href="#warp.fem.TemporaryStore" title="warp.fem.cache.TemporaryStore"><em>TemporaryStore</em></a><em> | </em><em>None</em>) – shared pool from which to allocate temporary arrays</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.Grid3D">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">Grid3D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">res</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_lo=&lt;warp.types.vec3f</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_hi=&lt;warp.types.vec3f</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.Grid3D" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#warp.fem.Geometry" title="warp.fem.geometry.geometry.Geometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">Geometry</span></code></a></p>
@@ -664,6 +719,24 @@ either globally using <a class="reference internal" href="#warp.fem.set_default_
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>tet_vertex_indices</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.types.array"><em>array</em></a>) – warp array of shape (num_tets, 4) containing vertex indices for each tet</p></li>
+<li><p><strong>positions</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.types.array"><em>array</em></a>) – warp array of shape (num_vertices, 3) containing 3d position for each vertex</p></li>
+<li><p><strong>temporary_store</strong> (<a class="reference internal" href="#warp.fem.TemporaryStore" title="warp.fem.cache.TemporaryStore"><em>TemporaryStore</em></a><em> | </em><em>None</em>) – shared pool from which to allocate temporary arrays</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">Hexmesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hex_vertex_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.Hexmesh" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#warp.fem.Geometry" title="warp.fem.geometry.geometry.Geometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">Geometry</span></code></a></p>
+<p>Hexahedral mesh geometry</p>
+<p>Constructs a tetrahedral mesh.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>hex_vertex_indices</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.types.array"><em>array</em></a>) – warp array of shape (num_hexes, 8) containing vertex indices for each hex
+following standard ordering (bottom face vertices in counter-clockwise order, then similarly for upper face)</p></li>
 <li><p><strong>positions</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.types.array"><em>array</em></a>) – warp array of shape (num_vertices, 3) containing 3d position for each vertex</p></li>
 <li><p><strong>temporary_store</strong> (<a class="reference internal" href="#warp.fem.TemporaryStore" title="warp.fem.cache.TemporaryStore"><em>TemporaryStore</em></a><em> | </em><em>None</em>) – shared pool from which to allocate temporary arrays</p></li>
 </ul>
@@ -1096,7 +1169,7 @@ using usual L2 norm for vectors and half Frobenius norm, (tau : tau)/2 for tenso
 
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.fem.project_linear_system">
-<span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">project_linear_system</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system_matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">system_rhs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projector_matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fixed_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalize_projector</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.project_linear_system" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">project_linear_system</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system_matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">system_rhs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projector_matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fixed_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalize_projector</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.project_linear_system" title="Link to this definition">#</a></dt>
 <dd><p>Projects both the left-hand-side and right-hand-side of a linear system to enforce Dirichlet boundary conditions</p>
 <p>If normalize_projector is True, first apply scaling so that the projector_matrix is idempotent</p>
 <dl class="field-list simple">
@@ -1105,7 +1178,7 @@ using usual L2 norm for vectors and half Frobenius norm, (tau : tau)/2 for tenso
 <li><p><strong>system_matrix</strong> (<a class="reference internal" href="sparse.html#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – </p></li>
 <li><p><strong>system_rhs</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.types.array"><em>array</em></a>) – </p></li>
 <li><p><strong>projector_matrix</strong> (<a class="reference internal" href="sparse.html#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – </p></li>
-<li><p><strong>fixed_value</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.types.array"><em>array</em></a>) – </p></li>
+<li><p><strong>fixed_value</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.types.array"><em>array</em></a><em> | </em><em>None</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -1605,6 +1678,17 @@ however, it is not a required ingredient of a function space.</p>
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.DiscreteField.make_deformed_geometry">
+<span class="sig-name descname"><span class="pre">make_deformed_geometry</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.DiscreteField.make_deformed_geometry" title="Link to this definition">#</a></dt>
+<dd><p>Returns a deformed version of the underlying geometry using this field’s values as displacement</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#warp.fem.Geometry" title="warp.fem.geometry.geometry.Geometry"><em>Geometry</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -1779,6 +1863,7 @@ The temporary may also be explicitly returned to the pool before destruction usi
 <li><a class="reference internal" href="#basic-workflow">Basic workflow</a></li>
 <li><a class="reference internal" href="#introductory-examples">Introductory examples</a></li>
 <li><a class="reference internal" href="#advanced-usages">Advanced usages</a><ul>
+<li><a class="reference internal" href="#high-order-curved-geometries">High-order (curved) geometries</a></li>
 <li><a class="reference internal" href="#particle-based-quadrature">Particle-based quadrature</a></li>
 <li><a class="reference internal" href="#partitioning">Partitioning</a></li>
 <li><a class="reference internal" href="#memory-management">Memory management</a></li>
@@ -1790,6 +1875,7 @@ The temporary may also be explicitly returned to the pool before destruction usi
 <li><a class="reference internal" href="#warp.fem.lookup"><code class="docutils literal notranslate"><span class="pre">lookup()</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.measure"><code class="docutils literal notranslate"><span class="pre">measure()</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.measure_ratio"><code class="docutils literal notranslate"><span class="pre">measure_ratio()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.deformation_gradient"><code class="docutils literal notranslate"><span class="pre">deformation_gradient()</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.degree"><code class="docutils literal notranslate"><span class="pre">degree()</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.inner"><code class="docutils literal notranslate"><span class="pre">inner()</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.outer"><code class="docutils literal notranslate"><span class="pre">outer()</span></code></a></li>
@@ -1819,8 +1905,10 @@ The temporary may also be explicitly returned to the pool before destruction usi
 <li><a class="reference internal" href="#geometry">Geometry</a><ul>
 <li><a class="reference internal" href="#warp.fem.Grid2D"><code class="docutils literal notranslate"><span class="pre">Grid2D</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.Trimesh2D"><code class="docutils literal notranslate"><span class="pre">Trimesh2D</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.Quadmesh2D"><code class="docutils literal notranslate"><span class="pre">Quadmesh2D</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.Grid3D"><code class="docutils literal notranslate"><span class="pre">Grid3D</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.Tetmesh"><code class="docutils literal notranslate"><span class="pre">Tetmesh</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.Hexmesh"><code class="docutils literal notranslate"><span class="pre">Hexmesh</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.LinearGeometryPartition"><code class="docutils literal notranslate"><span class="pre">LinearGeometryPartition</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.ExplicitGeometryPartition"><code class="docutils literal notranslate"><span class="pre">ExplicitGeometryPartition</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.Cells"><code class="docutils literal notranslate"><span class="pre">Cells</span></code></a></li>
@@ -1937,6 +2025,7 @@ The temporary may also be explicitly returned to the pool before destruction usi
 <li><a class="reference internal" href="#warp.fem.DiscreteField"><code class="docutils literal notranslate"><span class="pre">DiscreteField</span></code></a><ul>
 <li><a class="reference internal" href="#warp.fem.DiscreteField.dof_values"><code class="docutils literal notranslate"><span class="pre">DiscreteField.dof_values</span></code></a></li>
 <li><a class="reference internal" href="#warp.fem.DiscreteField.trace"><code class="docutils literal notranslate"><span class="pre">DiscreteField.trace()</span></code></a></li>
+<li><a class="reference internal" href="#warp.fem.DiscreteField.make_deformed_geometry"><code class="docutils literal notranslate"><span class="pre">DiscreteField.make_deformed_geometry()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#warp.fem.field.FieldRestriction"><code class="docutils literal notranslate"><span class="pre">FieldRestriction</span></code></a></li>
@@ -1963,7 +2052,7 @@ The temporary may also be explicitly returned to the pool before destruction usi
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=54a451be"></script>
+</div><script src="../_static/documentation_options.js?v=f0dcd5a7"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/scripts/furo.js?v=32e29ea5"></script>

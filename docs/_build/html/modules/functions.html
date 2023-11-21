@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="warp.sim" href="sim.html" /><link rel="prev" title="Runtime Reference" href="runtime.html" />
 
     <!-- Generated with Sphinx 7.2.6 and Furo 2023.08.19 -->
-        <title>Kernel Reference - Warp 1.0.0-beta.4</title>
+        <title>Kernel Reference - Warp 1.0.0-beta.5</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
@@ -137,7 +137,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">Warp 1.0.0-beta.4</div></a>
+      <a href="../index.html"><div class="brand">Warp 1.0.0-beta.5</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -164,7 +164,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 1.0.0-beta.4</span>
+  <span class="sidebar-brand-text">Warp 1.0.0-beta.5</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -829,6 +829,15 @@ Equivalent to <code class="xref py py-func docutils literal notranslate"><span c
 <dt class="sig sig-object py" id="warp.ceil">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">ceil</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Float" title="warp.Float"><span class="pre">Float</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.Float" title="warp.Float"><span class="pre">Float</span></a></span></span><a class="headerlink" href="#warp.ceil" title="Link to this definition">#</a></dt>
 <dd><p>Return the smallest integer that is greater than or equal to <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.frac">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">frac</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.Float" title="warp.Float"><span class="pre">Float</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.Float" title="warp.Float"><span class="pre">Float</span></a></span></span><a class="headerlink" href="#warp.frac" title="Link to this definition">#</a></dt>
+<dd><dl class="simple">
+<dt>Retrieve the fractional part of x.</dt><dd><p>In other words, it discards the integer part of x and is equivalent to <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">-</span> <span class="pre">trunc(x)</span></code>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
@@ -2802,6 +2811,7 @@ but each thread should generate uncorrelated values. In this case usage should b
 <li><a class="reference internal" href="#warp.trunc"><code class="docutils literal notranslate"><span class="pre">trunc()</span></code></a></li>
 <li><a class="reference internal" href="#warp.floor"><code class="docutils literal notranslate"><span class="pre">floor()</span></code></a></li>
 <li><a class="reference internal" href="#warp.ceil"><code class="docutils literal notranslate"><span class="pre">ceil()</span></code></a></li>
+<li><a class="reference internal" href="#warp.frac"><code class="docutils literal notranslate"><span class="pre">frac()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#vector-math">Vector Math</a><ul>
@@ -2980,7 +2990,7 @@ but each thread should generate uncorrelated values. In this case usage should b
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=54a451be"></script>
+</div><script src="../_static/documentation_options.js?v=f0dcd5a7"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/scripts/furo.js?v=32e29ea5"></script>
