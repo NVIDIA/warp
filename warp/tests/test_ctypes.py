@@ -144,8 +144,7 @@ def make_matrix_test(dim, matrix, vector):
     # register a custom kernel (no decorator) function
     # this lets us register the same function definition
     # against multiple symbols, with different arg types
-    module = wp.get_module(test_matrix_kernel.__module__)
-    kernel = wp.Kernel(func=test_matrix_kernel, key=f"test_mat{dim}{dim}_kernel", module=module)
+    kernel = wp.Kernel(func=test_matrix_kernel, key=f"test_mat{dim}{dim}_kernel")
 
     def test_matrix(test, device):
         rng = np.random.default_rng(42)
