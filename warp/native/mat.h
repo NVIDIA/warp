@@ -1105,10 +1105,10 @@ inline CUDA_CALLABLE void adj_determinant(const mat_t<4,4,Type>& m, mat_t<4,4,Ty
 }
 
 template<unsigned Rows, typename Type>
-inline CUDA_CALLABLE void adj_inverse(const mat_t<Rows,Rows,Type>& m, mat_t<Rows,Rows,Type>& adj_m, const mat_t<Rows,Rows,Type>& adj_ret)
+inline CUDA_CALLABLE void adj_inverse(const mat_t<Rows,Rows,Type>& m, mat_t<Rows,Rows,Type>& ret, mat_t<Rows,Rows,Type>& adj_m, const mat_t<Rows,Rows,Type>& adj_ret)
 {
     // todo: how to cache this from the forward pass?
-    mat_t<Rows,Rows,Type> invt = transpose(inverse(m));
+    mat_t<Rows,Rows,Type> invt = transpose(ret);
 
     // see https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf 2.2.3
     adj_m -= mul(mul(invt, adj_ret), invt);
@@ -1150,10 +1150,10 @@ inline CUDA_CALLABLE void adj_cw_mul(const mat_t<Rows,Cols,Type>& a, const mat_t
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_cw_div(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b, mat_t<Rows,Cols,Type>& adj_a, mat_t<Rows,Cols,Type>& adj_b, const mat_t<Rows,Cols,Type>& adj_ret)
+inline CUDA_CALLABLE void adj_cw_div(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b, mat_t<Rows,Cols,Type>& ret, mat_t<Rows,Cols,Type>& adj_a, mat_t<Rows,Cols,Type>& adj_b, const mat_t<Rows,Cols,Type>& adj_ret)
 {
   adj_a += cw_div(adj_ret, b);
-  adj_b -= cw_mul(adj_ret, cw_div(cw_div(a, b), b));
+  adj_b -= cw_mul(adj_ret, cw_div(ret, b));
 }
 
 // adjoint for the constant constructor:

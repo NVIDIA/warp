@@ -79,6 +79,7 @@ class Function:
         overloaded_annotations=None,
         code_transformers=[],
         skip_adding_overload=False,
+        require_original_output_arg=False,
     ):
         self.func = func  # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
@@ -97,6 +98,7 @@ class Function:
         self.native_snippet = native_snippet
         self.adj_native_snippet = adj_native_snippet
         self.custom_grad_func = None
+        self.require_original_output_arg = require_original_output_arg
 
         if initializer_list_func is None:
             self.initializer_list_func = lambda x, y: False
@@ -841,6 +843,7 @@ def add_builtin(
     missing_grad=False,
     native_func=None,
     defaults=None,
+    require_original_output_arg=False,
 ):
     # wrap simple single-type functions with a value_func()
     if value_func is None:
@@ -965,6 +968,7 @@ def add_builtin(
                     hidden=True,
                     skip_replay=skip_replay,
                     missing_grad=missing_grad,
+                    require_original_output_arg=require_original_output_arg,
                 )
 
     func = Function(
@@ -985,6 +989,7 @@ def add_builtin(
         generic=generic,
         native_func=native_func,
         defaults=defaults,
+        require_original_output_arg=require_original_output_arg,
     )
 
     if key in builtin_functions:
