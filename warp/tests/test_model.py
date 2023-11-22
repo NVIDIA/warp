@@ -5,6 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import unittest
+
 import warp as wp
 from warp.tests.test_base import *
 from warp.sim import ModelBuilder
@@ -17,6 +19,8 @@ wp.init()
 def register(parent):
     class TestModel(parent):
         def test_add_triangles(self):
+            rng = np.random.default_rng(123)
+
             pts = np.array(
                 [
                     [-0.00585869, 0.34189449, -1.17415233],
@@ -41,11 +45,11 @@ def register(parent):
                 self.assertAlmostEqual(area, areas[i], places=6)
 
             # test add_triangle(s) with non default arguments:
-            tri_ke = np.random.randn(pts.shape[0])
-            tri_ka = np.random.randn(pts.shape[0])
-            tri_kd = np.random.randn(pts.shape[0])
-            tri_drag = np.random.randn(pts.shape[0])
-            tri_lift = np.random.randn(pts.shape[0])
+            tri_ke = rng.standard_normal(size=pts.shape[0])
+            tri_ka = rng.standard_normal(size=pts.shape[0])
+            tri_kd = rng.standard_normal(size=pts.shape[0])
+            tri_drag = rng.standard_normal(size=pts.shape[0])
+            tri_lift = rng.standard_normal(size=pts.shape[0])
             for i, t in enumerate(tris):
                 builder1.add_triangle(
                     t[0],
@@ -65,6 +69,8 @@ def register(parent):
             assert_np_equal(np.array(builder1.tri_materials), np.array(builder2.tri_materials))
 
         def test_add_edges(self):
+            rng = np.random.default_rng(123)
+
             pts = np.array(
                 [
                     [-0.00585869, 0.34189449, -1.17415233],
@@ -88,9 +94,9 @@ def register(parent):
             builder2.add_edges(edges[:, 0], edges[:, 1], edges[:, 2], edges[:, 3])
 
             # test non defaults:
-            rest = np.random.randn(2)
-            edge_ke = np.random.randn(2)
-            edge_kd = np.random.randn(2)
+            rest = rng.standard_normal(size=2)
+            edge_ke = rng.standard_normal(size=2)
+            edge_kd = rng.standard_normal(size=2)
             for i in range(2):
                 builder1.add_edge(edges[i, 0], edges[i, 1], edges[i, 2], edges[i, 3], rest[i], edge_ke[i], edge_kd[i])
             builder2.add_edges(edges[:, 0], edges[:, 1], edges[:, 2], edges[:, 3], rest, edge_ke, edge_kd)
@@ -103,5 +109,6 @@ def register(parent):
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

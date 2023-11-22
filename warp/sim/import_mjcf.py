@@ -44,7 +44,7 @@ def parse_mjcf(
     Args:
         mjcf_filename (str): The filename of the MuJoCo file to parse.
         builder (ModelBuilder): The :class:`ModelBuilder` to add the bodies and joints to.
-        xform (wp.transform): The transform to apply to the imported mechanism.
+        xform (:ref:`transform <transform>`): The transform to apply to the imported mechanism.
         density (float): The density of the shapes in kg/m^3 which will be used to calculate the body mass and inertia.
         stiffness (float): The stiffness of the joints.
         damping (float): The damping of the joints.
@@ -232,46 +232,51 @@ def parse_mjcf(
         angular_axes = []
         joint_type = None
 
-        joints = body.findall("joint")
-        for i, joint in enumerate(joints):
-            if "joint" in defaults:
-                joint_attrib = merge_attrib(defaults["joint"], joint.attrib)
-            else:
-                joint_attrib = joint.attrib
+        freejoint_tags = body.findall("freejoint")
+        if len(freejoint_tags) > 0:
+            joint_type = wp.sim.JOINT_FREE
+            joint_name.append(freejoint_tags[0].attrib.get("name", f"{body_name}_freejoint"))
+        else:
+            joints = body.findall("joint")
+            for i, joint in enumerate(joints):
+                if "joint" in defaults:
+                    joint_attrib = merge_attrib(defaults["joint"], joint.attrib)
+                else:
+                    joint_attrib = joint.attrib
 
-            # default to hinge if not specified
-            joint_type_str = joint_attrib.get("type", "hinge")
+                # default to hinge if not specified
+                joint_type_str = joint_attrib.get("type", "hinge")
 
-            joint_name.append(joint_attrib["name"])
-            joint_pos.append(parse_vec(joint_attrib, "pos", (0.0, 0.0, 0.0)) * scale)
-            joint_range = parse_vec(joint_attrib, "range", (-3.0, 3.0))
-            joint_armature.append(parse_float(joint_attrib, "armature", armature) * armature_scale)
+                joint_name.append(joint_attrib["name"])
+                joint_pos.append(parse_vec(joint_attrib, "pos", (0.0, 0.0, 0.0)) * scale)
+                joint_range = parse_vec(joint_attrib, "range", (-3.0, 3.0))
+                joint_armature.append(parse_float(joint_attrib, "armature", armature) * armature_scale)
 
-            if joint_type_str == "free":
-                joint_type = wp.sim.JOINT_FREE
-                break
-            if joint_type_str == "fixed":
-                joint_type = wp.sim.JOINT_FIXED
-                break
-            is_angular = joint_type_str == "hinge"
-            mode = wp.sim.JOINT_MODE_LIMIT
-            if stiffness > 0.0 or "stiffness" in joint_attrib:
-                mode = wp.sim.JOINT_MODE_TARGET_POSITION
-            axis_vec = parse_vec(joint_attrib, "axis", (0.0, 0.0, 0.0))
-            ax = wp.sim.model.JointAxis(
-                axis=axis_vec,
-                limit_lower=(np.deg2rad(joint_range[0]) if is_angular and use_degrees else joint_range[0]),
-                limit_upper=(np.deg2rad(joint_range[1]) if is_angular and use_degrees else joint_range[1]),
-                target_ke=parse_float(joint_attrib, "stiffness", stiffness),
-                target_kd=parse_float(joint_attrib, "damping", damping),
-                limit_ke=limit_ke,
-                limit_kd=limit_kd,
-                mode=mode,
-            )
-            if is_angular:
-                angular_axes.append(ax)
-            else:
-                linear_axes.append(ax)
+                if joint_type_str == "free":
+                    joint_type = wp.sim.JOINT_FREE
+                    break
+                if joint_type_str == "fixed":
+                    joint_type = wp.sim.JOINT_FIXED
+                    break
+                is_angular = joint_type_str == "hinge"
+                mode = wp.sim.JOINT_MODE_LIMIT
+                if stiffness > 0.0 or "stiffness" in joint_attrib:
+                    mode = wp.sim.JOINT_MODE_TARGET_POSITION
+                axis_vec = parse_vec(joint_attrib, "axis", (0.0, 0.0, 0.0))
+                ax = wp.sim.model.JointAxis(
+                    axis=axis_vec,
+                    limit_lower=(np.deg2rad(joint_range[0]) if is_angular and use_degrees else joint_range[0]),
+                    limit_upper=(np.deg2rad(joint_range[1]) if is_angular and use_degrees else joint_range[1]),
+                    target_ke=parse_float(joint_attrib, "stiffness", stiffness),
+                    target_kd=parse_float(joint_attrib, "damping", damping),
+                    limit_ke=limit_ke,
+                    limit_kd=limit_kd,
+                    mode=mode,
+                )
+                if is_angular:
+                    angular_axes.append(ax)
+                else:
+                    linear_axes.append(ax)
 
         link = builder.add_body(
             origin=wp.transform(body_pos, body_ori),  # will be evaluated in fk()

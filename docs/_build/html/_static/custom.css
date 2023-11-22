@@ -4,8 +4,9 @@
 }
 
 /* note title text in white */
-.admonition-title {
+.admonition p.admonition-title {
     color: white;
+    font-weight: 700;
 }
 
 /* .admonition.note {

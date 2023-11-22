@@ -42,8 +42,14 @@ def step_kernel(x: wp.array(dtype=float), grad: wp.array(dtype=float), alpha: fl
     x[tid] = x[tid] - grad[tid] * alpha
 
 
-class Robot:
-    def __init__(self, render=True, num_envs=1, device=None):
+class Example:
+    def __init__(self, stage, device=None, verbose=False):
+        self.verbose = verbose
+
+        self.frame_dt = 1.0 / 60.0
+
+        self.render_time = 0.0
+
         builder = wp.sim.ModelBuilder()
 
         builder.add_articulation()
@@ -78,11 +84,11 @@ class Robot:
 
             if i == chain_length - 1:
                 # create end effector
-                s = builder.add_shape_sphere(pos=(0.0, 0.0, 0.0), radius=0.1, density=10.0, body=b)
+                builder.add_shape_sphere(pos=(0.0, 0.0, 0.0), radius=0.1, density=10.0, body=b)
 
             else:
                 # create shape
-                s = builder.add_shape_box(
+                builder.add_shape_box(
                     pos=(chain_width * 0.5, 0.0, 0.0), hx=chain_width * 0.5, hy=0.1, hz=0.1, density=10.0, body=b
                 )
 
@@ -94,16 +100,7 @@ class Robot:
 
         self.state = self.model.state()
 
-        # -----------------------
-        # set up Usd renderer
-        self.renderer = wp.sim.render.SimRenderer(
-            self.model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_fk_grad.usd"), scaling=50.0
-        )
-
-    def run(self, render=True):
-        render_time = 0.0
-        train_iters = 1024
-        train_rate = 0.01
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=50.0)
 
         # optimization variables
         self.loss = wp.zeros(1, dtype=float, device=self.device)
@@ -112,44 +109,54 @@ class Robot:
         self.state.body_q.requires_grad = True
         self.loss.requires_grad = True
 
-        for i in range(train_iters):
-            tape = wp.Tape()
-            with tape:
-                wp.sim.eval_fk(self.model, self.model.joint_q, self.model.joint_qd, None, self.state)
+        self.train_rate = 0.01
 
-                wp.launch(
-                    compute_loss,
-                    dim=1,
-                    inputs=[self.state.body_q, len(self.state.body_q) - 1, self.loss],
-                    device=self.device,
-                )
+    def update(self):
+        tape = wp.Tape()
 
-            tape.backward(loss=self.loss)
+        with tape:
+            wp.sim.eval_fk(self.model, self.model.joint_q, self.model.joint_qd, None, self.state)
 
-            print(self.loss)
-            print(tape.gradients[self.model.joint_q])
-
-            # gradient descent
             wp.launch(
-                step_kernel,
-                dim=len(self.model.joint_q),
-                inputs=[self.model.joint_q, tape.gradients[self.model.joint_q], train_rate],
+                compute_loss,
+                dim=1,
+                inputs=[self.state.body_q, len(self.state.body_q) - 1, self.loss],
                 device=self.device,
             )
 
-            # zero gradients
-            tape.zero()
+        tape.backward(loss=self.loss)
 
-            # render
-            self.renderer.begin_frame(render_time)
-            self.renderer.render(self.state)
-            self.renderer.render_sphere(name="target", pos=TARGET, rot=wp.quat_identity(), radius=0.1)
-            self.renderer.end_frame()
+        if self.verbose:
+            print(self.loss)
+            print(tape.gradients[self.model.joint_q])
 
-            render_time += 1.0 / 60.0
+        # gradient descent
+        wp.launch(
+            step_kernel,
+            dim=len(self.model.joint_q),
+            inputs=[self.model.joint_q, tape.gradients[self.model.joint_q], self.train_rate],
+            device=self.device,
+        )
 
-        self.renderer.save()
+        # zero gradients
+        tape.zero()
+
+    def render(self):
+        self.renderer.begin_frame(self.render_time)
+        self.renderer.render(self.state)
+        self.renderer.render_sphere(name="target", pos=TARGET, rot=wp.quat_identity(), radius=0.1)
+        self.renderer.end_frame()
+        self.render_time += self.frame_dt
 
 
-robot = Robot(render=True, device=wp.get_preferred_device(), num_envs=1)
-robot.run()
+if __name__ == "__main__":
+    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_fk_grad.usd")
+    example = Example(stage_path, device=wp.get_preferred_device(), verbose=True)
+
+    train_iters = 512
+
+    for _ in range(train_iters):
+        example.update()
+        example.render()
+
+    example.renderer.save()

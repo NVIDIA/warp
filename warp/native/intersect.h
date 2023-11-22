@@ -114,6 +114,21 @@ CUDA_CALLABLE inline vec2 closest_point_to_triangle(const vec3& a, const vec3& b
 	return vec2(u, v);
 }
 
+CUDA_CALLABLE inline vec2 furthest_point_to_triangle(const vec3& a, const vec3& b, const vec3& c, const vec3& p)
+{
+    vec3 pa = p-a;
+    vec3 pb = p-b;
+    vec3 pc = p-c;
+    float dist_a = dot(pa, pa);
+    float dist_b = dot(pb, pb);
+    float dist_c = dot(pc, pc);
+
+    if (dist_a > dist_b && dist_a > dist_c) 
+        return vec2(1.0f, 0.0f); // a is furthest
+    if (dist_b > dist_c)
+        return vec2(0.0f, 1.0f); // b is furthest
+    return vec2(0.0f, 0.0f); // c is furthest
+}
 
 CUDA_CALLABLE inline bool intersect_ray_aabb(const vec3& pos, const vec3& rcp_dir, const vec3& lower, const vec3& upper, float& t)
 {

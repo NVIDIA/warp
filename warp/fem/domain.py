@@ -47,6 +47,7 @@ class GeometryDomain:
         """Kind of elements that this domain contains (cells or sides)"""
         raise NotImplementedError
 
+    @property
     def dimension(self) -> int:
         """Dimension of the elements of the domain"""
         raise NotImplementedError
@@ -89,6 +90,9 @@ class GeometryDomain:
     element_position: wp.Function
     """Device function returning the element position at a sample point"""
 
+    element_deformation_gradient: wp.Function
+    """Device function returning the gradient of the position with respect to the element's reference space"""
+
     element_normal: wp.Function
     """Device function returning the element normal at a sample point"""
 
@@ -106,6 +110,7 @@ class Cells(GeometryDomain):
     def element_kind(self) -> GeometryDomain.ElementKind:
         return GeometryDomain.ElementKind.CELL
 
+    @property
     def dimension(self) -> int:
         return self.geometry.dimension
 
@@ -141,6 +146,10 @@ class Cells(GeometryDomain):
         return self.geometry.cell_position
 
     @property
+    def element_deformation_gradient(self) -> wp.Function:
+        return self.geometry.cell_deformation_gradient
+
+    @property
     def element_measure(self) -> wp.Function:
         return self.geometry.cell_measure
 
@@ -168,6 +177,7 @@ class Sides(GeometryDomain):
     def element_kind(self) -> GeometryDomain.ElementKind:
         return GeometryDomain.ElementKind.SIDE
 
+    @property
     def dimension(self) -> int:
         return self.geometry.dimension - 1
 
@@ -201,6 +211,10 @@ class Sides(GeometryDomain):
     @property
     def element_position(self) -> wp.Function:
         return self.geometry.side_position
+
+    @property
+    def element_deformation_gradient(self) -> wp.Function:
+        return self.geometry.side_deformation_gradient
 
     @property
     def element_measure(self) -> wp.Function:

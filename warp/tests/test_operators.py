@@ -5,6 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import unittest
+
 import numpy as np
 import math
 
@@ -248,7 +250,8 @@ def register(parent):
 
 
 if __name__ == "__main__":
+    wp.build.clear_kernel_cache()
     wp.force_load()
 
-    c = register(unittest.TestCase)
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

@@ -27,40 +27,29 @@ CUDA_CALLABLE uint32_t bsr_get_col(const BsrRowCol &row_col) {
 
 // Cached temporary storage
 struct BsrFromTripletsTemp {
-  // Temp work buffers
-  int nnz = 0;
-  int *block_indices = NULL;
-
-  BsrRowCol *combined_row_col = NULL;
-
+  
+  int *count_buffer = NULL;
   cudaEvent_t host_sync_event = NULL;
 
-  void ensure_fits(size_t size) {
-
-    if (size > nnz) {
-      size = std::max(2 * size, (static_cast<size_t>(nnz) * 3) / 2);
-
-      free_device(WP_CURRENT_CONTEXT, block_indices);
-      free_device(WP_CURRENT_CONTEXT, combined_row_col);
-
-      // Factor 2 for in / out versions , +1 for count
-      block_indices = static_cast<int *>(
-          alloc_device(WP_CURRENT_CONTEXT, (2 * size + 1) * sizeof(int)));
-      combined_row_col = static_cast<BsrRowCol *>(
-          alloc_device(WP_CURRENT_CONTEXT, 2 * size * sizeof(BsrRowCol)));
-
-      nnz = size;
-    }
-
-    if (host_sync_event == NULL) {
-      cudaEventCreateWithFlags(&host_sync_event, cudaEventDisableTiming);
-    }
+  BsrFromTripletsTemp()
+    : count_buffer(static_cast<int*>(alloc_pinned(sizeof(int))))
+  {
+    cudaEventCreateWithFlags(&host_sync_event, cudaEventDisableTiming);
   }
+  
+  ~BsrFromTripletsTemp()
+  {
+    cudaEventDestroy(host_sync_event);
+    free_pinned(count_buffer);
+  }
+
+  BsrFromTripletsTemp(const BsrFromTripletsTemp&) = delete;
+  BsrFromTripletsTemp& operator=(const BsrFromTripletsTemp&) = delete;
+
 };
 
 // map temp buffers to CUDA contexts
-static std::unordered_map<void *, BsrFromTripletsTemp>
-    g_bsr_from_triplets_temp_map;
+static std::unordered_map<void *, BsrFromTripletsTemp> g_bsr_from_triplets_temp_map;
 
 template <typename T> struct BsrBlockIsNotZero {
   int block_size;
@@ -145,24 +134,22 @@ int bsr_matrix_from_triplets_device(const int rows_per_block,
   const int block_size = rows_per_block * cols_per_block;
 
   void *context = cuda_context_get_current();
-
-  // Per-context cached temporary buffers
-  PinnedTemporaryBuffer &pinned_temp = g_pinned_temp_buffer_map[context];
-  BsrFromTripletsTemp &bsr_temp = g_bsr_from_triplets_temp_map[context];
-
   ContextGuard guard(context);
 
+  // Per-context cached temporary buffers
+  BsrFromTripletsTemp &bsr_temp = g_bsr_from_triplets_temp_map[context];
+
   cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_get_current());
-  bsr_temp.ensure_fits(nnz);
 
-  cub::DoubleBuffer<int> d_keys(bsr_temp.block_indices,
-                                bsr_temp.block_indices + nnz);
-  cub::DoubleBuffer<BsrRowCol> d_values(bsr_temp.combined_row_col,
-                                        bsr_temp.combined_row_col + nnz);
+  ScopedTemporary<int> block_indices(context, 2*nnz);
+  ScopedTemporary<BsrRowCol> combined_row_col(context, 2*nnz);
 
-  int *d_nz_triplet_count = bsr_temp.block_indices + 2 * nnz;
-  pinned_temp.ensure_fits(sizeof(int));
-  int *pinned_count = static_cast<int *>(pinned_temp.buffer);
+  cub::DoubleBuffer<int> d_keys(block_indices.buffer(),
+                                block_indices.buffer() + nnz);
+  cub::DoubleBuffer<BsrRowCol> d_values(combined_row_col.buffer(),
+                                        combined_row_col.buffer() + nnz);
+
+  int *p_nz_triplet_count = bsr_temp.count_buffer;
 
   wp_launch_device(WP_CURRENT_CONTEXT, bsr_fill_block_indices, nnz,
                    (nnz, d_keys.Current()));
@@ -170,33 +157,29 @@ int bsr_matrix_from_triplets_device(const int rows_per_block,
   if (tpl_values) {
 
     // Remove zero blocks
-    size_t buff_size = 0;
-    BsrBlockIsNotZero<T> isNotZero{block_size, tpl_values};
-    check_cuda(cub::DeviceSelect::If(nullptr, buff_size, d_keys.Current(),
-                                     d_keys.Alternate(), d_nz_triplet_count,
-                                     nnz, isNotZero, stream));
-    void* temp_buffer = alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
-    check_cuda(cub::DeviceSelect::If(
-        temp_buffer, buff_size, d_keys.Current(), d_keys.Alternate(),
-        d_nz_triplet_count, nnz, isNotZero, stream));
-    free_temp_device(WP_CURRENT_CONTEXT, temp_buffer);
+    {
+      size_t buff_size = 0;
+      BsrBlockIsNotZero<T> isNotZero{block_size, tpl_values};
+      check_cuda(cub::DeviceSelect::If(nullptr, buff_size, d_keys.Current(),
+                                      d_keys.Alternate(), p_nz_triplet_count,
+                                      nnz, isNotZero, stream));
+      ScopedTemporary<> temp(context, buff_size);
+      check_cuda(cub::DeviceSelect::If(
+          temp.buffer(), buff_size, d_keys.Current(), d_keys.Alternate(),
+          p_nz_triplet_count, nnz, isNotZero, stream));
+    }
+    cudaEventRecord(bsr_temp.host_sync_event, stream);
 
     // switch current/alternate in double buffer
     d_keys.selector ^= 1;
 
-    // Copy number of remaining items to host, needed for further launches
-    memcpy_d2h(WP_CURRENT_CONTEXT, pinned_count, d_nz_triplet_count,
-               sizeof(int));
-    cudaEventRecord(bsr_temp.host_sync_event, stream);
   } else {
-    *pinned_count = nnz;
-    memcpy_h2d(WP_CURRENT_CONTEXT, d_nz_triplet_count, pinned_count,
-               sizeof(int));
+    *p_nz_triplet_count = nnz;
   }
 
   // Combine rows and columns so we can sort on them both
   wp_launch_device(WP_CURRENT_CONTEXT, bsr_fill_row_col, nnz,
-                   (d_nz_triplet_count, d_keys.Current(), tpl_rows, tpl_columns,
+                   (p_nz_triplet_count, d_keys.Current(), tpl_rows, tpl_columns,
                     d_values.Current()));
 
   if (tpl_values) {
@@ -204,30 +187,31 @@ int bsr_matrix_from_triplets_device(const int rows_per_block,
     cudaEventSynchronize(bsr_temp.host_sync_event);
   }
 
-  const int nz_triplet_count = *pinned_count;
+  const int nz_triplet_count = *p_nz_triplet_count;
 
   // Sort
-  size_t buff_size = 0;
-  check_cuda(cub::DeviceRadixSort::SortPairs(
-      nullptr, buff_size, d_values, d_keys, nz_triplet_count, 0, 64, stream));
-  void* temp_buffer = alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
-  
-  check_cuda(cub::DeviceRadixSort::SortPairs(temp_buffer, buff_size,
-                                             d_values, d_keys, nz_triplet_count,
-                                             0, 64, stream));
-  free_temp_device(WP_CURRENT_CONTEXT, temp_buffer);
+  {
+    size_t buff_size = 0;
+    check_cuda(cub::DeviceRadixSort::SortPairs(
+        nullptr, buff_size, d_values, d_keys, nz_triplet_count, 0, 64, stream));
+    ScopedTemporary<> temp(context, buff_size);
+    check_cuda(cub::DeviceRadixSort::SortPairs(temp.buffer(), buff_size,
+                                              d_values, d_keys, nz_triplet_count,
+                                              0, 64, stream));
+  }
 
   // Runlength encode row-col sequences
-  check_cuda(cub::DeviceRunLengthEncode::Encode(
-      nullptr, buff_size, d_values.Current(), d_values.Alternate(),
-      d_keys.Alternate(), d_nz_triplet_count, nz_triplet_count, stream));
-  temp_buffer = alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
-  check_cuda(cub::DeviceRunLengthEncode::Encode(
-      temp_buffer, buff_size, d_values.Current(), d_values.Alternate(),
-      d_keys.Alternate(), d_nz_triplet_count, nz_triplet_count, stream));
-  free_temp_device(WP_CURRENT_CONTEXT, temp_buffer);
+  {
+    size_t buff_size = 0;
+    check_cuda(cub::DeviceRunLengthEncode::Encode(
+        nullptr, buff_size, d_values.Current(), d_values.Alternate(),
+        d_keys.Alternate(), p_nz_triplet_count, nz_triplet_count, stream));
+    ScopedTemporary<> temp(context, buff_size);
+    check_cuda(cub::DeviceRunLengthEncode::Encode(
+        temp.buffer(), buff_size, d_values.Current(), d_values.Alternate(),
+        d_keys.Alternate(), p_nz_triplet_count, nz_triplet_count, stream));
+  }
 
-  memcpy_d2h(WP_CURRENT_CONTEXT, pinned_count, d_nz_triplet_count, sizeof(int));
   cudaEventRecord(bsr_temp.host_sync_event, stream);
 
   // Now we have the following:
@@ -237,14 +221,16 @@ int bsr_matrix_from_triplets_device(const int rows_per_block,
   // d_keys.Alternate(): repeated block-row count
 
   // Scan repeated block counts
-  check_cuda(cub::DeviceScan::InclusiveSum(
-      nullptr, buff_size, d_keys.Alternate(), d_keys.Alternate(),
-      nz_triplet_count, stream));
-  temp_buffer = alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
-  check_cuda(cub::DeviceScan::InclusiveSum(
-      temp_buffer, buff_size, d_keys.Alternate(), d_keys.Alternate(),
-      nz_triplet_count, stream));
-  free_temp_device(WP_CURRENT_CONTEXT, temp_buffer);
+  {
+    size_t buff_size = 0;
+    check_cuda(cub::DeviceScan::InclusiveSum(
+        nullptr, buff_size, d_keys.Alternate(), d_keys.Alternate(),
+        nz_triplet_count, stream));
+    ScopedTemporary<> temp(context, buff_size);
+    check_cuda(cub::DeviceScan::InclusiveSum(
+        temp.buffer(), buff_size, d_keys.Alternate(), d_keys.Alternate(),
+        nz_triplet_count, stream));
+  }
 
   // While we're at it, zero the bsr offsets buffer
   memset_device(WP_CURRENT_CONTEXT, bsr_offsets, 0,
@@ -252,7 +238,7 @@ int bsr_matrix_from_triplets_device(const int rows_per_block,
 
   // Wait for number of compressed blocks
   cudaEventSynchronize(bsr_temp.host_sync_event);
-  const int compressed_nnz = *pinned_count;
+  const int compressed_nnz = *p_nz_triplet_count;
 
   // We have all we need to accumulate our repeated blocks
   wp_launch_device(WP_CURRENT_CONTEXT, bsr_merge_blocks, compressed_nnz,
@@ -261,13 +247,15 @@ int bsr_matrix_from_triplets_device(const int rows_per_block,
                     bsr_offsets, bsr_columns, bsr_values));
 
   // Last, prefix sum the row block counts
-  check_cuda(cub::DeviceScan::InclusiveSum(nullptr, buff_size, bsr_offsets,
-                                           bsr_offsets, row_count + 1, stream));
-  temp_buffer = alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
-  check_cuda(cub::DeviceScan::InclusiveSum(temp_buffer, buff_size,
-                                           bsr_offsets, bsr_offsets,
-                                           row_count + 1, stream));
-  free_temp_device(WP_CURRENT_CONTEXT, temp_buffer);
+  {
+    size_t buff_size = 0;
+    check_cuda(cub::DeviceScan::InclusiveSum(nullptr, buff_size, bsr_offsets,
+                                            bsr_offsets, row_count + 1, stream));
+    ScopedTemporary<> temp(context, buff_size);
+    check_cuda(cub::DeviceScan::InclusiveSum(temp.buffer(), buff_size,
+                                            bsr_offsets, bsr_offsets,
+                                            row_count + 1, stream));
+  }
 
   return compressed_nnz;
 }
@@ -350,6 +338,89 @@ bsr_transpose_blocks(const int nnz, const int block_size,
 }
 
 template <typename T>
+void
+launch_bsr_transpose_blocks(const int nnz, const int block_size,
+                     const int rows_per_block, const int cols_per_block,
+                     const int *block_indices,
+                     const BsrRowCol *transposed_indices, 
+                     const T *bsr_values,
+                     int *transposed_bsr_columns, T *transposed_bsr_values) {
+
+  switch (rows_per_block) {
+  case 1:
+    switch (cols_per_block) {
+    case 1:
+      wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
+                       (nnz, block_size, BsrBlockTransposer<1, 1, T>{},
+                        block_indices, transposed_indices, bsr_values,
+                        transposed_bsr_columns, transposed_bsr_values));
+      return;
+    case 2:
+      wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
+                       (nnz, block_size, BsrBlockTransposer<1, 2, T>{},
+                        block_indices, transposed_indices, bsr_values,
+                        transposed_bsr_columns, transposed_bsr_values));
+      return;
+    case 3:
+      wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
+                       (nnz, block_size, BsrBlockTransposer<1, 3, T>{},
+                        block_indices, transposed_indices, bsr_values,
+                        transposed_bsr_columns, transposed_bsr_values));
+      return;
+    }
+  case 2:
+    switch (cols_per_block) {
+    case 1:
+      wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
+                       (nnz, block_size, BsrBlockTransposer<2, 1, T>{},
+                        block_indices, transposed_indices, bsr_values,
+                        transposed_bsr_columns, transposed_bsr_values));
+      return;
+    case 2:
+      wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
+                       (nnz, block_size, BsrBlockTransposer<2, 2, T>{},
+                        block_indices, transposed_indices, bsr_values,
+                        transposed_bsr_columns, transposed_bsr_values));
+      return;
+    case 3:
+      wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
+                       (nnz, block_size, BsrBlockTransposer<2, 3, T>{},
+                        block_indices, transposed_indices, bsr_values,
+                        transposed_bsr_columns, transposed_bsr_values));
+      return;
+    }
+  case 3:
+    switch (cols_per_block) {
+    case 1:
+      wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
+                       (nnz, block_size, BsrBlockTransposer<3, 1, T>{},
+                        block_indices, transposed_indices, bsr_values,
+                        transposed_bsr_columns, transposed_bsr_values));
+      return;
+    case 2:
+      wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
+                       (nnz, block_size, BsrBlockTransposer<3, 2, T>{},
+                        block_indices, transposed_indices, bsr_values,
+                        transposed_bsr_columns, transposed_bsr_values));
+      return;
+    case 3:
+      wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
+                       (nnz, block_size, BsrBlockTransposer<3, 3, T>{},
+                        block_indices, transposed_indices, bsr_values,
+                        transposed_bsr_columns, transposed_bsr_values));
+      return;
+    }
+  }
+
+  wp_launch_device(
+      WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
+      (nnz, block_size,
+       BsrBlockTransposer<-1, -1, T>{rows_per_block, cols_per_block},
+       block_indices, transposed_indices, bsr_values, transposed_bsr_columns,
+       transposed_bsr_values));
+}
+
+template <typename T>
 void bsr_transpose_device(int rows_per_block, int cols_per_block, int row_count,
                           int col_count, int nnz, const int *bsr_offsets,
                           const int *bsr_columns, const T *bsr_values,
@@ -360,118 +431,55 @@ void bsr_transpose_device(int rows_per_block, int cols_per_block, int row_count,
   const int block_size = rows_per_block * cols_per_block;
 
   void *context = cuda_context_get_current();
-
-  // Per-context cached temporary buffer
-  BsrFromTripletsTemp &bsr_temp = g_bsr_from_triplets_temp_map[context];
-
   ContextGuard guard(context);
 
   cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_get_current());
-  bsr_temp.ensure_fits(nnz);
 
   // Zero the transposed offsets
   memset_device(WP_CURRENT_CONTEXT, transposed_bsr_offsets, 0,
                 (col_count + 1) * sizeof(int));
 
-  cub::DoubleBuffer<int> d_keys(bsr_temp.block_indices,
-                                bsr_temp.block_indices + nnz);
-  cub::DoubleBuffer<BsrRowCol> d_values(bsr_temp.combined_row_col,
-                                        bsr_temp.combined_row_col + nnz);
+  ScopedTemporary<int> block_indices(context, 2*nnz);
+  ScopedTemporary<BsrRowCol> combined_row_col(context, 2*nnz);
+
+  cub::DoubleBuffer<int> d_keys(block_indices.buffer(),
+                                block_indices.buffer() + nnz);
+  cub::DoubleBuffer<BsrRowCol> d_values(combined_row_col.buffer(),
+                                        combined_row_col.buffer() + nnz);
 
   wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_fill_row_col, nnz,
                    (nnz, row_count, bsr_offsets, bsr_columns, d_keys.Current(),
                     d_values.Current(), transposed_bsr_offsets));
 
   // Sort blocks
-  size_t buff_size = 0;
-  check_cuda(cub::DeviceRadixSort::SortPairs(nullptr, buff_size, d_values,
-                                             d_keys, nnz, 0, 64, stream));
-  void* temp_buffer = alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
-  check_cuda(cub::DeviceRadixSort::SortPairs(
-      temp_buffer, buff_size, d_values, d_keys, nnz, 0, 64, stream));
-
-  // Prefix sum the trasnposed row block counts
-  check_cuda(cub::DeviceScan::InclusiveSum(
-      nullptr, buff_size, transposed_bsr_offsets, transposed_bsr_offsets,
-      col_count + 1, stream));
-  temp_buffer = alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
-  check_cuda(cub::DeviceScan::InclusiveSum(
-      temp_buffer, buff_size, transposed_bsr_offsets,
-      transposed_bsr_offsets, col_count + 1, stream));
-
-  // Move and transpose invidual blocks
-  switch (row_count) {
-  case 1:
-    switch (col_count) {
-    case 1:
-      wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
-                       (nnz, block_size, BsrBlockTransposer<1, 1, T>{},
-                        d_keys.Current(), d_values.Current(), bsr_values,
-                        transposed_bsr_columns, transposed_bsr_values));
-      return;
-    case 2:
-      wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
-                       (nnz, block_size, BsrBlockTransposer<1, 2, T>{},
-                        d_keys.Current(), d_values.Current(), bsr_values,
-                        transposed_bsr_columns, transposed_bsr_values));
-      return;
-    case 3:
-      wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
-                       (nnz, block_size, BsrBlockTransposer<1, 3, T>{},
-                        d_keys.Current(), d_values.Current(), bsr_values,
-                        transposed_bsr_columns, transposed_bsr_values));
-      return;
-    }
-  case 2:
-    switch (col_count) {
-    case 1:
-      wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
-                       (nnz, block_size, BsrBlockTransposer<2, 1, T>{},
-                        d_keys.Current(), d_values.Current(), bsr_values,
-                        transposed_bsr_columns, transposed_bsr_values));
-      return;
-    case 2:
-      wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
-                       (nnz, block_size, BsrBlockTransposer<2, 2, T>{},
-                        d_keys.Current(), d_values.Current(), bsr_values,
-                        transposed_bsr_columns, transposed_bsr_values));
-      return;
-    case 3:
-      wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
-                       (nnz, block_size, BsrBlockTransposer<2, 3, T>{},
-                        d_keys.Current(), d_values.Current(), bsr_values,
-                        transposed_bsr_columns, transposed_bsr_values));
-      return;
-    }
-  case 3:
-    switch (col_count) {
-    case 1:
-      wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
-                       (nnz, block_size, BsrBlockTransposer<3, 1, T>{},
-                        d_keys.Current(), d_values.Current(), bsr_values,
-                        transposed_bsr_columns, transposed_bsr_values));
-      return;
-    case 2:
-      wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
-                       (nnz, block_size, BsrBlockTransposer<3, 2, T>{},
-                        d_keys.Current(), d_values.Current(), bsr_values,
-                        transposed_bsr_columns, transposed_bsr_values));
-      return;
-    case 3:
-      wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
-                       (nnz, block_size, BsrBlockTransposer<3, 3, T>{},
-                        d_keys.Current(), d_values.Current(), bsr_values,
-                        transposed_bsr_columns, transposed_bsr_values));
-      return;
-    }
+  {
+    size_t buff_size = 0;
+    check_cuda(cub::DeviceRadixSort::SortPairs(nullptr, buff_size, d_values,
+                                              d_keys, nnz, 0, 64, stream));
+    void* temp_buffer = alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
+    ScopedTemporary<> temp(context, buff_size);
+    check_cuda(cub::DeviceRadixSort::SortPairs(
+        temp.buffer(), buff_size, d_values, d_keys, nnz, 0, 64, stream));
   }
 
-  wp_launch_device(
-      WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
-      (nnz, block_size,
-       BsrBlockTransposer<-1, -1, T>{rows_per_block, cols_per_block},
+  // Prefix sum the transposed row block counts
+  {
+    size_t buff_size = 0;
+    check_cuda(cub::DeviceScan::InclusiveSum(
+        nullptr, buff_size, transposed_bsr_offsets, transposed_bsr_offsets,
+        col_count + 1, stream));
+    ScopedTemporary<> temp(context, buff_size);
+    check_cuda(cub::DeviceScan::InclusiveSum(
+        temp.buffer(), buff_size, transposed_bsr_offsets,
+        transposed_bsr_offsets, col_count + 1, stream));
+  }
+
+  // Move and transpose individual blocks
+  launch_bsr_transpose_blocks(
+       nnz, block_size,
+       rows_per_block, cols_per_block,
        d_keys.Current(), d_values.Current(), bsr_values, transposed_bsr_columns,
-       transposed_bsr_values));
+       transposed_bsr_values);
 }
 
 } // namespace

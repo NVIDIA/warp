@@ -6,17 +6,14 @@ import warp.types
 from warp.sparse import BsrMatrix, bsr_zeros, bsr_get_diag, bsr_mv
 from warp.utils import array_inner
 
-try:
-    from scipy.sparse import csr_array, bsr_array
-except ImportError:
-    # WAR for older scipy
+
+def bsr_to_scipy(matrix: BsrMatrix) -> "scipy.sparse.bsr_array":
     try:
-        from scipy.sparse import csr_matrix as csr_array, bsr_matrix as bsr_array
+        from scipy.sparse import csr_array, bsr_array
     except ImportError:
-        pass
+        # WAR for older scipy
+        from scipy.sparse import csr_matrix as csr_array, bsr_matrix as bsr_array
 
-
-def bsr_to_scipy(matrix: BsrMatrix) -> "bsr_array":
     if matrix.block_shape == (1, 1):
         return csr_array(
             (
@@ -37,7 +34,13 @@ def bsr_to_scipy(matrix: BsrMatrix) -> "bsr_array":
     )
 
 
-def scipy_to_bsr(sp: Union["bsr_array", "csr_array"], device=None, dtype=None) -> BsrMatrix:
+def scipy_to_bsr(sp: Union["scipy.sparse.bsr_array", "scipy.sparse.csr_array"], device=None, dtype=None) -> BsrMatrix:
+    try:
+        from scipy.sparse import csr_array
+    except ImportError:
+        # WAR for older scipy
+        from scipy.sparse import csr_matrix as csr_array
+
     if dtype is None:
         dtype = warp.types.np_dtype_to_warp_type[sp.dtype]
 
@@ -68,9 +71,11 @@ def _bsr_cg_kernel_1(
     Ap: wp.array(dtype=Any),
 ):
     i = wp.tid()
-    alpha = rs_old[0] / p_Ap[0]
-    x[i] = x[i] + alpha * p[i]
-    r[i] = r[i] - alpha * Ap[i]
+
+    if p_Ap[0] != 0.0:
+        alpha = rs_old[0] / p_Ap[0]
+        x[i] = x[i] + alpha * p[i]
+        r[i] = r[i] - alpha * Ap[i]
 
 
 @wp.kernel
@@ -133,6 +138,7 @@ def bsr_cg(
     use_diag_precond=True,
     mv_routine=bsr_mv,
     device=None,
+    quiet=False,
 ) -> Tuple[float, int]:
     """Solves the linear system A x = b using the Conjugate Gradient method, optionally with diagonal preconditioning
 
@@ -217,7 +223,8 @@ def bsr_cg(
 
             if ((i + 1) % check_every) == 0:
                 err = rz_new.numpy()[0]
-                print(f"At iteration {i} error = \t {err}  \t tol: {tol_sq}")
+                if not quiet:
+                    print(f"At iteration {i} error = \t {err}  \t tol: {tol_sq}")
                 if err <= tol_sq:
                     end_iter = i
                     break
@@ -231,17 +238,23 @@ def bsr_cg(
 
         err = rz_old.numpy()[0]
 
-    print(f"Terminated after {end_iter} iterations with error = \t {err}")
+    if not quiet:
+        print(f"Terminated after {end_iter} iterations with error = \t {err}")
     return err, end_iter
 
 
 def invert_diagonal_bsr_mass_matrix(A: BsrMatrix):
     """Inverts each block of a block-diagonal mass matrix"""
 
-    wp.launch(kernel=_block_diagonal_mass_invert, dim=A.nrow, inputs=[A.values], device=A.values.device)
+    scale = A.scalar_type(A.block_shape[0])
+    values = A.values
+    if not wp.types.type_is_matrix(values.dtype):
+        values = values.view(dtype=wp.mat(shape=(1, 1), dtype=A.scalar_type))
+
+    wp.launch(kernel=_block_diagonal_mass_invert, dim=A.nrow, inputs=[values, scale], device=values.device)
 
 
 @wp.kernel
-def _block_diagonal_mass_invert(values: wp.array(dtype=Any)):
+def _block_diagonal_mass_invert(values: wp.array(dtype=Any), scale: Any):
     i = wp.tid()
-    values[i] = values[i] / wp.ddot(values[i], values[i])
+    values[i] = scale * values[i] / wp.ddot(values[i], values[i])

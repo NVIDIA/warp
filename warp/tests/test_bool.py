@@ -1,3 +1,5 @@
+import unittest
+
 import numpy as np
 
 import warp as wp
@@ -45,9 +47,11 @@ def identity_test(data: wp.array(dtype=wp.bool)):
 
 
 def test_bool_identity_ops(test, device):
+    rng = np.random.default_rng(123)
+
     dim_x = 10
 
-    rand_np = np.random.rand(dim_x) > 0.5
+    rand_np = rng.random(dim_x) > 0.5
 
     data_array = wp.array(data=rand_np, device=device)
 
@@ -85,5 +89,6 @@ def register(parent):
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

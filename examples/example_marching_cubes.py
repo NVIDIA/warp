@@ -14,11 +14,11 @@
 ###########################################################################
 
 
+import math
+import os
+
 import warp as wp
 import warp.render
-
-import os
-import math
 
 wp.init()
 
@@ -41,7 +41,6 @@ def sdf_box(upper: wp.vec3, p: wp.vec3):
     return wp.length(e) + wp.min(wp.max(qx, wp.max(qy, qz)), 0.0)
 
 
-# union
 @wp.func
 def op_union(d1: float, d2: float):
     return wp.min(d1, d2)
@@ -49,11 +48,6 @@ def op_union(d1: float, d2: float):
 
 @wp.func
 def op_smooth_union(d1: float, d2: float, k: float):
-    # a = wp.pow(d1, k)
-    # b = wp.pow(d2, k)
-
-    # return wp.pow((a*b)/(a+b), 1.0/k)
-
     a = d1
     b = d2
 
@@ -61,13 +55,11 @@ def op_smooth_union(d1: float, d2: float, k: float):
     return wp.lerp(b, a, h) - k * h * (1.0 - h)
 
 
-# subtraction
 @wp.func
 def op_subtract(d1: float, d2: float):
     return wp.max(-d1, d2)
 
 
-# intersection
 @wp.func
 def op_intersect(d1: float, d2: float):
     return wp.max(d1, d2)
@@ -97,6 +89,7 @@ class Example:
         self.max_tris = 10**6
 
         self.time = 0.0
+        self.frame_dt = 1.0 / 60.0
 
         self.field = wp.zeros(shape=(self.dim, self.dim, self.dim), dtype=float)
 
@@ -107,25 +100,22 @@ class Example:
         self.renderer = wp.render.UsdRenderer(stage)
 
     def update(self):
-        pass
-
-    def render(self, is_live=False):
         with wp.ScopedTimer("Update Field"):
             wp.launch(
                 make_field,
                 dim=self.field.shape,
                 inputs=[self.field, wp.vec3(self.dim / 2, self.dim / 2, self.dim / 2), self.dim / 4, self.time],
             )
+            self.time += self.frame_dt
 
         with wp.ScopedTimer("Surface Extraction"):
             self.iso.surface(field=self.field, threshold=math.sin(self.time) * self.dim / 8)
 
+    def render(self, is_live=False):
         with wp.ScopedTimer("Render"):
             self.renderer.begin_frame(self.time)
             self.renderer.render_mesh("surface", self.iso.verts.numpy(), self.iso.indices.numpy(), update_topology=True)
             self.renderer.end_frame()
-
-        self.time += 1.0 / 60.0
 
 
 if __name__ == "__main__":

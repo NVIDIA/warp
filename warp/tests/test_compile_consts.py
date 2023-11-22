@@ -20,11 +20,21 @@ LOCAL_ONE = wp.constant(1)
 
 SQRT3_OVER_3 = wp.constant(0.57735026919)
 UNIT_VEC = wp.constant(wp.vec3(SQRT3_OVER_3, SQRT3_OVER_3, SQRT3_OVER_3))
+ONE_FP16 = wp.constant(wp.float16(1.0))
+TEST_BOOL = wp.constant(True)
 
 
 class Foobar:
     ONE = wp.constant(1)
     TWO = wp.constant(2)
+
+
+@wp.kernel
+def test_constants_bool():
+    if TEST_BOOL:
+        expect_eq(1.0, 1.0)
+    else:
+        expect_eq(1.0, -1.0)
 
 
 @wp.kernel
@@ -45,6 +55,9 @@ def test_constants_float(x: float):
     approx_one = wp.dot(UNIT_VEC, UNIT_VEC)
     expect_near(approx_one, 1.0, 1e-6)
 
+    # test casting
+    expect_near(wp.float32(ONE_FP16), 1.0, 1e-6)
+
 
 def test_constant_math(test, device):
     # test doing math with Python defined constants in *Python* scope
@@ -60,8 +73,7 @@ def test_constant_closure_capture(test, device):
         def closure_kernel_fn(expected: int):
             wp.expect_eq(cst, expected)
 
-        key = f"test_constant_closure_capture_{cst}"
-        return wp.Kernel(func=closure_kernel_fn, key=key, module=wp.get_module(closure_kernel_fn.__module__))
+        return wp.Kernel(func=closure_kernel_fn)
 
     one_closure = make_closure_kernel(Foobar.ONE)
     two_closure = make_closure_kernel(Foobar.TWO)
@@ -79,6 +91,7 @@ def register(parent):
 
     devices = get_test_devices()
 
+    add_kernel_test(TestConstants, test_constants_bool, dim=1, inputs=[], devices=devices)
     add_kernel_test(TestConstants, test_constants_int, dim=1, inputs=[a], devices=devices)
     add_kernel_test(TestConstants, test_constants_float, dim=1, inputs=[x], devices=devices)
 
@@ -89,5 +102,6 @@ def register(parent):
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

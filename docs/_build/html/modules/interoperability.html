@@ -3,14 +3,15 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Debugging" href="../debugging.html" /><link rel="prev" title="Profiling" href="profiling.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Runtime Settings" href="../configuration.html" /><link rel="prev" title="Devices" href="devices.html" />
 
-    <!-- Generated with Sphinx 7.2.2 and Furo 2023.08.19 -->
-        <title>Interoperability - Warp 1.0.0-beta.2</title>
+    <!-- Generated with Sphinx 7.2.6 and Furo 2023.08.19 -->
+        <title>Interoperability - Warp 1.0.0-beta.5</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=36a5483c" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=112ea5a1" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=44d7c754" />
     
     
 
@@ -136,7 +137,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">Warp 1.0.0-beta.2</div></a>
+      <a href="../index.html"><div class="brand">Warp 1.0.0-beta.5</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -163,7 +164,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 1.0.0-beta.2</span>
+  <span class="sidebar-brand-text">Warp 1.0.0-beta.5</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -176,9 +177,10 @@
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../basics.html">Basics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="devices.html">Devices</a></li>
-<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Runtime Settings</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
@@ -231,7 +233,7 @@
         </div>
         <article role="main">
           <section id="interoperability">
-<span id="interopability"></span><h1>Interoperability<a class="headerlink" href="#interoperability" title="Link to this heading">#</a></h1>
+<h1>Interoperability<a class="headerlink" href="#interoperability" title="Link to this heading">#</a></h1>
 <p>Warp can interop with other Python-based frameworks such as NumPy through standard interface protocols.</p>
 <section id="numpy">
 <h2>NumPy<a class="headerlink" href="#numpy" title="Link to this heading">#</a></h2>
@@ -264,8 +266,8 @@ directly:</p>
 <p>These helper functions allow the conversion of Warp arrays to/from PyTorch tensors without copying the underlying data.
 At the same time, if available, gradient arrays and tensors are converted to/from PyTorch autograd tensors, allowing the use of Warp arrays
 in PyTorch autograd computations.</p>
-<section id="optimization-example-using-warp-from-torch">
-<h3>Optimization example using <code class="docutils literal notranslate"><span class="pre">warp.from_torch</span></code><a class="headerlink" href="#optimization-example-using-warp-from-torch" title="Link to this heading">#</a></h3>
+<section id="example-optimization-using-warp-from-torch">
+<h3>Example: Optimization using <code class="docutils literal notranslate"><span class="pre">warp.from_torch()</span></code><a class="headerlink" href="#example-optimization-using-warp-from-torch" title="Link to this heading">#</a></h3>
 <p>An example usage of minimizing a loss function over an array of 2D points written in Warp via PyTorch’s Adam optimizer using <code class="docutils literal notranslate"><span class="pre">warp.from_torch</span></code> is as follows:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">warp</span> <span class="k">as</span> <span class="nn">wp</span>
 <span class="kn">import</span> <span class="nn">torch</span>
@@ -304,8 +306,8 @@ in PyTorch autograd computations.</p>
 </pre></div>
 </div>
 </section>
-<section id="optimization-example-using-warp-to-torch">
-<h3>Optimization example using <code class="docutils literal notranslate"><span class="pre">warp.to_torch</span></code><a class="headerlink" href="#optimization-example-using-warp-to-torch" title="Link to this heading">#</a></h3>
+<section id="example-optimization-using-warp-to-torch">
+<h3>Example: Optimization using <code class="docutils literal notranslate"><span class="pre">warp.to_torch</span></code><a class="headerlink" href="#example-optimization-using-warp-to-torch" title="Link to this heading">#</a></h3>
 <p>Less code is needed when we declare the optimization variables directly in Warp and use <code class="docutils literal notranslate"><span class="pre">warp.to_torch</span></code> to convert them to PyTorch tensors.
 Here, we revisit the same example from above where now only a single conversion to a torch tensor is needed to supply Adam with the optimization variables:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">warp</span> <span class="k">as</span> <span class="nn">wp</span>
@@ -372,7 +374,7 @@ Here, we revisit the same example from above where now only a single conversion 
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>t</strong> (<em>torch.Tensor</em>) – The torch tensor to wrap.</p></li>
 <li><p><strong>dtype</strong> (<em>warp.dtype</em><em>, </em><em>optional</em>) – The target data type of the resulting Warp array. Defaults to the tensor value type mapped to a Warp array value type.</p></li>
-<li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a><em>, </em><em>optional</em>) – Whether the resulting array should wrap the tensor’s gradient, if it exists (the grad tensor will be allocated otherwise). Defaults to the tensor’s <cite>requires_grad</cite> value.</p></li>
+<li><p><strong>requires_grad</strong> (<a class="reference internal" href="functions.html#warp.bool" title="warp.bool"><em>bool</em></a><em>, </em><em>optional</em>) – Whether the resulting array should wrap the tensor’s gradient, if it exists (the grad tensor will be allocated otherwise). Defaults to the tensor’s <cite>requires_grad</cite> value.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -392,7 +394,7 @@ Here, we revisit the same example from above where now only a single conversion 
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>a</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.array"><em>warp.array</em></a>) – The Warp array to convert.</p></li>
-<li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a><em>, </em><em>optional</em>) – Whether the resulting tensor should convert the array’s gradient, if it exists, to a grad tensor. Defaults to the array’s <cite>requires_grad</cite> value.</p></li>
+<li><p><strong>requires_grad</strong> (<a class="reference internal" href="functions.html#warp.bool" title="warp.bool"><em>bool</em></a><em>, </em><em>optional</em>) – Whether the resulting tensor should convert the array’s gradient, if it exists, to a grad tensor. Defaults to the array’s <cite>requires_grad</cite> value.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -425,9 +427,9 @@ Currently this is one-directional, so that Warp arrays can be used as input to a
 <code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code> protocol, but not the other way around.</p>
 </section>
 <section id="jax">
-<h2>JAX<a class="headerlink" href="#jax" title="Link to this heading">#</a></h2>
-<p>Interop with JAX arrays is supported through the following methods, internally these use the DLPack protocol to exchange
-data in a zero-copy way with JAX.</p>
+<span id="jax-interop"></span><h2>JAX<a class="headerlink" href="#jax" title="Link to this heading">#</a></h2>
+<p>Interoperability with JAX arrays is supported through the following methods.
+Internally these use the DLPack protocol to exchange data in a zero-copy way with JAX.</p>
 <dl class="py function" id="module-warp.jax">
 <dt class="sig sig-object py" id="warp.jax.device_to_jax">
 <span class="sig-prename descclassname"><span class="pre">warp.jax.</span></span><span class="sig-name descname"><span class="pre">device_to_jax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wp_device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.jax.device_to_jax" title="Link to this definition">#</a></dt>
@@ -449,9 +451,9 @@ data in a zero-copy way with JAX.</p>
 <dd></dd></dl>
 
 </section>
-<section id="dlpack">
-<h2>DLPack<a class="headerlink" href="#dlpack" title="Link to this heading">#</a></h2>
-<dl class="py function" id="module-warp.dlpack">
+<section id="module-warp.dlpack">
+<span id="dlpack"></span><h2>DLPack<a class="headerlink" href="#module-warp.dlpack" title="Link to this heading">#</a></h2>
+<dl class="py function">
 <dt class="sig sig-object py" id="warp.dlpack.device_to_dlpack">
 <span class="sig-prename descclassname"><span class="pre">warp.dlpack.</span></span><span class="sig-name descname"><span class="pre">device_to_dlpack</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wp_device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.dlpack.device_to_dlpack" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
@@ -543,23 +545,23 @@ pycapsule.</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="../debugging.html">
+          <a class="next-page" href="../configuration.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Debugging</div>
+                <div class="title">Runtime Settings</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="profiling.html">
+          <a class="prev-page" href="devices.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Profiling</div>
+                <div class="title">Devices</div>
                 
               </div>
             </a>
@@ -602,8 +604,8 @@ pycapsule.</p>
 <li><a class="reference internal" href="#">Interoperability</a><ul>
 <li><a class="reference internal" href="#numpy">NumPy</a></li>
 <li><a class="reference internal" href="#pytorch">PyTorch</a><ul>
-<li><a class="reference internal" href="#optimization-example-using-warp-from-torch">Optimization example using <code class="docutils literal notranslate"><span class="pre">warp.from_torch</span></code></a></li>
-<li><a class="reference internal" href="#optimization-example-using-warp-to-torch">Optimization example using <code class="docutils literal notranslate"><span class="pre">warp.to_torch</span></code></a><ul>
+<li><a class="reference internal" href="#example-optimization-using-warp-from-torch">Example: Optimization using <code class="docutils literal notranslate"><span class="pre">warp.from_torch()</span></code></a></li>
+<li><a class="reference internal" href="#example-optimization-using-warp-to-torch">Example: Optimization using <code class="docutils literal notranslate"><span class="pre">warp.to_torch</span></code></a><ul>
 <li><a class="reference internal" href="#warp.torch.device_from_torch"><code class="docutils literal notranslate"><span class="pre">device_from_torch()</span></code></a></li>
 <li><a class="reference internal" href="#warp.torch.device_to_torch"><code class="docutils literal notranslate"><span class="pre">device_to_torch()</span></code></a></li>
 <li><a class="reference internal" href="#warp.torch.dtype_from_torch"><code class="docutils literal notranslate"><span class="pre">dtype_from_torch()</span></code></a></li>
@@ -624,7 +626,7 @@ pycapsule.</p>
 <li><a class="reference internal" href="#warp.jax.from_jax"><code class="docutils literal notranslate"><span class="pre">from_jax()</span></code></a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#dlpack">DLPack</a><ul>
+<li><a class="reference internal" href="#module-warp.dlpack">DLPack</a><ul>
 <li><a class="reference internal" href="#warp.dlpack.device_to_dlpack"><code class="docutils literal notranslate"><span class="pre">device_to_dlpack()</span></code></a></li>
 <li><a class="reference internal" href="#warp.dlpack.dtype_to_dlpack"><code class="docutils literal notranslate"><span class="pre">dtype_to_dlpack()</span></code></a></li>
 <li><a class="reference internal" href="#warp.dlpack.dtype_from_dlpack"><code class="docutils literal notranslate"><span class="pre">dtype_from_dlpack()</span></code></a></li>
@@ -647,9 +649,11 @@ pycapsule.</p>
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=5929fcd5"></script>
+</div><script src="../_static/documentation_options.js?v=f0dcd5a7"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/scripts/furo.js?v=32e29ea5"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=fd10adb8"></script>
     </body>
 </html>

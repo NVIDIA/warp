@@ -5,7 +5,10 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import unittest
+
 import numpy as np
+
 import warp as wp
 from warp.tests.test_base import *
 
@@ -272,8 +275,7 @@ def gradcheck(func, func_name, inputs, device, eps=1e-4, tol=1e-2):
     numerical gradient computed using finite differences.
     """
 
-    module = wp.get_module(func.__module__)
-    kernel = wp.Kernel(func=func, key=func_name, module=module)
+    kernel = wp.Kernel(func=func, key=func_name)
 
     def f(xs):
         # call the kernel without taping for finite differences
@@ -316,7 +318,7 @@ def gradcheck(func, func_name, inputs, device, eps=1e-4, tol=1e-2):
 
 
 def test_vector_math_grad(test, device):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     # test unary operations
     for dim, vec_type in [(2, wp.vec2), (3, wp.vec3), (4, wp.vec4), (4, wp.quat)]:
@@ -332,14 +334,14 @@ def test_vector_math_grad(test, device):
 
         # run the tests with 5 different random inputs
         for _ in range(5):
-            x = wp.array(np.random.randn(1, dim).astype(np.float32), dtype=vec_type, device=device)
+            x = wp.array(rng.random(size=(1, dim), dtype=np.float32), dtype=vec_type, device=device)
             gradcheck(check_length, f"check_length_{vec_type.__name__}", [x], device)
             gradcheck(check_length_sq, f"check_length_sq_{vec_type.__name__}", [x], device)
             gradcheck(check_normalize, f"check_normalize_{vec_type.__name__}", [x], device)
 
 
 def test_matrix_math_grad(test, device):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     # test unary operations
     for dim, mat_type in [(2, wp.mat22), (3, wp.mat33), (4, wp.mat44)]:
@@ -352,13 +354,13 @@ def test_matrix_math_grad(test, device):
 
         # run the tests with 5 different random inputs
         for _ in range(5):
-            x = wp.array(np.random.randn(1, dim, dim).astype(np.float32), ndim=1, dtype=mat_type, device=device)
+            x = wp.array(rng.random(size=(1, dim, dim), dtype=np.float32), ndim=1, dtype=mat_type, device=device)
             gradcheck(check_determinant, f"check_length_{mat_type.__name__}", [x], device)
             gradcheck(check_trace, f"check_length_sq_{mat_type.__name__}", [x], device)
 
 
 def test_3d_math_grad(test, device):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     # test binary operations
     def check_cross(vs: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
@@ -408,7 +410,9 @@ def test_3d_math_grad(test, device):
 
     # run the tests with 5 different random inputs
     for _ in range(5):
-        x = wp.array(np.random.randn(2, 3).astype(np.float32), dtype=wp.vec3, device=device, requires_grad=True)
+        x = wp.array(
+            rng.standard_normal(size=(2, 3), dtype=np.float32), dtype=wp.vec3, device=device, requires_grad=True
+        )
         gradcheck(check_cross, "check_cross_3d", [x], device)
         gradcheck(check_dot, "check_dot_3d", [x], device)
         gradcheck(check_mat33, "check_mat33_3d", [x], device, eps=2e-2)
@@ -419,7 +423,7 @@ def test_3d_math_grad(test, device):
 
 
 def test_multi_valued_function_grad(test, device):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     @wp.func
     def multi_valued(x: float, y: float, z: float):
@@ -434,7 +438,9 @@ def test_multi_valued_function_grad(test, device):
 
     # run the tests with 5 different random inputs
     for _ in range(5):
-        x = wp.array(np.random.randn(2, 3).astype(np.float32), dtype=wp.vec3, device=device, requires_grad=True)
+        x = wp.array(
+            rng.standard_normal(size=(2, 3), dtype=np.float32), dtype=wp.vec3, device=device, requires_grad=True
+        )
         gradcheck(check_multi_valued, "check_multi_valued_3d", [x], device)
 
 
@@ -467,11 +473,9 @@ def test_mesh_grad(test, device):
         c = mesh.points[k]
         return wp.length(wp.cross(b - a, c - a)) * 0.5
 
+    @wp.kernel
     def compute_area(mesh_id: wp.uint64, out: wp.array(dtype=wp.float32)):
         wp.atomic_add(out, 0, compute_triangle_area(mesh_id, wp.tid()))
-
-    module = wp.get_module(compute_area.__module__)
-    kernel = wp.Kernel(func=compute_area, key="compute_area", module=module)
 
     num_tris = int(len(indices) / 3)
 
@@ -479,7 +483,7 @@ def test_mesh_grad(test, device):
     tape = wp.Tape()
     output = wp.zeros(1, dtype=wp.float32, device=device, requires_grad=True)
     with tape:
-        wp.launch(kernel, dim=num_tris, inputs=[mesh.id], outputs=[output], device=device)
+        wp.launch(compute_area, dim=num_tris, inputs=[mesh.id], outputs=[output], device=device)
 
     tape.backward(loss=output)
 
@@ -496,13 +500,13 @@ def test_mesh_grad(test, device):
             pos = wp.array(pos_np, dtype=wp.vec3, device=device)
             mesh = wp.Mesh(points=pos, indices=indices)
             output.zero_()
-            wp.launch(kernel, dim=num_tris, inputs=[mesh.id], outputs=[output], device=device)
+            wp.launch(compute_area, dim=num_tris, inputs=[mesh.id], outputs=[output], device=device)
             f1 = output.numpy()[0]
             pos_np[i, j] -= 2 * eps
             pos = wp.array(pos_np, dtype=wp.vec3, device=device)
             mesh = wp.Mesh(points=pos, indices=indices)
             output.zero_()
-            wp.launch(kernel, dim=num_tris, inputs=[mesh.id], outputs=[output], device=device)
+            wp.launch(compute_area, dim=num_tris, inputs=[mesh.id], outputs=[output], device=device)
             f2 = output.numpy()[0]
             pos_np[i, j] += eps
             fd_grad[i, j] = (f1 - f2) / (2 * eps)
@@ -510,163 +514,50 @@ def test_mesh_grad(test, device):
     assert np.allclose(ad_grad, fd_grad, atol=1e-3)
 
 
-# atomic add function that memorizes which thread incremented the counter
-# so that the correct counter value per thread can be used in the replay
-# phase of the backward pass
 @wp.func
-def reversible_increment(
-    counter: wp.array(dtype=int),
-    counter_index: int,
-    value: int,
-    thread_values: wp.array(dtype=int),
-    tid: int
-):
-    next_index = wp.atomic_add(counter, counter_index, value)
-    thread_values[tid] = next_index
-    return next_index
+def name_clash(a: float, b: float) -> float:
+    return a + b
 
 
-@wp.func_replay(reversible_increment)
-def replay_reversible_increment(
-    counter: wp.array(dtype=int),
-    counter_index: int,
-    value: int,
-    thread_values: wp.array(dtype=int),
-    tid: int
-):
-    return thread_values[tid]
+@wp.func_grad(name_clash)
+def adj_name_clash(a: float, b: float, adj_ret: float):
+    # names `adj_a` and `adj_b` must not clash with function args of generated function
+    adj_a = 0.0
+    adj_b = 0.0
+    if a < 0.0:
+        adj_a = adj_ret
+    if b > 0.0:
+        adj_b = adj_ret
 
-
-def test_custom_replay_grad(test, device):
-    num_threads = 128
-    counter = wp.zeros(1, dtype=wp.int32, device=device)
-    thread_ids = wp.zeros(num_threads, dtype=wp.int32, device=device)
-    inputs = wp.array(np.arange(num_threads, dtype=np.float32), device=device, requires_grad=True)
-    outputs = wp.zeros_like(inputs)
-
-    @wp.kernel
-    def run_atomic_add(
-        input: wp.array(dtype=float),
-        counter: wp.array(dtype=int),
-        thread_values: wp.array(dtype=int),
-        output: wp.array(dtype=float)
-    ):
-        tid = wp.tid()
-        idx = reversible_increment(counter, 0, 1, thread_values, tid)
-        output[idx] = input[idx] ** 2.0
-
-    tape = wp.Tape()
-    with tape:
-        wp.launch(run_atomic_add, dim=num_threads, inputs=[inputs, counter, thread_ids], outputs=[outputs], device=device)
-
-    tape.backward(grads={outputs: wp.array(np.ones(num_threads, dtype=np.float32), device=device)})
-    assert_np_equal(inputs.grad.numpy(), 2.0 * inputs.numpy(), tol=1e-4)
-
-
-@wp.func
-def overload_fn(x: float, y: float):
-    return x * 3.0 + y / 3.0, y ** 2.5
-
-
-@wp.func_grad(overload_fn)
-def overload_fn_grad(x: float, y: float, adj_ret0: float, adj_ret1: float):
-    wp.adjoint[x] += x * adj_ret0 * 42.0 + y * adj_ret1 * 10.0
-    wp.adjoint[y] += y * adj_ret1 * 3.0
-
-
-@wp.struct
-class MyStruct:
-    scalar: float
-    vec: wp.vec3
-
-
-@wp.func
-def overload_fn(x: MyStruct):
-    return x.vec[0] * x.vec[1] * x.vec[2] * 4.0, wp.length(x.vec), x.scalar ** 0.5
-
-
-@wp.func_grad(overload_fn)
-def overload_fn_grad(x: MyStruct, adj_ret0: float, adj_ret1: float, adj_ret2: float):
-    wp.adjoint[x.scalar] += x.scalar * adj_ret0 * 10.0
-    wp.adjoint[x.vec][0] += adj_ret0 * x.vec[1] * x.vec[2] * 20.0
-    wp.adjoint[x.vec][1] += adj_ret1 * x.vec[0] * x.vec[2] * 30.0
-    wp.adjoint[x.vec][2] += adj_ret2 * x.vec[0] * x.vec[1] * 40.0
+    wp.adjoint[a] += adj_a
+    wp.adjoint[b] += adj_b
 
 
 @wp.kernel
-def run_overload_float_fn(
-    xs: wp.array(dtype=float),
-    ys: wp.array(dtype=float),
-    output0: wp.array(dtype=float),
-    output1: wp.array(dtype=float)
+def name_clash_kernel(
+    input_a: wp.array(dtype=float),
+    input_b: wp.array(dtype=float),
+    output: wp.array(dtype=float),
 ):
-    i = wp.tid()
-    out0, out1 = overload_fn(xs[i], ys[i])
-    output0[i] = out0
-    output1[i] = out1
+    tid = wp.tid()
+    output[tid] = name_clash(input_a[tid], input_b[tid])
 
 
-@wp.kernel
-def run_overload_struct_fn(xs: wp.array(dtype=MyStruct), output: wp.array(dtype=float)):
-    i = wp.tid()
-    out0, out1, out2 = overload_fn(xs[i])
-    output[i] = out0 + out1 + out2
+def test_name_clash(test, device):
+    # tests that no name clashes occur when variable names such as `adj_a` are used in custom gradient code
+    with wp.ScopedDevice(device):
+        input_a = wp.array([1.0, -2.0, 3.0], dtype=wp.float32, requires_grad=True)
+        input_b = wp.array([4.0, 5.0, -6.0], dtype=wp.float32, requires_grad=True)
+        output = wp.zeros(3, dtype=wp.float32, requires_grad=True)
 
+        tape = wp.Tape()
+        with tape:
+            wp.launch(name_clash_kernel, dim=len(input_a), inputs=[input_a, input_b], outputs=[output])
 
-def test_custom_overload_grad(test, device):
-    dim = 3
-    xs_float = wp.array(np.arange(1.0, dim + 1.0), dtype=wp.float32, requires_grad=True)
-    ys_float = wp.array(np.arange(10.0, dim + 10.0), dtype=wp.float32, requires_grad=True)
-    out0_float = wp.zeros(dim)
-    out1_float = wp.zeros(dim)
-    tape = wp.Tape()
-    with tape:
-        wp.launch(
-            run_overload_float_fn,
-            dim=dim,
-            inputs=[xs_float, ys_float],
-            outputs=[out0_float, out1_float])
-    tape.backward(grads={
-        out0_float: wp.array(np.ones(dim), dtype=wp.float32),
-        out1_float: wp.array(np.ones(dim), dtype=wp.float32)})
-    assert_np_equal(xs_float.grad.numpy(), xs_float.numpy() * 42.0 + ys_float.numpy() * 10.0)
-    assert_np_equal(ys_float.grad.numpy(), ys_float.numpy() * 3.0)
+        tape.backward(grads={output: wp.array(np.ones(len(input_a), dtype=np.float32))})
 
-    x0 = MyStruct()
-    x0.vec = wp.vec3(1., 2., 3.)
-    x0.scalar = 4.
-    x1 = MyStruct()
-    x1.vec = wp.vec3(5., 6., 7.)
-    x1.scalar = -1.0
-    x2 = MyStruct()
-    x2.vec = wp.vec3(8., 9., 10.)
-    x2.scalar = 19.0
-    xs_struct = wp.array([x0, x1, x2], dtype=MyStruct, requires_grad=True)
-    out_struct = wp.zeros(dim)
-    tape = wp.Tape()
-    with tape:
-        wp.launch(
-            run_overload_struct_fn,
-            dim=dim,
-            inputs=[xs_struct],
-            outputs=[out_struct])
-    tape.backward(grads={out_struct: wp.array(np.ones(dim), dtype=wp.float32)})
-    xs_struct_np = xs_struct.numpy()
-    struct_grads = xs_struct.grad.numpy()
-    # fmt: off
-    assert_np_equal(
-        np.array([g[0] for g in struct_grads]),
-        np.array([g[0] * 10.0 for g in xs_struct_np]))
-    assert_np_equal(
-        np.array([g[1][0] for g in struct_grads]),
-        np.array([g[1][1] * g[1][2] * 20.0 for g in xs_struct_np]))
-    assert_np_equal(
-        np.array([g[1][1] for g in struct_grads]),
-        np.array([g[1][0] * g[1][2] * 30.0 for g in xs_struct_np]))
-    assert_np_equal(
-        np.array([g[1][2] for g in struct_grads]),
-        np.array([g[1][0] * g[1][1] * 40.0 for g in xs_struct_np]))
-    # fmt: on
+        assert_np_equal(input_a.grad.numpy(), np.array([0.0, 1.0, 0.0]))
+        assert_np_equal(input_b.grad.numpy(), np.array([1.0, 1.0, 0.0]))
 
 
 def register(parent):
@@ -687,12 +578,12 @@ def register(parent):
     add_function_test(TestGrad, "test_3d_math_grad", test_3d_math_grad, devices=devices)
     add_function_test(TestGrad, "test_multi_valued_function_grad", test_multi_valued_function_grad, devices=devices)
     add_function_test(TestGrad, "test_mesh_grad", test_mesh_grad, devices=devices)
-    add_function_test(TestGrad, "test_custom_replay_grad", test_custom_replay_grad, devices=devices)
-    add_function_test(TestGrad, "test_custom_overload_grad", test_custom_overload_grad, devices=devices)
+    add_function_test(TestGrad, "test_name_clash", test_name_clash, devices=devices)
 
     return TestGrad
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2, failfast=False)

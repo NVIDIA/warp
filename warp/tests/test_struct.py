@@ -5,9 +5,12 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+from typing import Any
 import numpy as np
 import warp as wp
 from warp.tests.test_base import *
+
+from warp.fem import Sample as StructFromAnotherModule
 
 import unittest
 
@@ -47,6 +50,8 @@ def kernel_step_with_copy(state_in: State, state_out: State, model: Model):
 
 
 def test_step(test, device):
+    rng = np.random.default_rng(123)
+
     dim = 5
 
     dt = 0.01
@@ -61,9 +66,8 @@ def test_step(test, device):
     model.dt = dt
     model.gravity = wp.vec3(0, 0, -9.81)
 
-    np.random.seed(0)
-    x = np.random.normal(size=(dim, 3))
-    v = np.random.normal(size=(dim, 3))
+    x = rng.normal(size=(dim, 3))
+    v = rng.normal(size=(dim, 3))
 
     x_expected = x + (v + gravity / m[:, None] * dt) * dt
 
@@ -92,13 +96,14 @@ def kernel_loss(x: wp.array(dtype=wp.vec3), loss: wp.array(dtype=float)):
 
 
 def test_step_grad(test, device):
+    rng = np.random.default_rng(123)
+
     dim = 5
 
     dt = 0.01
     gravity = np.array([0, 0, -9.81])
 
-    np.random.seed(0)
-    m = np.random.rand(dim) + 0.1
+    m = rng.random(size=dim) + 0.1
 
     m_model = wp.array(m, dtype=float, device=device, requires_grad=True)
 
@@ -107,8 +112,8 @@ def test_step_grad(test, device):
     model.dt = dt
     model.gravity = wp.vec3(0, 0, -9.81)
 
-    x = np.random.normal(size=(dim, 3))
-    v = np.random.normal(size=(dim, 3))
+    x = rng.normal(size=(dim, 3))
+    v = rng.normal(size=(dim, 3))
 
     x_in = wp.array(x, dtype=wp.vec3, device=device, requires_grad=True)
     v_in = wp.array(v, dtype=wp.vec3, device=device, requires_grad=True)
@@ -216,6 +221,20 @@ def test_nested_struct(test, device):
         foo.bar.baz.data,
         wp.array((260, 262, 264), dtype=int, device=device),
     )
+
+
+def test_struct_attribute_error(test, device):
+    @wp.kernel
+    def kernel(foo: Foo):
+        _ = foo.nonexisting
+
+    with test.assertRaisesRegex(AttributeError, r"`nonexisting` is not an attribute of 'foo' \([\w.]+\.Foo\)$"):
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[Foo()],
+            device=device,
+        )
 
 
 @wp.kernel
@@ -402,6 +421,149 @@ def test_nested_array_struct(test, device):
     wp.launch(struct2_reader, dim=2, inputs=[struct])
 
 
+@wp.struct
+class EmptyNest1:
+    a: Empty
+    z: int
+
+
+@wp.struct
+class EmptyNest2:
+    a: Empty
+    b: Empty
+    z: int
+
+
+@wp.struct
+class EmptyNest3:
+    a: Empty
+    b: Empty
+    c: Empty
+    z: int
+
+
+@wp.struct
+class EmptyNest4:
+    a: Empty
+    b: Empty
+    c: Empty
+    d: Empty
+    z: int
+
+
+@wp.struct
+class EmptyNest5:
+    a: Empty
+    b: Empty
+    c: Empty
+    d: Empty
+    e: Empty
+    z: int
+
+
+@wp.struct
+class EmptyNest6:
+    a: Empty
+    b: Empty
+    c: Empty
+    d: Empty
+    e: Empty
+    f: Empty
+    z: int
+
+
+@wp.struct
+class EmptyNest7:
+    a: Empty
+    b: Empty
+    c: Empty
+    d: Empty
+    e: Empty
+    f: Empty
+    g: Empty
+    z: int
+
+
+@wp.struct
+class EmptyNest8:
+    a: Empty
+    b: Empty
+    c: Empty
+    d: Empty
+    e: Empty
+    f: Empty
+    g: Empty
+    h: Empty
+    z: int
+
+
+@wp.kernel
+def empty_nest_kernel(s: Any):
+    wp.expect_eq(s.z, 42)
+
+
+wp.overload(empty_nest_kernel, [EmptyNest1])
+wp.overload(empty_nest_kernel, [EmptyNest2])
+wp.overload(empty_nest_kernel, [EmptyNest3])
+wp.overload(empty_nest_kernel, [EmptyNest4])
+wp.overload(empty_nest_kernel, [EmptyNest5])
+wp.overload(empty_nest_kernel, [EmptyNest6])
+wp.overload(empty_nest_kernel, [EmptyNest7])
+wp.overload(empty_nest_kernel, [EmptyNest8])
+
+
+def test_nested_empty_struct(test, device):
+    with wp.ScopedDevice(device):
+        e1 = EmptyNest1()
+        e1.z = 42
+        e2 = EmptyNest2()
+        e2.z = 42
+        e3 = EmptyNest3()
+        e3.z = 42
+        e4 = EmptyNest4()
+        e4.z = 42
+        e5 = EmptyNest5()
+        e5.z = 42
+        e6 = EmptyNest6()
+        e6.z = 42
+        e7 = EmptyNest7()
+        e7.z = 42
+        e8 = EmptyNest8()
+        e8.z = 42
+
+        wp.launch(empty_nest_kernel, dim=1, inputs=[e1])
+        wp.launch(empty_nest_kernel, dim=1, inputs=[e2])
+        wp.launch(empty_nest_kernel, dim=1, inputs=[e3])
+        wp.launch(empty_nest_kernel, dim=1, inputs=[e4])
+        wp.launch(empty_nest_kernel, dim=1, inputs=[e5])
+        wp.launch(empty_nest_kernel, dim=1, inputs=[e6])
+        wp.launch(empty_nest_kernel, dim=1, inputs=[e7])
+        wp.launch(empty_nest_kernel, dim=1, inputs=[e8])
+
+        wp.synchronize_device()
+
+
+@wp.struct
+class DependentModuleImport_A:
+    s: StructFromAnotherModule
+
+
+@wp.struct
+class DependentModuleImport_B:
+    s: StructFromAnotherModule
+
+
+@wp.struct
+class DependentModuleImport_C:
+    a: DependentModuleImport_A
+    b: DependentModuleImport_B
+
+
+@wp.kernel
+def test_dependent_module_import(c: DependentModuleImport_C):
+    wp.tid()  # nop, we're just testing codegen
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -420,8 +582,10 @@ def register(parent):
         devices=devices,
     )
     add_kernel_test(TestStruct, kernel=test_return, name="test_return", dim=1, inputs=[], devices=devices)
+    add_function_test(TestStruct, "test_struct_attribute_error", test_struct_attribute_error, devices=devices)
     add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
     add_function_test(TestStruct, "test_nested_array_struct", test_nested_array_struct, devices=devices)
+    add_function_test(TestStruct, "test_nested_empty_struct", test_nested_empty_struct, devices=devices)
     add_function_test(TestStruct, "test_struct_math_conversions", test_struct_math_conversions, devices=devices)
     add_function_test(
         TestStruct, "test_struct_default_attributes_python", test_struct_default_attributes_python, devices=devices
@@ -462,9 +626,19 @@ def register(parent):
             devices=[device],
         )
 
+    add_kernel_test(
+        TestStruct,
+        kernel=test_dependent_module_import,
+        name="test_dependent_module_import",
+        dim=1,
+        inputs=[DependentModuleImport_C()],
+        devices=devices,
+    )
+
     return TestStruct
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

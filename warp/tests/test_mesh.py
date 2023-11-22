@@ -12,7 +12,6 @@ import numpy as np
 import warp as wp
 from warp.tests.test_base import *
 
-
 # fmt: off
 
 POINT_POSITIONS = (
@@ -268,6 +267,40 @@ def test_mesh_refit_graph(test, device):
         wp.capture_launch(graph)
 
 
+def test_mesh_exceptions(test, device):
+    # points and indices must be on same device
+    with test.assertRaises(RuntimeError):
+        points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device="cpu")
+        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int)
+        wp.Mesh(points=points, indices=indices)
+
+    # points must be vec3
+    with test.assertRaises(RuntimeError):
+        points = wp.array(POINT_POSITIONS, dtype=wp.vec3d)
+        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int)
+        wp.Mesh(points=points, indices=indices)
+
+    # velocities must be vec3
+    with test.assertRaises(RuntimeError):
+        points = wp.array(POINT_POSITIONS, dtype=wp.vec3)
+        velocities = wp.zeros(points.shape, dtype=wp.vec3d)
+        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int)
+        wp.Mesh(points=points, indices=indices, velocities=velocities)
+
+    # indices must be int32
+    with test.assertRaises(RuntimeError):
+        points = wp.array(POINT_POSITIONS, dtype=wp.vec3)
+        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=wp.int64)
+        wp.Mesh(points=points, indices=indices)
+
+    # indices must be 1d
+    with test.assertRaises(RuntimeError):
+        points = wp.array(POINT_POSITIONS, dtype=wp.vec3)
+        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int)
+        indices = indices.reshape((3, -1))
+        wp.Mesh(points=points, indices=indices)
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -278,9 +311,11 @@ def register(parent):
     add_function_test(TestMesh, "test_mesh_query_point", test_mesh_query_point, devices=devices)
     add_function_test(TestMesh, "test_mesh_query_ray", test_mesh_query_ray, devices=devices)
     add_function_test(TestMesh, "test_mesh_refit_graph", test_mesh_refit_graph, devices=wp.get_cuda_devices())
+    add_function_test(TestMesh, "test_mesh_exceptions", test_mesh_exceptions, devices=wp.get_cuda_devices())
     return TestMesh
 
 
 if __name__ == "__main__":
+    wp.build.clear_kernel_cache()
     _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

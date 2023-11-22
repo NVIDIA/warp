@@ -51,31 +51,46 @@ def operator(resolver: Callable):
 
 
 @operator(resolver=lambda dmn: dmn.element_position)
-def position(domain: Domain, x: Sample):
-    """Evaluates the world position of the sample point x"""
+def position(domain: Domain, s: Sample):
+    """Evaluates the world position of the sample point `s`"""
     pass
 
 
 @operator(resolver=lambda dmn: dmn.eval_normal)
-def normal(domain: Domain, x: Sample):
-    """Evaluates the element normal at the sample point x. Null for interior points."""
+def normal(domain: Domain, s: Sample):
+    """Evaluates the element normal at the sample point `s`. Null for interior points."""
+    pass
+
+
+@operator(resolver=lambda dmn: dmn.element_deformation_gradient)
+def deformation_gradient(domain: Domain, s: Sample):
+    """Evaluates the gradient of the domain position with respect to the element reference space at the sample point `s`"""
     pass
 
 
 @operator(resolver=lambda dmn: dmn.element_lookup)
-def lookup(domain: Domain, x: Any):
-    """Look-ups a sample point from a world position, projecting to the closest point on the domain"""
+def lookup(domain: Domain, x: Any) -> Sample:
+    """Looks-up the sample point corresponding to a world position `x`, projecting to the closest point on the domain.
+
+    Arg:
+        x: world position of the point to look-up in the geometry
+        guess: (optional) :class:`Sample` initial guess, may help perform the query
+
+    Notes:
+        Currently this operator is only fully supported for :class:`Grid2D` and :class:`Grid3D` geometries.
+        For :class:`TriangleMesh2D` and :class:`Tetmesh` geometries, the operator requires providing `guess`.
+    """
     pass
 
 
 @operator(resolver=lambda dmn: dmn.element_measure)
-def measure(domain: Domain, sample: Sample):
-    """Returns the measure (volume, area, or length) of an element"""
+def measure(domain: Domain, s: Sample) -> float:
+    """Returns the measure (volume, area, or length) determinant of an element at a sample point `s`"""
     pass
 
 
 @operator(resolver=lambda dmn: dmn.element_measure_ratio)
-def measure_ratio(domain: Domain, sample: Sample):
+def measure_ratio(domain: Domain, s: Sample) -> float:
     """Returns the maximum ratio between the measure of this element and that of higher-dimensional neighbours."""
     pass
 
@@ -85,26 +100,38 @@ def measure_ratio(domain: Domain, sample: Sample):
 
 
 @operator(resolver=lambda f: f.eval_inner)
-def inner(f: Field, x: Sample):
-    """Evaluates the field at a sample point x. On oriented sides, use the inner element"""
+def inner(f: Field, s: Sample):
+    """Evaluates the field at a sample point `s`. On oriented sides, uses the inner element"""
     pass
 
 
 @operator(resolver=lambda f: f.eval_grad_inner)
-def grad(f: Field, x: Sample):
-    """Evaluates the field gradient at a sample point x. On oriented sides, use the inner element"""
+def grad(f: Field, s: Sample):
+    """Evaluates the field gradient at a sample point `s`. On oriented sides, uses the inner element"""
+    pass
+
+
+@operator(resolver=lambda f: f.eval_div_inner)
+def div(f: Field, s: Sample):
+    """Evaluates the field divergence at a sample point `s`. On oriented sides, uses the inner element"""
     pass
 
 
 @operator(resolver=lambda f: f.eval_outer)
-def outer(f: Field, x: Sample):
-    """Evaluates the field at a sample point x. On oriented sides, use the outer element. On interior points and on domain boundaries, this is equivalent to inner."""
+def outer(f: Field, s: Sample):
+    """Evaluates the field at a sample point `s`. On oriented sides, uses the outer element. On interior points and on domain boundaries, this is equivalent to :func:`inner`."""
     pass
 
 
 @operator(resolver=lambda f: f.eval_grad_outer)
-def grad_outer(f: Field, x: Sample):
-    """Evaluates the field gradient at a sample point x. On oriented sides, use the outer element. On interior points and on domain boundaries, this is equivalent to grad."""
+def grad_outer(f: Field, s: Sample):
+    """Evaluates the field gradient at a sample point `s`. On oriented sides, uses the outer element. On interior points and on domain boundaries, this is equivalent to :func:`grad`."""
+    pass
+
+
+@operator(resolver=lambda f: f.eval_grad_outer)
+def div_outer(f: Field, s: Sample):
+    """Evaluates the field divergence at a sample point `s`. On oriented sides, uses the outer element. On interior points and on domain boundaries, this is equivalent to :func:`div`."""
     pass
 
 
@@ -124,39 +151,39 @@ def at_node(f: Field, s: Sample):
 
 
 @integrand
-def D(f: Field, x: Sample):
-    """Symmetric part of the (inner) gradient of the field at x"""
-    return utils.symmetric_part(grad(f, x))
+def D(f: Field, s: Sample):
+    """Symmetric part of the (inner) gradient of the field at `s`"""
+    return utils.symmetric_part(grad(f, s))
 
 
 @integrand
-def div(f: Field, x: Sample):
-    """(Inner) divergence of the field at x"""
-    return wp.trace(grad(f, x))
+def curl(f: Field, s: Sample):
+    """Skew part of the (inner) gradient of the field at `s`, as a vector such that ``wp.cross(curl(u), v) = skew(grad(u)) v``"""
+    return utils.skew_part(grad(f, s))
 
 
 @integrand
-def jump(f: Field, x: Sample):
+def jump(f: Field, s: Sample):
     """Jump between inner and outer element values on an interior side. Zero for interior points or domain boundaries"""
-    return inner(f, x) - outer(f, x)
+    return inner(f, s) - outer(f, s)
 
 
 @integrand
-def average(f: Field, x: Sample):
+def average(f: Field, s: Sample):
     """Average between inner and outer element values"""
-    return 0.5 * (inner(f, x) + outer(f, x))
+    return 0.5 * (inner(f, s) + outer(f, s))
 
 
 @integrand
-def grad_jump(f: Field, x: Sample):
+def grad_jump(f: Field, s: Sample):
     """Jump between inner and outer element gradients on an interior side. Zero for interior points or domain boundaries"""
-    return grad(f, x) - grad_outer(f, x)
+    return grad(f, s) - grad_outer(f, s)
 
 
 @integrand
-def grad_average(f: Field, x: Sample):
+def grad_average(f: Field, s: Sample):
     """Average between inner and outer element gradients"""
-    return 0.5 * (grad(f, x) + grad_outer(f, x))
+    return 0.5 * (grad(f, s) + grad_outer(f, s))
 
 
 # Set default call operators for argument types, so that field(s) = inner(field, s) and domain(s) = position(domain, s)

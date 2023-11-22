@@ -26,7 +26,7 @@ for any generated kernel code, e.g.:
 Kernels
 -------
 
-In Warp, compute kernels are defined as Python functions, and annotated with the ``@warp.kernel`` decorator, as follows::
+In Warp, compute kernels are defined as Python functions and annotated with the ``@wp.kernel`` decorator, as follows::
 
     @wp.kernel
     def simple_kernel(a: wp.array(dtype=wp.vec3),
@@ -46,12 +46,13 @@ In Warp, compute kernels are defined as Python functions, and annotated with the
         # write result back to memory
         c[tid] = r
 
-Because Warp kernels are compiled to native C++/CUDA code all the function input arguments must be statically typed. This allows 
-Warp to generate fast code that executes at essentially at native speeds. Because kernels may be run on either the CPU
+Because Warp kernels are compiled to native C++/CUDA code, all the function input arguments must be statically typed. This allows 
+Warp to generate fast code that executes at essentially native speeds. Because kernels may be run on either the CPU
 or GPU, they cannot access arbitrary global state from the Python environment. Instead they must read and write data
 through their input parameters such as arrays.
 
-Warp kernels functions have a 1:1 correspondence with CUDA kernels, to launch a kernel with 1024 threads, we use ``wp.launch()`` as follows::
+Warp kernels functions have a 1:1 correspondence with CUDA kernels, to launch a kernel with 1024 threads, we use
+:func:`wp.launch() <warp.launch>` as follows::
 
     wp.launch(kernel=simple_kernel, # kernel to launch
               dim=1024,             # number of threads
@@ -78,10 +79,55 @@ Then, inside the kernel we can retrieve a 2D thread index as follows::
     # write out a color value for each pixel
     color[i, j] = wp.vec3(r, g, b)
 
+.. _example-cache-management:
+
+Example: Changing the kernel cache directory
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following example illustrates how the location for generated and compiled
+kernel code can be changed before and after calling ``wp.init()``.
+
+.. code:: python
+
+    import os
+
+    import warp as wp
+
+    example_dir = os.path.dirname(os.path.realpath(__file__))
+
+    # set default cache directory before wp.init()
+    wp.config.kernel_cache_dir = os.path.join(example_dir, "tmp", "warpcache1")
+
+    wp.init()
+
+    print("+++ Current cache directory: ", wp.config.kernel_cache_dir)
+
+    # change cache directory after wp.init()
+    wp.build.init_kernel_cache(os.path.join(example_dir, "tmp", "warpcache2"))
+
+    print("+++ Current cache directory: ", wp.config.kernel_cache_dir)
+
+    # clear kernel cache (forces fresh kernel builds every time)
+    wp.build.clear_kernel_cache()
+
+
+    @wp.kernel
+    def basic(x: wp.array(dtype=float)):
+        tid = wp.tid()
+        x[tid] = float(tid)
+
+
+    device = "cpu"
+    n = 10
+    x = wp.zeros(n, dtype=float, device=device)
+
+    wp.launch(kernel=basic, dim=n, inputs=[x], device=device)
+    print(x.numpy())
+
 Arrays
 ------
 
-Memory allocations are exposed via the ``warp.array`` type. Arrays wrap an underlying memory allocation that may live in
+Memory allocations are exposed via the ``wp.array`` type. Arrays wrap an underlying memory allocation that may live in
 either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in values
 (``float,``, ``int``, ``vec3``, ``matrix33``, etc).
 
@@ -100,8 +146,8 @@ Arrays can be allocated similar to PyTorch::
 
 By default, Warp arrays that are initialized from external data (e.g.: NumPy, Lists, Tuples) will create a copy the data to new memory for the
 device specified. However, it is possible for arrays to alias external memory using the ``copy=False`` parameter to the
-array constructor provided the input is contiguous and on the same device. See the :ref:`interopability` section for more details on sharing
-memory with external frameworks.
+array constructor provided the input is contiguous and on the same device. See the :doc:`/modules/interoperability`
+section for more details on sharing memory with external frameworks.
 
 To read GPU array data back to CPU memory we can use the ``array.numpy()`` method::
 
@@ -115,11 +161,11 @@ a zero-copy NumPy view onto the Warp data.
 User Functions
 --------------
 
-Users can write their own functions using the ``wp.func`` decorator, for example::
+Users can write their own functions using the ``@wp.func`` decorator, for example::
 
-   @wp.func
-   def square(x: float):
-      return x*x
+    @wp.func
+    def square(x: float):
+        return x*x
 
 User functions can be called freely from within kernels inside the same module and accept arrays as inputs. 
 
@@ -162,14 +208,7 @@ Tuple initialization is not supported, instead variables should be explicitly ty
     a = wp.vec3(1.0, 2.0, 3.0) 
 
 
-Unsupported Features
-^^^^^^^^^^^^^^^^^^^^
+Limitations and Unsupported Features
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To achieve good performance on GPUs some dynamic language features are not supported:
-
-* Lambda functions
-* List comprehensions
-* Exceptions
-* Recursion
-* Runtime evaluation of expressions, e.g.: eval()
-* Dynamic structures such as lists, sets, dictionaries, etc
+See :doc:`limitations` for a list of Warp limitations and unsupported features.

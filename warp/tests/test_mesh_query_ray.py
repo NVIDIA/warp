@@ -5,14 +5,13 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
+import unittest
+
 import numpy as np
-import math
 
 import warp as wp
 from warp.tests.test_base import *
 
-np.random.seed(42)
 
 wp.init()
 
@@ -282,5 +281,6 @@ def register(parent):
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

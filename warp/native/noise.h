@@ -8,8 +8,8 @@
 
 #pragma once
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846f
+#ifndef M_PI_F
+#define M_PI_F 3.14159265358979323846f
 #endif
 
 namespace wp
@@ -27,7 +27,7 @@ inline CUDA_CALLABLE float smootherstep_gradient(float t)
 
 inline CUDA_CALLABLE float smoothstep(float t)
 {
-    return t * t * (3.0 - t * 2.0);
+    return t * t * (3.f - t * 2.f);
 }
 
 inline CUDA_CALLABLE float smoothstep_gradient(float t)
@@ -49,22 +49,35 @@ inline CUDA_CALLABLE float interpolate_gradient(float a0, float a1, float t, flo
     // return (d_a1 - d_a0) * t + (a1 - a0) * d_t + d_a0;
 }
 
+inline CUDA_CALLABLE vec2 interpolate_gradient_2d(float a0, float a1, float t, vec2& d_a0, vec2& d_a1, vec2& d_t)
+{
+    return (d_a1 - d_a0) * smootherstep(t) + (a1 - a0) * smootherstep_gradient(t) * d_t + d_a0;
+}
+
+inline CUDA_CALLABLE vec3 interpolate_gradient_3d(float a0, float a1, float t, vec3& d_a0, vec3& d_a1, vec3& d_t)
+{
+    return (d_a1 - d_a0) * smootherstep(t) + (a1 - a0) * smootherstep_gradient(t) * d_t + d_a0;
+}
+
+inline CUDA_CALLABLE vec4 interpolate_gradient_4d(float a0, float a1, float t, vec4& d_a0, vec4& d_a1, vec4& d_t)
+{
+    return (d_a1 - d_a0) * smootherstep(t) + (a1 - a0) * smootherstep_gradient(t) * d_t + d_a0;
+}
+
 inline CUDA_CALLABLE float random_gradient_1d(uint32 state, int ix)
 {
-    const uint32_t p1 = 73856093;
+    const uint32 p1 = 73856093;
     uint32 idx = ix*p1 + state;
     return randf(idx, -1.f, 1.f);
 }
 
 inline CUDA_CALLABLE vec2 random_gradient_2d(uint32 state, int ix, int iy)
 {
-    const uint32_t p1 = 73856093;
-    const uint32_t p2 = 19349663;
+    const uint32 p1 = 73856093;
+    const uint32 p2 = 19349663;
     uint32 idx = ix*p1 ^ iy*p2 + state;
-    float phi = randf(idx, 0.f, 2.f*M_PI);
-    float x = cos(phi);
-    float y = sin(phi);
-    return vec2(x, y);
+    
+    return normalize(sample_unit_square(idx));
 }
 
 inline CUDA_CALLABLE vec3 random_gradient_3d(uint32 state, int ix, int iy, int iz)
@@ -74,11 +87,7 @@ inline CUDA_CALLABLE vec3 random_gradient_3d(uint32 state, int ix, int iy, int i
     const uint32 p3 = 53471161;
     uint32 idx = ix*p1 ^ iy*p2 ^ iz*p3 + state;
 
-    float x = randn(idx);
-    float y = randn(idx);
-    float z = randn(idx);
-
-    return normalize(vec3(x, y, z));
+    return normalize(sample_unit_cube(idx));
 }
 
 inline CUDA_CALLABLE vec4 random_gradient_4d(uint32 state, int ix, int iy, int iz, int it)
@@ -89,12 +98,7 @@ inline CUDA_CALLABLE vec4 random_gradient_4d(uint32 state, int ix, int iy, int i
     const uint32 p4 = 10000019;
     uint32 idx = ix*p1 ^ iy*p2 ^ iz*p3 ^ it*p4 + state;
 
-    float x = randn(idx);
-    float y = randn(idx);
-    float z = randn(idx);
-    float t = randn(idx);
-
-    return normalize(vec4(x, y, z, t));
+    return normalize(sample_unit_hypercube(idx));
 }
 
 inline CUDA_CALLABLE float dot_grid_gradient_1d(uint32 state, int ix, float dx)
@@ -103,22 +107,10 @@ inline CUDA_CALLABLE float dot_grid_gradient_1d(uint32 state, int ix, float dx)
     return dx*gradient;
 }
 
-inline CUDA_CALLABLE float dot_grid_gradient_1d_gradient(uint32 state, int ix, float d_dx)
-{
-    float gradient = random_gradient_1d(state, ix);
-    return d_dx*gradient;
-}
-
 inline CUDA_CALLABLE float dot_grid_gradient_2d(uint32 state, int ix, int iy, float dx, float dy)
 {
     vec2 gradient = random_gradient_2d(state, ix, iy);
     return (dx*gradient[0] + dy*gradient[1]);
-}
-
-inline CUDA_CALLABLE float dot_grid_gradient_2d_gradient(uint32 state, int ix, int iy, float d_dx, float d_dy)
-{
-    vec2 gradient = random_gradient_2d(state, ix, iy);
-    return (d_dx*gradient[0] + d_dy*gradient[1]);
 }
 
 inline CUDA_CALLABLE float dot_grid_gradient_3d(uint32 state, int ix, int iy, int iz, float dx, float dy, float dz)
@@ -127,22 +119,10 @@ inline CUDA_CALLABLE float dot_grid_gradient_3d(uint32 state, int ix, int iy, in
     return (dx*gradient[0] + dy*gradient[1] + dz*gradient[2]);
 }
 
-inline CUDA_CALLABLE float dot_grid_gradient_3d_gradient(uint32 state, int ix, int iy, int iz, float d_dx, float d_dy, float d_dz)
-{
-    vec3 gradient = random_gradient_3d(state, ix, iy, iz);
-    return (d_dx*gradient[0] + d_dy*gradient[1] + d_dz*gradient[2]);
-}
-
 inline CUDA_CALLABLE float dot_grid_gradient_4d(uint32 state, int ix, int iy, int iz, int it, float dx, float dy, float dz, float dt)
 {
     vec4 gradient = random_gradient_4d(state, ix, iy, iz, it);
     return (dx*gradient[0] + dy*gradient[1] + dz*gradient[2] + dt*gradient[3]);
-}
-
-inline CUDA_CALLABLE float dot_grid_gradient_4d_gradient(uint32 state, int ix, int iy, int iz, int it, float d_dx, float d_dy, float d_dz, float d_dt)
-{
-    vec4 gradient = random_gradient_4d(state, ix, iy, iz, it);
-    return (d_dx*gradient[0] + d_dy*gradient[1] + d_dz*gradient[2] + d_dt*gradient[3]);    
 }
 
 inline CUDA_CALLABLE float noise_1d(uint32 state, int x0, int x1, float dx)
@@ -156,13 +136,13 @@ inline CUDA_CALLABLE float noise_1d(uint32 state, int x0, int x1, float dx)
 
 inline CUDA_CALLABLE float noise_1d_gradient(uint32 state, int x0, int x1, float dx)
 {
-    float v0 = dot_grid_gradient_1d(state, x0, dx);
-    float d_v0_dx = dot_grid_gradient_1d_gradient(state, x0, 1.f);
+    float gradient_x0 = random_gradient_1d(state, x0);
+    float v0 = dx * gradient_x0;
 
-    float v1 = dot_grid_gradient_1d(state, x1, dx-1.f);
-    float d_v1_dx = dot_grid_gradient_1d_gradient(state, x1, 1.f);
+    float gradient_x1 = random_gradient_1d(state, x1);
+    float v1 = (dx-1.f) * gradient_x1;
 
-    return interpolate_gradient(v0, v1, dx, d_v0_dx, d_v1_dx, 1.f);
+    return interpolate_gradient(v0, v1, dx, gradient_x0, gradient_x1, 1.f);
 }
 
 inline CUDA_CALLABLE float noise_2d(uint32 state, int x0, int y0, int x1, int y1, float dx, float dy)
@@ -181,34 +161,35 @@ inline CUDA_CALLABLE float noise_2d(uint32 state, int x0, int y0, int x1, int y1
 
 inline CUDA_CALLABLE vec2 noise_2d_gradient(uint32 state, int x0, int y0, int x1, int y1, float dx, float dy)
 {
-    float v00 = dot_grid_gradient_2d(state, x0, y0, dx, dy);
-    float d_v00_dx = dot_grid_gradient_2d_gradient(state, x0, y0, 1.f, 0.f);
-    float d_v00_dy = dot_grid_gradient_2d_gradient(state, x0, y0, 0.0, 1.f);
-    
-    float v10 = dot_grid_gradient_2d(state, x1, y0, dx-1.f, dy);
-    float d_v10_dx = dot_grid_gradient_2d_gradient(state, x1, y0, 1.f, 0.f);
-    float d_v10_dy = dot_grid_gradient_2d_gradient(state, x1, y0, 0.0, 1.f);
+    vec2 d00 = vec2(dx, dy);
+    vec2 gradient_v00 = random_gradient_2d(state, x0, y0);
+    float v00 = dot(d00, gradient_v00);
 
-    float v01 = dot_grid_gradient_2d(state, x0, y1, dx, dy-1.f);
-    float d_v01_dx = dot_grid_gradient_2d_gradient(state, x0, y1, 1.f, 0.f);
-    float d_v01_dy = dot_grid_gradient_2d_gradient(state, x0, y1, 0.0, 1.f);
+    vec2 d10 = vec2(dx-1.f, dy);
+    vec2 gradient_v10 = random_gradient_2d(state, x1, y0);
+    float v10 = dot(d10, gradient_v10);
 
-    float v11 = dot_grid_gradient_2d(state, x1, y1, dx-1.f, dy-1.f);
-    float d_v11_dx = dot_grid_gradient_2d_gradient(state, x1, y1, 1.f, 0.f);
-    float d_v11_dy = dot_grid_gradient_2d_gradient(state, x1, y1, 0.0, 1.f);
+    vec2 d01 = vec2(dx, dy-1.f);
+    vec2 gradient_v01 = random_gradient_2d(state, x0, y1);
+    float v01 = dot(d01, gradient_v01);
+
+    vec2 d11 = vec2(dx-1.f, dy-1.f);
+    vec2 gradient_v11 = random_gradient_2d(state, x1, y1);
+    float v11 = dot(d11, gradient_v11);
+
+    vec2 dx_dt = vec2(1.f, 0.f);
 
     float xi0 = interpolate(v00, v10, dx);
-    float d_xi0_dx = interpolate_gradient(v00, v10, dx, d_v00_dx, d_v10_dx, 1.f);
-    float d_xi0_dy = interpolate_gradient(v00, v10, dx, d_v00_dy, d_v10_dy, 0.0);
+    vec2 gradient_xi0 = interpolate_gradient_2d(v00, v10, dx, gradient_v00, gradient_v10, dx_dt);
 
     float xi1 = interpolate(v01, v11, dx);
-    float d_xi1_dx = interpolate_gradient(v01, v11, dx, d_v01_dx, d_v11_dx, 1.f);
-    float d_xi1_dy = interpolate_gradient(v01, v11, dx, d_v01_dy, d_v11_dy, 0.0);
+    vec2 gradient_xi1 = interpolate_gradient_2d(v01, v11, dx, gradient_v01, gradient_v11, dx_dt);
 
-    float gradient_x = interpolate_gradient(xi0, xi1, dy, d_xi0_dx, d_xi1_dx, 0.0);
-    float gradient_y = interpolate_gradient(xi0, xi1, dy, d_xi0_dy, d_xi1_dy, 1.f);
+    vec2 dy_dt = vec2(0.f, 1.f);
 
-    return vec2(gradient_x, gradient_y);
+    vec2 gradient = interpolate_gradient_2d(xi0, xi1, dy, gradient_xi0, gradient_xi1, dy_dt);
+
+    return gradient;
 }
 
 inline CUDA_CALLABLE float noise_3d(uint32 state, int x0, int y0, int z0, int x1, int y1, int z1, float dx, float dy, float dz)
@@ -239,81 +220,65 @@ inline CUDA_CALLABLE float noise_3d(uint32 state, int x0, int y0, int z0, int x1
 
 inline CUDA_CALLABLE vec3 noise_3d_gradient(uint32 state, int x0, int y0, int z0, int x1, int y1, int z1, float dx, float dy, float dz)
 {
-    float v000 = dot_grid_gradient_3d(state, x0, y0, z0, dx, dy, dz);
-    float d_v000_dx = dot_grid_gradient_3d_gradient(state, x0, y0, z0, 1.f, 0.f, 0.f);
-    float d_v000_dy = dot_grid_gradient_3d_gradient(state, x0, y0, z0, 0.f, 1.f, 0.f);
-    float d_v000_dz = dot_grid_gradient_3d_gradient(state, x0, y0, z0, 0.f, 0.f, 1.f);
+    vec3 d000 = vec3(dx, dy, dz);
+    vec3 gradient_v000 = random_gradient_3d(state, x0, y0, z0);
+    float v000 = dot(d000, gradient_v000);
 
-    float v100 = dot_grid_gradient_3d(state, x1, y0, z0, dx-1.f, dy, dz);
-    float d_v100_dx = dot_grid_gradient_3d_gradient(state, x1, y0, z0, 1.f, 0.f, 0.f);
-    float d_v100_dy = dot_grid_gradient_3d_gradient(state, x1, y0, z0, 0.f, 1.f, 0.f);
-    float d_v100_dz = dot_grid_gradient_3d_gradient(state, x1, y0, z0, 0.f, 0.f, 1.f);
+    vec3 d100 = vec3(dx-1.f, dy, dz);
+    vec3 gradient_v100 = random_gradient_3d(state, x1, y0, z0);
+    float v100 = dot(d100, gradient_v100);
 
-    float v010 = dot_grid_gradient_3d(state, x0, y1, z0, dx, dy-1.f, dz);
-    float d_v010_dx = dot_grid_gradient_3d_gradient(state, x0, y1, z0, 1.f, 0.f, 0.f);
-    float d_v010_dy = dot_grid_gradient_3d_gradient(state, x0, y1, z0, 0.f, 1.f, 0.f);
-    float d_v010_dz = dot_grid_gradient_3d_gradient(state, x0, y1, z0, 0.f, 0.f, 1.f);
-        
-    float v110 = dot_grid_gradient_3d(state, x1, y1, z0, dx-1.f, dy-1.f, dz);
-    float d_v110_dx = dot_grid_gradient_3d_gradient(state, x1, y1, z0, 1.f, 0.f, 0.f);
-    float d_v110_dy = dot_grid_gradient_3d_gradient(state, x1, y1, z0, 0.f, 1.f, 0.f);
-    float d_v110_dz = dot_grid_gradient_3d_gradient(state, x1, y1, z0, 0.f, 0.f, 1.f);
+    vec3 d010 = vec3(dx, dy-1.f, dz);
+    vec3 gradient_v010 = random_gradient_3d(state, x0, y1, z0);
+    float v010 = dot(d010, gradient_v010);
+    
+    vec3 d110 = vec3(dx-1.f, dy-1.f, dz);
+    vec3 gradient_v110 = random_gradient_3d(state, x1, y1, z0);
+    float v110 = dot(d110, gradient_v110);
 
-    float v001 = dot_grid_gradient_3d(state, x0, y0, z1, dx, dy, dz-1.f);
-    float d_v001_dx = dot_grid_gradient_3d_gradient(state, x0, y0, z1, 1.f, 0.f, 0.f);
-    float d_v001_dy = dot_grid_gradient_3d_gradient(state, x0, y0, z1, 0.f, 1.f, 0.f);
-    float d_v001_dz = dot_grid_gradient_3d_gradient(state, x0, y0, z1, 0.f, 0.f, 1.f);
+    vec3 d001 = vec3(dx, dy, dz-1.f);
+    vec3 gradient_v001 = random_gradient_3d(state, x0, y0, z1);
+    float v001 = dot(d001, gradient_v001);
 
-    float v101 = dot_grid_gradient_3d(state, x1, y0, z1, dx-1.f, dy, dz-1.f);
-    float d_v101_dx = dot_grid_gradient_3d_gradient(state, x1, y0, z1, 1.f, 0.f, 0.f);
-    float d_v101_dy = dot_grid_gradient_3d_gradient(state, x1, y0, z1, 0.f, 1.f, 0.f);
-    float d_v101_dz = dot_grid_gradient_3d_gradient(state, x1, y0, z1, 0.f, 0.f, 1.f);
+    vec3 d101 = vec3(dx-1.f, dy, dz-1.f);
+    vec3 gradient_v101 = random_gradient_3d(state, x1, y0, z1);
+    float v101 = dot(d101, gradient_v101);
 
-    float v011 = dot_grid_gradient_3d(state, x0, y1, z1, dx, dy-1.f, dz-1.f);
-    float d_v011_dx = dot_grid_gradient_3d_gradient(state, x0, y1, z1, 1.f, 0.f, 0.f);
-    float d_v011_dy = dot_grid_gradient_3d_gradient(state, x0, y1, z1, 0.f, 1.f, 0.f);
-    float d_v011_dz = dot_grid_gradient_3d_gradient(state, x0, y1, z1, 0.f, 0.f, 1.f);
+    vec3 d011 = vec3(dx, dy-1.f, dz-1.f);
+    vec3 gradient_v011 = random_gradient_3d(state, x0, y1, z1);
+    float v011 = dot(d011, gradient_v011);
 
-    float v111 = dot_grid_gradient_3d(state, x1, y1, z1, dx-1.f, dy-1.f, dz-1.f);
-    float d_v111_dx = dot_grid_gradient_3d_gradient(state, x1, y1, z1, 1.f, 0.f, 0.f);
-    float d_v111_dy = dot_grid_gradient_3d_gradient(state, x1, y1, z1, 0.f, 1.f, 0.f);
-    float d_v111_dz = dot_grid_gradient_3d_gradient(state, x1, y1, z1, 0.f, 0.f, 1.f);
+    vec3 d111 = vec3(dx-1.f, dy-1.f, dz-1.f);
+    vec3 gradient_v111 = random_gradient_3d(state, x1, y1, z1);
+    float v111 = dot(d111, gradient_v111);
+
+    vec3 dx_dt = vec3(1.f, 0.f, 0.f);
 
     float xi00 = interpolate(v000, v100, dx);
-    float d_xi00_dx = interpolate_gradient(v000, v100, dx, d_v000_dx, d_v100_dx, 1.f);
-    float d_xi00_dy = interpolate_gradient(v000, v100, dx, d_v000_dy, d_v100_dy, 0.f);
-    float d_xi00_dz = interpolate_gradient(v000, v100, dx, d_v000_dz, d_v100_dz, 0.f);
+    vec3 gradient_xi00 = interpolate_gradient_3d(v000, v100, dx, gradient_v000, gradient_v100, dx_dt);
 
     float xi10 = interpolate(v010, v110, dx);
-    float d_xi10_dx = interpolate_gradient(v010, v110, dx, d_v010_dx, d_v110_dx, 1.f);
-    float d_xi10_dy = interpolate_gradient(v010, v110, dx, d_v010_dy, d_v110_dy, 0.f);
-    float d_xi10_dz = interpolate_gradient(v010, v110, dx, d_v010_dz, d_v110_dz, 0.f);
+    vec3 gradient_xi10 = interpolate_gradient_3d(v010, v110, dx, gradient_v010, gradient_v110, dx_dt);
     
     float xi01 = interpolate(v001, v101, dx);
-    float d_xi01_dx = interpolate_gradient(v001, v101, dx, d_v001_dx, d_v101_dx, 1.f);
-    float d_xi01_dy = interpolate_gradient(v001, v101, dx, d_v001_dy, d_v101_dy, 0.f);
-    float d_xi01_dz = interpolate_gradient(v001, v101, dx, d_v001_dz, d_v101_dz, 0.f);  
-    
+    vec3 gradient_xi01 = interpolate_gradient_3d(v001, v101, dx, gradient_v001, gradient_v101, dx_dt);
+
     float xi11 = interpolate(v011, v111, dx);
-    float d_xi11_dx = interpolate_gradient(v011, v111, dx, d_v011_dx, d_v111_dx, 1.f);
-    float d_xi11_dy = interpolate_gradient(v011, v111, dx, d_v011_dy, d_v111_dy, 0.f);
-    float d_xi11_dz = interpolate_gradient(v011, v111, dx, d_v011_dz, d_v111_dz, 0.f);
+    vec3 gradient_xi11 = interpolate_gradient_3d(v011, v111, dx, gradient_v011, gradient_v111, dx_dt);
+
+    vec3 dy_dt = vec3(0.f, 1.f, 0.f);
 
     float yi0 = interpolate(xi00, xi10, dy);
-    float d_yi0_dx = interpolate_gradient(xi00, xi10, dy, d_xi00_dx, d_xi10_dx, 0.f);
-    float d_yi0_dy = interpolate_gradient(xi00, xi10, dy, d_xi00_dy, d_xi10_dy, 1.f);
-    float d_yi0_dz = interpolate_gradient(xi00, xi10, dy, d_xi00_dz, d_xi10_dz, 0.f);
+    vec3 gradient_yi0 = interpolate_gradient_3d(xi00, xi10, dy, gradient_xi00, gradient_xi10, dy_dt);
 
     float yi1 = interpolate(xi01, xi11, dy);    
-    float d_yi1_dx = interpolate_gradient(xi01, xi11, dy, d_xi01_dx, d_xi11_dx, 0.f);
-    float d_yi1_dy = interpolate_gradient(xi01, xi11, dy, d_xi01_dy, d_xi11_dy, 1.f);
-    float d_yi1_dz = interpolate_gradient(xi01, xi11, dy, d_xi01_dz, d_xi11_dz, 0.f);
+    vec3 gradient_yi1 = interpolate_gradient_3d(xi01, xi11, dy, gradient_xi01, gradient_xi11, dy_dt);
 
-    float gradient_x = interpolate_gradient(yi0, yi1, dz, d_yi0_dy, d_yi1_dy, 0.f);
-    float gradient_y = interpolate_gradient(yi0, yi1, dz, d_yi0_dx, d_yi1_dx, 0.f);
-    float gradient_z = interpolate_gradient(yi0, yi1, dz, d_yi0_dz, d_yi1_dz, 1.f);
+    vec3 dz_dt = vec3(0.f, 0.f, 1.f);
 
-    return vec3(gradient_x, gradient_y, gradient_z);
+    vec3 gradient = interpolate_gradient_3d(yi0, yi1, dz, gradient_yi0, gradient_yi1, dz_dt);
+
+    return gradient;
 }
 
 inline CUDA_CALLABLE float noise_4d(uint32 state, int x0, int y0, int z0, int t0, int x1, int y1, int z1, int t1, float dx, float dy, float dz, float dt)
@@ -368,192 +333,123 @@ inline CUDA_CALLABLE float noise_4d(uint32 state, int x0, int y0, int z0, int t0
 
 inline CUDA_CALLABLE vec4 noise_4d_gradient(uint32 state, int x0, int y0, int z0, int t0, int x1, int y1, int z1, int t1, float dx, float dy, float dz, float dt)
 {
-    float v0000 = dot_grid_gradient_4d(state, x0, y0, z0, t0, dx, dy, dz, dt);
-    float d_v0000_dx = dot_grid_gradient_4d_gradient(state, x0, y0, z0, t0, 1.f, 0.f, 0.f, 0.f);
-    float d_v0000_dy = dot_grid_gradient_4d_gradient(state, x0, y0, z0, t0, 0.f, 1.f, 0.f, 0.f);
-    float d_v0000_dz = dot_grid_gradient_4d_gradient(state, x0, y0, z0, t0, 0.f, 0.f, 1.f, 0.f);
-    float d_v0000_dt = dot_grid_gradient_4d_gradient(state, x0, y0, z0, t0, 0.f, 0.f, 0.f, 1.f);
+    vec4 d0000 = vec4(dx, dy, dz, dt);
+    vec4 gradient_v0000 = random_gradient_4d(state, x0, y0, z0, t0);
+    float v0000 = dot(d0000, gradient_v0000);
 
-    float v1000 = dot_grid_gradient_4d(state, x1, y0, z0, t0, dx-1.f, dy, dz, dt);
-    float d_v1000_dx = dot_grid_gradient_4d_gradient(state, x1, y0, z0, t0, 1.f, 0.f, 0.f, 0.f);
-    float d_v1000_dy = dot_grid_gradient_4d_gradient(state, x1, y0, z0, t0, 0.f, 1.f, 0.f, 0.f);
-    float d_v1000_dz = dot_grid_gradient_4d_gradient(state, x1, y0, z0, t0, 0.f, 0.f, 1.f, 0.f);
-    float d_v1000_dt = dot_grid_gradient_4d_gradient(state, x1, y0, z0, t0, 0.f, 0.f, 0.f, 1.f);
+    vec4 d1000 = vec4(dx-1.f, dy, dz, dt);
+    vec4 gradient_v1000 = random_gradient_4d(state, x1, y0, z0, t0);
+    float v1000 = dot(d1000, gradient_v1000);
 
-    float v0100 = dot_grid_gradient_4d(state, x0, y1, z0, t0, dx, dy-1.f, dz, dt);
-    float d_v0100_dx = dot_grid_gradient_4d_gradient(state, x0, y1, z0, t0, 1.f, 0.f, 0.f, 0.f);
-    float d_v0100_dy = dot_grid_gradient_4d_gradient(state, x0, y1, z0, t0, 0.f, 1.f, 0.f, 0.f);
-    float d_v0100_dz = dot_grid_gradient_4d_gradient(state, x0, y1, z0, t0, 0.f, 0.f, 1.f, 0.f);
-    float d_v0100_dt = dot_grid_gradient_4d_gradient(state, x0, y1, z0, t0, 0.f, 0.f, 0.f, 1.f);
+    vec4 d0100 = vec4(dx, dy-1.f, dz, dt);
+    vec4 gradient_v0100 = random_gradient_4d(state, x0, y1, z0, t0);
+    float v0100 = dot(d0100, gradient_v0100);
 
-    float v1100 = dot_grid_gradient_4d(state, x1, y1, z0, t0, dx-1.f, dy-1.f, dz, dt);
-    float d_v1100_dx = dot_grid_gradient_4d_gradient(state, x1, y1, z0, t0, 1.f, 0.f, 0.f, 0.f);
-    float d_v1100_dy = dot_grid_gradient_4d_gradient(state, x1, y1, z0, t0, 0.f, 1.f, 0.f, 0.f);
-    float d_v1100_dz = dot_grid_gradient_4d_gradient(state, x1, y1, z0, t0, 0.f, 0.f, 1.f, 0.f);
-    float d_v1100_dt = dot_grid_gradient_4d_gradient(state, x1, y1, z0, t0, 0.f, 0.f, 0.f, 1.f);
+    vec4 d1100 = vec4(dx-1.f, dy-1.f, dz, dt);
+    vec4 gradient_v1100 = random_gradient_4d(state, x1, y1, z0, t0);
+    float v1100 = dot(d1100, gradient_v1100);
 
-    float v0010 = dot_grid_gradient_4d(state, x0, y0, z1, t0, dx, dy, dz-1.f, dt);
-    float d_v0010_dx = dot_grid_gradient_4d_gradient(state, x0, y0, z1, t0, 1.f, 0.f, 0.f, 0.f);
-    float d_v0010_dy = dot_grid_gradient_4d_gradient(state, x0, y0, z1, t0, 0.f, 1.f, 0.f, 0.f);
-    float d_v0010_dz = dot_grid_gradient_4d_gradient(state, x0, y0, z1, t0, 0.f, 0.f, 1.f, 0.f);
-    float d_v0010_dt = dot_grid_gradient_4d_gradient(state, x0, y0, z1, t0, 0.f, 0.f, 0.f, 1.f);
+    vec4 d0010 = vec4(dx, dy, dz-1.f, dt);
+    vec4 gradient_v0010 = random_gradient_4d(state, x0, y0, z1, t0);
+    float v0010 = dot(d0010, gradient_v0010);
 
-    float v1010 = dot_grid_gradient_4d(state, x1, y0, z1, t0, dx-1.f, dy, dz-1.f, dt);
-    float d_v1010_dx = dot_grid_gradient_4d_gradient(state, x1, y0, z1, t0, 1.f, 0.f, 0.f, 0.f);
-    float d_v1010_dy = dot_grid_gradient_4d_gradient(state, x1, y0, z1, t0, 0.f, 1.f, 0.f, 0.f);
-    float d_v1010_dz = dot_grid_gradient_4d_gradient(state, x1, y0, z1, t0, 0.f, 0.f, 1.f, 0.f);
-    float d_v1010_dt = dot_grid_gradient_4d_gradient(state, x1, y0, z1, t0, 0.f, 0.f, 0.f, 1.f);
+    vec4 d1010 = vec4(dx-1.f, dy, dz-1.f, dt);
+    vec4 gradient_v1010 = random_gradient_4d(state, x1, y0, z1, t0);
+    float v1010 = dot(d1010, gradient_v1010);
+
+    vec4 d0110 = vec4(dx, dy-1.f, dz-1.f, dt);
+    vec4 gradient_v0110 = random_gradient_4d(state, x0, y1, z1, t0);
+    float v0110 = dot(d0110, gradient_v0110);
     
-    float v0110 = dot_grid_gradient_4d(state, x0, y1, z1, t0, dx, dy-1.f, dz-1.f, dt);
-    float d_v0110_dx = dot_grid_gradient_4d_gradient(state, x0, y1, z1, t0, 1.f, 0.f, 0.f, 0.f);
-    float d_v0110_dy = dot_grid_gradient_4d_gradient(state, x0, y1, z1, t0, 0.f, 1.f, 0.f, 0.f);
-    float d_v0110_dz = dot_grid_gradient_4d_gradient(state, x0, y1, z1, t0, 0.f, 0.f, 1.f, 0.f);
-    float d_v0110_dt = dot_grid_gradient_4d_gradient(state, x0, y1, z1, t0, 0.f, 0.f, 0.f, 1.f);
+    vec4 d1110 = vec4(dx-1.f, dy-1.f, dz-1.f, dt);
+    vec4 gradient_v1110 = random_gradient_4d(state, x1, y1, z1, t0);
+    float v1110 = dot(d1110, gradient_v1110);
 
-    float v1110 = dot_grid_gradient_4d(state, x1, y1, z1, t0, dx-1.f, dy-1.f, dz-1.f, dt);
-    float d_v1110_dx = dot_grid_gradient_4d_gradient(state, x1, y1, z1, t0, 1.f, 0.f, 0.f, 0.f);
-    float d_v1110_dy = dot_grid_gradient_4d_gradient(state, x1, y1, z1, t0, 0.f, 1.f, 0.f, 0.f);
-    float d_v1110_dz = dot_grid_gradient_4d_gradient(state, x1, y1, z1, t0, 0.f, 0.f, 1.f, 0.f);
-    float d_v1110_dt = dot_grid_gradient_4d_gradient(state, x1, y1, z1, t0, 0.f, 0.f, 0.f, 1.f);
+    vec4 d0001 = vec4(dx, dy, dz, dt-1.f);
+    vec4 gradient_v0001 = random_gradient_4d(state, x0, y0, z0, t1);
+    float v0001 = dot(d0001, gradient_v0001);
+
+    vec4 d1001 = vec4(dx-1.f, dy, dz, dt-1.f);
+    vec4 gradient_v1001 = random_gradient_4d(state, x1, y0, z0, t1);
+    float v1001 = dot(d1001, gradient_v1001);
+
+    vec4 d0101 = vec4(dx, dy-1.f, dz, dt-1.f);
+    vec4 gradient_v0101 = random_gradient_4d(state, x0, y1, z0, t1);
+    float v0101 = dot(d0101, gradient_v0101);
+
+    vec4 d1101 = vec4(dx-1.f, dy-1.f, dz, dt-1.f);
+    vec4 gradient_v1101 = random_gradient_4d(state, x1, y1, z0, t1);
+    float v1101 = dot(d1101, gradient_v1101);
+
+    vec4 d0011 = vec4(dx, dy, dz-1.f, dt-1.f);
+    vec4 gradient_v0011 = random_gradient_4d(state, x0, y0, z1, t1);
+    float v0011 = dot(d0011, gradient_v0011);
+
+    vec4 d1011 = vec4(dx-1.f, dy, dz-1.f, dt-1.f);
+    vec4 gradient_v1011 = random_gradient_4d(state, x1, y0, z1, t1);
+    float v1011 = dot(d1011, gradient_v1011);
+
+    vec4 d0111 = vec4(dx, dy-1.f, dz-1.f, dt-1.f);
+    vec4 gradient_v0111 = random_gradient_4d(state, x0, y1, z1, t1);
+    float v0111 = dot(d0111, gradient_v0111);
     
-    float v0001 = dot_grid_gradient_4d(state, x0, y0, z0, t1, dx, dy, dz, dt-1.f);
-    float d_v0001_dx = dot_grid_gradient_4d_gradient(state, x0, y0, z0, t1, 1.f, 0.f, 0.f, 0.f);
-    float d_v0001_dy = dot_grid_gradient_4d_gradient(state, x0, y0, z0, t1, 0.f, 1.f, 0.f, 0.f);
-    float d_v0001_dz = dot_grid_gradient_4d_gradient(state, x0, y0, z0, t1, 0.f, 0.f, 1.f, 0.f);
-    float d_v0001_dt = dot_grid_gradient_4d_gradient(state, x0, y0, z0, t1, 0.f, 0.f, 0.f, 1.f);
+    vec4 d1111 = vec4(dx-1.f, dy-1.f, dz-1.f, dt-1.f);
+    vec4 gradient_v1111 = random_gradient_4d(state, x1, y1, z1, t1);
+    float v1111 = dot(d1111, gradient_v1111);
 
-    float v1001 = dot_grid_gradient_4d(state, x1, y0, z0, t1, dx-1.f, dy, dz, dt-1.f);
-    float d_v1001_dx = dot_grid_gradient_4d_gradient(state, x1, y0, z0, t1, 1.f, 0.f, 0.f, 0.f);
-    float d_v1001_dy = dot_grid_gradient_4d_gradient(state, x1, y0, z0, t1, 0.f, 1.f, 0.f, 0.f);
-    float d_v1001_dz = dot_grid_gradient_4d_gradient(state, x1, y0, z0, t1, 0.f, 0.f, 1.f, 0.f);
-    float d_v1001_dt = dot_grid_gradient_4d_gradient(state, x1, y0, z0, t1, 0.f, 0.f, 0.f, 1.f);
-    
-    float v0101 = dot_grid_gradient_4d(state, x0, y1, z0, t1, dx, dy-1.f, dz, dt-1.f);
-    float d_v0101_dx = dot_grid_gradient_4d_gradient(state, x0, y1, z0, t1, 1.f, 0.f, 0.f, 0.f);
-    float d_v0101_dy = dot_grid_gradient_4d_gradient(state, x0, y1, z0, t1, 0.f, 1.f, 0.f, 0.f);
-    float d_v0101_dz = dot_grid_gradient_4d_gradient(state, x0, y1, z0, t1, 0.f, 0.f, 1.f, 0.f);
-    float d_v0101_dt = dot_grid_gradient_4d_gradient(state, x0, y1, z0, t1, 0.f, 0.f, 0.f, 1.f);
-
-    float v1101 = dot_grid_gradient_4d(state, x1, y1, z0, t1, dx-1.f, dy-1.f, dz, dt-1.f);
-    float d_v1101_dx = dot_grid_gradient_4d_gradient(state, x1, y1, z0, t1, 1.f, 0.f, 0.f, 0.f);
-    float d_v1101_dy = dot_grid_gradient_4d_gradient(state, x1, y1, z0, t1, 0.f, 1.f, 0.f, 0.f);
-    float d_v1101_dz = dot_grid_gradient_4d_gradient(state, x1, y1, z0, t1, 0.f, 0.f, 1.f, 0.f);
-    float d_v1101_dt = dot_grid_gradient_4d_gradient(state, x1, y1, z0, t1, 0.f, 0.f, 0.f, 1.f);
-    
-    float v0011 = dot_grid_gradient_4d(state, x0, y0, z1, t1, dx, dy, dz-1.f, dt-1.f);
-    float d_v0011_dx = dot_grid_gradient_4d_gradient(state, x0, y0, z1, t1, 1.f, 0.f, 0.f, 0.f);
-    float d_v0011_dy = dot_grid_gradient_4d_gradient(state, x0, y0, z1, t1, 0.f, 1.f, 0.f, 0.f);
-    float d_v0011_dz = dot_grid_gradient_4d_gradient(state, x0, y0, z1, t1, 0.f, 0.f, 1.f, 0.f);
-    float d_v0011_dt = dot_grid_gradient_4d_gradient(state, x0, y0, z1, t1, 0.f, 0.f, 0.f, 1.f);
-
-    float v1011 = dot_grid_gradient_4d(state, x1, y0, z1, t1, dx-1.f, dy, dz-1.f, dt-1.f);
-    float d_v1011_dx = dot_grid_gradient_4d_gradient(state, x1, y0, z1, t1, 1.f, 0.f, 0.f, 0.f);
-    float d_v1011_dy = dot_grid_gradient_4d_gradient(state, x1, y0, z1, t1, 0.f, 1.f, 0.f, 0.f);
-    float d_v1011_dz = dot_grid_gradient_4d_gradient(state, x1, y0, z1, t1, 0.f, 0.f, 1.f, 0.f);
-    float d_v1011_dt = dot_grid_gradient_4d_gradient(state, x1, y0, z1, t1, 0.f, 0.f, 0.f, 1.f);
-
-    float v0111 = dot_grid_gradient_4d(state, x0, y1, z1, t1, dx, dy-1.f, dz-1.f, dt-1.f);
-    float d_v0111_dx = dot_grid_gradient_4d_gradient(state, x0, y1, z1, t1, 1.f, 0.f, 0.f, 0.f);
-    float d_v0111_dy = dot_grid_gradient_4d_gradient(state, x0, y1, z1, t1, 0.f, 1.f, 0.f, 0.f);
-    float d_v0111_dz = dot_grid_gradient_4d_gradient(state, x0, y1, z1, t1, 0.f, 0.f, 1.f, 0.f);
-    float d_v0111_dt = dot_grid_gradient_4d_gradient(state, x0, y1, z1, t1, 0.f, 0.f, 0.f, 1.f);
-
-    float v1111 = dot_grid_gradient_4d(state, x1, y1, z1, t1, dx-1.f, dy-1.f, dz-1.f, dt-1.f);
-    float d_v1111_dx = dot_grid_gradient_4d_gradient(state, x1, y1, z1, t1, 1.f, 0.f, 0.f, 0.f);
-    float d_v1111_dy = dot_grid_gradient_4d_gradient(state, x1, y1, z1, t1, 0.f, 1.f, 0.f, 0.f);
-    float d_v1111_dz = dot_grid_gradient_4d_gradient(state, x1, y1, z1, t1, 0.f, 0.f, 1.f, 0.f);
-    float d_v1111_dt = dot_grid_gradient_4d_gradient(state, x1, y1, z1, t1, 0.f, 0.f, 0.f, 1.f);
+    vec4 dx_dt = vec4(1.f, 0.f, 0.f, 0.f);
 
     float xi000 = interpolate(v0000, v1000, dx);
-    float d_xi000_dx = interpolate_gradient(v0000, v1000, dx, d_v0000_dx, d_v1000_dx, 1.f);
-    float d_xi000_dy = interpolate_gradient(v0000, v1000, dx, d_v0000_dy, d_v1000_dy, 0.f);
-    float d_xi000_dz = interpolate_gradient(v0000, v1000, dx, d_v0000_dz, d_v1000_dz, 0.f);
-    float d_xi000_dt = interpolate_gradient(v0000, v1000, dx, d_v0000_dt, d_v1000_dt, 0.f);
+    vec4 gradient_xi000 = interpolate_gradient_4d(v0000, v1000, dx, gradient_v0000, gradient_v1000, dx_dt);
 
     float xi100 = interpolate(v0100, v1100, dx);
-    float d_xi100_dx = interpolate_gradient(v0100, v1100, dx, d_v0100_dx, d_v1100_dx, 1.f);
-    float d_xi100_dy = interpolate_gradient(v0100, v1100, dx, d_v0100_dy, d_v1100_dy, 0.f);
-    float d_xi100_dz = interpolate_gradient(v0100, v1100, dx, d_v0100_dz, d_v1100_dz, 0.f);
-    float d_xi100_dt = interpolate_gradient(v0100, v1100, dx, d_v0100_dt, d_v1100_dt, 0.f);
+    vec4 gradient_xi100 = interpolate_gradient_4d(v0100, v1100, dx, gradient_v0100, gradient_v1100, dx_dt);
 
     float xi010 = interpolate(v0010, v1010, dx);
-    float d_xi010_dx = interpolate_gradient(v0010, v1010, dx, d_v0010_dx, d_v1010_dx, 1.f);
-    float d_xi010_dy = interpolate_gradient(v0010, v1010, dx, d_v0010_dy, d_v1010_dy, 0.f);
-    float d_xi010_dz = interpolate_gradient(v0010, v1010, dx, d_v0010_dz, d_v1010_dz, 0.f);
-    float d_xi010_dt = interpolate_gradient(v0010, v1010, dx, d_v0010_dt, d_v1010_dt, 0.f);
+    vec4 gradient_xi010 = interpolate_gradient_4d(v0010, v1010, dx, gradient_v0010, gradient_v1010, dx_dt);
 
     float xi110 = interpolate(v0110, v1110, dx);
-    float d_xi110_dx = interpolate_gradient(v0110, v1110, dx, d_v0110_dx, d_v1110_dx, 1.f);
-    float d_xi110_dy = interpolate_gradient(v0110, v1110, dx, d_v0110_dy, d_v1110_dy, 0.f);
-    float d_xi110_dz = interpolate_gradient(v0110, v1110, dx, d_v0110_dz, d_v1110_dz, 0.f);
-    float d_xi110_dt = interpolate_gradient(v0110, v1110, dx, d_v0110_dt, d_v1110_dt, 0.f);
+    vec4 gradient_xi110 = interpolate_gradient_4d(v0110, v1110, dx, gradient_v0110, gradient_v1110, dx_dt);
 
     float xi001 = interpolate(v0001, v1001, dx);
-    float d_xi001_dx = interpolate_gradient(v0001, v1001, dx, d_v0001_dx, d_v1001_dx, 1.f);
-    float d_xi001_dy = interpolate_gradient(v0001, v1001, dx, d_v0001_dy, d_v1001_dy, 0.f);
-    float d_xi001_dz = interpolate_gradient(v0001, v1001, dx, d_v0001_dz, d_v1001_dz, 0.f);
-    float d_xi001_dt = interpolate_gradient(v0001, v1001, dx, d_v0001_dt, d_v1001_dt, 0.f);
+    vec4 gradient_xi001 = interpolate_gradient_4d(v0001, v1001, dx, gradient_v0001, gradient_v1001, dx_dt);
 
     float xi101 = interpolate(v0101, v1101, dx);
-    float d_xi101_dx = interpolate_gradient(v0101, v1101, dx, d_v0101_dx, d_v1101_dx, 1.f);
-    float d_xi101_dy = interpolate_gradient(v0101, v1101, dx, d_v0101_dy, d_v1101_dy, 0.f);
-    float d_xi101_dz = interpolate_gradient(v0101, v1101, dx, d_v0101_dz, d_v1101_dz, 0.f);
-    float d_xi101_dt = interpolate_gradient(v0101, v1101, dx, d_v0101_dt, d_v1101_dt, 0.f);
+    vec4 gradient_xi101 = interpolate_gradient_4d(v0101, v1101, dx, gradient_v0101, gradient_v1101, dx_dt);
 
     float xi011 = interpolate(v0011, v1011, dx);
-    float d_xi011_dx = interpolate_gradient(v0011, v1011, dx, d_v0011_dx, d_v1011_dx, 1.f);
-    float d_xi011_dy = interpolate_gradient(v0011, v1011, dx, d_v0011_dy, d_v1011_dy, 0.f);
-    float d_xi011_dz = interpolate_gradient(v0011, v1011, dx, d_v0011_dz, d_v1011_dz, 0.f);
-    float d_xi011_dt = interpolate_gradient(v0011, v1011, dx, d_v0011_dt, d_v1011_dt, 0.f);
-
+    vec4 gradient_xi011 = interpolate_gradient_4d(v0011, v1011, dx, gradient_v0011, gradient_v1011, dx_dt);
+    
     float xi111 = interpolate(v0111, v1111, dx);
-    float d_xi111_dx = interpolate_gradient(v0111, v1111, dx, d_v0111_dx, d_v1111_dx, 1.f);
-    float d_xi111_dy = interpolate_gradient(v0111, v1111, dx, d_v0111_dy, d_v1111_dy, 0.f);
-    float d_xi111_dz = interpolate_gradient(v0111, v1111, dx, d_v0111_dz, d_v1111_dz, 0.f);
-    float d_xi111_dt = interpolate_gradient(v0111, v1111, dx, d_v0111_dt, d_v1111_dt, 0.f);
+    vec4 gradient_xi111 = interpolate_gradient_4d(v0111, v1111, dx, gradient_v0111, gradient_v1111, dx_dt);
+    
+    vec4 dy_dt = vec4(0.f, 1.f, 0.f, 0.f);
 
     float yi00 = interpolate(xi000, xi100, dy);
-    float d_yi00_dx = interpolate_gradient(xi000, xi100, dy, d_xi000_dx, d_xi100_dx, 0.f);
-    float d_yi00_dy = interpolate_gradient(xi000, xi100, dy, d_xi000_dy, d_xi100_dy, 1.f);
-    float d_yi00_dz = interpolate_gradient(xi000, xi100, dy, d_xi000_dz, d_xi100_dz, 0.f);
-    float d_yi00_dt = interpolate_gradient(xi000, xi100, dy, d_xi000_dt, d_xi100_dt, 0.f);
+    vec4 gradient_yi00 = interpolate_gradient_4d(xi000, xi100, dy, gradient_xi000, gradient_xi100, dy_dt);
 
     float yi10 = interpolate(xi010, xi110, dy);
-    float d_yi10_dx = interpolate_gradient(xi010, xi110, dy, d_xi010_dx, d_xi110_dx, 0.f);
-    float d_yi10_dy = interpolate_gradient(xi010, xi110, dy, d_xi010_dy, d_xi110_dy, 1.f);
-    float d_yi10_dz = interpolate_gradient(xi010, xi110, dy, d_xi010_dz, d_xi110_dz, 0.f);
-    float d_yi10_dt = interpolate_gradient(xi010, xi110, dy, d_xi010_dt, d_xi110_dt, 0.f);
+    vec4 gradient_yi10 = interpolate_gradient_4d(xi010, xi110, dy, gradient_xi010, gradient_xi110, dy_dt);
 
     float yi01 = interpolate(xi001, xi101, dy);
-    float d_yi01_dx = interpolate_gradient(xi001, xi101, dy, d_xi001_dx, d_xi101_dx, 0.f);
-    float d_yi01_dy = interpolate_gradient(xi001, xi101, dy, d_xi001_dy, d_xi101_dy, 1.f);
-    float d_yi01_dz = interpolate_gradient(xi001, xi101, dy, d_xi001_dz, d_xi101_dz, 0.f);
-    float d_yi01_dt = interpolate_gradient(xi001, xi101, dy, d_xi001_dt, d_xi101_dt, 0.f);
+    vec4 gradient_yi01 = interpolate_gradient_4d(xi001, xi101, dy, gradient_xi001, gradient_xi101, dy_dt);
 
     float yi11 = interpolate(xi011, xi111, dy);
-    float d_yi11_dx = interpolate_gradient(xi011, xi111, dy, d_xi011_dx, d_xi111_dx, 0.f);
-    float d_yi11_dy = interpolate_gradient(xi011, xi111, dy, d_xi011_dy, d_xi111_dy, 1.f);
-    float d_yi11_dz = interpolate_gradient(xi011, xi111, dy, d_xi011_dz, d_xi111_dz, 0.f);
-    float d_yi11_dt = interpolate_gradient(xi011, xi111, dy, d_xi011_dt, d_xi111_dt, 0.f);
+    vec4 gradient_yi11 = interpolate_gradient_4d(xi011, xi111, dy, gradient_xi011, gradient_xi111, dy_dt);
+
+    vec4 dz_dt = vec4(0.f, 0.f, 1.f, 0.f);
 
     float zi0 = interpolate(yi00, yi10, dz);
-    float d_zi0_dx = interpolate_gradient(yi00, yi10, dz, d_yi00_dx, d_yi10_dx, 0.f);
-    float d_zi0_dy = interpolate_gradient(yi00, yi10, dz, d_yi00_dy, d_yi10_dy, 0.f);
-    float d_zi0_dz = interpolate_gradient(yi00, yi10, dz, d_yi00_dz, d_yi10_dz, 1.f);
-    float d_zi0_dt = interpolate_gradient(yi00, yi10, dz, d_yi00_dt, d_yi10_dt, 0.f);
+    vec4 gradient_zi0 = interpolate_gradient_4d(yi00, yi10, dz, gradient_yi00, gradient_yi10, dz_dt);
 
     float zi1 = interpolate(yi01, yi11, dz);
-    float d_zi1_dx = interpolate_gradient(yi01, yi11, dz, d_yi01_dx, d_yi11_dx, 0.f);
-    float d_zi1_dy = interpolate_gradient(yi01, yi11, dz, d_yi01_dy, d_yi11_dy, 0.f);
-    float d_zi1_dz = interpolate_gradient(yi01, yi11, dz, d_yi01_dz, d_yi11_dz, 1.f);
-    float d_zi1_dt = interpolate_gradient(yi01, yi11, dz, d_yi01_dt, d_yi11_dt, 0.f);
+    vec4 gradient_zi1 = interpolate_gradient_4d(yi01, yi11, dz, gradient_yi01, gradient_yi11, dz_dt);
 
-    float gradient_x = interpolate_gradient(zi0, zi1, dt, d_zi0_dx, d_zi1_dx, 0.f);
-    float gradient_y = interpolate_gradient(zi0, zi1, dt, d_zi0_dy, d_zi1_dy, 0.f);
-    float gradient_z = interpolate_gradient(zi0, zi1, dt, d_zi0_dz, d_zi1_dz, 0.f);
-    float gradient_t = interpolate_gradient(zi0, zi1, dt, d_zi0_dt, d_zi1_dt, 1.f);
+    vec4 dt_dt = vec4(0.f, 0.f, 0.f, 1.f);
 
-    return vec4(gradient_x, gradient_y, gradient_z, gradient_t);
+    vec4 gradient = interpolate_gradient_4d(zi0, zi1, dt, gradient_zi0, gradient_zi1, dt_dt);
+
+    return gradient;
 }
 
 // non-periodic Perlin noise
@@ -830,78 +726,125 @@ inline CUDA_CALLABLE void adj_pnoise(uint32 state, const vec4& xyzt, int px, int
 
 // curl noise
 
-inline CUDA_CALLABLE vec2 curlnoise(uint32 state, const vec2& xy)
-{ 
-    float dx = xy[0] - floor(xy[0]);
-    float dy = xy[1] - floor(xy[1]);
-
-    int x0 = (int)floor(xy[0]); 
-    int y0 = (int)floor(xy[1]); 
-
-    int x1 = x0 + 1;
-    int y1 = y0 + 1;
-
-    vec2 grad_field = noise_2d_gradient(state, x0, y0, x1, y1, dx, dy);
-    return vec2(-grad_field[1], grad_field[0]);
-}
-inline CUDA_CALLABLE void adj_curlnoise(uint32 state, const vec2& xy, uint32& adj_state, vec2& adj_xy, const vec2& adj_ret) {}
-
-inline CUDA_CALLABLE vec3 curlnoise(uint32 state, const vec3& xyz)
+inline CUDA_CALLABLE vec2 curlnoise(uint32 state, const vec2& xy, const uint32 octaves, const float lacunarity, const float gain)
 {
-    float dx = xyz[0] - floor(xyz[0]);
-    float dy = xyz[1] - floor(xyz[1]);
-    float dz = xyz[2] - floor(xyz[2]);
+    vec2 curl_sum = vec2(0.f);
+    float freq = 1.f;
+    float amplitude = 1.f;
 
-    int x0 = (int)floor(xyz[0]);
-    int y0 = (int)floor(xyz[1]);
-    int z0 = (int)floor(xyz[2]);
+    for (int i = 0; i < octaves; i++)
+    {
+        vec2 pt = freq * xy;
+        float dx = pt[0] - floor(pt[0]);
+        float dy = pt[1] - floor(pt[1]);
 
-    int x1 = x0 + 1;
-    int y1 = y0 + 1;
-    int z1 = z0 + 1;
+        int x0 = (int)floor(pt[0]); 
+        int y0 = (int)floor(pt[1]); 
 
-    vec3 grad_field_1 = noise_3d_gradient(state, x0, y0, z0, x1, y1, z1, dx, dy, dz);
-    state = rand_init(state, 10019689);
-    vec3 grad_field_2 = noise_3d_gradient(state, x0, y0, z0, x1, y1, z1, dx, dy, dz);
-    state = rand_init(state, 13112221);
-    vec3 grad_field_3 = noise_3d_gradient(state, x0, y0, z0, x1, y1, z1, dx, dy, dz);
+        int x1 = x0 + 1;
+        int y1 = y0 + 1;
 
+        vec2 grad_field = noise_2d_gradient(state, x0, y0, x1, y1, dx, dy);
+        curl_sum += amplitude * grad_field;
+
+        amplitude *= gain;
+        freq *= lacunarity;
+    }
+    return vec2(-curl_sum[1], curl_sum[0]);
+}
+inline CUDA_CALLABLE void adj_curlnoise(uint32 state, const vec2& xy, const uint32 octaves, const float lacunarity, const float gain, uint32& adj_state, vec2& adj_xy, const uint32& adj_octaves, const float& adj_lacunarity, const float& adj_gain, const vec2& adj_ret) {}
+
+inline CUDA_CALLABLE vec3 curlnoise(uint32 state, const vec3& xyz, const uint32 octaves, const float lacunarity, const float gain)
+{
+    vec3 curl_sum_1 = vec3(0.f);
+    vec3 curl_sum_2 = vec3(0.f);
+    vec3 curl_sum_3 = vec3(0.f);
+    
+    float freq = 1.f;
+    float amplitude = 1.f;
+    
+    for(int i = 0; i < octaves; i++)
+    {
+        vec3 pt = freq * xyz;
+        float dx = pt[0] - floor(pt[0]);
+        float dy = pt[1] - floor(pt[1]);
+        float dz = pt[2] - floor(pt[2]);
+
+        int x0 = (int)floor(pt[0]);
+        int y0 = (int)floor(pt[1]);
+        int z0 = (int)floor(pt[2]);
+
+        int x1 = x0 + 1;
+        int y1 = y0 + 1;
+        int z1 = z0 + 1;
+
+        vec3 grad_field_1 = noise_3d_gradient(state, x0, y0, z0, x1, y1, z1, dx, dy, dz);
+        state = rand_init(state, 10019689);
+        vec3 grad_field_2 = noise_3d_gradient(state, x0, y0, z0, x1, y1, z1, dx, dy, dz);
+        state = rand_init(state, 13112221);
+        vec3 grad_field_3 = noise_3d_gradient(state, x0, y0, z0, x1, y1, z1, dx, dy, dz);
+        
+        curl_sum_1 += amplitude * grad_field_1;
+        curl_sum_2 += amplitude * grad_field_2;
+        curl_sum_3 += amplitude * grad_field_3;
+
+        amplitude *= gain;
+        freq *= lacunarity;
+    }
     
     return vec3(
-        grad_field_3[1] - grad_field_2[2],
-        grad_field_1[2] - grad_field_3[0],
-        grad_field_2[0] - grad_field_1[1]);
+        curl_sum_3[1] - curl_sum_2[2],
+        curl_sum_1[2] - curl_sum_3[0],
+        curl_sum_2[0] - curl_sum_1[1]);
 }
-inline CUDA_CALLABLE void adj_curlnoise(uint32 state, const vec3& xyz, uint32& adj_state, vec3& adj_xyz, const vec3& adj_ret) {}
+inline CUDA_CALLABLE void adj_curlnoise(uint32 state, const vec3& xyz, const uint32 octaves, const float lacunarity, const float gain, uint32& adj_state, vec3& adj_xyz, const uint32& adj_octaves, const float& adj_lacunarity, const float& adj_gain, vec3& adj_ret) {}
 
-inline CUDA_CALLABLE vec3 curlnoise(uint32 state, const vec4& xyzt)
+inline CUDA_CALLABLE vec3 curlnoise(uint32 state, const vec4& xyzt, const uint32 octaves, const float lacunarity, const float gain)
 {
-    float dx = xyzt[0] - floor(xyzt[0]);
-    float dy = xyzt[1] - floor(xyzt[1]);
-    float dz = xyzt[2] - floor(xyzt[2]);
-    float dt = xyzt[3] - floor(xyzt[3]);
+    vec4 curl_sum_1 = vec4(0.f);
+    vec4 curl_sum_2 = vec4(0.f);
+    vec4 curl_sum_3 = vec4(0.f);
+    
+    float freq = 1.f;
+    float amplitude = 1.f;
 
-    int x0 = (int)floor(xyzt[0]);
-    int y0 = (int)floor(xyzt[1]);
-    int z0 = (int)floor(xyzt[2]);
-    int t0 = (int)floor(xyzt[3]);
+    for(int i = 0; i < octaves; i++)
+    {
+        vec4 pt = freq * xyzt;
+        float dx = pt[0] - floor(pt[0]);
+        float dy = pt[1] - floor(pt[1]);
+        float dz = pt[2] - floor(pt[2]);
+        float dt = pt[3] - floor(pt[3]);
 
-    int x1 = x0 + 1;
-    int y1 = y0 + 1;
-    int z1 = z0 + 1;
-    int t1 = t0 + 1;
+        int x0 = (int)floor(pt[0]);
+        int y0 = (int)floor(pt[1]);
+        int z0 = (int)floor(pt[2]);
+        int t0 = (int)floor(pt[3]);
 
-    vec4 grad_field_1 = noise_4d_gradient(state, x0, y0, z0, t0, x1, y1, z1, t1, dx, dy, dz, dt);
-    state = rand_init(state, 10019689);
-    vec4 grad_field_2 = noise_4d_gradient(state, x0, y0, z0, t0, x1, y1, z1, t1, dx, dy, dz, dt);
-    state = rand_init(state, 13112221);
-    vec4 grad_field_3 = noise_4d_gradient(state, x0, y0, z0, t0, x1, y1, z1, t1, dx, dy, dz, dt);
+        int x1 = x0 + 1;
+        int y1 = y0 + 1;
+        int z1 = z0 + 1;
+        int t1 = t0 + 1;
+
+        vec4 grad_field_1 = noise_4d_gradient(state, x0, y0, z0, t0, x1, y1, z1, t1, dx, dy, dz, dt);
+        state = rand_init(state, 10019689);
+        vec4 grad_field_2 = noise_4d_gradient(state, x0, y0, z0, t0, x1, y1, z1, t1, dx, dy, dz, dt);
+        state = rand_init(state, 13112221);
+        vec4 grad_field_3 = noise_4d_gradient(state, x0, y0, z0, t0, x1, y1, z1, t1, dx, dy, dz, dt);
+
+        curl_sum_1 += amplitude * grad_field_1;
+        curl_sum_2 += amplitude * grad_field_2;
+        curl_sum_3 += amplitude * grad_field_3;
+
+        amplitude *= gain;
+        freq *= lacunarity;        
+    }
 
     return vec3(
-        grad_field_3[1] - grad_field_2[2],
-        grad_field_1[2] - grad_field_3[0],
-        grad_field_2[0] - grad_field_1[1]);
+        curl_sum_3[1] - curl_sum_2[2],
+        curl_sum_1[2] - curl_sum_3[0],
+        curl_sum_2[0] - curl_sum_1[1]);
 }
-inline CUDA_CALLABLE void adj_curlnoise(uint32 state, const vec4& xyzt, uint32& adj_state, vec4& adj_xyzt, const vec3& adj_ret) {}
+inline CUDA_CALLABLE void adj_curlnoise(uint32 state, const vec4& xyzt, const uint32 octaves, const float lacunarity, const float gain, uint32& adj_state, vec4& adj_xyzt, const uint32& adj_octaves, const float& adj_lacunarity, const float& adj_gain, const vec3& adj_ret) {}
 
 } // namespace wp

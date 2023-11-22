@@ -1,9 +1,9 @@
 [package]
 # Semantic Versioning is used: https://semver.org/
-version = "1.0.0-beta.2"
+version = "1.0.0-beta.4"
 authors = ["NVIDIA"]
-title = "Warp"
-description="Provides the core Warp Python module for Omniverse"
+title = "Warp Core"
+description="The core Warp Python module"
 readme  = "docs/README.md"
 repository="https://github.com/nvidia/warp"
 category = "core"
@@ -30,10 +30,16 @@ name = "omni.warp.core"
 [[test]]
 pyCoverageOmit = [
     "warp/stubs.py",
-    "warp/sim/render.py",
-    "warp/sim/integrator_euler.py",
-    "warp/sim/optimizer.py",
-    "warp/render.py"
+    "warp/jax.py",
+    "warp/torch.py",
+    "warp/build.py",
+    "warp/build_dll.py",
+    "warp/sim/**",
+    "warp/render/**",
+    "warp/optim/**",
+    "warp/fem/**",
+    "warp/thirdparty/**",
+    "warp/tests/**"
 ]
 pyCoverageThreshold = 40
 timeout = 900

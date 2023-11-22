@@ -1,26 +1,23 @@
 import os
-import math
-from typing import Any
 
 import warp as wp
 import numpy as np
 
-import warp.sim.render
 from warp.sim import Model, State
+import warp.sim.render
 
-from warp.fem.geometry import Grid3D
-from warp.fem.domain import Cells, BoundarySides
-from warp.fem.space import make_polynomial_space
-from warp.fem.quadrature import PicQuadrature
-from warp.fem.field import make_test, make_trial
-from warp.fem.types import vec3i, Field, Sample, Domain
-from warp.fem.integrate import integrate
-from warp.fem.operator import integrand, lookup, normal, grad, at_node, div
-from warp.fem.dirichlet import normalize_dirichlet_projector
+import warp.fem as fem
 
-from warp.sparse import bsr_mv, bsr_copy, bsr_mm, bsr_transposed, BsrMatrix
+from warp.fem import integrand, lookup, normal, grad, at_node, div
+from warp.fem import Field, Sample, Domain
 
-from bsr_utils import bsr_cg
+from warp.sparse import bsr_mv, bsr_copy, bsr_mm, bsr_transposed, bsr_zeros, BsrMatrix
+
+
+try:
+    from .bsr_utils import bsr_cg
+except ImportError:
+    from bsr_utils import bsr_cg
 
 
 @integrand
@@ -122,12 +119,7 @@ def scale_transposed_divergence_mat(
         tr_divergence_mat_values[b] = tr_divergence_mat_values[b] * inv_fraction_int[u_i]
 
 
-def solve_incompressibility(
-    divergence_mat: BsrMatrix,
-    inv_volume,
-    pressure,
-    velocity,
-):
+def solve_incompressibility(divergence_mat: BsrMatrix, inv_volume, pressure, velocity, quiet: bool = False):
     """Solve for divergence-free velocity delta:
 
     delta_velocity = inv_volume * transpose(divergence_mat) * pressure
@@ -151,24 +143,26 @@ def solve_incompressibility(
 
     rhs = wp.zeros_like(pressure)
     bsr_mv(A=divergence_mat, x=velocity, y=rhs, alpha=-1.0, beta=0.0)
-    bsr_cg(schur, b=rhs, x=pressure)
+    bsr_cg(schur, b=rhs, x=pressure, quiet=quiet)
 
     # Apply pressure to velocity
     bsr_mv(A=transposed_divergence_mat, x=pressure, y=velocity, alpha=1.0, beta=1.0)
 
 
 class Example:
-    def __init__(self, stage):
+    def __init__(self, stage, num_frames=1000, res=[32, 64, 16], quiet=False):
         self.frame_dt = 1.0 / 60
-        self.frame_count = 1000
+        self.num_frames = num_frames
+        self.current_frame = 0
 
         self.sim_substeps = 1
         self.sim_dt = self.frame_dt / self.sim_substeps
-        self.sim_steps = self.frame_count * self.sim_substeps
-        self.sim_time = 0.0
+        self.sim_steps = self.num_frames * self.sim_substeps
+
+        self._quiet = quiet
 
         # grid dimensions and particle emission
-        grid_res = np.array([32, 64, 16], dtype=int)
+        grid_res = np.array(res, dtype=int)
         particle_fill_frac = np.array([0.5, 0.5, 1.0])
         grid_lo = wp.vec3(0.0)
         grid_hi = wp.vec3(50, 100, 25)
@@ -199,12 +193,12 @@ class Example:
             radius_mean=self.radius,
         )
 
-        self.grid = Grid3D(vec3i(grid_res), grid_lo, grid_hi)
+        self.grid = fem.Grid3D(wp.vec3i(grid_res), grid_lo, grid_hi)
 
         # Function spaces
-        self.velocity_space = make_polynomial_space(self.grid, dtype=wp.vec3, degree=1)
-        self.fraction_space = make_polynomial_space(self.grid, dtype=float, degree=1)
-        self.strain_space = make_polynomial_space(
+        self.velocity_space = fem.make_polynomial_space(self.grid, dtype=wp.vec3, degree=1)
+        self.fraction_space = fem.make_polynomial_space(self.grid, dtype=float, degree=1)
+        self.strain_space = fem.make_polynomial_space(
             self.grid,
             dtype=float,
             degree=0,
@@ -214,29 +208,39 @@ class Example:
         self.velocity_field = self.velocity_space.make_field()
 
         # Test and trial functions
-        self.domain = Cells(self.grid)
-        self.velocity_test = make_test(self.velocity_space, domain=self.domain)
-        self.velocity_trial = make_trial(self.velocity_space, domain=self.domain)
-        self.fraction_test = make_test(self.fraction_space, domain=self.domain)
-        self.strain_test = make_test(self.strain_space, domain=self.domain)
-        self.strain_trial = make_trial(self.strain_space, domain=self.domain)
+        self.domain = fem.Cells(self.grid)
+        self.velocity_test = fem.make_test(self.velocity_space, domain=self.domain)
+        self.velocity_trial = fem.make_trial(self.velocity_space, domain=self.domain)
+        self.fraction_test = fem.make_test(self.fraction_space, domain=self.domain)
+        self.strain_test = fem.make_test(self.strain_space, domain=self.domain)
+        self.strain_trial = fem.make_trial(self.strain_space, domain=self.domain)
 
         # Enforcing the Dirichlet boundary condition the hard way;
         # build projector for velocity left- and right-hand-sides
-        boundary = BoundarySides(self.grid)
-        u_bd_test = make_test(space=self.velocity_space, domain=boundary)
-        u_bd_trial = make_trial(space=self.velocity_space, domain=boundary)
-        u_bd_projector = integrate(
+        boundary = fem.BoundarySides(self.grid)
+        u_bd_test = fem.make_test(space=self.velocity_space, domain=boundary)
+        u_bd_trial = fem.make_trial(space=self.velocity_space, domain=boundary)
+        u_bd_projector = fem.integrate(
             velocity_boundary_projector_form, fields={"u": u_bd_trial, "v": u_bd_test}, nodal=True, output_dtype=float
         )
 
-        normalize_dirichlet_projector(u_bd_projector)
+        fem.normalize_dirichlet_projector(u_bd_projector)
         self.vel_bd_projector = u_bd_projector
+
+        # Storage for temporary variables
+        self.temporary_store = fem.TemporaryStore()
+
+        self._divergence_matrix = bsr_zeros(
+            self.strain_space.node_count(),
+            self.velocity_space.node_count(),
+            block_type=wp.mat(shape=(1, 3), dtype=float),
+        )
 
         # Warp.sim model
         self.model: Model = builder.finalize()
 
-        print("Particle count:", self.model.particle_count)
+        if not self._quiet:
+            print("Particle count:", self.model.particle_count)
 
         self.state_0: State = self.model.state()
         self.state_0.particle_qd_grad = wp.zeros(shape=(self.model.particle_count), dtype=wp.mat33)
@@ -244,28 +248,41 @@ class Example:
         self.state_1: State = self.model.state()
         self.state_1.particle_qd_grad = wp.zeros(shape=(self.model.particle_count), dtype=wp.mat33)
 
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=20.0)
+        self.renderer = warp.sim.render.SimRenderer(self.model, stage, scaling=20.0)
 
-    def update(self, frame_index):
-        with wp.ScopedTimer(f"simulate frame {frame_index}", active=True):
+    def update(self):
+        fem.set_default_temporary_store(self.temporary_store)
+
+        self.current_frame = self.current_frame + 1
+        with wp.ScopedTimer(f"simulate frame {self.current_frame}", active=True):
             for s in range(self.sim_substeps):
                 # Bin particles to grid cells
-                pic = PicQuadrature(
-                    domain=Cells(self.grid), positions=self.state_0.particle_q, measures=self.model.particle_mass
+                pic = fem.PicQuadrature(
+                    domain=fem.Cells(self.grid), positions=self.state_0.particle_q, measures=self.model.particle_mass
                 )
 
+                # Borrow some temporary arrays for storing integration results
+                inv_volume_temporary = fem.borrow_temporary(
+                    self.temporary_store, shape=(self.fraction_space.node_count()), dtype=float
+                )
+                velocity_int_temporary = fem.borrow_temporary(
+                    self.temporary_store, shape=(self.velocity_space.node_count()), dtype=wp.vec3
+                )
+                inv_volume = inv_volume_temporary.array
+                velocity_int = velocity_int_temporary.array
+
                 # Inverse volume fraction
-                fraction_test = make_test(space=self.fraction_space, domain=pic.domain)
-                inv_volume = integrate(
+                fem.integrate(
                     integrate_fraction,
                     quadrature=pic,
-                    fields={"phi": fraction_test},
+                    fields={"phi": self.fraction_test},
                     accumulate_dtype=float,
+                    output=inv_volume,
                 )
                 wp.launch(kernel=invert_volume_kernel, dim=inv_volume.shape, inputs=[inv_volume])
 
                 # Velocity right-hand side
-                velocity_int = integrate(
+                fem.integrate(
                     integrate_velocity,
                     quadrature=pic,
                     fields={"u": self.velocity_test},
@@ -276,7 +293,7 @@ class Example:
                         "gravity": self.model.gravity,
                     },
                     accumulate_dtype=float,
-                    output_dtype=wp.vec3,
+                    output=velocity_int,
                 )
 
                 # Compute constraint-free velocity
@@ -292,28 +309,29 @@ class Example:
                 bsr_mv(A=self.vel_bd_projector, x=velocity_int, y=self.velocity_field.dof_values, alpha=-1.0, beta=1.0)
 
                 # Divergence matrix
-                divergence_mat = integrate(
+                fem.integrate(
                     divergence_form,
                     quadrature=pic,
                     fields={"u": self.velocity_trial, "psi": self.strain_test},
                     accumulate_dtype=float,
-                    output_dtype=float,
+                    output=self._divergence_matrix,
                 )
 
                 # Project matrix to enforce boundary conditions
-                divergence_mat_tmp = bsr_copy(divergence_mat)
-                bsr_mm(alpha=-1.0, x=divergence_mat_tmp, y=self.vel_bd_projector, z=divergence_mat, beta=1.0)
+                divergence_mat_tmp = bsr_copy(self._divergence_matrix)
+                bsr_mm(alpha=-1.0, x=divergence_mat_tmp, y=self.vel_bd_projector, z=self._divergence_matrix, beta=1.0)
 
                 # Solve unilateral incompressibility
                 solve_incompressibility(
-                    divergence_mat,
+                    self._divergence_matrix,
                     inv_volume,
                     self.pressure_field.dof_values,
                     self.velocity_field.dof_values,
+                    quiet=self._quiet,
                 )
 
                 # (A)PIC advection
-                integrate(
+                fem.integrate(
                     update_particles,
                     quadrature=pic,
                     values={
@@ -328,16 +346,16 @@ class Example:
 
                 # swap states
                 (self.state_0, self.state_1) = (self.state_1, self.state_0)
+        
+        fem.set_default_temporary_store(None)
 
     def render(self, is_live=False):
         with wp.ScopedTimer("render", active=True):
-            time = 0.0 if is_live else self.sim_time
+            time = self.current_frame * self.frame_dt
 
             self.renderer.begin_frame(time)
             self.renderer.render(self.state_0)
             self.renderer.end_frame()
-
-        self.sim_time += self.frame_dt
 
 
 if __name__ == "__main__":
@@ -348,8 +366,8 @@ if __name__ == "__main__":
 
     example = Example(stage_path)
 
-    for i in range(example.frame_count):
-        example.update(i)
+    for i in range(example.num_frames):
+        example.update()
         example.render()
 
     example.renderer.save()

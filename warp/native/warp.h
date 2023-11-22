@@ -54,11 +54,11 @@ extern "C"
     WP_API void memtile_host(void* dest, const void* src, size_t srcsize, size_t n);
     WP_API void memtile_device(void* context, void* dest, const void* src, size_t srcsize, size_t n);
 
-	WP_API uint64_t bvh_create_host(wp::vec3* lowers, wp::vec3* uppers, int num_bounds);
+	WP_API uint64_t bvh_create_host(wp::vec3* lowers, wp::vec3* uppers, int num_items);
 	WP_API void bvh_destroy_host(uint64_t id);
     WP_API void bvh_refit_host(uint64_t id);
 
-	WP_API uint64_t bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_bounds);
+	WP_API uint64_t bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items);
 	WP_API void bvh_destroy_device(uint64_t id);
     WP_API void bvh_refit_device(uint64_t id);
 
@@ -214,6 +214,7 @@ extern "C"
 
     WP_API int cuda_driver_version();   // CUDA driver version
     WP_API int cuda_toolkit_version();  // CUDA Toolkit version used to build Warp
+    WP_API bool cuda_driver_is_initialized();
 
     WP_API int nvrtc_supported_arch_count();
     WP_API void nvrtc_supported_archs(int* archs);
@@ -267,7 +268,7 @@ extern "C"
     WP_API void* cuda_load_module(void* context, const char* ptx);
     WP_API void cuda_unload_module(void* context, void* module);
     WP_API void* cuda_get_kernel(void* context, void* module, const char* name);
-    WP_API size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, void** args);
+    WP_API size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, int max_blocks, void** args);
 
     WP_API void cuda_set_context_restore_policy(bool always_restore);
     WP_API int cuda_get_context_restore_policy();

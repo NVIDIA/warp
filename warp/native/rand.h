@@ -9,8 +9,8 @@
 # pragma once
 #include "array.h"
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846f
+#ifndef M_PI_F
+#define M_PI_F 3.14159265358979323846f
 #endif
 
 namespace wp
@@ -33,7 +33,7 @@ inline CUDA_CALLABLE float randf(uint32& state) { state = rand_pcg(state); retur
 inline CUDA_CALLABLE float randf(uint32& state, float min, float max) { return (max - min) * randf(state) + min; }
 
 // Box-Muller method
-inline CUDA_CALLABLE float randn(uint32& state) { return sqrt(-2.f * log(randf(state))) * cos(2.f * M_PI * randf(state)); }
+inline CUDA_CALLABLE float randn(uint32& state) { return sqrt(-2.f * log(randf(state))) * cos(2.f * M_PI_F * randf(state)); }
 
 inline CUDA_CALLABLE void adj_rand_init(int seed, int& adj_seed, float adj_ret) {}
 inline CUDA_CALLABLE void adj_rand_init(int seed, int offset, int& adj_seed, int& adj_offset, float adj_ret) {}
@@ -55,14 +55,14 @@ inline CUDA_CALLABLE int sample_cdf(uint32& state, const array_t<float>& cdf)
 inline CUDA_CALLABLE vec2 sample_triangle(uint32& state)
 {
     float r = sqrt(randf(state));
-    float u = 1.0 - r;
+    float u = 1.f - r;
     float v = randf(state) * r;
     return vec2(u, v);
 }
 
 inline CUDA_CALLABLE vec2 sample_unit_ring(uint32& state)
 {
-    float theta = randf(state, 0.f, 2.f*M_PI);
+    float theta = randf(state, 0.f, 2.f*M_PI_F);
     float x = cos(theta);
     float y = sin(theta);
     return vec2(x, y);
@@ -71,7 +71,7 @@ inline CUDA_CALLABLE vec2 sample_unit_ring(uint32& state)
 inline CUDA_CALLABLE vec2 sample_unit_disk(uint32& state)
 {
     float r = sqrt(randf(state));
-    float theta = randf(state, 0.f, 2.f*M_PI);
+    float theta = randf(state, 0.f, 2.f*M_PI_F);
     float x = r * cos(theta);
     float y = r * sin(theta);
     return vec2(x, y);
@@ -80,7 +80,7 @@ inline CUDA_CALLABLE vec2 sample_unit_disk(uint32& state)
 inline CUDA_CALLABLE vec3 sample_unit_sphere_surface(uint32& state)
 {
     float phi = acos(1.f - 2.f * randf(state));
-    float theta = randf(state, 0.f, 2.f*M_PI);
+    float theta = randf(state, 0.f, 2.f*M_PI_F);
     float x = cos(theta) * sin(phi);
     float y = sin(theta) * sin(phi);
     float z = cos(phi);
@@ -90,7 +90,7 @@ inline CUDA_CALLABLE vec3 sample_unit_sphere_surface(uint32& state)
 inline CUDA_CALLABLE vec3 sample_unit_sphere(uint32& state)
 {
     float phi = acos(1.f  - 2.f * randf(state));
-    float theta = randf(state, 0.f, 2.f*M_PI);
+    float theta = randf(state, 0.f, 2.f*M_PI_F);
     float r = pow(randf(state), 1.f/3.f);
     float x = r * cos(theta) * sin(phi);
     float y = r * sin(theta) * sin(phi);
@@ -101,7 +101,7 @@ inline CUDA_CALLABLE vec3 sample_unit_sphere(uint32& state)
 inline CUDA_CALLABLE vec3 sample_unit_hemisphere_surface(uint32& state)
 {
     float phi = acos(1.f - randf(state));
-    float theta = randf(state, 0.f, 2.f*M_PI);
+    float theta = randf(state, 0.f, 2.f*M_PI_F);
     float x = cos(theta) * sin(phi);
     float y = sin(theta) * sin(phi);
     float z = cos(phi);
@@ -111,7 +111,7 @@ inline CUDA_CALLABLE vec3 sample_unit_hemisphere_surface(uint32& state)
 inline CUDA_CALLABLE vec3 sample_unit_hemisphere(uint32& state)
 {
     float phi = acos(1.f - randf(state));
-    float theta = randf(state, 0.f, 2.f*M_PI);
+    float theta = randf(state, 0.f, 2.f*M_PI_F);
     float r = pow(randf(state), 1.f/3.f);
     float x = r * cos(theta) * sin(phi);
     float y = r * sin(theta) * sin(phi);
@@ -134,6 +134,15 @@ inline CUDA_CALLABLE vec3 sample_unit_cube(uint32& state)
     return vec3(x, y, z);
 }
 
+inline CUDA_CALLABLE vec4 sample_unit_hypercube(uint32& state)
+{
+    float a = randf(state) - 0.5f;
+    float b = randf(state) - 0.5f;
+    float c = randf(state) - 0.5f;
+    float d = randf(state) - 0.5f;
+    return vec4(a, b, c, d);
+}
+
 inline CUDA_CALLABLE void adj_sample_cdf(uint32& state, const array_t<float>& cdf, uint32& adj_state, array_t<float>& adj_cdf, const int& adj_ret) {}
 inline CUDA_CALLABLE void adj_sample_triangle(uint32& state, uint32& adj_state, const vec2& adj_ret) {}
 inline CUDA_CALLABLE void adj_sample_unit_ring(uint32& state, uint32& adj_state, const vec2& adj_ret) {}
@@ -144,6 +153,7 @@ inline CUDA_CALLABLE void adj_sample_unit_hemisphere_surface(uint32& state, uint
 inline CUDA_CALLABLE void adj_sample_unit_hemisphere(uint32& state, uint32& adj_state, const vec3& adj_ret) {}
 inline CUDA_CALLABLE void adj_sample_unit_square(uint32& state, uint32& adj_state, const vec2& adj_ret) {}
 inline CUDA_CALLABLE void adj_sample_unit_cube(uint32& state, uint32& adj_state, const vec3& adj_ret) {}
+inline CUDA_CALLABLE void adj_sample_unit_hypercube(uint32& state, uint32& adj_state, const vec3& adj_ret) {}
 
 /*
  * log-gamma function to support some of these distributions. The
@@ -158,17 +168,17 @@ inline CUDA_CALLABLE float random_loggam(float x)
     float x0, x2, lg2pi, gl, gl0;
     uint32 n;
 
-    const float a[10] = {8.333333333333333e-02, -2.777777777777778e-03,
-                        7.936507936507937e-04, -5.952380952380952e-04,
-                        8.417508417508418e-04, -1.917526917526918e-03,
-                        6.410256410256410e-03, -2.955065359477124e-02,
-                        1.796443723688307e-01, -1.39243221690590e+00};
+    const float a[10] = {8.333333333333333e-02f, -2.777777777777778e-03f,
+                        7.936507936507937e-04f, -5.952380952380952e-04f,
+                        8.417508417508418e-04f, -1.917526917526918e-03f,
+                        6.410256410256410e-03f, -2.955065359477124e-02f,
+                        1.796443723688307e-01f, -1.39243221690590e+00f};
 
-    if ((x == 1.0) || (x == 2.0))
+    if ((x == 1.f) || (x == 2.f))
     {
-        return 0.0;
+        return 0.f;
     }
-    else if (x < 7.0)
+    else if (x < 7.f)
     {
         n = uint32((7 - x));
     }
@@ -178,8 +188,8 @@ inline CUDA_CALLABLE float random_loggam(float x)
     }
 
     x0 = x + float(n);
-    x2 = (1.0 / x0) * (1.0 / x0);
-    // log(2 * M_PI)
+    x2 = (1.f / x0) * (1.f / x0);
+    // log(2 * M_PI_F)
     lg2pi = 1.8378770664093453f;
     gl0 = a[9];
     for (int i = 8; i >= 0; i--)
@@ -187,13 +197,13 @@ inline CUDA_CALLABLE float random_loggam(float x)
         gl0 *= x2;
         gl0 += a[i];
     }
-    gl = gl0 / x0 + 0.5 * lg2pi + (x0 - 0.5) * log(x0) - x0;
-    if (x < 7.0)
+    gl = gl0 / x0 + 0.5f * lg2pi + (x0 - 0.5f) * log(x0) - x0;
+    if (x < 7.f)
     {
         for (uint32 k = 1; k <= n; k++)
         {
-            gl -= log(x0 - 1.0);
-            x0 -= 1.0;
+            gl -= log(x0 - 1.f);
+            x0 -= 1.f;
         }
     }
     return gl;
@@ -205,7 +215,7 @@ inline CUDA_CALLABLE uint32 random_poisson_mult(uint32& state, float lam) {
 
     enlam = exp(-lam);
     X = 0;
-    prod = 1.0;
+    prod = 1.f;
 
     while (1)
     {
@@ -234,22 +244,22 @@ inline CUDA_CALLABLE uint32 random_poisson(uint32& state, float lam)
 
     slam = sqrt(lam);
     loglam = log(lam);
-    b = 0.931 + 2.53 * slam;
-    a = -0.059 + 0.02483 * b;
-    invalpha = 1.1239 + 1.1328 / (b - 3.4);
-    vr = 0.9277 - 3.6224 / (b - 2.0);
+    b = 0.931f + 2.53f * slam;
+    a = -0.059f + 0.02483f * b;
+    invalpha = 1.1239f + 1.1328f / (b - 3.4f);
+    vr = 0.9277f - 3.6224f / (b - 2.f);
 
     while (1)
     {
-        U = randf(state) - 0.5;
+        U = randf(state) - 0.5f;
         V = randf(state);
-        us = 0.5 - abs(U);
-        k = uint32(floor((2 * a / us + b) * U + lam + 0.43));
-        if ((us >= 0.07) && (V <= vr))
+        us = 0.5f - abs(U);
+        k = uint32(floor((2.f * a / us + b) * U + lam + 0.43f));
+        if ((us >= 0.07f) && (V <= vr))
         {
             return k;
         }
-        if ((us < 0.013) && (V > us))
+        if ((us < 0.013f) && (V > us))
         {
             continue;
         }

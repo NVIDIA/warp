@@ -33,7 +33,7 @@ struct vec_t
     {
         for( unsigned i=0; i < Length; ++i )
         {
-            c[i] = other[i];
+            c[i] = static_cast<Type>(other[i]);
         }
     }
 
@@ -383,7 +383,7 @@ inline CUDA_CALLABLE Type tensordot(vec_t<Length, Type> a, vec_t<Length, Type> b
 
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE Type index(const vec_t<Length, Type> & a, int idx)
+inline CUDA_CALLABLE Type extract(const vec_t<Length, Type> & a, int idx)
 {
 #ifndef NDEBUG
     if (idx < 0 || idx >= Length)
@@ -397,7 +397,21 @@ inline CUDA_CALLABLE Type index(const vec_t<Length, Type> & a, int idx)
 }
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void indexset(vec_t<Length, Type>& v, int idx, Type value)
+inline CUDA_CALLABLE Type* index(vec_t<Length, Type>& v, int idx)
+{
+#ifndef NDEBUG
+    if (idx < 0 || idx >= Length)
+    {
+        printf("vec index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    return &v[idx];
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE Type* indexref(vec_t<Length, Type>* v, int idx)
 {
 #ifndef NDEBUG
     if (idx < 0 || idx >= Length)
@@ -407,17 +421,23 @@ inline CUDA_CALLABLE void indexset(vec_t<Length, Type>& v, int idx, Type value)
     }
 #endif
 
-    v[idx] = value;
+    return &((*v)[idx]);
 }
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_indexset(vec_t<Length, Type>& v, int idx, const Type& value,
+inline CUDA_CALLABLE void adj_index(vec_t<Length, Type>& v, int idx,
                                        vec_t<Length, Type>& adj_v, int adj_idx, const Type& adj_value)
 {
     // nop
 }
 
 
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_indexref(vec_t<Length, Type>* v, int idx, 
+                                       vec_t<Length, Type>& adj_v, int adj_idx, const Type& adj_value)
+{
+    // nop
+}
 
 
 template<unsigned Length, typename Type>
@@ -645,7 +665,7 @@ inline CUDA_CALLABLE void adj_vec_t(const vec_t<Length, OtherType>& other, vec_t
 {
     for( unsigned i=0; i < Length; ++i )
     {
-        adj_other[i] += adj_ret[i];
+        adj_other[i] += static_cast<OtherType>(adj_ret[i]);
     }
 }
 
@@ -816,7 +836,7 @@ inline CUDA_CALLABLE void adj_dot(vec_t<3, Type> a, vec_t<3, Type> b, vec_t<3, T
 
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_index(const vec_t<Length, Type> & a, int idx, vec_t<Length, Type> & adj_a, int & adj_idx, Type & adj_ret)
+inline CUDA_CALLABLE void adj_extract(const vec_t<Length, Type> & a, int idx, vec_t<Length, Type> & adj_a, int & adj_idx, Type & adj_ret)
 {
 #ifndef NDEBUG
     if (idx < 0 || idx > Length)

@@ -87,11 +87,9 @@ def test_smoothstep(test, device):
 
     for data_type in TEST_DATA:
         kernel_fn = make_kernel_fn(data_type)
-        module = wp.get_module(kernel_fn.__module__)
         kernel = wp.Kernel(
             func=kernel_fn,
             key=f"test_smoothstep{data_type.__name__}_kernel",
-            module=module,
         )
 
         for test_data in TEST_DATA[data_type]:
@@ -166,5 +164,6 @@ def register(parent):
 
 
 if __name__ == "__main__":
+    wp.build.clear_kernel_cache()
     _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

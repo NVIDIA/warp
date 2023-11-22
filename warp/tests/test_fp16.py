@@ -80,11 +80,13 @@ def mul_half(input: wp.array(dtype=wp.float16), output: wp.array(dtype=wp.float1
 
 
 def test_fp16_grad(test, device):
+    rng = np.random.default_rng(123)
+
     # checks that gradients are correctly propagated for
     # fp16 arrays, even when intermediate calculations
     # are performed in e.g.: fp32
 
-    s = np.random.rand(15).astype(np.float16)
+    s = rng.random(size=15).astype(np.float16)
 
     input = wp.array(s, dtype=wp.float16, device=device, requires_grad=True)
     output = wp.zeros_like(input)
@@ -119,5 +121,6 @@ def register(parent):
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

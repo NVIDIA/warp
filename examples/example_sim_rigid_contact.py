@@ -13,36 +13,31 @@
 #
 ###########################################################################
 
-import os
 import math
+import os
 
 import numpy as np
+from pxr import Usd, UsdGeom
 
 import warp as wp
 import warp.sim
 import warp.sim.render
 
-from pxr import UsdGeom, Usd
-
 wp.init()
 
 
 class Example:
-    frame_dt = 1.0 / 60.0
-
-    episode_duration = 20.0  # seconds
-    episode_frames = int(episode_duration / frame_dt)
-
-    sim_substeps = 10
-    sim_dt = frame_dt / sim_substeps
-    sim_steps = int(episode_duration / sim_dt)
-
-    sim_time = 0.0
-
-    def __init__(self, stage=None, render=True):
+    def __init__(self, stage):
         builder = wp.sim.ModelBuilder()
 
-        self.enable_rendering = render
+        self.sim_time = 0.0
+        self.frame_dt = 1.0 / 60.0
+
+        episode_duration = 20.0  # seconds
+        self.episode_frames = int(episode_duration / self.frame_dt)
+
+        self.sim_substeps = 10
+        self.sim_dt = self.frame_dt / self.sim_substeps
 
         self.num_bodies = 8
         self.scale = 0.8
@@ -54,7 +49,7 @@ class Example:
         for i in range(self.num_bodies):
             b = builder.add_body(origin=wp.transform((i, 1.0, 0.0), wp.quat_identity()))
 
-            s = builder.add_shape_box(
+            builder.add_shape_box(
                 pos=(0.0, 0.0, 0.0),
                 hx=0.5 * self.scale,
                 hy=0.2 * self.scale,
@@ -69,7 +64,7 @@ class Example:
         for i in range(self.num_bodies):
             b = builder.add_body(origin=wp.transform((i, 1.0, 2.0), wp.quat_identity()))
 
-            s = builder.add_shape_sphere(
+            builder.add_shape_sphere(
                 pos=(0.0, 0.0, 0.0), radius=0.25 * self.scale, body=b, ke=self.ke, kd=self.kd, kf=self.kf
             )
 
@@ -77,7 +72,7 @@ class Example:
         for i in range(self.num_bodies):
             b = builder.add_body(origin=wp.transform((i, 1.0, 6.0), wp.quat_identity()))
 
-            s = builder.add_shape_capsule(
+            builder.add_shape_capsule(
                 pos=(0.0, 0.0, 0.0),
                 radius=0.25 * self.scale,
                 half_height=self.scale * 0.5,
@@ -102,7 +97,7 @@ class Example:
                 )
             )
 
-            s = builder.add_shape_mesh(
+            builder.add_shape_mesh(
                 body=b,
                 mesh=bunny,
                 pos=(0.0, 0.0, 0.0),
@@ -119,10 +114,21 @@ class Example:
 
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
-        # -----------------------
-        # set up OpenGL renderer
-        if self.enable_rendering:
-            self.renderer = wp.sim.render.SimRendererOpenGL(self.model, stage, scaling=0.5)
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=0.5)
+
+        self.state_0 = self.model.state()
+        self.state_1 = self.model.state()
+
+        wp.sim.eval_fk(self.model, self.model.joint_q, self.model.joint_qd, None, self.state_0)
+
+        self.use_graph = wp.get_device().is_cuda
+        self.graph = None
+
+        if self.use_graph:
+            # create update graph
+            wp.capture_begin()
+            self.update()
+            self.graph = wp.capture_end()
 
     def load_mesh(self, filename, path):
         asset_stage = Usd.Stage.Open(filename)
@@ -134,53 +140,40 @@ class Example:
         return wp.sim.Mesh(points, indices)
 
     def update(self):
-        for _ in range(self.sim_substeps):
-            self.state_0.clear_forces()
-            wp.sim.collide(self.model, self.state_0)
-            self.integrator.simulate(self.model, self.state_0, self.state_1, self.sim_dt)
-            self.state_0, self.state_1 = self.state_1, self.state_0
+        with wp.ScopedTimer("simulate", active=True):
+            if self.use_graph is False or self.graph is None:
+                for _ in range(self.sim_substeps):
+                    self.state_0.clear_forces()
+                    wp.sim.collide(self.model, self.state_0)
+                    self.integrator.simulate(self.model, self.state_0, self.state_1, self.sim_dt)
+                    self.state_0, self.state_1 = self.state_1, self.state_0
+            else:
+                wp.capture_launch(self.graph)
 
-    def render(self, is_live=False):
-        time = 0.0 if is_live else self.sim_time
-
-        self.renderer.begin_frame(time)
-        self.renderer.render(self.state_0)
-        self.renderer.end_frame()
-
-    def run(self, render=True):
-        # ---------------
-        # run simulation
-
-        self.sim_time = 0.0
-        self.state_0 = self.model.state()
-        self.state_1 = self.model.state()
-
-        wp.sim.eval_fk(self.model, self.model.joint_q, self.model.joint_qd, None, self.state_0)
-
-        profiler = {}
-
-        # create update graph
-        wp.capture_begin()
-
-        # simulate
-        self.update()
-
-        graph = wp.capture_end()
-
-        # simulate
-        with wp.ScopedTimer("simulate", detailed=False, print=False, active=True, dict=profiler):
-            for f in range(0, self.episode_frames):
-                with wp.ScopedTimer("simulate", active=True):
-                    wp.capture_launch(graph)
+            if not wp.get_device().is_capturing:
                 self.sim_time += self.frame_dt
 
-                if self.enable_rendering:
-                    with wp.ScopedTimer("render", active=True):
-                        self.render()
+    def render(self, is_live=False):
+        with wp.ScopedTimer("render", active=True):
+            time = 0.0 if is_live else self.sim_time
 
-            wp.synchronize()
+            self.renderer.begin_frame(time)
+            self.renderer.render(self.state_0)
+            self.renderer.end_frame()
 
 
-stage = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_contact.usd")
-robot = Example(stage, render=True)
-robot.run()
+if __name__ == "__main__":
+    stage = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_contact.usd")
+    example = Example(stage)
+    example.run()
+
+    profiler = {}
+
+    with wp.ScopedTimer("simulate", detailed=False, print=False, active=True, dict=profiler):
+        for _ in range(example.episode_frames):
+            example.update()
+            example.render()
+
+        wp.synchronize()
+
+    example.renderer.save()

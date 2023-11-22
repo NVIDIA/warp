@@ -3,7 +3,9 @@ from typing import Any
 import warp as wp
 
 from warp.fem.types import DofIndex, ElementIndex, Coords
-from warp.fem import geometry
+from warp.fem.geometry import Geometry
+
+from .topology import SpaceTopology
 
 
 class FunctionSpace:
@@ -11,34 +13,27 @@ class FunctionSpace:
     Interface class for function spaces, i.e. geometry + interpolation basis
     """
 
-    DIMENSION: int
-    """Input dimension of the function space"""
-
-    NODES_PER_ELEMENT: int
-    """Number of interpolation nodes per element of the geometry"""
-
-    ORDER: int
-    """Order of the interpolation basis"""
-
-    VALUE_DOF_COUNT: int
-    """Number of degrees of freedom per node"""
-
     dtype: type
     """Value type of the interpolation functions"""
 
     SpaceArg: wp.codegen.Struct
     """Structure containing arguments to be passed to device function"""
 
+    VALUE_DOF_COUNT: int
+    """Number of degrees of freedom per node, as a Warp constant"""
+
+    def __init__(self, topology: SpaceTopology):
+        self._topology = topology
+
+        if self._topology.is_trace:
+            self.element_inner_reference_gradient_transform = self.geometry.side_inner_inverse_deformation_gradient
+            self.element_outer_reference_gradient_transform = self.geometry.side_outer_inverse_deformation_gradient
+        else:
+            self.element_inner_reference_gradient_transform = self.geometry.cell_inverse_deformation_gradient
+            self.element_outer_reference_gradient_transform = self.geometry.cell_inverse_deformation_gradient
+
     def node_count(self) -> int:
         """Number of nodes in the interpolation basis"""
-        raise NotImplementedError
-
-    def node_positions(self) -> Any:
-        """Node positions, for visualization purposes only"""
-        raise NotImplementedError
-
-    def geometry(self) -> geometry.Geometry:
-        """Underlying geometry"""
         raise NotImplementedError
 
     def space_arg_value(self, device) -> wp.codegen.StructInstance:
@@ -46,49 +41,105 @@ class FunctionSpace:
         raise NotImplementedError
 
     @property
-    def name(self):
-        return self.__class__.__name__
+    def topology(self) -> SpaceTopology:
+        """Underlying geometry"""
+        return self._topology
 
     @property
-    def degree(self):
-        return self.ORDER
+    def geometry(self) -> Geometry:
+        """Underlying geometry"""
+        return self.topology.geometry
+
+    @property
+    def dimension(self) -> int:
+        """Function space embedding dimension"""
+        return self.topology.dimension
+
+    @property
+    def degree(self) -> int:
+        """Maximum polynomial degree of the underlying basis"""
+        raise NotImplementedError
+
+    @property
+    def name(self):
+        raise NotImplementedError
 
     def __str__(self):
         return self.name
 
-    def trace(self):
+    def trace(self) -> "FunctionSpace":
         """Trace of the function space over lower-dimensional elements of the geometry"""
         raise NotImplementedError
 
-    def make_field(self, space_partition=None, geometry_partition=None):
-        """Returns a zero-initialized field over this function space"""
+    def make_field(self, space_partition=None):
+        """Creates a zero-initialized discrete field over the function space holding values for all degrees of freedom of nodes in a space partition
+
+        space_arg:
+            space_partition: If provided, the subset of nodes to consider
+
+        See also: :func:`make_space_partition`
+        """
         raise NotImplementedError
 
-    def unit_dof_value(args: Any, dof: DofIndex):
+    @staticmethod
+    def unit_dof_value(elt_arg: "SpaceTopology.ElementArg", space_arg: "SpaceArg", dof: DofIndex):
         """Unit value for a given degree of freedom. Typically a rank-1 tensor"""
         raise NotImplementedError
 
-    def element_node_index(args: Any, element_index: ElementIndex, node_index_in_elt: int):
-        """Global node index for a given node in a given element"""
-        raise NotImplementedError
-
-    def node_coords_in_element(args: Any, element_index: ElementIndex, node_index_in_elt: int):
+    @staticmethod
+    def node_coords_in_element(
+        elt_arg: "SpaceTopology.ElementArg", space_arg: "SpaceArg", element_index: ElementIndex, node_index_in_elt: int
+    ):
         """Coordinates inside element of a given node"""
         raise NotImplementedError
 
-    def element_inner_weight(args: Any, element_index: ElementIndex, coords: Coords, node_index_in_elt: int):
+    @staticmethod
+    def node_quadrature_weight(
+        elt_arg: "SpaceTopology.ElementArg", space_arg: "SpaceArg", element_index: ElementIndex, node_index_in_elt: int
+    ):
+        """Weight of a given node when used as a quadrature point"""
+        raise NotImplementedError
+
+    @staticmethod
+    def element_inner_weight(
+        elt_arg: "SpaceTopology.ElementArg",
+        space_arg: "SpaceArg",
+        element_index: ElementIndex,
+        coords: Coords,
+        node_index_in_elt: int,
+    ):
         """Inner weight for a node at given coordinates"""
         raise NotImplementedError
 
-    def element_inner_weight_gradient(args: Any, element_index: ElementIndex, coords: Coords, node_index_in_elt: int):
-        """Inner weight gradient for a node at given coordinates"""
+    @staticmethod
+    def element_inner_weight_gradient(
+        elt_arg: "SpaceTopology.ElementArg",
+        space_arg: "SpaceArg",
+        element_index: ElementIndex,
+        coords: Coords,
+        node_index_in_elt: int,
+    ):
+        """Inner weight gradient w.r.t. reference space for a node at given coordinates"""
         raise NotImplementedError
 
-    def element_outer_weight(args: Any, element_index: ElementIndex, coords: Coords, node_index_in_elt: int):
+    @staticmethod
+    def element_outer_weight(
+        elt_arg: "SpaceTopology.ElementArg",
+        space_arg: "SpaceArg",
+        element_index: ElementIndex,
+        coords: Coords,
+        node_index_in_elt: int,
+    ):
         """Outer weight for a node at given coordinates"""
         raise NotImplementedError
 
-    @wp.func
-    def element_outer_weight_gradient(args: Any, element_index: ElementIndex, coords: Coords, node_index_in_elt: int):
-        """Outer weight gradient for a node at given coordinates"""
+    @staticmethod
+    def element_outer_weight_gradient(
+        elt_arg: "SpaceTopology.ElementArg",
+        space_arg: "SpaceArg",
+        element_index: ElementIndex,
+        coords: Coords,
+        node_index_in_elt: int,
+    ):
+        """Outer weight gradient w.r.t reference space for a node at given coordinates"""
         raise NotImplementedError

@@ -945,6 +945,7 @@ void array_fill_device(void* context, void* arr, int arr_type, const void* value
 
 WP_API int cuda_driver_version() { return 0; }
 WP_API int cuda_toolkit_version() { return 0; }
+WP_API bool cuda_driver_is_initialized() { return false; }
 
 WP_API int nvrtc_supported_arch_count() { return 0; }
 WP_API void nvrtc_supported_archs(int* archs) {}
@@ -994,7 +995,7 @@ WP_API size_t cuda_compile_program(const char* cuda_src, int arch, const char* i
 WP_API void* cuda_load_module(void* context, const char* ptx) { return NULL; }
 WP_API void cuda_unload_module(void* context, void* module) {}
 WP_API void* cuda_get_kernel(void* context, void* module, const char* name) { return NULL; }
-WP_API size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, void** args) { return 0;}
+WP_API size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, int max_blocks, void** args) { return 0;}
 
 WP_API void cuda_set_context_restore_policy(bool always_restore) {}
 WP_API int cuda_get_context_restore_policy() { return false; }

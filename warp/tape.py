@@ -37,6 +37,7 @@ class Tape:
         print(tape.gradients[a])
 
     """
+
     def __init__(self):
         self.gradients = {}
         self.const_gradients = set()
@@ -81,7 +82,7 @@ class Tape:
             if loss.size > 1 or wp.types.type_length(loss.dtype) > 1:
                 raise RuntimeError("Can only return gradients for scalar loss functions.")
 
-            if loss.requires_grad == False:
+            if loss.requires_grad is False:
                 raise RuntimeError(
                     "Scalar loss arrays should have requires_grad=True set before calling Tape.backward()"
                 )
@@ -105,9 +106,10 @@ class Tape:
             else:
                 kernel = launch[0]
                 dim = launch[1]
-                inputs = launch[2]
-                outputs = launch[3]
-                device = launch[4]
+                max_blocks = launch[2]
+                inputs = launch[3]
+                outputs = launch[4]
+                device = launch[5]
 
                 adj_inputs = []
                 adj_outputs = []
@@ -129,11 +131,12 @@ class Tape:
                     adj_outputs=adj_outputs,
                     device=device,
                     adjoint=True,
+                    max_blocks=max_blocks,
                 )
 
     # record a kernel launch on the tape
-    def record_launch(self, kernel, dim, inputs, outputs, device):
-        self.launches.append([kernel, dim, inputs, outputs, device])
+    def record_launch(self, kernel, dim, max_blocks, inputs, outputs, device):
+        self.launches.append([kernel, dim, max_blocks, inputs, outputs, device])
 
     def record_func(self, backward, arrays):
         """

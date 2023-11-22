@@ -89,14 +89,32 @@ def test_vec3_transform(test, device, n):
 
 
 def test_transform_multiply(test, device, n):
-    a = wp.transform((0.0, 1.0, 0.0), wp.utils.quat_identity())
+    a = wp.transform((0.0, 1.0, 0.0), wp.quat_identity())
 
     x = []
     for i in range(10):
-        x.append(wp.utils.transform_identity())
+        x.append(wp.transform_identity())
 
     xforms = wp.array(x, dtype=wp.transform, device=device)
     wp.launch(transform_multiply, dim=n, inputs=[xforms, a], device=device)
+
+
+transformf = wp.types.transformation(dtype=wp.float32)
+
+
+@wp.kernel
+def test_transformation_constructor():
+    a = wp.transformation(wp.vec3(0.0), wp.quat_identity())
+    b = transformf(wp.vec3(0.0), wp.quat_identity())
+    c = wp.transform_identity(dtype=wp.float64)
+
+
+spatial_vector = wp.types.vector(length=6, dtype=wp.float32)
+
+
+@wp.kernel
+def test_spatial_vector_constructor():
+    a = wp.spatial_vector(wp.vec3(0.0), wp.vec3(0.0))
 
 
 # construct kernel + test harness for given matrix / vector types
@@ -126,8 +144,7 @@ def make_matrix_test(dim, matrix, vector):
     # register a custom kernel (no decorator) function
     # this lets us register the same function definition
     # against multiple symbols, with different arg types
-    module = wp.get_module(test_matrix_kernel.__module__)
-    kernel = wp.Kernel(func=test_matrix_kernel, key=f"test_mat{dim}{dim}_kernel", module=module)
+    kernel = wp.Kernel(func=test_matrix_kernel, key=f"test_mat{dim}{dim}_kernel")
 
     def test_matrix(test, device):
         rng = np.random.default_rng(42)
@@ -555,6 +572,20 @@ def register(parent):
     add_function_test(TestCTypes, "test_mat44", test_mat44, devices=devices)
     add_kernel_test(
         TestCTypes,
+        name="test_transformation_constructor",
+        kernel=test_transformation_constructor,
+        dim=1,
+        devices=devices,
+    )
+    add_kernel_test(
+        TestCTypes,
+        name="test_spatial_vector_constructor",
+        kernel=test_spatial_vector_constructor,
+        dim=1,
+        devices=devices,
+    )
+    add_kernel_test(
+        TestCTypes,
         name="test_scalar_arg_types",
         kernel=test_scalar_arg_types,
         dim=1,
@@ -604,5 +635,6 @@ def register(parent):
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

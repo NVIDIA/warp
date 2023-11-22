@@ -5,11 +5,12 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import unittest
+
 import numpy as np
+
 import warp as wp
 from warp.tests.test_base import *
-
-import unittest
 
 wp.init()
 
@@ -44,6 +45,11 @@ def test_stream_arg_implicit_sync(test, device):
     c = wp.empty(N, dtype=float, device=device)
 
     new_stream = wp.Stream(device)
+
+    # Exercise code path
+    wp.set_stream(new_stream, device)
+
+    test.assertTrue(wp.get_device(device).has_stream)
 
     # launch work on new stream
     wp.launch(inc, dim=a.size, inputs=[a], stream=new_stream)
@@ -278,6 +284,27 @@ def test_stream_scope_wait_stream(test, device):
         assert_np_equal(d.numpy(), np.full(N, fill_value=4.0))
 
 
+def test_stream_exceptions(test, device):
+    cpu_device = wp.get_device("cpu")
+
+    # Can't set the stream on a CPU device
+    with test.assertRaises(RuntimeError):
+        stream0 = wp.Stream()
+        cpu_device.stream = stream0
+
+    # Can't create a stream on the CPU
+    with test.assertRaises(RuntimeError):
+        wp.Stream(device="cpu")
+
+    # Can't create an event with CPU device
+    with test.assertRaises(RuntimeError):
+        wp.Event(device=cpu_device)
+
+    # Can't get the stream on a CPU device
+    with test.assertRaises(RuntimeError):
+        cpu_stream = cpu_device.stream  # noqa: F841
+
+
 def test_stream_arg_graph_mgpu(test, device):
     # resources on GPU 0
     stream0 = wp.get_stream("cuda:0")
@@ -383,6 +410,7 @@ def register(parent):
     add_function_test(TestStreams, "test_stream_scope_synchronize", test_stream_scope_synchronize, devices=devices)
     add_function_test(TestStreams, "test_stream_scope_wait_event", test_stream_scope_wait_event, devices=devices)
     add_function_test(TestStreams, "test_stream_scope_wait_stream", test_stream_scope_wait_stream, devices=devices)
+    add_function_test(TestStreams, "test_stream_exceptions", test_stream_exceptions, devices=devices)
 
     if len(devices) > 1:
         add_function_test(TestStreams, "test_stream_arg_graph_mgpu", test_stream_arg_graph_mgpu)
@@ -392,5 +420,9 @@ def register(parent):
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
+
+    wp.force_load(wp.get_cuda_devices())
+
     unittest.main(verbosity=2)

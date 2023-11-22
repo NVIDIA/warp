@@ -22,7 +22,7 @@ classifiers = [
 dependencies = [
     "numpy",
 ]
-dynamic = ["version"]
+dynamic = ["version", "readme"]
 
 [project.urls]
 GitHub = "https://github.com/NVIDIA/warp"
@@ -30,13 +30,14 @@ Documentation = "https://nvidia.github.io/warp"
 Changelog = "https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-dev = ["flake8", "black", "isort", "nvtx", "furo"]
+dev = ["flake8", "black", "isort", "nvtx", "furo", "sphinx-copybutton"]
 
 [tool.setuptools.packages]
 find = {}
 
 [tool.setuptools.dynamic]
 version = {attr = "warp.config.version"}
+readme = {file = ["README.md"]}
 
 [tool.black]
 line-length = 120

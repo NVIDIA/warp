@@ -1,5 +1,6 @@
+import unittest
+
 import numpy as np
-import math
 
 import warp as wp
 from warp.tests.test_base import *
@@ -12,10 +13,9 @@ kernel_cache = dict()
 
 
 def getkernel(func, suffix=""):
-    module = wp.get_module(func.__module__)
     key = func.__name__ + "_" + suffix
     if key not in kernel_cache:
-        kernel_cache[key] = wp.Kernel(func=func, key=key, module=module)
+        kernel_cache[key] = wp.Kernel(func=func, key=key)
     return kernel_cache[key]
 
 
@@ -34,7 +34,7 @@ def get_select_kernel(dtype):
 
 
 def test_spatial_vector_constructors(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -81,7 +81,7 @@ def test_spatial_vector_constructors(test, device, dtype, register_kernels=False
     if register_kernels:
         return
 
-    input = wp.array(np.random.randn(6).astype(dtype), requires_grad=True, device=device)
+    input = wp.array(rng.standard_normal(size=6).astype(dtype), requires_grad=True, device=device)
     output = wp.zeros_like(input)
     wp.launch(kernel, dim=1, inputs=[input], outputs=[output], device=device)
 
@@ -99,7 +99,7 @@ def test_spatial_vector_constructors(test, device, dtype, register_kernels=False
         assert_np_equal(tape.gradients[input].numpy(), expectedgrads)
         tape.zero()
 
-    input = wp.array(np.random.randn(6).astype(dtype), requires_grad=True, device=device)
+    input = wp.array(rng.standard_normal(size=6).astype(dtype), requires_grad=True, device=device)
     output = wp.zeros_like(input)
     wp.launch(vec_kernel, dim=1, inputs=[input], outputs=[output], device=device)
 
@@ -119,7 +119,7 @@ def test_spatial_vector_constructors(test, device, dtype, register_kernels=False
 
 
 def test_spatial_vector_indexing(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -148,7 +148,9 @@ def test_spatial_vector_indexing(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    input = wp.array(np.random.randn(1, 6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
+    input = wp.array(
+        rng.standard_normal(size=(1, 6)).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device
+    )
     outcmps = wp.zeros(6, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(kernel, dim=1, inputs=[input], outputs=[outcmps], device=device)
@@ -169,7 +171,7 @@ def test_spatial_vector_indexing(test, device, dtype, register_kernels=False):
 
 
 def test_spatial_vector_scalar_multiplication(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -200,8 +202,10 @@ def test_spatial_vector_scalar_multiplication(test, device, dtype, register_kern
     if register_kernels:
         return
 
-    s = wp.array(np.random.randn(1).astype(dtype), requires_grad=True, device=device)
-    q = wp.array(np.random.randn(1, 6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
+    s = wp.array(rng.standard_normal(size=1).astype(dtype), requires_grad=True, device=device)
+    q = wp.array(
+        rng.standard_normal(size=(1, 6)).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device
+    )
 
     outcmps_l = wp.zeros(6, dtype=wptype, requires_grad=True, device=device)
     outcmps_r = wp.zeros(6, dtype=wptype, requires_grad=True, device=device)
@@ -237,7 +241,7 @@ def test_spatial_vector_scalar_multiplication(test, device, dtype, register_kern
 
 
 def test_spatial_vector_add_sub(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -265,8 +269,8 @@ def test_spatial_vector_add_sub(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    q = wp.array(np.random.randn(6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
-    v = wp.array(np.random.randn(6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
+    q = wp.array(rng.standard_normal(size=6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
+    v = wp.array(rng.standard_normal(size=6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
 
     outputs_add = wp.zeros(6, dtype=wptype, requires_grad=True, device=device)
     outputs_sub = wp.zeros(6, dtype=wptype, requires_grad=True, device=device)
@@ -313,7 +317,7 @@ def test_spatial_vector_add_sub(test, device, dtype, register_kernels=False):
 
 
 def test_spatial_dot(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 1.0e-2,
@@ -335,8 +339,8 @@ def test_spatial_dot(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    s = wp.array(np.random.randn(6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
-    v = wp.array(np.random.randn(6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
+    s = wp.array(rng.standard_normal(size=6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
+    v = wp.array(rng.standard_normal(size=6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
     dot = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
 
     tape = wp.Tape()
@@ -365,7 +369,7 @@ def test_spatial_dot(test, device, dtype, register_kernels=False):
 
 
 def test_spatial_cross(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -416,8 +420,8 @@ def test_spatial_cross(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    s = wp.array(np.random.randn(6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
-    v = wp.array(np.random.randn(6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
+    s = wp.array(rng.standard_normal(size=6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
+    v = wp.array(rng.standard_normal(size=6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
     outputs = wp.zeros(6, dtype=wptype, requires_grad=True, device=device)
     outputs_dual = wp.zeros(6, dtype=wptype, requires_grad=True, device=device)
     outputs_wcrossw = wp.zeros(3, dtype=wptype, requires_grad=True, device=device)
@@ -519,7 +523,7 @@ def test_spatial_cross(test, device, dtype, register_kernels=False):
 
 
 def test_spatial_top_bottom(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 1.0e-2,
@@ -551,7 +555,7 @@ def test_spatial_top_bottom(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    s = wp.array(np.random.randn(6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
+    s = wp.array(rng.standard_normal(size=6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
     outputs = wp.zeros(6, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(
@@ -588,7 +592,7 @@ def test_spatial_top_bottom(test, device, dtype, register_kernels=False):
 
 
 def test_transform_constructors(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -622,8 +626,8 @@ def test_transform_constructors(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    p = np.random.randn(3).astype(dtype)
-    q = np.random.randn(4).astype(dtype)
+    p = rng.standard_normal(size=3).astype(dtype)
+    q = rng.standard_normal(size=4).astype(dtype)
     q /= np.linalg.norm(q)
 
     input = wp.array(np.concatenate((p, q)), requires_grad=True, device=device)
@@ -647,7 +651,7 @@ def test_transform_constructors(test, device, dtype, register_kernels=False):
 
 
 def test_transform_indexing(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -676,7 +680,7 @@ def test_transform_indexing(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    input = wp.array(np.random.randn(1, 7).astype(dtype), dtype=transform, requires_grad=True, device=device)
+    input = wp.array(rng.standard_normal(size=(1, 7)).astype(dtype), dtype=transform, requires_grad=True, device=device)
     outcmps = wp.zeros(7, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(kernel, dim=1, inputs=[input], outputs=[outcmps], device=device)
@@ -696,7 +700,7 @@ def test_transform_indexing(test, device, dtype, register_kernels=False):
 
 
 def test_transform_scalar_multiplication(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -727,8 +731,8 @@ def test_transform_scalar_multiplication(test, device, dtype, register_kernels=F
     if register_kernels:
         return
 
-    s = wp.array(np.random.randn(1).astype(dtype), requires_grad=True, device=device)
-    q = wp.array(np.random.randn(1, 7).astype(dtype), dtype=transform, requires_grad=True, device=device)
+    s = wp.array(rng.standard_normal(size=1).astype(dtype), requires_grad=True, device=device)
+    q = wp.array(rng.standard_normal(size=(1, 7)).astype(dtype), dtype=transform, requires_grad=True, device=device)
 
     outcmps_l = wp.zeros(7, dtype=wptype, requires_grad=True, device=device)
     outcmps_r = wp.zeros(7, dtype=wptype, requires_grad=True, device=device)
@@ -764,7 +768,7 @@ def test_transform_scalar_multiplication(test, device, dtype, register_kernels=F
 
 
 def test_transform_add_sub(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -793,8 +797,8 @@ def test_transform_add_sub(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    q = wp.array(np.random.randn(7).astype(dtype), dtype=transform, requires_grad=True, device=device)
-    v = wp.array(np.random.randn(7).astype(dtype), dtype=transform, requires_grad=True, device=device)
+    q = wp.array(rng.standard_normal(size=7).astype(dtype), dtype=transform, requires_grad=True, device=device)
+    v = wp.array(rng.standard_normal(size=7).astype(dtype), dtype=transform, requires_grad=True, device=device)
 
     outputs_add = wp.zeros(7, dtype=wptype, requires_grad=True, device=device)
     outputs_sub = wp.zeros(7, dtype=wptype, requires_grad=True, device=device)
@@ -841,7 +845,7 @@ def test_transform_add_sub(test, device, dtype, register_kernels=False):
 
 
 def test_transform_get_trans_rot(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 1.0e-2,
@@ -874,7 +878,7 @@ def test_transform_get_trans_rot(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    s = wp.array(np.random.randn(7).astype(dtype), dtype=transform, requires_grad=True, device=device)
+    s = wp.array(rng.standard_normal(size=7).astype(dtype), dtype=transform, requires_grad=True, device=device)
     outputs = wp.zeros(7, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(
@@ -911,7 +915,7 @@ def test_transform_get_trans_rot(test, device, dtype, register_kernels=False):
 
 
 def test_transform_multiply(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 1.0e-2,
@@ -955,8 +959,8 @@ def test_transform_multiply(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    q = np.random.randn(7)
-    s = np.random.randn(7)
+    q = rng.standard_normal(size=7)
+    s = rng.standard_normal(size=7)
     q[3:] /= np.linalg.norm(q[3:])
     s[3:] /= np.linalg.norm(s[3:])
 
@@ -1020,7 +1024,7 @@ def test_transform_multiply(test, device, dtype, register_kernels=False):
 
 
 def test_transform_inverse(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 1.0e-2,
@@ -1059,8 +1063,8 @@ def test_transform_inverse(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    q = np.random.randn(7)
-    s = np.random.randn(7)
+    q = rng.standard_normal(size=7)
+    s = rng.standard_normal(size=7)
     q[3:] /= np.linalg.norm(q[3:])
     s[3:] /= np.linalg.norm(s[3:])
 
@@ -1113,7 +1117,7 @@ def test_transform_inverse(test, device, dtype, register_kernels=False):
 
 
 def test_transform_point_vector(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 1.0e-2,
@@ -1151,11 +1155,11 @@ def test_transform_point_vector(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    q = np.random.randn(7)
+    q = rng.standard_normal(size=7)
     q[3:] /= np.linalg.norm(q[3:])
 
     t = wp.array(q.astype(dtype), dtype=transform, requires_grad=True, device=device)
-    v = wp.array(np.random.randn(3), dtype=vec3, requires_grad=True, device=device)
+    v = wp.array(rng.standard_normal(size=3), dtype=vec3, requires_grad=True, device=device)
     outputs_pt = wp.zeros(3, dtype=wptype, requires_grad=True, device=device)
     outputs_pt_manual = wp.zeros(3, dtype=wptype, requires_grad=True, device=device)
     outputs_vec = wp.zeros(3, dtype=wptype, requires_grad=True, device=device)
@@ -1221,7 +1225,7 @@ def test_transform_point_vector(test, device, dtype, register_kernels=False):
 
 
 def test_spatial_matrix_constructors(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -1294,7 +1298,7 @@ def test_spatial_matrix_constructors(test, device, dtype, register_kernels=False
     if register_kernels:
         return
 
-    input = wp.array(np.random.randn(6 * 6).astype(dtype), requires_grad=True, device=device)
+    input = wp.array(rng.standard_normal(size=6 * 6).astype(dtype), requires_grad=True, device=device)
     output = wp.zeros(2 * 6 * 6, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(kernel, dim=1, inputs=[input], outputs=[output], device=device)
@@ -1317,7 +1321,7 @@ def test_spatial_matrix_constructors(test, device, dtype, register_kernels=False
 
 
 def test_spatial_matrix_indexing(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -1347,7 +1351,9 @@ def test_spatial_matrix_indexing(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    input = wp.array(np.random.randn(1, 6, 6).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device)
+    input = wp.array(
+        rng.standard_normal(size=(1, 6, 6)).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device
+    )
     outcmps = wp.zeros(6 * 6, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(kernel, dim=1, inputs=[input], outputs=[outcmps], device=device)
@@ -1370,7 +1376,7 @@ def test_spatial_matrix_indexing(test, device, dtype, register_kernels=False):
 
 
 def test_spatial_matrix_scalar_multiplication(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -1404,8 +1410,10 @@ def test_spatial_matrix_scalar_multiplication(test, device, dtype, register_kern
     if register_kernels:
         return
 
-    s = wp.array(np.random.randn(1).astype(dtype), requires_grad=True, device=device)
-    q = wp.array(np.random.randn(1, 6, 6).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device)
+    s = wp.array(rng.standard_normal(size=1).astype(dtype), requires_grad=True, device=device)
+    q = wp.array(
+        rng.standard_normal(size=(1, 6, 6)).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device
+    )
 
     outcmps_l = wp.zeros(6 * 6, dtype=wptype, requires_grad=True, device=device)
     outcmps_r = wp.zeros(6 * 6, dtype=wptype, requires_grad=True, device=device)
@@ -1444,7 +1452,7 @@ def test_spatial_matrix_scalar_multiplication(test, device, dtype, register_kern
 
 
 def test_spatial_matrix_add_sub(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -1476,8 +1484,12 @@ def test_spatial_matrix_add_sub(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    q = wp.array(np.random.randn(1, 6, 6).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device)
-    v = wp.array(np.random.randn(1, 6, 6).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device)
+    q = wp.array(
+        rng.standard_normal(size=(1, 6, 6)).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device
+    )
+    v = wp.array(
+        rng.standard_normal(size=(1, 6, 6)).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device
+    )
 
     outputs_add = wp.zeros(6 * 6, dtype=wptype, requires_grad=True, device=device)
     outputs_sub = wp.zeros(6 * 6, dtype=wptype, requires_grad=True, device=device)
@@ -1528,7 +1540,7 @@ def test_spatial_matrix_add_sub(test, device, dtype, register_kernels=False):
 
 
 def test_spatial_matvec_multiplication(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 2.0e-2,
@@ -1560,8 +1572,12 @@ def test_spatial_matvec_multiplication(test, device, dtype, register_kernels=Fal
     if register_kernels:
         return
 
-    v = wp.array(np.random.randn(1, 6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
-    m = wp.array(np.random.randn(1, 6, 6).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device)
+    v = wp.array(
+        rng.standard_normal(size=(1, 6)).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device
+    )
+    m = wp.array(
+        rng.standard_normal(size=(1, 6, 6)).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device
+    )
     outcomponents = wp.zeros(6, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(kernel, dim=1, inputs=[v, m], outputs=[outcomponents], device=device)
@@ -1585,7 +1601,7 @@ def test_spatial_matvec_multiplication(test, device, dtype, register_kernels=Fal
 
 
 def test_spatial_matmat_multiplication(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 2.0e-2,
@@ -1617,8 +1633,12 @@ def test_spatial_matmat_multiplication(test, device, dtype, register_kernels=Fal
     if register_kernels:
         return
 
-    v = wp.array(np.random.randn(1, 6, 6).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device)
-    m = wp.array(np.random.randn(1, 6, 6).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device)
+    v = wp.array(
+        rng.standard_normal(size=(1, 6, 6)).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device
+    )
+    m = wp.array(
+        rng.standard_normal(size=(1, 6, 6)).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device
+    )
     outcomponents = wp.zeros(6 * 6, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(kernel, dim=1, inputs=[v, m], outputs=[outcomponents], device=device)
@@ -1648,7 +1668,7 @@ def test_spatial_matmat_multiplication(test, device, dtype, register_kernels=Fal
 
 
 def test_spatial_mat_transpose(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 1.0e-2,
@@ -1679,7 +1699,9 @@ def test_spatial_mat_transpose(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    m = wp.array(np.random.randn(1, 6, 6).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device)
+    m = wp.array(
+        rng.standard_normal(size=(1, 6, 6)).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device
+    )
     outcomponents = wp.zeros(6 * 6, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(kernel, dim=1, inputs=[m], outputs=[outcomponents], device=device)
@@ -1703,7 +1725,7 @@ def test_spatial_mat_transpose(test, device, dtype, register_kernels=False):
 
 
 def test_spatial_outer_product(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -1735,8 +1757,12 @@ def test_spatial_outer_product(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    s = wp.array(np.random.randn(1, 6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
-    v = wp.array(np.random.randn(1, 6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
+    s = wp.array(
+        rng.standard_normal(size=(1, 6)).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device
+    )
+    v = wp.array(
+        rng.standard_normal(size=(1, 6)).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device
+    )
     outcomponents = wp.zeros(6 * 6, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(kernel, dim=1, inputs=[s, v], outputs=[outcomponents], device=device)
@@ -1779,7 +1805,7 @@ def test_spatial_outer_product(test, device, dtype, register_kernels=False):
 
 
 def test_spatial_adjoint(test, device, dtype, register_kernels=False):
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
 
     tol = {
         np.float16: 5.0e-3,
@@ -1811,8 +1837,8 @@ def test_spatial_adjoint(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    R = wp.array(np.random.randn(1, 3, 3).astype(dtype), dtype=mat3, requires_grad=True, device=device)
-    S = wp.array(np.random.randn(1, 3, 3).astype(dtype), dtype=mat3, requires_grad=True, device=device)
+    R = wp.array(rng.standard_normal(size=(1, 3, 3)).astype(dtype), dtype=mat3, requires_grad=True, device=device)
+    S = wp.array(rng.standard_normal(size=(1, 3, 3)).astype(dtype), dtype=mat3, requires_grad=True, device=device)
     outcomponents = wp.zeros(6 * 6, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(kernel, dim=1, inputs=[R, S], outputs=[outcomponents], device=device)
@@ -1895,6 +1921,8 @@ def test_transform_identity(test, device, dtype, register_kernels=False):
 
 
 def test_transform_anon_type_instance(test, device, dtype, register_kernels=False):
+    rng = np.random.default_rng(123)
+
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
 
     def transform_create_test(input: wp.array(dtype=wptype), output: wp.array(dtype=wptype)):
@@ -1910,7 +1938,7 @@ def test_transform_anon_type_instance(test, device, dtype, register_kernels=Fals
     if register_kernels:
         return
 
-    input = wp.array(np.random.randn(7).astype(dtype), requires_grad=True, device=device)
+    input = wp.array(rng.standard_normal(size=7).astype(dtype), requires_grad=True, device=device)
     output = wp.zeros(7, dtype=wptype, requires_grad=True, device=device)
     wp.launch(transform_create_kernel, dim=1, inputs=[input], outputs=[output], device=device)
     assert_np_equal(output.numpy(), 2 * input.numpy())
@@ -2111,5 +2139,5 @@ def register(parent):
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    c = register(unittest.TestCase)
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

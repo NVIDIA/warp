@@ -5,12 +5,13 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import unittest
+
 import numpy as np
 
 import warp as wp
 from warp.tests.test_base import *
 
-np.random.seed(532)
 
 wp.init()
 
@@ -72,6 +73,8 @@ def count_neighbors_reference(
 
 
 def test_hashgrid_query(test, device):
+    rng = np.random.default_rng(123)
+
     grid = wp.HashGrid(dim_x, dim_y, dim_z, device)
 
     for i in range(num_runs):
@@ -79,15 +82,14 @@ def test_hashgrid_query(test, device):
             print(f"Run: {i+1}")
             print("---------")
 
-        np.random.seed(532)
-        points = np.random.rand(num_points, 3) * scale - np.array((scale, scale, scale)) * 0.5
+        points = rng.random(size=(num_points, 3)) * scale - np.array((scale, scale, scale)) * 0.5
 
         def particle_grid(dim_x, dim_y, dim_z, lower, radius, jitter):
             points = np.meshgrid(
                 np.linspace(0, dim_x, dim_x), np.linspace(0, dim_y, dim_y), np.linspace(0, dim_z, dim_z)
             )
             points_t = np.array((points[0], points[1], points[2])).T * radius * 2.0 + np.array(lower)
-            points_t = points_t + np.random.rand(*points_t.shape) * radius * jitter
+            points_t = points_t + rng.random(size=points_t.shape) * radius * jitter
 
             return points_t.reshape((-1, 3))
 
@@ -97,27 +99,28 @@ def test_hashgrid_query(test, device):
         counts_arr = wp.zeros(len(points), dtype=int, device=device)
         counts_arr_ref = wp.zeros(len(points), dtype=int, device=device)
 
-        with wp.ScopedTimer("brute", active=print_enabled):
-            wp.launch(
-                kernel=count_neighbors_reference,
-                dim=len(points) * len(points),
-                inputs=[query_radius, points_arr, counts_arr_ref, len(points)],
-                device=device,
-            )
-            wp.synchronize()
+        profiler = {}
 
-        with wp.ScopedTimer("grid build", active=print_enabled):
-            grid.build(points_arr, cell_radius)
-            wp.synchronize()
+        with wp.ScopedTimer("grid operations", print=print_enabled, dict=profiler, synchronize=True):
+            with wp.ScopedTimer("brute", print=print_enabled, dict=profiler, synchronize=True):
+                wp.launch(
+                    kernel=count_neighbors_reference,
+                    dim=len(points) * len(points),
+                    inputs=[query_radius, points_arr, counts_arr_ref, len(points)],
+                    device=device,
+                )
+                wp.synchronize()
 
-        with wp.ScopedTimer("grid query", active=print_enabled):
-            wp.launch(
-                kernel=count_neighbors,
-                dim=len(points),
-                inputs=[grid.id, query_radius, points_arr, counts_arr],
-                device=device,
-            )
-            wp.synchronize()
+            with wp.ScopedTimer("grid build", print=print_enabled, dict=profiler, synchronize=True):
+                grid.build(points_arr, cell_radius)
+
+            with wp.ScopedTimer("grid query", print=print_enabled, dict=profiler, synchronize=True):
+                wp.launch(
+                    kernel=count_neighbors,
+                    dim=len(points),
+                    inputs=[grid.id, query_radius, points_arr, counts_arr],
+                    device=device,
+                )
 
         counts = counts_arr.numpy()
         counts_ref = counts_arr_ref.numpy()
@@ -143,5 +146,7 @@ def register(parent):
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    wp.force_load()
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2, failfast=False)

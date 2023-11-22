@@ -5,14 +5,14 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
+import unittest
+
 import numpy as np
 import math
 
 import warp as wp
 from warp.tests.test_base import *
 
-np.random.seed(42)
 
 wp.init()
 
@@ -237,9 +237,11 @@ def sample_mesh_brute(
 
 # constructs a grid of evenly spaced particles
 def particle_grid(dim_x, dim_y, dim_z, lower, radius, jitter):
+    rng = np.random.default_rng(123)
+
     points = np.meshgrid(np.linspace(0, dim_x, dim_x), np.linspace(0, dim_y, dim_y), np.linspace(0, dim_z, dim_z))
     points_t = np.array((points[0], points[1], points[2])).T * radius * 2.0 + np.array(lower)
-    points_t = points_t + np.random.rand(*points_t.shape) * radius * jitter
+    points_t = points_t + rng.random(points_t.shape) * radius * jitter
 
     return points_t.reshape((-1, 3))
 
@@ -557,6 +559,73 @@ def test_adj_mesh_query_point(test, device):
     test.assertTrue(error < tolerance, f"error is {error} which is >= {tolerance}")
 
 
+@wp.kernel
+def sample_furthest_points(mesh: wp.uint64, query_points: wp.array(dtype=wp.vec3), query_result: wp.array(dtype=float)):
+    tid = wp.tid()
+
+    p = query_points[tid]
+
+    face = int(0)
+    bary_u = float(0.0)
+    bary_v = float(0.0)
+
+    if wp.mesh_query_furthest_point_no_sign(mesh, p, 0.0, face, bary_u, bary_v):
+        closest = wp.mesh_eval_position(mesh, face, bary_u, bary_v)
+
+        query_result[tid] = wp.length_sq(p - closest)
+
+
+@wp.kernel
+def sample_furthest_points_brute(
+    mesh_points: wp.array(dtype=wp.vec3), query_points: wp.array(dtype=wp.vec3), query_result: wp.array(dtype=float)
+):
+    tid = wp.tid()
+
+    p = query_points[tid]
+    max_dist_sq = float(0.0)
+
+    for i in range(mesh_points.shape[0]):
+        dist_sq = wp.length_sq(p - mesh_points[i])
+
+        if dist_sq > max_dist_sq:
+            max_dist_sq = dist_sq
+
+    query_result[tid] = max_dist_sq
+
+
+def test_mesh_query_furthest_point(test, device):
+    from pxr import Usd, UsdGeom
+
+    mesh = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/spiky.usd")))
+    mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/Cube/Cube"))
+
+    mesh_counts = mesh_geom.GetFaceVertexCountsAttr().Get()
+    mesh_indices = mesh_geom.GetFaceVertexIndicesAttr().Get()
+
+    tri_indices = triangulate(mesh_counts, mesh_indices)
+
+    mesh_points = wp.array(np.array(mesh_geom.GetPointsAttr().Get()), dtype=wp.vec3, device=device)
+    mesh_indices = wp.array(np.array(tri_indices), dtype=int, device=device)
+
+    # create mesh
+    mesh = wp.Mesh(points=mesh_points, indices=mesh_indices)
+
+    p = particle_grid(32, 32, 32, np.array([-1.1, -1.1, -1.1]), 0.05, 0.0)
+
+    query_count = len(p)
+    query_points = wp.array(p, dtype=wp.vec3, device=device)
+
+    dist_query = wp.zeros(query_count, dtype=float, device=device)
+    dist_brute = wp.zeros(query_count, dtype=float, device=device)
+
+    wp.launch(sample_furthest_points, dim=query_count, inputs=[mesh.id, query_points, dist_query], device=device)
+    wp.launch(
+        sample_furthest_points_brute, dim=query_count, inputs=[mesh_points, query_points, dist_brute], device=device
+    )
+
+    assert_np_equal(dist_query.numpy(), dist_brute.numpy(), tol=1.0e-3)
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -573,12 +642,16 @@ def register(parent):
 
     if have_usd:
         add_function_test(TestMeshQuery, "test_mesh_query_point", test_mesh_query_point, devices=devices)
+        add_function_test(
+            TestMeshQuery, "test_mesh_query_furthest_point", test_mesh_query_furthest_point, devices=devices
+        )
         add_function_test(TestMeshQuery, "test_adj_mesh_query_point", test_adj_mesh_query_point, devices=devices)
 
     return TestMeshQuery
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
 
     unittest.main(verbosity=2)

@@ -359,6 +359,7 @@ WP_API int load_obj(const char* object_file, const char* module_name)
             SYMBOL(log10f), SYMBOL_T(log10, double(*)(double)),
             SYMBOL(expf), SYMBOL_T(exp, double(*)(double)),
             SYMBOL(sqrtf), SYMBOL_T(sqrt, double(*)(double)),
+            SYMBOL(cbrtf), SYMBOL_T(cbrt, double(*)(double)),
             SYMBOL(powf), SYMBOL_T(pow, double(*)(double, double)),
             SYMBOL(floorf), SYMBOL_T(floor, double(*)(double)),
             SYMBOL(ceilf), SYMBOL_T(ceil, double(*)(double)),

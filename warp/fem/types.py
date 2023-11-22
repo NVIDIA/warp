@@ -1,13 +1,9 @@
 import warp as wp
 
-
-vec1i = wp.types.vector(length=1, dtype=wp.int32)
-vec2i = wp.types.vector(length=2, dtype=wp.int32)
-vec3i = wp.types.vector(length=3, dtype=wp.int32)
-vec4i = wp.types.vector(length=4, dtype=wp.int32)
-vec8i = wp.types.vector(length=8, dtype=wp.int32)
-
-vec6 = wp.types.vector(length=6, dtype=wp.float32)
+# kept to avoid breaking existing example code, no longer used internally
+vec2i = wp.vec2i
+vec3i = wp.vec3i
+vec4i = wp.vec4i
 
 Coords = wp.vec3
 OUTSIDE = wp.constant(-1.0e8)
@@ -20,7 +16,7 @@ NULL_ELEMENT_INDEX = wp.constant(-1)
 NULL_QP_INDEX = wp.constant(-1)
 NULL_NODE_INDEX = wp.constant(-1)
 
-DofIndex = vec2i
+DofIndex = wp.vec2i
 """Opaque descriptor for indexing degrees of freedom within elements"""
 NULL_DOF_INDEX = wp.constant(DofIndex(-1, -1))
 
@@ -59,12 +55,18 @@ class Sample:
     """For bilinear form assembly, index of the trial degree-of-freedom currently being considered"""
 
 
+@wp.func
+def make_free_sample(element_index: ElementIndex, element_coords: Coords):
+    """Returns a :class:`Sample` that is not associated to any quadrature point or dof"""
+    return Sample(element_index, element_coords, NULL_QP_INDEX, 0.0, NULL_DOF_INDEX, NULL_DOF_INDEX)
+
+
 class Field:
     """
     Tag for field-like integrand arguments
     """
 
-    call_operator: "wp.fem.Operator" = None  # Set in operator.py
+    call_operator: "warp.fem.operator.Operator" = None  # Set in operator.py
 
 
 class Domain:
@@ -72,4 +74,4 @@ class Domain:
     Tag for domain-like integrand arguments
     """
 
-    call_operator: "wp.fem.Operator" = None  # Set in operator.py
+    call_operator: "warp.fem.operator.Operator" = None  # Set in operator.py

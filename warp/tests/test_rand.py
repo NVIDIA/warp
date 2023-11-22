@@ -5,6 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import unittest
+
 import numpy as np
 
 # import matplotlib.pyplot as plt
@@ -243,10 +245,10 @@ def test_poisson(test, device):
     # _ = plt.hist(poisson_high.numpy(), bins)
     # plt.show()
 
-    np.random.default_rng(seed)
+    rng = np.random.default_rng(seed)
 
-    np_poisson_low = np.random.poisson(3.0, N)
-    np_poisson_high = np.random.poisson(42.0, N)
+    np_poisson_low = rng.poisson(lam=3.0, size=N)
+    np_poisson_high = rng.poisson(lam=42.0, size=N)
 
     poisson_low_mean = np.mean(poisson_low.numpy())
     np_poisson_low_mean = np.mean(np_poisson_low)
@@ -282,5 +284,6 @@ def register(parent):
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

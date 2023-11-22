@@ -5,12 +5,13 @@
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Devices" href="modules/devices.html" /><link rel="prev" title="Installation" href="installation.html" />
 
-    <!-- Generated with Sphinx 7.2.2 and Furo 2023.08.19 -->
-        <title>Basics - Warp 1.0.0-beta.2</title>
+    <!-- Generated with Sphinx 7.2.6 and Furo 2023.08.19 -->
+        <title>Basics - Warp 1.0.0-beta.5</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=112ea5a1" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=44d7c754" />
     
     
 
@@ -136,7 +137,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Warp 1.0.0-beta.2</div></a>
+      <a href="index.html"><div class="brand">Warp 1.0.0-beta.5</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -163,7 +164,7 @@
     <img class="sidebar-logo only-dark" src="_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 1.0.0-beta.2</span>
+  <span class="sidebar-brand-text">Warp 1.0.0-beta.5</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -176,9 +177,10 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Basics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/devices.html">Devices</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modules/profiling.html">Profiling</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Runtime Settings</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
@@ -253,7 +255,7 @@ Kernel cache: C:\Users\mmacklin\AppData\Local\NVIDIA Corporation\warp\Cache\1.0.
 </section>
 <section id="kernels">
 <h2>Kernels<a class="headerlink" href="#kernels" title="Link to this heading">#</a></h2>
-<p>In Warp, compute kernels are defined as Python functions, and annotated with the <code class="docutils literal notranslate"><span class="pre">&#64;warp.kernel</span></code> decorator, as follows:</p>
+<p>In Warp, compute kernels are defined as Python functions and annotated with the <code class="docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code> decorator, as follows:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span> <span class="nf">simple_kernel</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">),</span>
                   <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">),</span>
@@ -273,11 +275,12 @@ Kernel cache: C:\Users\mmacklin\AppData\Local\NVIDIA Corporation\warp\Cache\1.0.
     <span class="n">c</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span>
 </pre></div>
 </div>
-<p>Because Warp kernels are compiled to native C++/CUDA code all the function input arguments must be statically typed. This allows
-Warp to generate fast code that executes at essentially at native speeds. Because kernels may be run on either the CPU
+<p>Because Warp kernels are compiled to native C++/CUDA code, all the function input arguments must be statically typed. This allows
+Warp to generate fast code that executes at essentially native speeds. Because kernels may be run on either the CPU
 or GPU, they cannot access arbitrary global state from the Python environment. Instead they must read and write data
 through their input parameters such as arrays.</p>
-<p>Warp kernels functions have a 1:1 correspondence with CUDA kernels, to launch a kernel with 1024 threads, we use <code class="docutils literal notranslate"><span class="pre">wp.launch()</span></code> as follows:</p>
+<p>Warp kernels functions have a 1:1 correspondence with CUDA kernels, to launch a kernel with 1024 threads, we use
+<a class="reference internal" href="modules/runtime.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> as follows:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">simple_kernel</span><span class="p">,</span> <span class="c1"># kernel to launch</span>
           <span class="n">dim</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>             <span class="c1"># number of threads</span>
           <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">],</span>     <span class="c1"># parameters</span>
@@ -304,10 +307,51 @@ through their input parameters such as arrays.</p>
 <span class="n">color</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
 </pre></div>
 </div>
+<section id="example-changing-the-kernel-cache-directory">
+<span id="example-cache-management"></span><h3>Example: Changing the kernel cache directory<a class="headerlink" href="#example-changing-the-kernel-cache-directory" title="Link to this heading">#</a></h3>
+<p>The following example illustrates how the location for generated and compiled
+kernel code can be changed before and after calling <code class="docutils literal notranslate"><span class="pre">wp.init()</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">import</span> <span class="nn">warp</span> <span class="k">as</span> <span class="nn">wp</span>
+
+<span class="n">example_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span>
+
+<span class="c1"># set default cache directory before wp.init()</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">kernel_cache_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">example_dir</span><span class="p">,</span> <span class="s2">&quot;tmp&quot;</span><span class="p">,</span> <span class="s2">&quot;warpcache1&quot;</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;+++ Current cache directory: &quot;</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">kernel_cache_dir</span><span class="p">)</span>
+
+<span class="c1"># change cache directory after wp.init()</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">build</span><span class="o">.</span><span class="n">init_kernel_cache</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">example_dir</span><span class="p">,</span> <span class="s2">&quot;tmp&quot;</span><span class="p">,</span> <span class="s2">&quot;warpcache2&quot;</span><span class="p">))</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;+++ Current cache directory: &quot;</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">kernel_cache_dir</span><span class="p">)</span>
+
+<span class="c1"># clear kernel cache (forces fresh kernel builds every time)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">build</span><span class="o">.</span><span class="n">clear_kernel_cache</span><span class="p">()</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span> <span class="nf">basic</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">x</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">tid</span><span class="p">)</span>
+
+
+<span class="n">device</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span>
+<span class="n">n</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">basic</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+</div>
+</section>
 </section>
 <section id="arrays">
 <h2>Arrays<a class="headerlink" href="#arrays" title="Link to this heading">#</a></h2>
-<p>Memory allocations are exposed via the <code class="docutils literal notranslate"><span class="pre">warp.array</span></code> type. Arrays wrap an underlying memory allocation that may live in
+<p>Memory allocations are exposed via the <code class="docutils literal notranslate"><span class="pre">wp.array</span></code> type. Arrays wrap an underlying memory allocation that may live in
 either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in values
 (<code class="docutils literal notranslate"><span class="pre">float,</span></code>, <code class="docutils literal notranslate"><span class="pre">int</span></code>, <code class="docutils literal notranslate"><span class="pre">vec3</span></code>, <code class="docutils literal notranslate"><span class="pre">matrix33</span></code>, etc).</p>
 <p>Arrays can be allocated similar to PyTorch:</p>
@@ -325,8 +369,8 @@ either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a
 </div>
 <p>By default, Warp arrays that are initialized from external data (e.g.: NumPy, Lists, Tuples) will create a copy the data to new memory for the
 device specified. However, it is possible for arrays to alias external memory using the <code class="docutils literal notranslate"><span class="pre">copy=False</span></code> parameter to the
-array constructor provided the input is contiguous and on the same device. See the <a class="reference internal" href="modules/interoperability.html#interopability"><span class="std std-ref">Interoperability</span></a> section for more details on sharing
-memory with external frameworks.</p>
+array constructor provided the input is contiguous and on the same device. See the <a class="reference internal" href="modules/interoperability.html"><span class="doc">Interoperability</span></a>
+section for more details on sharing memory with external frameworks.</p>
 <p>To read GPU array data back to CPU memory we can use the <code class="docutils literal notranslate"><span class="pre">array.numpy()</span></code> method:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># bring data from device back to host</span>
 <span class="n">view</span> <span class="o">=</span> <span class="n">device_array</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
@@ -338,10 +382,10 @@ a zero-copy NumPy view onto the Warp data.</p>
 </section>
 <section id="user-functions">
 <h2>User Functions<a class="headerlink" href="#user-functions" title="Link to this heading">#</a></h2>
-<p>Users can write their own functions using the <code class="docutils literal notranslate"><span class="pre">wp.func</span></code> decorator, for example:</p>
+<p>Users can write their own functions using the <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> decorator, for example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
 <span class="k">def</span> <span class="nf">square</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
-   <span class="k">return</span> <span class="n">x</span><span class="o">*</span><span class="n">x</span>
+    <span class="k">return</span> <span class="n">x</span><span class="o">*</span><span class="n">x</span>
 </pre></div>
 </div>
 <p>User functions can be called freely from within kernels inside the same module and accept arrays as inputs.</p>
@@ -377,17 +421,9 @@ a zero-copy NumPy view onto the Warp data.</p>
 </pre></div>
 </div>
 </section>
-<section id="unsupported-features">
-<h3>Unsupported Features<a class="headerlink" href="#unsupported-features" title="Link to this heading">#</a></h3>
-<p>To achieve good performance on GPUs some dynamic language features are not supported:</p>
-<ul class="simple">
-<li><p>Lambda functions</p></li>
-<li><p>List comprehensions</p></li>
-<li><p>Exceptions</p></li>
-<li><p>Recursion</p></li>
-<li><p>Runtime evaluation of expressions, e.g.: eval()</p></li>
-<li><p>Dynamic structures such as lists, sets, dictionaries, etc</p></li>
-</ul>
+<section id="limitations-and-unsupported-features">
+<h3>Limitations and Unsupported Features<a class="headerlink" href="#limitations-and-unsupported-features" title="Link to this heading">#</a></h3>
+<p>See <a class="reference internal" href="limitations.html"><span class="doc">Limitations</span></a> for a list of Warp limitations and unsupported features.</p>
 </section>
 </section>
 </section>
@@ -455,14 +491,17 @@ a zero-copy NumPy view onto the Warp data.</p>
             <ul>
 <li><a class="reference internal" href="#">Basics</a><ul>
 <li><a class="reference internal" href="#initialization">Initialization</a></li>
-<li><a class="reference internal" href="#kernels">Kernels</a></li>
+<li><a class="reference internal" href="#kernels">Kernels</a><ul>
+<li><a class="reference internal" href="#example-changing-the-kernel-cache-directory">Example: Changing the kernel cache directory</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#arrays">Arrays</a></li>
 <li><a class="reference internal" href="#user-functions">User Functions</a></li>
 <li><a class="reference internal" href="#compilation-model">Compilation Model</a></li>
 <li><a class="reference internal" href="#language-details">Language Details</a><ul>
 <li><a class="reference internal" href="#built-in-types">Built-in Types</a></li>
 <li><a class="reference internal" href="#strong-typing">Strong Typing</a></li>
-<li><a class="reference internal" href="#unsupported-features">Unsupported Features</a></li>
+<li><a class="reference internal" href="#limitations-and-unsupported-features">Limitations and Unsupported Features</a></li>
 </ul>
 </li>
 </ul>
@@ -476,9 +515,11 @@ a zero-copy NumPy view onto the Warp data.</p>
       
     </aside>
   </div>
-</div><script src="_static/documentation_options.js?v=5929fcd5"></script>
+</div><script src="_static/documentation_options.js?v=f0dcd5a7"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=32e29ea5"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=fd10adb8"></script>
     </body>
 </html>

@@ -5,12 +5,13 @@
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Basics" href="basics.html" /><link rel="prev" title="NVIDIA Warp Documentation" href="index.html" />
 
-    <!-- Generated with Sphinx 7.2.2 and Furo 2023.08.19 -->
-        <title>Installation - Warp 1.0.0-beta.2</title>
+    <!-- Generated with Sphinx 7.2.6 and Furo 2023.08.19 -->
+        <title>Installation - Warp 1.0.0-beta.5</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=112ea5a1" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=44d7c754" />
     
     
 
@@ -136,7 +137,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Warp 1.0.0-beta.2</div></a>
+      <a href="index.html"><div class="brand">Warp 1.0.0-beta.5</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -163,7 +164,7 @@
     <img class="sidebar-logo only-dark" src="_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 1.0.0-beta.2</span>
+  <span class="sidebar-brand-text">Warp 1.0.0-beta.5</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -176,9 +177,10 @@
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/devices.html">Devices</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modules/profiling.html">Profiling</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Runtime Settings</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
@@ -232,7 +234,7 @@
         <article role="main">
           <section id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h1>
-<p>The easiest way is to install Warp is from PyPi:</p>
+<p>The easiest way is to install Warp is from <a class="reference external" href="https://pypi.org/project/warp-lang">PyPi</a>:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>warp-lang
 </pre></div>
 </div>
@@ -242,53 +244,69 @@
 </div>
 <section id="dependencies">
 <h2>Dependencies<a class="headerlink" href="#dependencies" title="Link to this heading">#</a></h2>
-<p>Warp supports Python versions 3.7.x onwards, and requires the following dependencies to be installed:</p>
+<p>Warp supports Python versions 3.7 or later and requires <a class="reference external" href="https://numpy.org">NumPy</a> to be installed.</p>
+<p>The following optional dependencies are required to support certain features:</p>
 <ul class="simple">
-<li><p><a class="reference external" href="https://numpy.org">NumPy</a></p></li>
+<li><p><a class="reference external" href="https://pypi.org/project/usd-core">usd-core</a>: Required for some Warp examples, <code class="docutils literal notranslate"><span class="pre">warp.sim.parse_usd()</span></code>, and <code class="docutils literal notranslate"><span class="pre">warp.render.UsdRenderer</span></code>.</p></li>
+<li><p><a class="reference external" href="https://jax.readthedocs.io/en/latest/installation.html">JAX</a>: Required for JAX interoperability (see <a class="reference internal" href="modules/interoperability.html#jax-interop"><span class="std std-ref">JAX</span></a>).</p></li>
+<li><p><a class="reference external" href="https://pytorch.org/get-started/locally/">PyTorch</a>: Required for PyTorch interoperability (see <a class="reference internal" href="modules/interoperability.html#pytorch-interop"><span class="std std-ref">PyTorch</span></a>).</p></li>
+<li><p><a class="reference external" href="https://github.com/NVIDIA/NVTX#python">NVTX for Python</a>: Required to use <a class="reference internal" href="modules/runtime.html#warp.ScopedTimer" title="warp.ScopedTimer"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedTimer(use_nvtx=True)</span></code></a>.</p></li>
 </ul>
-<p>The following dependencies may be required to enable certain features:</p>
-<ul class="simple">
-<li><p>JAX</p></li>
-<li><p>PyTorch: Required for PyTorch interoperability (see <a class="reference internal" href="modules/interoperability.html#pytorch-interop"><span class="std std-ref">PyTorch</span></a>)</p></li>
-<li><p>NVTX for Python</p></li>
-</ul>
-<p>Building the Warp documentation requires the following dependencies:</p>
+<p>Building the Warp documentation requires:</p>
 <ul class="simple">
 <li><p><a class="reference external" href="https://www.sphinx-doc.org">Sphinx</a></p></li>
 <li><p><a class="reference external" href="https://github.com/pradyunsg/furo">Furo</a></p></li>
+<li><p><a class="reference external" href="https://sphinx-copybutton.readthedocs.io/en/latest/index.html">Sphinx-copybutton</a></p></li>
 </ul>
 </section>
 <section id="building-from-source">
 <h2>Building from source<a class="headerlink" href="#building-from-source" title="Link to this heading">#</a></h2>
-<p>For developers who want to build the library themselves the following
-tools are required:</p>
+<p>For developers who want to build the library themselves the following tools are required:</p>
 <ul class="simple">
-<li><p>Microsoft Visual Studio 2019 upwards (Windows)</p></li>
-<li><p>GCC 7.2 upwards (Linux)</p></li>
-<li><p><a class="reference external" href="https://developer.nvidia.com/cuda-toolkit">CUDA Toolkit</a> 11.5 or higher</p></li>
+<li><p>Microsoft Visual Studio (Windows), minimum version 2019</p></li>
+<li><p>GCC (Linux), minimum version 7.2</p></li>
+<li><p><a class="reference external" href="https://developer.nvidia.com/cuda-toolkit">CUDA Toolkit</a>, minimum version 11.5</p></li>
 <li><p><a class="reference external" href="https://git-lfs.com">Git Large File Storage</a></p></li>
 </ul>
+<p>If you are cloning from Windows, please first ensure that you have
+enabled “Developer Mode” in Windows settings and symlinks in Git:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>core.symlinks<span class="w"> </span><span class="nb">true</span>
+</pre></div>
+</div>
+<p>This will ensure symlinks inside <code class="docutils literal notranslate"><span class="pre">exts/omni.warp.core</span></code> work upon cloning.</p>
 <p>After cloning the repository, users should run:</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>python<span class="w"> </span>build_lib.py
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>python<span class="w"> </span>build_lib.py
 </pre></div>
 </div>
 <p>This will generate the <code class="docutils literal notranslate"><span class="pre">warp.dll</span></code> / <code class="docutils literal notranslate"><span class="pre">warp.so</span></code> core library
-respectively. When building manually users should ensure that their
-CUDA_PATH environment variable is set, otherwise Warp will be built
-without CUDA support. Alternatively, the path to the CUDA toolkit can be
-passed to the build command as <code class="docutils literal notranslate"><span class="pre">--cuda_path=&quot;...&quot;</span></code>. After building the
+respectively. When building manually, users should ensure that their
+<code class="docutils literal notranslate"><span class="pre">CUDA_PATH</span></code> environment variable is set, otherwise Warp will be built
+without CUDA support. Alternatively, the path to the CUDA Toolkit can be
+passed to the build command as <code class="docutils literal notranslate"><span class="pre">--cuda_path=&quot;...&quot;</span></code>. After building, the
 Warp package should be installed using:</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
 </pre></div>
 </div>
 <p>Which ensures that subsequent modifications to the library will be
 reflected in the Python package.</p>
-<p>If you are cloning from Windows, please first ensure that you have
-enabled “Developer Mode” in Windows settings and symlinks in git:</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>core.symlinks<span class="w"> </span><span class="nb">true</span>
-</pre></div>
-</div>
-<p>This will ensure symlinks inside <code class="docutils literal notranslate"><span class="pre">exts/omni.warp</span></code> work upon cloning.</p>
+</section>
+<section id="conda-environments">
+<h2>Conda environments<a class="headerlink" href="#conda-environments" title="Link to this heading">#</a></h2>
+<p>Some modules, such as <code class="docutils literal notranslate"><span class="pre">usd-core</span></code>, don’t support the latest Python version.
+To manage running Warp and other projects on different Python versions one can
+make use of an environment management system such as
+<a class="reference external" href="https://docs.conda.io/">Conda</a>.</p>
+<p><strong>WARNING:</strong> When building and running Warp in a different environment, make sure
+the build environment has the same C++ runtime library version, or an older
+one, than the execution environment. Otherwise Warp’s shared libraries may end
+up looking for a newer runtime library version than the one available in the
+execution environment. For example on Linux this error could occur:</p>
+<p><code class="docutils literal notranslate"><span class="pre">OSError:</span> <span class="pre">&lt;...&gt;/libstdc++.so.6:</span> <span class="pre">version</span> <span class="pre">`GLIBCXX_3.4.30'</span> <span class="pre">not</span> <span class="pre">found</span> <span class="pre">(required</span> <span class="pre">by</span> <span class="pre">&lt;...&gt;/warp/warp/bin/warp.so)</span></code></p>
+<p>This can be solved by installing a newer C++ runtime version in the runtime
+conda environment using <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span> <span class="pre">-c</span> <span class="pre">conda-forge</span> <span class="pre">libstdcxx-ng=12.1</span></code> or
+newer. Or, the build environment’s C++ toolchain can be downgraded using
+<code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span> <span class="pre">-c</span> <span class="pre">conda-forge</span> <span class="pre">libstdcxx-ng=8.5</span></code>. Or, one can <code class="docutils literal notranslate"><span class="pre">activate</span></code> or
+<code class="docutils literal notranslate"><span class="pre">deactivate</span></code> conda environments as needed for building vs. running Warp.</p>
 </section>
 </section>
 
@@ -356,6 +374,7 @@ enabled “Developer Mode” in Windows settings and symlinks in git:</p>
 <li><a class="reference internal" href="#">Installation</a><ul>
 <li><a class="reference internal" href="#dependencies">Dependencies</a></li>
 <li><a class="reference internal" href="#building-from-source">Building from source</a></li>
+<li><a class="reference internal" href="#conda-environments">Conda environments</a></li>
 </ul>
 </li>
 </ul>
@@ -367,9 +386,11 @@ enabled “Developer Mode” in Windows settings and symlinks in git:</p>
       
     </aside>
   </div>
-</div><script src="_static/documentation_options.js?v=5929fcd5"></script>
+</div><script src="_static/documentation_options.js?v=f0dcd5a7"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=32e29ea5"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=fd10adb8"></script>
     </body>
 </html>

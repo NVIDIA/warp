@@ -135,8 +135,6 @@ def solve_particle_shape_contacts(
     body_delta: wp.array(dtype=wp.spatial_vector),
 ):
     tid = wp.tid()
-    if (particle_flags[tid] & PARTICLE_FLAG_ACTIVE) == 0:
-        return
 
     count = min(contact_max, contact_count[0])
     if tid >= count:
@@ -145,6 +143,9 @@ def solve_particle_shape_contacts(
     shape_index = contact_shape[tid]
     body_index = shape_body[shape_index]
     particle_index = contact_particle[tid]
+
+    if (particle_flags[particle_index] & PARTICLE_FLAG_ACTIVE) == 0:
+        return
 
     px = particle_x[particle_index]
     pv = particle_v[particle_index]
@@ -161,7 +162,7 @@ def solve_particle_shape_contacts(
     r = bx - wp.transform_point(X_wb, X_com)
 
     n = contact_normal[tid]
-    c = wp.dot(n, px - bx) - particle_radius[tid]
+    c = wp.dot(n, px - bx) - particle_radius[particle_index]
 
     if c > particle_ka:
         return

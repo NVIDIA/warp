@@ -5,30 +5,28 @@ This example illustrates using domain decomposition to solve a diffusion PDE ove
 from typing import Tuple
 
 import warp as wp
-
-from warp.fem.types import *
-from warp.fem.geometry import Grid2D, LinearGeometryPartition
-from warp.fem.space import make_polynomial_space, make_space_partition
-from warp.fem.field import make_test, make_trial
-from warp.fem.domain import Cells, BoundarySides
-from warp.fem.integrate import integrate
-from warp.fem.operator import integrand
+import warp.fem as fem
 
 from warp.sparse import bsr_axpy, bsr_mv
 from warp.utils import array_cast
 
-from example_diffusion import linear_form, diffusion_form
-from bsr_utils import bsr_cg
-from plot_utils import plot_grid_surface
+# Import example utilities
+# Make sure that works both when imported as module and run as standalone file
+try:
+    from .example_diffusion import linear_form, diffusion_form
+    from .bsr_utils import bsr_cg
+    from .plot_utils import Plot
+except ImportError:
+    from example_diffusion import linear_form, diffusion_form
+    from bsr_utils import bsr_cg
+    from plot_utils import Plot
 
-import matplotlib.pyplot as plt
 
-
-@integrand
+@fem.integrand
 def mass_form(
-    s: Sample,
-    u: Field,
-    v: Field,
+    s: fem.Sample,
+    u: fem.Field,
+    v: fem.Field,
 ):
     return u(s) * v(s)
 
@@ -96,77 +94,100 @@ def mv_routine(A: DistributedSystem, x: wp.array, y: wp.array, alpha=1.0, beta=0
         wp.launch(kernel=sum_kernel, dim=idx.shape, device=y_idx.device, inputs=[y_idx, tmp_i], stream=stream)
 
 
+class Example:
+    def __init__(self, stage=None, quiet=False):
+        self._bd_weight = 100.0
+        self._quiet = quiet
+
+        self._geo = fem.Grid2D(res=wp.vec2i(25))
+        self._scalar_space = fem.make_polynomial_space(self._geo, degree=3)
+        self._scalar_field = self._scalar_space.make_field()
+
+        self.renderer = Plot(stage)
+
+    def update(self):
+        devices = wp.get_cuda_devices()
+        main_device = devices[0]
+
+        rhs_vecs = []
+        res_vecs = []
+        matrices = []
+        indices = []
+
+        # Build local system for each device
+        for k, device in enumerate(devices):
+            with wp.ScopedDevice(device):
+                # Construct the partition corresponding to the k'th device
+                geo_partition = fem.LinearGeometryPartition(self._geo, k, len(devices))
+                matrix, rhs, partition_node_indices = self._assemble_local_system(geo_partition)
+
+                rhs_vecs.append(rhs)
+                res_vecs.append(wp.empty_like(rhs))
+                matrices.append(matrix)
+                indices.append(partition_node_indices.to(main_device))
+
+        # Global rhs as sum of all local rhs
+        glob_rhs = wp.zeros(n=self._scalar_space.node_count(), dtype=wp.float64, device=main_device)
+        tmp = wp.empty_like(glob_rhs)
+        sum_vecs(rhs_vecs, indices, glob_rhs, tmp)
+
+        # Distributed CG
+        global_res = wp.zeros_like(glob_rhs)
+        A = DistributedSystem()
+        A.device = device
+        A.scalar_type = glob_rhs.dtype
+        A.nrow = self._scalar_space.node_count()
+        A.shape = (A.nrow, A.nrow)
+        A.tmp_buf = tmp
+        A.rank_data = (matrices, rhs_vecs, res_vecs, indices)
+
+        with wp.ScopedDevice(main_device):
+            bsr_cg(
+                A,
+                x=global_res,
+                b=glob_rhs,
+                use_diag_precond=False,
+                quiet=self._quiet,
+                mv_routine=mv_routine,
+                device=main_device,
+            )
+
+        array_cast(in_array=global_res, out_array=self._scalar_field.dof_values)
+
+    def render(self):
+        self.renderer.add_surface("solution", self._scalar_field)
+
+    def _assemble_local_system(self, geo_partition: fem.GeometryPartition):
+        scalar_space = self._scalar_space
+        space_partition = fem.make_space_partition(scalar_space, geo_partition)
+
+        domain = fem.Cells(geometry=geo_partition)
+
+        # Right-hand-side
+        test = fem.make_test(space=scalar_space, space_partition=space_partition, domain=domain)
+        rhs = fem.integrate(linear_form, fields={"v": test})
+
+        # Weakly-imposed boundary conditions on all sides
+        boundary = fem.BoundarySides(geometry=geo_partition)
+        bd_test = fem.make_test(space=scalar_space, space_partition=space_partition, domain=boundary)
+        bd_trial = fem.make_trial(space=scalar_space, space_partition=space_partition, domain=boundary)
+        bd_matrix = fem.integrate(mass_form, fields={"u": bd_trial, "v": bd_test})
+
+        # Diffusion form
+        trial = fem.make_trial(space=scalar_space, space_partition=space_partition, domain=domain)
+        matrix = fem.integrate(diffusion_form, fields={"u": trial, "v": test}, values={"nu": 1.0})
+
+        bsr_axpy(y=matrix, x=bd_matrix, alpha=self._bd_weight)
+
+        return matrix, rhs, space_partition.space_node_indices()
+
+
 if __name__ == "__main__":
     wp.init()
     wp.set_module_options({"enable_backward": False})
 
-    geo = Grid2D(res=vec2i(25))
-    bd_weight = 100.0
+    example = Example()
+    example.update()
+    example.render()
 
-    scalar_space = make_polynomial_space(geo, degree=3)
-
-    devices = wp.get_cuda_devices()
-
-    rhs_vecs = []
-    res_vecs = []
-    matrices = []
-    indices = []
-
-    main_device = devices[0]
-
-    # Build local system for each device
-    for k, device in enumerate(devices):
-        with wp.ScopedDevice(device):
-            # Construct the partition corresponding to the k'th device
-            geo_partition = LinearGeometryPartition(geo, k, len(devices))
-            space_partition = make_space_partition(scalar_space, geo_partition)
-
-            domain = Cells(geometry=geo_partition)
-
-            # Right-hand-side
-            test = make_test(space_partition=space_partition, domain=domain)
-            rhs = integrate(linear_form, fields={"v": test})
-
-            # Weakly-imposed boundary conditions on all sides
-            boundary = BoundarySides(geometry=geo_partition)
-            bd_test = make_test(space_partition=space_partition, domain=boundary)
-            bd_trial = make_trial(space_partition=space_partition, domain=boundary)
-            bd_matrix = integrate(mass_form, fields={"u": bd_trial, "v": bd_test})
-
-            # Diffusion form
-            trial = make_trial(space_partition=space_partition, domain=domain)
-            matrix = integrate(diffusion_form, fields={"u": trial, "v": test}, values={"nu": 1.0})
-
-            bsr_axpy(y=matrix, x=bd_matrix, alpha=bd_weight)
-
-            rhs_vecs.append(rhs)
-            res_vecs.append(wp.empty_like(rhs))
-            matrices.append(matrix)
-            indices.append(space_partition.space_node_indices().to(main_device))
-
-
-    # Global rhs as sum of all local rhs
-    glob_rhs = wp.zeros(n=scalar_space.node_count(), dtype=wp.float64, device=main_device)
-    tmp = wp.empty_like(glob_rhs)
-    sum_vecs(rhs_vecs, indices, glob_rhs, tmp)
-
-    # Distributed CG
-    glob_res = wp.zeros_like(glob_rhs)
-    A = DistributedSystem()
-    A.device = device
-    A.scalar_type = glob_rhs.dtype
-    A.nrow = scalar_space.node_count()
-    A.shape = (A.nrow, A.nrow)
-    A.tmp_buf = tmp
-    A.rank_data = (matrices, rhs_vecs, res_vecs, indices)
-
-    with wp.ScopedDevice(main_device):
-        bsr_cg(A, x=glob_res, b=glob_rhs, use_diag_precond=False, mv_routine=mv_routine, device=main_device)
-
-    scalar_field = scalar_space.make_field()
-
-    array_cast(in_array=glob_res, out_array=scalar_field.dof_values)
-
-    plot_grid_surface(scalar_field)
-
-    plt.show()
+    example.renderer.plot()

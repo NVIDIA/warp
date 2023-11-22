@@ -118,6 +118,26 @@ def test_native_func_export(test, device):
         tol=1.0e-3,
     )
 
+    v = wp.vec2(0.0)
+    v += wp.vec2(1.0, 1.0)
+    assert v == wp.vec2(1.0, 1.0)
+    v -= wp.vec2(1.0, 1.0)
+    assert v == wp.vec2(0.0, 0.0)
+    v = wp.vec2(2.0, 2.0) - wp.vec2(1.0, 1.0)
+    assert v == wp.vec2(1.0, 1.0)
+    v *= 2.0
+    assert v == wp.vec2(2.0, 2.0)
+    v = v * 2.0
+    assert v == wp.vec2(4.0, 4.0)
+    v = v / 2.0
+    assert v == wp.vec2(2.0, 2.0)
+    v /= 2.0
+    assert v == wp.vec2(1.0, 1.0)
+    v = -v
+    assert v == wp.vec2(-1.0, -1.0)
+    v = +v
+    assert v == wp.vec2(-1.0, -1.0)
+
     m22 = wp.mat22(1.0, 2.0, 3.0, 4.0)
     m22 = m22 + m22
 
@@ -125,13 +145,94 @@ def test_native_func_export(test, device):
     test.assertEqual(str(m22), "[[2.0, 4.0],\n [6.0, 8.0]]")
 
     t = wp.transform(
-        wp.vec3(0.0, 0.0, 0.0),
-        wp.quat(0.0, 0.0, 0.0, 1.0),
+        wp.vec3(1.0, 2.0, 3.0),
+        wp.quat(4.0, 5.0, 6.0, 7.0),
     )
-    assert_np_equal(np.array([*t]), np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]))
+    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+    test.assertSequenceEqual(t * (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0), (396.0, 432.0, 720.0, 56.0, 70.0, 84.0, -28.0))
+    test.assertSequenceEqual(
+        t * wp.transform((1.0, 2.0, 3.0), (4.0, 5.0, 6.0, 7.0)), (396.0, 432.0, 720.0, 56.0, 70.0, 84.0, -28.0)
+    )
+
+    t = wp.transform()
+    test.assertSequenceEqual(t, (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0))
+
+    t = wp.transform(p=(1.0, 2.0, 3.0), q=(4.0, 5.0, 6.0, 7.0))
+    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+
+    t = wp.transform(q=(4.0, 5.0, 6.0, 7.0), p=(1.0, 2.0, 3.0))
+    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+
+    t = wp.transform((1.0, 2.0, 3.0), q=(4.0, 5.0, 6.0, 7.0))
+    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+
+    t = wp.transform(p=(1.0, 2.0, 3.0))
+    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0))
+
+    t = wp.transform(q=(4.0, 5.0, 6.0, 7.0))
+    test.assertSequenceEqual(t, (0.0, 0.0, 0.0, 4.0, 5.0, 6.0, 7.0))
+
+    t = wp.transform((1.0, 2.0, 3.0), (4.0, 5.0, 6.0, 7.0))
+    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+
+    t = wp.transform(p=wp.vec3(1.0, 2.0, 3.0), q=wp.quat(4.0, 5.0, 6.0, 7.0))
+    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+
+    t = wp.transform(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0)
+    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+
+    t = wp.transform(wp.transform(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+
+    t = wp.transform(*wp.transform(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+
+    transformf = wp.types.transformation(dtype=float)
+
+    t = wp.transformf((1.0, 2.0, 3.0), (4.0, 5.0, 6.0, 7.0))
+    test.assertSequenceEqual(
+        t + transformf((2.0, 3.0, 4.0), (5.0, 6.0, 7.0, 8.0)),
+        (3.0, 5.0, 7.0, 9.0, 11.0, 13.0, 15.0),
+    )
+    test.assertSequenceEqual(
+        t - transformf((2.0, 3.0, 4.0), (5.0, 6.0, 7.0, 8.0)),
+        (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0),
+    )
 
     f = wp.sin(math.pi * 0.5)
     test.assertAlmostEqual(f, 1.0, places=3)
+
+    m = wp.mat22(0.0, 0.0, 0.0, 0.0)
+    m += wp.mat22(1.0, 1.0, 1.0, 1.0)
+    assert m == wp.mat22(1.0, 1.0, 1.0, 1.0)
+    m -= wp.mat22(1.0, 1.0, 1.0, 1.0)
+    assert m == wp.mat22(0.0, 0.0, 0.0, 0.0)
+    m = wp.mat22(2.0, 2.0, 2.0, 2.0) - wp.mat22(1.0, 1.0, 1.0, 1.0)
+    assert m == wp.mat22(1.0, 1.0, 1.0, 1.0)
+    m *= 2.0
+    assert m == wp.mat22(2.0, 2.0, 2.0, 2.0)
+    m = m * 2.0
+    assert m == wp.mat22(4.0, 4.0, 4.0, 4.0)
+    m = m / 2.0
+    assert m == wp.mat22(2.0, 2.0, 2.0, 2.0)
+    m /= 2.0
+    assert m == wp.mat22(1.0, 1.0, 1.0, 1.0)
+    m = -m
+    assert m == wp.mat22(-1.0, -1.0, -1.0, -1.0)
+    m = +m
+    assert m == wp.mat22(-1.0, -1.0, -1.0, -1.0)
+    m = m * m
+    assert m == wp.mat22(2.0, 2.0, 2.0, 2.0)
+
+
+def test_native_function_error_resolution(test, device):
+    a = wp.mat22f(1.0, 2.0, 3.0, 4.0)
+    b = wp.mat22d(1.0, 2.0, 3.0, 4.0)
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"^Couldn't find a function 'mul' compatible with " r"the arguments 'mat22f, mat22d'$",
+    ):
+        a * b
 
 
 def test_user_func_export(test, device):
@@ -151,8 +252,7 @@ def test_func_closure_capture(test, device):
             f = func(data[wp.tid()])
             wp.expect_eq(f, expected)
 
-        key = f"test_func_closure_capture_{func.key}"
-        return wp.Kernel(func=closure_kernel_fn, key=key, module=wp.get_module(closure_kernel_fn.__module__))
+        return wp.Kernel(func=closure_kernel_fn)
 
     sqr_closure = make_closure_kernel(sqr)
     cube_closure = make_closure_kernel(cube)
@@ -211,6 +311,16 @@ def test_func_defaults():
     wp.expect_near(1.0, 1.1, 0.5)
 
 
+@wp.func
+def sign(x: float):
+    return 123.0
+
+
+@wp.kernel
+def test_builtin_shadowing():
+    wp.expect_eq(sign(1.23), 123.0)
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -221,16 +331,24 @@ def register(parent):
     add_function_test(TestFunc, func=test_return_func, name="test_return_func", devices=devices)
     add_kernel_test(TestFunc, kernel=test_override_func, name="test_override_func", dim=1, devices=devices)
     add_function_test(TestFunc, func=test_native_func_export, name="test_native_func_export", devices=["cpu"])
+    add_function_test(
+        TestFunc,
+        func=test_native_function_error_resolution,
+        name="test_native_function_error_resolution",
+        devices=["cpu"],
+    )
     add_function_test(TestFunc, func=test_user_func_export, name="test_user_func_export", devices=["cpu"])
     add_function_test(TestFunc, func=test_func_closure_capture, name="test_func_closure_capture", devices=devices)
     add_function_test(TestFunc, func=test_multi_valued_func, name="test_multi_valued_func", devices=devices)
     add_kernel_test(TestFunc, kernel=test_func_defaults, name="test_func_defaults", dim=1, devices=devices)
+    add_kernel_test(TestFunc, kernel=test_builtin_shadowing, name="test_builtin_shadowing", dim=1, devices=devices)
 
     return TestFunc
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
     wp.force_load()
 
     unittest.main(verbosity=2)

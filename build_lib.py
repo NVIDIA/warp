@@ -12,6 +12,7 @@ import os
 
 import warp.config
 from warp.build_dll import build_dll, find_host_compiler, set_msvc_compiler
+from warp.context import export_builtins
 
 parser = argparse.ArgumentParser(description="Warp build script")
 parser.add_argument("--msvc_path", type=str, help="Path to MSVC compiler (optional if already on PATH)")
@@ -113,7 +114,31 @@ def lib_name(name):
         return f"{name}.so"
 
 
+def generate_exports_header_file():
+    """Generates warp/native/exports.h, which lets built-in functions be callable from outside kernels"""
+
+    # set build output path off this file
+    export_path = os.path.join(base_path, "warp", "native", "exports.h")
+
+    try:
+        with open(export_path, "w") as f:
+            export_builtins(f)
+
+        print(f"Finished writing {export_path}")
+    except FileNotFoundError:
+        print(f"Error: The file '{export_path}' was not found.")
+    except PermissionError:
+        print(f"Error: Permission denied. Unable to write to '{export_path}'.")
+    except OSError as e:
+        print(f"Error: An OS-related error occurred: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+
+
 try:
+    # Generate warp/native/export.h
+    generate_exports_header_file()
+
     # build warp.dll
     cpp_sources = [
         "native/warp.cpp",

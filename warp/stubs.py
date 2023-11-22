@@ -19,6 +19,8 @@ Matrix = Generic[Rows, Cols, Scalar]
 Quaternion = Generic[Float]
 Transformation = Generic[Float]
 Array = Generic[DType]
+FabricArray = Generic[DType]
+IndexedFabricArray = Generic[DType]
 
 
 from warp.types import array, array1d, array2d, array3d, array4d, constant
@@ -45,7 +47,7 @@ from warp.types import matmul, adj_matmul, batched_matmul, adj_batched_matmul, f
 from warp.types import vector as vec
 from warp.types import matrix as mat
 
-from warp.context import init, func, func_grad, func_replay, kernel, struct, overload
+from warp.context import init, func, func_grad, func_replay, func_native, kernel, struct, overload
 from warp.context import is_cpu_available, is_cuda_available, is_device_available
 from warp.context import get_devices, get_preferred_device
 from warp.context import get_cuda_devices, get_cuda_device_count, get_cuda_device, map_cuda_device, unmap_cuda_device
@@ -106,7 +108,7 @@ def min(x: Scalar, y: Scalar) -> Scalar:
 @over
 def min(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """
-    Return the element wise minimum of two vectors.
+    Return the element-wise minimum of two vectors.
     """
     ...
 
@@ -114,7 +116,7 @@ def min(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
 @over
 def min(v: Vector[Any, Scalar]) -> Scalar:
     """
-    Return the minimum element of a vector.
+    Return the minimum element of a vector ``v``.
     """
     ...
 
@@ -130,7 +132,7 @@ def max(x: Scalar, y: Scalar) -> Scalar:
 @over
 def max(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """
-    Return the element wise maximum of two vectors.
+    Return the element-wise maximum of two vectors.
     """
     ...
 
@@ -138,7 +140,7 @@ def max(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
 @over
 def max(v: Vector[Any, Scalar]) -> Scalar:
     """
-    Return the maximum element of a vector.
+    Return the maximum element of a vector ``v``.
     """
     ...
 
@@ -146,7 +148,7 @@ def max(v: Vector[Any, Scalar]) -> Scalar:
 @over
 def clamp(x: Scalar, a: Scalar, b: Scalar) -> Scalar:
     """
-    Clamp the value of x to the range [a, b].
+    Clamp the value of ``x`` to the range [a, b].
     """
     ...
 
@@ -154,7 +156,7 @@ def clamp(x: Scalar, a: Scalar, b: Scalar) -> Scalar:
 @over
 def abs(x: Scalar) -> Scalar:
     """
-    Return the absolute value of x.
+    Return the absolute value of ``x``.
     """
     ...
 
@@ -162,7 +164,7 @@ def abs(x: Scalar) -> Scalar:
 @over
 def sign(x: Scalar) -> Scalar:
     """
-    Return -1 if x < 0, return 1 otherwise.
+    Return -1 if ``x`` < 0, return 1 otherwise.
     """
     ...
 
@@ -170,7 +172,7 @@ def sign(x: Scalar) -> Scalar:
 @over
 def step(x: Scalar) -> Scalar:
     """
-    Return 1.0 if x < 0.0, return 0.0 otherwise.
+    Return 1.0 if ``x`` < 0.0, return 0.0 otherwise.
     """
     ...
 
@@ -178,7 +180,7 @@ def step(x: Scalar) -> Scalar:
 @over
 def nonzero(x: Scalar) -> Scalar:
     """
-    Return 1.0 if x is not equal to zero, return 0.0 otherwise.
+    Return 1.0 if ``x`` is not equal to zero, return 0.0 otherwise.
     """
     ...
 
@@ -186,7 +188,7 @@ def nonzero(x: Scalar) -> Scalar:
 @over
 def sin(x: Float) -> Float:
     """
-    Return the sine of x in radians.
+    Return the sine of ``x`` in radians.
     """
     ...
 
@@ -194,7 +196,7 @@ def sin(x: Float) -> Float:
 @over
 def cos(x: Float) -> Float:
     """
-    Return the cosine of x in radians.
+    Return the cosine of ``x`` in radians.
     """
     ...
 
@@ -202,7 +204,7 @@ def cos(x: Float) -> Float:
 @over
 def acos(x: Float) -> Float:
     """
-    Return arccos of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
+    Return arccos of ``x`` in radians. Inputs are automatically clamped to [-1.0, 1.0].
     """
     ...
 
@@ -210,7 +212,7 @@ def acos(x: Float) -> Float:
 @over
 def asin(x: Float) -> Float:
     """
-    Return arcsin of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
+    Return arcsin of ``x`` in radians. Inputs are automatically clamped to [-1.0, 1.0].
     """
     ...
 
@@ -218,7 +220,15 @@ def asin(x: Float) -> Float:
 @over
 def sqrt(x: Float) -> Float:
     """
-    Return the sqrt of x, where x is positive.
+    Return the square root of ``x``, where ``x`` is positive.
+    """
+    ...
+
+
+@over
+def cbrt(x: Float) -> Float:
+    """
+    Return the cube root of ``x``.
     """
     ...
 
@@ -226,7 +236,7 @@ def sqrt(x: Float) -> Float:
 @over
 def tan(x: Float) -> Float:
     """
-    Return tangent of x in radians.
+    Return the tangent of ``x`` in radians.
     """
     ...
 
@@ -234,7 +244,7 @@ def tan(x: Float) -> Float:
 @over
 def atan(x: Float) -> Float:
     """
-    Return arctan of x.
+    Return the arctangent of ``x`` in radians.
     """
     ...
 
@@ -242,7 +252,7 @@ def atan(x: Float) -> Float:
 @over
 def atan2(y: Float, x: Float) -> Float:
     """
-    Return atan2 of x.
+    Return the 2-argument arctangent, atan2, of the point ``(x, y)`` in radians.
     """
     ...
 
@@ -250,7 +260,7 @@ def atan2(y: Float, x: Float) -> Float:
 @over
 def sinh(x: Float) -> Float:
     """
-    Return the sinh of x.
+    Return the sinh of ``x``.
     """
     ...
 
@@ -258,7 +268,7 @@ def sinh(x: Float) -> Float:
 @over
 def cosh(x: Float) -> Float:
     """
-    Return the cosh of x.
+    Return the cosh of ``x``.
     """
     ...
 
@@ -266,7 +276,7 @@ def cosh(x: Float) -> Float:
 @over
 def tanh(x: Float) -> Float:
     """
-    Return the tanh of x.
+    Return the tanh of ``x``.
     """
     ...
 
@@ -274,7 +284,7 @@ def tanh(x: Float) -> Float:
 @over
 def degrees(x: Float) -> Float:
     """
-    Convert radians into degrees.
+    Convert ``x`` from radians into degrees.
     """
     ...
 
@@ -282,7 +292,7 @@ def degrees(x: Float) -> Float:
 @over
 def radians(x: Float) -> Float:
     """
-    Convert degrees into radians.
+    Convert ``x`` from degrees into radians.
     """
     ...
 
@@ -290,7 +300,7 @@ def radians(x: Float) -> Float:
 @over
 def log(x: Float) -> Float:
     """
-    Return the natural log (base-e) of x, where x is positive.
+    Return the natural logarithm (base-e) of ``x``, where ``x`` is positive.
     """
     ...
 
@@ -298,7 +308,7 @@ def log(x: Float) -> Float:
 @over
 def log2(x: Float) -> Float:
     """
-    Return the natural log (base-2) of x, where x is positive.
+    Return the binary logarithm (base-2) of ``x``, where ``x`` is positive.
     """
     ...
 
@@ -306,7 +316,7 @@ def log2(x: Float) -> Float:
 @over
 def log10(x: Float) -> Float:
     """
-    Return the natural log (base-10) of x, where x is positive.
+    Return the common logarithm (base-10) of ``x``, where ``x`` is positive.
     """
     ...
 
@@ -314,7 +324,7 @@ def log10(x: Float) -> Float:
 @over
 def exp(x: Float) -> Float:
     """
-    Return base-e exponential, e^x.
+    Return the value of the exponential function :math:`e^x`.
     """
     ...
 
@@ -322,7 +332,7 @@ def exp(x: Float) -> Float:
 @over
 def pow(x: Float, y: Float) -> Float:
     """
-    Return the result of x raised to power of y.
+    Return the result of ``x`` raised to power of ``y``.
     """
     ...
 
@@ -330,9 +340,9 @@ def pow(x: Float, y: Float) -> Float:
 @over
 def round(x: Float) -> Float:
     """
-    Calculate the nearest integer value, rounding halfway cases away from zero.
-        This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
-        Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.
+    Return the nearest integer value to ``x``, rounding halfway cases away from zero.
+       This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like :func:`warp.rint()`.
+       Differs from :func:`numpy.round()`, which behaves the same way as :func:`numpy.rint()`.
     """
     ...
 
@@ -340,9 +350,8 @@ def round(x: Float) -> Float:
 @over
 def rint(x: Float) -> Float:
     """
-    Calculate the nearest integer value, rounding halfway cases to nearest even integer.
-        It is generally faster than ``warp.round()``.
-        Equivalent to ``numpy.rint()``.
+    Return the nearest integer value to ``x``, rounding halfway cases to nearest even integer.
+       It is generally faster than :func:`warp.round()`. Equivalent to :func:`numpy.rint()`.
     """
     ...
 
@@ -350,10 +359,10 @@ def rint(x: Float) -> Float:
 @over
 def trunc(x: Float) -> Float:
     """
-    Calculate the nearest integer that is closer to zero than x.
-        In other words, it discards the fractional part of x.
-        It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
-        Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.
+    Return the nearest integer that is closer to zero than ``x``.
+       In other words, it discards the fractional part of ``x``.
+       It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
+       Equivalent to :func:`numpy.trunc()` and :func:`numpy.fix()`.
     """
     ...
 
@@ -361,7 +370,7 @@ def trunc(x: Float) -> Float:
 @over
 def floor(x: Float) -> Float:
     """
-    Calculate the largest integer that is less than or equal to x.
+    Return the largest integer that is less than or equal to ``x``.
     """
     ...
 
@@ -369,7 +378,16 @@ def floor(x: Float) -> Float:
 @over
 def ceil(x: Float) -> Float:
     """
-    Calculate the smallest integer that is greater than or equal to x.
+    Return the smallest integer that is greater than or equal to ``x``.
+    """
+    ...
+
+
+@over
+def frac(x: Float) -> Float:
+    """
+    Retrieve the fractional part of x.
+        In other words, it discards the integer part of x and is equivalent to ``x - trunc(x)``.
     """
     ...
 
@@ -401,7 +419,7 @@ def ddot(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Scalar:
 @over
 def argmin(v: Vector[Any, Scalar]) -> uint32:
     """
-    Return the index of the minimum element of a vector.
+    Return the index of the minimum element of a vector ``v``.
     """
     ...
 
@@ -409,7 +427,7 @@ def argmin(v: Vector[Any, Scalar]) -> uint32:
 @over
 def argmax(v: Vector[Any, Scalar]) -> uint32:
     """
-    Return the index of the maximum element of a vector.
+    Return the index of the maximum element of a vector ``v``.
     """
     ...
 
@@ -417,7 +435,7 @@ def argmax(v: Vector[Any, Scalar]) -> uint32:
 @over
 def outer(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """
-    Compute the outer product x*y^T for two vec2 objects.
+    Compute the outer product ``x*y^T`` for two vectors.
     """
     ...
 
@@ -425,7 +443,7 @@ def outer(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Matrix[Any, Any, Sc
 @over
 def cross(x: Vector[3, Scalar], y: Vector[3, Scalar]) -> Vector[3, Scalar]:
     """
-    Compute the cross product of two 3d vectors.
+    Compute the cross product of two 3D vectors.
     """
     ...
 
@@ -433,7 +451,7 @@ def cross(x: Vector[3, Scalar], y: Vector[3, Scalar]) -> Vector[3, Scalar]:
 @over
 def skew(x: Vector[3, Scalar]):
     """
-    Compute the skew symmetric matrix for a 3d vector.
+    Compute the skew-symmetric 3x3 matrix for a 3D vector ``x``.
     """
     ...
 
@@ -441,7 +459,7 @@ def skew(x: Vector[3, Scalar]):
 @over
 def length(x: Vector[Any, Float]) -> Scalar:
     """
-    Compute the length of a vector.
+    Compute the length of a vector ``x``.
     """
     ...
 
@@ -449,7 +467,7 @@ def length(x: Vector[Any, Float]) -> Scalar:
 @over
 def length(x: Quaternion[Float]) -> Scalar:
     """
-    Compute the length of a quaternion.
+    Compute the length of a quaternion ``x``.
     """
     ...
 
@@ -457,7 +475,7 @@ def length(x: Quaternion[Float]) -> Scalar:
 @over
 def length_sq(x: Vector[Any, Scalar]) -> Scalar:
     """
-    Compute the squared length of a 2d vector.
+    Compute the squared length of a 2D vector ``x``.
     """
     ...
 
@@ -465,7 +483,7 @@ def length_sq(x: Vector[Any, Scalar]) -> Scalar:
 @over
 def length_sq(x: Quaternion[Scalar]) -> Scalar:
     """
-    Compute the squared length of a quaternion.
+    Compute the squared length of a quaternion ``x``.
     """
     ...
 
@@ -473,7 +491,7 @@ def length_sq(x: Quaternion[Scalar]) -> Scalar:
 @over
 def normalize(x: Vector[Any, Float]) -> Vector[Any, Scalar]:
     """
-    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
+    Compute the normalized value of ``x``. If ``length(x)`` is 0 then the zero vector is returned.
     """
     ...
 
@@ -481,7 +499,7 @@ def normalize(x: Vector[Any, Float]) -> Vector[Any, Scalar]:
 @over
 def normalize(x: Quaternion[Float]) -> Quaternion[Scalar]:
     """
-    Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
+    Compute the normalized value of ``x``. If ``length(x)`` is 0, then the zero quaternion is returned.
     """
     ...
 
@@ -489,7 +507,7 @@ def normalize(x: Quaternion[Float]) -> Quaternion[Scalar]:
 @over
 def transpose(m: Matrix[Any, Any, Scalar]):
     """
-    Return the transpose of the matrix m
+    Return the transpose of the matrix ``m``.
     """
     ...
 
@@ -497,7 +515,7 @@ def transpose(m: Matrix[Any, Any, Scalar]):
 @over
 def inverse(m: Matrix[2, 2, Float]) -> Matrix[Any, Any, Float]:
     """
-    Return the inverse of a 2x2 matrix m
+    Return the inverse of a 2x2 matrix ``m``.
     """
     ...
 
@@ -505,7 +523,7 @@ def inverse(m: Matrix[2, 2, Float]) -> Matrix[Any, Any, Float]:
 @over
 def inverse(m: Matrix[3, 3, Float]) -> Matrix[Any, Any, Float]:
     """
-    Return the inverse of a 3x3 matrix m
+    Return the inverse of a 3x3 matrix ``m``.
     """
     ...
 
@@ -513,7 +531,7 @@ def inverse(m: Matrix[3, 3, Float]) -> Matrix[Any, Any, Float]:
 @over
 def inverse(m: Matrix[4, 4, Float]) -> Matrix[Any, Any, Float]:
     """
-    Return the inverse of a 4x4 matrix m
+    Return the inverse of a 4x4 matrix ``m``.
     """
     ...
 
@@ -521,7 +539,7 @@ def inverse(m: Matrix[4, 4, Float]) -> Matrix[Any, Any, Float]:
 @over
 def determinant(m: Matrix[2, 2, Float]) -> Scalar:
     """
-    Return the determinant of a 2x2 matrix m
+    Return the determinant of a 2x2 matrix ``m``.
     """
     ...
 
@@ -529,7 +547,7 @@ def determinant(m: Matrix[2, 2, Float]) -> Scalar:
 @over
 def determinant(m: Matrix[3, 3, Float]) -> Scalar:
     """
-    Return the determinant of a 3x3 matrix m
+    Return the determinant of a 3x3 matrix ``m``.
     """
     ...
 
@@ -537,7 +555,7 @@ def determinant(m: Matrix[3, 3, Float]) -> Scalar:
 @over
 def determinant(m: Matrix[4, 4, Float]) -> Scalar:
     """
-    Return the determinant of a 4x4 matrix m
+    Return the determinant of a 4x4 matrix ``m``.
     """
     ...
 
@@ -545,7 +563,7 @@ def determinant(m: Matrix[4, 4, Float]) -> Scalar:
 @over
 def trace(m: Matrix[Any, Any, Scalar]) -> Scalar:
     """
-    Return the trace of the matrix m
+    Return the trace of the matrix ``m``.
     """
     ...
 
@@ -553,7 +571,7 @@ def trace(m: Matrix[Any, Any, Scalar]) -> Scalar:
 @over
 def diag(d: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """
-    Returns a matrix with the components of the vector d on the diagonal
+    Returns a matrix with the components of the vector ``d`` on the diagonal.
     """
     ...
 
@@ -561,7 +579,7 @@ def diag(d: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
 @over
 def get_diag(m: Matrix[Any, Any, Scalar]) -> Vector[Any, Scalar]:
     """
-    Returns a vector containing the diagonal elements of the square matrix.
+    Returns a vector containing the diagonal elements of the square matrix ``m``.
     """
     ...
 
@@ -569,7 +587,7 @@ def get_diag(m: Matrix[Any, Any, Scalar]) -> Vector[Any, Scalar]:
 @over
 def cw_mul(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """
-    Component wise multiply of two 2d vectors.
+    Component-wise multiplication of two 2D vectors.
     """
     ...
 
@@ -577,7 +595,7 @@ def cw_mul(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar
 @over
 def cw_mul(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """
-    Component wise multiply of two 2d vectors.
+    Component-wise multiplication of two 2D vectors.
     """
     ...
 
@@ -585,7 +603,7 @@ def cw_mul(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Matrix[A
 @over
 def cw_div(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """
-    Component wise division of two 2d vectors.
+    Component-wise division of two 2D vectors.
     """
     ...
 
@@ -593,7 +611,7 @@ def cw_div(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar
 @over
 def cw_div(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """
-    Component wise division of two 2d vectors.
+    Component-wise division of two 2D vectors.
     """
     ...
 
@@ -657,7 +675,7 @@ def quat_rotate(q: Quaternion[Float], p: Vector[3, Float]) -> Vector[3, Scalar]:
 @over
 def quat_rotate_inv(q: Quaternion[Float], p: Vector[3, Float]) -> Vector[3, Scalar]:
     """
-    Rotate a vector the inverse of a quaternion.
+    Rotate a vector by the inverse of a quaternion.
     """
     ...
 
@@ -689,7 +707,7 @@ def transform_identity() -> transformf:
 @over
 def transform_get_translation(t: Transformation[Float]) -> Vector[3, Scalar]:
     """
-    Return the translational part of a transform.
+    Return the translational part of a transform ``t``.
     """
     ...
 
@@ -697,7 +715,7 @@ def transform_get_translation(t: Transformation[Float]) -> Vector[3, Scalar]:
 @over
 def transform_get_rotation(t: Transformation[Float]) -> Quaternion[Scalar]:
     """
-    Return the rotational part of a transform.
+    Return the rotational part of a transform ``t``.
     """
     ...
 
@@ -713,7 +731,7 @@ def transform_multiply(a: Transformation[Float], b: Transformation[Float]) -> Tr
 @over
 def transform_point(t: Transformation[Scalar], p: Vector[3, Scalar]) -> Vector[3, Scalar]:
     """
-    Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
+    Apply the transform to a point ``p`` treating the homogenous coordinate as w=1 (translation and rotation).
     """
     ...
 
@@ -721,9 +739,11 @@ def transform_point(t: Transformation[Scalar], p: Vector[3, Scalar]) -> Vector[3
 @over
 def transform_point(m: Matrix[4, 4, Scalar], p: Vector[3, Scalar]) -> Vector[3, Scalar]:
     """
-    Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
-       note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
-       then users should transpose the transformation matrix before calling this method.
+    Apply the transform to a point ``p`` treating the homogenous coordinate as w=1.
+       The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``.
+       Note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``.
+       If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
+       matrix before calling this method.
     """
     ...
 
@@ -731,7 +751,7 @@ def transform_point(m: Matrix[4, 4, Scalar], p: Vector[3, Scalar]) -> Vector[3, 
 @over
 def transform_vector(t: Transformation[Scalar], v: Vector[3, Scalar]) -> Vector[3, Scalar]:
     """
-    Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
+    Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0 (rotation only).
     """
     ...
 
@@ -739,9 +759,11 @@ def transform_vector(t: Transformation[Scalar], v: Vector[3, Scalar]) -> Vector[
 @over
 def transform_vector(m: Matrix[4, 4, Scalar], v: Vector[3, Scalar]) -> Vector[3, Scalar]:
     """
-    Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
-       note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
-       then users should transpose the transformation matrix before calling this method.
+    Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0.
+       The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
+       note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``.
+       If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
+       matrix before calling this method.
     """
     ...
 
@@ -749,7 +771,7 @@ def transform_vector(m: Matrix[4, 4, Scalar], v: Vector[3, Scalar]) -> Vector[3,
 @over
 def transform_inverse(t: Transformation[Float]) -> Transformation[Float]:
     """
-    Compute the inverse of the transform.
+    Compute the inverse of the transformation ``t``.
     """
     ...
 
@@ -757,7 +779,7 @@ def transform_inverse(t: Transformation[Float]) -> Transformation[Float]:
 @over
 def spatial_dot(a: Vector[6, Float], b: Vector[6, Float]) -> Scalar:
     """
-    Compute the dot product of two 6d screw vectors.
+    Compute the dot product of two 6D screw vectors.
     """
     ...
 
@@ -765,7 +787,7 @@ def spatial_dot(a: Vector[6, Float], b: Vector[6, Float]) -> Scalar:
 @over
 def spatial_cross(a: Vector[6, Float], b: Vector[6, Float]) -> Vector[6, Float]:
     """
-    Compute the cross-product of two 6d screw vectors.
+    Compute the cross product of two 6D screw vectors.
     """
     ...
 
@@ -773,7 +795,7 @@ def spatial_cross(a: Vector[6, Float], b: Vector[6, Float]) -> Vector[6, Float]:
 @over
 def spatial_cross_dual(a: Vector[6, Float], b: Vector[6, Float]) -> Vector[6, Float]:
     """
-    Compute the dual cross-product of two 6d screw vectors.
+    Compute the dual cross product of two 6D screw vectors.
     """
     ...
 
@@ -781,7 +803,7 @@ def spatial_cross_dual(a: Vector[6, Float], b: Vector[6, Float]) -> Vector[6, Fl
 @over
 def spatial_top(a: Vector[6, Float]):
     """
-    Return the top (first) part of a 6d screw vector.
+    Return the top (first) part of a 6D screw vector.
     """
     ...
 
@@ -789,7 +811,7 @@ def spatial_top(a: Vector[6, Float]):
 @over
 def spatial_bottom(a: Vector[6, Float]):
     """
-    Return the bottom (second) part of a 6d screw vector.
+    Return the bottom (second) part of a 6D screw vector.
     """
     ...
 
@@ -831,11 +853,13 @@ def mlp(
        :param weights: A layer's network weights with dimensions ``(m, n)``.
        :param bias: An array with dimensions ``(n)``.
        :param activation: A ``wp.func`` function that takes a single scalar float as input and returns a scalar float as output
-       :param index: The batch item to process, typically each thread will process 1 item in the batch, in this case index should be ``wp.tid()``
+       :param index: The batch item to process, typically each thread will process one item in the batch, in which case
+                     index should be ``wp.tid()``
        :param x: The feature matrix with dimensions ``(n, b)``
        :param out: The network output with dimensions ``(m, b)``
 
-       :note: Feature and output matrices are transposed compared to some other frameworks such as PyTorch. All matrices are assumed to be stored in flattened row-major memory layout (NumPy default).
+       :note: Feature and output matrices are transposed compared to some other frameworks such as PyTorch.
+              All matrices are assumed to be stored in flattened row-major memory layout (NumPy default).
     """
     ...
 
@@ -843,12 +867,12 @@ def mlp(
 @over
 def bvh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> bvh_query_t:
     """
-    Construct an axis-aligned bounding box query against a bvh object. This query can be used to iterate over all bounds
-       inside a bvh. Returns an object that is used to track state during bvh traversal.
+    Construct an axis-aligned bounding box query against a BVH object. This query can be used to iterate over all bounds
+       inside a BVH. Returns an object that is used to track state during BVH traversal.
 
-       :param id: The bvh identifier
-       :param lower: The lower bound of the bounding box in bvh space
-       :param upper: The upper bound of the bounding box in bvh space
+       :param id: The BVH identifier
+       :param lower: The lower bound of the bounding box in BVH space
+       :param upper: The upper bound of the bounding box in BVH space
     """
     ...
 
@@ -856,12 +880,12 @@ def bvh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> bvh_query_t:
 @over
 def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> bvh_query_t:
     """
-    Construct a ray query against a bvh object. This query can be used to iterate over all bounds
-       that intersect the ray. Returns an object that is used to track state during bvh traversal.
+    Construct a ray query against a BVH object. This query can be used to iterate over all bounds
+       that intersect the ray. Returns an object that is used to track state during BVH traversal.
 
-       :param id: The bvh identifier
-       :param start: The start of the ray in bvh space
-       :param dir: The direction of the ray in bvh space
+       :param id: The BVH identifier
+       :param start: The start of the ray in BVH space
+       :param dir: The direction of the ray in BVH space
     """
     ...
 
@@ -869,8 +893,8 @@ def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> bvh_query_t:
 @over
 def bvh_query_next(query: bvh_query_t, index: int32) -> bool:
     """
-    Move to the next bound returned by the query. The index of the current bound is stored in ``index``, returns ``False``
-       if there are no more overlapping bound.
+    Move to the next bound returned by the query.
+       The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.
     """
     ...
 
@@ -880,15 +904,17 @@ def mesh_query_point(
     id: uint64, point: vec3f, max_dist: float32, inside: float32, face: int32, bary_u: float32, bary_v: float32
 ) -> bool:
     """
-    Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
+    Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space. Returns ``True`` if a point < ``max_dist`` is found.
 
-       Identifies the sign of the distance using additional ray-casts to determine if the point is inside or outside. This method is relatively robust, but
-       does increase computational cost. See below for additional sign determination methods.
+       Identifies the sign of the distance using additional ray-casts to determine if the point is inside or outside.
+       This method is relatively robust, but does increase computational cost.
+       See below for additional sign determination methods.
 
        :param id: The mesh identifier
        :param point: The point in space to query
        :param max_dist: Mesh faces above this distance will not be considered by the query
-       :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise. Note that mesh must be watertight for this to be robust
+       :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise.
+                      Note that mesh must be watertight for this to be robust
        :param face: Returns the index of the closest face
        :param bary_u: Returns the barycentric u coordinate of the closest point
        :param bary_v: Returns the barycentric v coordinate of the closest point
@@ -901,7 +927,7 @@ def mesh_query_point_no_sign(
     id: uint64, point: vec3f, max_dist: float32, face: int32, bary_u: float32, bary_v: float32
 ) -> bool:
     """
-    Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
+    Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space. Returns ``True`` if a point < ``max_dist`` is found.
 
        This method does not compute the sign of the point (inside/outside) which makes it faster than other point query methods.
 
@@ -911,6 +937,25 @@ def mesh_query_point_no_sign(
        :param face: Returns the index of the closest face
        :param bary_u: Returns the barycentric u coordinate of the closest point
        :param bary_v: Returns the barycentric v coordinate of the closest point
+    """
+    ...
+
+
+@over
+def mesh_query_furthest_point_no_sign(
+    id: uint64, point: vec3f, min_dist: float32, face: int32, bary_u: float32, bary_v: float32
+) -> bool:
+    """
+    Computes the furthest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point > ``min_dist`` is found.
+
+       This method does not compute the sign of the point (inside/outside).
+
+       :param id: The mesh identifier
+       :param point: The point in space to query
+       :param min_dist: Mesh faces below this distance will not be considered by the query
+       :param face: Returns the index of the furthest face
+       :param bary_u: Returns the barycentric u coordinate of the furthest point
+       :param bary_v: Returns the barycentric v coordinate of the furthest point
     """
     ...
 
@@ -927,19 +972,22 @@ def mesh_query_point_sign_normal(
     epsilon: float32,
 ) -> bool:
     """
-    Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
+    Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space. Returns ``True`` if a point < ``max_dist`` is found.
 
-       Identifies the sign of the distance (inside/outside) using the angle-weighted pseudo normal. This approach to sign determination is robust for well conditioned meshes
-       that are watertight and non-self intersecting, it is also comparatively fast to compute.
+       Identifies the sign of the distance (inside/outside) using the angle-weighted pseudo normal.
+       This approach to sign determination is robust for well conditioned meshes that are watertight and non-self intersecting.
+       It is also comparatively fast to compute.
 
        :param id: The mesh identifier
        :param point: The point in space to query
        :param max_dist: Mesh faces above this distance will not be considered by the query
-       :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise. Note that mesh must be watertight for this to be robust
+       :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise.
+                      Note that mesh must be watertight for this to be robust
        :param face: Returns the index of the closest face
        :param bary_u: Returns the barycentric u coordinate of the closest point
        :param bary_v: Returns the barycentric v coordinate of the closest point
-       :param epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3
+       :param epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a
+                       fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3
     """
     ...
 
@@ -957,22 +1005,23 @@ def mesh_query_point_sign_winding_number(
     threshold: float32,
 ) -> bool:
     """
-    Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
+    Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
 
        Identifies the sign using the winding number of the mesh relative to the query point. This method of sign determination is robust for poorly conditioned meshes
        and provides a smooth approximation to sign even when the mesh is not watertight. This method is the most robust and accurate of the sign determination meshes
        but also the most expensive.
 
-        Note that the Mesh object must be constructed with ``suport_winding_number=True`` for this method to return correct results.
+       .. note:: The :class:`Mesh` object must be constructed with ``support_winding_number=True`` for this method to return correct results.
 
        :param id: The mesh identifier
        :param point: The point in space to query
        :param max_dist: Mesh faces above this distance will not be considered by the query
-       :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise. Note that mesh must be watertight for this to be robust
+       :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise.
+                      Note that mesh must be watertight for this to be robust
        :param face: Returns the index of the closest face
        :param bary_u: Returns the barycentric u coordinate of the closest point
        :param bary_v: Returns the barycentric v coordinate of the closest point
-       :param accuracy: Accuracy for computing the winding number with fast winding number method utilizing second order dipole approximation, default 2.0
+       :param accuracy: Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation, default 2.0
        :param threshold: The threshold of the winding number to be considered inside, default 0.5
     """
     ...
@@ -992,7 +1041,7 @@ def mesh_query_ray(
     face: int32,
 ) -> bool:
     """
-    Computes the closest ray hit on the mesh with identifier `id`, returns ``True`` if a point < ``max_t`` is found.
+    Computes the closest ray hit on the :class:`Mesh` with identifier ``id``, returns ``True`` if a point < ``max_t`` is found.
 
        :param id: The mesh identifier
        :param start: The start point of the ray
@@ -1011,8 +1060,9 @@ def mesh_query_ray(
 @over
 def mesh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> mesh_query_aabb_t:
     """
-    Construct an axis-aligned bounding box query against a mesh object. This query can be used to iterate over all triangles
-       inside a volume. Returns an object that is used to track state during mesh traversal.
+    Construct an axis-aligned bounding box query against a :class:`Mesh`.
+       This query can be used to iterate over all triangles inside a volume.
+       Returns an object that is used to track state during mesh traversal.
 
        :param id: The mesh identifier
        :param lower: The lower bound of the bounding box in mesh space
@@ -1024,8 +1074,8 @@ def mesh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> mesh_query_aabb_t
 @over
 def mesh_query_aabb_next(query: mesh_query_aabb_t, index: int32) -> bool:
     """
-    Move to the next triangle overlapping the query bounding box. The index of the current face is stored in ``index``, returns ``False``
-       if there are no more overlapping triangles.
+    Move to the next triangle overlapping the query bounding box.
+       The index of the current face is stored in ``index``, returns ``False`` if there are no more overlapping triangles.
     """
     ...
 
@@ -1033,7 +1083,7 @@ def mesh_query_aabb_next(query: mesh_query_aabb_t, index: int32) -> bool:
 @over
 def mesh_eval_position(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f:
     """
-    Evaluates the position on the mesh given a face index, and barycentric coordinates.
+    Evaluates the position on the :class:`Mesh` given a face index and barycentric coordinates.
     """
     ...
 
@@ -1041,7 +1091,7 @@ def mesh_eval_position(id: uint64, face: int32, bary_u: float32, bary_v: float32
 @over
 def mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f:
     """
-    Evaluates the velocity on the mesh given a face index, and barycentric coordinates.
+    Evaluates the velocity on the :class:`Mesh` given a face index and barycentric coordinates.
     """
     ...
 
@@ -1049,8 +1099,7 @@ def mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32
 @over
 def hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> hash_grid_query_t:
     """
-    Construct a point query against a hash grid. This query can be used to iterate over all neighboring points withing a
-       fixed radius from the query point. Returns an object that is used to track state during neighbor traversal.
+    Construct a point query against a :class:`HashGrid`. This query can be used to iterate over all neighboring points within a fixed radius from the query point. Returns an object that is used to track state during neighbor traversal.
     """
     ...
 
@@ -1067,8 +1116,10 @@ def hash_grid_query_next(query: hash_grid_query_t, index: int32) -> bool:
 @over
 def hash_grid_point_id(id: uint64, index: int32) -> int:
     """
-    Return the index of a point in the grid, this can be used to re-order threads such that grid
+    Return the index of a point in the :class:`HashGrid`. This can be used to reorder threads such that grid
        traversal occurs in a spatially coherent order.
+
+       Returns -1 if the :class:`HashGrid` has not been reserved.
     """
     ...
 
@@ -1139,7 +1190,8 @@ def closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon:
 @over
 def volume_sample_f(id: uint64, uvw: vec3f, sampling_mode: int32) -> float:
     """
-    Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
+    Sample the volume given by ``id`` at the volume local-space point ``uvw``.
+       Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`
     """
     ...
 
@@ -1147,7 +1199,8 @@ def volume_sample_f(id: uint64, uvw: vec3f, sampling_mode: int32) -> float:
 @over
 def volume_sample_grad_f(id: uint64, uvw: vec3f, sampling_mode: int32, grad: vec3f) -> float:
     """
-    Sample the volume and its gradient given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
+    Sample the volume and its gradient given by ``id`` at the volume local-space point ``uvw``.
+       Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`
     """
     ...
 
@@ -1155,7 +1208,8 @@ def volume_sample_grad_f(id: uint64, uvw: vec3f, sampling_mode: int32, grad: vec
 @over
 def volume_lookup_f(id: uint64, i: int32, j: int32, k: int32) -> float:
     """
-    Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
+    Returns the value of voxel with coordinates ``i``, ``j``, ``k``.
+       If the voxel at this index does not exist, this function returns the background value
     """
     ...
 
@@ -1163,7 +1217,7 @@ def volume_lookup_f(id: uint64, i: int32, j: int32, k: int32) -> float:
 @over
 def volume_store_f(id: uint64, i: int32, j: int32, k: int32, value: float32):
     """
-    Store the value at voxel with coordinates ``i``, ``j``, ``k``.
+    Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.
     """
     ...
 
@@ -1171,7 +1225,8 @@ def volume_store_f(id: uint64, i: int32, j: int32, k: int32, value: float32):
 @over
 def volume_sample_v(id: uint64, uvw: vec3f, sampling_mode: int32) -> vec3f:
     """
-    Sample the vector volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
+    Sample the vector volume given by ``id`` at the volume local-space point ``uvw``.
+       Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`
     """
     ...
 
@@ -1179,7 +1234,8 @@ def volume_sample_v(id: uint64, uvw: vec3f, sampling_mode: int32) -> vec3f:
 @over
 def volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3f:
     """
-    Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
+    Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``.
+       If the voxel at this index does not exist, this function returns the background value.
     """
     ...
 
@@ -1187,7 +1243,7 @@ def volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3f:
 @over
 def volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec3f):
     """
-    Store the value at voxel with coordinates ``i``, ``j``, ``k``.
+    Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.
     """
     ...
 
@@ -1195,7 +1251,7 @@ def volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec3f):
 @over
 def volume_sample_i(id: uint64, uvw: vec3f) -> int:
     """
-    Sample the int32 volume given by ``id`` at the volume local-space point ``uvw``.
+    Sample the :class:`int32` volume given by ``id`` at the volume local-space point ``uvw``.
     """
     ...
 
@@ -1203,7 +1259,8 @@ def volume_sample_i(id: uint64, uvw: vec3f) -> int:
 @over
 def volume_lookup_i(id: uint64, i: int32, j: int32, k: int32) -> int:
     """
-    Returns the int32 value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
+    Returns the :class:`int32` value of voxel with coordinates ``i``, ``j``, ``k``.
+       If the voxel at this index does not exist, this function returns the background value.
     """
     ...
 
@@ -1211,7 +1268,7 @@ def volume_lookup_i(id: uint64, i: int32, j: int32, k: int32) -> int:
 @over
 def volume_store_i(id: uint64, i: int32, j: int32, k: int32, value: int32):
     """
-    Store the value at voxel with coordinates ``i``, ``j``, ``k``.
+    Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.
     """
     ...
 
@@ -1219,7 +1276,7 @@ def volume_store_i(id: uint64, i: int32, j: int32, k: int32, value: int32):
 @over
 def volume_index_to_world(id: uint64, uvw: vec3f) -> vec3f:
     """
-    Transform a point defined in volume index space to world space given the volume's intrinsic affine transformation.
+    Transform a point ``uvw`` defined in volume index space to world space given the volume's intrinsic affine transformation.
     """
     ...
 
@@ -1227,7 +1284,7 @@ def volume_index_to_world(id: uint64, uvw: vec3f) -> vec3f:
 @over
 def volume_world_to_index(id: uint64, xyz: vec3f) -> vec3f:
     """
-    Transform a point defined in volume world space to the volume's index space, given the volume's intrinsic affine transformation.
+    Transform a point ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation.
     """
     ...
 
@@ -1235,7 +1292,7 @@ def volume_world_to_index(id: uint64, xyz: vec3f) -> vec3f:
 @over
 def volume_index_to_world_dir(id: uint64, uvw: vec3f) -> vec3f:
     """
-    Transform a direction defined in volume index space to world space given the volume's intrinsic affine transformation.
+    Transform a direction ``uvw`` defined in volume index space to world space given the volume's intrinsic affine transformation.
     """
     ...
 
@@ -1243,7 +1300,7 @@ def volume_index_to_world_dir(id: uint64, uvw: vec3f) -> vec3f:
 @over
 def volume_world_to_index_dir(id: uint64, xyz: vec3f) -> vec3f:
     """
-    Transform a direction defined in volume world space to the volume's index space, given the volume's intrinsic affine transformation.
+    Transform a direction ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation.
     """
     ...
 
@@ -1269,7 +1326,7 @@ def rand_init(seed: int32, offset: int32) -> uint32:
 @over
 def randi(state: uint32) -> int:
     """
-    Return a random integer between [0, 2^32)
+    Return a random integer in the range [0, 2^32).
     """
     ...
 
@@ -1277,7 +1334,7 @@ def randi(state: uint32) -> int:
 @over
 def randi(state: uint32, min: int32, max: int32) -> int:
     """
-    Return a random integer between [min, max)
+    Return a random integer between [min, max).
     """
     ...
 
@@ -1285,7 +1342,7 @@ def randi(state: uint32, min: int32, max: int32) -> int:
 @over
 def randf(state: uint32) -> float:
     """
-    Return a random float between [0.0, 1.0)
+    Return a random float between [0.0, 1.0).
     """
     ...
 
@@ -1293,7 +1350,7 @@ def randf(state: uint32) -> float:
 @over
 def randf(state: uint32, min: float32, max: float32) -> float:
     """
-    Return a random float between [min, max)
+    Return a random float between [min, max).
     """
     ...
 
@@ -1301,7 +1358,7 @@ def randf(state: uint32, min: float32, max: float32) -> float:
 @over
 def randn(state: uint32) -> float:
     """
-    Sample a normal distribution
+    Sample a normal distribution.
     """
     ...
 
@@ -1309,7 +1366,7 @@ def randn(state: uint32) -> float:
 @over
 def sample_cdf(state: uint32, cdf: Array[float32]) -> int:
     """
-    Inverse transform sample a cumulative distribution function
+    Inverse-transform sample a cumulative distribution function.
     """
     ...
 
@@ -1317,7 +1374,7 @@ def sample_cdf(state: uint32, cdf: Array[float32]) -> int:
 @over
 def sample_triangle(state: uint32) -> vec2f:
     """
-    Uniformly sample a triangle. Returns sample barycentric coordinates
+    Uniformly sample a triangle. Returns sample barycentric coordinates.
     """
     ...
 
@@ -1325,7 +1382,7 @@ def sample_triangle(state: uint32) -> vec2f:
 @over
 def sample_unit_ring(state: uint32) -> vec2f:
     """
-    Uniformly sample a ring in the xy plane
+    Uniformly sample a ring in the xy plane.
     """
     ...
 
@@ -1333,7 +1390,7 @@ def sample_unit_ring(state: uint32) -> vec2f:
 @over
 def sample_unit_disk(state: uint32) -> vec2f:
     """
-    Uniformly sample a disk in the xy plane
+    Uniformly sample a disk in the xy plane.
     """
     ...
 
@@ -1341,7 +1398,7 @@ def sample_unit_disk(state: uint32) -> vec2f:
 @over
 def sample_unit_sphere_surface(state: uint32) -> vec3f:
     """
-    Uniformly sample a unit sphere surface
+    Uniformly sample a unit sphere surface.
     """
     ...
 
@@ -1349,7 +1406,7 @@ def sample_unit_sphere_surface(state: uint32) -> vec3f:
 @over
 def sample_unit_sphere(state: uint32) -> vec3f:
     """
-    Uniformly sample a unit sphere
+    Uniformly sample a unit sphere.
     """
     ...
 
@@ -1357,7 +1414,7 @@ def sample_unit_sphere(state: uint32) -> vec3f:
 @over
 def sample_unit_hemisphere_surface(state: uint32) -> vec3f:
     """
-    Uniformly sample a unit hemisphere surface
+    Uniformly sample a unit hemisphere surface.
     """
     ...
 
@@ -1365,7 +1422,7 @@ def sample_unit_hemisphere_surface(state: uint32) -> vec3f:
 @over
 def sample_unit_hemisphere(state: uint32) -> vec3f:
     """
-    Uniformly sample a unit hemisphere
+    Uniformly sample a unit hemisphere.
     """
     ...
 
@@ -1373,7 +1430,7 @@ def sample_unit_hemisphere(state: uint32) -> vec3f:
 @over
 def sample_unit_square(state: uint32) -> vec2f:
     """
-    Uniformly sample a unit square
+    Uniformly sample a unit square.
     """
     ...
 
@@ -1381,7 +1438,7 @@ def sample_unit_square(state: uint32) -> vec2f:
 @over
 def sample_unit_cube(state: uint32) -> vec3f:
     """
-    Uniformly sample a unit cube
+    Uniformly sample a unit cube.
     """
     ...
 
@@ -1391,8 +1448,8 @@ def poisson(state: uint32, lam: float32) -> uint32:
     """
     Generate a random sample from a Poisson distribution.
 
-        :param state: RNG state
-        :param lam: The expected value of the distribution
+       :param state: RNG state
+       :param lam: The expected value of the distribution
     """
     ...
 
@@ -1400,7 +1457,7 @@ def poisson(state: uint32, lam: float32) -> uint32:
 @over
 def noise(state: uint32, x: float32) -> float:
     """
-    Non-periodic Perlin-style noise in 1d.
+    Non-periodic Perlin-style noise in 1D.
     """
     ...
 
@@ -1408,7 +1465,7 @@ def noise(state: uint32, x: float32) -> float:
 @over
 def noise(state: uint32, xy: vec2f) -> float:
     """
-    Non-periodic Perlin-style noise in 2d.
+    Non-periodic Perlin-style noise in 2D.
     """
     ...
 
@@ -1416,7 +1473,7 @@ def noise(state: uint32, xy: vec2f) -> float:
 @over
 def noise(state: uint32, xyz: vec3f) -> float:
     """
-    Non-periodic Perlin-style noise in 3d.
+    Non-periodic Perlin-style noise in 3D.
     """
     ...
 
@@ -1424,7 +1481,7 @@ def noise(state: uint32, xyz: vec3f) -> float:
 @over
 def noise(state: uint32, xyzt: vec4f) -> float:
     """
-    Non-periodic Perlin-style noise in 4d.
+    Non-periodic Perlin-style noise in 4D.
     """
     ...
 
@@ -1432,7 +1489,7 @@ def noise(state: uint32, xyzt: vec4f) -> float:
 @over
 def pnoise(state: uint32, x: float32, px: int32) -> float:
     """
-    Periodic Perlin-style noise in 1d.
+    Periodic Perlin-style noise in 1D.
     """
     ...
 
@@ -1440,7 +1497,7 @@ def pnoise(state: uint32, x: float32, px: int32) -> float:
 @over
 def pnoise(state: uint32, xy: vec2f, px: int32, py: int32) -> float:
     """
-    Periodic Perlin-style noise in 2d.
+    Periodic Perlin-style noise in 2D.
     """
     ...
 
@@ -1448,7 +1505,7 @@ def pnoise(state: uint32, xy: vec2f, px: int32, py: int32) -> float:
 @over
 def pnoise(state: uint32, xyz: vec3f, px: int32, py: int32, pz: int32) -> float:
     """
-    Periodic Perlin-style noise in 3d.
+    Periodic Perlin-style noise in 3D.
     """
     ...
 
@@ -1456,13 +1513,13 @@ def pnoise(state: uint32, xyz: vec3f, px: int32, py: int32, pz: int32) -> float:
 @over
 def pnoise(state: uint32, xyzt: vec4f, px: int32, py: int32, pz: int32, pt: int32) -> float:
     """
-    Periodic Perlin-style noise in 4d.
+    Periodic Perlin-style noise in 4D.
     """
     ...
 
 
 @over
-def curlnoise(state: uint32, xy: vec2f) -> vec2f:
+def curlnoise(state: uint32, xy: vec2f, octaves: uint32, lacunarity: float32, gain: float32) -> vec2f:
     """
     Divergence-free vector field based on the gradient of a Perlin noise function.
     """
@@ -1470,7 +1527,7 @@ def curlnoise(state: uint32, xy: vec2f) -> vec2f:
 
 
 @over
-def curlnoise(state: uint32, xyz: vec3f) -> vec3f:
+def curlnoise(state: uint32, xyz: vec3f, octaves: uint32, lacunarity: float32, gain: float32) -> vec3f:
     """
     Divergence-free vector field based on the curl of three Perlin noise functions.
     """
@@ -1478,7 +1535,7 @@ def curlnoise(state: uint32, xyz: vec3f) -> vec3f:
 
 
 @over
-def curlnoise(state: uint32, xyzt: vec4f) -> vec3f:
+def curlnoise(state: uint32, xyzt: vec4f, octaves: uint32, lacunarity: float32, gain: float32) -> vec3f:
     """
     Divergence-free vector field based on the curl of three Perlin noise functions.
     """
@@ -1488,16 +1545,7 @@ def curlnoise(state: uint32, xyzt: vec4f) -> vec3f:
 @over
 def printf():
     """
-    Allows printing formatted strings, using C-style format specifiers.
-    """
-    ...
-
-
-@over
-def tid() -> int:
-    """
-    Return the current thread index. Note that this is the *global* index of the thread in the range [0, dim)
-       where dim is the parameter passed to kernel launch.
+    Allows printing formatted strings using C-style format specifiers.
     """
     ...
 
@@ -1505,7 +1553,8 @@ def tid() -> int:
 @over
 def tid() -> Tuple[int, int]:
     """
-    Return the current thread indices for a 2d kernel launch. Use ``i,j = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
+    Return the current thread indices for a 2D kernel launch. Use ``i,j = wp.tid()`` syntax to retrieve the
+       coordinates inside the kernel thread grid. This function may not be called from user-defined Warp functions.
     """
     ...
 
@@ -1513,7 +1562,8 @@ def tid() -> Tuple[int, int]:
 @over
 def tid() -> Tuple[int, int, int]:
     """
-    Return the current thread indices for a 3d kernel launch. Use ``i,j,k = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
+    Return the current thread indices for a 3D kernel launch. Use ``i,j,k = wp.tid()`` syntax to retrieve the
+       coordinates inside the kernel thread grid. This function may not be called from user-defined Warp functions.
     """
     ...
 
@@ -1521,7 +1571,8 @@ def tid() -> Tuple[int, int, int]:
 @over
 def tid() -> Tuple[int, int, int, int]:
     """
-    Return the current thread indices for a 4d kernel launch. Use ``i,j,k,l = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
+    Return the current thread indices for a 4D kernel launch. Use ``i,j,k,l = wp.tid()`` syntax to retrieve the
+       coordinates inside the kernel thread grid. This function may not be called from user-defined Warp functions.
     """
     ...
 
@@ -1529,7 +1580,7 @@ def tid() -> Tuple[int, int, int, int]:
 @over
 def select(cond: bool, arg1: Any, arg2: Any):
     """
-    Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``
     """
     ...
 
@@ -1537,7 +1588,7 @@ def select(cond: bool, arg1: Any, arg2: Any):
 @over
 def select(cond: bool, arg1: Any, arg2: Any):
     """
-    Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``
     """
     ...
 
@@ -1545,7 +1596,7 @@ def select(cond: bool, arg1: Any, arg2: Any):
 @over
 def select(cond: int8, arg1: Any, arg2: Any):
     """
-    Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``
     """
     ...
 
@@ -1553,7 +1604,7 @@ def select(cond: int8, arg1: Any, arg2: Any):
 @over
 def select(cond: uint8, arg1: Any, arg2: Any):
     """
-    Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``
     """
     ...
 
@@ -1561,7 +1612,7 @@ def select(cond: uint8, arg1: Any, arg2: Any):
 @over
 def select(cond: int16, arg1: Any, arg2: Any):
     """
-    Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``
     """
     ...
 
@@ -1569,7 +1620,7 @@ def select(cond: int16, arg1: Any, arg2: Any):
 @over
 def select(cond: uint16, arg1: Any, arg2: Any):
     """
-    Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``
     """
     ...
 
@@ -1577,7 +1628,7 @@ def select(cond: uint16, arg1: Any, arg2: Any):
 @over
 def select(cond: int32, arg1: Any, arg2: Any):
     """
-    Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``
     """
     ...
 
@@ -1585,7 +1636,7 @@ def select(cond: int32, arg1: Any, arg2: Any):
 @over
 def select(cond: uint32, arg1: Any, arg2: Any):
     """
-    Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``
     """
     ...
 
@@ -1593,7 +1644,7 @@ def select(cond: uint32, arg1: Any, arg2: Any):
 @over
 def select(cond: int64, arg1: Any, arg2: Any):
     """
-    Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``
     """
     ...
 
@@ -1601,7 +1652,7 @@ def select(cond: int64, arg1: Any, arg2: Any):
 @over
 def select(cond: uint64, arg1: Any, arg2: Any):
     """
-    Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``
     """
     ...
 
@@ -1609,7 +1660,7 @@ def select(cond: uint64, arg1: Any, arg2: Any):
 @over
 def select(arr: Array[Any], arg1: Any, arg2: Any):
     """
-    Select between two arguments, if array is null then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``arr`` is null then return ``arg1``, otherwise return ``arg2``
     """
     ...
 
@@ -1617,7 +1668,7 @@ def select(arr: Array[Any], arg1: Any, arg2: Any):
 @over
 def atomic_add(a: Array[Any], i: int32, value: Any):
     """
-    Atomically add ``value`` onto the array at location given by index.
+    Atomically add ``value`` onto ``a[i]``.
     """
     ...
 
@@ -1625,7 +1676,7 @@ def atomic_add(a: Array[Any], i: int32, value: Any):
 @over
 def atomic_add(a: Array[Any], i: int32, j: int32, value: Any):
     """
-    Atomically add ``value`` onto the array at location given by indices.
+    Atomically add ``value`` onto ``a[i,j]``.
     """
     ...
 
@@ -1633,7 +1684,7 @@ def atomic_add(a: Array[Any], i: int32, j: int32, value: Any):
 @over
 def atomic_add(a: Array[Any], i: int32, j: int32, k: int32, value: Any):
     """
-    Atomically add ``value`` onto the array at location given by indices.
+    Atomically add ``value`` onto ``a[i,j,k]``.
     """
     ...
 
@@ -1641,7 +1692,7 @@ def atomic_add(a: Array[Any], i: int32, j: int32, k: int32, value: Any):
 @over
 def atomic_add(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
     """
-    Atomically add ``value`` onto the array at location given by indices.
+    Atomically add ``value`` onto ``a[i,j,k,l]``.
     """
     ...
 
@@ -1649,7 +1700,7 @@ def atomic_add(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any
 @over
 def atomic_add(a: FabricArray[Any], i: int32, value: Any):
     """
-    Atomically add ``value`` onto the array at location given by index.
+    Atomically add ``value`` onto ``a[i]``.
     """
     ...
 
@@ -1657,7 +1708,7 @@ def atomic_add(a: FabricArray[Any], i: int32, value: Any):
 @over
 def atomic_add(a: FabricArray[Any], i: int32, j: int32, value: Any):
     """
-    Atomically add ``value`` onto the array at location given by indices.
+    Atomically add ``value`` onto ``a[i,j]``.
     """
     ...
 
@@ -1665,7 +1716,7 @@ def atomic_add(a: FabricArray[Any], i: int32, j: int32, value: Any):
 @over
 def atomic_add(a: FabricArray[Any], i: int32, j: int32, k: int32, value: Any):
     """
-    Atomically add ``value`` onto the array at location given by indices.
+    Atomically add ``value`` onto ``a[i,j,k]``.
     """
     ...
 
@@ -1673,7 +1724,7 @@ def atomic_add(a: FabricArray[Any], i: int32, j: int32, k: int32, value: Any):
 @over
 def atomic_add(a: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
     """
-    Atomically add ``value`` onto the array at location given by indices.
+    Atomically add ``value`` onto ``a[i,j,k,l]``.
     """
     ...
 
@@ -1681,7 +1732,7 @@ def atomic_add(a: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, valu
 @over
 def atomic_add(a: IndexedFabricArray[Any], i: int32, value: Any):
     """
-    Atomically add ``value`` onto the array at location given by index.
+    Atomically add ``value`` onto ``a[i]``.
     """
     ...
 
@@ -1689,7 +1740,7 @@ def atomic_add(a: IndexedFabricArray[Any], i: int32, value: Any):
 @over
 def atomic_add(a: IndexedFabricArray[Any], i: int32, j: int32, value: Any):
     """
-    Atomically add ``value`` onto the array at location given by indices.
+    Atomically add ``value`` onto ``a[i,j]``.
     """
     ...
 
@@ -1697,7 +1748,7 @@ def atomic_add(a: IndexedFabricArray[Any], i: int32, j: int32, value: Any):
 @over
 def atomic_add(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any):
     """
-    Atomically add ``value`` onto the array at location given by indices.
+    Atomically add ``value`` onto ``a[i,j,k]``.
     """
     ...
 
@@ -1705,7 +1756,7 @@ def atomic_add(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: 
 @over
 def atomic_add(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
     """
-    Atomically add ``value`` onto the array at location given by indices.
+    Atomically add ``value`` onto ``a[i,j,k,l]``.
     """
     ...
 
@@ -1713,7 +1764,7 @@ def atomic_add(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int3
 @over
 def atomic_sub(a: Array[Any], i: int32, value: Any):
     """
-    Atomically subtract ``value`` onto the array at location given by index.
+    Atomically subtract ``value`` onto ``a[i]``.
     """
     ...
 
@@ -1721,7 +1772,7 @@ def atomic_sub(a: Array[Any], i: int32, value: Any):
 @over
 def atomic_sub(a: Array[Any], i: int32, j: int32, value: Any):
     """
-    Atomically subtract ``value`` onto the array at location given by indices.
+    Atomically subtract ``value`` onto ``a[i,j]``.
     """
     ...
 
@@ -1729,7 +1780,7 @@ def atomic_sub(a: Array[Any], i: int32, j: int32, value: Any):
 @over
 def atomic_sub(a: Array[Any], i: int32, j: int32, k: int32, value: Any):
     """
-    Atomically subtract ``value`` onto the array at location given by indices.
+    Atomically subtract ``value`` onto ``a[i,j,k]``.
     """
     ...
 
@@ -1737,7 +1788,7 @@ def atomic_sub(a: Array[Any], i: int32, j: int32, k: int32, value: Any):
 @over
 def atomic_sub(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
     """
-    Atomically subtract ``value`` onto the array at location given by indices.
+    Atomically subtract ``value`` onto ``a[i,j,k,l]``.
     """
     ...
 
@@ -1745,7 +1796,7 @@ def atomic_sub(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any
 @over
 def atomic_sub(a: FabricArray[Any], i: int32, value: Any):
     """
-    Atomically subtract ``value`` onto the array at location given by index.
+    Atomically subtract ``value`` onto ``a[i]``.
     """
     ...
 
@@ -1753,7 +1804,7 @@ def atomic_sub(a: FabricArray[Any], i: int32, value: Any):
 @over
 def atomic_sub(a: FabricArray[Any], i: int32, j: int32, value: Any):
     """
-    Atomically subtract ``value`` onto the array at location given by indices.
+    Atomically subtract ``value`` onto ``a[i,j]``.
     """
     ...
 
@@ -1761,7 +1812,7 @@ def atomic_sub(a: FabricArray[Any], i: int32, j: int32, value: Any):
 @over
 def atomic_sub(a: FabricArray[Any], i: int32, j: int32, k: int32, value: Any):
     """
-    Atomically subtract ``value`` onto the array at location given by indices.
+    Atomically subtract ``value`` onto ``a[i,j,k]``.
     """
     ...
 
@@ -1769,7 +1820,7 @@ def atomic_sub(a: FabricArray[Any], i: int32, j: int32, k: int32, value: Any):
 @over
 def atomic_sub(a: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
     """
-    Atomically subtract ``value`` onto the array at location given by indices.
+    Atomically subtract ``value`` onto ``a[i,j,k,l]``.
     """
     ...
 
@@ -1777,7 +1828,7 @@ def atomic_sub(a: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, valu
 @over
 def atomic_sub(a: IndexedFabricArray[Any], i: int32, value: Any):
     """
-    Atomically subtract ``value`` onto the array at location given by index.
+    Atomically subtract ``value`` onto ``a[i]``.
     """
     ...
 
@@ -1785,7 +1836,7 @@ def atomic_sub(a: IndexedFabricArray[Any], i: int32, value: Any):
 @over
 def atomic_sub(a: IndexedFabricArray[Any], i: int32, j: int32, value: Any):
     """
-    Atomically subtract ``value`` onto the array at location given by indices.
+    Atomically subtract ``value`` onto ``a[i,j]``.
     """
     ...
 
@@ -1793,7 +1844,7 @@ def atomic_sub(a: IndexedFabricArray[Any], i: int32, j: int32, value: Any):
 @over
 def atomic_sub(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any):
     """
-    Atomically subtract ``value`` onto the array at location given by indices.
+    Atomically subtract ``value`` onto ``a[i,j,k]``.
     """
     ...
 
@@ -1801,7 +1852,7 @@ def atomic_sub(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: 
 @over
 def atomic_sub(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
     """
-    Atomically subtract ``value`` onto the array at location given by indices.
+    Atomically subtract ``value`` onto ``a[i,j,k,l]``.
     """
     ...
 
@@ -1809,7 +1860,9 @@ def atomic_sub(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int3
 @over
 def atomic_min(a: Array[Any], i: int32, value: Any):
     """
-    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the minimum of ``value`` and ``a[i]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1817,7 +1870,9 @@ def atomic_min(a: Array[Any], i: int32, value: Any):
 @over
 def atomic_min(a: Array[Any], i: int32, j: int32, value: Any):
     """
-    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the minimum of ``value`` and ``a[i,j]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1825,7 +1880,9 @@ def atomic_min(a: Array[Any], i: int32, j: int32, value: Any):
 @over
 def atomic_min(a: Array[Any], i: int32, j: int32, k: int32, value: Any):
     """
-    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the minimum of ``value`` and ``a[i,j,k]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1833,7 +1890,9 @@ def atomic_min(a: Array[Any], i: int32, j: int32, k: int32, value: Any):
 @over
 def atomic_min(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
     """
-    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the minimum of ``value`` and ``a[i,j,k,l]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1841,7 +1900,9 @@ def atomic_min(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any
 @over
 def atomic_min(a: FabricArray[Any], i: int32, value: Any):
     """
-    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the minimum of ``value`` and ``a[i]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1849,7 +1910,9 @@ def atomic_min(a: FabricArray[Any], i: int32, value: Any):
 @over
 def atomic_min(a: FabricArray[Any], i: int32, j: int32, value: Any):
     """
-    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the minimum of ``value`` and ``a[i,j]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1857,7 +1920,9 @@ def atomic_min(a: FabricArray[Any], i: int32, j: int32, value: Any):
 @over
 def atomic_min(a: FabricArray[Any], i: int32, j: int32, k: int32, value: Any):
     """
-    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the minimum of ``value`` and ``a[i,j,k]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1865,7 +1930,9 @@ def atomic_min(a: FabricArray[Any], i: int32, j: int32, k: int32, value: Any):
 @over
 def atomic_min(a: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
     """
-    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the minimum of ``value`` and ``a[i,j,k,l]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1873,7 +1940,9 @@ def atomic_min(a: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, valu
 @over
 def atomic_min(a: IndexedFabricArray[Any], i: int32, value: Any):
     """
-    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the minimum of ``value`` and ``a[i]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1881,7 +1950,9 @@ def atomic_min(a: IndexedFabricArray[Any], i: int32, value: Any):
 @over
 def atomic_min(a: IndexedFabricArray[Any], i: int32, j: int32, value: Any):
     """
-    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the minimum of ``value`` and ``a[i,j]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1889,7 +1960,9 @@ def atomic_min(a: IndexedFabricArray[Any], i: int32, j: int32, value: Any):
 @over
 def atomic_min(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any):
     """
-    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the minimum of ``value`` and ``a[i,j,k]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1897,7 +1970,9 @@ def atomic_min(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: 
 @over
 def atomic_min(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
     """
-    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the minimum of ``value`` and ``a[i,j,k,l]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1905,7 +1980,9 @@ def atomic_min(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int3
 @over
 def atomic_max(a: Array[Any], i: int32, value: Any):
     """
-    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the maximum of ``value`` and ``a[i]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1913,7 +1990,9 @@ def atomic_max(a: Array[Any], i: int32, value: Any):
 @over
 def atomic_max(a: Array[Any], i: int32, j: int32, value: Any):
     """
-    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the maximum of ``value`` and ``a[i,j]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1921,7 +2000,9 @@ def atomic_max(a: Array[Any], i: int32, j: int32, value: Any):
 @over
 def atomic_max(a: Array[Any], i: int32, j: int32, k: int32, value: Any):
     """
-    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the maximum of ``value`` and ``a[i,j,k]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1929,7 +2010,9 @@ def atomic_max(a: Array[Any], i: int32, j: int32, k: int32, value: Any):
 @over
 def atomic_max(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
     """
-    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the maximum of ``value`` and ``a[i,j,k,l]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1937,7 +2020,9 @@ def atomic_max(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any
 @over
 def atomic_max(a: FabricArray[Any], i: int32, value: Any):
     """
-    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the maximum of ``value`` and ``a[i]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1945,7 +2030,9 @@ def atomic_max(a: FabricArray[Any], i: int32, value: Any):
 @over
 def atomic_max(a: FabricArray[Any], i: int32, j: int32, value: Any):
     """
-    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the maximum of ``value`` and ``a[i,j]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1953,7 +2040,9 @@ def atomic_max(a: FabricArray[Any], i: int32, j: int32, value: Any):
 @over
 def atomic_max(a: FabricArray[Any], i: int32, j: int32, k: int32, value: Any):
     """
-    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the maximum of ``value`` and ``a[i,j,k]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1961,7 +2050,9 @@ def atomic_max(a: FabricArray[Any], i: int32, j: int32, k: int32, value: Any):
 @over
 def atomic_max(a: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
     """
-    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the maximum of ``value`` and ``a[i,j,k,l]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1969,7 +2060,9 @@ def atomic_max(a: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, valu
 @over
 def atomic_max(a: IndexedFabricArray[Any], i: int32, value: Any):
     """
-    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the maximum of ``value`` and ``a[i]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1977,7 +2070,9 @@ def atomic_max(a: IndexedFabricArray[Any], i: int32, value: Any):
 @over
 def atomic_max(a: IndexedFabricArray[Any], i: int32, j: int32, value: Any):
     """
-    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the maximum of ``value`` and ``a[i,j]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1985,7 +2080,9 @@ def atomic_max(a: IndexedFabricArray[Any], i: int32, j: int32, value: Any):
 @over
 def atomic_max(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any):
     """
-    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the maximum of ``value`` and ``a[i,j,k]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -1993,7 +2090,9 @@ def atomic_max(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: 
 @over
 def atomic_max(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
     """
-    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+    Compute the maximum of ``value`` and ``a[i,j,k,l]`` and atomically update the array.
+
+    Note that for vectors and matrices the operation is only atomic on a per-component basis.
     """
     ...
 
@@ -2001,7 +2100,7 @@ def atomic_max(a: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int3
 @over
 def lerp(a: Float, b: Float, t: Float) -> Float:
     """
-    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+    Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``
     """
     ...
 
@@ -2009,7 +2108,7 @@ def lerp(a: Float, b: Float, t: Float) -> Float:
 @over
 def lerp(a: Vector[Any, Float], b: Vector[Any, Float], t: Float) -> Vector[Any, Float]:
     """
-    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+    Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``
     """
     ...
 
@@ -2017,7 +2116,7 @@ def lerp(a: Vector[Any, Float], b: Vector[Any, Float], t: Float) -> Vector[Any, 
 @over
 def lerp(a: Matrix[Any, Any, Float], b: Matrix[Any, Any, Float], t: Float) -> Matrix[Any, Any, Float]:
     """
-    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+    Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``
     """
     ...
 
@@ -2025,7 +2124,7 @@ def lerp(a: Matrix[Any, Any, Float], b: Matrix[Any, Any, Float], t: Float) -> Ma
 @over
 def lerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaternion[Float]:
     """
-    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+    Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``
     """
     ...
 
@@ -2033,7 +2132,7 @@ def lerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaternion[Flo
 @over
 def lerp(a: Transformation[Float], b: Transformation[Float], t: Float) -> Transformation[Float]:
     """
-    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+    Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``
     """
     ...
 
@@ -2041,7 +2140,8 @@ def lerp(a: Transformation[Float], b: Transformation[Float], t: Float) -> Transf
 @over
 def smoothstep(edge0: Float, edge1: Float, x: Float) -> Float:
     """
-    Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping
+    Smoothly interpolate between two values ``edge0`` and ``edge1`` using a factor ``x``,
+       and return a result between 0 and 1 using a cubic Hermite interpolation after clamping.
     """
     ...
 
@@ -2049,7 +2149,7 @@ def smoothstep(edge0: Float, edge1: Float, x: Float) -> Float:
 @over
 def expect_near(arg1: Float, arg2: Float, tolerance: Float):
     """
-    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
+    Prints an error to stdout if ``arg1`` and ``arg2`` are not closer than tolerance in magnitude
     """
     ...
 
@@ -2057,7 +2157,7 @@ def expect_near(arg1: Float, arg2: Float, tolerance: Float):
 @over
 def expect_near(arg1: vec3f, arg2: vec3f, tolerance: float32):
     """
-    Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude
+    Prints an error to stdout if any element of ``arg1`` and ``arg2`` are not closer than tolerance in magnitude
     """
     ...
 
@@ -2065,7 +2165,7 @@ def expect_near(arg1: vec3f, arg2: vec3f, tolerance: float32):
 @over
 def lower_bound(arr: Array[Scalar], value: Scalar) -> int:
     """
-    Search a sorted array for the closest element greater than or equal to value.
+    Search a sorted array ``arr`` for the closest element greater than or equal to ``value``.
     """
     ...
 
@@ -2073,7 +2173,7 @@ def lower_bound(arr: Array[Scalar], value: Scalar) -> int:
 @over
 def lower_bound(arr: Array[Scalar], arr_begin: int32, arr_end: int32, value: Scalar) -> int:
     """
-    Search a sorted array range [arr_begin, arr_end) for the closest element greater than or equal to value.
+    Search a sorted array ``arr`` in the range [arr_begin, arr_end) for the closest element greater than or equal to ``value``.
     """
     ...
 
@@ -2332,12 +2432,6 @@ def neg(x: Quaternion[Scalar]) -> Quaternion[Scalar]:
 
 @over
 def neg(x: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
-    """ """
-    ...
-
-
-@over
-def unot(b: bool) -> bool:
     """ """
     ...
 

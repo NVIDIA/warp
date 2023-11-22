@@ -7,57 +7,57 @@ with Dirichlet boundary conditions on vertical edges and homogeneous Neumann on 
 import argparse
 
 import warp as wp
-
-from warp.fem.types import *
-from warp.fem.geometry import Grid2D, Trimesh2D
-from warp.fem.space import make_polynomial_space
-from warp.fem.field import make_test, make_trial
-from warp.fem.domain import Cells, BoundarySides
-from warp.fem.integrate import integrate
-from warp.fem.operator import grad, normal, integrand
-from warp.fem.dirichlet import project_linear_system
+import warp.fem as fem
 
 from warp.sparse import bsr_axpy
 from warp.fem.utils import array_axpy
 
-from plot_utils import plot_surface
-from bsr_utils import bsr_cg
-from mesh_utils import gen_trimesh
 
-import matplotlib.pyplot as plt
+# Import example utilities
+# Make sure that works both when imported as module and run as standalone file
+try:
+    from .bsr_utils import bsr_cg
+    from .mesh_utils import gen_trimesh, gen_quadmesh
+    from .plot_utils import Plot
+except ImportError:
+    from bsr_utils import bsr_cg
+    from mesh_utils import gen_trimesh, gen_quadmesh
+    from plot_utils import Plot
+
+wp.set_module_options({"enable_backward": False})
 
 
-@integrand
+@fem.integrand
 def linear_form(
-    s: Sample,
-    v: Field,
+    s: fem.Sample,
+    v: fem.Field,
 ):
     """Linear form with constant slope 1 -- forcing term of our problem"""
     return v(s)
 
 
-@integrand
-def diffusion_form(s: Sample, u: Field, v: Field, nu: float):
+@fem.integrand
+def diffusion_form(s: fem.Sample, u: fem.Field, v: fem.Field, nu: float):
     """Diffusion bilinear form with constant coefficient ``nu``"""
     return nu * wp.dot(
-        grad(u, s),
-        grad(v, s),
+        fem.grad(u, s),
+        fem.grad(v, s),
     )
 
 
-@integrand
-def y_boundary_value_form(s: Sample, domain: Domain, v: Field, val: float):
+@fem.integrand
+def y_boundary_value_form(s: fem.Sample, domain: fem.Domain, v: fem.Field, val: float):
     """Linear form with coefficient val on vertical edges, zero elsewhere"""
-    nor = normal(domain, s)
+    nor = fem.normal(domain, s)
     return val * v(s) * wp.abs(nor[0])
 
 
-@integrand
+@fem.integrand
 def y_boundary_projector_form(
-    s: Sample,
-    domain: Domain,
-    u: Field,
-    v: Field,
+    s: fem.Sample,
+    domain: fem.Domain,
+    u: fem.Field,
+    v: fem.Field,
 ):
     """
     Bilinear boundary condition projector form, non-zero on vertical edges only.
@@ -66,65 +66,96 @@ def y_boundary_projector_form(
     return y_boundary_value_form(s, domain, v, u(s))
 
 
-if __name__ == "__main__":
-    wp.init()
-    wp.set_module_options({"enable_backward": False})
-
+class Example:
     parser = argparse.ArgumentParser()
     parser.add_argument("--resolution", type=int, default=50)
     parser.add_argument("--degree", type=int, default=2)
+    parser.add_argument("--serendipity", action="store_true", default=False)
     parser.add_argument("--viscosity", type=float, default=2.0)
     parser.add_argument("--boundary_value", type=float, default=5.0)
     parser.add_argument("--boundary_compliance", type=float, default=0, help="Dirichlet boundary condition compliance")
-    parser.add_argument("--tri_mesh", action="store_true", help="Use a triangular mesh")
-    args = parser.parse_args()
+    parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type")
 
-    # Grid or triangle mesh geometry
-    if args.tri_mesh:
-        positions, tri_vidx = gen_trimesh(res=vec2i(args.resolution))
-        geo = Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
-    else:
-        geo = Grid2D(res=vec2i(args.resolution))
+    def __init__(self, stage=None, quiet=False, args=None, **kwargs):
+        if args is None:
+            # Read args from kwargs, add default arg values from parser
+            args = argparse.Namespace(**kwargs)
+            args = Example.parser.parse_args(args=[], namespace=args)
+        self._args = args
+        self._quiet = quiet
 
-    # Domain and function spaces
-    domain = Cells(geometry=geo)
-    scalar_space = make_polynomial_space(geo, degree=args.degree)
+        # Grid or triangle mesh geometry
+        if args.mesh == "tri":
+            positions, tri_vidx = gen_trimesh(res=wp.vec2i(args.resolution))
+            self._geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
+        elif args.mesh == "quad":
+            positions, quad_vidx = gen_quadmesh(res=wp.vec2i(args.resolution))
+            self._geo = fem.Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions)
+        else:
+            self._geo = fem.Grid2D(res=wp.vec2i(args.resolution))
 
-    # Right-hand-side (forcing term)
-    test = make_test(space=scalar_space, domain=domain)
-    rhs = integrate(linear_form, fields={"v": test})
+        # Scalar function space
+        element_basis = fem.ElementBasis.SERENDIPITY if args.serendipity else None
+        self._scalar_space = fem.make_polynomial_space(self._geo, degree=args.degree, element_basis=element_basis)
 
-    # Diffusion form
-    trial = make_trial(space=scalar_space, domain=domain)
-    matrix = integrate(diffusion_form, fields={"u": trial, "v": test}, values={"nu": args.viscosity})
+        # Scalar field over our function space
+        self._scalar_field = self._scalar_space.make_field()
 
-    # Boundary conditions on Y sides
-    # Use nodal integration so that boundary conditions are specified on each node independently
-    boundary = BoundarySides(geo)
-    bd_test = make_test(space=scalar_space, domain=boundary)
-    bd_trial = make_trial(space=scalar_space, domain=boundary)
+        self.renderer = Plot(stage)
 
-    bd_matrix = integrate(y_boundary_projector_form, fields={"u": bd_trial, "v": bd_test}, nodal=True)
-    bd_rhs = integrate(y_boundary_value_form, fields={"v": bd_test}, values={"val": args.boundary_value}, nodal=True)
+    def update(self):
+        args = self._args
+        geo = self._geo
 
-    # Assemble linear system
-    if args.boundary_compliance == 0.0:
-        # Hard BC: project linear system
-        project_linear_system(matrix, rhs, bd_matrix, bd_rhs)
-    else:
-        # Weak BC: add toegether diffusion and boundary condition matrices
-        boundary_strength = 1.0 / args.boundary_compliance
-        bsr_axpy(x=bd_matrix, y=matrix, alpha=boundary_strength, beta=1)
-        array_axpy(x=bd_rhs, y=rhs, alpha=boundary_strength, beta=1)
+        domain = fem.Cells(geometry=geo)
 
-    # Solve linear system using Conjugate Gradient
-    x = wp.zeros_like(rhs)
-    bsr_cg(matrix, b=rhs, x=x)
+        # Right-hand-side (forcing term)
+        test = fem.make_test(space=self._scalar_space, domain=domain)
+        rhs = fem.integrate(linear_form, fields={"v": test})
 
-    # Assign system result to a discrete field,
-    scalar_field = scalar_space.make_field()
-    scalar_field.dof_values = x
+        # Diffusion form
+        trial = fem.make_trial(space=self._scalar_space, domain=domain)
+        matrix = fem.integrate(diffusion_form, fields={"u": trial, "v": test}, values={"nu": args.viscosity})
 
-    # Visualize it with matplotlib
-    plot_surface(scalar_field)
-    plt.show()
+        # Boundary conditions on Y sides
+        # Use nodal integration so that boundary conditions are specified on each node independently
+        boundary = fem.BoundarySides(geo)
+        bd_test = fem.make_test(space=self._scalar_space, domain=boundary)
+        bd_trial = fem.make_trial(space=self._scalar_space, domain=boundary)
+
+        bd_matrix = fem.integrate(y_boundary_projector_form, fields={"u": bd_trial, "v": bd_test}, nodal=True)
+        bd_rhs = fem.integrate(
+            y_boundary_value_form, fields={"v": bd_test}, values={"val": args.boundary_value}, nodal=True
+        )
+
+        # Assemble linear system
+        if args.boundary_compliance == 0.0:
+            # Hard BC: project linear system
+            fem.project_linear_system(matrix, rhs, bd_matrix, bd_rhs)
+        else:
+            # Weak BC: add toegether diffusion and boundary condition matrices
+            boundary_strength = 1.0 / args.boundary_compliance
+            bsr_axpy(x=bd_matrix, y=matrix, alpha=boundary_strength, beta=1)
+            array_axpy(x=bd_rhs, y=rhs, alpha=boundary_strength, beta=1)
+
+        # Solve linear system using Conjugate Gradient
+        x = wp.zeros_like(rhs)
+        bsr_cg(matrix, b=rhs, x=x, quiet=self._quiet)
+
+        # Assign system result to our discrete field
+        self._scalar_field.dof_values = x
+
+    def render(self):
+        self.renderer.add_surface("solution", self._scalar_field)
+
+
+if __name__ == "__main__":
+    wp.init()
+
+    args = Example.parser.parse_args()
+
+    example = Example(args=args)
+    example.update()
+    example.render()
+
+    example.renderer.plot()

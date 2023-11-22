@@ -14,8 +14,8 @@
 #
 ###########################################################################
 
-import os
 import math
+import os
 
 import numpy as np
 
@@ -27,21 +27,8 @@ wp.init()
 
 
 class Example:
-    frame_dt = 1.0 / 60.0
-
-    episode_duration = 20.0  # seconds
-    episode_frames = int(episode_duration / frame_dt)
-
-    sim_substeps = 10
-    sim_dt = frame_dt / sim_substeps
-    sim_steps = int(episode_duration / sim_dt)
-
-    sim_time = 0.0
-
-    def __init__(self, stage=None, render=True, num_envs=1):
+    def __init__(self, stage=None, num_envs=1, enable_rendering=True, print_timers=True):
         builder = wp.sim.ModelBuilder()
-
-        self.enable_rendering = render
 
         self.num_envs = num_envs
 
@@ -67,6 +54,15 @@ class Example:
 
         builder = wp.sim.ModelBuilder()
 
+        self.sim_time = 0.0
+        self.frame_dt = 1.0 / 60.0
+
+        episode_duration = 20.0  # seconds
+        self.episode_frames = int(episode_duration / self.frame_dt)
+
+        self.sim_substeps = 10
+        self.sim_dt = self.frame_dt / self.sim_substeps
+
         for i in range(num_envs):
             builder.add_builder(
                 articulation_builder, xform=wp.transform(np.array((i * 2.0, 4.0, 0.0)), wp.quat_identity())
@@ -86,56 +82,59 @@ class Example:
 
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
-        # -----------------------
-        # set up Usd renderer
+        self.enable_rendering = enable_rendering
         self.renderer = None
-        if render:
-            self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=15.0)
+        if self.enable_rendering:
+            self.renderer = wp.sim.render.SimRenderer(path=stage, model=self.model, scaling=15.0)
 
-    def update(self):
-        for _ in range(self.sim_substeps):
-            self.state.clear_forces()
-            self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
+        self.print_timers = print_timers
 
-    def render(self, is_live=False):
-        time = 0.0 if is_live else self.sim_time
-
-        self.renderer.begin_frame(time)
-        self.renderer.render(self.state)
-        self.renderer.end_frame()
-
-    def run(self, render=True):
-        # ---------------
-        # run simulation
-
-        self.sim_time = 0.0
         self.state = self.model.state()
 
         wp.sim.eval_fk(self.model, self.model.joint_q, self.model.joint_qd, None, self.state)
 
-        profiler = {}
+        self.use_graph = wp.get_device().is_cuda
+        self.graph = None
 
-        # create update graph
-        wp.capture_begin()
+        if self.use_graph:
+            # create update graph
+            wp.capture_begin()
+            self.update()
+            self.graph = wp.capture_end()
 
-        # simulate
-        self.update()
+    def update(self):
+        with wp.ScopedTimer("simulate", active=True, print=self.print_timers):
+            if self.use_graph is False or self.graph is None:
+                for _ in range(self.sim_substeps):
+                    self.state.clear_forces()
+                    self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
+            else:
+                wp.capture_launch(self.graph)
 
-        graph = wp.capture_end()
-
-        # simulate
-        with wp.ScopedTimer("simulate", detailed=False, print=False, active=True, dict=profiler):
-            for f in range(0, self.episode_frames):
-                with wp.ScopedTimer("simulate", active=True):
-                    wp.capture_launch(graph)
+            if not wp.get_device().is_capturing:
                 self.sim_time += self.frame_dt
 
-                if self.enable_rendering:
-                    with wp.ScopedTimer("render", active=True):
-                        self.render()
-                    self.renderer.save()
+    def render(self, is_live=False):
+        if self.enable_rendering:
+            with wp.ScopedTimer("render", active=True, print=self.print_timers):
+                time = 0.0 if is_live else self.sim_time
+
+                self.renderer.begin_frame(time)
+                self.renderer.render(self.state)
+                self.renderer.end_frame()
+
+    def run(self):
+        profiler = {}
+
+        with wp.ScopedTimer("simulate", detailed=False, print=False, active=True, dict=profiler):
+            for _ in range(self.episode_frames):
+                self.update()
+                self.render()
 
             wp.synchronize()
+
+        if self.enable_rendering:
+            self.renderer.save()
 
         avg_time = np.array(profiler["simulate"]).mean() / self.episode_frames
         avg_steps_second = 1000.0 * float(self.num_envs) / avg_time
@@ -145,38 +144,39 @@ class Example:
         return 1000.0 * float(self.num_envs) / avg_time
 
 
-profile = False
+if __name__ == "__main__":
+    profile = False
 
-if profile:
-    env_count = 2
-    env_times = []
-    env_size = []
+    if profile:
+        env_count = 2
+        env_times = []
+        env_size = []
 
-    for i in range(15):
-        robot = Example(render=False, num_envs=env_count)
-        steps_per_second = robot.run()
+        for i in range(15):
+            example = Example(num_envs=env_count, enable_rendering=False, print_timers=False)
+            steps_per_second = example.run()
 
-        env_size.append(env_count)
-        env_times.append(steps_per_second)
+            env_size.append(env_count)
+            env_times.append(steps_per_second)
 
-        env_count *= 2
+            env_count *= 2
 
-    # dump times
-    for i in range(len(env_times)):
-        print(f"envs: {env_size[i]} steps/second: {env_times[i]}")
+        # dump times
+        for i in range(len(env_times)):
+            print(f"envs: {env_size[i]} steps/second: {env_times[i]}")
 
-    # plot
-    import matplotlib.pyplot as plt
+        # plot
+        import matplotlib.pyplot as plt
 
-    plt.figure(1)
-    plt.plot(env_size, env_times)
-    plt.xscale("log")
-    plt.xlabel("Number of Envs")
-    plt.yscale("log")
-    plt.ylabel("Steps/Second")
-    plt.show()
+        plt.figure(1)
+        plt.plot(env_size, env_times)
+        plt.xscale("log")
+        plt.xlabel("Number of Envs")
+        plt.yscale("log")
+        plt.ylabel("Steps/Second")
+        plt.show()
 
-else:
-    stage = os.path.join(os.path.dirname(__file__), "outputs/example_sim_cartpole.usd")
-    robot = Example(stage, render=True, num_envs=10)
-    robot.run()
+    else:
+        stage = os.path.join(os.path.dirname(__file__), "outputs/example_sim_cartpole.usd")
+        example = Example(stage, num_envs=10)
+        example.run()

@@ -5,6 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import unittest
+
 import numpy as np
 import warp as wp
 from warp.tests.test_base import *
@@ -35,17 +37,17 @@ def loss_kernel(x: wp.array2d(dtype=float), loss: wp.array(dtype=float)):
 
 
 def test_mlp(test, device):
-    np.random.seed(0)
+    rng = np.random.default_rng(123)
 
     m = 10
     n = 200
 
     batches = 20000
 
-    weights = wp.array(np.random.rand(m, n) * 0.5 - 0.5, dtype=float, device=device)
-    bias = wp.array(np.random.rand(m) * 0.5 - 0.5, dtype=float, device=device)
+    weights = wp.array(rng.random(size=(m, n)) * 0.5 - 0.5, dtype=float, device=device)
+    bias = wp.array(rng.random(size=m) * 0.5 - 0.5, dtype=float, device=device)
 
-    x = wp.array(np.random.rand(n, batches), dtype=float, device=device)
+    x = wp.array(rng.random(size=(n, batches)), dtype=float, device=device)
     y = wp.zeros(shape=(m, batches), device=device)
 
     with wp.ScopedTimer("warp", active=False):
@@ -86,13 +88,15 @@ def create_mlp(m, n):
 def create_golden():
     import torch
 
+    rng = np.random.default_rng(123)
+
     input_size = 32
     hidden_size = 16
     batch_size = 64
 
     network = create_mlp(input_size, hidden_size)
 
-    x = torch.Tensor(np.random.rand(batch_size, input_size))
+    x = torch.Tensor(rng.random(size=(batch_size, input_size)))
     x.requires_grad = True
 
     y = network.forward(x)
@@ -169,6 +173,8 @@ def test_mlp_grad(test, device):
 def profile_mlp_torch(device):
     import torch
 
+    rng = np.random.default_rng(123)
+
     m = 128
     n = 64
 
@@ -179,7 +185,7 @@ def profile_mlp_torch(device):
 
         network = create_mlp(m, n)
 
-        x = torch.Tensor(np.random.rand(b, m))
+        x = torch.Tensor(rng.random(size=(b, m)))
 
         with wp.ScopedTimer("torch_forward" + str(b)):
             y = network.forward(x)
@@ -190,7 +196,7 @@ def profile_mlp_torch(device):
 
         network = create_mlp(m, n)
 
-        x = torch.Tensor(np.random.rand(b, m))
+        x = torch.Tensor(rng.random(size=(b, m)))
         y = network.forward(x)
 
         loss = torch.norm(y)
@@ -204,6 +210,8 @@ def profile_mlp_torch(device):
 
 
 def profile_mlp_warp(device):
+    rng = np.random.default_rng(123)
+
     m = 128
     n = 64
 
@@ -212,10 +220,10 @@ def profile_mlp_warp(device):
     for i in range(steps):
         b = 2**i
 
-        weights = wp.array(np.random.rand(m, n) * 0.5 - 0.5, dtype=float, device=device)
-        bias = wp.array(np.random.rand(m) * 0.5 - 0.5, dtype=float, device=device)
+        weights = wp.array(rng.random(size=(m, n)) * 0.5 - 0.5, dtype=float, device=device)
+        bias = wp.array(rng.random(size=m) * 0.5 - 0.5, dtype=float, device=device)
 
-        x = wp.array(np.random.rand(n, b), dtype=float, device=device)
+        x = wp.array(rng.random(size=(n, b)), dtype=float, device=device)
         y = wp.zeros(shape=(m, b), device=device)
 
         with wp.ScopedTimer("warp-forward" + str(b)):
@@ -225,10 +233,10 @@ def profile_mlp_warp(device):
     for i in range(steps):
         b = 2**i
 
-        weights = wp.array(np.random.rand(m, n) * 0.5 - 0.5, dtype=float, device=device, requires_grad=True)
-        bias = wp.array(np.random.rand(m) * 0.5 - 0.5, dtype=float, device=device, requires_grad=True)
+        weights = wp.array(rng.random(size=(m, n)) * 0.5 - 0.5, dtype=float, device=device, requires_grad=True)
+        bias = wp.array(rng.random(size=m) * 0.5 - 0.5, dtype=float, device=device, requires_grad=True)
 
-        x = wp.array(np.random.rand(n, b), dtype=float, device=device, requires_grad=True)
+        x = wp.array(rng.random(size=(n, b)), dtype=float, device=device, requires_grad=True)
         y = wp.zeros(shape=(m, b), device=device, requires_grad=True)
 
         loss = wp.zeros(1, dtype=float, device=device)
@@ -264,5 +272,6 @@ def register(parent):
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
+    wp.build.clear_kernel_cache()
+    _ = register(unittest.TestCase)
     unittest.main(verbosity=2, failfast=False)
