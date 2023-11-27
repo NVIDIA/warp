@@ -1344,7 +1344,7 @@ class Adjoint:
 
             if isinstance(aggregate, Var):
                 raise WarpCodegenAttributeError(
-                    f"Error, `{node.attr}` is not an attribute of '{aggregate.label}' ({type_repr(aggregate.type)})"
+                    f"Error, `{node.attr}` is not an attribute of '{node.value.id}' ({type_repr(aggregate.type)})"
                 )
             raise WarpCodegenAttributeError(f"Error, `{node.attr}` is not an attribute of '{aggregate}'")
 
