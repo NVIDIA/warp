@@ -15,31 +15,33 @@ llvm_path = os.path.join(llvm_project_path, "llvm")
 llvm_build_path = os.path.join(llvm_project_path, "out/build/")
 llvm_install_path = os.path.join(llvm_project_path, "out/install/")
 
-# Fetch prebuilt Clang/LLVM libraries
-if os.name == "nt":
-    packman = "tools\\packman\\packman.cmd"
-    packages = {"x86_64": "15.0.7-windows-x86_64-ptx-vs142"}
-else:
-    packman = "./tools/packman/packman"
-    if sys.platform == "darwin":
-        packages = {
-            "arm64": "15.0.7-darwin-aarch64-macos11",
-            "x86_64": "15.0.7-darwin-x86_64-macos11",
-        }
-    else:
-        packages = {"x86_64": "15.0.7-linux-x86_64-ptx-gcc7.5-cxx11abi0"}
 
-for arch in packages:
-    subprocess.check_call(
-        [
-            packman,
-            "install",
-            "-l",
-            f"./_build/host-deps/llvm-project/release-{arch}",
-            "clang+llvm-warp",
-            packages[arch],
-        ]
-    )
+# Fetch prebuilt Clang/LLVM libraries
+def fetch_prebuilt_libraries():
+    if os.name == "nt":
+        packman = "tools\\packman\\packman.cmd"
+        packages = {"x86_64": "15.0.7-windows-x86_64-ptx-vs142"}
+    else:
+        packman = "./tools/packman/packman"
+        if sys.platform == "darwin":
+            packages = {
+                "arm64": "15.0.7-darwin-aarch64-macos11",
+                "x86_64": "15.0.7-darwin-x86_64-macos11",
+            }
+        else:
+            packages = {"x86_64": "15.0.7-linux-x86_64-ptx-gcc7.5-cxx11abi0"}
+
+    for arch in packages:
+        subprocess.check_call(
+            [
+                packman,
+                "install",
+                "-l",
+                f"./_build/host-deps/llvm-project/release-{arch}",
+                "clang+llvm-warp",
+                packages[arch],
+            ]
+        )
 
 
 def build_from_source_for_arch(args, arch):
@@ -299,7 +301,7 @@ def build_warp_clang_for_arch(args, lib_name, arch):
             libpath = os.path.join(install_path, "lib")
         else:
             # obtain Clang and LLVM libraries from packman
-            assert os.path.exists("_build/host-deps/llvm-project"), "run build.bat / build.sh"
+            fetch_prebuilt_libraries()
             libpath = os.path.join(base_path, f"_build/host-deps/llvm-project/release-{arch}/lib")
 
         for _, _, libs in os.walk(libpath):
