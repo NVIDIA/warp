@@ -7,7 +7,7 @@ import warp.fem.polynomial as _polynomial
 
 from .function_space import FunctionSpace
 from .topology import SpaceTopology
-from .basis_space import BasisSpace
+from .basis_space import BasisSpace, PointBasisSpace
 from .collocated_function_space import CollocatedFunctionSpace
 
 from .grid_2d_function_space import (

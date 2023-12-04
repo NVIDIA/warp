@@ -2,12 +2,12 @@ from .geometry import Geometry, Grid2D, Trimesh2D, Quadmesh2D, Grid3D, Tetmesh, 
 from .geometry import GeometryPartition, LinearGeometryPartition, ExplicitGeometryPartition
 
 from .space import FunctionSpace, make_polynomial_space, ElementBasis
-from .space import BasisSpace, make_polynomial_basis_space, make_collocated_function_space
+from .space import BasisSpace, PointBasisSpace, make_polynomial_basis_space, make_collocated_function_space
 from .space import DofMapper, SkewSymmetricTensorMapper, SymmetricTensorMapper
 from .space import SpaceTopology, SpacePartition, SpaceRestriction, make_space_partition, make_space_restriction
 
 from .domain import GeometryDomain, Cells, Sides, BoundarySides, FrontierSides
-from .quadrature import Quadrature, RegularQuadrature, NodalQuadrature, PicQuadrature
+from .quadrature import Quadrature, RegularQuadrature, NodalQuadrature, ExplicitQuadrature, PicQuadrature
 from .polynomial import Polynomial
 
 from .field import FieldLike, DiscreteField, make_test, make_trial, make_restriction

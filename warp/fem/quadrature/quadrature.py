@@ -35,33 +35,37 @@ class Quadrature:
 
     def total_point_count(self):
         """Total number of quadrature points over the domain"""
-        pass
+        raise NotImplementedError()
+
+    def points_per_element(self):
+        """Number of points per element if constant, or ``None`` if varying"""
+        return None
 
     @staticmethod
     def point_count(elt_arg: "domain.GeometryDomain.ElementArg", qp_arg: Arg, element_index: ElementIndex):
         """Number of quadrature points for a given element"""
-        pass
+        raise NotImplementedError()
 
     @staticmethod
     def point_coords(
         elt_arg: "domain.GeometryDomain.ElementArg", qp_arg: Arg, element_index: ElementIndex, qp_index: int
     ):
         """Coordinates in element of the element's qp_index'th quadrature point"""
-        pass
+        raise NotImplementedError()
 
     @staticmethod
     def point_weight(
         elt_arg: "domain.GeometryDomain.ElementArg", qp_arg: Arg, element_index: ElementIndex, qp_index: int
     ):
         """Weight of the element's qp_index'th quadrature point"""
-        pass
+        raise NotImplementedError()
 
     @staticmethod
     def point_index(
         elt_arg: "domain.GeometryDomain.ElementArg", qp_arg: Arg, element_index: ElementIndex, qp_index: int
     ):
         """Global index of the element's qp_index'th  quadrature point"""
-        pass
+        raise NotImplementedError()
 
     def __str__(self) -> str:
         return self.name
@@ -98,12 +102,13 @@ class RegularQuadrature(Quadrature):
 
     @property
     def name(self):
-        return (
-            f"{self.__class__.__name__}_{self.domain.name}_{self.family}_{self.order}"
-        )
+        return f"{self.__class__.__name__}_{self.domain.name}_{self.family}_{self.order}"
 
     def total_point_count(self):
         return len(self.points) * self.domain.geometry_element_count()
+
+    def points_per_element(self):
+        return self._N
 
     @property
     def points(self):
@@ -153,7 +158,7 @@ class RegularQuadrature(Quadrature):
 class NodalQuadrature(Quadrature):
     """Quadrature using space node points as quadrature points
 
-    Note that in constant to the `nodal=True` flag for :func:`integrate`, this quadrature odes not make any assumption
+    Note that in contrast to the `nodal=True` flag for :func:`integrate`, this quadrature odes not make any assumption
     about orthogonality of shape functions, and is thus safe to use for arbitrary integrands.
     """
 
@@ -175,6 +180,9 @@ class NodalQuadrature(Quadrature):
 
     def total_point_count(self):
         return self._space.node_count()
+
+    def points_per_element(self):
+        return self._space.topology.NODES_PER_ELEMENT
 
     def _make_arg(self):
         @cache.dynamic_struct(suffix=self.name)
@@ -220,3 +228,67 @@ class NodalQuadrature(Quadrature):
             return self._space.topology.element_node_index(elt_arg, qp_arg.topo_arg, element_index, qp_index)
 
         return point_index
+
+
+class ExplicitQuadrature(Quadrature):
+    """Quadrature using explicit per-cell points and weights. The number of quadrature points per cell is assumed
+    to be constant and deduced from the shape of the points and weights arrays.
+
+    Args:
+        domain: Domain of definition of the quadrature formula
+        points: 2d array of shape ``(domain.geometry_element-count(), points_per_cell)`` containing the coordinates of each quadrature point.
+        weights: 2d array of shape ``(domain.geometry_element-count(), points_per_cell)`` containing the weight for each quadrature point.
+
+    See also: :class:`PicQuadrature`
+    """
+
+    @wp.struct
+    class Arg:
+        points_per_cell: int
+        points: wp.array2d(dtype=Coords)
+        weights: wp.array2d(dtype=float)
+
+    def __init__(self, domain: domain.GeometryDomain, points: "wp.array2d(dtype=Coords)", weights: "wp.array2d(dtype=float)"):
+        super().__init__(domain)
+
+        if points.shape != weights.shape:
+            raise ValueError("Points and weights arrays must have the same shape")
+
+        self._points_per_cell = points.shape[1]
+        self._points = points
+        self._weights = weights
+
+    @property
+    def name(self):
+        return f"{self.__class__.__name__}"
+
+    def total_point_count(self):
+        return self._weights.size
+
+    def points_per_element(self):
+        return self._points_per_cell
+
+    @cache.cached_arg_value
+    def arg_value(self, device):
+        arg = self.Arg()
+        arg.points_per_cell = self._points_per_cell
+        arg.points = self._points.to(device)
+        arg.weights = self._weights.to(device)
+
+        return arg
+
+    @wp.func
+    def point_count(elt_arg: Any, qp_arg: Arg, element_index: ElementIndex):
+        return qp_arg.points_per_cell
+
+    @wp.func
+    def point_coords(elt_arg: Any, qp_arg: Arg, element_index: ElementIndex, qp_index: int):
+        return qp_arg.points[element_index, qp_index]
+
+    @wp.func
+    def point_weight(elt_arg: Any, qp_arg: Arg, element_index: ElementIndex, qp_index: int):
+        return qp_arg.weights[element_index, qp_index]
+
+    @wp.func
+    def point_index(elt_arg: Any, qp_arg: Arg, element_index: ElementIndex, qp_index: int):
+        return qp_arg.points_per_cell * element_index + qp_index
