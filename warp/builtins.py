@@ -1539,6 +1539,7 @@ add_builtin(
    :param face: Returns the index of the closest face
    :param bary_u: Returns the barycentric u coordinate of the closest point
    :param bary_v: Returns the barycentric v coordinate of the closest point""",
+    hidden=True,
 )
 
 add_builtin(
@@ -1584,6 +1585,7 @@ add_builtin(
    :param face: Returns the index of the closest face
    :param bary_u: Returns the barycentric u coordinate of the closest point
    :param bary_v: Returns the barycentric v coordinate of the closest point""",
+    hidden=True,
 )
 
 add_builtin(
@@ -1627,6 +1629,7 @@ add_builtin(
    :param face: Returns the index of the furthest face
    :param bary_u: Returns the barycentric u coordinate of the furthest point
    :param bary_v: Returns the barycentric v coordinate of the furthest point""",
+    hidden=True,
 )
 
 add_builtin(
@@ -1679,6 +1682,7 @@ add_builtin(
    :param bary_v: Returns the barycentric v coordinate of the closest point
    :param epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a
                    fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3""",
+    hidden=True,
 )
 
 add_builtin(
@@ -1740,6 +1744,7 @@ add_builtin(
    :param bary_v: Returns the barycentric v coordinate of the closest point
    :param accuracy: Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation, default 2.0
    :param threshold: The threshold of the winding number to be considered inside, default 0.5""",
+    hidden=True,
 )
 
 add_builtin(
@@ -1798,6 +1803,7 @@ add_builtin(
    :param sign: Returns a value > 0 if the ray hit in front of the face, returns < 0 otherwise
    :param normal: Returns the face normal
    :param face: Returns the index of the hit face""",
+    hidden=True,
 )
 
 add_builtin(
