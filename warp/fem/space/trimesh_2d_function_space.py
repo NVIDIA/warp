@@ -5,7 +5,7 @@ from warp.fem.geometry import Trimesh2D
 from warp.fem import cache
 
 from .topology import SpaceTopology, DiscontinuousSpaceTopologyMixin, forward_base_topology
-from .basis_space import BasisSpace, TraceBasisSpace
+from .basis_space import ShapeBasisSpace, TraceBasisSpace
 
 from .shape import ShapeFunction, ConstantShapeFunction
 from .shape import Triangle2DPolynomialShapeFunctions, Triangle2DNonConformingPolynomialShapeFunctions
@@ -101,7 +101,7 @@ class Trimesh2DDiscontinuousSpaceTopology(
         super().__init__(mesh, shape.NODES_PER_ELEMENT)
 
 
-class Trimesh2DBasisSpace(BasisSpace):
+class Trimesh2DBasisSpace(ShapeBasisSpace):
     def __init__(self, topology: Trimesh2DSpaceTopology, shape: ShapeFunction):
         super().__init__(topology, shape)
 

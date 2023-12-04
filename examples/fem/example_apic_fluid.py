@@ -64,8 +64,6 @@ def update_particles(
     pos_proj = domain(lookup(domain, pos_adv))
     pos[s.qp_index] = pos_proj
 
-    return 0.0
-
 
 @integrand
 def velocity_boundary_projector_form(s: Sample, domain: Domain, u: Field, v: Field):
@@ -331,7 +329,7 @@ class Example:
                 )
 
                 # (A)PIC advection
-                fem.integrate(
+                fem.interpolate(
                     update_particles,
                     quadrature=pic,
                     values={

@@ -227,6 +227,10 @@ class DiscontinuousSpaceTopologyMixin:
     def node_count(self):
         return self.geometry.cell_count() * self.NODES_PER_ELEMENT
 
+    @property
+    def name(self):
+        return f"{self.geometry.name}_D{self.NODES_PER_ELEMENT}"
+
     def _make_element_node_index(self):
         NODES_PER_ELEMENT = self.NODES_PER_ELEMENT
 
@@ -240,6 +244,12 @@ class DiscontinuousSpaceTopologyMixin:
             return NODES_PER_ELEMENT * element_index + node_index_in_elt
 
         return element_node_index
+
+
+class DiscontinuousSpaceTopology(DiscontinuousSpaceTopologyMixin, SpaceTopology):
+    """Topology for generic discontinuous spaces"""
+
+    pass
 
 
 class DeformedGeometrySpaceTopology(SpaceTopology):

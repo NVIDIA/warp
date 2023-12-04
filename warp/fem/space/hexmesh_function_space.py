@@ -6,7 +6,7 @@ from warp.fem.geometry import Hexmesh
 from warp.fem import cache
 
 from .topology import SpaceTopology, DiscontinuousSpaceTopologyMixin, forward_base_topology
-from .basis_space import BasisSpace, TraceBasisSpace
+from .basis_space import ShapeBasisSpace, TraceBasisSpace
 
 from .shape import ShapeFunction, ConstantShapeFunction
 from .shape import (
@@ -121,7 +121,7 @@ class HexmeshDiscontinuousSpaceTopology(
         super().__init__(mesh, shape.NODES_PER_ELEMENT)
 
 
-class HexmeshBasisSpace(BasisSpace):
+class HexmeshBasisSpace(ShapeBasisSpace):
     def __init__(self, topology: HexmeshSpaceTopology, shape: ShapeFunction):
         super().__init__(topology, shape)
 
