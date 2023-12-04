@@ -1483,7 +1483,7 @@ add_builtin(
     value_type=bvh_query_t,
     group="Geometry",
     doc="""Construct an axis-aligned bounding box query against a BVH object. This query can be used to iterate over all bounds
-   inside a BVH. Returns an object that is used to track state during BVH traversal.
+   inside a BVH.
 
    :param id: The BVH identifier
    :param lower: The lower bound of the bounding box in BVH space
@@ -1496,7 +1496,7 @@ add_builtin(
     value_type=bvh_query_t,
     group="Geometry",
     doc="""Construct a ray query against a BVH object. This query can be used to iterate over all bounds
-   that intersect the ray. Returns an object that is used to track state during BVH traversal.
+   that intersect the ray.
 
    :param id: The BVH identifier
    :param start: The start of the ray in BVH space
@@ -1786,7 +1786,7 @@ add_builtin(
     },
     value_type=builtins.bool,
     group="Geometry",
-    doc="""Computes the closest ray hit on the :class:`Mesh` with identifier ``id``, returns ``True`` if a point < ``max_t`` is found.
+    doc="""Computes the closest ray hit on the :class:`Mesh` with identifier ``id``, returns ``True`` if a hit < ``max_t`` is found.
 
    :param id: The mesh identifier
    :param start: The start point of the ray
@@ -1795,7 +1795,7 @@ add_builtin(
    :param t: Returns the distance of the closest hit along the ray
    :param bary_u: Returns the barycentric u coordinate of the closest hit
    :param bary_v: Returns the barycentric v coordinate of the closest hit
-   :param sign: Returns a value > 0 if the hit ray hit front of the face, returns < 0 otherwise
+   :param sign: Returns a value > 0 if the ray hit in front of the face, returns < 0 otherwise
    :param normal: Returns the face normal
    :param face: Returns the index of the hit face""",
 )
@@ -1826,7 +1826,6 @@ add_builtin(
     group="Geometry",
     doc="""Construct an axis-aligned bounding box query against a :class:`Mesh`.
    This query can be used to iterate over all triangles inside a volume.
-   Returns an object that is used to track state during mesh traversal.
 
    :param id: The mesh identifier
    :param lower: The lower bound of the bounding box in mesh space
@@ -1864,7 +1863,7 @@ add_builtin(
     value_type=hash_grid_query_t,
     group="Geometry",
     doc="Construct a point query against a :class:`HashGrid`. This query can be used to iterate over all neighboring points "
-    "within a fixed radius from the query point. Returns an object that is used to track state during neighbor traversal.",
+    "within a fixed radius from the query point.",
 )
 
 add_builtin(
