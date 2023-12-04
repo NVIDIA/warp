@@ -180,7 +180,7 @@ def parse_urdf(
                     # multiple meshes are contained in a scene
                     for geom in m.geometry.values():
                         vertices = np.array(geom.vertices, dtype=np.float32) * scaling
-                        faces = np.array(geom.faces, dtype=np.int32)
+                        faces = np.array(geom.faces.flatten(), dtype=np.int32)
                         mesh = Mesh(vertices, faces)
                         builder.add_shape_mesh(
                             body=link,
@@ -198,7 +198,7 @@ def parse_urdf(
                 else:
                     # a single mesh
                     vertices = np.array(m.vertices, dtype=np.float32) * scaling
-                    faces = np.array(m.faces, dtype=np.int32)
+                    faces = np.array(m.faces.flatten(), dtype=np.int32)
                     mesh = Mesh(vertices, faces)
                     builder.add_shape_mesh(
                         body=link,
