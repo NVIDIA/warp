@@ -91,9 +91,7 @@ def test_lookup(test, device):
 
 @wp.func
 def lookup3(foos: wp.array(dtype=wp.float32), index: int):
-    # FIXME: return foos[index]
-    x = foos[index]
-    return x
+    return foos[index]
 
 
 @wp.kernel
