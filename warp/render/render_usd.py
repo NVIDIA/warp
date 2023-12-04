@@ -124,8 +124,8 @@ class UsdRenderer:
         UsdGeom.Xform(light_1.GetPrim()).AddRotateXOp().Set(value=(-45.0))
 
     def begin_frame(self, time):
-        self.stage.SetEndTimeCode(time * self.fps)
-        self.time = time * self.fps
+        self.time = round(time * self.fps)
+        self.stage.SetEndTimeCode(self.time)
 
     def end_frame(self):
         pass
