@@ -285,7 +285,7 @@ class UsdRenderer:
         self._shape_constructors[name] = UsdGeom.Sphere
 
         if not is_template:
-            _usd_set_xform(sphere, pos, rot, (1.0, 1.0, 1.0), 0.0)
+            _usd_set_xform(sphere, pos, rot, (1.0, 1.0, 1.0), self.time)
 
         return prim_path
 
