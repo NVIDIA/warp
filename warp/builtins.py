@@ -116,6 +116,7 @@ add_builtin(
     value_func=sametype_value_func(Float),
     doc="Return the square root of ``x``, where ``x`` is positive.",
     group="Scalar Math",
+    require_original_output_arg=True,
 )
 add_builtin(
     "cbrt",
@@ -123,6 +124,7 @@ add_builtin(
     value_func=sametype_value_func(Float),
     doc="Return the cube root of ``x``.",
     group="Scalar Math",
+    require_original_output_arg=True,
 )
 add_builtin(
     "tan",
@@ -165,6 +167,7 @@ add_builtin(
     value_func=sametype_value_func(Float),
     doc="Return the tanh of ``x``.",
     group="Scalar Math",
+    require_original_output_arg=True,
 )
 add_builtin(
     "degrees",
@@ -208,6 +211,7 @@ add_builtin(
     value_func=sametype_value_func(Float),
     doc="Return the value of the exponential function :math:`e^x`.",
     group="Scalar Math",
+    require_original_output_arg=True,
 )
 add_builtin(
     "pow",
@@ -215,6 +219,7 @@ add_builtin(
     value_func=sametype_value_func(Float),
     doc="Return the result of ``x`` raised to power of ``y``.",
     group="Scalar Math",
+    require_original_output_arg=True,
 )
 
 add_builtin(
@@ -405,6 +410,7 @@ add_builtin(
     value_func=sametype_scalar_value_func,
     group="Vector Math",
     doc="Compute the length of a vector ``x``.",
+    require_original_output_arg=True,
 )
 add_builtin(
     "length",
@@ -412,6 +418,7 @@ add_builtin(
     value_func=sametype_scalar_value_func,
     group="Vector Math",
     doc="Compute the length of a quaternion ``x``.",
+    require_original_output_arg=True,
 )
 add_builtin(
     "length_sq",
@@ -433,6 +440,7 @@ add_builtin(
     value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
     group="Vector Math",
     doc="Compute the normalized value of ``x``. If ``length(x)`` is 0 then the zero vector is returned.",
+    require_original_output_arg=True,
 )
 add_builtin(
     "normalize",
@@ -465,6 +473,7 @@ add_builtin(
     value_func=value_func_mat_inv,
     group="Vector Math",
     doc="Return the inverse of a 2x2 matrix ``m``.",
+    require_original_output_arg=True,
 )
 
 add_builtin(
@@ -473,6 +482,7 @@ add_builtin(
     value_func=value_func_mat_inv,
     group="Vector Math",
     doc="Return the inverse of a 3x3 matrix ``m``.",
+    require_original_output_arg=True,
 )
 
 add_builtin(
@@ -481,6 +491,7 @@ add_builtin(
     value_func=value_func_mat_inv,
     group="Vector Math",
     doc="Return the inverse of a 4x4 matrix ``m``.",
+    require_original_output_arg=True,
 )
 
 
@@ -580,6 +591,7 @@ add_builtin(
     value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
     group="Vector Math",
     doc="Component-wise division of two 2D vectors.",
+    require_original_output_arg=True,
 )
 
 add_builtin(
@@ -595,6 +607,7 @@ add_builtin(
     value_func=sametype_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
     group="Vector Math",
     doc="Component-wise division of two 2D vectors.",
+    require_original_output_arg=True,
 )
 
 
@@ -1082,6 +1095,7 @@ add_builtin(
     value_func=lambda arg_types, kwds, _: quaternion(dtype=infer_scalar_type(arg_types)),
     group="Quaternion Math",
     doc="Linearly interpolate between two quaternions.",
+    require_original_output_arg=True,
 )
 add_builtin(
     "quat_to_matrix",
@@ -3065,7 +3079,11 @@ add_builtin(
 )
 
 add_builtin(
-    "div", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar), doc="", group="Operators"
+    "div",
+    input_types={"x": Scalar, "y": Scalar},
+    value_func=sametype_value_func(Scalar),
+    doc="", group="Operators",
+    require_original_output_arg=True,
 )
 add_builtin(
     "div",

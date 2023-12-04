@@ -276,7 +276,7 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     label1:;
     adj_71 += adj_ret;
     wp::adj_vec3(var_61, var_62, var_70, adj_61, adj_62, adj_70, adj_71);
-    wp::adj_length(var_69, adj_69, adj_70);
+    wp::adj_length(var_69, var_70, adj_69, adj_70);
     wp::adj_sub(var_68, var_65, adj_68, adj_65, adj_69);
     wp::adj_add(var_p2, var_67, adj_p2, adj_67, adj_68);
     wp::adj_mul(var_66, var_62, adj_66, adj_62, adj_67);
@@ -297,7 +297,7 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     			wp::adj_select(var_51, var_49, var_54, adj_51, adj_49, adj_54, adj_55);
     			if (var_51) {
     				wp::adj_clamp(var_53, var_6, var_25, adj_53, adj_6, adj_25, adj_54);
-    				wp::adj_div(var_52, var_3, adj_52, adj_3, adj_53);
+    				wp::adj_div(var_52, var_3, var_53, adj_52, adj_3, adj_53);
     				wp::adj_sub(var_30, var_21, adj_30, adj_21, adj_52);
     			}
     		}
@@ -305,10 +305,10 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     		wp::adj_select(var_45, var_41, var_48, adj_45, adj_41, adj_48, adj_49);
     		if (var_45) {
     			wp::adj_clamp(var_47, var_6, var_25, adj_47, adj_6, adj_25, adj_48);
-    			wp::adj_div(var_46, var_3, adj_46, adj_3, adj_47);
+    			wp::adj_div(var_46, var_3, var_47, adj_46, adj_3, adj_47);
     			wp::adj_neg(var_21, adj_21, adj_46);
     		}
-    		wp::adj_div(var_43, var_4, adj_43, adj_4, adj_44);
+    		wp::adj_div(var_43, var_4, var_44, adj_43, adj_4, adj_44);
     		wp::adj_add(var_42, var_5, adj_42, adj_5, adj_43);
     		wp::adj_mul(var_30, var_41, adj_30, adj_41, adj_42);
     		wp::adj_select(var_34, var_6, var_40, adj_34, adj_6, adj_40, adj_41);
@@ -317,7 +317,7 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     		wp::adj_select(var_34, var_28, var_39, adj_34, adj_28, adj_39, adj_40);
     		if (var_34) {
     			wp::adj_clamp(var_38, var_6, var_25, adj_38, adj_6, adj_25, adj_39);
-    			wp::adj_div(var_37, var_33, adj_37, adj_33, adj_38);
+    			wp::adj_div(var_37, var_33, var_38, adj_37, adj_33, adj_38);
     			wp::adj_sub(var_35, var_36, adj_35, adj_36, adj_37);
     			wp::adj_mul(var_21, var_4, adj_21, adj_4, adj_36);
     			wp::adj_mul(var_30, var_5, adj_30, adj_5, adj_35);
@@ -332,7 +332,7 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     	if (var_22) {
     		wp::adj_cast_float(var_6, adj_6, adj_27);
     		wp::adj_clamp(var_24, var_6, var_25, adj_24, adj_6, adj_25, adj_26);
-    		wp::adj_div(var_23, var_3, adj_23, adj_3, adj_24);
+    		wp::adj_div(var_23, var_3, var_24, adj_23, adj_3, adj_24);
     		wp::adj_neg(var_21, adj_21, adj_23);
     	}
     	wp::adj_dot(var_0, var_2, adj_0, adj_2, adj_21);
@@ -341,7 +341,7 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     wp::adj_select(var_15, var_7, var_16, adj_15, adj_7, adj_16, adj_19);
     if (var_15) {
     	wp::adj_cast_float(var_17, adj_17, adj_18);
-    	wp::adj_div(var_5, var_4, adj_5, adj_4, adj_17);
+    	wp::adj_div(var_5, var_4, var_17, adj_5, adj_4, adj_17);
     	wp::adj_cast_float(var_6, adj_6, adj_16);
     }
     if (var_13) {
@@ -349,7 +349,7 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     	adj_14 += adj_ret;
     	wp::adj_vec3(var_7, var_8, var_10, adj_7, adj_8, adj_10, adj_14);
     }
-    wp::adj_length(var_9, adj_9, adj_10);
+    wp::adj_length(var_9, var_10, adj_9, adj_10);
     wp::adj_sub(var_p2, var_p1, adj_p2, adj_p1, adj_9);
     wp::adj_cast_float(var_6, adj_6, adj_8);
     wp::adj_cast_float(var_6, adj_6, adj_7);

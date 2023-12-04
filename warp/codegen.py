@@ -683,10 +683,11 @@ class Adjoint:
         args_out,
         use_initializer_list,
         has_output_args=True,
+        require_original_output_arg=False,
     ):
         formatted_var = adj.format_args("var", args_var)
         formatted_out = []
-        if has_output_args and len(args_out) > 1:
+        if has_output_args and (require_original_output_arg or len(args_out) > 1):
             formatted_out = adj.format_args("var", args_out)
         formatted_var_adj = adj.format_args(
             "&adj" if use_initializer_list else "adj",
@@ -966,13 +967,14 @@ class Adjoint:
             adj.add_forward(forward_call, replay=replay_call)
 
         if not func.missing_grad and len(args):
-            reverse_has_output_args = len(output_list) > 1 and func.custom_grad_func is None
+            reverse_has_output_args = (func.require_original_output_arg or len(output_list) > 1) and func.custom_grad_func is None
             arg_str = adj.format_reverse_call_args(
                 args_var,
                 args,
                 output_list,
                 use_initializer_list,
                 has_output_args=reverse_has_output_args,
+                require_original_output_arg=func.require_original_output_arg,
             )
             if arg_str is not None:
                 reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"

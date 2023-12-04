@@ -735,9 +735,9 @@ inline CUDA_CALLABLE void adj_div(vec_t<Length, Type> a, Type s, vec_t<Length, T
 }
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_cw_div(vec_t<Length, Type> a, vec_t<Length, Type> b, vec_t<Length, Type>& adj_a, vec_t<Length, Type>& adj_b, const vec_t<Length, Type>& adj_ret) {
+inline CUDA_CALLABLE void adj_cw_div(vec_t<Length, Type> a, vec_t<Length, Type> b, vec_t<Length, Type>& ret, vec_t<Length, Type>& adj_a, vec_t<Length, Type>& adj_b, const vec_t<Length, Type>& adj_ret) {
   adj_a += cw_div(adj_ret, b);
-  adj_b -= cw_mul(adj_ret, cw_div(cw_div(a, b), b));
+  adj_b -= cw_mul(adj_ret, cw_div(ret, b));
 }
 
 template<unsigned Length, typename Type>
@@ -850,9 +850,12 @@ inline CUDA_CALLABLE void adj_extract(const vec_t<Length, Type> & a, int idx, ve
 }
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_length(vec_t<Length, Type> a, vec_t<Length, Type>& adj_a, const Type adj_ret)
+inline CUDA_CALLABLE void adj_length(vec_t<Length, Type> a, Type ret, vec_t<Length, Type>& adj_a, const Type adj_ret)
 {
-    adj_a += normalize(a)*adj_ret;
+    if (ret > Type(kEps))
+    {
+        adj_a += div(a, ret) * adj_ret;
+    }
 
 #if FP_CHECK
     if (!isfinite(adj_a))
@@ -880,7 +883,7 @@ inline CUDA_CALLABLE void adj_length_sq(vec_t<Length, Type> a, vec_t<Length, Typ
 }
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_normalize(vec_t<Length, Type> a, vec_t<Length, Type>& adj_a, const vec_t<Length, Type>& adj_ret)
+inline CUDA_CALLABLE void adj_normalize(vec_t<Length, Type> a, vec_t<Length, Type>& ret, vec_t<Length, Type>& adj_a, const vec_t<Length, Type>& adj_ret)
 {
     Type d = length(a);
     
@@ -888,9 +891,7 @@ inline CUDA_CALLABLE void adj_normalize(vec_t<Length, Type> a, vec_t<Length, Typ
     {
         Type invd = Type(1.0f)/d;
 
-        vec_t<Length, Type> ahat = normalize(a);
-
-        adj_a += (adj_ret*invd - ahat*(dot(ahat, adj_ret))*invd);
+        adj_a += (adj_ret*invd - ret*(dot(ret, adj_ret))*invd);
 
 #if FP_CHECK
         if (!isfinite(adj_a))

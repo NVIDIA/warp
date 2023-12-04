@@ -295,7 +295,7 @@ inline CUDA_CALLABLE T rshift(T a, T b) { return a>>b; } \
 inline CUDA_CALLABLE T invert(T x) { return ~x; } \
 inline CUDA_CALLABLE bool isfinite(T x) { return true; } \
 inline CUDA_CALLABLE void adj_mul(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
-inline CUDA_CALLABLE void adj_div(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
+inline CUDA_CALLABLE void adj_div(T a, T b, T ret, T& adj_a, T& adj_b, T adj_ret) { } \
 inline CUDA_CALLABLE void adj_add(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
 inline CUDA_CALLABLE void adj_sub(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
 inline CUDA_CALLABLE void adj_mod(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
@@ -443,10 +443,10 @@ inline CUDA_CALLABLE T div(T a, T b)\
     })\
     return a/b;\
 }\
-inline CUDA_CALLABLE void adj_div(T a, T b, T& adj_a, T& adj_b, T adj_ret)\
+inline CUDA_CALLABLE void adj_div(T a, T b, T ret, T& adj_a, T& adj_b, T adj_ret)\
 {\
     adj_a += adj_ret/b;\
-    adj_b -= adj_ret*(a/b)/b;\
+    adj_b -= adj_ret*(ret)/b;\
     DO_IF_FPCHECK(\
     if (!isfinite(adj_a) || !isfinite(adj_b))\
     {\
@@ -859,11 +859,11 @@ inline CUDA_CALLABLE void adj_log10(T a, T& adj_a, T adj_ret)\
         assert(0);\
     })\
 }\
-inline CUDA_CALLABLE void adj_exp(T a, T& adj_a, T adj_ret) { adj_a += exp(a)*adj_ret; }\
-inline CUDA_CALLABLE void adj_pow(T a, T b, T& adj_a, T& adj_b, T adj_ret)\
+inline CUDA_CALLABLE void adj_exp(T a, T ret, T& adj_a, T adj_ret) { adj_a += ret*adj_ret; }\
+inline CUDA_CALLABLE void adj_pow(T a, T b, T ret, T& adj_a, T& adj_b, T adj_ret)\
 { \
     adj_a += b*pow(a, b-T(1))*adj_ret;\
-    adj_b += log(a)*pow(a, b)*adj_ret;\
+    adj_b += log(a)*ret*adj_ret;\
     DO_IF_FPCHECK(if (!isfinite(adj_a) || !isfinite(adj_b))\
     {\
         printf("%s:%d - adj_pow(%f, %f, %f, %f, %f)\n", __FILE__, __LINE__, float(a), float(b), float(adj_a), float(adj_b), float(adj_ret));\
@@ -962,24 +962,22 @@ inline CUDA_CALLABLE void adj_cosh(T x, T& adj_x, T adj_ret)\
 {\
     adj_x += sinh(x)*adj_ret;\
 }\
-inline CUDA_CALLABLE void adj_tanh(T x, T& adj_x, T adj_ret)\
+inline CUDA_CALLABLE void adj_tanh(T x, T ret, T& adj_x, T adj_ret)\
 {\
-    T tanh_x = tanh(x);\
-    adj_x += (T(1) - tanh_x*tanh_x)*adj_ret;\
+    adj_x += (T(1) - ret*ret)*adj_ret;\
 }\
-inline CUDA_CALLABLE void adj_sqrt(T x, T& adj_x, T adj_ret)\
+inline CUDA_CALLABLE void adj_sqrt(T x, T ret, T& adj_x, T adj_ret)\
 {\
-    adj_x += T(0.5)*(T(1)/sqrt(x))*adj_ret;\
+    adj_x += T(0.5)*(T(1)/ret)*adj_ret;\
     DO_IF_FPCHECK(if (!isfinite(adj_x))\
     {\
         printf("%s:%d - adj_sqrt(%f, %f, %f)\n", __FILE__, __LINE__, float(x), float(adj_x), float(adj_ret));\
         assert(0);\
     })\
 }\
-inline CUDA_CALLABLE void adj_cbrt(T x, T& adj_x, T adj_ret)\
+inline CUDA_CALLABLE void adj_cbrt(T x, T ret, T& adj_x, T adj_ret)\
 {\
-    T cbrt_x = cbrt(x);\
-    adj_x += (T(1)/T(3))*(T(1)/(cbrt_x*cbrt_x))*adj_ret;\
+    adj_x += (T(1)/T(3))*(T(1)/(ret*ret))*adj_ret;\
     DO_IF_FPCHECK(if (!isfinite(adj_x))\
     {\
         printf("%s:%d - adj_cbrt(%f, %f, %f)\n", __FILE__, __LINE__, float(x), float(adj_x), float(adj_ret));\
