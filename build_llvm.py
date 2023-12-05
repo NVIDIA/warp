@@ -40,7 +40,10 @@ def fetch_prebuilt_libraries():
                 "x86_64": "15.0.7-darwin-x86_64-macos11",
             }
         else:
-            packages = {"x86_64": "15.0.7-linux-x86_64-ptx-gcc7.5-cxx11abi0"}
+            packages = {
+                "arm64": "15.0.7-linux-aarch64-gcc7.5",
+                "x86_64": "15.0.7-linux-x86_64-ptx-gcc7.5-cxx11abi0",
+            }
 
     for arch in packages:
         subprocess.check_call(
