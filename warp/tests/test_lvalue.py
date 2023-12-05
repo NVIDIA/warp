@@ -1,4 +1,5 @@
 import warp as wp
+import numpy as np
 from warp.tests.test_base import *
 
 import unittest
@@ -89,6 +90,54 @@ def test_lookup(test, device):
 
 
 @wp.func
+def lookup3(foos: wp.array(dtype=wp.float32), index: int):
+    return foos[index]
+
+
+@wp.kernel
+def grad_kernel(foos: wp.array(dtype=wp.float32), bars: wp.array(dtype=wp.float32)):
+    i = wp.tid()
+
+    x = lookup3(foos, i)
+    bars[i] = x * wp.float32(i) + 1.0
+
+
+def test_grad(test, device):
+    num = 10
+    data = np.linspace(20, 20 + num, num, endpoint=False, dtype=np.float32)
+    input = wp.array(data, device=device, requires_grad=True)
+    output = wp.zeros(num, dtype=wp.float32, device=device)
+
+    ones = wp.array(np.ones(len(output)), dtype=wp.float32, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            kernel=grad_kernel,
+            dim=(num,),
+            inputs=[input],
+            outputs=[output],
+            device=device,
+        )
+
+    tape.backward(grads={output: ones})
+
+    wp.synchronize()
+
+    # test forward results
+    for i, f in enumerate(output.list()):
+        expected = data[i] * i + 1
+        if f != expected:
+            raise AssertionError(f"Unexpected result, got: {f} expected: {expected}")
+
+    # test backward results
+    for i, f in enumerate(tape.gradients[input].list()):
+        expected = i
+        if f != expected:
+            raise AssertionError(f"Unexpected result, got: {f} expected: {expected}")
+
+
+@wp.func
 def lookup2(foos: wp.array(dtype=wp.uint32), index: int):
     if index % 2 == 0:
         x = foos[index]
@@ -102,7 +151,7 @@ def lookup2(foos: wp.array(dtype=wp.uint32), index: int):
 def lookup2_kernel(foos: wp.array(dtype=wp.uint32)):
     i = wp.tid()
 
-    x = lookup(foos, i)
+    x = lookup2(foos, i)
     foos[i] = x + wp.uint32(1)
 
 
@@ -425,6 +474,7 @@ def register(parent):
     add_function_test(TestLValue, "test_rmw_array_struct", test_rmw_array_struct, devices=devices)
     add_function_test(TestLValue, "test_lookup", test_lookup, devices=devices)
     add_function_test(TestLValue, "test_lookup2", test_lookup2, devices=devices)
+    add_function_test(TestLValue, "test_grad", test_grad, devices=devices)
     add_function_test(TestLValue, "test_unary", test_unary, devices=devices)
     add_function_test(TestLValue, "test_rvalue", test_rvalue, devices=devices)
     add_function_test(TestLValue, "test_intermediate", test_intermediate, devices=devices)

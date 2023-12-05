@@ -967,7 +967,9 @@ class Adjoint:
             adj.add_forward(forward_call, replay=replay_call)
 
         if not func.missing_grad and len(args):
-            reverse_has_output_args = (func.require_original_output_arg or len(output_list) > 1) and func.custom_grad_func is None
+            reverse_has_output_args = (
+                func.require_original_output_arg or len(output_list) > 1
+            ) and func.custom_grad_func is None
             arg_str = adj.format_reverse_call_args(
                 args_var,
                 args,
@@ -1903,7 +1905,8 @@ class Adjoint:
         if var is not None:
             adj.return_var = tuple()
             for ret in var:
-                ret = adj.load(ret)
+                if is_reference(ret.type):
+                    ret = adj.add_builtin_call("copy", [ret])
                 adj.return_var += (ret,)
 
         adj.add_return(adj.return_var)
@@ -1947,7 +1950,7 @@ class Adjoint:
         ast.AugAssign: emit_AugAssign,
         ast.Tuple: emit_Tuple,
         ast.Pass: emit_Pass,
-        ast.Ellipsis: emit_Ellipsis
+        ast.Ellipsis: emit_Ellipsis,
     }
 
     def eval(adj, node):
