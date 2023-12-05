@@ -380,4 +380,7 @@ def build_warp_clang(args, lib_name):
         os.remove(f"{dylib_path}-arm64")
 
     else:
-        build_warp_clang_for_arch(args, lib_name, "x86_64")
+        if machine_architecture() == "x86_64":
+            build_warp_clang_for_arch(args, lib_name, "x86_64")
+        else:
+            build_warp_clang_for_arch(args, lib_name, "arm64")
