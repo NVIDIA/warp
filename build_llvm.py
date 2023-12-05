@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+import platform
 
 import warp
 from warp.build_dll import build_dll_for_arch, run_cmd
@@ -12,6 +13,18 @@ build_path = os.path.join(base_path, "warp")
 llvm_project_path = os.path.join(base_path, "external/llvm-project")
 llvm_build_path = os.path.join(llvm_project_path, "out/build/")
 llvm_install_path = os.path.join(llvm_project_path, "out/install/")
+
+
+# return a canonical machine architecture string
+# - "x86_64" for x86-64, aka. AMD64, aka. x64
+# - "aarch64" for AArch64, aka. ARM64
+def machine_architecture() -> str:
+    machine = platform.machine()
+    if machine == "x86_64" or machine == "AMD64":
+        return "x86_64"
+    if machine == "aarch64" or machine == "arm64":
+        return "aarch64"
+    raise RuntimeError(f"Unrecognized machine architecture {machine}")
 
 
 # Fetch prebuilt Clang/LLVM libraries
@@ -282,10 +295,18 @@ def build_from_source(args):
     else:
         llvm_source = llvm_project_path
 
-    build_from_source_for_arch(args, "x86_64", llvm_source)
-
-    if sys.platform == "darwin":
+    # build for the machine's architecture
+    if machine_architecture() == "x86_64":
+        build_from_source_for_arch(args, "x86_64", llvm_source)
+    else:
         build_from_source_for_arch(args, "arm64", llvm_source)
+
+    # for Apple systems also cross-compile for building a universal binary
+    if sys.platform == "darwin":
+        if machine_architecture() == "x86_64":
+            build_from_source_for_arch(args, "arm64", llvm_source)
+        else:
+            build_from_source_for_arch(args, "x86_64", llvm_source)
 
 
 # build warp-clang.dll
