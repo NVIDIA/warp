@@ -102,14 +102,17 @@ def build_from_source_for_arch(args, arch, llvm_source):
 
     if sys.platform == "darwin":
         host_triple = f"{arch}-apple-macos11"
+        osx_architectures = arch  # build one architecture only
     elif os.name == "nt":
         host_triple = f"{arch}-pc-windows"
+        osx_architectures = ""
     else:
         host_triple = f"{arch}-pc-linux"
+        osx_architectures = ""
 
     llvm_path = os.path.join(llvm_source, "llvm")
-    build_path = os.path.join(llvm_build_path, f"{warp.config.mode}-{ arch}")
-    install_path = os.path.join(llvm_install_path, f"{warp.config.mode}-{ arch}")
+    build_path = os.path.join(llvm_build_path, f"{warp.config.mode}-{arch}")
+    install_path = os.path.join(llvm_install_path, f"{warp.config.mode}-{arch}")
 
     # Build LLVM and Clang
     cmake_gen = [
@@ -143,7 +146,7 @@ def build_from_source_for_arch(args, arch, llvm_source):
         "-D", "CMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0",  # The pre-C++11 ABI is still the default on the CentOS 7 toolchain
         "-D", f"CMAKE_INSTALL_PREFIX={install_path}",
         "-D", f"LLVM_HOST_TRIPLE={host_triple}",
-        "-D", f"CMAKE_OSX_ARCHITECTURES={ arch}",
+        "-D", f"CMAKE_OSX_ARCHITECTURES={osx_architectures}",
 
         # Disable unused tools and features
         "-D", "CLANG_BUILD_TOOLS=FALSE",
