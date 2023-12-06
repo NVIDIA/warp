@@ -1463,7 +1463,7 @@ class Adjoint:
 
         # try and resolve the expression to an object
         # e.g.: wp.constant in the globals scope
-        obj, path = adj.resolve_static_expression(a)
+        obj, _ = adj.resolve_static_expression(a)
 
         if isinstance(obj, Var) and obj.constant is not None:
             obj = obj.constant
@@ -1630,7 +1630,7 @@ class Adjoint:
 
         if not isinstance(func, warp.context.Function):
             if len(path) == 0:
-                raise WarpCodegenError(f"Unrecognized syntax for function call, path not valid: '{node.func}'")
+                raise WarpCodegenError(f"Unknown function or operator: '{node.func.func.id}'")
 
             attr = path[-1]
             caller = func
@@ -2027,16 +2027,11 @@ class Adjoint:
             attributes.append(node.attr)
             node = node.value
 
-        if eval_types and isinstance(node, ast.Call):
+        if eval_types and isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             # support for operators returning modules
             # i.e. operator_name(*operator_args).x.y.z
             operator_args = node.args
-            operator_name = getattr(node.func, "id", None)
-
-            if operator_name is None:
-                raise WarpCodegenError(
-                    f"Invalid operator call syntax, expected a plain name, got {ast.dump(node.func, annotate_fields=False)}"
-                )
+            operator_name = node.func.id
 
             if operator_name == "type":
                 if len(operator_args) != 1:
@@ -2060,8 +2055,6 @@ class Adjoint:
                     return var_type, [type_repr(var_type)]
                 else:
                     raise WarpCodegenError(f"Cannot deduce the type of {var}")
-
-            raise WarpCodegenError(f"Unknown operator '{operator_name}'")
 
         # reverse list since ast presents it backward order
         path = [*reversed(attributes)]
