@@ -83,6 +83,7 @@ CUresult cuGraphicsUnregisterResource_f(CUgraphicsResource resource);
 
 
 bool init_cuda_driver();
+bool is_cuda_driver_initialized();
 
 bool check_cuda_result(cudaError_t code, const char* file, int line);
 inline bool check_cuda_result(uint64_t code, const char* file, int line)
