@@ -518,20 +518,15 @@ class Adjoint:
         # whether the generation of the adjoint code is skipped for this function
         adj.skip_reverse_codegen = skip_reverse_codegen
 
-        # build AST from function object
-        adj.source = inspect.getsource(func)
-
-        # get source code lines and line number where function starts
-        adj.raw_source, adj.fun_lineno = inspect.getsourcelines(func)
-
-        # keep track of line number in function code
-        adj.lineno = None
-
-        # ensures that indented class methods can be parsed as kernels
-        adj.source = textwrap.dedent(adj.source)
-
         # extract name of source file
         adj.filename = inspect.getsourcefile(func) or "unknown source file"
+        # get source file line number where function starts
+        _, adj.fun_lineno = inspect.getsourcelines(func)
+
+        # get function source code
+        adj.source = inspect.getsource(func)
+        # ensures that indented class methods can be parsed as kernels
+        adj.source = textwrap.dedent(adj.source)
 
         # build AST and apply node transformers
         adj.tree = ast.parse(adj.source)
@@ -540,6 +535,9 @@ class Adjoint:
             adj.tree = transformer.visit(adj.tree)
 
         adj.fun_name = adj.tree.body[0].name
+
+        # for keeping track of line number in function code
+        adj.lineno = None
 
         # whether the forward code shall be used for the reverse pass and a custom
         # function signature is applied to the reverse version of the function
@@ -2076,7 +2074,7 @@ class Adjoint:
     def set_lineno(adj, lineno):
         if adj.lineno is None or adj.lineno != lineno:
             line = lineno + adj.fun_lineno
-            source = adj.raw_source[lineno].strip().ljust(80 - len(adj.indentation), " ")
+            source = adj.source.splitlines()[lineno].strip().ljust(80 - len(adj.indentation), " ")
             adj.add_forward(f"// {source}       <L {line}>")
             adj.add_reverse(f"// adj: {source}  <L {line}>")
         adj.lineno = lineno
