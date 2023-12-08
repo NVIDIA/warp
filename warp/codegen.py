@@ -2083,7 +2083,7 @@ class Adjoint:
 
     def get_node_source(adj, node):
         # return the Python code corresponding to the given AST node
-        return ast.get_source_segment("".join(adj.raw_source), node)
+        return ast.get_source_segment(adj.source, node)
 
 
 # ----------------
