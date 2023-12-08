@@ -528,6 +528,8 @@ class Adjoint:
         # ensures that indented class methods can be parsed as kernels
         adj.source = textwrap.dedent(adj.source)
 
+        adj.source_lines = adj.source.splitlines()
+
         # build AST and apply node transformers
         adj.tree = ast.parse(adj.source)
         adj.transformers = transformers
@@ -623,7 +625,7 @@ class Adjoint:
                 else:
                     msg = "Error"
                 lineno = adj.lineno + adj.fun_lineno
-                line = adj.source.splitlines()[adj.lineno]
+                line = adj.source_lines[adj.lineno]
                 msg += f' while parsing function "{adj.fun_name}" at {adj.filename}:{lineno}:\n{line}\n'
                 ex, data, traceback = sys.exc_info()
                 e = ex(";".join([msg] + [str(a) for a in data.args])).with_traceback(traceback)
@@ -1415,7 +1417,7 @@ class Adjoint:
             if var1 != var2:
                 if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
-                    line = adj.source.splitlines()[adj.lineno]
+                    line = adj.source_lines[adj.lineno]
                     msg = f'Warning: detected mutated variable {sym} during a dynamic for-loop in function "{adj.fun_name}" at {adj.filename}:{lineno}: this may not be a differentiable operation.\n{line}\n'
                     print(msg)
 
@@ -1598,7 +1600,7 @@ class Adjoint:
         if adj.is_user_function:
             if hasattr(node.func, "attr") and node.func.attr == "tid":
                 lineno = adj.lineno + adj.fun_lineno
-                line = adj.source.splitlines()[adj.lineno]
+                line = adj.source_lines[adj.lineno]
                 raise WarpCodegenError(
                     "tid() may only be called from a Warp kernel, not a Warp function. "
                     "Instead, obtain the indices from a @wp.kernel and pass them as "
@@ -1820,7 +1822,7 @@ class Adjoint:
 
                 if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
-                    line = adj.source.splitlines()[adj.lineno]
+                    line = adj.source_lines[adj.lineno]
                     node_source = adj.get_node_source(lhs.value)
                     print(
                         f"Warning: mutating {node_source} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n"
@@ -1877,7 +1879,7 @@ class Adjoint:
 
                 if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
-                    line = adj.source.splitlines()[adj.lineno]
+                    line = adj.source_lines[adj.lineno]
                     msg = f'Warning: detected mutated struct {attr.label} during function "{adj.fun_name}" at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n'
                     print(msg)
 
@@ -2074,7 +2076,7 @@ class Adjoint:
     def set_lineno(adj, lineno):
         if adj.lineno is None or adj.lineno != lineno:
             line = lineno + adj.fun_lineno
-            source = adj.source.splitlines()[lineno].strip().ljust(80 - len(adj.indentation), " ")
+            source = adj.source_lines[lineno].strip().ljust(80 - len(adj.indentation), " ")
             adj.add_forward(f"// {source}       <L {line}>")
             adj.add_reverse(f"// adj: {source}  <L {line}>")
         adj.lineno = lineno
