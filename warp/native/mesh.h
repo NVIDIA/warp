@@ -1181,7 +1181,7 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_winding_number(uint64_t id, cons
     }
 }
 
-CUDA_CALLABLE inline void adj_mesh_query_point_no_sign(uint64_t id, const vec3& point, float max_dist, int& face, float& u, float& v, 
+CUDA_CALLABLE inline void adj_mesh_query_point_no_sign(uint64_t id, const vec3& point, float max_dist, const int& face, const float& u, const float& v,
                                                uint64_t adj_id, vec3& adj_point, float& adj_max_dist, int& adj_face, float& adj_u, float& adj_v, bool& adj_ret)
 {
     Mesh mesh = mesh_get(id);
@@ -1202,7 +1202,7 @@ CUDA_CALLABLE inline void adj_mesh_query_point_no_sign(uint64_t id, const vec3& 
     adj_closest_point_to_triangle(p, q, r, point, adj_p, adj_q, adj_r, adj_point, adj_uv);	
 }
 
-CUDA_CALLABLE inline void adj_mesh_query_furthest_point_no_sign(uint64_t id, const vec3& point, float min_dist, int& face, float& u, float& v, 
+CUDA_CALLABLE inline void adj_mesh_query_furthest_point_no_sign(uint64_t id, const vec3& point, float min_dist, const int& face, const float& u, const float& v,
                                                uint64_t adj_id, vec3& adj_point, float& adj_min_dist, int& adj_face, float& adj_u, float& adj_v, bool& adj_ret)
 {
     Mesh mesh = mesh_get(id);
@@ -1223,22 +1223,114 @@ CUDA_CALLABLE inline void adj_mesh_query_furthest_point_no_sign(uint64_t id, con
     adj_closest_point_to_triangle(p, q, r, point, adj_p, adj_q, adj_r, adj_point, adj_uv);	 // Todo for Miles :>
 }
 
-CUDA_CALLABLE inline void adj_mesh_query_point(uint64_t id, const vec3& point, float max_dist, float& inside, int& face, float& u, float& v,
+CUDA_CALLABLE inline void adj_mesh_query_point(uint64_t id, const vec3& point, float max_dist, const float& inside, const int& face, const float& u, const float& v,
                                                uint64_t adj_id, vec3& adj_point, float& adj_max_dist, float& adj_inside, int& adj_face, float& adj_u, float& adj_v, bool& adj_ret)
 {
     adj_mesh_query_point_no_sign(id, point, max_dist, face, u, v, adj_id, adj_point, adj_max_dist, adj_face, adj_u, adj_v, adj_ret);
 }
 
-CUDA_CALLABLE inline void adj_mesh_query_point_sign_normal(uint64_t id, const vec3& point, float max_dist, float& inside, int& face, float& u, float& v, const float epsilon,
+CUDA_CALLABLE inline void adj_mesh_query_point_sign_normal(uint64_t id, const vec3& point, float max_dist, const float& inside, const int& face, const float& u, const float& v, const float epsilon,
                                                uint64_t adj_id, vec3& adj_point, float& adj_max_dist, float& adj_inside, int& adj_face, float& adj_u, float& adj_v, float& adj_epsilon, bool& adj_ret)
 {
     adj_mesh_query_point_no_sign(id, point, max_dist, face, u, v, adj_id, adj_point, adj_max_dist, adj_face, adj_u, adj_v, adj_ret);
 }
 
-CUDA_CALLABLE inline void adj_mesh_query_point_sign_winding_number(uint64_t id, const vec3& point, float max_dist, float& inside, int& face, float& u, float& v, const float accuracy, const float winding_number_threshold,
+CUDA_CALLABLE inline void adj_mesh_query_point_sign_winding_number(uint64_t id, const vec3& point, float max_dist, const float& inside, const int& face, const float& u, const float& v, const float accuracy, const float winding_number_threshold,
                                                uint64_t adj_id, vec3& adj_point, float& adj_max_dist, float& adj_inside, int& adj_face, float& adj_u, float& adj_v, float& adj_accuracy, float& adj_winding_number_threshold, bool& adj_ret)
 {
     adj_mesh_query_point_no_sign(id, point, max_dist, face, u, v, adj_id, adj_point, adj_max_dist, adj_face, adj_u, adj_v, adj_ret);
+}
+
+
+// Stores the result of querying the closest point on a mesh.
+struct mesh_query_point_t
+{
+    CUDA_CALLABLE mesh_query_point_t()
+    {
+    }
+
+    CUDA_CALLABLE mesh_query_point_t(int)
+    {
+        // For backward pass.
+    }
+
+    bool result;
+    float sign;
+    int face;
+    float u;
+    float v;
+};
+
+CUDA_CALLABLE inline mesh_query_point_t mesh_query_point(uint64_t id, const vec3& point, float max_dist)
+{
+    mesh_query_point_t query;
+    query.result = mesh_query_point(id, point, max_dist, query.sign, query.face, query.u, query.v);
+    return query;
+}
+
+CUDA_CALLABLE inline mesh_query_point_t mesh_query_point_no_sign(uint64_t id, const vec3& point, float max_dist)
+{
+    mesh_query_point_t query;
+    query.sign = 0.0;
+    query.result = mesh_query_point_no_sign(id, point, max_dist, query.face, query.u, query.v);
+    return query;
+}
+
+CUDA_CALLABLE inline mesh_query_point_t mesh_query_furthest_point_no_sign(uint64_t id, const vec3& point, float min_dist)
+{
+    mesh_query_point_t query;
+    query.sign = 0.0;
+    query.result = mesh_query_furthest_point_no_sign(id, point, min_dist, query.face, query.u, query.v);
+    return query;
+}
+
+CUDA_CALLABLE inline mesh_query_point_t mesh_query_point_sign_normal(uint64_t id, const vec3& point, float max_dist, const float epsilon = 1e-3f)
+{
+    mesh_query_point_t query;
+    query.result = mesh_query_point_sign_normal(id, point, max_dist, query.sign, query.face, query.u, query.v, epsilon);
+    return query;
+}
+
+CUDA_CALLABLE inline mesh_query_point_t mesh_query_point_sign_winding_number(uint64_t id, const vec3& point, float max_dist, float accuracy, float winding_number_threshold)
+{
+    mesh_query_point_t query;
+    query.result = mesh_query_point_sign_winding_number(id, point, max_dist, query.sign, query.face, query.u, query.v, accuracy, winding_number_threshold);
+    return query;
+}
+
+CUDA_CALLABLE inline void adj_mesh_query_point(uint64_t id, const vec3& point, float max_dist, const mesh_query_point_t& ret,
+                                               uint64_t adj_id, vec3& adj_point, float& adj_max_dist, mesh_query_point_t& adj_ret)
+{
+    adj_mesh_query_point(id, point, max_dist, ret.sign, ret.face, ret.u, ret.v,
+                         adj_id, adj_point, adj_max_dist, adj_ret.sign, adj_ret.face, adj_ret.u, adj_ret.v, adj_ret.result);
+}
+
+CUDA_CALLABLE inline void adj_mesh_query_point_no_sign(uint64_t id, const vec3& point, float max_dist, const mesh_query_point_t& ret,
+                                                       uint64_t adj_id, vec3& adj_point, float& adj_max_dist, mesh_query_point_t& adj_ret)
+{
+    adj_mesh_query_point_no_sign(id, point, max_dist, ret.face, ret.u, ret.v,
+                                adj_id, adj_point, adj_max_dist, adj_ret.face, adj_ret.u, adj_ret.v, adj_ret.result);
+}
+
+CUDA_CALLABLE inline void adj_mesh_query_furthest_point_no_sign(uint64_t id, const vec3& point, float min_dist, const mesh_query_point_t& ret,
+                                                                uint64_t adj_id, vec3& adj_point, float& adj_min_dist, mesh_query_point_t& adj_ret)
+{
+    adj_mesh_query_furthest_point_no_sign(id, point, min_dist, ret.face, ret.u, ret.v,
+                                          adj_id, adj_point, adj_min_dist, adj_ret.face, adj_ret.u, adj_ret.v, adj_ret.result);
+}
+
+CUDA_CALLABLE inline void adj_mesh_query_point_sign_normal(uint64_t id, const vec3& point, float max_dist, float epsilon, const mesh_query_point_t& ret,
+                                                           uint64_t adj_id, vec3& adj_point, float& adj_max_dist, float& adj_epsilon, mesh_query_point_t& adj_ret)
+{
+    adj_mesh_query_point_sign_normal(id, point, max_dist, ret.sign, ret.face, ret.u, ret.v, epsilon,
+                                     adj_id, adj_point, adj_max_dist, adj_ret.sign, adj_ret.face, adj_ret.u, adj_ret.v, epsilon, adj_ret.result);
+}
+
+CUDA_CALLABLE inline void adj_mesh_query_point_sign_winding_number(uint64_t id, const vec3& point, float max_dist, float accuracy, float winding_number_threshold, const mesh_query_point_t& ret,
+                                                                   uint64_t adj_id, vec3& adj_point, float& adj_max_dist, float& adj_accuracy, float& adj_winding_number_threshold, mesh_query_point_t& adj_ret)
+{
+    adj_mesh_query_point_sign_winding_number(id, point, max_dist, ret.sign, ret.face, ret.u, ret.v, accuracy, winding_number_threshold,
+                                             adj_id, adj_point, adj_max_dist, adj_ret.sign, adj_ret.face, adj_ret.u, adj_ret.v, adj_accuracy, adj_winding_number_threshold, adj_ret.result);
 }
 
 CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const vec3& dir, float max_t, float& t, float& u, float& v, float& sign, vec3& normal, int& face)
@@ -1350,6 +1442,35 @@ CUDA_CALLABLE inline void adj_mesh_query_ray(
 
     adj_intersect_ray_tri_woop(start, dir, a, b, c, t, u, v, sign, &n, adj_start, adj_dir, adj_a, adj_b, adj_c, adj_t, adj_u, adj_v, adj_sign, &adj_n, adj_ret);
 
+}
+
+
+// Stores the result of querying the closest point on a mesh.
+struct mesh_query_ray_t
+{
+    CUDA_CALLABLE mesh_query_ray_t()
+    {
+    }
+
+    CUDA_CALLABLE mesh_query_ray_t(int)
+    {
+        // For backward pass.
+    }
+
+    bool result;
+    float sign;
+    int face;
+    float t;
+    float u;
+    float v;
+    vec3 normal;
+};
+
+CUDA_CALLABLE inline mesh_query_ray_t mesh_query_ray(uint64_t id, const vec3& start, const vec3& dir, float max_t)
+{
+    mesh_query_ray_t query;
+    query.result = mesh_query_ray(id, start, dir, max_t, query.t, query.u, query.v, query.sign, query.normal, query.face);
+    return query;
 }
 
 

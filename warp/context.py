@@ -4036,6 +4036,14 @@ def print_builtins(file):  # pragma: no cover
     print(".. class:: Transformation", file=file)
     print(".. class:: Array", file=file)
 
+    print("\nQuery Types", file=file)
+    print("-------------", file=file)
+    print(".. autoclass:: bvh_query_t", file=file)
+    print(".. autoclass:: hash_grid_query_t", file=file)
+    print(".. autoclass:: mesh_query_aabb_t", file=file)
+    print(".. autoclass:: mesh_query_point_t", file=file)
+    print(".. autoclass:: mesh_query_ray_t", file=file)
+
     # build dictionary of all functions by group
     groups = {}
 

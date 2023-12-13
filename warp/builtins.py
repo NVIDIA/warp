@@ -1483,7 +1483,7 @@ add_builtin(
     value_type=bvh_query_t,
     group="Geometry",
     doc="""Construct an axis-aligned bounding box query against a BVH object. This query can be used to iterate over all bounds
-   inside a BVH. Returns an object that is used to track state during BVH traversal.
+   inside a BVH.
 
    :param id: The BVH identifier
    :param lower: The lower bound of the bounding box in BVH space
@@ -1496,7 +1496,7 @@ add_builtin(
     value_type=bvh_query_t,
     group="Geometry",
     doc="""Construct a ray query against a BVH object. This query can be used to iterate over all bounds
-   that intersect the ray. Returns an object that is used to track state during BVH traversal.
+   that intersect the ray.
 
    :param id: The BVH identifier
    :param start: The start of the ray in BVH space
@@ -1539,6 +1539,28 @@ add_builtin(
    :param face: Returns the index of the closest face
    :param bary_u: Returns the barycentric u coordinate of the closest point
    :param bary_v: Returns the barycentric v coordinate of the closest point""",
+    hidden=True,
+)
+
+add_builtin(
+    "mesh_query_point",
+    input_types={
+        "id": uint64,
+        "point": vec3,
+        "max_dist": float,
+    },
+    value_type=mesh_query_point_t,
+    group="Geometry",
+    doc="""Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
+
+   Identifies the sign of the distance using additional ray-casts to determine if the point is inside or outside.
+   This method is relatively robust, but does increase computational cost.
+   See below for additional sign determination methods.
+
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param max_dist: Mesh faces above this distance will not be considered by the query""",
+    require_original_output_arg=True,
 )
 
 add_builtin(
@@ -1563,6 +1585,26 @@ add_builtin(
    :param face: Returns the index of the closest face
    :param bary_u: Returns the barycentric u coordinate of the closest point
    :param bary_v: Returns the barycentric v coordinate of the closest point""",
+    hidden=True,
+)
+
+add_builtin(
+    "mesh_query_point_no_sign",
+    input_types={
+        "id": uint64,
+        "point": vec3,
+        "max_dist": float,
+    },
+    value_type=mesh_query_point_t,
+    group="Geometry",
+    doc="""Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
+
+   This method does not compute the sign of the point (inside/outside) which makes it faster than other point query methods.
+
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param max_dist: Mesh faces above this distance will not be considered by the query""",
+    require_original_output_arg=True,
 )
 
 add_builtin(
@@ -1587,6 +1629,26 @@ add_builtin(
    :param face: Returns the index of the furthest face
    :param bary_u: Returns the barycentric u coordinate of the furthest point
    :param bary_v: Returns the barycentric v coordinate of the furthest point""",
+    hidden=True,
+)
+
+add_builtin(
+    "mesh_query_furthest_point_no_sign",
+    input_types={
+        "id": uint64,
+        "point": vec3,
+        "min_dist": float,
+    },
+    value_type=mesh_query_point_t,
+    group="Geometry",
+    doc="""Computes the furthest point on the mesh with identifier `id` to the given point in space.
+
+   This method does not compute the sign of the point (inside/outside).
+
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param min_dist: Mesh faces below this distance will not be considered by the query""",
+    require_original_output_arg=True,
 )
 
 add_builtin(
@@ -1620,6 +1682,32 @@ add_builtin(
    :param bary_v: Returns the barycentric v coordinate of the closest point
    :param epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a
                    fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3""",
+    hidden=True,
+)
+
+add_builtin(
+    "mesh_query_point_sign_normal",
+    input_types={
+        "id": uint64,
+        "point": vec3,
+        "max_dist": float,
+        "epsilon": float,
+    },
+    defaults={"epsilon": 1.0e-3},
+    value_type=mesh_query_point_t,
+    group="Geometry",
+    doc="""Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
+
+   Identifies the sign of the distance (inside/outside) using the angle-weighted pseudo normal.
+   This approach to sign determination is robust for well conditioned meshes that are watertight and non-self intersecting.
+   It is also comparatively fast to compute.
+
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param max_dist: Mesh faces above this distance will not be considered by the query
+   :param epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a
+                   fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3""",
+    require_original_output_arg=True,
 )
 
 add_builtin(
@@ -1656,6 +1744,35 @@ add_builtin(
    :param bary_v: Returns the barycentric v coordinate of the closest point
    :param accuracy: Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation, default 2.0
    :param threshold: The threshold of the winding number to be considered inside, default 0.5""",
+    hidden=True,
+)
+
+add_builtin(
+    "mesh_query_point_sign_winding_number",
+    input_types={
+        "id": uint64,
+        "point": vec3,
+        "max_dist": float,
+        "accuracy": float,
+        "threshold": float,
+    },
+    defaults={"accuracy": 2.0, "threshold": 0.5},
+    value_type=mesh_query_point_t,
+    group="Geometry",
+    doc="""Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given point in space.
+
+   Identifies the sign using the winding number of the mesh relative to the query point. This method of sign determination is robust for poorly conditioned meshes
+   and provides a smooth approximation to sign even when the mesh is not watertight. This method is the most robust and accurate of the sign determination meshes
+   but also the most expensive.
+
+   .. note:: The :class:`Mesh` object must be constructed with ``support_winding_number=True`` for this method to return correct results.
+
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param max_dist: Mesh faces above this distance will not be considered by the query
+   :param accuracy: Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation, default 2.0
+   :param threshold: The threshold of the winding number to be considered inside, default 0.5""",
+    require_original_output_arg=True,
 )
 
 add_builtin(
@@ -1674,7 +1791,7 @@ add_builtin(
     },
     value_type=builtins.bool,
     group="Geometry",
-    doc="""Computes the closest ray hit on the :class:`Mesh` with identifier ``id``, returns ``True`` if a point < ``max_t`` is found.
+    doc="""Computes the closest ray hit on the :class:`Mesh` with identifier ``id``, returns ``True`` if a hit < ``max_t`` is found.
 
    :param id: The mesh identifier
    :param start: The start point of the ray
@@ -1683,9 +1800,29 @@ add_builtin(
    :param t: Returns the distance of the closest hit along the ray
    :param bary_u: Returns the barycentric u coordinate of the closest hit
    :param bary_v: Returns the barycentric v coordinate of the closest hit
-   :param sign: Returns a value > 0 if the hit ray hit front of the face, returns < 0 otherwise
+   :param sign: Returns a value > 0 if the ray hit in front of the face, returns < 0 otherwise
    :param normal: Returns the face normal
    :param face: Returns the index of the hit face""",
+    hidden=True,
+)
+
+add_builtin(
+    "mesh_query_ray",
+    input_types={
+        "id": uint64,
+        "start": vec3,
+        "dir": vec3,
+        "max_t": float,
+    },
+    value_type=mesh_query_ray_t,
+    group="Geometry",
+    doc="""Computes the closest ray hit on the :class:`Mesh` with identifier ``id``.
+
+   :param id: The mesh identifier
+   :param start: The start point of the ray
+   :param dir: The ray direction (should be normalized)
+   :param max_t: The maximum distance along the ray to check for intersections""",
+    require_original_output_arg=True,
 )
 
 add_builtin(
@@ -1695,7 +1832,6 @@ add_builtin(
     group="Geometry",
     doc="""Construct an axis-aligned bounding box query against a :class:`Mesh`.
    This query can be used to iterate over all triangles inside a volume.
-   Returns an object that is used to track state during mesh traversal.
 
    :param id: The mesh identifier
    :param lower: The lower bound of the bounding box in mesh space
@@ -1733,7 +1869,7 @@ add_builtin(
     value_type=hash_grid_query_t,
     group="Geometry",
     doc="Construct a point query against a :class:`HashGrid`. This query can be used to iterate over all neighboring points "
-    "within a fixed radius from the query point. Returns an object that is used to track state during neighbor traversal.",
+    "within a fixed radius from the query point.",
 )
 
 add_builtin(

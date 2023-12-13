@@ -44,6 +44,12 @@ def sample_mesh_query(
     query_faces[tid] = face_index
     query_dist[tid] = wp.length(cp - p)
 
+    query = wp.mesh_query_point(mesh, p, max_dist)
+    wp.expect_eq(query.sign, sign)
+    wp.expect_eq(query.face, face_index)
+    wp.expect_eq(query.u, face_u)
+    wp.expect_eq(query.v, face_v)
+
 
 @wp.kernel
 def sample_mesh_query_no_sign(
@@ -68,6 +74,11 @@ def sample_mesh_query_no_sign(
 
     query_faces[tid] = face_index
     query_dist[tid] = wp.length(cp - p)
+
+    query = wp.mesh_query_point_no_sign(mesh, p, max_dist)
+    wp.expect_eq(query.face, face_index)
+    wp.expect_eq(query.u, face_u)
+    wp.expect_eq(query.v, face_v)
 
 
 @wp.kernel
@@ -97,6 +108,12 @@ def sample_mesh_query_sign_normal(
     query_faces[tid] = face_index
     query_dist[tid] = wp.length(cp - p)
 
+    query = wp.mesh_query_point_sign_normal(mesh, p, max_dist)
+    wp.expect_eq(query.sign, sign)
+    wp.expect_eq(query.face, face_index)
+    wp.expect_eq(query.u, face_u)
+    wp.expect_eq(query.v, face_v)
+
 
 @wp.kernel
 def sample_mesh_query_sign_winding_number(
@@ -124,6 +141,12 @@ def sample_mesh_query_sign_winding_number(
     query_signs[tid] = sign
     query_faces[tid] = face_index
     query_dist[tid] = wp.length(cp - p)
+
+    query = wp.mesh_query_point_sign_winding_number(mesh, p, max_dist)
+    wp.expect_eq(query.sign, sign)
+    wp.expect_eq(query.face, face_index)
+    wp.expect_eq(query.u, face_u)
+    wp.expect_eq(query.v, face_v)
 
 
 @wp.func
@@ -573,6 +596,11 @@ def sample_furthest_points(mesh: wp.uint64, query_points: wp.array(dtype=wp.vec3
         closest = wp.mesh_eval_position(mesh, face, bary_u, bary_v)
 
         query_result[tid] = wp.length_sq(p - closest)
+
+    query = wp.mesh_query_furthest_point_no_sign(mesh, p, 0.0)
+    wp.expect_eq(query.face, face)
+    wp.expect_eq(query.u, bary_u)
+    wp.expect_eq(query.v, bary_v)
 
 
 @wp.kernel

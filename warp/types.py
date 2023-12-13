@@ -910,18 +910,21 @@ class range_t:
 
 # definition just for kernel type (cannot be a parameter), see bvh.h
 class bvh_query_t:
+    """Object used to track state during BVH traversal."""
     def __init__(self):
         pass
 
 
 # definition just for kernel type (cannot be a parameter), see mesh.h
 class mesh_query_aabb_t:
+    """Object used to track state during mesh traversal."""
     def __init__(self):
         pass
 
 
 # definition just for kernel type (cannot be a parameter), see hash_grid.h
 class hash_grid_query_t:
+    """Object used to track state during neighbor traversal."""
     def __init__(self):
         pass
 
@@ -2979,6 +2982,67 @@ class Volume:
         return volume
 
 
+# definition just for kernel type (cannot be a parameter), see mesh.h
+# NOTE: its layout must match the corresponding struct defined in C.
+# NOTE: it needs to be defined after `indexedarray` to workaround a circular import issue.
+class mesh_query_point_t:
+    """Output for the mesh query point functions.
+
+    Attributes:
+        result (bool): Whether a point is found within the given constraints.
+        sign (float32): A value < 0 if query point is inside the mesh, >=0 otherwise.
+                        Note that mesh must be watertight for this to be robust
+        face (int32): Index of the closest face.
+        u (float32): Barycentric u coordinate of the closest point.
+        v (float32): Barycentric v coordinate of the closest point.
+
+    See Also:
+        :func:`mesh_query_point`, :func:`mesh_query_point_no_sign`,
+        :func:`mesh_query_furthest_point_no_sign`,
+        :func:`mesh_query_point_sign_normal`,
+        and :func:`mesh_query_point_sign_winding_number`.
+    """
+    from warp.codegen import Var
+
+    vars = {
+        "result": Var("result", bool),
+        "sign": Var("sign", float32),
+        "face": Var("face", int32),
+        "u": Var("u", float32),
+        "v": Var("v", float32),
+    }
+
+
+# definition just for kernel type (cannot be a parameter), see mesh.h
+# NOTE: its layout must match the corresponding struct defined in C.
+class mesh_query_ray_t:
+    """Output for the mesh query ray functions.
+
+    Attributes:
+        result (bool): Whether a hit is found within the given constraints.
+        sign (float32): A value > 0 if the ray hit in front of the face, returns < 0 otherwise.
+        face (int32): Index of the closest face.
+        t (float32): Distance of the closest hit along the ray.
+        u (float32): Barycentric u coordinate of the closest hit.
+        v (float32): Barycentric v coordinate of the closest hit.
+        normal (vec3f): Face normal.
+
+    See Also:
+        :func:`mesh_query_ray`.
+    """
+    from warp.codegen import Var
+
+    vars = {
+        "result": Var("result", bool),
+        "sign": Var("sign", float32),
+        "face": Var("face", int32),
+        "t": Var("t", float32),
+        "u": Var("u", float32),
+        "v": Var("v", float32),
+        "normal": Var("normal", vec3),
+    }
+
+
 def matmul(
     a: array2d,
     b: array2d,
@@ -3957,7 +4021,7 @@ def infer_argument_types(args, template_types, arg_names=None):
             arg_types.append(arg._cls)
         # elif arg_type in [warp.types.launch_bounds_t, warp.types.shape_t, warp.types.range_t]:
         #     arg_types.append(arg_type)
-        # elif arg_type in [warp.hash_grid_query_t, warp.mesh_query_aabb_t, warp.bvh_query_t]:
+        # elif arg_type in [warp.hash_grid_query_t, warp.mesh_query_aabb_t, warp.mesh_query_point_t, warp.mesh_query_ray_t, warp.bvh_query_t]:
         #     arg_types.append(arg_type)
         elif arg is None:
             # allow passing None for arrays
@@ -3995,6 +4059,8 @@ simple_type_codes = {
     launch_bounds_t: "lb",
     hash_grid_query_t: "hgq",
     mesh_query_aabb_t: "mqa",
+    mesh_query_point_t: "mqp",
+    mesh_query_ray_t: "mqr",
     bvh_query_t: "bvhq",
 }
 
