@@ -180,6 +180,7 @@ Full Table of Contents
     modules/sim
     modules/sparse
     modules/fem
+    modules/render
 
 .. toctree::
     :hidden:
