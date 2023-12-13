@@ -41,6 +41,7 @@ class CubeTripolynomialShapeFunctions:
         self.LOBATTO_COORDS = wp.constant(NodeVec(lobatto_coords))
         self.LOBATTO_WEIGHT = wp.constant(NodeVec(lobatto_weight))
         self.LAGRANGE_SCALE = wp.constant(NodeVec(lagrange_scale))
+        self.ORDER_PLUS_ONE = wp.constant(self.ORDER + 1)
 
         self._node_ijk = self._make_node_ijk()
         self.node_type_and_type_index = self._make_node_type_and_type_index()
@@ -57,21 +58,21 @@ class CubeTripolynomialShapeFunctions:
         return wp.vec3(float(x), float(y), float(z))
 
     def _make_node_ijk(self):
-        ORDER = self.ORDER
+        ORDER_PLUS_ONE = self.ORDER_PLUS_ONE
 
         def node_ijk(
             node_index_in_elt: int,
         ):
-            node_i = node_index_in_elt // ((ORDER + 1) * (ORDER + 1))
-            node_jk = node_index_in_elt - (ORDER + 1) * (ORDER + 1) * node_i
-            node_j = node_jk // (ORDER + 1)
-            node_k = node_jk - (ORDER + 1) * node_j
+            node_i = node_index_in_elt // (ORDER_PLUS_ONE * ORDER_PLUS_ONE)
+            node_jk = node_index_in_elt - ORDER_PLUS_ONE * ORDER_PLUS_ONE * node_i
+            node_j = node_jk // ORDER_PLUS_ONE
+            node_k = node_jk - ORDER_PLUS_ONE * node_j
             return node_i, node_j, node_k
 
         return cache.get_func(node_ijk, self.name)
 
     def _make_node_type_and_type_index(self):
-        ORDER = wp.constant(self.ORDER)
+        ORDER = self.ORDER
 
         @cache.dynamic_func(suffix=self.name)
         def node_type_and_type_index(
@@ -190,13 +191,21 @@ class CubeTripolynomialShapeFunctions:
         ):
             return 0.25
 
+        def trace_node_quadrature_weight_open(
+            node_index_in_elt: int,
+        ):
+            return 0.0
+
+        if not is_closed(self.family):
+            return cache.get_func(trace_node_quadrature_weight_open, self.name)
+
         if ORDER == 1:
             return cache.get_func(trace_node_quadrature_weight_linear, self.name)
 
         return cache.get_func(trace_node_quadrature_weight, self.name)
 
     def make_element_inner_weight(self):
-        ORDER = self.ORDER
+        ORDER_PLUS_ONE = self.ORDER_PLUS_ONE
         LOBATTO_COORDS = self.LOBATTO_COORDS
         LAGRANGE_SCALE = self.LAGRANGE_SCALE
 
@@ -207,7 +216,7 @@ class CubeTripolynomialShapeFunctions:
             node_i, node_j, node_k = self._node_ijk(node_index_in_elt)
 
             w = float(1.0)
-            for k in range(ORDER + 1):
+            for k in range(ORDER_PLUS_ONE):
                 if k != node_i:
                     w *= coords[0] - LOBATTO_COORDS[k]
                 if k != node_j:
@@ -230,13 +239,13 @@ class CubeTripolynomialShapeFunctions:
             wz = (1.0 - coords[2]) * (1.0 - v[2]) + v[2] * coords[2]
             return wx * wy * wz
 
-        if ORDER == 1:
+        if self.ORDER == 1 and is_closed(self.family):
             return cache.get_func(element_inner_weight_linear, self.name)
 
         return cache.get_func(element_inner_weight, self.name)
 
     def make_element_inner_weight_gradient(self):
-        ORDER = self.ORDER
+        ORDER_PLUS_ONE = self.ORDER_PLUS_ONE
         LOBATTO_COORDS = self.LOBATTO_COORDS
         LAGRANGE_SCALE = self.LAGRANGE_SCALE
 
@@ -249,7 +258,7 @@ class CubeTripolynomialShapeFunctions:
             prefix_xy = float(1.0)
             prefix_yz = float(1.0)
             prefix_zx = float(1.0)
-            for k in range(ORDER + 1):
+            for k in range(ORDER_PLUS_ONE):
                 if k != node_i:
                     prefix_yz *= coords[0] - LOBATTO_COORDS[k]
                 if k != node_j:
@@ -265,7 +274,7 @@ class CubeTripolynomialShapeFunctions:
             grad_y = float(0.0)
             grad_z = float(0.0)
 
-            for k in range(ORDER + 1):
+            for k in range(ORDER_PLUS_ONE):
                 if k != node_i:
                     delta_x = coords[0] - LOBATTO_COORDS[k]
                     grad_x = grad_x * delta_x + prefix_x
@@ -308,7 +317,7 @@ class CubeTripolynomialShapeFunctions:
 
             return wp.vec3(dx * wy * wz, dy * wz * wx, dz * wx * wy)
 
-        if ORDER == 1:
+        if self.ORDER == 1 and is_closed(self.family):
             return cache.get_func(element_inner_weight_gradient_linear, self.name)
 
         return cache.get_func(element_inner_weight_gradient, self.name)
@@ -356,6 +365,7 @@ class CubeSerendipityShapeFunctions:
         self.LOBATTO_COORDS = wp.constant(NodeVec(lobatto_coords))
         self.LOBATTO_WEIGHT = wp.constant(NodeVec(lobatto_weight))
         self.LAGRANGE_SCALE = wp.constant(NodeVec(lagrange_scale))
+        self.ORDER_PLUS_ONE = wp.constant(self.ORDER + 1)
 
         self.node_type_and_type_index = self._get_node_type_and_type_index()
         self._node_lobatto_indices = self._get_node_lobatto_indices()
@@ -466,6 +476,7 @@ class CubeSerendipityShapeFunctions:
 
     def make_element_inner_weight(self):
         ORDER = self.ORDER
+        ORDER_PLUS_ONE = self.ORDER_PLUS_ONE
 
         LOBATTO_COORDS = self.LOBATTO_COORDS
         LAGRANGE_SCALE = self.LAGRANGE_SCALE
@@ -511,7 +522,7 @@ class CubeSerendipityShapeFunctions:
             w *= wp.select(node_all[1] == 0, local_coords[1], 1.0 - local_coords[1])
             w *= wp.select(node_all[2] == 0, local_coords[2], 1.0 - local_coords[2])
 
-            for k in range(ORDER + 1):
+            for k in range(ORDER_PLUS_ONE):
                 if k != node_all[0]:
                     w *= local_coords[0] - LOBATTO_COORDS[k]
             w *= LAGRANGE_SCALE[node_all[0]]
@@ -522,6 +533,7 @@ class CubeSerendipityShapeFunctions:
 
     def make_element_inner_weight_gradient(self):
         ORDER = self.ORDER
+        ORDER_PLUS_ONE = self.ORDER_PLUS_ONE
         LOBATTO_COORDS = self.LOBATTO_COORDS
         LAGRANGE_SCALE = self.LAGRANGE_SCALE
 
@@ -585,7 +597,7 @@ class CubeSerendipityShapeFunctions:
             w_alt = LAGRANGE_SCALE[node_all[0]]
             g_alt = float(0.0)
             prefix_alt = LAGRANGE_SCALE[node_all[0]]
-            for k in range(ORDER + 1):
+            for k in range(ORDER_PLUS_ONE):
                 if k != node_all[0]:
                     delta_alt = local_coords[0] - LOBATTO_COORDS[k]
                     w_alt *= delta_alt

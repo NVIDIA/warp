@@ -84,15 +84,14 @@ class NodalFieldBase(DiscreteField):
         if not self.gradient_valid():
             return None
 
-        @cache.dynamic_func(suffix=self.name + ("W" if world_space else "R"))
-        def eval_grad_inner(args: self.ElementEvalArg, s: Sample):
+        @cache.dynamic_func(suffix=self.name)
+        def eval_grad_inner_ref_space(args: self.ElementEvalArg, s: Sample):
             res = utils.generalized_outer(
                 self._read_node_value(args, s.element_index, 0),
                 self.space.element_inner_weight_gradient(
                     args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, 0
                 ),
             )
-
             for k in range(1, NODES_PER_ELEMENT):
                 res += utils.generalized_outer(
                     self._read_node_value(args, s.element_index, k),
@@ -100,14 +99,15 @@ class NodalFieldBase(DiscreteField):
                         args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k
                     ),
                 )
-
-            if world_space:
-                grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
-                return utils.apply_right(res, grad_transform)
-
             return res
 
-        return eval_grad_inner
+        @cache.dynamic_func(suffix=self.name)
+        def eval_grad_inner_world_space(args: self.ElementEvalArg, s: Sample):
+            grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
+            res = eval_grad_inner_ref_space(args, s)
+            return utils.apply_right(res, grad_transform)
+
+        return eval_grad_inner_world_space if world_space else eval_grad_inner_ref_space
 
     def _make_eval_div_inner(self):
         NODES_PER_ELEMENT = self.space.topology.NODES_PER_ELEMENT
@@ -173,8 +173,8 @@ class NodalFieldBase(DiscreteField):
         if not self.gradient_valid():
             return None
 
-        @cache.dynamic_func(suffix=self.name + ("W" if world_space else "R"))
-        def eval_grad_outer(args: self.ElementEvalArg, s: Sample):
+        @cache.dynamic_func(suffix=self.name)
+        def eval_grad_outer_ref_space(args: self.ElementEvalArg, s: Sample):
             res = utils.generalized_outer(
                 self._read_node_value(args, s.element_index, 0),
                 self.space.element_outer_weight_gradient(
@@ -188,14 +188,15 @@ class NodalFieldBase(DiscreteField):
                         args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k
                     ),
                 )
-
-            if world_space:
-                grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
-                return utils.apply_right(res, grad_transform)
-
             return res
 
-        return eval_grad_outer
+        @cache.dynamic_func(suffix=self.name)
+        def eval_grad_outer_world_space(args: self.ElementEvalArg, s: Sample):
+            grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
+            res = eval_grad_outer_ref_space(args, s)
+            return utils.apply_right(res, grad_transform)
+
+        return eval_grad_outer_world_space if world_space else eval_grad_outer_ref_space
 
     def _make_eval_div_outer(self):
         NODES_PER_ELEMENT = self.space.topology.NODES_PER_ELEMENT
