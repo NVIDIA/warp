@@ -952,8 +952,8 @@ inline CUDA_CALLABLE void adj_max(const vec_t<Length,Type> &v, vec_t<Length,Type
 
 // Do I need to specialize these for different lengths?
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length, Type> atomic_add(vec_t<Length, Type> * addr, vec_t<Length, Type> value) {
-
+inline CUDA_CALLABLE vec_t<Length, Type> atomic_add(vec_t<Length, Type> * addr, vec_t<Length, Type> value)
+{
     vec_t<Length, Type> ret;
     for( unsigned i=0; i < Length; ++i )
     {
@@ -964,8 +964,8 @@ inline CUDA_CALLABLE vec_t<Length, Type> atomic_add(vec_t<Length, Type> * addr, 
 }
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length, Type> atomic_min(vec_t<Length, Type> * addr, vec_t<Length, Type> value) {
-
+inline CUDA_CALLABLE vec_t<Length, Type> atomic_min(vec_t<Length, Type> * addr, vec_t<Length, Type> value)
+{
     vec_t<Length, Type> ret;
     for( unsigned i=0; i < Length; ++i )
     {
@@ -976,8 +976,8 @@ inline CUDA_CALLABLE vec_t<Length, Type> atomic_min(vec_t<Length, Type> * addr, 
 }
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length, Type> atomic_max(vec_t<Length, Type> * addr, vec_t<Length, Type> value) {
-
+inline CUDA_CALLABLE vec_t<Length, Type> atomic_max(vec_t<Length, Type> * addr, vec_t<Length, Type> value)
+{
     vec_t<Length, Type> ret;
     for( unsigned i=0; i < Length; ++i )
     {
@@ -985,6 +985,17 @@ inline CUDA_CALLABLE vec_t<Length, Type> atomic_max(vec_t<Length, Type> * addr, 
     }
 
     return ret;
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_atomic_minmax(
+    vec_t<Length,Type> *addr,
+    vec_t<Length,Type> *adj_addr,
+    const vec_t<Length,Type> &value,
+    vec_t<Length,Type> &adj_value)
+{
+    for (unsigned i=0; i < Length; ++i)
+        adj_atomic_minmax(&(addr->c[i]), &(adj_addr->c[i]), value[i], adj_value[i]);
 }
 
 // ok, the original implementation of this didn't take the absolute values.

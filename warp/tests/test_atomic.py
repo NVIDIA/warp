@@ -53,19 +53,59 @@ def make_atomic_test(type):
             base = rng.random(size=(1, *type._shape_), dtype=float)
             val = rng.random(size=(n, *type._shape_), dtype=float)
 
-        add_array = wp.array(base, dtype=type, device=device)
-        min_array = wp.array(base, dtype=type, device=device)
-        max_array = wp.array(base, dtype=type, device=device)
+        add_array = wp.array(base, dtype=type, device=device, requires_grad=True)
+        min_array = wp.array(base, dtype=type, device=device, requires_grad=True)
+        max_array = wp.array(base, dtype=type, device=device, requires_grad=True)
+        add_array.zero_()
+        min_array.fill_(10000)
+        max_array.fill_(-10000)
 
-        val_array = wp.array(val, dtype=type, device=device)
+        val_array = wp.array(val, dtype=type, device=device, requires_grad=True)
 
-        wp.launch(kernel, n, inputs=[add_array, min_array, max_array, val_array], device=device)
-
-        val = np.append(val, [base[0]], axis=0)
+        tape = wp.Tape()
+        with tape:
+            wp.launch(kernel, n, inputs=[add_array, min_array, max_array, val_array], device=device)
 
         assert_np_equal(add_array.numpy(), np.sum(val, axis=0), tol=1.0e-2)
         assert_np_equal(min_array.numpy(), np.min(val, axis=0), tol=1.0e-2)
         assert_np_equal(max_array.numpy(), np.max(val, axis=0), tol=1.0e-2)
+
+        if type != wp.int32:
+            add_array.grad.fill_(1)
+            tape.backward()
+            assert_np_equal(val_array.grad.numpy(), np.ones_like(val))
+            tape.zero()
+
+            min_array.grad.fill_(1)
+            tape.backward()
+            min_grad_array = np.zeros_like(val)
+            argmin = val.argmin(axis=0)
+            if val.ndim == 1:
+                min_grad_array[argmin] = 1
+            elif val.ndim == 2:
+                for i in range(val.shape[1]):
+                    min_grad_array[argmin[i], i] = 1
+            elif val.ndim == 3:
+                for i in range(val.shape[1]):
+                    for j in range(val.shape[2]):
+                        min_grad_array[argmin[i, j], i, j] = 1
+            assert_np_equal(val_array.grad.numpy(), min_grad_array)
+            tape.zero()
+
+            max_array.grad.fill_(1)
+            tape.backward()
+            max_grad_array = np.zeros_like(val)
+            argmax = val.argmax(axis=0)
+            if val.ndim == 1:
+                max_grad_array[argmax] = 1
+            elif val.ndim == 2:
+                for i in range(val.shape[1]):
+                    max_grad_array[argmax[i], i] = 1
+            elif val.ndim == 3:
+                for i in range(val.shape[1]):
+                    for j in range(val.shape[2]):
+                        max_grad_array[argmax[i, j], i, j] = 1
+            assert_np_equal(val_array.grad.numpy(), max_grad_array)
 
     return test_atomic
 
