@@ -6,6 +6,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import unittest
+from typing import Any
 
 import numpy as np
 
@@ -560,6 +561,55 @@ def test_name_clash(test, device):
         assert_np_equal(input_b.grad.numpy(), np.array([1.0, 1.0, 0.0]))
 
 
+@wp.struct
+class NestedStruct:
+    v: wp.vec2
+
+
+@wp.struct
+class ParentStruct:
+    a: float
+    n: NestedStruct
+
+
+@wp.func
+def noop(a: Any):
+    pass
+
+
+@wp.func
+def sum2(v: wp.vec2):
+    return v[0] + v[1]
+
+
+@wp.kernel
+def test_struct_attribute_gradient_kernel(src: wp.array(dtype=float), res: wp.array(dtype=float)):
+    tid = wp.tid()
+
+    p = ParentStruct(src[tid], NestedStruct(wp.vec2(2.0 * src[tid])))
+
+    # test that we are not losing gradients when accessing attributes
+    noop(p.a)
+    noop(p.n)
+    noop(p.n.v)
+
+    res[tid] = p.a + sum2(p.n.v)
+
+
+def test_struct_attribute_gradient(test_case, device):
+    src = wp.array([1], dtype=float, requires_grad=True)
+    res = wp.empty_like(src)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(test_struct_attribute_gradient_kernel, dim=1, inputs=[src, res])
+
+    res.grad.fill_(1.0)
+    tape.backward()
+
+    test_case.assertEqual(src.grad.numpy()[0], 5.0)
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -579,6 +629,7 @@ def register(parent):
     add_function_test(TestGrad, "test_multi_valued_function_grad", test_multi_valued_function_grad, devices=devices)
     add_function_test(TestGrad, "test_mesh_grad", test_mesh_grad, devices=devices)
     add_function_test(TestGrad, "test_name_clash", test_name_clash, devices=devices)
+    add_function_test(TestGrad, "test_struct_attribute_gradient", test_struct_attribute_gradient, devices=devices)
 
     return TestGrad
 

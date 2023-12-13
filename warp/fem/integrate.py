@@ -619,7 +619,7 @@ def get_integrate_bilinear_kernel(
                 test_element_index.node_index_in_element,
                 test_dof,
             )
-        
+
             val_sum = accumulate_dtype(0.0)
 
             for k in range(qp_point_count):
@@ -1012,7 +1012,7 @@ def _launch_integrate_kernel(
             )
 
         if output_temporary is not None:
-            return output_temporary.detach() 
+            return output_temporary.detach()
 
         return output
 
@@ -1108,7 +1108,7 @@ def _launch_integrate_kernel(
             block_type=block_type,
             device=device,
         )
-    
+
     bsr_set_from_triplets(output, triplet_rows, triplet_cols, triplet_values)
 
     # Do not wait for garbage collection
@@ -1230,7 +1230,7 @@ def integrate(
     )
 
 
-def get_interpolate_to_field_kernel(
+def get_interpolate_to_field_function(
     integrand_func: wp.Function,
     domain: GeometryDomain,
     FieldStruct: wp.codegen.Struct,
@@ -1239,7 +1239,8 @@ def get_interpolate_to_field_kernel(
 ):
     value_type = dest.space.dtype
 
-    def interpolate_to_field_kernel_fn(
+    def interpolate_to_field_fn(
+        local_node_index: int,
         domain_arg: domain.ElementArg,
         domain_index_arg: domain.ElementIndexArg,
         dest_node_arg: dest.space_restriction.NodeArg,
@@ -1247,19 +1248,15 @@ def get_interpolate_to_field_kernel(
         fields: FieldStruct,
         values: ValueStruct,
     ):
-        local_node_index = wp.tid()
         node_index = dest.space_restriction.node_partition_index(dest_node_arg, local_node_index)
-
         element_count = dest.space_restriction.node_element_count(dest_node_arg, local_node_index)
-        if element_count == 0:
-            return
 
         test_dof_index = NULL_DOF_INDEX
         trial_dof_index = NULL_DOF_INDEX
         node_weight = 1.0
 
-        # Volume-weighted average accross elements
-        # Superfluous if the function is continuous, but we might as well
+        # Volume-weighted average across elements
+        # Superfluous if the interpolated function is continuous, but helpful for visualizing discontinuous spaces
 
         val_sum = value_type(0.0)
         vol_sum = float(0.0)
@@ -1290,7 +1287,34 @@ def get_interpolate_to_field_kernel(
                 vol_sum += vol
                 val_sum += vol * val
 
+        return val_sum, vol_sum
+
+    return interpolate_to_field_fn
+
+
+def get_interpolate_to_field_kernel(
+    interpolate_to_field_fn: wp.Function,
+    domain: GeometryDomain,
+    FieldStruct: wp.codegen.Struct,
+    ValueStruct: wp.codegen.Struct,
+    dest: FieldRestriction,
+):
+    def interpolate_to_field_kernel_fn(
+        domain_arg: domain.ElementArg,
+        domain_index_arg: domain.ElementIndexArg,
+        dest_node_arg: dest.space_restriction.NodeArg,
+        dest_eval_arg: dest.field.EvalArg,
+        fields: FieldStruct,
+        values: ValueStruct,
+    ):
+        local_node_index = wp.tid()
+
+        val_sum, vol_sum = interpolate_to_field_fn(
+            local_node_index, domain_arg, domain_index_arg, dest_node_arg, dest_eval_arg, fields, values
+        )
+
         if vol_sum > 0.0:
+            node_index = dest.space_restriction.node_partition_index(dest_node_arg, local_node_index)
             dest.field.set_node_value(dest_eval_arg, node_index, val_sum / vol_sum)
 
     return interpolate_to_field_kernel_fn
@@ -1404,8 +1428,32 @@ def _generate_interpolate_kernel(
 
     # Generate interpolation kernel
     if isinstance(dest, FieldRestriction):
-        interpolate_kernel_fn = get_interpolate_to_field_kernel(
+        # need to split into kernel + function for diffferentiability
+        interpolate_fn = get_interpolate_to_field_function(
             integrand_func,
+            domain,
+            dest=dest,
+            FieldStruct=FieldStruct,
+            ValueStruct=ValueStruct,
+        )
+
+        interpolate_fn = cache.get_integrand_function(
+            integrand=integrand,
+            func=interpolate_fn,
+            suffix=kernel_suffix,
+            code_transformers=[
+                PassFieldArgsToIntegrand(
+                    arg_names=integrand.argspec.args,
+                    field_args=field_args.keys(),
+                    value_args=value_args.keys(),
+                    sample_name=sample_name,
+                    domain_name=domain_name,
+                )
+            ],
+        )
+
+        interpolate_kernel_fn = get_interpolate_to_field_kernel(
+            interpolate_fn,
             domain,
             dest=dest,
             FieldStruct=FieldStruct,

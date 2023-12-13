@@ -1295,6 +1295,12 @@ class Adjoint:
         index = adj.add_constant(index)
         return index
 
+    @staticmethod
+    def is_differentiable_value_type(var_type):
+        # checks that the argument type is a value type (i.e, not an array)
+        # possibly holding differentiable values (for which gradients must be accumulated)
+        return type_scalar_type(var_type) in float_types or isinstance(var_type, Struct)
+
     def emit_Attribute(adj, node):
         if hasattr(node, "is_adjoint"):
             node.value.is_adjoint = True
@@ -1331,9 +1337,12 @@ class Adjoint:
 
                 if is_reference(aggregate.type):
                     adj.add_forward(f"{attr.emit()} = &({aggregate.emit()}->{node.attr});")
-                    adj.add_reverse(f"{aggregate.emit_adj()}.{node.attr} = {attr.emit_adj()};")
                 else:
                     adj.add_forward(f"{attr.emit()} = &({aggregate.emit()}.{node.attr});")
+
+                if adj.is_differentiable_value_type(strip_reference(attr_type)):
+                    adj.add_reverse(f"{aggregate.emit_adj()}.{node.attr} += {attr.emit_adj()};")
+                else:
                     adj.add_reverse(f"{aggregate.emit_adj()}.{node.attr} = {attr.emit_adj()};")
 
                 return attr
@@ -1455,6 +1464,10 @@ class Adjoint:
         # try and resolve the expression to an object
         # e.g.: wp.constant in the globals scope
         obj, path = adj.resolve_static_expression(a)
+
+        if isinstance(obj, Var) and obj.constant is not None:
+            obj = obj.constant
+
         return warp.types.is_int(obj), obj
 
     # detects whether a loop contains a break (or continue) statement
@@ -2135,7 +2148,9 @@ struct {name}
     {{
     }}
 
-    CUDA_CALLABLE {name}& operator += (const {name}&) {{ return *this; }}
+    CUDA_CALLABLE {name}& operator += (const {name}& rhs)
+    {{{prefix_add_body}
+        return *this;}}
 
 }};
 
@@ -2362,6 +2377,7 @@ def codegen_struct(struct, device="cpu", indent_size=4):
     forward_initializers = []
     reverse_body = []
     atomic_add_body = []
+    prefix_add_body = []
 
     # forward args
     for label, var in struct.vars.items():
@@ -2374,6 +2390,11 @@ def codegen_struct(struct, device="cpu", indent_size=4):
 
         prefix = f"{indent_block}," if forward_initializers else ":"
         forward_initializers.append(f"{indent_block}{prefix} {label}{{{label}}}\n")
+
+    # prefix-add operator
+    for label, var in struct.vars.items():
+        if not is_array(var.type):
+            prefix_add_body.append(f"{indent_block}{label} += rhs.{label};\n")
 
     # reverse args
     for label, var in struct.vars.items():
@@ -2392,6 +2413,7 @@ def codegen_struct(struct, device="cpu", indent_size=4):
         forward_initializers="".join(forward_initializers),
         reverse_args=indent(reverse_args),
         reverse_body="".join(reverse_body),
+        prefix_add_body="".join(prefix_add_body),
         atomic_add_body="".join(atomic_add_body),
     )
 
