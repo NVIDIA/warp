@@ -298,6 +298,18 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> atomic_max(mat_t<Rows,Cols,Type> * ad
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_atomic_minmax(
+    mat_t<Rows,Cols,Type> *addr,
+    mat_t<Rows,Cols,Type> *adj_addr,
+    const mat_t<Rows,Cols,Type> &value,
+    mat_t<Rows,Cols,Type> &adj_value)
+{
+    for (unsigned i=0; i < Rows; ++i)
+        for (unsigned j=0; j < Cols; ++j)
+            adj_atomic_minmax(&addr->data[i][j], &adj_addr->data[i][j], value.data[i][j], adj_value.data[i][j]);
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE vec_t<Cols,Type> extract(const mat_t<Rows,Cols,Type>& m, int row)
 {
     vec_t<Cols,Type> ret;

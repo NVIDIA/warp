@@ -1863,6 +1863,8 @@ def atomic_min(a: Array[Any], i: int32, value: Any):
     Compute the minimum of ``value`` and ``a[i]`` and atomically update the array.
 
     Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+    The gradient through this operation is accumulated for every element (or its component, in the case of vectors and matrices) of ``a`` that is equal to the minimum of ``a``.
     """
     ...
 
@@ -1873,6 +1875,8 @@ def atomic_min(a: Array[Any], i: int32, j: int32, value: Any):
     Compute the minimum of ``value`` and ``a[i,j]`` and atomically update the array.
 
     Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+    The gradient through this operation is accumulated for every element (or its component, in the case of vectors and matrices) of ``a`` that is equal to the minimum of ``a``.
     """
     ...
 
@@ -1883,6 +1887,8 @@ def atomic_min(a: Array[Any], i: int32, j: int32, k: int32, value: Any):
     Compute the minimum of ``value`` and ``a[i,j,k]`` and atomically update the array.
 
     Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+    The gradient through this operation is accumulated for every element (or its component, in the case of vectors and matrices) of ``a`` that is equal to the minimum of ``a``.
     """
     ...
 
@@ -1893,6 +1899,8 @@ def atomic_min(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any
     Compute the minimum of ``value`` and ``a[i,j,k,l]`` and atomically update the array.
 
     Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+    The gradient through this operation is accumulated for every element (or its component, in the case of vectors and matrices) of ``a`` that is equal to the minimum of ``a``.
     """
     ...
 
@@ -1983,6 +1991,8 @@ def atomic_max(a: Array[Any], i: int32, value: Any):
     Compute the maximum of ``value`` and ``a[i]`` and atomically update the array.
 
     Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+    The gradient through this operation is accumulated for every element (or its component, in the case of vectors and matrices) of ``a`` that is equal to the maximum of ``a``.
     """
     ...
 
@@ -1993,6 +2003,8 @@ def atomic_max(a: Array[Any], i: int32, j: int32, value: Any):
     Compute the maximum of ``value`` and ``a[i,j]`` and atomically update the array.
 
     Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+    The gradient through this operation is accumulated for every element (or its component, in the case of vectors and matrices) of ``a`` that is equal to the maximum of ``a``.
     """
     ...
 
@@ -2003,6 +2015,8 @@ def atomic_max(a: Array[Any], i: int32, j: int32, k: int32, value: Any):
     Compute the maximum of ``value`` and ``a[i,j,k]`` and atomically update the array.
 
     Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+    The gradient through this operation is accumulated for every element (or its component, in the case of vectors and matrices) of ``a`` that is equal to the maximum of ``a``.
     """
     ...
 
@@ -2013,6 +2027,8 @@ def atomic_max(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any
     Compute the maximum of ``value`` and ``a[i,j,k,l]`` and atomically update the array.
 
     Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+    The gradient through this operation is accumulated for every element (or its component, in the case of vectors and matrices) of ``a`` that is equal to the maximum of ``a``.
     """
     ...
 
