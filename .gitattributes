@@ -13,3 +13,7 @@
 *.grid filter=lfs diff=lfs merge=lfs -text
 *.nvdb filter=lfs diff=lfs merge=lfs -text
 *.gif filter=lfs diff=lfs merge=lfs -text
+
+# Exclude vendored code from project language stats
+warp/native/cutlass/** linguist-vendored
+tools/** linguist-vendored
