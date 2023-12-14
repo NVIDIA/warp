@@ -364,12 +364,8 @@ def call_builtin(func: Function, *params) -> Tuple[bool, Any]:
                 return (False, None)
 
             # The argument expects a built-in Warp type like a vector or a matrix.
-            # We need to wrap the given argument into a ctypes' structure
-            # to ensure that it's passed by value to the dll rather than by reference.
-            class Param(ctypes.Structure):
-                _fields_ = [("value", arg_type)]
 
-            c_param = Param()
+            c_param = None
 
             if isinstance(param, ctypes.Array):
                 # The given parameter is also a built-in Warp type, so we only need
@@ -378,14 +374,14 @@ def call_builtin(func: Function, *params) -> Tuple[bool, Any]:
                     return (False, None)
 
                 if isinstance(param, arg_type):
-                    c_param.value = param
+                    c_param = param
                 else:
                     # Cast the value to its argument type to make sure that it
                     # can be assigned to the field of the `Param` struct.
                     # This could error otherwise when, for example, the field type
                     # is set to `vec3i` while the value is of type `vector(length=3, dtype=int)`,
                     # even though both types are semantically identical.
-                    c_param.value = arg_type(param)
+                    c_param = arg_type(param)
             else:
                 # Flatten the parameter values into a flat 1-D array.
                 arr = []
@@ -446,18 +442,19 @@ def call_builtin(func: Function, *params) -> Tuple[bool, Any]:
                     # Extract the floating-point values.
                     arr = tuple(x.value for x in arr)
 
+                c_param = arg_type()
                 if warp.types.type_is_matrix(arg_type):
                     rows, cols = arg_type._shape_
                     for i in range(rows):
                         idx_start = i * cols
                         idx_end = idx_start + cols
-                        c_param.value[i] = arr[idx_start:idx_end]
+                        c_param[i] = arr[idx_start:idx_end]
                 else:
-                    c_param.value[:] = arr
+                    c_param[:] = arr
 
                 uses_non_warp_array_type = True
 
-            c_params.append(c_param)
+            c_params.append(ctypes.byref(c_param))
         else:
             if issubclass(arg_type, ctypes.Array):
                 return (False, None)
@@ -4232,7 +4229,17 @@ def export_stubs(file):  # pragma: no cover
 
 
 def export_builtins(file: io.TextIOBase):  # pragma: no cover
-    def ctype_str(t):
+    def ctype_arg_str(t):
+        if isinstance(t, int):
+            return "int"
+        elif isinstance(t, float):
+            return "float"
+        elif t in warp.types.vector_types:
+            return f"{t.__name__}&"
+        else:
+            return t.__name__
+
+    def ctype_ret_str(t):
         if isinstance(t, int):
             return "int"
         elif isinstance(t, float):
@@ -4259,7 +4266,7 @@ def export_builtins(file: io.TextIOBase):  # pragma: no cover
             if not simple or f.variadic:
                 continue
 
-            args = ", ".join(f"{ctype_str(v)} {k}" for k, v in f.input_types.items())
+            args = ", ".join(f"{ctype_arg_str(v)} {k}" for k, v in f.input_types.items())
             params = ", ".join(f.input_types.keys())
 
             return_type = ""
@@ -4267,7 +4274,7 @@ def export_builtins(file: io.TextIOBase):  # pragma: no cover
             try:
                 # todo: construct a default value for each of the functions args
                 # so we can generate the return type for overloaded functions
-                return_type = ctype_str(f.value_func(None, None, None))
+                return_type = ctype_ret_str(f.value_func(None, None, None))
             except Exception:
                 continue
 
