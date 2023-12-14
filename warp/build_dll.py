@@ -182,12 +182,15 @@ def build_dll_for_arch(dll_path, cpp_paths, cu_path, libs, mode, arch, verify_fp
                 "-gencode=arch=compute_75,code=sm_75",  # Turing
                 "-gencode=arch=compute_80,code=sm_80",  # Ampere
                 "-gencode=arch=compute_86,code=sm_86",
-                # SASS for supported mobile architectures (e.g. Tegra/Jetson)
-                # "-gencode=arch=compute_53,code=sm_53",
-                # "-gencode=arch=compute_62,code=sm_62",
-                # "-gencode=arch=compute_72,code=sm_72",
-                # "-gencode=arch=compute_87,code=sm_87",
             ]
+            if arch == "arm64" and sys.platform() == "linux":
+                gencode_opts += [
+                    # SASS for supported mobile architectures (e.g. Tegra/Jetson)
+                    "-gencode=arch=compute_53,code=sm_53",  # X1
+                    "-gencode=arch=compute_62,code=sm_62",  # X2
+                    "-gencode=arch=compute_72,code=sm_72",  # Xavier
+                    "-gencode=arch=compute_87,code=sm_87",  # Orin
+                ]
 
             # support for Ada and Hopper is available with CUDA Toolkit 11.8+
             if ctk_version >= (11, 8):
