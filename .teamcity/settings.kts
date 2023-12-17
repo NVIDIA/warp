@@ -42,7 +42,7 @@ project {
 
 object GitlabMasterWarp : GitVcsRoot({
     name = "gitlab-master-warp"
-    url = "ssh://git@gitlab-master.nvidia.com:12051/mmacklin/warp.git"
+    url = "ssh://git@gitlab-master.nvidia.com:12051/omniverse/warp.git"
     branch = "refs/heads/tc"
     branchSpec = """
         +:refs/heads/WARForTeamCityNotFillingParamsUnlessThereIsABranchSpecDefined
