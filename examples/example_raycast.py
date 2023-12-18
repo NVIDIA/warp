@@ -37,17 +37,11 @@ def draw(mesh: wp.uint64, cam_pos: wp.vec3, width: int, height: int, pixels: wp.
     ro = cam_pos
     rd = wp.normalize(wp.vec3(sx, sy, -1.0))
 
-    t = float(0.0)
-    u = float(0.0)
-    v = float(0.0)
-    sign = float(0.0)
-    n = wp.vec3()
-    f = int(0)
-
     color = wp.vec3(0.0, 0.0, 0.0)
 
-    if wp.mesh_query_ray(mesh, ro, rd, 1.0e6, t, u, v, sign, n, f):
-        color = n * 0.5 + wp.vec3(0.5, 0.5, 0.5)
+    query = wp.mesh_query_ray(mesh, ro, rd, 1.0e6)
+    if query.result:
+        color = query.normal * 0.5 + wp.vec3(0.5, 0.5, 0.5)
 
     pixels[tid] = color
 
