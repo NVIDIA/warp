@@ -149,7 +149,6 @@ template <typename T>
 struct array_t
 {
     CUDA_CALLABLE inline array_t() {}    
-    CUDA_CALLABLE inline array_t(int) {} // for backward a = 0 initialization syntax
 
     CUDA_CALLABLE array_t(T* data, int size, T* grad=nullptr) : data(data), grad(grad) {
         // constructor for 1d array
@@ -219,7 +218,6 @@ template <typename T>
 struct indexedarray_t
 {
     CUDA_CALLABLE inline indexedarray_t() {}    
-    CUDA_CALLABLE inline indexedarray_t(int) {} // for backward a = 0 initialization syntax
 
     CUDA_CALLABLE inline bool empty() const { return !arr.data; }
 

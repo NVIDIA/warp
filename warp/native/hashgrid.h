@@ -76,7 +76,6 @@ CUDA_CALLABLE inline int hash_grid_index(const HashGrid& grid, const vec3& p)
 struct hash_grid_query_t
 {
     CUDA_CALLABLE hash_grid_query_t() {}
-    CUDA_CALLABLE hash_grid_query_t(int) {} // for backward pass
 
     int x_start;
     int y_start;

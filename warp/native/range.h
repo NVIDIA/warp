@@ -16,7 +16,6 @@ namespace wp
 struct range_t
 {
     CUDA_CALLABLE range_t() {}
-    CUDA_CALLABLE range_t(int) {} // for backward pass
 
     int start;
     int end;

@@ -18,7 +18,6 @@ template <typename T>
 struct fabricarray_t
 {
     CUDA_CALLABLE inline fabricarray_t() {}
-    CUDA_CALLABLE inline fabricarray_t(int) {} // for backward a = 0 initialization syntax
 
     CUDA_CALLABLE inline bool empty() const { return !size; }
 
@@ -33,7 +32,6 @@ template <typename T>
 struct indexedfabricarray_t
 {
     CUDA_CALLABLE inline indexedfabricarray_t() {}
-    CUDA_CALLABLE inline indexedfabricarray_t(int) {} // for backward a = 0 initialization syntax
 
     CUDA_CALLABLE inline bool empty() const { return !size; }
 

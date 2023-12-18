@@ -1249,11 +1249,6 @@ struct mesh_query_point_t
     {
     }
 
-    CUDA_CALLABLE mesh_query_point_t(int)
-    {
-        // For backward pass.
-    }
-
     bool result;
     float sign;
     int face;
@@ -1452,11 +1447,6 @@ struct mesh_query_ray_t
     {
     }
 
-    CUDA_CALLABLE mesh_query_ray_t(int)
-    {
-        // For backward pass.
-    }
-
     bool result;
     float sign;
     int face;
@@ -1516,9 +1506,6 @@ struct mesh_query_aabb_t
     CUDA_CALLABLE mesh_query_aabb_t()
     {
     }
-    CUDA_CALLABLE mesh_query_aabb_t(int)
-    {
-    } // for backward pass
 
     // Mesh Id
     Mesh mesh;

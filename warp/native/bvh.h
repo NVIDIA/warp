@@ -211,9 +211,6 @@ struct bvh_query_t
     CUDA_CALLABLE bvh_query_t()
     {
     }
-    CUDA_CALLABLE bvh_query_t(int)
-    {
-    } // for backward pass
 
     BVH bvh;
 
