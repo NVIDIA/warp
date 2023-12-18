@@ -1246,8 +1246,12 @@ CUDA_CALLABLE inline void adj_mesh_query_point_sign_winding_number(uint64_t id, 
 struct mesh_query_point_t
 {
     CUDA_CALLABLE mesh_query_point_t()
-    {
-    }
+        : result(false),
+          sign(0.0f),
+          face(0),
+          u(0.0f),
+          v(0.0f)
+    {}
 
     bool result;
     float sign;
@@ -1444,6 +1448,13 @@ CUDA_CALLABLE inline void adj_mesh_query_ray(
 struct mesh_query_ray_t
 {
     CUDA_CALLABLE mesh_query_ray_t()
+        : result(false),
+          sign(0.0f),
+          face(0),
+          t(0.0f),
+          u(0.0f),
+          v(0.0f),
+          normal()
     {
     }
 
@@ -1504,8 +1515,13 @@ CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p)
 struct mesh_query_aabb_t
 {
     CUDA_CALLABLE mesh_query_aabb_t()
-    {
-    }
+        : mesh(),
+          stack(),
+          count(0),
+          input_lower(),
+          input_upper(),
+          face(0)
+    {}
 
     // Mesh Id
     Mesh mesh;

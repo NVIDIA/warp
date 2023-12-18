@@ -113,7 +113,9 @@ struct shape_t
 {
     int dims[ARRAY_MAX_DIMS];
 
-    CUDA_CALLABLE inline shape_t() : dims() {}
+    CUDA_CALLABLE inline shape_t()
+        : dims()
+    {}
 
     CUDA_CALLABLE inline int operator[](int i) const
     {
@@ -148,7 +150,13 @@ inline CUDA_CALLABLE void adj_print(shape_t s, shape_t& shape_t) {}
 template <typename T>
 struct array_t
 {
-    CUDA_CALLABLE inline array_t() {}    
+    CUDA_CALLABLE inline array_t()
+        : data(nullptr),
+          grad(nullptr),
+          shape(),
+          strides(),
+          ndim(0)
+    {}
 
     CUDA_CALLABLE array_t(T* data, int size, T* grad=nullptr) : data(data), grad(grad) {
         // constructor for 1d array
@@ -201,8 +209,8 @@ struct array_t
 
     CUDA_CALLABLE inline bool empty() const { return !data; }
 
-    T* data{nullptr};
-    T* grad{nullptr};
+    T* data;
+    T* grad;
     shape_t shape;
     int strides[ARRAY_MAX_DIMS];
     int ndim;
@@ -217,7 +225,11 @@ struct array_t
 template <typename T>
 struct indexedarray_t
 {
-    CUDA_CALLABLE inline indexedarray_t() {}    
+    CUDA_CALLABLE inline indexedarray_t()
+        : arr(),
+          indices(),
+          shape()
+    {}
 
     CUDA_CALLABLE inline bool empty() const { return !arr.data; }
 

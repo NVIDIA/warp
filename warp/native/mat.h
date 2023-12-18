@@ -21,7 +21,9 @@ struct quat_t;
 template<unsigned Rows, unsigned Cols, typename Type>
 struct mat_t
 {
-    inline mat_t() = default;
+    inline CUDA_CALLABLE mat_t()
+        : data()
+    {}
 
     inline CUDA_CALLABLE mat_t(Type s)
     {
@@ -193,7 +195,7 @@ struct mat_t
     }
 
     // row major storage assumed to be compatible with PyTorch
-    Type data[Rows][Cols] = {};
+    Type data[Rows][Cols];
 };
 
 

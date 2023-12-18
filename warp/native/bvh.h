@@ -209,8 +209,14 @@ CUDA_CALLABLE inline int bvh_get_num_bounds(uint64_t id)
 struct bvh_query_t
 {
     CUDA_CALLABLE bvh_query_t()
-    {
-    }
+        : bvh(),
+          stack(),
+          count(0),
+          is_ray(false),
+          input_lower(),
+          input_upper(),
+          bounds_nr(0)
+    {}
 
     BVH bvh;
 

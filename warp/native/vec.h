@@ -16,9 +16,11 @@ namespace wp
 template<unsigned Length, typename Type>
 struct vec_t
 {
-    Type c[Length] = {};
+    Type c[Length];
 
-    inline vec_t() = default;
+    inline CUDA_CALLABLE vec_t()
+        : c()
+    {}
     
     inline CUDA_CALLABLE vec_t(Type s)
     {

@@ -15,7 +15,12 @@ namespace wp
 // represents a built-in Python range() loop
 struct range_t
 {
-    CUDA_CALLABLE range_t() {}
+    CUDA_CALLABLE range_t()
+        : start(0),
+          end(0),
+          step(0),
+          i(0)
+    {}
 
     int start;
     int end;

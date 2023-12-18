@@ -75,7 +75,22 @@ CUDA_CALLABLE inline int hash_grid_index(const HashGrid& grid, const vec3& p)
 // stores state required to traverse neighboring cells of a point
 struct hash_grid_query_t
 {
-    CUDA_CALLABLE hash_grid_query_t() {}
+    CUDA_CALLABLE hash_grid_query_t()
+        : x_start(0),
+          y_start(0),
+          z_start(0),
+          x_end(0),
+          y_end(0),
+          z_end(0),
+          x(0),
+          y(0),
+          z(0),
+          cell(0),
+          cell_index(0),
+          cell_end(0),
+          current(0),
+          grid()
+    {}
 
     int x_start;
     int y_start;
