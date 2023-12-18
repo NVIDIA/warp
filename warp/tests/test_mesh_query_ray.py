@@ -64,6 +64,14 @@ def mesh_query_ray_loss(
     l = q[0]
     loss[tid] = l
 
+    query = wp.mesh_query_ray(mesh, p, D, max_t)
+    wp.expect_eq(query.t, t)
+    wp.expect_eq(query.u, bary_u)
+    wp.expect_eq(query.v, bary_v)
+    wp.expect_eq(query.sign, sign)
+    wp.expect_eq(query.normal, normal)
+    wp.expect_eq(query.face, face_index)
+
 
 @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
 def test_mesh_query_ray_grad(test, device):
