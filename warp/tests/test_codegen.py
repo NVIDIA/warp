@@ -317,6 +317,33 @@ def test_range_constant_dynamic_nested(m: int):
     wp.expect_eq(s, N * m * N)
 
 
+@wp.kernel
+def test_range_expression():
+    idx = 1
+    batch_size = 100
+
+    a = wp.float(0.0)
+    c = wp.float(1.0)
+
+    # constant expression with a function
+    for i in range(4 * idx, wp.min(4 * idx + 4, batch_size)):
+        a += c
+
+    for i in range(4 * idx, min(4 * idx + 4, batch_size)):
+        a += c
+
+    tid = wp.tid()
+
+    # dynamic expression with a function
+    for i in range(4 * idx, wp.min(4 * idx, tid + 1000)):
+        a += c
+
+    for i in range(4 * idx, min(4 * idx, tid + 1000)):
+        a += c
+
+    wp.expect_eq(a, 8.0)
+
+
 def test_unresolved_func(test, device):
     # kernel with unresolved function must be in a separate module, otherwise the current module would fail to load
     from warp.tests.test_unresolved_func import unresolved_func_kernel
@@ -448,6 +475,13 @@ def register(parent):
         kernel=test_range_dynamic_nested,
         dim=1,
         inputs=[4],
+        devices=devices,
+    )
+    add_kernel_test(
+        TestCodeGen,
+        name="test_range_expression",
+        kernel=test_range_expression,
+        dim=1,
         devices=devices,
     )
 

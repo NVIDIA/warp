@@ -463,7 +463,7 @@ def test_type_operator_mispell(test, device):
         i = wp.tid()
         _ = typez(i)(0)
 
-    with test.assertRaisesRegex(RuntimeError, r"Unknown operator 'typez'$"):
+    with test.assertRaisesRegex(RuntimeError, r"Unknown function or operator: 'typez'$"):
         wp.launch(
             kernel,
             dim=1,
