@@ -331,6 +331,7 @@ def test_tape(test, device):
 
     tape.backward(loss=loss)
     A_grad = A.grad.numpy()
+    tape.reset()
 
     # test adjoint
     D.grad = wp.array2d(np.ones((m, n)), dtype=float, device=device)
@@ -420,6 +421,34 @@ def test_large_batch_count(test, device):
     assert np.array_equal(adj_C_np, C.grad.numpy())
 
 
+def test_adjoint_accumulation(test, device):
+    a_np = np.ones(shape=(2,3))
+    b_np = np.ones(shape=(3,2))
+    c_np = np.zeros(shape=(2,2))
+    d_np = np.zeros(shape=(2,2))
+
+    a_wp = wp.from_numpy(a_np, dtype=float, requires_grad=True)
+    b_wp = wp.from_numpy(b_np, dtype=float, requires_grad=True)
+    c_wp = wp.from_numpy(c_np, dtype=float, requires_grad=True)
+    d1_wp = wp.from_numpy(d_np, dtype=float, requires_grad=True)
+    d2_wp = wp.from_numpy(d_np, dtype=float, requires_grad=True)
+
+    tape = wp.Tape()
+
+    with tape:
+        wp.matmul(a_wp, b_wp, c_wp, d1_wp, alpha=1.0, beta=1.0)
+        wp.matmul(a_wp, b_wp, d1_wp, d2_wp, alpha=1.0, beta=1.0)
+
+    d_grad = wp.zeros_like(d2_wp)
+    d_grad.fill_(1.)
+    grads = {d2_wp : d_grad}
+    tape.backward(grads=grads) 
+
+    assert np.array_equal(a_wp.grad.numpy(), 4.0 * np.ones(shape=(2,3)))
+    assert np.array_equal(b_wp.grad.numpy(), 4.0 * np.ones(shape=(3,2)))
+    assert np.array_equal(c_wp.grad.numpy(), np.ones(shape=(2,2)))
+
+
 def register(parent):
     devices = [d for d in get_test_devices()]
 
@@ -437,6 +466,7 @@ def register(parent):
             add_function_test(TestMatmul, "test_tape", test_tape, devices=devices)
             add_function_test(TestMatmul, "test_operator", test_operator, devices=devices)
             add_function_test(TestMatmul, "test_large_batch_count", test_large_batch_count, devices=devices)
+            add_function_test(TestMatmul, "test_adjoint_accumulation", test_adjoint_accumulation, devices=devices)
         else:
             print("Skipping matmul tests because CUTLASS is not supported in this build")
 

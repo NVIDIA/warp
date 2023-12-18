@@ -3221,9 +3221,9 @@ def adj_matmul(
 
     # cpu fallback if no cuda devices found
     if device == "cpu":
-        adj_a.assign(alpha * np.matmul(adj_d.numpy(), b.numpy().transpose()))
-        adj_b.assign(alpha * (a.numpy().transpose() @ adj_d.numpy()))
-        adj_c.assign(beta * adj_d.numpy())
+        adj_a.assign(alpha * np.matmul(adj_d.numpy(), b.numpy().transpose()) + adj_a.numpy())
+        adj_b.assign(alpha * (a.numpy().transpose() @ adj_d.numpy()) + adj_b.numpy())
+        adj_c.assign(beta * adj_d.numpy() + adj_c.numpy())
         return
 
     cc = device.arch
@@ -3238,10 +3238,10 @@ def adj_matmul(
             type_typestr(a.dtype).encode(),
             ctypes.c_void_p(adj_d.ptr),
             ctypes.c_void_p(b.ptr),
-            ctypes.c_void_p(a.ptr),
+            ctypes.c_void_p(adj_a.ptr),
             ctypes.c_void_p(adj_a.ptr),
             alpha,
-            0.0,
+            1.0,
             True,
             b.is_transposed,
             allow_tf32x3_arith,
@@ -3258,10 +3258,10 @@ def adj_matmul(
             type_typestr(a.dtype).encode(),
             ctypes.c_void_p(b.ptr),
             ctypes.c_void_p(adj_d.ptr),
-            ctypes.c_void_p(a.ptr),
+            ctypes.c_void_p(adj_a.ptr),
             ctypes.c_void_p(adj_a.ptr),
             alpha,
-            0.0,
+            1.0,
             not b.is_transposed,
             False,
             allow_tf32x3_arith,
@@ -3280,10 +3280,10 @@ def adj_matmul(
             type_typestr(a.dtype).encode(),
             ctypes.c_void_p(a.ptr),
             ctypes.c_void_p(adj_d.ptr),
-            ctypes.c_void_p(b.ptr),
+            ctypes.c_void_p(adj_b.ptr),
             ctypes.c_void_p(adj_b.ptr),
             alpha,
-            0.0,
+            1.0,
             a.is_transposed,
             True,
             allow_tf32x3_arith,
@@ -3300,10 +3300,10 @@ def adj_matmul(
             type_typestr(a.dtype).encode(),
             ctypes.c_void_p(adj_d.ptr),
             ctypes.c_void_p(a.ptr),
-            ctypes.c_void_p(b.ptr),
+            ctypes.c_void_p(adj_b.ptr),
             ctypes.c_void_p(adj_b.ptr),
             alpha,
-            0.0,
+            1.0,
             False,
             not a.is_transposed,
             allow_tf32x3_arith,
@@ -3313,25 +3313,13 @@ def adj_matmul(
             raise RuntimeError("adj_matmul failed.")        
 
     # adj_c
-    ret = runtime.core.cutlass_gemm(
-        cc,
-        m,
-        n,
-        k,
-        type_typestr(a.dtype).encode(),
-        ctypes.c_void_p(a.ptr),
-        ctypes.c_void_p(b.ptr),
-        ctypes.c_void_p(adj_d.ptr),
-        ctypes.c_void_p(adj_c.ptr),
-        0.0,
-        beta,
-        not a.is_transposed,
-        not b.is_transposed,
-        allow_tf32x3_arith,
-        1,
+    warp.launch(
+        kernel=warp.utils.add_kernel_2d,
+        dim=adj_c.shape,
+        inputs=[adj_c, adj_d, adj_d.dtype(beta)],
+        device=device,
+        record_tape=False
     )
-    if not ret:
-        raise RuntimeError("adj_matmul failed.")
 
 
 def batched_matmul(
@@ -3540,9 +3528,9 @@ def adj_batched_matmul(
 
     # cpu fallback if no cuda devices found
     if device == "cpu":
-        adj_a.assign(alpha * np.matmul(adj_d.numpy(), b.numpy().transpose((0, 2, 1))))
-        adj_b.assign(alpha * np.matmul(a.numpy().transpose((0, 2, 1)), adj_d.numpy()))
-        adj_c.assign(beta * adj_d.numpy())
+        adj_a.assign(alpha * np.matmul(adj_d.numpy(), b.numpy().transpose((0, 2, 1))) + adj_a.numpy())
+        adj_b.assign(alpha * np.matmul(a.numpy().transpose((0, 2, 1)), adj_d.numpy()) + adj_b.numpy())
+        adj_c.assign(beta * adj_d.numpy() + adj_c.numpy())
         return
 
     # handle case in which batch_count exceeds max_batch_count, which is a CUDA array size maximum
@@ -3566,10 +3554,10 @@ def adj_batched_matmul(
                 type_typestr(a.dtype).encode(),
                 ctypes.c_void_p(adj_d[idx_start:idx_end,:,:].ptr),
                 ctypes.c_void_p(b[idx_start:idx_end,:,:].ptr),
-                ctypes.c_void_p(a[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(adj_a[idx_start:idx_end,:,:].ptr),
                 ctypes.c_void_p(adj_a[idx_start:idx_end,:,:].ptr),
                 alpha,
-                0.0,
+                1.0,
                 True,
                 b.is_transposed,
                 allow_tf32x3_arith,
@@ -3586,10 +3574,10 @@ def adj_batched_matmul(
                 type_typestr(a.dtype).encode(),
                 ctypes.c_void_p(b[idx_start:idx_end,:,:].ptr),
                 ctypes.c_void_p(adj_d[idx_start:idx_end,:,:].ptr),
-                ctypes.c_void_p(a[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(adj_a[idx_start:idx_end,:,:].ptr),
                 ctypes.c_void_p(adj_a[idx_start:idx_end,:,:].ptr),
                 alpha,
-                0.0,
+                1.0,
                 not b.is_transposed,
                 False,
                 allow_tf32x3_arith,
@@ -3608,10 +3596,10 @@ def adj_batched_matmul(
                 type_typestr(a.dtype).encode(),
                 ctypes.c_void_p(a[idx_start:idx_end,:,:].ptr),
                 ctypes.c_void_p(adj_d[idx_start:idx_end,:,:].ptr),
-                ctypes.c_void_p(b[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(adj_b[idx_start:idx_end,:,:].ptr),
                 ctypes.c_void_p(adj_b[idx_start:idx_end,:,:].ptr),
                 alpha,
-                0.0,
+                1.0,
                 a.is_transposed,
                 True,
                 allow_tf32x3_arith,
@@ -3628,10 +3616,10 @@ def adj_batched_matmul(
                 type_typestr(a.dtype).encode(),
                 ctypes.c_void_p(adj_d[idx_start:idx_end,:,:].ptr),
                 ctypes.c_void_p(a[idx_start:idx_end,:,:].ptr),
-                ctypes.c_void_p(b[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(adj_b[idx_start:idx_end,:,:].ptr),
                 ctypes.c_void_p(adj_b[idx_start:idx_end,:,:].ptr),
                 alpha,
-                0.0,
+                1.0,
                 False,
                 not a.is_transposed,
                 allow_tf32x3_arith,
@@ -3639,27 +3627,6 @@ def adj_batched_matmul(
             )
             if not ret:
                 raise RuntimeError("adj_matmul failed.")   
-
-        # adj_c
-        ret = runtime.core.cutlass_gemm(
-            cc,
-            m,
-            n,
-            k,
-            type_typestr(a.dtype).encode(),
-            ctypes.c_void_p(a[idx_start:idx_end,:,:].ptr),
-            ctypes.c_void_p(b[idx_start:idx_end,:,:].ptr),
-            ctypes.c_void_p(adj_d[idx_start:idx_end,:,:].ptr),
-            ctypes.c_void_p(adj_c[idx_start:idx_end,:,:].ptr),
-            0.0,
-            beta,
-            not a.is_transposed,
-            not b.is_transposed,
-            allow_tf32x3_arith,
-            max_batch_count,
-        )
-        if not ret:
-            raise RuntimeError("adj_batched_matmul failed.")
     
     idx_start = iters * max_batch_count
     
@@ -3673,10 +3640,10 @@ def adj_batched_matmul(
             type_typestr(a.dtype).encode(),
             ctypes.c_void_p(adj_d[idx_start:,:,:].ptr),
             ctypes.c_void_p(b[idx_start:,:,:].ptr),
-            ctypes.c_void_p(a[idx_start:,:,:].ptr),
+            ctypes.c_void_p(adj_a[idx_start:,:,:].ptr),
             ctypes.c_void_p(adj_a[idx_start:,:,:].ptr),
             alpha,
-            0.0,
+            1.0,
             True,
             b.is_transposed,
             allow_tf32x3_arith,
@@ -3693,10 +3660,10 @@ def adj_batched_matmul(
             type_typestr(a.dtype).encode(),
             ctypes.c_void_p(b[idx_start:,:,:].ptr),
             ctypes.c_void_p(adj_d[idx_start:,:,:].ptr),
-            ctypes.c_void_p(a[idx_start:,:,:].ptr),
+            ctypes.c_void_p(adj_a[idx_start:,:,:].ptr),
             ctypes.c_void_p(adj_a[idx_start:,:,:].ptr),
             alpha,
-            0.0,
+            1.0,
             not b.is_transposed,
             False,
             allow_tf32x3_arith,
@@ -3715,10 +3682,10 @@ def adj_batched_matmul(
             type_typestr(a.dtype).encode(),
             ctypes.c_void_p(a[idx_start:,:,:].ptr),
             ctypes.c_void_p(adj_d[idx_start:,:,:].ptr),
-            ctypes.c_void_p(b[idx_start:,:,:].ptr),
+            ctypes.c_void_p(adj_b[idx_start:,:,:].ptr),
             ctypes.c_void_p(adj_b[idx_start:,:,:].ptr),
             alpha,
-            0.0,
+            1.0,
             a.is_transposed,
             True,
             allow_tf32x3_arith,
@@ -3735,10 +3702,10 @@ def adj_batched_matmul(
             type_typestr(a.dtype).encode(),
             ctypes.c_void_p(adj_d[idx_start:,:,:].ptr),
             ctypes.c_void_p(a[idx_start:,:,:].ptr),
-            ctypes.c_void_p(b[idx_start:,:,:].ptr),
+            ctypes.c_void_p(adj_b[idx_start:,:,:].ptr),
             ctypes.c_void_p(adj_b[idx_start:,:,:].ptr),
             alpha,
-            0.0,
+            1.0,
             False,
             not a.is_transposed,
             allow_tf32x3_arith,
@@ -3748,25 +3715,13 @@ def adj_batched_matmul(
             raise RuntimeError("adj_matmul failed.")   
 
     # adj_c
-    ret = runtime.core.cutlass_gemm(
-        cc,
-        m,
-        n,
-        k,
-        type_typestr(a.dtype).encode(),
-        ctypes.c_void_p(a[idx_start:,:,:].ptr),
-        ctypes.c_void_p(b[idx_start:,:,:].ptr),
-        ctypes.c_void_p(adj_d[idx_start:,:,:].ptr),
-        ctypes.c_void_p(adj_c[idx_start:,:,:].ptr),
-        0.0,
-        beta,
-        not a.is_transposed,
-        not b.is_transposed,
-        allow_tf32x3_arith,
-        remainder,
+    warp.launch(
+        kernel=warp.utils.add_kernel_3d,
+        dim=adj_c.shape,
+        inputs=[adj_c, adj_d, adj_d.dtype(beta)],
+        device=device,
+        record_tape=False
     )
-    if not ret:
-        raise RuntimeError("adj_batched_matmul failed.")
 
 class HashGrid:
     def __init__(self, dim_x, dim_y, dim_z, device=None):
