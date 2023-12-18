@@ -666,3 +666,17 @@ class ScopedTimer:
                 print("{}{} took {:.2f} ms".format(indent, self.name, self.elapsed))
 
             ScopedTimer.indent -= 1
+
+
+# helper kernels for adj_matmul
+@wp.kernel
+def add_kernel_2d(x: wp.array2d(dtype=Any), acc: wp.array2d(dtype=Any), beta: Any):
+    i, j = wp.tid()
+
+    x[i,j] = x[i,j] + beta * acc[i,j]
+
+@wp.kernel
+def add_kernel_3d(x: wp.array3d(dtype=Any), acc: wp.array3d(dtype=Any), beta: Any):
+    i, j, k = wp.tid()
+
+    x[i,j,k] = x[i,j,k] + beta * acc[i,j,k]
