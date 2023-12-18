@@ -143,9 +143,9 @@ class Example:
             self.renderer.render_ref(
                 name="collision",
                 path=os.path.join(os.path.dirname(__file__), "assets/rocks.usd"),
-                pos=(0.0, 0.0, 0.0),
-                rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi),
-                scale=(1.0, 1.0, 1.0),
+                pos=wp.vec3(0.0, 0.0, 0.0),
+                rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), math.pi),
+                scale=wp.vec3(1.0, 1.0, 1.0),
             )
             self.renderer.render_points(name="points", points=self.positions.numpy(), radius=self.sim_margin)
 

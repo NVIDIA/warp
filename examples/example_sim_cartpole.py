@@ -37,7 +37,7 @@ class Example:
         wp.sim.parse_urdf(
             os.path.join(os.path.dirname(__file__), "assets/cartpole.urdf"),
             articulation_builder,
-            xform=wp.transform(np.zeros(3), wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi * 0.5)),
+            xform=wp.transform(wp.vec3(), wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), -math.pi * 0.5)),
             floating=False,
             density=100,
             armature=0.1,

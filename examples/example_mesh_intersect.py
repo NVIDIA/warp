@@ -83,6 +83,8 @@ def intersect(
 
 class Example:
     def __init__(self, stage):
+        rng = np.random.default_rng()
+
         self.query_count = 1024
         self.has_queried = False
 
@@ -102,10 +104,10 @@ class Example:
 
         for i in range(self.query_count):
             # random offset
-            p = (np.random.rand(3) * 0.5 - 0.5) * 5.0
+            p = wp.vec3(rng.random(3) * 0.5 - 0.5) * 5.0
 
             # random orientation
-            axis = wp.normalize(np.random.rand(3) * 0.5 - 0.5)
+            axis = wp.normalize(wp.vec3(rng.random(3) * 0.5 - 0.5))
             angle = float(np.random.rand(1)[0])
 
             q = wp.quat_from_axis_angle(wp.normalize(axis), angle)
@@ -143,14 +145,14 @@ class Example:
                     os.path.join(os.path.dirname(__file__), self.path_0),
                     pos=wp.vec3(xform.p[0] + offset, xform.p[1], xform.p[2]),
                     rot=xform.q,
-                    scale=(1.0, 1.0, 1.0),
+                    scale=wp.vec3(1.0, 1.0, 1.0),
                 )
                 self.renderer.render_ref(
                     f"mesh_{i}_1",
                     os.path.join(os.path.dirname(__file__), self.path_1),
-                    pos=(offset, 0.0, 0.0),
+                    pos=wp.vec3(offset, 0.0, 0.0),
                     rot=wp.quat_identity(),
-                    scale=(1.0, 1.0, 1.0),
+                    scale=wp.vec3(1.0, 1.0, 1.0),
                 )
 
                 # if pair intersects then draw a small box above the pair

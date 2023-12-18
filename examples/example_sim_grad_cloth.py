@@ -80,9 +80,9 @@ class Example:
         dim_y = 16
 
         builder.add_cloth_grid(
-            pos=(0.0, 0.0, 0.0),
-            vel=(0.1, 0.1, 0.0),
-            rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi * 0.25),
+            pos=wp.vec3(0.0, 0.0, 0.0),
+            vel=wp.vec3(0.1, 0.1, 0.0),
+            rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), -math.pi * 0.25),
             dim_x=dim_x,
             dim_y=dim_y,
             cell_x=1.0 / dim_x,

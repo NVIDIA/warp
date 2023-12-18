@@ -437,7 +437,22 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> div(const mat_t<Rows,Cols,Type>& a, T
         }
     }
 
-    return t;   
+    return t;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> div(Type b, const mat_t<Rows,Cols,Type>& a)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = b / a.data[i][j];
+        }
+    }
+
+    return t;
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
@@ -452,7 +467,7 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> mul(const mat_t<Rows,Cols,Type>& a, T
         }
     }
 
-    return t;   
+    return t;
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
@@ -481,6 +496,17 @@ inline CUDA_CALLABLE vec_t<Rows,Type> mul(const mat_t<Rows,Cols,Type>& a, const 
     for( unsigned i=1; i < Cols; ++i )
     {
         r += a.get_col(i)*b[i];
+    }
+    return r;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE vec_t<Cols,Type> mul(const vec_t<Rows,Type>& b, const mat_t<Rows,Cols,Type>& a)
+{
+    vec_t<Cols,Type> r = a.get_row(0)*b[0];
+    for( unsigned i=1; i < Rows; ++i )
+    {
+        r += a.get_row(i)*b[i];
     }
     return r;
 }
@@ -945,6 +971,20 @@ inline CUDA_CALLABLE void adj_div(const mat_t<Rows,Cols,Type>& a, Type s, mat_t<
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_div(Type s, const mat_t<Rows,Cols,Type>& a, Type& adj_s, mat_t<Rows,Cols,Type>& adj_a, const mat_t<Rows,Cols,Type>& adj_ret)
+{
+    adj_s -= tensordot(a , adj_ret)/ (s * s); // - a / s^2
+
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            adj_a.data[i][j] += s / adj_ret.data[i][j];
+        }
+    }
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_mul(const mat_t<Rows,Cols,Type>& a, Type b, mat_t<Rows,Cols,Type>& adj_a, Type& adj_b, const mat_t<Rows,Cols,Type>& adj_ret)
 {
     for (unsigned i=0; i < Rows; ++i)
@@ -975,6 +1015,13 @@ inline CUDA_CALLABLE void adj_mul(const mat_t<Rows,Cols,Type>& a, const vec_t<Co
 {
     adj_a += outer(adj_ret, b);
     adj_b += mul(transpose(a), adj_ret);
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_mul(const vec_t<Rows,Type>& b, const mat_t<Rows,Cols,Type>& a, vec_t<Rows,Type>& adj_b, mat_t<Rows,Cols,Type>& adj_a, const vec_t<Cols,Type>& adj_ret)
+{
+    adj_a += outer(b, adj_ret);
+    adj_b += mul(adj_ret, transpose(a));
 }
 
 template<unsigned Rows, unsigned Cols, unsigned ColsOut, typename Type>

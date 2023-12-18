@@ -226,9 +226,21 @@ inline CUDA_CALLABLE quat_t<Type> div(quat_t<Type> q, Type s)
 }
 
 template<typename Type>
+inline CUDA_CALLABLE quat_t<Type> div(Type s, quat_t<Type> q)
+{
+    return quat_t<Type>(s/q.x, s/q.y, s/q.z, s/q.w);
+}
+
+template<typename Type>
 inline CUDA_CALLABLE quat_t<Type> operator / (quat_t<Type> a, Type s)
 {
     return div(a,s);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE quat_t<Type> operator / (Type s, quat_t<Type> a)
+{
+    return div(s,a);
 }
 
 template<typename Type>
@@ -611,6 +623,13 @@ inline CUDA_CALLABLE void adj_div(quat_t<Type> a, Type s, quat_t<Type>& adj_a, T
 {
     adj_s -= dot(a, adj_ret)/ (s * s); // - a / s^2
     adj_a += adj_ret / s;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_div(Type s, quat_t<Type> a, Type& adj_s, quat_t<Type>& adj_a, const quat_t<Type>& adj_ret)
+{
+    adj_s -= dot(a, adj_ret)/ (s * s); // - a / s^2
+    adj_a += s / adj_ret;
 }
 
 template<typename Type>

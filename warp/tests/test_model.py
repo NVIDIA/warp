@@ -35,8 +35,8 @@ def register(parent):
             builder1 = ModelBuilder()
             builder2 = ModelBuilder()
             for pt in pts:
-                builder1.add_particle(pt, [0.0, 0.0, 0.0], 1.0)
-                builder2.add_particle(pt, [0.0, 0.0, 0.0], 1.0)
+                builder1.add_particle(wp.vec3(pt), wp.vec3(), 1.0)
+                builder2.add_particle(wp.vec3(pt), wp.vec3(), 1.0)
 
             # test add_triangle(s) with default arguments:
             areas = builder2.add_triangles(tris[:, 0], tris[:, 1], tris[:, 2])
@@ -85,8 +85,8 @@ def register(parent):
             builder1 = ModelBuilder()
             builder2 = ModelBuilder()
             for pt in pts:
-                builder1.add_particle(pt, [0.0, 0.0, 0.0], 1.0)
-                builder2.add_particle(pt, [0.0, 0.0, 0.0], 1.0)
+                builder1.add_particle(wp.vec3(pt), wp.vec3(), 1.0)
+                builder2.add_particle(wp.vec3(pt), wp.vec3(), 1.0)
 
             # test defaults:
             for i in range(2):

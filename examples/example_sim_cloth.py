@@ -68,9 +68,9 @@ class Example:
 
         if self.integrator_type == IntegratorType.EULER:
             builder.add_cloth_grid(
-                pos=(0.0, 4.0, 0.0),
-                rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi * 0.5),
-                vel=(0.0, 0.0, 0.0),
+                pos=wp.vec3(0.0, 4.0, 0.0),
+                rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), math.pi * 0.5),
+                vel=wp.vec3(0.0, 0.0, 0.0),
                 dim_x=self.sim_width,
                 dim_y=self.sim_height,
                 cell_x=0.1,
@@ -83,9 +83,9 @@ class Example:
             )
         else:
             builder.add_cloth_grid(
-                pos=(0.0, 4.0, 0.0),
-                rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi * 0.5),
-                vel=(0.0, 0.0, 0.0),
+                pos=wp.vec3(0.0, 4.0, 0.0),
+                rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), math.pi * 0.5),
+                vel=wp.vec3(0.0, 0.0, 0.0),
                 dim_x=self.sim_width,
                 dim_y=self.sim_height,
                 cell_x=0.1,
@@ -109,9 +109,9 @@ class Example:
         builder.add_shape_mesh(
             body=-1,
             mesh=mesh,
-            pos=(1.0, 0.0, 1.0),
-            rot=wp.quat_from_axis_angle((0.0, 1.0, 0.0), math.pi * 0.5),
-            scale=(2.0, 2.0, 2.0),
+            pos=wp.vec3(1.0, 0.0, 1.0),
+            rot=wp.quat_from_axis_angle(wp.vec3(0.0, 1.0, 0.0), math.pi * 0.5),
+            scale=wp.vec3(2.0, 2.0, 2.0),
             ke=1.0e2,
             kd=1.0e2,
             kf=1.0e1,

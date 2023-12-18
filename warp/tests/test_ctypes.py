@@ -24,11 +24,11 @@ def add_vec2(dest: wp.array(dtype=wp.vec2), c: wp.vec2):
 
 
 @wp.kernel
-def transform_vec2(dest: wp.array(dtype=wp.vec2), m: wp.mat22, v: wp.vec2):
+def transform_vec2(dest_right: wp.array(dtype=wp.vec2), dest_left: wp.array(dtype=wp.vec2), m: wp.mat22, v: wp.vec2):
     tid = wp.tid()
 
-    p = wp.mul(m, v)
-    dest[tid] = p
+    dest_right[tid] = wp.mul(m, v)
+    dest_left[tid] = wp.mul(v, m)
 
 
 @wp.kernel
@@ -38,11 +38,11 @@ def add_vec3(dest: wp.array(dtype=wp.vec3), c: wp.vec3):
 
 
 @wp.kernel
-def transform_vec3(dest: wp.array(dtype=wp.vec3), m: wp.mat33, v: wp.vec3):
+def transform_vec3(dest_right: wp.array(dtype=wp.vec3), dest_left: wp.array(dtype=wp.vec3), m: wp.mat33, v: wp.vec3):
     tid = wp.tid()
 
-    p = wp.mul(m, v)
-    dest[tid] = p
+    dest_right[tid] = wp.mul(m, v)
+    dest_left[tid] = wp.mul(v, m)
 
 
 @wp.kernel
@@ -63,12 +63,14 @@ def test_vec2_arg(test, device, n):
 
 
 def test_vec2_transform(test, device, n):
-    dest = wp.zeros(n=n, dtype=wp.vec2, device=device)
+    dest_right = wp.zeros(n=n, dtype=wp.vec2, device=device)
+    dest_left = wp.zeros(n=n, dtype=wp.vec2, device=device)
     c = np.array((1.0, 2.0))
     m = np.array(((3.0, -1.0), (2.5, 4.0)))
 
-    wp.launch(transform_vec2, dim=n, inputs=[dest, m, c], device=device)
-    test.assertTrue(np.array_equal(dest.numpy(), np.tile(m @ c, (n, 1))))
+    wp.launch(transform_vec2, dim=n, inputs=[dest_right, dest_left, m, c], device=device)
+    test.assertTrue(np.array_equal(dest_right.numpy(), np.tile(m @ c, (n, 1))))
+    test.assertTrue(np.array_equal(dest_left.numpy(), np.tile(c @ m, (n, 1))))
 
 
 def test_vec3_arg(test, device, n):
@@ -80,12 +82,14 @@ def test_vec3_arg(test, device, n):
 
 
 def test_vec3_transform(test, device, n):
-    dest = wp.zeros(n=n, dtype=wp.vec3, device=device)
+    dest_right = wp.zeros(n=n, dtype=wp.vec3, device=device)
+    dest_left = wp.zeros(n=n, dtype=wp.vec3, device=device)
     c = np.array((1.0, 2.0, 3.0))
     m = np.array(((1.0, 2.0, 3.0), (4.0, 5.0, 6.0), (7.0, 8.0, 9.0)))
 
-    wp.launch(transform_vec3, dim=n, inputs=[dest, m, c], device=device)
-    test.assertTrue(np.array_equal(dest.numpy(), np.tile(m @ c, (n, 1))))
+    wp.launch(transform_vec3, dim=n, inputs=[dest_right, dest_left, m, c], device=device)
+    test.assertTrue(np.array_equal(dest_right.numpy(), np.tile(m @ c, (n, 1))))
+    test.assertTrue(np.array_equal(dest_left.numpy(), np.tile(c @ m, (n, 1))))
 
 
 def test_transform_multiply(test, device, n):

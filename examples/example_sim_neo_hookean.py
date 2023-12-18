@@ -80,9 +80,9 @@ class Example:
         center = cell_size * cell_dim * 0.5
 
         builder.add_soft_grid(
-            pos=(-center, 0.0, -center),
+            pos=wp.vec3(-center, 0.0, -center),
             rot=wp.quat_identity(),
-            vel=(0.0, 0.0, 0.0),
+            vel=wp.vec3(0.0, 0.0, 0.0),
             dim_x=cell_dim,
             dim_y=cell_dim,
             dim_z=cell_dim,
@@ -117,7 +117,7 @@ class Example:
         with wp.ScopedTimer("simulate"):
             xform = wp.transform(
                 (0.0, self.lift_speed * self.sim_time, 0.0),
-                wp.quat_from_axis_angle((0.0, 1.0, 0.0), self.rot_speed * self.sim_time),
+                wp.quat_from_axis_angle(wp.vec3(0.0, 1.0, 0.0), self.rot_speed * self.sim_time),
             )
             wp.launch(
                 kernel=twist_points,

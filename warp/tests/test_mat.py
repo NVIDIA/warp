@@ -159,6 +159,47 @@ def test_components(test, device, dtype):
     test.assertEqual(m[1, 2], 18)
 
 
+def test_py_arithmetic_ops(test, device, dtype):
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+
+    def make_mat(*args):
+        if wptype in wp.types.int_types:
+            # Cast to the correct integer type to simulate wrapping.
+            return tuple(tuple(wptype._type_(x).value for x in row) for row in args)
+
+        return args
+
+    def make_vec(*args):
+        if wptype in wp.types.int_types:
+            # Cast to the correct integer type to simulate wrapping.
+            return tuple(wptype._type_(x).value for x in args)
+
+        return args
+
+    mat_cls = wp.mat((3, 3), wptype)
+    vec_cls = wp.vec(3, wptype)
+
+    m = mat_cls(((-1, 2, 3), (4, -5, 6), (7, 8, -9)))
+    test.assertSequenceEqual(+m, make_mat((-1, 2, 3), (4, -5, 6), (7, 8, -9)))
+    test.assertSequenceEqual(-m, make_mat((1, -2, -3), (-4, 5, -6), (-7, -8, 9)))
+    test.assertSequenceEqual(m + mat_cls((5, 5, 5) * 3), make_mat((4, 7, 8), (9, 0, 11), (12, 13, -4)))
+    test.assertSequenceEqual(m - mat_cls((5, 5, 5) * 3), make_mat((-6, -3, -2), (-1, -10, 1), (2, 3, -14)))
+    test.assertSequenceEqual(m * vec_cls(5, 5, 5), make_vec(20, 25, 30))
+    test.assertSequenceEqual(m @ vec_cls(5, 5, 5), make_vec(20, 25, 30))
+    test.assertSequenceEqual(vec_cls(5, 5, 5) * m, make_vec(50, 25, 0))
+    test.assertSequenceEqual(vec_cls(5, 5, 5) @ m, make_vec(50, 25, 0))
+
+    m = mat_cls(((2, 4, 6), (8, 10, 12), (14, 16, 18)))
+    test.assertSequenceEqual(m * wptype(2), make_mat((4, 8, 12), (16, 20, 24), (28, 32, 36)))
+    test.assertSequenceEqual(wptype(2) * m, make_mat((4, 8, 12), (16, 20, 24), (28, 32, 36)))
+    test.assertSequenceEqual(m / wptype(2), make_mat((1, 2, 3), (4, 5, 6), (7, 8, 9)))
+    test.assertSequenceEqual(wptype(5040) / m, make_mat((2520, 1260, 840), (630, 504, 420), (360, 315, 280)))
+    test.assertSequenceEqual(m * vec_cls(5, 5, 5), make_vec(60, 150, 240))
+    test.assertSequenceEqual(m @ vec_cls(5, 5, 5), make_vec(60, 150, 240))
+    test.assertSequenceEqual(vec_cls(5, 5, 5) * m, make_vec(120, 150, 180))
+    test.assertSequenceEqual(vec_cls(5, 5, 5) @ m, make_vec(120, 150, 180))
+
+
 def test_constants(test, device, dtype, register_kernels=False):
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
     mat22 = wp.types.matrix(shape=(2, 2), dtype=wptype)
@@ -1568,6 +1609,153 @@ def test_matvec_multiplication(test, device, dtype, register_kernels=False):
                 assert_np_equal(tape.gradients[invec].numpy()[0], 2 * inmat.numpy()[0, i, :], tol=2 * tol)
                 expectedresult = np.zeros(inmat.dtype._shape_, dtype=dtype)
                 expectedresult[i, :] = 2 * invec.numpy()[0]
+                assert_np_equal(tape.gradients[inmat].numpy()[0], expectedresult, tol=2 * tol)
+
+                tape.zero()
+
+                idx = idx + 1
+
+
+def test_vecmat_multiplication(test, device, dtype, register_kernels=False):
+    rng = np.random.default_rng(123)
+
+    tol = {
+        np.float16: 2.0e-2,
+        np.float32: 5.0e-6,
+        np.float64: 1.0e-8,
+    }.get(dtype, 0)
+
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    mat22 = wp.types.matrix(shape=(2, 2), dtype=wptype)
+    mat33 = wp.types.matrix(shape=(3, 3), dtype=wptype)
+    mat23 = wp.types.matrix(shape=(2, 3), dtype=wptype)
+    mat44 = wp.types.matrix(shape=(4, 4), dtype=wptype)
+    mat55 = wp.types.matrix(shape=(5, 5), dtype=wptype)
+
+    vec2 = wp.types.vector(length=2, dtype=wptype)
+    vec3 = wp.types.vector(length=3, dtype=wptype)
+    vec4 = wp.types.vector(length=4, dtype=wptype)
+    vec5 = wp.types.vector(length=5, dtype=wptype)
+
+    output_select_kernel = get_select_kernel(wptype)
+
+    def check_vec_mat_mul(
+        v2: wp.array(dtype=vec2),
+        v3: wp.array(dtype=vec3),
+        v4: wp.array(dtype=vec4),
+        v5: wp.array(dtype=vec5),
+        v32: wp.array(dtype=vec2),
+        m2: wp.array(dtype=mat22),
+        m3: wp.array(dtype=mat33),
+        m4: wp.array(dtype=mat44),
+        m5: wp.array(dtype=mat55),
+        m23: wp.array(dtype=mat23),
+        outcomponents: wp.array(dtype=wptype),
+    ):
+        v2result = v2[0] * m2[0]
+        v3result = v3[0] * m3[0]
+        v4result = v4[0] * m4[0]
+        v5result = v5[0] * m5[0]
+        v32result = v32[0] * m23[0]
+        v2result_2 = v2[0] @ m2[0]
+        v3result_2 = v3[0] @ m3[0]
+        v4result_2 = v4[0] @ m4[0]
+        v5result_2 = v5[0] @ m5[0]
+        v32result_2 = v32[0] @ m23[0]
+
+        idx = 0
+
+        # multiply outputs by 2 so we've got something to backpropagate:
+        for i in range(2):
+            outcomponents[idx] = wptype(2) * v2result[i]
+            idx = idx + 1
+
+        for i in range(3):
+            outcomponents[idx] = wptype(2) * v3result[i]
+            idx = idx + 1
+
+        for i in range(4):
+            outcomponents[idx] = wptype(2) * v4result[i]
+            idx = idx + 1
+
+        for i in range(5):
+            outcomponents[idx] = wptype(2) * v5result[i]
+            idx = idx + 1
+
+        for i in range(3):
+            outcomponents[idx] = wptype(2) * v32result[i]
+            idx = idx + 1
+
+        for i in range(2):
+            outcomponents[idx] = wptype(2) * v2result_2[i]
+            idx = idx + 1
+
+        for i in range(3):
+            outcomponents[idx] = wptype(2) * v3result_2[i]
+            idx = idx + 1
+
+        for i in range(4):
+            outcomponents[idx] = wptype(2) * v4result_2[i]
+            idx = idx + 1
+
+        for i in range(5):
+            outcomponents[idx] = wptype(2) * v5result_2[i]
+            idx = idx + 1
+
+        for i in range(3):
+            outcomponents[idx] = wptype(2) * v32result_2[i]
+            idx = idx + 1
+
+    kernel = getkernel(check_vec_mat_mul, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    v2 = wp.array(randvals(rng, [1, 2], dtype), dtype=vec2, requires_grad=True, device=device)
+    v3 = wp.array(randvals(rng, [1, 3], dtype), dtype=vec3, requires_grad=True, device=device)
+    v4 = wp.array(randvals(rng, [1, 4], dtype), dtype=vec4, requires_grad=True, device=device)
+    v5 = wp.array(randvals(rng, [1, 5], dtype), dtype=vec5, requires_grad=True, device=device)
+    v32 = wp.array(randvals(rng, [1, 2], dtype), dtype=vec2, requires_grad=True, device=device)
+    m2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
+    m3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
+    m4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
+    m5 = wp.array(randvals(rng, [1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
+    m23 = wp.array(randvals(rng, [1, 2, 3], dtype), dtype=mat23, requires_grad=True, device=device)
+    outcomponents = wp.zeros(2 * (2 + 3 + 4 + 5 + 3), dtype=wptype, requires_grad=True, device=device)
+
+    wp.launch(kernel, dim=1, inputs=[v2, v3, v4, v5, v32, m2, m3, m4, m5, m23], outputs=[outcomponents], device=device)
+
+    assert_np_equal(outcomponents.numpy()[:2], 2 * np.matmul(v2.numpy()[0], m2.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents.numpy()[2:5], 2 * np.matmul(v3.numpy()[0], m3.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents.numpy()[5:9], 2 * np.matmul(v4.numpy()[0], m4.numpy()[0]), tol=5 * tol)
+    assert_np_equal(outcomponents.numpy()[9:14], 2 * np.matmul(v5.numpy()[0], m5.numpy()[0]), tol=5 * tol)
+    assert_np_equal(outcomponents.numpy()[14:17], 2 * np.matmul(v32.numpy()[0], m23.numpy()[0]), tol=5 * tol)
+    assert_np_equal(outcomponents.numpy()[17:19], 2 * np.matmul(v2.numpy()[0], m2.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents.numpy()[19:22], 2 * np.matmul(v3.numpy()[0], m3.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents.numpy()[22:26], 2 * np.matmul(v4.numpy()[0], m4.numpy()[0]), tol=5 * tol)
+    assert_np_equal(outcomponents.numpy()[26:31], 2 * np.matmul(v5.numpy()[0], m5.numpy()[0]), tol=5 * tol)
+    assert_np_equal(outcomponents.numpy()[31:34], 2 * np.matmul(v32.numpy()[0], m23.numpy()[0]), tol=5 * tol)
+
+    if dtype in np_float_types:
+        idx = 0
+        out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+        for dim, inmat, invec in [(2, m2, v2), (3, m3, v3), (4, m4, v4), (5, m5, v5), (3, m23, v32)]:
+            for i in range(dim):
+                tape = wp.Tape()
+                with tape:
+                    wp.launch(
+                        kernel,
+                        dim=1,
+                        inputs=[v2, v3, v4, v5, v32, m2, m3, m4, m5, m23],
+                        outputs=[outcomponents],
+                        device=device,
+                    )
+                    wp.launch(output_select_kernel, dim=1, inputs=[outcomponents, idx], outputs=[out], device=device)
+                tape.backward(loss=out)
+
+                assert_np_equal(tape.gradients[invec].numpy()[0], 2 * inmat.numpy()[0, :, i], tol=2 * tol)
+                expectedresult = np.zeros(inmat.dtype._shape_, dtype=dtype)
+                expectedresult[:, i] = 2 * invec.numpy()[0]
                 assert_np_equal(tape.gradients[inmat].numpy()[0], expectedresult, tol=2 * tol)
 
                 tape.zero()
@@ -4140,6 +4328,7 @@ def test_constructors_explicit_precision():
 mat32d = wp.mat(shape=(3, 2), dtype=wp.float64)
 
 
+
 @wp.kernel
 def test_matrix_constructor_value_func():
     a = wp.mat22()
@@ -4366,6 +4555,13 @@ def register(parent):
         )
         add_function_test_register_kernel(
             TestMat,
+            f"test_vecmat_multiplication_{dtype.__name__}",
+            test_vecmat_multiplication,
+            devices=devices,
+            dtype=dtype,
+        )
+        add_function_test_register_kernel(
+            TestMat,
             f"test_matmat_multiplication_{dtype.__name__}",
             test_matmat_multiplication,
             devices=devices,
@@ -4412,6 +4608,9 @@ def register(parent):
         )
 
     for dtype in np_float_types:
+        add_function_test(
+            TestMat, f"test_py_arithmetic_ops_{dtype.__name__}", test_py_arithmetic_ops, devices=None, dtype=dtype
+        )
         add_function_test_register_kernel(
             TestMat, f"test_quat_constructor_{dtype.__name__}", test_quat_constructor, devices=devices, dtype=dtype
         )

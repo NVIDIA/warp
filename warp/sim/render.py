@@ -268,7 +268,7 @@ def CreateSimRenderer(renderer):
                             q = wp.quat(tf[3:])
                             # compute rotation between axis and y
                             axis = axis / np.linalg.norm(axis)
-                            q = q * wp.quat_between_vectors(wp.vec3(*axis), y_axis)
+                            q = q * wp.quat_between_vectors(wp.vec3(axis), y_axis)
                             name = f"joint_{i}_{a}"
                             self.add_shape_instance(name, shape, body, p, q, scale, color1=color, color2=color)
                             self.instance_count += 1

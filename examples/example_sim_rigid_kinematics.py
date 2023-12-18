@@ -59,7 +59,7 @@ class Example:
             # base
             builder.joint_q[coord_start : coord_start + 3] = [i * 2.0, 0.70, 0.0]
             builder.joint_q[coord_start + 3 : coord_start + 7] = wp.quat_from_axis_angle(
-                (1.0, 0.0, 0.0), -math.pi * 0.5
+                wp.vec3(1.0, 0.0, 0.0), -math.pi * 0.5
             )
 
             # joints

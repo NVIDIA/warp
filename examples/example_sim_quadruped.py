@@ -75,7 +75,7 @@ class Example:
         wp.sim.parse_urdf(
             os.path.join(os.path.dirname(__file__), "assets/quadruped.urdf"),
             articulation_builder,
-            xform=wp.transform([0.0, 0.7, 0.0], wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi * 0.5)),
+            xform=wp.transform([0.0, 0.7, 0.0], wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), -math.pi * 0.5)),
             floating=True,
             density=1000,
             armature=0.01,

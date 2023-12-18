@@ -178,13 +178,13 @@ def vector(length, dtype):
             return warp.add(self, y)
 
         def __radd__(self, y):
-            return warp.add(self, y)
+            return warp.add(y, self)
 
         def __sub__(self, y):
             return warp.sub(self, y)
 
-        def __rsub__(self, x):
-            return warp.sub(x, self)
+        def __rsub__(self, y):
+            return warp.sub(y, self)
 
         def __mul__(self, y):
             return warp.mul(self, y)
@@ -195,7 +195,7 @@ def vector(length, dtype):
         def __truediv__(self, y):
             return warp.div(self, y)
 
-        def __rdiv__(self, x):
+        def __rtruediv__(self, x):
             return warp.div(x, self)
 
         def __pos__(self):
@@ -294,13 +294,13 @@ def matrix(shape, dtype):
             return warp.add(self, y)
 
         def __radd__(self, y):
-            return warp.add(self, y)
+            return warp.add(y, self)
 
         def __sub__(self, y):
             return warp.sub(self, y)
 
-        def __rsub__(self, x):
-            return warp.sub(x, self)
+        def __rsub__(self, y):
+            return warp.sub(y, self)
 
         def __mul__(self, y):
             return warp.mul(self, y)
@@ -317,7 +317,7 @@ def matrix(shape, dtype):
         def __truediv__(self, y):
             return warp.div(self, y)
 
-        def __rdiv__(self, x):
+        def __rtruediv__(self, x):
             return warp.div(x, self)
 
         def __pos__(self):
@@ -582,11 +582,11 @@ def transformation(dtype=Any):
 
         @property
         def p(self):
-            return self[0:3]
+            return vec3(self[0:3])
 
         @property
         def q(self):
-            return self[3:7]
+            return quat(self[3:7])
 
     return transform_t
 

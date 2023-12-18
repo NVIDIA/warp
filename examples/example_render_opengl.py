@@ -104,14 +104,14 @@ while renderer.is_running():
     renderer.render_cylinder(
         "cylinder",
         [3.2, 1.0, np.sin(time + 0.5)],
-        np.array(wp.quat_from_axis_angle((1.0, 0.0, 0.0), np.sin(time + 0.5))),
+        np.array(wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), wp.sin(time + 0.5))),
         radius=0.5,
         half_height=0.8,
     )
     renderer.render_cone(
         "cone",
         [-1.2, 1.0, 0.0],
-        np.array(wp.quat_from_axis_angle((0.707, 0.707, 0.0), time)),
+        np.array(wp.quat_from_axis_angle(wp.vec3(0.707, 0.707, 0.0), time)),
         radius=0.5,
         half_height=0.8,
     )
