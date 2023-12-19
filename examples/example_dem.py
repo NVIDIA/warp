@@ -118,6 +118,8 @@ def integrate(
 
 class Example:
     def __init__(self, stage):
+        self.device = wp.get_device()
+
         self.frame_dt = 1.0 / 60
         self.frame_count = 400
 
@@ -150,32 +152,32 @@ class Example:
         self.use_graph = wp.get_device().is_cuda
 
         if self.use_graph:
-            wp.capture_begin()
-
-            for _ in range(self.sim_substeps):
-                with wp.ScopedTimer("forces", active=False):
-                    wp.launch(
-                        kernel=apply_forces,
-                        dim=len(self.x),
-                        inputs=[
-                            self.grid.id,
-                            self.x,
-                            self.v,
-                            self.f,
-                            self.point_radius,
-                            self.k_contact,
-                            self.k_damp,
-                            self.k_friction,
-                            self.k_mu,
-                        ],
-                    )
-                    wp.launch(
-                        kernel=integrate,
-                        dim=len(self.x),
-                        inputs=[self.x, self.v, self.f, (0.0, -9.8, 0.0), self.sim_dt, self.inv_mass],
-                    )
-
-            self.graph = wp.capture_end()
+            wp.capture_begin(self.device)
+            try:
+                for _ in range(self.sim_substeps):
+                    with wp.ScopedTimer("forces", active=False):
+                        wp.launch(
+                            kernel=apply_forces,
+                            dim=len(self.x),
+                            inputs=[
+                                self.grid.id,
+                                self.x,
+                                self.v,
+                                self.f,
+                                self.point_radius,
+                                self.k_contact,
+                                self.k_damp,
+                                self.k_friction,
+                                self.k_mu,
+                            ],
+                        )
+                        wp.launch(
+                            kernel=integrate,
+                            dim=len(self.x),
+                            inputs=[self.x, self.v, self.f, (0.0, -9.8, 0.0), self.sim_dt, self.inv_mass],
+                        )
+            finally:
+                self.graph = wp.capture_end(self.device)
 
     def update(self):
         with wp.ScopedTimer("simulate", active=True):

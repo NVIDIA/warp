@@ -7,10 +7,10 @@
 
 import unittest
 
-import warp as wp
-from warp.tests.test_base import *
-
 import numpy as np
+
+import warp as wp
+from warp.tests.unittest_utils import *
 
 wp.init()
 # wp.config.cache_kernels = False
@@ -139,140 +139,127 @@ def test_volume_tile_readback_v(volume: wp.uint64, tiles: wp.array2d(dtype=wp.in
         values[tid * 512 + r] = wp.volume_lookup_v(volume, ii, jj, kk)
 
 
-rng = np.random.default_rng(101215)
+def test_volume_allocation(test, device):
+    voxel_size = 0.125
+    background_value = 123.456
+    translation = wp.vec3(-12.3, 4.56, -789)
+
+    axis = np.linspace(-11, 11, 23)
+    points_ref = np.array([[x, y, z] for x in axis for y in axis for z in axis])
+    values_ref = np.array([x + 100 * y + 10000 * z for x in axis for y in axis for z in axis])
+    num_points = len(points_ref)
+    bb_max = np.array([11, 11, 11])
+    volume_a = wp.Volume.allocate(
+        -bb_max,
+        bb_max,
+        voxel_size=voxel_size,
+        bg_value=background_value,
+        translation=translation,
+        device=device,
+    )
+    volume_b = wp.Volume.allocate(
+        -bb_max * voxel_size + translation,
+        bb_max * voxel_size + translation,
+        voxel_size=voxel_size,
+        bg_value=background_value,
+        translation=translation,
+        points_in_world_space=True,
+        device=device,
+    )
+    points = wp.array(points_ref, dtype=wp.vec3, device=device)
+    values_a = wp.empty(num_points, dtype=wp.float32, device=device)
+    values_b = wp.empty(num_points, dtype=wp.float32, device=device)
+    wp.launch(test_volume_store_f, dim=num_points, inputs=[volume_a.id, points], device=device)
+    wp.launch(test_volume_store_f, dim=num_points, inputs=[volume_b.id, points], device=device)
+    wp.launch(test_volume_readback_f, dim=num_points, inputs=[volume_a.id, points, values_a], device=device)
+    wp.launch(test_volume_readback_f, dim=num_points, inputs=[volume_b.id, points, values_b], device=device)
+
+    np.testing.assert_equal(values_a.numpy(), values_ref)
+    np.testing.assert_equal(values_b.numpy(), values_ref)
 
 
-def register(parent):
-    devices = get_test_devices()
+def test_volume_allocate_by_tiles_f(test, device):
+    voxel_size = 0.125
+    background_value = 123.456
+    translation = wp.vec3(-12.3, 4.56, -789)
 
-    class TestVolumes(parent):
-        def test_volume_allocation(self):
-            voxel_size = 0.125
-            background_value = 123.456
-            translation = wp.vec3(-12.3, 4.56, -789)
+    num_tiles = 1000
+    rng = np.random.default_rng(101215)
+    tiles = rng.integers(-512, 512, size=(num_tiles, 3), dtype=np.int32)
+    points_is = tiles * 8  # points in index space
+    points_ws = points_is * voxel_size + translation  # points in world space
 
-            axis = np.linspace(-11, 11, 23)
-            points_ref = np.array([[x, y, z] for x in axis for y in axis for z in axis])
-            values_ref = np.array([x + 100 * y + 10000 * z for x in axis for y in axis for z in axis])
-            num_points = len(points_ref)
-            bb_max = np.array([11, 11, 11])
-            for device in devices:
-                if device.is_cpu:
-                    continue
+    values_ref = np.empty(num_tiles * 512)
+    for t in range(num_tiles):
+        ti, tj, tk = points_is[t]
+        for i in range(8):
+            for j in range(8):
+                for k in range(8):
+                    values_ref[t * 512 + i * 64 + j * 8 + k] = float(100 * (ti + i) + 10 * (tj + j) + (tk + k))
 
-                volume_a = wp.Volume.allocate(
-                    -bb_max,
-                    bb_max,
-                    voxel_size=voxel_size,
-                    bg_value=background_value,
-                    translation=translation,
-                    device=device,
-                )
-                volume_b = wp.Volume.allocate(
-                    -bb_max * voxel_size + translation,
-                    bb_max * voxel_size + translation,
-                    voxel_size=voxel_size,
-                    bg_value=background_value,
-                    translation=translation,
-                    points_in_world_space=True,
-                    device=device,
-                )
-                points = wp.array(points_ref, dtype=wp.vec3, device=device)
-                values_a = wp.empty(num_points, dtype=wp.float32, device=device)
-                values_b = wp.empty(num_points, dtype=wp.float32, device=device)
-                wp.launch(test_volume_store_f, dim=num_points, inputs=[volume_a.id, points], device=device)
-                wp.launch(test_volume_store_f, dim=num_points, inputs=[volume_b.id, points], device=device)
-                wp.launch(test_volume_readback_f, dim=num_points, inputs=[volume_a.id, points, values_a], device=device)
-                wp.launch(test_volume_readback_f, dim=num_points, inputs=[volume_b.id, points, values_b], device=device)
+    points_is_d = wp.array(points_is, dtype=wp.int32, device=device)
+    points_ws_d = wp.array(points_ws, dtype=wp.vec3, device=device)
+    volume_a = wp.Volume.allocate_by_tiles(points_is_d, voxel_size, background_value, translation, device=device)
+    volume_b = wp.Volume.allocate_by_tiles(points_ws_d, voxel_size, background_value, translation, device=device)
+    values_a = wp.empty(num_tiles * 512, dtype=wp.float32, device=device)
+    values_b = wp.empty(num_tiles * 512, dtype=wp.float32, device=device)
 
-                np.testing.assert_equal(values_a.numpy(), values_ref)
-                np.testing.assert_equal(values_b.numpy(), values_ref)
+    wp.launch(test_volume_tile_store_f, dim=num_tiles, inputs=[volume_a.id, points_is_d], device=device)
+    wp.launch(test_volume_tile_store_ws_f, dim=num_tiles, inputs=[volume_b.id, points_ws_d], device=device)
+    wp.launch(
+        test_volume_tile_readback_f,
+        dim=num_tiles,
+        inputs=[volume_a.id, points_is_d, values_a],
+        device=device,
+    )
+    wp.launch(
+        test_volume_tile_readback_f,
+        dim=num_tiles,
+        inputs=[volume_b.id, points_is_d, values_b],
+        device=device,
+    )
 
-        def test_volume_allocate_by_tiles_f(self):
-            voxel_size = 0.125
-            background_value = 123.456
-            translation = wp.vec3(-12.3, 4.56, -789)
+    np.testing.assert_equal(values_a.numpy(), values_ref)
+    np.testing.assert_equal(values_b.numpy(), values_ref)
 
-            num_tiles = 1000
-            tiles = rng.integers(-512, 512, size=(num_tiles, 3), dtype=np.int32)
-            points_is = tiles * 8  # points in index space
-            points_ws = points_is * voxel_size + translation  # points in world space
 
-            values_ref = np.empty(num_tiles * 512)
-            for t in range(num_tiles):
-                ti, tj, tk = points_is[t]
-                for i in range(8):
-                    for j in range(8):
-                        for k in range(8):
-                            values_ref[t * 512 + i * 64 + j * 8 + k] = float(100 * (ti + i) + 10 * (tj + j) + (tk + k))
+def test_volume_allocate_by_tiles_v(test, device):
+    num_tiles = 1000
+    rng = np.random.default_rng(101215)
+    tiles = rng.integers(-512, 512, size=(num_tiles, 3), dtype=np.int32)
+    points_is = tiles * 8
 
-            for device in devices:
-                if device.is_cpu:
-                    continue
+    values_ref = np.empty((len(tiles) * 512, 3))
+    for t in range(len(tiles)):
+        ti, tj, tk = points_is[t]
+        for i in range(8):
+            for j in range(8):
+                for k in range(8):
+                    values_ref[t * 512 + i * 64 + j * 8 + k] = [ti + i, tj + j, tk + k]
 
-                points_is_d = wp.array(points_is, dtype=wp.int32, device=device)
-                points_ws_d = wp.array(points_ws, dtype=wp.vec3, device=device)
-                volume_a = wp.Volume.allocate_by_tiles(
-                    points_is_d, voxel_size, background_value, translation, device=device
-                )
-                volume_b = wp.Volume.allocate_by_tiles(
-                    points_ws_d, voxel_size, background_value, translation, device=device
-                )
-                values_a = wp.empty(num_tiles * 512, dtype=wp.float32, device=device)
-                values_b = wp.empty(num_tiles * 512, dtype=wp.float32, device=device)
+    points_d = wp.array(points_is, dtype=wp.int32, device=device)
+    volume = wp.Volume.allocate_by_tiles(points_d, 0.1, wp.vec3(1, 2, 3), device=device)
+    values = wp.empty(len(points_d) * 512, dtype=wp.vec3, device=device)
 
-                wp.launch(test_volume_tile_store_f, dim=num_tiles, inputs=[volume_a.id, points_is_d], device=device)
-                wp.launch(test_volume_tile_store_ws_f, dim=num_tiles, inputs=[volume_b.id, points_ws_d], device=device)
-                wp.launch(
-                    test_volume_tile_readback_f,
-                    dim=num_tiles,
-                    inputs=[volume_a.id, points_is_d, values_a],
-                    device=device,
-                )
-                wp.launch(
-                    test_volume_tile_readback_f,
-                    dim=num_tiles,
-                    inputs=[volume_b.id, points_is_d, values_b],
-                    device=device,
-                )
+    wp.launch(test_volume_tile_store_v, dim=len(points_d), inputs=[volume.id, points_d], device=device)
+    wp.launch(test_volume_tile_readback_v, dim=len(points_d), inputs=[volume.id, points_d, values], device=device)
 
-                np.testing.assert_equal(values_a.numpy(), values_ref)
-                np.testing.assert_equal(values_b.numpy(), values_ref)
+    values_res = values.numpy()
+    np.testing.assert_equal(values_res, values_ref)
 
-        def test_volume_allocate_by_tiles_v(self):
-            num_tiles = 1000
-            tiles = rng.integers(-512, 512, size=(num_tiles, 3), dtype=np.int32)
-            points_is = tiles * 8
 
-            values_ref = np.empty((len(tiles) * 512, 3))
-            for t in range(len(tiles)):
-                ti, tj, tk = points_is[t]
-                for i in range(8):
-                    for j in range(8):
-                        for k in range(8):
-                            values_ref[t * 512 + i * 64 + j * 8 + k] = [ti + i, tj + j, tk + k]
+devices = get_unique_cuda_test_devices()
 
-            for device in devices:
-                if device.is_cpu:
-                    continue
 
-                points_d = wp.array(points_is, dtype=wp.int32, device=device)
-                volume = wp.Volume.allocate_by_tiles(points_d, 0.1, wp.vec3(1, 2, 3), device=device)
-                values = wp.empty(len(points_d) * 512, dtype=wp.vec3, device=device)
+class TestVolumeWrite(unittest.TestCase):
+    pass
 
-                wp.launch(test_volume_tile_store_v, dim=len(points_d), inputs=[volume.id, points_d], device=device)
-                wp.launch(
-                    test_volume_tile_readback_v, dim=len(points_d), inputs=[volume.id, points_d, values], device=device
-                )
 
-                values_res = values.numpy()
-                np.testing.assert_equal(values_res, values_ref)
-
-    return TestVolumes
+add_function_test(TestVolumeWrite, "test_volume_allocation", test_volume_allocation, devices=devices)
+add_function_test(TestVolumeWrite, "test_volume_allocate_by_tiles_f", test_volume_allocate_by_tiles_f, devices=devices)
+add_function_test(TestVolumeWrite, "test_volume_allocate_by_tiles_v", test_volume_allocate_by_tiles_v, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    wp.force_load()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

@@ -1,7 +1,7 @@
 # This file is used to test reloading module references.
 
 import warp as wp
-import warp.tests.test_reference_reference as refref
+import warp.tests.aux_test_reference_reference as refref
 
 wp.init()
 

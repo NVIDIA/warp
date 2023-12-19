@@ -1,4 +1,4 @@
-# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2023 NVIDIA CORPORATION.  All rights reserved.
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
 # and any modifications thereto.  Any use, reproduction, disclosure or
@@ -10,7 +10,7 @@ import unittest
 
 import numpy as np
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 
 from warp.fem import Field, Sample, Domain, Coords
@@ -1230,38 +1230,42 @@ def test_particle_quadratures(test_case, device):
     test_case.assertAlmostEqual(val, 1.25, places=5)
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestFem(parent):
-        pass
 
-    add_function_test(TestFem, "test_regular_quadrature", test_regular_quadrature)
-    add_function_test(TestFem, "test_closest_point_queries", test_closest_point_queries)
-    add_function_test(TestFem, "test_grad_decomposition", test_grad_decomposition, devices=devices)
-    add_function_test(TestFem, "test_integrate_gradient", test_integrate_gradient, devices=devices)
-    add_function_test(TestFem, "test_interpolate_gradient", test_interpolate_gradient, devices=devices)
-    add_function_test(TestFem, "test_vector_divergence_theorem", test_vector_divergence_theorem, devices=devices)
-    add_function_test(TestFem, "test_tensor_divergence_theorem", test_tensor_divergence_theorem, devices=devices)
-    add_function_test(TestFem, "test_grid_2d", test_grid_2d, devices=devices)
-    add_function_test(TestFem, "test_triangle_mesh", test_triangle_mesh, devices=devices)
-    add_function_test(TestFem, "test_quad_mesh", test_quad_mesh, devices=devices)
-    add_function_test(TestFem, "test_grid_3d", test_grid_3d, devices=devices)
-    add_function_test(TestFem, "test_tet_mesh", test_tet_mesh, devices=devices)
-    add_function_test(TestFem, "test_hex_mesh", test_hex_mesh, devices=devices)
-    add_function_test(TestFem, "test_deformed_geometry", test_deformed_geometry, devices=devices)
-    add_function_test(TestFem, "test_dof_mapper", test_dof_mapper)
-    add_function_test(TestFem, "test_square_shape_functions", test_square_shape_functions)
-    add_function_test(TestFem, "test_cube_shape_functions", test_cube_shape_functions)
-    add_function_test(TestFem, "test_tri_shape_functions", test_tri_shape_functions)
-    add_function_test(TestFem, "test_tet_shape_functions", test_tet_shape_functions)
-    add_function_test(TestFem, "test_point_basis", test_point_basis)
-    add_function_test(TestFem, "test_particle_quadratures", test_particle_quadratures)
+class TestFem(unittest.TestCase):
+    pass
 
-    return TestFem
+
+add_function_test(TestFem, "test_regular_quadrature", test_regular_quadrature)
+add_function_test(TestFem, "test_closest_point_queries", test_closest_point_queries)
+add_function_test(TestFem, "test_grad_decomposition", test_grad_decomposition, devices=devices)
+add_function_test(TestFem, "test_integrate_gradient", test_integrate_gradient, devices=devices)
+add_function_test(TestFem, "test_interpolate_gradient", test_interpolate_gradient, devices=devices)
+add_function_test(TestFem, "test_vector_divergence_theorem", test_vector_divergence_theorem, devices=devices)
+add_function_test(TestFem, "test_tensor_divergence_theorem", test_tensor_divergence_theorem, devices=devices)
+add_function_test(TestFem, "test_grid_2d", test_grid_2d, devices=devices)
+add_function_test(TestFem, "test_triangle_mesh", test_triangle_mesh, devices=devices)
+add_function_test(TestFem, "test_quad_mesh", test_quad_mesh, devices=devices)
+add_function_test(TestFem, "test_grid_3d", test_grid_3d, devices=devices)
+add_function_test(TestFem, "test_tet_mesh", test_tet_mesh, devices=devices)
+add_function_test(TestFem, "test_hex_mesh", test_hex_mesh, devices=devices)
+add_function_test(TestFem, "test_deformed_geometry", test_deformed_geometry, devices=devices)
+add_function_test(TestFem, "test_dof_mapper", test_dof_mapper)
+add_function_test(TestFem, "test_point_basis", test_point_basis)
+add_function_test(TestFem, "test_particle_quadratures", test_particle_quadratures)
+
+
+class TestFemShapeFunctions(unittest.TestCase):
+    pass
+
+
+add_function_test(TestFemShapeFunctions, "test_square_shape_functions", test_square_shape_functions)
+add_function_test(TestFemShapeFunctions, "test_cube_shape_functions", test_cube_shape_functions)
+add_function_test(TestFemShapeFunctions, "test_tri_shape_functions", test_tri_shape_functions)
+add_function_test(TestFemShapeFunctions, "test_tet_shape_functions", test_tet_shape_functions)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

@@ -3778,7 +3778,7 @@ def get_module_options(module: Optional[Any] = None) -> Dict[str, Any]:
     return get_module(m.__name__).options
 
 
-def capture_begin(device: Devicelike = None, stream=None, force_module_load=True):
+def capture_begin(device: Devicelike = None, stream=None, force_module_load=None):
     """Begin capture of a CUDA graph
 
     Captures all subsequent kernel launches and memory operations on CUDA devices.
@@ -3791,6 +3791,9 @@ def capture_begin(device: Devicelike = None, stream=None, force_module_load=True
         force_module_load: Whether or not to force loading of all kernels before capture, in general it is better to use :func:`~warp.load_module()` to selectively load kernels.
 
     """
+
+    if force_module_load is None:
+        force_module_load = warp.config.graph_capture_module_load_default
 
     if warp.config.verify_cuda is True:
         raise RuntimeError("Cannot use CUDA error verification during graph capture")

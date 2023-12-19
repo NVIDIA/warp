@@ -1,7 +1,9 @@
-import warp as wp
-from warp.tests.test_base import *
-import numpy as np
 import unittest
+
+import numpy as np
+
+import warp as wp
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -101,11 +103,11 @@ def test_shared_memory(test, device):
 
 
 def test_cpu_snippet(test, device):
-    
     snippet = """
     int inc = 1;
     out[tid] = x[tid] + inc;
     """
+
     @wp.func_native(snippet)
     def increment_snippet(
         x: wp.array(dtype=wp.int32),
@@ -115,10 +117,7 @@ def test_cpu_snippet(test, device):
         ...
 
     @wp.kernel
-    def increment(
-        x: wp.array(dtype=wp.int32),
-        out: wp.array(dtype=wp.int32)
-    ):
+    def increment(x: wp.array(dtype=wp.int32), out: wp.array(dtype=wp.int32)):
         tid = wp.tid()
         increment_snippet(x, out, tid)
 
@@ -128,25 +127,17 @@ def test_cpu_snippet(test, device):
 
     wp.launch(kernel=increment, dim=N, inputs=[x], outputs=[out], device=device)
 
-    assert_np_equal(out.numpy(), np.arange(1, N+1, 1, dtype=np.int32))
+    assert_np_equal(out.numpy(), np.arange(1, N + 1, 1, dtype=np.int32))
 
 
-def register(parent):
-    
-    class TestSnippets(parent):
-        pass
+class TestSnippets(unittest.TestCase):
+    pass
 
-    if wp.is_cuda_available():
-        cuda_device = [wp.get_cuda_device()]
-        add_function_test(TestSnippets, "test_basic", test_basic, devices=cuda_device)
-        add_function_test(TestSnippets, "test_shared_memory", test_shared_memory, devices=cuda_device)
-    
-    if wp.is_cpu_available():
-        add_function_test(TestSnippets, "test_cpu_snippet", test_cpu_snippet, devices=["cpu"])
 
-    return TestSnippets
+add_function_test(TestSnippets, "test_basic", test_basic, devices=get_unique_cuda_test_devices())
+add_function_test(TestSnippets, "test_shared_memory", test_shared_memory, devices=get_unique_cuda_test_devices())
+add_function_test(TestSnippets, "test_cpu_snippet", test_cpu_snippet, devices=["cpu"])
 
 
 if __name__ == "__main__":
-    c = register(unittest.TestCase)
     unittest.main(verbosity=2)

@@ -30,7 +30,7 @@ Documentation = "https://nvidia.github.io/warp"
 Changelog = "https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-dev = ["flake8", "black", "isort", "nvtx", "furo", "sphinx-copybutton"]
+dev = ["flake8", "black", "isort", "nvtx", "furo", "sphinx-copybutton", "coverage[toml]"]
 
 [tool.setuptools.packages]
 find = {}
@@ -45,3 +45,11 @@ line-length = 120
 [tool.isort]
 profile = "black"
 skip_gitignore = true
+
+[tool.coverage.run]
+source = ["warp", "warp.sim", "warp.render"]
+disable_warnings = ["module-not-measured", "module-not-imported", "no-data-collected", "couldnt-parse"]
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover", "@wp", "@warp", "if 0:", "if __name__ == .__main__.:"]
+omit =["*/warp/tests/*", "*/warp/fem/*", "appdirs.py", "render_opengl.py", "build_dll.py", "config.py", "stubs.py"]

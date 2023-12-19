@@ -5,14 +5,12 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
+import unittest
+
 import numpy as np
-import math
 
 import warp as wp
-from warp.tests.test_base import *
-
-import unittest
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -121,25 +119,23 @@ test_atomic_mat33 = make_atomic_test(wp.mat33)
 test_atomic_mat44 = make_atomic_test(wp.mat44)
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestAtomic(parent):
-        pass
 
-    add_function_test(TestAtomic, "test_atomic_int", test_atomic_int, devices=devices)
-    add_function_test(TestAtomic, "test_atomic_float", test_atomic_float, devices=devices)
-    add_function_test(TestAtomic, "test_atomic_vec2", test_atomic_vec2, devices=devices)
-    add_function_test(TestAtomic, "test_atomic_vec3", test_atomic_vec3, devices=devices)
-    add_function_test(TestAtomic, "test_atomic_vec4", test_atomic_vec4, devices=devices)
-    add_function_test(TestAtomic, "test_atomic_mat22", test_atomic_mat22, devices=devices)
-    add_function_test(TestAtomic, "test_atomic_mat33", test_atomic_mat33, devices=devices)
-    add_function_test(TestAtomic, "test_atomic_mat44", test_atomic_mat44, devices=devices)
+class TestAtomic(unittest.TestCase):
+    pass
 
-    return TestAtomic
+
+add_function_test(TestAtomic, "test_atomic_int", test_atomic_int, devices=devices)
+add_function_test(TestAtomic, "test_atomic_float", test_atomic_float, devices=devices)
+add_function_test(TestAtomic, "test_atomic_vec2", test_atomic_vec2, devices=devices)
+add_function_test(TestAtomic, "test_atomic_vec3", test_atomic_vec3, devices=devices)
+add_function_test(TestAtomic, "test_atomic_vec4", test_atomic_vec4, devices=devices)
+add_function_test(TestAtomic, "test_atomic_mat22", test_atomic_mat22, devices=devices)
+add_function_test(TestAtomic, "test_atomic_mat33", test_atomic_mat33, devices=devices)
+add_function_test(TestAtomic, "test_atomic_mat44", test_atomic_mat44, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

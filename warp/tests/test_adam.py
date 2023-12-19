@@ -5,16 +5,14 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
-import numpy as np
-import math
-
-import warp as wp
-from warp.tests.test_base import *
 import unittest
 
+import numpy as np
+
+import warp as wp
 import warp.optim
 import warp.sim
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -142,20 +140,18 @@ def test_adam_solve_two_inputs(test, device):
             test.assertLessEqual(v, tol)
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestArray(parent):
-        pass
 
-    add_function_test(TestArray, "test_adam_solve_float", test_adam_solve_float, devices=devices)
-    add_function_test(TestArray, "test_adam_solve_vec3", test_adam_solve_vec3, devices=devices)
-    add_function_test(TestArray, "test_adam_solve_two_inputs", test_adam_solve_two_inputs, devices=devices)
+class TestAdam(unittest.TestCase):
+    pass
 
-    return TestArray
+
+add_function_test(TestAdam, "test_adam_solve_float", test_adam_solve_float, devices=devices)
+add_function_test(TestAdam, "test_adam_solve_vec3", test_adam_solve_vec3, devices=devices)
+add_function_test(TestAdam, "test_adam_solve_two_inputs", test_adam_solve_two_inputs, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

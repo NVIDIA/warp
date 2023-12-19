@@ -1,7 +1,4 @@
-from .test_all import run
+from warp.thirdparty.unittest_parallel import main
 
-ret = run()
-
-import sys
-
-sys.exit(ret)
+if __name__ == "__main__":
+    main()

@@ -5,14 +5,15 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import unittest
 from typing import Any
+
 import numpy as np
+
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 from warp.fem import Sample as StructFromAnotherModule
-
-import unittest
 
 wp.init()
 
@@ -291,7 +292,7 @@ def test_struct_math_conversions(test, device):
     s.m5 = [10, 20, 30, 40]
     s.m6 = np.array([100, 200, 300, 400])
 
-    wp.launch(check_math_conversions, dim=1, inputs=[s])
+    wp.launch(check_math_conversions, dim=1, inputs=[s], device=device)
 
 
 @wp.struct
@@ -416,9 +417,9 @@ def test_nested_array_struct(test, device):
     var2.i = 2
 
     struct = ArrayStruct()
-    struct.array = wp.array([var1, var2], dtype=InnerStruct)
+    struct.array = wp.array([var1, var2], dtype=InnerStruct, device=device)
 
-    wp.launch(struct2_reader, dim=2, inputs=[struct])
+    wp.launch(struct2_reader, dim=2, inputs=[struct], device=device)
 
 
 @wp.struct
@@ -564,81 +565,111 @@ def test_dependent_module_import(c: DependentModuleImport_C):
     wp.tid()  # nop, we're just testing codegen
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestStruct(parent):
-        pass
 
-    add_function_test(TestStruct, "test_step", test_step, devices=devices)
-    add_function_test(TestStruct, "test_step_grad", test_step_grad, devices=devices)
-    add_kernel_test(TestStruct, kernel=test_empty, name="test_empty", dim=1, inputs=[Empty()], devices=devices)
+class TestStruct(unittest.TestCase):
+    pass
+
+
+add_function_test(TestStruct, "test_step", test_step, devices=devices)
+add_function_test(TestStruct, "test_step_grad", test_step_grad, devices=devices)
+add_kernel_test(TestStruct, kernel=test_empty, name="test_empty", dim=1, inputs=[Empty()], devices=devices)
+add_kernel_test(
+    TestStruct,
+    kernel=test_uninitialized,
+    name="test_uninitialized",
+    dim=1,
+    inputs=[Uninitialized()],
+    devices=devices,
+)
+add_kernel_test(TestStruct, kernel=test_return, name="test_return", dim=1, inputs=[], devices=devices)
+add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
+add_function_test(TestStruct, "test_nested_array_struct", test_nested_array_struct, devices=devices)
+add_function_test(TestStruct, "test_nested_empty_struct", test_nested_empty_struct, devices=devices)
+add_function_test(TestStruct, "test_struct_math_conversions", test_struct_math_conversions, devices=devices)
+add_function_test(
+    TestStruct, "test_struct_default_attributes_python", test_struct_default_attributes_python, devices=devices
+)
+add_kernel_test(
+    TestStruct,
+    name="test_struct_default_attributes",
+    kernel=test_struct_default_attributes_kernel,
+    dim=1,
+    inputs=[],
+    devices=devices,
+)
+
+add_kernel_test(
+    TestStruct,
+    name="test_struct_mutate_attributes",
+    kernel=test_struct_mutate_attributes_kernel,
+    dim=1,
+    inputs=[],
+    devices=devices,
+)
+add_kernel_test(
+    TestStruct,
+    kernel=test_uninitialized,
+    name="test_uninitialized",
+    dim=1,
+    inputs=[Uninitialized()],
+    devices=devices,
+)
+add_kernel_test(TestStruct, kernel=test_return, name="test_return", dim=1, inputs=[], devices=devices)
+add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
+add_function_test(TestStruct, "test_nested_array_struct", test_nested_array_struct, devices=devices)
+add_function_test(TestStruct, "test_nested_empty_struct", test_nested_empty_struct, devices=devices)
+add_function_test(TestStruct, "test_struct_math_conversions", test_struct_math_conversions, devices=devices)
+add_function_test(
+    TestStruct, "test_struct_default_attributes_python", test_struct_default_attributes_python, devices=devices
+)
+add_kernel_test(
+    TestStruct,
+    name="test_struct_default_attributes",
+    kernel=test_struct_default_attributes_kernel,
+    dim=1,
+    inputs=[],
+    devices=devices,
+)
+
+add_kernel_test(
+    TestStruct,
+    name="test_struct_mutate_attributes",
+    kernel=test_struct_mutate_attributes_kernel,
+    dim=1,
+    inputs=[],
+    devices=devices,
+)
+
+for device in devices:
     add_kernel_test(
         TestStruct,
-        kernel=test_uninitialized,
-        name="test_uninitialized",
+        kernel=test_struct_instantiate,
+        name="test_struct_instantiate",
         dim=1,
-        inputs=[Uninitialized()],
-        devices=devices,
-    )
-    add_kernel_test(TestStruct, kernel=test_return, name="test_return", dim=1, inputs=[], devices=devices)
-    add_function_test(TestStruct, "test_struct_attribute_error", test_struct_attribute_error, devices=devices)
-    add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
-    add_function_test(TestStruct, "test_nested_array_struct", test_nested_array_struct, devices=devices)
-    add_function_test(TestStruct, "test_nested_empty_struct", test_nested_empty_struct, devices=devices)
-    add_function_test(TestStruct, "test_struct_math_conversions", test_struct_math_conversions, devices=devices)
-    add_function_test(
-        TestStruct, "test_struct_default_attributes_python", test_struct_default_attributes_python, devices=devices
+        inputs=[wp.array([1], dtype=int, device=device)],
+        devices=[device],
     )
     add_kernel_test(
         TestStruct,
-        name="test_struct_default_attributes",
-        kernel=test_struct_default_attributes_kernel,
+        kernel=test_return_struct,
+        name="test_return_struct",
         dim=1,
-        inputs=[],
-        devices=devices,
+        inputs=[wp.zeros(10, dtype=int, device=device)],
+        devices=[device],
     )
 
-    add_kernel_test(
-        TestStruct,
-        name="test_struct_mutate_attributes",
-        kernel=test_struct_mutate_attributes_kernel,
-        dim=1,
-        inputs=[],
-        devices=devices,
-    )
-
-    for device in devices:
-        add_kernel_test(
-            TestStruct,
-            kernel=test_struct_instantiate,
-            name="test_struct_instantiate",
-            dim=1,
-            inputs=[wp.array([1], dtype=int, device=device)],
-            devices=[device],
-        )
-        add_kernel_test(
-            TestStruct,
-            kernel=test_return_struct,
-            name="test_return_struct",
-            dim=1,
-            inputs=[wp.zeros(10, dtype=int, device=device)],
-            devices=[device],
-        )
-
-    add_kernel_test(
-        TestStruct,
-        kernel=test_dependent_module_import,
-        name="test_dependent_module_import",
-        dim=1,
-        inputs=[DependentModuleImport_C()],
-        devices=devices,
-    )
-
-    return TestStruct
+add_kernel_test(
+    TestStruct,
+    kernel=test_dependent_module_import,
+    name="test_dependent_module_import",
+    dim=1,
+    inputs=[DependentModuleImport_C()],
+    devices=devices,
+)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

@@ -5,14 +5,11 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import os
-import sys
-
 import unittest
-from warp.tests.test_base import *
-import warp.tests.test_compile_consts_dummy
 
 import warp as wp
+import warp.tests.aux_test_compile_consts_dummy
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -40,7 +37,7 @@ def test_constants_bool():
 @wp.kernel
 def test_constants_int(a: int):
     if Foobar.ONE > 0:
-        a = 123 + Foobar.TWO + warp.tests.test_compile_consts_dummy.MINUS_ONE
+        a = 123 + Foobar.TWO + warp.tests.aux_test_compile_consts_dummy.MINUS_ONE
     else:
         a = 456 + LOCAL_ONE
     expect_eq(a, 124)
@@ -82,26 +79,23 @@ def test_constant_closure_capture(test, device):
     wp.launch(two_closure, dim=(1), inputs=[2], device=device)
 
 
-def register(parent):
-    class TestConstants(parent):
-        pass
+class TestConstants(unittest.TestCase):
+    pass
 
-    a = 0
-    x = 0.0
 
-    devices = get_test_devices()
+a = 0
+x = 0.0
 
-    add_kernel_test(TestConstants, test_constants_bool, dim=1, inputs=[], devices=devices)
-    add_kernel_test(TestConstants, test_constants_int, dim=1, inputs=[a], devices=devices)
-    add_kernel_test(TestConstants, test_constants_float, dim=1, inputs=[x], devices=devices)
+devices = get_test_devices()
 
-    add_function_test(TestConstants, "test_constant_math", test_constant_math, devices=devices)
-    add_function_test(TestConstants, "test_constant_closure_capture", test_constant_closure_capture, devices=devices)
+add_kernel_test(TestConstants, test_constants_bool, dim=1, inputs=[], devices=devices)
+add_kernel_test(TestConstants, test_constants_int, dim=1, inputs=[a], devices=devices)
+add_kernel_test(TestConstants, test_constants_float, dim=1, inputs=[x], devices=devices)
 
-    return TestConstants
+add_function_test(TestConstants, "test_constant_math", test_constant_math, devices=devices)
+add_function_test(TestConstants, "test_constant_closure_capture", test_constant_closure_capture, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

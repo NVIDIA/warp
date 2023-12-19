@@ -16,7 +16,6 @@
 
 import os
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 import warp as wp
@@ -194,6 +193,8 @@ class Example:
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_trajopt.usd")
     example = Example(stage_path, device=wp.get_preferred_device(), verbose=True)
 

@@ -7,11 +7,10 @@
 
 import unittest
 
-# include parent path
 import numpy as np
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -306,27 +305,25 @@ def test_launch_tuple_args(test, device):
     assert_np_equal(out.numpy(), np.array((0, 3, 6, 9)))
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestLaunch(parent):
-        pass
 
-    add_function_test(TestLaunch, "test_launch_1d", test1d, devices=devices)
-    add_function_test(TestLaunch, "test_launch_2d", test2d, devices=devices)
-    add_function_test(TestLaunch, "test_launch_3d", test3d, devices=devices)
-    add_function_test(TestLaunch, "test_launch_4d", test4d, devices=devices)
+class TestLaunch(unittest.TestCase):
+    pass
 
-    add_function_test(TestLaunch, "test_launch_cmd", test_launch_cmd, devices=devices)
-    add_function_test(TestLaunch, "test_launch_cmd_set_param", test_launch_cmd_set_param, devices=devices)
-    add_function_test(TestLaunch, "test_launch_cmd_set_ctype", test_launch_cmd_set_ctype, devices=devices)
-    add_function_test(TestLaunch, "test_launch_cmd_set_dim", test_launch_cmd_set_dim, devices=devices)
-    add_function_test(TestLaunch, "test_launch_cmd_empty", test_launch_cmd_empty, devices=devices)
 
-    return TestLaunch
+add_function_test(TestLaunch, "test_launch_1d", test1d, devices=devices)
+add_function_test(TestLaunch, "test_launch_2d", test2d, devices=devices)
+add_function_test(TestLaunch, "test_launch_3d", test3d, devices=devices)
+add_function_test(TestLaunch, "test_launch_4d", test4d, devices=devices)
+
+add_function_test(TestLaunch, "test_launch_cmd", test_launch_cmd, devices=devices)
+add_function_test(TestLaunch, "test_launch_cmd_set_param", test_launch_cmd_set_param, devices=devices)
+add_function_test(TestLaunch, "test_launch_cmd_set_ctype", test_launch_cmd_set_ctype, devices=devices)
+add_function_test(TestLaunch, "test_launch_cmd_set_dim", test_launch_cmd_set_dim, devices=devices)
+add_function_test(TestLaunch, "test_launch_cmd_empty", test_launch_cmd_empty, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

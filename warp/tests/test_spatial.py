@@ -1,9 +1,16 @@
+# Copyright (c) 2023 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
 import unittest
 
 import numpy as np
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -1956,188 +1963,186 @@ def test_transform_anon_type_instance(test, device, dtype, register_kernels=Fals
         tape.zero()
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestSpatial(parent):
-        pass
 
-    for dtype in np_float_types:
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_spatial_vector_constructors_{dtype.__name__}",
-            test_spatial_vector_constructors,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_spatial_vector_indexing_{dtype.__name__}",
-            test_spatial_vector_indexing,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_spatial_vector_scalar_multiplication_{dtype.__name__}",
-            test_spatial_vector_scalar_multiplication,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_spatial_vector_add_sub_{dtype.__name__}",
-            test_spatial_vector_add_sub,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestSpatial, f"test_spatial_dot_{dtype.__name__}", test_spatial_dot, devices=devices, dtype=dtype
-        )
-        add_function_test_register_kernel(
-            TestSpatial, f"test_spatial_cross_{dtype.__name__}", test_spatial_cross, devices=devices, dtype=dtype
-        )
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_spatial_top_bottom_{dtype.__name__}",
-            test_spatial_top_bottom,
-            devices=devices,
-            dtype=dtype,
-        )
+class TestSpatial(unittest.TestCase):
+    pass
 
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_transform_constructors_{dtype.__name__}",
-            test_transform_constructors,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_transform_anon_type_instance_{dtype.__name__}",
-            test_transform_anon_type_instance,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_transform_identity_{dtype.__name__}",
-            test_transform_identity,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_transform_indexing_{dtype.__name__}",
-            test_transform_indexing,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_transform_get_trans_rot_{dtype.__name__}",
-            test_transform_get_trans_rot,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_transform_multiply_{dtype.__name__}",
-            test_transform_multiply,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_transform_inverse_{dtype.__name__}",
-            test_transform_inverse,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_transform_point_vector_{dtype.__name__}",
-            test_transform_point_vector,
-            devices=devices,
-            dtype=dtype,
-        )
 
-        # are these two valid? They don't seem to be doing things you'd want to do,
-        # maybe they should be removed
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_transform_scalar_multiplication_{dtype.__name__}",
-            test_transform_scalar_multiplication,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_transform_add_sub_{dtype.__name__}",
-            test_transform_add_sub,
-            devices=devices,
-            dtype=dtype,
-        )
+for dtype in np_float_types:
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_spatial_vector_constructors_{dtype.__name__}",
+        test_spatial_vector_constructors,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_spatial_vector_indexing_{dtype.__name__}",
+        test_spatial_vector_indexing,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_spatial_vector_scalar_multiplication_{dtype.__name__}",
+        test_spatial_vector_scalar_multiplication,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_spatial_vector_add_sub_{dtype.__name__}",
+        test_spatial_vector_add_sub,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial, f"test_spatial_dot_{dtype.__name__}", test_spatial_dot, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestSpatial, f"test_spatial_cross_{dtype.__name__}", test_spatial_cross, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_spatial_top_bottom_{dtype.__name__}",
+        test_spatial_top_bottom,
+        devices=devices,
+        dtype=dtype,
+    )
 
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_spatial_matrix_constructors_{dtype.__name__}",
-            test_spatial_matrix_constructors,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_spatial_matrix_indexing_{dtype.__name__}",
-            test_spatial_matrix_indexing,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_spatial_matrix_scalar_multiplication_{dtype.__name__}",
-            test_spatial_matrix_scalar_multiplication,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_spatial_matrix_add_sub_{dtype.__name__}",
-            test_spatial_matrix_add_sub,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_spatial_matvec_multiplication_{dtype.__name__}",
-            test_spatial_matvec_multiplication,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_spatial_matmat_multiplication_{dtype.__name__}",
-            test_spatial_matmat_multiplication,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestSpatial,
-            f"test_spatial_outer_product_{dtype.__name__}",
-            test_spatial_outer_product,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestSpatial, f"test_spatial_adjoint_{dtype.__name__}", test_spatial_adjoint, devices=devices, dtype=dtype
-        )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_transform_constructors_{dtype.__name__}",
+        test_transform_constructors,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_transform_anon_type_instance_{dtype.__name__}",
+        test_transform_anon_type_instance,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_transform_identity_{dtype.__name__}",
+        test_transform_identity,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_transform_indexing_{dtype.__name__}",
+        test_transform_indexing,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_transform_get_trans_rot_{dtype.__name__}",
+        test_transform_get_trans_rot,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_transform_multiply_{dtype.__name__}",
+        test_transform_multiply,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_transform_inverse_{dtype.__name__}",
+        test_transform_inverse,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_transform_point_vector_{dtype.__name__}",
+        test_transform_point_vector,
+        devices=devices,
+        dtype=dtype,
+    )
 
-        # \TODO: test spatial_mass and spatial_jacobian
+    # are these two valid? They don't seem to be doing things you'd want to do,
+    # maybe they should be removed
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_transform_scalar_multiplication_{dtype.__name__}",
+        test_transform_scalar_multiplication,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_transform_add_sub_{dtype.__name__}",
+        test_transform_add_sub,
+        devices=devices,
+        dtype=dtype,
+    )
 
-    return TestSpatial
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_spatial_matrix_constructors_{dtype.__name__}",
+        test_spatial_matrix_constructors,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_spatial_matrix_indexing_{dtype.__name__}",
+        test_spatial_matrix_indexing,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_spatial_matrix_scalar_multiplication_{dtype.__name__}",
+        test_spatial_matrix_scalar_multiplication,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_spatial_matrix_add_sub_{dtype.__name__}",
+        test_spatial_matrix_add_sub,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_spatial_matvec_multiplication_{dtype.__name__}",
+        test_spatial_matvec_multiplication,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_spatial_matmat_multiplication_{dtype.__name__}",
+        test_spatial_matmat_multiplication,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_spatial_outer_product_{dtype.__name__}",
+        test_spatial_outer_product,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial, f"test_spatial_adjoint_{dtype.__name__}", test_spatial_adjoint, devices=devices, dtype=dtype
+    )
+
+    # \TODO: test spatial_mass and spatial_jacobian
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

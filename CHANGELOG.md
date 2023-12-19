@@ -148,7 +148,7 @@
 ## [0.9.0] - 2023-06-01
 
 - Add support for in-place modifications to vector, matrix, and struct types inside kernels (will warn during backward pass with `wp.verbose` if using gradients)
-- Add support for step-through VSCode debugging of kernel code with standalone LLVM compiler, see `wp.breakpoint()`, and `test_debug.py`
+- Add support for step-through VSCode debugging of kernel code with standalone LLVM compiler, see `wp.breakpoint()`, and `walkthrough_debug.py`
 - Add support for default values on built-in functions
 - Add support for multi-valued `@wp.func` functions
 - Add support for `pass`, `continue`, and `break` statements

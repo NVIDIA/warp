@@ -7,11 +7,10 @@
 
 import unittest
 
-# include parent path
 import numpy as np
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -470,6 +469,8 @@ def test_torch_autograd(test, device):
 def test_torch_graph_torch_stream(test, device):
     """Capture Torch graph on Torch stream"""
 
+    wp.load_module(device=device)
+
     import torch
 
     torch_device = wp.device_to_torch(device)
@@ -551,12 +552,14 @@ def test_warp_graph_warp_stream(test, device):
 
     # capture graph
     with wp.ScopedDevice(device), torch.cuda.stream(torch_stream):
-        wp.capture_begin()
-        t += 1.0
-        wp.launch(inc, dim=n, inputs=[a])
-        t += 1.0
-        wp.launch(inc, dim=n, inputs=[a])
-        g = wp.capture_end()
+        wp.capture_begin(force_module_load=False)
+        try:
+            t += 1.0
+            wp.launch(inc, dim=n, inputs=[a])
+            t += 1.0
+            wp.launch(inc, dim=n, inputs=[a])
+        finally:
+            g = wp.capture_end()
 
     # replay graph
     num_iters = 10
@@ -569,6 +572,8 @@ def test_warp_graph_warp_stream(test, device):
 
 def test_warp_graph_torch_stream(test, device):
     """Capture Warp graph on Torch stream"""
+
+    wp.load_module(device=device)
 
     import torch
 
@@ -587,12 +592,14 @@ def test_warp_graph_torch_stream(test, device):
 
     # capture graph
     with wp.ScopedStream(warp_stream), torch.cuda.stream(torch_stream):
-        wp.capture_begin()
-        t += 1.0
-        wp.launch(inc, dim=n, inputs=[a])
-        t += 1.0
-        wp.launch(inc, dim=n, inputs=[a])
-        g = wp.capture_end()
+        wp.capture_begin(force_module_load=False)
+        try:
+            t += 1.0
+            wp.launch(inc, dim=n, inputs=[a])
+            t += 1.0
+            wp.launch(inc, dim=n, inputs=[a])
+        finally:
+            g = wp.capture_end()
 
     # replay graph
     num_iters = 10
@@ -603,83 +610,79 @@ def test_warp_graph_torch_stream(test, device):
     assert passed.item()
 
 
-def register(parent):
-    class TestTorch(parent):
-        pass
+class TestTorch(unittest.TestCase):
+    pass
 
-    try:
-        import torch
 
-        # check which Warp devices work with Torch
-        # CUDA devices may fail if Torch was not compiled with CUDA support
-        test_devices = get_test_devices()
-        torch_compatible_devices = []
-        torch_compatible_cuda_devices = []
+test_devices = get_test_devices()
 
-        for d in test_devices:
-            try:
-                t = torch.arange(10, device=wp.device_to_torch(d))
-                t += 1
-                torch_compatible_devices.append(d)
-                if d.is_cuda:
-                    torch_compatible_cuda_devices.append(d)
-            except Exception as e:
-                print(f"Skipping Torch tests on device '{d}' due to exception: {e}")
+try:
+    import torch
 
-        if torch_compatible_devices:
-            add_function_test(TestTorch, "test_from_torch", test_from_torch, devices=torch_compatible_devices)
-            add_function_test(
-                TestTorch, "test_from_torch_slices", test_from_torch_slices, devices=torch_compatible_devices
-            )
-            add_function_test(
-                TestTorch,
-                "test_from_torch_zero_strides",
-                test_from_torch_zero_strides,
-                devices=torch_compatible_devices,
-            )
-            add_function_test(TestTorch, "test_to_torch", test_to_torch, devices=torch_compatible_devices)
-            add_function_test(TestTorch, "test_torch_zerocopy", test_torch_zerocopy, devices=torch_compatible_devices)
-            add_function_test(TestTorch, "test_torch_autograd", test_torch_autograd, devices=torch_compatible_devices)
+    # check which Warp devices work with Torch
+    # CUDA devices may fail if Torch was not compiled with CUDA support
+    torch_compatible_devices = []
+    torch_compatible_cuda_devices = []
 
-        if torch_compatible_cuda_devices:
-            add_function_test(
-                TestTorch,
-                "test_torch_graph_torch_stream",
-                test_torch_graph_torch_stream,
-                devices=torch_compatible_cuda_devices,
-            )
-            add_function_test(
-                TestTorch,
-                "test_torch_graph_warp_stream",
-                test_torch_graph_warp_stream,
-                devices=torch_compatible_cuda_devices,
-            )
-            add_function_test(
-                TestTorch,
-                "test_warp_graph_warp_stream",
-                test_warp_graph_warp_stream,
-                devices=torch_compatible_cuda_devices,
-            )
-            add_function_test(
-                TestTorch,
-                "test_warp_graph_torch_stream",
-                test_warp_graph_torch_stream,
-                devices=torch_compatible_cuda_devices,
-            )
+    for d in test_devices:
+        try:
+            t = torch.arange(10, device=wp.device_to_torch(d))
+            t += 1
+            torch_compatible_devices.append(d)
+            if d.is_cuda:
+                torch_compatible_cuda_devices.append(d)
+        except Exception as e:
+            print(f"Skipping Torch tests on device '{d}' due to exception: {e}")
 
-        # multi-GPU tests
-        if len(torch_compatible_cuda_devices) > 1:
-            add_function_test(TestTorch, "test_torch_mgpu_from_torch", test_torch_mgpu_from_torch)
-            add_function_test(TestTorch, "test_torch_mgpu_to_torch", test_torch_mgpu_to_torch)
-            add_function_test(TestTorch, "test_torch_mgpu_interop", test_torch_mgpu_interop)
+    if torch_compatible_devices:
+        add_function_test(TestTorch, "test_from_torch", test_from_torch, devices=torch_compatible_devices)
+        add_function_test(TestTorch, "test_from_torch_slices", test_from_torch_slices, devices=torch_compatible_devices)
+        add_function_test(
+            TestTorch,
+            "test_from_torch_zero_strides",
+            test_from_torch_zero_strides,
+            devices=torch_compatible_devices,
+        )
+        add_function_test(TestTorch, "test_to_torch", test_to_torch, devices=torch_compatible_devices)
+        add_function_test(TestTorch, "test_torch_zerocopy", test_torch_zerocopy, devices=torch_compatible_devices)
+        add_function_test(TestTorch, "test_torch_autograd", test_torch_autograd, devices=torch_compatible_devices)
 
-    except Exception as e:
-        print(f"Skipping Torch tests due to exception: {e}")
+    if torch_compatible_cuda_devices:
+        add_function_test(
+            TestTorch,
+            "test_torch_graph_torch_stream",
+            test_torch_graph_torch_stream,
+            devices=torch_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestTorch,
+            "test_torch_graph_warp_stream",
+            test_torch_graph_warp_stream,
+            devices=torch_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestTorch,
+            "test_warp_graph_warp_stream",
+            test_warp_graph_warp_stream,
+            devices=torch_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestTorch,
+            "test_warp_graph_torch_stream",
+            test_warp_graph_torch_stream,
+            devices=torch_compatible_cuda_devices,
+        )
 
-    return TestTorch
+    # multi-GPU tests
+    if len(torch_compatible_cuda_devices) > 1:
+        add_function_test(TestTorch, "test_torch_mgpu_from_torch", test_torch_mgpu_from_torch)
+        add_function_test(TestTorch, "test_torch_mgpu_to_torch", test_torch_mgpu_to_torch)
+        add_function_test(TestTorch, "test_torch_mgpu_interop", test_torch_mgpu_interop)
+
+except Exception as e:
+    print(f"Skipping Torch tests due to exception: {e}")
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

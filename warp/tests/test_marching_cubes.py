@@ -5,14 +5,12 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
+import unittest
+
 import numpy as np
-import math
 
 import warp as wp
-from warp.tests.test_base import *
-
-import unittest
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -39,7 +37,7 @@ def test_marching_cubes(test, device):
 
     radius = dim / 4.0
 
-    wp.launch(make_field, dim=field.shape, inputs=[field, wp.vec3(dim / 2, dim / 2, dim / 2), radius], device="cuda")
+    wp.launch(make_field, dim=field.shape, inputs=[field, wp.vec3(dim / 2, dim / 2, dim / 2), radius], device=device)
 
     iso.surface(field=field, threshold=0.0)
 
@@ -52,18 +50,16 @@ def test_marching_cubes(test, device):
     iso.resize(nx=dim * 2, ny=dim * 2, nz=dim * 2, max_verts=max_verts, max_tris=max_tris)
 
 
-def register(parent):
-    devices = ["cuda"]
+devices = get_unique_cuda_test_devices()
 
-    class TestMarchingCubes(parent):
-        pass
 
-    add_function_test(TestMarchingCubes, "test_marching_cubes", test_marching_cubes, devices=devices)
+class TestMarchingCubes(unittest.TestCase):
+    pass
 
-    return TestMarchingCubes
+
+add_function_test(TestMarchingCubes, "test_marching_cubes", test_marching_cubes, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

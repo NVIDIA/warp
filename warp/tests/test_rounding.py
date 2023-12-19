@@ -7,10 +7,10 @@
 
 import unittest
 
-import warp as wp
-from warp.tests.test_base import *
-
 import numpy as np
+
+import warp as wp
+from warp.tests.unittest_utils import *
 
 compare_to_numpy = False
 print_results = False
@@ -165,18 +165,15 @@ def test_rounding(test, device):
         print("----------------------------------------------")
 
 
-def register(parent):
-    class TestRounding(parent):
-        pass
+class TestRounding(unittest.TestCase):
+    pass
 
-    devices = get_test_devices()
 
-    add_function_test(TestRounding, "test_rounding", test_rounding, devices=devices)
+devices = get_test_devices()
 
-    return TestRounding
+add_function_test(TestRounding, "test_rounding", test_rounding, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

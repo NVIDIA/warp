@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -67,26 +67,26 @@ def test_for_loop_grad(test, device):
 
 
 def test_for_loop_graph_grad(test, device):
+    wp.load_module(device=device)
+
     n = 32
     val = np.ones(n, dtype=np.float32)
 
     x = wp.array(val, device=device, requires_grad=True)
     sum = wp.zeros(1, dtype=wp.float32, device=device, requires_grad=True)
 
-    wp.force_load()
+    wp.capture_begin(device, force_module_load=False)
+    try:
+        tape = wp.Tape()
+        with tape:
+            wp.launch(for_loop_grad, dim=1, inputs=[n, x, sum], device=device)
 
-    wp.capture_begin()
-
-    tape = wp.Tape()
-    with tape:
-        wp.launch(for_loop_grad, dim=1, inputs=[n, x, sum], device=device)
-
-    tape.backward(loss=sum)
-
-    graph = wp.capture_end()
+        tape.backward(loss=sum)
+    finally:
+        graph = wp.capture_end(device)
 
     wp.capture_launch(graph)
-    wp.synchronize()
+    wp.synchronize_device(device)
 
     # ensure forward pass outputs persist
     assert_np_equal(sum.numpy(), 2.0 * np.sum(x.numpy()))
@@ -94,7 +94,7 @@ def test_for_loop_graph_grad(test, device):
     assert_np_equal(x.grad.numpy(), 2.0 * val)
 
     wp.capture_launch(graph)
-    wp.synchronize()
+    wp.synchronize_device(device)
 
 
 @wp.kernel
@@ -610,31 +610,31 @@ def test_struct_attribute_gradient(test_case, device):
     test_case.assertEqual(src.grad.numpy()[0], 5.0)
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestGrad(parent):
-        pass
 
-    # add_function_test(TestGrad, "test_while_loop_grad", test_while_loop_grad, devices=devices)
-    add_function_test(TestGrad, "test_for_loop_nested_for_grad", test_for_loop_nested_for_grad, devices=devices)
-    add_function_test(TestGrad, "test_scalar_grad", test_scalar_grad, devices=devices)
-    add_function_test(TestGrad, "test_for_loop_grad", test_for_loop_grad, devices=devices)
-    add_function_test(TestGrad, "test_for_loop_graph_grad", test_for_loop_graph_grad, devices=wp.get_cuda_devices())
-    add_function_test(TestGrad, "test_for_loop_nested_if_grad", test_for_loop_nested_if_grad, devices=devices)
-    add_function_test(TestGrad, "test_preserve_outputs_grad", test_preserve_outputs_grad, devices=devices)
-    add_function_test(TestGrad, "test_vector_math_grad", test_vector_math_grad, devices=devices)
-    add_function_test(TestGrad, "test_matrix_math_grad", test_matrix_math_grad, devices=devices)
-    add_function_test(TestGrad, "test_3d_math_grad", test_3d_math_grad, devices=devices)
-    add_function_test(TestGrad, "test_multi_valued_function_grad", test_multi_valued_function_grad, devices=devices)
-    add_function_test(TestGrad, "test_mesh_grad", test_mesh_grad, devices=devices)
-    add_function_test(TestGrad, "test_name_clash", test_name_clash, devices=devices)
-    add_function_test(TestGrad, "test_struct_attribute_gradient", test_struct_attribute_gradient, devices=devices)
+class TestGrad(unittest.TestCase):
+    pass
 
-    return TestGrad
+
+# add_function_test(TestGrad, "test_while_loop_grad", test_while_loop_grad, devices=devices)
+add_function_test(TestGrad, "test_for_loop_nested_for_grad", test_for_loop_nested_for_grad, devices=devices)
+add_function_test(TestGrad, "test_scalar_grad", test_scalar_grad, devices=devices)
+add_function_test(TestGrad, "test_for_loop_grad", test_for_loop_grad, devices=devices)
+add_function_test(
+    TestGrad, "test_for_loop_graph_grad", test_for_loop_graph_grad, devices=get_unique_cuda_test_devices()
+)
+add_function_test(TestGrad, "test_for_loop_nested_if_grad", test_for_loop_nested_if_grad, devices=devices)
+add_function_test(TestGrad, "test_preserve_outputs_grad", test_preserve_outputs_grad, devices=devices)
+add_function_test(TestGrad, "test_vector_math_grad", test_vector_math_grad, devices=devices)
+add_function_test(TestGrad, "test_matrix_math_grad", test_matrix_math_grad, devices=devices)
+add_function_test(TestGrad, "test_3d_math_grad", test_3d_math_grad, devices=devices)
+add_function_test(TestGrad, "test_multi_valued_function_grad", test_multi_valued_function_grad, devices=devices)
+add_function_test(TestGrad, "test_mesh_grad", test_mesh_grad, devices=devices)
+add_function_test(TestGrad, "test_name_clash", test_name_clash, devices=devices)
+add_function_test(TestGrad, "test_struct_attribute_gradient", test_struct_attribute_gradient, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2, failfast=False)

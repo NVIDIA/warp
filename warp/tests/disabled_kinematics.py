@@ -5,12 +5,12 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import math
 import unittest
 
 import warp as wp
 import warp.sim
-import math
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -221,21 +221,19 @@ def test_fk_ik_complex_joint_mechanism(test, device):
     check_fk_ik(builder, device)
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestGrad(parent):
-        pass
 
-    add_function_test(TestGrad, "test_fk_ik_ant", test_fk_ik_ant, devices=devices)
-    add_function_test(
-        TestGrad, "test_fk_ik_complex_joint_mechanism", test_fk_ik_complex_joint_mechanism, devices=devices
-    )
+class TestKinematics(unittest.TestCase):
+    pass
 
-    return TestGrad
+
+add_function_test(TestKinematics, "test_fk_ik_ant", test_fk_ik_ant, devices=devices)
+add_function_test(
+    TestKinematics, "test_fk_ik_complex_joint_mechanism", test_fk_ik_complex_joint_mechanism, devices=devices
+)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2, failfast=False)

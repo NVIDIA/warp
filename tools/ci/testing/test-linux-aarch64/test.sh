@@ -16,4 +16,4 @@ echo "Installing Warp to Python"
 $PYTHON -m pip install -e "$SCRIPT_DIR/../../../../."
 
 echo "Running tests"
-$PYTHON "$SCRIPT_DIR/../../../../warp/tests/test_all.py"
+$PYTHON -m warp.tests

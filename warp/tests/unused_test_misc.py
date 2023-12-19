@@ -1,7 +1,16 @@
-import warp as wp
+# Copyright (c) 2021 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
 import numpy as np
 
+import warp as wp
+
 wp.init()
+
 
 @wp.kernel
 def arange(out: wp.array(dtype=int)):
@@ -28,7 +37,7 @@ for i in range(5):
 
 graph = wp.capture_end()
 
-#---------------------------------------
+# ---------------------------------------
 
 ref = np.arange(0, n, dtype=int)
 wp.capture_launch(graph)
@@ -37,7 +46,7 @@ for i in range(5):
     print(arrays[i].numpy())
 
 
-#---------------------------------------
+# ---------------------------------------
 
 n = 16
 arrays = []
@@ -49,7 +58,7 @@ for i in range(5):
 for i in range(5):
     cmd.set_dim(n)
     cmd.set_param(arrays[i])
-    
+
     cmd.update_graph()
 
 
@@ -60,4 +69,3 @@ ref = np.arange(0, n, dtype=int)
 
 for i in range(5):
     print(arrays[i].numpy())
-

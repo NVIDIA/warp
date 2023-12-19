@@ -10,7 +10,7 @@ import unittest
 import numpy as np
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -127,28 +127,22 @@ def test_tape_dot_product(test, device):
     assert_np_equal(tape.gradients[y].numpy(), x.numpy())
 
 
-def test_tape_no_nested_tapes(test, device):
-    with test.assertRaises(RuntimeError):
-        with wp.Tape():
+devices = get_test_devices()
+
+
+class TestTape(unittest.TestCase):
+    def test_tape_no_nested_tapes(self):
+        with self.assertRaises(RuntimeError):
             with wp.Tape():
-                pass
+                with wp.Tape():
+                    pass
 
 
-def register(parent):
-    devices = get_test_devices()
-
-    class TestTape(parent):
-        pass
-
-    add_function_test(TestTape, "test_tape_mul_constant", test_tape_mul_constant, devices=devices)
-    add_function_test(TestTape, "test_tape_mul_variable", test_tape_mul_variable, devices=devices)
-    add_function_test(TestTape, "test_tape_dot_product", test_tape_dot_product, devices=devices)
-    add_function_test(TestTape, "test_tape_no_nested_tapes", test_tape_no_nested_tapes, devices=devices)
-
-    return TestTape
+add_function_test(TestTape, "test_tape_mul_constant", test_tape_mul_constant, devices=devices)
+add_function_test(TestTape, "test_tape_mul_variable", test_tape_mul_variable, devices=devices)
+add_function_test(TestTape, "test_tape_dot_product", test_tape_dot_product, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

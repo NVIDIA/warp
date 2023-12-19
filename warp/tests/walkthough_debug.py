@@ -49,10 +49,7 @@
 #
 ####################################################################################################
 
-import unittest
-
 import warp as wp
-from warp.tests.test_base import *
 
 # The init() function prints the directory of the kernel cache which contains the .cpp files
 # generated from Warp kernels. You can put breakpoints in these C++ files through Visual Studio Code,
@@ -67,7 +64,7 @@ assert wp.context.runtime.core.is_debug_enabled(), "Warp must be built in debug 
 
 
 @wp.kernel
-def test_breakpoint(n: int):
+def example_breakpoint(n: int):
     a = int(0)
 
     for i in range(0, n):
@@ -83,16 +80,6 @@ def test_breakpoint(n: int):
     wp.expect_eq(a, 5)
 
 
-def register(parent):
-    class TestDebug(parent):
-        pass
-
-    add_kernel_test(TestDebug, name="test_breakpoint", kernel=test_breakpoint, dim=1, inputs=[10], devices=["cpu"])
-
-    return TestDebug
-
-
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
-    unittest.main(verbosity=2, failfast=True)
+    wp.launch(example_breakpoint, dim=1, inputs=[10], device="cpu")

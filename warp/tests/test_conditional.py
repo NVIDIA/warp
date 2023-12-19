@@ -8,7 +8,7 @@
 import unittest
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -203,46 +203,44 @@ def test_conditional_chain_mixed():
 
 def test_conditional_unequal_types(test: unittest.TestCase, device):
     # The bad kernel must be in a separate module, otherwise the current module would fail to load
-    from warp.tests.test_conditional_unequal_types_kernels import unequal_types_kernel
+    from warp.tests.aux_test_conditional_unequal_types_kernels import (
+        unequal_types_kernel,
+    )
 
     with test.assertRaises(TypeError):
         wp.launch(unequal_types_kernel, dim=(1,), inputs=[], device=device)
 
     # remove all references to the bad module so that subsequent calls to wp.force_load()
     # won't try to load it unless we explicitly re-import it again
-    del wp.context.user_modules["warp.tests.test_conditional_unequal_types_kernels"]
-    del sys.modules["warp.tests.test_conditional_unequal_types_kernels"]
+    del wp.context.user_modules["warp.tests.aux_test_conditional_unequal_types_kernels"]
+    del sys.modules["warp.tests.aux_test_conditional_unequal_types_kernels"]
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestConditional(parent):
-        pass
 
-    add_kernel_test(TestConditional, kernel=test_conditional_if_else, dim=1, devices=devices)
-    add_kernel_test(TestConditional, kernel=test_conditional_if_else_nested, dim=1, devices=devices)
-    add_kernel_test(TestConditional, kernel=test_boolean_and, dim=1, devices=devices)
-    add_kernel_test(TestConditional, kernel=test_boolean_or, dim=1, devices=devices)
-    add_kernel_test(TestConditional, kernel=test_boolean_compound, dim=1, devices=devices)
-    add_kernel_test(TestConditional, kernel=test_boolean_literal, dim=1, devices=devices)
-    add_kernel_test(TestConditional, kernel=test_int_logical_not, dim=1, devices=devices)
-    add_kernel_test(TestConditional, kernel=test_int_conditional_assign_overload, dim=1, devices=devices)
-    add_kernel_test(TestConditional, kernel=test_bool_param_conditional, dim=1, inputs=[True], devices=devices)
-    add_kernel_test(TestConditional, kernel=test_conditional_chain_basic, dim=1, devices=devices)
-    add_kernel_test(TestConditional, kernel=test_conditional_chain_empty_range, dim=1, devices=devices)
-    add_kernel_test(TestConditional, kernel=test_conditional_chain_faker, dim=1, devices=devices)
-    add_kernel_test(TestConditional, kernel=test_conditional_chain_and, dim=1, devices=devices)
-    add_kernel_test(TestConditional, kernel=test_conditional_chain_eqs, dim=1, devices=devices)
-    add_kernel_test(TestConditional, kernel=test_conditional_chain_mixed, dim=1, devices=devices)
-    add_function_test(
-        TestConditional, "test_conditional_unequal_types", test_conditional_unequal_types, devices=devices
-    )
+class TestConditional(unittest.TestCase):
+    pass
 
-    return TestConditional
+
+add_kernel_test(TestConditional, kernel=test_conditional_if_else, dim=1, devices=devices)
+add_kernel_test(TestConditional, kernel=test_conditional_if_else_nested, dim=1, devices=devices)
+add_kernel_test(TestConditional, kernel=test_boolean_and, dim=1, devices=devices)
+add_kernel_test(TestConditional, kernel=test_boolean_or, dim=1, devices=devices)
+add_kernel_test(TestConditional, kernel=test_boolean_compound, dim=1, devices=devices)
+add_kernel_test(TestConditional, kernel=test_boolean_literal, dim=1, devices=devices)
+add_kernel_test(TestConditional, kernel=test_int_logical_not, dim=1, devices=devices)
+add_kernel_test(TestConditional, kernel=test_int_conditional_assign_overload, dim=1, devices=devices)
+add_kernel_test(TestConditional, kernel=test_bool_param_conditional, dim=1, inputs=[True], devices=devices)
+add_kernel_test(TestConditional, kernel=test_conditional_chain_basic, dim=1, devices=devices)
+add_kernel_test(TestConditional, kernel=test_conditional_chain_empty_range, dim=1, devices=devices)
+add_kernel_test(TestConditional, kernel=test_conditional_chain_faker, dim=1, devices=devices)
+add_kernel_test(TestConditional, kernel=test_conditional_chain_and, dim=1, devices=devices)
+add_kernel_test(TestConditional, kernel=test_conditional_chain_eqs, dim=1, devices=devices)
+add_kernel_test(TestConditional, kernel=test_conditional_chain_mixed, dim=1, devices=devices)
+add_function_test(TestConditional, "test_conditional_unequal_types", test_conditional_unequal_types, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)
