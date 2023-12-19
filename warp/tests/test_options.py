@@ -8,7 +8,7 @@
 import unittest
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -93,20 +93,19 @@ def test_options_4(test, device):
     assert_np_equal(tape.gradients[x].numpy(), np.array(0.0))
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestOptions(parent):
-        pass
 
-    add_function_test(TestOptions, "test_options_1", test_options_1, devices=devices)
-    add_function_test(TestOptions, "test_options_2", test_options_2, devices=devices)
-    add_function_test(TestOptions, "test_options_3", test_options_3, devices=devices)
-    add_function_test(TestOptions, "test_options_4", test_options_4, devices=devices)
-    return TestOptions
+class TestOptions(unittest.TestCase):
+    pass
+
+
+add_function_test(TestOptions, "test_options_1", test_options_1, devices=devices)
+add_function_test(TestOptions, "test_options_2", test_options_2, devices=devices)
+add_function_test(TestOptions, "test_options_3", test_options_3, devices=devices)
+add_function_test(TestOptions, "test_options_4", test_options_4, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

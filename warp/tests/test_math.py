@@ -5,13 +5,13 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-from typing import NamedTuple
 import unittest
+from typing import NamedTuple
 
 import numpy as np
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -176,19 +176,18 @@ def test_mat_type(test, device):
         raise ValueError("mat to string error")
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestMath(parent):
-        pass
 
-    add_function_test(TestMath, "test_scalar_math", test_scalar_math, devices=devices)
-    add_function_test(TestMath, "test_vec_type", test_vec_type, devices=devices)
-    add_function_test(TestMath, "test_mat_type", test_mat_type, devices=devices)
-    return TestMath
+class TestMath(unittest.TestCase):
+    pass
+
+
+add_function_test(TestMath, "test_scalar_math", test_scalar_math, devices=devices)
+add_function_test(TestMath, "test_vec_type", test_vec_type, devices=devices)
+add_function_test(TestMath, "test_mat_type", test_mat_type, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

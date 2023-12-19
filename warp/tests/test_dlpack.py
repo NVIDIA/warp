@@ -5,13 +5,14 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import numpy as np
-import unittest
-import os
 import ctypes
+import os
+import unittest
+
+import numpy as np
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -299,79 +300,77 @@ def test_dlpack_jax_to_warp(test, device):
         assert_np_equal(a2.numpy(), np.asarray(j))
 
 
-def register(parent):
-    class TestDLPack(parent):
-        pass
+class TestDLPack(unittest.TestCase):
+    pass
 
-    devices = get_test_devices()
 
-    add_function_test(TestDLPack, "test_dlpack_warp_to_warp", test_dlpack_warp_to_warp, devices=devices)
-    add_function_test(TestDLPack, "test_dlpack_dtypes_and_shapes", test_dlpack_dtypes_and_shapes, devices=devices)
+devices = get_test_devices()
 
-    # torch interop via dlpack
-    try:
-        import torch
-        import torch.utils.dlpack
+add_function_test(TestDLPack, "test_dlpack_warp_to_warp", test_dlpack_warp_to_warp, devices=devices)
+add_function_test(TestDLPack, "test_dlpack_dtypes_and_shapes", test_dlpack_dtypes_and_shapes, devices=devices)
 
-        # check which Warp devices work with Torch
-        # CUDA devices may fail if Torch was not compiled with CUDA support
-        test_devices = get_test_devices()
-        torch_compatible_devices = []
-        for d in test_devices:
-            try:
-                t = torch.arange(10, device=wp.device_to_torch(d))
-                t += 1
-                torch_compatible_devices.append(d)
-            except Exception as e:
-                print(f"Skipping Torch DLPack tests on device '{d}' due to exception: {e}")
+# torch interop via dlpack
+try:
+    import torch
+    import torch.utils.dlpack
 
-        if torch_compatible_devices:
-            add_function_test(
-                TestDLPack, "test_dlpack_warp_to_torch", test_dlpack_warp_to_torch, devices=torch_compatible_devices
-            )
-            add_function_test(
-                TestDLPack, "test_dlpack_torch_to_warp", test_dlpack_torch_to_warp, devices=torch_compatible_devices
-            )
+    # check which Warp devices work with Torch
+    # CUDA devices may fail if Torch was not compiled with CUDA support
+    test_devices = get_test_devices()
+    torch_compatible_devices = []
+    for d in test_devices:
+        try:
+            t = torch.arange(10, device=wp.device_to_torch(d))
+            t += 1
+            torch_compatible_devices.append(d)
+        except Exception as e:
+            print(f"Skipping Torch DLPack tests on device '{d}' due to exception: {e}")
 
-    except Exception as e:
-        print(f"Skipping Torch DLPack tests due to exception: {e}")
+    if torch_compatible_devices:
+        add_function_test(
+            TestDLPack, "test_dlpack_warp_to_torch", test_dlpack_warp_to_torch, devices=torch_compatible_devices
+        )
+        add_function_test(
+            TestDLPack, "test_dlpack_torch_to_warp", test_dlpack_torch_to_warp, devices=torch_compatible_devices
+        )
 
-    # jax interop via dlpack
-    try:
-        # prevent Jax from gobbling up GPU memory
-        os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+except Exception as e:
+    print(f"Skipping Torch DLPack tests due to exception: {e}")
 
-        import jax
-        import jax.dlpack
+# jax interop via dlpack
+try:
+    # prevent Jax from gobbling up GPU memory
+    os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+    os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
 
-        # check which Warp devices work with Jax
-        # CUDA devices may fail if Jax cannot find a CUDA Toolkit
-        test_devices = get_test_devices()
-        jax_compatible_devices = []
-        for d in test_devices:
-            try:
-                with jax.default_device(wp.device_to_jax(d)):
-                    j = jax.numpy.arange(10, dtype=jax.numpy.float32)
-                    j += 1
-                jax_compatible_devices.append(d)
-            except Exception as e:
-                print(f"Skipping Jax DLPack tests on device '{d}' due to exception: {e}")
+    import jax
+    import jax.dlpack
 
-        if jax_compatible_devices:
-            add_function_test(
-                TestDLPack, "test_dlpack_warp_to_jax", test_dlpack_warp_to_jax, devices=jax_compatible_devices
-            )
-            add_function_test(
-                TestDLPack, "test_dlpack_jax_to_warp", test_dlpack_jax_to_warp, devices=jax_compatible_devices
-            )
+    # check which Warp devices work with Jax
+    # CUDA devices may fail if Jax cannot find a CUDA Toolkit
+    test_devices = get_test_devices()
+    jax_compatible_devices = []
+    for d in test_devices:
+        try:
+            with jax.default_device(wp.device_to_jax(d)):
+                j = jax.numpy.arange(10, dtype=jax.numpy.float32)
+                j += 1
+            jax_compatible_devices.append(d)
+        except Exception as e:
+            print(f"Skipping Jax DLPack tests on device '{d}' due to exception: {e}")
 
-    except Exception as e:
-        print(f"Skipping Jax DLPack tests due to exception: {e}")
+    if jax_compatible_devices:
+        add_function_test(
+            TestDLPack, "test_dlpack_warp_to_jax", test_dlpack_warp_to_jax, devices=jax_compatible_devices
+        )
+        add_function_test(
+            TestDLPack, "test_dlpack_jax_to_warp", test_dlpack_jax_to_warp, devices=jax_compatible_devices
+        )
 
-    return TestDLPack
+except Exception as e:
+    print(f"Skipping Jax DLPack tests due to exception: {e}")
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

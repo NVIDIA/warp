@@ -5,18 +5,10 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# This file is used to test reloading module references.
-
 import warp as wp
-import warp.tests.test_reference as ref
-
-wp.init()
 
 
 @wp.kernel
-def kern(expect: float):
-    wp.expect_eq(ref.magic(), expect)
-
-
-def run(expect, device):
-    wp.launch(kern, dim=1, inputs=[expect], device=device)
+def unresolved_func_kernel():
+    # this should trigger an exception due to unresolved function
+    x = wp.missing_func(42)

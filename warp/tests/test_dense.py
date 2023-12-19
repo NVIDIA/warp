@@ -1,10 +1,14 @@
-import numpy as np
-import math
-
-import warp as wp
-from warp.tests.test_base import *
+# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import unittest
+
+import warp as wp
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -42,20 +46,22 @@ def eval_dense_solve(
     wp.dense_solve(n, A, L, b, x)
 
 
-def register(parent):
-    devices = get_test_devices()
-
-    class TestDense(parent):
-        pass
-
+def test_dense_compilation(test, device):
     # just testing compilation of the dense matrix routines
     # most are deprecated / WIP
-    wp.force_load()
+    wp.load_module(device=device)
 
-    return TestDense
+
+devices = get_test_devices()
+
+
+class TestDense(unittest.TestCase):
+    pass
+
+
+add_function_test(TestDense, "test_dense_compilation", test_dense_compilation, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

@@ -85,6 +85,7 @@ class Example:
     def __init__(self, stage):
         rng = np.random.default_rng()
 
+        self.device = wp.get_device()
         self.query_count = 1024
         self.has_queried = False
 
@@ -117,8 +118,8 @@ class Example:
         self.array_result = wp.zeros(self.query_count, dtype=int)
         self.array_xforms = wp.array(self.xforms, dtype=wp.transform)
 
-        # force module load (for accurate profiling)
-        wp.force_load()
+        # compile and load the module up front (for accurate profiling)
+        wp.load_module(device=self.device)
 
     def update(self):
         with wp.ScopedTimer("intersect", active=True):

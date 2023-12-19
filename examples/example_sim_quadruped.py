@@ -70,6 +70,7 @@ def compute_env_offsets(num_envs, env_offset=(5.0, 0.0, 5.0), up_axis="Y"):
 
 class Example:
     def __init__(self, stage=None, num_envs=1, enable_rendering=True, print_timers=True):
+        self.device = wp.get_device()
         self.num_envs = num_envs
         articulation_builder = wp.sim.ModelBuilder()
         wp.sim.parse_urdf(
@@ -135,9 +136,11 @@ class Example:
 
         if self.use_graph:
             # create update graph
-            wp.capture_begin()
-            self.update()
-            self.graph = wp.capture_end()
+            wp.capture_begin(self.device)
+            try:
+                self.update()
+            finally:
+                self.graph = wp.capture_end(self.device)
 
     def update(self):
         with wp.ScopedTimer("simulate", active=True, print=self.print_timers):

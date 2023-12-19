@@ -10,7 +10,7 @@ import unittest
 import numpy as np
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -98,7 +98,6 @@ def test_compute_bounds(test, device):
 
     lower_view = lowers.numpy()
     upper_view = uppers.numpy()
-    wp.synchronize()
 
     # Confirm the bounds of each triangle are correct.
     test.assertTrue(lower_view[0][0] == 0)
@@ -150,8 +149,6 @@ def test_mesh_query_aabb_count_overlap(test, device):
         device=device,
     )
 
-    wp.synchronize()
-
     view = counts.numpy()
 
     # 2 triangles that share a vertex having overlapping AABBs.
@@ -190,8 +187,6 @@ def test_mesh_query_aabb_count_nonoverlap(test, device):
         device=device,
     )
 
-    wp.synchronize()
-
     view = counts.numpy()
 
     # AABB query only returns one triangle at a time, the triangles are not close enough to overlap.
@@ -199,30 +194,28 @@ def test_mesh_query_aabb_count_nonoverlap(test, device):
         test.assertTrue(c == 1)
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestMeshQueryAABBMethods(parent):
-        pass
 
-    add_function_test(TestMeshQueryAABBMethods, "test_compute_bounds", test_compute_bounds, devices=devices)
-    add_function_test(
-        TestMeshQueryAABBMethods,
-        "test_mesh_query_aabb_count_overlap",
-        test_mesh_query_aabb_count_overlap,
-        devices=devices,
-    )
-    add_function_test(
-        TestMeshQueryAABBMethods,
-        "test_mesh_query_aabb_count_nonoverlap",
-        test_mesh_query_aabb_count_nonoverlap,
-        devices=devices,
-    )
+class TestMeshQueryAABBMethods(unittest.TestCase):
+    pass
 
-    return TestMeshQueryAABBMethods
+
+add_function_test(TestMeshQueryAABBMethods, "test_compute_bounds", test_compute_bounds, devices=devices)
+add_function_test(
+    TestMeshQueryAABBMethods,
+    "test_mesh_query_aabb_count_overlap",
+    test_mesh_query_aabb_count_overlap,
+    devices=devices,
+)
+add_function_test(
+    TestMeshQueryAABBMethods,
+    "test_mesh_query_aabb_count_nonoverlap",
+    test_mesh_query_aabb_count_nonoverlap,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

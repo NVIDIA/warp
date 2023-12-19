@@ -1,9 +1,16 @@
+# Copyright (c) 2023 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
 import unittest
 
 import numpy as np
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -102,25 +109,22 @@ def test_fp16_grad(test, device):
     assert_np_equal(input.grad.numpy(), np.ones(len(s)) * 2.0)
 
 
-def register(parent):
-    class TestFp16(parent):
-        pass
+class TestFp16(unittest.TestCase):
+    pass
 
-    devices = []
-    if wp.is_cpu_available():
-        devices.append("cpu")
-    for cuda_device in wp.get_cuda_devices():
-        if cuda_device.arch >= 70:
-            devices.append(cuda_device)
 
-    add_function_test(TestFp16, "test_fp16_conversion", test_fp16_conversion, devices=devices)
-    add_function_test(TestFp16, "test_fp16_grad", test_fp16_grad, devices=devices)
-    add_function_test(TestFp16, "test_fp16_kernel_parameter", test_fp16_kernel_parameter, devices=devices)
+devices = []
+if wp.is_cpu_available():
+    devices.append("cpu")
+for cuda_device in get_unique_cuda_test_devices():
+    if cuda_device.arch >= 70:
+        devices.append(cuda_device)
 
-    return TestFp16
+add_function_test(TestFp16, "test_fp16_conversion", test_fp16_conversion, devices=devices)
+add_function_test(TestFp16, "test_fp16_grad", test_fp16_grad, devices=devices)
+add_function_test(TestFp16, "test_fp16_kernel_parameter", test_fp16_kernel_parameter, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

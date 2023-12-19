@@ -5,14 +5,16 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import unittest
 from dataclasses import dataclass
 from typing import Any
-import unittest
 
 import numpy as np
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
+
+wp.init()
 
 
 @dataclass
@@ -162,8 +164,6 @@ TEST_DATA = {
     ),
 }
 
-wp.init()
-
 
 def test_lerp(test, device):
     def make_kernel_fn(data_type):
@@ -184,78 +184,78 @@ def test_lerp(test, device):
             key=f"test_lerp_{data_type.__name__}_kernel",
         )
 
-        for test_data in TEST_DATA[data_type]:
-            a = wp.array(
-                [test_data.a],
-                dtype=data_type,
-                device=device,
-                requires_grad=True,
-            )
-            b = wp.array(
-                [test_data.b],
-                dtype=data_type,
-                device=device,
-                requires_grad=True,
-            )
-            t = wp.array(
-                [test_data.t],
-                dtype=float,
-                device=device,
-                requires_grad=True,
-            )
-            out = wp.array(
-                [0] * wp.types.type_length(data_type),
-                dtype=data_type,
-                device=device,
-                requires_grad=True,
-            )
-
-            tape = wp.Tape()
-            with tape:
-                wp.launch(
-                    kernel,
-                    dim=1,
-                    inputs=[a, b, t, out],
+        with test.subTest(data_type=data_type):
+            for test_data in TEST_DATA[data_type]:
+                a = wp.array(
+                    [test_data.a],
+                    dtype=data_type,
                     device=device,
+                    requires_grad=True,
+                )
+                b = wp.array(
+                    [test_data.b],
+                    dtype=data_type,
+                    device=device,
+                    requires_grad=True,
+                )
+                t = wp.array(
+                    [test_data.t],
+                    dtype=float,
+                    device=device,
+                    requires_grad=True,
+                )
+                out = wp.array(
+                    [0] * wp.types.type_length(data_type),
+                    dtype=data_type,
+                    device=device,
+                    requires_grad=True,
                 )
 
-            assert_np_equal(
-                out.numpy(),
-                np.array([test_data.expected]),
-                tol=1e-6,
-            )
-
-            if test_data.check_backwards():
-                tape.backward(out)
+                tape = wp.Tape()
+                with tape:
+                    wp.launch(
+                        kernel,
+                        dim=1,
+                        inputs=[a, b, t, out],
+                        device=device,
+                    )
 
                 assert_np_equal(
-                    tape.gradients[a].numpy(),
-                    np.array([test_data.expected_adj_a]),
-                    tol=1e-6,
-                )
-                assert_np_equal(
-                    tape.gradients[b].numpy(),
-                    np.array([test_data.expected_adj_b]),
-                    tol=1e-6,
-                )
-                assert_np_equal(
-                    tape.gradients[t].numpy(),
-                    np.array([test_data.expected_adj_t]),
+                    out.numpy(),
+                    np.array([test_data.expected]),
                     tol=1e-6,
                 )
 
+                if test_data.check_backwards():
+                    tape.backward(out)
 
-def register(parent):
-    devices = get_test_devices()
+                    assert_np_equal(
+                        tape.gradients[a].numpy(),
+                        np.array([test_data.expected_adj_a]),
+                        tol=1e-6,
+                    )
+                    assert_np_equal(
+                        tape.gradients[b].numpy(),
+                        np.array([test_data.expected_adj_b]),
+                        tol=1e-6,
+                    )
+                    assert_np_equal(
+                        tape.gradients[t].numpy(),
+                        np.array([test_data.expected_adj_t]),
+                        tol=1e-6,
+                    )
 
-    class TestLerp(parent):
-        pass
 
-    add_function_test(TestLerp, "test_lerp", test_lerp, devices=devices)
-    return TestLerp
+devices = get_test_devices()
+
+
+class TestLerp(unittest.TestCase):
+    pass
+
+
+add_function_test(TestLerp, "test_lerp", test_lerp, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

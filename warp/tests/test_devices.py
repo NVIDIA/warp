@@ -8,33 +8,31 @@
 import unittest
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
 
-def test_devices_get_device_functions(test, device):
-    # save default device
-    saved_device = wp.get_device()
-
-    test.assertTrue(saved_device.is_cuda)
+def test_devices_get_cuda_device_functions(test, device):
+    test.assertTrue(device.is_cuda)
     test.assertTrue(wp.is_device_available(device))
 
     device_ordinal = device.ordinal
     current_device = wp.get_cuda_device(device_ordinal)
     test.assertEqual(current_device, device)
-
     current_device = wp.get_cuda_device()  # No-ordinal version
     test.assertTrue(wp.is_device_available(current_device))
+
+    if device == current_device:
+        test.assertEqual(device, "cuda")
+    else:
+        test.assertNotEqual(device, "cuda")
 
     preferred_device = wp.get_preferred_device()
     test.assertTrue(wp.is_device_available(preferred_device))
 
-    # restore default device
-    wp.set_device(saved_device)
 
-
-def test_devices_map_device(test, device):
+def test_devices_map_cuda_device(test, device):
     with wp.ScopedDevice(device):
         saved_alias = device.alias
         # Map alias twice to check code path
@@ -58,42 +56,43 @@ def test_devices_verify_cuda_device(test, device):
     wp.config.verify_cuda = verify_cuda_saved
 
 
+@unittest.skipUnless(wp.is_cuda_available(), "Requires CUDA")
 def test_devices_can_access_self(test, device):
     test.assertTrue(device.can_access(device))
 
-    # Also test CPU access
-    cpu_device = wp.get_device("cpu")
-    if device != cpu_device:
-        test.assertFalse(device.can_access(cpu_device))
+    for warp_device in wp.get_devices():
+        device_str = str(warp_device)
 
-    test.assertNotEqual(cpu_device, "cuda")
+        if (device.is_cpu and warp_device.is_cuda) or (device.is_cuda and warp_device.is_cpu):
+            test.assertFalse(device.can_access(warp_device))
+            test.assertNotEqual(device, warp_device)
+            test.assertNotEqual(device, device_str)
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestDevices(parent):
-        pass
 
-    add_function_test(
-        TestDevices,
-        "test_devices_get_device_functions",
-        test_devices_get_device_functions,
-        devices=wp.get_cuda_devices(),
-    )
-    add_function_test(TestDevices, "test_devices_map_device", test_devices_map_device, devices=wp.get_cuda_devices())
-    add_function_test(
-        TestDevices, "test_devices_unmap_imaginary_device", test_devices_unmap_imaginary_device, devices=devices
-    )
-    add_function_test(TestDevices, "test_devices_verify_cuda_device", test_devices_verify_cuda_device, devices=devices)
+class TestDevices(unittest.TestCase):
+    pass
 
-    if wp.is_cuda_available():
-        add_function_test(TestDevices, "test_devices_can_access_self", test_devices_can_access_self, devices=devices)
 
-    return TestDevices
+add_function_test(
+    TestDevices,
+    "test_devices_get_cuda_device_functions",
+    test_devices_get_cuda_device_functions,
+    devices=get_unique_cuda_test_devices(),
+)
+add_function_test(
+    TestDevices, "test_devices_map_cuda_device", test_devices_map_cuda_device, devices=get_unique_cuda_test_devices()
+)
+add_function_test(
+    TestDevices, "test_devices_unmap_imaginary_device", test_devices_unmap_imaginary_device, devices=devices
+)
+add_function_test(TestDevices, "test_devices_verify_cuda_device", test_devices_verify_cuda_device, devices=devices)
+
+add_function_test(TestDevices, "test_devices_can_access_self", test_devices_can_access_self, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

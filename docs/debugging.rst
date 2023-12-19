@@ -42,7 +42,7 @@ the debugger should be attached, and a breakpoint inserted into the generated co
 
 .. note:: Generated kernel code is not a 1:1 correspondence with the original Python code, but individual operations can still be replayed and variables inspected.
 
-Also see :github:`warp/tests/test_debug.py` for an example of how to debug Warp kernel code running on the CPU.
+Also see :github:`warp/tests/walkthrough_debug.py` for an example of how to debug Warp kernel code running on the CPU.
 
 Generated Code
 --------------

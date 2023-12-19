@@ -12,7 +12,7 @@ import numpy as np
 
 import warp as wp
 from warp.tests.test_array import FillStruct
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -1106,31 +1106,29 @@ def test_indexedarray_fill_struct(test, device):
     assert_np_equal(a4.numpy(), np.zeros(a4.shape, dtype=nptype))
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestIndexedArray(parent):
-        pass
 
-    add_function_test(TestIndexedArray, "test_indexedarray_1d", test_indexedarray_1d, devices=devices)
-    add_function_test(TestIndexedArray, "test_indexedarray_2d", test_indexedarray_2d, devices=devices)
-    add_function_test(TestIndexedArray, "test_indexedarray_3d", test_indexedarray_3d, devices=devices)
-    add_function_test(TestIndexedArray, "test_indexedarray_4d", test_indexedarray_4d, devices=devices)
-    add_function_test(TestIndexedArray, "test_indexedarray_mixed", test_indexedarray_mixed, devices=devices)
-    add_function_test(TestIndexedArray, "test_indexedarray_shape", test_indexedarray_shape, devices=devices)
-    add_function_test(TestIndexedArray, "test_indexedarray_getitem", test_indexedarray_getitem, devices=devices)
-    add_function_test(TestIndexedArray, "test_indexedarray_slicing", test_indexedarray_slicing, devices=devices)
-    add_function_test(TestIndexedArray, "test_indexedarray_generics", test_indexedarray_generics, devices=devices)
-    add_function_test(TestIndexedArray, "test_indexedarray_empty", test_indexedarray_empty, devices=devices)
-    add_function_test(TestIndexedArray, "test_indexedarray_fill_scalar", test_indexedarray_fill_scalar, devices=devices)
-    add_function_test(TestIndexedArray, "test_indexedarray_fill_vector", test_indexedarray_fill_vector, devices=devices)
-    add_function_test(TestIndexedArray, "test_indexedarray_fill_matrix", test_indexedarray_fill_matrix, devices=devices)
-    add_function_test(TestIndexedArray, "test_indexedarray_fill_struct", test_indexedarray_fill_struct, devices=devices)
+class TestIndexedArray(unittest.TestCase):
+    pass
 
-    return TestIndexedArray
+
+add_function_test(TestIndexedArray, "test_indexedarray_1d", test_indexedarray_1d, devices=devices)
+add_function_test(TestIndexedArray, "test_indexedarray_2d", test_indexedarray_2d, devices=devices)
+add_function_test(TestIndexedArray, "test_indexedarray_3d", test_indexedarray_3d, devices=devices)
+add_function_test(TestIndexedArray, "test_indexedarray_4d", test_indexedarray_4d, devices=devices)
+add_function_test(TestIndexedArray, "test_indexedarray_mixed", test_indexedarray_mixed, devices=devices)
+add_function_test(TestIndexedArray, "test_indexedarray_shape", test_indexedarray_shape, devices=devices)
+add_function_test(TestIndexedArray, "test_indexedarray_getitem", test_indexedarray_getitem, devices=devices)
+add_function_test(TestIndexedArray, "test_indexedarray_slicing", test_indexedarray_slicing, devices=devices)
+add_function_test(TestIndexedArray, "test_indexedarray_generics", test_indexedarray_generics, devices=devices)
+add_function_test(TestIndexedArray, "test_indexedarray_empty", test_indexedarray_empty, devices=devices)
+add_function_test(TestIndexedArray, "test_indexedarray_fill_scalar", test_indexedarray_fill_scalar, devices=devices)
+add_function_test(TestIndexedArray, "test_indexedarray_fill_vector", test_indexedarray_fill_vector, devices=devices)
+add_function_test(TestIndexedArray, "test_indexedarray_fill_matrix", test_indexedarray_fill_matrix, devices=devices)
+add_function_test(TestIndexedArray, "test_indexedarray_fill_struct", test_indexedarray_fill_struct, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

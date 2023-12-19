@@ -8,42 +8,32 @@
 import unittest
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
 
-def test_module_lite_load(test, device):
-    # Load current module
-    wp.load_module()
-
-    # Load named module
-    wp.load_module(wp.config)
-
-    # Load named module (string)
-    wp.load_module(wp.config, recursive=True)
+devices = get_test_devices()
 
 
-def test_module_lite_options(test, device):
-    wp.set_module_options({"max_unroll": 8})
-    module_options = wp.get_module_options()
-    test.assertIsInstance(module_options, dict)
-    test.assertEqual(module_options["max_unroll"], 8)
+class TestModuleLite(unittest.TestCase):
+    def test_module_lite_load(self):
+        # Load current module
+        wp.load_module()
 
+        # Load named module
+        wp.load_module(wp.config)
 
-def register(parent):
-    devices = get_test_devices()
+        # Load named module (string)
+        wp.load_module(wp.config, recursive=True)
 
-    class TestModuleLite(parent):
-        pass
-
-    add_function_test(TestModuleLite, "test_module_lite_load", test_module_lite_load, devices=devices)
-    add_function_test(TestModuleLite, "test_module_lite_get_options", test_module_lite_options, devices=devices)
-
-    return TestModuleLite
+    def test_module_lite_options(self):
+        wp.set_module_options({"max_unroll": 8})
+        module_options = wp.get_module_options()
+        self.assertIsInstance(module_options, dict)
+        self.assertEqual(module_options["max_unroll"], 8)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

@@ -27,6 +27,7 @@ wp.init()
 
 class Example:
     def __init__(self, stage):
+        self.device = wp.get_device()
         self.chain_length = 8
         self.chain_width = 1.0
         self.chain_types = [
@@ -146,9 +147,11 @@ class Example:
 
         if self.use_graph:
             # create update graph
-            wp.capture_begin()
-            self.update()
-            self.graph = wp.capture_end()
+            wp.capture_begin(self.device)
+            try:
+                self.update()
+            finally:
+                self.graph = wp.capture_end(self.device)
 
     def update(self):
         with wp.ScopedTimer("simulate", active=True):

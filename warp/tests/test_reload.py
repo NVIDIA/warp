@@ -5,25 +5,22 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import numpy as np
-import warp as wp
-
-import math
-
-import warp as wp
-from warp.tests.test_base import *
-
-import unittest
 import importlib
 import os
+import unittest
 
-# dummy module used for testing reload
-import warp.tests.test_square as test_square
+import numpy as np
+
+import warp as wp
 
 # dummy modules used for testing reload with dependencies
-import warp.tests.test_dependent as test_dependent
-import warp.tests.test_reference as test_reference
-import warp.tests.test_reference_reference as test_reference_reference
+import warp.tests.aux_test_dependent as test_dependent
+import warp.tests.aux_test_reference as test_reference
+import warp.tests.aux_test_reference_reference as test_reference_reference
+
+# dummy module used for testing reload
+import warp.tests.aux_test_square as test_square
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -110,7 +107,7 @@ def run(expect, device):
 
 def test_reload(test, device):
     # write out the module python and import it
-    f = open(os.path.abspath(os.path.join(os.path.dirname(__file__), "test_square.py")), "w")
+    f = open(os.path.abspath(os.path.join(os.path.dirname(__file__), "aux_test_square.py")), "w")
     f.writelines(square_two)
     f.flush()
     f.close()
@@ -118,7 +115,7 @@ def test_reload(test, device):
     reload_module(test_square)
     test_square.run(expect=4.0, device=device)  # 2*2=4
 
-    f = open(os.path.abspath(os.path.join(os.path.dirname(__file__), "test_square.py")), "w")
+    f = open(os.path.abspath(os.path.join(os.path.dirname(__file__), "aux_test_square.py")), "w")
     f.writelines(square_four)
     f.flush()
     f.close()
@@ -130,12 +127,12 @@ def test_reload(test, device):
 
 def test_reload_class(test, device):
     def test_func():
-        import warp.tests.test_class_kernel
-        from warp.tests.test_class_kernel import ClassKernelTest
-
         import importlib as imp
 
-        imp.reload(warp.tests.test_class_kernel)
+        import warp.tests.aux_test_class_kernel
+        from warp.tests.aux_test_class_kernel import ClassKernelTest
+
+        imp.reload(warp.tests.aux_test_class_kernel)
 
         ctest = ClassKernelTest(device)
         expected = np.zeros((10, 3, 3), dtype=np.float32)
@@ -149,7 +146,7 @@ def test_reload_class(test, device):
 template_ref = """# This file is used to test reloading module references.
 
 import warp as wp
-import warp.tests.test_reference_reference as refref
+import warp.tests.aux_test_reference_reference as refref
 
 wp.init()
 
@@ -173,8 +170,8 @@ def more_magic():
 
 
 def test_reload_references(test, device):
-    path_ref = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_reference.py"))
-    path_refref = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_reference_reference.py"))
+    path_ref = os.path.abspath(os.path.join(os.path.dirname(__file__), "aux_test_reference.py"))
+    path_refref = os.path.abspath(os.path.join(os.path.dirname(__file__), "aux_test_reference_reference.py"))
 
     # rewrite both dependency modules and reload them
     with open(path_ref, "w") as f:
@@ -202,21 +199,19 @@ def test_reload_references(test, device):
     test_dependent.run(expect=4.0, device=device)  # 2 * 2 = 4
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestReload(parent):
-        pass
 
-    add_function_test(TestReload, "test_redefine", test_redefine, devices=devices)
-    add_function_test(TestReload, "test_reload", test_reload, devices=devices)
-    add_function_test(TestReload, "test_reload_class", test_reload_class, devices=devices)
-    add_function_test(TestReload, "test_reload_references", test_reload_references, devices=devices)
+class TestReload(unittest.TestCase):
+    pass
 
-    return TestReload
+
+add_function_test(TestReload, "test_redefine", test_redefine, devices=devices)
+add_function_test(TestReload, "test_reload", test_reload, devices=devices)
+add_function_test(TestReload, "test_reload_class", test_reload_class, devices=devices)
+add_function_test(TestReload, "test_reload_references", test_reload_references, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2, failfast=False)

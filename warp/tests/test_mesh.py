@@ -10,7 +10,7 @@ import unittest
 import numpy as np
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 # fmt: off
 
@@ -222,9 +222,9 @@ def query_ray_kernel(
 
 
 def test_mesh_query_ray(test, device):
-    points = wp.array(POINT_POSITIONS, dtype=wp.vec3)
+    points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
 
-    indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int)
+    indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
     mesh = wp.Mesh(points=points, indices=indices)
     expected_sign = -1.0
     wp.launch(
@@ -234,9 +234,10 @@ def test_mesh_query_ray(test, device):
             mesh.id,
             expected_sign,
         ],
+        device=device,
     )
 
-    indices = wp.array(LEFT_HANDED_FACE_VERTEX_INDICES, dtype=int)
+    indices = wp.array(LEFT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
     mesh = wp.Mesh(points=points, indices=indices)
     expected_sign = 1.0
     wp.launch(
@@ -246,76 +247,78 @@ def test_mesh_query_ray(test, device):
             mesh.id,
             expected_sign,
         ],
+        device=device,
     )
 
 
 def test_mesh_refit_graph(test, device):
-    points = wp.array(POINT_POSITIONS, dtype=wp.vec3)
+    points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
 
-    indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int)
+    indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
     mesh = wp.Mesh(points=points, indices=indices)
 
-    wp.capture_begin()
-
-    mesh.refit()
-
-    graph = wp.capture_end()
+    wp.capture_begin(device, force_module_load=False)
+    try:
+        mesh.refit()
+    finally:
+        graph = wp.capture_end(device)
 
     # replay
     num_iters = 10
     for _ in range(num_iters):
         wp.capture_launch(graph)
 
+    wp.synchronize_device(device)
+
 
 def test_mesh_exceptions(test, device):
     # points and indices must be on same device
     with test.assertRaises(RuntimeError):
         points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device="cpu")
-        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int)
+        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
         wp.Mesh(points=points, indices=indices)
 
     # points must be vec3
     with test.assertRaises(RuntimeError):
-        points = wp.array(POINT_POSITIONS, dtype=wp.vec3d)
-        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int)
+        points = wp.array(POINT_POSITIONS, dtype=wp.vec3d, device=device)
+        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
         wp.Mesh(points=points, indices=indices)
 
     # velocities must be vec3
     with test.assertRaises(RuntimeError):
-        points = wp.array(POINT_POSITIONS, dtype=wp.vec3)
-        velocities = wp.zeros(points.shape, dtype=wp.vec3d)
-        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int)
+        points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
+        velocities = wp.zeros(points.shape, dtype=wp.vec3d, device=device)
+        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
         wp.Mesh(points=points, indices=indices, velocities=velocities)
 
     # indices must be int32
     with test.assertRaises(RuntimeError):
-        points = wp.array(POINT_POSITIONS, dtype=wp.vec3)
-        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=wp.int64)
+        points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
+        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=wp.int64, device=device)
         wp.Mesh(points=points, indices=indices)
 
     # indices must be 1d
     with test.assertRaises(RuntimeError):
-        points = wp.array(POINT_POSITIONS, dtype=wp.vec3)
-        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int)
+        points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
+        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
         indices = indices.reshape((3, -1))
         wp.Mesh(points=points, indices=indices)
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestMesh(parent):
-        pass
 
-    add_function_test(TestMesh, "test_mesh_read_properties", test_mesh_read_properties, devices=devices)
-    add_function_test(TestMesh, "test_mesh_query_point", test_mesh_query_point, devices=devices)
-    add_function_test(TestMesh, "test_mesh_query_ray", test_mesh_query_ray, devices=devices)
-    add_function_test(TestMesh, "test_mesh_refit_graph", test_mesh_refit_graph, devices=wp.get_cuda_devices())
-    add_function_test(TestMesh, "test_mesh_exceptions", test_mesh_exceptions, devices=wp.get_cuda_devices())
-    return TestMesh
+class TestMesh(unittest.TestCase):
+    pass
+
+
+add_function_test(TestMesh, "test_mesh_read_properties", test_mesh_read_properties, devices=devices)
+add_function_test(TestMesh, "test_mesh_query_point", test_mesh_query_point, devices=devices)
+add_function_test(TestMesh, "test_mesh_query_ray", test_mesh_query_ray, devices=devices)
+add_function_test(TestMesh, "test_mesh_refit_graph", test_mesh_refit_graph, devices=get_unique_cuda_test_devices())
+add_function_test(TestMesh, "test_mesh_exceptions", test_mesh_exceptions, devices=get_unique_cuda_test_devices())
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

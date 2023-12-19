@@ -5,14 +5,14 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import unittest
 from dataclasses import dataclass
 from typing import Any
-import unittest
 
 import numpy as np
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 
 @dataclass
@@ -153,17 +153,16 @@ def test_smoothstep(test, device):
                 )
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestSmoothstep(parent):
-        pass
 
-    add_function_test(TestSmoothstep, "test_smoothstep", test_smoothstep, devices=devices)
-    return TestSmoothstep
+class TestSmoothstep(unittest.TestCase):
+    pass
+
+
+add_function_test(TestSmoothstep, "test_smoothstep", test_smoothstep, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

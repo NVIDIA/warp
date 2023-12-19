@@ -28,6 +28,7 @@ wp.init()
 
 class Example:
     def __init__(self, stage):
+        self.device = wp.get_device()
         builder = wp.sim.ModelBuilder()
 
         self.sim_time = 0.0
@@ -126,9 +127,11 @@ class Example:
 
         if self.use_graph:
             # create update graph
-            wp.capture_begin()
-            self.update()
-            self.graph = wp.capture_end()
+            wp.capture_begin(self.device)
+            try:
+                self.update()
+            finally:
+                self.graph = wp.capture_end(self.device)
 
     def load_mesh(self, filename, path):
         asset_stage = Usd.Stage.Open(filename)

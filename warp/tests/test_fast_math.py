@@ -1,11 +1,14 @@
-import warp as wp
-import numpy as np
+# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import unittest
 
 import warp as wp
-from warp.tests.test_base import *
-
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -33,19 +36,19 @@ def test_fast_math(test, device):
             with CheckOutput():
                 wp.launch(test_pow, dim=1, inputs=[-2.0, 2.0, 2.0], device=device)
 
+        # Turn fast math back off
+        wp.set_module_options({"fast_math": False})
 
-def register(parent):
-    class TestFastMath(parent):
-        pass
 
-    devices = get_test_devices()
+class TestFastMath(unittest.TestCase):
+    pass
 
-    add_function_test(TestFastMath, "test_fast_math", test_fast_math, devices=devices)
 
-    return TestFastMath
+devices = get_test_devices()
+
+add_function_test(TestFastMath, "test_fast_math", test_fast_math, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

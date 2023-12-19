@@ -5,14 +5,13 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import math
 import unittest
 
 import numpy as np
-import math
 
 import warp as wp
-from warp.tests.test_base import *
-
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -288,6 +287,7 @@ def triangulate(face_counts, face_indices):
     return tri_indices
 
 
+@unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
 def test_mesh_query_point(test, device):
     from pxr import Usd, UsdGeom
 
@@ -503,6 +503,7 @@ def mesh_query_point_loss(
     loss[tid] = dist
 
 
+@unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
 def test_adj_mesh_query_point(test, device):
     from pxr import Usd, UsdGeom
 
@@ -621,6 +622,7 @@ def sample_furthest_points_brute(
     query_result[tid] = max_dist_sq
 
 
+@unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
 def test_mesh_query_furthest_point(test, device):
     from pxr import Usd, UsdGeom
 
@@ -654,32 +656,18 @@ def test_mesh_query_furthest_point(test, device):
     assert_np_equal(dist_query.numpy(), dist_brute.numpy(), tol=1.0e-3)
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestMeshQuery(parent):
-        pass
 
-    # USD import failures should not count as a test failure
-    try:
-        from pxr import Usd, UsdGeom
+class TestMeshQueryPoint(unittest.TestCase):
+    pass
 
-        have_usd = True
-    except:
-        have_usd = False
 
-    if have_usd:
-        add_function_test(TestMeshQuery, "test_mesh_query_point", test_mesh_query_point, devices=devices)
-        add_function_test(
-            TestMeshQuery, "test_mesh_query_furthest_point", test_mesh_query_furthest_point, devices=devices
-        )
-        add_function_test(TestMeshQuery, "test_adj_mesh_query_point", test_adj_mesh_query_point, devices=devices)
-
-    return TestMeshQuery
+add_function_test(TestMeshQueryPoint, "test_mesh_query_point", test_mesh_query_point, devices=devices)
+add_function_test(TestMeshQueryPoint, "test_mesh_query_furthest_point", test_mesh_query_furthest_point, devices=devices)
+add_function_test(TestMeshQueryPoint, "test_adj_mesh_query_point", test_adj_mesh_query_point, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
-
     unittest.main(verbosity=2)

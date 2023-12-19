@@ -37,19 +37,10 @@ class IntegratorType(Enum):
 
 
 class Example:
-    def __init__(self, stage):
-        self.parser = argparse.ArgumentParser()
-        self.parser.add_argument(
-            "--integrator",
-            help="Type of integrator",
-            type=IntegratorType,
-            choices=list(IntegratorType),
-            default=IntegratorType.EULER,
-        )
+    def __init__(self, stage, integrator=IntegratorType.EULER):
+        self.device = wp.get_device()
 
-        args = self.parser.parse_args()
-
-        self.integrator_type = args.integrator
+        self.integrator_type = integrator
 
         self.sim_width = 64
         self.sim_height = 32
@@ -135,9 +126,11 @@ class Example:
 
         if self.sim_use_graph:
             # create update graph
-            wp.capture_begin()
-            self.update()
-            self.graph = wp.capture_end()
+            wp.capture_begin(self.device)
+            try:
+                self.update()
+            finally:
+                self.graph = wp.capture_end(self.device)
 
     def update(self):
         with wp.ScopedTimer("simulate", dict=self.profiler):
@@ -168,9 +161,20 @@ class Example:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--integrator",
+        help="Type of integrator",
+        type=IntegratorType,
+        choices=list(IntegratorType),
+        default=IntegratorType.EULER,
+    )
+
+    args = parser.parse_args()
+
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_cloth.usd")
 
-    example = Example(stage_path)
+    example = Example(stage_path, integrator=args.integrator)
 
     for i in range(example.sim_frames):
         example.update()

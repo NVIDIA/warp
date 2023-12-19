@@ -10,7 +10,7 @@ import unittest
 import numpy as np
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -2085,55 +2085,53 @@ def test_array_from_numpy(test, device):
     assert_np_equal(result.numpy(), expected.numpy())
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestArray(parent):
-        pass
 
-    add_function_test(TestArray, "test_shape", test_shape, devices=devices)
-    add_function_test(TestArray, "test_flatten", test_flatten, devices=devices)
-    add_function_test(TestArray, "test_reshape", test_reshape, devices=devices)
-    add_function_test(TestArray, "test_slicing", test_slicing, devices=devices)
-    add_function_test(TestArray, "test_transpose", test_transpose, devices=devices)
-    add_function_test(TestArray, "test_view", test_view, devices=devices)
+class TestArray(unittest.TestCase):
+    pass
 
-    add_function_test(TestArray, "test_1d_array", test_1d, devices=devices)
-    add_function_test(TestArray, "test_2d_array", test_2d, devices=devices)
-    add_function_test(TestArray, "test_3d_array", test_3d, devices=devices)
-    add_function_test(TestArray, "test_4d_array", test_4d, devices=devices)
-    add_function_test(TestArray, "test_4d_array_transposed", test_4d_transposed, devices=devices)
 
-    add_function_test(TestArray, "test_fill_scalar", test_fill_scalar, devices=devices)
-    add_function_test(TestArray, "test_fill_vector", test_fill_vector, devices=devices)
-    add_function_test(TestArray, "test_fill_matrix", test_fill_matrix, devices=devices)
-    add_function_test(TestArray, "test_fill_struct", test_fill_struct, devices=devices)
-    add_function_test(TestArray, "test_fill_slices", test_fill_slices, devices=devices)
-    add_function_test(TestArray, "test_full_scalar", test_full_scalar, devices=devices)
-    add_function_test(TestArray, "test_full_vector", test_full_vector, devices=devices)
-    add_function_test(TestArray, "test_full_matrix", test_full_matrix, devices=devices)
-    add_function_test(TestArray, "test_full_struct", test_full_struct, devices=devices)
-    add_function_test(TestArray, "test_empty_array", test_empty_array, devices=devices)
-    add_function_test(TestArray, "test_empty_from_numpy", test_empty_from_numpy, devices=devices)
-    add_function_test(TestArray, "test_empty_from_list", test_empty_from_list, devices=devices)
-    add_function_test(TestArray, "test_to_list_scalar", test_to_list_scalar, devices=devices)
-    add_function_test(TestArray, "test_to_list_vector", test_to_list_vector, devices=devices)
-    add_function_test(TestArray, "test_to_list_matrix", test_to_list_matrix, devices=devices)
-    add_function_test(TestArray, "test_to_list_struct", test_to_list_struct, devices=devices)
+add_function_test(TestArray, "test_shape", test_shape, devices=devices)
+add_function_test(TestArray, "test_flatten", test_flatten, devices=devices)
+add_function_test(TestArray, "test_reshape", test_reshape, devices=devices)
+add_function_test(TestArray, "test_slicing", test_slicing, devices=devices)
+add_function_test(TestArray, "test_transpose", test_transpose, devices=devices)
+add_function_test(TestArray, "test_view", test_view, devices=devices)
 
-    add_function_test(TestArray, "test_lower_bound", test_lower_bound, devices=devices)
-    add_function_test(TestArray, "test_round_trip", test_round_trip, devices=devices)
-    add_function_test(TestArray, "test_array_to_bool", test_array_to_bool, devices=devices)
-    add_function_test(TestArray, "test_array_of_structs", test_array_of_structs, devices=devices)
-    add_function_test(TestArray, "test_array_of_structs_grad", test_array_of_structs_grad, devices=devices)
-    add_function_test(TestArray, "test_array_of_structs_from_numpy", test_array_of_structs_from_numpy, devices=devices)
-    add_function_test(TestArray, "test_array_of_structs_roundtrip", test_array_of_structs_roundtrip, devices=devices)
-    add_function_test(TestArray, "test_array_from_numpy", test_array_from_numpy, devices=devices)
+add_function_test(TestArray, "test_1d_array", test_1d, devices=devices)
+add_function_test(TestArray, "test_2d_array", test_2d, devices=devices)
+add_function_test(TestArray, "test_3d_array", test_3d, devices=devices)
+add_function_test(TestArray, "test_4d_array", test_4d, devices=devices)
+add_function_test(TestArray, "test_4d_array_transposed", test_4d_transposed, devices=devices)
 
-    return TestArray
+add_function_test(TestArray, "test_fill_scalar", test_fill_scalar, devices=devices)
+add_function_test(TestArray, "test_fill_vector", test_fill_vector, devices=devices)
+add_function_test(TestArray, "test_fill_matrix", test_fill_matrix, devices=devices)
+add_function_test(TestArray, "test_fill_struct", test_fill_struct, devices=devices)
+add_function_test(TestArray, "test_fill_slices", test_fill_slices, devices=devices)
+add_function_test(TestArray, "test_full_scalar", test_full_scalar, devices=devices)
+add_function_test(TestArray, "test_full_vector", test_full_vector, devices=devices)
+add_function_test(TestArray, "test_full_matrix", test_full_matrix, devices=devices)
+add_function_test(TestArray, "test_full_struct", test_full_struct, devices=devices)
+add_function_test(TestArray, "test_empty_array", test_empty_array, devices=devices)
+add_function_test(TestArray, "test_empty_from_numpy", test_empty_from_numpy, devices=devices)
+add_function_test(TestArray, "test_empty_from_list", test_empty_from_list, devices=devices)
+add_function_test(TestArray, "test_to_list_scalar", test_to_list_scalar, devices=devices)
+add_function_test(TestArray, "test_to_list_vector", test_to_list_vector, devices=devices)
+add_function_test(TestArray, "test_to_list_matrix", test_to_list_matrix, devices=devices)
+add_function_test(TestArray, "test_to_list_struct", test_to_list_struct, devices=devices)
+
+add_function_test(TestArray, "test_lower_bound", test_lower_bound, devices=devices)
+add_function_test(TestArray, "test_round_trip", test_round_trip, devices=devices)
+add_function_test(TestArray, "test_array_to_bool", test_array_to_bool, devices=devices)
+add_function_test(TestArray, "test_array_of_structs", test_array_of_structs, devices=devices)
+add_function_test(TestArray, "test_array_of_structs_grad", test_array_of_structs_grad, devices=devices)
+add_function_test(TestArray, "test_array_of_structs_from_numpy", test_array_of_structs_from_numpy, devices=devices)
+add_function_test(TestArray, "test_array_of_structs_roundtrip", test_array_of_structs_roundtrip, devices=devices)
+add_function_test(TestArray, "test_array_from_numpy", test_array_from_numpy, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

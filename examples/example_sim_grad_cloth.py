@@ -53,6 +53,7 @@ def step_kernel(x: wp.array(dtype=wp.vec3), grad: wp.array(dtype=wp.vec3), alpha
 
 class Example:
     def __init__(self, stage, profile=False, adapter=None, verbose=False):
+        self.device = wp.get_device()
         self.verbose = verbose
 
         # seconds
@@ -115,12 +116,14 @@ class Example:
         self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=4.0)
 
         # capture forward/backward passes
-        wp.capture_begin()
-        self.tape = wp.Tape()
-        with self.tape:
-            self.compute_loss()
-        self.tape.backward(self.loss)
-        self.graph = wp.capture_end()
+        wp.capture_begin(self.device)
+        try:
+            self.tape = wp.Tape()
+            with self.tape:
+                self.compute_loss()
+            self.tape.backward(self.loss)
+        finally:
+            self.graph = wp.capture_end(self.device)
 
     def compute_loss(self):
         # run control loop

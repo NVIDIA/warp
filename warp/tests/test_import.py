@@ -5,19 +5,13 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
-import numpy as np
-import math
-
-import warp as wp
-from warp.tests.test_base import *
-
 import unittest
 
-wp.init()
-
-# from test_func import sqr
+import warp as wp
 import warp.tests.test_func as test_func
+from warp.tests.unittest_utils import *
+
+wp.init()
 
 
 @wp.kernel
@@ -30,24 +24,16 @@ def test_import_func():
     wp.expect_eq(y, 8.0)
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestImport(parent):
-        pass
 
-    add_kernel_test(TestImport, kernel=test_import_func, name="test_import_func", dim=1, devices=devices)
+class TestImport(unittest.TestCase):
+    pass
 
-    return TestImport
+
+add_kernel_test(TestImport, kernel=test_import_func, name="test_import_func", dim=1, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    c = register(unittest.TestCase)
-    # unittest.main(verbosity=2)
-
-    wp.force_load()
-
-    loader = unittest.defaultTestLoader
-    testSuite = loader.loadTestsFromTestCase(c)
-    testSuite.debug()
+    unittest.main(verbosity=2)

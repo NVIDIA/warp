@@ -5,14 +5,13 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
-import numpy as np
 import math
+import unittest
+
+import numpy as np
 
 import warp as wp
-from warp.tests.test_base import *
-
-import unittest
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -81,169 +80,6 @@ def foo(x: int):
 def test_override_func():
     i = foo(1)
     wp.expect_eq(i, 3)
-
-
-def test_native_func_export(test, device):
-    # tests calling native functions from Python
-
-    q = wp.quat(0.0, 0.0, 0.0, 1.0)
-    assert_np_equal(np.array([*q]), np.array([0.0, 0.0, 0.0, 1.0]))
-
-    r = wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 2.0)
-    assert_np_equal(np.array([*r]), np.array([0.8414709568023682, 0.0, 0.0, 0.5403022170066833]), tol=1.0e-3)
-
-    q = wp.quat(1.0, 2.0, 3.0, 4.0)
-    q = wp.normalize(q) * 2.0
-    assert_np_equal(
-        np.array([*q]),
-        np.array([0.18257418274879456, 0.3651483654975891, 0.547722578048706, 0.7302967309951782]) * 2.0,
-        tol=1.0e-3,
-    )
-
-    v2 = wp.vec2(1.0, 2.0)
-    v2 = wp.normalize(v2) * 2.0
-    assert_np_equal(np.array([*v2]), np.array([0.4472135901451111, 0.8944271802902222]) * 2.0, tol=1.0e-3)
-
-    v3 = wp.vec3(1.0, 2.0, 3.0)
-    v3 = wp.normalize(v3) * 2.0
-    assert_np_equal(
-        np.array([*v3]), np.array([0.26726123690605164, 0.5345224738121033, 0.8017836809158325]) * 2.0, tol=1.0e-3
-    )
-
-    v4 = wp.vec4(1.0, 2.0, 3.0, 4.0)
-    v4 = wp.normalize(v4) * 2.0
-    assert_np_equal(
-        np.array([*v4]),
-        np.array([0.18257418274879456, 0.3651483654975891, 0.547722578048706, 0.7302967309951782]) * 2.0,
-        tol=1.0e-3,
-    )
-
-    v = wp.vec2(0.0)
-    v += wp.vec2(1.0, 1.0)
-    assert v == wp.vec2(1.0, 1.0)
-    v -= wp.vec2(1.0, 1.0)
-    assert v == wp.vec2(0.0, 0.0)
-    v = wp.vec2(2.0, 2.0) - wp.vec2(1.0, 1.0)
-    assert v == wp.vec2(1.0, 1.0)
-    v *= 2.0
-    assert v == wp.vec2(2.0, 2.0)
-    v = v * 2.0
-    assert v == wp.vec2(4.0, 4.0)
-    v = v / 2.0
-    assert v == wp.vec2(2.0, 2.0)
-    v /= 2.0
-    assert v == wp.vec2(1.0, 1.0)
-    v = -v
-    assert v == wp.vec2(-1.0, -1.0)
-    v = +v
-    assert v == wp.vec2(-1.0, -1.0)
-
-    m22 = wp.mat22(1.0, 2.0, 3.0, 4.0)
-    m22 = m22 + m22
-
-    test.assertEqual(m22[1, 1], 8.0)
-    test.assertEqual(str(m22), "[[2.0, 4.0],\n [6.0, 8.0]]")
-
-    t = wp.transform(
-        wp.vec3(1.0, 2.0, 3.0),
-        wp.quat(4.0, 5.0, 6.0, 7.0),
-    )
-    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
-    test.assertSequenceEqual(t * wp.transform(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0), (396.0, 432.0, 720.0, 56.0, 70.0, 84.0, -28.0))
-    test.assertSequenceEqual(
-        t * wp.transform((1.0, 2.0, 3.0), (4.0, 5.0, 6.0, 7.0)), (396.0, 432.0, 720.0, 56.0, 70.0, 84.0, -28.0)
-    )
-
-    t = wp.transform()
-    test.assertSequenceEqual(t, (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0))
-
-    t = wp.transform(p=(1.0, 2.0, 3.0), q=(4.0, 5.0, 6.0, 7.0))
-    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
-
-    t = wp.transform(q=(4.0, 5.0, 6.0, 7.0), p=(1.0, 2.0, 3.0))
-    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
-
-    t = wp.transform((1.0, 2.0, 3.0), q=(4.0, 5.0, 6.0, 7.0))
-    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
-
-    t = wp.transform(p=(1.0, 2.0, 3.0))
-    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0))
-
-    t = wp.transform(q=(4.0, 5.0, 6.0, 7.0))
-    test.assertSequenceEqual(t, (0.0, 0.0, 0.0, 4.0, 5.0, 6.0, 7.0))
-
-    t = wp.transform((1.0, 2.0, 3.0), (4.0, 5.0, 6.0, 7.0))
-    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
-
-    t = wp.transform(p=wp.vec3(1.0, 2.0, 3.0), q=wp.quat(4.0, 5.0, 6.0, 7.0))
-    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
-
-    t = wp.transform(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0)
-    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
-
-    t = wp.transform(wp.transform(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
-    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
-
-    t = wp.transform(*wp.transform(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
-    test.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
-
-    transformf = wp.types.transformation(dtype=float)
-
-    t = wp.transformf((1.0, 2.0, 3.0), (4.0, 5.0, 6.0, 7.0))
-    test.assertSequenceEqual(
-        t + transformf((2.0, 3.0, 4.0), (5.0, 6.0, 7.0, 8.0)),
-        (3.0, 5.0, 7.0, 9.0, 11.0, 13.0, 15.0),
-    )
-    test.assertSequenceEqual(
-        t - transformf((2.0, 3.0, 4.0), (5.0, 6.0, 7.0, 8.0)),
-        (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0),
-    )
-
-    f = wp.sin(math.pi * 0.5)
-    test.assertAlmostEqual(f, 1.0, places=3)
-
-    m = wp.mat22(0.0, 0.0, 0.0, 0.0)
-    m += wp.mat22(1.0, 1.0, 1.0, 1.0)
-    assert m == wp.mat22(1.0, 1.0, 1.0, 1.0)
-    m -= wp.mat22(1.0, 1.0, 1.0, 1.0)
-    assert m == wp.mat22(0.0, 0.0, 0.0, 0.0)
-    m = wp.mat22(2.0, 2.0, 2.0, 2.0) - wp.mat22(1.0, 1.0, 1.0, 1.0)
-    assert m == wp.mat22(1.0, 1.0, 1.0, 1.0)
-    m *= 2.0
-    assert m == wp.mat22(2.0, 2.0, 2.0, 2.0)
-    m = m * 2.0
-    assert m == wp.mat22(4.0, 4.0, 4.0, 4.0)
-    m = m / 2.0
-    assert m == wp.mat22(2.0, 2.0, 2.0, 2.0)
-    m /= 2.0
-    assert m == wp.mat22(1.0, 1.0, 1.0, 1.0)
-    m = -m
-    assert m == wp.mat22(-1.0, -1.0, -1.0, -1.0)
-    m = +m
-    assert m == wp.mat22(-1.0, -1.0, -1.0, -1.0)
-    m = m * m
-    assert m == wp.mat22(2.0, 2.0, 2.0, 2.0)
-
-
-def test_native_function_error_resolution(test, device):
-    a = wp.mat22f(1.0, 2.0, 3.0, 4.0)
-    b = wp.mat22d(1.0, 2.0, 3.0, 4.0)
-    with test.assertRaisesRegex(
-        RuntimeError,
-        r"^Couldn't find a function 'mul' compatible with " r"the arguments 'mat22f, mat22d'$",
-    ):
-        a * b
-
-
-def test_user_func_export(test, device):
-    # tests calling overloaded user-defined functions from Python
-    i = custom(1)
-    f = custom(1.0)
-    v = custom(wp.vec3(1.0, 0.0, 0.0))
-
-    test.assertEqual(i, 2)
-    test.assertEqual(f, 2.0)
-    assert_np_equal(np.array([*v]), np.array([2.0, 0.0, 0.0]))
 
 
 def test_func_closure_capture(test, device):
@@ -321,34 +157,181 @@ def test_builtin_shadowing():
     wp.expect_eq(sign(1.23), 123.0)
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestFunc(parent):
-        pass
 
-    add_kernel_test(TestFunc, kernel=test_overload_func, name="test_overload_func", dim=1, devices=devices)
-    add_function_test(TestFunc, func=test_return_func, name="test_return_func", devices=devices)
-    add_kernel_test(TestFunc, kernel=test_override_func, name="test_override_func", dim=1, devices=devices)
-    add_function_test(TestFunc, func=test_native_func_export, name="test_native_func_export", devices=["cpu"])
-    add_function_test(
-        TestFunc,
-        func=test_native_function_error_resolution,
-        name="test_native_function_error_resolution",
-        devices=["cpu"],
-    )
-    add_function_test(TestFunc, func=test_user_func_export, name="test_user_func_export", devices=["cpu"])
-    add_function_test(TestFunc, func=test_func_closure_capture, name="test_func_closure_capture", devices=devices)
-    add_function_test(TestFunc, func=test_multi_valued_func, name="test_multi_valued_func", devices=devices)
-    add_kernel_test(TestFunc, kernel=test_func_defaults, name="test_func_defaults", dim=1, devices=devices)
-    add_kernel_test(TestFunc, kernel=test_builtin_shadowing, name="test_builtin_shadowing", dim=1, devices=devices)
+class TestFunc(unittest.TestCase):
+    def test_user_func_export(self):
+        # tests calling overloaded user-defined functions from Python
+        i = custom(1)
+        f = custom(1.0)
+        v = custom(wp.vec3(1.0, 0.0, 0.0))
 
-    return TestFunc
+        self.assertEqual(i, 2)
+        self.assertEqual(f, 2.0)
+        assert_np_equal(np.array([*v]), np.array([2.0, 0.0, 0.0]))
+
+    def test_native_func_export(self):
+        # tests calling native functions from Python
+
+        q = wp.quat(0.0, 0.0, 0.0, 1.0)
+        assert_np_equal(np.array([*q]), np.array([0.0, 0.0, 0.0, 1.0]))
+
+        r = wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 2.0)
+        assert_np_equal(np.array([*r]), np.array([0.8414709568023682, 0.0, 0.0, 0.5403022170066833]), tol=1.0e-3)
+
+        q = wp.quat(1.0, 2.0, 3.0, 4.0)
+        q = wp.normalize(q) * 2.0
+        assert_np_equal(
+            np.array([*q]),
+            np.array([0.18257418274879456, 0.3651483654975891, 0.547722578048706, 0.7302967309951782]) * 2.0,
+            tol=1.0e-3,
+        )
+
+        v2 = wp.vec2(1.0, 2.0)
+        v2 = wp.normalize(v2) * 2.0
+        assert_np_equal(np.array([*v2]), np.array([0.4472135901451111, 0.8944271802902222]) * 2.0, tol=1.0e-3)
+
+        v3 = wp.vec3(1.0, 2.0, 3.0)
+        v3 = wp.normalize(v3) * 2.0
+        assert_np_equal(
+            np.array([*v3]), np.array([0.26726123690605164, 0.5345224738121033, 0.8017836809158325]) * 2.0, tol=1.0e-3
+        )
+
+        v4 = wp.vec4(1.0, 2.0, 3.0, 4.0)
+        v4 = wp.normalize(v4) * 2.0
+        assert_np_equal(
+            np.array([*v4]),
+            np.array([0.18257418274879456, 0.3651483654975891, 0.547722578048706, 0.7302967309951782]) * 2.0,
+            tol=1.0e-3,
+        )
+
+        v = wp.vec2(0.0)
+        v += wp.vec2(1.0, 1.0)
+        assert v == wp.vec2(1.0, 1.0)
+        v -= wp.vec2(1.0, 1.0)
+        assert v == wp.vec2(0.0, 0.0)
+        v = wp.vec2(2.0, 2.0) - wp.vec2(1.0, 1.0)
+        assert v == wp.vec2(1.0, 1.0)
+        v *= 2.0
+        assert v == wp.vec2(2.0, 2.0)
+        v = v * 2.0
+        assert v == wp.vec2(4.0, 4.0)
+        v = v / 2.0
+        assert v == wp.vec2(2.0, 2.0)
+        v /= 2.0
+        assert v == wp.vec2(1.0, 1.0)
+        v = -v
+        assert v == wp.vec2(-1.0, -1.0)
+        v = +v
+        assert v == wp.vec2(-1.0, -1.0)
+
+        m22 = wp.mat22(1.0, 2.0, 3.0, 4.0)
+        m22 = m22 + m22
+
+        self.assertEqual(m22[1, 1], 8.0)
+        self.assertEqual(str(m22), "[[2.0, 4.0],\n [6.0, 8.0]]")
+
+        t = wp.transform(
+            wp.vec3(1.0, 2.0, 3.0),
+            wp.quat(4.0, 5.0, 6.0, 7.0),
+        )
+        self.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+        self.assertSequenceEqual(t * wp.transform(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0), (396.0, 432.0, 720.0, 56.0, 70.0, 84.0, -28.0))
+        self.assertSequenceEqual(
+            t * wp.transform((1.0, 2.0, 3.0), (4.0, 5.0, 6.0, 7.0)), (396.0, 432.0, 720.0, 56.0, 70.0, 84.0, -28.0)
+        )
+
+        t = wp.transform()
+        self.assertSequenceEqual(t, (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0))
+
+        t = wp.transform(p=(1.0, 2.0, 3.0), q=(4.0, 5.0, 6.0, 7.0))
+        self.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+
+        t = wp.transform(q=(4.0, 5.0, 6.0, 7.0), p=(1.0, 2.0, 3.0))
+        self.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+
+        t = wp.transform((1.0, 2.0, 3.0), q=(4.0, 5.0, 6.0, 7.0))
+        self.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+
+        t = wp.transform(p=(1.0, 2.0, 3.0))
+        self.assertSequenceEqual(t, (1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0))
+
+        t = wp.transform(q=(4.0, 5.0, 6.0, 7.0))
+        self.assertSequenceEqual(t, (0.0, 0.0, 0.0, 4.0, 5.0, 6.0, 7.0))
+
+        t = wp.transform((1.0, 2.0, 3.0), (4.0, 5.0, 6.0, 7.0))
+        self.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+
+        t = wp.transform(p=wp.vec3(1.0, 2.0, 3.0), q=wp.quat(4.0, 5.0, 6.0, 7.0))
+        self.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+
+        t = wp.transform(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0)
+        self.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+
+        t = wp.transform(wp.transform(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+        self.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+
+        t = wp.transform(*wp.transform(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+        self.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
+
+        transformf = wp.types.transformation(dtype=float)
+
+        t = wp.transformf((1.0, 2.0, 3.0), (4.0, 5.0, 6.0, 7.0))
+        self.assertSequenceEqual(
+            t + transformf((2.0, 3.0, 4.0), (5.0, 6.0, 7.0, 8.0)),
+            (3.0, 5.0, 7.0, 9.0, 11.0, 13.0, 15.0),
+        )
+        self.assertSequenceEqual(
+            t - transformf((2.0, 3.0, 4.0), (5.0, 6.0, 7.0, 8.0)),
+            (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0),
+        )
+
+        f = wp.sin(math.pi * 0.5)
+        self.assertAlmostEqual(f, 1.0, places=3)
+
+        m = wp.mat22(0.0, 0.0, 0.0, 0.0)
+        m += wp.mat22(1.0, 1.0, 1.0, 1.0)
+        assert m == wp.mat22(1.0, 1.0, 1.0, 1.0)
+        m -= wp.mat22(1.0, 1.0, 1.0, 1.0)
+        assert m == wp.mat22(0.0, 0.0, 0.0, 0.0)
+        m = wp.mat22(2.0, 2.0, 2.0, 2.0) - wp.mat22(1.0, 1.0, 1.0, 1.0)
+        assert m == wp.mat22(1.0, 1.0, 1.0, 1.0)
+        m *= 2.0
+        assert m == wp.mat22(2.0, 2.0, 2.0, 2.0)
+        m = m * 2.0
+        assert m == wp.mat22(4.0, 4.0, 4.0, 4.0)
+        m = m / 2.0
+        assert m == wp.mat22(2.0, 2.0, 2.0, 2.0)
+        m /= 2.0
+        assert m == wp.mat22(1.0, 1.0, 1.0, 1.0)
+        m = -m
+        assert m == wp.mat22(-1.0, -1.0, -1.0, -1.0)
+        m = +m
+        assert m == wp.mat22(-1.0, -1.0, -1.0, -1.0)
+        m = m * m
+        assert m == wp.mat22(2.0, 2.0, 2.0, 2.0)
+
+
+    def test_native_function_error_resolution(self):
+        a = wp.mat22f(1.0, 2.0, 3.0, 4.0)
+        b = wp.mat22d(1.0, 2.0, 3.0, 4.0)
+        with self.assertRaisesRegex(
+            RuntimeError,
+            r"^Couldn't find a function 'mul' compatible with " r"the arguments 'mat22f, mat22d'$",
+        ):
+            a * b
+
+
+add_kernel_test(TestFunc, kernel=test_overload_func, name="test_overload_func", dim=1, devices=devices)
+add_function_test(TestFunc, func=test_return_func, name="test_return_func", devices=devices)
+add_kernel_test(TestFunc, kernel=test_override_func, name="test_override_func", dim=1, devices=devices)
+add_function_test(TestFunc, func=test_func_closure_capture, name="test_func_closure_capture", devices=devices)
+add_function_test(TestFunc, func=test_multi_valued_func, name="test_multi_valued_func", devices=devices)
+add_kernel_test(TestFunc, kernel=test_func_defaults, name="test_func_defaults", dim=1, devices=devices)
+add_kernel_test(TestFunc, kernel=test_builtin_shadowing, name="test_builtin_shadowing", dim=1, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
-    wp.force_load()
-
     unittest.main(verbosity=2)

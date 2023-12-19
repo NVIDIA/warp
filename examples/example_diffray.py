@@ -304,6 +304,8 @@ class Example:
     """
 
     def __init__(self, stage=None, rot_array=[0.0, 0.0, 0.0, 1.0], verbose=False):
+        self.device = wp.get_device()
+
         self.verbose = verbose
         cam_pos = wp.vec3(0.0, 0.75, 7.0)
         cam_rot = wp.quat(0.0, 0.0, 0.0, 1.0)
@@ -416,12 +418,14 @@ class Example:
         self.loss = wp.zeros(1, dtype=float, requires_grad=True)
 
         # capture graph
-        wp.capture_begin()
-        self.tape = wp.Tape()
-        with self.tape:
-            self.compute_loss()
-        self.tape.backward(self.loss)
-        self.graph = wp.capture_end()
+        wp.capture_begin(self.device)
+        try:
+            self.tape = wp.Tape()
+            with self.tape:
+                self.compute_loss()
+            self.tape.backward(self.loss)
+        finally:
+            self.graph = wp.capture_end(self.device)
 
         self.optimizer = SGD(
             [self.render_mesh.rot],

@@ -5,12 +5,11 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
 import sys
 import unittest
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 # wp.config.mode = "debug"
 
@@ -346,7 +345,7 @@ def test_range_expression():
 
 def test_unresolved_func(test, device):
     # kernel with unresolved function must be in a separate module, otherwise the current module would fail to load
-    from warp.tests.test_unresolved_func import unresolved_func_kernel
+    from warp.tests.aux_test_unresolved_func import unresolved_func_kernel
 
     # ensure that an appropriate exception is raised when the bad module gets loaded
     with test.assertRaisesRegex(RuntimeError, "Could not find function wp.missing_func"):
@@ -354,13 +353,13 @@ def test_unresolved_func(test, device):
 
     # remove all references to the bad module so that subsequent calls to wp.force_load()
     # won't try to load it unless we explicitly re-import it again
-    del wp.context.user_modules["warp.tests.test_unresolved_func"]
-    del sys.modules["warp.tests.test_unresolved_func"]
+    del wp.context.user_modules["warp.tests.aux_test_unresolved_func"]
+    del sys.modules["warp.tests.aux_test_unresolved_func"]
 
 
 def test_unresolved_symbol(test, device):
     # kernel with unresolved symbol must be in a separate module, otherwise the current module would fail to load
-    from warp.tests.test_unresolved_symbol import unresolved_symbol_kernel
+    from warp.tests.aux_test_unresolved_symbol import unresolved_symbol_kernel
 
     # ensure that an appropriate exception is raised when the bad module gets loaded
     with test.assertRaisesRegex(KeyError, "Referencing undefined symbol: missing_symbol"):
@@ -368,143 +367,140 @@ def test_unresolved_symbol(test, device):
 
     # remove all references to the bad module so that subsequent calls to wp.force_load()
     # won't try to load it unless we explicitly re-import it again
-    del wp.context.user_modules["warp.tests.test_unresolved_symbol"]
-    del sys.modules["warp.tests.test_unresolved_symbol"]
+    del wp.context.user_modules["warp.tests.aux_test_unresolved_symbol"]
+    del sys.modules["warp.tests.aux_test_unresolved_symbol"]
 
 
-def register(parent):
-    class TestCodeGen(parent):
-        pass
+class TestCodeGen(unittest.TestCase):
+    pass
 
-    devices = get_test_devices()
 
-    add_kernel_test(TestCodeGen, name="test_inplace", kernel=test_inplace, dim=1, devices=devices)
-    add_kernel_test(TestCodeGen, name="test_rename", kernel=test_rename, dim=1, devices=devices)
-    add_kernel_test(TestCodeGen, name="test_constant", kernel=test_constant, inputs=[1.0], dim=1, devices=devices)
-    add_kernel_test(
-        TestCodeGen, name="test_dynamic_for_rename", kernel=test_dynamic_for_rename, inputs=[10], dim=1, devices=devices
-    )
-    add_kernel_test(
-        TestCodeGen,
-        name="test_dynamic_for_inplace",
-        kernel=test_dynamic_for_inplace,
-        inputs=[10],
-        dim=1,
-        devices=devices,
-    )
-    add_kernel_test(TestCodeGen, name="test_reassign", kernel=test_reassign, dim=1, devices=devices)
-    add_kernel_test(
-        TestCodeGen, name="test_dynamic_reassign", kernel=test_dynamic_reassign, inputs=[2], dim=1, devices=devices
-    )
+devices = get_test_devices()
 
-    add_kernel_test(
-        TestCodeGen,
-        name="test_range_dynamic_forward",
-        kernel=test_range_dynamic,
-        dim=1,
-        inputs=[0, 4, 1],
-        expect=[0, 1, 2, 3],
-        devices=devices,
-    )
-    add_kernel_test(
-        TestCodeGen,
-        name="test_range_dynamic_reverse",
-        kernel=test_range_dynamic,
-        dim=1,
-        inputs=[4, 0, -1],
-        expect=[4, 3, 2, 1],
-        devices=devices,
-    )
-    add_kernel_test(
-        TestCodeGen,
-        name="test_range_dynamic_foward_step",
-        kernel=test_range_dynamic,
-        dim=1,
-        inputs=[0, 8, 2],
-        expect=[0, 2, 4, 6],
-        devices=devices,
-    )
-    add_kernel_test(
-        TestCodeGen,
-        name="test_range_dynamic_reverse_step",
-        kernel=test_range_dynamic,
-        dim=1,
-        inputs=[8, 0, -2],
-        expect=[8, 6, 4, 2],
-        devices=devices,
-    )
+add_kernel_test(TestCodeGen, name="test_inplace", kernel=test_inplace, dim=1, devices=devices)
+add_kernel_test(TestCodeGen, name="test_rename", kernel=test_rename, dim=1, devices=devices)
+add_kernel_test(TestCodeGen, name="test_constant", kernel=test_constant, inputs=[1.0], dim=1, devices=devices)
+add_kernel_test(
+    TestCodeGen, name="test_dynamic_for_rename", kernel=test_dynamic_for_rename, inputs=[10], dim=1, devices=devices
+)
+add_kernel_test(
+    TestCodeGen,
+    name="test_dynamic_for_inplace",
+    kernel=test_dynamic_for_inplace,
+    inputs=[10],
+    dim=1,
+    devices=devices,
+)
+add_kernel_test(TestCodeGen, name="test_reassign", kernel=test_reassign, dim=1, devices=devices)
+add_kernel_test(
+    TestCodeGen, name="test_dynamic_reassign", kernel=test_dynamic_reassign, inputs=[2], dim=1, devices=devices
+)
 
-    add_kernel_test(
-        TestCodeGen,
-        name="test_range_static_sum",
-        kernel=test_range_static_sum,
-        dim=1,
-        expect=[10, 10, 10],
-        devices=devices,
-    )
-    add_kernel_test(
-        TestCodeGen,
-        name="test_range_dynamic_sum",
-        kernel=test_range_dynamic_sum,
-        dim=1,
-        inputs=[0, 10, 2],
-        expect=[10, 10, 10, 10],
-        devices=devices,
-    )
-    add_kernel_test(
-        TestCodeGen,
-        name="test_range_dynamic_sum_zero",
-        kernel=test_range_dynamic_sum,
-        dim=1,
-        inputs=[0, 0, 1],
-        expect=[0, 0, 0, 0],
-        devices=devices,
-    )
-    add_kernel_test(TestCodeGen, name="test_range_constant", kernel=test_range_constant, dim=1, devices=devices)
-    add_kernel_test(
-        TestCodeGen,
-        name="test_range_constant_dynamic_nested",
-        kernel=test_range_constant_dynamic_nested,
-        dim=1,
-        inputs=[10],
-        devices=devices,
-    )
-    add_kernel_test(
-        TestCodeGen,
-        name="test_range_dynamic_nested",
-        kernel=test_range_dynamic_nested,
-        dim=1,
-        inputs=[4],
-        devices=devices,
-    )
-    add_kernel_test(
-        TestCodeGen,
-        name="test_range_expression",
-        kernel=test_range_expression,
-        dim=1,
-        devices=devices,
-    )
+add_kernel_test(
+    TestCodeGen,
+    name="test_range_dynamic_forward",
+    kernel=test_range_dynamic,
+    dim=1,
+    inputs=[0, 4, 1],
+    expect=[0, 1, 2, 3],
+    devices=devices,
+)
+add_kernel_test(
+    TestCodeGen,
+    name="test_range_dynamic_reverse",
+    kernel=test_range_dynamic,
+    dim=1,
+    inputs=[4, 0, -1],
+    expect=[4, 3, 2, 1],
+    devices=devices,
+)
+add_kernel_test(
+    TestCodeGen,
+    name="test_range_dynamic_forward_step",
+    kernel=test_range_dynamic,
+    dim=1,
+    inputs=[0, 8, 2],
+    expect=[0, 2, 4, 6],
+    devices=devices,
+)
+add_kernel_test(
+    TestCodeGen,
+    name="test_range_dynamic_reverse_step",
+    kernel=test_range_dynamic,
+    dim=1,
+    inputs=[8, 0, -2],
+    expect=[8, 6, 4, 2],
+    devices=devices,
+)
 
-    add_kernel_test(TestCodeGen, name="test_while_zero", kernel=test_while, dim=1, inputs=[0], devices=devices)
-    add_kernel_test(TestCodeGen, name="test_while_positive", kernel=test_while, dim=1, inputs=[16], devices=devices)
-    add_kernel_test(TestCodeGen, name="test_pass", kernel=test_pass, dim=1, inputs=[16], devices=devices)
+add_kernel_test(
+    TestCodeGen,
+    name="test_range_static_sum",
+    kernel=test_range_static_sum,
+    dim=1,
+    expect=[10, 10, 10],
+    devices=devices,
+)
+add_kernel_test(
+    TestCodeGen,
+    name="test_range_dynamic_sum",
+    kernel=test_range_dynamic_sum,
+    dim=1,
+    inputs=[0, 10, 2],
+    expect=[10, 10, 10, 10],
+    devices=devices,
+)
+add_kernel_test(
+    TestCodeGen,
+    name="test_range_dynamic_sum_zero",
+    kernel=test_range_dynamic_sum,
+    dim=1,
+    inputs=[0, 0, 1],
+    expect=[0, 0, 0, 0],
+    devices=devices,
+)
+add_kernel_test(TestCodeGen, name="test_range_constant", kernel=test_range_constant, dim=1, devices=devices)
+add_kernel_test(
+    TestCodeGen,
+    name="test_range_constant_dynamic_nested",
+    kernel=test_range_constant_dynamic_nested,
+    dim=1,
+    inputs=[10],
+    devices=devices,
+)
+add_kernel_test(
+    TestCodeGen,
+    name="test_range_dynamic_nested",
+    kernel=test_range_dynamic_nested,
+    dim=1,
+    inputs=[4],
+    devices=devices,
+)
+add_kernel_test(
+    TestCodeGen,
+    name="test_range_expression",
+    kernel=test_range_expression,
+    dim=1,
+    devices=devices,
+)
 
-    add_kernel_test(TestCodeGen, name="test_break", kernel=test_break, dim=1, inputs=[10], devices=devices)
-    add_kernel_test(TestCodeGen, name="test_break_early", kernel=test_break_early, dim=1, inputs=[10], devices=devices)
-    add_kernel_test(TestCodeGen, name="test_break_unroll", kernel=test_break_unroll, dim=1, devices=devices)
-    add_kernel_test(
-        TestCodeGen, name="test_break_multiple", kernel=test_break_multiple, dim=1, inputs=[10], devices=devices
-    )
-    add_kernel_test(TestCodeGen, name="test_continue", kernel=test_continue, dim=1, inputs=[10], devices=devices)
-    add_kernel_test(TestCodeGen, name="test_continue_unroll", kernel=test_continue_unroll, dim=1, devices=devices)
+add_kernel_test(TestCodeGen, name="test_while_zero", kernel=test_while, dim=1, inputs=[0], devices=devices)
+add_kernel_test(TestCodeGen, name="test_while_positive", kernel=test_while, dim=1, inputs=[16], devices=devices)
+add_kernel_test(TestCodeGen, name="test_pass", kernel=test_pass, dim=1, inputs=[16], devices=devices)
 
-    add_function_test(TestCodeGen, func=test_unresolved_func, name="test_unresolved_func", devices=devices)
-    add_function_test(TestCodeGen, func=test_unresolved_symbol, name="test_unresolved_symbol", devices=devices)
+add_kernel_test(TestCodeGen, name="test_break", kernel=test_break, dim=1, inputs=[10], devices=devices)
+add_kernel_test(TestCodeGen, name="test_break_early", kernel=test_break_early, dim=1, inputs=[10], devices=devices)
+add_kernel_test(TestCodeGen, name="test_break_unroll", kernel=test_break_unroll, dim=1, devices=devices)
+add_kernel_test(
+    TestCodeGen, name="test_break_multiple", kernel=test_break_multiple, dim=1, inputs=[10], devices=devices
+)
+add_kernel_test(TestCodeGen, name="test_continue", kernel=test_continue, dim=1, inputs=[10], devices=devices)
+add_kernel_test(TestCodeGen, name="test_continue_unroll", kernel=test_continue_unroll, dim=1, devices=devices)
 
-    return TestCodeGen
+add_function_test(TestCodeGen, func=test_unresolved_func, name="test_unresolved_func", devices=devices)
+add_function_test(TestCodeGen, func=test_unresolved_symbol, name="test_unresolved_symbol", devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2, failfast=True)

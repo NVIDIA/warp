@@ -7,11 +7,8 @@
 
 import unittest
 
-import numpy as np
-import math
-
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -229,29 +226,25 @@ def test_operators_mat44():
     expect_eq(r0[3], wp.vec4(39.0, 42.0, 45.0, 48.0))
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestOperators(parent):
-        pass
 
-    add_kernel_test(TestOperators, test_operators_scalar_float, dim=1, devices=devices)
-    add_kernel_test(TestOperators, test_operators_scalar_int, dim=1, devices=devices)
-    add_kernel_test(TestOperators, test_operators_matrix_index, dim=1, devices=devices)
-    add_kernel_test(TestOperators, test_operators_vector_index, dim=1, devices=devices)
-    add_kernel_test(TestOperators, test_operators_vec3, dim=1, devices=devices)
-    add_kernel_test(TestOperators, test_operators_vec4, dim=1, devices=devices)
+class TestOperators(unittest.TestCase):
+    pass
 
-    add_kernel_test(TestOperators, test_operators_mat22, dim=1, devices=devices)
-    add_kernel_test(TestOperators, test_operators_mat33, dim=1, devices=devices)
-    add_kernel_test(TestOperators, test_operators_mat44, dim=1, devices=devices)
 
-    return TestOperators
+add_kernel_test(TestOperators, test_operators_scalar_float, dim=1, devices=devices)
+add_kernel_test(TestOperators, test_operators_scalar_int, dim=1, devices=devices)
+add_kernel_test(TestOperators, test_operators_matrix_index, dim=1, devices=devices)
+add_kernel_test(TestOperators, test_operators_vector_index, dim=1, devices=devices)
+add_kernel_test(TestOperators, test_operators_vec3, dim=1, devices=devices)
+add_kernel_test(TestOperators, test_operators_vec4, dim=1, devices=devices)
+
+add_kernel_test(TestOperators, test_operators_mat22, dim=1, devices=devices)
+add_kernel_test(TestOperators, test_operators_mat33, dim=1, devices=devices)
+add_kernel_test(TestOperators, test_operators_mat44, dim=1, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    wp.force_load()
-
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)
