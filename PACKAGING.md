@@ -73,9 +73,10 @@ Release Steps:
 
 3) Run
     ```bash
-    python -m build --wheel -C--build-option=-Pwindows &&
-    python -m build --wheel -C--build-option=-Plinux &&
-    python -m build --wheel -C--build-option=-Pmacos
+    python -m build --wheel -C--build-option=-Pwindows-x86_64 &&
+    python -m build --wheel -C--build-option=-Plinux-x86_64 &&
+    python -m build --wheel -C--build-option=-Plinux-aarch64 &&
+    python -m build --wheel -C--build-option=-Pmacos-universal
     ```
 
 4) Run `python -m twine upload dist/*`
