@@ -18,8 +18,7 @@ archive
 /_repo
 examples/assets/.thumbs
 /examples/tmp
-/docs/_build/doctrees
-/docs/_build/html/_static/fonts
+/docs/_build
 /warp_lang.egg-info
 exts/omni.warp/omni/warp/ogn/tests/usd
 build/lib/
@@ -29,4 +28,5 @@ exts/omni.warp/config/extension.gen.toml
 /build
 /dist
 .coverage
+.cache
 warp/tests/outputs

@@ -49,4 +49,3 @@ else
         $PYTHON "$SCRIPT_DIR/../../../../build_lib.py" --cuda_path=$CUDA --mode=$BUILD_MODE
     fi
 fi
-
