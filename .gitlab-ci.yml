@@ -1,0 +1,24 @@
+stages:
+  - deploy
+
+pages:
+  stage: deploy
+  image: python:3.11-slim
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:my_first_section[collapsed=true]\\r\\e[0KSet up docs environment"
+    - apt-get update && apt-get install make --no-install-recommends -y
+    - python -m pip install --upgrade pip
+    - python -m pip install -r docs/requirements.txt
+    - echo -e "\\e[0Ksection_end:`date +%s`:my_first_section\\r\\e[0K"
+  script:
+    - cd docs && make clean
+    - python ../build_docs.py --no-color
+  after_script:
+    - mv docs/_build/html/ ./public/
+  artifacts:
+    paths:
+    - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+  tags:
+    - pages

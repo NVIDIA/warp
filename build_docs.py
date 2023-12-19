@@ -1,38 +1,47 @@
+# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
 import os
-import sys
 import subprocess
+import sys
 
-import warp as wp
-
-
-wp.init()
+from warp.context import export_functions_rst, export_stubs
 
 # docs
 
 # disable sphinx color output
 os.environ["NO_COLOR"] = "1"
 
-with open("docs/modules/functions.rst", "w") as function_ref:
-    wp.print_builtins(function_ref)
+base_path = os.path.dirname(os.path.realpath(__file__))
+
+with open(os.path.join(base_path, "docs", "modules", "functions.rst"), "w") as function_ref:
+    export_functions_rst(function_ref)
 
 # run Sphinx build
 try:
-    if os.name == 'nt':
-        subprocess.check_output("make.bat html", cwd="docs", shell=True)
+    docs_folder = os.path.join(base_path, "docs")
+    make_html_cmd = ["make.bat" if os.name == "nt" else "make", "html"]
+
+    if os.name == "nt" or len(sys.argv) == 1:
+        subprocess.check_output(make_html_cmd, cwd=docs_folder)
     else:
-        subprocess.run("make clean", cwd="docs", shell=True)
-        subprocess.check_output("make html", cwd="docs", shell=True)
+        # Sphinx options were passed via the argument list
+        make_html_cmd.append("-e")
+        sphinx_options = " ".join(sys.argv[1:])
+        subprocess.check_output(make_html_cmd, cwd=docs_folder, env=dict(os.environ, SPHINXOPTS=sphinx_options))
 except subprocess.CalledProcessError as e:
     print(e.output.decode())
     raise e
 
-
 # generate stubs for autocomplete
-stub_file = open("warp/stubs.py", "w")
-wp.export_stubs(stub_file)
-stub_file.close()
+with open(os.path.join(base_path, "warp", "stubs.py"), "w") as stub_file:
+    export_stubs(stub_file)
 
 # code formatting
-subprocess.run([sys.executable, "-m", "black", "warp/stubs.py"])
+subprocess.run([sys.executable, "-m", "black", os.path.join(base_path, "warp", "stubs.py")])
 
 print("Finished")

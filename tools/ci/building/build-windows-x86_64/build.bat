@@ -13,7 +13,6 @@ call %PYTHON% -m pip install gitpython
 call %PYTHON% -m pip install cmake
 call %PYTHON% -m pip install ninja
 
-
 SET BUILD_MODE="release"
 for %%i in (%*) do (
     if "%%i"=="--debug" set BUILD_MODE="debug"
