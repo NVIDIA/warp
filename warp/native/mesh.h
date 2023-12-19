@@ -1253,6 +1253,17 @@ struct mesh_query_point_t
           v(0.0f)
     {}
 
+    // Required for adjoint computations.
+    CUDA_CALLABLE inline mesh_query_point_t& operator+=(const mesh_query_point_t& other)
+    {
+        result += other.result;
+        sign += other.sign;
+        face += other.face;
+        u += other.u;
+        v += other.v;
+        return *this;
+    }
+
     bool result;
     float sign;
     int face;
@@ -1458,6 +1469,19 @@ struct mesh_query_ray_t
     {
     }
 
+    // Required for adjoint computations.
+    CUDA_CALLABLE inline mesh_query_ray_t& operator+=(const mesh_query_ray_t& other)
+    {
+        result += other.result;
+        sign += other.sign;
+        face += other.face;
+        t += other.t;
+        u += other.u;
+        v += other.v;
+        normal += other.normal;
+        return *this;
+    }
+
     bool result;
     float sign;
     int face;
@@ -1522,6 +1546,12 @@ struct mesh_query_aabb_t
           input_upper(),
           face(0)
     {}
+
+    // Required for adjoint computations.
+    CUDA_CALLABLE inline mesh_query_aabb_t& operator+=(const mesh_query_aabb_t& other)
+    {
+        return *this;
+    }
 
     // Mesh Id
     Mesh mesh;

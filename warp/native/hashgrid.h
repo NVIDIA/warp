@@ -92,6 +92,12 @@ struct hash_grid_query_t
           grid()
     {}
 
+    // Required for adjoint computations.
+    CUDA_CALLABLE inline hash_grid_query_t& operator+=(const hash_grid_query_t& other)
+    {
+        return *this;
+    }
+
     int x_start;
     int y_start;
     int z_start;

@@ -218,6 +218,12 @@ struct bvh_query_t
           bounds_nr(0)
     {}
 
+    // Required for adjoint computations.
+    CUDA_CALLABLE inline bvh_query_t& operator+=(const bvh_query_t& other)
+    {
+        return *this;
+    }
+
     BVH bvh;
 
 	// BVH traversal stack:

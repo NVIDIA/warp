@@ -266,6 +266,21 @@ def test_mesh_query_ray_edge(test, device):
     test.assertEqual(counts.numpy()[0], n)
 
 
+def test_mesh_query_codegen_adjoints_with_select(test, device):
+    def kernel_fn(
+        mesh: wp.uint64,
+    ):
+        v = wp.vec3(0.0, 0.0, 0.0)
+        d = 1e-6
+
+        if True:
+            query = wp.mesh_query_ray(mesh, v, v, d)
+        else:
+            query = wp.mesh_query_ray(mesh, v, v, d)
+
+    wp.Kernel(func=kernel_fn)
+
+
 devices = get_test_devices()
 
 
@@ -275,6 +290,12 @@ class TestMeshQueryRay(unittest.TestCase):
 
 add_function_test(TestMeshQueryRay, "test_mesh_query_ray_edge", test_mesh_query_ray_edge, devices=devices)
 add_function_test(TestMeshQueryRay, "test_mesh_query_ray_grad", test_mesh_query_ray_grad, devices=devices)
+add_function_test(
+    TestMeshQueryRay,
+    "test_mesh_query_codegen_adjoints_with_select",
+    test_mesh_query_codegen_adjoints_with_select,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":

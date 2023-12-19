@@ -134,6 +134,20 @@ def test_hashgrid_query(test, device):
         test.assertTrue(np.array_equal(counts, counts_ref))
 
 
+def test_hashgrid_codegen_adjoints_with_select(test, device):
+    def kernel_fn(
+        grid: wp.uint64,
+    ):
+        v = wp.vec3(0.0, 0.0, 0.0)
+
+        if True:
+            query = wp.hash_grid_query(grid, v, 0.0)
+        else:
+            query = wp.hash_grid_query(grid, v, 0.0)
+
+    wp.Kernel(func=kernel_fn)
+
+
 devices = get_test_devices()
 
 
@@ -142,6 +156,8 @@ class TestHashGrid(unittest.TestCase):
 
 
 add_function_test(TestHashGrid, "test_hashgrid_query", test_hashgrid_query, devices=devices)
+add_function_test(TestHashGrid, "test_hashgrid_codegen_adjoints_with_select", test_hashgrid_codegen_adjoints_with_select, devices=devices)
+
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
