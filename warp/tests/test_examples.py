@@ -10,7 +10,7 @@ import os
 import unittest
 
 import warp as wp
-from warp.tests.unittest_utils import get_unique_cuda_test_devices
+from warp.tests.unittest_utils import get_unique_cuda_test_devices, sanitize_identifier
 
 wp.init()
 
@@ -18,11 +18,15 @@ wp.init()
 # registers an example to run as a TestCase
 def add_example_test(cls, name, devices=None, options={}):
     def run(test, device):
+        # The copy() is needed because pop() is used to avoid passing extra args to Example()
+        # Can remove once all examples accept **kwargs and we no longer need to pop()
+        test_options = options.copy()
+
         try:
             module = importlib.import_module(f"examples.{name}")
 
-            torch_cuda_required = options.setdefault("torch_cuda_required", False)
-            options.pop("torch_cuda_required", None)
+            torch_cuda_required = test_options.setdefault("torch_cuda_required", False)
+            test_options.pop("torch_cuda_required", None)
             if torch_cuda_required and wp.get_device(device).is_cuda:
                 # Ensure torch has CUDA support
                 import torch
@@ -34,33 +38,41 @@ def add_example_test(cls, name, devices=None, options={}):
             test.skipTest(f"{e}")
 
         # create default USD stage output path which many examples expect
-        options.setdefault("stage", os.path.join(os.path.dirname(__file__), f"outputs/{name}.usd"))
+        test_options.setdefault(
+            "stage", os.path.join(os.path.dirname(__file__), f"outputs/{name}_{sanitize_identifier(device)}.usd")
+        )
 
-        num_frames = options.get("num_frames", 10)
-        options.pop("num_frames", None)
+        try:
+            os.remove(test_options["stage"])
+        except OSError:
+            pass
+
+        num_frames = test_options.get("num_frames", 10)
+        test_options.pop("num_frames", None)
 
         # Don't want to force load all modules by default for serial test runner
         wp.config.graph_capture_module_load_default = False
 
         try:
-            enable_backward = options.get("enable_backward", True)
+            enable_backward = test_options.get("enable_backward", True)
             wp.set_module_options({"enable_backward": enable_backward}, module)
-            options.pop("enable_backward", None)
+            test_options.pop("enable_backward", None)
 
-            wp.load_module(module, device=wp.get_device())
-            extra_load_modules = options.get("load_modules", [])
-            for module_name in extra_load_modules:
-                wp.load_module(module_name, device=wp.get_device())
-            options.pop("load_modules", None)
+            with wp.ScopedDevice(device):
+                wp.load_module(module, device=wp.get_device())
+                extra_load_modules = test_options.get("load_modules", [])
+                for module_name in extra_load_modules:
+                    wp.load_module(module_name, device=wp.get_device())
+                test_options.pop("load_modules", None)
 
-            e = module.Example(**options)
+                e = module.Example(**test_options)
 
-            # disable scoped timer to avoid log spam from time steps
-            wp.ScopedTimer.enabled = False
+                # disable scoped timer to avoid log spam from time steps
+                wp.ScopedTimer.enabled = False
 
-            for _ in range(num_frames):
-                e.update()
-                e.render()
+                for _ in range(num_frames):
+                    e.update()
+                    e.render()
         except Exception as e:
             test.fail(f"{e}")
         finally:
@@ -109,7 +121,7 @@ add_example_test(
     TestSimExamples,
     name="example_sim_cartpole",
     devices=cuda_test_devices,
-    options={"load_modules": ["warp.sim.integrator_euler"]},
+    options={"load_modules": ["warp.sim.collide", "warp.sim.integrator_euler", "warp.sim.articulation"]},
 )
 add_example_test(
     TestSimExamples,

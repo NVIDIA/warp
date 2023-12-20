@@ -436,33 +436,36 @@ class Example:
         )
 
     def ray_trace(self, is_live=False):
-        with wp.ScopedDevice("cuda:0"):
-            # raycast
-            wp.launch(
-                kernel=draw_kernel,
-                dim=self.num_rays,
-                inputs=[
-                    self.render_mesh,
-                    self.camera,
-                    self.texture,
-                    self.rays_width,
-                    self.rays_height,
-                    self.rays,
-                    self.lights,
-                    self.render_mode,
-                ],
-            )
+        # raycast
+        wp.launch(
+            kernel=draw_kernel,
+            dim=self.num_rays,
+            inputs=[
+                self.render_mesh,
+                self.camera,
+                self.texture,
+                self.rays_width,
+                self.rays_height,
+                self.rays,
+                self.lights,
+                self.render_mode,
+            ],
+            device=self.device,
+        )
 
-            # downsample
-            wp.launch(
-                kernel=downsample_kernel,
-                dim=self.num_pixels,
-                inputs=[self.rays, self.pixels, self.rays_width, pow(2, self.num_samples)],
-            )
+        # downsample
+        wp.launch(
+            kernel=downsample_kernel,
+            dim=self.num_pixels,
+            inputs=[self.rays, self.pixels, self.rays_width, pow(2, self.num_samples)],
+            device=self.device,
+        )
 
     def compute_loss(self):
         self.ray_trace()
-        wp.launch(loss_kernel, dim=self.num_pixels, inputs=[self.pixels, self.target_pixels, self.loss])
+        wp.launch(
+            loss_kernel, dim=self.num_pixels, inputs=[self.pixels, self.target_pixels, self.loss], device=self.device
+        )
 
     def get_image(self):
         return self.pixels.numpy().reshape((self.height, self.width, 3))

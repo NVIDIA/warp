@@ -481,8 +481,6 @@ def set_worker_cache(args, temp_dir):
 
         wp.config.kernel_cache_dir = cache_root_dir
 
-        # wp.config.verify_cuda = True  # TESTING
-
         wp.build.clear_kernel_cache()
 
 

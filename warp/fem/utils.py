@@ -1,10 +1,15 @@
 from typing import Any, Tuple
 
-import warp as wp
 import numpy as np
 
-from warp.utils import radix_sort_pairs, runlength_encode, array_scan
-from warp.fem.cache import borrow_temporary, borrow_temporary_like, TemporaryStore, Temporary
+import warp as wp
+from warp.fem.cache import (
+    Temporary,
+    TemporaryStore,
+    borrow_temporary,
+    borrow_temporary_like,
+)
+from warp.utils import array_scan, radix_sort_pairs, runlength_encode
 
 
 @wp.func
@@ -168,7 +173,7 @@ def compress_node_indices(
     if node_indices.device.is_cuda:
         unique_node_count_host = borrow_temporary(temporary_store, shape=(1,), dtype=int, pinned=True, device="cpu")
         wp.copy(src=unique_node_count_dev.array, dest=unique_node_count_host.array, count=1)
-        wp.synchronize_stream(wp.get_stream())
+        wp.synchronize_stream(wp.get_stream(node_indices.device))
         unique_node_count_dev.release()
         unique_node_count = int(unique_node_count_host.array.numpy()[0])
         unique_node_count_host.release()
@@ -217,7 +222,7 @@ def masked_indices(
     if offsets.device.is_cuda:
         masked_count_temp = borrow_temporary(temporary_store, shape=1, dtype=int, pinned=True, device="cpu")
         wp.copy(dest=masked_count_temp.array, src=offsets, src_offset=offsets.shape[0] - 1, count=1)
-        wp.synchronize_stream(wp.get_stream())
+        wp.synchronize_stream(wp.get_stream(offsets.device))
         masked_count = int(masked_count_temp.array.numpy()[0])
         masked_count_temp.release()
     else:

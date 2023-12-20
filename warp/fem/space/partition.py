@@ -1,15 +1,18 @@
 from typing import Any, Optional, Union
 
 import warp as wp
-
+from warp.fem.cache import (
+    TemporaryStore,
+    borrow_temporary,
+    borrow_temporary_like,
+    cached_arg_value,
+)
 from warp.fem.geometry import GeometryPartition, WholeGeometryPartition
-from warp.fem.utils import compress_node_indices, _iota_kernel
 from warp.fem.types import NULL_NODE_INDEX
-from warp.fem.cache import cached_arg_value, TemporaryStore, borrow_temporary, borrow_temporary_like
+from warp.fem.utils import _iota_kernel, compress_node_indices
 
-from .topology import SpaceTopology
 from .function_space import FunctionSpace
-
+from .topology import SpaceTopology
 
 wp.set_module_options({"enable_backward": False})
 
@@ -272,7 +275,7 @@ class NodePartition(SpacePartition):
 
         if device.is_cuda:
             # TODO switch to synchronize_event once available
-            wp.synchronize_stream(wp.get_stream())
+            wp.synchronize_stream(wp.get_stream(device))
 
         category_offsets.release()
 

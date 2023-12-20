@@ -1,13 +1,24 @@
 from typing import Optional
+
 import warp as wp
+from warp.fem.cache import (
+    TemporaryStore,
+    borrow_temporary,
+    borrow_temporary_like,
+    cached_arg_value,
+)
+from warp.fem.types import (
+    NULL_ELEMENT_INDEX,
+    OUTSIDE,
+    Coords,
+    ElementIndex,
+    Sample,
+    make_free_sample,
+)
 
-from warp.fem.types import ElementIndex, Coords, Sample, make_free_sample
-from warp.fem.types import NULL_ELEMENT_INDEX, OUTSIDE
-from warp.fem.cache import cached_arg_value, TemporaryStore, borrow_temporary, borrow_temporary_like
-
-from .geometry import Geometry
-from .element import Triangle, LinearEdge
 from .closest_point import project_on_tri_at_origin
+from .element import LinearEdge, Triangle
+from .geometry import Geometry
 
 
 @wp.struct
@@ -365,7 +376,7 @@ class Trimesh2D(Geometry):
             wp.copy(
                 dest=edge_count.array, src=vertex_unique_edge_offsets.array, src_offset=self.vertex_count() - 1, count=1
             )
-            wp.synchronize_stream(wp.get_stream())
+            wp.synchronize_stream(wp.get_stream(device))
             edge_count = int(edge_count.array.numpy()[0])
         else:
             edge_count = int(vertex_unique_edge_offsets.array.numpy()[self.vertex_count() - 1])

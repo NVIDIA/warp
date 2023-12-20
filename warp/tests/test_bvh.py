@@ -131,7 +131,7 @@ def test_bvh_query_ray(test, device):
     test_bvh(test, "ray", device)
 
 
-devices = get_test_devices(mode="basic")  # TODO: Fix the illegal address error when two CUDA devices are used
+devices = get_test_devices()
 
 
 class TestBvh(unittest.TestCase):
