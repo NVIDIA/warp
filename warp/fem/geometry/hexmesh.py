@@ -1,11 +1,16 @@
 from typing import Optional
+
 import warp as wp
+from warp.fem.cache import (
+    TemporaryStore,
+    borrow_temporary,
+    borrow_temporary_like,
+    cached_arg_value,
+)
+from warp.fem.types import OUTSIDE, Coords, ElementIndex, Sample, make_free_sample
 
-from warp.fem.types import ElementIndex, Coords, Sample, OUTSIDE, make_free_sample
-from warp.fem.cache import cached_arg_value, TemporaryStore, borrow_temporary, borrow_temporary_like
-
+from .element import Cube, Square
 from .geometry import Geometry
-from .element import Square, Cube
 
 
 @wp.struct
@@ -493,7 +498,7 @@ class Hexmesh(Geometry):
             wp.copy(
                 dest=face_count.array, src=vertex_unique_face_offsets.array, src_offset=self.vertex_count() - 1, count=1
             )
-            wp.synchronize_stream(wp.get_stream())
+            wp.synchronize_stream(wp.get_stream(device))
             face_count = int(face_count.array.numpy()[0])
         else:
             face_count = int(vertex_unique_face_offsets.array.numpy()[self.vertex_count() - 1])
@@ -603,7 +608,7 @@ class Hexmesh(Geometry):
                 src_offset=self.vertex_count() - 1,
                 count=1,
             )
-            wp.synchronize_stream(wp.get_stream())
+            wp.synchronize_stream(wp.get_stream(device))
             self._edge_count = int(edge_count.array.numpy()[0])
         else:
             self._edge_count = int(vertex_unique_edge_offsets.array.numpy()[self.vertex_count() - 1])
