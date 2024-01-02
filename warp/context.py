@@ -496,16 +496,15 @@ def call_builtin(func: Function, *params) -> Tuple[bool, Any]:
     # Call the built-in function from Warp's dll.
     c_func(*c_params)
 
-    # TODO: uncomment when we have a way to print warning messages only once.
-    # if uses_non_warp_array_type:
-    #     warp.utils.warn(
-    #         "Support for built-in functions called with non-Warp array types, "
-    #         "such as lists, tuples, NumPy arrays, and others, will be dropped "
-    #         "in the future. Use a Warp type such as `wp.vec`, `wp.mat`, "
-    #         "`wp.quat`, or `wp.transform`.",
-    #         DeprecationWarning,
-    #         stacklevel=3
-    #     )
+    if uses_non_warp_array_type:
+        warp.utils.warn(
+            "Support for built-in functions called with non-Warp array types, "
+            "such as lists, tuples, NumPy arrays, and others, will be dropped "
+            "in the future. Use a Warp type such as `wp.vec`, `wp.mat`, "
+            "`wp.quat`, or `wp.transform`.",
+            DeprecationWarning,
+            stacklevel=3
+        )
 
     if issubclass(value_ctype, ctypes.Array) or issubclass(value_ctype, ctypes.Structure):
         # return vector types as ctypes
