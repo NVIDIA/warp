@@ -9,3 +9,4 @@ omni/warp/ogn/*.py
 omni/warp/ogn/tests/*.py
 omni/warp/ogn/docs/*.rst
 omni/warp/ogn/usd/*.usda
+warp

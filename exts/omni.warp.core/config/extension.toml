@@ -17,14 +17,18 @@ icon = "data/icon.png"
 [fswatcher.patterns]
 include = ["*.py"]
 
+# Extension module
+# It must be defined before the module `warp` in order to give
+# the `omni.warp.core` extension a chance to create a symlink towards Warp's
+# core directory, if needed, before Carbonite tries to evaluate `import warp`.
+[[python.module]]
+name = "omni.warp.core"
+
 # Core language module
 [[python.module]]
 name = "warp"
 path = "."
 public = true
-
-[[python.module]]
-name = "omni.warp.core"
 
 # Kit testing flags
 [[test]]
