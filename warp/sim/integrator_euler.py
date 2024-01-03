@@ -962,6 +962,7 @@ def eval_rigid_contacts(
     contact_normal: wp.array(dtype=wp.vec3),
     contact_shape0: wp.array(dtype=int),
     contact_shape1: wp.array(dtype=int),
+    kappa: wp.float32,
     # outputs
     body_f: wp.array(dtype=wp.spatial_vector),
 ):
@@ -1024,9 +1025,6 @@ def eval_rigid_contacts(
 
     d = wp.dot(n, bx_a - bx_b)
 
-    if d >= 0.0:
-        return
-
     # compute contact point velocity
     bv_a = wp.vec3(0.0)
     bv_b = wp.vec3(0.0)
@@ -1045,17 +1043,18 @@ def eval_rigid_contacts(
     # relative velocity
     v = bv_a - bv_b
 
-    # print(v)
-
     # decompose relative velocity
     vn = wp.dot(n, v)
-    vt = v - n * vn
+    # vt = v - n * vn
 
-    # contact elastic
-    fn = d * ke
+    if d < 0.0:
+        fn = -(ke / kappa) * (wp.log(1.0 + wp.exp(kappa * d)) - kappa * d)
+    else:
+        fn = -(ke / kappa) * (wp.log(1.0 + wp.exp(-kappa * d)))
+    fd = wp.min(vn, 0.0) * kd * wp.step(d)
 
     # contact damping
-    fd = wp.min(vn, 0.0) * kd * wp.step(d)
+
 
     # viscous friction
     # ft = vt*kf
@@ -1071,10 +1070,10 @@ def eval_rigid_contacts(
 
     # Coulomb friction (smooth, but gradients are numerically unstable around |vt| = 0)
     # ft = wp.normalize(vt)*wp.min(kf*wp.length(vt), abs(mu*d*ke))
-    ft = wp.normalize(vt) * wp.min(kf * wp.length(vt), 0.0 - mu * (fn + fd))
+    # ft = wp.normalize(vt) * wp.min(kf * wp.length(vt), 0.0 - mu * (fn + fd))
 
     # f_total = fn + (fd + ft)
-    f_total = n * (fn + fd) + ft
+    f_total = n * (fn + fd) # + ft
     # t_total = wp.cross(r, f_total)
 
     # print("apply contact force")
@@ -1621,6 +1620,7 @@ def compute_forces(model, state, particle_f, body_f, requires_grad):
                 model.rigid_contact_normal,
                 model.rigid_contact_shape0,
                 model.rigid_contact_shape1,
+                model.kappa,
             ],
             outputs=[body_f],
             device=model.device,

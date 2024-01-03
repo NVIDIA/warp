@@ -540,6 +540,7 @@ class Model:
     def __init__(self, device=None):
         self.requires_grad = False
         self.num_envs = 0
+        self.kappa = 1000.0 # contact smoothing parameter
 
         self.particle_q = None
         self.particle_qd = None
