@@ -108,7 +108,7 @@ class Example:
 
     def update(self):
         with wp.ScopedTimer("simulate", active=True, print=self.print_timers):
-            if self.use_graph is False or self.graph is None:
+            if not self.use_graph or self.graph is None:
                 for _ in range(self.sim_substeps):
                     self.state.clear_forces()
                     self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)

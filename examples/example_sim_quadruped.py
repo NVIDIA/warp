@@ -144,7 +144,7 @@ class Example:
 
     def update(self):
         with wp.ScopedTimer("simulate", active=True, print=self.print_timers):
-            if self.use_graph is False or self.graph is None:
+            if not self.use_graph or self.graph is None:
                 for _ in range(self.sim_substeps):
                     self.state_0.clear_forces()
                     wp.sim.collide(self.model, self.state_0)

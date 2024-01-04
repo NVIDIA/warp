@@ -1090,7 +1090,7 @@ def add_builtin(
 
         # export means the function will be added to the `warp` module namespace
         # so that users can call it directly from the Python interpreter
-        if export is True:
+        if export:
             if hasattr(warp, key):
                 # check that we haven't already created something at this location
                 # if it's just an overload stub for auto-complete then overwrite it
@@ -1440,7 +1440,7 @@ class Module:
                         ch.update(bytes(s, "utf-8"))
                     if func.custom_replay_func:
                         s = func.custom_replay_func.adj.source
-                        
+
                     # cache func arg types
                     for arg, arg_type in func.adj.arg_types.items():
                         s = f"{arg}: {get_type_name(arg_type)}"
@@ -3494,7 +3494,7 @@ def launch(
         device = runtime.get_device(device)
 
     # check function is a Kernel
-    if isinstance(kernel, Kernel) is False:
+    if not isinstance(kernel, Kernel):
         raise RuntimeError("Error launching kernel, can only launch functions decorated with @wp.kernel.")
 
     # debugging aid
@@ -3795,7 +3795,7 @@ def capture_begin(device: Devicelike = None, stream=None, force_module_load=None
     if force_module_load is None:
         force_module_load = warp.config.graph_capture_module_load_default
 
-    if warp.config.verify_cuda is True:
+    if warp.config.verify_cuda:
         raise RuntimeError("Cannot use CUDA error verification during graph capture")
 
     if stream is not None:
@@ -4210,7 +4210,7 @@ def export_stubs(file):  # pragma: no cover
 
             return_str = ""
 
-            if f.export is False or f.hidden is True:  # or f.generic:
+            if not f.export or f.hidden:  # or f.generic:
                 continue
 
             try:
@@ -4255,7 +4255,7 @@ def export_builtins(file: io.TextIOBase):  # pragma: no cover
 
     for k, g in builtin_functions.items():
         for f in g.overloads:
-            if f.export is False or f.generic:
+            if not f.export or f.generic:
                 continue
 
             simple = True
