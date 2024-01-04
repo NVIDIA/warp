@@ -1381,12 +1381,12 @@ class Adjoint:
         return
 
     def emit_NameConstant(adj, node):
-        if node.value is True:
+        if node.value:
             return adj.add_constant(True)
-        elif node.value is False:
-            return adj.add_constant(False)
         elif node.value is None:
             raise WarpCodegenTypeError("None type unsupported")
+        else:
+            return adj.add_constant(False)
 
     def emit_Constant(adj, node):
         if isinstance(node, ast.Str):

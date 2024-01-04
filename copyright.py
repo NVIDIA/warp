@@ -47,7 +47,7 @@ for d in dirs:
         s = f.read()
         f.close()
 
-        if s.startswith(header) is False:
+        if not s.startswith(header):
             s = header + s
 
             f = open(p, "wt")

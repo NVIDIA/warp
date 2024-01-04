@@ -172,7 +172,7 @@ def assert_np_equal(result, expect, tol=0.0):
     b = expect.flatten()
 
     if tol == 0.0:
-        if (a == b).all() is False:
+        if not (a == b).all():
             raise AssertionError(f"Unexpected result, got: {a} expected: {b}")
 
     else:

@@ -293,6 +293,7 @@ def test_tape(test, device):
 
     tape.backward(loss=loss)
     A_grad = A.grad.numpy()
+    tape.reset()
 
     # test adjoint
     D.grad = wp.array2d(np.ones((m, n)), dtype=float, device=device)
