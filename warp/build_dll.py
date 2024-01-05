@@ -8,9 +8,22 @@
 import sys
 import os
 import subprocess
+import platform
 
 import warp.config
 from warp.utils import ScopedTimer
+
+
+# return a canonical machine architecture string
+# - "x86_64" for x86-64, aka. AMD64, aka. x64
+# - "aarch64" for AArch64, aka. ARM64
+def machine_architecture() -> str:
+    machine = platform.machine()
+    if machine == "x86_64" or machine == "AMD64":
+        return "x86_64"
+    if machine == "aarch64" or machine == "arm64":
+        return "aarch64"
+    raise RuntimeError(f"Unrecognized machine architecture {machine}")
 
 
 def run_cmd(cmd, capture=False):
@@ -183,7 +196,7 @@ def build_dll_for_arch(dll_path, cpp_paths, cu_path, libs, mode, arch, verify_fp
                 "-gencode=arch=compute_80,code=sm_80",  # Ampere
                 "-gencode=arch=compute_86,code=sm_86",
             ]
-            if arch == "arm64" and sys.platform() == "linux":
+            if arch == "aarch64" and sys.platform() == "linux":
                 gencode_opts += [
                     # SASS for supported mobile architectures (e.g. Tegra/Jetson)
                     "-gencode=arch=compute_53,code=sm_53",  # X1
@@ -357,11 +370,13 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
     if sys.platform == "darwin":
         # create a universal binary by combining x86-64 and AArch64 builds
         build_dll_for_arch(dll_path + "-x86_64", cpp_paths, cu_path, libs, mode, "x86_64", verify_fp, fast_math, quick)
-        build_dll_for_arch(dll_path + "-arm64", cpp_paths, cu_path, libs, mode, "arm64", verify_fp, fast_math, quick)
+        build_dll_for_arch(
+            dll_path + "-aarch64", cpp_paths, cu_path, libs, mode, "aarch64", verify_fp, fast_math, quick
+        )
 
-        run_cmd(f"lipo -create -output {dll_path} {dll_path}-x86_64 {dll_path}-arm64")
+        run_cmd(f"lipo -create -output {dll_path} {dll_path}-x86_64 {dll_path}-aarch64")
         os.remove(f"{dll_path}-x86_64")
-        os.remove(f"{dll_path}-arm64")
+        os.remove(f"{dll_path}-aarch64")
 
     else:
         build_dll_for_arch(dll_path, cpp_paths, cu_path, libs, mode, "x86_64", verify_fp, fast_math, quick)
