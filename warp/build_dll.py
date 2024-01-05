@@ -196,7 +196,7 @@ def build_dll_for_arch(dll_path, cpp_paths, cu_path, libs, mode, arch, verify_fp
                 "-gencode=arch=compute_80,code=sm_80",  # Ampere
                 "-gencode=arch=compute_86,code=sm_86",
             ]
-            if arch == "aarch64" and sys.platform() == "linux":
+            if arch == "aarch64" and sys.platform == "linux":
                 gencode_opts += [
                     # SASS for supported mobile architectures (e.g. Tegra/Jetson)
                     "-gencode=arch=compute_53,code=sm_53",  # X1
@@ -379,4 +379,6 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
         os.remove(f"{dll_path}-aarch64")
 
     else:
-        build_dll_for_arch(dll_path, cpp_paths, cu_path, libs, mode, "x86_64", verify_fp, fast_math, quick)
+        build_dll_for_arch(
+            dll_path, cpp_paths, cu_path, libs, mode, machine_architecture(), verify_fp, fast_math, quick
+        )
