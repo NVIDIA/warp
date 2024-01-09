@@ -1966,7 +1966,7 @@ class array(Array):
         if self.ptr:
             # use the CUDA default stream for synchronous behaviour with other streams
             with warp.ScopedStream(self.device.null_stream):
-                a = self.to("cpu")
+                a = self.to("cpu", requires_grad=False)
             # convert through __array_interface__
             # Note: this handles arrays of structs using `descr`, so the result will be a structured NumPy array
             return np.array(a, copy=False)
@@ -2031,13 +2031,13 @@ class array(Array):
             # scalar
             return list(a.flatten())
 
-    def to(self, device):
+    def to(self, device, requires_grad=None):
         """Returns a Warp array with this array's data moved to the specified device, no-op if already on device."""
         device = warp.get_device(device)
         if self.device == device:
             return self
         else:
-            return warp.clone(self, device=device)
+            return warp.clone(self, device=device, requires_grad=requires_grad)
 
     def flatten(self):
         """Returns a zero-copy view of the array collapsed to 1-D. Only supported for contiguous arrays."""
