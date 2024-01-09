@@ -13,6 +13,114 @@ from warp.tests.unittest_utils import *
 wp.init()
 
 
+def test_bool(test, device):
+    value = wp.bool(False)
+    test.assertIsInstance(bool(value), bool)
+    test.assertIsInstance(int(value), int)
+    test.assertIsInstance(float(value), float)
+    test.assertEqual(bool(value), False)
+    test.assertEqual(int(value), 0)
+    test.assertEqual(float(value), 0.0)
+    try:
+        ctypes.c_bool(value)
+    except Exception:
+        test.fail()
+
+    value = wp.bool(True)
+    test.assertIsInstance(bool(value), bool)
+    test.assertIsInstance(int(value), int)
+    test.assertIsInstance(float(value), float)
+    test.assertEqual(bool(value), True)
+    test.assertEqual(int(value), 1)
+    test.assertEqual(float(value), 1.0)
+    try:
+        ctypes.c_bool(value)
+    except Exception:
+        test.fail()
+
+    value = wp.bool(0.0)
+    test.assertIsInstance(bool(value), bool)
+    test.assertIsInstance(int(value), int)
+    test.assertIsInstance(float(value), float)
+    test.assertEqual(bool(value), False)
+    test.assertEqual(int(value), 0)
+    test.assertEqual(float(value), 0.0)
+    try:
+        ctypes.c_bool(value)
+    except Exception:
+        test.fail()
+
+    value = wp.bool(123)
+    test.assertIsInstance(bool(value), bool)
+    test.assertIsInstance(int(value), int)
+    test.assertIsInstance(float(value), float)
+    test.assertEqual(bool(value), True)
+    test.assertEqual(int(value), 1)
+    test.assertEqual(float(value), 1.0)
+    try:
+        ctypes.c_bool(value)
+    except Exception:
+        test.fail()
+
+
+def test_integers(test, device, dtype):
+    value = dtype(0)
+    test.assertIsInstance(bool(value), bool)
+    test.assertIsInstance(int(value), int)
+    test.assertIsInstance(float(value), float)
+    test.assertEqual(bool(value), False)
+    test.assertEqual(int(value), 0)
+    test.assertEqual(float(value), 0.0)
+    try:
+        ctypes.c_bool(value)
+        ctypes.c_int(value)
+        ctypes.c_float(value)
+    except Exception:
+        test.fail()
+
+    value = dtype(123)
+    test.assertIsInstance(bool(value), bool)
+    test.assertIsInstance(int(value), int)
+    test.assertIsInstance(float(value), float)
+    test.assertEqual(bool(value), True)
+    test.assertEqual(int(value), 123)
+    test.assertEqual(float(value), 123.0)
+    try:
+        ctypes.c_bool(value)
+        ctypes.c_int(value)
+        ctypes.c_float(value)
+    except Exception:
+        test.fail()
+
+
+def test_floats(test, device, dtype):
+    value = dtype(0.0)
+    test.assertIsInstance(bool(value), bool)
+    test.assertIsInstance(int(value), int)
+    test.assertIsInstance(float(value), float)
+    test.assertEqual(bool(value), False)
+    test.assertEqual(int(value), 0)
+    test.assertEqual(float(value), 0.0)
+    try:
+        ctypes.c_bool(value)
+        ctypes.c_float(value)
+    except Exception:
+        test.fail()
+
+    value = dtype(1.25)
+    test.assertIsInstance(bool(value), bool)
+    test.assertIsInstance(int(value), int)
+    test.assertIsInstance(float(value), float)
+    test.assertEqual(bool(value), True)
+    test.assertEqual(int(value), 1)
+    test.assertEqual(float(value), 1.25)
+    try:
+        ctypes.c_bool(value)
+        ctypes.c_float(value)
+    except Exception:
+        test.fail()
+
+
 def test_constant(test, device):
     const = wp.constant(123)
     test.assertEqual(const, 123)
@@ -41,80 +149,92 @@ def test_constant_error_invalid_type(test, device):
         wp.constant((1, 2, 3))
 
 
-def test_vector(test, device):
-    for dtype in tuple(wp.types.scalar_types) + (int, float):
+def test_vector(test, device, dtype):
+    def make_scalar(x):
+        # Cast to the correct integer type to simulate wrapping.
+        if dtype in wp.types.int_types:
+            return dtype._type_(x).value
 
-        def make_scalar(x):
+        return x
+
+    def make_vec(*args):
+        if dtype in wp.types.int_types:
             # Cast to the correct integer type to simulate wrapping.
-            if dtype in wp.types.int_types:
-                return dtype._type_(x).value
+            return tuple(dtype._type_(x).value for x in args)
 
-            return x
+        return args
 
-        def make_vec(*args):
-            if dtype in wp.types.int_types:
-                # Cast to the correct integer type to simulate wrapping.
-                return tuple(dtype._type_(x).value for x in args)
+    vec3_cls = wp.vec(3, dtype)
+    vec4_cls = wp.vec(4, dtype)
 
-            return args
+    v = vec4_cls(1, 2, 3, 4)
+    test.assertEqual(v[0], make_scalar(1))
+    test.assertEqual(v.x, make_scalar(1))
+    test.assertEqual(v.y, make_scalar(2))
+    test.assertEqual(v.z, make_scalar(3))
+    test.assertEqual(v.w, make_scalar(4))
+    test.assertSequenceEqual(v[0:2], make_vec(1, 2))
+    test.assertSequenceEqual(v, make_vec(1, 2, 3, 4))
 
-        vec3_cls = wp.vec(3, dtype)
-        vec4_cls = wp.vec(4, dtype)
+    v[0] = -1
+    test.assertEqual(v[0], make_scalar(-1))
+    test.assertEqual(v.x, make_scalar(-1))
+    test.assertEqual(v.y, make_scalar(2))
+    test.assertEqual(v.z, make_scalar(3))
+    test.assertEqual(v.w, make_scalar(4))
+    test.assertSequenceEqual(v[0:2], make_vec(-1, 2))
+    test.assertSequenceEqual(v, make_vec(-1, 2, 3, 4))
 
-        v = vec4_cls(1, 2, 3, 4)
-        test.assertEqual(v[0], make_scalar(1))
-        test.assertEqual(v.x, make_scalar(1))
-        test.assertEqual(v.y, make_scalar(2))
-        test.assertEqual(v.z, make_scalar(3))
-        test.assertEqual(v.w, make_scalar(4))
-        test.assertSequenceEqual(v[0:2], make_vec(1, 2))
-        test.assertSequenceEqual(v, make_vec(1, 2, 3, 4))
+    v[1:3] = (-2, -3)
+    test.assertEqual(v[0], make_scalar(-1))
+    test.assertEqual(v.x, make_scalar(-1))
+    test.assertEqual(v.y, make_scalar(-2))
+    test.assertEqual(v.z, make_scalar(-3))
+    test.assertEqual(v.w, make_scalar(4))
+    test.assertSequenceEqual(v[0:2], make_vec(-1, -2))
+    test.assertSequenceEqual(v, make_vec(-1, -2, -3, 4))
 
-        v[0] = -1
-        test.assertEqual(v[0], make_scalar(-1))
-        test.assertEqual(v.x, make_scalar(-1))
-        test.assertEqual(v.y, make_scalar(2))
-        test.assertEqual(v.z, make_scalar(3))
-        test.assertEqual(v.w, make_scalar(4))
-        test.assertSequenceEqual(v[0:2], make_vec(-1, 2))
-        test.assertSequenceEqual(v, make_vec(-1, 2, 3, 4))
+    v.x = 1
+    test.assertEqual(v[0], make_scalar(1))
+    test.assertEqual(v.x, make_scalar(1))
+    test.assertEqual(v.y, make_scalar(-2))
+    test.assertEqual(v.z, make_scalar(-3))
+    test.assertEqual(v.w, make_scalar(4))
+    test.assertSequenceEqual(v[0:2], make_vec(1, -2))
+    test.assertSequenceEqual(v, make_vec(1, -2, -3, 4))
 
-        v[1:3] = (-2, -3)
-        test.assertEqual(v[0], make_scalar(-1))
-        test.assertEqual(v.x, make_scalar(-1))
-        test.assertEqual(v.y, make_scalar(-2))
-        test.assertEqual(v.z, make_scalar(-3))
-        test.assertEqual(v.w, make_scalar(4))
-        test.assertSequenceEqual(v[0:2], make_vec(-1, -2))
-        test.assertSequenceEqual(v, make_vec(-1, -2, -3, 4))
+    v = vec3_cls(2, 4, 6)
+    test.assertSequenceEqual(+v, make_vec(2, 4, 6))
+    test.assertSequenceEqual(-v, make_vec(-2, -4, -6))
+    test.assertSequenceEqual(v + vec3_cls(1, 1, 1), make_vec(3, 5, 7))
+    test.assertSequenceEqual(v - vec3_cls(1, 1, 1), make_vec(1, 3, 5))
+    test.assertSequenceEqual(v * dtype(2), make_vec(4, 8, 12))
+    test.assertSequenceEqual(dtype(2) * v, make_vec(4, 8, 12))
+    test.assertSequenceEqual(v / dtype(2), make_vec(1, 2, 3))
+    test.assertSequenceEqual(dtype(12) / v, make_vec(6, 3, 2))
 
-        v.x = 1
-        test.assertEqual(v[0], make_scalar(1))
-        test.assertEqual(v.x, make_scalar(1))
-        test.assertEqual(v.y, make_scalar(-2))
-        test.assertEqual(v.z, make_scalar(-3))
-        test.assertEqual(v.w, make_scalar(4))
-        test.assertSequenceEqual(v[0:2], make_vec(1, -2))
-        test.assertSequenceEqual(v, make_vec(1, -2, -3, 4))
+    test.assertTrue(v != vec3_cls(1, 2, 3))
+    test.assertEqual(str(v), "[{}]".format(", ".join(str(x) for x in v)))
 
-        v = vec3_cls(2, 4, 6)
-        test.assertSequenceEqual(+v, make_vec(2, 4, 6))
-        test.assertSequenceEqual(-v, make_vec(-2, -4, -6))
-        test.assertSequenceEqual(v + vec3_cls(1, 1, 1), make_vec(3, 5, 7))
-        test.assertSequenceEqual(v - vec3_cls(1, 1, 1), make_vec(1, 3, 5))
-        test.assertSequenceEqual(v * dtype(2), make_vec(4, 8, 12))
-        test.assertSequenceEqual(dtype(2) * v, make_vec(4, 8, 12))
-        test.assertSequenceEqual(v / dtype(2), make_vec(1, 2, 3))
-        test.assertSequenceEqual(dtype(12) / v, make_vec(6, 3, 2))
+    # Check added purely for coverage reasons but is this really a desired
+    # behaviour? Not allowing to define new attributes using systems like
+    # `__slots__` could help improving memory usage.
+    v.foo = 123
+    test.assertEqual(v.foo, 123)
 
-        test.assertTrue(v != vec3_cls(1, 2, 3))
-        test.assertEqual(str(v), "[{}]".format(", ".join(str(x) for x in v)))
 
-        # Check added purely for coverage reasons but is this really a desired
-        # behaviour? Not allowing to define new attributes using systems like
-        # `__slots__` could help improving memory usage.
-        v.foo = 123
-        test.assertEqual(v.foo, 123)
+def test_vector_assign(test, device):
+    v = wp.vec3s()
+    v[0] = 1
+    v[1] = wp.int8(2)
+    v[2] = np.int8(3)
+    test.assertEqual(v, (1, 2, 3))
+
+    v = wp.vec3h()
+    v[0] = 1.0
+    v[1] = wp.float16(2.0)
+    v[2] = np.float16(3.0)
+    test.assertEqual(v, (1.0, 2.0, 3.0))
 
 
 def test_vector_error_invalid_arg_count(test, device):
@@ -377,8 +497,20 @@ class TestTypes(unittest.TestCase):
     pass
 
 
+add_function_test(TestTypes, "test_bool", test_bool, devices=devices)
+
+for dtype in wp.types.int_types:
+    add_function_test(TestTypes, f"test_integers_{dtype.__name__}", test_integers, devices=devices, dtype=dtype)
+
+for dtype in wp.types.float_types:
+    add_function_test(TestTypes, f"test_floats_{dtype.__name__}", test_floats, devices=devices, dtype=dtype)
+
 add_function_test(TestTypes, "test_constant_error_invalid_type", test_constant_error_invalid_type, devices=devices)
-add_function_test(TestTypes, "test_vector", test_vector, devices=devices)
+
+for dtype in tuple(wp.types.scalar_types) + (int, float):
+    add_function_test(TestTypes, f"test_vector_{dtype.__name__}", test_vector, devices=devices, dtype=dtype)
+
+add_function_test(TestTypes, "test_vector_assign", test_vector_assign, devices=devices)
 add_function_test(TestTypes, "test_vector_error_invalid_arg_count", test_vector_error_invalid_arg_count, devices=devices)
 add_function_test(TestTypes, "test_vector_error_invalid_ptr", test_vector_error_invalid_ptr, devices=devices)
 add_function_test(TestTypes, "test_vector_error_invalid_get_item_key", test_vector_error_invalid_get_item_key, devices=devices)

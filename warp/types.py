@@ -413,6 +413,15 @@ class bool:
     def __init__(self, x=False):
         self.value = x
 
+    def __bool__(self) -> bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value != 0)
+
+    def __int__(self) -> int:
+        return int(self.value != 0)
+
 
 class float16:
     _length_ = 1
@@ -420,6 +429,15 @@ class float16:
 
     def __init__(self, x=0.0):
         self.value = x
+
+    def __bool__(self) -> bool:
+        return self.value != 0.0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
 
 
 class float32:
@@ -429,6 +447,15 @@ class float32:
     def __init__(self, x=0.0):
         self.value = x
 
+    def __bool__(self) -> bool:
+        return self.value != 0.0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
 
 class float64:
     _length_ = 1
@@ -436,6 +463,15 @@ class float64:
 
     def __init__(self, x=0.0):
         self.value = x
+
+    def __bool__(self) -> bool:
+        return self.value != 0.0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
 
 
 class int8:
@@ -445,6 +481,18 @@ class int8:
     def __init__(self, x=0):
         self.value = x
 
+    def __bool__(self) -> bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __index__(self) -> int:
+        return int(self.value)
+
 
 class uint8:
     _length_ = 1
@@ -452,6 +500,18 @@ class uint8:
 
     def __init__(self, x=0):
         self.value = x
+
+    def __bool__(self) -> bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __index__(self) -> int:
+        return int(self.value)
 
 
 class int16:
@@ -461,6 +521,18 @@ class int16:
     def __init__(self, x=0):
         self.value = x
 
+    def __bool__(self) -> bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __index__(self) -> int:
+        return int(self.value)
+
 
 class uint16:
     _length_ = 1
@@ -468,6 +540,18 @@ class uint16:
 
     def __init__(self, x=0):
         self.value = x
+
+    def __bool__(self) -> bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __index__(self) -> int:
+        return int(self.value)
 
 
 class int32:
@@ -477,6 +561,18 @@ class int32:
     def __init__(self, x=0):
         self.value = x
 
+    def __bool__(self) -> bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __index__(self) -> int:
+        return int(self.value)
+
 
 class uint32:
     _length_ = 1
@@ -484,6 +580,18 @@ class uint32:
 
     def __init__(self, x=0):
         self.value = x
+
+    def __bool__(self) -> bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __index__(self) -> int:
+        return int(self.value)
 
 
 class int64:
@@ -493,6 +601,18 @@ class int64:
     def __init__(self, x=0):
         self.value = x
 
+    def __bool__(self) -> bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __index__(self) -> int:
+        return int(self.value)
+
 
 class uint64:
     _length_ = 1
@@ -500,6 +620,18 @@ class uint64:
 
     def __init__(self, x=0):
         self.value = x
+
+    def __bool__(self) -> bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __index__(self) -> int:
+        return int(self.value)
 
 
 def quaternion(dtype=Any):
