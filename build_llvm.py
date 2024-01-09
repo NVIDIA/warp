@@ -1,10 +1,9 @@
 import os
 import subprocess
 import sys
-import platform
 
 import warp
-from warp.build_dll import build_dll_for_arch, run_cmd
+from warp.build_dll import *
 
 # set build output path off this file
 base_path = os.path.dirname(os.path.realpath(__file__))
@@ -13,18 +12,6 @@ build_path = os.path.join(base_path, "warp")
 llvm_project_path = os.path.join(base_path, "external/llvm-project")
 llvm_build_path = os.path.join(llvm_project_path, "out/build/")
 llvm_install_path = os.path.join(llvm_project_path, "out/install/")
-
-
-# return a canonical machine architecture string
-# - "x86_64" for x86-64, aka. AMD64, aka. x64
-# - "aarch64" for AArch64, aka. ARM64
-def machine_architecture() -> str:
-    machine = platform.machine()
-    if machine == "x86_64" or machine == "AMD64":
-        return "x86_64"
-    if machine == "aarch64" or machine == "arm64":
-        return "aarch64"
-    raise RuntimeError(f"Unrecognized machine architecture {machine}")
 
 
 # Fetch prebuilt Clang/LLVM libraries
@@ -36,12 +23,12 @@ def fetch_prebuilt_libraries():
         packman = "./tools/packman/packman"
         if sys.platform == "darwin":
             packages = {
-                "arm64": "15.0.7-darwin-aarch64-macos11",
+                "aarch64": "15.0.7-darwin-aarch64-macos11",
                 "x86_64": "15.0.7-darwin-x86_64-macos11",
             }
         else:
             packages = {
-                "arm64": "15.0.7-linux-aarch64-gcc7.5",
+                "aarch64": "15.0.7-linux-aarch64-gcc7.5",
                 "x86_64": "15.0.7-linux-x86_64-ptx-gcc7.5-cxx11abi0",
             }
 
@@ -98,7 +85,7 @@ def build_from_source_for_arch(args, arch, llvm_source):
     python_bin = "python/Scripts" if sys.platform == "win32" else "python/bin"
     os.environ["PATH"] = os.path.join(base_path, "_build/target-deps/" + python_bin) + os.pathsep + os.environ["PATH"]
 
-    if arch == "arm64":
+    if arch == "aarch64":
         target_backend = "AArch64"
     else:
         target_backend = "X86"
@@ -302,15 +289,12 @@ def build_from_source(args):
         llvm_source = llvm_project_path
 
     # build for the machine's architecture
-    if machine_architecture() == "x86_64":
-        build_from_source_for_arch(args, "x86_64", llvm_source)
-    else:
-        build_from_source_for_arch(args, "arm64", llvm_source)
+    build_from_source_for_arch(args, machine_architecture(), llvm_source)
 
     # for Apple systems also cross-compile for building a universal binary
     if sys.platform == "darwin":
         if machine_architecture() == "x86_64":
-            build_from_source_for_arch(args, "arm64", llvm_source)
+            build_from_source_for_arch(args, "aarch64", llvm_source)
         else:
             build_from_source_for_arch(args, "x86_64", llvm_source)
 
@@ -375,15 +359,12 @@ def build_warp_clang(args, lib_name):
     if sys.platform == "darwin":
         # create a universal binary by combining x86-64 and AArch64 builds
         build_warp_clang_for_arch(args, lib_name + "-x86_64", "x86_64")
-        build_warp_clang_for_arch(args, lib_name + "-arm64", "arm64")
+        build_warp_clang_for_arch(args, lib_name + "-aarch64", "aarch64")
 
         dylib_path = os.path.join(build_path, f"bin/{lib_name}")
-        run_cmd(f"lipo -create -output {dylib_path} {dylib_path}-x86_64 {dylib_path}-arm64")
+        run_cmd(f"lipo -create -output {dylib_path} {dylib_path}-x86_64 {dylib_path}-aarch64")
         os.remove(f"{dylib_path}-x86_64")
-        os.remove(f"{dylib_path}-arm64")
+        os.remove(f"{dylib_path}-aarch64")
 
     else:
-        if machine_architecture() == "x86_64":
-            build_warp_clang_for_arch(args, lib_name, "x86_64")
-        else:
-            build_warp_clang_for_arch(args, lib_name, "arm64")
+        build_warp_clang_for_arch(args, lib_name, machine_architecture())
