@@ -11,6 +11,7 @@ import ast
 import builtins
 import ctypes
 import inspect
+import math
 import re
 import sys
 import textwrap
@@ -2329,6 +2330,9 @@ def constant_str(value):
     elif value_type in warp.types.scalar_types:
         # make sure we emit the value of objects, e.g. uint32
         return str(value.value)
+
+    elif value == math.inf:
+        return "INFINITY"
 
     else:
         # otherwise just convert constant to string
