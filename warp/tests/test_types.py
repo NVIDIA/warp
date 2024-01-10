@@ -272,6 +272,41 @@ def test_vector_error_invalid_set_item_key(test, device):
         v[None] = 0
 
 
+def test_vector_error_invalid_set_item_value(test, device):
+    v1 = wp.vec3i(1, 2, 3)
+    v2 = wp.vec3h(1, 2, 3)
+
+    with test.assertRaisesRegex(
+        TypeError,
+        r"Expected to assign a `int32` value but got `str` instead",
+    ):
+        v1[0] = "123.0"
+
+    with test.assertRaisesRegex(
+        TypeError,
+        r"Expected to assign a slice from a sequence of values but got `int` instead",
+    ):
+        v1[:] = 123
+
+    with test.assertRaisesRegex(
+        TypeError,
+        r"Expected to assign a slice from a sequence of `int32` values but got `vec3i` instead",
+    ):
+        v1[:1] = (v1,)
+
+    with test.assertRaisesRegex(
+        ValueError,
+        r"Can only assign sequence of same size",
+    ):
+        v1[:1] = (1, 2)
+
+    with test.assertRaisesRegex(
+        TypeError,
+        r"Expected to assign a slice from a sequence of `float16` values but got `vec3h` instead",
+    ):
+        v2[:1] = (v2,)
+
+
 def test_matrix(test, device):
     for dtype in tuple(wp.types.float_types) + (float,):
 
@@ -490,6 +525,52 @@ def test_matrix_error_invalid_set_item_key_length(test, device):
         m[0, 1, 2] = (0, 0)
 
 
+def test_matrix_error_invalid_set_item_value(test, device):
+    m = wp.mat22h(1, 2, 3, 4)
+
+    with test.assertRaisesRegex(
+        TypeError,
+        r"Expected to assign a `float16` value but got `str` instead",
+    ):
+        m[0, 0] = "123.0"
+
+    with test.assertRaisesRegex(
+        TypeError,
+        r"Expected to assign a `float16` value but got `str` instead",
+    ):
+        m[0][0] = "123.0"
+
+    with test.assertRaisesRegex(
+        TypeError,
+        r"Expected to assign a slice from a sequence of values but got `int` instead",
+    ):
+        m[0] = 123
+
+    with test.assertRaisesRegex(
+        TypeError,
+        r"Expected to assign a slice from a sequence of `float16` values but got `mat22h` instead",
+    ):
+        m[0] = (m,)
+
+    with test.assertRaisesRegex(
+        KeyError,
+        r"Slices are not supported when indexing matrices using the `m\[start:end\]` notation",
+    ):
+        m[:] = 123
+
+    with test.assertRaisesRegex(
+        KeyError,
+        r"Slices are not supported when indexing matrices using the `m\[i, j\]` notation",
+    ):
+        m[0, :1] = (123,)
+
+    with test.assertRaisesRegex(
+        ValueError,
+        r"Can only assign sequence of same size",
+    ):
+        m[0][:1] = (1, 2)
+
+
 devices = [x for x in get_test_devices() if x.is_cpu]
 
 
@@ -515,6 +596,7 @@ add_function_test(TestTypes, "test_vector_error_invalid_arg_count", test_vector_
 add_function_test(TestTypes, "test_vector_error_invalid_ptr", test_vector_error_invalid_ptr, devices=devices)
 add_function_test(TestTypes, "test_vector_error_invalid_get_item_key", test_vector_error_invalid_get_item_key, devices=devices)
 add_function_test(TestTypes, "test_vector_error_invalid_set_item_key", test_vector_error_invalid_set_item_key, devices=devices)
+add_function_test(TestTypes, "test_vector_error_invalid_set_item_value", test_vector_error_invalid_set_item_value, devices=devices)
 add_function_test(TestTypes, "test_matrix", test_matrix, devices=devices)
 add_function_test(TestTypes, "test_matrix_error_invalid_arg_count", test_matrix_error_invalid_arg_count, devices=devices)
 add_function_test(TestTypes, "test_matrix_error_invalid_row_count", test_matrix_error_invalid_row_count, devices=devices)
@@ -524,6 +606,7 @@ add_function_test(TestTypes, "test_matrix_error_invalid_get_item_key", test_matr
 add_function_test(TestTypes, "test_matrix_error_invalid_get_item_key_length", test_matrix_error_invalid_get_item_key_length, devices=devices)
 add_function_test(TestTypes, "test_matrix_error_invalid_set_item_key", test_matrix_error_invalid_set_item_key, devices=devices)
 add_function_test(TestTypes, "test_matrix_error_invalid_set_item_key_length", test_matrix_error_invalid_set_item_key_length, devices=devices)
+add_function_test(TestTypes, "test_matrix_error_invalid_set_item_value", test_matrix_error_invalid_set_item_value, devices=devices)
 
 
 if __name__ == "__main__":
