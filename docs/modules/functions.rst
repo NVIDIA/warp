@@ -1840,6 +1840,11 @@ Operators
    :nocontentsentry:
 
 
+.. function:: mul(x: Vector[Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Vector[Any,Scalar]
+   :noindex:
+   :nocontentsentry:
+
+
 .. function:: mul(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar])
    :noindex:
    :nocontentsentry:
@@ -1871,12 +1876,27 @@ Operators
    :nocontentsentry:
 
 
+.. function:: div(x: Scalar, y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+   :noindex:
+   :nocontentsentry:
+
+
 .. function:: div(x: Matrix[Any,Any,Scalar], y: Scalar) -> Matrix[Any,Any,Scalar]
    :noindex:
    :nocontentsentry:
 
 
+.. function:: div(x: Scalar, y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+   :noindex:
+   :nocontentsentry:
+
+
 .. function:: div(x: Quaternion[Scalar], y: Scalar) -> Quaternion[Scalar]
+   :noindex:
+   :nocontentsentry:
+
+
+.. function:: div(x: Scalar, y: Quaternion[Scalar]) -> Quaternion[Scalar]
    :noindex:
    :nocontentsentry:
 
