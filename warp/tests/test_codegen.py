@@ -371,6 +371,52 @@ def test_unresolved_symbol(test, device):
     del sys.modules["warp.tests.aux_test_unresolved_symbol"]
 
 
+def test_error_global_var(test, device):
+    arr = wp.array(
+        (1.0, 2.0, 3.0),
+        dtype=float,
+        device=device,
+    )
+
+    def kernel_1_fn(
+        out: wp.array(dtype=float),
+    ):
+        out[0] = arr[0]
+
+    def kernel_2_fn(
+        out: wp.array(dtype=float),
+    ):
+        out[0] = arr
+
+    def kernel_3_fn(
+        out: wp.array(dtype=float),
+    ):
+        out[0] = wp.lower_bound(arr, 2.0)
+
+    out = wp.empty_like(arr)
+
+    kernel = wp.Kernel(func=kernel_1_fn)
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Cannot reference a global variable from a kernel unless `wp.constant\(\)` is being used",
+    ):
+        wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,))
+
+    kernel = wp.Kernel(func=kernel_2_fn)
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Cannot reference a global variable from a kernel unless `wp.constant\(\)` is being used",
+    ):
+        wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,))
+
+    kernel = wp.Kernel(func=kernel_3_fn)
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Cannot reference a global variable from a kernel unless `wp.constant\(\)` is being used",
+    ):
+        wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,))
+
+
 class TestCodeGen(unittest.TestCase):
     pass
 
@@ -499,6 +545,7 @@ add_kernel_test(TestCodeGen, name="test_continue_unroll", kernel=test_continue_u
 
 add_function_test(TestCodeGen, func=test_unresolved_func, name="test_unresolved_func", devices=devices)
 add_function_test(TestCodeGen, func=test_unresolved_symbol, name="test_unresolved_symbol", devices=devices)
+add_function_test(TestCodeGen, func=test_error_global_var, name="test_error_global_var", devices=devices)
 
 
 if __name__ == "__main__":

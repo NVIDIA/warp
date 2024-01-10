@@ -495,6 +495,11 @@ class Block:
         self.vars = []
 
 
+def is_local_value(value) -> bool:
+    """Check whether a variable is defined inside a kernel."""
+    return isinstance(value, (warp.context.Function, Var))
+
+
 class Adjoint:
     # Source code transformer, this class takes a Python function and
     # generates forward and backward SSA forms of the function instructions
@@ -1665,6 +1670,10 @@ class Adjoint:
         # eval all arguments
         for arg in node.args:
             var = adj.eval(arg)
+            if not is_local_value(var):
+                raise RuntimeError(
+                    "Cannot reference a global variable from a kernel unless `wp.constant()` is being used"
+                )
             args.append(var)
 
         # eval all keyword ags
@@ -1712,6 +1721,10 @@ class Adjoint:
             return var
 
         target = adj.eval(node.value)
+        if not is_local_value(target):
+            raise RuntimeError(
+                "Cannot reference a global variable from a kernel unless `wp.constant()` is being used"
+            )
 
         indices = []
 
@@ -1802,6 +1815,10 @@ class Adjoint:
 
             target = adj.eval(lhs.value)
             value = adj.eval(node.value)
+            if not is_local_value(value):
+                raise RuntimeError(
+                    "Cannot reference a global variable from a kernel unless `wp.constant()` is being used"
+                )
 
             slice = lhs.slice
             indices = []
