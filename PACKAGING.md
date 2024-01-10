@@ -4,10 +4,10 @@
 ----------------------
 
 1) Search/Replace the current version string (be sure not to update previous string in CHANGELOG.md)
-   
+
 2) Update CHANGELOG.md from history
-   
-3) Ensure docs have been built with `python build_docs.py`
+
+3) Ensure docs have been built with `python build_docs.py` (prerequisites: `pip install sphinx sphinx_copybutton black furo`)
 
 4) Ensure that all changes are committed to `master` (including _static build files)
 
