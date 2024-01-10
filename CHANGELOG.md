@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## [1.0.0-beta.6] - 2024-01-10
+
+- Do not create CPU copy of grad array when calling `array.numpy()`
+- Fix `assert_np_equal()` bug
+- Support Linux AArch64 platforms, including Jetson/Tegra devices
+- Add parallel testing runner (invoke with `python -m warp.tests`, use `warp/tests/unittest_serial.py` for serial testing)
+- Fix support for function calls in `range()`
+- `matmul` adjoints now accumulate
+- Expand available operators (e.g. vector @ matrix, scalar as dividend) and improve support for calling native built-ins
+- Fix multi-gpu synchronization issue in `sparse.py`
+- Add depth rendering to `OpenGLRenderer`, document `warp.render`
+- Make `atomic_min`, `atomic_max` differentiable
+- Fix error reporting using the exact source segment
+- Add user-friendly mesh query overloads, returning a struct instead of overwriting parameters
+- Address multiple differentiability issues
+- Fix backpropagation for returning array element references
+- Support passing the return value to adjoints
+- Add point basis space and explicit point-based quadrature for `warp.fem`
+- Support overriding the LLVM project source directory path using `build_lib.py --build_llvm --llvm_source_path=`
+- Fix the error message for accessing non-existing attributes
+- Flatten faces array for Mesh constructor in URDF parser
+
 ## [1.0.0-beta.5] - 2023-11-22
 
 - Fix for kernel caching when function argument types change
