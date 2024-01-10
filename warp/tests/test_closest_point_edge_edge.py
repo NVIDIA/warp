@@ -5,12 +5,12 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import numpy as np
-
 import unittest
 
+import numpy as np
+
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 epsilon = 0.00001
@@ -171,62 +171,58 @@ def test_edge_edge_perpendicular_s0_t1(test, device):
     test.assertAlmostEqual(st0[1], 1.0)  # t value
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestClosestPointEdgeEdgeMethods(parent):
-        pass
 
-    add_function_test(
-        TestClosestPointEdgeEdgeMethods,
-        "test_edge_edge_middle_crossing",
-        test_edge_edge_middle_crossing,
-        devices=devices,
-    )
-    add_function_test(
-        TestClosestPointEdgeEdgeMethods, "test_edge_edge_parallel_s1_t0", test_edge_edge_parallel_s1_t0, devices=devices
-    )
-    add_function_test(
-        TestClosestPointEdgeEdgeMethods, "test_edge_edge_parallel_s0_t1", test_edge_edge_parallel_s0_t1, devices=devices
-    )
-    add_function_test(
-        TestClosestPointEdgeEdgeMethods,
-        "test_edge_edge_both_degenerate_case",
-        test_edge_edge_both_degenerate_case,
-        devices=devices,
-    )
-    add_function_test(
-        TestClosestPointEdgeEdgeMethods,
-        "test_edge_edge_degenerate_first_edge",
-        test_edge_edge_degenerate_first_edge,
-        devices=devices,
-    )
-    add_function_test(
-        TestClosestPointEdgeEdgeMethods,
-        "test_edge_edge_degenerate_second_edge",
-        test_edge_edge_degenerate_second_edge,
-        devices=devices,
-    )
-    add_function_test(
-        TestClosestPointEdgeEdgeMethods, "test_edge_edge_parallel", test_edge_edge_parallel, devices=devices
-    )
-    add_function_test(
-        TestClosestPointEdgeEdgeMethods,
-        "test_edge_edge_perpendicular_s1_t0",
-        test_edge_edge_perpendicular_s1_t0,
-        devices=devices,
-    )
-    add_function_test(
-        TestClosestPointEdgeEdgeMethods,
-        "test_edge_edge_perpendicular_s0_t1",
-        test_edge_edge_perpendicular_s0_t1,
-        devices=devices,
-    )
+class TestClosestPointEdgeEdgeMethods(unittest.TestCase):
+    pass
 
-    return TestClosestPointEdgeEdgeMethods
+
+add_function_test(
+    TestClosestPointEdgeEdgeMethods,
+    "test_edge_edge_middle_crossing",
+    test_edge_edge_middle_crossing,
+    devices=devices,
+)
+add_function_test(
+    TestClosestPointEdgeEdgeMethods, "test_edge_edge_parallel_s1_t0", test_edge_edge_parallel_s1_t0, devices=devices
+)
+add_function_test(
+    TestClosestPointEdgeEdgeMethods, "test_edge_edge_parallel_s0_t1", test_edge_edge_parallel_s0_t1, devices=devices
+)
+add_function_test(
+    TestClosestPointEdgeEdgeMethods,
+    "test_edge_edge_both_degenerate_case",
+    test_edge_edge_both_degenerate_case,
+    devices=devices,
+)
+add_function_test(
+    TestClosestPointEdgeEdgeMethods,
+    "test_edge_edge_degenerate_first_edge",
+    test_edge_edge_degenerate_first_edge,
+    devices=devices,
+)
+add_function_test(
+    TestClosestPointEdgeEdgeMethods,
+    "test_edge_edge_degenerate_second_edge",
+    test_edge_edge_degenerate_second_edge,
+    devices=devices,
+)
+add_function_test(TestClosestPointEdgeEdgeMethods, "test_edge_edge_parallel", test_edge_edge_parallel, devices=devices)
+add_function_test(
+    TestClosestPointEdgeEdgeMethods,
+    "test_edge_edge_perpendicular_s1_t0",
+    test_edge_edge_perpendicular_s1_t0,
+    devices=devices,
+)
+add_function_test(
+    TestClosestPointEdgeEdgeMethods,
+    "test_edge_edge_perpendicular_s0_t1",
+    test_edge_edge_perpendicular_s0_t1,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

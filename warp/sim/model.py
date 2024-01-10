@@ -113,8 +113,8 @@ class JointAxis:
     def __init__(
         self,
         axis,
-        limit_lower=-np.inf,
-        limit_upper=np.inf,
+        limit_lower=-math.inf,
+        limit_upper=math.inf,
         limit_ke=100.0,
         limit_kd=10.0,
         target=None,
@@ -133,7 +133,7 @@ class JointAxis:
             self.target_kd = axis.target_kd
             self.mode = axis.mode
         else:
-            self.axis = np.array(wp.normalize(np.array(axis, dtype=np.float32)))
+            self.axis = wp.normalize(wp.vec3(axis))
             self.limit_lower = limit_lower
             self.limit_upper = limit_upper
             self.limit_ke = limit_ke
@@ -159,7 +159,7 @@ class SDF:
         mass (float): The total mass of the SDF
         com (Vec3): The center of mass of the SDF
     """
-    def __init__(self, volume=None, I=np.eye(3, dtype=np.float32), mass=1.0, com=np.array((0.0, 0.0, 0.0))):
+    def __init__(self, volume=None, I=wp.mat33(np.eye(3)), mass=1.0, com=wp.vec3()):
         self.volume = volume
         self.I = I
         self.mass = mass
@@ -234,9 +234,9 @@ class Mesh:
         if compute_inertia:
             self.mass, self.com, self.I, _ = compute_mesh_inertia(1.0, vertices, indices, is_solid=is_solid)
         else:
-            self.I = np.eye(3, dtype=np.float32)
+            self.I = wp.mat33(np.eye(3))
             self.mass = 1.0
-            self.com = np.array((0.0, 0.0, 0.0))
+            self.com = wp.vec3()
 
     def finalize(self, device=None):
         """
@@ -325,7 +325,7 @@ class State:
 
 def compute_shape_mass(type, scale, src, density, is_solid, thickness):
     if density == 0.0 or type == GEO_PLANE:  # zero density means fixed
-        return 0.0, np.zeros(3), np.zeros((3, 3))
+        return 0.0, wp.vec3(), wp.mat33()
 
     if type == GEO_SPHERE:
         solid = compute_sphere_inertia(density, scale[0])
@@ -335,7 +335,7 @@ def compute_shape_mass(type, scale, src, density, is_solid, thickness):
             hollow = compute_sphere_inertia(density, scale[0] - thickness)
             return solid[0] - hollow[0], solid[1], solid[2] - hollow[2]
     elif type == GEO_BOX:
-        w, h, d = np.array(scale[:3]) * 2.0
+        w, h, d = scale * 2.0
         solid = compute_box_inertia(density, w, h, d)
         if is_solid:
             return solid
@@ -370,13 +370,12 @@ def compute_shape_mass(type, scale, src, density, is_solid, thickness):
         if src.has_inertia and src.mass > 0.0 and src.is_solid == is_solid:
             m, c, I = src.mass, src.com, src.I
 
-            s = np.array(scale[:3])
-            sx, sy, sz = s
+            sx, sy, sz = scale
 
             mass_ratio = sx * sy * sz * density
             m_new = m * mass_ratio
 
-            c_new = c * s
+            c_new = wp.cw_mul(c, scale)
 
             Ixx = I[0, 0] * (sy**2 + sz**2) / 2 * mass_ratio
             Iyy = I[1, 1] * (sx**2 + sz**2) / 2 * mass_ratio
@@ -385,12 +384,12 @@ def compute_shape_mass(type, scale, src, density, is_solid, thickness):
             Ixz = I[0, 2] * sx * sz * mass_ratio
             Iyz = I[1, 2] * sy * sz * mass_ratio
 
-            I_new = np.array([[Ixx, Ixy, Ixz], [Ixy, Iyy, Iyz], [Ixz, Iyz, Izz]])
+            I_new = wp.mat33([[Ixx, Ixy, Ixz], [Ixy, Iyy, Iyz], [Ixz, Iyz, Izz]])
 
             return m_new, c_new, I_new
         elif type == GEO_MESH:
             # fall back to computing inertia from mesh geometry
-            vertices = np.array(src.vertices) * np.array(scale[:3])
+            vertices = np.array(src.vertices) * np.array(scale)
             m, c, I, vol = compute_mesh_inertia(density, vertices, src.indices, is_solid, thickness)
             return m, c, I
     raise ValueError("Unsupported shape type: {}".format(type))
@@ -1131,8 +1130,8 @@ class ModelBuilder:
         self.joint_coord_count = 0
         self.joint_axis_total_count = 0
 
-        self.up_vector = np.array(up_vector)
-        self.up_axis = np.argmax(np.abs(up_vector))
+        self.up_vector = wp.vec3(up_vector)
+        self.up_axis = wp.vec3(np.argmax(np.abs(up_vector)))
         self.gravity = gravity
         # indicates whether a ground plane has been created
         self._ground_created = False
@@ -1366,8 +1365,8 @@ class ModelBuilder:
         self,
         origin: Transform = wp.transform(),
         armature: float = 0.0,
-        com: Vec3 = np.zeros(3),
-        I_m: Mat33 = np.zeros((3, 3)),
+        com: Vec3 = wp.vec3(),
+        I_m: Mat33 = wp.mat33(),
         m: float = 0.0,
         name: str = None,
     ) -> int:
@@ -1392,7 +1391,7 @@ class ModelBuilder:
         body_id = len(self.body_mass)
 
         # body data
-        inertia = I_m + np.eye(3) * armature
+        inertia = I_m + wp.mat33(np.eye(3)) * armature
         self.body_inertia.append(inertia)
         self.body_mass.append(m)
         self.body_com.append(com)
@@ -1402,8 +1401,8 @@ class ModelBuilder:
         else:
             self.body_inv_mass.append(0.0)
 
-        if inertia.any():
-            self.body_inv_inertia.append(np.linalg.inv(inertia))
+        if any(x for x in inertia):
+            self.body_inv_inertia.append(wp.inverse(inertia))
         else:
             self.body_inv_inertia.append(inertia)
 
@@ -1459,8 +1458,8 @@ class ModelBuilder:
         else:
             self.joint_parents[child].append(parent)
         self.joint_child.append(child)
-        self.joint_X_p.append([*parent_xform])
-        self.joint_X_c.append([*child_xform])
+        self.joint_X_p.append(wp.transform(parent_xform))
+        self.joint_X_c.append(wp.transform(child_xform))
         self.joint_name.append(name or f"joint {self.joint_count}")
         self.joint_axis_start.append(len(self.joint_axis))
         self.joint_axis_dim.append((len(linear_axes), len(angular_axes)))
@@ -2331,7 +2330,7 @@ class ModelBuilder:
                 angle = np.arcsin(np.linalg.norm(c))
                 axis = c / np.linalg.norm(c)
                 rot = wp.quat_from_axis_angle(axis, angle)
-        scale = (width, length, 0.0)
+        scale = wp.vec3(width, length, 0.0)
 
         return self._add_shape(
             body,
@@ -2390,10 +2389,10 @@ class ModelBuilder:
 
         return self._add_shape(
             body,
-            pos,
-            rot,
+            wp.vec3(pos),
+            wp.quat(rot),
             GEO_SPHERE,
-            (radius, 0.0, 0.0, 0.0),
+            wp.vec3(radius, 0.0, 0.0),
             None,
             density,
             ke,
@@ -2450,10 +2449,10 @@ class ModelBuilder:
 
         return self._add_shape(
             body,
-            pos,
-            rot,
+            wp.vec3(pos),
+            wp.quat(rot),
             GEO_BOX,
-            (hx, hy, hz, 0.0),
+            wp.vec3(hx, hy, hz),
             None,
             density,
             ke,
@@ -2508,19 +2507,19 @@ class ModelBuilder:
 
         """
 
-        q = rot
+        q = wp.quat(rot)
         sqh = math.sqrt(0.5)
         if up_axis == 0:
-            q = wp.mul(rot, wp.quat(0.0, 0.0, -sqh, sqh))
+            q = wp.mul(q, wp.quat(0.0, 0.0, -sqh, sqh))
         elif up_axis == 2:
-            q = wp.mul(rot, wp.quat(sqh, 0.0, 0.0, sqh))
+            q = wp.mul(q, wp.quat(sqh, 0.0, 0.0, sqh))
 
         return self._add_shape(
             body,
-            pos,
-            q,
+            wp.vec3(pos),
+            wp.quat(q),
             GEO_CAPSULE,
-            (radius, half_height, 0.0, 0.0),
+            wp.vec3(radius, half_height, 0.0),
             None,
             density,
             ke,
@@ -2584,10 +2583,10 @@ class ModelBuilder:
 
         return self._add_shape(
             body,
-            pos,
-            q,
+            wp.vec3(pos),
+            wp.quat(q),
             GEO_CYLINDER,
-            (radius, half_height, 0.0, 0.0),
+            wp.vec3(radius, half_height, 0.0),
             None,
             density,
             ke,
@@ -2651,10 +2650,10 @@ class ModelBuilder:
 
         return self._add_shape(
             body,
-            pos,
-            q,
+            wp.vec3(pos),
+            wp.quat(q),
             GEO_CONE,
-            (radius, half_height, 0.0, 0.0),
+            wp.vec3(radius, half_height, 0.0),
             None,
             density,
             ke,
@@ -2670,10 +2669,10 @@ class ModelBuilder:
     def add_shape_mesh(
         self,
         body: int,
-        pos: Vec3 = (0.0, 0.0, 0.0),
-        rot: Quat = (0.0, 0.0, 0.0, 1.0),
+        pos: Vec3 = wp.vec3(0.0, 0.0, 0.0),
+        rot: Quat = wp.quat(0.0, 0.0, 0.0, 1.0),
         mesh: Mesh = None,
-        scale: Vec3 = (1.0, 1.0, 1.0),
+        scale: Vec3 = wp.vec3(1.0, 1.0, 1.0),
         density: float = default_shape_density,
         ke: float = default_shape_ke,
         kd: float = default_shape_kd,
@@ -2712,7 +2711,7 @@ class ModelBuilder:
             pos,
             rot,
             GEO_MESH,
-            (scale[0], scale[1], scale[2], 0.0),
+            wp.vec3(scale[0], scale[1], scale[2]),
             mesh,
             density,
             ke,
@@ -2765,10 +2764,10 @@ class ModelBuilder:
         """
         return self._add_shape(
             body,
-            pos,
-            rot,
+            wp.vec3(pos),
+            wp.quat(rot),
             GEO_SDF,
-            (scale[0], scale[1], scale[2], 0.0),
+            wp.vec3(scale[0], scale[1], scale[2]),
             sdf,
             density,
             ke,
@@ -2859,7 +2858,7 @@ class ModelBuilder:
 
         (m, c, I) = compute_shape_mass(type, scale, src, density, is_solid, thickness)
 
-        self._update_body_mass(body, m, I, np.array(pos) + c, np.array(rot))
+        self._update_body_mass(body, m, I, pos + c, rot)
         return shape
 
     # particles
@@ -2954,9 +2953,9 @@ class ModelBuilder:
 
         """
         # compute basis for 2D rest pose
-        p = np.array(self.particle_q[i])
-        q = np.array(self.particle_q[j])
-        r = np.array(self.particle_q[k])
+        p = self.particle_q[i]
+        q = self.particle_q[j]
+        r = self.particle_q[k]
 
         qp = q - p
         rp = r - p
@@ -3153,13 +3152,13 @@ class ModelBuilder:
         """
         # compute rest angle
         if rest is None:
-            x1 = np.array(self.particle_q[i])
-            x2 = np.array(self.particle_q[j])
-            x3 = np.array(self.particle_q[k])
-            x4 = np.array(self.particle_q[l])
+            x1 = self.particle_q[i]
+            x2 = self.particle_q[j]
+            x3 = self.particle_q[k]
+            x4 = self.particle_q[l]
 
-            n1 = wp.normalize(np.cross(x3 - x1, x4 - x1))
-            n2 = wp.normalize(np.cross(x4 - x2, x3 - x2))
+            n1 = wp.normalize(wp.cross(x3 - x1, x4 - x1))
+            n2 = wp.normalize(wp.cross(x4 - x2, x3 - x2))
             e = wp.normalize(x4 - x3)
 
             d = np.clip(np.dot(n2, n1), -1.0, 1.0)
@@ -3299,8 +3298,8 @@ class ModelBuilder:
 
         for y in range(0, dim_y + 1):
             for x in range(0, dim_x + 1):
-                g = np.array((x * cell_x, y * cell_y, 0.0))
-                p = np.array(wp.quat_rotate(rot, g)) + pos
+                g = wp.vec3(x * cell_x, y * cell_y, 0.0)
+                p = wp.quat_rotate(rot, g) + pos
                 m = mass
 
                 if x == 0 and fix_left:
@@ -3425,7 +3424,7 @@ class ModelBuilder:
 
         # particles
         for v in vertices:
-            p = np.array(wp.quat_rotate(rot, v * scale)) + pos
+            p = wp.quat_rotate(rot, v * scale) + pos
 
             self.add_particle(p, vel, 0.0)
 
@@ -3498,13 +3497,14 @@ class ModelBuilder:
         radius_mean: float = default_particle_radius,
         radius_std: float = 0.0,
     ):
+        rng = np.random.default_rng()
         for z in range(dim_z):
             for y in range(dim_y):
                 for x in range(dim_x):
-                    v = np.array((x * cell_x, y * cell_y, z * cell_z))
+                    v = wp.vec3(x * cell_x, y * cell_y, z * cell_z)
                     m = mass
 
-                    p = np.array(wp.quat_rotate(rot, v)) + pos + np.random.rand(3) * jitter
+                    p = wp.quat_rotate(rot, v) + pos + wp.vec3(rng.random(3) * jitter)
 
                     if radius_std > 0.0:
                         r = radius_mean + np.random.randn() * radius_std
@@ -3570,7 +3570,7 @@ class ModelBuilder:
         for z in range(dim_z + 1):
             for y in range(dim_y + 1):
                 for x in range(dim_x + 1):
-                    v = np.array((x * cell_x, y * cell_y, z * cell_z))
+                    v = wp.vec3(x * cell_x, y * cell_y, z * cell_z)
                     m = mass
 
                     if fix_left and x == 0:
@@ -3585,7 +3585,7 @@ class ModelBuilder:
                     if fix_bottom and y == 0:
                         m = 0.0
 
-                    p = np.array(wp.quat_rotate(rot, v)) + pos
+                    p = wp.quat_rotate(rot, v) + pos
 
                     self.add_particle(p, vel, m)
 
@@ -3752,8 +3752,8 @@ class ModelBuilder:
         else:
             self.body_inv_mass[i] = 0.0
 
-        if new_inertia.any():
-            self.body_inv_inertia[i] = np.linalg.inv(new_inertia)
+        if any(x for x in new_inertia):
+            self.body_inv_inertia[i] = wp.inverse(new_inertia)
         else:
             self.body_inv_inertia[i] = new_inertia
 

@@ -1,3 +1,10 @@
+# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
 # This script is an 'offline' build of the core warp runtime libraries
 # designed to be executed as part of CI / developer workflows, not
 # as part of the user runtime (since it requires CUDA toolkit, etc)
@@ -48,6 +55,10 @@ parser.add_argument("--quick", action="store_true", help="Only generate PTX code
 parser.add_argument("--build_llvm", action="store_true", help="Build Clang/LLVM compiler from source, default disabled")
 parser.add_argument("--no_build_llvm", dest="build_llvm", action="store_false")
 parser.set_defaults(build_llvm=False)
+
+parser.add_argument(
+    "--llvm_source_path", type=str, help="Path to the LLVM project source code (optional, repo cloned if not set)"
+)
 
 parser.add_argument("--debug_llvm", action="store_true", help="Enable LLVM compiler code debugging, default disabled")
 parser.add_argument("--no_debug_llvm", dest="debug_llvm", action="store_false")

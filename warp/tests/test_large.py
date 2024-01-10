@@ -1,4 +1,4 @@
-# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2023 NVIDIA CORPORATION.  All rights reserved.
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
 # and any modifications thereto.  Any use, reproduction, disclosure or
@@ -9,7 +9,7 @@ import math
 import unittest
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -114,30 +114,28 @@ def test_large_arrays_fast(test, device):
     assert_np_equal(a1.numpy(), np.zeros_like(a1.numpy()))
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestLarge(parent):
-        pass
 
-    add_function_test(
-        TestLarge, "test_large_launch_large_kernel", test_large_launch_large_kernel, devices=wp.get_cuda_devices()
-    )
+class TestLarge(unittest.TestCase):
+    pass
 
-    add_function_test(TestLarge, "test_large_launch_max_blocks", test_large_launch_max_blocks, devices=devices)
-    add_function_test(
-        TestLarge,
-        "test_large_launch_very_large_kernel",
-        test_large_launch_very_large_kernel,
-        devices=wp.get_cuda_devices(),
-    )
 
-    add_function_test(TestLarge, "test_large_arrays_fast", test_large_arrays_fast, devices=devices)
+add_function_test(
+    TestLarge, "test_large_launch_large_kernel", test_large_launch_large_kernel, devices=get_unique_cuda_test_devices()
+)
 
-    return TestLarge
+add_function_test(TestLarge, "test_large_launch_max_blocks", test_large_launch_max_blocks, devices=devices)
+add_function_test(
+    TestLarge,
+    "test_large_launch_very_large_kernel",
+    test_large_launch_very_large_kernel,
+    devices=get_unique_cuda_test_devices(),
+)
+
+add_function_test(TestLarge, "test_large_arrays_fast", test_large_arrays_fast, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

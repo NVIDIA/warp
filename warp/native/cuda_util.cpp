@@ -89,6 +89,7 @@ static PFN_cuGraphicsResourceGetMappedPointer_v3020 pfn_cuGraphicsResourceGetMap
 static PFN_cuGraphicsGLRegisterBuffer_v3000 pfn_cuGraphicsGLRegisterBuffer;
 static PFN_cuGraphicsUnregisterResource_v3000 pfn_cuGraphicsUnregisterResource;
 
+static bool cuda_driver_initialized = false;
 
 bool ContextGuard::always_restore = false;
 
@@ -196,11 +197,15 @@ bool init_cuda_driver()
     get_driver_entry_point("cuGraphicsUnregisterResource", &(void*&)pfn_cuGraphicsUnregisterResource);
 
     if (pfn_cuInit)
-        return check_cu(pfn_cuInit(0));
-    else
-        return false;
+        cuda_driver_initialized = check_cu(pfn_cuInit(0));
+    
+    return cuda_driver_initialized;
 }
 
+bool is_cuda_driver_initialized()
+{
+    return cuda_driver_initialized;
+}
 
 bool check_cuda_result(cudaError_t code, const char* file, int line)
 {

@@ -27,6 +27,7 @@ wp.init()
 
 class Example:
     def __init__(self, stage):
+        self.device = wp.get_device()
         self.chain_length = 8
         self.chain_width = 1.0
         self.chain_types = [
@@ -65,7 +66,7 @@ class Example:
 
                 # create shape
                 builder.add_shape_box(
-                    pos=(self.chain_width * 0.5, 0.0, 0.0),
+                    pos=wp.vec3(self.chain_width * 0.5, 0.0, 0.0),
                     hx=self.chain_width * 0.5,
                     hy=0.1,
                     hz=0.1,
@@ -146,13 +147,15 @@ class Example:
 
         if self.use_graph:
             # create update graph
-            wp.capture_begin()
-            self.update()
-            self.graph = wp.capture_end()
+            wp.capture_begin(self.device)
+            try:
+                self.update()
+            finally:
+                self.graph = wp.capture_end(self.device)
 
     def update(self):
         with wp.ScopedTimer("simulate", active=True):
-            if self.use_graph is False or self.graph is None:
+            if not self.use_graph or self.graph is None:
                 for _ in range(self.sim_substeps):
                     self.state_0.clear_forces()
                     self.integrator.simulate(self.model, self.state_0, self.state_1, self.sim_dt)

@@ -10,8 +10,7 @@ import unittest
 import numpy as np
 
 import warp as wp
-from warp.tests.test_base import *
-
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -118,8 +117,8 @@ def test_bvh(test, type, device):
         if test_case == 0:
             lowers = rng.random(size=(num_bounds, 3)) * 5.0
             uppers = lowers + rng.random(size=(num_bounds, 3)) * 5.0
-            wp.copy(device_lowers, wp.array(lowers, dtype=wp.vec3))
-            wp.copy(device_uppers, wp.array(uppers, dtype=wp.vec3))
+            wp.copy(device_lowers, wp.array(lowers, dtype=wp.vec3, device=device))
+            wp.copy(device_uppers, wp.array(uppers, dtype=wp.vec3, device=device))
             bvh.refit()
             bounds_intersected.zero_()
 
@@ -132,19 +131,17 @@ def test_bvh_query_ray(test, device):
     test_bvh(test, "ray", device)
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestBvh(parent):
-        pass
 
-    add_function_test(TestBvh, "test_bvh_aabb", test_bvh_query_aabb, devices=devices)
-    add_function_test(TestBvh, "test_bvh_ray", test_bvh_query_ray, devices=devices)
+class TestBvh(unittest.TestCase):
+    pass
 
-    return TestBvh
+
+add_function_test(TestBvh, "test_bvh_aabb", test_bvh_query_aabb, devices=devices)
+add_function_test(TestBvh, "test_bvh_ray", test_bvh_query_ray, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

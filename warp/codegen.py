@@ -518,20 +518,17 @@ class Adjoint:
         # whether the generation of the adjoint code is skipped for this function
         adj.skip_reverse_codegen = skip_reverse_codegen
 
-        # build AST from function object
+        # extract name of source file
+        adj.filename = inspect.getsourcefile(func) or "unknown source file"
+        # get source file line number where function starts
+        _, adj.fun_lineno = inspect.getsourcelines(func)
+
+        # get function source code
         adj.source = inspect.getsource(func)
-
-        # get source code lines and line number where function starts
-        adj.raw_source, adj.fun_lineno = inspect.getsourcelines(func)
-
-        # keep track of line number in function code
-        adj.lineno = None
-
         # ensures that indented class methods can be parsed as kernels
         adj.source = textwrap.dedent(adj.source)
 
-        # extract name of source file
-        adj.filename = inspect.getsourcefile(func) or "unknown source file"
+        adj.source_lines = adj.source.splitlines()
 
         # build AST and apply node transformers
         adj.tree = ast.parse(adj.source)
@@ -540,6 +537,9 @@ class Adjoint:
             adj.tree = transformer.visit(adj.tree)
 
         adj.fun_name = adj.tree.body[0].name
+
+        # for keeping track of line number in function code
+        adj.lineno = None
 
         # whether the forward code shall be used for the reverse pass and a custom
         # function signature is applied to the reverse version of the function
@@ -625,7 +625,7 @@ class Adjoint:
                 else:
                     msg = "Error"
                 lineno = adj.lineno + adj.fun_lineno
-                line = adj.source.splitlines()[adj.lineno]
+                line = adj.source_lines[adj.lineno]
                 msg += f' while parsing function "{adj.fun_name}" at {adj.filename}:{lineno}:\n{line}\n'
                 ex, data, traceback = sys.exc_info()
                 e = ex(";".join([msg] + [str(a) for a in data.args])).with_traceback(traceback)
@@ -683,10 +683,11 @@ class Adjoint:
         args_out,
         use_initializer_list,
         has_output_args=True,
+        require_original_output_arg=False,
     ):
         formatted_var = adj.format_args("var", args_var)
         formatted_out = []
-        if has_output_args and len(args_out) > 1:
+        if has_output_args and (require_original_output_arg or len(args_out) > 1):
             formatted_out = adj.format_args("var", args_out)
         formatted_var_adj = adj.format_args(
             "&adj" if use_initializer_list else "adj",
@@ -966,13 +967,16 @@ class Adjoint:
             adj.add_forward(forward_call, replay=replay_call)
 
         if not func.missing_grad and len(args):
-            reverse_has_output_args = len(output_list) > 1 and func.custom_grad_func is None
+            reverse_has_output_args = (
+                func.require_original_output_arg or len(output_list) > 1
+            ) and func.custom_grad_func is None
             arg_str = adj.format_reverse_call_args(
                 args_var,
                 args,
                 output_list,
                 use_initializer_list,
                 has_output_args=reverse_has_output_args,
+                require_original_output_arg=func.require_original_output_arg,
             )
             if arg_str is not None:
                 reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
@@ -1291,6 +1295,12 @@ class Adjoint:
         index = adj.add_constant(index)
         return index
 
+    @staticmethod
+    def is_differentiable_value_type(var_type):
+        # checks that the argument type is a value type (i.e, not an array)
+        # possibly holding differentiable values (for which gradients must be accumulated)
+        return type_scalar_type(var_type) in float_types or isinstance(var_type, Struct)
+
     def emit_Attribute(adj, node):
         if hasattr(node, "is_adjoint"):
             node.value.is_adjoint = True
@@ -1327,9 +1337,12 @@ class Adjoint:
 
                 if is_reference(aggregate.type):
                     adj.add_forward(f"{attr.emit()} = &({aggregate.emit()}->{node.attr});")
-                    adj.add_reverse(f"{aggregate.emit_adj()}.{node.attr} = {attr.emit_adj()};")
                 else:
                     adj.add_forward(f"{attr.emit()} = &({aggregate.emit()}.{node.attr});")
+
+                if adj.is_differentiable_value_type(strip_reference(attr_type)):
+                    adj.add_reverse(f"{aggregate.emit_adj()}.{node.attr} += {attr.emit_adj()};")
+                else:
                     adj.add_reverse(f"{aggregate.emit_adj()}.{node.attr} = {attr.emit_adj()};")
 
                 return attr
@@ -1344,7 +1357,7 @@ class Adjoint:
 
             if isinstance(aggregate, Var):
                 raise WarpCodegenAttributeError(
-                    f"Error, `{node.attr}` is not an attribute of '{aggregate.label}' ({type_repr(aggregate.type)})"
+                    f"Error, `{node.attr}` is not an attribute of '{node.value.id}' ({type_repr(aggregate.type)})"
                 )
             raise WarpCodegenAttributeError(f"Error, `{node.attr}` is not an attribute of '{aggregate}'")
 
@@ -1368,12 +1381,12 @@ class Adjoint:
         return
 
     def emit_NameConstant(adj, node):
-        if node.value is True:
+        if node.value:
             return adj.add_constant(True)
-        elif node.value is False:
-            return adj.add_constant(False)
         elif node.value is None:
             raise WarpCodegenTypeError("None type unsupported")
+        else:
+            return adj.add_constant(False)
 
     def emit_Constant(adj, node):
         if isinstance(node, ast.Str):
@@ -1413,7 +1426,7 @@ class Adjoint:
             if var1 != var2:
                 if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
-                    line = adj.source.splitlines()[adj.lineno]
+                    line = adj.source_lines[adj.lineno]
                     msg = f'Warning: detected mutated variable {sym} during a dynamic for-loop in function "{adj.fun_name}" at {adj.filename}:{lineno}: this may not be a differentiable operation.\n{line}\n'
                     print(msg)
 
@@ -1450,7 +1463,11 @@ class Adjoint:
 
         # try and resolve the expression to an object
         # e.g.: wp.constant in the globals scope
-        obj, path = adj.resolve_static_expression(a)
+        obj, _ = adj.resolve_static_expression(a)
+
+        if isinstance(obj, Var) and obj.constant is not None:
+            obj = obj.constant
+
         return warp.types.is_int(obj), obj
 
     # detects whether a loop contains a break (or continue) statement
@@ -1596,7 +1613,7 @@ class Adjoint:
         if adj.is_user_function:
             if hasattr(node.func, "attr") and node.func.attr == "tid":
                 lineno = adj.lineno + adj.fun_lineno
-                line = adj.source.splitlines()[adj.lineno]
+                line = adj.source_lines[adj.lineno]
                 raise WarpCodegenError(
                     "tid() may only be called from a Warp kernel, not a Warp function. "
                     "Instead, obtain the indices from a @wp.kernel and pass them as "
@@ -1613,7 +1630,7 @@ class Adjoint:
 
         if not isinstance(func, warp.context.Function):
             if len(path) == 0:
-                raise WarpCodegenError(f"Unrecognized syntax for function call, path not valid: '{node.func}'")
+                raise WarpCodegenError(f"Unknown function or operator: '{node.func.func.id}'")
 
             attr = path[-1]
             caller = func
@@ -1818,7 +1835,7 @@ class Adjoint:
 
                 if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
-                    line = adj.source.splitlines()[adj.lineno]
+                    line = adj.source_lines[adj.lineno]
                     node_source = adj.get_node_source(lhs.value)
                     print(
                         f"Warning: mutating {node_source} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n"
@@ -1875,7 +1892,7 @@ class Adjoint:
 
                 if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
-                    line = adj.source.splitlines()[adj.lineno]
+                    line = adj.source_lines[adj.lineno]
                     msg = f'Warning: detected mutated struct {attr.label} during function "{adj.fun_name}" at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n'
                     print(msg)
 
@@ -1901,7 +1918,8 @@ class Adjoint:
         if var is not None:
             adj.return_var = tuple()
             for ret in var:
-                ret = adj.load(ret)
+                if is_reference(ret.type):
+                    ret = adj.add_builtin_call("copy", [ret])
                 adj.return_var += (ret,)
 
         adj.add_return(adj.return_var)
@@ -1945,7 +1963,7 @@ class Adjoint:
         ast.AugAssign: emit_AugAssign,
         ast.Tuple: emit_Tuple,
         ast.Pass: emit_Pass,
-        ast.Ellipsis: emit_Ellipsis
+        ast.Ellipsis: emit_Ellipsis,
     }
 
     def eval(adj, node):
@@ -2009,16 +2027,11 @@ class Adjoint:
             attributes.append(node.attr)
             node = node.value
 
-        if eval_types and isinstance(node, ast.Call):
+        if eval_types and isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             # support for operators returning modules
             # i.e. operator_name(*operator_args).x.y.z
             operator_args = node.args
-            operator_name = getattr(node.func, "id", None)
-
-            if operator_name is None:
-                raise WarpCodegenError(
-                    f"Invalid operator call syntax, expected a plain name, got {ast.dump(node.func, annotate_fields=False)}"
-                )
+            operator_name = node.func.id
 
             if operator_name == "type":
                 if len(operator_args) != 1:
@@ -2042,8 +2055,6 @@ class Adjoint:
                     return var_type, [type_repr(var_type)]
                 else:
                     raise WarpCodegenError(f"Cannot deduce the type of {var}")
-
-            raise WarpCodegenError(f"Unknown operator '{operator_name}'")
 
         # reverse list since ast presents it backward order
         path = [*reversed(attributes)]
@@ -2071,14 +2082,14 @@ class Adjoint:
     def set_lineno(adj, lineno):
         if adj.lineno is None or adj.lineno != lineno:
             line = lineno + adj.fun_lineno
-            source = adj.raw_source[lineno].strip().ljust(80 - len(adj.indentation), " ")
+            source = adj.source_lines[lineno].strip().ljust(80 - len(adj.indentation), " ")
             adj.add_forward(f"// {source}       <L {line}>")
             adj.add_reverse(f"// adj: {source}  <L {line}>")
         adj.lineno = lineno
 
     def get_node_source(adj, node):
         # return the Python code corresponding to the given AST node
-        return ast.get_source_segment("".join(adj.raw_source), node)
+        return ast.get_source_segment(adj.source, node)
 
 
 # ----------------
@@ -2130,7 +2141,9 @@ struct {name}
     {{
     }}
 
-    CUDA_CALLABLE {name}& operator += (const {name}&) {{ return *this; }}
+    CUDA_CALLABLE {name}& operator += (const {name}& rhs)
+    {{{prefix_add_body}
+        return *this;}}
 
 }};
 
@@ -2357,6 +2370,7 @@ def codegen_struct(struct, device="cpu", indent_size=4):
     forward_initializers = []
     reverse_body = []
     atomic_add_body = []
+    prefix_add_body = []
 
     # forward args
     for label, var in struct.vars.items():
@@ -2369,6 +2383,11 @@ def codegen_struct(struct, device="cpu", indent_size=4):
 
         prefix = f"{indent_block}," if forward_initializers else ":"
         forward_initializers.append(f"{indent_block}{prefix} {label}{{{label}}}\n")
+
+    # prefix-add operator
+    for label, var in struct.vars.items():
+        if not is_array(var.type):
+            prefix_add_body.append(f"{indent_block}{label} += rhs.{label};\n")
 
     # reverse args
     for label, var in struct.vars.items():
@@ -2387,6 +2406,7 @@ def codegen_struct(struct, device="cpu", indent_size=4):
         forward_initializers="".join(forward_initializers),
         reverse_args=indent(reverse_args),
         reverse_body="".join(reverse_body),
+        prefix_add_body="".join(prefix_add_body),
         atomic_add_body="".join(atomic_add_body),
     )
 

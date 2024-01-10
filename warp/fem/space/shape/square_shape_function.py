@@ -25,6 +25,7 @@ class SquareBipolynomialShapeFunctions:
         self.LOBATTO_COORDS = wp.constant(NodeVec(lobatto_coords))
         self.LOBATTO_WEIGHT = wp.constant(NodeVec(lobatto_weight))
         self.LAGRANGE_SCALE = wp.constant(NodeVec(lagrange_scale))
+        self.ORDER_PLUS_ONE = wp.constant(self.ORDER + 1)
 
     @property
     def name(self) -> str:
@@ -93,13 +94,21 @@ class SquareBipolynomialShapeFunctions:
         ):
             return 0.5
 
+        def trace_node_quadrature_weight_open(
+            node_index_in_elt: int,
+        ):
+            return 0.0
+
+        if not is_closed(self.family):
+            return cache.get_func(trace_node_quadrature_weight_open, self.name)
+
         if ORDER == 1:
             return cache.get_func(trace_node_quadrature_weight_linear, self.name)
 
         return cache.get_func(trace_node_quadrature_weight, self.name)
 
     def make_element_inner_weight(self):
-        ORDER = self.ORDER
+        ORDER_PLUS_ONE = self.ORDER_PLUS_ONE
         LOBATTO_COORDS = self.LOBATTO_COORDS
         LAGRANGE_SCALE = self.LAGRANGE_SCALE
 
@@ -107,11 +116,11 @@ class SquareBipolynomialShapeFunctions:
             coords: Coords,
             node_index_in_elt: int,
         ):
-            node_i = node_index_in_elt // (ORDER + 1)
-            node_j = node_index_in_elt - (ORDER + 1) * node_i
+            node_i = node_index_in_elt // ORDER_PLUS_ONE
+            node_j = node_index_in_elt - ORDER_PLUS_ONE * node_i
 
             w = float(1.0)
-            for k in range(ORDER + 1):
+            for k in range(ORDER_PLUS_ONE):
                 if k != node_i:
                     w *= coords[0] - LOBATTO_COORDS[k]
                 if k != node_j:
@@ -131,13 +140,13 @@ class SquareBipolynomialShapeFunctions:
             wy = (1.0 - coords[1]) * (1.0 - v[1]) + v[1] * coords[1]
             return wx * wy
 
-        if ORDER == 1:
+        if self.ORDER == 1 and is_closed(self.family):
             return cache.get_func(element_inner_weight_linear, self.name)
 
         return cache.get_func(element_inner_weight, self.name)
 
     def make_element_inner_weight_gradient(self):
-        ORDER = self.ORDER
+        ORDER_PLUS_ONE = self.ORDER_PLUS_ONE
         LOBATTO_COORDS = self.LOBATTO_COORDS
         LAGRANGE_SCALE = self.LAGRANGE_SCALE
 
@@ -145,12 +154,12 @@ class SquareBipolynomialShapeFunctions:
             coords: Coords,
             node_index_in_elt: int,
         ):
-            node_i = node_index_in_elt // (ORDER + 1)
-            node_j = node_index_in_elt - (ORDER + 1) * node_i
+            node_i = node_index_in_elt // ORDER_PLUS_ONE
+            node_j = node_index_in_elt - ORDER_PLUS_ONE * node_i
 
             prefix_x = float(1.0)
             prefix_y = float(1.0)
-            for k in range(ORDER + 1):
+            for k in range(ORDER_PLUS_ONE):
                 if k != node_i:
                     prefix_y *= coords[0] - LOBATTO_COORDS[k]
                 if k != node_j:
@@ -159,7 +168,7 @@ class SquareBipolynomialShapeFunctions:
             grad_x = float(0.0)
             grad_y = float(0.0)
 
-            for k in range(ORDER + 1):
+            for k in range(ORDER_PLUS_ONE):
                 if k != node_i:
                     delta_x = coords[0] - LOBATTO_COORDS[k]
                     grad_x = grad_x * delta_x + prefix_x
@@ -187,7 +196,7 @@ class SquareBipolynomialShapeFunctions:
 
             return wp.vec2(dx * wy, dy * wx)
 
-        if ORDER == 1:
+        if self.ORDER == 1 and is_closed(self.family):
             return cache.get_func(element_inner_weight_gradient_linear, self.name)
 
         return cache.get_func(element_inner_weight_gradient, self.name)
@@ -230,6 +239,7 @@ class SquareSerendipityShapeFunctions:
         self.LOBATTO_COORDS = wp.constant(NodeVec(lobatto_coords))
         self.LOBATTO_WEIGHT = wp.constant(NodeVec(lobatto_weight))
         self.LAGRANGE_SCALE = wp.constant(NodeVec(lagrange_scale))
+        self.ORDER_PLUS_ONE = wp.constant(self.ORDER + 1)
 
         self.node_type_and_type_index = self._get_node_type_and_type_index()
         self._node_lobatto_indices = self._get_node_lobatto_indices()
@@ -328,6 +338,7 @@ class SquareSerendipityShapeFunctions:
 
     def make_element_inner_weight(self):
         ORDER = self.ORDER
+        ORDER_PLUS_ONE = self.ORDER_PLUS_ONE
 
         LOBATTO_COORDS = self.LOBATTO_COORDS
         LAGRANGE_SCALE = self.LAGRANGE_SCALE
@@ -361,7 +372,7 @@ class SquareSerendipityShapeFunctions:
             if node_type == SquareSerendipityShapeFunctions.EDGE_Y:
                 w *= wp.select(node_i == 0, coords[0], 1.0 - coords[0])
             else:
-                for k in range(ORDER + 1):
+                for k in range(ORDER_PLUS_ONE):
                     if k != node_i:
                         w *= coords[0] - LOBATTO_COORDS[k]
 
@@ -370,7 +381,7 @@ class SquareSerendipityShapeFunctions:
             if node_type == SquareSerendipityShapeFunctions.EDGE_X:
                 w *= wp.select(node_j == 0, coords[1], 1.0 - coords[1])
             else:
-                for k in range(ORDER + 1):
+                for k in range(ORDER_PLUS_ONE):
                     if k != node_j:
                         w *= coords[1] - LOBATTO_COORDS[k]
                 w *= LAGRANGE_SCALE[node_j]
@@ -381,6 +392,7 @@ class SquareSerendipityShapeFunctions:
 
     def make_element_inner_weight_gradient(self):
         ORDER = self.ORDER
+        ORDER_PLUS_ONE = self.ORDER_PLUS_ONE
         LOBATTO_COORDS = self.LOBATTO_COORDS
         LAGRANGE_SCALE = self.LAGRANGE_SCALE
 
@@ -424,7 +436,7 @@ class SquareSerendipityShapeFunctions:
                 prefix_x = wp.select(node_j == 0, coords[1], 1.0 - coords[1])
             else:
                 prefix_x = LAGRANGE_SCALE[node_j]
-                for k in range(ORDER + 1):
+                for k in range(ORDER_PLUS_ONE):
                     if k != node_j:
                         prefix_x *= coords[1] - LOBATTO_COORDS[k]
 
@@ -432,7 +444,7 @@ class SquareSerendipityShapeFunctions:
                 prefix_y = wp.select(node_i == 0, coords[0], 1.0 - coords[0])
             else:
                 prefix_y = LAGRANGE_SCALE[node_i]
-                for k in range(ORDER + 1):
+                for k in range(ORDER_PLUS_ONE):
                     if k != node_i:
                         prefix_y *= coords[0] - LOBATTO_COORDS[k]
 
@@ -441,7 +453,7 @@ class SquareSerendipityShapeFunctions:
             else:
                 prefix_y *= LAGRANGE_SCALE[node_j]
                 grad_y = float(0.0)
-                for k in range(ORDER + 1):
+                for k in range(ORDER_PLUS_ONE):
                     if k != node_j:
                         delta_y = coords[1] - LOBATTO_COORDS[k]
                         grad_y = grad_y * delta_y + prefix_y
@@ -452,7 +464,7 @@ class SquareSerendipityShapeFunctions:
             else:
                 prefix_x *= LAGRANGE_SCALE[node_i]
                 grad_x = float(0.0)
-                for k in range(ORDER + 1):
+                for k in range(ORDER_PLUS_ONE):
                     if k != node_i:
                         delta_x = coords[0] - LOBATTO_COORDS[k]
                         grad_x = grad_x * delta_x + prefix_x
@@ -530,7 +542,6 @@ class SquareNonConformingPolynomialShapeFunctions:
         NODES_PER_ELEMENT = self.NODES_PER_ELEMENT
 
         if self.ORDER == 2:
-
             # Intrinsic quadrature (order 2)
             @cache.dynamic_func(suffix=self.name)
             def node_quadrature_weight_quadratic(

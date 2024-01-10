@@ -5,13 +5,12 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
+import unittest
+
 import numpy as np
 
 import warp as wp
-from warp.tests.test_base import *
-
-import unittest
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -200,19 +199,17 @@ def test_copy_indexed(test, device):
         assert_np_equal(a4.numpy(), expected4 * s)
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestCopy(parent):
-        pass
 
-    add_function_test(TestCopy, "test_copy_strided", test_copy_strided, devices=devices)
-    add_function_test(TestCopy, "test_copy_indexed", test_copy_indexed, devices=devices)
+class TestCopy(unittest.TestCase):
+    pass
 
-    return TestCopy
+
+add_function_test(TestCopy, "test_copy_strided", test_copy_strided, devices=devices)
+add_function_test(TestCopy, "test_copy_indexed", test_copy_indexed, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

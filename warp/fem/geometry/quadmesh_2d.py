@@ -1,12 +1,16 @@
 from typing import Optional
+
 import warp as wp
+from warp.fem.cache import (
+    TemporaryStore,
+    borrow_temporary,
+    borrow_temporary_like,
+    cached_arg_value,
+)
+from warp.fem.types import OUTSIDE, Coords, ElementIndex, Sample, make_free_sample
 
-from warp.fem.types import ElementIndex, Coords, Sample
-from warp.fem.types import OUTSIDE, make_free_sample
-from warp.fem.cache import cached_arg_value, TemporaryStore, borrow_temporary, borrow_temporary_like
-
+from .element import LinearEdge, Square
 from .geometry import Geometry
-from .element import Square, LinearEdge
 
 # from .closest_point import project_on_tet_at_origin
 
@@ -120,7 +124,7 @@ class Quadmesh2D(Geometry):
         )
 
     @wp.func
-    def cell_deformation_gradient(cell_arg: CellArg, s:Sample):
+    def cell_deformation_gradient(cell_arg: CellArg, s: Sample):
         """Deformation gradient at `coords`"""
         quad_idx = cell_arg.quad_vertex_indices[s.element_index]
 
@@ -135,7 +139,7 @@ class Quadmesh2D(Geometry):
         )
 
     @wp.func
-    def cell_inverse_deformation_gradient(cell_arg: CellArg, s:Sample):
+    def cell_inverse_deformation_gradient(cell_arg: CellArg, s: Sample):
         return wp.inverse(Quadmesh2D.cell_deformation_gradient(cell_arg, s))
 
     @wp.func
@@ -178,20 +182,20 @@ class Quadmesh2D(Geometry):
         ] * args.cell_arg.positions[edge_idx[1]]
 
     @wp.func
-    def side_deformation_gradient(args: SideArg, s:Sample):
+    def side_deformation_gradient(args: SideArg, s: Sample):
         edge_idx = args.edge_vertex_indices[s.element_index]
         v0 = args.cell_arg.positions[edge_idx[0]]
         v1 = args.cell_arg.positions[edge_idx[1]]
         return v1 - v0
 
     @wp.func
-    def side_inner_inverse_deformation_gradient(args: SideArg, s:Sample):
+    def side_inner_inverse_deformation_gradient(args: SideArg, s: Sample):
         cell_index = Quadmesh2D.side_inner_cell_index(args, s.element_index)
         cell_coords = Quadmesh2D.side_inner_cell_coords(args, s.element_index, s.element_coords)
         return Quadmesh2D.cell_inverse_deformation_gradient(args.cell_arg, make_free_sample(cell_index, cell_coords))
 
     @wp.func
-    def side_outer_inverse_deformation_gradient(args: SideArg, s:Sample):
+    def side_outer_inverse_deformation_gradient(args: SideArg, s: Sample):
         cell_index = Quadmesh2D.side_outer_cell_index(args, s.element_index)
         cell_coords = Quadmesh2D.side_outer_cell_coords(args, s.element_index, s.element_coords)
         return Quadmesh2D.cell_inverse_deformation_gradient(args.cell_arg, make_free_sample(cell_index, cell_coords))
@@ -352,7 +356,7 @@ class Quadmesh2D(Geometry):
             wp.copy(
                 dest=edge_count.array, src=vertex_unique_edge_offsets.array, src_offset=self.vertex_count() - 1, count=1
             )
-            wp.synchronize_stream(wp.get_stream())
+            wp.synchronize_stream(wp.get_stream(device))
             edge_count = int(edge_count.array.numpy()[0])
         else:
             edge_count = int(vertex_unique_edge_offsets.array.numpy()[self.vertex_count() - 1])

@@ -10,8 +10,7 @@ import unittest
 import numpy as np
 
 import warp as wp
-from warp.tests.test_base import *
-
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -66,8 +65,9 @@ def mesh_query_ray_loss(
     loss[tid] = l
 
 
+@unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
 def test_mesh_query_ray_grad(test, device):
-    from pxr import Usd, UsdGeom, Gf, Sdf
+    from pxr import Usd, UsdGeom
 
     # test tri
     # print("Testing Single Triangle")
@@ -209,7 +209,7 @@ def raycast_kernel(
     sign = float(0.0)  # hit face sign
     n = wp.vec3()  # hit face normal
     f = int(0)  # hit face index
-    max_dist = 1e6  # max raycast disance
+    max_dist = 1e6  # max raycast distance
 
     # ray cast against the mesh
     tid = wp.tid()
@@ -258,29 +258,17 @@ def test_mesh_query_ray_edge(test, device):
     test.assertEqual(counts.numpy()[0], n)
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestMeshQueryRay(parent):
-        pass
 
-    add_function_test(TestMeshQueryRay, "test_mesh_query_ray_edge", test_mesh_query_ray_edge, devices=devices)
+class TestMeshQueryRay(unittest.TestCase):
+    pass
 
-    # USD import failures should not count as a test failure
-    try:
-        from pxr import Usd, UsdGeom
 
-        have_usd = True
-    except:
-        have_usd = False
-
-    if have_usd:
-        add_function_test(TestMeshQueryRay, "test_mesh_query_ray_grad", test_mesh_query_ray_grad, devices=devices)
-
-    return TestMeshQueryRay
+add_function_test(TestMeshQueryRay, "test_mesh_query_ray_edge", test_mesh_query_ray_edge, devices=devices)
+add_function_test(TestMeshQueryRay, "test_mesh_query_ray_grad", test_mesh_query_ray_grad, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

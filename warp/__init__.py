@@ -26,7 +26,9 @@ from warp.types import spatial_matrix, spatial_matrixh, spatial_matrixf, spatial
 
 # geometry types
 from warp.types import Bvh, Mesh, HashGrid, Volume, MarchingCubes
-from warp.types import bvh_query_t, mesh_query_aabb_t, hash_grid_query_t
+from warp.types import bvh_query_t, hash_grid_query_t, mesh_query_aabb_t, mesh_query_point_t, mesh_query_ray_t
+
+
 
 # device-wide gemms
 from warp.types import matmul, adj_matmul, batched_matmul, adj_batched_matmul, from_ptr
@@ -57,7 +59,6 @@ from warp.context import (
 )
 from warp.context import set_module_options, get_module_options, get_module
 from warp.context import capture_begin, capture_end, capture_launch
-from warp.context import print_builtins, export_builtins, export_stubs
 from warp.context import Kernel, Function, Launch
 from warp.context import Stream, get_stream, set_stream, synchronize_stream
 from warp.context import Event, record_event, wait_event, wait_stream

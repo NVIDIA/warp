@@ -275,6 +275,9 @@ Geometry
 .. autoclass:: NodalQuadrature
    :show-inheritance:
 
+.. autoclass:: ExplicitQuadrature
+   :show-inheritance:
+
 .. autoclass:: PicQuadrature
    :show-inheritance:
 
@@ -298,6 +301,9 @@ Function Spaces
    :show-inheritance:
 
 .. autoclass:: SkewSymmetricTensorMapper
+   :show-inheritance:
+
+.. autoclass:: PointBasisSpace
    :show-inheritance:
 
 Fields
@@ -350,7 +356,7 @@ Interface classes are not meant to be constructed directly, but can be derived f
    :members: dimension, geometry, node_count, element_node_indices, trace
 
 .. autoclass:: BasisSpace
-   :members: topology, geometry, shape, node_positions
+   :members: topology, geometry, node_positions
 
 .. autoclass:: warp.fem.space.shape.ShapeFunction
 

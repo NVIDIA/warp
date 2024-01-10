@@ -1,11 +1,11 @@
-from typing import Any
+from typing import Union, Tuple, Any, Optional
 
 import warp as wp
 
 from warp.fem.domain import GeometryDomain
-from warp.fem.types import ElementIndex, Coords
+from warp.fem.types import ElementIndex, Coords, make_free_sample
 from warp.fem.utils import compress_node_indices
-from warp.fem.cache import cached_arg_value, TemporaryStore, borrow_temporary
+from warp.fem.cache import cached_arg_value, TemporaryStore, borrow_temporary, dynamic_kernel
 
 from .quadrature import Quadrature
 
@@ -14,24 +14,36 @@ wp.set_module_options({"enable_backward": False})
 
 
 class PicQuadrature(Quadrature):
-    """Particle-based quadrature formula, using a global set of points irregularely spread out over geometry elements.
+    """Particle-based quadrature formula, using a global set of points unevenly spread out over geometry elements.
 
     Useful for Particle-In-Cell and derived methods.
+
+    Args:
+        domain: Undelying domain for the qaudrature
+        positions: Either an array containing the world positions of all particles, or a tuple of arrays containing
+         the cell indices and coordinates for each particle. Note that the former requires the underlying geometry to
+         define a global :meth:`Geometry.cell_lookup` method; currently this is only available for :class:`Grid2D` and :class:`Grid3D`.
+        measures: Array containing the measure (area/volume) of each particle, used to defined the integration weights.
+         If ``None``, defaults to the cell measure divided by the number of particles in the cell.
+        temporary_store: shared pool from which to allocate temporary arrays
     """
 
     def __init__(
         self,
         domain: GeometryDomain,
-        positions: "wp.array()",
-        measures: "wp.array(dtype=float)",
+        positions: Union[
+            "wp.array(dtype=wp.vecXd)",
+            Tuple[
+                "wp.array(dtype=ElementIndex)",
+                "wp.array(dtype=Coords)",
+            ],
+        ],
+        measures: Optional["wp.array(dtype=float)"] = None,
         temporary_store: TemporaryStore = None,
     ):
         super().__init__(domain)
 
-        self.positions = positions
-        self.measures = measures
-
-        self._bin_particles(temporary_store)
+        self._bin_particles(positions, measures, temporary_store)
 
     @property
     def name(self):
@@ -61,12 +73,16 @@ class PicQuadrature(Quadrature):
         arg = PicQuadrature.Arg()
         arg.cell_particle_offsets = self._cell_particle_offsets.array.to(device)
         arg.cell_particle_indices = self._cell_particle_indices.array.to(device)
-        arg.particle_fraction = self._particle_fraction.array.to(device)
-        arg.particle_coords = self._particle_coords.array.to(device)
+        arg.particle_fraction = self._particle_fraction.to(device)
+        arg.particle_coords = self._particle_coords.to(device)
         return arg
 
     def total_point_count(self):
-        return self.positions.shape[0]
+        return self._particle_coords.shape[0]
+
+    def active_cell_count(self):
+        """Number of cells containing at least one particle"""
+        return self._cell_count
 
     @wp.func
     def point_count(elt_arg: Any, qp_arg: Arg, element_index: ElementIndex):
@@ -109,52 +125,121 @@ class PicQuadrature(Quadrature):
         i = wp.tid()
         element_mask[i] = wp.select(element_particle_offsets[i] == element_particle_offsets[i + 1], 1, 0)
 
-    def _bin_particles(self, temporary_store: TemporaryStore):
-        from warp.fem import cache
+    @wp.kernel
+    def _compute_uniform_fraction(
+        cell_index: wp.array(dtype=ElementIndex),
+        cell_particle_offsets: wp.array(dtype=int),
+        cell_fraction: wp.array(dtype=float),
+    ):
+        p = wp.tid()
 
-        @cache.dynamic_kernel(suffix=f"{self.domain.name}")
-        def bin_particles(
-            cell_arg_value: self.domain.ElementArg,
-            positions: wp.array(dtype=self.positions.dtype),
-            measures: wp.array(dtype=float),
-            cell_index: wp.array(dtype=ElementIndex),
-            cell_coords: wp.array(dtype=Coords),
-            cell_fraction: wp.array(dtype=float),
-        ):
-            p = wp.tid()
-            sample = self.domain.element_lookup(cell_arg_value, positions[p])
+        cell = cell_index[p]
+        cell_particle_count = cell_particle_offsets[cell + 1] - cell_particle_offsets[cell]
 
-            cell_index[p] = sample.element_index
+        cell_fraction[p] = 1.0 / float(cell_particle_count)
 
-            cell_coords[p] = sample.element_coords
-            cell_fraction[p] = measures[p] / self.domain.element_measure(cell_arg_value, sample)
+    def _bin_particles(self, positions, measures, temporary_store: TemporaryStore):
+        if wp.types.is_array(positions):
+            # Initialize from positions
+            @dynamic_kernel(suffix=f"{self.domain.name}")
+            def bin_particles(
+                cell_arg_value: self.domain.ElementArg,
+                positions: wp.array(dtype=positions.dtype),
+                cell_index: wp.array(dtype=ElementIndex),
+                cell_coords: wp.array(dtype=Coords),
+            ):
+                p = wp.tid()
+                sample = self.domain.element_lookup(cell_arg_value, positions[p])
 
-        device = self.positions.device
+                cell_index[p] = sample.element_index
+                cell_coords[p] = sample.element_coords
 
-        cell_index = borrow_temporary(temporary_store, shape=self.positions.shape, dtype=int, device=device)
-        self._particle_coords = borrow_temporary(
-            temporary_store, shape=self.positions.shape, dtype=Coords, device=device
-        )
-        self._particle_fraction = borrow_temporary(
-            temporary_store, shape=self.positions.shape, dtype=float, device=device
-        )
+            device = positions.device
 
-        wp.launch(
-            dim=self.positions.shape[0],
-            kernel=bin_particles,
-            inputs=[
-                self.domain.element_arg_value(device),
-                self.positions,
-                self.measures,
-                cell_index.array,
-                self._particle_coords.array,
-                self._particle_fraction.array,
-            ],
-            device=device,
-        )
+            cell_index_temp = borrow_temporary(temporary_store, shape=positions.shape, dtype=int, device=device)
+            cell_index = cell_index_temp.array
+
+            self._particle_coords_temp = borrow_temporary(
+                temporary_store, shape=positions.shape, dtype=Coords, device=device
+            )
+            self._particle_coords = self._particle_coords_temp.array
+
+            wp.launch(
+                dim=positions.shape[0],
+                kernel=bin_particles,
+                inputs=[
+                    self.domain.element_arg_value(device),
+                    positions,
+                    cell_index,
+                    self._particle_coords,
+                ],
+                device=device,
+            )
+
+        else:
+            cell_index, self._particle_coords = positions
+            if cell_index.shape != self._particle_coords.shape:
+                raise ValueError("Cell index and coordinates arrays must have the same shape")
+
+            cell_index_temp = None
+            self._particle_coords_temp = None
 
         self._cell_particle_offsets, self._cell_particle_indices, self._cell_count, _ = compress_node_indices(
-            self.domain.geometry_element_count(), cell_index.array
+            self.domain.geometry_element_count(), cell_index
         )
 
-        cell_index.release()
+        self._compute_fraction(cell_index, measures, temporary_store)
+
+    def _compute_fraction(self, cell_index, measures, temporary_store: TemporaryStore):
+        device = cell_index.device
+
+        self._particle_fraction_temp = borrow_temporary(
+            temporary_store, shape=cell_index.shape, dtype=float, device=device
+        )
+        self._particle_fraction = self._particle_fraction_temp.array
+
+        if measures is None:
+            # Split fraction uniformly over all particles in cell
+
+            wp.launch(
+                dim=cell_index.shape,
+                kernel=PicQuadrature._compute_uniform_fraction,
+                inputs=[
+                    cell_index,
+                    self._cell_particle_offsets.array,
+                    self._particle_fraction,
+                ],
+                device=device,
+            )
+
+        else:
+            # Fraction from particle measure
+
+            if measures.shape != cell_index.shape:
+                raise ValueError("Measures should be an 1d array or length equal to particle count")
+
+            @dynamic_kernel(suffix=f"{self.domain.name}")
+            def compute_fraction(
+                cell_arg_value: self.domain.ElementArg,
+                measures: wp.array(dtype=float),
+                cell_index: wp.array(dtype=ElementIndex),
+                cell_coords: wp.array(dtype=Coords),
+                cell_fraction: wp.array(dtype=float),
+            ):
+                p = wp.tid()
+                sample = make_free_sample(cell_index[p], cell_coords[p])
+
+                cell_fraction[p] = measures[p] / self.domain.element_measure(cell_arg_value, sample)
+
+            wp.launch(
+                dim=measures.shape[0],
+                kernel=compute_fraction,
+                inputs=[
+                    self.domain.element_arg_value(device),
+                    measures,
+                    cell_index,
+                    self._particle_coords,
+                    self._particle_fraction,
+                ],
+                device=device,
+            )

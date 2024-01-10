@@ -298,6 +298,18 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> atomic_max(mat_t<Rows,Cols,Type> * ad
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_atomic_minmax(
+    mat_t<Rows,Cols,Type> *addr,
+    mat_t<Rows,Cols,Type> *adj_addr,
+    const mat_t<Rows,Cols,Type> &value,
+    mat_t<Rows,Cols,Type> &adj_value)
+{
+    for (unsigned i=0; i < Rows; ++i)
+        for (unsigned j=0; j < Cols; ++j)
+            adj_atomic_minmax(&addr->data[i][j], &adj_addr->data[i][j], value.data[i][j], adj_value.data[i][j]);
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE vec_t<Cols,Type> extract(const mat_t<Rows,Cols,Type>& m, int row)
 {
     vec_t<Cols,Type> ret;
@@ -425,7 +437,22 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> div(const mat_t<Rows,Cols,Type>& a, T
         }
     }
 
-    return t;   
+    return t;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> div(Type b, const mat_t<Rows,Cols,Type>& a)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = b / a.data[i][j];
+        }
+    }
+
+    return t;
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
@@ -440,7 +467,7 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> mul(const mat_t<Rows,Cols,Type>& a, T
         }
     }
 
-    return t;   
+    return t;
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
@@ -469,6 +496,17 @@ inline CUDA_CALLABLE vec_t<Rows,Type> mul(const mat_t<Rows,Cols,Type>& a, const 
     for( unsigned i=1; i < Cols; ++i )
     {
         r += a.get_col(i)*b[i];
+    }
+    return r;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE vec_t<Cols,Type> mul(const vec_t<Rows,Type>& b, const mat_t<Rows,Cols,Type>& a)
+{
+    vec_t<Cols,Type> r = a.get_row(0)*b[0];
+    for( unsigned i=1; i < Rows; ++i )
+    {
+        r += a.get_row(i)*b[i];
     }
     return r;
 }
@@ -933,6 +971,20 @@ inline CUDA_CALLABLE void adj_div(const mat_t<Rows,Cols,Type>& a, Type s, mat_t<
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_div(Type s, const mat_t<Rows,Cols,Type>& a, Type& adj_s, mat_t<Rows,Cols,Type>& adj_a, const mat_t<Rows,Cols,Type>& adj_ret)
+{
+    adj_s -= tensordot(a , adj_ret)/ (s * s); // - a / s^2
+
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            adj_a.data[i][j] += s / adj_ret.data[i][j];
+        }
+    }
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_mul(const mat_t<Rows,Cols,Type>& a, Type b, mat_t<Rows,Cols,Type>& adj_a, Type& adj_b, const mat_t<Rows,Cols,Type>& adj_ret)
 {
     for (unsigned i=0; i < Rows; ++i)
@@ -963,6 +1015,13 @@ inline CUDA_CALLABLE void adj_mul(const mat_t<Rows,Cols,Type>& a, const vec_t<Co
 {
     adj_a += outer(adj_ret, b);
     adj_b += mul(transpose(a), adj_ret);
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_mul(const vec_t<Rows,Type>& b, const mat_t<Rows,Cols,Type>& a, vec_t<Rows,Type>& adj_b, mat_t<Rows,Cols,Type>& adj_a, const vec_t<Cols,Type>& adj_ret)
+{
+    adj_a += outer(b, adj_ret);
+    adj_b += mul(adj_ret, transpose(a));
 }
 
 template<unsigned Rows, unsigned Cols, unsigned ColsOut, typename Type>
@@ -1105,10 +1164,10 @@ inline CUDA_CALLABLE void adj_determinant(const mat_t<4,4,Type>& m, mat_t<4,4,Ty
 }
 
 template<unsigned Rows, typename Type>
-inline CUDA_CALLABLE void adj_inverse(const mat_t<Rows,Rows,Type>& m, mat_t<Rows,Rows,Type>& adj_m, const mat_t<Rows,Rows,Type>& adj_ret)
+inline CUDA_CALLABLE void adj_inverse(const mat_t<Rows,Rows,Type>& m, mat_t<Rows,Rows,Type>& ret, mat_t<Rows,Rows,Type>& adj_m, const mat_t<Rows,Rows,Type>& adj_ret)
 {
     // todo: how to cache this from the forward pass?
-    mat_t<Rows,Rows,Type> invt = transpose(inverse(m));
+    mat_t<Rows,Rows,Type> invt = transpose(ret);
 
     // see https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf 2.2.3
     adj_m -= mul(mul(invt, adj_ret), invt);
@@ -1150,10 +1209,10 @@ inline CUDA_CALLABLE void adj_cw_mul(const mat_t<Rows,Cols,Type>& a, const mat_t
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_cw_div(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b, mat_t<Rows,Cols,Type>& adj_a, mat_t<Rows,Cols,Type>& adj_b, const mat_t<Rows,Cols,Type>& adj_ret)
+inline CUDA_CALLABLE void adj_cw_div(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b, mat_t<Rows,Cols,Type>& ret, mat_t<Rows,Cols,Type>& adj_a, mat_t<Rows,Cols,Type>& adj_b, const mat_t<Rows,Cols,Type>& adj_ret)
 {
   adj_a += cw_div(adj_ret, b);
-  adj_b -= cw_mul(adj_ret, cw_div(cw_div(a, b), b));
+  adj_b -= cw_mul(adj_ret, cw_div(ret, b));
 }
 
 // adjoint for the constant constructor:

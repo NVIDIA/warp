@@ -53,6 +53,7 @@ def step_kernel(x: wp.array(dtype=wp.vec3), grad: wp.array(dtype=wp.vec3), alpha
 
 class Example:
     def __init__(self, stage, profile=False, adapter=None, verbose=False):
+        self.device = wp.get_device()
         self.verbose = verbose
 
         # seconds
@@ -80,9 +81,9 @@ class Example:
         dim_y = 16
 
         builder.add_cloth_grid(
-            pos=(0.0, 0.0, 0.0),
-            vel=(0.1, 0.1, 0.0),
-            rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi * 0.25),
+            pos=wp.vec3(0.0, 0.0, 0.0),
+            vel=wp.vec3(0.1, 0.1, 0.0),
+            rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), -math.pi * 0.25),
             dim_x=dim_x,
             dim_y=dim_y,
             cell_x=1.0 / dim_x,
@@ -115,12 +116,14 @@ class Example:
         self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=4.0)
 
         # capture forward/backward passes
-        wp.capture_begin()
-        self.tape = wp.Tape()
-        with self.tape:
-            self.compute_loss()
-        self.tape.backward(self.loss)
-        self.graph = wp.capture_end()
+        wp.capture_begin(self.device)
+        try:
+            self.tape = wp.Tape()
+            with self.tape:
+                self.compute_loss()
+            self.tape.backward(self.loss)
+        finally:
+            self.graph = wp.capture_end(self.device)
 
     def compute_loss(self):
         # run control loop

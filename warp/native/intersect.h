@@ -869,7 +869,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     wp::adj_sub(var_9, var_71, adj_9, adj_71, adj_73);
     wp::adj_mul(var_21, var_70, adj_21, adj_70, adj_72);
     wp::adj_mul(var_41, var_70, adj_41, adj_70, adj_71);
-    wp::adj_div(var_9, var_69, adj_9, adj_69, adj_70);
+    wp::adj_div(var_9, var_69, var_70, adj_9, adj_69, adj_70);
     wp::adj_add(var_68, var_21, adj_68, adj_21, adj_69);
     wp::adj_add(var_53, var_41, adj_53, adj_41, adj_68);
     wp::adj_select(var_64, var_50, var_66, adj_64, adj_50, adj_66, adj_67);
@@ -881,7 +881,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     }
     wp::adj_sub(var_32, var_33, adj_32, adj_33, adj_62);
     wp::adj_sub(var_13, var_12, adj_13, adj_12, adj_60);
-    wp::adj_div(var_54, var_57, adj_54, adj_57, adj_58);
+    wp::adj_div(var_54, var_57, var_58, adj_54, adj_57, adj_58);
     wp::adj_add(var_55, var_56, adj_55, adj_56, adj_57);
     wp::adj_sub(var_32, var_33, adj_32, adj_33, adj_56);
     wp::adj_sub(var_13, var_12, adj_13, adj_12, adj_55);
@@ -896,7 +896,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     	wp::adj_vec2(var_48, var_5, adj_48, adj_5, adj_49);
     	wp::adj_sub(var_9, var_43, adj_9, adj_43, adj_48);
     }
-    wp::adj_div(var_4, var_42, adj_4, adj_42, adj_43);
+    wp::adj_div(var_4, var_42, var_43, adj_4, adj_42, adj_43);
     wp::adj_sub(var_4, var_33, adj_4, adj_33, adj_42);
     wp::adj_sub(var_39, var_40, adj_39, adj_40, adj_41);
     wp::adj_mul(var_3, var_33, adj_3, adj_33, adj_40);
@@ -917,7 +917,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     	wp::adj_vec2(var_28, var_23, adj_28, adj_23, adj_29);
     	wp::adj_sub(var_9, var_23, adj_9, adj_23, adj_28);
     }
-    wp::adj_div(var_3, var_22, adj_3, adj_22, adj_23);
+    wp::adj_div(var_3, var_22, var_23, adj_3, adj_22, adj_23);
     wp::adj_sub(var_3, var_12, adj_3, adj_12, adj_22);
     wp::adj_sub(var_19, var_20, adj_19, adj_20, adj_21);
     wp::adj_mul(var_12, var_4, adj_12, adj_4, adj_20);

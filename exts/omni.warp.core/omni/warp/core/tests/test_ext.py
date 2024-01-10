@@ -5,117 +5,73 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-"""Tests for the Warp library itself.
+"""Tests for the Warp core library in Kit.
 
 Only a trimmed down list of tests is run since the full suite is too slow.
+
+More information about testing in Kit:
+    https://docs.omniverse.nvidia.com/kit/docs/kit-manual/latest/guide/testing_exts_python.html
 """
 
-import omni.kit
+import importlib
 
-import warp as wp
-import warp.tests.test_array
-import warp.tests.test_array_reduce
-import warp.tests.test_bvh
-import warp.tests.test_codegen
-import warp.tests.test_compile_consts
-import warp.tests.test_conditional
-import warp.tests.test_ctypes
-import warp.tests.test_devices
-import warp.tests.test_dlpack
-import warp.tests.test_fabricarray
-import warp.tests.test_func
-import warp.tests.test_generics
-import warp.tests.test_grad_customs
-import warp.tests.test_hash_grid
-import warp.tests.test_indexedarray
-import warp.tests.test_launch
-import warp.tests.test_marching_cubes
-import warp.tests.test_mat_lite
-import warp.tests.test_math
-import warp.tests.test_matmul_lite
-import warp.tests.test_mesh
-import warp.tests.test_mesh_query_aabb
-import warp.tests.test_mesh_query_point
-import warp.tests.test_mesh_query_ray
-import warp.tests.test_modules_lite
-import warp.tests.test_noise
-import warp.tests.test_operators
-import warp.tests.test_quat
-import warp.tests.test_rand
-import warp.tests.test_reload
-import warp.tests.test_rounding
-import warp.tests.test_runlength_encode
-import warp.tests.test_sparse
-import warp.tests.test_streams
-import warp.tests.test_tape
-import warp.tests.test_transient_module
-import warp.tests.test_types
-import warp.tests.test_utils
-import warp.tests.test_vec_lite
-import warp.tests.test_volume
-import warp.tests.test_volume_write
+import omni.kit.test
 
-initialized = False
-
-
-class BaseTestCase(omni.kit.test.AsyncTestCase):
-    @classmethod
-    def setUpClass(cls):
-        global initialized
-
-        if not initialized:
-            # Load all the Warp modules just once. This needs to be done
-            # within the `setUpClass` method instead of at the module level
-            # to avoid the reload to be done as soon as this module is imported,
-            # which might happen when scanning for existing tests without
-            # actually needing to run these ones.
-            wp.force_load()
-            initialized = True
-
-
-test_clss = (
-    warp.tests.test_array.register(BaseTestCase),
-    warp.tests.test_array_reduce.register(BaseTestCase),
-    warp.tests.test_bvh.register(BaseTestCase),
-    warp.tests.test_codegen.register(BaseTestCase),
-    warp.tests.test_compile_consts.register(BaseTestCase),
-    warp.tests.test_conditional.register(BaseTestCase),
-    warp.tests.test_ctypes.register(BaseTestCase),
-    warp.tests.test_devices.register(BaseTestCase),
-    warp.tests.test_dlpack.register(BaseTestCase),
-    warp.tests.test_fabricarray.register(BaseTestCase),
-    warp.tests.test_func.register(BaseTestCase),
-    warp.tests.test_generics.register(BaseTestCase),
-    warp.tests.test_grad_customs.register(BaseTestCase),
-    warp.tests.test_hash_grid.register(BaseTestCase),
-    warp.tests.test_indexedarray.register(BaseTestCase),
-    warp.tests.test_launch.register(BaseTestCase),
-    warp.tests.test_marching_cubes.register(BaseTestCase),
-    warp.tests.test_mat_lite.register(BaseTestCase),
-    warp.tests.test_math.register(BaseTestCase),
-    warp.tests.test_matmul_lite.register(BaseTestCase),
-    warp.tests.test_mesh.register(BaseTestCase),
-    warp.tests.test_mesh_query_aabb.register(BaseTestCase),
-    warp.tests.test_mesh_query_point.register(BaseTestCase),
-    warp.tests.test_mesh_query_ray.register(BaseTestCase),
-    warp.tests.test_modules_lite.register(BaseTestCase),
-    warp.tests.test_noise.register(BaseTestCase),
-    warp.tests.test_operators.register(BaseTestCase),
-    warp.tests.test_quat.register(BaseTestCase),
-    warp.tests.test_rand.register(BaseTestCase),
-    warp.tests.test_reload.register(BaseTestCase),
-    warp.tests.test_rounding.register(BaseTestCase),
-    warp.tests.test_runlength_encode.register(BaseTestCase),
-    warp.tests.test_sparse.register(BaseTestCase),
-    warp.tests.test_streams.register(BaseTestCase),
-    warp.tests.test_tape.register(BaseTestCase),
-    warp.tests.test_transient_module.register(BaseTestCase),
-    warp.tests.test_types.register(BaseTestCase),
-    warp.tests.test_utils.register(BaseTestCase),
-    warp.tests.test_vec_lite.register(BaseTestCase),
-    warp.tests.test_volume_write.register(BaseTestCase),
-    warp.tests.test_volume.register(BaseTestCase)
+TEST_DESCS = (
+    ("test_array", "TestArray"),
+    ("test_array_reduce", "TestArrayReduce"),
+    ("test_bvh", "TestBvh"),
+    ("test_codegen", "TestCodeGen"),
+    ("test_compile_consts", "TestConstants"),
+    ("test_conditional", "TestConditional"),
+    ("test_ctypes", "TestCTypes"),
+    ("test_devices", "TestDevices"),
+    ("test_dlpack", "TestDLPack"),
+    ("test_fabricarray", "TestFabricArray"),
+    ("test_func", "TestFunc"),
+    ("test_generics", "TestGenerics"),
+    ("test_grad_customs", "TestGradCustoms"),
+    ("test_hash_grid", "TestHashGrid"),
+    ("test_indexedarray", "TestIndexedArray"),
+    ("test_launch", "TestLaunch"),
+    ("test_marching_cubes", "TestMarchingCubes"),
+    ("test_mat_lite", "TestMatLite"),
+    ("test_math", "TestMath"),
+    ("test_matmul_lite", "TestMatmulLite"),
+    ("test_mesh", "TestMesh"),
+    ("test_mesh_query_aabb", "TestMeshQueryAABBMethods"),
+    ("test_mesh_query_point", "TestMeshQueryPoint"),
+    ("test_mesh_query_ray", "TestMeshQueryRay"),
+    ("test_modules_lite", "TestModuleLite"),
+    ("test_noise", "TestNoise"),
+    ("test_operators", "TestOperators"),
+    ("test_quat", "TestQuat"),
+    ("test_rand", "TestRand"),
+    ("test_reload", "TestReload"),
+    ("test_rounding", "TestRounding"),
+    ("test_runlength_encode", "TestRunlengthEncode"),
+    ("test_sparse", "TestSparse"),
+    ("test_streams", "TestStreams"),
+    ("test_tape", "TestTape"),
+    ("test_transient_module", "TestTransientModule"),
+    ("test_types", "TestTypes"),
+    ("test_utils", "TestUtils"),
+    ("test_vec_lite", "TestVecLite"),
+    ("test_volume", "TestVolume"),
+    ("test_volume_write", "TestVolumeWrite"),
 )
+
+
+test_clss = []
+for module_name, cls_name in TEST_DESCS:
+    module = importlib.import_module(f"warp.tests.{module_name}")
+    cls = getattr(module, cls_name)
+
+    # Change the base class from unittest.TestCase
+    cls.__bases__ = (omni.kit.test.AsyncTestCase,)
+
+    test_clss.append(cls)
+
 
 # Each test class needs to be defined at the module level to be found by
 # the test runners.

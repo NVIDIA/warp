@@ -178,13 +178,13 @@ def vector(length, dtype):
             return warp.add(self, y)
 
         def __radd__(self, y):
-            return warp.add(self, y)
+            return warp.add(y, self)
 
         def __sub__(self, y):
             return warp.sub(self, y)
 
-        def __rsub__(self, x):
-            return warp.sub(x, self)
+        def __rsub__(self, y):
+            return warp.sub(y, self)
 
         def __mul__(self, y):
             return warp.mul(self, y)
@@ -195,7 +195,7 @@ def vector(length, dtype):
         def __truediv__(self, y):
             return warp.div(self, y)
 
-        def __rdiv__(self, x):
+        def __rtruediv__(self, x):
             return warp.div(x, self)
 
         def __pos__(self):
@@ -294,13 +294,13 @@ def matrix(shape, dtype):
             return warp.add(self, y)
 
         def __radd__(self, y):
-            return warp.add(self, y)
+            return warp.add(y, self)
 
         def __sub__(self, y):
             return warp.sub(self, y)
 
-        def __rsub__(self, x):
-            return warp.sub(x, self)
+        def __rsub__(self, y):
+            return warp.sub(y, self)
 
         def __mul__(self, y):
             return warp.mul(self, y)
@@ -317,7 +317,7 @@ def matrix(shape, dtype):
         def __truediv__(self, y):
             return warp.div(self, y)
 
-        def __rdiv__(self, x):
+        def __rtruediv__(self, x):
             return warp.div(x, self)
 
         def __pos__(self):
@@ -582,11 +582,11 @@ def transformation(dtype=Any):
 
         @property
         def p(self):
-            return self[0:3]
+            return vec3(self[0:3])
 
         @property
         def q(self):
-            return self[3:7]
+            return quat(self[3:7])
 
     return transform_t
 
@@ -910,18 +910,21 @@ class range_t:
 
 # definition just for kernel type (cannot be a parameter), see bvh.h
 class bvh_query_t:
+    """Object used to track state during BVH traversal."""
     def __init__(self):
         pass
 
 
 # definition just for kernel type (cannot be a parameter), see mesh.h
 class mesh_query_aabb_t:
+    """Object used to track state during mesh traversal."""
     def __init__(self):
         pass
 
 
 # definition just for kernel type (cannot be a parameter), see hash_grid.h
 class hash_grid_query_t:
+    """Object used to track state during neighbor traversal."""
     def __init__(self):
         pass
 
@@ -2979,6 +2982,67 @@ class Volume:
         return volume
 
 
+# definition just for kernel type (cannot be a parameter), see mesh.h
+# NOTE: its layout must match the corresponding struct defined in C.
+# NOTE: it needs to be defined after `indexedarray` to workaround a circular import issue.
+class mesh_query_point_t:
+    """Output for the mesh query point functions.
+
+    Attributes:
+        result (bool): Whether a point is found within the given constraints.
+        sign (float32): A value < 0 if query point is inside the mesh, >=0 otherwise.
+                        Note that mesh must be watertight for this to be robust
+        face (int32): Index of the closest face.
+        u (float32): Barycentric u coordinate of the closest point.
+        v (float32): Barycentric v coordinate of the closest point.
+
+    See Also:
+        :func:`mesh_query_point`, :func:`mesh_query_point_no_sign`,
+        :func:`mesh_query_furthest_point_no_sign`,
+        :func:`mesh_query_point_sign_normal`,
+        and :func:`mesh_query_point_sign_winding_number`.
+    """
+    from warp.codegen import Var
+
+    vars = {
+        "result": Var("result", bool),
+        "sign": Var("sign", float32),
+        "face": Var("face", int32),
+        "u": Var("u", float32),
+        "v": Var("v", float32),
+    }
+
+
+# definition just for kernel type (cannot be a parameter), see mesh.h
+# NOTE: its layout must match the corresponding struct defined in C.
+class mesh_query_ray_t:
+    """Output for the mesh query ray functions.
+
+    Attributes:
+        result (bool): Whether a hit is found within the given constraints.
+        sign (float32): A value > 0 if the ray hit in front of the face, returns < 0 otherwise.
+        face (int32): Index of the closest face.
+        t (float32): Distance of the closest hit along the ray.
+        u (float32): Barycentric u coordinate of the closest hit.
+        v (float32): Barycentric v coordinate of the closest hit.
+        normal (vec3f): Face normal.
+
+    See Also:
+        :func:`mesh_query_ray`.
+    """
+    from warp.codegen import Var
+
+    vars = {
+        "result": Var("result", bool),
+        "sign": Var("sign", float32),
+        "face": Var("face", int32),
+        "t": Var("t", float32),
+        "u": Var("u", float32),
+        "v": Var("v", float32),
+        "normal": Var("normal", vec3),
+    }
+
+
 def matmul(
     a: array2d,
     b: array2d,
@@ -3157,9 +3221,9 @@ def adj_matmul(
 
     # cpu fallback if no cuda devices found
     if device == "cpu":
-        adj_a.assign(alpha * np.matmul(adj_d.numpy(), b.numpy().transpose()))
-        adj_b.assign(alpha * (a.numpy().transpose() @ adj_d.numpy()))
-        adj_c.assign(beta * adj_d.numpy())
+        adj_a.assign(alpha * np.matmul(adj_d.numpy(), b.numpy().transpose()) + adj_a.numpy())
+        adj_b.assign(alpha * (a.numpy().transpose() @ adj_d.numpy()) + adj_b.numpy())
+        adj_c.assign(beta * adj_d.numpy() + adj_c.numpy())
         return
 
     cc = device.arch
@@ -3174,10 +3238,10 @@ def adj_matmul(
             type_typestr(a.dtype).encode(),
             ctypes.c_void_p(adj_d.ptr),
             ctypes.c_void_p(b.ptr),
-            ctypes.c_void_p(a.ptr),
+            ctypes.c_void_p(adj_a.ptr),
             ctypes.c_void_p(adj_a.ptr),
             alpha,
-            0.0,
+            1.0,
             True,
             b.is_transposed,
             allow_tf32x3_arith,
@@ -3194,10 +3258,10 @@ def adj_matmul(
             type_typestr(a.dtype).encode(),
             ctypes.c_void_p(b.ptr),
             ctypes.c_void_p(adj_d.ptr),
-            ctypes.c_void_p(a.ptr),
+            ctypes.c_void_p(adj_a.ptr),
             ctypes.c_void_p(adj_a.ptr),
             alpha,
-            0.0,
+            1.0,
             not b.is_transposed,
             False,
             allow_tf32x3_arith,
@@ -3216,10 +3280,10 @@ def adj_matmul(
             type_typestr(a.dtype).encode(),
             ctypes.c_void_p(a.ptr),
             ctypes.c_void_p(adj_d.ptr),
-            ctypes.c_void_p(b.ptr),
+            ctypes.c_void_p(adj_b.ptr),
             ctypes.c_void_p(adj_b.ptr),
             alpha,
-            0.0,
+            1.0,
             a.is_transposed,
             True,
             allow_tf32x3_arith,
@@ -3236,10 +3300,10 @@ def adj_matmul(
             type_typestr(a.dtype).encode(),
             ctypes.c_void_p(adj_d.ptr),
             ctypes.c_void_p(a.ptr),
-            ctypes.c_void_p(b.ptr),
+            ctypes.c_void_p(adj_b.ptr),
             ctypes.c_void_p(adj_b.ptr),
             alpha,
-            0.0,
+            1.0,
             False,
             not a.is_transposed,
             allow_tf32x3_arith,
@@ -3249,25 +3313,13 @@ def adj_matmul(
             raise RuntimeError("adj_matmul failed.")        
 
     # adj_c
-    ret = runtime.core.cutlass_gemm(
-        cc,
-        m,
-        n,
-        k,
-        type_typestr(a.dtype).encode(),
-        ctypes.c_void_p(a.ptr),
-        ctypes.c_void_p(b.ptr),
-        ctypes.c_void_p(adj_d.ptr),
-        ctypes.c_void_p(adj_c.ptr),
-        0.0,
-        beta,
-        not a.is_transposed,
-        not b.is_transposed,
-        allow_tf32x3_arith,
-        1,
+    warp.launch(
+        kernel=warp.utils.add_kernel_2d,
+        dim=adj_c.shape,
+        inputs=[adj_c, adj_d, adj_d.dtype(beta)],
+        device=device,
+        record_tape=False
     )
-    if not ret:
-        raise RuntimeError("adj_matmul failed.")
 
 
 def batched_matmul(
@@ -3476,9 +3528,9 @@ def adj_batched_matmul(
 
     # cpu fallback if no cuda devices found
     if device == "cpu":
-        adj_a.assign(alpha * np.matmul(adj_d.numpy(), b.numpy().transpose((0, 2, 1))))
-        adj_b.assign(alpha * np.matmul(a.numpy().transpose((0, 2, 1)), adj_d.numpy()))
-        adj_c.assign(beta * adj_d.numpy())
+        adj_a.assign(alpha * np.matmul(adj_d.numpy(), b.numpy().transpose((0, 2, 1))) + adj_a.numpy())
+        adj_b.assign(alpha * np.matmul(a.numpy().transpose((0, 2, 1)), adj_d.numpy()) + adj_b.numpy())
+        adj_c.assign(beta * adj_d.numpy() + adj_c.numpy())
         return
 
     # handle case in which batch_count exceeds max_batch_count, which is a CUDA array size maximum
@@ -3502,10 +3554,10 @@ def adj_batched_matmul(
                 type_typestr(a.dtype).encode(),
                 ctypes.c_void_p(adj_d[idx_start:idx_end,:,:].ptr),
                 ctypes.c_void_p(b[idx_start:idx_end,:,:].ptr),
-                ctypes.c_void_p(a[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(adj_a[idx_start:idx_end,:,:].ptr),
                 ctypes.c_void_p(adj_a[idx_start:idx_end,:,:].ptr),
                 alpha,
-                0.0,
+                1.0,
                 True,
                 b.is_transposed,
                 allow_tf32x3_arith,
@@ -3522,10 +3574,10 @@ def adj_batched_matmul(
                 type_typestr(a.dtype).encode(),
                 ctypes.c_void_p(b[idx_start:idx_end,:,:].ptr),
                 ctypes.c_void_p(adj_d[idx_start:idx_end,:,:].ptr),
-                ctypes.c_void_p(a[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(adj_a[idx_start:idx_end,:,:].ptr),
                 ctypes.c_void_p(adj_a[idx_start:idx_end,:,:].ptr),
                 alpha,
-                0.0,
+                1.0,
                 not b.is_transposed,
                 False,
                 allow_tf32x3_arith,
@@ -3544,10 +3596,10 @@ def adj_batched_matmul(
                 type_typestr(a.dtype).encode(),
                 ctypes.c_void_p(a[idx_start:idx_end,:,:].ptr),
                 ctypes.c_void_p(adj_d[idx_start:idx_end,:,:].ptr),
-                ctypes.c_void_p(b[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(adj_b[idx_start:idx_end,:,:].ptr),
                 ctypes.c_void_p(adj_b[idx_start:idx_end,:,:].ptr),
                 alpha,
-                0.0,
+                1.0,
                 a.is_transposed,
                 True,
                 allow_tf32x3_arith,
@@ -3564,10 +3616,10 @@ def adj_batched_matmul(
                 type_typestr(a.dtype).encode(),
                 ctypes.c_void_p(adj_d[idx_start:idx_end,:,:].ptr),
                 ctypes.c_void_p(a[idx_start:idx_end,:,:].ptr),
-                ctypes.c_void_p(b[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(adj_b[idx_start:idx_end,:,:].ptr),
                 ctypes.c_void_p(adj_b[idx_start:idx_end,:,:].ptr),
                 alpha,
-                0.0,
+                1.0,
                 False,
                 not a.is_transposed,
                 allow_tf32x3_arith,
@@ -3575,27 +3627,6 @@ def adj_batched_matmul(
             )
             if not ret:
                 raise RuntimeError("adj_matmul failed.")   
-
-        # adj_c
-        ret = runtime.core.cutlass_gemm(
-            cc,
-            m,
-            n,
-            k,
-            type_typestr(a.dtype).encode(),
-            ctypes.c_void_p(a[idx_start:idx_end,:,:].ptr),
-            ctypes.c_void_p(b[idx_start:idx_end,:,:].ptr),
-            ctypes.c_void_p(adj_d[idx_start:idx_end,:,:].ptr),
-            ctypes.c_void_p(adj_c[idx_start:idx_end,:,:].ptr),
-            0.0,
-            beta,
-            not a.is_transposed,
-            not b.is_transposed,
-            allow_tf32x3_arith,
-            max_batch_count,
-        )
-        if not ret:
-            raise RuntimeError("adj_batched_matmul failed.")
     
     idx_start = iters * max_batch_count
     
@@ -3609,10 +3640,10 @@ def adj_batched_matmul(
             type_typestr(a.dtype).encode(),
             ctypes.c_void_p(adj_d[idx_start:,:,:].ptr),
             ctypes.c_void_p(b[idx_start:,:,:].ptr),
-            ctypes.c_void_p(a[idx_start:,:,:].ptr),
+            ctypes.c_void_p(adj_a[idx_start:,:,:].ptr),
             ctypes.c_void_p(adj_a[idx_start:,:,:].ptr),
             alpha,
-            0.0,
+            1.0,
             True,
             b.is_transposed,
             allow_tf32x3_arith,
@@ -3629,10 +3660,10 @@ def adj_batched_matmul(
             type_typestr(a.dtype).encode(),
             ctypes.c_void_p(b[idx_start:,:,:].ptr),
             ctypes.c_void_p(adj_d[idx_start:,:,:].ptr),
-            ctypes.c_void_p(a[idx_start:,:,:].ptr),
+            ctypes.c_void_p(adj_a[idx_start:,:,:].ptr),
             ctypes.c_void_p(adj_a[idx_start:,:,:].ptr),
             alpha,
-            0.0,
+            1.0,
             not b.is_transposed,
             False,
             allow_tf32x3_arith,
@@ -3651,10 +3682,10 @@ def adj_batched_matmul(
             type_typestr(a.dtype).encode(),
             ctypes.c_void_p(a[idx_start:,:,:].ptr),
             ctypes.c_void_p(adj_d[idx_start:,:,:].ptr),
-            ctypes.c_void_p(b[idx_start:,:,:].ptr),
+            ctypes.c_void_p(adj_b[idx_start:,:,:].ptr),
             ctypes.c_void_p(adj_b[idx_start:,:,:].ptr),
             alpha,
-            0.0,
+            1.0,
             a.is_transposed,
             True,
             allow_tf32x3_arith,
@@ -3671,10 +3702,10 @@ def adj_batched_matmul(
             type_typestr(a.dtype).encode(),
             ctypes.c_void_p(adj_d[idx_start:,:,:].ptr),
             ctypes.c_void_p(a[idx_start:,:,:].ptr),
-            ctypes.c_void_p(b[idx_start:,:,:].ptr),
+            ctypes.c_void_p(adj_b[idx_start:,:,:].ptr),
             ctypes.c_void_p(adj_b[idx_start:,:,:].ptr),
             alpha,
-            0.0,
+            1.0,
             False,
             not a.is_transposed,
             allow_tf32x3_arith,
@@ -3684,25 +3715,13 @@ def adj_batched_matmul(
             raise RuntimeError("adj_matmul failed.")   
 
     # adj_c
-    ret = runtime.core.cutlass_gemm(
-        cc,
-        m,
-        n,
-        k,
-        type_typestr(a.dtype).encode(),
-        ctypes.c_void_p(a[idx_start:,:,:].ptr),
-        ctypes.c_void_p(b[idx_start:,:,:].ptr),
-        ctypes.c_void_p(adj_d[idx_start:,:,:].ptr),
-        ctypes.c_void_p(adj_c[idx_start:,:,:].ptr),
-        0.0,
-        beta,
-        not a.is_transposed,
-        not b.is_transposed,
-        allow_tf32x3_arith,
-        remainder,
+    warp.launch(
+        kernel=warp.utils.add_kernel_3d,
+        dim=adj_c.shape,
+        inputs=[adj_c, adj_d, adj_d.dtype(beta)],
+        device=device,
+        record_tape=False
     )
-    if not ret:
-        raise RuntimeError("adj_batched_matmul failed.")
 
 class HashGrid:
     def __init__(self, dim_x, dim_y, dim_z, device=None):
@@ -3957,7 +3976,7 @@ def infer_argument_types(args, template_types, arg_names=None):
             arg_types.append(arg._cls)
         # elif arg_type in [warp.types.launch_bounds_t, warp.types.shape_t, warp.types.range_t]:
         #     arg_types.append(arg_type)
-        # elif arg_type in [warp.hash_grid_query_t, warp.mesh_query_aabb_t, warp.bvh_query_t]:
+        # elif arg_type in [warp.hash_grid_query_t, warp.mesh_query_aabb_t, warp.mesh_query_point_t, warp.mesh_query_ray_t, warp.bvh_query_t]:
         #     arg_types.append(arg_type)
         elif arg is None:
             # allow passing None for arrays
@@ -3995,6 +4014,8 @@ simple_type_codes = {
     launch_bounds_t: "lb",
     hash_grid_query_t: "hgq",
     mesh_query_aabb_t: "mqa",
+    mesh_query_point_t: "mqp",
+    mesh_query_ray_t: "mqr",
     bvh_query_t: "bvhq",
 }
 

@@ -8,8 +8,9 @@
 import unittest
 
 import numpy as np
+
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -259,19 +260,17 @@ def profile_mlp_warp(device):
 # profile_mlp_torch("cuda")
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestMLP(parent):
-        pass
 
-    add_function_test(TestMLP, "test_mlp", test_mlp, devices=devices)
-    add_function_test(TestMLP, "test_mlp_grad", test_mlp_grad, devices=devices)
+class TestMLP(unittest.TestCase):
+    pass
 
-    return TestMLP
+
+add_function_test(TestMLP, "test_mlp", test_mlp, devices=devices)
+add_function_test(TestMLP, "test_mlp_grad", test_mlp_grad, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2, failfast=False)

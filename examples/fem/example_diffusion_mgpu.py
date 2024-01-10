@@ -6,19 +6,18 @@ from typing import Tuple
 
 import warp as wp
 import warp.fem as fem
-
 from warp.sparse import bsr_axpy, bsr_mv
 from warp.utils import array_cast
 
 # Import example utilities
 # Make sure that works both when imported as module and run as standalone file
 try:
-    from .example_diffusion import linear_form, diffusion_form
     from .bsr_utils import bsr_cg
+    from .example_diffusion import diffusion_form, linear_form
     from .plot_utils import Plot
 except ImportError:
-    from example_diffusion import linear_form, diffusion_form
     from bsr_utils import bsr_cg
+    from example_diffusion import diffusion_form, linear_form
     from plot_utils import Plot
 
 
@@ -100,14 +99,18 @@ class Example:
         self._quiet = quiet
 
         self._geo = fem.Grid2D(res=wp.vec2i(25))
-        self._scalar_space = fem.make_polynomial_space(self._geo, degree=3)
-        self._scalar_field = self._scalar_space.make_field()
+
+        self._main_device = wp.get_device("cuda")
+
+        with wp.ScopedDevice(self._main_device):
+            self._scalar_space = fem.make_polynomial_space(self._geo, degree=3)
+            self._scalar_field = self._scalar_space.make_field()
 
         self.renderer = Plot(stage)
 
     def update(self):
         devices = wp.get_cuda_devices()
-        main_device = devices[0]
+        main_device = self._main_device
 
         rhs_vecs = []
         res_vecs = []
@@ -141,16 +144,15 @@ class Example:
         A.tmp_buf = tmp
         A.rank_data = (matrices, rhs_vecs, res_vecs, indices)
 
-        with wp.ScopedDevice(main_device):
-            bsr_cg(
-                A,
-                x=global_res,
-                b=glob_rhs,
-                use_diag_precond=False,
-                quiet=self._quiet,
-                mv_routine=mv_routine,
-                device=main_device,
-            )
+        bsr_cg(
+            A,
+            x=global_res,
+            b=glob_rhs,
+            use_diag_precond=False,
+            quiet=self._quiet,
+            mv_routine=mv_routine,
+            device=main_device,
+        )
 
         array_cast(in_array=global_res, out_array=self._scalar_field.dof_values)
 

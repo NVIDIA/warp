@@ -7,7 +7,7 @@ from warp.fem.geometry import Grid2D
 from warp.fem import cache
 
 from .topology import SpaceTopology, DiscontinuousSpaceTopologyMixin, forward_base_topology
-from .basis_space import BasisSpace, TraceBasisSpace
+from .basis_space import ShapeBasisSpace, TraceBasisSpace
 
 from .shape import ShapeFunction, ConstantShapeFunction
 from .shape import (
@@ -44,7 +44,7 @@ class Grid2DDiscontinuousSpaceTopology(
     pass
 
 
-class Grid2DBasisSpace(BasisSpace):
+class Grid2DBasisSpace(ShapeBasisSpace):
     def __init__(self, topology: Grid2DSpaceTopology, shape: ShapeFunction):
         super().__init__(topology, shape)
 

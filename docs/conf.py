@@ -14,14 +14,13 @@ import os
 import sys
 from datetime import date
 
-import warp as wp
-
-sys.path.insert(0, os.path.abspath(".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import warp as wp  # noqa: E402
 
 # -- Project information -----------------------------------------------------
 
 project = "Warp"
-copyright = f"{date.today().year}, NVIDIA"
+copyright = f"2022-{date.today().year}, NVIDIA"
 author = "NVIDIA"
 
 version = wp.__version__

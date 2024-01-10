@@ -33,3 +33,5 @@ ptx_target_arch = 70  # target architecture for PTX generation, defaults to the 
 enable_backward = True  # whether to compiler the backward passes of the kernels
 
 llvm_cuda = False  # use Clang/LLVM instead of NVRTC to compile CUDA
+
+graph_capture_module_load_default = True  # Default value of force_module_load for capture_begin()

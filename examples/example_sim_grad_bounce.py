@@ -45,6 +45,7 @@ def step_kernel(x: wp.array(dtype=wp.vec3), grad: wp.array(dtype=wp.vec3), alpha
 
 class Example:
     def __init__(self, stage=None, enable_rendering=True, profile=False, adapter=None, verbose=False):
+        self.device = wp.get_device()
         self.verbose = verbose
 
         # seconds
@@ -71,8 +72,8 @@ class Example:
         mu = 0.2
 
         builder = wp.sim.ModelBuilder()
-        builder.add_particle(pos=(-0.5, 1.0, 0.0), vel=(5.0, -5.0, 0.0), mass=1.0)
-        builder.add_shape_box(body=-1, pos=(2.0, 1.0, 0.0), hx=0.25, hy=1.0, hz=1.0, ke=ke, kf=kf, kd=kd, mu=mu)
+        builder.add_particle(pos=wp.vec3(-0.5, 1.0, 0.0), vel=wp.vec3(5.0, -5.0, 0.0), mass=1.0)
+        builder.add_shape_box(body=-1, pos=wp.vec3(2.0, 1.0, 0.0), hx=0.25, hy=1.0, hz=1.0, ke=ke, kf=kf, kd=kd, mu=mu)
 
         self.device = wp.get_device(adapter)
         self.profile = profile
@@ -106,12 +107,14 @@ class Example:
             self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=1.0)
 
         # capture forward/backward passes
-        wp.capture_begin()
-        self.tape = wp.Tape()
-        with self.tape:
-            self.compute_loss()
-        self.tape.backward(self.loss)
-        self.graph = wp.capture_end()
+        wp.capture_begin(self.device)
+        try:
+            self.tape = wp.Tape()
+            with self.tape:
+                self.compute_loss()
+            self.tape.backward(self.loss)
+        finally:
+            self.graph = wp.capture_end(self.device)
 
     def compute_loss(self):
         # run control loop

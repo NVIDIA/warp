@@ -1,4 +1,4 @@
-# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2023 NVIDIA CORPORATION.  All rights reserved.
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
 # and any modifications thereto.  Any use, reproduction, disclosure or
@@ -7,9 +7,8 @@
 
 import unittest
 
-import numpy as np
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -99,20 +98,18 @@ def test_matrix_mutation(expected: wp.types.matrix(shape=(10, 3), dtype=float)):
     wp.expect_eq(m, expected)
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestMat(parent):
-        pass
 
-    add_kernel_test(TestMat, test_matrix_constructor_value_func, dim=1, devices=devices)
-    add_kernel_test(TestMat, test_constructors_explicit_precision, dim=1, devices=devices)
-    add_kernel_test(TestMat, test_constructors_default_precision, dim=1, devices=devices)
+class TestMatLite(unittest.TestCase):
+    pass
 
-    return TestMat
+
+add_kernel_test(TestMatLite, test_matrix_constructor_value_func, dim=1, devices=devices)
+add_kernel_test(TestMatLite, test_constructors_explicit_precision, dim=1, devices=devices)
+add_kernel_test(TestMatLite, test_constructors_default_precision, dim=1, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2, failfast=True)

@@ -304,6 +304,8 @@ class Example:
     """
 
     def __init__(self, stage=None, rot_array=[0.0, 0.0, 0.0, 1.0], verbose=False):
+        self.device = wp.get_device()
+
         self.verbose = verbose
         cam_pos = wp.vec3(0.0, 0.75, 7.0)
         cam_rot = wp.quat(0.0, 0.0, 0.0, 1.0)
@@ -416,12 +418,14 @@ class Example:
         self.loss = wp.zeros(1, dtype=float, requires_grad=True)
 
         # capture graph
-        wp.capture_begin()
-        self.tape = wp.Tape()
-        with self.tape:
-            self.compute_loss()
-        self.tape.backward(self.loss)
-        self.graph = wp.capture_end()
+        wp.capture_begin(self.device)
+        try:
+            self.tape = wp.Tape()
+            with self.tape:
+                self.compute_loss()
+            self.tape.backward(self.loss)
+        finally:
+            self.graph = wp.capture_end(self.device)
 
         self.optimizer = SGD(
             [self.render_mesh.rot],
@@ -432,33 +436,36 @@ class Example:
         )
 
     def ray_trace(self, is_live=False):
-        with wp.ScopedDevice("cuda:0"):
-            # raycast
-            wp.launch(
-                kernel=draw_kernel,
-                dim=self.num_rays,
-                inputs=[
-                    self.render_mesh,
-                    self.camera,
-                    self.texture,
-                    self.rays_width,
-                    self.rays_height,
-                    self.rays,
-                    self.lights,
-                    self.render_mode,
-                ],
-            )
+        # raycast
+        wp.launch(
+            kernel=draw_kernel,
+            dim=self.num_rays,
+            inputs=[
+                self.render_mesh,
+                self.camera,
+                self.texture,
+                self.rays_width,
+                self.rays_height,
+                self.rays,
+                self.lights,
+                self.render_mode,
+            ],
+            device=self.device,
+        )
 
-            # downsample
-            wp.launch(
-                kernel=downsample_kernel,
-                dim=self.num_pixels,
-                inputs=[self.rays, self.pixels, self.rays_width, pow(2, self.num_samples)],
-            )
+        # downsample
+        wp.launch(
+            kernel=downsample_kernel,
+            dim=self.num_pixels,
+            inputs=[self.rays, self.pixels, self.rays_width, pow(2, self.num_samples)],
+            device=self.device,
+        )
 
     def compute_loss(self):
         self.ray_trace()
-        wp.launch(loss_kernel, dim=self.num_pixels, inputs=[self.pixels, self.target_pixels, self.loss])
+        wp.launch(
+            loss_kernel, dim=self.num_pixels, inputs=[self.pixels, self.target_pixels, self.loss], device=self.device
+        )
 
     def get_image(self):
         return self.pixels.numpy().reshape((self.height, self.width, 3))

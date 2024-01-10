@@ -165,6 +165,8 @@ def init(rho: wp.array2d(dtype=float), u: wp.array2d(dtype=wp.vec2), radius: int
 
 class Example:
     def __init__(self, **kwargs):
+        self.device = wp.get_device()
+
         self.sim_fps = 60.0
         self.sim_substeps = 2
         self.iterations = 100
@@ -187,9 +189,11 @@ class Example:
 
         # capture pressure solve as a CUDA graph
         if self.device.is_cuda:
-            wp.capture_begin()
-            self.pressure_iterations()
-            self.graph = wp.capture_end()
+            wp.capture_begin(self.device)
+            try:
+                self.pressure_iterations()
+            finally:
+                self.graph = wp.capture_end(self.device)
 
     def update(self):
         with wp.ScopedTimer("update"):

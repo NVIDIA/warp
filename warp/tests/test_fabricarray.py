@@ -12,7 +12,7 @@ from typing import Any
 import numpy as np
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -930,32 +930,26 @@ for T in _fabric_types:
     wp.overload(fa_generic_sums_kernel_indexed, [wp.indexedfabricarrayarray(dtype=T), wp.array(dtype=T)])
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestFabricArray(parent):
-        pass
 
-    # fabric arrays
-    add_function_test(TestFabricArray, "test_fabricarray_kernel", test_fabricarray_kernel, devices=devices)
-    add_function_test(TestFabricArray, "test_fabricarray_empty", test_fabricarray_empty, devices=devices)
-    add_function_test(
-        TestFabricArray, "test_fabricarray_generic_dtype", test_fabricarray_generic_dtype, devices=devices
-    )
-    add_function_test(
-        TestFabricArray, "test_fabricarray_generic_array", test_fabricarray_generic_array, devices=devices
-    )
-    add_function_test(TestFabricArray, "test_fabricarray_fill_scalar", test_fabricarray_fill_scalar, devices=devices)
-    add_function_test(TestFabricArray, "test_fabricarray_fill_vector", test_fabricarray_fill_vector, devices=devices)
-    add_function_test(TestFabricArray, "test_fabricarray_fill_matrix", test_fabricarray_fill_matrix, devices=devices)
+class TestFabricArray(unittest.TestCase):
+    pass
 
-    # fabric arrays of arrays
-    add_function_test(TestFabricArray, "test_fabricarrayarray", test_fabricarrayarray, devices=devices)
 
-    return TestFabricArray
+# fabric arrays
+add_function_test(TestFabricArray, "test_fabricarray_kernel", test_fabricarray_kernel, devices=devices)
+add_function_test(TestFabricArray, "test_fabricarray_empty", test_fabricarray_empty, devices=devices)
+add_function_test(TestFabricArray, "test_fabricarray_generic_dtype", test_fabricarray_generic_dtype, devices=devices)
+add_function_test(TestFabricArray, "test_fabricarray_generic_array", test_fabricarray_generic_array, devices=devices)
+add_function_test(TestFabricArray, "test_fabricarray_fill_scalar", test_fabricarray_fill_scalar, devices=devices)
+add_function_test(TestFabricArray, "test_fabricarray_fill_vector", test_fabricarray_fill_vector, devices=devices)
+add_function_test(TestFabricArray, "test_fabricarray_fill_matrix", test_fabricarray_fill_matrix, devices=devices)
+
+# fabric arrays of arrays
+add_function_test(TestFabricArray, "test_fabricarrayarray", test_fabricarrayarray, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

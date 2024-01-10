@@ -5,14 +5,12 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
+import unittest
+
 import numpy as np
-import math
 
 import warp as wp
-from warp.tests.test_base import *
-
-import unittest
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -24,11 +22,11 @@ def add_vec2(dest: wp.array(dtype=wp.vec2), c: wp.vec2):
 
 
 @wp.kernel
-def transform_vec2(dest: wp.array(dtype=wp.vec2), m: wp.mat22, v: wp.vec2):
+def transform_vec2(dest_right: wp.array(dtype=wp.vec2), dest_left: wp.array(dtype=wp.vec2), m: wp.mat22, v: wp.vec2):
     tid = wp.tid()
 
-    p = wp.mul(m, v)
-    dest[tid] = p
+    dest_right[tid] = wp.mul(m, v)
+    dest_left[tid] = wp.mul(v, m)
 
 
 @wp.kernel
@@ -38,11 +36,11 @@ def add_vec3(dest: wp.array(dtype=wp.vec3), c: wp.vec3):
 
 
 @wp.kernel
-def transform_vec3(dest: wp.array(dtype=wp.vec3), m: wp.mat33, v: wp.vec3):
+def transform_vec3(dest_right: wp.array(dtype=wp.vec3), dest_left: wp.array(dtype=wp.vec3), m: wp.mat33, v: wp.vec3):
     tid = wp.tid()
 
-    p = wp.mul(m, v)
-    dest[tid] = p
+    dest_right[tid] = wp.mul(m, v)
+    dest_left[tid] = wp.mul(v, m)
 
 
 @wp.kernel
@@ -63,12 +61,14 @@ def test_vec2_arg(test, device, n):
 
 
 def test_vec2_transform(test, device, n):
-    dest = wp.zeros(n=n, dtype=wp.vec2, device=device)
+    dest_right = wp.zeros(n=n, dtype=wp.vec2, device=device)
+    dest_left = wp.zeros(n=n, dtype=wp.vec2, device=device)
     c = np.array((1.0, 2.0))
     m = np.array(((3.0, -1.0), (2.5, 4.0)))
 
-    wp.launch(transform_vec2, dim=n, inputs=[dest, m, c], device=device)
-    test.assertTrue(np.array_equal(dest.numpy(), np.tile(m @ c, (n, 1))))
+    wp.launch(transform_vec2, dim=n, inputs=[dest_right, dest_left, m, c], device=device)
+    test.assertTrue(np.array_equal(dest_right.numpy(), np.tile(m @ c, (n, 1))))
+    test.assertTrue(np.array_equal(dest_left.numpy(), np.tile(c @ m, (n, 1))))
 
 
 def test_vec3_arg(test, device, n):
@@ -80,12 +80,14 @@ def test_vec3_arg(test, device, n):
 
 
 def test_vec3_transform(test, device, n):
-    dest = wp.zeros(n=n, dtype=wp.vec3, device=device)
+    dest_right = wp.zeros(n=n, dtype=wp.vec3, device=device)
+    dest_left = wp.zeros(n=n, dtype=wp.vec3, device=device)
     c = np.array((1.0, 2.0, 3.0))
     m = np.array(((1.0, 2.0, 3.0), (4.0, 5.0, 6.0), (7.0, 8.0, 9.0)))
 
-    wp.launch(transform_vec3, dim=n, inputs=[dest, m, c], device=device)
-    test.assertTrue(np.array_equal(dest.numpy(), np.tile(m @ c, (n, 1))))
+    wp.launch(transform_vec3, dim=n, inputs=[dest_right, dest_left, m, c], device=device)
+    test.assertTrue(np.array_equal(dest_right.numpy(), np.tile(m @ c, (n, 1))))
+    test.assertTrue(np.array_equal(dest_left.numpy(), np.tile(c @ m, (n, 1))))
 
 
 def test_transform_multiply(test, device, n):
@@ -552,89 +554,79 @@ def test_transform_matrix():
     wp.expect_near(r_2, r_0 - t, 1.0e-4)
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestCTypes(parent):
-        pass
 
-    inputs = [
-        wp.vec2(1.0, 2.0),
-        wp.vec3(1.0, 2.0, 3.0),
-        wp.vec4(1.0, 2.0, 3.0, 4.0),
-        wp.mat22(1.0, 2.0, 3.0, 4.0),
-        wp.mat33(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0),
-        wp.mat44(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0),
-    ]
+class TestCTypes(unittest.TestCase):
+    pass
 
-    add_function_test(TestCTypes, "test_mat22", test_mat22, devices=devices)
-    add_function_test(TestCTypes, "test_mat33", test_mat33, devices=devices)
-    add_function_test(TestCTypes, "test_mat44", test_mat44, devices=devices)
-    add_kernel_test(
-        TestCTypes,
-        name="test_transformation_constructor",
-        kernel=test_transformation_constructor,
-        dim=1,
-        devices=devices,
-    )
-    add_kernel_test(
-        TestCTypes,
-        name="test_spatial_vector_constructor",
-        kernel=test_spatial_vector_constructor,
-        dim=1,
-        devices=devices,
-    )
-    add_kernel_test(
-        TestCTypes,
-        name="test_scalar_arg_types",
-        kernel=test_scalar_arg_types,
-        dim=1,
-        inputs=[-64, 255, -64, 255, -64, 255, -64, 255, 3.14159, 3.14159],
-        devices=devices,
-    )
-    add_kernel_test(
-        TestCTypes,
-        name="test_scalar_arg_types_explicit",
-        kernel=test_scalar_arg_types,
-        dim=1,
-        inputs=[
-            wp.int8(-64),
-            wp.uint8(255),
-            wp.int16(-64),
-            wp.uint16(255),
-            wp.int32(-64),
-            wp.uint32(255),
-            wp.int64(-64),
-            wp.uint64(255),
-            wp.float32(3.14159),
-            wp.float64(3.14159),
-        ],
-        devices=devices,
-    )
-    add_kernel_test(
-        TestCTypes, name="test_vector_arg_types", kernel=test_vector_arg_types, dim=1, inputs=inputs, devices=devices
-    )
-    add_kernel_test(TestCTypes, name="test_type_convesrions", kernel=test_type_conversions, dim=1, devices=devices)
 
-    add_function_test(
-        TestCTypes, "test_scalar_array_load", test_scalar_array_types, devices=devices, load=True, store=False
-    )
-    add_function_test(
-        TestCTypes, "test_scalar_array_store", test_scalar_array_types, devices=devices, load=False, store=True
-    )
-    add_function_test(TestCTypes, "test_vec2_arg", test_vec2_arg, devices=devices, n=8)
-    add_function_test(TestCTypes, "test_vec2_transform", test_vec2_transform, devices=devices, n=8)
-    add_function_test(TestCTypes, "test_vec3_arg", test_vec3_arg, devices=devices, n=8)
-    add_function_test(TestCTypes, "test_vec3_transform", test_vec3_transform, devices=devices, n=8)
-    add_function_test(TestCTypes, "test_transform_multiply", test_transform_multiply, devices=devices, n=8)
-    add_kernel_test(TestCTypes, name="test_transform_matrix", kernel=test_transform_matrix, dim=1, devices=devices)
-    add_function_test(TestCTypes, "test_scalar_array", test_scalar_array, devices=devices)
-    add_function_test(TestCTypes, "test_vector_array", test_vector_array, devices=devices)
+inputs = [
+    wp.vec2(1.0, 2.0),
+    wp.vec3(1.0, 2.0, 3.0),
+    wp.vec4(1.0, 2.0, 3.0, 4.0),
+    wp.mat22(1.0, 2.0, 3.0, 4.0),
+    wp.mat33(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0),
+    wp.mat44(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0),
+]
 
-    return TestCTypes
+add_function_test(TestCTypes, "test_mat22", test_mat22, devices=devices)
+add_function_test(TestCTypes, "test_mat33", test_mat33, devices=devices)
+add_function_test(TestCTypes, "test_mat44", test_mat44, devices=devices)
+add_kernel_test(
+    TestCTypes, name="test_transformation_constructor", kernel=test_transformation_constructor, dim=1, devices=devices
+)
+add_kernel_test(
+    TestCTypes, name="test_spatial_vector_constructor", kernel=test_spatial_vector_constructor, dim=1, devices=devices
+)
+add_kernel_test(
+    TestCTypes,
+    name="test_scalar_arg_types",
+    kernel=test_scalar_arg_types,
+    dim=1,
+    inputs=[-64, 255, -64, 255, -64, 255, -64, 255, 3.14159, 3.14159],
+    devices=devices,
+)
+add_kernel_test(
+    TestCTypes,
+    name="test_scalar_arg_types_explicit",
+    kernel=test_scalar_arg_types,
+    dim=1,
+    inputs=[
+        wp.int8(-64),
+        wp.uint8(255),
+        wp.int16(-64),
+        wp.uint16(255),
+        wp.int32(-64),
+        wp.uint32(255),
+        wp.int64(-64),
+        wp.uint64(255),
+        wp.float32(3.14159),
+        wp.float64(3.14159),
+    ],
+    devices=devices,
+)
+add_kernel_test(
+    TestCTypes, name="test_vector_arg_types", kernel=test_vector_arg_types, dim=1, inputs=inputs, devices=devices
+)
+add_kernel_test(TestCTypes, name="test_type_convesrions", kernel=test_type_conversions, dim=1, devices=devices)
+
+add_function_test(
+    TestCTypes, "test_scalar_array_load", test_scalar_array_types, devices=devices, load=True, store=False
+)
+add_function_test(
+    TestCTypes, "test_scalar_array_store", test_scalar_array_types, devices=devices, load=False, store=True
+)
+add_function_test(TestCTypes, "test_vec2_arg", test_vec2_arg, devices=devices, n=8)
+add_function_test(TestCTypes, "test_vec2_transform", test_vec2_transform, devices=devices, n=8)
+add_function_test(TestCTypes, "test_vec3_arg", test_vec3_arg, devices=devices, n=8)
+add_function_test(TestCTypes, "test_vec3_transform", test_vec3_transform, devices=devices, n=8)
+add_function_test(TestCTypes, "test_transform_multiply", test_transform_multiply, devices=devices, n=8)
+add_kernel_test(TestCTypes, name="test_transform_matrix", kernel=test_transform_matrix, dim=1, devices=devices)
+add_function_test(TestCTypes, "test_scalar_array", test_scalar_array, devices=devices)
+add_function_test(TestCTypes, "test_vector_array", test_vector_array, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

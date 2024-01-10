@@ -16,7 +16,6 @@
 
 import os
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 import warp as wp
@@ -72,7 +71,7 @@ class Example:
         builder = wp.sim.ModelBuilder(gravity=0.0)
         builder.add_articulation()
         b = builder.add_body(origin=wp.transform())
-        builder.add_shape_box(pos=(0.0, 0.0, 0.0), hx=0.5, hy=0.5, hz=0.5, density=100.0, body=b)
+        builder.add_shape_box(pos=wp.vec3(0.0, 0.0, 0.0), hx=0.5, hy=0.5, hz=0.5, density=100.0, body=b)
 
         # compute reference trajectory
         rad = np.linspace(0.0, np.pi * 2, self.episode_frames)
@@ -194,6 +193,8 @@ class Example:
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_trajopt.usd")
     example = Example(stage_path, device=wp.get_preferred_device(), verbose=True)
 

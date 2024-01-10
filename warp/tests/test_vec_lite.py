@@ -7,9 +7,8 @@
 
 import unittest
 
-import numpy as np
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -57,20 +56,18 @@ def test_constructors_default_precision():
         wp.expect_eq(custom[i], float(i))
 
 
-def register(parent):
-    devices = get_test_devices()
+devices = get_test_devices()
 
-    class TestVec(parent):
-        pass
 
-    add_kernel_test(TestVec, test_vector_constructor_value_func, dim=1, devices=devices)
-    add_kernel_test(TestVec, test_constructors_explicit_precision, dim=1, devices=devices)
-    add_kernel_test(TestVec, test_constructors_default_precision, dim=1, devices=devices)
+class TestVecLite(unittest.TestCase):
+    pass
 
-    return TestVec
+
+add_kernel_test(TestVecLite, test_vector_constructor_value_func, dim=1, devices=devices)
+add_kernel_test(TestVecLite, test_constructors_explicit_precision, dim=1, devices=devices)
+add_kernel_test(TestVecLite, test_constructors_default_precision, dim=1, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2, failfast=True)

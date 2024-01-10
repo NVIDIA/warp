@@ -27,6 +27,8 @@ split_up_tiles = True
 custom_tile_arrangement = False
 # whether to display the pixels in a matplotlib figure
 show_plot = True
+# whether to render depth image to a Warp array
+render_mode = "depth"
 
 renderer = wp.render.OpenGLRenderer(vsync=False)
 instance_ids = []
@@ -51,11 +53,12 @@ if num_tiles > 1:
 
 renderer.render_ground()
 
+channels = 1 if render_mode == "depth" else 3
 if show_plot:
     import matplotlib.pyplot as plt
 
     if split_up_tiles:
-        pixels = wp.zeros((num_tiles, renderer.tile_height, renderer.tile_width, 3), dtype=wp.float32)
+        pixels = wp.zeros((num_tiles, renderer.tile_height, renderer.tile_width, channels), dtype=wp.float32)
         ncols = int(np.ceil(np.sqrt(num_tiles)))
         nrows = int(np.ceil(num_tiles / float(ncols)))
         img_plots = []
@@ -70,17 +73,23 @@ if show_plot:
             sharey=True,
             num=1,
         )
-        tile_temp = np.zeros((renderer.tile_height, renderer.tile_width, 3), dtype=np.float32)
+        tile_temp = np.zeros((renderer.tile_height, renderer.tile_width, channels), dtype=np.float32)
         for dim in range(ncols * nrows):
             ax = axes[dim // ncols, dim % ncols]
             if dim >= num_tiles:
                 ax.axis("off")
                 continue
-            img_plots.append(ax.imshow(tile_temp))
+            if render_mode == "depth":
+                img_plots.append(ax.imshow(tile_temp, vmin=renderer.camera_near_plane, vmax=renderer.camera_far_plane))
+            else:
+                img_plots.append(ax.imshow(tile_temp))
     else:
         fig = plt.figure(1)
-        pixels = wp.zeros((renderer.screen_height, renderer.screen_width, 3), dtype=wp.float32)
-        img_plot = plt.imshow(pixels.numpy())
+        pixels = wp.zeros((renderer.screen_height, renderer.screen_width, channels), dtype=wp.float32)
+        if render_mode == "depth":
+            img_plot = plt.imshow(pixels.numpy(), vmin=renderer.camera_near_plane, vmax=renderer.camera_far_plane)
+        else:
+            img_plot = plt.imshow(pixels.numpy())
 
     plt.ion()
     plt.show()
@@ -95,14 +104,14 @@ while renderer.is_running():
     renderer.render_cylinder(
         "cylinder",
         [3.2, 1.0, np.sin(time + 0.5)],
-        np.array(wp.quat_from_axis_angle((1.0, 0.0, 0.0), np.sin(time + 0.5))),
+        np.array(wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), wp.sin(time + 0.5))),
         radius=0.5,
         half_height=0.8,
     )
     renderer.render_cone(
         "cone",
         [-1.2, 1.0, 0.0],
-        np.array(wp.quat_from_axis_angle((0.707, 0.707, 0.0), time)),
+        np.array(wp.quat_from_axis_angle(wp.vec3(0.707, 0.707, 0.0), time)),
         radius=0.5,
         half_height=0.8,
     )
@@ -110,15 +119,15 @@ while renderer.is_running():
 
     if show_plot and plt.fignum_exists(1):
         if split_up_tiles:
-            pixel_shape = (num_tiles, renderer.tile_height, renderer.tile_width, 3)
+            pixel_shape = (num_tiles, renderer.tile_height, renderer.tile_width, channels)
         else:
-            pixel_shape = (renderer.screen_height, renderer.screen_width, 3)
+            pixel_shape = (renderer.screen_height, renderer.screen_width, channels)
 
         if pixel_shape != pixels.shape:
             # make sure we resize the pixels array to the right dimensions if the user resizes the window
             pixels = wp.zeros(pixel_shape, dtype=wp.float32)
 
-        renderer.get_pixels(pixels, split_up_tiles=split_up_tiles)
+        renderer.get_pixels(pixels, split_up_tiles=split_up_tiles, mode=render_mode)
 
         if split_up_tiles:
             pixels_np = pixels.numpy()

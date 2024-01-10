@@ -1143,12 +1143,7 @@ int cuda_toolkit_version()
 
 bool cuda_driver_is_initialized()
 {
-    CUcontext ctx;
-
-    // result can be: CUDA_SUCCESS, CUDA_ERROR_DEINITIALIZED, CUDA_ERROR_NOT_INITIALIZED
-    CUresult result = cuCtxGetCurrent_f(&ctx);
-
-    return result == CUDA_SUCCESS;
+    return is_cuda_driver_initialized();
 }
 
 int nvrtc_supported_arch_count()

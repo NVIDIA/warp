@@ -1,10 +1,16 @@
-import warp as wp
-from warp.tests.test_base import *
+# Copyright (c) 2023 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import unittest
 
+import warp as wp
+from warp.tests.unittest_utils import *
+
 wp.init()
-wp.config.mode = "debug"
 
 
 @wp.kernel
@@ -89,6 +95,54 @@ def test_lookup(test, device):
 
 
 @wp.func
+def lookup3(foos: wp.array(dtype=wp.float32), index: int):
+    return foos[index]
+
+
+@wp.kernel
+def grad_kernel(foos: wp.array(dtype=wp.float32), bars: wp.array(dtype=wp.float32)):
+    i = wp.tid()
+
+    x = lookup3(foos, i)
+    bars[i] = x * wp.float32(i) + 1.0
+
+
+def test_grad(test, device):
+    num = 10
+    data = np.linspace(20, 20 + num, num, endpoint=False, dtype=np.float32)
+    input = wp.array(data, device=device, requires_grad=True)
+    output = wp.zeros(num, dtype=wp.float32, device=device)
+
+    ones = wp.array(np.ones(len(output)), dtype=wp.float32, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            kernel=grad_kernel,
+            dim=(num,),
+            inputs=[input],
+            outputs=[output],
+            device=device,
+        )
+
+    tape.backward(grads={output: ones})
+
+    wp.synchronize()
+
+    # test forward results
+    for i, f in enumerate(output.list()):
+        expected = data[i] * i + 1
+        if f != expected:
+            raise AssertionError(f"Unexpected result, got: {f} expected: {expected}")
+
+    # test backward results
+    for i, f in enumerate(tape.gradients[input].list()):
+        expected = i
+        if f != expected:
+            raise AssertionError(f"Unexpected result, got: {f} expected: {expected}")
+
+
+@wp.func
 def lookup2(foos: wp.array(dtype=wp.uint32), index: int):
     if index % 2 == 0:
         x = foos[index]
@@ -102,7 +156,7 @@ def lookup2(foos: wp.array(dtype=wp.uint32), index: int):
 def lookup2_kernel(foos: wp.array(dtype=wp.uint32)):
     i = wp.tid()
 
-    x = lookup(foos, i)
+    x = lookup2(foos, i)
     foos[i] = x + wp.uint32(1)
 
 
@@ -401,44 +455,39 @@ def test_swizzle(test, device):
             raise AssertionError(f"Unexpected result, got: {f} expected: {expected}")
 
 
-def test_swizzle_error_invalid_attribute(test, device):
-    v = wp.vec3(1, 2, 3)
-    with test.assertRaisesRegex(
-        AttributeError,
-        r"'vec3f' object has no attribute 'foo'$",
-    ):
-        v.foo
-
-    try:
-        v.bar = 123
-    except AttributeError:
-        test.fail()
+devices = get_test_devices()
 
 
-def register(parent):
-    devices = get_test_devices()
+class TestLValue(unittest.TestCase):
+    def test_swizzle_error_invalid_attribute(self):
+        v = wp.vec3(1, 2, 3)
+        with self.assertRaisesRegex(
+            AttributeError,
+            r"'vec3f' object has no attribute 'foo'$",
+        ):
+            v.foo
 
-    class TestLValue(parent):
-        pass
+        try:
+            v.bar = 123
+        except AttributeError:
+            self.fail()
 
-    add_function_test(TestLValue, "test_rmw_array", test_rmw_array, devices=devices)
-    add_function_test(TestLValue, "test_rmw_array_struct", test_rmw_array_struct, devices=devices)
-    add_function_test(TestLValue, "test_lookup", test_lookup, devices=devices)
-    add_function_test(TestLValue, "test_lookup2", test_lookup2, devices=devices)
-    add_function_test(TestLValue, "test_unary", test_unary, devices=devices)
-    add_function_test(TestLValue, "test_rvalue", test_rvalue, devices=devices)
-    add_function_test(TestLValue, "test_intermediate", test_intermediate, devices=devices)
-    add_function_test(TestLValue, "test_array_assign", test_array_assign, devices=devices)
-    add_function_test(TestLValue, "test_array_struct_assign", test_array_struct_assign, devices=devices)
-    add_function_test(TestLValue, "test_array_struct_struct_assign", test_array_struct_struct_assign, devices=devices)
-    add_function_test(TestLValue, "test_complex", test_complex, devices=devices)
-    add_function_test(TestLValue, "test_swizzle", test_swizzle, devices=devices)
-    add_function_test(TestLValue, "test_swizzle_error_invalid_attribute", test_swizzle_error_invalid_attribute)
 
-    return TestLValue
+add_function_test(TestLValue, "test_rmw_array", test_rmw_array, devices=devices)
+add_function_test(TestLValue, "test_rmw_array_struct", test_rmw_array_struct, devices=devices)
+add_function_test(TestLValue, "test_lookup", test_lookup, devices=devices)
+add_function_test(TestLValue, "test_lookup2", test_lookup2, devices=devices)
+add_function_test(TestLValue, "test_grad", test_grad, devices=devices)
+add_function_test(TestLValue, "test_unary", test_unary, devices=devices)
+add_function_test(TestLValue, "test_rvalue", test_rvalue, devices=devices)
+add_function_test(TestLValue, "test_intermediate", test_intermediate, devices=devices)
+add_function_test(TestLValue, "test_array_assign", test_array_assign, devices=devices)
+add_function_test(TestLValue, "test_array_struct_assign", test_array_struct_assign, devices=devices)
+add_function_test(TestLValue, "test_array_struct_struct_assign", test_array_struct_struct_assign, devices=devices)
+add_function_test(TestLValue, "test_complex", test_complex, devices=devices)
+add_function_test(TestLValue, "test_swizzle", test_swizzle, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

@@ -5,7 +5,7 @@ from warp.fem.geometry import Tetmesh
 from warp.fem import cache
 
 from .topology import SpaceTopology, DiscontinuousSpaceTopologyMixin, forward_base_topology
-from .basis_space import BasisSpace, TraceBasisSpace
+from .basis_space import ShapeBasisSpace, TraceBasisSpace
 
 from .shape import ShapeFunction, ConstantShapeFunction
 from .shape import TetrahedronPolynomialShapeFunctions, TetrahedronNonConformingPolynomialShapeFunctions
@@ -136,7 +136,7 @@ class TetmeshDiscontinuousSpaceTopology(
         super().__init__(mesh, shape.NODES_PER_ELEMENT)
 
 
-class TetmeshBasisSpace(BasisSpace):
+class TetmeshBasisSpace(ShapeBasisSpace):
     def __init__(self, topology: TetmeshSpaceTopology, shape: ShapeFunction):
         super().__init__(topology, shape)
 

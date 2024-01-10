@@ -10,7 +10,7 @@ import unittest
 import numpy as np
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -284,145 +284,138 @@ def test_stream_scope_wait_stream(test, device):
         assert_np_equal(d.numpy(), np.full(N, fill_value=4.0))
 
 
-def test_stream_exceptions(test, device):
-    cpu_device = wp.get_device("cpu")
-
-    # Can't set the stream on a CPU device
-    with test.assertRaises(RuntimeError):
-        stream0 = wp.Stream()
-        cpu_device.stream = stream0
-
-    # Can't create a stream on the CPU
-    with test.assertRaises(RuntimeError):
-        wp.Stream(device="cpu")
-
-    # Can't create an event with CPU device
-    with test.assertRaises(RuntimeError):
-        wp.Event(device=cpu_device)
-
-    # Can't get the stream on a CPU device
-    with test.assertRaises(RuntimeError):
-        cpu_stream = cpu_device.stream  # noqa: F841
+devices = get_unique_cuda_test_devices()
 
 
-def test_stream_arg_graph_mgpu(test, device):
-    # resources on GPU 0
-    stream0 = wp.get_stream("cuda:0")
-    a0 = wp.zeros(N, dtype=float, device="cuda:0")
-    b0 = wp.empty(N, dtype=float, device="cuda:0")
-    c0 = wp.empty(N, dtype=float, device="cuda:0")
+class TestStreams(unittest.TestCase):
+    def test_stream_exceptions(self):
+        cpu_device = wp.get_device("cpu")
 
-    # resources on GPU 1
-    stream1 = wp.get_stream("cuda:1")
-    a1 = wp.zeros(N, dtype=float, device="cuda:1")
+        # Can't set the stream on a CPU device
+        with self.assertRaises(RuntimeError):
+            stream0 = wp.Stream()
+            cpu_device.stream = stream0
 
-    # start recording on stream0
-    wp.capture_begin(stream=stream0)
+        # Can't create a stream on the CPU
+        with self.assertRaises(RuntimeError):
+            wp.Stream(device="cpu")
 
-    # branch into stream1
-    stream1.wait_stream(stream0)
+        # Can't create an event with CPU device
+        with self.assertRaises(RuntimeError):
+            wp.Event(device=cpu_device)
 
-    # launch concurrent kernels on each stream
-    wp.launch(inc, dim=N, inputs=[a0], stream=stream0)
-    wp.launch(inc, dim=N, inputs=[a1], stream=stream1)
+        # Can't get the stream on a CPU device
+        with self.assertRaises(RuntimeError):
+            cpu_stream = cpu_device.stream  # noqa: F841
 
-    # wait for stream1 to finish
-    stream0.wait_stream(stream1)
+    @unittest.skipUnless(len(wp.get_cuda_devices()) > 1, "Requires at least two CUDA devices")
+    def test_stream_arg_graph_mgpu(self):
+        wp.load_module(device="cuda:0")
+        wp.load_module(device="cuda:1")
 
-    # copy values from stream1
-    wp.copy(b0, a1, stream=stream0)
+        # resources on GPU 0
+        stream0 = wp.get_stream("cuda:0")
+        a0 = wp.zeros(N, dtype=float, device="cuda:0")
+        b0 = wp.empty(N, dtype=float, device="cuda:0")
+        c0 = wp.empty(N, dtype=float, device="cuda:0")
 
-    # compute sum
-    wp.launch(sum, dim=N, inputs=[a0, b0, c0], stream=stream0)
+        # resources on GPU 1
+        stream1 = wp.get_stream("cuda:1")
+        a1 = wp.zeros(N, dtype=float, device="cuda:1")
 
-    # finish recording on stream0
-    g = wp.capture_end(stream=stream0)
-
-    # replay
-    num_iters = 10
-    for _ in range(num_iters):
-        wp.capture_launch(g, stream=stream0)
-
-    # check results
-    assert_np_equal(c0.numpy(), np.full(N, fill_value=2 * num_iters))
-
-
-def test_stream_scope_graph_mgpu(test, device):
-    # resources on GPU 0
-    with wp.ScopedDevice("cuda:0"):
-        stream0 = wp.get_stream()
-        a0 = wp.zeros(N, dtype=float)
-        b0 = wp.empty(N, dtype=float)
-        c0 = wp.empty(N, dtype=float)
-
-    # resources on GPU 1
-    with wp.ScopedDevice("cuda:1"):
-        stream1 = wp.get_stream()
-        a1 = wp.zeros(N, dtype=float)
-
-    # capture graph
-    with wp.ScopedDevice("cuda:0"):
-        # start recording
-        wp.capture_begin()
-
-        with wp.ScopedDevice("cuda:1"):
+        # start recording on stream0
+        wp.capture_begin(stream=stream0, force_module_load=False)
+        try:
             # branch into stream1
-            wp.wait_stream(stream0)
+            stream1.wait_stream(stream0)
 
-            wp.launch(inc, dim=N, inputs=[a1])
+            # launch concurrent kernels on each stream
+            wp.launch(inc, dim=N, inputs=[a0], stream=stream0)
+            wp.launch(inc, dim=N, inputs=[a1], stream=stream1)
 
-        wp.launch(inc, dim=N, inputs=[a0])
+            # wait for stream1 to finish
+            stream0.wait_stream(stream1)
 
-        # wait for stream1 to finish
-        wp.wait_stream(stream1)
+            # copy values from stream1
+            wp.copy(b0, a1, stream=stream0)
 
-        # copy values from stream1
-        wp.copy(b0, a1)
+            # compute sum
+            wp.launch(sum, dim=N, inputs=[a0, b0, c0], stream=stream0)
+        finally:
+            # finish recording on stream0
+            g = wp.capture_end(stream=stream0)
 
-        # compute sum
-        wp.launch(sum, dim=N, inputs=[a0, b0, c0])
-
-        # finish recording
-        g = wp.capture_end()
-
-    # replay
-    with wp.ScopedDevice("cuda:0"):
+        # replay
         num_iters = 10
         for _ in range(num_iters):
-            wp.capture_launch(g)
+            wp.capture_launch(g, stream=stream0)
 
-    # check results
-    assert_np_equal(c0.numpy(), np.full(N, fill_value=2 * num_iters))
+        # check results
+        assert_np_equal(c0.numpy(), np.full(N, fill_value=2 * num_iters))
+
+    @unittest.skipUnless(len(wp.get_cuda_devices()) > 1, "Requires at least two CUDA devices")
+    def test_stream_scope_graph_mgpu(self):
+        wp.load_module(device="cuda:0")
+        wp.load_module(device="cuda:1")
+
+        # resources on GPU 0
+        with wp.ScopedDevice("cuda:0"):
+            stream0 = wp.get_stream()
+            a0 = wp.zeros(N, dtype=float)
+            b0 = wp.empty(N, dtype=float)
+            c0 = wp.empty(N, dtype=float)
+
+        # resources on GPU 1
+        with wp.ScopedDevice("cuda:1"):
+            stream1 = wp.get_stream()
+            a1 = wp.zeros(N, dtype=float)
+
+        # capture graph
+        with wp.ScopedDevice("cuda:0"):
+            # start recording
+            wp.capture_begin(force_module_load=False)
+            try:
+                with wp.ScopedDevice("cuda:1"):
+                    # branch into stream1
+                    wp.wait_stream(stream0)
+
+                    wp.launch(inc, dim=N, inputs=[a1])
+
+                wp.launch(inc, dim=N, inputs=[a0])
+
+                # wait for stream1 to finish
+                wp.wait_stream(stream1)
+
+                # copy values from stream1
+                wp.copy(b0, a1)
+
+                # compute sum
+                wp.launch(sum, dim=N, inputs=[a0, b0, c0])
+            finally:
+                # finish recording
+                g = wp.capture_end()
+
+        # replay
+        with wp.ScopedDevice("cuda:0"):
+            num_iters = 10
+            for _ in range(num_iters):
+                wp.capture_launch(g)
+
+        # check results
+        assert_np_equal(c0.numpy(), np.full(N, fill_value=2 * num_iters))
 
 
-def register(parent):
-    devices = wp.get_cuda_devices()
+add_function_test(TestStreams, "test_stream_arg_implicit_sync", test_stream_arg_implicit_sync, devices=devices)
+add_function_test(TestStreams, "test_stream_scope_implicit_sync", test_stream_scope_implicit_sync, devices=devices)
 
-    class TestStreams(parent):
-        pass
-
-    add_function_test(TestStreams, "test_stream_arg_implicit_sync", test_stream_arg_implicit_sync, devices=devices)
-    add_function_test(TestStreams, "test_stream_scope_implicit_sync", test_stream_scope_implicit_sync, devices=devices)
-
-    add_function_test(TestStreams, "test_stream_arg_synchronize", test_stream_arg_synchronize, devices=devices)
-    add_function_test(TestStreams, "test_stream_arg_wait_event", test_stream_arg_wait_event, devices=devices)
-    add_function_test(TestStreams, "test_stream_arg_wait_stream", test_stream_arg_wait_stream, devices=devices)
-    add_function_test(TestStreams, "test_stream_scope_synchronize", test_stream_scope_synchronize, devices=devices)
-    add_function_test(TestStreams, "test_stream_scope_wait_event", test_stream_scope_wait_event, devices=devices)
-    add_function_test(TestStreams, "test_stream_scope_wait_stream", test_stream_scope_wait_stream, devices=devices)
-    add_function_test(TestStreams, "test_stream_exceptions", test_stream_exceptions, devices=devices)
-
-    if len(devices) > 1:
-        add_function_test(TestStreams, "test_stream_arg_graph_mgpu", test_stream_arg_graph_mgpu)
-        add_function_test(TestStreams, "test_stream_scope_graph_mgpu", test_stream_scope_graph_mgpu)
-
-    return TestStreams
+add_function_test(TestStreams, "test_stream_arg_synchronize", test_stream_arg_synchronize, devices=devices)
+add_function_test(TestStreams, "test_stream_arg_wait_event", test_stream_arg_wait_event, devices=devices)
+add_function_test(TestStreams, "test_stream_arg_wait_stream", test_stream_arg_wait_stream, devices=devices)
+add_function_test(TestStreams, "test_stream_scope_synchronize", test_stream_scope_synchronize, devices=devices)
+add_function_test(TestStreams, "test_stream_scope_wait_event", test_stream_scope_wait_event, devices=devices)
+add_function_test(TestStreams, "test_stream_scope_wait_stream", test_stream_scope_wait_stream, devices=devices)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
-
-    wp.force_load(wp.get_cuda_devices())
-
     unittest.main(verbosity=2)

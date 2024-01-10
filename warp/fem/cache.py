@@ -95,6 +95,7 @@ def dynamic_struct(suffix: str, use_qualified_name=False):
 def get_integrand_function(
     integrand: "warp.fem.operator.Integrand",
     suffix: str,
+    func=None,
     annotations=None,
     code_transformers=[],
 ):
@@ -102,7 +103,7 @@ def get_integrand_function(
 
     if key not in _func_cache:
         _func_cache[key] = wp.Function(
-            func=integrand.func,
+            func=integrand.func if func is None else func,
             key=key,
             namespace="",
             module=integrand.module,

@@ -5,13 +5,10 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import os
 import unittest
 
 import warp as wp
-
-from warp.tests.test_base import *
-
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -25,33 +22,32 @@ def test_print_kernel():
 
 
 def test_print(test, device):
+    wp.load_module(device=device)
     capture = StdOutCapture()
     capture.begin()
     wp.launch(kernel=test_print_kernel, dim=1, inputs=[], device=device)
-    wp.synchronize()
+    wp.synchronize_device(device)
     s = capture.end()
 
-    test.assertRegex(
-        s,
-        rf"1{os.linesep}"
-        rf"this is a string{os.linesep}"
-        rf"this is a float 457\.500000{os.linesep}"
-        rf"this is an int 123",
-    )
+    # The CPU kernel printouts don't get captured by StdOutCapture()
+    if device.is_cuda:
+        test.assertRegex(
+            s,
+            rf"1{os.linesep}"
+            rf"this is a string{os.linesep}"
+            rf"this is a float 457\.500000{os.linesep}"
+            rf"this is an int 123",
+        )
 
 
-def register(parent):
-    devices = get_test_devices()
-    devices = tuple(x for x in devices if not x.is_cpu)
+class TestPrint(unittest.TestCase):
+    pass
 
-    class TestPrint(parent):
-        pass
 
-    add_function_test(TestPrint, "test_print", test_print, devices=devices, check_output=False)
-    return TestPrint
+devices = get_test_devices()
+add_function_test(TestPrint, "test_print", test_print, devices=devices, check_output=False)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

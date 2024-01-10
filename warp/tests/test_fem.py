@@ -1,4 +1,4 @@
-# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2023 NVIDIA CORPORATION.  All rights reserved.
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
 # and any modifications thereto.  Any use, reproduction, disclosure or
@@ -10,17 +10,13 @@ import unittest
 
 import numpy as np
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 
 from warp.fem import Field, Sample, Domain, Coords
-from warp.fem import Grid2D, Grid3D, Trimesh2D, Tetmesh, Quadmesh2D, Hexmesh, Geometry
-from warp.fem import make_polynomial_space, SymmetricTensorMapper, SkewSymmetricTensorMapper
-from warp.fem import make_test
-from warp.fem import Cells, Sides, BoundarySides
-from warp.fem import integrate, interpolate
 from warp.fem import integrand, div, grad, curl, D, normal
-from warp.fem import RegularQuadrature, Polynomial
+import warp.fem as fem
+
 from warp.fem.types import make_free_sample
 from warp.fem.geometry.closest_point import project_on_tri_at_origin, project_on_tet_at_origin
 from warp.fem.geometry import DeformedGeometry
@@ -39,13 +35,13 @@ def linear_form(s: Sample, u: Field):
 def test_integrate_gradient(test_case, device):
     with wp.ScopedDevice(device):
         # Grid geometry
-        geo = Grid2D(res=wp.vec2i(5))
+        geo = fem.Grid2D(res=wp.vec2i(5))
 
         # Domain and function spaces
-        domain = Cells(geometry=geo)
-        quadrature = RegularQuadrature(domain=domain, order=3)
+        domain = fem.Cells(geometry=geo)
+        quadrature = fem.RegularQuadrature(domain=domain, order=3)
 
-        scalar_space = make_polynomial_space(geo, degree=3)
+        scalar_space = fem.make_polynomial_space(geo, degree=3)
 
         u = scalar_space.make_field()
         u.dof_values = wp.zeros_like(u.dof_values, requires_grad=True)
@@ -56,16 +52,99 @@ def test_integrate_gradient(test_case, device):
 
         # forward pass
         with tape:
-            integrate(linear_form, quadrature=quadrature, fields={"u": u}, output=result)
+            fem.integrate(linear_form, quadrature=quadrature, fields={"u": u}, output=result)
 
         tape.backward(result)
 
-        test = make_test(space=scalar_space, domain=domain)
-        rhs = integrate(linear_form, quadrature=quadrature, fields={"u": test})
+        test = fem.make_test(space=scalar_space, domain=domain)
+        rhs = fem.integrate(linear_form, quadrature=quadrature, fields={"u": test})
 
         err = np.linalg.norm(rhs.numpy() - u.dof_values.grad.numpy())
         test_case.assertLess(err, 1.0e-8)
 
+
+@fem.integrand
+def bilinear_field(s: fem.Sample, domain: fem.Domain):
+    x = domain(s)
+    return x[0] * x[1]
+
+
+@fem.integrand
+def grad_field(s: fem.Sample, p: fem.Field):
+    return fem.grad(p, s)
+
+
+def test_interpolate_gradient(test_case, device):
+    with wp.ScopedDevice(device):
+        # Quad mesh with single element
+        # so we can test gradient with respect to vertex positions
+        positions = wp.array([[0.0, 0.0], [0.0, 2.0], [2.0, 0.0], [2.0, 2.0]], dtype=wp.vec2, requires_grad=True)
+        quads = wp.array([[0, 2, 3, 1]], dtype=int)
+        geo = fem.Quadmesh2D(quads, positions)
+
+        # Quadratic scalar space
+        scalar_space = fem.make_polynomial_space(geo, degree=2)
+
+        # Point-based vector space
+        # So we can test gradient with respect to inteprolation point position
+        point_coords = wp.array([[[0.5, 0.5, 0.0]]], dtype=fem.Coords, requires_grad=True)
+        interpolation_nodes = fem.PointBasisSpace(
+            fem.ExplicitQuadrature(domain=fem.Cells(geo), points=point_coords, weights=wp.array([[1.0]], dtype=float))
+        )
+        vector_space = fem.make_collocated_function_space(interpolation_nodes, dtype=wp.vec2)
+
+        # Initialize scalar field with known function
+        scalar_field = scalar_space.make_field()
+        scalar_field.dof_values.requires_grad = True
+        fem.interpolate(bilinear_field, dest=scalar_field)
+
+        # Interpolate gradient at center point
+        vector_field = vector_space.make_field()
+        vector_field.dof_values.requires_grad = True
+        tape = wp.Tape()
+        with tape:
+            fem.interpolate(grad_field, dest=vector_field, fields={"p": scalar_field})
+
+        assert_np_equal(vector_field.dof_values.numpy(), np.array([[1.0, 1.0]]))
+
+        vector_field.dof_values.grad.assign([1.0, 0.0])
+        tape.backward()
+
+        assert_np_equal(scalar_field.dof_values.grad.numpy(), np.array([0.0, 0.0, 0.0, 0.0, 0.0, -0.5, 0.0, 0.5, 0.0]))
+        assert_np_equal(
+            geo.positions.grad.numpy(),
+            np.array(
+                [
+                    [0.25, 0.25],
+                    [0.25, 0.25],
+                    [-0.25, -0.25],
+                    [-0.25, -0.25],
+                ]
+            ),
+        )
+        assert_np_equal(point_coords.grad.numpy(), np.array([[[0.0, 2.0, 0.0]]]))
+
+        tape.zero()
+        scalar_field.dof_values.grad.zero_()
+        geo.positions.grad.zero_()
+        point_coords.grad.zero_()
+
+        vector_field.dof_values.grad.assign([0.0, 1.0])
+        tape.backward()
+
+        assert_np_equal(scalar_field.dof_values.grad.numpy(), np.array([0.0, 0.0, 0.0, 0.0, -0.5, 0.0, 0.5, 0.0, 0.0]))
+        assert_np_equal(
+            geo.positions.grad.numpy(),
+            np.array(
+                [
+                    [0.25, 0.25],
+                    [-0.25, -0.25],
+                    [0.25, 0.25],
+                    [-0.25, -0.25],
+                ]
+            ),
+        )
+        assert_np_equal(point_coords.grad.numpy(), np.array([[[2.0, 0.0, 0.0]]]))
 
 @integrand
 def vector_divergence_form(s: Sample, u: Field, q: Field):
@@ -87,14 +166,14 @@ def test_vector_divergence_theorem(test_case, device):
 
     with wp.ScopedDevice(device):
         # Grid geometry
-        geo = Grid2D(res=wp.vec2i(5))
+        geo = fem.Grid2D(res=wp.vec2i(5))
 
         # Domain and function spaces
-        interior = Cells(geometry=geo)
-        boundary = BoundarySides(geometry=geo)
+        interior = fem.Cells(geometry=geo)
+        boundary = fem.BoundarySides(geometry=geo)
 
-        vector_space = make_polynomial_space(geo, degree=2, dtype=wp.vec2)
-        scalar_space = make_polynomial_space(geo, degree=1, dtype=float)
+        vector_space = fem.make_polynomial_space(geo, degree=2, dtype=wp.vec2)
+        scalar_space = fem.make_polynomial_space(geo, degree=1, dtype=float)
 
         u = vector_space.make_field()
         u.dof_values = rng.random(size=(u.dof_values.shape[0], 2))
@@ -103,15 +182,15 @@ def test_vector_divergence_theorem(test_case, device):
         constant_one = scalar_space.make_field()
         constant_one.dof_values.fill_(1.0)
 
-        interior_quadrature = RegularQuadrature(domain=interior, order=vector_space.degree)
-        boundary_quadrature = RegularQuadrature(domain=boundary, order=vector_space.degree)
-        div_int = integrate(
+        interior_quadrature = fem.RegularQuadrature(domain=interior, order=vector_space.degree)
+        boundary_quadrature = fem.RegularQuadrature(domain=boundary, order=vector_space.degree)
+        div_int = fem.integrate(
             vector_divergence_form,
             quadrature=interior_quadrature,
             fields={"u": u, "q": constant_one},
             kernel_options={"enable_backward": False},
         )
-        boundary_int = integrate(
+        boundary_int = fem.integrate(
             vector_boundary_form,
             quadrature=boundary_quadrature,
             fields={"u": u.trace(), "q": constant_one.trace()},
@@ -124,21 +203,21 @@ def test_vector_divergence_theorem(test_case, device):
         q = scalar_space.make_field()
         q.dof_values = rng.random(size=q.dof_values.shape[0])
 
-        interior_quadrature = RegularQuadrature(domain=interior, order=vector_space.degree + scalar_space.degree)
-        boundary_quadrature = RegularQuadrature(domain=boundary, order=vector_space.degree + scalar_space.degree)
-        div_int = integrate(
+        interior_quadrature = fem.RegularQuadrature(domain=interior, order=vector_space.degree + scalar_space.degree)
+        boundary_quadrature = fem.RegularQuadrature(domain=boundary, order=vector_space.degree + scalar_space.degree)
+        div_int = fem.integrate(
             vector_divergence_form,
             quadrature=interior_quadrature,
             fields={"u": u, "q": q},
             kernel_options={"enable_backward": False},
         )
-        grad_int = integrate(
+        grad_int = fem.integrate(
             vector_grad_form,
             quadrature=interior_quadrature,
             fields={"u": u, "q": q},
             kernel_options={"enable_backward": False},
         )
-        boundary_int = integrate(
+        boundary_int = fem.integrate(
             vector_boundary_form,
             quadrature=boundary_quadrature,
             fields={"u": u.trace(), "q": q.trace()},
@@ -168,14 +247,14 @@ def test_tensor_divergence_theorem(test_case, device):
 
     with wp.ScopedDevice(device):
         # Grid geometry
-        geo = Grid2D(res=wp.vec2i(5))
+        geo = fem.Grid2D(res=wp.vec2i(5))
 
         # Domain and function spaces
-        interior = Cells(geometry=geo)
-        boundary = BoundarySides(geometry=geo)
+        interior = fem.Cells(geometry=geo)
+        boundary = fem.BoundarySides(geometry=geo)
 
-        tensor_space = make_polynomial_space(geo, degree=2, dtype=wp.mat22)
-        vector_space = make_polynomial_space(geo, degree=1, dtype=wp.vec2)
+        tensor_space = fem.make_polynomial_space(geo, degree=2, dtype=wp.mat22)
+        vector_space = fem.make_polynomial_space(geo, degree=1, dtype=wp.vec2)
 
         tau = tensor_space.make_field()
         tau.dof_values = rng.random(size=(tau.dof_values.shape[0], 2, 2))
@@ -184,15 +263,15 @@ def test_tensor_divergence_theorem(test_case, device):
         constant_vec = vector_space.make_field()
         constant_vec.dof_values.fill_(wp.vec2(0.5, 2.0))
 
-        interior_quadrature = RegularQuadrature(domain=interior, order=tensor_space.degree)
-        boundary_quadrature = RegularQuadrature(domain=boundary, order=tensor_space.degree)
-        div_int = integrate(
+        interior_quadrature = fem.RegularQuadrature(domain=interior, order=tensor_space.degree)
+        boundary_quadrature = fem.RegularQuadrature(domain=boundary, order=tensor_space.degree)
+        div_int = fem.integrate(
             tensor_divergence_form,
             quadrature=interior_quadrature,
             fields={"tau": tau, "v": constant_vec},
             kernel_options={"enable_backward": False},
         )
-        boundary_int = integrate(
+        boundary_int = fem.integrate(
             tensor_boundary_form,
             quadrature=boundary_quadrature,
             fields={"tau": tau.trace(), "v": constant_vec.trace()},
@@ -205,21 +284,21 @@ def test_tensor_divergence_theorem(test_case, device):
         v = vector_space.make_field()
         v.dof_values = rng.random(size=(v.dof_values.shape[0], 2))
 
-        interior_quadrature = RegularQuadrature(domain=interior, order=tensor_space.degree + vector_space.degree)
-        boundary_quadrature = RegularQuadrature(domain=boundary, order=tensor_space.degree + vector_space.degree)
-        div_int = integrate(
+        interior_quadrature = fem.RegularQuadrature(domain=interior, order=tensor_space.degree + vector_space.degree)
+        boundary_quadrature = fem.RegularQuadrature(domain=boundary, order=tensor_space.degree + vector_space.degree)
+        div_int = fem.integrate(
             tensor_divergence_form,
             quadrature=interior_quadrature,
             fields={"tau": tau, "v": v},
             kernel_options={"enable_backward": False},
         )
-        grad_int = integrate(
+        grad_int = fem.integrate(
             tensor_grad_form,
             quadrature=interior_quadrature,
             fields={"tau": tau, "v": v},
             kernel_options={"enable_backward": False},
         )
-        boundary_int = integrate(
+        boundary_int = fem.integrate(
             tensor_boundary_form,
             quadrature=boundary_quadrature,
             fields={"tau": tau.trace(), "v": v.trace()},
@@ -239,18 +318,18 @@ def test_grad_decomposition(test_case, device):
 
     with wp.ScopedDevice(device):
         # Grid geometry
-        geo = Grid3D(res=wp.vec3i(5))
+        geo = fem.Grid3D(res=wp.vec3i(5))
 
         # Domain and function spaces
-        domain = Cells(geometry=geo)
-        quadrature = RegularQuadrature(domain=domain, order=4)
+        domain = fem.Cells(geometry=geo)
+        quadrature = fem.RegularQuadrature(domain=domain, order=4)
 
-        vector_space = make_polynomial_space(geo, degree=2, dtype=wp.vec3)
+        vector_space = fem.make_polynomial_space(geo, degree=2, dtype=wp.vec3)
         u = vector_space.make_field()
 
         u.dof_values = rng.random(size=(u.dof_values.shape[0], 3))
 
-        err = integrate(grad_decomposition, quadrature=quadrature, fields={"u": u, "v": u})
+        err = fem.integrate(grad_decomposition, quadrature=quadrature, fields={"u": u, "v": u})
         test_case.assertLess(err, 1.0e-8)
 
 
@@ -300,7 +379,7 @@ def _gen_hexmesh(N):
     return wp.array(positions, dtype=wp.vec3), wp.array(vidx, dtype=int)
 
 
-def _launch_test_geometry_kernel(geo: Geometry, device):
+def _launch_test_geometry_kernel(geo: fem.Geometry, device):
     @dynamic_kernel(suffix=geo.name, kernel_options={"enable_backward": False})
     def test_geo_cells_kernel(
         cell_arg: geo.CellArg,
@@ -368,7 +447,7 @@ def _launch_test_geometry_kernel(geo: Geometry, device):
 
     cell_measures = wp.zeros(dtype=float, device=device, shape=geo.cell_count())
 
-    cell_quadrature = RegularQuadrature(Cells(geo), order=2)
+    cell_quadrature = fem.RegularQuadrature(fem.Cells(geo), order=2)
     cell_qps = wp.array(cell_quadrature.points, dtype=Coords, device=device)
     cell_qp_weights = wp.array(cell_quadrature.weights, dtype=float, device=device)
 
@@ -381,7 +460,7 @@ def _launch_test_geometry_kernel(geo: Geometry, device):
 
     side_measures = wp.zeros(dtype=float, device=device, shape=geo.side_count())
 
-    side_quadrature = RegularQuadrature(Sides(geo), order=2)
+    side_quadrature = fem.RegularQuadrature(fem.Sides(geo), order=2)
     side_qps = wp.array(side_quadrature.points, dtype=Coords, device=device)
     side_qp_weights = wp.array(side_quadrature.weights, dtype=float, device=device)
 
@@ -398,7 +477,7 @@ def _launch_test_geometry_kernel(geo: Geometry, device):
 def test_grid_2d(test_case, device):
     N = 3
 
-    geo = Grid2D(res=wp.vec2i(N))
+    geo = fem.Grid2D(res=wp.vec2i(N))
 
     test_case.assertEqual(geo.cell_count(), N**2)
     test_case.assertEqual(geo.vertex_count(), (N + 1) ** 2)
@@ -417,7 +496,7 @@ def test_triangle_mesh(test_case, device):
     with wp.ScopedDevice(device):
         positions, tri_vidx = _gen_trimesh(N)
 
-    geo = Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
+    geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
 
     test_case.assertEqual(geo.cell_count(), 2 * (N) ** 2)
     test_case.assertEqual(geo.vertex_count(), (N + 1) ** 2)
@@ -436,7 +515,7 @@ def test_quad_mesh(test_case, device):
     with wp.ScopedDevice(device):
         positions, quad_vidx = _gen_quadmesh(N)
 
-    geo = Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions)
+    geo = fem.Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions)
 
     test_case.assertEqual(geo.cell_count(), N**2)
     test_case.assertEqual(geo.vertex_count(), (N + 1) ** 2)
@@ -452,7 +531,7 @@ def test_quad_mesh(test_case, device):
 def test_grid_3d(test_case, device):
     N = 3
 
-    geo = Grid3D(res=wp.vec3i(N))
+    geo = fem.Grid3D(res=wp.vec3i(N))
 
     test_case.assertEqual(geo.cell_count(), (N) ** 3)
     test_case.assertEqual(geo.vertex_count(), (N + 1) ** 3)
@@ -472,7 +551,7 @@ def test_tet_mesh(test_case, device):
     with wp.ScopedDevice(device):
         positions, tet_vidx = _gen_tetmesh(N)
 
-    geo = Tetmesh(tet_vertex_indices=tet_vidx, positions=positions)
+    geo = fem.Tetmesh(tet_vertex_indices=tet_vidx, positions=positions)
 
     test_case.assertEqual(geo.cell_count(), 5 * (N) ** 3)
     test_case.assertEqual(geo.vertex_count(), (N + 1) ** 3)
@@ -492,7 +571,7 @@ def test_hex_mesh(test_case, device):
     with wp.ScopedDevice(device):
         positions, tet_vidx = _gen_hexmesh(N)
 
-    geo = Hexmesh(hex_vertex_indices=tet_vidx, positions=positions)
+    geo = fem.Hexmesh(hex_vertex_indices=tet_vidx, positions=positions)
 
     test_case.assertEqual(geo.cell_count(), (N) ** 3)
     test_case.assertEqual(geo.vertex_count(), (N + 1) ** 3)
@@ -518,15 +597,15 @@ def test_deformed_geometry(test_case, device):
     with wp.ScopedDevice(device):
         positions, tet_vidx = _gen_tetmesh(N)
 
-    geo = Tetmesh(tet_vertex_indices=tet_vidx, positions=positions)
+    geo = fem.Tetmesh(tet_vertex_indices=tet_vidx, positions=positions)
 
     translation = [1.0, 2.0, 3.0]
     rotation = [0.0, math.pi / 4.0, 0.0]
     scale = 2.0
 
-    vector_space = make_polynomial_space(geo, dtype=wp.vec3, degree=2)
+    vector_space = fem.make_polynomial_space(geo, dtype=wp.vec3, degree=2)
     pos_field = vector_space.make_field()
-    interpolate(
+    fem.interpolate(
         _rigid_deformation_field,
         dest=pos_field,
         values={"translation": translation, "rotation": rotation, "scale": scale},
@@ -705,9 +784,9 @@ def test_dof_mapper(test_case, device):
     matrix_types = [wp.mat22, wp.mat33]
 
     # Symmetric mapper
-    for mapping in SymmetricTensorMapper.Mapping:
+    for mapping in fem.SymmetricTensorMapper.Mapping:
         for dtype in matrix_types:
-            mapper = SymmetricTensorMapper(dtype, mapping=mapping)
+            mapper = fem.SymmetricTensorMapper(dtype, mapping=mapping)
             dof_dtype = mapper.dof_dtype
 
             for k in range(dof_dtype._length_):
@@ -727,7 +806,7 @@ def test_dof_mapper(test_case, device):
 
     # Skew-symmetric mapper
     for dtype in matrix_types:
-        mapper = SkewSymmetricTensorMapper(dtype)
+        mapper = fem.SkewSymmetricTensorMapper(dtype)
         dof_dtype = mapper.dof_dtype
 
         if hasattr(dof_dtype, "_length_"):
@@ -879,9 +958,9 @@ def test_square_shape_functions(test_case, device):
         param_delta = wp.normalize(wp.vec2(wp.randf(state), wp.randf(state))) * epsilon
         return param_delta, Coords(param_delta[0], param_delta[1], 0.0)
 
-    Q_1 = shape.SquareBipolynomialShapeFunctions(degree=1, family=Polynomial.LOBATTO_GAUSS_LEGENDRE)
-    Q_2 = shape.SquareBipolynomialShapeFunctions(degree=2, family=Polynomial.LOBATTO_GAUSS_LEGENDRE)
-    Q_3 = shape.SquareBipolynomialShapeFunctions(degree=3, family=Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    Q_1 = shape.SquareBipolynomialShapeFunctions(degree=1, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    Q_2 = shape.SquareBipolynomialShapeFunctions(degree=2, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    Q_3 = shape.SquareBipolynomialShapeFunctions(degree=3, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
 
     test_shape_function_weight(test_case, Q_1, square_coord_sampler, SQUARE_CENTER_COORDS)
     test_shape_function_weight(test_case, Q_2, square_coord_sampler, SQUARE_CENTER_COORDS)
@@ -893,8 +972,19 @@ def test_square_shape_functions(test_case, device):
     test_shape_function_gradient(test_case, Q_2, square_coord_sampler, square_coord_delta_sampler)
     test_shape_function_gradient(test_case, Q_3, square_coord_sampler, square_coord_delta_sampler)
 
-    S_2 = shape.SquareSerendipityShapeFunctions(degree=2, family=Polynomial.LOBATTO_GAUSS_LEGENDRE)
-    S_3 = shape.SquareSerendipityShapeFunctions(degree=3, family=Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    Q_1 = shape.SquareBipolynomialShapeFunctions(degree=1, family=fem.Polynomial.GAUSS_LEGENDRE)
+    Q_2 = shape.SquareBipolynomialShapeFunctions(degree=2, family=fem.Polynomial.GAUSS_LEGENDRE)
+    Q_3 = shape.SquareBipolynomialShapeFunctions(degree=3, family=fem.Polynomial.GAUSS_LEGENDRE)
+
+    test_shape_function_weight(test_case, Q_1, square_coord_sampler, SQUARE_CENTER_COORDS)
+    test_shape_function_weight(test_case, Q_2, square_coord_sampler, SQUARE_CENTER_COORDS)
+    test_shape_function_weight(test_case, Q_3, square_coord_sampler, SQUARE_CENTER_COORDS)
+    test_shape_function_gradient(test_case, Q_1, square_coord_sampler, square_coord_delta_sampler)
+    test_shape_function_gradient(test_case, Q_2, square_coord_sampler, square_coord_delta_sampler)
+    test_shape_function_gradient(test_case, Q_3, square_coord_sampler, square_coord_delta_sampler)
+
+    S_2 = shape.SquareSerendipityShapeFunctions(degree=2, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    S_3 = shape.SquareSerendipityShapeFunctions(degree=3, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
 
     test_shape_function_weight(test_case, S_2, square_coord_sampler, SQUARE_CENTER_COORDS)
     test_shape_function_weight(test_case, S_3, square_coord_sampler, SQUARE_CENTER_COORDS)
@@ -930,9 +1020,9 @@ def test_cube_shape_functions(test_case, device):
         param_delta = wp.normalize(wp.vec3(wp.randf(state), wp.randf(state), wp.randf(state))) * epsilon
         return param_delta, param_delta
 
-    Q_1 = shape.CubeTripolynomialShapeFunctions(degree=1, family=Polynomial.LOBATTO_GAUSS_LEGENDRE)
-    Q_2 = shape.CubeTripolynomialShapeFunctions(degree=2, family=Polynomial.LOBATTO_GAUSS_LEGENDRE)
-    Q_3 = shape.CubeTripolynomialShapeFunctions(degree=3, family=Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    Q_1 = shape.CubeTripolynomialShapeFunctions(degree=1, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    Q_2 = shape.CubeTripolynomialShapeFunctions(degree=2, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    Q_3 = shape.CubeTripolynomialShapeFunctions(degree=3, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
 
     test_shape_function_weight(test_case, Q_1, cube_coord_sampler, CUBE_CENTER_COORDS)
     test_shape_function_weight(test_case, Q_2, cube_coord_sampler, CUBE_CENTER_COORDS)
@@ -944,8 +1034,19 @@ def test_cube_shape_functions(test_case, device):
     test_shape_function_gradient(test_case, Q_2, cube_coord_sampler, cube_coord_delta_sampler)
     test_shape_function_gradient(test_case, Q_3, cube_coord_sampler, cube_coord_delta_sampler)
 
-    S_2 = shape.CubeSerendipityShapeFunctions(degree=2, family=Polynomial.LOBATTO_GAUSS_LEGENDRE)
-    S_3 = shape.CubeSerendipityShapeFunctions(degree=3, family=Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    Q_1 = shape.CubeTripolynomialShapeFunctions(degree=1, family=fem.Polynomial.GAUSS_LEGENDRE)
+    Q_2 = shape.CubeTripolynomialShapeFunctions(degree=2, family=fem.Polynomial.GAUSS_LEGENDRE)
+    Q_3 = shape.CubeTripolynomialShapeFunctions(degree=3, family=fem.Polynomial.GAUSS_LEGENDRE)
+
+    test_shape_function_weight(test_case, Q_1, cube_coord_sampler, CUBE_CENTER_COORDS)
+    test_shape_function_weight(test_case, Q_2, cube_coord_sampler, CUBE_CENTER_COORDS)
+    test_shape_function_weight(test_case, Q_3, cube_coord_sampler, CUBE_CENTER_COORDS)
+    test_shape_function_gradient(test_case, Q_1, cube_coord_sampler, cube_coord_delta_sampler)
+    test_shape_function_gradient(test_case, Q_2, cube_coord_sampler, cube_coord_delta_sampler)
+    test_shape_function_gradient(test_case, Q_3, cube_coord_sampler, cube_coord_delta_sampler)
+
+    S_2 = shape.CubeSerendipityShapeFunctions(degree=2, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    S_3 = shape.CubeSerendipityShapeFunctions(degree=3, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
 
     test_shape_function_weight(test_case, S_2, cube_coord_sampler, CUBE_CENTER_COORDS)
     test_shape_function_weight(test_case, S_3, cube_coord_sampler, CUBE_CENTER_COORDS)
@@ -1054,35 +1155,117 @@ def test_tet_shape_functions(test_case, device):
     wp.synchronize()
 
 
-def register(parent):
-    devices = get_test_devices()
+def test_point_basis(test_case, device):
+    geo = fem.Grid2D(res=wp.vec2i(2))
 
-    class TestFem(parent):
-        pass
+    domain = fem.Cells(geo)
 
-    add_function_test(TestFem, "test_regular_quadrature", test_regular_quadrature)
-    add_function_test(TestFem, "test_closest_point_queries", test_closest_point_queries)
-    add_function_test(TestFem, "test_grad_decomposition", test_grad_decomposition, devices=devices)
-    add_function_test(TestFem, "test_integrate_gradient", test_integrate_gradient, devices=devices)
-    add_function_test(TestFem, "test_vector_divergence_theorem", test_vector_divergence_theorem, devices=devices)
-    add_function_test(TestFem, "test_tensor_divergence_theorem", test_tensor_divergence_theorem, devices=devices)
-    add_function_test(TestFem, "test_grid_2d", test_grid_2d, devices=devices)
-    add_function_test(TestFem, "test_triangle_mesh", test_triangle_mesh, devices=devices)
-    add_function_test(TestFem, "test_quad_mesh", test_quad_mesh, devices=devices)
-    add_function_test(TestFem, "test_grid_3d", test_grid_3d, devices=devices)
-    add_function_test(TestFem, "test_tet_mesh", test_tet_mesh, devices=devices)
-    add_function_test(TestFem, "test_hex_mesh", test_hex_mesh, devices=devices)
-    add_function_test(TestFem, "test_deformed_geometry", test_deformed_geometry, devices=devices)
-    add_function_test(TestFem, "test_dof_mapper", test_dof_mapper)
-    add_function_test(TestFem, "test_square_shape_functions", test_square_shape_functions)
-    add_function_test(TestFem, "test_cube_shape_functions", test_cube_shape_functions)
-    add_function_test(TestFem, "test_tri_shape_functions", test_tri_shape_functions)
-    add_function_test(TestFem, "test_tet_shape_functions", test_tet_shape_functions)
+    quadrature = fem.RegularQuadrature(domain, order=2, family=fem.Polynomial.GAUSS_LEGENDRE)
+    point_basis = fem.PointBasisSpace(quadrature)
 
-    return TestFem
+    point_space = fem.make_collocated_function_space(point_basis)
+    point_test = fem.make_test(point_space, domain=domain)
+
+    # Sample at particle positions
+    ones = fem.integrate(linear_form, fields={"u": point_test}, nodal=True)
+    test_case.assertAlmostEqual(np.sum(ones.numpy()), 1.0, places=5)
+
+    # Sampling outside of particle positions
+    other_quadrature = fem.RegularQuadrature(domain, order=2, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    zeros = fem.integrate(linear_form, quadrature=other_quadrature, fields={"u": point_test})
+
+    test_case.assertAlmostEqual(np.sum(zeros.numpy()), 0.0, places=5)
+
+
+@fem.integrand
+def _bicubic(s: Sample, domain: Domain):
+    x = domain(s)
+    return wp.pow(x[0], 3.0) * wp.pow(x[1], 3.0)
+
+
+@fem.integrand
+def _piecewise_constant(s: Sample):
+    return float(s.element_index)
+
+
+def test_particle_quadratures(test_case, device):
+    geo = fem.Grid2D(res=wp.vec2i(2))
+
+    domain = fem.Cells(geo)
+    points, weights = domain.reference_element().instantiate_quadrature(order=4, family=fem.Polynomial.GAUSS_LEGENDRE)
+    points_per_cell = len(points)
+
+    points = points * domain.element_count()
+    weights = weights * domain.element_count()
+
+    points = wp.array(points, shape=(domain.element_count(), points_per_cell), dtype=Coords, device=device)
+    weights = wp.array(weights, shape=(domain.element_count(), points_per_cell), dtype=float, device=device)
+
+    explicit_quadrature = fem.ExplicitQuadrature(domain, points, weights)
+
+    test_case.assertEqual(explicit_quadrature.points_per_element(), points_per_cell)
+    test_case.assertEqual(explicit_quadrature.total_point_count(), points_per_cell * geo.cell_count())
+
+    val = fem.integrate(_bicubic, quadrature=explicit_quadrature)
+    test_case.assertAlmostEqual(val, 1.0 / 16, places=5)
+
+    element_indices = wp.array([3, 3, 2], dtype=int, device=device)
+    element_coords = wp.array(
+        [
+            [0.25, 0.5, 0.0],
+            [0.5, 0.25, 0.0],
+            [0.5, 0.5, 0.0],
+        ],
+        dtype=Coords,
+        device=device,
+    )
+
+    pic_quadrature = fem.PicQuadrature(domain, positions=(element_indices, element_coords))
+
+    test_case.assertIsNone(pic_quadrature.points_per_element())
+    test_case.assertEqual(pic_quadrature.total_point_count(), 3)
+    test_case.assertEqual(pic_quadrature.active_cell_count(), 2)
+
+    val = fem.integrate(_piecewise_constant, quadrature=pic_quadrature)
+    test_case.assertAlmostEqual(val, 1.25, places=5)
+
+
+devices = get_test_devices()
+
+
+class TestFem(unittest.TestCase):
+    pass
+
+
+add_function_test(TestFem, "test_regular_quadrature", test_regular_quadrature)
+add_function_test(TestFem, "test_closest_point_queries", test_closest_point_queries)
+add_function_test(TestFem, "test_grad_decomposition", test_grad_decomposition, devices=devices)
+add_function_test(TestFem, "test_integrate_gradient", test_integrate_gradient, devices=devices)
+add_function_test(TestFem, "test_interpolate_gradient", test_interpolate_gradient, devices=devices)
+add_function_test(TestFem, "test_vector_divergence_theorem", test_vector_divergence_theorem, devices=devices)
+add_function_test(TestFem, "test_tensor_divergence_theorem", test_tensor_divergence_theorem, devices=devices)
+add_function_test(TestFem, "test_grid_2d", test_grid_2d, devices=devices)
+add_function_test(TestFem, "test_triangle_mesh", test_triangle_mesh, devices=devices)
+add_function_test(TestFem, "test_quad_mesh", test_quad_mesh, devices=devices)
+add_function_test(TestFem, "test_grid_3d", test_grid_3d, devices=devices)
+add_function_test(TestFem, "test_tet_mesh", test_tet_mesh, devices=devices)
+add_function_test(TestFem, "test_hex_mesh", test_hex_mesh, devices=devices)
+add_function_test(TestFem, "test_deformed_geometry", test_deformed_geometry, devices=devices)
+add_function_test(TestFem, "test_dof_mapper", test_dof_mapper)
+add_function_test(TestFem, "test_point_basis", test_point_basis)
+add_function_test(TestFem, "test_particle_quadratures", test_particle_quadratures)
+
+
+class TestFemShapeFunctions(unittest.TestCase):
+    pass
+
+
+add_function_test(TestFemShapeFunctions, "test_square_shape_functions", test_square_shape_functions)
+add_function_test(TestFemShapeFunctions, "test_cube_shape_functions", test_cube_shape_functions)
+add_function_test(TestFemShapeFunctions, "test_tri_shape_functions", test_tri_shape_functions)
+add_function_test(TestFemShapeFunctions, "test_tet_shape_functions", test_tet_shape_functions)
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

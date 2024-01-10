@@ -28,6 +28,7 @@ wp.init()
 
 class Example:
     def __init__(self, stage):
+        self.device = wp.get_device()
         builder = wp.sim.ModelBuilder()
 
         self.sim_time = 0.0
@@ -50,7 +51,7 @@ class Example:
             b = builder.add_body(origin=wp.transform((i, 1.0, 0.0), wp.quat_identity()))
 
             builder.add_shape_box(
-                pos=(0.0, 0.0, 0.0),
+                pos=wp.vec3(0.0, 0.0, 0.0),
                 hx=0.5 * self.scale,
                 hy=0.2 * self.scale,
                 hz=0.2 * self.scale,
@@ -65,7 +66,7 @@ class Example:
             b = builder.add_body(origin=wp.transform((i, 1.0, 2.0), wp.quat_identity()))
 
             builder.add_shape_sphere(
-                pos=(0.0, 0.0, 0.0), radius=0.25 * self.scale, body=b, ke=self.ke, kd=self.kd, kf=self.kf
+                pos=wp.vec3(0.0, 0.0, 0.0), radius=0.25 * self.scale, body=b, ke=self.ke, kd=self.kd, kf=self.kf
             )
 
         # capsules
@@ -73,7 +74,7 @@ class Example:
             b = builder.add_body(origin=wp.transform((i, 1.0, 6.0), wp.quat_identity()))
 
             builder.add_shape_capsule(
-                pos=(0.0, 0.0, 0.0),
+                pos=wp.vec3(0.0, 0.0, 0.0),
                 radius=0.25 * self.scale,
                 half_height=self.scale * 0.5,
                 up_axis=0,
@@ -93,15 +94,15 @@ class Example:
             b = builder.add_body(
                 origin=wp.transform(
                     (i * 0.5 * self.scale, 1.0 + i * 1.7 * self.scale, 4.0 + i * 0.5 * self.scale),
-                    wp.quat_from_axis_angle((0.0, 1.0, 0.0), math.pi * 0.1 * i),
+                    wp.quat_from_axis_angle(wp.vec3(0.0, 1.0, 0.0), math.pi * 0.1 * i),
                 )
             )
 
             builder.add_shape_mesh(
                 body=b,
                 mesh=bunny,
-                pos=(0.0, 0.0, 0.0),
-                scale=(self.scale, self.scale, self.scale),
+                pos=wp.vec3(0.0, 0.0, 0.0),
+                scale=wp.vec3(self.scale, self.scale, self.scale),
                 ke=self.ke,
                 kd=self.kd,
                 kf=self.kf,
@@ -126,9 +127,11 @@ class Example:
 
         if self.use_graph:
             # create update graph
-            wp.capture_begin()
-            self.update()
-            self.graph = wp.capture_end()
+            wp.capture_begin(self.device)
+            try:
+                self.update()
+            finally:
+                self.graph = wp.capture_end(self.device)
 
     def load_mesh(self, filename, path):
         asset_stage = Usd.Stage.Open(filename)
@@ -141,7 +144,7 @@ class Example:
 
     def update(self):
         with wp.ScopedTimer("simulate", active=True):
-            if self.use_graph is False or self.graph is None:
+            if not self.use_graph or self.graph is None:
                 for _ in range(self.sim_substeps):
                     self.state_0.clear_forces()
                     wp.sim.collide(self.model, self.state_0)

@@ -1,9 +1,16 @@
+# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
 import unittest
 
 import numpy as np
 
 import warp as wp
-from warp.tests.test_base import *
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -1932,99 +1939,125 @@ def test_constructor_default():
     wp.expect_eq(qeye[3], 1.0)
 
 
-def register(parent):
-    devices = get_test_devices()
+def test_py_arithmetic_ops(test, device, dtype):
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
 
-    class TestQuat(parent):
-        pass
+    def make_quat(*args):
+        if wptype in wp.types.int_types:
+            # Cast to the correct integer type to simulate wrapping.
+            return tuple(wptype._type_(x).value for x in args)
 
-    add_kernel_test(TestQuat, test_constructor_default, dim=1, devices=devices)
+        return args
 
-    for dtype in np_float_types:
-        add_function_test_register_kernel(
-            TestQuat, f"test_constructors_{dtype.__name__}", test_constructors, devices=devices, dtype=dtype
-        )
-        add_function_test_register_kernel(
-            TestQuat,
-            f"test_casting_constructors_{dtype.__name__}",
-            test_casting_constructors,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestQuat, f"test_anon_type_instance_{dtype.__name__}", test_anon_type_instance, devices=devices, dtype=dtype
-        )
-        add_function_test_register_kernel(
-            TestQuat, f"test_inverse_{dtype.__name__}", test_inverse, devices=devices, dtype=dtype
-        )
-        add_function_test_register_kernel(
-            TestQuat, f"test_quat_identity_{dtype.__name__}", test_quat_identity, devices=devices, dtype=dtype
-        )
-        add_function_test_register_kernel(
-            TestQuat, f"test_dotproduct_{dtype.__name__}", test_dotproduct, devices=devices, dtype=dtype
-        )
-        add_function_test_register_kernel(
-            TestQuat, f"test_length_{dtype.__name__}", test_length, devices=devices, dtype=dtype
-        )
-        add_function_test_register_kernel(
-            TestQuat, f"test_normalize_{dtype.__name__}", test_normalize, devices=devices, dtype=dtype
-        )
-        add_function_test_register_kernel(
-            TestQuat, f"test_addition_{dtype.__name__}", test_addition, devices=devices, dtype=dtype
-        )
-        add_function_test_register_kernel(
-            TestQuat, f"test_subtraction_{dtype.__name__}", test_subtraction, devices=devices, dtype=dtype
-        )
-        add_function_test_register_kernel(
-            TestQuat,
-            f"test_scalar_multiplication_{dtype.__name__}",
-            test_scalar_multiplication,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestQuat, f"test_scalar_division_{dtype.__name__}", test_scalar_division, devices=devices, dtype=dtype
-        )
-        add_function_test_register_kernel(
-            TestQuat,
-            f"test_quat_multiplication_{dtype.__name__}",
-            test_quat_multiplication,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestQuat, f"test_indexing_{dtype.__name__}", test_indexing, devices=devices, dtype=dtype
-        )
-        add_function_test_register_kernel(
-            TestQuat, f"test_quat_lerp_{dtype.__name__}", test_quat_lerp, devices=devices, dtype=dtype
-        )
-        add_function_test_register_kernel(
-            TestQuat,
-            f"test_quat_to_axis_angle_grad_{dtype.__name__}",
-            test_quat_to_axis_angle_grad,
-            devices=devices,
-            dtype=dtype,
-        )
-        add_function_test_register_kernel(
-            TestQuat, f"test_slerp_grad_{dtype.__name__}", test_slerp_grad, devices=devices, dtype=dtype
-        )
-        add_function_test_register_kernel(
-            TestQuat, f"test_quat_rpy_grad_{dtype.__name__}", test_quat_rpy_grad, devices=devices, dtype=dtype
-        )
-        add_function_test_register_kernel(
-            TestQuat, f"test_quat_from_matrix_{dtype.__name__}", test_quat_from_matrix, devices=devices, dtype=dtype
-        )
-        add_function_test_register_kernel(
-            TestQuat, f"test_quat_rotate_{dtype.__name__}", test_quat_rotate, devices=devices, dtype=dtype
-        )
-        add_function_test_register_kernel(
-            TestQuat, f"test_quat_to_matrix_{dtype.__name__}", test_quat_to_matrix, devices=devices, dtype=dtype
-        )
+    quat_cls = wp.types.quaternion(wptype)
 
-    return TestQuat
+    v = quat_cls(1, -2, 3, -4)
+    test.assertSequenceEqual(+v, make_quat(1, -2, 3, -4))
+    test.assertSequenceEqual(-v, make_quat(-1, 2, -3, 4))
+    test.assertSequenceEqual(v + quat_cls(5, 5, 5, 5), make_quat(6, 3, 8, 1))
+    test.assertSequenceEqual(v - quat_cls(5, 5, 5, 5), make_quat(-4, -7, -2, -9))
+
+    v = quat_cls(2, 4, 6, 8)
+    test.assertSequenceEqual(v * wptype(2), make_quat(4, 8, 12, 16))
+    test.assertSequenceEqual(wptype(2) * v, make_quat(4, 8, 12, 16))
+    test.assertSequenceEqual(v / wptype(2), make_quat(1, 2, 3, 4))
+    test.assertSequenceEqual(wptype(24) / v, make_quat(12, 6, 4, 3))
+
+
+devices = get_test_devices()
+
+
+class TestQuat(unittest.TestCase):
+    pass
+
+
+add_kernel_test(TestQuat, test_constructor_default, dim=1, devices=devices)
+
+for dtype in np_float_types:
+    add_function_test_register_kernel(
+        TestQuat, f"test_constructors_{dtype.__name__}", test_constructors, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestQuat,
+        f"test_casting_constructors_{dtype.__name__}",
+        test_casting_constructors,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestQuat, f"test_anon_type_instance_{dtype.__name__}", test_anon_type_instance, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestQuat, f"test_inverse_{dtype.__name__}", test_inverse, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestQuat, f"test_quat_identity_{dtype.__name__}", test_quat_identity, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestQuat, f"test_dotproduct_{dtype.__name__}", test_dotproduct, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestQuat, f"test_length_{dtype.__name__}", test_length, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestQuat, f"test_normalize_{dtype.__name__}", test_normalize, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestQuat, f"test_addition_{dtype.__name__}", test_addition, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestQuat, f"test_subtraction_{dtype.__name__}", test_subtraction, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestQuat,
+        f"test_scalar_multiplication_{dtype.__name__}",
+        test_scalar_multiplication,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestQuat, f"test_scalar_division_{dtype.__name__}", test_scalar_division, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestQuat,
+        f"test_quat_multiplication_{dtype.__name__}",
+        test_quat_multiplication,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestQuat, f"test_indexing_{dtype.__name__}", test_indexing, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestQuat, f"test_quat_lerp_{dtype.__name__}", test_quat_lerp, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestQuat,
+        f"test_quat_to_axis_angle_grad_{dtype.__name__}",
+        test_quat_to_axis_angle_grad,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestQuat, f"test_slerp_grad_{dtype.__name__}", test_slerp_grad, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestQuat, f"test_quat_rpy_grad_{dtype.__name__}", test_quat_rpy_grad, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestQuat, f"test_quat_from_matrix_{dtype.__name__}", test_quat_from_matrix, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestQuat, f"test_quat_rotate_{dtype.__name__}", test_quat_rotate, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestQuat, f"test_quat_to_matrix_{dtype.__name__}", test_quat_to_matrix, devices=devices, dtype=dtype
+    )
+    add_function_test(
+        TestQuat, f"test_py_arithmetic_ops_{dtype.__name__}", test_py_arithmetic_ops, devices=None, dtype=dtype
+    )
 
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()
-    _ = register(unittest.TestCase)
     unittest.main(verbosity=2)

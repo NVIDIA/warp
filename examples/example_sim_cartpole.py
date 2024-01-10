@@ -28,6 +28,8 @@ wp.init()
 
 class Example:
     def __init__(self, stage=None, num_envs=1, enable_rendering=True, print_timers=True):
+        self.device = wp.get_device()
+
         builder = wp.sim.ModelBuilder()
 
         self.num_envs = num_envs
@@ -37,7 +39,7 @@ class Example:
         wp.sim.parse_urdf(
             os.path.join(os.path.dirname(__file__), "assets/cartpole.urdf"),
             articulation_builder,
-            xform=wp.transform(np.zeros(3), wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi * 0.5)),
+            xform=wp.transform(wp.vec3(), wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), -math.pi * 0.5)),
             floating=False,
             density=100,
             armature=0.1,
@@ -98,13 +100,15 @@ class Example:
 
         if self.use_graph:
             # create update graph
-            wp.capture_begin()
-            self.update()
-            self.graph = wp.capture_end()
+            wp.capture_begin(self.device)
+            try:
+                self.update()
+            finally:
+                self.graph = wp.capture_end(self.device)
 
     def update(self):
         with wp.ScopedTimer("simulate", active=True, print=self.print_timers):
-            if self.use_graph is False or self.graph is None:
+            if not self.use_graph or self.graph is None:
                 for _ in range(self.sim_substeps):
                     self.state.clear_forces()
                     self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)

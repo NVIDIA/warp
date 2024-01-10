@@ -226,9 +226,21 @@ inline CUDA_CALLABLE quat_t<Type> div(quat_t<Type> q, Type s)
 }
 
 template<typename Type>
+inline CUDA_CALLABLE quat_t<Type> div(Type s, quat_t<Type> q)
+{
+    return quat_t<Type>(s/q.x, s/q.y, s/q.z, s/q.w);
+}
+
+template<typename Type>
 inline CUDA_CALLABLE quat_t<Type> operator / (quat_t<Type> a, Type s)
 {
     return div(a,s);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE quat_t<Type> operator / (Type s, quat_t<Type> a)
+{
+    return div(s,a);
 }
 
 template<typename Type>
@@ -523,9 +535,14 @@ inline CUDA_CALLABLE void tensordot(const quat_t<Type>& a, const quat_t<Type>& b
 }
 
 template<typename Type>
-inline CUDA_CALLABLE void adj_length(const quat_t<Type>& a, quat_t<Type>& adj_a, const Type adj_ret)
+inline CUDA_CALLABLE void adj_length(const quat_t<Type>& a, Type ret, quat_t<Type>& adj_a, const Type adj_ret)
 {
-    adj_a += normalize(a)*adj_ret;
+    if (ret > Type(kEps))
+    {
+        Type inv_l = Type(1)/ret;
+
+        adj_a += quat_t<Type>(a.x*inv_l, a.y*inv_l, a.z*inv_l, a.w*inv_l) * adj_ret;
+    }
 }
 
 template<typename Type>
@@ -609,6 +626,13 @@ inline CUDA_CALLABLE void adj_div(quat_t<Type> a, Type s, quat_t<Type>& adj_a, T
 }
 
 template<typename Type>
+inline CUDA_CALLABLE void adj_div(Type s, quat_t<Type> a, Type& adj_s, quat_t<Type>& adj_a, const quat_t<Type>& adj_ret)
+{
+    adj_s -= dot(a, adj_ret)/ (s * s); // - a / s^2
+    adj_a += s / adj_ret;
+}
+
+template<typename Type>
 inline CUDA_CALLABLE void adj_quat_rotate(const quat_t<Type>& q, const vec_t<3,Type>& p, quat_t<Type>& adj_q, vec_t<3,Type>& adj_p, const vec_t<3,Type>& adj_ret)
 {
 
@@ -677,7 +701,7 @@ inline CUDA_CALLABLE void adj_quat_rotate_inv(const quat_t<Type>& q, const vec_t
 }
 
 template<typename Type>
-inline CUDA_CALLABLE void adj_quat_slerp(const quat_t<Type>& q0, const quat_t<Type>& q1, Type t, quat_t<Type>& adj_q0, quat_t<Type>& adj_q1, Type& adj_t, const quat_t<Type>& adj_ret)
+inline CUDA_CALLABLE void adj_quat_slerp(const quat_t<Type>& q0, const quat_t<Type>& q1, Type t, quat_t<Type>& ret, quat_t<Type>& adj_q0, quat_t<Type>& adj_q1, Type& adj_t, const quat_t<Type>& adj_ret)
 {
     vec_t<3,Type> axis;
     Type angle;
@@ -688,7 +712,7 @@ inline CUDA_CALLABLE void adj_quat_slerp(const quat_t<Type>& q0, const quat_t<Ty
     angle = angle * 0.5;
     
     // adj_t
-    adj_t += dot(mul(quat_slerp(q0, q1, t), quat_t<Type>(angle*axis[0], angle*axis[1], angle*axis[2], Type(0))), adj_ret);
+    adj_t += dot(mul(ret, quat_t<Type>(angle*axis[0], angle*axis[1], angle*axis[2], Type(0))), adj_ret);
 
     // adj_q0
     quat_t<Type> q_inc_x_q0;

@@ -82,7 +82,7 @@ class Tape:
             if loss.size > 1 or wp.types.type_length(loss.dtype) > 1:
                 raise RuntimeError("Can only return gradients for scalar loss functions.")
 
-            if loss.requires_grad is False:
+            if not loss.requires_grad:
                 raise RuntimeError(
                     "Scalar loss arrays should have requires_grad=True set before calling Tape.backward()"
                 )
