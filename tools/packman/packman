@@ -18,11 +18,13 @@ set -eu
 
 if echo ${PM_VERBOSITY-} | grep -i "debug" > /dev/null ; then
 	set -x
+	PM_CURL_SILENT=""
+	PM_WGET_QUIET=""
 else
 	PM_CURL_SILENT="-s -S"
 	PM_WGET_QUIET="--quiet"
 fi
-PM_PACKMAN_VERSION=7.5
+export PM_PACKMAN_VERSION=7.16
 
 # This is necessary for newer macOS
 if [ `uname` == 'Darwin' ]; then
