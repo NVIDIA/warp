@@ -2201,16 +2201,20 @@ extern "C" __global__ void {name}_cuda_kernel_forward(
 {{
     for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
          _idx < dim.size;
-         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x)) {{
-{forward_body}}}}}
+         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
+    {{
+{forward_body}    }}
+}}
 
 extern "C" __global__ void {name}_cuda_kernel_backward(
     {reverse_args})
 {{
     for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
          _idx < dim.size;
-         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x)) {{
-{reverse_body}}}}}
+         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
+    {{
+{reverse_body}    }}
+}}
 
 """
 
@@ -2313,7 +2317,9 @@ def constant_str(value):
 
             scalar_value = runtime.core.half_bits_to_float
         else:
-            scalar_value = lambda x: x
+
+            def scalar_value(x):
+                return x
 
         # list of scalar initializer values
         initlist = []
@@ -2411,103 +2417,93 @@ def codegen_struct(struct, device="cpu", indent_size=4):
     )
 
 
-def codegen_func_forward_body(adj, device="cpu", indent=4):
-    body = []
-    indent_block = " " * indent
-
-    for f in adj.blocks[0].body_forward:
-        body += [f + "\n"]
-
-    return "".join([indent_block + l for l in body])
-
-
 def codegen_func_forward(adj, func_type="kernel", device="cpu"):
-    s = ""
-
-    # primal vars
-    s += "    //---------\n"
-    s += "    // primal vars\n"
-
-    for var in adj.variables:
-        if var.constant is None:
-            s += f"    {var.ctype()} {var.emit()};\n"
-        else:
-            s += f"    const {var.ctype()} {var.emit()} = {constant_str(var.constant)};\n"
-
-    # forward pass
-    s += "    //---------\n"
-    s += "    // forward\n"
-
     if device == "cpu":
-        s += codegen_func_forward_body(adj, device=device, indent=4)
-
+        indent = 4
     elif device == "cuda":
         if func_type == "kernel":
-            s += codegen_func_forward_body(adj, device=device, indent=8)
+            indent = 8
         else:
-            s += codegen_func_forward_body(adj, device=device, indent=4)
-
-    return s
-
-
-def codegen_func_reverse_body(adj, device="cpu", indent=4, func_type="kernel"):
-    body = []
-    indent_block = " " * indent
-
-    # forward pass
-    body += ["//---------\n"]
-    body += ["// forward\n"]
-
-    for f in adj.blocks[0].body_replay:
-        body += [f + "\n"]
-
-    # reverse pass
-    body += ["//---------\n"]
-    body += ["// reverse\n"]
-
-    for l in reversed(adj.blocks[0].body_reverse):
-        body += [l + "\n"]
-
-    # In grid-stride kernels the reverse body is in a for loop
-    if device == "cuda" and func_type == "kernel":
-        body += ["continue;\n"]
-    else:
-        body += ["return;\n"]
-
-    return "".join([indent_block + l for l in body])
-
-
-def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
-    s = ""
-
-    # primal vars
-    s += "    //---------\n"
-    s += "    // primal vars\n"
-
-    for var in adj.variables:
-        if var.constant is None:
-            s += f"    {var.ctype()} {var.emit()};\n"
-        else:
-            s += f"    const {var.ctype()} {var.emit()} = {constant_str(var.constant)};\n"
-
-    # dual vars
-    s += "    //---------\n"
-    s += "    // dual vars\n"
-
-    for var in adj.variables:
-        s += f"    {var.ctype(value_type=True)} {var.emit_adj()} = {{}};\n"
-
-    if device == "cpu":
-        s += codegen_func_reverse_body(adj, device=device, indent=4)
-    elif device == "cuda":
-        if func_type == "kernel":
-            s += codegen_func_reverse_body(adj, device=device, indent=8, func_type=func_type)
-        else:
-            s += codegen_func_reverse_body(adj, device=device, indent=4, func_type=func_type)
+            indent = 4
     else:
         raise ValueError(f"Device {device} not supported for codegen")
 
-    return s
+    indent_block = " " * indent
+
+    # primal vars
+    lines = []
+    lines += ["//---------\n"]
+    lines += ["// primal vars\n"]
+
+    for var in adj.variables:
+        if var.constant is None:
+            lines += [f"{var.ctype()} {var.emit()};\n"]
+        else:
+            lines += [f"const {var.ctype()} {var.emit()} = {constant_str(var.constant)};\n"]
+
+    # forward pass
+    lines += ["//---------\n"]
+    lines += ["// forward\n"]
+
+    for f in adj.blocks[0].body_forward:
+        lines += [f + "\n"]
+
+    return "".join([indent_block + l for l in lines])
+
+
+def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
+    if device == "cpu":
+        indent = 4
+    elif device == "cuda":
+        if func_type == "kernel":
+            indent = 8
+        else:
+            indent = 4
+    else:
+        raise ValueError(f"Device {device} not supported for codegen")
+
+    indent_block = " " * indent
+
+    lines = []
+
+    # primal vars
+    lines += ["//---------\n"]
+    lines += ["// primal vars\n"]
+
+    for var in adj.variables:
+        if var.constant is None:
+            lines += [f"{var.ctype()} {var.emit()};\n"]
+        else:
+            lines += [f"const {var.ctype()} {var.emit()} = {constant_str(var.constant)};\n"]
+
+    # dual vars
+    lines += ["//---------\n"]
+    lines += ["// dual vars\n"]
+
+    for var in adj.variables:
+        lines += [f"{var.ctype(value_type=True)} {var.emit_adj()} = {{}};\n"]
+
+    # forward pass
+    lines += ["//---------\n"]
+    lines += ["// forward\n"]
+
+    for f in adj.blocks[0].body_replay:
+        lines += [f + "\n"]
+
+    # reverse pass
+    lines += ["//---------\n"]
+    lines += ["// reverse\n"]
+
+    for l in reversed(adj.blocks[0].body_reverse):
+        lines += [l + "\n"]
+
+    # In grid-stride kernels the reverse body is in a for loop
+    if device == "cuda" and func_type == "kernel":
+        lines += ["continue;\n"]
+    else:
+        lines += ["return;\n"]
+
+    return "".join([indent_block + l for l in lines])
 
 
 def codegen_func(adj, c_func_name: str, device="cpu", options={}):
