@@ -1,7 +1,7 @@
 REM @echo off
 
 REM pull packman dependencies
-call "%~dp0..\..\..\..\repo.bat" build --fetch-only %*
+call "%~dp0..\..\..\..\repo.bat" build --fetch-only --config release %*
 
 REM Use Packman python
 SET PYTHON="%~dp0..\..\..\..\_build\target-deps\python\python.exe"

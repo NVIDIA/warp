@@ -56,7 +56,7 @@ def get_packages_root(conf_dir: str) -> str:
         elif platform_name == "Darwin":
             # macOS
             root = os.path.join(
-                os.path.expanduser("~"), "/Library/Application Support/packman-cache"
+                os.path.expanduser("~"), "Library/Application Support/packman-cache"
             )
         elif platform_name == "Linux":
             try:
@@ -101,7 +101,7 @@ def get_version(conf_dir: str):
         path += ".sh"
     with open(path, "rt", encoding="utf8") as launch_file:
         for line in launch_file.readlines():
-            if line.startswith("PM_PACKMAN_VERSION"):
+            if "PM_PACKMAN_VERSION" in line:
                 _, value = line.split("=")
                 return value.strip()
     raise RuntimeError(f"Unable to find 'PM_PACKMAN_VERSION' in '{path}'")
