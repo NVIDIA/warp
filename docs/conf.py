@@ -38,6 +38,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.todo",
     "sphinx.ext.extlinks",  # Markup to shorten external links
+    "sphinx.ext.githubpages",
     # Third-party extensions:
     "sphinx_copybutton"
     # 'sphinx_tabs.tabs',
