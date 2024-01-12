@@ -53,7 +53,7 @@ def transported_inertia_form(
 
     # semi-Lagrangian advection; evaluate phi upstream
     conv_pos = pos - vel * dt
-    # lookup opertor constructs a Sample from a world position.
+    # lookup operator constructs a Sample from a world position.
     # the optional last argument provides a initial guess for the lookup
     conv_phi = phi(fem.lookup(domain, conv_pos, s))
 

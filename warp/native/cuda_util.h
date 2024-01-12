@@ -167,6 +167,6 @@ public:
 #endif // WP_ENABLE_CUDA
 
 // Pass this value to device functions as the `context` parameter to bypass unnecessary context management.
-// This works in conjuntion with ContextGuards, which do nothing if the given context is NULL.
+// This works in conjunction with ContextGuards, which do nothing if the given context is NULL.
 // Using this variable instead of passing NULL directly aids readability and makes the intent clear.
 constexpr void* WP_CURRENT_CONTEXT = NULL;

@@ -1871,7 +1871,7 @@ class array(Array):
         return array._vars
 
     def zero_(self):
-        """Zeroes-out the array entires."""
+        """Zeroes-out the array entries."""
         if self.is_contiguous:
             # simple memset is usually faster than generic fill
             self.device.memset(self.ptr, 0, self.size * type_size_in_bytes(self.dtype))

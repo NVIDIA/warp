@@ -637,14 +637,14 @@ Transformations
 
 .. function:: transform_point(t: Transformation[Scalar], p: Vector[3,Scalar]) -> Vector[3,Scalar]
 
-   Apply the transform to a point ``p`` treating the homogenous coordinate as w=1 (translation and rotation).
+   Apply the transform to a point ``p`` treating the homogeneous coordinate as w=1 (translation and rotation).
 
 
 .. function:: transform_point(m: Matrix[4,4,Scalar], p: Vector[3,Scalar]) -> Vector[3,Scalar]
    :noindex:
    :nocontentsentry:
 
-   Apply the transform to a point ``p`` treating the homogenous coordinate as w=1.
+   Apply the transform to a point ``p`` treating the homogeneous coordinate as w=1.
    The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``.
    Note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``.
    If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
@@ -653,14 +653,14 @@ Transformations
 
 .. function:: transform_vector(t: Transformation[Scalar], v: Vector[3,Scalar]) -> Vector[3,Scalar]
 
-   Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0 (rotation only).
+   Apply the transform to a vector ``v`` treating the homogeneous coordinate as w=0 (rotation only).
 
 
 .. function:: transform_vector(m: Matrix[4,4,Scalar], v: Vector[3,Scalar]) -> Vector[3,Scalar]
    :noindex:
    :nocontentsentry:
 
-   Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0.
+   Apply the transform to a vector ``v`` treating the homogeneous coordinate as w=0.
    The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``.
    If the transform is coming from a library that uses row-vectors, then users should transpose the transformation

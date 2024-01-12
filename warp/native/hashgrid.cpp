@@ -93,8 +93,8 @@ void hash_grid_reserve_host(uint64_t id, int num_points)
         free_host(grid->point_ids);
         
         const int num_to_alloc = num_points*3/2;
-        grid->point_cells = (int*)alloc_host(2*num_to_alloc*sizeof(int));  // *2 for auxilliary radix buffers
-        grid->point_ids = (int*)alloc_host(2*num_to_alloc*sizeof(int));    // *2 for auxilliary radix buffers
+        grid->point_cells = (int*)alloc_host(2*num_to_alloc*sizeof(int));  // *2 for auxiliary radix buffers
+        grid->point_ids = (int*)alloc_host(2*num_to_alloc*sizeof(int));    // *2 for auxiliary radix buffers
 
         grid->max_points = num_to_alloc;
     }
@@ -212,8 +212,8 @@ void hash_grid_reserve_device(uint64_t id, int num_points)
             free_device(WP_CURRENT_CONTEXT, grid.point_ids);
             
             const int num_to_alloc = num_points*3/2;
-            grid.point_cells = (int*)alloc_device(WP_CURRENT_CONTEXT, 2*num_to_alloc*sizeof(int));  // *2 for auxilliary radix buffers
-            grid.point_ids = (int*)alloc_device(WP_CURRENT_CONTEXT, 2*num_to_alloc*sizeof(int));    // *2 for auxilliary radix buffers
+            grid.point_cells = (int*)alloc_device(WP_CURRENT_CONTEXT, 2*num_to_alloc*sizeof(int));  // *2 for auxiliary radix buffers
+            grid.point_ids = (int*)alloc_device(WP_CURRENT_CONTEXT, 2*num_to_alloc*sizeof(int));    // *2 for auxiliary radix buffers
             grid.max_points = num_to_alloc;
 
             // ensure we pre-size our sort routine to avoid

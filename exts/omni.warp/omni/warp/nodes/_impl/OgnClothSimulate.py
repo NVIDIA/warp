@@ -198,7 +198,7 @@ class InternalState:
             edge_kd=db.inputs.clothEdgeDampingStiffness * db.inputs.globalScale,
         )
 
-        # Set a uniform mass to avoid large discrepencies.
+        # Set a uniform mass to avoid large discrepancies.
         avg_mass = np.mean(builder.particle_mass)
         builder.particle_mass = np.full(
             (len(builder.particle_mass),),

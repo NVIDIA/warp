@@ -19,7 +19,7 @@ class PicQuadrature(Quadrature):
     Useful for Particle-In-Cell and derived methods.
 
     Args:
-        domain: Undelying domain for the qaudrature
+        domain: Underlying domain for the quadrature
         positions: Either an array containing the world positions of all particles, or a tuple of arrays containing
          the cell indices and coordinates for each particle. Note that the former requires the underlying geometry to
          define a global :meth:`Geometry.cell_lookup` method; currently this is only available for :class:`Grid2D` and :class:`Grid3D`.

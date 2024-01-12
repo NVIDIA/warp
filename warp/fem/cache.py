@@ -180,7 +180,7 @@ def cached_mat_type(shape, dtype):
 class Temporary:
     """Handle over a temporary array from a :class:`TemporaryStore`.
 
-    The array will be automatically returned to the temporary pool for re-use upon destruction of this object, unless
+    The array will be automatically returned to the temporary pool for reuse upon destruction of this object, unless
     the temporary is explicitly detached from the pool using :meth:`detach`.
     The temporary may also be explicitly returned to the pool before destruction using :meth:`release`.
     """
@@ -345,14 +345,14 @@ def borrow_temporary(
     Borrows and returns a temporary array with specified attributes from a shared pool.
 
     If an array with sufficient capacity and matching desired attributes is already available in the pool, it will be returned.
-    Otherwise, a new allocation wil be performed.
+    Otherwise, a new allocation will be performed.
 
     Args:
         temporary_store: the shared pool to borrow the temporary from. If `temporary_store` is ``None``, the global default temporary store, if set, will be used.
         shape: desired dimensions for the temporary array
         dtype: desired data type for the temporary array
         pinned: whether a pinned allocation is desired
-        device: device on which the momory should be allocated; if ``None``, the current device will be used.
+        device: device on which the memory should be allocated; if ``None``, the current device will be used.
     """
 
     if temporary_store is None:

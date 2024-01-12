@@ -9,11 +9,11 @@
 - Add `wp.frac()` for returning the fractional part of a floating point value
 - Add support for custom native CUDA snippets using `@wp.func_native` decorator
 - Add support for batched matmul with batch size > 2^16-1
-- Add support for tranposed CUTLASS `wp.matmul()` and additional error checking
+- Add support for transposed CUTLASS `wp.matmul()` and additional error checking
 - Add support for quad and hex meshes in `wp.fem`
 - Detect and warn when C++ runtime doesn't match compiler during build, e.g.: libstdc++.so.6: version `GLIBCXX_3.4.30' not found
 - Documentation update for `wp.BVH`
-- Documentaiton and simplified API for runtime kernel specialization `wp.Kernel`
+- Documentation and simplified API for runtime kernel specialization `wp.Kernel`
 
 ## [1.0.0-beta.4] - 2023-11-01
 
@@ -88,7 +88,7 @@
   - `wp.sparse.bsr_zeros()`, `wp.sparse.bsr_set_from_triplets()` for construction
   - `wp.sparse.bsr_mm()`, `wp.sparse_bsr_mv()` for matrix-matrix and matrix-vector products respectively
 - Add array-wide utilities:
-  - `wp.utils.array_scan()` - prefix sum (inclusive or exlusive)
+  - `wp.utils.array_scan()` - prefix sum (inclusive or exclusive)
   - `wp.utils.array_sum()` - sum across array
   - `wp.utils.radix_sort_pairs()` - in-place radix sort (key,value) pairs
 - Add support for calling `@wp.func` functions from Python (outside of kernel scope)
@@ -200,7 +200,7 @@
 - Fix capture of `wp.func` and `wp.constant` types from inside Python closures
 - Fix for CUDA on WSL 
 - Fix for matrices in structs
-- Fix for tranpose indexing for some non-square matrices
+- Fix for transpose indexing for some non-square matrices
 - Enable Python faulthandler by default
 - Update to VS2019
 
@@ -311,7 +311,7 @@ Breaking Changes
 - Add NVDB volume allocation API, see `wp.Volume.allocate()`, and `wp.Volume.allocate_by_tiles()`
 - Add NVDB volume write methods, see `wp.volume_store_i()`, `wp.volume_store_f()`, `wp.volume_store_v()`
 - Add MGPU documentation
-- Add example showing how to compute Jacobian of multiple environements in parallel, see `example_jacobian_ik.py`
+- Add example showing how to compute Jacobian of multiple environments in parallel, see `example_jacobian_ik.py`
 - Add `wp.Tape.zero()` support for `wp.struct` types
 - Make SampleBrowser an optional dependency for Kit extension
 - Make `wp.Mesh` object accept both 1d and 2d arrays of face vertex indices
@@ -401,7 +401,7 @@ Breaking Changes
 - Add support for retrieving a single row from builtin types, e.g.: `r = m33[i]`
 - Add  `wp.log2()` and `wp.log10()` builtins
 - Add support for quickly instancing `wp.sim.ModelBuilder` objects to improve env. creation performance for RL
-- Remove custom CUB version and improve compatability with CUDA 11.7
+- Remove custom CUB version and improve compatibility with CUDA 11.7
 - Fix to preserve external user-gradients when calling `wp.Tape.zero()`
 - Fix to only allocate gradient of a Torch tensor if `requires_grad=True`
 - Fix for missing `wp.mat22` constructor adjoint
@@ -440,7 +440,7 @@ Breaking Changes
 - Add support for overloading `@wp.func` functions based on argument type
 - Add support for calling built-in functions directly from Python interpreter outside kernels (experimental)
 - Add support for auto-complete and docstring lookup for builtins in IDEs like VSCode, PyCharm, etc
-- Add support for doing partial array copys, see `wp.copy()` for details
+- Add support for doing partial array copies, see `wp.copy()` for details
 - Add support for accessing mesh data directly in kernels, see `wp.mesh_get_point()`, `wp.mesh_get_index()`, `wp.mesh_eval_face_normal()`
 - Change to only compile for targets where kernel is launched (e.g.: will not compile CPU unless explicitly requested)
 
@@ -578,7 +578,7 @@ Breaking Changes
 
 ## [0.1.19] - 2021-10-15
 
-- Publish from 2021.3 to avoid omni.graph database incompatabilities
+- Publish from 2021.3 to avoid omni.graph database incompatibilities
 
 ## [0.1.18] - 2021-10-08
 

@@ -116,7 +116,7 @@ Introductory examples
 
 ``warp.fem`` ships with a list of examples in the ``examples/fem`` directory illustrating common model problems.
 
- - ``example_diffusion.py``: 2D diffusion with homogenous Neumann and Dirichlet boundary conditions
+ - ``example_diffusion.py``: 2D diffusion with homogeneous Neumann and Dirichlet boundary conditions
      * ``example_diffusion_3d.py``: 3D variant of the diffusion problem
  - ``example_convection_diffusion.py``: 2D convection-diffusion using semi-Lagrangian advection
      * ``example_diffusion_dg0.py``: 2D convection-diffusion using finite-volume and upwind transport
@@ -181,7 +181,7 @@ Memory management
 
 Several ``warp.fem`` functions require allocating temporary buffers to perform their computations. 
 If such functions are called many times in a tight loop, those many allocations and de-allocations may degrade performance.
-To overcome this issue, a :class:`.cache.TemporaryStore` object may be created to persist and re-use temporary allocations across calls,
+To overcome this issue, a :class:`.cache.TemporaryStore` object may be created to persist and reuse temporary allocations across calls,
 either globally using :func:`set_default_temporary_store` or at a per-function granularity using the corresponding argument.
 
 .. _Operators:

@@ -248,7 +248,7 @@ CUDA_CALLABLE inline void adj_mlp(const array_t<float>& weights, const array_t<f
             tmp += weights.data[i*n + j]*x.data[index + b*j];
         }
 
-        // adjoint w.r.t to acivation
+        // adjoint w.r.t to activation
         float adj_f = 0.0f;
     
         if (adj_out.data)
@@ -313,7 +313,7 @@ CUDA_CALLABLE inline void adj_mlp(const array_t<float>& weights, const array_t<f
 //             tmp += weights[i*n + j]*x[index + b*j];            
 //         }
 
-//         // adjoint w.r.t to acivation
+//         // adjoint w.r.t to activation
 //         float adj_f = 0.0f;
 //         adj_activation(tmp, adj_f, adj_out[index + b*i]);
 
