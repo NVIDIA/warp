@@ -9,6 +9,7 @@ import ctypes
 import ctypes.util
 import os
 import sys
+import time
 import unittest
 
 import numpy as np
@@ -340,3 +341,222 @@ class TeamCityTestRunner(unittest.TextTestRunner):
                 print("##teamcity[buildStatus status='FAILURE']")
 
         return result
+
+
+def write_junit_results(
+    outfile: str,
+    test_records: list,
+    tests_run: int,
+    tests_failed: int,
+    tests_errored: int,
+    tests_skipped: int,
+    test_duration: float,
+):
+    """Write a JUnit XML from our report data
+
+    The report file is needed for GitLab to add test reports in merge requests.
+    """
+
+    import xml.etree.ElementTree as ET
+
+    root = ET.Element(
+        "testsuites",
+        name="Warp Tests",
+        failures=str(tests_failed),
+        errors=str(tests_errored),
+        skipped=str(tests_skipped),
+        tests=str(tests_run),
+        time=f"{test_duration:.3f}",
+    )
+
+    for test_data in test_records:
+        test = test_data[0]
+        test_duration = test_data[1]
+        test_status = test_data[2]
+
+        test_case = ET.SubElement(
+            root, "testcase", classname=test.__class__.__name__, name=test._testMethodName, time=f"{test_duration:.3f}"
+        )
+
+        if test_status == "FAIL":
+            failure = ET.SubElement(test_case, "failure", message=str(test_data[3]))
+            failure.text = str(test_data[4])  # Stacktrace
+        elif test_status == "ERROR":
+            error = ET.SubElement(test_case, "error")
+            error.text = str(test_data[4])  # Stacktrace
+        elif test_status == "SKIP":
+            skip = ET.SubElement(test_case, "skipped")
+            skip.text = str(test_data[3])  # The skip reason
+
+    tree = ET.ElementTree(root)
+
+    if hasattr(ET, "indent"):
+        ET.indent(root)  # Pretty-printed XML output, Python 3.9 required
+
+    tree.write(outfile, encoding="utf-8", xml_declaration=True)
+
+
+class ParallelJunitTestResult(unittest.TextTestResult):
+    def __init__(self, stream, descriptions, verbosity):
+        stream = type(stream)(sys.stderr)
+        self.test_record = []
+        super().__init__(stream, descriptions, verbosity)
+
+    def startTest(self, test):
+        if self.showAll:
+            self.stream.writeln(f"{self.getDescription(test)} ...")
+            self.stream.flush()
+        self.start_time = time.perf_counter_ns()
+        super(unittest.TextTestResult, self).startTest(test)
+
+    def _add_helper(self, test, dots_message, show_all_message):
+        if self.showAll:
+            self.stream.writeln(f"{self.getDescription(test)} ... {show_all_message}")
+        elif self.dots:
+            self.stream.write(dots_message)
+        self.stream.flush()
+
+    def _record_test(self, test, code, message=None, details=None):
+        duration = round((time.perf_counter_ns() - self.start_time) * 1e-9, 3)  # [s]
+        self.test_record.append((test, duration, code, message, details))
+
+    def addSuccess(self, test):
+        super(unittest.TextTestResult, self).addSuccess(test)
+        self._add_helper(test, ".", "ok")
+        self._record_test(test, "OK")
+
+    def addError(self, test, err):
+        super(unittest.TextTestResult, self).addError(test, err)
+        self._add_helper(test, "E", "ERROR")
+        self._record_test(test, "ERROR", str(err[1]), self._exc_info_to_string(err, test))
+
+    def addFailure(self, test, err):
+        super(unittest.TextTestResult, self).addFailure(test, err)
+        self._add_helper(test, "F", "FAIL")
+        self._record_test(test, "FAIL", str(err[1]), self._exc_info_to_string(err, test))
+
+    def addSkip(self, test, reason):
+        super(unittest.TextTestResult, self).addSkip(test, reason)
+        self._add_helper(test, "s", f"skipped {reason!r}")
+        self._record_test(test, "SKIP", reason)
+
+    def addExpectedFailure(self, test, err):
+        super(unittest.TextTestResult, self).addExpectedFailure(test, err)
+        self._add_helper(test, "x", "expected failure")
+        self._record_test(test, "OK", "expected failure")
+
+    def addUnexpectedSuccess(self, test):
+        super(unittest.TextTestResult, self).addUnexpectedSuccess(test)
+        self._add_helper(test, "u", "unexpected success")
+        self._record_test(test, "FAIL", "unexpected success")
+
+    def addSubTest(self, test, subtest, err):
+        super(unittest.TextTestResult, self).addSubTest(test, subtest, err)
+        if err is not None:
+            self._add_helper(test, "E", "ERROR")
+            # err is (class, error, traceback)
+            self._record_test(test, "FAIL", str(err[1]), self._exc_info_to_string(err, test))
+
+    def printErrors(self):
+        pass
+
+
+def _tc_escape(s):
+    """Modifies strings so they can be used in TeamCity log messages."""
+    s = s.replace("|", "||")
+    s = s.replace("\n", "|n")
+    s = s.replace("\r", "|r")
+    s = s.replace("'", "|'")
+    s = s.replace("[", "|[")
+    s = s.replace("]", "|]")
+    return s
+
+
+class ParallelTeamCityTestResult(unittest.TextTestResult):
+    def __init__(self, stream, descriptions, verbosity):
+        stream = type(stream)(sys.stderr)
+        super().__init__(stream, descriptions, verbosity)
+        self.test_record = []
+
+    def startTest(self, test):
+        if self.showAll:
+            self.stream.writeln(f"{self.getDescription(test)} ...")
+            self.stream.flush()
+        self.start_time = time.perf_counter_ns()
+        super(unittest.TextTestResult, self).startTest(test)
+
+    def _add_helper(self, test, dots_message, show_all_message):
+        if self.showAll:
+            self.stream.writeln(f"{self.getDescription(test)} ... {show_all_message}")
+        elif self.dots:
+            self.stream.write(dots_message)
+        self.stream.flush()
+
+    def addSuccess(self, test):
+        super(unittest.TextTestResult, self).addSuccess(test)
+        self._add_helper(test, ".", "ok")
+        self.reportSuccess(test)
+
+    def addError(self, test, err):
+        super(unittest.TextTestResult, self).addError(test, err)
+        self._add_helper(test, "E", "ERROR")
+        self.reportFailure(test, err)
+
+    def addFailure(self, test, err):
+        super(unittest.TextTestResult, self).addFailure(test, err)
+        self._add_helper(test, "F", "FAIL")
+        self.reportFailure(test, err)
+
+    def addSkip(self, test, reason):
+        super(unittest.TextTestResult, self).addSkip(test, reason)
+        self._add_helper(test, "s", f"skipped {reason!r}")
+        self.reportIgnored(test, reason)
+
+    def addExpectedFailure(self, test, err):
+        super(unittest.TextTestResult, self).addExpectedFailure(test, err)
+        self._add_helper(test, "x", "expected failure")
+        self.reportSuccess(test)
+
+    def addUnexpectedSuccess(self, test):
+        super(unittest.TextTestResult, self).addUnexpectedSuccess(test)
+        self._add_helper(test, "u", "unexpected success")
+        self.reportFailure(test, "unexpected success")
+
+    def addSubTest(self, test, subtest, err):
+        super(unittest.TextTestResult, self).addSubTest(test, subtest, err)
+        if err is not None:
+            self._add_helper(test, "E", "ERROR")
+            self.reportSubTestFailure(test, err)
+
+    def printErrors(self):
+        pass
+
+    def reportIgnored(self, test, reason):
+        test_id = test.id()
+        self.stream.writeln(f"##teamcity[testIgnored name='{test_id}' message='{_tc_escape(str(reason))}']")
+        self.stream.flush()
+
+    def reportSuccess(self, test):
+        duration = round((time.perf_counter_ns() - self.start_time) / 1e6)  # [ms]
+        test_id = test.id()
+        self.stream.writeln(f"##teamcity[testStarted name='{test_id}']")
+        self.stream.writeln(f"##teamcity[testFinished name='{test_id}' duration='{duration}']")
+        self.stream.flush()
+
+    def reportFailure(self, test, err):
+        test_id = test.id()
+        self.stream.writeln(f"##teamcity[testStarted name='{test_id}']")
+        self.stream.writeln(
+            f"##teamcity[testFailed name='{test_id}' message='{_tc_escape(str(err[1]))}' details='{_tc_escape(self._exc_info_to_string(err, test))}']"
+        )
+        self.stream.writeln(f"##teamcity[testFinished name='{test_id}']")
+        self.stream.flush()
+
+    def reportSubTestFailure(self, test, err):
+        test_id = test.id()
+        self.stream.writeln(f"##teamcity[testStarted name='{test_id}']")
+        self.stream.writeln(
+            f"##teamcity[testFailed name='{test_id}' message='{_tc_escape(str(err[1]))}' details='{_tc_escape(self._exc_info_to_string(err, test))}']"
+        )
+        self.stream.writeln(f"##teamcity[testFinished name='{test_id}']")
+        self.stream.flush()

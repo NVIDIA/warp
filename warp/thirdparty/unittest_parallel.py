@@ -27,6 +27,11 @@ from contextlib import contextmanager
 from io import StringIO
 
 import warp.tests.unittest_suites  # NVIDIA Modification
+from warp.tests.unittest_utils import (  # NVIDIA modification
+    ParallelJunitTestResult,
+    ParallelTeamCityTestResult,
+    write_junit_results,
+)
 
 try:
     import coverage
@@ -71,6 +76,9 @@ def main(argv=None):
         metavar="TOP",
         help="Top level directory of project (defaults to start directory)",
     )
+    parser.add_argument(
+        "--junit-report-xml", metavar="FILE", help="Generate JUnit report format XML file"
+    )  # NVIDIA Modification
     group_parallel = parser.add_argument_group("parallelization options")
     group_parallel.add_argument(
         "-j",
@@ -233,6 +241,7 @@ def main(argv=None):
         skipped = 0
         expected_failures = 0
         unexpected_successes = 0
+        test_records = []  # NVIDIA Modification
         for result in results:
             tests_run += result[0]
             errors.extend(result[1])
@@ -240,6 +249,7 @@ def main(argv=None):
             skipped += result[3]
             expected_failures += result[4]
             unexpected_successes += result[5]
+            test_records += result[6]  # NVIDIA Modification
         is_success = not (errors or failures or unexpected_successes)
 
         # Compute test info
@@ -270,6 +280,18 @@ def main(argv=None):
         print(f'Ran {tests_run} {"tests" if tests_run > 1 else "test"} in {test_duration:.3f}s', file=sys.stderr)
         print(file=sys.stderr)
         print(f'{"OK" if is_success else "FAILED"}{" (" + ", ".join(infos) + ")" if infos else ""}', file=sys.stderr)
+
+        if test_records and args.junit_report_xml:
+            # NVIDIA modification to report results in Junit XML format
+            write_junit_results(
+                args.junit_report_xml,
+                test_records,
+                tests_run,
+                len(failures) + unexpected_successes,
+                len(errors),
+                skipped,
+                test_duration,
+            )
 
         # Return an error status on failure
         if not is_success:
@@ -379,13 +401,20 @@ class ParallelTestManager:
         if self.failfast.is_set():
             return [0, [], [], 0, 0, 0]
 
+        # NVIDIA Modification for TeamCity and GitLab
+
+        if RUNNING_IN_TEAMCITY:
+            resultclass = ParallelTeamCityTestResult
+        elif self.args.junit_report_xml:
+            resultclass = ParallelJunitTestResult
+        else:
+            resultclass = ParallelTextTestResult
+
         # Run unit tests
         with _coverage(self.args, self.temp_dir):
             runner = unittest.TextTestRunner(
                 stream=StringIO(),
-                resultclass=ParallelTeamCityTestResult
-                if RUNNING_IN_TEAMCITY
-                else ParallelTextTestResult,  # NVIDIA Modification for TC
+                resultclass=resultclass,  # NVIDIA Modification for TC
                 verbosity=self.args.verbose,
                 failfast=self.args.failfast,
                 buffer=self.args.buffer,
@@ -396,6 +425,11 @@ class ParallelTestManager:
             if result.shouldStop:
                 self.failfast.set()
 
+            # Clean up kernel cache (NVIDIA modification)
+            import warp as wp
+
+            wp.build.clear_kernel_cache()
+
             # Return (test_count, errors, failures, skipped_count, expected_failure_count, unexpected_success_count)
             return (
                 result.testsRun,
@@ -404,6 +438,7 @@ class ParallelTestManager:
                 len(result.skipped),
                 len(result.expectedFailures),
                 len(result.unexpectedSuccesses),
+                result.test_record,  # NVIDIA modification
             )
 
     @staticmethod
@@ -422,6 +457,7 @@ class ParallelTextTestResult(unittest.TextTestResult):
     def __init__(self, stream, descriptions, verbosity):
         stream = type(stream)(sys.stderr)
         super().__init__(stream, descriptions, verbosity)
+        self.test_record = []  # NVIDIA modification
 
     def startTest(self, test):
         if self.showAll:
@@ -464,125 +500,28 @@ class ParallelTextTestResult(unittest.TextTestResult):
         pass
 
 
-# NVIDIA Modifications from here until end of file
-
-
 def set_worker_cache(args, temp_dir):
-    """This function is run at the start of ever new process. It changes the Warp cache to avoid conflicts."""
+    """Change the Warp cache to avoid conflicts.
+    This function is run at the start of every new process. (NVIDIA modification)
+    If the environment variable `WARP_CACHE_ROOT` is detected, the cache will be placed in the provided path.
+    """
 
     with _coverage(args, temp_dir):
         import warp as wp
         from warp.thirdparty import appdirs
 
         pid = os.getpid()
-        cache_root_dir = appdirs.user_cache_dir(
-            appname="warp", appauthor="NVIDIA Corporation", version=f"{wp.config.version}-{pid}"
-        )
+
+        if "WARP_CACHE_ROOT" in os.environ:
+            cache_root_dir = os.path.join(os.getenv("WARP_CACHE_ROOT"), f"{wp.config.version}-{pid}")
+        else:
+            cache_root_dir = appdirs.user_cache_dir(
+                appname="warp", appauthor="NVIDIA Corporation", version=f"{wp.config.version}-{pid}"
+            )
 
         wp.config.kernel_cache_dir = cache_root_dir
 
         wp.build.clear_kernel_cache()
-
-
-def _tc_escape(s):
-    s = s.replace("|", "||")
-    s = s.replace("\n", "|n")
-    s = s.replace("\r", "|r")
-    s = s.replace("'", "|'")
-    s = s.replace("[", "|[")
-    s = s.replace("]", "|]")
-    return s
-
-
-class ParallelTeamCityTestResult(unittest.TextTestResult):
-    def __init__(self, stream, descriptions, verbosity):
-        stream = type(stream)(sys.stderr)
-        super().__init__(stream, descriptions, verbosity)
-
-    def startTest(self, test):
-        if self.showAll:
-            self.stream.writeln(f"{self.getDescription(test)} ...")
-            self.stream.flush()
-        self.start_time = time.perf_counter_ns()
-        super(unittest.TextTestResult, self).startTest(test)
-
-    def _add_helper(self, test, dots_message, show_all_message):
-        if self.showAll:
-            self.stream.writeln(f"{self.getDescription(test)} ... {show_all_message}")
-        elif self.dots:
-            self.stream.write(dots_message)
-        self.stream.flush()
-
-    def addSuccess(self, test):
-        super(unittest.TextTestResult, self).addSuccess(test)
-        self._add_helper(test, ".", "ok")
-        self.reportSuccess(test)
-
-    def addError(self, test, err):
-        super(unittest.TextTestResult, self).addError(test, err)
-        self._add_helper(test, "E", "ERROR")
-        self.reportFailure(test, err)
-
-    def addFailure(self, test, err):
-        super(unittest.TextTestResult, self).addFailure(test, err)
-        self._add_helper(test, "F", "FAIL")
-        self.reportFailure(test, err)
-
-    def addSkip(self, test, reason):
-        super(unittest.TextTestResult, self).addSkip(test, reason)
-        self._add_helper(test, "s", f"skipped {reason!r}")
-        self.reportIgnored(test, reason)
-
-    def addExpectedFailure(self, test, err):
-        super(unittest.TextTestResult, self).addExpectedFailure(test, err)
-        self._add_helper(test, "x", "expected failure")
-        self.reportSuccess(test)
-
-    def addUnexpectedSuccess(self, test):
-        super(unittest.TextTestResult, self).addUnexpectedSuccess(test)
-        self._add_helper(test, "u", "unexpected success")
-        self.reportFailure(test, "unexpected success")
-
-    def addSubTest(self, test, subtest, err):
-        super(unittest.TextTestResult, self).addSubTest(test, subtest, err)
-        if err is not None:
-            self._add_helper(test, "E", "ERROR")
-            self.reportSubTestFailure(test, err)
-
-    def printErrors(self):
-        pass
-
-    def reportIgnored(self, test, reason):
-        test_id = test.id()
-        reason_str = str(reason)
-        print(reason_str)
-        self.stream.writeln(f"##teamcity[testIgnored name='{test_id}' message='{_tc_escape(str(reason))}']")
-        self.stream.flush()
-
-    def reportSuccess(self, test):
-        duration = round((time.perf_counter_ns() - self.start_time) / 1e6)  # [ms]
-        test_id = test.id()
-        self.stream.writeln(f"##teamcity[testStarted name='{test_id}']")
-        self.stream.writeln(f"##teamcity[testFinished name='{test_id}' duration='{duration}']")
-        self.stream.flush()
-
-    def reportFailure(self, test, err):
-        test_id = test.id()
-        self.stream.writeln(f"##teamcity[testStarted name='{test_id}']")
-        self.stream.writeln(
-            f"##teamcity[testFailed name='{test_id}' message='{_tc_escape(str(err[1]))}' details='{_tc_escape(str(err[2]))}']"
-        )
-        self.stream.writeln(f"##teamcity[testFinished name='{test_id}']")
-        self.stream.flush()
-
-    def reportSubTestFailure(self, test, err):
-        test_id = test.id()
-        self.stream.writeln(f"##teamcity[testStarted name='{test_id}']")
-        self.stream.writeln(
-            f"##teamcity[testFailed name='{test_id}' message='{_tc_escape(str(err[1]))}' details='{_tc_escape(self._exc_info_to_string(err, test))}']"
-        )
-        self.stream.writeln(f"##teamcity[testFinished name='{test_id}']")
-        self.stream.flush()
 
 
 if __name__ == "__main__":  # pragma: no cover
