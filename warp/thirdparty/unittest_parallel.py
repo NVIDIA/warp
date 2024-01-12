@@ -79,6 +79,14 @@ def main(argv=None):
     parser.add_argument(
         "--junit-report-xml", metavar="FILE", help="Generate JUnit report format XML file"
     )  # NVIDIA Modification
+    parser.add_argument(
+        "-s",
+        "--suite",
+        type=str,
+        default="auto",
+        choices=["auto", "custom", "kit"],
+        help="Name of the test suite to run (default is 'auto').",
+    )  # NVIDIA Modification
     group_parallel = parser.add_argument_group("parallelization options")
     group_parallel.add_argument(
         "-j",
@@ -155,10 +163,17 @@ def main(argv=None):
             test_loader = unittest.TestLoader()
             if args.testNamePatterns:
                 test_loader.testNamePatterns = args.testNamePatterns
-            discover_suite = warp.tests.unittest_suites.auto_discover_suite(
+
+            auto_discover_suite = warp.tests.unittest_suites.auto_discover_suite(
                 test_loader, args.pattern
             )  # NVIDIA Modification
-            # discover_suite = warp.tests.unittest_suites.explicit_suite()
+
+            # NVIDIA Modification
+            if args.suite != "auto":
+                # Print notices for test classes missing from the suite when compared to auto-discovered tests
+                discover_suite = warp.tests.unittest_suites.compare_unittest_suites(args.suite, auto_discover_suite)
+            else:
+                discover_suite = auto_discover_suite
 
         # Get the parallelizable test suites
         if args.level == "test":
