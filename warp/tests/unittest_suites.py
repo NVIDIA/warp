@@ -12,6 +12,7 @@ can be used in parallel or serial unit tests (with optional code coverage)
 """
 
 import os
+import sys
 import unittest
 
 START_DIRECTORY = os.path.realpath(os.path.dirname(__file__))
@@ -35,7 +36,49 @@ def auto_discover_suite(loader=unittest.defaultTestLoader, pattern="test*.py"):
     return loader.discover(start_dir=START_DIRECTORY, pattern=pattern, top_level_dir=TOP_LEVEL_DIRECTORY)
 
 
-def explicit_suite():
+def _iter_class_suites(test_suite):
+    """Iterate class-level test suites - test suites that contains test cases
+
+    From unittest_parallel.py
+    """
+    has_cases = any(isinstance(suite, unittest.TestCase) for suite in test_suite)
+    if has_cases:
+        yield test_suite
+    else:
+        for suite in test_suite:
+            yield from _iter_class_suites(suite)
+
+
+def compare_unittest_suites(test_suite_name: str, reference_suite: unittest.TestSuite) -> None:
+    """Prints the tests in `test_suite` that are not in `reference_suite`."""
+
+    test_suite_fn = getattr(sys.modules[__name__], test_suite_name + "_suite")
+
+    test_suite = test_suite_fn()
+
+    test_suite_classes_str = set(
+        type(test_suite._tests[0]).__name__
+        for test_suite in list(_iter_class_suites(test_suite))
+        if test_suite.countTestCases() > 0
+    )
+
+    reference_suite_classes_str = set(
+        type(test_suite._tests[0]).__name__
+        for test_suite in list(_iter_class_suites(reference_suite))
+        if test_suite.countTestCases() > 0
+    )
+
+    set_difference = reference_suite_classes_str - test_suite_classes_str
+
+    if len(set_difference) > 0:
+        print(f"Test suite '{test_suite_name}' omits the following test classes:")
+        for test_entry in set_difference:
+            print(f"    {test_entry}")
+
+    return test_suite
+
+
+def custom_suite():
     """Example of a manually constructed test suite.
 
     Intended to be modified to create additional test suites
@@ -60,7 +103,7 @@ def explicit_suite():
     from warp.tests.test_examples import TestExamples, TestFemExamples, TestSimExamples
     from warp.tests.test_fabricarray import TestFabricArray
     from warp.tests.test_fast_math import TestFastMath
-    from warp.tests.test_fem import TestFem
+    from warp.tests.test_fem import TestFem, TestFemShapeFunctions
     from warp.tests.test_fp16 import TestFp16
     from warp.tests.test_func import TestFunc
     from warp.tests.test_generics import TestGenerics
@@ -140,6 +183,7 @@ def explicit_suite():
         TestFabricArray,
         TestFastMath,
         TestFem,
+        TestFemShapeFunctions,
         TestFp16,
         TestFunc,
         TestGenerics,
@@ -226,7 +270,7 @@ def kit_suite():
     from warp.tests.test_matmul_lite import TestMatmulLite
     from warp.tests.test_mesh import TestMesh
     from warp.tests.test_mesh_query_aabb import TestMeshQueryAABBMethods
-    from warp.tests.test_mesh_query_point import TestMeshQuery
+    from warp.tests.test_mesh_query_point import TestMeshQueryPoint
     from warp.tests.test_mesh_query_ray import TestMeshQueryRay
     from warp.tests.test_modules_lite import TestModuleLite
     from warp.tests.test_noise import TestNoise
@@ -268,7 +312,7 @@ def kit_suite():
         TestMatmulLite,
         TestMesh,
         TestMeshQueryAABBMethods,
-        TestMeshQuery,
+        TestMeshQueryPoint,
         TestMeshQueryRay,
         TestModuleLite,
         TestNoise,
