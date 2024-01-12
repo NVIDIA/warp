@@ -7,6 +7,7 @@ SCRIPT_DIR=$(dirname ${BASH_SOURCE})
 PYTHON="$SCRIPT_DIR/../../../../_build/target-deps/python/python"
 
 echo "Installing test dependencies"
+$PYTHON -m pip install coverage[toml]
 #$PYTHON -m pip install matplotlib
 #$PYTHON -m pip install usd-core
 #$PYTHON -m pip install torch --extra-index-url https://download.pytorch.org/whl/cu113

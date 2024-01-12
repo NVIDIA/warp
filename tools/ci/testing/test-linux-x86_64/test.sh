@@ -19,7 +19,7 @@ fi
 $PYTHON -m pip install --upgrade pip
 $PYTHON -m pip install matplotlib
 $PYTHON -m pip install usd-core
-$PYTHON -m pip install coverage
+$PYTHON -m pip install coverage[toml]
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
     $PYTHON -m pip install torch --extra-index-url https://download.pytorch.org/whl/cu115
     $PYTHON -m pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html

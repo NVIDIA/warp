@@ -41,6 +41,13 @@ readme = {file = ["README.md"], content-type = "text/markdown"}
 
 [tool.black]
 line-length = 120
+extend-exclude = '''
+(
+  warp/native/cutlass/
+  | warp/thirdparty/appdirs.py
+  | warp/thirdparty/dlpack.py
+)
+'''
 
 [tool.isort]
 profile = "black"

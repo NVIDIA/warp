@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+if [ "$CI" = "true" ]; then
+    echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+fi
+
 USE_LINBUILD=1
 BUILD_MODE="release"
 
@@ -37,6 +41,10 @@ $PYTHON -m pip install numpy
 $PYTHON -m pip install gitpython
 $PYTHON -m pip install cmake
 $PYTHON -m pip install ninja
+
+if [ "$CI" = "true" ]; then
+    echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+fi
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     $PYTHON "$SCRIPT_DIR/../../../../build_lib.py"
