@@ -97,12 +97,13 @@ class Example:
 
         self.sim_time = 0.0
         self.sim_timers = {}
-        self.sim_render = True
 
         self.sim_margin = 15.0
 
-        self.renderer = wp.render.UsdRenderer(stage, up_axis="z")
-        self.renderer.render_ground(size=10000.0)
+        self.renderer = None
+        if stage:
+            self.renderer = wp.render.UsdRenderer(stage, up_axis="z")
+            self.renderer.render_ground(size=10000.0)
 
         init_pos = 1000.0 * (np.random.rand(self.num_particles, 3) * 2.0 - 1.0) + np.array((0.0, 0.0, 3000.0))
         init_vel = np.random.rand(self.num_particles, 3)
@@ -135,6 +136,9 @@ class Example:
                 self.sim_time += self.sim_dt
 
     def render(self, is_live=False):
+        if self.renderer is None:
+            return
+
         with wp.ScopedTimer("render", detailed=False):
             time = 0.0 if is_live else self.sim_time
 
@@ -161,4 +165,5 @@ if __name__ == "__main__":
         example.update()
         example.render()
 
-    example.renderer.save()
+    if example.renderer:
+        example.renderer.save()

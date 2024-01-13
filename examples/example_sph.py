@@ -267,7 +267,9 @@ class Example:
         # render params
         self.frame_dt = 1.0 / 60.0
         self.frame_count = 600
-        self.renderer = wp.render.UsdRenderer(stage)
+        self.renderer = None
+        if stage:
+            self.renderer = wp.render.UsdRenderer(stage)
         self.sim_time = 0.0
 
         # simulation params
@@ -363,6 +365,9 @@ class Example:
             self.sim_time += self.frame_dt
 
     def render(self, is_live=False):
+        if self.renderer is None:
+            return
+
         with wp.ScopedTimer("render", active=True):
             time = 0.0 if is_live else self.sim_time
 
@@ -380,4 +385,5 @@ if __name__ == "__main__":
         example.render()
         example.update()
 
-    example.renderer.save()
+    if example.renderer:
+        example.renderer.save()

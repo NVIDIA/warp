@@ -111,7 +111,9 @@ class Example:
         self.optimizer = Adam([self.actions], lr=1e2)
         self.loss = wp.zeros(1, dtype=wp.float32, device=self.device, requires_grad=True)
 
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=100.0)
+        self.renderer = None
+        if stage:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=100.0)
 
         # allocate sim states for trajectory
         self.states = []
@@ -185,6 +187,9 @@ class Example:
         self.iter = self.iter + 1
 
     def render(self):
+        if self.renderer is None:
+            return
+
         for i in range(self.episode_frames):
             self.renderer.begin_frame(self.render_time)
             self.renderer.render(self.states[i + 1])
@@ -208,7 +213,8 @@ if __name__ == "__main__":
         if i % 25 == 0:
             example.render()
 
-    example.renderer.save()
+    if example.renderer:
+        example.renderer.save()
 
     np_states = example.last_traj.numpy()
     np_ref = example.ref_traj.numpy()

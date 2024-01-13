@@ -113,7 +113,9 @@ class Example:
         for i in range(self.sim_steps + 1):
             self.states.append(self.model.state(requires_grad=True))
 
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=4.0)
+        self.renderer = None
+        if stage:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=4.0)
 
         # capture forward/backward passes
         wp.capture_begin(self.device)
@@ -162,6 +164,9 @@ class Example:
             self.iter = self.iter + 1
 
     def render(self):
+        if self.renderer is None:
+            return
+
         with wp.ScopedTimer("Render", active=self.profile):
             # draw trajectory
             traj_verts = [self.states[0].particle_q.numpy().mean(axis=0)]
@@ -196,4 +201,5 @@ if __name__ == "__main__":
         if i % 4 == 0:
             example.render()
 
-    example.renderer.save()
+    if example.renderer:
+        example.renderer.save()

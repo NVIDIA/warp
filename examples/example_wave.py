@@ -130,7 +130,9 @@ class Example:
         self.grid_size = 0.1
         self.grid_displace = 0.5
 
-        self.renderer = wp.render.UsdRenderer(stage)
+        self.renderer = None
+        if stage:
+            self.renderer = wp.render.UsdRenderer(stage)
 
         vertices = []
         self.indices = []
@@ -216,6 +218,9 @@ class Example:
             wp.launch(kernel=grid_update, dim=self.sim_width * self.sim_height, inputs=[self.sim_grid0, self.sim_verts])
 
     def render(self, is_live=False):
+        if self.renderer is None:
+            return
+
         with wp.ScopedTimer("render", active=True):
             time = 0.0 if is_live else self.sim_time
 
@@ -241,4 +246,5 @@ if __name__ == "__main__":
         example.update()
         example.render()
 
-    example.renderer.save()
+    if example.renderer:
+        example.renderer.save()

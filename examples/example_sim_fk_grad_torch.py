@@ -122,7 +122,9 @@ class Example:
 
         self.torch_device = wp.device_to_torch(self.model.device)
 
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=50.0)
+        self.renderer = None
+        if stage:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=50.0)
 
         self.target = torch.from_numpy(np.array((2.0, 1.0, 0.0))).to(self.torch_device)
 
@@ -150,6 +152,9 @@ class Example:
             self.joint_q.grad.zero_()
 
     def render(self):
+        if self.renderer is None:
+            return
+
         s = self.model.state()
         s.body_q = wp.from_torch(self.body_q, dtype=wp.transform, requires_grad=False)
         s.body_qd = wp.from_torch(self.body_qd, dtype=wp.spatial_vector, requires_grad=False)
@@ -171,4 +176,5 @@ if __name__ == "__main__":
         example.update()
         example.render()
 
-    example.renderer.save()
+    if example.renderer:
+        example.renderer.save()

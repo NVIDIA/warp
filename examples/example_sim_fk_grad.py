@@ -100,7 +100,9 @@ class Example:
 
         self.state = self.model.state()
 
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=50.0)
+        self.renderer = None
+        if stage:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=50.0)
 
         # optimization variables
         self.loss = wp.zeros(1, dtype=float, device=self.device)
@@ -142,6 +144,9 @@ class Example:
         tape.zero()
 
     def render(self):
+        if self.renderer is None:
+            return
+
         self.renderer.begin_frame(self.render_time)
         self.renderer.render(self.state)
         self.renderer.render_sphere(name="target", pos=TARGET, rot=wp.quat_identity(), radius=0.1)
@@ -159,4 +164,5 @@ if __name__ == "__main__":
         example.update()
         example.render()
 
-    example.renderer.save()
+    if example.renderer:
+        example.renderer.save()
