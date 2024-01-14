@@ -41,15 +41,6 @@ For developers who want to build the library themselves the following tools are 
 * `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_, minimum version 11.5
 * `Git Large File Storage <https://git-lfs.com>`_
 
-If you are cloning from Windows, please first ensure that you have
-enabled “Developer Mode” in Windows settings and symlinks in Git:
-
-.. code-block:: console
-
-    $ git config --global core.symlinks true
-
-This will ensure symlinks inside ``exts/omni.warp.core`` work upon cloning.
-
 After cloning the repository, users should run:
 
 .. code-block:: console
