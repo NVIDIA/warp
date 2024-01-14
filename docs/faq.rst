@@ -110,3 +110,21 @@ at developers who need differentiable physics, rather than a fully
 featured physics engine. Warp is also integrated with IsaacGym and is
 great for performing auxiliary tasks such as reward and observation
 computations for reinforcement learning.
+
+Why assignments to Warp arrays aren't supported outside of kernels?
+-------------------------------------------------------------------
+
+Reading or writing data that is living on the GPU can only be achieved through
+launching CUDA kernels, whereas any code defined outside of these kernels is
+exclusively evaluated on the CPU by Python's runtime.
+
+We recommend to either initialize Warp arrays from other native arrays
+(e.g.: Python list, NumPy array, ...) or by launching a kernel to set its values.
+
+For the common use case of wanting to fill an array with a given value, we
+also support the following forms:
+
+- `wp.full(8, 1.23, dtype=float)`: initializes a new array of 8 float values set
+  to `1.23`.
+- `arr.fill_(1.23)`: sets the content of an existing float array to `1.23`.
+- `arr[:4].fill(1.23)`: sets the four first values of an existing float array to `1.23`.

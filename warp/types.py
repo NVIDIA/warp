@@ -149,14 +149,46 @@ def vector(length, dtype):
 
         def __setitem__(self, key, value):
             if isinstance(key, int):
-                super().__setitem__(key, vec_t.scalar_import(value))
-                return value
+                try:
+                    return super().__setitem__(key, vec_t.scalar_import(value))
+                except (TypeError, ctypes.ArgumentError):
+                    raise TypeError(
+                        f"Expected to assign a `{self._wp_scalar_type_.__name__}` value "
+                        f"but got `{type(value).__name__}` instead"
+                    ) from None
             elif isinstance(key, slice):
+                try:
+                    iter(value)
+                except TypeError:
+                    raise TypeError(
+                        f"Expected to assign a slice from a sequence of values "
+                        f"but got `{type(value).__name__}` instead"
+                    ) from None
+
                 if self._wp_scalar_type_ == float16:
-                    super().__setitem__(key, [vec_t.scalar_import(x) for x in value])
-                    return value
-                else:
+                    converted = []
+                    try:
+                        for x in value:
+                            converted.append(vec_t.scalar_import(x))
+                    except ctypes.ArgumentError:
+                        raise TypeError(
+                            f"Expected to assign a slice from a sequence of `float16` values "
+                            f"but got `{type(x).__name__}` instead"
+                        ) from None
+
+                    value = converted
+
+                try:
                     return super().__setitem__(key, value)
+                except TypeError:
+                    for x in value:
+                        try:
+                            self._type_(x)
+                        except TypeError:
+                            raise TypeError(
+                                f"Expected to assign a slice from a sequence of `{self._wp_scalar_type_.__name__}` values "
+                                f"but got `{type(x).__name__}` instead"
+                            ) from None
             else:
                 raise KeyError(f"Invalid key {key}, expected int or slice")
 
@@ -355,10 +387,28 @@ def matrix(shape, dtype):
         def set_row(self, r, v):
             if r < 0 or r >= self._shape_[0]:
                 raise IndexError("Invalid row index")
+            try:
+                iter(v)
+            except TypeError:
+                raise TypeError(
+                    f"Expected to assign a slice from a sequence of values "
+                    f"but got `{type(v).__name__}` instead"
+                ) from None
+
             row_start = r * self._shape_[1]
             row_end = row_start + self._shape_[1]
             if self._wp_scalar_type_ == float16:
-                v = [mat_t.scalar_import(x) for x in v]
+                converted = []
+                try:
+                    for x in v:
+                        converted.append(mat_t.scalar_import(x))
+                except ctypes.ArgumentError:
+                    raise TypeError(
+                        f"Expected to assign a slice from a sequence of `float16` values "
+                        f"but got `{type(x).__name__}` instead"
+                    ) from None
+
+                v = converted
             super().__setitem__(slice(row_start, row_end), v)
 
         def __getitem__(self, key):
@@ -366,6 +416,8 @@ def matrix(shape, dtype):
                 # element indexing m[i,j]
                 if len(key) != 2:
                     raise KeyError(f"Invalid key, expected one or two indices, got {len(key)}")
+                if any(isinstance(x, slice) for x in key):
+                    raise KeyError(f"Slices are not supported when indexing matrices using the `m[i, j]` notation")
                 return mat_t.scalar_export(super().__getitem__(key[0] * self._shape_[1] + key[1]))
             elif isinstance(key, int):
                 # row vector indexing m[r]
@@ -378,12 +430,20 @@ def matrix(shape, dtype):
                 # element indexing m[i,j] = x
                 if len(key) != 2:
                     raise KeyError(f"Invalid key, expected one or two indices, got {len(key)}")
-                super().__setitem__(key[0] * self._shape_[1] + key[1], mat_t.scalar_import(value))
-                return value
+                if any(isinstance(x, slice) for x in key):
+                    raise KeyError(f"Slices are not supported when indexing matrices using the `m[i, j]` notation")
+                try:
+                    return super().__setitem__(key[0] * self._shape_[1] + key[1], mat_t.scalar_import(value))
+                except (TypeError, ctypes.ArgumentError):
+                    raise TypeError(
+                        f"Expected to assign a `{self._wp_scalar_type_.__name__}` value "
+                        f"but got `{type(value).__name__}` instead"
+                    ) from None
             elif isinstance(key, int):
                 # row vector indexing m[r] = v
-                self.set_row(key, value)
-                return value
+                return self.set_row(key, value)
+            elif isinstance(key, slice):
+                raise KeyError(f"Slices are not supported when indexing matrices using the `m[start:end]` notation")
             else:
                 raise KeyError(f"Invalid key {key}, expected int or pair of ints")
 
@@ -413,6 +473,15 @@ class bool:
     def __init__(self, x=False):
         self.value = x
 
+    def __bool__(self) -> bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value != 0)
+
+    def __int__(self) -> int:
+        return int(self.value != 0)
+
 
 class float16:
     _length_ = 1
@@ -420,6 +489,15 @@ class float16:
 
     def __init__(self, x=0.0):
         self.value = x
+
+    def __bool__(self) -> bool:
+        return self.value != 0.0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
 
 
 class float32:
@@ -429,6 +507,15 @@ class float32:
     def __init__(self, x=0.0):
         self.value = x
 
+    def __bool__(self) -> bool:
+        return self.value != 0.0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
 
 class float64:
     _length_ = 1
@@ -436,6 +523,15 @@ class float64:
 
     def __init__(self, x=0.0):
         self.value = x
+
+    def __bool__(self) -> bool:
+        return self.value != 0.0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
 
 
 class int8:
@@ -445,6 +541,18 @@ class int8:
     def __init__(self, x=0):
         self.value = x
 
+    def __bool__(self) -> bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __index__(self) -> int:
+        return int(self.value)
+
 
 class uint8:
     _length_ = 1
@@ -452,6 +560,18 @@ class uint8:
 
     def __init__(self, x=0):
         self.value = x
+
+    def __bool__(self) -> bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __index__(self) -> int:
+        return int(self.value)
 
 
 class int16:
@@ -461,6 +581,18 @@ class int16:
     def __init__(self, x=0):
         self.value = x
 
+    def __bool__(self) -> bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __index__(self) -> int:
+        return int(self.value)
+
 
 class uint16:
     _length_ = 1
@@ -468,6 +600,18 @@ class uint16:
 
     def __init__(self, x=0):
         self.value = x
+
+    def __bool__(self) -> bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __index__(self) -> int:
+        return int(self.value)
 
 
 class int32:
@@ -477,6 +621,18 @@ class int32:
     def __init__(self, x=0):
         self.value = x
 
+    def __bool__(self) -> bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __index__(self) -> int:
+        return int(self.value)
+
 
 class uint32:
     _length_ = 1
@@ -484,6 +640,18 @@ class uint32:
 
     def __init__(self, x=0):
         self.value = x
+
+    def __bool__(self) -> bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __index__(self) -> int:
+        return int(self.value)
 
 
 class int64:
@@ -493,6 +661,18 @@ class int64:
     def __init__(self, x=0):
         self.value = x
 
+    def __bool__(self) -> bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __index__(self) -> int:
+        return int(self.value)
+
 
 class uint64:
     _length_ = 1
@@ -500,6 +680,18 @@ class uint64:
 
     def __init__(self, x=0):
         self.value = x
+
+    def __bool__(self) -> bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __index__(self) -> int:
+        return int(self.value)
 
 
 def quaternion(dtype=Any):

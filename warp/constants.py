@@ -5,11 +5,15 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import math
+
 from warp.types import constant
 
 __all__ = [
     "E",
     "e",
+    "INF",
+    "inf",
     "LOG2E",
     "log2e",
     "LOG10E",
@@ -34,3 +38,5 @@ LN10 = ln10 = constant(2.30258509299404568402)  # ln(10)
 PHI = phi = constant(1.61803398874989484820)  # golden constant
 PI = pi = constant(3.14159265358979323846)  # pi
 TAU = tau = constant(6.28318530717958647692)  # 2 * pi
+
+INF = inf = constant(math.inf)
