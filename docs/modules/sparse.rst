@@ -7,7 +7,7 @@ warp.sparse
     .. toctree::
     :maxdepth: 2
 
-Warp includes a sparse linear algebra module ``warp.sparse`` that implements some common operations for manipulating sparse matrices that arise in simulation.
+Warp includes a sparse linear algebra module ``warp.sparse`` that implements some common sparse matrix operations that arise in simulation.
 
 Sparse Matrices
 -------------------------
@@ -17,3 +17,16 @@ Currently `warp.sparse` supports Block Sparse Row (BSR) matrices, the BSR format
 .. automodule:: warp.sparse
     :members:
 
+
+Iterative Linear Solvers
+------------------------
+
+.. currentmodule:: warp.optim.linear
+
+Warp provides a few common iterative linear solvers (:func:`cg`, :func:`bicgstab`, :func:`gmres`) with optional preconditioning.
+
+.. note:: While primarly intended to work with sparse matrices, those solvers also accept dense linear operators provided as 2d warp arrays.
+    It is also possible to provide custom operators, see :class:`LinearOperator`.
+
+.. automodule:: warp.optim.linear
+    :members:

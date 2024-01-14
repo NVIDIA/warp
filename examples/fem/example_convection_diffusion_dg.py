@@ -16,7 +16,7 @@ from warp.sparse import bsr_axpy
 # Import example utilities
 # Make sure that works both when imported as module and run as standalone file
 try:
-    from .bsr_utils import bsr_to_scipy
+    from .bsr_utils import bsr_cg
     from .mesh_utils import gen_trimesh, gen_quadmesh
     from .plot_utils import Plot
     from .example_convection_diffusion import (
@@ -26,7 +26,7 @@ try:
         diffusion_form,
     )
 except ImportError:
-    from bsr_utils import bsr_to_scipy
+    from bsr_utils import bsr_cg
     from mesh_utils import gen_trimesh, gen_quadmesh
     from plot_utils import Plot
     from example_convection_diffusion import (
@@ -35,9 +35,6 @@ except ImportError:
         inertia_form,
         diffusion_form,
     )
-
-# Non-SPD system, solve using scipy
-from scipy.sparse.linalg import factorized
 
 
 # Standard transport term, on cells' interior
@@ -159,9 +156,6 @@ class Example:
         self._matrix = matrix_inertia
         bsr_axpy(x=matrix_transport, y=self._matrix)
         bsr_axpy(x=matrix_diffusion, y=self._matrix, alpha=args.viscosity)
-        
-        # Compute LU factorization of system matrix
-        self._solve_lu = factorized(bsr_to_scipy(self._matrix))
 
         # Initial condition
         self._phi_field = scalar_space.make_field()
@@ -180,7 +174,10 @@ class Example:
             values={"dt": self.sim_dt},
         )
 
-        self._phi_field.dof_values = self._solve_lu(rhs.numpy())
+        phi = wp.zeros_like(rhs)
+        bsr_cg(self._matrix, b=rhs, x=phi, method='bicgstab', quiet=self._quiet)
+
+        wp.utils.array_cast(in_array=phi, out_array=self._phi_field.dof_values)
 
     def render(self):
         self.renderer.begin_frame(time = self.current_frame * self.sim_dt)

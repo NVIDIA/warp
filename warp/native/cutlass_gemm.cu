@@ -7,6 +7,7 @@
  */
 
 #include "builtin.h"
+#include "temp_buffer.h"
 
 #include "cutlass/cutlass.h"
 #include "cutlass/gemm/device/gemm_universal.h"
@@ -39,8 +40,9 @@ bool run_gemm(int m, int n, int k, int batch_count, const void* a, const void* b
 
     Gemm gemm;
     size_t workspace_size = Gemm::get_workspace_size(arguments);
-    cutlass::DeviceAllocation<uint8_t> workspace(workspace_size);
-    cutlass::Status status = gemm.initialize(arguments, workspace.get());
+    ScopedTemporary<> workspace(WP_CURRENT_CONTEXT, workspace_size);
+    cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_get_current());
+    cutlass::Status status = gemm.initialize(arguments, workspace.buffer(), stream);
 
     if (status != cutlass::Status::kSuccess) {
         cudaError_t error = cudaGetLastError();
@@ -52,7 +54,7 @@ bool run_gemm(int m, int n, int k, int batch_count, const void* a, const void* b
     // Run the GEMM
     //
 
-    status = gemm();
+    status = gemm(stream);
     if (status != cutlass::Status::kSuccess) {
         cudaError_t error = cudaGetLastError();
         std::cerr << "Runtime error: " << cudaGetErrorString(error) << "\n";

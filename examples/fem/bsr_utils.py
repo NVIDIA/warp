@@ -1,10 +1,10 @@
-from typing import Union, Any, Tuple
+from typing import Union, Any, Tuple, Optional
 
 import warp as wp
 import warp.types
 
-from warp.sparse import BsrMatrix, bsr_zeros, bsr_get_diag, bsr_mv
-from warp.utils import array_inner
+from warp.sparse import BsrMatrix, bsr_zeros, bsr_transposed, bsr_mv, bsr_get_diag
+from warp.optim.linear import preconditioner, LinearOperator, aslinearoperator
 
 
 def bsr_to_scipy(matrix: BsrMatrix) -> "scipy.sparse.bsr_array":
@@ -34,7 +34,11 @@ def bsr_to_scipy(matrix: BsrMatrix) -> "scipy.sparse.bsr_array":
     )
 
 
-def scipy_to_bsr(sp: Union["scipy.sparse.bsr_array", "scipy.sparse.csr_array"], device=None, dtype=None) -> BsrMatrix:
+def scipy_to_bsr(
+    sp: Union["scipy.sparse.bsr_array", "scipy.sparse.csr_array"],
+    device=None,
+    dtype=None,
+) -> BsrMatrix:
     try:
         from scipy.sparse import csr_array
     except ImportError:
@@ -51,7 +55,12 @@ def scipy_to_bsr(sp: Union["scipy.sparse.bsr_array", "scipy.sparse.csr_array"], 
     else:
         block_shape = sp.blocksize
         block_type = wp.types.matrix(shape=block_shape, dtype=dtype)
-        matrix = bsr_zeros(sp.shape[0] // block_shape[0], sp.shape[1] // block_shape[1], block_type, device=device)
+        matrix = bsr_zeros(
+            sp.shape[0] // block_shape[0],
+            sp.shape[1] // block_shape[1],
+            block_type,
+            device=device,
+        )
 
     matrix.nnz = sp.nnz
     matrix.values = wp.array(sp.data.flatten(), dtype=matrix.values.dtype, device=device)
@@ -61,71 +70,14 @@ def scipy_to_bsr(sp: Union["scipy.sparse.bsr_array", "scipy.sparse.csr_array"], 
     return matrix
 
 
-@wp.kernel
-def _bsr_cg_kernel_1(
-    rs_old: wp.array(dtype=Any),
-    p_Ap: wp.array(dtype=Any),
-    x: wp.array(dtype=Any),
-    r: wp.array(dtype=Any),
-    p: wp.array(dtype=Any),
-    Ap: wp.array(dtype=Any),
-):
-    i = wp.tid()
+def get_linear_solver_func(method_name: str):
+    from warp.optim.linear import cg, bicgstab, gmres
 
-    if p_Ap[0] != 0.0:
-        alpha = rs_old[0] / p_Ap[0]
-        x[i] = x[i] + alpha * p[i]
-        r[i] = r[i] - alpha * Ap[i]
-
-
-@wp.kernel
-def _bsr_cg_kernel_2(
-    tol: Any,
-    rs_old: wp.array(dtype=Any),
-    rs_new: wp.array(dtype=Any),
-    z: wp.array(dtype=Any),
-    p: wp.array(dtype=Any),
-):
-    #    p = r + (rsnew / rsold) * p;
-    i = wp.tid()
-
-    if rs_new[0] > tol:
-        beta = rs_new[0] / rs_old[0]
-    else:
-        beta = rs_new[0] - rs_new[0]
-
-    p[i] = z[i] + beta * p[i]
-
-
-@wp.kernel
-def _bsr_cg_solve_block_diag_precond_kernel(
-    diag: wp.array(dtype=Any),
-    r: wp.array(dtype=Any),
-    z: wp.array(dtype=Any),
-):
-    i = wp.tid()
-    d = wp.get_diag(diag[i])
-
-    if wp.dot(d, d) == 0.0:
-        z[i] = r[i]
-    else:
-        d_abs = wp.max(d, -d)
-        z[i] = wp.cw_div(r[i], d_abs)
-
-
-@wp.kernel
-def _bsr_cg_solve_scalar_diag_precond_kernel(
-    diag: wp.array(dtype=Any),
-    r: wp.array(dtype=Any),
-    z: wp.array(dtype=Any),
-):
-    i = wp.tid()
-    d = diag[i]
-
-    if d == 0.0:
-        z[i] = r[i]
-    else:
-        z[i] = r[i] / wp.abs(d)
+    if method_name == "bicgstab":
+        return bicgstab
+    if method_name == "gmres":
+        return gmres
+    return cg
 
 
 def bsr_cg(
@@ -136,111 +88,276 @@ def bsr_cg(
     tol: float = 0.0001,
     check_every=10,
     use_diag_precond=True,
-    mv_routine=bsr_mv,
-    device=None,
+    mv_routine=None,
     quiet=False,
+    method: str = "cg",
 ) -> Tuple[float, int]:
-    """Solves the linear system A x = b using the Conjugate Gradient method, optionally with diagonal preconditioning
+    """Solves the linear system A x = b using an iterative solver, optionally with diagonal preconditioning
 
     Args:
         A: system left-hand side
         x: result vector and initial guess
         b: system right-hand-side
-        max_iters: maximum number of iterations to performing before aborting. If set to zero, equal to the system size.
+        max_iters: maximum number of iterations to perform before aborting. If set to zero, equal to the system size.
         tol: relative tolerance under which to stop the solve
         check_every: number of iterations every which to evaluate the current residual norm to compare against tolerance
         use_diag_precond: Whether to use diagonal preconditioning
-        mv_routine: Matrix-vector multiplication routine to for multiplications with ``A``
-        device: Warp device to use for the computation
+        mv_routine: Matrix-vector multiplication routine to use for multiplications with ``A``
+        quiet: if True, do not print iteration residuals
+        method: Iterative solver method to use, defaults to Conjugate Gradient
 
     Returns:
         Tuple (residual norm, iteration count)
 
     """
 
-    if max_iters == 0:
-        max_iters = A.shape[0]
-    if device is None:
-        device = A.values.device
+    from warp.optim.linear import preconditioner, LinearOperator
 
-    scalar_dtype = A.scalar_type
-
-    r = wp.zeros_like(b)
-    p = wp.zeros_like(b)
-    Ap = wp.zeros_like(b)
-
-    if use_diag_precond:
-        A_diag = bsr_get_diag(A)
-        z = wp.zeros_like(b)
-
-        if A.block_shape == (1, 1):
-            precond_kernel = _bsr_cg_solve_scalar_diag_precond_kernel
-        else:
-            precond_kernel = _bsr_cg_solve_block_diag_precond_kernel
+    if mv_routine is None:
+        M = preconditioner(A, "diag") if use_diag_precond else None
     else:
-        z = r
+        A = LinearOperator(A.shape, A.dtype, A.device, matvec=mv_routine)
+        M = None
 
-    rz_old = wp.empty(n=1, dtype=scalar_dtype, device=device)
-    rz_new = wp.empty(n=1, dtype=scalar_dtype, device=device)
-    p_Ap = wp.empty(n=1, dtype=scalar_dtype, device=device)
+    func = get_linear_solver_func(method_name=method)
 
-    # r = b - A * x;
-    r.assign(b)
-    mv_routine(A, x, r, alpha=-1.0, beta=1.0)
+    def print_callback(i, err, tol):
+        print(f"{func.__name__}: at iteration {i} error = \t {err}  \t tol: {tol}")
 
-    # z = M^-1 r
-    if use_diag_precond:
-        wp.launch(kernel=precond_kernel, dim=A.nrow, device=device, inputs=[A_diag, r, z])
+    callback = None if quiet else print_callback
 
-    # p = z;
-    p.assign(z)
-
-    # rsold = r' * z;
-    array_inner(r, z, out=rz_old)
-
-    tol_sq = tol * tol * A.shape[0]
-
-    err = rz_old.numpy()[0]
-    end_iter = 0
-
-    if err > tol_sq:
-        end_iter = max_iters
-
-        for i in range(max_iters):
-            # Ap = A * p;
-            mv_routine(A, p, Ap)
-
-            array_inner(p, Ap, out=p_Ap)
-
-            wp.launch(kernel=_bsr_cg_kernel_1, dim=A.nrow, device=device, inputs=[rz_old, p_Ap, x, r, p, Ap])
-
-            # z = M^-1 r
-            if use_diag_precond:
-                wp.launch(kernel=precond_kernel, dim=A.nrow, device=device, inputs=[A_diag, r, z])
-
-            # rznew = r' * z;
-            array_inner(r, z, out=rz_new)
-
-            if ((i + 1) % check_every) == 0:
-                err = rz_new.numpy()[0]
-                if not quiet:
-                    print(f"At iteration {i} error = \t {err}  \t tol: {tol_sq}")
-                if err <= tol_sq:
-                    end_iter = i
-                    break
-
-            wp.launch(kernel=_bsr_cg_kernel_2, dim=A.nrow, device=device, inputs=[tol_sq, rz_old, rz_new, z, p])
-
-            # swap buffers
-            rs_tmp = rz_old
-            rz_old = rz_new
-            rz_new = rs_tmp
-
-        err = rz_old.numpy()[0]
+    end_iter, err, atol = func(
+        A=A,
+        b=b,
+        x=x,
+        maxiter=max_iters,
+        tol=tol,
+        check_every=check_every,
+        M=M,
+        callback=callback,
+    )
 
     if not quiet:
-        print(f"Terminated after {end_iter} iterations with error = \t {err}")
+        res_str = "OK" if err <= atol else "TRUNCATED"
+        print(f"{func.__name__}: terminated after {end_iter} iterations with error = \t {err} ({res_str})")
+
     return err, end_iter
+
+
+class SaddleSystem(LinearOperator):
+    """Builds a linear operator corresponding to the saddle-point linear system [A B^T; B 0]
+
+    If use_diag_precond` is ``True``,  builds the corresponding diagonal preconditioner `[diag(A); diag(B diag(A)^-1 B^T)]`
+    """
+
+    def __init__(
+        self,
+        A: BsrMatrix,
+        B: BsrMatrix,
+        Bt: Optional[BsrMatrix] = None,
+        use_diag_precond: bool = True,
+    ):
+        from warp.optim.linear import preconditioner, LinearOperator, aslinearoperator
+
+        if Bt is None:
+            Bt = bsr_transposed(B)
+
+        self._A = A
+        self._B = B
+        self._Bt = Bt
+
+        self._u_dtype = wp.vec(length=A.block_shape[0], dtype=A.scalar_type)
+        self._p_dtype = wp.vec(length=B.block_shape[0], dtype=B.scalar_type)
+        self._p_byte_offset = A.nrow * wp.types.type_size_in_bytes(self._u_dtype)
+
+        saddle_shape = (A.shape[0] + B.shape[0], A.shape[0] + B.shape[0])
+
+        super().__init__(saddle_shape, dtype=A.scalar_type, device=A.device, matvec=self._saddle_mv)
+
+        if use_diag_precond:
+            self._preconditioner = self._diag_preconditioner()
+        else:
+            self._preconditioner = None
+
+    def _diag_preconditioner(self):
+        A = self._A
+        B = self._B
+
+        M_u = preconditioner(A, "diag")
+
+        A_diag = bsr_get_diag(A)
+
+        schur_block_shape = (B.block_shape[0], B.block_shape[0])
+        schur_dtype = wp.mat(shape=schur_block_shape, dtype=B.scalar_type)
+        schur_inv_diag = wp.empty(dtype=schur_dtype, shape=B.nrow, device=self.device)
+        wp.launch(
+            _compute_schur_inverse_diagonal,
+            dim=B.nrow,
+            device=A.device,
+            inputs=[B.offsets, B.columns, B.values, A_diag, schur_inv_diag],
+        )
+
+        if schur_block_shape == (1, 1):
+            # Downcast 1x1 mats to scalars
+            schur_inv_diag = schur_inv_diag.view(dtype=B.scalar_type)
+
+        M_p = aslinearoperator(schur_inv_diag)
+
+        def precond_mv(x, y, z, alpha, beta):
+            x_u = self.u_slice(x)
+            x_p = self.p_slice(x)
+            y_u = self.u_slice(y)
+            y_p = self.p_slice(y)
+            z_u = self.u_slice(z)
+            z_p = self.p_slice(z)
+
+            M_u.matvec(x_u, y_u, z_u, alpha=alpha, beta=beta)
+            M_p.matvec(x_p, y_p, z_p, alpha=alpha, beta=beta)
+
+        return LinearOperator(
+            shape=self.shape,
+            dtype=self.dtype,
+            device=self.device,
+            matvec=precond_mv,
+        )
+
+    @property
+    def preconditioner(self):
+        return self._preconditioner
+
+    def u_slice(self, a: wp.array):
+        return wp.array(
+            ptr=a.ptr,
+            dtype=self._u_dtype,
+            shape=self._A.nrow,
+            strides=None,
+            device=a.device,
+            pinned=a.pinned,
+            copy=False,
+            owner=False,
+        )
+
+    def p_slice(self, a: wp.array):
+        return wp.array(
+            ptr=a.ptr + self._p_byte_offset,
+            dtype=self._p_dtype,
+            shape=self._B.nrow,
+            strides=None,
+            device=a.device,
+            pinned=a.pinned,
+            copy=False,
+            owner=False,
+        )
+
+    def _saddle_mv(self, x, y, z, alpha, beta):
+        x_u = self.u_slice(x)
+        x_p = self.p_slice(x)
+        z_u = self.u_slice(z)
+        z_p = self.p_slice(z)
+
+        if y.ptr != z.ptr and beta != 0.0:
+            wp.copy(src=y, dest=z)
+
+        bsr_mv(self._A, x_u, z_u, alpha=alpha, beta=beta)
+        bsr_mv(self._Bt, x_p, z_u, alpha=alpha, beta=1.0)
+        bsr_mv(self._B, x_u, z_p, alpha=alpha, beta=beta)
+
+
+def bsr_solve_saddle(
+    saddle_system: SaddleSystem,
+    x_u: wp.array,
+    x_p: wp.array,
+    b_u: wp.array,
+    b_p: wp.array,
+    max_iters: int = 0,
+    tol: float = 0.0001,
+    check_every=10,
+    quiet=False,
+    method: str = "cg",
+) -> Tuple[float, int]:
+    """Solves the saddle-point linear system [A B^T; B 0] (x_u; x_p) = (b_u; b_p) using an iterative solver, optionally with diagonal preconditioning
+
+    Args:
+        saddle_system: Saddle point system
+        x_u: primal part of the result vector and initial guess
+        x_p: Lagrange multiplier part of the result vector and initial guess
+        b_u: primal left-hand-side
+        b_p: constraint left-hand-side
+        max_iters: maximum number of iterations to perform before aborting. If set to zero, equal to the system size.
+        tol: relative tolerance under which to stop the solve
+        check_every: number of iterations every which to evaluate the current residual norm to compare against tolerance
+        quiet: if True, do not print iteration residuals
+        method: Iterative solver method to use, defaults to BiCGSTAB
+
+    Returns:
+        Tuple (residual norm, iteration count)
+
+    """
+    x = wp.empty(dtype=saddle_system.scalar_type, shape=saddle_system.shape[0], device=saddle_system.device)
+    b = wp.empty_like(x)
+
+    wp.copy(src=x_u, dest=saddle_system.u_slice(x))
+    wp.copy(src=x_p, dest=saddle_system.p_slice(x))
+    wp.copy(src=b_u, dest=saddle_system.u_slice(b))
+    wp.copy(src=b_p, dest=saddle_system.p_slice(b))
+
+    func = get_linear_solver_func(method_name=method)
+
+    def print_callback(i, err, tol):
+        print(f"{func.__name__}: at iteration {i} error = \t {err}  \t tol: {tol}")
+
+    callback = None if quiet else print_callback
+
+    end_iter, err, atol = func(
+        A=saddle_system,
+        b=b,
+        x=x,
+        maxiter=max_iters,
+        tol=tol,
+        check_every=check_every,
+        M=saddle_system.preconditioner,
+        callback=callback,
+    )
+
+    if not quiet:
+        res_str = "OK" if err <= atol else "TRUNCATED"
+        print(f"{func.__name__}: terminated after {end_iter} iterations with absolute error = \t {err} ({res_str})")
+
+    wp.copy(dest=x_u, src=saddle_system.u_slice(x))
+    wp.copy(dest=x_p, src=saddle_system.p_slice(x))
+
+    return err, end_iter
+
+
+@wp.kernel
+def _compute_schur_inverse_diagonal(
+    B_offsets: wp.array(dtype=int),
+    B_indices: wp.array(dtype=int),
+    B_values: wp.array(dtype=Any),
+    A_diag: wp.array(dtype=Any),
+    P_diag: wp.array(dtype=Any),
+):
+    row = wp.tid()
+
+    zero = P_diag.dtype(P_diag.dtype.dtype(0.0))
+
+    schur = zero
+
+    beg = B_offsets[row]
+    end = B_offsets[row + 1]
+
+    for b in range(beg, end):
+        B = B_values[b]
+        col = B_indices[b]
+        Ai = wp.inverse(A_diag[col])
+        S = B * Ai * wp.transpose(B)
+        schur += S
+
+    schur_diag = wp.get_diag(schur)
+    id_diag = type(schur_diag)(schur_diag.dtype(1.0))
+
+    inv_diag = wp.select(schur == zero, wp.cw_div(id_diag, schur_diag), id_diag)
+    P_diag[row] = wp.diag(inv_diag)
 
 
 def invert_diagonal_bsr_mass_matrix(A: BsrMatrix):
@@ -251,7 +368,12 @@ def invert_diagonal_bsr_mass_matrix(A: BsrMatrix):
     if not wp.types.type_is_matrix(values.dtype):
         values = values.view(dtype=wp.mat(shape=(1, 1), dtype=A.scalar_type))
 
-    wp.launch(kernel=_block_diagonal_mass_invert, dim=A.nrow, inputs=[values, scale], device=values.device)
+    wp.launch(
+        kernel=_block_diagonal_mass_invert,
+        dim=A.nrow,
+        inputs=[values, scale],
+        device=values.device,
+    )
 
 
 @wp.kernel

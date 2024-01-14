@@ -246,7 +246,11 @@ class Example:
         self.state_1: State = self.model.state()
         self.state_1.particle_qd_grad = wp.zeros(shape=(self.model.particle_count), dtype=wp.mat33)
 
-        self.renderer = warp.sim.render.SimRenderer(self.model, stage, scaling=20.0)
+        self.renderer = None
+        try:
+            self.renderer = warp.sim.render.SimRenderer(self.model, stage, scaling=20.0)
+        except Exception as err:
+            print(f"Could not initialize SimRenderer for stage '{stage}': {err}.")
 
     def update(self):
         fem.set_default_temporary_store(self.temporary_store)
@@ -344,10 +348,13 @@ class Example:
 
                 # swap states
                 (self.state_0, self.state_1) = (self.state_1, self.state_0)
-        
+
         fem.set_default_temporary_store(None)
 
     def render(self, is_live=False):
+        if self.renderer is None:
+            return
+
         with wp.ScopedTimer("render", active=True):
             time = self.current_frame * self.frame_dt
 

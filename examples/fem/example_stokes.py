@@ -11,22 +11,19 @@ import argparse
 
 import warp as wp
 
-import numpy as np
-
 import warp.fem as fem
+from warp.fem.utils import array_axpy
+
+import warp.sparse as sparse
 
 try:
     from .plot_utils import Plot
-    from .bsr_utils import bsr_to_scipy
+    from .bsr_utils import bsr_solve_saddle, SaddleSystem
     from .mesh_utils import gen_trimesh, gen_quadmesh
 except ImportError:
     from plot_utils import Plot
-    from bsr_utils import bsr_to_scipy
+    from bsr_utils import bsr_solve_saddle, SaddleSystem
     from mesh_utils import gen_trimesh, gen_quadmesh
-
-# Need to solve a saddle-point system, use scipy for simplicity
-from scipy.sparse import bmat
-from scipy.sparse.linalg import spsolve
 
 
 @fem.integrand
@@ -142,41 +139,30 @@ class Example:
         # Weak velocity boundary conditions
         u_bd_test = fem.make_test(space=u_space, domain=boundary)
         u_bd_trial = fem.make_trial(space=u_space, domain=boundary)
-        u_rhs = fem.integrate(top_mass_form, fields={"u": self._bd_field.trace(), "v": u_bd_test})
+        u_rhs = fem.integrate(
+            top_mass_form, fields={"u": self._bd_field.trace(), "v": u_bd_test}, output_dtype=wp.vec2d
+        )
         u_bd_matrix = fem.integrate(mass_form, fields={"u": u_bd_trial, "v": u_bd_test})
 
         # Pressure-velocity coupling
         p_test = fem.make_test(space=p_space, domain=domain)
         div_matrix = fem.integrate(div_form, fields={"u": u_trial, "q": p_test})
 
-        # Solve with scipy
-        # Assemble saddle-point system with velocity, pressure, and zero-average-pressure constraint
-        u_rhs = u_rhs.numpy() * args.boundary_strength
-        u_matrix = bsr_to_scipy(u_visc_matrix) + args.boundary_strength * bsr_to_scipy(u_bd_matrix)
+        # Define and solve the saddle-point system
+        u_matrix = u_visc_matrix
+        sparse.bsr_axpy(x=u_bd_matrix, y=u_matrix, alpha=args.boundary_strength, beta=1.0)
+        array_axpy(x=u_rhs, y=u_rhs, alpha=0.0, beta=args.boundary_strength)
 
-        div_matrix = bsr_to_scipy(div_matrix)
+        p_rhs = wp.zeros(p_space.node_count(), dtype=wp.float64)
+        x_u = wp.zeros_like(u_rhs)
+        x_p = wp.zeros_like(p_rhs)
 
-        ones = np.ones(shape=(p_space.node_count(), 1), dtype=float)
-        saddle_system = bmat(
-            [
-                [u_matrix, div_matrix.transpose(), None],
-                [div_matrix, None, ones],
-                [None, ones.transpose(), None],
-            ],
-            format="csr",
+        bsr_solve_saddle(
+            SaddleSystem(A=u_matrix, B=div_matrix), x_u=x_u, x_p=x_p, b_u=u_rhs, b_p=p_rhs, quiet=self._quiet
         )
 
-        saddle_rhs = np.zeros(saddle_system.shape[0])
-        u_slice = slice(0, 2 * u_space.node_count())
-        p_slice = slice(2 * u_space.node_count(), 2 * u_space.node_count() + p_space.node_count())
-        saddle_rhs[u_slice] = u_rhs.flatten()
-
-        x = spsolve(saddle_system, saddle_rhs)
-
-        # Extract result
-
-        self._u_field.dof_values = x[u_slice].reshape((-1, 2))
-        self._p_field.dof_values = x[p_slice]
+        wp.utils.array_cast(in_array=x_u, out_array=self._u_field.dof_values)
+        wp.utils.array_cast(in_array=x_p, out_array=self._p_field.dof_values)
 
     def render(self):
         self.renderer.add_surface("pressure", self._p_field)

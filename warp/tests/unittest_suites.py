@@ -73,6 +73,7 @@ def explicit_suite():
     from warp.tests.test_large import TestLarge
     from warp.tests.test_launch import TestLaunch
     from warp.tests.test_lerp import TestLerp
+    from warp.tests.test_linear_solvers import TestLinearSolvers
     from warp.tests.test_lvalue import TestLValue
     from warp.tests.test_marching_cubes import TestMarchingCubes
     from warp.tests.test_mat import TestMat
@@ -152,6 +153,7 @@ def explicit_suite():
         TestLarge,
         TestLaunch,
         TestLerp,
+        TestLinearSolvers,
         TestLValue,
         TestMarchingCubes,
         TestMat,

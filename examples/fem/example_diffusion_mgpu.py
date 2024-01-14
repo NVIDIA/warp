@@ -31,8 +31,8 @@ def mass_form(
 
 
 @wp.kernel
-def scal_kernel(a: wp.array(dtype=wp.float64), alpha: wp.float64):
-    a[wp.tid()] = a[wp.tid()] * alpha
+def scal_kernel(a: wp.array(dtype=wp.float64), res: wp.array(dtype=wp.float64), alpha: wp.float64):
+    res[wp.tid()] = a[wp.tid()] * alpha
 
 
 @wp.kernel
@@ -58,39 +58,40 @@ class DistributedSystem:
     shape = Tuple[int, int]
     rank_data = None
 
+    def mv_routine(self, x: wp.array, y: wp.array, z: wp.array, alpha=1.0, beta=0.0):
+        """Distributed matrix-vector multiplication routine, for example purposes"""
 
-def mv_routine(A: DistributedSystem, x: wp.array, y: wp.array, alpha=1.0, beta=0.0):
-    """Distributed matrix-vector multiplication routine, for example purposes"""
+        tmp = self.tmp_buf
 
-    tmp = A.tmp_buf
+        wp.launch(kernel=scal_kernel, dim=y.shape, device=y.device, inputs=[y, z, wp.float64(beta)])
 
-    wp.launch(kernel=scal_kernel, dim=y.shape, device=y.device, inputs=[y, wp.float64(beta)])
+        stream = wp.get_stream()
 
-    stream = wp.get_stream()
+        for mat_i, x_i, y_i, idx in zip(*self.rank_data):
+            # WAR copy with indexed array requiring matching shape
+            tmp_i = wp.array(
+                ptr=tmp.ptr, device=tmp.device, capacity=tmp.capacity, dtype=tmp.dtype, shape=idx.shape, owner=False
+            )
 
-    for mat_i, x_i, y_i, idx in zip(*A.rank_data):
-        # WAR copy with indexed array requiring matching shape
-        tmp_i = wp.array(
-            ptr=tmp.ptr, device=tmp.device, capacity=tmp.capacity, dtype=tmp.dtype, shape=idx.shape, owner=False
-        )
+            # Compress rhs on rank 0
+            x_idx = wp.indexedarray(x, idx)
+            wp.copy(dest=tmp_i, src=x_idx, count=idx.size, stream=stream)
 
-        # Compress rhs on rank 0
-        x_idx = wp.indexedarray(x, idx)
-        wp.copy(dest=tmp_i, src=x_idx, count=idx.size, stream=stream)
+            # Send to rank i
+            wp.copy(dest=x_i, src=tmp_i, count=idx.size, stream=stream)
 
-        # Send to rank i
-        wp.copy(dest=x_i, src=tmp_i, count=idx.size, stream=stream)
+            with wp.ScopedDevice(x_i.device):
+                wp.wait_stream(stream)
+                bsr_mv(A=mat_i, x=x_i, y=y_i, alpha=alpha, beta=0.0)
 
-        with wp.ScopedDevice(x_i.device):
-            wp.wait_stream(stream)
-            bsr_mv(A=mat_i, x=x_i, y=y_i, alpha=alpha, beta=0.0)
+            wp.wait_stream(wp.get_stream(x_i.device))
 
-        wp.wait_stream(wp.get_stream(x_i.device))
-
-        # Back to rank 0 for sum
-        wp.copy(dest=tmp_i, src=y_i, count=idx.size, stream=stream)
-        y_idx = wp.indexedarray(y, idx)
-        wp.launch(kernel=sum_kernel, dim=idx.shape, device=y_idx.device, inputs=[y_idx, tmp_i], stream=stream)
+            # Back to rank 0 for sum
+            wp.copy(dest=tmp_i, src=y_i, count=idx.size, stream=stream)
+            z_idx = wp.indexedarray(z, idx)
+            wp.launch(kernel=sum_kernel, dim=idx.shape, device=z_idx.device, inputs=[z_idx, tmp_i], stream=stream)
+        
+        wp.wait_stream(stream)
 
 
 class Example:
@@ -137,22 +138,22 @@ class Example:
         # Distributed CG
         global_res = wp.zeros_like(glob_rhs)
         A = DistributedSystem()
-        A.device = device
-        A.scalar_type = glob_rhs.dtype
+        A.device = main_device
+        A.dtype = glob_rhs.dtype
         A.nrow = self._scalar_space.node_count()
         A.shape = (A.nrow, A.nrow)
         A.tmp_buf = tmp
         A.rank_data = (matrices, rhs_vecs, res_vecs, indices)
 
-        bsr_cg(
-            A,
-            x=global_res,
-            b=glob_rhs,
-            use_diag_precond=False,
-            quiet=self._quiet,
-            mv_routine=mv_routine,
-            device=main_device,
-        )
+        with wp.ScopedDevice(main_device):
+            bsr_cg(
+                A,
+                x=global_res,
+                b=glob_rhs,
+                use_diag_precond=False,
+                quiet=self._quiet,
+                mv_routine=A.mv_routine
+            )
 
         array_cast(in_array=global_res, out_array=self._scalar_field.dof_values)
 
