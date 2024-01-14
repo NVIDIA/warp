@@ -17,8 +17,10 @@ struct fabricbucket_t
 template <typename T>
 struct fabricarray_t
 {
-    CUDA_CALLABLE inline fabricarray_t() {}
-    CUDA_CALLABLE inline fabricarray_t(int) {} // for backward a = 0 initialization syntax
+    CUDA_CALLABLE inline fabricarray_t()
+        : nbuckets(0),
+          size(0)
+    {}
 
     CUDA_CALLABLE inline bool empty() const { return !size; }
 
@@ -32,8 +34,10 @@ struct fabricarray_t
 template <typename T>
 struct indexedfabricarray_t
 {
-    CUDA_CALLABLE inline indexedfabricarray_t() {}
-    CUDA_CALLABLE inline indexedfabricarray_t(int) {} // for backward a = 0 initialization syntax
+    CUDA_CALLABLE inline indexedfabricarray_t()
+        : indices(),
+          size(0)
+    {}
 
     CUDA_CALLABLE inline bool empty() const { return !size; }
 

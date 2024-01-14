@@ -64,27 +64,16 @@ def sample_mesh_kernel(
 
     # Query the closest location on the mesh.
     max_dist = 1000.0
-    sign = float(0.0)
-    face_index = int(0)
-    face_u = float(0.0)
-    face_v = float(0.0)
-    if not wp.mesh_query_point(
-        mesh,
-        cell_pos,
-        max_dist,
-        sign,
-        face_index,
-        face_u,
-        face_v,
-    ):
+    query = wp.mesh_query_point(mesh, cell_pos, max_dist)
+    if not query.result:
         return
 
     # Evaluates the position of the closest mesh location found.
-    mesh_pos = wp.mesh_eval_position(mesh, face_index, face_u, face_v)
+    mesh_pos = wp.mesh_eval_position(mesh, query.face, query.u, query.v)
 
     # Check that the cell's distance to the mesh location is within
     # the desired range.
-    dist = wp.length(cell_pos - mesh_pos) * sign
+    dist = wp.length(cell_pos - mesh_pos) * query.sign
     if dist < min_sdf or dist > max_sdf:
         return
 

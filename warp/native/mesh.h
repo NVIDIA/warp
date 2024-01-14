@@ -1246,12 +1246,22 @@ CUDA_CALLABLE inline void adj_mesh_query_point_sign_winding_number(uint64_t id, 
 struct mesh_query_point_t
 {
     CUDA_CALLABLE mesh_query_point_t()
-    {
-    }
+        : result(false),
+          sign(0.0f),
+          face(0),
+          u(0.0f),
+          v(0.0f)
+    {}
 
-    CUDA_CALLABLE mesh_query_point_t(int)
+    // Required for adjoint computations.
+    CUDA_CALLABLE inline mesh_query_point_t& operator+=(const mesh_query_point_t& other)
     {
-        // For backward pass.
+        result += other.result;
+        sign += other.sign;
+        face += other.face;
+        u += other.u;
+        v += other.v;
+        return *this;
     }
 
     bool result;
@@ -1423,8 +1433,8 @@ CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const v
 
 
 CUDA_CALLABLE inline void adj_mesh_query_ray(
-    uint64_t id, const vec3& start, const vec3& dir, float max_t, float& t, float& u, float& v, float& sign, vec3& n, int& face,
-    uint64_t adj_id, vec3& adj_start, vec3& adj_dir, float& adj_max_t, float& adj_t, float& adj_u, float& adj_v, float& adj_sign, vec3& adj_n, int& adj_face, bool adj_ret)
+    uint64_t id, const vec3& start, const vec3& dir, float max_t, float t, float u, float v, float sign, const vec3& n, int face,
+    uint64_t adj_id, vec3& adj_start, vec3& adj_dir, float& adj_max_t, float& adj_t, float& adj_u, float& adj_v, float& adj_sign, vec3& adj_n, int& adj_face, bool& adj_ret)
 {
 
     Mesh mesh = mesh_get(id);
@@ -1440,7 +1450,7 @@ CUDA_CALLABLE inline void adj_mesh_query_ray(
 
     vec3 adj_a, adj_b, adj_c;
 
-    adj_intersect_ray_tri_woop(start, dir, a, b, c, t, u, v, sign, &n, adj_start, adj_dir, adj_a, adj_b, adj_c, adj_t, adj_u, adj_v, adj_sign, &adj_n, adj_ret);
+    adj_intersect_ray_tri_woop(start, dir, a, b, c, t, u, v, sign, n, adj_start, adj_dir, adj_a, adj_b, adj_c, adj_t, adj_u, adj_v, adj_sign, adj_n, adj_ret);
 
 }
 
@@ -1449,12 +1459,27 @@ CUDA_CALLABLE inline void adj_mesh_query_ray(
 struct mesh_query_ray_t
 {
     CUDA_CALLABLE mesh_query_ray_t()
+        : result(false),
+          sign(0.0f),
+          face(0),
+          t(0.0f),
+          u(0.0f),
+          v(0.0f),
+          normal()
     {
     }
 
-    CUDA_CALLABLE mesh_query_ray_t(int)
+    // Required for adjoint computations.
+    CUDA_CALLABLE inline mesh_query_ray_t& operator+=(const mesh_query_ray_t& other)
     {
-        // For backward pass.
+        result += other.result;
+        sign += other.sign;
+        face += other.face;
+        t += other.t;
+        u += other.u;
+        v += other.v;
+        normal += other.normal;
+        return *this;
     }
 
     bool result;
@@ -1471,6 +1496,18 @@ CUDA_CALLABLE inline mesh_query_ray_t mesh_query_ray(uint64_t id, const vec3& st
     mesh_query_ray_t query;
     query.result = mesh_query_ray(id, start, dir, max_t, query.t, query.u, query.v, query.sign, query.normal, query.face);
     return query;
+}
+
+CUDA_CALLABLE inline void
+adj_mesh_query_ray(
+    uint64_t id, const vec3& start, const vec3& dir, float max_t, const mesh_query_ray_t& ret,
+    uint64_t adj_id, vec3& adj_start, vec3& adj_dir, float& adj_max_t, mesh_query_ray_t& adj_ret
+)
+{
+    adj_mesh_query_ray(
+        id, start, dir, max_t, ret.t, ret.u, ret.v, ret.sign, ret.normal, ret.face,
+        adj_id, adj_start, adj_dir, adj_max_t, adj_ret.t, adj_ret.u, adj_ret.v, adj_ret.sign, adj_ret.normal, adj_ret.face, adj_ret.result
+    );
 }
 
 
@@ -1502,11 +1539,19 @@ CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p)
 struct mesh_query_aabb_t
 {
     CUDA_CALLABLE mesh_query_aabb_t()
+        : mesh(),
+          stack(),
+          count(0),
+          input_lower(),
+          input_upper(),
+          face(0)
+    {}
+
+    // Required for adjoint computations.
+    CUDA_CALLABLE inline mesh_query_aabb_t& operator+=(const mesh_query_aabb_t& other)
     {
+        return *this;
     }
-    CUDA_CALLABLE mesh_query_aabb_t(int)
-    {
-    } // for backward pass
 
     // Mesh Id
     Mesh mesh;

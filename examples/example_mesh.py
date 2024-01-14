@@ -56,24 +56,20 @@ def simulate(
     v = v + wp.vec3(0.0, 0.0 - 9.8, 0.0) * dt - v * 0.1 * dt
     xpred = x + v * dt
 
-    face_index = int(0)
-    face_u = float(0.0)
-    face_v = float(0.0)
-    sign = float(0.0)
-
     max_dist = 1.5
 
-    if wp.mesh_query_point_sign_normal(mesh, xpred, max_dist, sign, face_index, face_u, face_v):
-        p = wp.mesh_eval_position(mesh, face_index, face_u, face_v)
+    query = wp.mesh_query_point_sign_normal(mesh, xpred, max_dist)
+    if query.result:
+        p = wp.mesh_eval_position(mesh, query.face, query.u, query.v)
 
         delta = xpred - p
 
-        dist = wp.length(delta) * sign
+        dist = wp.length(delta) * query.sign
         err = dist - margin
 
         # mesh collision
         if err < 0.0:
-            n = wp.normalize(delta) * sign
+            n = wp.normalize(delta) * query.sign
             xpred = xpred - n * err
 
     # pbd update

@@ -209,11 +209,20 @@ CUDA_CALLABLE inline int bvh_get_num_bounds(uint64_t id)
 struct bvh_query_t
 {
     CUDA_CALLABLE bvh_query_t()
+        : bvh(),
+          stack(),
+          count(0),
+          is_ray(false),
+          input_lower(),
+          input_upper(),
+          bounds_nr(0)
+    {}
+
+    // Required for adjoint computations.
+    CUDA_CALLABLE inline bvh_query_t& operator+=(const bvh_query_t& other)
     {
+        return *this;
     }
-    CUDA_CALLABLE bvh_query_t(int)
-    {
-    } // for backward pass
 
     BVH bvh;
 

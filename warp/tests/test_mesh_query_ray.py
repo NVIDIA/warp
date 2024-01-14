@@ -64,6 +64,14 @@ def mesh_query_ray_loss(
     l = q[0]
     loss[tid] = l
 
+    query = wp.mesh_query_ray(mesh, p, D, max_t)
+    wp.expect_eq(query.t, t)
+    wp.expect_eq(query.u, bary_u)
+    wp.expect_eq(query.v, bary_v)
+    wp.expect_eq(query.sign, sign)
+    wp.expect_eq(query.normal, normal)
+    wp.expect_eq(query.face, face_index)
+
 
 @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
 def test_mesh_query_ray_grad(test, device):
@@ -258,6 +266,21 @@ def test_mesh_query_ray_edge(test, device):
     test.assertEqual(counts.numpy()[0], n)
 
 
+def test_mesh_query_codegen_adjoints_with_select(test, device):
+    def kernel_fn(
+        mesh: wp.uint64,
+    ):
+        v = wp.vec3(0.0, 0.0, 0.0)
+        d = 1e-6
+
+        if True:
+            query = wp.mesh_query_ray(mesh, v, v, d)
+        else:
+            query = wp.mesh_query_ray(mesh, v, v, d)
+
+    wp.Kernel(func=kernel_fn)
+
+
 devices = get_test_devices()
 
 
@@ -267,6 +290,12 @@ class TestMeshQueryRay(unittest.TestCase):
 
 add_function_test(TestMeshQueryRay, "test_mesh_query_ray_edge", test_mesh_query_ray_edge, devices=devices)
 add_function_test(TestMeshQueryRay, "test_mesh_query_ray_grad", test_mesh_query_ray_grad, devices=devices)
+add_function_test(
+    TestMeshQueryRay,
+    "test_mesh_query_codegen_adjoints_with_select",
+    test_mesh_query_codegen_adjoints_with_select,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":

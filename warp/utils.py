@@ -637,7 +637,8 @@ class ScopedTimer:
                 return
 
             self.start = timeit.default_timer()
-            ScopedTimer.indent += 1
+            if self.print:
+                ScopedTimer.indent += 1
 
             if self.detailed:
                 self.cp = cProfile.Profile()

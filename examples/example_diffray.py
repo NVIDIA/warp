@@ -159,25 +159,19 @@ def draw_kernel(
     ro = wp.transform_point(inv, ro_world)
     rd = wp.transform_vector(inv, rd_world)
 
-    t = float(0.0)
-    ur = float(0.0)
-    vr = float(0.0)
-    sign = float(0.0)
-    n = wp.vec3()
-    f = int(0)
-
     color = wp.vec3(0.0, 0.0, 0.0)
 
-    if wp.mesh_query_ray(mesh.id, ro, rd, 1.0e6, t, ur, vr, sign, n, f):
-        i = mesh.indices[f * 3]
-        j = mesh.indices[f * 3 + 1]
-        k = mesh.indices[f * 3 + 2]
+    query = wp.mesh_query_ray(mesh.id, ro, rd, 1.0e6)
+    if query.result:
+        i = mesh.indices[query.face * 3]
+        j = mesh.indices[query.face * 3 + 1]
+        k = mesh.indices[query.face * 3 + 2]
 
         a = mesh.vertices[i]
         b = mesh.vertices[j]
         c = mesh.vertices[k]
 
-        p = wp.mesh_eval_position(mesh.id, f, ur, vr)
+        p = wp.mesh_eval_position(mesh.id, query.face, query.u, query.v)
 
         # barycentric coordinates
         tri_area = wp.length(wp.cross(b - a, c - a))
@@ -197,9 +191,9 @@ def draw_kernel(
                 color = wp.vec3(1.0)
 
             elif mode == 1:  # texture interpolation
-                tex_a = mesh.tex_coords[mesh.tex_indices[f * 3]]
-                tex_b = mesh.tex_coords[mesh.tex_indices[f * 3 + 1]]
-                tex_c = mesh.tex_coords[mesh.tex_indices[f * 3 + 2]]
+                tex_a = mesh.tex_coords[mesh.tex_indices[query.face * 3]]
+                tex_b = mesh.tex_coords[mesh.tex_indices[query.face * 3 + 1]]
+                tex_c = mesh.tex_coords[mesh.tex_indices[query.face * 3 + 2]]
 
                 tex = u * tex_a + v * tex_b + w * tex_c
 

@@ -372,8 +372,8 @@ CUDA_CALLABLE inline bool intersect_ray_tri_woop(const vec3& p, const vec3& dir,
 }
 
 CUDA_CALLABLE inline void adj_intersect_ray_tri_woop(
-    const vec3& p, const vec3& dir, const vec3& a, const vec3& b, const vec3& c, float& t, float& u, float& v, float& sign, vec3* normal,
-    vec3& adj_p, vec3& adj_dir, vec3& adj_a, vec3& adj_b, vec3& adj_c, float& adj_t, float& adj_u, float& adj_v, float& adj_sign, vec3* adj_normal, bool& adj_ret)
+    const vec3& p, const vec3& dir, const vec3& a, const vec3& b, const vec3& c, float t, float u, float v, float sign, const vec3& normal,
+    vec3& adj_p, vec3& adj_dir, vec3& adj_a, vec3& adj_b, vec3& adj_c, float& adj_t, float& adj_u, float& adj_v, float& adj_sign, vec3& adj_normal, bool& adj_ret)
 {
 
 	// todo: precompute for ray
