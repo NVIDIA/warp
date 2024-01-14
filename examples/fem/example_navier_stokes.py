@@ -13,27 +13,18 @@ import argparse
 import warp as wp
 import warp.fem as fem
 
-import numpy as np
-
 from warp.fem.utils import array_axpy
 
-from warp.sparse import bsr_mm, bsr_mv, bsr_copy
+from warp.sparse import bsr_mm, bsr_mv, bsr_copy 
 
 try:
-    from .bsr_utils import bsr_to_scipy
+    from .bsr_utils import bsr_solve_saddle, SaddleSystem
     from .plot_utils import Plot
     from .mesh_utils import gen_trimesh
 except ImportError:
-    from bsr_utils import bsr_to_scipy
+    from bsr_utils import bsr_solve_saddle, SaddleSystem
     from plot_utils import Plot
     from mesh_utils import gen_trimesh
-
-# need to solve a saddle-point system, use scopy for simplicity
-from scipy.sparse import bmat
-from scipy.sparse.linalg import factorized
-
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 
 
 @fem.integrand
@@ -164,27 +155,13 @@ class Example:
 
         # div_bd_rhs = div_matrix * u_bd_rhs
         div_bd_rhs = wp.zeros(shape=(div_matrix.nrow,), dtype=div_matrix.scalar_type)
-        bsr_mv(div_matrix, u_bd_rhs, y=div_bd_rhs)
+        bsr_mv(div_matrix, u_bd_value, y=div_bd_rhs, alpha=-1.0)
 
         # div_matrix = div_matrix - div_matrix * bd_projector
         bsr_mm(x=bsr_copy(div_matrix), y=u_bd_projector, z=div_matrix, alpha=-1.0, beta=1.0)
 
-        # Assemble saddle system with Scipy
-        div_matrix = bsr_to_scipy(div_matrix)
-        u_matrix = bsr_to_scipy(u_matrix)
-        div_bd_rhs = div_bd_rhs.numpy()
-
-        ones = np.ones(shape=(p_space.node_count(), 1), dtype=float)
-        saddle_system = bmat(
-            [
-                [u_matrix, div_matrix.transpose(), None],
-                [div_matrix, None, ones],
-                [None, ones.transpose(), None],
-            ],
-        )
-
-        with wp.ScopedTimer("LU factorization"):
-            self._solve_saddle = factorized(saddle_system)
+        # Assemble saddle system
+        self._saddle_system = SaddleSystem(u_matrix, div_matrix)
 
         # Save data for computing time steps rhs
         self._u_bd_projector = u_bd_projector
@@ -192,9 +169,9 @@ class Example:
         self._u_test = u_test
         self._div_bd_rhs = div_bd_rhs
 
-        # Velocitiy field
-
+        # Velocitiy and pressure fields
         self._u_field = u_space.make_field()
+        self._p_field = p_space.make_field()
 
         self.renderer = Plot(stage)
         self.renderer.add_surface_vector("velocity", self._u_field)
@@ -214,25 +191,28 @@ class Example:
         bsr_mv(self._u_bd_projector, x=u_rhs, y=u_rhs, alpha=-1.0, beta=1.0)
         array_axpy(x=self._u_bd_rhs, y=u_rhs, alpha=1.0, beta=1.0)
 
-        # Assemble scipy saddle system rhs
-        u_dof_count = self._u_bd_projector.shape[0]
-        p_dof_count = self._div_bd_rhs.shape[0]
-        tot_dof_count = u_dof_count + p_dof_count + 1
+        p_rhs = self._div_bd_rhs
 
-        u_slice = slice(0, u_dof_count)
-        p_slice = slice(u_dof_count, tot_dof_count - 1)
+        x_u = wp.empty_like(u_rhs)
+        x_p = wp.empty_like(p_rhs)
+        wp.utils.array_cast(out_array=x_u, in_array=self._u_field.dof_values)
+        wp.utils.array_cast(out_array=x_p, in_array=self._p_field.dof_values)
 
-        saddle_rhs = np.zeros(tot_dof_count)
-        saddle_rhs[u_slice] = u_rhs.numpy().flatten()
-        saddle_rhs[p_slice] = self._div_bd_rhs
+        bsr_solve_saddle(
+            saddle_system=self._saddle_system,
+            tol=1.0e-6,
+            x_u=x_u,
+            x_p=x_p,
+            b_u=u_rhs,
+            b_p=p_rhs,
+            quiet=self._quiet,
+        )
 
-        x = self._solve_saddle(saddle_rhs)
-
-        # Extract result
-        self._u_field.dof_values = x[u_slice].reshape((-1, 2))
+        wp.utils.array_cast(in_array=x_u, out_array=self._u_field.dof_values)
+        wp.utils.array_cast(in_array=x_p, out_array=self._p_field.dof_values)
 
     def render(self):
-        self.renderer.begin_frame(time = self.current_frame * self.sim_dt)
+        self.renderer.begin_frame(time=self.current_frame * self.sim_dt)
         self.renderer.add_surface_vector("velocity", self._u_field)
         self.renderer.end_frame()
 

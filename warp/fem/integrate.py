@@ -172,10 +172,7 @@ def _translate_integrand(integrand: Integrand, field_args: Dict[str, FieldLike])
     # Transform field evaluation calls
     transformer = IntegrandTransformer(integrand, field_args)
 
-    def is_field_like(f):
-        return isinstance(f, FieldLike)
-
-    suffix = "_".join([f.name for f in field_args.values() if is_field_like(f)])
+    suffix = "_".join([f.name for f in field_args.values()])
 
     func = cache.get_integrand_function(
         integrand=integrand,

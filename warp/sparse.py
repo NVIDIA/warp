@@ -58,6 +58,16 @@ class BsrMatrix(Generic[_BlockType]):
         block_shape = self.block_shape
         return (self.nrow * block_shape[0], self.ncol * block_shape[1])
 
+    @property
+    def dtype(self) -> type:
+        """Data type for individual block values"""
+        return self.values.dtype
+
+    @property
+    def device(self) -> wp.context.Device:
+        """Device on which offsets, columns and values are allocated -- assumed to be the same for all three arrays """
+        return self.values.device
+
 
 def bsr_matrix_t(dtype: BlockType):
     dtype = wp.types.type_to_warp(dtype)

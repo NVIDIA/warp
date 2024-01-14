@@ -17,17 +17,15 @@ from warp.sparse import bsr_mm, bsr_axpy, bsr_transposed
 # Import example utilities
 # Make sure that works both when imported as module and run as standalone file
 try:
-    from .bsr_utils import bsr_to_scipy, invert_diagonal_bsr_mass_matrix
+    from .bsr_utils import bsr_cg, invert_diagonal_bsr_mass_matrix
     from .plot_utils import Plot
     from .mesh_utils import gen_trimesh, gen_quadmesh
     from .example_convection_diffusion import initial_condition, velocity, inertia_form
 except ImportError:
-    from bsr_utils import bsr_to_scipy, invert_diagonal_bsr_mass_matrix
+    from bsr_utils import bsr_cg, invert_diagonal_bsr_mass_matrix
     from plot_utils import Plot
     from mesh_utils import gen_trimesh, gen_quadmesh
     from example_convection_diffusion import initial_condition, velocity, inertia_form
-
-from scipy.sparse.linalg import factorized
 
 
 @fem.integrand
@@ -133,20 +131,17 @@ class Example:
 
         # Assemble system matrix
 
-        matrix = matrix_inertia
+        self._matrix = matrix_inertia
         # matrix += matrix_transport
-        bsr_axpy(x=matrix_transport, y=matrix)
+        bsr_axpy(x=matrix_transport, y=self._matrix)
         # matrix += nu * B M^-1 B^T
         bsr_mm(
             x=bsr_mm(matrix_half_diffusion, inv_vel_mass_matrix),
             y=bsr_transposed(matrix_half_diffusion),
-            z=matrix,
+            z=self._matrix,
             alpha=args.viscosity,
             beta=1.0,
         )
-
-        # Compute LU factorization of system matrix
-        self._solve_lu = factorized(bsr_to_scipy(matrix))
 
         # Initial condition
         self._phi_field = scalar_space.make_field()
@@ -164,10 +159,13 @@ class Example:
             values={"dt": self.sim_dt},
         )
 
-        self._phi_field.dof_values = self._solve_lu(rhs.numpy())
+        phi = wp.zeros_like(rhs)
+        bsr_cg(self._matrix, b=rhs, x=phi, method='bicgstab', quiet=self._quiet)
+
+        wp.utils.array_cast(in_array=phi, out_array=self._phi_field.dof_values)
 
     def render(self):
-        self.renderer.begin_frame(time = self.current_frame * self.sim_dt)
+        self.renderer.begin_frame(time=self.current_frame * self.sim_dt)
         self.renderer.add_surface("phi", self._phi_field)
         self.renderer.end_frame()
 

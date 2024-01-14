@@ -32,7 +32,7 @@ def plot_tri_surface(field, axes=None):
         fig, axes = plt.subplots(subplot_kw={"projection": "3d"})
 
     node_positions = field.space.node_positions().numpy()
-    
+
     triangulation = Triangulation(
         x=node_positions[:, 0], y=node_positions[:, 1], triangles=field.space.node_triangulation()
     )
@@ -176,13 +176,14 @@ class Plot:
         self._surface_vectors = {}
         self._volumes = {}
 
+        self._usd_renderer = None
         if stage is not None:
-            from warp.render import UsdRenderer
+            try:
+                from warp.render import UsdRenderer
 
-            self._usd_renderer = UsdRenderer(stage)
-            self._plt = None
-        else:
-            self._usd_renderer = None
+                self._usd_renderer = UsdRenderer(stage)
+            except Exception as err:
+                print(f"Could not initialize UsdRenderer for stage '{stage}': {err}.")
 
     def begin_frame(self, time):
         if self._usd_renderer is not None:
