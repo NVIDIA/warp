@@ -870,6 +870,8 @@ class OpenGLRenderer:
         vsync=False,
         headless=False,
         enable_backface_culling=True,
+        enable_mouse_interaction=True,
+        enable_keyboard_interaction=True,
     ):
         try:
             import pyglet
@@ -909,6 +911,9 @@ class OpenGLRenderer:
 
         self.screen_width, self.screen_height = self.window.get_framebuffer_size()
 
+        self.enable_mouse_interaction = enable_mouse_interaction
+        self.enable_keyboard_interaction = enable_keyboard_interaction
+
         self._camera_pos = PyVec3(*camera_pos)
         self._camera_front = PyVec3(*camera_front)
         self._camera_up = PyVec3(*camera_up)
@@ -923,6 +928,9 @@ class OpenGLRenderer:
         self._left_mouse_pressed = False
         self._keys_pressed = defaultdict(bool)
         self._key_callbacks = []
+
+        self.render_2d_callbacks = []
+        self.render_3d_callbacks = []
 
         self.update_view_matrix()
         self.update_projection_matrix()
@@ -945,6 +953,7 @@ class OpenGLRenderer:
         self._shape_gl_buffers = {}
         self._shape_instances = defaultdict(list)
         self._instances = {}
+        self._instance_custom_ids = {}
         self._instance_shape = {}
         self._instance_gl_buffers = {}
         self._instance_transform_gl_buffer = None
@@ -953,6 +962,8 @@ class OpenGLRenderer:
         self._instance_color2_buffer = None
         self._instance_count = 0
         self._wp_instance_ids = None
+        self._wp_instance_custom_ids = None
+        self._np_instance_visible = None
         self._instance_ids = None
         self._inverse_instance_ids = None
         self._wp_instance_transforms = None
@@ -1269,10 +1280,16 @@ class OpenGLRenderer:
         self._instance_color1_buffer = None
         self._instance_color2_buffer = None
         self._wp_instance_ids = None
+        self._wp_instance_custom_ids = None
         self._wp_instance_transforms = None
         self._wp_instance_scalings = None
         self._wp_instance_bodies = None
+        self._np_instance_visible = None
         self._update_shape_instances = False
+
+    def close(self):
+        self.clear()
+        self.window.close()
 
     @property
     def tiled_rendering(self):
@@ -1686,6 +1703,9 @@ class OpenGLRenderer:
         else:
             self._render_scene()
 
+        for cb in self.render_3d_callbacks:
+            cb()
+
         gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_FILL)
 
         gl.glBindBuffer(gl.GL_PIXEL_UNPACK_BUFFER, 0)
@@ -1736,6 +1756,9 @@ Instances: {len(self._instances)}"""
             self._info_label.text = text
             self._info_label.y = self.screen_height - 5
             self._info_label.draw()
+
+        for cb in self.render_2d_callbacks:
+            cb()
 
     def _draw_grid(self, is_tiled=False):
         from pyglet import gl
@@ -1834,6 +1857,9 @@ Instances: {len(self._instances)}"""
         gl.glBindVertexArray(0)
 
     def _mouse_drag_callback(self, x, y, dx, dy, buttons, modifiers):
+        if not self.enable_mouse_interaction:
+            return
+
         import pyglet
 
         if buttons & pyglet.window.mouse.LEFT:
@@ -1853,6 +1879,9 @@ Instances: {len(self._instances)}"""
             self.update_view_matrix()
 
     def _scroll_callback(self, x, y, scroll_x, scroll_y):
+        if not self.enable_mouse_interaction:
+            return
+
         self.camera_fov -= scroll_y
         self.camera_fov = max(min(self.camera_fov, 90.0), 15.0)
         self.update_projection_matrix()
@@ -1879,8 +1908,11 @@ Instances: {len(self._instances)}"""
     def _key_press_callback(self, symbol, modifiers):
         import pyglet
 
+        if not self.enable_keyboard_interaction:
+            return
+
         if symbol == pyglet.window.key.ESCAPE:
-            self.window.close()
+            self.close()
         if symbol == pyglet.window.key.SPACE:
             self.paused = not self.paused
         if symbol == pyglet.window.key.TAB:
@@ -1960,7 +1992,17 @@ Instances: {len(self._instances)}"""
         return shape
 
     def add_shape_instance(
-        self, name: str, shape: int, body, pos, rot, scale=(1.0, 1.0, 1.0), color1=None, color2=None
+        self,
+        name: str,
+        shape: int,
+        body,
+        pos,
+        rot,
+        scale=(1.0, 1.0, 1.0),
+        color1=None,
+        color2=None,
+        custom_index: int = -1,
+        visible: bool = True,
     ):
         if color1 is None:
             color1 = self._shapes[shape][2]
@@ -1969,8 +2011,9 @@ Instances: {len(self._instances)}"""
         instance = len(self._instances)
         self._shape_instances[shape].append(instance)
         body = self._resolve_body_id(body)
-        self._instances[name] = (instance, body, shape, [*pos, *rot], scale, color1, color2)
+        self._instances[name] = (instance, body, shape, [*pos, *rot], scale, color1, color2, visible)
         self._instance_shape[instance] = shape
+        self._instance_custom_ids[instance] = custom_index
         self._add_shape_instances = True
         self._instance_count = len(self._instances)
         return instance
@@ -2035,6 +2078,9 @@ Instances: {len(self._instances)}"""
         matrix_size = transforms[0].nbytes
 
         instance_ids = []
+        instance_custom_ids = []
+        instance_visible = []
+        instances = list(self._instances.values())
         inverse_instance_ids = {}
         instance_count = 0
         for shape, (vao, vbo, ebo, tri_count, vertex_cuda_buffer) in self._shape_gl_buffers.items():
@@ -2064,27 +2110,45 @@ Instances: {len(self._instances)}"""
             for i in self._shape_instances[shape]:
                 inverse_instance_ids[i] = instance_count
                 instance_count += 1
+                instance_custom_ids.append(self._instance_custom_ids[i])
+                instance_visible.append(instances[i][7])
 
         # trigger update to the instance transforms
         self._update_shape_instances = True
 
         self._wp_instance_ids = wp.array(instance_ids, dtype=wp.int32, device=self._device)
+        self._wp_instance_custom_ids = wp.array(instance_custom_ids, dtype=wp.int32, device=self._device)
+        self._np_instance_visible = np.array(instance_visible)
         self._instance_ids = instance_ids
         self._inverse_instance_ids = inverse_instance_ids
 
         gl.glBindVertexArray(0)
 
-    def update_shape_instance(self, name, pos, rot, color1=None, color2=None):
+    def update_shape_instance(self, name, pos, rot, color1=None, color2=None, visible=None):
         """Update the instance transform of the shape
 
         Args:
             name: The name of the shape
             pos: The position of the shape
             rot: The rotation of the shape
+            color1: The first color of the checker pattern
+            color2: The second color of the checker pattern
+            visible: Whether the shape is visible
         """
         if name in self._instances:
-            i, body, shape, _, scale, old_color1, old_color2 = self._instances[name]
-            self._instances[name] = (i, body, shape, [*pos, *rot], scale, color1 or old_color1, color2 or old_color2)
+            i, body, shape, _, scale, old_color1, old_color2, v = self._instances[name]
+            if visible is None:
+                visible = v
+            self._instances[name] = (
+                i,
+                body,
+                shape,
+                [*pos, *rot],
+                scale,
+                color1 or old_color1,
+                color2 or old_color2,
+                visible,
+            )
             self._update_shape_instances = True
             return True
         return False
@@ -2739,7 +2803,7 @@ Instances: {len(self._instances)}"""
                 device=self._device,
             )
 
-    def render_line_list(self, name, vertices, indices, color, radius):
+    def render_line_list(self, name: str, vertices, indices, color: tuple = None, radius: float = 0.01):
         """Add a line list as a set of capsules
 
         Args:
@@ -2754,7 +2818,7 @@ Instances: {len(self._instances)}"""
         lines = np.array(lines)
         self._render_lines(name, lines, color, radius)
 
-    def render_line_strip(self, name: str, vertices, color: tuple, radius: float = 0.01):
+    def render_line_strip(self, name: str, vertices, color: tuple = None, radius: float = 0.01):
         """Add a line strip as a set of capsules
 
         Args:
