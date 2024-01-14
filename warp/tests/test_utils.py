@@ -265,13 +265,56 @@ devices = get_test_devices()
 
 class TestUtils(unittest.TestCase):
     def test_warn(self):
+        # Multiple warnings get printed out each time.
         with contextlib.redirect_stdout(io.StringIO()) as f:
             frame_info = inspect.getframeinfo(inspect.currentframe())
             wp.utils.warn("hello, world!")
+            wp.utils.warn("hello, world!")
 
-        expected = '{}:{}: UserWarning: hello, world!\n  wp.utils.warn("hello, world!")\n'.format(
+        expected = (
+            "{}:{}: {}\n"
+            "{}:{}: {}\n"
+        ).format(
             frame_info.filename,
             frame_info.lineno + 1,
+            "UserWarning: hello, world!\n  wp.utils.warn(\"hello, world!\")",
+            frame_info.filename,
+            frame_info.lineno + 2,
+            "UserWarning: hello, world!\n  wp.utils.warn(\"hello, world!\")",
+        )
+        self.assertEqual(f.getvalue(), expected)
+
+        # Multiple similar deprecation warnings get printed out only once.
+        with contextlib.redirect_stdout(io.StringIO()) as f:
+            frame_info = inspect.getframeinfo(inspect.currentframe())
+            wp.utils.warn("hello, world!", category=DeprecationWarning)
+            wp.utils.warn("hello, world!", category=DeprecationWarning)
+
+        expected = (
+            "{}:{}: {}\n"
+        ).format(
+            frame_info.filename,
+            frame_info.lineno + 1,
+            "DeprecationWarning: hello, world!\n  wp.utils.warn(\"hello, world!\", category=DeprecationWarning)",
+        )
+        self.assertEqual(f.getvalue(), expected)
+
+        # Multiple different deprecation warnings get printed out each time.
+        with contextlib.redirect_stdout(io.StringIO()) as f:
+            frame_info = inspect.getframeinfo(inspect.currentframe())
+            wp.utils.warn("foo", category=DeprecationWarning)
+            wp.utils.warn("bar", category=DeprecationWarning)
+
+        expected = (
+            "{}:{}: {}\n"
+            "{}:{}: {}\n"
+        ).format(
+            frame_info.filename,
+            frame_info.lineno + 1,
+            "DeprecationWarning: foo\n  wp.utils.warn(\"foo\", category=DeprecationWarning)",
+            frame_info.filename,
+            frame_info.lineno + 2,
+            "DeprecationWarning: bar\n  wp.utils.warn(\"bar\", category=DeprecationWarning)",
         )
         self.assertEqual(f.getvalue(), expected)
 
