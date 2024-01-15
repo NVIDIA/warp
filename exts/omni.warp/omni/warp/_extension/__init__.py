@@ -32,6 +32,8 @@ WARP_GETTING_STARTED_URL = "https://docs.omniverse.nvidia.com/extensions/latest/
 WARP_DOCUMENTATION_URL = "https://nvidia.github.io/warp/"
 
 SETTING_ENABLE_BACKWARD = "/exts/omni.warp/enable_backward"
+SETTING_ENABLE_MENU = "/exts/omni.warp/enable_menu"
+
 SETTING_KERNEL_NODE_OPT_IN = "/app/omni.warp/kernel_opt_in"
 SETTING_KERNEL_NODE_ENABLE_OPT_IN = "/app/omni.warp/kernel_enable_opt_in"
 OMNIGRAPH_STAGEUPDATE_ORDER = 100  # We want our attach() to run after OG so that nodes have been instantiated
@@ -191,12 +193,13 @@ class OmniWarpExtension(omni.ext.IExt):
         self._is_live = True
         self._ext_name = "omni.warp"
 
-        with suppress(ImportError):
-            import omni.kit.menu.utils
-            from omni.warp._extension.menu import WarpMenu
+        if settings.get(SETTING_ENABLE_MENU):
+            with suppress(ImportError):
+                import omni.kit.menu.utils
+                from omni.warp._extension.menu import WarpMenu
 
-            self._register_actions()
-            self._menu = WarpMenu()
+                self._register_actions()
+                self._menu = WarpMenu()
 
         with suppress(ImportError):
             import omni.kit.browser.sample
