@@ -378,34 +378,54 @@ mac-x86_64 test debug:
 # ================================================================
 # Packaging Jobs
 #
-# Documentation is only built on the default branch pipeline
+# Documentation is only built and deployed on the default branch pipeline
 # Kit and PyPI jobs only run for tag pipelines
 # ================================================================
 
-# Build documentation and publish on gitlab-master
-# This only runs in the default branch pipeline
-pages:
+.build_docs_common:
   stage: package
   image: python:3.11-slim
-  dependencies: []
+  needs: []
+  extends:
+    - .runner-utility-linux-x86_64
+  artifacts:
+    paths:
+      - public
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KSet up docs environment"
     - apt-get update && apt-get install make --no-install-recommends -y
     - python -m pip install --upgrade pip
     - python -m pip install -r docs/requirements.txt
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
-  script:
     - cd docs && make clean
-    - python ../build_docs.py --no-color
-  after_script:
+    - cd ..
+  script:
+    - python build_docs.py
     - mv docs/_build/html/ ./public/
-  artifacts:
-    paths:
-      - public/
+
+
+# Merge requests: Build documentation and save as an artifact
+merge request docs:
+  extends:
+    - .build_docs_common
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  environment:
+    name: review/$CI_MERGE_REQUEST_IID
+    url: https://omniverse.gitlab-master-pages.nvidia.com/-/warp/-/jobs/$CI_JOB_ID/artifacts/public/index.html
+  after_script:
+    - echo "You can view the website at https://omniverse.gitlab-master-pages.nvidia.com/-/warp/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
+
+# Build documentation and publish on gitlab-master
+# This only runs in the default branch pipeline
+pages:
+  extends:
+    - .build_docs_common
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-  tags:
-    - pages
+  environment:
+    name: staging
+    url: https://omniverse.gitlab-master-pages.nvidia.com/warp/
 
 # Creates wheel files for PyPI
 # This only runs in tag pipelines
