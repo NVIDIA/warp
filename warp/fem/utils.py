@@ -123,7 +123,7 @@ def compress_node_indices(
      - a node_offsets array, giving for each node the start offset of corresponding indices in sorted_array_indices
      - a sorted_array_indices array, listing the indices in the input array corresponding to each node
      - the number of unique node indices
-     - a unique_node_indices array containg the sorted list of unique node indices (i.e. the list of indices i for which node_offsets[i] < node_offsets[i+1])
+     - a unique_node_indices array containing the sorted list of unique node indices (i.e. the list of indices i for which node_offsets[i] < node_offsets[i+1])
     """
 
     index_count = node_indices.size

@@ -24,7 +24,7 @@ and JAX, but is designed to work well with these frameworks through data
 sharing mechanisms like ``__cuda_array_interface__``. For computations
 that map well to tensors (e.g.: neural-network inference) it makes sense
 to use these existing tools. For problems with a lot of e.g.: sparsity,
-conditional logic, heterogenous workloads (like the ones we often find in
+conditional logic, heterogeneous workloads (like the ones we often find in
 simulation and graphics), then the kernel-based programming model like
 the one in Warp are often more convenient since users have control over
 individual threads.

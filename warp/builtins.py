@@ -1195,14 +1195,14 @@ add_builtin(
     input_types={"t": transformation(dtype=Scalar), "p": vector(length=3, dtype=Scalar)},
     value_func=lambda arg_types, kwds, _: vector(length=3, dtype=infer_scalar_type(arg_types)),
     group="Transformations",
-    doc="Apply the transform to a point ``p`` treating the homogenous coordinate as w=1 (translation and rotation).",
+    doc="Apply the transform to a point ``p`` treating the homogeneous coordinate as w=1 (translation and rotation).",
 )
 add_builtin(
     "transform_point",
     input_types={"m": matrix(shape=(4, 4), dtype=Scalar), "p": vector(length=3, dtype=Scalar)},
     value_func=lambda arg_types, kwds, _: vector(length=3, dtype=infer_scalar_type(arg_types)),
     group="Vector Math",
-    doc="""Apply the transform to a point ``p`` treating the homogenous coordinate as w=1.
+    doc="""Apply the transform to a point ``p`` treating the homogeneous coordinate as w=1.
    The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``.
    Note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``.
    If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
@@ -1213,14 +1213,14 @@ add_builtin(
     input_types={"t": transformation(dtype=Scalar), "v": vector(length=3, dtype=Scalar)},
     value_func=lambda arg_types, kwds, _: vector(length=3, dtype=infer_scalar_type(arg_types)),
     group="Transformations",
-    doc="Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0 (rotation only).",
+    doc="Apply the transform to a vector ``v`` treating the homogeneous coordinate as w=0 (rotation only).",
 )
 add_builtin(
     "transform_vector",
     input_types={"m": matrix(shape=(4, 4), dtype=Scalar), "v": vector(length=3, dtype=Scalar)},
     value_func=lambda arg_types, kwds, _: vector(length=3, dtype=infer_scalar_type(arg_types)),
     group="Vector Math",
-    doc="""Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0.
+    doc="""Apply the transform to a vector ``v`` treating the homogeneous coordinate as w=0.
    The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``.
    If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
@@ -3242,7 +3242,8 @@ add_builtin(
     "div",
     input_types={"x": Scalar, "y": Scalar},
     value_func=sametype_value_func(Scalar),
-    doc="", group="Operators",
+    doc="",
+    group="Operators",
     require_original_output_arg=True,
 )
 add_builtin(

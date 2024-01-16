@@ -1676,7 +1676,7 @@ class Adjoint:
                 )
             args.append(var)
 
-        # eval all keyword ags
+        # eval all keyword args
         def kwval(kw):
             if isinstance(kw.value, ast.Num):
                 return kw.value.n

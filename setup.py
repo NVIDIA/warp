@@ -1,8 +1,8 @@
 import argparse
 import os
-import shutil
 import pathlib
 import platform
+import shutil
 from typing import NamedTuple
 
 import setuptools
@@ -66,7 +66,7 @@ def detect_warp_libraries():
                 if file.parent.name == "bin" and (p.arch == machine_architecture() or p.arch == "universal"):
                     detected_libraries.add(Library(file.name, "bin/", p))
                 else:
-                    # Excpect libraries to be in a subdirectory named after the wheel platform
+                    # Expect libraries to be in a subdirectory named after the wheel platform
                     platform_name = p.name()
                     if file.parent.name == platform_name:
                         detected_libraries.add(Library(file.name, "bin/" + platform_name + "/", p))

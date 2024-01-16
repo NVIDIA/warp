@@ -1164,7 +1164,7 @@ def bsr_mv(
         alpha: Uniform scaling factor for `x`. If zero, `x` will not be read and may be left uninitialized.
         beta: Uniform scaling factor for `y`. If zero, `y` will not be read and may be left uninitialized.
         work_buffer: Temporary storage is required if and only if `x` and `y` are the same vector. If provided the `work_buffer` array
-            will be used for this purpose, otherwise a temporary allocation wil be performed.
+            will be used for this purpose, otherwise a temporary allocation will be performed.
     """
 
     if y is None:

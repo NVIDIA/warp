@@ -6,7 +6,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 ###########################################################################
-# Bechmarks for kernel launches with different types of args
+# Benchmarks for kernel launches with different types of args
 ###########################################################################
 
 import warp as wp
@@ -288,7 +288,7 @@ for device in devices:
         ]
 
         print("--------------------------------")
-        print(f"| args |    direct |    struct |")
+        print("| args |    direct |    struct |")
         print("--------------------------------")
         for tk, ts in timers:
             print(f"|  {tk.name}  |{tk.elapsed:10.0f} |{ts.elapsed:10.0f} |")

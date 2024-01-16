@@ -89,7 +89,7 @@ class SpaceTopology:
             )
         else:
             if out.shape != shape or out.dtype != wp.int32:
-                raise ValueError(f"Out element node idices array must have shape {shape} and data type 'int32'")
+                raise ValueError(f"Out element node indices array must have shape {shape} and data type 'int32'")
             element_node_indices = out
 
         wp.launch(

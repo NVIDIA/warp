@@ -989,7 +989,7 @@ def closest_point_edge_edge(
     else:
         c = wp.dot(d1, r)
         if e <= epsilon:
-            # second segment genereates into a point
+            # second segment generates into a point
             s = wp.clamp(-c / a, 0.0, 1.0)  # t = 0 => s = (b*t-c)/a = -c/a
             t = float(0.0)
         else:

@@ -271,7 +271,7 @@ inline CUDA_CALLABLE uint32 random_poisson(uint32& state, float lam)
 }
 
 /*
-* Adpated from NumPy's implementation
+* Adapted from NumPy's implementation
 * Warp's state variable is half the precision of NumPy's so
 * poisson implementation uses half the precision used in NumPy's implementation
 * both precisions appear to converge in the statistical limit

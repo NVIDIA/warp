@@ -49,7 +49,7 @@ def _resolve_path(func, node):
     try:
         # Look up the closure info and append it to adj.func.__globals__
         # in case you want to define a kernel inside a function and refer
-        # to varibles you've declared inside that function:
+        # to variables you've declared inside that function:
         capturedvars = dict(
             zip(
                 func.__code__.co_freevars,
@@ -763,7 +763,7 @@ def _generate_integrate_kernel(
     if kernel is not None:
         return kernel, FieldStruct, ValueStruct
 
-    # Not found in cache, trasnform integrand and generate  kernel
+    # Not found in cache, transform integrand and generate  kernel
 
     integrand_func = _translate_integrand(
         integrand,
@@ -1139,11 +1139,11 @@ def integrate(
         quadrature: Quadrature formula. If None, deduced from domain and fields degree.
         nodal: For linear or bilinear form only, use the test function nodes as the quadrature points. Assumes Lagrange interpolation functions are used, and no differential or DG operator is evaluated on the test or trial functions.
         fields: Discrete, test, and trial fields to be passed to the integrand. Keys in the dictionary must match integrand parameter names.
-        values: Additional variable values to be passed to the integrand, can be of any type accepted by warp kernel launchs. Keys in the dictionary must match integrand parameter names.
+        values: Additional variable values to be passed to the integrand, can be of any type accepted by warp kernel launches. Keys in the dictionary must match integrand parameter names.
         temporary_store: shared pool from which to allocate temporary arrays
         accumulate_dtype: Scalar type to be used for accumulating integration samples
         output: Sparse matrix or warp array into which to store the result of the integration
-        output_dtype: Scalar type for returned results in `output` is notr provided. If None, defaults to `accumulate_dtype`
+        output_dtype: Scalar type for returned results in `output` is not provided. If None, defaults to `accumulate_dtype`
         device: Device on which to perform the integration
         kernel_options: Overloaded options to be passed to the kernel builder (e.g, ``{"enable_backward": True}``)
     """
@@ -1569,10 +1569,10 @@ def interpolate(
 
          - a :class:`DiscreteField`, or restriction of a discrete field to a domain (from :func:`make_restriction`). In this case, interpolation will be performed at each node.
          - a normal warp array. In this case, the `quadrature` argument defining the interpolation locations must be provided and the result of the `integrand` at each quadrature point will be assigned to the array.
-         - ``None``. In this case, the `quadrature` argument must also be provided and the `integrand` function is reponsible for dealing with the interpolation result.
+         - ``None``. In this case, the `quadrature` argument must also be provided and the `integrand` function is responsible for dealing with the interpolation result.
         quadrature: Quadrature formula defining the interpolation samples if `dest` is not a discrete field or field restriction.
         fields: Discrete fields to be passed to the integrand. Keys in the dictionary must match integrand parameters names.
-        values: Additional variable values to be passed to the integrand, can be of any type accepted by warp kernel launchs. Keys in the dictionary must match integrand parameter names.
+        values: Additional variable values to be passed to the integrand, can be of any type accepted by warp kernel launches. Keys in the dictionary must match integrand parameter names.
         device: Device on which to perform the interpolation
         kernel_options: Overloaded options to be passed to the kernel builder (e.g, ``{"enable_backward": True}``)
     """

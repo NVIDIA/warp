@@ -272,7 +272,7 @@ void mesh_refit_device(uint64_t id)
             // for use in mesh_query_point_sign_normal()
             // since it relies on an epsilon for welding
 
-            // re-use bounds memory temporarily for computing edge lengths
+            // reuse bounds memory temporarily for computing edge lengths
             float* length_tmp_ptr = (float*)m.lowers;
             wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_mesh_edge_lengths, m.num_tris, (m.num_tris, m.points, m.indices, length_tmp_ptr));
             
