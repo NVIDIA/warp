@@ -14,7 +14,7 @@ import warp.config
 from warp.utils import ScopedTimer
 
 
-# return a canonical machine architecture string
+# returns a canonical machine architecture string
 # - "x86_64" for x86-64, aka. AMD64, aka. x64
 # - "aarch64" for AArch64, aka. ARM64
 def machine_architecture() -> str:
