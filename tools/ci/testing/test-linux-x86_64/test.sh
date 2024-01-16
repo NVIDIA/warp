@@ -33,4 +33,4 @@ echo "Installing Warp to Python"
 $PYTHON -m pip install -e "$SCRIPT_DIR/../../../../."
 
 echo "Running tests"
-$PYTHON -m warp.tests
+$PYTHON -m warp.tests -s autodetect

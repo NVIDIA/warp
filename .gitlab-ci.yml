@@ -217,7 +217,7 @@ linux-aarch64 test release:
     - $PYTHON -m pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - $PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml
+    - $PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
   tags:
     - perflab-arm
     - cpu/arm
@@ -242,7 +242,7 @@ linux-x86_64 test release:
     - $PYTHON -m pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - $PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml
+    - $PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
 windows-x86_64 test release:
   stage: test
@@ -261,7 +261,7 @@ windows-x86_64 test release:
     - powershell.exe $env:PYTHON -m pip install -e .
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
-    - powershell.exe $env:PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml
+    - powershell.exe $env:PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
 mac-x86_64 test release:
   stage: test
@@ -277,7 +277,7 @@ mac-x86_64 test release:
     - $PYTHON -m pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - $PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml
+    - $PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
 # ================================================================
 # Unit Testing Jobs (Debug)
@@ -315,7 +315,7 @@ mac-x86_64 test release:
     - $PYTHON -m pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - $PYTHON -m warp.tests --junit-report-xml rspec.xml
+    - $PYTHON -m warp.tests --junit-report-xml rspec.xml -s autodetect
   tags:
     - perflab-arm
     - cpu/arm
@@ -338,7 +338,7 @@ linux-x86_64 test debug:
     - $PYTHON -m pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - $PYTHON -m warp.tests --junit-report-xml rspec.xml
+    - $PYTHON -m warp.tests --junit-report-xml rspec.xml -s autodetect
 
 windows-x86_64 test debug:
   stage: test
@@ -357,7 +357,7 @@ windows-x86_64 test debug:
     - powershell.exe $env:PYTHON -m pip install -e .
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
-    - powershell.exe $env:PYTHON -m warp.tests --junit-report-xml rspec.xml
+    - powershell.exe $env:PYTHON -m warp.tests --junit-report-xml rspec.xml -s autodetect
 
 mac-x86_64 test debug:
   stage: test
@@ -373,7 +373,7 @@ mac-x86_64 test debug:
     - $PYTHON -m pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - $PYTHON -m warp.tests --junit-report-xml rspec.xml
+    - $PYTHON -m warp.tests --junit-report-xml rspec.xml -s autodetect
 
 # ================================================================
 # Packaging Jobs
