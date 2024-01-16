@@ -68,7 +68,11 @@ def main(argv=None):
         help="Only run tests which match the given substring",
     )
     parser.add_argument(
-        "-p", "--pattern", metavar="PATTERN", default="test*.py", help="Pattern to match tests ('test*.py' default)"
+        "-p",
+        "--pattern",
+        metavar="PATTERN",
+        default="test*.py",
+        help="'autodetect' suite only: Pattern to match tests ('test*.py' default)",  # NVIDIA Modification
     )
     parser.add_argument(
         "-t",
@@ -83,9 +87,9 @@ def main(argv=None):
         "-s",
         "--suite",
         type=str,
-        default="auto",
-        choices=["auto", "custom", "kit"],
-        help="Name of the test suite to run (default is 'auto').",
+        default="default",
+        choices=["autodetect", "default", "kit"],
+        help="Name of the test suite to run (default is 'default').",
     )  # NVIDIA Modification
     group_parallel = parser.add_argument_group("parallelization options")
     group_parallel.add_argument(
@@ -169,9 +173,11 @@ def main(argv=None):
             )  # NVIDIA Modification
 
             # NVIDIA Modification
-            if args.suite != "auto":
+            if args.suite != "autodetect":
                 # Print notices for test classes missing from the suite when compared to auto-discovered tests
-                discover_suite = warp.tests.unittest_suites.compare_unittest_suites(args.suite, auto_discover_suite)
+                discover_suite = warp.tests.unittest_suites.compare_unittest_suites(
+                    test_loader, args.suite, auto_discover_suite
+                )
             else:
                 discover_suite = auto_discover_suite
 

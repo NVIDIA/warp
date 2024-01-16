@@ -19,12 +19,13 @@ START_DIRECTORY = os.path.realpath(os.path.dirname(__file__))
 TOP_LEVEL_DIRECTORY = os.path.realpath(os.path.join(START_DIRECTORY, "..", ".."))
 
 
-def _create_suite_from_test_classes(test_classes):
+def _create_suite_from_test_classes(test_loader, test_classes):
     suite = unittest.TestSuite()
 
     for test in test_classes:
         sub_suite = unittest.TestSuite()
-        sub_suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(test))
+        # Note that the test_loader might have testNamePatterns set
+        sub_suite.addTest(test_loader.loadTestsFromTestCase(test))
         suite.addTest(sub_suite)
 
     return suite
@@ -49,12 +50,14 @@ def _iter_class_suites(test_suite):
             yield from _iter_class_suites(suite)
 
 
-def compare_unittest_suites(test_suite_name: str, reference_suite: unittest.TestSuite) -> None:
+def compare_unittest_suites(
+    test_loader: unittest.TestLoader, test_suite_name: str, reference_suite: unittest.TestSuite
+) -> None:
     """Prints the tests in `test_suite` that are not in `reference_suite`."""
 
     test_suite_fn = getattr(sys.modules[__name__], test_suite_name + "_suite")
 
-    test_suite = test_suite_fn()
+    test_suite = test_suite_fn(test_loader)
 
     test_suite_classes_str = set(
         type(test_suite._tests[0]).__name__
@@ -70,6 +73,7 @@ def compare_unittest_suites(test_suite_name: str, reference_suite: unittest.Test
 
     set_difference = reference_suite_classes_str - test_suite_classes_str
 
+    print(f"Selected test suite '{test_suite_name}'")
     if len(set_difference) > 0:
         print(f"Test suite '{test_suite_name}' omits the following test classes:")
         for test_entry in set_difference:
@@ -78,7 +82,7 @@ def compare_unittest_suites(test_suite_name: str, reference_suite: unittest.Test
     return test_suite
 
 
-def custom_suite():
+def default_suite(test_loader: unittest.TestLoader):
     """Example of a manually constructed test suite.
 
     Intended to be modified to create additional test suites
@@ -242,10 +246,10 @@ def custom_suite():
         TestVolumeWrite,
     ]
 
-    return _create_suite_from_test_classes(test_classes)
+    return _create_suite_from_test_classes(test_loader, test_classes)
 
 
-def kit_suite():
+def kit_suite(test_loader: unittest.TestLoader):
     """Tries to mimic the test suite used for testing omni.warp.core in Kit
 
     Requires manual updates with test_ext.py for now.
@@ -334,4 +338,4 @@ def kit_suite():
         TestVolumeWrite,
     ]
 
-    return _create_suite_from_test_classes(test_classes)
+    return _create_suite_from_test_classes(test_loader, test_classes)

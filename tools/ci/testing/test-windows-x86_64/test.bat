@@ -15,4 +15,4 @@ echo "Installing Warp to Python"
 call %PYTHON% -m pip install -e "%~dp0..\..\..\..\."
 
 echo "Running tests"
-call %PYTHON% -m warp.tests
+call %PYTHON% -m warp.tests -s autodetect
