@@ -290,7 +290,7 @@ class InternalState:
 
         # check USDRT version to make sure we have a working SelectPrims()
         usdrt_ext_id = ext_mgr.get_enabled_extension_id(usdrt_ext_name)
-        usdrt_version_string = ext_mgr.get_extension_dict(usdrt_ext_id)["package"]["version"]
+        usdrt_version_string = ext_mgr.get_extension_dict(usdrt_ext_id)["package"]["version"].split("-")[0]
         usdrt_version = tuple(int(v) for v in usdrt_version_string.split("."))
         if usdrt_version < (7, 3, 0):
             raise RuntimeError(f"USDRT version 7.3.0 is required, found {usdrt_version_string}.  Please update to a newer version of Kit to run this sample.")
