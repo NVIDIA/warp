@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## [1.0.0-beta.5.1] - 2024-01-18
+
+- Fix USDRT version numbers such as `1.2.3-beta.1` not being supported
+
 ## [1.0.0-beta.5] - 2023-11-22
 
 - Fix for kernel caching when function argument types change
