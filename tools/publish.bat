@@ -1,2 +1,2 @@
 @echo off
-call "%~dp0..\repo.bat" publish %*
+call "%~dp0\repo.bat" publish %*

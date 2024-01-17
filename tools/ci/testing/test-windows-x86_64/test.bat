@@ -1,5 +1,5 @@
 REM @echo off
-call "%~dp0..\..\..\..\repo.bat" build --fetch-only --config release %*
+call "%~dp0..\..\..\repo.bat" build --fetch-only --config release %*
 
 SET PYTHON="%~dp0..\..\..\..\_build\target-deps\python\python.exe"
 

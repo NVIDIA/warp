@@ -29,7 +29,7 @@ done
 SCRIPT_DIR=$(dirname ${BASH_SOURCE})
 #source "$SCRIPT_DIR/repo.sh" build --fetch-only $@ || exit $?
 
-"$SCRIPT_DIR/../../../../repo.sh" build --fetch-only --config release $@ 
+"$SCRIPT_DIR/../../../repo.sh" build --fetch-only --config release $@ 
 
 PYTHON="$SCRIPT_DIR/../../../../_build/target-deps/python/python"
 LINBUILD="$SCRIPT_DIR/../../../../_build/host-deps/linbuild/linbuild.sh"
