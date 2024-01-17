@@ -32,8 +32,8 @@ Changelog = "https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 dev = ["flake8", "black", "isort", "nvtx", "furo", "sphinx-copybutton", "coverage[toml]"]
 
-[tool.setuptools.packages]
-find = {}
+[tool.setuptools.packages.find]
+include = ["warp*"]
 
 [tool.setuptools.dynamic]
 version = {attr = "warp.config.version"}
