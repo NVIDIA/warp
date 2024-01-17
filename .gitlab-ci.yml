@@ -233,11 +233,11 @@ linux-x86_64 test release:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/*.so warp/bin/
-    - tools/packman/packman install -l _build/target-deps/python python 3.7.16+nv1-linux-x86_64
+    - tools/packman/packman install -l _build/target-deps/python python 3.8.18+nv1-linux-x86_64
     - export PATH="$CUDA_BIN:$PATH"
     - $PYTHON -m pip install --upgrade pip
     - $PYTHON -m pip install usd-core coverage[toml]
-    - $PYTHON -m pip install torch --extra-index-url https://download.pytorch.org/whl/cu115
+    - $PYTHON -m pip install torch --index-url https://download.pytorch.org/whl/cu118
     - $PYTHON -m pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
     - $PYTHON -m pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
@@ -253,11 +253,11 @@ windows-x86_64 test release:
   before_script:
     - *define-GetTime
     - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
-    - tools/packman/packman.cmd install -l _build/target-deps/python python 3.7.16+nv1-windows-x86_64
+    - tools/packman/packman.cmd install -l _build/target-deps/python python 3.8.18+nv1-windows-x86_64
     - $env:PYTHON = "$env:CI_PROJECT_DIR\_build\target-deps\python\python.exe"
     - powershell.exe $env:PYTHON -m pip install --upgrade pip
     - powershell.exe $env:PYTHON -m pip install usd-core coverage[toml]
-    - powershell.exe $env:PYTHON -m pip install torch --extra-index-url https://download.pytorch.org/whl/cu115
+    - powershell.exe $env:PYTHON -m pip install torch --index-url https://download.pytorch.org/whl/cu118
     - powershell.exe $env:PYTHON -m pip install -e .
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
@@ -329,11 +329,11 @@ linux-x86_64 test debug:
     - .test_common_debug
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - tools/packman/packman install -l _build/target-deps/python python 3.7.16+nv1-linux-x86_64
+    - tools/packman/packman install -l _build/target-deps/python python 3.8.18+nv1-linux-x86_64
     - export PATH="$CUDA_BIN:$PATH"
     - $PYTHON -m pip install --upgrade pip
     - $PYTHON -m pip install usd-core
-    - $PYTHON -m pip install torch --extra-index-url https://download.pytorch.org/whl/cu115
+    - $PYTHON -m pip install torch --index-url https://download.pytorch.org/whl/cu118
     - $PYTHON -m pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
     - $PYTHON -m pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
@@ -349,11 +349,11 @@ windows-x86_64 test debug:
   before_script:
     - *define-GetTime
     - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
-    - tools/packman/packman.cmd install -l _build/target-deps/python python 3.7.16+nv1-windows-x86_64
+    - tools/packman/packman.cmd install -l _build/target-deps/python python 3.8.18+nv1-windows-x86_64
     - $env:PYTHON = "$env:CI_PROJECT_DIR\_build\target-deps\python\python.exe"
     - powershell.exe $env:PYTHON -m pip install --upgrade pip
     - powershell.exe $env:PYTHON -m pip install usd-core
-    - powershell.exe $env:PYTHON -m pip install torch --extra-index-url https://download.pytorch.org/whl/cu115
+    - powershell.exe $env:PYTHON -m pip install torch --index-url https://download.pytorch.org/whl/cu118
     - powershell.exe $env:PYTHON -m pip install -e .
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
