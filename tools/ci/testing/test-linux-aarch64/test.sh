@@ -2,7 +2,7 @@
 set -e
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE})
-"$SCRIPT_DIR/../../../../repo.sh" build --fetch-only --config release $@
+"$SCRIPT_DIR/../../../repo.sh" build --fetch-only --config release $@
 
 PYTHON="$SCRIPT_DIR/../../../../_build/target-deps/python/python"
 
