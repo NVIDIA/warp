@@ -69,7 +69,9 @@ class Example:
         self.state_0 = self.model.state()
         self.state_1 = self.model.state()
 
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=1.0)
+        self.renderer = None
+        if stage:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=1.0)
 
     def update(self):
         with wp.ScopedTimer("simulate", active=True):
@@ -86,6 +88,9 @@ class Example:
                 (self.state_0, self.state_1) = (self.state_1, self.state_0)
 
     def render(self, is_live=False):
+        if self.renderer is None:
+            return
+
         with wp.ScopedTimer("render", active=True):
             time = 0.0 if is_live else self.sim_time
 
@@ -103,4 +108,5 @@ if __name__ == "__main__":
         example.update()
         example.render()
 
-    example.renderer.save()
+    if example.renderer:
+        example.renderer.save()

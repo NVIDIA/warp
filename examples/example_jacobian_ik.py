@@ -109,7 +109,7 @@ class Example:
 
         self.enable_rendering = enable_rendering
         self.renderer = None
-        if enable_rendering:
+        if enable_rendering and stage is not None:
             self.renderer = wp.sim.render.SimRenderer(self.model, stage)
 
         self.ee_pos = wp.zeros(self.num_envs, dtype=wp.vec3, device=device, requires_grad=True)
@@ -188,13 +188,15 @@ class Example:
         )
 
     def render(self):
-        if self.enable_rendering:
-            self.renderer.begin_frame(self.render_time)
-            self.renderer.render(self.state)
-            self.renderer.render_points("targets", self.targets, radius=0.05)
-            self.renderer.render_points("ee_pos", self.ee_pos_np, radius=0.05)
-            self.renderer.end_frame()
-            self.render_time += self.frame_dt
+        if self.renderer is None:
+            return
+
+        self.renderer.begin_frame(self.render_time)
+        self.renderer.render(self.state)
+        self.renderer.render_points("targets", self.targets, radius=0.05)
+        self.renderer.render_points("ee_pos", self.ee_pos_np, radius=0.05)
+        self.renderer.end_frame()
+        self.render_time += self.frame_dt
 
     def run(self):
         if self.enable_rendering:
@@ -213,7 +215,7 @@ class Example:
                 self.render()
                 print("iter:", iter, "error:", self.error.mean())
 
-        if self.enable_rendering:
+        if self.renderer:
             self.renderer.save()
 
         avg_time = np.array(self.profiler["jacobian"]).mean()

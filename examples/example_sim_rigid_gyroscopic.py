@@ -46,7 +46,12 @@ class Example:
 
         # tip shape
         builder.add_shape_box(
-            pos=wp.vec3(0.0, 0.0, 0.0), hx=0.05 * self.scale, hy=0.2 * self.scale, hz=1.0 * self.scale, density=100.0, body=b
+            pos=wp.vec3(0.0, 0.0, 0.0),
+            hx=0.05 * self.scale,
+            hy=0.2 * self.scale,
+            hz=1.0 * self.scale,
+            density=100.0,
+            body=b,
         )
 
         # initial spin
@@ -59,7 +64,9 @@ class Example:
         self.integrator = wp.sim.SemiImplicitIntegrator()
         self.state = self.model.state()
 
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=100.0)
+        self.renderer = None
+        if stage:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=100.0)
 
     def update(self):
         with wp.ScopedTimer("simulate", active=True):
@@ -68,6 +75,9 @@ class Example:
             self.sim_time += self.sim_dt
 
     def render(self, is_live=False):
+        if self.renderer is None:
+            return
+
         with wp.ScopedTimer("render", active=True):
             time = 0.0 if is_live else self.sim_time
 
@@ -85,4 +95,5 @@ if __name__ == "__main__":
         example.update()
         example.render()
 
-    example.renderer.save()
+    if example.renderer:
+        example.renderer.save()

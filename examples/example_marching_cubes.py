@@ -97,7 +97,9 @@ class Example:
             nx=self.dim, ny=self.dim, nz=self.dim, max_verts=self.max_verts, max_tris=self.max_tris
         )
 
-        self.renderer = wp.render.UsdRenderer(stage)
+        self.renderer = None
+        if stage is not None:
+            self.renderer = wp.render.UsdRenderer(stage)
 
     def update(self):
         with wp.ScopedTimer("Update Field"):
@@ -112,6 +114,9 @@ class Example:
             self.iso.surface(field=self.field, threshold=math.sin(self.time) * self.dim / 8)
 
     def render(self, is_live=False):
+        if self.renderer is None:
+            return
+
         with wp.ScopedTimer("Render"):
             self.renderer.begin_frame(self.time)
             self.renderer.render_mesh("surface", self.iso.verts.numpy(), self.iso.indices.numpy(), update_topology=True)
@@ -127,4 +132,5 @@ if __name__ == "__main__":
         example.update()
         example.render()
 
-    example.renderer.save()
+    if example.renderer:
+        example.renderer.save()

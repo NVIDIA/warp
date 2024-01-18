@@ -103,7 +103,7 @@ class Example:
 
         self.enable_rendering = enable_rendering
         self.renderer = None
-        if self.enable_rendering:
+        if self.enable_rendering and stage:
             self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=1.0)
 
         # capture forward/backward passes
@@ -149,28 +149,30 @@ class Example:
             self.iter = self.iter + 1
 
     def render(self):
-        if self.enable_rendering:
-            with wp.ScopedTimer("Render", active=self.profile):
-                # draw trajectory
-                traj_verts = [self.states[0].particle_q.numpy()[0].tolist()]
+        if self.renderer is None:
+            return
 
-                for i in range(0, self.sim_steps, self.sim_substeps):
-                    traj_verts.append(self.states[i].particle_q.numpy()[0].tolist())
+        with wp.ScopedTimer("Render", active=self.profile):
+            # draw trajectory
+            traj_verts = [self.states[0].particle_q.numpy()[0].tolist()]
 
-                    self.renderer.begin_frame(self.render_time)
-                    self.renderer.render(self.states[i])
-                    self.renderer.render_box(
-                        pos=self.target, rot=wp.quat_identity(), extents=(0.1, 0.1, 0.1), name="target"
-                    )
-                    self.renderer.render_line_strip(
-                        vertices=traj_verts,
-                        color=wp.render.bourke_color_map(0.0, 7.0, self.loss.numpy()[0]),
-                        radius=0.02,
-                        name=f"traj_{self.iter-1}",
-                    )
-                    self.renderer.end_frame()
+            for i in range(0, self.sim_steps, self.sim_substeps):
+                traj_verts.append(self.states[i].particle_q.numpy()[0].tolist())
 
-                    self.render_time += self.frame_dt
+                self.renderer.begin_frame(self.render_time)
+                self.renderer.render(self.states[i])
+                self.renderer.render_box(
+                    pos=self.target, rot=wp.quat_identity(), extents=(0.1, 0.1, 0.1), name="target"
+                )
+                self.renderer.render_line_strip(
+                    vertices=traj_verts,
+                    color=wp.render.bourke_color_map(0.0, 7.0, self.loss.numpy()[0]),
+                    radius=0.02,
+                    name=f"traj_{self.iter-1}",
+                )
+                self.renderer.end_frame()
+
+                self.render_time += self.frame_dt
 
     def check_grad(self):
         param = self.states[0].particle_qd
@@ -225,7 +227,7 @@ class Example:
             if i % 16 == 0:
                 self.render()
 
-        if self.enable_rendering:
+        if self.renderer:
             self.renderer.save()
 
 

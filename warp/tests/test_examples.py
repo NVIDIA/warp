@@ -10,7 +10,12 @@ import os
 import unittest
 
 import warp as wp
-from warp.tests.unittest_utils import get_unique_cuda_test_devices, sanitize_identifier, get_test_devices
+from warp.tests.unittest_utils import (
+    USD_AVAILABLE,
+    get_test_devices,
+    get_unique_cuda_test_devices,
+    sanitize_identifier,
+)
 
 wp.init()
 
@@ -39,13 +44,17 @@ def add_example_test(cls, name, devices=None, options={}):
 
         # create default USD stage output path which many examples expect
         test_options.setdefault(
-            "stage", os.path.join(os.path.dirname(__file__), f"outputs/{name}_{sanitize_identifier(device)}.usd")
+            "stage",
+            os.path.join(os.path.dirname(__file__), f"outputs/{name}_{sanitize_identifier(device)}.usd")
+            if USD_AVAILABLE
+            else None,
         )
 
-        try:
-            os.remove(test_options["stage"])
-        except OSError:
-            pass
+        if test_options["stage"]:
+            try:
+                os.remove(test_options["stage"])
+            except OSError:
+                pass
 
         num_frames = test_options.get("num_frames", 10)
         test_options.pop("num_frames", None)

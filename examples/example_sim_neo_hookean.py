@@ -111,7 +111,9 @@ class Example:
 
         self.volume = wp.zeros(1, dtype=wp.float32)
 
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=20.0)
+        self.renderer = None
+        if stage:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=20.0)
 
     def update(self):
         with wp.ScopedTimer("simulate"):
@@ -143,6 +145,9 @@ class Example:
             )
 
     def render(self, is_live=False):
+        if self.renderer is None:
+            return
+
         with wp.ScopedTimer("render"):
             time = 0.0 if is_live else self.sim_time
 
@@ -160,4 +165,5 @@ if __name__ == "__main__":
         example.update()
         example.render()
 
-    example.renderer.save()
+    if example.renderer:
+        example.renderer.save()

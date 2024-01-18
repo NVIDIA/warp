@@ -74,7 +74,9 @@ class Example:
 
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
-        self.renderer = wp.sim.render.SimRenderer(path=stage, model=self.model, scaling=50.0)
+        self.renderer = None
+        if stage:
+            self.renderer = wp.sim.render.SimRenderer(path=stage, model=self.model, scaling=50.0)
 
         self.frame_dt = 1.0 / 60.0
 
@@ -105,6 +107,9 @@ class Example:
         self.sim_time += self.frame_dt
 
     def render(self):
+        if self.renderer is None:
+            return
+
         self.renderer.begin_frame(self.sim_time)
         self.renderer.render(self.state)
         self.renderer.end_frame()
@@ -117,4 +122,5 @@ if __name__ == "__main__":
     example.update()
     example.render()
 
-    example.renderer.save()
+    if example.renderer:
+        example.renderer.save()
