@@ -311,10 +311,10 @@ class InternalState:
             wp.load_module(device=device)
             wp.load_module(module=warp.sim, device=device, recursive=True)
             wp.capture_begin(force_module_load=False)
-            step(db)
-            self.graph = wp.capture_end()
-        else:
-            self.graph = None
+            try:
+                step(db)
+            finally:
+                self.graph = wp.capture_end()
 
         self.attr_tracking.update_state(db)
 

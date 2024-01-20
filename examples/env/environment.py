@@ -317,8 +317,10 @@ class Environment:
         if self.use_graph_capture:
             # create update graph
             wp.capture_begin()
-            self.update()
-            graph = wp.capture_end()
+            try:
+                self.update()
+            finally:
+                graph = wp.capture_end()
 
         if self.plot_body_coords:
             q_history = []
