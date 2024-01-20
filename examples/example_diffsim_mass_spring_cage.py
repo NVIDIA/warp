@@ -142,8 +142,10 @@ class Example:
             # Capture all the kernel launches into a CUDA graph so that they can
             # all be run in a single graph launch, which helps with performance.
             wp.capture_begin()
-            self.simulate()
-            self.graph = wp.capture_end()
+            try:
+                self.simulate()
+            finally:
+                self.graph = wp.capture_end()
         else:
             self.graph = None
 

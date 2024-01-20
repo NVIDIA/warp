@@ -646,8 +646,10 @@ def _run_solver_loop(
         if device.is_cuda and use_cuda_graph and cur_iter > 0:
             if graph is None:
                 wp.capture_begin(device, force_module_load=False)
-                do_cycle(atol_sq)
-                graph = wp.capture_end(device)
+                try:
+                    do_cycle(atol_sq)
+                finally:
+                    graph = wp.capture_end(device)
             wp.capture_launch(graph)
         else:
             do_cycle(atol_sq)
