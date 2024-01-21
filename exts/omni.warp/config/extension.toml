@@ -45,3 +45,4 @@ name = "omni.warp.nodes"
 
 [settings]
 exts."omni.warp".enable_backward = false
+exts."omni.warp".enable_menu = true
