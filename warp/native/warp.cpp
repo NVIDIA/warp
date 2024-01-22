@@ -955,6 +955,10 @@ WP_API void* cuda_device_primary_context_retain(int ordinal) { return NULL; }
 WP_API void cuda_device_primary_context_release(int ordinal) {}
 WP_API const char* cuda_device_get_name(int ordinal) { return NULL; }
 WP_API int cuda_device_get_arch(int ordinal) { return 0; }
+WP_API void cuda_device_get_uuid(int ordinal, char uuid[16]) {}
+WP_API int cuda_device_get_pci_domain_id(int ordinal) { return -1; }
+WP_API int cuda_device_get_pci_bus_id(int ordinal) { return -1; }
+WP_API int cuda_device_get_pci_device_id(int ordinal) { return -1; }
 WP_API int cuda_device_is_uva(int ordinal) { return 0; }
 WP_API int cuda_device_is_memory_pool_supported() { return 0; }
 

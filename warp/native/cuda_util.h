@@ -51,6 +51,7 @@ CUresult cuDeviceGet_f(CUdevice *dev, int ordinal);
 CUresult cuDeviceGetCount_f(int* count);
 CUresult cuDeviceGetName_f(char* name, int len, CUdevice dev);
 CUresult cuDeviceGetAttribute_f(int* value, CUdevice_attribute attrib, CUdevice dev);
+CUresult cuDeviceGetUuid_f(CUuuid* uuid, CUdevice dev);
 CUresult cuDevicePrimaryCtxRetain_f(CUcontext* ctx, CUdevice dev);
 CUresult cuDevicePrimaryCtxRelease_f(CUdevice dev);
 CUresult cuDeviceCanAccessPeer_f(int* can_access, CUdevice dev, CUdevice peer_dev);
