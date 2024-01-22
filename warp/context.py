@@ -503,7 +503,7 @@ def call_builtin(func: Function, *params) -> Tuple[bool, Any]:
             "in the future. Use a Warp type such as `wp.vec`, `wp.mat`, "
             "`wp.quat`, or `wp.transform`.",
             DeprecationWarning,
-            stacklevel=3
+            stacklevel=3,
         )
 
     if issubclass(value_ctype, ctypes.Array) or issubclass(value_ctype, ctypes.Structure):
@@ -1847,6 +1847,29 @@ class Event:
 
 
 class Device:
+    """A device to allocate Warp arrays and to launch kernels on.
+
+    Attributes:
+        ordinal: A Warp-specific integer label for the device. ``-1`` for CPU devices.
+        name: A string label for the device. By default, CPU devices will be named according to the processor name,
+            or ``"CPU"`` if the processor name cannot be determined.
+        arch: An integer representing the compute capability version number calculated as
+            ``10 * major + minor``. ``0`` for CPU devices.
+        is_uva: A boolean indicating whether or not the device supports unified addressing.
+            ``False`` for CPU devices.
+        is_cubin_supported: A boolean indicating whether or not Warp's version of NVRTC can directly
+            generate CUDA binary files (cubin) for this device's architecture. ``False`` for CPU devices.
+        is_mempool_supported: A boolean indicating whether or not the device supports using the
+            ``cuMemAllocAsync`` and ``cuMemPool`` family of APIs for stream-ordered memory allocations. ``False`` for
+            CPU devices.
+        is_primary: A boolean indicating whether or not this device's CUDA context is also the
+            device's primary context.
+        uuid: A string representing the UUID of the CUDA device. The UUID is in the same format used by
+            ``nvidia-smi -L``. ``None`` for CPU devices.
+        pci_bus_id: A string identifier for the CUDA device in the format ``[domain]:[bus]:[device]``, in which
+            ``domain``, ``bus``, and ``device`` are all hexadecimal values. ``None`` for CPU devices.
+    """
+
     def __init__(self, runtime, alias, ordinal=-1, is_primary=False, context=None):
         self.runtime = runtime
         self.alias = alias
@@ -1877,6 +1900,8 @@ class Device:
             self.is_uva = False
             self.is_cubin_supported = False
             self.is_mempool_supported = False
+            self.uuid = None
+            self.pci_bus_id = None
 
             # TODO: add more device-specific dispatch functions
             self.memset = runtime.core.memset_host
@@ -1890,6 +1915,17 @@ class Device:
             # check whether our NVRTC can generate CUBINs for this architecture
             self.is_cubin_supported = self.arch in runtime.nvrtc_supported_archs
             self.is_mempool_supported = runtime.core.cuda_device_is_memory_pool_supported(ordinal)
+
+            uuid_buffer = (ctypes.c_char * 16)()
+            runtime.core.cuda_device_get_uuid(ordinal, uuid_buffer)
+            uuid_byte_str = bytes(uuid_buffer).hex()
+            self.uuid = f"GPU-{uuid_byte_str[0:8]}-{uuid_byte_str[8:12]}-{uuid_byte_str[12:16]}-{uuid_byte_str[16:20]}-{uuid_byte_str[20:]}"
+
+            pci_domain_id = runtime.core.cuda_device_get_pci_domain_id(ordinal)
+            pci_bus_id = runtime.core.cuda_device_get_pci_bus_id(ordinal)
+            pci_device_id = runtime.core.cuda_device_get_pci_device_id(ordinal)
+            # This is (mis)named to correspond to the naming of cudaDeviceGetPCIBusId
+            self.pci_bus_id = f"{pci_domain_id:08X}:{pci_bus_id:02X}:{pci_device_id:02X}"
 
             # Warn the user of a possible misconfiguration of their system
             if not self.is_mempool_supported:
@@ -1921,14 +1957,17 @@ class Device:
 
     @property
     def is_cpu(self):
+        """A boolean indicating whether or not the device is a CPU device."""
         return self.ordinal < 0
 
     @property
     def is_cuda(self):
+        """A boolean indicating whether or not the device is a CUDA device."""
         return self.ordinal >= 0
 
     @property
     def context(self):
+        """The context associated with the device."""
         if self._context is not None:
             return self._context
         elif self.is_primary:
@@ -1943,10 +1982,16 @@ class Device:
 
     @property
     def has_context(self):
+        """A boolean indicating whether or not the device has a CUDA context associated with it."""
         return self._context is not None
 
     @property
     def stream(self):
+        """The stream associated with a CUDA device.
+
+        Raises:
+            RuntimeError: The device is not a CUDA device.
+        """
         if self.context:
             return self._stream
         else:
@@ -1964,6 +2009,7 @@ class Device:
 
     @property
     def has_stream(self):
+        """A boolean indicating whether or not the device has a stream associated with it."""
         return self._stream is not None
 
     def __str__(self):
@@ -2425,6 +2471,14 @@ class Runtime:
         self.core.cuda_device_get_arch.restype = ctypes.c_int
         self.core.cuda_device_is_uva.argtypes = [ctypes.c_int]
         self.core.cuda_device_is_uva.restype = ctypes.c_int
+        self.core.cuda_device_get_uuid.argtypes = [ctypes.c_int, ctypes.c_char * 16]
+        self.core.cuda_device_get_uuid.restype = None
+        self.core.cuda_device_get_pci_domain_id.argtypes = [ctypes.c_int]
+        self.core.cuda_device_get_pci_domain_id.restype = ctypes.c_int
+        self.core.cuda_device_get_pci_bus_id.argtypes = [ctypes.c_int]
+        self.core.cuda_device_get_pci_bus_id.restype = ctypes.c_int
+        self.core.cuda_device_get_pci_device_id.argtypes = [ctypes.c_int]
+        self.core.cuda_device_get_pci_device_id.restype = ctypes.c_int
 
         self.core.cuda_context_get_current.argtypes = None
         self.core.cuda_context_get_current.restype = ctypes.c_void_p

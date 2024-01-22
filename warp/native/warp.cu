@@ -73,7 +73,11 @@ struct DeviceInfo
     static constexpr int kNameLen = 128;
 
     CUdevice device = -1;
+    CUuuid uuid = {0};
     int ordinal = -1;
+    int pci_domain_id = -1;
+    int pci_bus_id = -1;
+    int pci_device_id = -1;
     char name[kNameLen] = "";
     int arch = 0;
     int is_uva = 0;
@@ -126,6 +130,10 @@ int cuda_init()
                 g_devices[i].device = device;
                 g_devices[i].ordinal = i;
                 check_cu(cuDeviceGetName_f(g_devices[i].name, DeviceInfo::kNameLen, device));
+                check_cu(cuDeviceGetUuid_f(&g_devices[i].uuid, device));
+                check_cu(cuDeviceGetAttribute_f(&g_devices[i].pci_domain_id, CU_DEVICE_ATTRIBUTE_PCI_DOMAIN_ID, device));
+                check_cu(cuDeviceGetAttribute_f(&g_devices[i].pci_bus_id, CU_DEVICE_ATTRIBUTE_PCI_BUS_ID, device));
+                check_cu(cuDeviceGetAttribute_f(&g_devices[i].pci_device_id, CU_DEVICE_ATTRIBUTE_PCI_DEVICE_ID, device));
                 check_cu(cuDeviceGetAttribute_f(&g_devices[i].is_uva, CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING, device));
                 check_cu(cuDeviceGetAttribute_f(&g_devices[i].is_memory_pool_supported, CU_DEVICE_ATTRIBUTE_MEMORY_POOLS_SUPPORTED, device));
                 int major = 0;
@@ -1198,6 +1206,32 @@ int cuda_device_get_arch(int ordinal)
     if (ordinal >= 0 && ordinal < int(g_devices.size()))
         return g_devices[ordinal].arch;
     return 0;
+}
+
+void cuda_device_get_uuid(int ordinal, char uuid[16])
+{
+    memcpy(uuid, g_devices[ordinal].uuid.bytes, sizeof(char)*16);
+}
+
+int cuda_device_get_pci_domain_id(int ordinal)
+{
+    if (ordinal >= 0 && ordinal < int(g_devices.size()))
+        return g_devices[ordinal].pci_domain_id;
+    return -1;
+}
+
+int cuda_device_get_pci_bus_id(int ordinal)
+{
+    if (ordinal >= 0 && ordinal < int(g_devices.size()))
+        return g_devices[ordinal].pci_bus_id;
+    return -1;
+}
+
+int cuda_device_get_pci_device_id(int ordinal)
+{
+    if (ordinal >= 0 && ordinal < int(g_devices.size()))
+        return g_devices[ordinal].pci_device_id;
+    return -1;
 }
 
 int cuda_device_is_uva(int ordinal)

@@ -59,6 +59,7 @@ static PFN_cuDeviceGet_v2000 pfn_cuDeviceGet;
 static PFN_cuDeviceGetCount_v2000 pfn_cuDeviceGetCount;
 static PFN_cuDeviceGetName_v2000 pfn_cuDeviceGetName;
 static PFN_cuDeviceGetAttribute_v2000 pfn_cuDeviceGetAttribute;
+static PFN_cuDeviceGetUuid_v11040 pfn_cuDeviceGetUuid;
 static PFN_cuDevicePrimaryCtxRetain_v7000 pfn_cuDevicePrimaryCtxRetain;
 static PFN_cuDevicePrimaryCtxRelease_v11000 pfn_cuDevicePrimaryCtxRelease;
 static PFN_cuDeviceCanAccessPeer_v4000 pfn_cuDeviceCanAccessPeer;
@@ -166,6 +167,7 @@ bool init_cuda_driver()
     get_driver_entry_point("cuDeviceGetCount", &(void*&)pfn_cuDeviceGetCount);
     get_driver_entry_point("cuDeviceGetName", &(void*&)pfn_cuDeviceGetName);
     get_driver_entry_point("cuDeviceGetAttribute", &(void*&)pfn_cuDeviceGetAttribute);
+    get_driver_entry_point("cuDeviceGetUuid", &(void*&)pfn_cuDeviceGetUuid);
     get_driver_entry_point("cuDevicePrimaryCtxRetain", &(void*&)pfn_cuDevicePrimaryCtxRetain);
     get_driver_entry_point("cuDevicePrimaryCtxRelease", &(void*&)pfn_cuDevicePrimaryCtxRelease);
     get_driver_entry_point("cuDeviceCanAccessPeer", &(void*&)pfn_cuDeviceCanAccessPeer);
@@ -287,6 +289,11 @@ CUresult cuDeviceGetName_f(char* name, int len, CUdevice dev)
 CUresult cuDeviceGetAttribute_f(int* value, CUdevice_attribute attrib, CUdevice dev)
 {
     return pfn_cuDeviceGetAttribute ? pfn_cuDeviceGetAttribute(value, attrib, dev) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuDeviceGetUuid_f(CUuuid* uuid, CUdevice dev)
+{
+    return pfn_cuDeviceGetUuid ? pfn_cuDeviceGetUuid(uuid, dev) : DRIVER_ENTRY_POINT_ERROR;
 }
 
 CUresult cuDevicePrimaryCtxRetain_f(CUcontext* ctx, CUdevice dev)

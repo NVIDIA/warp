@@ -1,5 +1,3 @@
-.. _devices:
-
 Devices
 =======
 
@@ -18,7 +16,13 @@ It is possible to explicitly target a specific device with each Warp API call us
 
 .. note::
 
-    A Warp CUDA device (``"cuda:i"``) corresponds to the primary CUDA context of device ``i``.  This is compatible with frameworks like PyTorch and other software that uses the CUDA Runtime API.  It makes interoperability easy, because GPU resources like memory can be shared with Warp.
+    A Warp CUDA device (``"cuda:i"``) corresponds to the primary CUDA context of device ``i``.
+    This is compatible with frameworks like PyTorch and other software that uses the CUDA Runtime API.
+    It makes interoperability easy because GPU resources like memory can be shared with Warp.
+
+.. autoclass:: warp.context.Device
+    :members:
+    :exclude-members: init_streams
 
 Default Device
 --------------
