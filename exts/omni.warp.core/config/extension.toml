@@ -1,6 +1,6 @@
 [package]
 # Semantic Versioning is used: https://semver.org/
-version = "1.0.0-beta.5"
+version = "1.0.0-beta.7"
 authors = ["NVIDIA"]
 title = "Warp Core"
 description="The core Warp Python module"

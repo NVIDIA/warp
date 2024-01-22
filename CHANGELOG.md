@@ -1,5 +1,32 @@
 # CHANGELOG
 
+## [1.0.0-beta.7] - 2024-01-23
+
+- Add `Device.uuid`, `Device.pci_bus_id`
+- Ensure captures are always enclosed in `try`/`finally`
+- Only include .py files from the warp subdirectory into wheel packages
+- Fix an extension's sample node failing at parsing some version numbers
+- Update suite defaults for parallel testing
+- Allow examples to run without USD when possible
+- Add a setting to disable the main Warp menu in Kit
+- Add iterative linear solvers
+- Improve error messages around global variables
+- Improve error messages around mat/vec assignments
+- Support conversion of scalars to native/ctypes
+- Add a constant for infinity
+- Add a FAQ entry about array assignments
+- Add a mass spring cage diff simulation example
+- Add `-s`, `--suite` option for test runner
+- Fix common spelling mistakes
+- Fix indentation of generated code
+- Show deprecation warnings only once
+- Improve OpenGLRenderer
+- Create the extension's symlink at runtime
+- Fix some built-ins failing to compile the backward pass when nested inside if/else blocks
+- Update examples with the new variants of the mesh query built-ins
+- Fix type members that weren't zero-initialized
+- Fix missing adjoint function for `mesh_query_ray()`
+
 ## [1.0.0-beta.6] - 2024-01-10
 
 - Do not create CPU copy of grad array when calling `array.numpy()`
