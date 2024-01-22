@@ -127,6 +127,12 @@ class StdOutCapture:
         sys.stdout = self.tempfile
 
     def end(self):
+        if sys.platform == "win32":
+            # Workaround for what seems to be a Windows-specific bug where
+            # the output of CUDA's `printf` is not being immediately flushed
+            # despite the context synchronisation.
+            time.sleep(0.01)
+
         os.dup2(self.target, self.saved.fileno())
         os.close(self.target)
 
