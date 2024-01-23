@@ -16,6 +16,7 @@ workflow:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     - if: $CI_COMMIT_TAG # Run for tagged releases
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH =~ /release-.*/
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
 
@@ -226,6 +227,7 @@ linux-aarch64 test release:
 
 linux-x86_64 test release:
   needs: [linux-x86_64 build release]
+  retry: 2 # Multi-GPU tests sometimes fail on omni_nvks_gpu_2x
   extends:
     - .omni_nvks_gpu_2x
     - .test_common_release
@@ -327,6 +329,7 @@ linux-x86_64 test debug:
   extends:
     - .omni_nvks_gpu_2x
     - .test_common_debug
+  retry: 2 # Multi-GPU tests sometimes fail on omni_nvks_gpu_2x
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - tools/packman/packman install -l _build/target-deps/python python 3.8.18+nv1-linux-x86_64
@@ -417,7 +420,7 @@ merge request docs:
     - echo "You can view the website at https://omniverse.gitlab-master-pages.nvidia.com/-/warp/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
 
 # Build documentation and publish on gitlab-master
-# This only runs in the default branch pipeline
+# This only runs in the default branch pipeline. The "pages" name is special for GitLab.
 pages:
   extends:
     - .build_docs_common
@@ -428,7 +431,6 @@ pages:
     url: https://omniverse.gitlab-master-pages.nvidia.com/warp/
 
 # Creates wheel files for PyPI
-# This only runs in tag pipelines
 create pypi wheels:
   stage: package
   image: python:3.11-slim
@@ -441,6 +443,8 @@ create pypi wheels:
     - .runner-utility-linux-x86_64
   rules:
     - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
+    - if: $CI_COMMIT_BRANCH =~ /release-.*/
   before_script:
     # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
     - mkdir warp/bin/windows-x86_64
@@ -462,7 +466,6 @@ create pypi wheels:
       - dist/
 
 # Creates an artifact suitable for publishing the Kit extensions
-# This only runs in tag pipelines
 create kit artifacts:
   stage: package
   image: python:3.10-alpine
@@ -473,6 +476,8 @@ create kit artifacts:
     - .runner-utility-linux-x86_64
   rules:
     - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
+    - if: $CI_COMMIT_BRANCH =~ /release-.*/
   before_script:
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/*.so warp/bin/
