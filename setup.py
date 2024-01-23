@@ -3,6 +3,8 @@ import os
 import pathlib
 import platform
 import shutil
+import sys
+
 from typing import NamedTuple
 
 import setuptools
@@ -18,7 +20,7 @@ parser.add_argument(
 args = parser.parse_known_args()[0]
 
 
-# return a canonical machine architecture string
+# returns a canonical machine architecture string
 # - "x86_64" for x86-64, aka. AMD64, aka. x64
 # - "aarch64" for AArch64, aka. ARM64
 def machine_architecture() -> str:
@@ -28,6 +30,16 @@ def machine_architecture() -> str:
     if machine == "aarch64" or machine == "arm64":
         return "aarch64"
     raise RuntimeError(f"Unrecognized machine architecture {machine}")
+
+
+def machine_os() -> str:
+    if sys.platform == "win32":
+        return "windows"
+    if sys.platform == "linux":
+        return "linux"
+    if sys.platform == "darwin":
+        return "macos"
+    raise RuntimeError(f"Unrecognized system platform {sys.platform}")
 
 
 class Platform(NamedTuple):
@@ -99,11 +111,19 @@ if args.command == "bdist_wheel":
 
     if wheel_platform is None:
         if len(detected_platforms) > 1:
-            print("Libraries for multiple platforms were detected. Picking the first one.")
+            print("Libraries for multiple platforms were detected.")
             print(
                 "Run `python -m build --wheel -C--build-option=-P[windows|linux|macos]-[x86_64|aarch64|universal]` to select a specific one."
             )
-        wheel_platform = next(iter(detected_platforms))
+            # Select the libraries corresponding with the this machine's platform
+            for p in platforms:
+                if p.os == machine_os() and p.arch == machine_architecture():
+                    wheel_platform = p
+                    break
+
+        if wheel_platform is None:
+            # Just pick the first one
+            wheel_platform = next(iter(detected_platforms))
 
     print("Creating Warp wheel for " + wheel_platform.fancy_name)
 

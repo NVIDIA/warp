@@ -1,86 +1,131 @@
 # Release Instructions
 
-##  Updating the Github repository
-----------------------
+## Versioning
+-------------
 
-1) Search/Replace the current version string (be sure not to update previous string in CHANGELOG.md)
+Versions take the format X.Y.Z, similar to Python itself:
 
-2) Update CHANGELOG.md from history
+- Increments in X are reserved for major reworks of the project causing disruptive incompatibility.
+- Increments in Y are for regular releases with a new set of features.
+- Increments in Z are for bug fixes. In principle there are no new features. Can be omitted if 0 or not relevant.
 
-3) Ensure docs have been built with `python build_docs.py` (prerequisites: `pip install sphinx sphinx_copybutton black furo`)
+This is similar to [Semantic Versioning](https://semver.org/) but less strict around backward compatibility.
+Like with Python, some breaking changes can be present between minor versions if well documented and gradually introduced.
 
-4) Ensure that all changes are committed to `master` (including _static build files)
-
-5) Checkout `public` branch
-
-6) Merge `master` to `public` using the following:
-
-    `git merge --no-commit --allow-unrelated-histories --strategy-option theirs master`
-
-7) Review the staged changes and ensure that no sensitive files are present (benchmarks, Gitlab config files, large assets, etc)
-
-8) Commit changes to `public`
-
-9)  Push changes to Gitlab branch `public`
-
-10) Push changes to Github branch `main` - NOTE: the external facing Github release branch is called `main` *not* `public`
+Note that prior to 0.11.0 this schema was not strictly adhered to.
 
 
-## Creating a Github Release Package
-----------------------
+## Repositories
+---------------
 
-1) Ensure both `master` and `public` branches are up to date as above, and pushed to Gitlab
+Development happens internally on a GitLab repository (part of the Omniverse group), while releases are made public on GitHub.
 
-2) Ensure all build configurations passed:
+This document uses the following Git remote names:
 
-    https://teamcity.nvidia.com/project/Sandbox_mmacklin_Warp_Building?mode=builds
-
-3) Manually trigger the binary deployment config:
-
-    https://teamcity.nvidia.com/buildConfiguration/Sandbox_mmacklin_Warp_Publishing_PublishSource?mode=builds
-
-4) Download artifacts .zip
-
-5) Test release .zip by extracting to a clean folder and doing:
-
-    a) Run `cd warp`
-
-    b) Run `pip install .`
-
-    c) Run `cd examples`
-
-    d) Run `python example_mesh.py, etc`
-
-    e) Run `python -m warp.tests`
-    
-5) Create a new release on Github with tag of `v0.2.0` or equivalent and upload release .zip as an attachment
+* **omniverse**: `git remote add omniverse https://gitlab-master.nvidia.com/omniverse/warp.git`
+* **github**: `git remote add github https://github.com/NVIDIA/warp.git`
 
 
-## Upload a PyPi build
-----------------------
+## GitLab Release Branch
+------------------------
+
+1) Search & replace the current version string.
+
+   Be sure *not* to update previous strings in `CHANGELOG.md`.
+
+2) Update `CHANGELOG.md` from Git history (since the last release branch).
+
+3) Commit and push to `master`.
+
+4) For new X.Y versions, create a release branch (note .Z maintenance versions remain on the same branch):
+
+   `git checkout -b release-X.Y [<start-point>]`
+
+   If branching from an older revision or reusing a branch, make sure to cherry-pick the version and changelog update.
+
+5) Make any release-specific changes (e.g. disable/remove features not ready yet).
+
+6) Check that the last revision on the release branch passes TeamCity tests:
+
+   https://teamcity.nvidia.com/project/Omniverse_Warp?mode=builds
+
+   Fix issues until all tests pass. Cherry-pick fixes for `master` where applicable.
+
+
+## GitLab Public Branch
+-----------------------
+
+1) Manually trigger the `publish_bin` config on the `release-X.Y` branch:
+
+    https://teamcity.nvidia.com/buildConfiguration/Omniverse_Warp_Publishing_PublishSource?mode=builds
+
+2) Download artifacts .zip - it should contain a `.whl` file for each supported platform.
+
+3) Extract it to a clean folder and run tests for at least one platform:
+
+    - Run `python -m pip install warp_lang-<version>-<platform-tag>.whl`
+    - Run `python -m warp.tests`
+
+    Check that the correct version number gets printed.
+
+4) If tests fail, make fixes on `release-X.Y` and where necessary cherry-pick to `master` before repeating from step (1).
+
+5) If all tests passed:
+
+   * `git push github master:main`
+   * `git push github release-X.Y`
+
+6) Tag the release with `vX.Y.Z` on both `omniverse/release-X.Y` and `github/release-X.Y`.
+
+   It is safest to push *just* the new tag using `git push <remote> vX.Y.Z`.
+
+   In case of a mistake, tags can be moved using `git push <remote> vX.Y.Z -f`.
+
+
+## Creating a GitHub Release Package
+------------------------------------
+
+Create a new release on [GitHub](https://github.com/NVIDIA/warp) with a tag of `vX.Y.Z` and upload the .whl artifacts as attachments.
+
+
+## Upload a PyPI Release
+------------------------
 
 First time:
 
-* Create a PyPi account
-* Create a Token (write it down somewhere safe)
-* Get an admin (mmacklin@nvidia.com) to give you write access to the project
+* Create a [PyPI](https://pypi.org/) account.
+* [Create a Token](https://pypi.org/manage/account/#api-tokens) for uploading to the `warp-lang` project (store it somewhere safe).
+* Get an admin (mmacklin@nvidia.com) to give you write access to the project.
 
-Release Steps:
+Per release:
 
-1) Download artifacts as above and unzip
+Run `python -m twine upload *` from the unzipped .whl artifacts folder (on Windows make sure to use `cmd` shell; Git Bash doesn't work).
 
-2) Run `cd warp`
+* username: `__token__`
+* password: `(your token string from PyPI)`
 
-3) Run
-    ```bash
-    python -m build --wheel -C--build-option=-Pwindows-x86_64 &&
-    python -m build --wheel -C--build-option=-Plinux-x86_64 &&
-    python -m build --wheel -C--build-option=-Plinux-aarch64 &&
-    python -m build --wheel -C--build-option=-Pmacos-universal
-    ```
 
-4) Run `python -m twine upload dist/*`
+## Automated processes
+----------------------
 
-    * user: `__token__`
-    * pass: `(your token string from pypi)`
+The following is just for your information. These steps should run automatically by CI/CD pipelines, but can be replicated manually if needed:
 
+### Building the documentation
+
+The contents of https://nvidia.github.io/warp/ is generated by a GitHub pipeline which runs `python build_docs.py` (prerequisites: `pip install sphinx sphinx_copybutton black furo`).
+
+### Building pip wheels
+
+The TeamCity `publish_bin` configuration combines artifacts from each platform build, moving the contents of `warp/bin` to platform- and architecture-specific
+subfolders; e.g. `warp/bin/linux-x86_64` and `warp/bin/linux-aarch64` both contain `warp.so` and `warp-clang.so` files.
+
+Pip wheels are then built using:
+
+```bash
+python -m build --wheel -C--build-option=-Pwindows-x86_64
+python -m build --wheel -C--build-option=-Plinux-x86_64
+python -m build --wheel -C--build-option=-Plinux-aarch64
+python -m build --wheel -C--build-option=-Pmacos-universal
+```
+
+Selecting the correct library files for each wheel happens in [`setup.py`](setup.py).
