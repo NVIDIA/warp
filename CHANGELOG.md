@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## [0.11.0] - 2024-01-23
+
+- Re-release 1.0.0-beta.7 as a non-pre-release 0.11.0 version so it gets selected by `pip install warp-lang`.
+- Introducing a new versioning and release process, detailed in `PACKAGING.md` and resembling that of [Python itself](https://devguide.python.org/developer-workflow/development-cycle/#devcycle):
+  - The 0.11 release(s) can be found on the `release-0.11` branch.
+  - Point releases (if any) go on the same minor release branch and only contain bug fixes, not new features.
+  - The `public` branch, previously used to merge releases into and corresponding with the GitHub `main` branch, is retired.
+
 ## [1.0.0-beta.7] - 2024-01-23
 
 - Ensure captures are always enclosed in `try`/`finally`

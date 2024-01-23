@@ -3,9 +3,9 @@
 ## Versioning
 -------------
 
-Versions take the format X.Y.Z, similar to Python itself:
+Versions take the format X.Y.Z, similar to [Python itself](https://devguide.python.org/developer-workflow/development-cycle/#devcycle):
 
-- Increments in X are reserved for major reworks of the project causing disruptive incompatibility.
+- Increments in X are reserved for major reworks of the project causing disruptive incompatibility (or reaching the 1.0 milestone).
 - Increments in Y are for regular releases with a new set of features.
 - Increments in Z are for bug fixes. In principle there are no new features. Can be omitted if 0 or not relevant.
 
