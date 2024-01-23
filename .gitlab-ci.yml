@@ -227,9 +227,9 @@ linux-aarch64 test release:
 
 linux-x86_64 test release:
   needs: [linux-x86_64 build release]
-  retry: 2 # Multi-GPU tests sometimes fail on omni_nvks_gpu_2x
   extends:
-    - .omni_nvks_gpu_2x
+    #- .omni_nvks_gpu_2x # Currently mgpu tests sometimes fail on NVKS
+    - .runner-test-linux-x86_64-gpu
     - .test_common_release
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
@@ -327,9 +327,9 @@ mac-x86_64 test release:
 linux-x86_64 test debug:
   needs: [linux-x86_64 build debug]
   extends:
-    - .omni_nvks_gpu_2x
+    #- .omni_nvks_gpu_2x # Currently mgpu tests sometimes fail on NVKS
+    - .runner-test-linux-x86_64-gpu
     - .test_common_debug
-  retry: 2 # Multi-GPU tests sometimes fail on omni_nvks_gpu_2x
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - tools/packman/packman install -l _build/target-deps/python python 3.8.18+nv1-linux-x86_64

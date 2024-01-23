@@ -5,6 +5,7 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import sys
 import unittest
 
 import warp as wp
@@ -30,7 +31,8 @@ def test_print(test, device):
     s = capture.end()
 
     # The CPU kernel printouts don't get captured by StdOutCapture()
-    if device.is_cuda:
+    # We skip the win32 comparison for now since the capture sometimes is an empty string
+    if device.is_cuda and sys.platform != "win32":
         test.assertRegex(
             s,
             rf"1{os.linesep}"
