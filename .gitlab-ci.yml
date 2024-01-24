@@ -482,7 +482,6 @@ create kit artifacts:
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/*.so warp/bin/
     - rm -r warp/bin/linux-x86_64/
-    - rm exts/omni.warp.core/warp
     - rm -rf warp/native/cutlass
   script:
     - python tools/ci/publishing/build_nodes_info.py
