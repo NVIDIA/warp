@@ -238,6 +238,8 @@ def main(argv=None):
 
             import warp as wp
 
+            wp.init()
+
             # force rebuild of all kernels
             wp.build.clear_kernel_cache()
             print("Cleared Warp kernel cache")
@@ -449,6 +451,7 @@ class ParallelTestManager:
             # Clean up kernel cache (NVIDIA modification)
             import warp as wp
 
+            wp.init()
             wp.build.clear_kernel_cache()
 
             # Return (test_count, errors, failures, skipped_count, expected_failure_count, unexpected_success_count)
@@ -541,7 +544,7 @@ def set_worker_cache(args, temp_dir):
             )
 
         wp.config.kernel_cache_dir = cache_root_dir
-
+        wp.init()
         wp.build.clear_kernel_cache()
 
 
