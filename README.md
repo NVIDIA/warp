@@ -90,12 +90,6 @@ This will generate the `warp.dll` / `warp.so` core library respectively. When bu
 
 This ensures that subsequent modifications to the library will be reflected in the Python package.
 
-If you are cloning from Windows, please first ensure that you have enabled "Developer Mode" in Windows settings and symlinks in git:
-
-    git config --global core.symlinks true
-
-This will ensure symlinks inside ``exts/omni.warp.core`` work upon cloning.
-
 ## Omniverse
 
 A Warp Omniverse extension is available in the extension registry inside Omniverse Kit or USD Composer:
