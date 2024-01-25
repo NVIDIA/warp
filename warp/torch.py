@@ -121,6 +121,7 @@ def from_torch(t, dtype=None, requires_grad=None, grad=None):
 
     shape = tuple(t.shape)
     strides = tuple(s * ctype_size for s in t.stride())
+    device = device_from_torch(t.device)
 
     # if target is a vector or matrix type
     # then check if trailing dimensions match
@@ -157,18 +158,20 @@ def from_torch(t, dtype=None, requires_grad=None, grad=None):
     elif requires_grad:
         # wrap the tensor gradient, allocate if necessary
         if t.grad is None:
-            # allocate a zero-filled gradient tensor if it doesn't exist
-            import torch
+            # allocate a zero-filled gradient if it doesn't exist
+            # Note: we use Warp to allocate the shared gradient with compatible strides
+            grad = warp.zeros(dtype=dtype, shape=shape, strides=strides, device=device)
+            t.grad = to_torch(grad, requires_grad=False)
+        else:
+            # TODO: this will fail if the strides are incompatible
+            grad = from_torch(t.grad, dtype=dtype)
 
-            t.grad = torch.zeros_like(t, requires_grad=False)
-        grad = from_torch(t.grad, dtype=dtype)
-
-    a = warp.types.array(
+    a = warp.array(
         ptr=t.data_ptr(),
         dtype=dtype,
         shape=shape,
         strides=strides,
-        device=device_from_torch(t.device),
+        device=device,
         copy=False,
         owner=False,
         grad=grad,
