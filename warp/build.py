@@ -66,9 +66,7 @@ def init_kernel_cache(path=None):
     if path is not None:
         cache_root_dir = os.path.realpath(path)
     else:
-        cache_root_dir = appdirs.user_cache_dir(
-            appname="warp", appauthor="NVIDIA Corporation", version=warp.config.version
-        )
+        cache_root_dir = appdirs.user_cache_dir(appname="warp", appauthor="NVIDIA", version=warp.config.version)
 
     cache_bin_dir = os.path.join(cache_root_dir, "bin")
     cache_gen_dir = os.path.join(cache_root_dir, "gen")
@@ -95,15 +93,18 @@ def init_kernel_cache(path=None):
 def clear_kernel_cache():
     """Clear the kernel cache."""
 
+    is_intialized = kernel_bin_dir is not None and kernel_gen_dir is not None
+    assert is_intialized, "The kernel cache directory is not configured; wp.init() has not been called yet or failed."
+
     import glob
 
     paths = []
 
-    if kernel_bin_dir is not None and os.path.isdir(kernel_bin_dir):
+    if os.path.isdir(kernel_bin_dir):
         pattern = os.path.join(kernel_bin_dir, "wp_*")
         paths += glob.glob(pattern)
 
-    if kernel_gen_dir is not None and os.path.isdir(kernel_gen_dir):
+    if os.path.isdir(kernel_gen_dir):
         pattern = os.path.join(kernel_gen_dir, "wp_*")
         paths += glob.glob(pattern)
 

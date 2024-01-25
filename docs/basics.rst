@@ -20,7 +20,7 @@ for any generated kernel code, e.g.:
     Devices:
         "cpu"    | AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD
         "cuda:0" | NVIDIA GeForce RTX 4080 (sm_89)
-    Kernel cache: C:\Users\mmacklin\AppData\Local\NVIDIA Corporation\warp\Cache\1.0.0
+    Kernel cache: C:\Users\mmacklin\AppData\Local\NVIDIA\warp\Cache\1.0.0
 
 
 Kernels
