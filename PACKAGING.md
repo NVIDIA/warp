@@ -31,9 +31,13 @@ This document uses the following Git remote names:
 
 1) Search & replace the current version string.
 
+   We want to keep the Omniverse extensions's version in sync with the library so update the strings found in the `exts` folder as well.
+
    Be sure *not* to update previous strings in `CHANGELOG.md`.
 
-2) Update `CHANGELOG.md` from Git history (since the last release branch).
+2) Update `CHANGELOG.md` from Git history (since the last release branch). Only list user-facing changes.
+
+   The changelogs from the Omniverse extensions found in `exts` are kept in sync with the one from the library, so update them all at the same time and list any change made to the extensions.
 
 3) Commit and push to `master`.
 
@@ -103,6 +107,33 @@ Run `python -m twine upload *` from the unzipped .whl artifacts folder (on Windo
 
 * username: `__token__`
 * password: `(your token string from PyPI)`
+
+
+## Publishing the Omniverse Extensions
+--------------------------------------
+
+1) Ensure that the version strings and `CHANGELOG.md` files in the `exts` folder are in sync with the ones from the library.
+
+2) Manually trigger the `publish_ext` config on the `release-X.Y` branch:
+
+    https://teamcity.nvidia.com/buildConfiguration/Omniverse_Warp_Publishing_Publish
+
+3) Download artifacts .zip.
+
+4) Extract it to a clean folder and check the extensions inside of Kit:
+
+    - Run `omni.create.sh --ext-folder /path/to/artifacts/exts --enable omni.warp-X.Y.Z --enable omni.warp.core-X.Y.Z`
+    - Ensure that the example scenes are working as expected
+    - Run test suites for both extensions
+
+4) If tests fail, make fixes on `release-X.Y` and where necessary cherry-pick to `master` before repeating from step (2).
+
+5) If all tests passed:
+
+   * `kit --ext-folder /path/to/artifacts/exts --publish omni-warp.core-X.Y.Z`
+   * `kit --ext-folder /path/to/artifacts/exts --publish omni-warp-X.Y.Z`
+
+6) Ensure that the release is tagged with `vX.Y.Z` on both `omniverse/release-X.Y` and `github/release-X.Y`.
 
 
 ## Automated processes
