@@ -101,6 +101,24 @@ class Tape:
         # run launches backwards
         for launch in reversed(self.launches):
             if callable(launch):
+                module_enable_backward = wp.get_module(launch.__module__).options.get("enable_backward")
+                if module_enable_backward is False:
+                    msg = f"Running the tape backwards may produce incorrect gradients because recorded kernel {launch.__name__} is defined in a module with the option 'enable_backward=False' set."
+                    wp.utils.warn(msg)
+
+            else:
+                # kernel option takes precedence over module option
+                kernel_enable_backward = launch[0].options.get("enable_backward")
+                if kernel_enable_backward is False:
+                    msg = f"Running the tape backwards may produce incorrect gradients because recorded kernel {launch[0].key} is configured with the option 'enable_backward=False'."
+                    wp.utils.warn(msg)
+                elif kernel_enable_backward is None:
+                    module_enable_backward = launch[0].module.options.get("enable_backward")
+                    if module_enable_backward is False:
+                        msg = f"Running the tape backwards may produce incorrect gradients because recorded kernel {launch[0].key} is defined in a module with the option 'enable_backward=False' set."
+                        wp.utils.warn(msg)
+
+            if callable(launch):
                 launch()
 
             else:
