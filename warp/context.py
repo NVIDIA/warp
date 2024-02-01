@@ -1447,6 +1447,7 @@ class Module:
 
                 # kernel source
                 for kernel in module.kernels.values():
+                    ch.update(bytes(kernel.key, "utf-8"))
                     ch.update(bytes(kernel.adj.source, "utf-8"))
                     # cache kernel arg types
                     for arg, arg_type in kernel.adj.arg_types.items():
