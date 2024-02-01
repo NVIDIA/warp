@@ -103,7 +103,7 @@ def test_interpolate_gradient(test_case, device):
         vector_field.dof_values.requires_grad = True
         tape = wp.Tape()
         with tape:
-            fem.interpolate(grad_field, dest=vector_field, fields={"p": scalar_field})
+            fem.interpolate(grad_field, dest=vector_field, fields={"p": scalar_field}, kernel_options={"enable_backward": True})
 
         assert_np_equal(vector_field.dof_values.numpy(), np.array([[1.0, 1.0]]))
 

@@ -93,6 +93,54 @@ def test_options_4(test, device):
     assert_np_equal(tape.gradients[x].numpy(), np.array(0.0))
 
 
+def test_options_5(test, device):
+    wp.set_module_options({"enable_backward": True})
+
+    @wp.kernel
+    def loss_kernel(y: wp.array(dtype=float), loss: wp.array(dtype=float)):
+        tid = wp.tid()
+        wp.atomic_add(loss, 0, y[tid])
+
+    A = wp.array(np.ones((2, 2), dtype=float), dtype=float, requires_grad=True, device=device)
+    x = wp.array([[1.0], [2.0]], dtype=float, requires_grad=True, device=device)
+    b = wp.zeros_like(x)
+    y = wp.zeros_like(x)
+    loss = wp.zeros(1, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+
+    with tape:
+        wp.matmul(A, x, b, y, device=device)
+        wp.launch(loss_kernel, dim=2, inputs=[y.flatten(), loss], device=device)
+
+    tape.backward(loss)
+    assert_np_equal(x.grad.numpy(), np.array([[2.0], [2.0]]))
+
+
+def test_options_6(test, device):
+    wp.set_module_options({"enable_backward": False})
+
+    @wp.kernel
+    def loss_kernel(y: wp.array(dtype=float), loss: wp.array(dtype=float)):
+        tid = wp.tid()
+        wp.atomic_add(loss, 0, y[tid])
+
+    A = wp.array(np.ones((2, 2), dtype=float), dtype=float, requires_grad=True, device=device)
+    x = wp.array([[1.0], [2.0]], dtype=float, requires_grad=True, device=device)
+    b = wp.zeros_like(x)
+    y = wp.zeros_like(x)
+    loss = wp.zeros(1, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+
+    with tape:
+        wp.matmul(A, x, b, y, device=device)
+        wp.launch(loss_kernel, dim=2, inputs=[y.flatten(), loss], device=device)
+
+    tape.backward(loss)
+    assert_np_equal(x.grad.numpy(), np.array([[0.0], [0.0]]))
+
+
 devices = get_test_devices()
 
 
@@ -104,6 +152,8 @@ add_function_test(TestOptions, "test_options_1", test_options_1, devices=devices
 add_function_test(TestOptions, "test_options_2", test_options_2, devices=devices)
 add_function_test(TestOptions, "test_options_3", test_options_3, devices=devices)
 add_function_test(TestOptions, "test_options_4", test_options_4, devices=devices)
+add_function_test(TestOptions, "test_options_5", test_options_5, devices=devices)
+add_function_test(TestOptions, "test_options_6", test_options_6, devices=devices)
 
 
 if __name__ == "__main__":
