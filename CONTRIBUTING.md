@@ -1,6 +1,6 @@
 # Contributing to NVIDIA Warp
 
-The following guidelines are for NVIDIA developers working on Warp using internal Gitlab repository and TeamCity CI/CD.
+The following guidelines are for NVIDIA developers working on Warp using the internal Gitlab repository and TeamCity CI/CD.
 
 ## Submitter Guidelines
 
@@ -31,7 +31,7 @@ When you're ready to submit your changes, please follow these steps to create a 
    - Run `flake8` or `black` to auto-format changes (Gitlab pipeline will indicate if there are Flake8 errors)
    - [TeamCity](https://teamcity.nvidia.com/project/Omniverse_Warp?mode=builds#all-projects) is passing on all platforms
 
-4. **Assign Reviewers**: Select one or more reviewers from the owners list to review your changes. 
+4. **Assign Reviewers**: Select one or more reviewers from the owners list below to review your changes. Use the **Assignees** field to indicate reviewers who must _all_ approve the MR before it can be merged. Additional reviewers whose approvals are not required can be listed in the **Reviewers** field.
 
 5. **Address Reviewer Comments**: Respond to all reviewer feedback. Be open to revising your approach based on their suggestions. Once you have addressed a comment then reply to notify reviewers. *Do not* resolve the thread yourself, this makes it harder for the reviewer to verify what has been changed.
 
