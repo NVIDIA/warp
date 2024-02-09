@@ -9,7 +9,7 @@ authors = [
     {name = "NVIDIA", email = "mmacklin@nvidia.com"},
 ]
 description = "A Python framework for high-performance simulation and graphics programming"
-license = {text = "NVSCL"}
+license = {text = "NVIDIA Software License"}
 classifiers = [
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",

@@ -144,11 +144,8 @@ If you use Warp in your research please use the following citation:
 License
 -------
 
-Warp is provided under the NVIDIA Source Code License (NVSCL), please see
+Warp is provided under the NVIDIA Software License, please see
 `LICENSE.md <https://github.com/NVIDIA/warp/blob/main/LICENSE.md>`_ for the full license text.
-
-Please contact `omniverse-license-questions@nvidia.com <mailto:omniverse-license-questions@nvidia.com>`_ for
-commercial licensing inquires.
 
 Full Table of Contents
 ----------------------
