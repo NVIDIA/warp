@@ -1439,6 +1439,12 @@ class Module:
                         ch.update(bytes(s, "utf-8"))
                     if func.custom_replay_func:
                         s = func.custom_replay_func.adj.source
+                    if func.native_snippet:
+                        s = func.native_snippet
+                        ch.update(bytes(s, "utf-8"))
+                    if func.adj_native_snippet:
+                        s = func.adj_native_snippet
+                        ch.update(bytes(s, "utf-8"))
 
                     # cache func arg types
                     for arg, arg_type in func.adj.arg_types.items():

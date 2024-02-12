@@ -130,6 +130,51 @@ def test_cpu_snippet(test, device):
     assert_np_equal(out.numpy(), np.arange(1, N + 1, 1, dtype=np.int32))
 
 
+def test_recompile_snippet(test, device):
+    snippet = """
+    int inc = 1;
+    out[tid] = x[tid] + inc;
+    """
+
+    @wp.func_native(snippet)
+    def increment_snippet(
+        x: wp.array(dtype=wp.int32),
+        out: wp.array(dtype=wp.int32),
+        tid: int,
+    ):
+        ...
+
+    @wp.kernel
+    def increment(x: wp.array(dtype=wp.int32), out: wp.array(dtype=wp.int32)):
+        tid = wp.tid()
+        increment_snippet(x, out, tid)
+
+    N = 128
+    x = wp.array(np.arange(N, dtype=np.int32), dtype=wp.int32, device=device)
+    out = wp.zeros(N, dtype=wp.int32, device=device)
+
+    wp.launch(kernel=increment, dim=N, inputs=[x], outputs=[out], device=device)
+
+    assert_np_equal(out.numpy(), np.arange(1, N + 1, 1, dtype=np.int32))
+
+    snippet = """
+    int inc = 2;
+    out[tid] = x[tid] + inc;
+    """
+
+    @wp.func_native(snippet)
+    def increment_snippet(
+        x: wp.array(dtype=wp.int32),
+        out: wp.array(dtype=wp.int32),
+        tid: int,
+    ):
+        ...
+
+    wp.launch(kernel=increment, dim=N, inputs=[x], outputs=[out], device=device)
+
+    assert_np_equal(out.numpy(), 1 + np.arange(1, N + 1, 1, dtype=np.int32))
+
+
 class TestSnippets(unittest.TestCase):
     pass
 
@@ -137,6 +182,7 @@ class TestSnippets(unittest.TestCase):
 add_function_test(TestSnippets, "test_basic", test_basic, devices=get_unique_cuda_test_devices())
 add_function_test(TestSnippets, "test_shared_memory", test_shared_memory, devices=get_unique_cuda_test_devices())
 add_function_test(TestSnippets, "test_cpu_snippet", test_cpu_snippet, devices=["cpu"])
+add_function_test(TestSnippets, "test_recompile_snippet", test_recompile_snippet, devices=get_unique_cuda_test_devices())
 
 
 if __name__ == "__main__":
