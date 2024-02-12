@@ -24,15 +24,8 @@ with open(os.path.join(base_path, "docs", "modules", "functions.rst"), "w") as f
 # run Sphinx build
 try:
     docs_folder = os.path.join(base_path, "docs")
-    make_html_cmd = ["make.bat" if os.name == "nt" else "make", "html"]
-
-    if os.name == "nt" or len(sys.argv) == 1:
-        subprocess.check_output(make_html_cmd, cwd=docs_folder)
-    else:
-        # Sphinx options were passed via the argument list
-        make_html_cmd.append("-e")
-        sphinx_options = " ".join(sys.argv[1:])
-        subprocess.check_output(make_html_cmd, cwd=docs_folder, env=dict(os.environ, SPHINXOPTS=sphinx_options))
+    make_html_cmd = ["make.bat" if os.name == "nt" else "make html"]
+    subprocess.check_output(make_html_cmd, cwd=docs_folder, shell=True)
 except subprocess.CalledProcessError as e:
     print(e.output.decode())
     raise e
