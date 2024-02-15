@@ -83,6 +83,54 @@ def test_bool_constant(test, device):
     test.assertTrue(compile_constant_value.numpy()[0])
 
 
+def test_bool_constant_vec(test, device):
+
+    vec3bool = wp.vec(length=3, dtype=wp.bool)
+    bool_selector_vec = wp.constant(vec3bool([True, False, True]))
+
+    @wp.kernel
+    def sum_from_bool_vec(sum_array: wp.array(dtype=wp.int32)):
+        i = wp.tid()
+
+        if bool_selector_vec[0]:
+            sum_array[i] = sum_array[i] + 1
+        if bool_selector_vec[1]:
+            sum_array[i] = sum_array[i] + 2
+        if bool_selector_vec[2]:
+            sum_array[i] = sum_array[i] + 4
+
+    result_array = wp.zeros(10, dtype=wp.int32, device=device)
+
+    wp.launch(sum_from_bool_vec, result_array.shape, inputs=[result_array], device=device)
+
+    assert_np_equal(result_array.numpy(), np.full(result_array.shape, 5))
+
+
+def test_bool_constant_mat(test, device):
+
+    mat22bool = wp.mat((2, 2), dtype=wp.bool)
+    bool_selector_mat = wp.constant(mat22bool([True, False, False, True]))
+
+    @wp.kernel
+    def sum_from_bool_mat(sum_array: wp.array(dtype=wp.int32)):
+        i = wp.tid()
+
+        if bool_selector_mat[0, 0]:
+            sum_array[i] = sum_array[i] + 1
+        if bool_selector_mat[0, 1]:
+            sum_array[i] = sum_array[i] + 2
+        if bool_selector_mat[1, 0]:
+            sum_array[i] = sum_array[i] + 4
+        if bool_selector_mat[1, 1]:
+            sum_array[i] = sum_array[i] + 8
+
+    result_array = wp.zeros(10, dtype=wp.int32, device=device)
+
+    wp.launch(sum_from_bool_mat, result_array.shape, inputs=[result_array], device=device)
+
+    assert_np_equal(result_array.numpy(), np.full(result_array.shape, 9))
+
+
 devices = get_test_devices()
 
 
@@ -92,6 +140,8 @@ class TestBool(unittest.TestCase):
 
 add_function_test(TestBool, "test_bool_identity_ops", test_bool_identity_ops, devices=devices)
 add_function_test(TestBool, "test_bool_constant", test_bool_constant, devices=devices)
+add_function_test(TestBool, "test_bool_constant_vec", test_bool_constant_vec, devices=devices)
+add_function_test(TestBool, "test_bool_constant_mat", test_bool_constant_mat, devices=devices)
 
 
 if __name__ == "__main__":

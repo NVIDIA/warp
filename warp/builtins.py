@@ -612,15 +612,19 @@ add_builtin(
 
 
 # scalar type constructors between all storage / compute types
-scalar_types_all = [*scalar_types, int, float]
+scalar_types_all = [*scalar_types, bool, int, float]
 for t in scalar_types_all:
     for u in scalar_types_all:
         add_builtin(
-            t.__name__, input_types={"u": u}, value_type=t, doc="", hidden=True, group="Scalar Math", export=False
+            t.__name__,
+            input_types={"u": u},
+            value_type=t,
+            doc="",
+            hidden=True,
+            group="Scalar Math",
+            export=False,
+            namespace="wp::" if t is not bool else "",
         )
-
-for u in [bool, builtins.bool]:
-    add_builtin(bool.__name__, input_types={"u": u}, value_type=bool, doc="", hidden=True, export=False, namespace="")
 
 
 def vector_constructor_func(arg_types, kwds, templates):
@@ -2852,7 +2856,7 @@ add_builtin(
     skip_replay=True,
 )
 
-for t in scalar_types + vector_types + [builtins.bool]:
+for t in scalar_types + vector_types + [bool, builtins.bool]:
     if "vec" in t.__name__ or "mat" in t.__name__:
         continue
     add_builtin(
