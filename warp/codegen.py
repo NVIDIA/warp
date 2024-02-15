@@ -418,7 +418,10 @@ def compute_type_str(base_name, template_params):
         if isinstance(p, int):
             return str(p)
         elif hasattr(p, "_type_"):
-            return f"wp::{p.__name__}"
+            if p.__name__ == "bool":
+                return "bool"
+            else:
+                return f"wp::{p.__name__}"
         return p.__name__
 
     return f"{base_name}<{','.join(map(param2str, template_params))}>"
@@ -924,9 +927,11 @@ class Adjoint:
         use_initializer_list = func.initializer_list_func(args, templates)
 
         args_var = [
-            adj.load(a)
-            if not ((param_types[i] == Reference or param_types[i] == Callable) if i < len(param_types) else False)
-            else a
+            (
+                adj.load(a)
+                if not ((param_types[i] == Reference or param_types[i] == Callable) if i < len(param_types) else False)
+                else a
+            )
             for i, a in enumerate(args)
         ]
 
@@ -1722,9 +1727,7 @@ class Adjoint:
 
         target = adj.eval(node.value)
         if not is_local_value(target):
-            raise RuntimeError(
-                "Cannot reference a global variable from a kernel unless `wp.constant()` is being used"
-            )
+            raise RuntimeError("Cannot reference a global variable from a kernel unless `wp.constant()` is being used")
 
         indices = []
 
@@ -2008,11 +2011,9 @@ class Adjoint:
         # Look up the closure info and append it to adj.func.__globals__
         # in case you want to define a kernel inside a function and refer
         # to variables you've declared inside that function:
-        extract_contents = (
-            lambda contents: contents
-            if isinstance(contents, warp.context.Function) or not callable(contents)
-            else contents
-        )
+        def extract_contents(contents):
+            return contents if isinstance(contents, warp.context.Function) or not callable(contents) else contents
+
         capturedvars = dict(
             zip(
                 adj.func.__code__.co_freevars,
@@ -2343,9 +2344,12 @@ def constant_str(value):
         initlist = []
         for i in range(value._length_):
             x = ctypes.Array.__getitem__(value, i)
-            initlist.append(str(scalar_value(x)))
+            initlist.append(str(scalar_value(x)).lower())
 
-        dtypestr = f"wp::initializer_array<{value._length_},wp::{value._wp_scalar_type_.__name__}>"
+        if value._wp_scalar_type_ is bool:
+            dtypestr = f"wp::initializer_array<{value._length_},{value._wp_scalar_type_.__name__}>"
+        else:
+            dtypestr = f"wp::initializer_array<{value._length_},wp::{value._wp_scalar_type_.__name__}>"
 
         # construct value from initializer array, e.g. wp::initializer_array<4,wp::float32>{1.0, 2.0, 3.0, 4.0}
         return f"{dtypestr}{{{', '.join(initlist)}}}"

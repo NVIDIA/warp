@@ -98,7 +98,13 @@ def vector(length, dtype):
         # ctypes.Array data for length, shape and c type:
         _length_ = 0 if length is Any else length
         _shape_ = (_length_,)
-        _type_ = ctypes.c_float if dtype in [Scalar, Float] else dtype._type_
+
+        if dtype is bool:
+            _type_ = ctypes.c_bool
+        elif dtype in [Scalar, Float]:
+            _type_ = ctypes.c_float
+        else:
+            _type_ = dtype._type_
 
         # warp scalar type:
         _wp_scalar_type_ = dtype
@@ -271,7 +277,13 @@ def matrix(shape, dtype):
     class mat_t(ctypes.Array):
         _length_ = 0 if shape[0] == Any or shape[1] == Any else shape[0] * shape[1]
         _shape_ = (0, 0) if _length_ == 0 else shape
-        _type_ = ctypes.c_float if dtype in [Scalar, Float] else dtype._type_
+
+        if dtype is bool:
+            _type_ = ctypes.c_bool
+        elif dtype in [Scalar, Float]:
+            _type_ = ctypes.c_float
+        else:
+            _type_ = dtype._type_
 
         # warp scalar type:
         # used in type checking and when writing out c++ code for constructors:
@@ -391,8 +403,7 @@ def matrix(shape, dtype):
                 iter(v)
             except TypeError:
                 raise TypeError(
-                    f"Expected to assign a slice from a sequence of values "
-                    f"but got `{type(v).__name__}` instead"
+                    f"Expected to assign a slice from a sequence of values " f"but got `{type(v).__name__}` instead"
                 ) from None
 
             row_start = r * self._shape_[1]
@@ -1103,6 +1114,7 @@ class range_t:
 # definition just for kernel type (cannot be a parameter), see bvh.h
 class bvh_query_t:
     """Object used to track state during BVH traversal."""
+
     def __init__(self):
         pass
 
@@ -1110,6 +1122,7 @@ class bvh_query_t:
 # definition just for kernel type (cannot be a parameter), see mesh.h
 class mesh_query_aabb_t:
     """Object used to track state during mesh traversal."""
+
     def __init__(self):
         pass
 
@@ -1117,6 +1130,7 @@ class mesh_query_aabb_t:
 # definition just for kernel type (cannot be a parameter), see hash_grid.h
 class hash_grid_query_t:
     """Object used to track state during neighbor traversal."""
+
     def __init__(self):
         pass
 
@@ -1399,9 +1413,9 @@ def types_equal(a, b, match_generic=False):
         if match_generic:
             if p1 == Any or p2 == Any:
                 return True
-            if p1 == Scalar and p2 in scalar_types:
+            if p1 == Scalar and p2 in scalar_types + [bool]:
                 return True
-            if p2 == Scalar and p1 in scalar_types:
+            if p2 == Scalar and p1 in scalar_types + [bool]:
                 return True
             if p1 == Scalar and p2 == Scalar:
                 return True
@@ -3194,6 +3208,7 @@ class mesh_query_point_t:
         :func:`mesh_query_point_sign_normal`,
         and :func:`mesh_query_point_sign_winding_number`.
     """
+
     from warp.codegen import Var
 
     vars = {
@@ -3222,6 +3237,7 @@ class mesh_query_ray_t:
     See Also:
         :func:`mesh_query_ray`.
     """
+
     from warp.codegen import Var
 
     vars = {
@@ -3271,7 +3287,12 @@ def matmul(
             "wp.matmul currently only supports operation between {A, B, C, D} matrices of the same type."
         )
 
-    if (not a.is_contiguous and not a.is_transposed) or (not b.is_contiguous and not b.is_transposed) or (not c.is_contiguous) or (not d.is_contiguous):
+    if (
+        (not a.is_contiguous and not a.is_transposed)
+        or (not b.is_contiguous and not b.is_transposed)
+        or (not c.is_contiguous)
+        or (not d.is_contiguous)
+    ):
         raise RuntimeError(
             "wp.matmul is only valid for contiguous arrays, with the exception that A and/or B may be transposed."
         )
@@ -3392,7 +3413,7 @@ def adj_matmul(
         raise RuntimeError(
             "wp.matmul is only valid for contiguous arrays, with the exception that A and/or B and their associated adjoints may be transposed."
         )
-    
+
     m = a.shape[0]
     n = b.shape[1]
     k = a.shape[1]
@@ -3502,7 +3523,7 @@ def adj_matmul(
             1,
         )
         if not ret:
-            raise RuntimeError("adj_matmul failed.")        
+            raise RuntimeError("adj_matmul failed.")
 
     # adj_c
     warp.launch(
@@ -3510,7 +3531,7 @@ def adj_matmul(
         dim=adj_c.shape,
         inputs=[adj_c, adj_d, adj_d.dtype(beta)],
         device=device,
-        record_tape=False
+        record_tape=False,
     )
 
 
@@ -3550,7 +3571,12 @@ def batched_matmul(
             "wp.batched_matmul currently only supports operation between {A, B, C, D} matrices of the same type."
         )
 
-    if (not a.is_contiguous and not a.is_transposed) or (not b.is_contiguous and not b.is_transposed) or (not c.is_contiguous) or (not d.is_contiguous):
+    if (
+        (not a.is_contiguous and not a.is_transposed)
+        or (not b.is_contiguous and not b.is_transposed)
+        or (not c.is_contiguous)
+        or (not d.is_contiguous)
+    ):
         raise RuntimeError(
             "wp.matmul is only valid for contiguous arrays, with the exception that A and/or B may be transposed."
         )
@@ -3592,10 +3618,10 @@ def batched_matmul(
             n,
             k,
             type_typestr(a.dtype).encode(),
-            ctypes.c_void_p(a[idx_start:idx_end,:,:].ptr),
-            ctypes.c_void_p(b[idx_start:idx_end,:,:].ptr),
-            ctypes.c_void_p(c[idx_start:idx_end,:,:].ptr),
-            ctypes.c_void_p(d[idx_start:idx_end,:,:].ptr),
+            ctypes.c_void_p(a[idx_start:idx_end, :, :].ptr),
+            ctypes.c_void_p(b[idx_start:idx_end, :, :].ptr),
+            ctypes.c_void_p(c[idx_start:idx_end, :, :].ptr),
+            ctypes.c_void_p(d[idx_start:idx_end, :, :].ptr),
             alpha,
             beta,
             not a.is_transposed,
@@ -3605,7 +3631,7 @@ def batched_matmul(
         )
         if not ret:
             raise RuntimeError("Batched matmul failed.")
-    
+
     idx_start = iters * max_batch_count
     ret = runtime.core.cutlass_gemm(
         cc,
@@ -3613,10 +3639,10 @@ def batched_matmul(
         n,
         k,
         type_typestr(a.dtype).encode(),
-        ctypes.c_void_p(a[idx_start:,:,:].ptr),
-        ctypes.c_void_p(b[idx_start:,:,:].ptr),
-        ctypes.c_void_p(c[idx_start:,:,:].ptr),
-        ctypes.c_void_p(d[idx_start:,:,:].ptr),
+        ctypes.c_void_p(a[idx_start:, :, :].ptr),
+        ctypes.c_void_p(b[idx_start:, :, :].ptr),
+        ctypes.c_void_p(c[idx_start:, :, :].ptr),
+        ctypes.c_void_p(d[idx_start:, :, :].ptr),
         alpha,
         beta,
         not a.is_transposed,
@@ -3625,7 +3651,7 @@ def batched_matmul(
         remainder,
     )
     if not ret:
-        raise RuntimeError("Batched matmul failed.")    
+        raise RuntimeError("Batched matmul failed.")
 
 
 def adj_batched_matmul(
@@ -3744,10 +3770,10 @@ def adj_batched_matmul(
                 k,
                 n,
                 type_typestr(a.dtype).encode(),
-                ctypes.c_void_p(adj_d[idx_start:idx_end,:,:].ptr),
-                ctypes.c_void_p(b[idx_start:idx_end,:,:].ptr),
-                ctypes.c_void_p(adj_a[idx_start:idx_end,:,:].ptr),
-                ctypes.c_void_p(adj_a[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(adj_d[idx_start:idx_end, :, :].ptr),
+                ctypes.c_void_p(b[idx_start:idx_end, :, :].ptr),
+                ctypes.c_void_p(adj_a[idx_start:idx_end, :, :].ptr),
+                ctypes.c_void_p(adj_a[idx_start:idx_end, :, :].ptr),
                 alpha,
                 1.0,
                 True,
@@ -3764,10 +3790,10 @@ def adj_batched_matmul(
                 m,
                 n,
                 type_typestr(a.dtype).encode(),
-                ctypes.c_void_p(b[idx_start:idx_end,:,:].ptr),
-                ctypes.c_void_p(adj_d[idx_start:idx_end,:,:].ptr),
-                ctypes.c_void_p(adj_a[idx_start:idx_end,:,:].ptr),
-                ctypes.c_void_p(adj_a[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(b[idx_start:idx_end, :, :].ptr),
+                ctypes.c_void_p(adj_d[idx_start:idx_end, :, :].ptr),
+                ctypes.c_void_p(adj_a[idx_start:idx_end, :, :].ptr),
+                ctypes.c_void_p(adj_a[idx_start:idx_end, :, :].ptr),
                 alpha,
                 1.0,
                 not b.is_transposed,
@@ -3786,10 +3812,10 @@ def adj_batched_matmul(
                 n,
                 m,
                 type_typestr(a.dtype).encode(),
-                ctypes.c_void_p(a[idx_start:idx_end,:,:].ptr),
-                ctypes.c_void_p(adj_d[idx_start:idx_end,:,:].ptr),
-                ctypes.c_void_p(adj_b[idx_start:idx_end,:,:].ptr),
-                ctypes.c_void_p(adj_b[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(a[idx_start:idx_end, :, :].ptr),
+                ctypes.c_void_p(adj_d[idx_start:idx_end, :, :].ptr),
+                ctypes.c_void_p(adj_b[idx_start:idx_end, :, :].ptr),
+                ctypes.c_void_p(adj_b[idx_start:idx_end, :, :].ptr),
                 alpha,
                 1.0,
                 a.is_transposed,
@@ -3806,10 +3832,10 @@ def adj_batched_matmul(
                 k,
                 m,
                 type_typestr(a.dtype).encode(),
-                ctypes.c_void_p(adj_d[idx_start:idx_end,:,:].ptr),
-                ctypes.c_void_p(a[idx_start:idx_end,:,:].ptr),
-                ctypes.c_void_p(adj_b[idx_start:idx_end,:,:].ptr),
-                ctypes.c_void_p(adj_b[idx_start:idx_end,:,:].ptr),
+                ctypes.c_void_p(adj_d[idx_start:idx_end, :, :].ptr),
+                ctypes.c_void_p(a[idx_start:idx_end, :, :].ptr),
+                ctypes.c_void_p(adj_b[idx_start:idx_end, :, :].ptr),
+                ctypes.c_void_p(adj_b[idx_start:idx_end, :, :].ptr),
                 alpha,
                 1.0,
                 False,
@@ -3818,10 +3844,10 @@ def adj_batched_matmul(
                 max_batch_count,
             )
             if not ret:
-                raise RuntimeError("adj_matmul failed.")   
-    
+                raise RuntimeError("adj_matmul failed.")
+
     idx_start = iters * max_batch_count
-    
+
     # adj_a
     if not a.is_transposed:
         ret = runtime.core.cutlass_gemm(
@@ -3830,10 +3856,10 @@ def adj_batched_matmul(
             k,
             n,
             type_typestr(a.dtype).encode(),
-            ctypes.c_void_p(adj_d[idx_start:,:,:].ptr),
-            ctypes.c_void_p(b[idx_start:,:,:].ptr),
-            ctypes.c_void_p(adj_a[idx_start:,:,:].ptr),
-            ctypes.c_void_p(adj_a[idx_start:,:,:].ptr),
+            ctypes.c_void_p(adj_d[idx_start:, :, :].ptr),
+            ctypes.c_void_p(b[idx_start:, :, :].ptr),
+            ctypes.c_void_p(adj_a[idx_start:, :, :].ptr),
+            ctypes.c_void_p(adj_a[idx_start:, :, :].ptr),
             alpha,
             1.0,
             True,
@@ -3850,10 +3876,10 @@ def adj_batched_matmul(
             m,
             n,
             type_typestr(a.dtype).encode(),
-            ctypes.c_void_p(b[idx_start:,:,:].ptr),
-            ctypes.c_void_p(adj_d[idx_start:,:,:].ptr),
-            ctypes.c_void_p(adj_a[idx_start:,:,:].ptr),
-            ctypes.c_void_p(adj_a[idx_start:,:,:].ptr),
+            ctypes.c_void_p(b[idx_start:, :, :].ptr),
+            ctypes.c_void_p(adj_d[idx_start:, :, :].ptr),
+            ctypes.c_void_p(adj_a[idx_start:, :, :].ptr),
+            ctypes.c_void_p(adj_a[idx_start:, :, :].ptr),
             alpha,
             1.0,
             not b.is_transposed,
@@ -3872,10 +3898,10 @@ def adj_batched_matmul(
             n,
             m,
             type_typestr(a.dtype).encode(),
-            ctypes.c_void_p(a[idx_start:,:,:].ptr),
-            ctypes.c_void_p(adj_d[idx_start:,:,:].ptr),
-            ctypes.c_void_p(adj_b[idx_start:,:,:].ptr),
-            ctypes.c_void_p(adj_b[idx_start:,:,:].ptr),
+            ctypes.c_void_p(a[idx_start:, :, :].ptr),
+            ctypes.c_void_p(adj_d[idx_start:, :, :].ptr),
+            ctypes.c_void_p(adj_b[idx_start:, :, :].ptr),
+            ctypes.c_void_p(adj_b[idx_start:, :, :].ptr),
             alpha,
             1.0,
             a.is_transposed,
@@ -3892,10 +3918,10 @@ def adj_batched_matmul(
             k,
             m,
             type_typestr(a.dtype).encode(),
-            ctypes.c_void_p(adj_d[idx_start:,:,:].ptr),
-            ctypes.c_void_p(a[idx_start:,:,:].ptr),
-            ctypes.c_void_p(adj_b[idx_start:,:,:].ptr),
-            ctypes.c_void_p(adj_b[idx_start:,:,:].ptr),
+            ctypes.c_void_p(adj_d[idx_start:, :, :].ptr),
+            ctypes.c_void_p(a[idx_start:, :, :].ptr),
+            ctypes.c_void_p(adj_b[idx_start:, :, :].ptr),
+            ctypes.c_void_p(adj_b[idx_start:, :, :].ptr),
             alpha,
             1.0,
             False,
@@ -3904,7 +3930,7 @@ def adj_batched_matmul(
             remainder,
         )
         if not ret:
-            raise RuntimeError("adj_matmul failed.")   
+            raise RuntimeError("adj_matmul failed.")
 
     # adj_c
     warp.launch(
@@ -3912,8 +3938,9 @@ def adj_batched_matmul(
         dim=adj_c.shape,
         inputs=[adj_c, adj_d, adj_d.dtype(beta)],
         device=device,
-        record_tape=False
+        record_tape=False,
     )
+
 
 class HashGrid:
     def __init__(self, dim_x, dim_y, dim_z, device=None):
@@ -4155,7 +4182,7 @@ def infer_argument_types(args, template_types, arg_names=None):
         arg_name = arg_names[i] if arg_names else str(i)
         if arg_type in warp.types.array_types:
             arg_types.append(arg_type(dtype=arg.dtype, ndim=arg.ndim))
-        elif arg_type in warp.types.scalar_types:
+        elif arg_type in warp.types.scalar_types + [bool]:
             arg_types.append(arg_type)
         elif arg_type in [int, float]:
             # canonicalize type

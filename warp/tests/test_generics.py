@@ -164,6 +164,7 @@ def generic_accumulator_kernel(a: wp.array(dtype=wp.float64), value: Any):
 wp.overload(generic_accumulator_kernel, {"value": int})
 wp.overload(generic_accumulator_kernel, {"value": float})
 wp.overload(generic_accumulator_kernel, {"value": wp.float64})
+wp.overload(generic_accumulator_kernel, {"value": wp.bool})
 
 
 def test_generic_accumulator_kernel(test, device):
@@ -174,8 +175,9 @@ def test_generic_accumulator_kernel(test, device):
         wp.launch(generic_accumulator_kernel, dim=a.size, inputs=[a, 25])
         wp.launch(generic_accumulator_kernel, dim=a.size, inputs=[a, 17.0])
         wp.launch(generic_accumulator_kernel, dim=a.size, inputs=[a, wp.float64(8.0)])
+        wp.launch(generic_accumulator_kernel, dim=a.size, inputs=[a, wp.bool(True)])
 
-        assert_np_equal(a.numpy(), np.full((n,), 50.0, dtype=np.float64))
+        assert_np_equal(a.numpy(), np.full((n,), 51.0, dtype=np.float64))
 
 
 # generic kernel used to automatically generate overloads from launch args
@@ -191,14 +193,17 @@ def test_generic_fill(test, device):
         ai = wp.zeros(n, dtype=int)
         af = wp.zeros(n, dtype=float)
         a3 = wp.zeros(n, dtype=wp.vec3)
+        ab = wp.zeros(n, dtype=wp.bool)
 
         wp.launch(generic_fill, dim=ai.size, inputs=[ai, 42])
         wp.launch(generic_fill, dim=af.size, inputs=[af, 17.0])
         wp.launch(generic_fill, dim=a3.size, inputs=[a3, wp.vec3(5.0, 5.0, 5.0)])
+        wp.launch(generic_fill, dim=ab.size, inputs=[ab, wp.bool(True)])
 
         assert_np_equal(ai.numpy(), np.full((n,), 42, dtype=np.int32))
         assert_np_equal(af.numpy(), np.full((n,), 17.0, dtype=np.float32))
         assert_np_equal(a3.numpy(), np.full((n, 3), 5.0, dtype=np.float32))
+        assert_np_equal(ab.numpy(), np.full((n,), True, dtype=np.bool_))
 
 
 # generic kernel used to create and launch explicit overloads
@@ -208,10 +213,12 @@ def generic_fill_v2(a: wp.array(dtype=Any), value: Any):
     a[tid] = value
 
 
+vec3b_type = wp.vec(3, wp.bool)
 # create explicit overloads to be launched directly
 fill_int = wp.overload(generic_fill_v2, [wp.array(dtype=int), int])
 fill_float = wp.overload(generic_fill_v2, [wp.array(dtype=float), float])
 fill_vec3 = wp.overload(generic_fill_v2, [wp.array(dtype=wp.vec3), wp.vec3])
+fill_vec3b = wp.overload(generic_fill_v2, [wp.array(dtype=vec3b_type), vec3b_type])
 
 
 def test_generic_fill_overloads(test, device):
@@ -220,19 +227,22 @@ def test_generic_fill_overloads(test, device):
         ai = wp.zeros(n, dtype=int)
         af = wp.zeros(n, dtype=float)
         a3 = wp.zeros(n, dtype=wp.vec3)
+        a3b = wp.zeros(n, dtype=vec3b_type)
 
         wp.launch(fill_int, dim=ai.size, inputs=[ai, 42])
         wp.launch(fill_float, dim=af.size, inputs=[af, 17.0])
         wp.launch(fill_vec3, dim=a3.size, inputs=[a3, wp.vec3(5.0, 5.0, 5.0)])
+        wp.launch(fill_vec3b, dim=a3b.size, inputs=[a3b, vec3b_type([True, True, True])])
 
         assert_np_equal(ai.numpy(), np.full((n,), 42, dtype=np.int32))
         assert_np_equal(af.numpy(), np.full((n,), 17.0, dtype=np.float32))
         assert_np_equal(a3.numpy(), np.full((n, 3), 5.0, dtype=np.float32))
+        assert_np_equal(a3b.numpy(), np.full((n, 3), True, dtype=np.bool_))
 
 
 # custom vector/matrix types
-my_vec5 = wp.types.vector(length=5, dtype=wp.float32)
-my_mat55 = wp.types.matrix(shape=(5, 5), dtype=wp.float32)
+my_vec5 = wp.vec(length=5, dtype=wp.float32)
+my_mat55 = wp.mat(shape=(5, 5), dtype=wp.float32)
 
 
 @wp.kernel
@@ -458,7 +468,7 @@ def test_generic_type_as_argument(test, device):
         wp.synchronize()
 
 
-def test_type_operator_mispell(test, device):
+def test_type_operator_misspell(test, device):
     @wp.kernel
     def kernel():
         i = wp.tid()
@@ -553,7 +563,7 @@ add_kernel_test(
     inputs=[bar],
     devices=devices,
 )
-add_function_test(TestGenerics, "test_type_operator_mispell", test_type_operator_mispell, devices=devices)
+add_function_test(TestGenerics, "test_type_operator_misspell", test_type_operator_misspell, devices=devices)
 add_function_test(TestGenerics, "test_type_attribute_error", test_type_attribute_error, devices=devices)
 
 if __name__ == "__main__":
