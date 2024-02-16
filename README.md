@@ -20,9 +20,9 @@ Warp supports Python versions 3.7.x onwards. The easiest way is to install from 
 
     pip install warp-lang
 
-Pre-built binary packages for Windows and Linux are also available on the [Releases](https://github.com/NVIDIA/warp/releases) page. To install in your local Python environment extract the archive and run the following command from the root directory:
+Pre-built binary packages for Windows, Linux, and macOS are also available on the [Releases](https://github.com/NVIDIA/warp/releases) page. To install in your local Python environment run the following command from the download directory:
 
-    pip install .
+    pip install warp_lang-<version and platform>.whl
 
 ## Getting Started
 
