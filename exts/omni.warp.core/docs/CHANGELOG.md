@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## [0.13.0] - 2024-02-16
+
+- Update the license to *NVIDIA Software License*, allowing commercial use (see `LICENSE.md`)
+- Add `CONTRIBUTING.md` guidelines (for NVIDIA employees)
+- Hash CUDA `snippet` and `adj_snippet` strings to fix caching
+- Fix `build_docs.py` on Windows
+- Add missing `.py` extension to `warp/tests/walkthrough_debug`
+- Allow `wp.bool` usage in vector and matrix types
+
+## [0.12.0] - 2024-02-05
+
+- Add a warning when the `enable_backward` setting is set to `False` upon calling `wp.Tape.backward()`
+- Fix kernels not being recompiled as expected when defined using a closure
+- Change the kernel cache appauthor subdirectory to just "NVIDIA"
+- Ensure that gradients attached to PyTorch tensors have compatible strides when calling `wp.from_torch()`
+- Add a `Noise Deform` node for OmniGraph that deforms points using a perlin/curl noise
+
 ## [0.11.0] - 2024-01-23
 
 - Re-release 1.0.0-beta.7 as a non-pre-release 0.11.0 version so it gets selected by `pip install warp-lang`.
