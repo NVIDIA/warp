@@ -1,6 +1,6 @@
 # Contributing to NVIDIA Warp
 
-The following guidelines are for NVIDIA developers working on Warp using the internal Gitlab repository and TeamCity CI/CD.
+The following guidelines are for NVIDIA developers working on Warp using the internal GitLab repository and TeamCity CI/CD.
 
 ## Submitter Guidelines
 
@@ -23,21 +23,26 @@ When you're ready to submit your changes, please follow these steps to create a 
    - Areas affected by the changes.
    - The problem being solved.
    - Any limitations or non-handled areas in the changes.
-   - A link to the JIRA Or Github issue it is addressing.
+   - A link to the JIRA Or GitHub issue it is addressing.
 
-3. **Pre Review Checklist**: The following should be checked before assigning reviews:
-   - Unit / regression tests are written
-   - Docs have been updated
-   - Run `flake8` or `black` to auto-format changes (Gitlab pipeline will indicate if there are Flake8 errors)
-   - [TeamCity](https://teamcity.nvidia.com/project/Omniverse_Warp?mode=builds#all-projects) is passing on all platforms
+3. **Pre-Review Checklist**: The following should be checked before assigning reviews:
+   - Unit / regression tests are written.
+   - Docs have been updated.
+   - Run `flake8` or `black` to auto-format changes (GitLab pipeline will indicate if there are Flake8 errors).
+   - [TeamCity](https://teamcity.nvidia.com/project/Omniverse_Warp?mode=builds#all-projects) is passing on all platforms.
 
-4. **Assign Reviewers**: Select one or more reviewers from the owners list below to review your changes. Use the **Assignees** field to indicate reviewers who must _all_ approve the MR before it can be merged. Additional reviewers whose approvals are not required can be listed in the **Reviewers** field.
+4. **Assign Reviewers**: Select one or more reviewers from the owners list below to review your changes.
+Use the **Assignees** field to indicate reviewers who must _all_ approve the MR before it can be merged.
+Additional reviewers whose approvals are not required can be listed in the **Reviewers** field.
 
-5. **Address Reviewer Comments**: Respond to all reviewer feedback. Be open to revising your approach based on their suggestions. Once you have addressed a comment then reply to notify reviewers. *Do not* resolve the thread yourself, this makes it harder for the reviewer to verify what has been changed.
+5. **Address Reviewer Comments**: Respond to all reviewer feedback. Be open to revising your approach based on their suggestions.
+Once you have addressed a comment then reply to notify reviewers.
+_Do not_ resolve the thread yourself, this makes it harder for the reviewer to verify what has been changed.
+If a reviewer has already approved the MR, you may self-resolve any of their outstanding threads in the interest of convenience.
 
 6. **Final Steps for Merging**: Before your MR can be merged, ensure that:
    - All reviewer comments are resolved.
-   - All reviewers have approved the MR.
+   - All mandatory reviewers (in the **Assignees** field) have approved the MR.
    - TeamCity builds are passing without issues.
 
 ## Reviewer Guidelines
@@ -50,12 +55,12 @@ As a reviewer, your role is crucial in maintaining the quality of the NVIDIA War
 
 3. **Documentation**: Check for appropriate documentation of new features. This includes docstrings and updates to the User Manual. Note that documentation is auto-generated for each MR, so contributors should not submit built documentation files.
 
-4. **Review Thoroughly**: Take your time with the review. 
+4. **Review Thoroughly**: Take your time with the review.
    - Consider if there's a simpler or better solution, ask clarifying questions or add comments if the intention is not clear.
    - Consider the impact on the user experience, ease of use, intuitiveness, and consistency.
    - Beware of breaking changes, even if the API does not change, does it break semantics existing users may be relying on?
-   
-   Once you are satifisfied with a thread resolution you should mark it as resolved. All threads must be resolved for the MR to be merged.
+
+   Once you are satisfied with a thread resolution you should mark it as resolved. All threads must be resolved for the MR to be merged.
 
 ## Feature Owners
 
