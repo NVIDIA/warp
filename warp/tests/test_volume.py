@@ -627,7 +627,7 @@ def test_volume_from_numpy(test, device):
 
     sphere_vdb_array = sphere_vdb.array()
     test.assertEqual(sphere_vdb_array.dtype, wp.uint8)
-    test.assertFalse(sphere_vdb_array.owner)
+    test.assertIsNone(sphere_vdb_array.deleter)
 
 
 class TestVolume(unittest.TestCase):

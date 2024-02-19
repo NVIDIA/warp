@@ -173,7 +173,6 @@ def from_torch(t, dtype=None, requires_grad=None, grad=None):
         strides=strides,
         device=device,
         copy=False,
-        owner=False,
         grad=grad,
         requires_grad=requires_grad,
     )

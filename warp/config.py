@@ -35,3 +35,5 @@ enable_backward = True  # whether to compiler the backward passes of the kernels
 llvm_cuda = False  # use Clang/LLVM instead of NVRTC to compile CUDA
 
 enable_graph_capture_module_load_by_default = True  # Default value of force_module_load for capture_begin()
+
+enable_mempools_at_init = False  # Whether CUDA devices will be initialized with mempools enabled (if supported)

@@ -969,7 +969,6 @@ def _launch_integrate_kernel(
                 data=None,
                 ptr=array.ptr,
                 capacity=array.capacity,
-                owner=False,
                 device=array.device,
                 shape=(test.space_partition.node_count(), test.space.VALUE_DOF_COUNT),
                 dtype=wp.types.type_scalar_type(output_dtype),

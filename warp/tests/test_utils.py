@@ -425,7 +425,7 @@ class TestUtils(unittest.TestCase):
             with wp.ScopedTimer("hello", detailed=True):
                 pass
 
-        self.assertRegex(f.getvalue(), r"^         2 function calls in \d+\.\d+ seconds")
+        self.assertRegex(f.getvalue(), r"^         4 function calls in \d+\.\d+ seconds")
         self.assertRegex(f.getvalue(), r"hello took \d+\.\d+ ms$")
 
 

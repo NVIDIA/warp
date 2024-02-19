@@ -9,6 +9,7 @@
 #if WP_ENABLE_CUDA
 
 #include "cuda_util.h"
+#include "error.h"
 
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
@@ -18,6 +19,9 @@
 #elif defined(__linux__)
 #include <dlfcn.h>
 #endif
+
+#include <set>
+#include <stack>
 
 // the minimum CUDA version required from the driver
 #define WP_CUDA_DRIVER_VERSION 11030
@@ -63,6 +67,7 @@ static PFN_cuDeviceGetUuid_v11040 pfn_cuDeviceGetUuid;
 static PFN_cuDevicePrimaryCtxRetain_v7000 pfn_cuDevicePrimaryCtxRetain;
 static PFN_cuDevicePrimaryCtxRelease_v11000 pfn_cuDevicePrimaryCtxRelease;
 static PFN_cuDeviceCanAccessPeer_v4000 pfn_cuDeviceCanAccessPeer;
+static PFN_cuMemGetInfo_v3020 pfn_cuMemGetInfo;
 static PFN_cuCtxGetCurrent_v4000 pfn_cuCtxGetCurrent;
 static PFN_cuCtxSetCurrent_v4000 pfn_cuCtxSetCurrent;
 static PFN_cuCtxPushCurrent_v4000 pfn_cuCtxPushCurrent;
@@ -72,18 +77,23 @@ static PFN_cuCtxGetDevice_v2000 pfn_cuCtxGetDevice;
 static PFN_cuCtxCreate_v3020 pfn_cuCtxCreate;
 static PFN_cuCtxDestroy_v4000 pfn_cuCtxDestroy;
 static PFN_cuCtxEnablePeerAccess_v4000 pfn_cuCtxEnablePeerAccess;
+static PFN_cuCtxDisablePeerAccess_v4000 pfn_cuCtxDisablePeerAccess;
 static PFN_cuStreamCreate_v2000 pfn_cuStreamCreate;
 static PFN_cuStreamDestroy_v4000 pfn_cuStreamDestroy;
 static PFN_cuStreamSynchronize_v2000 pfn_cuStreamSynchronize;
 static PFN_cuStreamWaitEvent_v3020 pfn_cuStreamWaitEvent;
+static PFN_cuStreamGetCaptureInfo_v11030 pfn_cuStreamGetCaptureInfo;
+static PFN_cuStreamUpdateCaptureDependencies_v11030 pfn_cuStreamUpdateCaptureDependencies;
 static PFN_cuEventCreate_v2000 pfn_cuEventCreate;
 static PFN_cuEventDestroy_v4000 pfn_cuEventDestroy;
 static PFN_cuEventRecord_v2000 pfn_cuEventRecord;
+static PFN_cuEventRecordWithFlags_v11010 pfn_cuEventRecordWithFlags;
 static PFN_cuModuleLoadDataEx_v2010 pfn_cuModuleLoadDataEx;
 static PFN_cuModuleUnload_v2000 pfn_cuModuleUnload;
 static PFN_cuModuleGetFunction_v2000 pfn_cuModuleGetFunction;
 static PFN_cuLaunchKernel_v4000 pfn_cuLaunchKernel;
 static PFN_cuMemcpyPeerAsync_v4000 pfn_cuMemcpyPeerAsync;
+static PFN_cuPointerGetAttribute_v4000 pfn_cuPointerGetAttribute;
 static PFN_cuGraphicsMapResources_v3000 pfn_cuGraphicsMapResources;
 static PFN_cuGraphicsUnmapResources_v3000 pfn_cuGraphicsUnmapResources;
 static PFN_cuGraphicsResourceGetMappedPointer_v3020 pfn_cuGraphicsResourceGetMappedPointer;
@@ -171,6 +181,7 @@ bool init_cuda_driver()
     get_driver_entry_point("cuDevicePrimaryCtxRetain", &(void*&)pfn_cuDevicePrimaryCtxRetain);
     get_driver_entry_point("cuDevicePrimaryCtxRelease", &(void*&)pfn_cuDevicePrimaryCtxRelease);
     get_driver_entry_point("cuDeviceCanAccessPeer", &(void*&)pfn_cuDeviceCanAccessPeer);
+    get_driver_entry_point("cuMemGetInfo", &(void*&)pfn_cuMemGetInfo);
     get_driver_entry_point("cuCtxSetCurrent", &(void*&)pfn_cuCtxSetCurrent);
     get_driver_entry_point("cuCtxGetCurrent", &(void*&)pfn_cuCtxGetCurrent);
     get_driver_entry_point("cuCtxPushCurrent", &(void*&)pfn_cuCtxPushCurrent);
@@ -180,18 +191,23 @@ bool init_cuda_driver()
     get_driver_entry_point("cuCtxCreate", &(void*&)pfn_cuCtxCreate);
     get_driver_entry_point("cuCtxDestroy", &(void*&)pfn_cuCtxDestroy);
     get_driver_entry_point("cuCtxEnablePeerAccess", &(void*&)pfn_cuCtxEnablePeerAccess);
+    get_driver_entry_point("cuCtxDisablePeerAccess", &(void*&)pfn_cuCtxDisablePeerAccess);
     get_driver_entry_point("cuStreamCreate", &(void*&)pfn_cuStreamCreate);
     get_driver_entry_point("cuStreamDestroy", &(void*&)pfn_cuStreamDestroy);
     get_driver_entry_point("cuStreamSynchronize", &(void*&)pfn_cuStreamSynchronize);
     get_driver_entry_point("cuStreamWaitEvent", &(void*&)pfn_cuStreamWaitEvent);
+    get_driver_entry_point("cuStreamGetCaptureInfo", &(void*&)pfn_cuStreamGetCaptureInfo);
+    get_driver_entry_point("cuStreamUpdateCaptureDependencies", &(void*&)pfn_cuStreamUpdateCaptureDependencies);
     get_driver_entry_point("cuEventCreate", &(void*&)pfn_cuEventCreate);
     get_driver_entry_point("cuEventDestroy", &(void*&)pfn_cuEventDestroy);
     get_driver_entry_point("cuEventRecord", &(void*&)pfn_cuEventRecord);
+    get_driver_entry_point("cuEventRecordWithFlags", &(void*&)pfn_cuEventRecordWithFlags);
     get_driver_entry_point("cuModuleLoadDataEx", &(void*&)pfn_cuModuleLoadDataEx);
     get_driver_entry_point("cuModuleUnload", &(void*&)pfn_cuModuleUnload);
     get_driver_entry_point("cuModuleGetFunction", &(void*&)pfn_cuModuleGetFunction);
     get_driver_entry_point("cuLaunchKernel", &(void*&)pfn_cuLaunchKernel);
     get_driver_entry_point("cuMemcpyPeerAsync", &(void*&)pfn_cuMemcpyPeerAsync);
+    get_driver_entry_point("cuPointerGetAttribute", &(void*&)pfn_cuPointerGetAttribute);
     get_driver_entry_point("cuGraphicsMapResources", &(void*&)pfn_cuGraphicsMapResources);
     get_driver_entry_point("cuGraphicsUnmapResources", &(void*&)pfn_cuGraphicsUnmapResources);
     get_driver_entry_point("cuGraphicsResourceGetMappedPointer", &(void*&)pfn_cuGraphicsResourceGetMappedPointer);
@@ -209,16 +225,16 @@ bool is_cuda_driver_initialized()
     return cuda_driver_initialized;
 }
 
-bool check_cuda_result(cudaError_t code, const char* file, int line)
+bool check_cuda_result(cudaError_t code, const char* func, const char* file, int line)
 {
     if (code == cudaSuccess)
         return true;
 
-    fprintf(stderr, "Warp CUDA error %u: %s (%s:%d)\n", unsigned(code), cudaGetErrorString(code), file, line);
+    wp::set_error_string("Warp CUDA error %u: %s (in function %s, %s:%d)", unsigned(code), cudaGetErrorString(code), func, file, line);
     return false;
 }
 
-bool check_cu_result(CUresult result, const char* file, int line)
+bool check_cu_result(CUresult result, const char* func, const char* file, int line)
 {
     if (result == CUDA_SUCCESS)
         return true;
@@ -228,11 +244,54 @@ bool check_cu_result(CUresult result, const char* file, int line)
         pfn_cuGetErrorString(result, &errString);
 
     if (errString)
-        fprintf(stderr, "Warp CUDA error %u: %s (%s:%d)\n", unsigned(result), errString, file, line);
+        wp::set_error_string("Warp CUDA error %u: %s (in function %s, %s:%d)", unsigned(result), errString, func, file, line);
     else
-        fprintf(stderr, "Warp CUDA error %u (%s:%d)\n", unsigned(result), file, line);
+        wp::set_error_string("Warp CUDA error %u (in function %s, %s:%d)", unsigned(result), func, file, line);
 
     return false;
+}
+
+bool get_capture_dependencies(CUstream stream, std::vector<CUgraphNode>& dependencies_ret)
+{
+    CUstreamCaptureStatus status;
+    size_t num_dependencies = 0;
+    const CUgraphNode* dependencies = NULL;
+    dependencies_ret.clear();
+    if (check_cu(cuStreamGetCaptureInfo_f(stream, &status, NULL, NULL, &dependencies, &num_dependencies)))
+    {
+        if (dependencies && num_dependencies > 0)
+            dependencies_ret.insert(dependencies_ret.begin(), dependencies, dependencies + num_dependencies);
+        return true;
+    }
+    return false;
+}
+
+bool get_graph_leaf_nodes(cudaGraph_t graph, std::vector<cudaGraphNode_t>& leaf_nodes_ret)
+{
+    if (!graph)
+        return false;
+
+    size_t node_count = 0;
+    if (!check_cuda(cudaGraphGetNodes(graph, NULL, &node_count)))
+        return false;
+
+    std::vector<cudaGraphNode_t> nodes(node_count);
+    if (!check_cuda(cudaGraphGetNodes(graph, nodes.data(), &node_count)))
+        return false;
+
+    leaf_nodes_ret.clear();
+
+    for (cudaGraphNode_t node : nodes)
+    {
+        size_t dependent_count;
+        if (!check_cuda(cudaGraphNodeGetDependentNodes(node, NULL, &dependent_count)))
+            return false;
+
+        if (dependent_count == 0)
+            leaf_nodes_ret.push_back(node);
+    }
+
+    return true;
 }
 
 
@@ -311,6 +370,11 @@ CUresult cuDeviceCanAccessPeer_f(int* can_access, CUdevice dev, CUdevice peer_de
     return pfn_cuDeviceCanAccessPeer ? pfn_cuDeviceCanAccessPeer(can_access, dev, peer_dev) : DRIVER_ENTRY_POINT_ERROR;
 }
 
+CUresult cuMemGetInfo_f(size_t* free, size_t* total)
+{
+    return pfn_cuMemGetInfo ? pfn_cuMemGetInfo(free, total) : DRIVER_ENTRY_POINT_ERROR;
+}
+
 CUresult cuCtxGetCurrent_f(CUcontext* ctx)
 {
     return pfn_cuCtxGetCurrent ? pfn_cuCtxGetCurrent(ctx) : DRIVER_ENTRY_POINT_ERROR;
@@ -356,6 +420,11 @@ CUresult cuCtxEnablePeerAccess_f(CUcontext peer_ctx, unsigned int flags)
     return pfn_cuCtxEnablePeerAccess ? pfn_cuCtxEnablePeerAccess(peer_ctx, flags) : DRIVER_ENTRY_POINT_ERROR;
 }
 
+CUresult cuCtxDisablePeerAccess_f(CUcontext peer_ctx)
+{
+    return pfn_cuCtxDisablePeerAccess ? pfn_cuCtxDisablePeerAccess(peer_ctx) : DRIVER_ENTRY_POINT_ERROR;
+}
+
 CUresult cuStreamCreate_f(CUstream* stream, unsigned int flags)
 {
     return pfn_cuStreamCreate ? pfn_cuStreamCreate(stream, flags) : DRIVER_ENTRY_POINT_ERROR;
@@ -376,6 +445,16 @@ CUresult cuStreamWaitEvent_f(CUstream stream, CUevent event, unsigned int flags)
     return pfn_cuStreamWaitEvent ? pfn_cuStreamWaitEvent(stream, event, flags) : DRIVER_ENTRY_POINT_ERROR;
 }
 
+CUresult cuStreamGetCaptureInfo_f(CUstream stream, CUstreamCaptureStatus *captureStatus_out, cuuint64_t *id_out, CUgraph *graph_out, const CUgraphNode **dependencies_out, size_t *numDependencies_out)
+{
+    return pfn_cuStreamGetCaptureInfo ? pfn_cuStreamGetCaptureInfo(stream, captureStatus_out, id_out, graph_out, dependencies_out, numDependencies_out) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuStreamUpdateCaptureDependencies_f(CUstream stream, CUgraphNode *dependencies, size_t numDependencies, unsigned int flags)
+{
+    return pfn_cuStreamUpdateCaptureDependencies ? pfn_cuStreamUpdateCaptureDependencies(stream, dependencies, numDependencies, flags) : DRIVER_ENTRY_POINT_ERROR;
+}
+
 CUresult cuEventCreate_f(CUevent* event, unsigned int flags)
 {
     return pfn_cuEventCreate ? pfn_cuEventCreate(event, flags) : DRIVER_ENTRY_POINT_ERROR;
@@ -389,6 +468,11 @@ CUresult cuEventDestroy_f(CUevent event)
 CUresult cuEventRecord_f(CUevent event, CUstream stream)
 {
     return pfn_cuEventRecord ? pfn_cuEventRecord(event, stream) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuEventRecordWithFlags_f(CUevent event, CUstream stream, unsigned int flags)
+{
+    return pfn_cuEventRecordWithFlags ? pfn_cuEventRecordWithFlags(event, stream, flags) : DRIVER_ENTRY_POINT_ERROR;
 }
 
 CUresult cuModuleLoadDataEx_f(CUmodule *module, const void *image, unsigned int numOptions, CUjit_option *options, void **optionValues)
@@ -414,6 +498,11 @@ CUresult cuLaunchKernel_f(CUfunction f, unsigned int gridDimX, unsigned int grid
 CUresult cuMemcpyPeerAsync_f(CUdeviceptr dst_ptr, CUcontext dst_ctx, CUdeviceptr src_ptr, CUcontext src_ctx, size_t n, CUstream stream)
 {
     return pfn_cuMemcpyPeerAsync ? pfn_cuMemcpyPeerAsync(dst_ptr, dst_ctx, src_ptr, src_ctx, n, stream) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuPointerGetAttribute_f(void* data, CUpointer_attribute attribute, CUdeviceptr ptr)
+{
+    return pfn_cuPointerGetAttribute ? pfn_cuPointerGetAttribute(data, attribute, ptr) : DRIVER_ENTRY_POINT_ERROR;
 }
 
 CUresult cuGraphicsMapResources_f(unsigned int count, CUgraphicsResource* resources, CUstream stream)

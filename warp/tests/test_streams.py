@@ -10,6 +10,7 @@ import unittest
 import numpy as np
 
 import warp as wp
+from warp.utils import check_iommu
 from warp.tests.unittest_utils import *
 
 wp.init()
@@ -37,19 +38,34 @@ def sum(a: wp.array(dtype=float), b: wp.array(dtype=float), c: wp.array(dtype=fl
 N = 10 * 1024 * 1024
 
 
-def test_stream_arg_implicit_sync(test, device):
-    # wp.zeros() and array.numpy() should not require explicit sync
+def test_stream_set(test, device):
 
-    a = wp.zeros(N, dtype=float, device=device)
-    b = wp.empty(N, dtype=float, device=device)
-    c = wp.empty(N, dtype=float, device=device)
+    device = wp.get_device(device)
 
+    old_stream = device.stream
     new_stream = wp.Stream(device)
 
-    # Exercise code path
-    wp.set_stream(new_stream, device)
+    try:
+        wp.set_stream(new_stream, device)
 
-    test.assertTrue(wp.get_device(device).has_stream)
+        test.assertTrue(device.has_stream)
+        test.assertEqual(device.stream, new_stream)
+
+    finally:
+        # restore original stream
+        wp.set_stream(old_stream, device)
+
+
+def test_stream_arg_explicit_sync(test, device):
+    a = wp.zeros(N, dtype=float, device=device)
+    b = wp.full(N, 42, dtype=float, device=device)
+    c = wp.empty(N, dtype=float, device=device)
+
+    old_stream = wp.get_stream(device)
+    new_stream = wp.Stream(device)
+
+    # allocations need to be explicitly synced before launching work using stream arguments
+    new_stream.wait_stream(old_stream)
 
     # launch work on new stream
     wp.launch(inc, dim=a.size, inputs=[a], stream=new_stream)
@@ -64,17 +80,17 @@ def test_stream_arg_implicit_sync(test, device):
 
 
 def test_stream_scope_implicit_sync(test, device):
-    # wp.zeros() and array.numpy() should not require explicit sync
 
     with wp.ScopedDevice(device):
         a = wp.zeros(N, dtype=float)
-        b = wp.empty(N, dtype=float)
+        b = wp.full(N, 42, dtype=float)
         c = wp.empty(N, dtype=float)
 
         old_stream = wp.get_stream()
         new_stream = wp.Stream()
 
         # launch work on new stream
+        # allocations are implicitly synced when entering wp.ScopedStream
         with wp.ScopedStream(new_stream):
             assert wp.get_stream() == new_stream
 
@@ -309,103 +325,116 @@ class TestStreams(unittest.TestCase):
             cpu_stream = cpu_device.stream  # noqa: F841
 
     @unittest.skipUnless(len(wp.get_cuda_devices()) > 1, "Requires at least two CUDA devices")
+    @unittest.skipUnless(check_iommu(), "IOMMU seems enabled")
     def test_stream_arg_graph_mgpu(self):
         wp.load_module(device="cuda:0")
         wp.load_module(device="cuda:1")
 
-        # resources on GPU 0
-        stream0 = wp.get_stream("cuda:0")
-        a0 = wp.zeros(N, dtype=float, device="cuda:0")
-        b0 = wp.empty(N, dtype=float, device="cuda:0")
-        c0 = wp.empty(N, dtype=float, device="cuda:0")
+        # Peer-to-peer copies are not possible during graph capture if the arrays were
+        # allocated using pooled allocators and mempool access is not enabled.
+        # Here, we force default CUDA allocators and pre-allocate the memory.
+        with wp.ScopedMempool("cuda:0", False), wp.ScopedMempool("cuda:1", False):
 
-        # resources on GPU 1
-        stream1 = wp.get_stream("cuda:1")
-        a1 = wp.zeros(N, dtype=float, device="cuda:1")
+            # resources on GPU 0
+            stream0 = wp.get_stream("cuda:0")
+            a0 = wp.zeros(N, dtype=float, device="cuda:0")
+            b0 = wp.empty(N, dtype=float, device="cuda:0")
+            c0 = wp.empty(N, dtype=float, device="cuda:0")
 
-        # start recording on stream0
-        wp.capture_begin(stream=stream0, force_module_load=False)
-        try:
-            # branch into stream1
-            stream1.wait_stream(stream0)
+            # resources on GPU 1
+            stream1 = wp.get_stream("cuda:1")
+            a1 = wp.zeros(N, dtype=float, device="cuda:1")
 
-            # launch concurrent kernels on each stream
-            wp.launch(inc, dim=N, inputs=[a0], stream=stream0)
-            wp.launch(inc, dim=N, inputs=[a1], stream=stream1)
+            # start recording on stream0
+            wp.capture_begin(stream=stream0, force_module_load=False)
+            try:
+                # branch into stream1
+                stream1.wait_stream(stream0)
 
-            # wait for stream1 to finish
-            stream0.wait_stream(stream1)
+                # launch concurrent kernels on each stream
+                wp.launch(inc, dim=N, inputs=[a0], stream=stream0)
+                wp.launch(inc, dim=N, inputs=[a1], stream=stream1)
 
-            # copy values from stream1
-            wp.copy(b0, a1, stream=stream0)
+                # wait for stream1 to finish
+                stream0.wait_stream(stream1)
 
-            # compute sum
-            wp.launch(sum, dim=N, inputs=[a0, b0, c0], stream=stream0)
-        finally:
-            # finish recording on stream0
-            g = wp.capture_end(stream=stream0)
+                # copy values from stream1
+                wp.copy(b0, a1, stream=stream0)
 
-        # replay
-        num_iters = 10
-        for _ in range(num_iters):
-            wp.capture_launch(g, stream=stream0)
+                # compute sum
+                wp.launch(sum, dim=N, inputs=[a0, b0, c0], stream=stream0)
+            finally:
+                # finish recording on stream0
+                g = wp.capture_end(stream=stream0)
 
-        # check results
-        assert_np_equal(c0.numpy(), np.full(N, fill_value=2 * num_iters))
+            # replay
+            num_iters = 10
+            for _ in range(num_iters):
+                wp.capture_launch(g, stream=stream0)
+
+            # check results
+            assert_np_equal(c0.numpy(), np.full(N, fill_value=2 * num_iters))
 
     @unittest.skipUnless(len(wp.get_cuda_devices()) > 1, "Requires at least two CUDA devices")
+    @unittest.skipUnless(check_iommu(), "IOMMU seems enabled")
     def test_stream_scope_graph_mgpu(self):
         wp.load_module(device="cuda:0")
         wp.load_module(device="cuda:1")
 
-        # resources on GPU 0
-        with wp.ScopedDevice("cuda:0"):
-            stream0 = wp.get_stream()
-            a0 = wp.zeros(N, dtype=float)
-            b0 = wp.empty(N, dtype=float)
-            c0 = wp.empty(N, dtype=float)
+        # Peer-to-peer copies are not possible during graph capture if the arrays were
+        # allocated using pooled allocators and mempool access is not enabled.
+        # Here, we force default CUDA allocators and pre-allocate the memory.
+        with wp.ScopedMempool("cuda:0", False), wp.ScopedMempool("cuda:1", False):
 
-        # resources on GPU 1
-        with wp.ScopedDevice("cuda:1"):
-            stream1 = wp.get_stream()
-            a1 = wp.zeros(N, dtype=float)
+            # resources on GPU 0
+            with wp.ScopedDevice("cuda:0"):
+                stream0 = wp.get_stream()
+                a0 = wp.zeros(N, dtype=float)
+                b0 = wp.empty(N, dtype=float)
+                c0 = wp.empty(N, dtype=float)
 
-        # capture graph
-        with wp.ScopedDevice("cuda:0"):
-            # start recording
-            wp.capture_begin(force_module_load=False)
-            try:
-                with wp.ScopedDevice("cuda:1"):
-                    # branch into stream1
-                    wp.wait_stream(stream0)
+            # resources on GPU 1
+            with wp.ScopedDevice("cuda:1"):
+                stream1 = wp.get_stream()
+                a1 = wp.zeros(N, dtype=float)
 
-                    wp.launch(inc, dim=N, inputs=[a1])
+            # capture graph
+            with wp.ScopedDevice("cuda:0"):
+                # start recording
+                wp.capture_begin(force_module_load=False)
+                try:
+                    with wp.ScopedDevice("cuda:1"):
+                        # branch into stream1
+                        wp.wait_stream(stream0)
 
-                wp.launch(inc, dim=N, inputs=[a0])
+                        wp.launch(inc, dim=N, inputs=[a1])
 
-                # wait for stream1 to finish
-                wp.wait_stream(stream1)
+                    wp.launch(inc, dim=N, inputs=[a0])
 
-                # copy values from stream1
-                wp.copy(b0, a1)
+                    # wait for stream1 to finish
+                    wp.wait_stream(stream1)
 
-                # compute sum
-                wp.launch(sum, dim=N, inputs=[a0, b0, c0])
-            finally:
-                # finish recording
-                g = wp.capture_end()
+                    # copy values from stream1
+                    wp.copy(b0, a1)
 
-        # replay
-        with wp.ScopedDevice("cuda:0"):
-            num_iters = 10
-            for _ in range(num_iters):
-                wp.capture_launch(g)
+                    # compute sum
+                    wp.launch(sum, dim=N, inputs=[a0, b0, c0])
+                finally:
+                    # finish recording
+                    g = wp.capture_end()
 
-        # check results
-        assert_np_equal(c0.numpy(), np.full(N, fill_value=2 * num_iters))
+            # replay
+            with wp.ScopedDevice("cuda:0"):
+                num_iters = 10
+                for _ in range(num_iters):
+                    wp.capture_launch(g)
+
+            # check results
+            assert_np_equal(c0.numpy(), np.full(N, fill_value=2 * num_iters))
 
 
-add_function_test(TestStreams, "test_stream_arg_implicit_sync", test_stream_arg_implicit_sync, devices=devices)
+add_function_test(TestStreams, "test_stream_set", test_stream_set, devices=devices)
+add_function_test(TestStreams, "test_stream_arg_explicit_sync", test_stream_arg_explicit_sync, devices=devices)
 add_function_test(TestStreams, "test_stream_scope_implicit_sync", test_stream_scope_implicit_sync, devices=devices)
 
 add_function_test(TestStreams, "test_stream_arg_synchronize", test_stream_arg_synchronize, devices=devices)

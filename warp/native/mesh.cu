@@ -203,8 +203,8 @@ uint64_t mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::arr
         // bvh_destroy_host(bvh_host);
 
         // create lower upper arrays expected by GPU BVH builder
-        mesh.lowers = (wp::vec3*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3)*num_tris);
-        mesh.uppers = (wp::vec3*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3)*num_tris);
+        mesh.lowers = (wp::vec3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3)*num_tris);
+        mesh.uppers = (wp::vec3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3)*num_tris);
 
         wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_triangle_bounds, num_tris, (num_tris, points.data, indices.data, mesh.lowers, mesh.uppers));
 

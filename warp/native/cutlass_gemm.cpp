@@ -16,7 +16,7 @@ extern "C"
 
 WP_API
 bool cutlass_gemm(
-                  int compute_capability,
+                  void* context, int compute_capability,
                   int m, int n, int k,
                   const char* datatype_str,
                   const void* a, const void* b, const void* c, void* d,

@@ -6,8 +6,9 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import cProfile
+import os
 import sys
-import timeit
+import time
 import warnings
 from typing import Any
 
@@ -371,7 +372,6 @@ def array_cast(in_array, out_array, count=None):
             data=None,
             ptr=in_array.ptr,
             capacity=in_array.capacity,
-            owner=False,
             device=in_array.device,
             dtype=in_array_scalar_type,
             shape=in_array.shape[0] * in_array_data_length,
@@ -381,7 +381,6 @@ def array_cast(in_array, out_array, count=None):
             data=None,
             ptr=out_array.ptr,
             capacity=out_array.capacity,
-            owner=False,
             device=out_array.device,
             dtype=out_array_scalar_type,
             shape=out_array.shape[0] * out_array_data_length,
@@ -559,8 +558,10 @@ class ScopedDevice:
 
 
 class ScopedStream:
-    def __init__(self, stream):
+    def __init__(self, stream, sync_enter=True, sync_exit=False):
         self.stream = stream
+        self.sync_enter = sync_enter
+        self.sync_exit = sync_exit
         if stream is not None:
             self.device = stream.device
             self.device_scope = ScopedDevice(self.device)
@@ -569,13 +570,13 @@ class ScopedStream:
         if self.stream is not None:
             self.device_scope.__enter__()
             self.saved_stream = self.device.stream
-            self.device.stream = self.stream
+            self.device.set_stream(self.stream, self.sync_enter)
 
         return self.stream
 
     def __exit__(self, exc_type, exc_value, traceback):
         if self.stream is not None:
-            self.device.stream = self.saved_stream
+            self.device.set_stream(self.saved_stream, self.sync_exit)
             self.device_scope.__exit__(exc_type, exc_value, traceback)
 
 
@@ -634,16 +635,17 @@ class ScopedTimer:
                 import nvtx
 
                 self.nvtx_range_id = nvtx.start_range(self.name, color=self.color)
-                return
-
-            self.start = timeit.default_timer()
-            if self.print:
-                ScopedTimer.indent += 1
+                return self
 
             if self.detailed:
                 self.cp = cProfile.Profile()
                 self.cp.clear()
                 self.cp.enable()
+
+            if self.print:
+                ScopedTimer.indent += 1
+
+            self.start = time.perf_counter_ns()
 
         return self
 
@@ -658,23 +660,67 @@ class ScopedTimer:
                 nvtx.end_range(self.nvtx_range_id)
                 return
 
+            self.elapsed = (time.perf_counter_ns() - self.start) / 1000000.0
+
             if self.detailed:
                 self.cp.disable()
                 self.cp.print_stats(sort="tottime")
 
-            self.elapsed = (timeit.default_timer() - self.start) * 1000.0
-
             if self.dict is not None:
                 self.dict[self.name].append(self.elapsed)
 
-            indent = ""
-            for i in range(ScopedTimer.indent):
-                indent += "\t"
-
             if self.print:
+                indent = ""
+                for i in range(ScopedTimer.indent):
+                    indent += "\t"
+
                 print("{}{} took {:.2f} ms".format(indent, self.name, self.elapsed))
 
-            ScopedTimer.indent -= 1
+                ScopedTimer.indent -= 1
+
+
+# Allow temporarily enabling/disabling mempool allocators
+class ScopedMempool:
+    def __init__(self, device, enable: bool):
+        self.device = wp.get_device(device)
+        self.enable = enable
+
+    def __enter__(self):
+        self.saved_setting = wp.is_mempool_enabled(self.device)
+        wp.set_mempool_enabled(self.device, self.enable)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        wp.set_mempool_enabled(self.device, self.saved_setting)
+
+
+# Allow temporarily enabling/disabling mempool access
+class ScopedMempoolAccess:
+    def __init__(self, target_device, peer_device, enable: bool):
+        self.target_device = target_device
+        self.peer_device = peer_device
+        self.enable = enable
+
+    def __enter__(self):
+        self.saved_setting = wp.is_mempool_access_enabled(self.target_device, self.peer_device)
+        wp.set_mempool_access_enabled(self.target_device, self.peer_device, self.enable)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        wp.set_mempool_access_enabled(self.target_device, self.peer_device, self.saved_setting)
+
+
+# Allow temporarily enabling/disabling peer access
+class ScopedPeerAccess:
+    def __init__(self, target_device, peer_device, enable: bool):
+        self.target_device = target_device
+        self.peer_device = peer_device
+        self.enable = enable
+
+    def __enter__(self):
+        self.saved_setting = wp.is_peer_access_enabled(self.target_device, self.peer_device)
+        wp.set_peer_access_enabled(self.target_device, self.peer_device, self.enable)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        wp.set_peer_access_enabled(self.target_device, self.peer_device, self.saved_setting)
 
 
 # helper kernels for adj_matmul
@@ -689,3 +735,25 @@ def add_kernel_3d(x: wp.array3d(dtype=Any), acc: wp.array3d(dtype=Any), beta: An
     i, j, k = wp.tid()
 
     x[i,j,k] = x[i,j,k] + beta * acc[i,j,k]
+
+
+def check_iommu():
+    """Check if IOMMU is enabled on Linux, which can affect peer-to-peer transfers.
+
+    Returns:
+        A Boolean indicating whether IOMMU is configured properly for peer-to-peer transfers.
+        On Linux, this function attempts to determine if IOMMU is enabled and will return `False` if IOMMU is detected.
+        On other operating systems, it always return `True`.
+    """
+
+    if sys.platform == "linux":
+        # On modern Linux, there should be IOMMU-related entries in the /sys file system.
+        # This should be more reliable than checking kernel logs like dmesg.
+        if os.path.isdir("/sys/class/iommu") and os.listdir("/sys/class/iommu"):
+            return False
+        if os.path.isdir("/sys/kernel/iommu_groups") and os.listdir("/sys/kernel/iommu_groups"):
+            return False
+        return True
+    else:
+        # doesn't matter
+        return True

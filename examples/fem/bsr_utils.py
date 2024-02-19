@@ -234,7 +234,6 @@ class SaddleSystem(LinearOperator):
             device=a.device,
             pinned=a.pinned,
             copy=False,
-            owner=False,
         )
 
     def p_slice(self, a: wp.array):
@@ -246,7 +245,6 @@ class SaddleSystem(LinearOperator):
             device=a.device,
             pinned=a.pinned,
             copy=False,
-            owner=False,
         )
 
     def _saddle_mv(self, x, y, z, alpha, beta):

@@ -223,7 +223,6 @@ class Temporary:
                 pinned=array.pinned,
                 capacity=array.capacity,
                 copy=False,
-                owner=False,
                 grad=None if array.grad is None else _view_reshaped_truncated(array.grad),
             )
 

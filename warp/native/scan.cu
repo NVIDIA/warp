@@ -20,7 +20,7 @@ void scan_device(const T* values_in, T* values_out, int n, bool inclusive)
         check_cuda(cub::DeviceScan::ExclusiveSum(NULL, scan_temp_size, values_in, values_out, n));
     }
 
-    void* temp_buffer = alloc_temp_device(WP_CURRENT_CONTEXT, scan_temp_size);
+    void* temp_buffer = alloc_device(WP_CURRENT_CONTEXT, scan_temp_size);
 
     // scan
     if (inclusive) {
@@ -29,7 +29,7 @@ void scan_device(const T* values_in, T* values_out, int n, bool inclusive)
         check_cuda(cub::DeviceScan::ExclusiveSum(temp_buffer, scan_temp_size, values_in, values_out, n, stream));
     }
 
-    free_temp_device(WP_CURRENT_CONTEXT, temp_buffer);
+    free_device(WP_CURRENT_CONTEXT, temp_buffer);
 }
 
 template void scan_device(const int*, int*, int, bool);
