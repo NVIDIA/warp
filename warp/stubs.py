@@ -74,9 +74,14 @@ from warp.context import Kernel, Function, Launch
 from warp.context import Stream, get_stream, set_stream, synchronize_stream
 from warp.context import Event, record_event, wait_event, wait_stream
 from warp.context import RegisteredGLBuffer
+from warp.context import is_mempool_supported, is_mempool_enabled, set_mempool_enabled
+from warp.context import set_mempool_release_threshold, get_mempool_release_threshold
+from warp.context import is_mempool_access_supported, is_mempool_access_enabled, set_mempool_access_enabled
+from warp.context import is_peer_access_supported, is_peer_access_enabled, set_peer_access_enabled
 
 from warp.tape import Tape
 from warp.utils import ScopedTimer, ScopedDevice, ScopedStream
+from warp.utils import ScopedMempool, ScopedMempoolAccess, ScopedPeerAccess
 from warp.utils import transform_expand, quat_between_vectors
 
 from warp.torch import from_torch, to_torch

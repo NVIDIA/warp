@@ -456,7 +456,6 @@ void bsr_transpose_device(int rows_per_block, int cols_per_block, int row_count,
     size_t buff_size = 0;
     check_cuda(cub::DeviceRadixSort::SortPairs(nullptr, buff_size, d_values,
                                               d_keys, nnz, 0, 64, stream));
-    void* temp_buffer = alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
     ScopedTemporary<> temp(context, buff_size);
     check_cuda(cub::DeviceRadixSort::SortPairs(
         temp.buffer(), buff_size, d_values, d_keys, nnz, 0, 64, stream));

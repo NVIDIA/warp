@@ -10,6 +10,7 @@ import unittest
 import numpy as np
 
 import warp as wp
+from warp.utils import check_iommu
 from warp.tests.unittest_utils import *
 
 wp.init()
@@ -106,6 +107,7 @@ class TestMultiGPU(unittest.TestCase):
         assert wp.get_cuda_device() == initial_cuda_device
 
     @unittest.skipUnless(len(wp.get_cuda_devices()) > 1, "Requires at least two CUDA devices")
+    @unittest.skipUnless(check_iommu(), "IOMMU seems enabled")
     def test_multigpu_pingpong(self):
         n = 1024 * 1024
 
@@ -129,6 +131,7 @@ class TestMultiGPU(unittest.TestCase):
         assert_np_equal(a1.numpy(), expected)
 
     @unittest.skipUnless(len(wp.get_cuda_devices()) > 1, "Requires at least two CUDA devices")
+    @unittest.skipUnless(check_iommu(), "IOMMU seems enabled")
     def test_multigpu_pingpong_streams(self):
         n = 1024 * 1024
 

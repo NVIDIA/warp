@@ -228,8 +228,8 @@ linux-aarch64 test release:
 linux-x86_64 test release:
   needs: [linux-x86_64 build release]
   extends:
-    #- .omni_nvks_gpu_2x # Currently mgpu tests sometimes fail on NVKS
-    - .runner-test-linux-x86_64-gpu
+    - .omni_nvks_gpu_2x
+    #- .runner-test-linux-x86_64-gpu
     - .test_common_release
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
@@ -327,8 +327,8 @@ mac-x86_64 test release:
 linux-x86_64 test debug:
   needs: [linux-x86_64 build debug]
   extends:
-    #- .omni_nvks_gpu_2x # Currently mgpu tests sometimes fail on NVKS
-    - .runner-test-linux-x86_64-gpu
+    - .omni_nvks_gpu_2x
+    #- .runner-test-linux-x86_64-gpu
     - .test_common_debug
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"

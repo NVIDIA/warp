@@ -21,13 +21,13 @@ void runlength_encode_device(int n,
         nullptr, buff_size, values, run_values, run_lengths, run_count,
         n, stream));
 
-    void* temp_buffer = alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
+    void* temp_buffer = alloc_device(WP_CURRENT_CONTEXT, buff_size);
 
     check_cuda(cub::DeviceRunLengthEncode::Encode(
         temp_buffer, buff_size, values, run_values, run_lengths, run_count,
         n, stream));
 
-    free_temp_device(WP_CURRENT_CONTEXT, temp_buffer);
+    free_device(WP_CURRENT_CONTEXT, temp_buffer);
 }
 
 void runlength_encode_int_device(

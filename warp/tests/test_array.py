@@ -167,7 +167,6 @@ def test_4d_transposed(test, device):
         strides=a_T.__array_interface__["strides"],
         capacity=arr.capacity,
         ptr=arr.ptr,
-        owner=False,
         requires_grad=arr.requires_grad,
         device=device,
     )

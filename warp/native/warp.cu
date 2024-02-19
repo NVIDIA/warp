@@ -9,11 +9,17 @@
 #include "warp.h"
 #include "scan.h"
 #include "cuda_util.h"
+#include "error.h"
 
 #include <nvrtc.h>
 #include <nvPTXCompiler.h>
 
+#include <algorithm>
+#include <iterator>
+#include <list>
 #include <map>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #define check_nvrtc(code) (check_nvrtc_result(code, __FILE__, __LINE__))
@@ -81,14 +87,55 @@ struct DeviceInfo
     char name[kNameLen] = "";
     int arch = 0;
     int is_uva = 0;
-    int is_memory_pool_supported = 0;
+    int is_mempool_supported = 0;
+    CUcontext primary_context = NULL;
 };
 
 struct ContextInfo
 {
     DeviceInfo* device_info = NULL;
 
-    CUstream stream = NULL; // created when needed
+    // the current stream, managed from Python (see cuda_context_set_stream() and cuda_context_get_stream())
+    CUstream stream = NULL;
+};
+
+struct CaptureInfo
+{
+    CUstream stream = NULL;  // the main stream where capture begins and ends
+    uint64_t id = 0;  // unique capture id from CUDA
+    bool external = false;  // whether this is an external capture
+};
+
+struct StreamInfo
+{
+    CUevent last_event = NULL;  // event used for synchronization between streams
+    CaptureInfo* capture = NULL;  // capture info (only if started on this stream)
+};
+
+struct GraphInfo
+{
+    std::vector<void*> unfreed_allocs;
+};
+
+// Information for graph allocations that are not freed by the graph.
+// These allocations have a shared ownership:
+// - The graph instance allocates/maps the memory on each launch, even if the user reference is released.
+// - The user reference must remain valid even if the graph is destroyed.
+// The memory will be freed once the user reference is released and the graph is destroyed.
+struct GraphAllocInfo
+{
+    uint64_t capture_id = 0;
+    void* context = NULL;
+    bool ref_exists = false;  // whether user reference still exists
+    bool graph_destroyed = false;  // whether graph instance was destroyed
+};
+
+// Information used when deferring deallocations.
+struct FreeInfo
+{
+    void* context = NULL;
+    void* ptr = NULL;
+    bool is_async = false;
 };
 
 // cached info for all devices, indexed by ordinal
@@ -99,6 +146,22 @@ static std::map<CUdevice, DeviceInfo*> g_device_map;
 
 // cached info for all known contexts
 static std::map<CUcontext, ContextInfo> g_contexts;
+
+// cached info for all known streams (including registered external streams)
+static std::unordered_map<CUstream, StreamInfo> g_streams;
+
+// Ongoing graph captures registered using wp.capture_begin().
+// This maps the capture id to the stream where capture was started.
+// See cuda_graph_begin_capture(), cuda_graph_end_capture(), and free_device_async().
+static std::unordered_map<uint64_t, CaptureInfo*> g_captures;
+
+// Memory allocated during graph capture requires special handling.
+// See alloc_device_async() and free_device_async().
+static std::unordered_map<void*, GraphAllocInfo> g_graph_allocs;
+
+// Memory that cannot be freed immediately gets queued here.
+// Call free_deferred_allocs() to release.
+static std::vector<FreeInfo> g_deferred_free_list;
 
 
 void cuda_set_context_restore_policy(bool always_restore)
@@ -116,12 +179,12 @@ int cuda_init()
     if (!init_cuda_driver())
         return -1;
 
-    int deviceCount = 0;
-    if (check_cu(cuDeviceGetCount_f(&deviceCount)))
+    int device_count = 0;
+    if (check_cu(cuDeviceGetCount_f(&device_count)))
     {
-        g_devices.resize(deviceCount);
+        g_devices.resize(device_count);
 
-        for (int i = 0; i < deviceCount; i++)
+        for (int i = 0; i < device_count; i++)
         {
             CUdevice device;
             if (check_cu(cuDeviceGet_f(&device, i)))
@@ -135,7 +198,7 @@ int cuda_init()
                 check_cu(cuDeviceGetAttribute_f(&g_devices[i].pci_bus_id, CU_DEVICE_ATTRIBUTE_PCI_BUS_ID, device));
                 check_cu(cuDeviceGetAttribute_f(&g_devices[i].pci_device_id, CU_DEVICE_ATTRIBUTE_PCI_DEVICE_ID, device));
                 check_cu(cuDeviceGetAttribute_f(&g_devices[i].is_uva, CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING, device));
-                check_cu(cuDeviceGetAttribute_f(&g_devices[i].is_memory_pool_supported, CU_DEVICE_ATTRIBUTE_MEMORY_POOLS_SUPPORTED, device));
+                check_cu(cuDeviceGetAttribute_f(&g_devices[i].is_mempool_supported, CU_DEVICE_ATTRIBUTE_MEMORY_POOLS_SUPPORTED, device));
                 int major = 0;
                 int minor = 0;
                 check_cu(cuDeviceGetAttribute_f(&major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, device));
@@ -168,9 +231,9 @@ static inline CUcontext get_current_context()
         return NULL;
 }
 
-static inline CUstream get_current_stream()
+static inline CUstream get_current_stream(void* context=NULL)
 {
-    return static_cast<CUstream>(cuda_context_get_stream(NULL));
+    return static_cast<CUstream>(cuda_context_get_stream(context));
 }
 
 static ContextInfo* get_context_info(CUcontext ctx)
@@ -191,11 +254,22 @@ static ContextInfo* get_context_info(CUcontext ctx)
     {
         // previously unseen context, add the info
         ContextGuard guard(ctx, true);
-        ContextInfo context_info;
+
         CUdevice device;
         if (check_cu(cuCtxGetDevice_f(&device)))
         {
-            context_info.device_info = g_device_map[device];
+            DeviceInfo* device_info = g_device_map[device];
+
+            // workaround for https://nvbugspro.nvidia.com/bug/4456003
+            if (device_info->is_mempool_supported)
+            {
+                void* dummy = NULL;
+                check_cuda(cudaMallocAsync(&dummy, 1, NULL));
+                check_cuda(cudaFreeAsync(dummy, NULL));
+            }
+
+            ContextInfo context_info;
+            context_info.device_info = device_info;
             auto result = g_contexts.insert(std::make_pair(ctx, context_info));
             return &result.first->second;
         }
@@ -204,10 +278,116 @@ static ContextInfo* get_context_info(CUcontext ctx)
     return NULL;
 }
 
+static inline ContextInfo* get_context_info(void* context)
+{
+    return get_context_info(static_cast<CUcontext>(context));
+}
+
+static inline StreamInfo* get_stream_info(CUstream stream)
+{
+    auto it = g_streams.find(stream);
+    if (it != g_streams.end())
+        return &it->second;
+    else
+        return NULL;
+}
+
+static void deferred_free(void* ptr, void* context, bool is_async)
+{
+    FreeInfo free_info;
+    free_info.ptr = ptr;
+    free_info.context = context ? context : get_current_context();
+    free_info.is_async = is_async;
+    g_deferred_free_list.push_back(free_info);
+}
+
+static int free_deferred_allocs(void* context = NULL)
+{
+    if (g_deferred_free_list.empty() || !g_captures.empty())
+        return 0;
+
+    int num_freed_allocs = 0;
+    for (auto it = g_deferred_free_list.begin(); it != g_deferred_free_list.end(); /*noop*/)
+    {
+        const FreeInfo& free_info = *it;
+
+        // free the pointer if it matches the given context or if the context is unspecified
+        if (free_info.context == context || !context)
+        {
+            ContextGuard guard(free_info.context);
+
+            if (free_info.is_async)
+            {
+                // this could be a regular stream-ordered allocation or a graph allocation
+                cudaError_t res = cudaFreeAsync(free_info.ptr, NULL);
+                if (res != cudaSuccess)
+                {
+                    if (res == cudaErrorInvalidValue)
+                    {
+                        // This can happen if we try to release the pointer but the graph was
+                        // never launched, so the memory isn't mapped.
+                        // This is fine, so clear the error.
+                        cudaGetLastError();
+                    }
+                    else
+                    {
+                        // something else went wrong, report error
+                        check_cuda(res);
+                    }
+                }
+            }
+            else
+            {
+                check_cuda(cudaFree(free_info.ptr));
+            }
+
+            ++num_freed_allocs;
+
+            it = g_deferred_free_list.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
+    return num_freed_allocs;
+}
+
+static void CUDART_CB on_graph_destroy(void* user_data)
+{
+    if (!user_data)
+        return;
+
+    GraphInfo* graph_info = static_cast<GraphInfo*>(user_data);
+
+    for (void* ptr : graph_info->unfreed_allocs)
+    {
+        auto alloc_iter = g_graph_allocs.find(ptr);
+        if (alloc_iter != g_graph_allocs.end())
+        {
+            GraphAllocInfo& alloc_info = alloc_iter->second;
+            if (alloc_info.ref_exists)
+            {
+                // unreference from graph so the pointer will be deallocated when the user reference goes away
+                alloc_info.graph_destroyed = true;
+            }
+            else
+            {
+                // the pointer can be freed, but we can't call CUDA functions in this callback, so defer it
+                deferred_free(ptr, alloc_info.context, true);
+                g_graph_allocs.erase(alloc_iter);
+            }
+        }
+    }
+
+    delete graph_info;
+}
+
 
 void* alloc_pinned(size_t s)
 {
-    void* ptr;
+    void* ptr = NULL;
     check_cuda(cudaMallocHost(&ptr, s));
     return ptr;
 }
@@ -219,82 +399,318 @@ void free_pinned(void* ptr)
 
 void* alloc_device(void* context, size_t s)
 {
-    ContextGuard guard(context);
+    int ordinal = cuda_context_get_device_ordinal(context);
 
-    void* ptr;
-    check_cuda(cudaMalloc(&ptr, s));
-    return ptr;
-}
-
-void* alloc_temp_device(void* context, size_t s)
-{
-    // "cudaMallocAsync ignores the current device/context when determining where the allocation will reside. Instead,
-    // cudaMallocAsync determines the resident device based on the specified memory pool or the supplied stream."
-    ContextGuard guard(context);
-
-    void* ptr;
-
-    if (cuda_context_is_memory_pool_supported(context))
-    {
-        check_cuda(cudaMallocAsync(&ptr, s, get_current_stream()));
-    }
+    // use stream-ordered allocator if available
+    if (cuda_device_is_mempool_supported(ordinal))
+        return alloc_device_async(context, s);
     else
-    {
-        check_cuda(cudaMalloc(&ptr, s));
-    }
-
-    return ptr;
+        return alloc_device_default(context, s);
 }
 
 void free_device(void* context, void* ptr)
 {
-    ContextGuard guard(context);
+    int ordinal = cuda_context_get_device_ordinal(context);
 
-    check_cuda(cudaFree(ptr));
+    // use stream-ordered allocator if available
+    if (cuda_device_is_mempool_supported(ordinal))
+        free_device_async(context, ptr);
+    else
+        free_device_default(context, ptr);
 }
 
-void free_temp_device(void* context, void* ptr)
+void* alloc_device_default(void* context, size_t s)
 {
     ContextGuard guard(context);
 
-    if (cuda_context_is_memory_pool_supported(context))
-    {
-        check_cuda(cudaFreeAsync(ptr, get_current_stream()));
-    }
-    else
+    void* ptr = NULL;
+    check_cuda(cudaMalloc(&ptr, s));
+
+    return ptr;
+}
+
+void free_device_default(void* context, void* ptr)
+{
+    ContextGuard guard(context);
+
+    // check if a capture is in progress
+    if (g_captures.empty())
     {
         check_cuda(cudaFree(ptr));
     }
+    else
+    {
+        // we must defer the operation until graph captures complete
+        deferred_free(ptr, context, false);
+    }
 }
 
-void memcpy_h2d(void* context, void* dest, void* src, size_t n)
+void* alloc_device_async(void* context, size_t s)
 {
-    ContextGuard guard(context);
-    
-    check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyHostToDevice, get_current_stream()));
-}
-
-void memcpy_d2h(void* context, void* dest, void* src, size_t n)
-{
-    ContextGuard guard(context);
-
-    check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyDeviceToHost, get_current_stream()));
-}
-
-void memcpy_d2d(void* context, void* dest, void* src, size_t n)
-{
+    // stream-ordered allocations don't rely on the current context,
+    // but we set the context here for consistent behaviour
     ContextGuard guard(context);
 
-    check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyDeviceToDevice, get_current_stream()));
+    ContextInfo* context_info = get_context_info(context);
+    if (!context_info)
+        return NULL;
+
+    CUstream stream = context_info->stream;
+
+    void* ptr = NULL;
+    check_cuda(cudaMallocAsync(&ptr, s, stream));
+
+    if (ptr)
+    {
+        // if the stream is capturing, the allocation requires special handling
+        if (cuda_stream_is_capturing(stream))
+        {
+            // check if this is a known capture
+            uint64_t capture_id = get_capture_id(stream);
+            auto capture_iter = g_captures.find(capture_id);
+            if (capture_iter != g_captures.end())
+            {
+                // remember graph allocation details
+                GraphAllocInfo alloc_info;
+                alloc_info.capture_id = capture_id;
+                alloc_info.context = context ? context : get_current_context();
+                alloc_info.ref_exists = true;  // user reference created and returned here
+                alloc_info.graph_destroyed = false;  // graph not destroyed yet
+                g_graph_allocs[ptr] = alloc_info;
+            }
+        }
+    }
+
+    return ptr;
 }
 
-void memcpy_peer(void* context, void* dest, void* src, size_t n)
+void free_device_async(void* context, void* ptr)
+{
+    // stream-ordered allocators generally don't rely on the current context,
+    // but we set the context here for consistent behaviour
+    ContextGuard guard(context);
+
+    // NB: Stream-ordered deallocations are tricky, because the memory could still be used on another stream
+    // or even multiple streams.  To avoid use-after-free errors, we need to ensure that all preceding work
+    // completes before releasing the memory.  The strategy is different for regular stream-ordered allocations
+    // and allocations made during graph capture.  See below for details.
+
+    // check if this allocation was made during graph capture
+    auto alloc_iter = g_graph_allocs.find(ptr);
+    if (alloc_iter == g_graph_allocs.end())
+    {
+        // Not a graph allocation.
+        // Check if graph capture is ongoing.
+        if (g_captures.empty())
+        {
+            // cudaFreeAsync on the null stream does not block or trigger synchronization, but it postpones
+            // the deallocation until a synchronization point is reached, so preceding work on this pointer
+            // should safely complete.
+            check_cuda(cudaFreeAsync(ptr, NULL));
+        }
+        else
+        {
+            // We must defer the free operation until graph capture completes.
+            deferred_free(ptr, context, true);
+        }
+    }
+    else
+    {
+        // get the graph allocation details
+        GraphAllocInfo& alloc_info = alloc_iter->second;
+
+        uint64_t capture_id = alloc_info.capture_id;
+
+        // check if the capture is still active
+        auto capture_iter = g_captures.find(capture_id);
+        if (capture_iter != g_captures.end())
+        {
+            // Add a mem free node.  Use all current leaf nodes as dependencies to ensure that all prior
+            // work completes before deallocating.  This works with both Warp-initiated and external captures
+            // and avoids the need to explicitly track all streams used during the capture.
+            CaptureInfo* capture = capture_iter->second;
+            cudaGraph_t graph = get_capture_graph(capture->stream);
+            std::vector<cudaGraphNode_t> leaf_nodes;
+            if (graph && get_graph_leaf_nodes(graph, leaf_nodes))
+            {
+                cudaGraphNode_t free_node;
+                check_cuda(cudaGraphAddMemFreeNode(&free_node, graph, leaf_nodes.data(), leaf_nodes.size(), ptr));
+            }
+
+            // we're done with this allocation, it's owned by the graph
+            g_graph_allocs.erase(alloc_iter);
+        }
+        else
+        {
+            // the capture has ended
+            // if the owning graph was already destroyed, we can free the pointer now
+            if (alloc_info.graph_destroyed)
+            {
+                if (g_captures.empty())
+                {
+                    // try to free the pointer now
+                    cudaError_t res = cudaFreeAsync(ptr, NULL);
+                    if (res == cudaErrorInvalidValue)
+                    {
+                        // This can happen if we try to release the pointer but the graph was
+                        // never launched, so the memory isn't mapped.
+                        // This is fine, so clear the error.
+                        cudaGetLastError();
+                    }
+                    else
+                    {
+                        // check for other errors
+                        check_cuda(res);
+                    }
+                }
+                else
+                {
+                    // We must defer the operation until graph capture completes.
+                    deferred_free(ptr, context, true);
+                }
+
+                // we're done with this allocation
+                g_graph_allocs.erase(alloc_iter);
+            }
+            else
+            {
+                // graph still exists
+                // unreference the pointer so it will be deallocated once the graph instance is destroyed
+                alloc_info.ref_exists = false;
+            }
+        }
+    }
+}
+
+bool memcpy_h2d(void* context, void* dest, void* src, size_t n, void* stream)
 {
     ContextGuard guard(context);
 
-    // NB: assumes devices involved support UVA
-    check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyDefault, get_current_stream()));
+    CUstream cuda_stream;
+    if (stream != WP_CURRENT_STREAM)
+        cuda_stream = static_cast<CUstream>(stream);
+    else
+        cuda_stream = get_current_stream(context);
+
+    return check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyHostToDevice, cuda_stream));
 }
+
+bool memcpy_d2h(void* context, void* dest, void* src, size_t n, void* stream)
+{
+    ContextGuard guard(context);
+
+    CUstream cuda_stream;
+    if (stream != WP_CURRENT_STREAM)
+        cuda_stream = static_cast<CUstream>(stream);
+    else
+        cuda_stream = get_current_stream(context);
+
+    return check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyDeviceToHost, cuda_stream));
+}
+
+bool memcpy_d2d(void* context, void* dest, void* src, size_t n, void* stream)
+{
+    ContextGuard guard(context);
+
+    CUstream cuda_stream;
+    if (stream != WP_CURRENT_STREAM)
+        cuda_stream = static_cast<CUstream>(stream);
+    else
+        cuda_stream = get_current_stream(context);
+
+    return check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyDeviceToDevice, cuda_stream));
+}
+
+bool memcpy_p2p(void* dst_context, void* dst, void* src_context, void* src, size_t n, void* stream)
+{
+    // ContextGuard guard(context);
+
+    CUstream cuda_stream;
+    if (stream != WP_CURRENT_STREAM)
+        cuda_stream = static_cast<CUstream>(stream);
+    else
+        cuda_stream = get_current_stream(dst_context);
+
+    // Notes:
+    // - cuMemcpyPeerAsync() works fine with both regular and pooled allocations (cudaMalloc() and cudaMallocAsync(), respectively)
+    //   when not capturing a graph.
+    // - cuMemcpyPeerAsync() is not supported during graph capture, so we must use cudaMemcpyAsync() with kind=cudaMemcpyDefault.
+    // - cudaMemcpyAsync() works fine with regular allocations, but doesn't work with pooled allocations
+    //   unless mempool access has been enabled.
+    // - There is no reliable way to check if mempool access is enabled during graph capture,
+    //   because cudaMemPoolGetAccess() cannot be called during graph capture.
+    // - CUDA will report error 1 (invalid argument) if cudaMemcpyAsync() is called but mempool access is not enabled.
+
+    if (!cuda_stream_is_capturing(stream))
+    {
+        return check_cu(cuMemcpyPeerAsync_f(
+            (CUdeviceptr)dst, (CUcontext)dst_context,
+            (CUdeviceptr)src, (CUcontext)src_context,
+            n, cuda_stream));
+    }
+    else
+    {
+        cudaError_t result = cudaSuccess;
+
+        // cudaMemcpyAsync() is sensitive to the bound context to resolve pointer locations.
+        // If fails with cudaErrorInvalidValue if it cannot resolve an argument.
+        // We first try the copy in the destination context, then if it fails we retry in the source context.
+        // The cudaErrorInvalidValue error doesn't cause graph capture to fail, so it's ok to retry.
+        // Since this trial-and-error shenanigans only happens during capture, there
+        // is no perf impact when the graph is launched.
+        // For bonus points, this approach simplifies memory pool access requirements.
+        // Access only needs to be enabled one way, either from the source device to the destination device
+        // or vice versa.  Sometimes, when it's really quiet, you can actually hear my genius.
+        {
+            // try doing the copy in the destination context
+            ContextGuard guard(dst_context);
+            result = cudaMemcpyAsync(dst, src, n, cudaMemcpyDefault, cuda_stream);
+
+            if (result != cudaSuccess)
+            {
+                // clear error in destination context
+                cudaGetLastError();
+
+                // try doing the copy in the source context
+                ContextGuard guard(src_context);
+                result = cudaMemcpyAsync(dst, src, n, cudaMemcpyDefault, cuda_stream);
+
+                // clear error in source context
+                cudaGetLastError();
+            }
+        }
+
+        // If the copy failed, try to detect if mempool allocations are involved to generate a helpful error message.
+        if (!check_cuda(result))
+        {
+            if (result == cudaErrorInvalidValue && src != NULL && dst != NULL)
+            {
+                // check if either of the pointers was allocated from a mempool
+                void* src_mempool = NULL;
+                void* dst_mempool = NULL;
+                cuPointerGetAttribute_f(&src_mempool, CU_POINTER_ATTRIBUTE_MEMPOOL_HANDLE, (CUdeviceptr)src);
+                cuPointerGetAttribute_f(&dst_mempool, CU_POINTER_ATTRIBUTE_MEMPOOL_HANDLE, (CUdeviceptr)dst);
+                cudaGetLastError();  // clear any errors
+                // check if either of the pointers was allocated during graph capture
+                auto src_alloc = g_graph_allocs.find(src);
+                auto dst_alloc = g_graph_allocs.find(dst);
+                if (src_mempool != NULL || src_alloc != g_graph_allocs.end() ||
+                    dst_mempool != NULL || dst_alloc != g_graph_allocs.end())
+                {
+                    wp::append_error_string("*** CUDA mempool allocations were used in a peer-to-peer copy during graph capture.");
+                    wp::append_error_string("*** This operation fails if mempool access is not enabled between the peer devices.");
+                    wp::append_error_string("*** Either enable mempool access between the devices or use the default CUDA allocator");
+                    wp::append_error_string("*** to pre-allocate the arrays before graph capture begins.");
+                }
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+}
+
 
 __global__ void memset_kernel(int* dest, int value, size_t n)
 {
@@ -378,14 +794,15 @@ void memtile_device(void* context, void* dst, const void* src, size_t srcsize, s
     {
         // generic version
 
+        // copy value to device memory
         // TODO: use a persistent stream-local staging buffer to avoid allocs?
-        void* src_device;
-        check_cuda(cudaMalloc(&src_device, srcsize));
-        check_cuda(cudaMemcpyAsync(src_device, src, srcsize, cudaMemcpyHostToDevice, get_current_stream()));
+        void* src_devptr = alloc_device(WP_CURRENT_CONTEXT, srcsize);
+        check_cuda(cudaMemcpyAsync(src_devptr, src, srcsize, cudaMemcpyHostToDevice, get_current_stream()));
 
-        wp_launch_device(WP_CURRENT_CONTEXT, memtile_kernel, n, (dst, src_device, srcsize, n));
+        wp_launch_device(WP_CURRENT_CONTEXT, memtile_kernel, n, (dst, src_devptr, srcsize, n));
 
-        check_cuda(cudaFree(src_device));
+        free_device(WP_CURRENT_CONTEXT, src_devptr);
+
     }
 }
 
@@ -611,15 +1028,13 @@ static __global__ void array_copy_fabric_indexed_to_fabric_indexed_kernel(wp::in
 }
 
 
-WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_type, int src_type, int elem_size)
+WP_API bool array_copy_device(void* context, void* dst, void* src, int dst_type, int src_type, int elem_size)
 {
     if (!src || !dst)
-        return 0;
+        return false;
 
     const void* src_data = NULL;
-    const void* src_grad = NULL;
     void* dst_data = NULL;
-    void* dst_grad = NULL;
     int src_ndim = 0;
     int dst_ndim = 0;
     const int* src_shape = NULL;
@@ -641,7 +1056,6 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
     {
         const wp::array_t<void>& src_arr = *static_cast<const wp::array_t<void>*>(src);
         src_data = src_arr.data;
-        src_grad = src_arr.grad;
         src_ndim = src_arr.ndim;
         src_shape = src_arr.shape.dims;
         src_strides = src_arr.strides;
@@ -669,14 +1083,13 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
     else
     {
         fprintf(stderr, "Warp copy error: Invalid array type (%d)\n", src_type);
-        return 0;
+        return false;
     }
 
     if (dst_type == wp::ARRAY_TYPE_REGULAR)
     {
         const wp::array_t<void>& dst_arr = *static_cast<const wp::array_t<void>*>(dst);
         dst_data = dst_arr.data;
-        dst_grad = dst_arr.grad;
         dst_ndim = dst_arr.ndim;
         dst_shape = dst_arr.shape.dims;
         dst_strides = dst_arr.strides;
@@ -704,13 +1117,13 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
     else
     {
         fprintf(stderr, "Warp copy error: Invalid array type (%d)\n", dst_type);
-        return 0;
+        return false;
     }
 
     if (src_ndim != dst_ndim)
     {
         fprintf(stderr, "Warp copy error: Incompatible array dimensionalities (%d and %d)\n", src_ndim, dst_ndim);
-        return 0;
+        return false;
     }
 
     ContextGuard guard(context);
@@ -725,11 +1138,11 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
             if (src_fabricarray->size != n)
             {
                 fprintf(stderr, "Warp copy error: Incompatible array sizes\n");
-                return 0;
+                return false;
             }
             wp_launch_device(WP_CURRENT_CONTEXT, array_copy_fabric_to_fabric_kernel, n,
                             (*dst_fabricarray, *src_fabricarray, elem_size));
-            return n;
+            return true;
         }
         else if (src_indexedfabricarray)
         {
@@ -737,11 +1150,11 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
             if (src_indexedfabricarray->size != n)
             {
                 fprintf(stderr, "Warp copy error: Incompatible array sizes\n");
-                return 0;
+                return false;
             }
             wp_launch_device(WP_CURRENT_CONTEXT, array_copy_fabric_indexed_to_fabric_kernel, n,
                             (*dst_fabricarray, *src_indexedfabricarray, elem_size));
-            return n;
+            return true;
         }
         else
         {
@@ -749,11 +1162,11 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
             if (size_t(src_shape[0]) != n)
             {
                 fprintf(stderr, "Warp copy error: Incompatible array sizes\n");
-                return 0;
+                return false;
             }
             wp_launch_device(WP_CURRENT_CONTEXT, array_copy_to_fabric_kernel, n,
                             (*dst_fabricarray, src_data, src_strides[0], src_indices[0], elem_size));
-            return n;
+            return true;
         }
     }
     if (dst_indexedfabricarray)
@@ -765,11 +1178,11 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
             if (src_fabricarray->size != n)
             {
                 fprintf(stderr, "Warp copy error: Incompatible array sizes\n");
-                return 0;
+                return false;
             }
             wp_launch_device(WP_CURRENT_CONTEXT, array_copy_fabric_to_fabric_indexed_kernel, n,
                             (*dst_indexedfabricarray, *src_fabricarray, elem_size));
-            return n;
+            return true;
         }
         else if (src_indexedfabricarray)
         {
@@ -777,11 +1190,11 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
             if (src_indexedfabricarray->size != n)
             {
                 fprintf(stderr, "Warp copy error: Incompatible array sizes\n");
-                return 0;
+                return false;
             }
             wp_launch_device(WP_CURRENT_CONTEXT, array_copy_fabric_indexed_to_fabric_indexed_kernel, n,
                             (*dst_indexedfabricarray, *src_indexedfabricarray, elem_size));
-            return n;
+            return true;
         }
         else
         {
@@ -789,11 +1202,11 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
             if (size_t(src_shape[0]) != n)
             {
                 fprintf(stderr, "Warp copy error: Incompatible array sizes\n");
-                return 0;
+                return false;
             }
             wp_launch_device(WP_CURRENT_CONTEXT, array_copy_to_fabric_indexed_kernel, n,
                              (*dst_indexedfabricarray, src_data, src_strides[0], src_indices[0], elem_size));
-            return n;
+            return true;
         }
     }
     else if (src_fabricarray)
@@ -803,11 +1216,11 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
         if (size_t(dst_shape[0]) != n)
         {
             fprintf(stderr, "Warp copy error: Incompatible array sizes\n");
-            return 0;
+            return false;
         }
         wp_launch_device(WP_CURRENT_CONTEXT, array_copy_from_fabric_kernel, n,
                          (*src_fabricarray, dst_data, dst_strides[0], dst_indices[0], elem_size));
-        return n;
+        return true;
     }
     else if (src_indexedfabricarray)
     {
@@ -816,11 +1229,11 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
         if (size_t(dst_shape[0]) != n)
         {
             fprintf(stderr, "Warp copy error: Incompatible array sizes\n");
-            return 0;
+            return false;
         }
         wp_launch_device(WP_CURRENT_CONTEXT, array_copy_from_fabric_indexed_kernel, n,
                          (*src_indexedfabricarray, dst_data, dst_strides[0], dst_indices[0], elem_size));
-        return n;
+        return true;
     }
 
     size_t n = 1;
@@ -829,7 +1242,7 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
         if (src_shape[i] != dst_shape[i])
         {
             fprintf(stderr, "Warp copy error: Incompatible array shapes\n");
-            return 0;
+            return false;
         }
         n *= src_shape[i];
     }
@@ -888,13 +1301,10 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
     }
     default:
         fprintf(stderr, "Warp copy error: invalid array dimensionality (%d)\n", src_ndim);
-        return 0;
+        return false;
     }
 
-    if (check_cuda(cudaGetLastError()))
-        return n;
-    else
-        return 0;
+    return check_cuda(cudaGetLastError());
 }
 
 
@@ -1065,8 +1475,8 @@ WP_API void array_fill_device(void* context, void* arr_ptr, int arr_type, const 
     ContextGuard guard(context);
 
     // copy value to device memory
-    void* value_devptr;
-    check_cuda(cudaMalloc(&value_devptr, value_size));
+    // TODO: use a persistent stream-local staging buffer to avoid allocs?
+    void* value_devptr = alloc_device(WP_CURRENT_CONTEXT, value_size);
     check_cuda(cudaMemcpyAsync(value_devptr, value_ptr, value_size, cudaMemcpyHostToDevice, get_current_stream()));
 
     // handle fabric arrays
@@ -1123,6 +1533,8 @@ WP_API void array_fill_device(void* context, void* arr_ptr, int arr_type, const 
         fprintf(stderr, "Warp fill error: invalid array dimensionality (%d)\n", ndim);
         return;
     }
+
+    free_device(WP_CURRENT_CONTEXT, value_devptr);
 }
 
 void array_scan_int_device(uint64_t in, uint64_t out, int len, bool inclusive)
@@ -1178,20 +1590,20 @@ int cuda_device_get_count()
     return count;
 }
 
-void* cuda_device_primary_context_retain(int ordinal)
+void* cuda_device_get_primary_context(int ordinal)
 {
-    CUcontext context = NULL;
-    CUdevice device;
-    if (check_cu(cuDeviceGet_f(&device, ordinal)))
-        check_cu(cuDevicePrimaryCtxRetain_f(&context, device));
-    return context;
-}
+    if (ordinal >= 0 && ordinal < int(g_devices.size()))
+    {
+        DeviceInfo& device_info = g_devices[ordinal];
 
-void cuda_device_primary_context_release(int ordinal)
-{
-    CUdevice device;
-    if (check_cu(cuDeviceGet_f(&device, ordinal)))
-        check_cu(cuDevicePrimaryCtxRelease_f(device));
+        // acquire the primary context if we haven't already
+        if (!device_info.primary_context)
+            check_cu(cuDevicePrimaryCtxRetain_f(&device_info.primary_context, device_info.device));
+
+        return device_info.primary_context;
+    }
+
+    return NULL;
 }
 
 const char* cuda_device_get_name(int ordinal)
@@ -1241,12 +1653,104 @@ int cuda_device_is_uva(int ordinal)
     return 0;
 }
 
-int cuda_device_is_memory_pool_supported(int ordinal)
+int cuda_device_is_mempool_supported(int ordinal)
 {
     if (ordinal >= 0 && ordinal < int(g_devices.size()))
-        return g_devices[ordinal].is_memory_pool_supported;
-    return false;
+        return g_devices[ordinal].is_mempool_supported;
+    return 0;
 }
+
+int cuda_device_set_mempool_release_threshold(int ordinal, uint64_t threshold)
+{
+    if (ordinal < 0 || ordinal > int(g_devices.size()))
+    {
+        fprintf(stderr, "Invalid device ordinal %d\n", ordinal);
+        return 0;
+    }
+
+    if (!g_devices[ordinal].is_mempool_supported)
+        return 0;
+
+    cudaMemPool_t pool;
+    if (!check_cuda(cudaDeviceGetDefaultMemPool(&pool, ordinal)))
+    {
+        fprintf(stderr, "Warp error: Failed to get memory pool on device %d\n", ordinal);
+        return 0;
+    }
+
+    if (!check_cuda(cudaMemPoolSetAttribute(pool, cudaMemPoolAttrReleaseThreshold, &threshold)))
+    {
+        fprintf(stderr, "Warp error: Failed to set memory pool attribute on device %d\n", ordinal);
+        return 0;
+    }
+
+    return 1;  // success
+}
+
+uint64_t cuda_device_get_mempool_release_threshold(int ordinal)
+{
+    if (ordinal < 0 || ordinal > int(g_devices.size()))
+    {
+        fprintf(stderr, "Invalid device ordinal %d\n", ordinal);
+        return 0;
+    }
+
+    if (!g_devices[ordinal].is_mempool_supported)
+        return 0;
+
+    cudaMemPool_t pool;
+    if (!check_cuda(cudaDeviceGetDefaultMemPool(&pool, ordinal)))
+    {
+        fprintf(stderr, "Warp error: Failed to get memory pool on device %d\n", ordinal);
+        return 0;
+    }
+
+    uint64_t threshold = 0;
+    if (!check_cuda(cudaMemPoolGetAttribute(pool, cudaMemPoolAttrReleaseThreshold, &threshold)))
+    {
+        fprintf(stderr, "Warp error: Failed to get memory pool release threshold on device %d\n", ordinal);
+        return 0;
+    }
+
+    return threshold;
+}
+
+void cuda_device_get_memory_info(int ordinal, size_t* free_mem, size_t* total_mem)
+{
+    // use temporary storage if user didn't specify pointers
+    size_t tmp_free_mem, tmp_total_mem;
+
+    if (free_mem)
+        *free_mem = 0;
+    else
+        free_mem = &tmp_free_mem;
+
+    if (total_mem)
+        *total_mem = 0;
+    else
+        total_mem = &tmp_total_mem;
+
+    if (ordinal >= 0 && ordinal < int(g_devices.size()))
+    {
+        if (g_devices[ordinal].primary_context)
+        {
+            ContextGuard guard(g_devices[ordinal].primary_context, true);
+            check_cu(cuMemGetInfo_f(free_mem, total_mem));
+        }
+        else
+        {
+            // if we haven't acquired the primary context yet, acquire it temporarily
+            CUcontext primary_context = NULL;
+            check_cu(cuDevicePrimaryCtxRetain_f(&primary_context, g_devices[ordinal].device));
+            {
+                ContextGuard guard(primary_context, true);
+                check_cu(cuMemGetInfo_f(free_mem, total_mem));
+            }
+            check_cu(cuDevicePrimaryCtxRelease_f(g_devices[ordinal].device));
+        }
+    }
+}
+
 
 void* cuda_context_get_current()
 {
@@ -1313,26 +1817,35 @@ void cuda_context_synchronize(void* context)
     ContextGuard guard(context);
 
     check_cu(cuCtxSynchronize_f());
+
+    if (free_deferred_allocs(context ? context : get_current_context()) > 0)
+    {
+        // ensure deferred asynchronous deallocations complete
+        check_cu(cuCtxSynchronize_f());
+    }
+
+    // check_cuda(cudaDeviceGraphMemTrim(cuda_context_get_device_ordinal(context)));
 }
 
 uint64_t cuda_context_check(void* context)
 {
     ContextGuard guard(context);
 
-    cudaStreamCaptureStatus status;
-    cudaStreamIsCapturing(get_current_stream(), &status);
+    // check errors before syncing
+    cudaError_t e = cudaGetLastError();
+    check_cuda(e);
+
+    cudaStreamCaptureStatus status = cudaStreamCaptureStatusNone;
+    check_cuda(cudaStreamIsCapturing(get_current_stream(), &status));
     
-    // do not check during cuda stream capture
-    // since we cannot synchronize the device
+    // synchronize if the stream is not capturing
     if (status == cudaStreamCaptureStatusNone)
     {
-        cudaDeviceSynchronize();
-        return cudaPeekAtLastError(); 
+        check_cuda(cudaDeviceSynchronize());
+        e = cudaGetLastError();
     }
-    else
-    {
-        return 0;
-    }
+
+    return static_cast<uint64_t>(e);
 }
 
 
@@ -1344,25 +1857,28 @@ int cuda_context_get_device_ordinal(void* context)
 
 int cuda_context_is_primary(void* context)
 {
-    int ordinal = cuda_context_get_device_ordinal(context);
-    if (ordinal != -1)
+    CUcontext ctx = static_cast<CUcontext>(context);
+    ContextInfo* context_info = get_context_info(ctx);
+    if (!context_info)
     {
-        // there is no CUDA API to check if a context is primary, but we can temporarily
-        // acquire the device's primary context to check the pointer
-        void* device_primary_context = cuda_device_primary_context_retain(ordinal);
-        cuda_device_primary_context_release(ordinal);
-        return int(context == device_primary_context);
+        fprintf(stderr, "Warp error: Failed to get context info\n");
+        return 0;
     }
-    return 0;
-}
 
-int cuda_context_is_memory_pool_supported(void* context)
-{
-    int ordinal = cuda_context_get_device_ordinal(context);
-    if (ordinal != -1)
+    // if the device primary context is known, check if it matches the given context
+    DeviceInfo* device_info = context_info->device_info;
+    if (device_info->primary_context)
+        return int(ctx == device_info->primary_context);
+
+    // there is no CUDA API to check if a context is primary, but we can temporarily
+    // acquire the device's primary context to check the pointer
+    CUcontext primary_ctx;
+    if (check_cu(cuDevicePrimaryCtxRetain_f(&primary_ctx, device_info->device)))
     {
-        return cuda_device_is_memory_pool_supported(ordinal);
+        check_cu(cuDevicePrimaryCtxRelease_f(device_info->device));
+        return int(ctx == primary_ctx);
     }
+
     return 0;
 }
 
@@ -1376,115 +1892,251 @@ void* cuda_context_get_stream(void* context)
     return NULL;
 }
 
-void cuda_context_set_stream(void* context, void* stream)
+void cuda_context_set_stream(void* context, void* stream, int sync)
 {
-    ContextInfo* info = get_context_info(static_cast<CUcontext>(context));
-    if (info)
+    ContextInfo* context_info = get_context_info(static_cast<CUcontext>(context));
+    if (context_info)
     {
-        info->stream = static_cast<CUstream>(stream);
+        CUstream new_stream = static_cast<CUstream>(stream);
+
+        // check whether we should sync with the previous stream on this device
+        if (sync)
+        {
+            CUstream old_stream = context_info->stream;
+            StreamInfo* old_stream_info = get_stream_info(old_stream);
+            if (old_stream_info)
+            {
+                CUevent last_event = old_stream_info->last_event;
+                check_cu(cuEventRecord_f(last_event, old_stream));
+                check_cu(cuStreamWaitEvent_f(new_stream, last_event, CU_EVENT_WAIT_DEFAULT));
+            }
+        }
+
+        context_info->stream = new_stream;
     }
 }
 
-int cuda_context_enable_peer_access(void* context, void* peer_context)
+
+int cuda_is_peer_access_supported(int target_ordinal, int peer_ordinal)
 {
-    if (!context || !peer_context)
+    int num_devices = int(g_devices.size());
+
+    if (target_ordinal < 0 || target_ordinal > num_devices)
     {
-        fprintf(stderr, "Warp error: Failed to enable peer access: invalid argument\n");
+        fprintf(stderr, "Warp error: Invalid target device ordinal %d\n", target_ordinal);
         return 0;
     }
 
-    if (context == peer_context)
-        return 1;  // ok
-
-    CUcontext ctx = static_cast<CUcontext>(context);
-    CUcontext peer_ctx = static_cast<CUcontext>(peer_context);
-
-    ContextInfo* info = get_context_info(ctx);
-    ContextInfo* peer_info = get_context_info(peer_ctx);
-    if (!info || !peer_info)
+    if (peer_ordinal < 0 || peer_ordinal > num_devices)
     {
-        fprintf(stderr, "Warp error: Failed to enable peer access: failed to get context info\n");
+        fprintf(stderr, "Warp error: Invalid peer device ordinal %d\n", peer_ordinal);
         return 0;
     }
 
-    // check if same device
-    if (info->device_info == peer_info->device_info)
-    {
-        if (info->device_info->is_uva)
-        {
-            return 1;  // ok
-        }
-        else
-        {
-            fprintf(stderr, "Warp error: Failed to enable peer access: device doesn't support UVA\n");
-            return 0;
-        }
-    }
-    else
-    {
-        // different devices, try to enable
-        ContextGuard guard(ctx, true);
-        CUresult result = cuCtxEnablePeerAccess_f(peer_ctx, 0);
-        if (result == CUDA_SUCCESS || result == CUDA_ERROR_PEER_ACCESS_ALREADY_ENABLED)
-        {
-            return 1;  // ok
-        }
-        else
-        {
-            check_cu(result);
-            return 0;
-        }
-    }
-}
-
-int cuda_context_can_access_peer(void* context, void* peer_context)
-{
-    if (!context || !peer_context)
-        return 0;
-
-    if (context == peer_context)
+    if (target_ordinal == peer_ordinal)
         return 1;
 
-    CUcontext ctx = static_cast<CUcontext>(context);
-    CUcontext peer_ctx = static_cast<CUcontext>(peer_context);
-    
-    ContextInfo* info = get_context_info(ctx);
-    ContextInfo* peer_info = get_context_info(peer_ctx);
-    if (!info || !peer_info)
+    int can_access = 0;
+    check_cuda(cudaDeviceCanAccessPeer(&can_access, peer_ordinal, target_ordinal));
+
+    return can_access;
+}
+
+int cuda_is_peer_access_enabled(void* target_context, void* peer_context)
+{
+    if (!target_context || !peer_context)
+    {
+        fprintf(stderr, "Warp error: invalid CUDA context\n");
+        return 0;
+    }
+
+    if (target_context == peer_context)
+        return 1;
+
+    int target_ordinal = cuda_context_get_device_ordinal(target_context);
+    int peer_ordinal = cuda_context_get_device_ordinal(peer_context);
+
+    // check if peer access is supported
+    int can_access = 0;
+    check_cuda(cudaDeviceCanAccessPeer(&can_access, peer_ordinal, target_ordinal));
+    if (!can_access)
         return 0;
 
-    // check if same device
-    if (info->device_info == peer_info->device_info)
+    // There is no CUDA API to query if peer access is enabled, but we can try to enable it and check the result.
+
+    ContextGuard guard(peer_context, true);
+
+    CUcontext target_ctx = static_cast<CUcontext>(target_context);
+
+    CUresult result = cuCtxEnablePeerAccess_f(target_ctx, 0);
+    if (result == CUDA_ERROR_PEER_ACCESS_ALREADY_ENABLED)
     {
-        if (info->device_info->is_uva)
-            return 1;
-        else
-            return 0;
+        return 1;
+    }
+    else if (result == CUDA_SUCCESS)
+    {
+        // undo enablement
+        check_cu(cuCtxDisablePeerAccess_f(target_ctx));
+        return 0;
     }
     else
     {
-        // different devices, try to enable
-        // TODO: is there a better way to check?
-        ContextGuard guard(ctx, true);
-        CUresult result = cuCtxEnablePeerAccess_f(peer_ctx, 0);
-        if (result == CUDA_SUCCESS || result == CUDA_ERROR_PEER_ACCESS_ALREADY_ENABLED)
-            return 1;
-        else
-            return 0;
+        // report error
+        check_cu(result);
+        return 0;
     }
 }
+
+int cuda_set_peer_access_enabled(void* target_context, void* peer_context, int enable)
+{
+    if (!target_context || !peer_context)
+    {
+        fprintf(stderr, "Warp error: invalid CUDA context\n");
+        return 0;
+    }
+
+    if (target_context == peer_context)
+        return 1;  // no-op
+        
+    int target_ordinal = cuda_context_get_device_ordinal(target_context);
+    int peer_ordinal = cuda_context_get_device_ordinal(peer_context);
+
+    // check if peer access is supported
+    int can_access = 0;
+    check_cuda(cudaDeviceCanAccessPeer(&can_access, peer_ordinal, target_ordinal));
+    if (!can_access)
+    {
+        // failure if enabling, success if disabling
+        if (enable)
+        {
+            fprintf(stderr, "Warp error: device %d cannot access device %d\n", peer_ordinal, target_ordinal);
+            return 0;
+        }
+        else
+            return 1;
+    }
+
+    ContextGuard guard(peer_context, true);
+
+    CUcontext target_ctx = static_cast<CUcontext>(target_context);
+
+    if (enable)
+    {
+        CUresult status = cuCtxEnablePeerAccess_f(target_ctx, 0);
+        if (status != CUDA_SUCCESS && status != CUDA_ERROR_PEER_ACCESS_ALREADY_ENABLED)
+        {
+            check_cu(status);
+            fprintf(stderr, "Warp error: failed to enable peer access from device %d to device %d\n", peer_ordinal, target_ordinal);
+            return 0;
+        }
+    }
+    else
+    {
+        CUresult status = cuCtxDisablePeerAccess_f(target_ctx);
+        if (status != CUDA_SUCCESS && status != CUDA_ERROR_PEER_ACCESS_NOT_ENABLED)
+        {
+            check_cu(status);
+            fprintf(stderr, "Warp error: failed to disable peer access from device %d to device %d\n", peer_ordinal, target_ordinal);
+            return 0;
+        }
+    }
+
+    return 1;  // success
+}
+
+int cuda_is_mempool_access_enabled(int target_ordinal, int peer_ordinal)
+{
+    int num_devices = int(g_devices.size());
+
+    if (target_ordinal < 0 || target_ordinal > num_devices)
+    {
+        fprintf(stderr, "Warp error: Invalid device ordinal %d\n", target_ordinal);
+        return 0;
+    }
+
+    if (peer_ordinal < 0 || peer_ordinal > num_devices)
+    {
+        fprintf(stderr, "Warp error: Invalid peer device ordinal %d\n", peer_ordinal);
+        return 0;
+    }
+
+    if (target_ordinal == peer_ordinal)
+        return 1;
+
+    cudaMemPool_t pool;
+    if (!check_cuda(cudaDeviceGetDefaultMemPool(&pool, target_ordinal)))
+    {
+        fprintf(stderr, "Warp error: Failed to get memory pool of device %d\n", target_ordinal);
+        return 0;
+    }
+
+    cudaMemAccessFlags flags = cudaMemAccessFlagsProtNone;
+    cudaMemLocation location;
+    location.id = peer_ordinal;
+    location.type = cudaMemLocationTypeDevice;
+    if (check_cuda(cudaMemPoolGetAccess(&flags, pool, &location)))
+        return int(flags != cudaMemAccessFlagsProtNone);
+
+    return 0;
+}
+
+int cuda_set_mempool_access_enabled(int target_ordinal, int peer_ordinal, int enable)
+{
+    int num_devices = int(g_devices.size());
+
+    if (target_ordinal < 0 || target_ordinal > num_devices)
+    {
+        fprintf(stderr, "Warp error: Invalid device ordinal %d\n", target_ordinal);
+        return 0;
+    }
+
+    if (peer_ordinal < 0 || peer_ordinal > num_devices)
+    {
+        fprintf(stderr, "Warp error: Invalid peer device ordinal %d\n", peer_ordinal);
+        return 0;
+    }
+
+    if (target_ordinal == peer_ordinal)
+        return 1;  // no-op
+
+    // get the memory pool
+    cudaMemPool_t pool;
+    if (!check_cuda(cudaDeviceGetDefaultMemPool(&pool, target_ordinal)))
+    {
+        fprintf(stderr, "Warp error: Failed to get memory pool of device %d\n", target_ordinal);
+        return 0;
+    }
+
+    cudaMemAccessDesc desc;
+    desc.location.type = cudaMemLocationTypeDevice;
+    desc.location.id = peer_ordinal;
+
+    // only cudaMemAccessFlagsProtReadWrite and cudaMemAccessFlagsProtNone are supported
+    if (enable)
+        desc.flags = cudaMemAccessFlagsProtReadWrite;
+    else
+        desc.flags = cudaMemAccessFlagsProtNone;
+
+    if (!check_cuda(cudaMemPoolSetAccess(pool, &desc, 1)))
+    {
+        fprintf(stderr, "Warp error: Failed to set mempool access from device %d to device %d\n", peer_ordinal, target_ordinal);
+        return 0;
+    }
+
+    return 1;  // success
+}
+
 
 void* cuda_stream_create(void* context)
 {
-    CUcontext ctx = context ? static_cast<CUcontext>(context) : get_current_context();
-    if (!ctx)
-        return NULL;
-
     ContextGuard guard(context, true);
 
     CUstream stream;
     if (check_cu(cuStreamCreate_f(&stream, CU_STREAM_DEFAULT)))
+    {
+        cuda_stream_register(WP_CURRENT_CONTEXT, stream);
         return stream;
+    }
     else
         return NULL;
 }
@@ -1494,20 +2146,45 @@ void cuda_stream_destroy(void* context, void* stream)
     if (!stream)
         return;
 
-    CUcontext ctx = context ? static_cast<CUcontext>(context) : get_current_context();
-    if (!ctx)
-        return;
-
-    ContextGuard guard(context, true);
+    cuda_stream_unregister(context, stream);
 
     check_cu(cuStreamDestroy_f(static_cast<CUstream>(stream)));
 }
 
-void cuda_stream_synchronize(void* context, void* stream)
+void cuda_stream_register(void* context, void* stream)
 {
+    if (!stream)
+        return;
+
     ContextGuard guard(context);
 
-    check_cu(cuStreamSynchronize_f(static_cast<CUstream>(stream)));
+    // populate stream info
+    StreamInfo& stream_info = g_streams[static_cast<CUstream>(stream)];
+    check_cu(cuEventCreate_f(&stream_info.last_event, CU_EVENT_DISABLE_TIMING));
+}
+
+void cuda_stream_unregister(void* context, void* stream)
+{
+    if (!stream)
+        return;
+
+    CUstream cuda_stream = static_cast<CUstream>(stream);
+    
+    StreamInfo* stream_info = get_stream_info(cuda_stream);
+    if (stream_info)
+    {
+        // release stream info
+        check_cu(cuEventDestroy_f(stream_info->last_event));
+        g_streams.erase(cuda_stream);
+    }
+
+    // make sure we don't leave dangling references to this stream
+    ContextInfo* context_info = get_context_info(context);
+    if (context_info)
+    {
+        if (cuda_stream == context_info->stream)
+            context_info->stream = NULL;
+    }
 }
 
 void* cuda_stream_get_current()
@@ -1515,24 +2192,33 @@ void* cuda_stream_get_current()
     return get_current_stream();
 }
 
-void cuda_stream_wait_event(void* context, void* stream, void* event)
+void cuda_stream_synchronize(void* stream)
 {
-    ContextGuard guard(context);
+    check_cu(cuStreamSynchronize_f(static_cast<CUstream>(stream)));
+}
 
+void cuda_stream_wait_event(void* stream, void* event)
+{
     check_cu(cuStreamWaitEvent_f(static_cast<CUstream>(stream), static_cast<CUevent>(event), 0));
 }
 
-void cuda_stream_wait_stream(void* context, void* stream, void* other_stream, void* event)
+void cuda_stream_wait_stream(void* stream, void* other_stream, void* event)
 {
-    ContextGuard guard(context);
-
     check_cu(cuEventRecord_f(static_cast<CUevent>(event), static_cast<CUstream>(other_stream)));
     check_cu(cuStreamWaitEvent_f(static_cast<CUstream>(stream), static_cast<CUevent>(event), 0));
 }
 
+int cuda_stream_is_capturing(void* stream)
+{
+    cudaStreamCaptureStatus status = cudaStreamCaptureStatusNone;
+    check_cuda(cudaStreamIsCapturing(static_cast<cudaStream_t>(stream), &status));
+    
+    return int(status != cudaStreamCaptureStatusNone);
+}
+
 void* cuda_event_create(void* context, unsigned flags)
 {
-    ContextGuard guard(context);
+    ContextGuard guard(context, true);
 
     CUevent event;
     if (check_cu(cuEventCreate_f(&event, flags)))
@@ -1541,68 +2227,217 @@ void* cuda_event_create(void* context, unsigned flags)
         return NULL;
 }
 
-void cuda_event_destroy(void* context, void* event)
+void cuda_event_destroy(void* event)
 {
-    ContextGuard guard(context, true);
-
     check_cu(cuEventDestroy_f(static_cast<CUevent>(event)));
 }
 
-void cuda_event_record(void* context, void* event, void* stream)
+void cuda_event_record(void* event, void* stream)
 {
-    ContextGuard guard(context);
-
     check_cu(cuEventRecord_f(static_cast<CUevent>(event), static_cast<CUstream>(stream)));
 }
 
-void cuda_graph_begin_capture(void* context)
+bool cuda_graph_begin_capture(void* context, void* stream, int external)
 {
     ContextGuard guard(context);
 
-    check_cuda(cudaStreamBeginCapture(get_current_stream(), cudaStreamCaptureModeGlobal));
-}
-
-void* cuda_graph_end_capture(void* context)
-{
-    ContextGuard guard(context);
-
-    cudaGraph_t graph = NULL;
-    check_cuda(cudaStreamEndCapture(get_current_stream(), &graph));
-
-    if (graph)
+    CUstream cuda_stream = static_cast<CUstream>(stream);
+    StreamInfo* stream_info = get_stream_info(cuda_stream);
+    if (!stream_info)
     {
-        // enable to create debug GraphVis visualization of graph
-        //cudaGraphDebugDotPrint(graph, "graph.dot", cudaGraphDebugDotFlagsVerbose);
+        wp::set_error_string("Warp error: unknown stream");
+        return false;
+    }
 
-        cudaGraphExec_t graph_exec = NULL;
-        //check_cuda(cudaGraphInstantiate(&graph_exec, graph, NULL, NULL, 0));
-        
-        // can use after CUDA 11.4 to permit graphs to capture cudaMallocAsync() operations
-        check_cuda(cudaGraphInstantiateWithFlags(&graph_exec, graph, cudaGraphInstantiateFlagAutoFreeOnLaunch));
-
-        // free source graph
-        check_cuda(cudaGraphDestroy(graph));
-
-        return graph_exec;
+    if (external)
+    {
+        // if it's an external capture, make sure it's already active so we can get the capture id
+        cudaStreamCaptureStatus status = cudaStreamCaptureStatusNone;
+        if (!check_cuda(cudaStreamIsCapturing(cuda_stream, &status)))
+            return false;
+        if (status != cudaStreamCaptureStatusActive)
+        {
+            wp::set_error_string("Warp error: stream is not capturing");
+            return false;
+        }
     }
     else
     {
-        return NULL;
+        // start the capture
+        if (!check_cuda(cudaStreamBeginCapture(cuda_stream, cudaStreamCaptureModeGlobal)))
+            return false;
     }
+
+    uint64_t capture_id = get_capture_id(cuda_stream);
+
+    CaptureInfo* capture = new CaptureInfo();
+    capture->stream = cuda_stream;
+    capture->id = capture_id;
+    capture->external = bool(external);
+
+    // update stream info
+    stream_info->capture = capture;
+
+    // add to known captures
+    g_captures[capture_id] = capture;
+
+    return true;
 }
 
-void cuda_graph_launch(void* context, void* graph_exec)
+bool cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
 {
     ContextGuard guard(context);
 
-    check_cuda(cudaGraphLaunch((cudaGraphExec_t)graph_exec, get_current_stream()));
+    // check if this is a known stream
+    CUstream cuda_stream = static_cast<CUstream>(stream);
+    StreamInfo* stream_info = get_stream_info(cuda_stream);
+    if (!stream_info)
+    {
+        wp::set_error_string("Warp error: unknown capture stream");
+        return false;
+    }
+
+    // check if this stream was used to start a capture
+    CaptureInfo* capture = stream_info->capture;
+    if (!capture)
+    {
+        wp::set_error_string("Warp error: stream has no capture started");
+        return false;
+    }
+
+    // get capture info
+    bool external = capture->external;
+    uint64_t capture_id = capture->id;
+
+    // clear capture info
+    stream_info->capture = NULL;
+    g_captures.erase(capture_id);
+    delete capture;
+
+    // a lambda to clean up on exit in case of error
+    auto clean_up = [cuda_stream, capture_id, external]()
+    {
+        // unreference outstanding graph allocs so that they will be released with the user reference
+        for (auto it = g_graph_allocs.begin(); it != g_graph_allocs.end(); ++it)
+        {
+            GraphAllocInfo& alloc_info = it->second;
+            if (alloc_info.capture_id == capture_id)
+                alloc_info.graph_destroyed = true;
+        }
+
+        // make sure we terminate the capture
+        if (!external)
+        {
+            cudaGraph_t graph = NULL;
+            check_cuda(cudaStreamEndCapture(cuda_stream, &graph));
+            cudaGetLastError();
+        }
+    };
+
+    // get captured graph without ending the capture in case it is external
+    cudaGraph_t graph = get_capture_graph(cuda_stream);
+    if (!graph)
+    {
+        clean_up();
+        return false;
+    }
+    
+    // ensure that all forked streams are joined to the main capture stream by manually
+    // adding outstanding capture dependencies gathered from the graph leaf nodes
+    std::vector<cudaGraphNode_t> stream_dependencies;
+    std::vector<cudaGraphNode_t> leaf_nodes;
+    if (get_capture_dependencies(cuda_stream, stream_dependencies) && get_graph_leaf_nodes(graph, leaf_nodes))
+    {
+        // compute set difference to get unjoined dependencies
+        std::vector<cudaGraphNode_t> unjoined_dependencies;
+        std::sort(stream_dependencies.begin(), stream_dependencies.end());
+        std::sort(leaf_nodes.begin(), leaf_nodes.end());
+        std::set_difference(leaf_nodes.begin(), leaf_nodes.end(),
+                            stream_dependencies.begin(), stream_dependencies.end(),
+                            std::back_inserter(unjoined_dependencies));
+        if (!unjoined_dependencies.empty())
+        {
+            check_cu(cuStreamUpdateCaptureDependencies_f(cuda_stream, unjoined_dependencies.data(), unjoined_dependencies.size(),
+                                                         CU_STREAM_ADD_CAPTURE_DEPENDENCIES));
+            // ensure graph is still valid
+            if (get_capture_graph(cuda_stream) != graph)
+            {
+                clean_up();
+                return false;
+            }
+        }
+    }
+
+    // check if this graph has unfreed allocations, which require special handling
+    std::vector<void*> unfreed_allocs;
+    for (auto it = g_graph_allocs.begin(); it != g_graph_allocs.end(); ++it)
+    {
+        GraphAllocInfo& alloc_info = it->second;
+        if (alloc_info.capture_id == capture_id)
+            unfreed_allocs.push_back(it->first);
+    }
+
+    if (!unfreed_allocs.empty())
+    {
+        // Create a user object that will notify us when the instantiated graph is destroyed.
+        // This works for external captures also, since we wouldn't otherwise know when
+        // the externally-created graph instance gets deleted.
+        // This callback is guaranteed to arrive after the graph has finished executing on the device,
+        // not necessarily when cudaGraphExecDestroy() is called.
+        GraphInfo* graph_info = new GraphInfo;
+        graph_info->unfreed_allocs = unfreed_allocs;
+        cudaUserObject_t user_object;
+        check_cuda(cudaUserObjectCreate(&user_object, graph_info, on_graph_destroy, 1, cudaUserObjectNoDestructorSync));
+        check_cuda(cudaGraphRetainUserObject(graph, user_object, 1, cudaGraphUserObjectMove));
+
+        // ensure graph is still valid
+        if (get_capture_graph(cuda_stream) != graph)
+        {
+            clean_up();
+            return false;
+        }
+    }
+
+    // for external captures, we don't instantiate the graph ourselves, so we're done
+    if (external)
+        return true;
+
+    cudaGraphExec_t graph_exec = NULL;
+
+    // end the capture
+    if (!check_cuda(cudaStreamEndCapture(cuda_stream, &graph)))
+        return false;
+
+    // enable to create debug GraphVis visualization of graph
+    // cudaGraphDebugDotPrint(graph, "graph.dot", cudaGraphDebugDotFlagsVerbose);
+    
+    // can use after CUDA 11.4 to permit graphs to capture cudaMallocAsync() operations
+    if (!check_cuda(cudaGraphInstantiateWithFlags(&graph_exec, graph, cudaGraphInstantiateFlagAutoFreeOnLaunch)))
+        return false;
+
+    // free source graph
+    check_cuda(cudaGraphDestroy(graph));
+
+    // process deferred free list if no more captures are ongoing
+    if (g_captures.empty())
+        free_deferred_allocs();
+
+    if (graph_ret)
+        *graph_ret = graph_exec;
+
+    return true;
 }
 
-void cuda_graph_destroy(void* context, void* graph_exec)
+bool cuda_graph_launch(void* graph_exec, void* stream)
+{
+    return check_cuda(cudaGraphLaunch((cudaGraphExec_t)graph_exec, (cudaStream_t)stream));
+}
+
+bool cuda_graph_destroy(void* context, void* graph_exec)
 {
     ContextGuard guard(context);
 
-    check_cuda(cudaGraphExecDestroy((cudaGraphExec_t)graph_exec));
+    return check_cuda(cudaGraphExecDestroy((cudaGraphExec_t)graph_exec));
 }
 
 size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, bool debug, bool verbose, bool verify_fp, bool fast_math, const char* output_path)
@@ -1880,7 +2715,7 @@ void* cuda_get_kernel(void* context, void* module, const char* name)
     return kernel;
 }
 
-size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, int max_blocks, void** args)
+size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, int max_blocks, void** args, void* stream)
 {
     ContextGuard guard(context);
 
@@ -1913,7 +2748,7 @@ size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, int max_block
         (CUfunction)kernel,
         grid_dim, 1, 1,
         block_dim, 1, 1,
-        0, get_current_stream(),
+        0, static_cast<CUstream>(stream),
         args,
         0);
 

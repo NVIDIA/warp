@@ -108,6 +108,8 @@ class fabricarray(noncontiguous_array_base[T]):
     def __init__(self, data=None, attrib=None, dtype=Any, ndim=None):
         super().__init__(ARRAY_TYPE_FABRIC)
 
+        self.deleter = None
+
         if data is not None:
             from .context import runtime
 
@@ -174,24 +176,29 @@ class fabricarray(noncontiguous_array_base[T]):
 
             num_buckets = len(pointers)
             size = 0
-
             buckets = (fabricbucket_t * num_buckets)()
-            for i in range(num_buckets):
-                buckets[i].index_start = size
-                buckets[i].index_end = size + counts[i]
-                buckets[i].ptr = pointers[i]
-                if array_lengths:
-                    buckets[i].lengths = array_lengths[i]
-                size += counts[i]
 
-            if self.device.is_cuda:
-                # copy bucket info to device
-                with warp.ScopedStream(self.device.null_stream):
+            if num_buckets > 0:
+                for i in range(num_buckets):
+                    buckets[i].index_start = size
+                    buckets[i].index_end = size + counts[i]
+                    buckets[i].ptr = pointers[i]
+                    if array_lengths:
+                        buckets[i].lengths = array_lengths[i]
+                    size += counts[i]
+
+                if self.device.is_cuda:
+                    # copy bucket info to device
                     buckets_size = ctypes.sizeof(buckets)
-                    buckets_ptr = self.device.allocator.alloc(buckets_size)
-                    runtime.core.memcpy_h2d(self.device.context, buckets_ptr, ctypes.addressof(buckets), buckets_size)
+                    allocator = self.device.get_allocator()
+                    buckets_ptr = allocator.alloc(buckets_size)
+                    cuda_stream = self.device.stream.cuda_stream
+                    runtime.core.memcpy_h2d(self.device.context, buckets_ptr, ctypes.addressof(buckets), buckets_size, cuda_stream)
+                    self.deleter = allocator.deleter
+                else:
+                    buckets_ptr = ctypes.addressof(buckets)
             else:
-                buckets_ptr = ctypes.addressof(buckets)
+                buckets_ptr = None
 
             self.buckets = buckets
             self.size = size
@@ -211,11 +218,13 @@ class fabricarray(noncontiguous_array_base[T]):
             self.ctype = fabricarray_t()
 
     def __del__(self):
-        # release the GPU copy of bucket info
-        if self.buckets is not None and self.device.is_cuda:
-            buckets_size = ctypes.sizeof(self.buckets)
-            with self.device.context_guard:
-                self.device.allocator.free(self.ctype.buckets, buckets_size)
+        # release the bucket info if needed
+        if self.deleter is None:
+            return
+
+        buckets_size = ctypes.sizeof(self.buckets)
+        with self.device.context_guard:
+            self.deleter(self.ctype.buckets, buckets_size)
 
     def __ctype__(self):
         return self.ctype

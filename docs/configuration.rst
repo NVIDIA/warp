@@ -30,6 +30,7 @@ For example, the location of the user kernel cache can be changed with:
 Basic Global Settings
 ^^^^^^^^^^^^^^^^^^^^^
 
+
 +------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 | Field                                          | Type    |Default Value| Description                                                              |
 +================================================+=========+=============+==========================================================================+
@@ -65,6 +66,12 @@ Basic Global Settings
 |``enable_graph_capture_module_load_by_default`` | Boolean | ``True``    | If ``True``, ``wp.capture_begin()`` will call ``wp.force_load()`` to     |
 |                                                |         |             | compile and load Warp kernels from all imported modules before capture.  |
 +------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``enable_mempools_at_init``                     | Boolean | ``False``   | If ``True``, ``wp.init()`` will enable pooled allocators on all CUDA     |
+|                                                |         |             | devices that support memory pools.                                       |
+|                                                |         |             | Pooled allocators are generally faster and can be used during CUDA graph |
+|                                                |         |             | capture.  For the caveats, see CUDA Pooled Allocators documentation.     |
++------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+
 
 Advanced Global Settings
 ^^^^^^^^^^^^^^^^^^^^^^^^

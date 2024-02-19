@@ -141,7 +141,6 @@ def attr_cast_array_to_warp(
             value,
             dtype=dtype,
             shape=shape,
-            owner=False,
             device=device,
         )
 

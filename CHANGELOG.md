@@ -1,5 +1,33 @@
 # CHANGELOG
 
+
+## [0.14.0] - 2024-02-19
+
+- Add support for CUDA pooled (stream-ordered) allocators
+  - Support memory allocation during graph capture
+  - Support copying non-contiguous CUDA arrays during graph capture
+  - Improved memory allocation/deallocation performance with pooled allocators
+  - Use `wp.config.enable_mempools_at_init` to enable pooled allocators during Warp initialization (if supported)
+  - `wp.is_mempool_supported()` - check if a device supports pooled allocators
+  - `wp.is_mempool_enabled()`, `wp.set_mempool_enabled()` - enable or disable pooled allocators per device
+  - `wp.set_mempool_release_threshold()`, `wp.get_mempool_release_threshold()` - configure memory pool release threshold
+- Add support for direct memory access between devices
+  - Improved peer-to-peer memory transfer performance if access is enabled
+  - Caveat: enabling peer access may impact memory allocation/deallocation performance and increase memory consumption
+  - `wp.is_peer_access_supported()` - check if the memory of a device can be accessed by a peer device
+  - `wp.is_peer_access_enabled()`, `wp.set_peer_access_enabled()` - manage peer access for memory allocated using default CUDA allocators
+  - `wp.is_mempool_access_supported()` - check if the memory pool of a device can be accessed by a peer device
+  - `wp.is_mempool_access_enabled()`, `wp.set_mempool_access_enabled()` - manage access for memory allocated using pooled CUDA allocators
+- Refined stream synchronization semantics
+  - `wp.ScopedStream` can synchronize with the previous stream on entry and/or exit (only sync on entry by default)
+  - Functions taking an optional stream argument do no implicit synchronization for max performance (e.g., `wp.copy()`, `wp.launch()`, `wp.capture_launch()`)
+- Support for passing a custom `deleter` argument when constructing arrays
+  - Deprecation of `owner` argument - use `deleter` to transfer ownership
+- Optimizations for various core API functions (e.g., `wp.zeros()`, `wp.full()`, and more)
+- Fix `wp.matmul()` to always use the correct CUDA context
+- Fix memory leak in BSR transpose
+- Fix stream synchronization issues when copying non-contiguous arrays
+
 ## [0.13.0] - 2024-02-16
 
 - Update the license to *NVIDIA Software License*, allowing commercial use (see `LICENSE.md`)
@@ -16,6 +44,7 @@
 - Change the kernel cache appauthor subdirectory to just "NVIDIA"
 - Ensure that gradients attached to PyTorch tensors have compatible strides when calling `wp.from_torch()`
 - Add a `Noise Deform` node for OmniGraph that deforms points using a perlin/curl noise
+>>>>>>> omniverse/master
 
 ## [0.11.0] - 2024-01-23
 

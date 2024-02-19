@@ -70,7 +70,7 @@ class DistributedSystem:
         for mat_i, x_i, y_i, idx in zip(*self.rank_data):
             # WAR copy with indexed array requiring matching shape
             tmp_i = wp.array(
-                ptr=tmp.ptr, device=tmp.device, capacity=tmp.capacity, dtype=tmp.dtype, shape=idx.shape, owner=False
+                ptr=tmp.ptr, device=tmp.device, capacity=tmp.capacity, dtype=tmp.dtype, shape=idx.shape
             )
 
             # Compress rhs on rank 0
@@ -132,7 +132,14 @@ class Example:
 
         # Global rhs as sum of all local rhs
         glob_rhs = wp.zeros(n=self._scalar_space.node_count(), dtype=wp.float64, device=main_device)
-        tmp = wp.empty_like(glob_rhs)
+
+        # This temporary buffer will be used for peer-to-peer copying during graph capture,
+        # so we allocate it using the default CUDA allocator.  This ensures that the copying
+        # will succeed without enabling mempool access between devices, which is not supported
+        # on all systems.
+        with wp.ScopedMempool(main_device, False):
+            tmp = wp.empty_like(glob_rhs)
+
         sum_vecs(rhs_vecs, indices, glob_rhs, tmp)
 
         # Distributed CG

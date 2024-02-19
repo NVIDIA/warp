@@ -373,16 +373,16 @@ LinearBVHBuilderGPU::LinearBVHBuilderGPU()
     , total_upper(NULL)
     , total_inv_edges(NULL)
 {
-    total_lower = (vec3*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(vec3));
-    total_upper = (vec3*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(vec3));
-    total_inv_edges = (vec3*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(vec3));
+    total_lower = (vec3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3));
+    total_upper = (vec3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3));
+    total_inv_edges = (vec3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3));
 }
 
 LinearBVHBuilderGPU::~LinearBVHBuilderGPU()
 {
-    free_temp_device(WP_CURRENT_CONTEXT, total_lower);
-    free_temp_device(WP_CURRENT_CONTEXT, total_upper);
-    free_temp_device(WP_CURRENT_CONTEXT, total_inv_edges);
+    free_device(WP_CURRENT_CONTEXT, total_lower);
+    free_device(WP_CURRENT_CONTEXT, total_upper);
+    free_device(WP_CURRENT_CONTEXT, total_inv_edges);
 }
 
 
@@ -390,12 +390,12 @@ LinearBVHBuilderGPU::~LinearBVHBuilderGPU()
 void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* item_uppers, int num_items, bounds3* total_bounds)
 {
     // allocate temporary memory used during  building
-    indices = (int*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(int)*num_items*2); 	// *2 for radix sort
-    keys = (int*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(int)*num_items*2);	    // *2 for radix sort
-    deltas = (int*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(int)*num_items);    	// highest differenting bit between keys for item i and i+1
-    range_lefts = (int*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh.max_nodes);
-    range_rights = (int*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh.max_nodes);
-    num_children = (int*)alloc_temp_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh.max_nodes);
+    indices = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*num_items*2); 	// *2 for radix sort
+    keys = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*num_items*2);	    // *2 for radix sort
+    deltas = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*num_items);    	// highest differenting bit between keys for item i and i+1
+    range_lefts = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh.max_nodes);
+    range_rights = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh.max_nodes);
+    num_children = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh.max_nodes);
 
     // if total bounds supplied by the host then we just 
     // compute our edge length and upload it to the GPU directly
@@ -445,13 +445,13 @@ void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* i
     wp_launch_device(WP_CURRENT_CONTEXT, build_hierarchy, num_items, (num_items, bvh.root, deltas, num_children, range_lefts, range_rights, bvh.node_parents, bvh.node_lowers, bvh.node_uppers));
 
     // free temporary memory
-    free_temp_device(WP_CURRENT_CONTEXT, indices);
-    free_temp_device(WP_CURRENT_CONTEXT, keys);
-    free_temp_device(WP_CURRENT_CONTEXT, deltas);
+    free_device(WP_CURRENT_CONTEXT, indices);
+    free_device(WP_CURRENT_CONTEXT, keys);
+    free_device(WP_CURRENT_CONTEXT, deltas);
 
-    free_temp_device(WP_CURRENT_CONTEXT, range_lefts);
-    free_temp_device(WP_CURRENT_CONTEXT, range_rights);
-    free_temp_device(WP_CURRENT_CONTEXT, num_children);
+    free_device(WP_CURRENT_CONTEXT, range_lefts);
+    free_device(WP_CURRENT_CONTEXT, range_rights);
+    free_device(WP_CURRENT_CONTEXT, num_children);
 
 }
 

@@ -490,10 +490,14 @@ def test_torch_graph_torch_stream(test, device):
 
     # capture graph
     with wp.ScopedStream(warp_stream), torch.cuda.graph(g, stream=torch_stream):
-        t += 1.0
-        wp.launch(inc, dim=n, inputs=[a])
-        t += 1.0
-        wp.launch(inc, dim=n, inputs=[a])
+        wp.capture_begin(force_module_load=False, external=True)
+        try:
+            t += 1.0
+            wp.launch(inc, dim=n, inputs=[a])
+            t += 1.0
+            wp.launch(inc, dim=n, inputs=[a])
+        finally:
+            wp.capture_end()
 
     # replay graph
     num_iters = 10
@@ -522,10 +526,14 @@ def test_torch_graph_warp_stream(test, device):
 
     # capture graph
     with wp.ScopedDevice(device), torch.cuda.graph(g, stream=torch_stream):
-        t += 1.0
-        wp.launch(inc, dim=n, inputs=[a])
-        t += 1.0
-        wp.launch(inc, dim=n, inputs=[a])
+        wp.capture_begin(force_module_load=False, external=True)
+        try:
+            t += 1.0
+            wp.launch(inc, dim=n, inputs=[a])
+            t += 1.0
+            wp.launch(inc, dim=n, inputs=[a])
+        finally:
+            wp.capture_end()
 
     # replay graph
     num_iters = 10

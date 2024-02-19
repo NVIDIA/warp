@@ -8,6 +8,7 @@
 
 #include "builtin.h"
 #include "temp_buffer.h"
+#include "cuda_util.h"
 
 #include "cutlass/cutlass.h"
 #include "cutlass/gemm/device/gemm_universal.h"
@@ -226,7 +227,7 @@ extern "C" {
 
 WP_API
 bool cutlass_gemm(
-                  int compute_capability,
+                  void* context, int compute_capability,
                   int m, int n, int k,
                   const char* datatype_str,
                   const void* a, const void* b, const void* c, void* d,
@@ -236,6 +237,8 @@ bool cutlass_gemm(
                   int batch_count) {
 
     std::string datatype(datatype_str);
+
+    ContextGuard guard(context);
 
     // Specializations for using Tensor Cores and A/B RowMajor/ColumnMajor designations
     if (compute_capability == 80) {

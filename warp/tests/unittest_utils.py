@@ -101,6 +101,11 @@ def get_test_devices(mode=None):
     return devices
 
 
+def get_cuda_test_devices(mode=None):
+    devices = get_test_devices(mode=mode)
+    return [d for d in devices if d.is_cuda]
+
+
 # redirects and captures all stdout output (including from C-libs)
 class StdOutCapture:
     def begin(self):

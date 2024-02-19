@@ -11,11 +11,20 @@
 // defines all crt + builtin types
 #include "builtin.h"
 
+#define WP_CURRENT_STREAM ((void*)0xffffffffffffffff)
+
 // this is the core runtime API exposed on the DLL level
 extern "C"
 {
     WP_API int init();
     //WP_API void shutdown();
+
+    // get error message from C++
+    WP_API const char* get_error_string();
+
+    // allow disabling error output, which is handy during tests that expect failure
+    WP_API void set_error_output_enabled(int enable);
+    WP_API int is_error_output_enabled();
 
     // whether Warp was compiled with CUDA support
     WP_API int is_cuda_enabled();
@@ -31,22 +40,22 @@ extern "C"
 
     WP_API void* alloc_host(size_t s);
     WP_API void* alloc_pinned(size_t s);
-    WP_API void* alloc_device(void* context, size_t s);
-    WP_API void* alloc_temp_device(void* context, size_t s);
+    WP_API void* alloc_device(void* context, size_t s);  // uses cudaMallocAsync() if supported, cudaMalloc() otherwise
+    WP_API void* alloc_device_default(void* context, size_t s);  // uses cudaMalloc()
+    WP_API void* alloc_device_async(void* context, size_t s);  // uses cudaMallocAsync()
 
     WP_API void free_host(void* ptr);
     WP_API void free_pinned(void* ptr);
-    WP_API void free_device(void* context, void* ptr);
-    WP_API void free_temp_device(void* context, void* ptr);
+    WP_API void free_device(void* context, void* ptr);  // uses cudaFreeAsync() if supported, cudaFree() otherwise
+    WP_API void free_device_default(void* context, void* ptr);  // uses cudaFree()
+    WP_API void free_device_async(void* context, void* ptr);  // uses cudaFreeAsync()
 
-    // all memcpys are performed asynchronously
-    WP_API void memcpy_h2h(void* dest, void* src, size_t n);
-    WP_API void memcpy_h2d(void* context, void* dest, void* src, size_t n);
-    WP_API void memcpy_d2h(void* context, void* dest, void* src, size_t n);
-    WP_API void memcpy_d2d(void* context, void* dest, void* src, size_t n);
-    WP_API void memcpy_peer(void* context, void* dest, void* src, size_t n);
+    WP_API bool memcpy_h2h(void* dest, void* src, size_t n);
+    WP_API bool memcpy_h2d(void* context, void* dest, void* src, size_t n, void* stream=WP_CURRENT_STREAM);
+    WP_API bool memcpy_d2h(void* context, void* dest, void* src, size_t n, void* stream=WP_CURRENT_STREAM);
+    WP_API bool memcpy_d2d(void* context, void* dest, void* src, size_t n, void* stream=WP_CURRENT_STREAM);
+    WP_API bool memcpy_p2p(void* dst_context, void* dst, void* src_context, void* src, size_t n, void* stream=WP_CURRENT_STREAM);
 
-    // all memsets are performed asynchronously
     WP_API void memset_host(void* dest, int value, size_t n);
     WP_API void memset_device(void* context, void* dest, int value, size_t n);
     
@@ -82,7 +91,7 @@ extern "C"
     WP_API void hash_grid_destroy_device(uint64_t id);
     WP_API void hash_grid_update_device(uint64_t id, float cell_width, const wp::vec3* positions, int num_points);
 
-    WP_API bool cutlass_gemm(int compute_capability, int m, int n, int k, const char* datatype,
+    WP_API bool cutlass_gemm(void* context, int compute_capability, int m, int n, int k, const char* datatype,
                              const void* a, const void* b, const void* c, void* d, float alpha, float beta,
                              bool row_major_a, bool row_major_b, bool allow_tf32x3_arith, int batch_count);
 
@@ -106,8 +115,8 @@ extern "C"
     WP_API int marching_cubes_surface_device(uint64_t id, const float* field, int nx, int ny, int nz, float threshold, wp::vec3* verts, int* triangles, int max_verts, int max_tris, int* out_num_verts, int* out_num_tris);
 
     // generic copy supporting non-contiguous arrays
-    WP_API size_t array_copy_host(void* dst, void* src, int dst_type, int src_type, int elem_size);
-    WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_type, int src_type, int elem_size);
+    WP_API bool array_copy_host(void* dst, void* src, int dst_type, int src_type, int elem_size);
+    WP_API bool array_copy_device(void* context, void* dst, void* src, int dst_type, int src_type, int elem_size);
 
     // generic fill for non-contiguous arrays
     WP_API void array_fill_host(void* arr, int arr_type, const void* value, int value_size);
@@ -220,8 +229,7 @@ extern "C"
     WP_API void nvrtc_supported_archs(int* archs);
 
     WP_API int cuda_device_get_count();
-    WP_API void* cuda_device_primary_context_retain(int ordinal);
-    WP_API void cuda_device_primary_context_release(int ordinal);
+    WP_API void* cuda_device_get_primary_context(int ordinal);
     WP_API const char* cuda_device_get_name(int ordinal);
     WP_API int cuda_device_get_arch(int ordinal);
     WP_API void cuda_device_get_uuid(int ordinal, char uuid[16]);
@@ -229,7 +237,10 @@ extern "C"
     WP_API int cuda_device_get_pci_bus_id(int ordinal);
     WP_API int cuda_device_get_pci_device_id(int ordinal);
     WP_API int cuda_device_is_uva(int ordinal);
-    WP_API int cuda_device_is_memory_pool_supported(int ordinal);
+    WP_API int cuda_device_is_mempool_supported(int ordinal);
+    WP_API int cuda_device_set_mempool_release_threshold(int ordinal, uint64_t threshold);
+    WP_API uint64_t cuda_device_get_mempool_release_threshold(int ordinal);
+    WP_API void cuda_device_get_memory_info(int ordinal, size_t* free_mem, size_t* total_mem);
 
     WP_API void* cuda_context_get_current();
     WP_API void cuda_context_set_current(void* context);
@@ -239,11 +250,8 @@ extern "C"
     WP_API void cuda_context_destroy(void* context);
     WP_API int cuda_context_get_device_ordinal(void* context);
     WP_API int cuda_context_is_primary(void* context);
-    WP_API int cuda_context_is_memory_pool_supported(void* context);
     WP_API void* cuda_context_get_stream(void* context);
-    WP_API void cuda_context_set_stream(void* context, void* stream);
-    WP_API int cuda_context_can_access_peer(void* context, void* peer_context);
-    WP_API int cuda_context_enable_peer_access(void* context, void* peer_context);
+    WP_API void cuda_context_set_stream(void* context, void* stream, int sync);
 
     // ensures all device side operations have completed in the current context
     WP_API void cuda_context_synchronize(void* context);
@@ -251,28 +259,38 @@ extern "C"
     // return cudaError_t code
     WP_API uint64_t cuda_context_check(void* context);
 
+    // peer access
+    WP_API int cuda_is_peer_access_supported(int target_ordinal, int peer_ordinal);
+    WP_API int cuda_is_peer_access_enabled(void* target_context, void* peer_context);
+    WP_API int cuda_set_peer_access_enabled(void* target_context, void* peer_context, int enable);
+    WP_API int cuda_is_mempool_access_enabled(int target_ordinal, int peer_ordinal);
+    WP_API int cuda_set_mempool_access_enabled(int target_ordinal, int peer_ordinal, int enable);
+
     WP_API void* cuda_stream_create(void* context);
     WP_API void cuda_stream_destroy(void* context, void* stream);
-    WP_API void cuda_stream_synchronize(void* context, void* stream);
+    WP_API void cuda_stream_register(void* context, void* stream);
+    WP_API void cuda_stream_unregister(void* context, void* stream);
     WP_API void* cuda_stream_get_current();
-    WP_API void cuda_stream_wait_event(void* context, void* stream, void* event);
-    WP_API void cuda_stream_wait_stream(void* context, void* stream, void* other_stream, void* event);
+    WP_API void cuda_stream_synchronize(void* stream);
+    WP_API void cuda_stream_wait_event(void* stream, void* event);
+    WP_API void cuda_stream_wait_stream(void* stream, void* other_stream, void* event);
+    WP_API int cuda_stream_is_capturing(void* stream);
 
     WP_API void* cuda_event_create(void* context, unsigned flags);
-    WP_API void cuda_event_destroy(void* context, void* event);
-    WP_API void cuda_event_record(void* context, void* event, void* stream);
+    WP_API void cuda_event_destroy(void* event);
+    WP_API void cuda_event_record(void* event, void* stream);
 
-    WP_API void cuda_graph_begin_capture(void* context);
-    WP_API void* cuda_graph_end_capture(void* context);
-    WP_API void cuda_graph_launch(void* context, void* graph);
-    WP_API void cuda_graph_destroy(void* context, void* graph);
+    WP_API bool cuda_graph_begin_capture(void* context, void* stream, int external);
+    WP_API bool cuda_graph_end_capture(void* context, void* stream, void** graph_ret);
+    WP_API bool cuda_graph_launch(void* graph, void* stream);
+    WP_API bool cuda_graph_destroy(void* context, void* graph);
 
     WP_API size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, bool debug, bool verbose, bool verify_fp, bool fast_math, const char* output_file);
 
     WP_API void* cuda_load_module(void* context, const char* ptx);
     WP_API void cuda_unload_module(void* context, void* module);
     WP_API void* cuda_get_kernel(void* context, void* module, const char* name);
-    WP_API size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, int max_blocks, void** args);
+    WP_API size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, int max_blocks, void** args, void* stream);
 
     WP_API void cuda_set_context_restore_policy(bool always_restore);
     WP_API int cuda_get_context_restore_policy();
@@ -284,4 +302,3 @@ extern "C"
     WP_API void cuda_graphics_unregister_resource(void* context, void* resource);
 
 } // extern "C"
- 

@@ -488,7 +488,6 @@ def gmres(
             shape=(1,),
             device=H.device,
             copy=False,
-            owner=False,
         )
 
     def array_row(V, i):
@@ -498,7 +497,6 @@ def gmres(
             shape=V.shape[1],
             device=V.device,
             copy=False,
-            owner=False,
         )
 
     def do_arnoldi_iteration(j: int):

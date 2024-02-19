@@ -17,8 +17,10 @@
 
 #include <stdio.h>
 
-#define check_cuda(code) (check_cuda_result(code, __FILE__, __LINE__))
-#define check_cu(code) (check_cu_result(code, __FILE__, __LINE__))
+#include <vector>
+
+#define check_cuda(code) (check_cuda_result(code, __FUNCTION__, __FILE__, __LINE__))
+#define check_cu(code) (check_cu_result(code, __FUNCTION__, __FILE__, __LINE__))
 
 
 #if defined(__CUDACC__)
@@ -55,6 +57,7 @@ CUresult cuDeviceGetUuid_f(CUuuid* uuid, CUdevice dev);
 CUresult cuDevicePrimaryCtxRetain_f(CUcontext* ctx, CUdevice dev);
 CUresult cuDevicePrimaryCtxRelease_f(CUdevice dev);
 CUresult cuDeviceCanAccessPeer_f(int* can_access, CUdevice dev, CUdevice peer_dev);
+CUresult cuMemGetInfo_f(size_t* free, size_t* total);
 CUresult cuCtxGetCurrent_f(CUcontext* ctx);
 CUresult cuCtxSetCurrent_f(CUcontext ctx);
 CUresult cuCtxPushCurrent_f(CUcontext ctx);
@@ -64,18 +67,23 @@ CUresult cuCtxGetDevice_f(CUdevice* dev);
 CUresult cuCtxCreate_f(CUcontext* ctx, unsigned int flags, CUdevice dev);
 CUresult cuCtxDestroy_f(CUcontext ctx);
 CUresult cuCtxEnablePeerAccess_f(CUcontext peer_ctx, unsigned int flags);
+CUresult cuCtxDisablePeerAccess_f(CUcontext peer_ctx);
 CUresult cuStreamCreate_f(CUstream* stream, unsigned int flags);
 CUresult cuStreamDestroy_f(CUstream stream);
 CUresult cuStreamSynchronize_f(CUstream stream);
 CUresult cuStreamWaitEvent_f(CUstream stream, CUevent event, unsigned int flags);
+CUresult cuStreamGetCaptureInfo_f(CUstream stream, CUstreamCaptureStatus *captureStatus_out, cuuint64_t *id_out, CUgraph *graph_out, const CUgraphNode **dependencies_out, size_t *numDependencies_out);
+CUresult cuStreamUpdateCaptureDependencies_f(CUstream stream, CUgraphNode *dependencies, size_t numDependencies, unsigned int flags);
 CUresult cuEventCreate_f(CUevent* event, unsigned int flags);
 CUresult cuEventDestroy_f(CUevent event);
 CUresult cuEventRecord_f(CUevent event, CUstream stream);
+CUresult cuEventRecordWithFlags_f(CUevent event, CUstream stream, unsigned int flags);
 CUresult cuModuleUnload_f(CUmodule hmod);
 CUresult cuModuleLoadDataEx_f(CUmodule *module, const void *image, unsigned int numOptions, CUjit_option *options, void **optionValues);
 CUresult cuModuleGetFunction_f(CUfunction *hfunc, CUmodule hmod, const char *name);
 CUresult cuLaunchKernel_f(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, CUstream hStream, void **kernelParams, void **extra);
 CUresult cuMemcpyPeerAsync_f(CUdeviceptr dst_ptr, CUcontext dst_ctx, CUdeviceptr src_ptr, CUcontext src_ctx, size_t n, CUstream stream);
+CUresult cuPointerGetAttribute_f(void* data, CUpointer_attribute attribute, CUdeviceptr ptr);
 CUresult cuGraphicsMapResources_f(unsigned int count, CUgraphicsResource* resources, CUstream stream);
 CUresult cuGraphicsUnmapResources_f(unsigned int count, CUgraphicsResource* resources, CUstream hStream);
 CUresult cuGraphicsResourceGetMappedPointer_f(CUdeviceptr* pDevPtr, size_t* pSize, CUgraphicsResource resource);
@@ -86,13 +94,34 @@ CUresult cuGraphicsUnregisterResource_f(CUgraphicsResource resource);
 bool init_cuda_driver();
 bool is_cuda_driver_initialized();
 
-bool check_cuda_result(cudaError_t code, const char* file, int line);
-inline bool check_cuda_result(uint64_t code, const char* file, int line)
+bool check_cuda_result(cudaError_t code, const char* func, const char* file, int line);
+
+inline bool check_cuda_result(uint64_t code, const char* func, const char* file, int line)
 {
-    return check_cuda_result(static_cast<cudaError_t>(code), file, line);
+    return check_cuda_result(static_cast<cudaError_t>(code), func, file, line);
 }
 
-bool check_cu_result(CUresult result, const char* file, int line);
+bool check_cu_result(CUresult result, const char* func, const char* file, int line);
+
+inline uint64_t get_capture_id(CUstream stream)
+{
+    CUstreamCaptureStatus status;
+    uint64_t id = 0;
+    check_cu(cuStreamGetCaptureInfo_f(stream, &status, &id, NULL, NULL, NULL));
+    return id;
+}
+
+inline CUgraph get_capture_graph(CUstream stream)
+{
+    CUstreamCaptureStatus status;
+    CUgraph graph = NULL;
+    check_cu(cuStreamGetCaptureInfo_f(stream, &status, NULL, &graph, NULL, NULL));
+    return graph;
+}
+
+bool get_capture_dependencies(CUstream stream, std::vector<CUgraphNode>& dependencies_ret);
+
+bool get_graph_leaf_nodes(cudaGraph_t graph, std::vector<cudaGraphNode_t>& leaf_nodes_ret);
 
 
 //

@@ -348,7 +348,7 @@ def from_dlpack(pycapsule, dtype=None) -> warp.array:
         raise RuntimeError(f"Incompatible data types: {dlt.dtype} and {dtype}")
 
     a = warp.types.array(
-        ptr=dlt.data, dtype=dtype, shape=shape, strides=strides, copy=False, owner=False, device=device, pinned=pinned
+        ptr=dlt.data, dtype=dtype, shape=shape, strides=strides, copy=False, device=device, pinned=pinned
     )
 
     # keep a reference to the capsule so it doesn't get deleted

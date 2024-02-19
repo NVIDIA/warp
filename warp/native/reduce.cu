@@ -110,7 +110,7 @@ template <typename T> void array_sum_device(const T *ptr_a, T *ptr_out, int coun
 
     size_t buff_size = 0;
     check_cuda(cub::DeviceReduce::Sum(nullptr, buff_size, ptr_strided, ptr_out, count, stream));
-    void* temp_buffer = alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
+    void* temp_buffer = alloc_device(WP_CURRENT_CONTEXT, buff_size);
 
     for (int k = 0; k < type_length; ++k)
     {
@@ -118,7 +118,7 @@ template <typename T> void array_sum_device(const T *ptr_a, T *ptr_out, int coun
         check_cuda(cub::DeviceReduce::Sum(temp_buffer, buff_size, ptr_strided, ptr_out + k, count, stream));
     }
 
-    free_temp_device(WP_CURRENT_CONTEXT, temp_buffer);
+    free_device(WP_CURRENT_CONTEXT, temp_buffer);
 }
 
 template <typename T>
@@ -271,11 +271,11 @@ void array_inner_device(const ElemT *ptr_a, const ElemT *ptr_b, ScalarT *ptr_out
 
     size_t buff_size = 0;
     check_cuda(cub::DeviceReduce::Sum(nullptr, buff_size, inner_iterator, ptr_out, count, stream));
-    void* temp_buffer = alloc_temp_device(WP_CURRENT_CONTEXT, buff_size);
+    void* temp_buffer = alloc_device(WP_CURRENT_CONTEXT, buff_size);
 
     check_cuda(cub::DeviceReduce::Sum(temp_buffer, buff_size, inner_iterator, ptr_out, count, stream));
 
-    free_temp_device(WP_CURRENT_CONTEXT, temp_buffer);
+    free_device(WP_CURRENT_CONTEXT, temp_buffer);
 }
 
 template <typename T>
