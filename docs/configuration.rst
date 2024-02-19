@@ -30,39 +30,41 @@ For example, the location of the user kernel cache can be changed with:
 Basic Global Settings
 ^^^^^^^^^^^^^^^^^^^^^
 
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
-| Field              | Type    |Default Value| Description                                                              |
-+====================+=========+=============+==========================================================================+
-|``verify_fp``       | Boolean | ``False``   | If ``True``, Warp will check that inputs and outputs are finite before   |
-|                    |         |             | and/or after various operations. **Has performance implications.**       |
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
-|``verify_cuda``     | Boolean | ``False``   | If ``True``, Warp will check for CUDA errors after every launch and      |
-|                    |         |             | memory operation. CUDA error verification cannot be used during graph    |
-|                    |         |             | capture. **Has performance implications.**                               |              
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
-|``print_launches``  | Boolean | ``False``   | If ``True``, Warp will print details of every kernel launch to standard  |
-|                    |         |             | out (e.g. launch dimensions, inputs, outputs, device, etc.).             |
-|                    |         |             | **Has performance implications.**                                        |
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
-|``mode``            | String  |``"release"``| Controls whether to compile Warp kernels in debug or release mode.       |
-|                    |         |             | Valid choices are ``"release"`` or ``"debug"``.                          |
-|                    |         |             | **Has performance implications.**                                        |
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
-|``verbose``         | Boolean | ``False``   | If ``True``, additional information will be printed to standard out      |
-|                    |         |             | during code generation, compilation, etc.                                |
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
-|``quiet``           | Boolean | ``False``   | If ``True``, Warp module initialization messages will be disabled.       |
-|                    |         |             | This setting does not affect error messages and warnings.                |
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
-|``kernel_cache_dir``| String  | ``None``    | The path to the directory used for the user kernel cache. Subdirectories |
-|                    |         |             | named ``gen`` and ``bin`` will be created in this directory. If ``None``,|
-|                    |         |             | a directory will be automatically determined using                       |
-|                    |         |             | `appdirs.user_cache_directory <https://github.com/ActiveState/appdirs>`_ |
-|                    |         |             |                                                                          |
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
-|``enable_backward`` | Boolean | ``True``    | If ``True``, backward passes of kernels will be compiled by default.     |
-|                    |         |             | Disabling this setting can reduce kernel compilation times.              |
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
++------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+| Field                                          | Type    |Default Value| Description                                                              |
++================================================+=========+=============+==========================================================================+
+|``verify_fp``                                   | Boolean | ``False``   | If ``True``, Warp will check that inputs and outputs are finite before   |
+|                                                |         |             | and/or after various operations. **Has performance implications.**       |
++------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``verify_cuda``                                 | Boolean | ``False``   | If ``True``, Warp will check for CUDA errors after every launch and      |
+|                                                |         |             | memory operation. CUDA error verification cannot be used during graph    |
+|                                                |         |             | capture. **Has performance implications.**                               |              
++------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``print_launches``                              | Boolean | ``False``   | If ``True``, Warp will print details of every kernel launch to standard  |
+|                                                |         |             | out (e.g. launch dimensions, inputs, outputs, device, etc.).             |
+|                                                |         |             | **Has performance implications.**                                        |
++------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``mode``                                        | String  |``"release"``| Controls whether to compile Warp kernels in debug or release mode.       |
+|                                                |         |             | Valid choices are ``"release"`` or ``"debug"``.                          |
+|                                                |         |             | **Has performance implications.**                                        |
++------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``verbose``                                     | Boolean | ``False``   | If ``True``, additional information will be printed to standard out      |
+|                                                |         |             | during code generation, compilation, etc.                                |
++------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``quiet``                                       | Boolean | ``False``   | If ``True``, Warp module initialization messages will be disabled.       |
+|                                                |         |             | This setting does not affect error messages and warnings.                |
++------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``kernel_cache_dir``                            | String  | ``None``    | The path to the directory used for the user kernel cache. Subdirectories |
+|                                                |         |             | named ``gen`` and ``bin`` will be created in this directory. If ``None``,|
+|                                                |         |             | a directory will be automatically determined using                       |
+|                                                |         |             | `appdirs.user_cache_directory <https://github.com/ActiveState/appdirs>`_ |
++------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``enable_backward``                             | Boolean | ``True``    | If ``True``, backward passes of kernels will be compiled by default.     |
+|                                                |         |             | Disabling this setting can reduce kernel compilation times.              |
++------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``enable_graph_capture_module_load_by_default`` | Boolean | ``True``    | If ``True``, ``wp.capture_begin()`` will call ``wp.force_load()`` to     |
+|                                                |         |             | compile and load Warp kernels from all imported modules before capture.  |
++------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 
 Advanced Global Settings
 ^^^^^^^^^^^^^^^^^^^^^^^^

@@ -3853,7 +3853,7 @@ def capture_begin(device: Devicelike = None, stream=None, force_module_load=None
     """
 
     if force_module_load is None:
-        force_module_load = warp.config.graph_capture_module_load_default
+        force_module_load = warp.config.enable_graph_capture_module_load_by_default
 
     if warp.config.verify_cuda:
         raise RuntimeError("Cannot use CUDA error verification during graph capture")
