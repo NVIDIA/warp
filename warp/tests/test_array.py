@@ -1451,6 +1451,178 @@ def test_full_struct(test, device):
         assert_np_equal(na, expected)
 
 
+def test_ones_scalar(test, device):
+    dim = 4
+
+    for ndim in range(1, 5):
+        shape = (dim,) * ndim
+
+        for nptype, wptype in wp.types.np_dtype_to_warp_type.items():
+            a = wp.ones(shape, dtype=wptype, device=device)
+            na = a.numpy()
+
+            test.assertEqual(a.shape, shape)
+            test.assertEqual(a.dtype, wptype)
+            test.assertEqual(na.shape, shape)
+            test.assertEqual(na.dtype, nptype)
+            assert_np_equal(na, np.ones(shape, dtype=nptype))
+
+
+def test_ones_vector(test, device):
+    dim = 4
+
+    for ndim in range(1, 5):
+        shape = (dim,) * ndim
+
+        for veclen in [2, 3, 4, 5]:
+            npshape = (*shape, veclen)
+
+            for nptype, wptype in wp.types.np_dtype_to_warp_type.items():
+                vectype = wp.types.vector(veclen, wptype)
+
+                a = wp.ones(shape, dtype=vectype, device=device)
+                na = a.numpy()
+
+                test.assertEqual(a.shape, shape)
+                test.assertEqual(a.dtype, vectype)
+                test.assertEqual(na.shape, npshape)
+                test.assertEqual(na.dtype, nptype)
+                assert_np_equal(na, np.ones(npshape, dtype=nptype))
+
+
+def test_ones_matrix(test, device):
+    dim = 4
+
+    for ndim in range(1, 5):
+        shape = (dim,) * ndim
+
+        for nptype, wptype in wp.types.np_dtype_to_warp_type.items():
+            matrix_types = [
+                # square matrices
+                wp.types.matrix((2, 2), wptype),
+                wp.types.matrix((3, 3), wptype),
+                wp.types.matrix((4, 4), wptype),
+                wp.types.matrix((5, 5), wptype),
+                # non-square matrices
+                wp.types.matrix((2, 3), wptype),
+                wp.types.matrix((3, 2), wptype),
+                wp.types.matrix((3, 4), wptype),
+                wp.types.matrix((4, 3), wptype),
+            ]
+
+            for mattype in matrix_types:
+                npshape = (*shape, *mattype._shape_)
+
+                a = wp.ones(shape, dtype=mattype, device=device)
+                na = a.numpy()
+
+                test.assertEqual(a.shape, shape)
+                test.assertEqual(a.dtype, mattype)
+                test.assertEqual(na.shape, npshape)
+                test.assertEqual(na.dtype, nptype)
+                assert_np_equal(na, np.ones(npshape, dtype=nptype))
+
+
+def test_ones_like_scalar(test, device):
+    dim = 4
+
+    for ndim in range(1, 5):
+        shape = (dim,) * ndim
+
+        for nptype, wptype in wp.types.np_dtype_to_warp_type.items():
+
+            # source array
+            a = wp.zeros(shape, dtype=wptype, device=device)
+            na = a.numpy()
+            test.assertEqual(a.shape, shape)
+            test.assertEqual(a.dtype, wptype)
+            test.assertEqual(na.shape, shape)
+            test.assertEqual(na.dtype, nptype)
+            assert_np_equal(na, np.zeros(shape, dtype=nptype))
+
+            # ones array
+            b = wp.ones_like(a)
+            nb = b.numpy()
+            test.assertEqual(b.shape, shape)
+            test.assertEqual(b.dtype, wptype)
+            test.assertEqual(nb.shape, shape)
+            test.assertEqual(nb.dtype, nptype)
+            assert_np_equal(nb, np.ones(shape, dtype=nptype))
+
+
+def test_ones_like_vector(test, device):
+    dim = 4
+
+    for ndim in range(1, 5):
+        shape = (dim,) * ndim
+
+        for veclen in [2, 3, 4, 5]:
+            npshape = (*shape, veclen)
+
+            for nptype, wptype in wp.types.np_dtype_to_warp_type.items():
+                vectype = wp.types.vector(veclen, wptype)
+
+                # source array
+                a = wp.zeros(shape, dtype=vectype, device=device)
+                na = a.numpy()
+                test.assertEqual(a.shape, shape)
+                test.assertEqual(a.dtype, vectype)
+                test.assertEqual(na.shape, npshape)
+                test.assertEqual(na.dtype, nptype)
+                assert_np_equal(na, np.zeros(npshape, dtype=nptype))
+
+                # ones array
+                b = wp.ones_like(a)
+                nb = b.numpy()
+                test.assertEqual(b.shape, shape)
+                test.assertEqual(b.dtype, vectype)
+                test.assertEqual(nb.shape, npshape)
+                test.assertEqual(nb.dtype, nptype)
+                assert_np_equal(nb, np.ones(npshape, dtype=nptype))
+
+
+def test_ones_like_matrix(test, device):
+    dim = 4
+
+    for ndim in range(1, 5):
+        shape = (dim,) * ndim
+
+        for nptype, wptype in wp.types.np_dtype_to_warp_type.items():
+            matrix_types = [
+                # square matrices
+                wp.types.matrix((2, 2), wptype),
+                wp.types.matrix((3, 3), wptype),
+                wp.types.matrix((4, 4), wptype),
+                wp.types.matrix((5, 5), wptype),
+                # non-square matrices
+                wp.types.matrix((2, 3), wptype),
+                wp.types.matrix((3, 2), wptype),
+                wp.types.matrix((3, 4), wptype),
+                wp.types.matrix((4, 3), wptype),
+            ]
+
+            for mattype in matrix_types:
+                npshape = (*shape, *mattype._shape_)
+
+                # source array
+                a = wp.zeros(shape, dtype=mattype, device=device)
+                na = a.numpy()
+                test.assertEqual(a.shape, shape)
+                test.assertEqual(a.dtype, mattype)
+                test.assertEqual(na.shape, npshape)
+                test.assertEqual(na.dtype, nptype)
+                assert_np_equal(na, np.zeros(npshape, dtype=nptype))
+
+                # ones array
+                b = wp.ones_like(a)
+                nb = b.numpy()
+                test.assertEqual(b.shape, shape)
+                test.assertEqual(b.dtype, mattype)
+                test.assertEqual(nb.shape, npshape)
+                test.assertEqual(nb.dtype, nptype)
+                assert_np_equal(nb, np.ones(npshape, dtype=nptype))
+
+
 def test_round_trip(test, device):
     rng = np.random.default_rng(123)
     dim_x = 4
@@ -2114,6 +2286,12 @@ add_function_test(TestArray, "test_full_scalar", test_full_scalar, devices=devic
 add_function_test(TestArray, "test_full_vector", test_full_vector, devices=devices)
 add_function_test(TestArray, "test_full_matrix", test_full_matrix, devices=devices)
 add_function_test(TestArray, "test_full_struct", test_full_struct, devices=devices)
+add_function_test(TestArray, "test_ones_scalar", test_ones_scalar, devices=devices)
+add_function_test(TestArray, "test_ones_vector", test_ones_vector, devices=devices)
+add_function_test(TestArray, "test_ones_matrix", test_ones_matrix, devices=devices)
+add_function_test(TestArray, "test_ones_like_scalar", test_ones_like_scalar, devices=devices)
+add_function_test(TestArray, "test_ones_like_vector", test_ones_like_vector, devices=devices)
+add_function_test(TestArray, "test_ones_like_matrix", test_ones_like_matrix, devices=devices)
 add_function_test(TestArray, "test_empty_array", test_empty_array, devices=devices)
 add_function_test(TestArray, "test_empty_from_numpy", test_empty_from_numpy, devices=devices)
 add_function_test(TestArray, "test_empty_from_list", test_empty_from_list, devices=devices)
