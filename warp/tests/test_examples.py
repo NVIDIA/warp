@@ -45,9 +45,11 @@ def add_example_test(cls, name, devices=None, options={}):
         # create default USD stage output path which many examples expect
         test_options.setdefault(
             "stage",
-            os.path.join(os.path.dirname(__file__), f"outputs/{name}_{sanitize_identifier(device)}.usd")
-            if USD_AVAILABLE
-            else None,
+            (
+                os.path.join(os.path.dirname(__file__), f"outputs/{name}_{sanitize_identifier(device)}.usd")
+                if USD_AVAILABLE
+                else None
+            ),
         )
 
         if test_options["stage"]:
@@ -60,7 +62,7 @@ def add_example_test(cls, name, devices=None, options={}):
         test_options.pop("num_frames", None)
 
         # Don't want to force load all modules by default for serial test runner
-        wp.config.graph_capture_module_load_default = False
+        wp.config.enable_graph_capture_module_load_by_default = False
 
         try:
             enable_backward = test_options.get("enable_backward", True)
@@ -86,7 +88,7 @@ def add_example_test(cls, name, devices=None, options={}):
             test.fail(f"{e}")
         finally:
             wp.ScopedTimer.enabled = True
-            wp.config.graph_capture_module_load_default = True
+            wp.config.enable_graph_capture_module_load_by_default = True
 
     from warp.tests.unittest_utils import add_function_test
 
