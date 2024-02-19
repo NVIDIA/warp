@@ -3569,6 +3569,48 @@ def zeros_like(
     return arr
 
 
+def ones(
+    shape: Tuple = None,
+    dtype=float,
+    device: Devicelike = None,
+    requires_grad: bool = False,
+    pinned: bool = False,
+    **kwargs,
+) -> warp.array:
+    """Return a one-initialized array
+
+    Args:
+        shape: Array dimensions
+        dtype: Type of each element, e.g.: warp.vec3, warp.mat33, etc
+        device: Device that array will live on
+        requires_grad: Whether the array will be tracked for back propagation
+        pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+
+    Returns:
+        A warp.array object representing the allocation
+    """
+
+    return full(shape=shape, value=1, dtype=dtype, device=device, requires_grad=requires_grad, pinned=pinned, **kwargs)
+
+
+def ones_like(
+    src: warp.array, device: Devicelike = None, requires_grad: bool = None, pinned: bool = None
+) -> warp.array:
+    """Return a one-initialized array with the same type and dimension of another array
+
+    Args:
+        src: The template array to use for shape, data type, and device
+        device: The device where the new array will be created (defaults to src.device)
+        requires_grad: Whether the array will be tracked for back propagation
+        pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+
+    Returns:
+        A warp.array object representing the allocation
+    """
+
+    return full_like(src, 1, device=device, requires_grad=requires_grad, pinned=pinned)
+
+
 def full(
     shape: Tuple = None,
     value=0,
