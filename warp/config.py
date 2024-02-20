@@ -7,9 +7,7 @@
 
 version = "0.13.0"
 
-cuda_path = (
-    None  # path to local CUDA toolchain, if None at init time warp will attempt to find the SDK using CUDA_PATH env var
-)
+cuda_path = None  # path to local CUDA toolchain
 
 verify_fp = False  # verify inputs and outputs are finite after each launch
 verify_cuda = False  # if true will check CUDA errors after each kernel launch / memory operation

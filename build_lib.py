@@ -16,6 +16,8 @@ if sys.version_info[0] < 3:
 
 import argparse
 import os
+import glob
+import shutil
 
 import warp.config
 from warp.build_dll import build_dll, find_host_compiler, set_msvc_compiler
@@ -82,15 +84,40 @@ warp.config.verify_fp = args.verify_fp
 warp.config.fast_math = args.fast_math
 
 
-# See PyTorch for reference on how to find nvcc.exe more robustly
-# https://pytorch.org/docs/stable/_modules/torch/utils/cpp_extension.html#CppExtension
-def find_cuda():
-    # Guess #1
-    cuda_home = os.environ.get("CUDA_HOME") or os.environ.get("CUDA_PATH")
-    return cuda_home
+def find_cuda_sdk():
+    # check environment variables
+    for env in ["WARP_CUDA_PATH", "CUDA_HOME", "CUDA_PATH"]:
+        cuda_sdk = os.environ.get(env)
+        if cuda_sdk is not None:
+            print(f"Using CUDA Toolkit path '{cuda_sdk}' provided through the '{env}' environment variable")
+            return cuda_sdk
+
+    # use which/where to locate the nvcc compiler program
+    nvcc = shutil.which("nvcc")
+    if nvcc is not None:
+        cuda_sdk = os.path.dirname(os.path.dirname(nvcc))  # strip the executable name and bin folder
+        print(f"Using CUDA Toolkit path '{cuda_sdk}' found through 'which nvcc'")
+        return cuda_sdk
+
+    # check default paths
+    if os.name == "nt":
+        cuda_paths = glob.glob("C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v*.*")
+        if len(cuda_paths) >= 1:
+            cuda_sdk = cuda_paths[0]
+            print(f"Using CUDA Toolkit path '{cuda_sdk}' found at default path")
+            return cuda_sdk
+
+    else:
+        usr_local_cuda = "/usr/local/cuda"
+        if os.path.exists(usr_local_cuda):
+            cuda_sdk = usr_local_cuda
+            print(f"Using CUDA Toolkit path '{cuda_sdk}' found at default path")
+            return cuda_sdk
+
+    return None
 
 
-# setup CUDA paths
+# setup CUDA Toolkit path
 if sys.platform == "darwin":
     warp.config.cuda_path = None
 
@@ -98,7 +125,7 @@ else:
     if args.cuda_path:
         warp.config.cuda_path = args.cuda_path
     else:
-        warp.config.cuda_path = find_cuda()
+        warp.config.cuda_path = find_cuda_sdk()
 
 
 # setup MSVC and WinSDK paths
