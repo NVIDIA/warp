@@ -7,8 +7,6 @@
 
 version = "0.13.0"
 
-cuda_path = None  # path to local CUDA toolchain
-
 verify_fp = False  # verify inputs and outputs are finite after each launch
 verify_cuda = False  # if true will check CUDA errors after each kernel launch / memory operation
 print_launches = False  # if true will print out launch information
@@ -16,8 +14,6 @@ print_launches = False  # if true will print out launch information
 mode = "release"
 verbose = False  # print extra informative messages
 quiet = False  # suppress all output except errors and warnings
-
-host_compiler = None  # user can specify host compiler here, otherwise will attempt to find one automatically
 
 cache_kernels = True
 kernel_cache_dir = None  # path to kernel cache directory, if None a default path will be used

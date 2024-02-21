@@ -19,8 +19,7 @@ import os
 import glob
 import shutil
 
-import warp.config
-from warp.build_dll import build_dll, find_host_compiler, set_msvc_compiler
+from warp.build_dll import build_dll, find_host_compiler, set_msvc_env, verbose_cmd
 from warp.context import export_builtins
 
 parser = argparse.ArgumentParser(description="Warp build script")
@@ -78,10 +77,7 @@ build_path = os.path.join(base_path, "warp")
 
 print(args)
 
-warp.config.verbose = args.verbose
-warp.config.mode = args.mode
-warp.config.verify_fp = args.verify_fp
-warp.config.fast_math = args.fast_math
+verbose_cmd = args.verbose
 
 
 def find_cuda_sdk():
@@ -119,25 +115,23 @@ def find_cuda_sdk():
 
 # setup CUDA Toolkit path
 if sys.platform == "darwin":
-    warp.config.cuda_path = None
+    args.cuda_path = None
 
 else:
-    if args.cuda_path:
-        warp.config.cuda_path = args.cuda_path
-    else:
-        warp.config.cuda_path = find_cuda_sdk()
+    if not args.cuda_path:
+        args.cuda_path = find_cuda_sdk()
 
 
 # setup MSVC and WinSDK paths
 if os.name == "nt":
     if args.sdk_path and args.msvc_path:
         # user provided MSVC
-        set_msvc_compiler(msvc_path=args.msvc_path, sdk_path=args.sdk_path)
+        args.host_compiler = set_msvc_env(msvc_path=args.msvc_path, sdk_path=args.sdk_path)
     else:
         # attempt to find MSVC in environment (will set vcvars)
-        warp.config.host_compiler = find_host_compiler()
+        args.host_compiler = find_host_compiler()
 
-        if not warp.config.host_compiler:
+        if not args.host_compiler:
             print("Warp build error: Could not find MSVC compiler")
             sys.exit(1)
 
@@ -195,7 +189,7 @@ try:
     ]
     warp_cpp_paths = [os.path.join(build_path, cpp) for cpp in cpp_sources]
 
-    if warp.config.cuda_path is None:
+    if args.cuda_path is None:
         print("Warning: CUDA toolchain not found, building without CUDA support")
         warp_cu_path = None
     else:
@@ -203,15 +197,7 @@ try:
 
     warp_dll_path = os.path.join(build_path, f"bin/{lib_name('warp')}")
 
-    build_dll(
-        dll_path=warp_dll_path,
-        cpp_paths=warp_cpp_paths,
-        cu_path=warp_cu_path,
-        mode=warp.config.mode,
-        verify_fp=warp.config.verify_fp,
-        fast_math=args.fast_math,
-        quick=args.quick,
-    )
+    build_dll(args, dll_path=warp_dll_path, cpp_paths=warp_cpp_paths, cu_path=warp_cu_path)
 
     # build warp-clang.dll
     if args.standalone:
