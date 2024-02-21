@@ -47,12 +47,12 @@ After cloning the repository, users should run:
 
     $ python build_lib.py
 
-This will generate the ``warp.dll`` / ``warp.so`` core library
-respectively. When building manually, users should ensure that their
-``CUDA_PATH`` environment variable is set, otherwise Warp will be built
-without CUDA support. Alternatively, the path to the CUDA Toolkit can be
-passed to the build command as ``--cuda_path="..."``. After building, the
-Warp package should be installed using:
+This will generate the ``warp.dll`` / ``warp.so`` core library respectively. It
+will search for the CUDA Toolkit in the default install directory. This path can
+be overridden by setting the ``CUDA_PATH`` environment variable. Alternatively,
+the path to the CUDA Toolkit can be passed to the build command as
+``--cuda_path="..."``. After building, the Warp package should be installed using:
+
 
 .. code-block:: console
 
