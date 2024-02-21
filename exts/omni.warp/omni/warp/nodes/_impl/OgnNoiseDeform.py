@@ -7,6 +7,7 @@
 
 """Node deforming points using a noise."""
 
+import hashlib
 import traceback
 
 import omni.graph.core as og
@@ -157,6 +158,14 @@ def compute(db: OgnNoiseDeformDatabase) -> None:
             child_idx=i,
         )
 
+        # Compute a unique seed for the given primitive by hashin its path.
+        # We cannot directly use the child index since bundle child ordering
+        # is currently not guaranteed and can change between sessions, which makes
+        # the result non-deterministic.
+        prim_path_attr = omni.warp.nodes.bundle_get_attr(db.inputs.prims, "sourcePrimPath", i)
+        prim_path = prim_path_attr.get(on_gpu=False)
+        prim_seed = int(hashlib.md5(prim_path.encode("utf-8")).hexdigest(), 16)
+
         # Evaluate the kernel once per point.
         wp.launch(
             deform_noise_kernel,
@@ -173,7 +182,7 @@ def compute(db: OgnNoiseDeformDatabase) -> None:
                 db.inputs.cellSize,
                 time_offset,
                 amplitude,
-                db.inputs.seed + i * 1234,
+                db.inputs.seed + prim_seed * 1234,
             ),
             outputs=(out_points,),
         )
