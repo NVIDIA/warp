@@ -13,9 +13,9 @@ def test_basic(test, device):
     out[tid] = a * x[tid] + y[tid];
     """
     adj_snippet = """
-    adj_a = x[tid] * adj_out[tid];
-    adj_x[tid] = a * adj_out[tid];
-    adj_y[tid] = adj_out[tid];
+    adj_a += x[tid] * adj_out[tid];
+    adj_x[tid] += a * adj_out[tid];
+    adj_y[tid] += adj_out[tid];
     """
 
     @wp.func_native(snippet, adj_snippet)
@@ -130,6 +130,79 @@ def test_cpu_snippet(test, device):
     assert_np_equal(out.numpy(), np.arange(1, N + 1, 1, dtype=np.int32))
 
 
+def test_custom_replay_grad(test, device):
+    num_threads = 16
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    thread_ids = wp.zeros(num_threads, dtype=wp.int32, device=device)
+    inputs = wp.array(np.arange(num_threads, dtype=np.float32), device=device, requires_grad=True)
+    outputs = wp.zeros_like(inputs)
+
+    snippet = """
+        int next_index = atomicAdd(counter, 1);
+        thread_values[tid] = next_index;
+        """
+    replay_snippet = ""
+
+    @wp.func_native(snippet, replay_snippet=replay_snippet)
+    def reversible_increment(
+        counter: wp.array(dtype=int), thread_values: wp.array(dtype=int), tid: int
+    ):
+        ...
+
+    @wp.kernel
+    def run_atomic_add(
+        input: wp.array(dtype=float),
+        counter: wp.array(dtype=int),
+        thread_values: wp.array(dtype=int),
+        output: wp.array(dtype=float),
+    ):
+        tid = wp.tid()
+        reversible_increment(counter, thread_values, tid)
+        idx = thread_values[tid]
+        output[idx] = input[idx] ** 2.0
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            run_atomic_add, dim=num_threads, inputs=[inputs, counter, thread_ids], outputs=[outputs], device=device
+        )
+
+    tape.backward(grads={outputs: wp.array(np.ones(num_threads, dtype=np.float32), device=device)})
+    assert_np_equal(inputs.grad.numpy(), 2.0 * inputs.numpy(), tol=1e-4)
+
+
+def test_replay_simplification(test, device):
+    num_threads = 8
+    x = wp.array(1.0 + np.arange(num_threads, dtype=np.float32), device=device, requires_grad=True)
+    y = wp.zeros_like(x)
+    z = wp.zeros_like(x)
+
+    snippet = "y[tid] = powf(x[tid], 2.0);"
+    replay_snippet = "y[tid] = x[tid];"
+    adj_snippet = "adj_x[tid] += 2.0 * adj_y[tid];"
+
+    @wp.func_native(snippet, adj_snippet=adj_snippet, replay_snippet=replay_snippet)
+    def square(x: wp.array(dtype=float), y: wp.array(dtype=float), tid: int):
+        ...
+
+    @wp.kernel
+    def log_square_kernel(
+        x: wp.array(dtype=float),
+        y: wp.array(dtype=float),
+        z: wp.array(dtype=float)
+    ):
+        tid = wp.tid()
+        square(x, y, tid)
+        z[tid] = wp.log(y[tid])
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(log_square_kernel, dim=num_threads, inputs=[x, y], outputs=[z], device=device)
+
+    tape.backward(grads={z: wp.array(np.ones(num_threads, dtype=np.float32), device=device)})
+    assert_np_equal(x.grad.numpy(), 2.0 / (1.0 + np.arange(num_threads)), tol=1e-6)
+
+
 def test_recompile_snippet(test, device):
     snippet = """
     int inc = 1;
@@ -182,6 +255,8 @@ class TestSnippets(unittest.TestCase):
 add_function_test(TestSnippets, "test_basic", test_basic, devices=get_unique_cuda_test_devices())
 add_function_test(TestSnippets, "test_shared_memory", test_shared_memory, devices=get_unique_cuda_test_devices())
 add_function_test(TestSnippets, "test_cpu_snippet", test_cpu_snippet, devices=["cpu"])
+add_function_test(TestSnippets, "test_custom_replay_grad", test_custom_replay_grad, devices=get_unique_cuda_test_devices())
+add_function_test(TestSnippets, "test_replay_simplification", test_replay_simplification, devices=get_unique_cuda_test_devices())
 add_function_test(TestSnippets, "test_recompile_snippet", test_recompile_snippet, devices=get_unique_cuda_test_devices())
 
 
