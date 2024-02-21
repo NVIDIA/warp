@@ -945,7 +945,7 @@ class Adjoint:
                 f"{func.namespace}{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
             )
             replay_call = forward_call
-            if func.custom_replay_func is not None:
+            if func.custom_replay_func is not None or func.replay_snippet is not None:
                 replay_call = f"{func.namespace}replay_{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
 
         elif not isinstance(return_type, list) or len(return_type) == 1:
@@ -2618,7 +2618,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options={}):
     return s
 
 
-def codegen_snippet(adj, name, snippet, adj_snippet):
+def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet):
     forward_args = []
     reverse_args = []
 
@@ -2637,6 +2637,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet):
             reverse_args.append(arg.ctype() + " & adj_" + arg.label)
 
     forward_template = cuda_forward_function_template
+    replay_template = cuda_forward_function_template
     reverse_template = cuda_reverse_function_template
 
     s = ""
@@ -2648,6 +2649,16 @@ def codegen_snippet(adj, name, snippet, adj_snippet):
         filename=adj.filename,
         lineno=adj.fun_lineno,
     )
+
+    if replay_snippet is not None:
+        s += replay_template.format(
+            name="replay_" + name,
+            return_type="void",
+            forward_args=indent(forward_args),
+            forward_body=replay_snippet,
+            filename=adj.filename,
+            lineno=adj.fun_lineno,
+        )
 
     if adj_snippet:
         reverse_body = adj_snippet

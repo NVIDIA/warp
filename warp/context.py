@@ -72,6 +72,7 @@ class Function:
         custom_replay_func=None,
         native_snippet=None,
         adj_native_snippet=None,
+        replay_snippet=None,
         skip_forward_codegen=False,
         skip_reverse_codegen=False,
         custom_reverse_num_input_args=-1,
@@ -97,6 +98,7 @@ class Function:
         self.custom_replay_func = custom_replay_func
         self.native_snippet = native_snippet
         self.adj_native_snippet = adj_native_snippet
+        self.replay_snippet = replay_snippet
         self.custom_grad_func = None
         self.require_original_output_arg = require_original_output_arg
 
@@ -645,7 +647,7 @@ def func(f):
     return m.functions[name]
 
 
-def func_native(snippet, adj_snippet=None):
+def func_native(snippet, adj_snippet=None, replay_snippet=None):
     """
     Decorator to register native code snippet, @func_native
     """
@@ -655,7 +657,7 @@ def func_native(snippet, adj_snippet=None):
 
         m = get_module(f.__module__)
         func = Function(
-            func=f, key=name, namespace="", module=m, native_snippet=snippet, adj_native_snippet=adj_snippet
+            func=f, key=name, namespace="", module=m, native_snippet=snippet, adj_native_snippet=adj_snippet, replay_snippet=replay_snippet
         )  # cuda snippets do not have a return value_type
 
         return m.functions[name]
@@ -1236,7 +1238,7 @@ class ModuleBuilder:
                 )
             else:
                 source += warp.codegen.codegen_snippet(
-                    func.adj, name=func.key, snippet=func.native_snippet, adj_snippet=func.adj_native_snippet
+                    func.adj, name=func.key, snippet=func.native_snippet, adj_snippet=func.adj_native_snippet, replay_snippet=func.replay_snippet
                 )
 
         for kernel in self.module.kernels.values():
@@ -1439,6 +1441,8 @@ class Module:
                         ch.update(bytes(s, "utf-8"))
                     if func.custom_replay_func:
                         s = func.custom_replay_func.adj.source
+                    if func.replay_snippet:
+                        s = func.replay_snippet
                     if func.native_snippet:
                         s = func.native_snippet
                         ch.update(bytes(s, "utf-8"))

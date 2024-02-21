@@ -1452,6 +1452,52 @@ alongside your snippet as an additional input to the decorator, as in the follow
 
     tape.backward(grads={out: adj_out})
 
+You may also include a custom replay snippet, to be executed as part of the adjoint (see `Custom Gradient Functions`_ for a full explanation).
+Consider the following example::
+
+    def test_custom_replay_grad():
+        num_threads = 8
+        counter = wp.zeros(1, dtype=wp.int32)
+        thread_values = wp.zeros(num_threads, dtype=wp.int32)
+        inputs = wp.array(np.arange(num_threads, dtype=np.float32), requires_grad=True)
+        outputs = wp.zeros_like(inputs)
+
+    snippet = """
+        int next_index = atomicAdd(counter, 1);
+        thread_values[tid] = next_index;
+        """
+    replay_snippet = ""
+
+    @wp.func_native(snippet, replay_snippet=replay_snippet)
+    def reversible_increment(
+        counter: wp.array(dtype=int), thread_values: wp.array(dtype=int), tid: int
+    ):
+        ...
+
+    @wp.kernel
+    def run_atomic_add(
+        input: wp.array(dtype=float),
+        counter: wp.array(dtype=int),
+        thread_values: wp.array(dtype=int),
+        output: wp.array(dtype=float),
+    ):
+        tid = wp.tid()
+        reversible_increment(counter, thread_values, tid)
+        idx = thread_values[tid]
+        output[idx] = input[idx] ** 2.0
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            run_atomic_add, dim=num_threads, inputs=[inputs, counter, thread_values], outputs=[outputs]
+        )
+
+    tape.backward(grads={outputs: wp.array(np.ones(num_threads, dtype=np.float32))})
+
+By default, ``snippet`` would be called in the backward pass, but in this case, we have a custom replay snippet defined, which is called instead.
+In this case, ``replay_snippet`` is a no-op, which is all that we require, since ``thread_values`` are cached in the forward pass.
+If we did not have a ``replay_snippet`` defined, ``thread_values`` would be overwritten with counter values that exceed the input array size in the backward pass.
+
 Profiling
 ---------
 
