@@ -2329,7 +2329,7 @@ bool cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
         if (!external)
         {
             cudaGraph_t graph = NULL;
-            check_cuda(cudaStreamEndCapture(cuda_stream, &graph));
+            cudaStreamEndCapture(cuda_stream, &graph);
             cudaGetLastError();
         }
     };
