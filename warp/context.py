@@ -2829,24 +2829,26 @@ class Runtime:
 
         # print device and version information
         if not warp.config.quiet:
-            print(f"Warp {warp.config.version} initialized:")
+            greeting = []
+
+            greeting.append(f"Warp {warp.config.version} initialized:")
             if cuda_device_count > 0:
                 toolkit_version = (self.toolkit_version // 1000, (self.toolkit_version % 1000) // 10)
                 driver_version = (self.driver_version // 1000, (self.driver_version % 1000) // 10)
-                print(
+                greeting.append(
                     f"   CUDA Toolkit {toolkit_version[0]}.{toolkit_version[1]}, Driver {driver_version[0]}.{driver_version[1]}"
                 )
             else:
                 if self.core.is_cuda_enabled():
                     # Warp was compiled with CUDA support, but no devices are available
-                    print("   CUDA devices not available")
+                    greeting.append("   CUDA devices not available")
                 else:
                     # Warp was compiled without CUDA support
-                    print("   CUDA support not enabled in this build")
-            print("   Devices:")
+                    greeting.append("   CUDA support not enabled in this build")
+            greeting.append("   Devices:")
             alias_str = f'"{self.cpu_device.alias}"'
             name_str = f'"{self.cpu_device.name}"'
-            print(f"     {alias_str:10s} : {name_str}")
+            greeting.append(f"     {alias_str:10s} : {name_str}")
             devices_without_uva = []
             devices_without_mempool = []
             for cuda_device in self.cuda_devices:
@@ -2865,10 +2867,10 @@ class Runtime:
                     else:
                         mempool_str = "mempool not supported"
                         devices_without_mempool.append(cuda_device)
-                    print(f"     {alias_str:10s} : {name_str} ({mem_str}, {arch_str}, {mempool_str})")
+                    greeting.append(f"     {alias_str:10s} : {name_str} ({mem_str}, {arch_str}, {mempool_str})")
                 else:
                     primary_alias_str = f'"{self.cuda_primary_devices[cuda_device.ordinal].alias}"'
-                    print(f"     {alias_str:10s} : Non-primary context on device {primary_alias_str}")
+                    greeting.append(f"     {alias_str:10s} : Non-primary context on device {primary_alias_str}")
             if cuda_device_count > 1:
                 # check peer access support
                 access_matrix = []
@@ -2887,19 +2889,21 @@ class Runtime:
                             all_accessible = all_accessible and can_access
                             none_accessible = none_accessible and not can_access
                     access_matrix.append(access_vector)
-                print("   CUDA peer access:")
+                greeting.append("   CUDA peer access:")
                 if all_accessible:
-                    print("     Supported fully (all-directional)")
+                    greeting.append("     Supported fully (all-directional)")
                 elif none_accessible:
-                    print("     Not supported")
+                    greeting.append("     Not supported")
                 else:
-                    print("     Supported partially (see access matrix)")
+                    greeting.append("     Supported partially (see access matrix)")
                     # print access matrix
                     for i in range(cuda_device_count):
                         alias_str = f'"{self.cuda_devices[i].alias}"'
-                        print(f"     {alias_str:10s} : {access_matrix[i]}")
-            print("   Kernel cache:")
-            print(f"     {warp.config.kernel_cache_dir}")
+                        greeting.append(f"     {alias_str:10s} : {access_matrix[i]}")
+            greeting.append("   Kernel cache:")
+            greeting.append(f"     {warp.config.kernel_cache_dir}")
+
+            print("\n".join(greeting))
 
         if cuda_device_count > 0:
             # warn about possible misconfiguration of the system
@@ -2917,16 +2921,18 @@ class Runtime:
                     "Is the UVM driver enabled?"
                 )
 
-            # CUDA compatibility check
+            # CUDA compatibility check.  This should only affect developer builds done with the
+            # --quick flag.  The consequences of running with an older driver can be obscure and severe,
+            # so make sure we print a very visible warning.
             if self.driver_version < self.toolkit_version and not self.core.is_cuda_compatibility_enabled():
-                print("******************************************************************")
-                print("* WARNING:                                                       *")
-                print("*   Warp was compiled without CUDA compatibility support         *")
-                print("*   (quick build).  The CUDA Toolkit version used to build       *")
-                print("*   Warp is not fully supported by the current driver.           *")
-                print("*   Some CUDA functionality may not work correctly!              *")
-                print("*   Update the driver or rebuild Warp without the --quick flag.  *")
-                print("******************************************************************")
+                print("******************************************************************\n"
+                      "* WARNING:                                                       *\n"
+                      "*   Warp was compiled without CUDA compatibility support         *\n"
+                      "*   (quick build).  The CUDA Toolkit version used to build       *\n"
+                      "*   Warp is not fully supported by the current driver.           *\n"
+                      "*   Some CUDA functionality may not work correctly!              *\n"
+                      "*   Update the driver or rebuild Warp without the --quick flag.  *\n"
+                      "******************************************************************\n")
 
             # ensure initialization did not change the initial context (e.g. querying available memory)
             self.core.cuda_context_set_current(initial_context)
