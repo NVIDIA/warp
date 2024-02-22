@@ -704,7 +704,7 @@ def func_grad(forward_fn):
         def match_function(f):
             # check whether the function overload f matches the signature of the provided gradient function
             if not hasattr(f.adj, "return_var"):
-                f.adj.build(None)
+                f.adj.build(None, f.module.options)
             expected_args = list(f.input_types.items())
             if f.adj.return_var is not None:
                 expected_args += [(f"adj_ret_{var.label}", var.type) for var in f.adj.return_var]
@@ -745,7 +745,7 @@ def func_grad(forward_fn):
             )
         else:
             # resolve return variables
-            forward_fn.adj.build(None)
+            forward_fn.adj.build(None, forward_fn.module.options)
 
             expected_args = list(forward_fn.input_types.items())
             if forward_fn.adj.return_var is not None:
@@ -1283,7 +1283,7 @@ class Module:
         self.cuda_build_failed = False
 
         self.options = {
-            "max_unroll": 16,
+            "max_unroll": warp.config.max_unroll,
             "enable_backward": warp.config.enable_backward,
             "fast_math": False,
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
@@ -4325,7 +4325,7 @@ def set_module_options(options: Dict[str, Any], module: Optional[Any] = None):
     for the current module individually. Available options are listed below.
 
     * **mode**: The compilation mode to use, can be "debug", or "release", defaults to the value of ``warp.config.mode``.
-    * **max_unroll**: The maximum fixed-size loop to unroll (default 16)
+    * **max_unroll**: The maximum fixed-size loop to unroll, defaults to the value of ``warp.config.max_unroll``.
 
     Args:
 

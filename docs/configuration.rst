@@ -49,6 +49,11 @@ Basic Global Settings
 |                                                |         |             | Valid choices are ``"release"`` or ``"debug"``.                          |
 |                                                |         |             | **Has performance implications.**                                        |
 +------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``max_unroll``                                  | Integer | Global      | The maximum fixed-size loop to unroll. Note that ``max_unroll`` does not |
+|                                                |         | setting     | consider the total number of iterations in nested loops. This can result |
+|                                                |         |             | in a large amount of automatically generated code if each nested loop is |
+|                                                |         |             | below the ``max_unroll`` threshold.                                      |
++------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 |``verbose``                                     | Boolean | ``False``   | If ``True``, additional information will be printed to standard out      |
 |                                                |         |             | during code generation, compilation, etc.                                |
 +------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
@@ -112,8 +117,8 @@ The options for a module can also be queried using ``wp.get_module_options()``.
 |``mode``            | String  | Global      | Controls whether to compile the module's kernels in debug or release     |
 |                    |         | setting     | mode by default. Valid choices are ``"release"`` or ``"debug"``.         |
 +--------------------+---------+-------------+--------------------------------------------------------------------------+
-|``max_unroll``      | Integer | 16          | The maximum fixed-size loop to unroll. Note that ``max_unroll`` does not |
-|                    |         |             | consider the total number of iterations in nested loops. This can result |
+|``max_unroll``      | Integer | Global      | The maximum fixed-size loop to unroll. Note that ``max_unroll`` does not |
+|                    |         | setting     | consider the total number of iterations in nested loops. This can result |
 |                    |         |             | in a large amount of automatically generated code if each nested loop is |
 |                    |         |             | below the ``max_unroll`` threshold.                                      |
 +--------------------+---------+-------------+--------------------------------------------------------------------------+

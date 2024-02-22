@@ -598,11 +598,16 @@ class Adjoint:
         adj.skip_build = False
 
     # generate function ssa form and adjoint
-    def build(adj, builder):
+    def build(adj, builder, default_builder_options={}):
         if adj.skip_build:
             return
 
         adj.builder = builder
+
+        if adj.builder:
+            adj.builder_options = adj.builder.options
+        else:
+            adj.builder_options = default_builder_options
 
         adj.symbols = {}  # map from symbols to adjoint variables
         adj.variables = []  # list of local variables (in order)
@@ -1544,7 +1549,11 @@ class Adjoint:
 
             # test if we're above max unroll count
             max_iters = abs(end - start) // abs(step)
-            max_unroll = adj.builder.options["max_unroll"]
+
+            if "max_unroll" in adj.builder_options:
+                max_unroll = adj.builder_options["max_unroll"]
+            else:
+                max_unroll = warp.config.max_unroll
 
             ok_to_unroll = True
 
