@@ -2,7 +2,6 @@ import os
 import subprocess
 import sys
 
-import warp
 from warp.build_dll import *
 
 # set build output path off this file
@@ -68,11 +67,11 @@ def build_from_source_for_arch(args, arch, llvm_source):
     print(f"Using LLVM project source from {llvm_source}")
 
     # CMake supports Debug, Release, RelWithDebInfo, and MinSizeRel builds
-    if warp.config.mode == "release":
+    if args.mode == "release":
         # prefer smaller size over aggressive speed
         cmake_build_type = "MinSizeRel"
     else:
-        # When warp.config.mode == "debug" we build a Debug version of warp.dll but
+        # When args.mode == "debug" we build a Debug version of warp.dll but
         # we generally don't want warp-clang.dll to be a slow Debug version.
         if args.debug_llvm:
             cmake_build_type = "Debug"
@@ -101,8 +100,8 @@ def build_from_source_for_arch(args, arch, llvm_source):
         osx_architectures = ""
 
     llvm_path = os.path.join(llvm_source, "llvm")
-    build_path = os.path.join(llvm_build_path, f"{warp.config.mode}-{arch}")
-    install_path = os.path.join(llvm_install_path, f"{warp.config.mode}-{arch}")
+    build_path = os.path.join(llvm_build_path, f"{args.mode}-{arch}")
+    install_path = os.path.join(llvm_install_path, f"{args.mode}-{arch}")
 
     # Build LLVM and Clang
     cmake_gen = [
@@ -312,7 +311,7 @@ def build_warp_clang_for_arch(args, lib_name, arch):
 
         if args.build_llvm:
             # obtain Clang and LLVM libraries from the local build
-            install_path = os.path.join(llvm_install_path, f"{warp.config.mode}-{arch}")
+            install_path = os.path.join(llvm_install_path, f"{args.mode}-{arch}")
             libpath = os.path.join(install_path, "lib")
         else:
             # obtain Clang and LLVM libraries from packman
@@ -337,14 +336,13 @@ def build_warp_clang_for_arch(args, lib_name, arch):
             libs.append("-ldl")
 
         build_dll_for_arch(
+            args,
             dll_path=clang_dll_path,
             cpp_paths=clang_cpp_paths,
             cu_path=None,
             libs=libs,
-            mode=warp.config.mode if args.build_llvm else "release",
             arch=arch,
-            verify_fp=warp.config.verify_fp,
-            fast_math=warp.config.fast_math,
+            mode=args.mode if args.build_llvm else "release",
         )
 
     except Exception as e:
