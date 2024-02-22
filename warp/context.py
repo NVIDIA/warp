@@ -2862,7 +2862,7 @@ class Runtime:
                     arch_str = f"sm_{cuda_device.arch}"
                     mem_str = f"{cuda_device.total_memory / 1024 / 1024 / 1024:.0f} GiB"
                     uva_str = "UVA" if cuda_device.is_uva else "no UVA"
-                    mempool_str = "mempool" if cuda_device.is_uva else "no mempool"
+                    mempool_str = "mempool" if cuda_device.is_mempool_supported else "no mempool"
                     print(f"     {alias_str:10s} : {name_str} ({mem_str}, {arch_str}, {uva_str}, {mempool_str})")
                 else:
                     primary_alias_str = f'"{self.cuda_primary_devices[cuda_device.ordinal].alias}"'
