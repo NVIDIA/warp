@@ -28,6 +28,10 @@
 - Fix memory leak in BSR transpose
 - Fix stream synchronization issues when copying non-contiguous arrays
 
+## [0.13.1] - 2024-02-22
+
+- Ensure that the results from the `Noise Deform` are deterministic across different Kit sessions
+
 ## [0.13.0] - 2024-02-16
 
 - Update the license to *NVIDIA Software License*, allowing commercial use (see `LICENSE.md`)
@@ -44,7 +48,6 @@
 - Change the kernel cache appauthor subdirectory to just "NVIDIA"
 - Ensure that gradients attached to PyTorch tensors have compatible strides when calling `wp.from_torch()`
 - Add a `Noise Deform` node for OmniGraph that deforms points using a perlin/curl noise
->>>>>>> omniverse/master
 
 ## [0.11.0] - 2024-01-23
 
