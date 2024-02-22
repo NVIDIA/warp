@@ -2007,14 +2007,6 @@ class Device:
             # This is (mis)named to correspond to the naming of cudaDeviceGetPCIBusId
             self.pci_bus_id = f"{pci_domain_id:08X}:{pci_bus_id:02X}:{pci_device_id:02X}"
 
-            # Warn the user of a possible misconfiguration of their system
-            if not self.is_mempool_supported:
-                warp.utils.warn(
-                    f"Support for stream ordered memory allocators was not detected on device {ordinal}. "
-                    "This can prevent the use of graphs and/or result in poor performance. "
-                    "Is the UVM driver enabled?"
-                )
-
             self.default_allocator = CudaDefaultAllocator(self)
             if self.is_mempool_supported:
                 self.mempool_allocator = CudaMempoolAllocator(self)
@@ -2855,15 +2847,25 @@ class Runtime:
             alias_str = f'"{self.cpu_device.alias}"'
             name_str = f'"{self.cpu_device.name}"'
             print(f"     {alias_str:10s} : {name_str}")
+            devices_without_uva = []
+            devices_without_mempool = []
             for cuda_device in self.cuda_devices:
                 alias_str = f'"{cuda_device.alias}"'
                 if cuda_device.is_primary:
                     name_str = f'"{cuda_device.name}"'
                     arch_str = f"sm_{cuda_device.arch}"
                     mem_str = f"{cuda_device.total_memory / 1024 / 1024 / 1024:.0f} GiB"
-                    uva_str = "UVA" if cuda_device.is_uva else "no UVA"
-                    mempool_str = "mempool" if cuda_device.is_mempool_supported else "no mempool"
-                    print(f"     {alias_str:10s} : {name_str} ({mem_str}, {arch_str}, {uva_str}, {mempool_str})")
+                    if not cuda_device.is_uva:
+                        devices_without_uva.append(cuda_device)
+                    if cuda_device.is_mempool_supported:
+                        if cuda_device.is_mempool_enabled:
+                            mempool_str = "mempool enabled"
+                        else:
+                            mempool_str = "mempool supported"
+                    else:
+                        mempool_str = "mempool not supported"
+                        devices_without_mempool.append(cuda_device)
+                    print(f"     {alias_str:10s} : {name_str} ({mem_str}, {arch_str}, {mempool_str})")
                 else:
                     primary_alias_str = f'"{self.cuda_primary_devices[cuda_device.ordinal].alias}"'
                     print(f"     {alias_str:10s} : Non-primary context on device {primary_alias_str}")
@@ -2900,8 +2902,20 @@ class Runtime:
             print(f"     {warp.config.kernel_cache_dir}")
 
         if cuda_device_count > 0:
-            # ensure initialization did not change the initial context (e.g. querying available memory)
-            self.core.cuda_context_set_current(initial_context)
+            # warn about possible misconfiguration of the system
+            if devices_without_uva:
+                # This should not happen on any system officially supported by Warp.  UVA is not available
+                # on 32-bit Windows, which we don't support.  Nonetheless, we should check and report a
+                # warning out of abundance of caution.  It may help with debugging a broken VM setup etc.
+                warp.utils.warn(
+                    f"Support for Unified Virtual Addressing (UVA) was not detected on devices {devices_without_uva}."
+                )
+            if devices_without_mempool:
+                warp.utils.warn(
+                    f"Support for CUDA memory pools was not detected on devices {devices_without_mempool}. "
+                    "This prevents memory allocations in CUDA graphs and may result in poor performance. "
+                    "Is the UVM driver enabled?"
+                )
 
             # CUDA compatibility check
             if self.driver_version < self.toolkit_version and not self.core.is_cuda_compatibility_enabled():
@@ -2913,6 +2927,9 @@ class Runtime:
                 print("*   Some CUDA functionality may not work correctly!              *")
                 print("*   Update the driver or rebuild Warp without the --quick flag.  *")
                 print("******************************************************************")
+
+            # ensure initialization did not change the initial context (e.g. querying available memory)
+            self.core.cuda_context_set_current(initial_context)
 
         # global tape
         self.tape = None
