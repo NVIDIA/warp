@@ -7,6 +7,7 @@
 
 import ctypes
 import ctypes.util
+import math
 import os
 import sys
 import time
@@ -191,9 +192,9 @@ def assert_np_equal(result, expect, tol=0.0):
     else:
         delta = a - b
         err = np.max(np.abs(delta))
-        if err > tol:
+        if err > tol or math.isnan(err):
             raise AssertionError(
-                f"Maximum expected error exceeds tolerance got: {a}, expected: {b}, with err: {err} > {tol}"
+                f"Maximum expected error exceeds absolute tolerance got: {a}, expected: {b}, with err: {err} > {tol}"
             )
 
 
