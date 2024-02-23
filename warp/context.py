@@ -3017,7 +3017,11 @@ class Runtime:
         elif self.cuda_devices:
             return self.cuda_devices[0]
         else:
-            raise RuntimeError("CUDA is not available")
+            # CUDA is not available
+            if not self.core.is_cuda_enabled():
+                raise RuntimeError('"cuda" device requested but this build of Warp does not support CUDA')
+            else:
+                raise RuntimeError('"cuda" device requested but CUDA is not supported by the hardware or driver')
 
     def rename_device(self, device, alias):
         del self.device_map[device.alias]

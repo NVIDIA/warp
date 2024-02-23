@@ -16,11 +16,13 @@ _A selection of physical simulations computed with Warp_
 
 ## Installing
 
-Warp supports Python versions 3.7.x onwards. The easiest way is to install from PyPi:
+Warp supports Python versions 3.7 onwards. It can run on x86-64 and ARMv8 CPUs on Windows, Linux, and macOS. GPU support requires a CUDA capable NVIDIA GPU and driver (minimum GeForce GTX 9xx).
+
+The easiest way to install Warp is from [PyPI](https://pypi.org/project/warp-lang/):
 
     pip install warp-lang
 
-Pre-built binary packages for Windows, Linux, and macOS are also available on the [Releases](https://github.com/NVIDIA/warp/releases) page. To install in your local Python environment run the following command from the download directory:
+Pre-built binary packages are also available on the [Releases](https://github.com/NVIDIA/warp/releases) page. To install in your local Python environment run the following command from the download directory:
 
     pip install warp_lang-<version and platform>.whl
 
