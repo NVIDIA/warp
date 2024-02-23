@@ -657,7 +657,13 @@ def func_native(snippet, adj_snippet=None, replay_snippet=None):
 
         m = get_module(f.__module__)
         func = Function(
-            func=f, key=name, namespace="", module=m, native_snippet=snippet, adj_native_snippet=adj_snippet, replay_snippet=replay_snippet
+            func=f,
+            key=name,
+            namespace="",
+            module=m,
+            native_snippet=snippet,
+            adj_native_snippet=adj_snippet,
+            replay_snippet=replay_snippet,
         )  # cuda snippets do not have a return value_type
 
         return m.functions[name]
@@ -1238,7 +1244,11 @@ class ModuleBuilder:
                 )
             else:
                 source += warp.codegen.codegen_snippet(
-                    func.adj, name=func.key, snippet=func.native_snippet, adj_snippet=func.adj_native_snippet, replay_snippet=func.replay_snippet
+                    func.adj,
+                    name=func.key,
+                    snippet=func.native_snippet,
+                    adj_snippet=func.adj_native_snippet,
+                    replay_snippet=func.replay_snippet,
                 )
 
         for kernel in self.module.kernels.values():
@@ -1724,10 +1734,11 @@ class Module:
 # -------------------------------------------
 # execution context
 
+
 class CpuDefaultAllocator:
     def __init__(self, device):
-        assert(device.is_cpu)
-        self.deleter = lambda ptr, size : self.free(ptr, size)
+        assert device.is_cpu
+        self.deleter = lambda ptr, size: self.free(ptr, size)
 
     def alloc(self, size_in_bytes):
         ptr = runtime.core.alloc_host(size_in_bytes)
@@ -1741,8 +1752,8 @@ class CpuDefaultAllocator:
 
 class CpuPinnedAllocator:
     def __init__(self, device):
-        assert(device.is_cpu)
-        self.deleter = lambda ptr, size : self.free(ptr, size)
+        assert device.is_cpu
+        self.deleter = lambda ptr, size: self.free(ptr, size)
 
     def alloc(self, size_in_bytes):
         ptr = runtime.core.alloc_pinned(size_in_bytes)
@@ -1756,9 +1767,9 @@ class CpuPinnedAllocator:
 
 class CudaDefaultAllocator:
     def __init__(self, device):
-        assert(device.is_cuda)
+        assert device.is_cuda
         self.device = device
-        self.deleter = lambda ptr, size : self.free(ptr, size)
+        self.deleter = lambda ptr, size: self.free(ptr, size)
 
     def alloc(self, size_in_bytes):
         ptr = runtime.core.alloc_device_default(self.device.context, size_in_bytes)
@@ -1768,13 +1779,17 @@ class CudaDefaultAllocator:
             reason = ""
             if self.device.is_capturing:
                 if not self.device.is_mempool_supported:
-                    reason = ":  " \
-                        f"Failed to allocate memory during graph capture because memory pools are not supported " \
+                    reason = (
+                        ":  "
+                        f"Failed to allocate memory during graph capture because memory pools are not supported "
                         f"on device '{self.device}'.  Try pre-allocating memory before capture begins."
+                    )
                 elif not self.device.is_mempool_enabled:
-                    reason = ":  " \
-                        f"Failed to allocate memory during graph capture because memory pools are not enabled " \
+                    reason = (
+                        ":  "
+                        f"Failed to allocate memory during graph capture because memory pools are not enabled "
                         f"on device '{self.device}'.  Try calling wp.set_mempool_enabled('{self.device}', True) before capture begins."
+                    )
             raise RuntimeError(f"Failed to allocate {size_in_bytes} bytes on device '{self.device}'{reason}")
         return ptr
 
@@ -1784,10 +1799,10 @@ class CudaDefaultAllocator:
 
 class CudaMempoolAllocator:
     def __init__(self, device):
-        assert(device.is_cuda)
-        assert(device.is_mempool_supported)
+        assert device.is_cuda
+        assert device.is_mempool_supported
         self.device = device
-        self.deleter = lambda ptr, size : self.free(ptr, size)
+        self.deleter = lambda ptr, size: self.free(ptr, size)
 
     def alloc(self, size_in_bytes):
         ptr = runtime.core.alloc_device_async(self.device.context, size_in_bytes)
@@ -1875,9 +1890,7 @@ class Stream:
         if event is None:
             event = other_stream.last_event
 
-        runtime.core.cuda_stream_wait_stream(
-            self.cuda_stream, other_stream.cuda_stream, event.cuda_event
-        )
+        runtime.core.cuda_stream_wait_stream(self.cuda_stream, other_stream.cuda_stream, event.cuda_event)
 
     # whether a graph capture is currently ongoing on this stream
     @property
@@ -1915,7 +1928,7 @@ class Event:
     def __del__(self):
         if not self.owner:
             return
-        
+
         runtime.core.cuda_event_destroy(self.cuda_event)
 
 
@@ -2060,7 +2073,7 @@ class Device:
     def is_cuda(self):
         """A boolean indicating whether or not the device is a CUDA device."""
         return self.ordinal >= 0
-    
+
     @property
     def is_capturing(self):
         if self.is_cuda and self.stream is not None:
@@ -2195,7 +2208,7 @@ class Graph:
     def __del__(self):
         if not self.exec:
             return
-        
+
         # use CUDA context guard to avoid side effects during garbage collection
         with self.device.context_guard:
             runtime.core.cuda_graph_destroy(self.device.context, self.exec)
@@ -2241,7 +2254,7 @@ class Runtime:
         self.core.set_error_output_enabled.restype = None
         self.core.is_error_output_enabled.argtypes = []
         self.core.is_error_output_enabled.restype = ctypes.c_int
-        
+
         self.core.alloc_host.argtypes = [ctypes.c_size_t]
         self.core.alloc_host.restype = ctypes.c_void_p
         self.core.alloc_pinned.argtypes = [ctypes.c_size_t]
@@ -2287,13 +2300,38 @@ class Runtime:
 
         self.core.memcpy_h2h.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
         self.core.memcpy_h2h.restype = ctypes.c_bool
-        self.core.memcpy_h2d.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p]
+        self.core.memcpy_h2d.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_size_t,
+            ctypes.c_void_p,
+        ]
         self.core.memcpy_h2d.restype = ctypes.c_bool
-        self.core.memcpy_d2h.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p]
+        self.core.memcpy_d2h.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_size_t,
+            ctypes.c_void_p,
+        ]
         self.core.memcpy_d2h.restype = ctypes.c_bool
-        self.core.memcpy_d2d.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p]
+        self.core.memcpy_d2d.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_size_t,
+            ctypes.c_void_p,
+        ]
         self.core.memcpy_d2d.restype = ctypes.c_bool
-        self.core.memcpy_p2p.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p]
+        self.core.memcpy_p2p.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_size_t,
+            ctypes.c_void_p,
+        ]
         self.core.memcpy_p2p.restype = ctypes.c_bool
 
         self.core.array_copy_host.argtypes = [
@@ -2884,7 +2922,9 @@ class Runtime:
                             access_vector.append(1)
                         else:
                             peer_device = self.cuda_devices[j]
-                            can_access = self.core.cuda_is_peer_access_supported(target_device.ordinal, peer_device.ordinal)
+                            can_access = self.core.cuda_is_peer_access_supported(
+                                target_device.ordinal, peer_device.ordinal
+                            )
                             access_vector.append(can_access)
                             all_accessible = all_accessible and can_access
                             none_accessible = none_accessible and not can_access
@@ -3000,7 +3040,11 @@ class Runtime:
         elif self.cuda_devices:
             return self.cuda_devices[0]
         else:
-            raise RuntimeError("CUDA is not available")
+            # CUDA is not available
+            if not self.core.is_cuda_enabled():
+                raise RuntimeError('"cuda" device requested but this build of Warp does not support CUDA')
+            else:
+                raise RuntimeError('"cuda" device requested but CUDA is not supported by the hardware or driver')
 
     def rename_device(self, device, alias):
         del self.device_map[device.alias]
@@ -3225,7 +3269,7 @@ def set_mempool_enabled(device: Devicelike, enable: bool):
     """Enable or disable CUDA memory pool allocators on the device.
 
     Pooled allocators are typically faster and allow allocating memory during graph capture.
-    
+
     They should generally be enabled, but there is a rare caveat.  Copying data between different GPUs
     may fail during graph capture if the memory was allocated using pooled allocators and memory pool
     access is not enabled between the two GPUs.  This is an internal CUDA limitation that is not related
@@ -3254,7 +3298,7 @@ def set_mempool_enabled(device: Devicelike, enable: bool):
 
 def set_mempool_release_threshold(device: Devicelike, threshold: int):
     """Set the CUDA memory pool release threshold on the device.
-    
+
     This is the amount of reserved memory to hold onto before trying to release memory back to the OS.
     When more than this amount of bytes is held by the memory pool, the allocator will try to release
     memory back to the OS on the next call to stream, event, or device synchronize.
@@ -4041,7 +4085,12 @@ class Launch:
             if stream is None:
                 stream = self.device.stream
             runtime.core.cuda_launch_kernel(
-                self.device.context, self.hooks.forward, self.bounds.size, self.max_blocks, self.params_addr, stream.cuda_stream
+                self.device.context,
+                self.hooks.forward,
+                self.bounds.size,
+                self.max_blocks,
+                self.params_addr,
+                stream.cuda_stream,
             )
 
 
@@ -4499,7 +4548,7 @@ def copy(
     The stream, if specified, can be from any device.  If the stream is omitted, then Warp selects a stream based on the following rules:
     (1) If the destination array is on a CUDA device, use the current stream on the destination device.
     (2) Otherwise, if the source array is on a CUDA device, use the current stream on the source device.
-    
+
     If neither source nor destination are on a CUDA device, no stream is used for the copy.
 
     """
@@ -4539,7 +4588,7 @@ def copy(
                 stream.wait_stream(src.device.stream)
             else:
                 src = src.contiguous()
-        
+
         # The source is now contiguous.  If the destination is not contiguous,
         # clone a contiguous copy on the destination device.
         if not dest.is_contiguous:
@@ -4584,14 +4633,22 @@ def copy(
         if dest.device.is_cuda:
             if src.device.is_cuda:
                 if src.device == dest.device:
-                    result = runtime.core.memcpy_d2d(dest.device.context, dst_ptr, src_ptr, bytes_to_copy, stream.cuda_stream)
+                    result = runtime.core.memcpy_d2d(
+                        dest.device.context, dst_ptr, src_ptr, bytes_to_copy, stream.cuda_stream
+                    )
                 else:
-                    result = runtime.core.memcpy_p2p(dest.device.context, dst_ptr, src.device.context, src_ptr, bytes_to_copy, stream.cuda_stream)
+                    result = runtime.core.memcpy_p2p(
+                        dest.device.context, dst_ptr, src.device.context, src_ptr, bytes_to_copy, stream.cuda_stream
+                    )
             else:
-                result = runtime.core.memcpy_h2d(dest.device.context, dst_ptr, src_ptr, bytes_to_copy, stream.cuda_stream)
+                result = runtime.core.memcpy_h2d(
+                    dest.device.context, dst_ptr, src_ptr, bytes_to_copy, stream.cuda_stream
+                )
         else:
             if src.device.is_cuda:
-                result = runtime.core.memcpy_d2h(src.device.context, dst_ptr, src_ptr, bytes_to_copy, stream.cuda_stream)
+                result = runtime.core.memcpy_d2h(
+                    src.device.context, dst_ptr, src_ptr, bytes_to_copy, stream.cuda_stream
+                )
             else:
                 result = runtime.core.memcpy_h2h(dst_ptr, src_ptr, bytes_to_copy)
 
@@ -4631,10 +4688,14 @@ def copy(
             # This work involves a kernel launch, so it must run on the destination device.
             # If the copy stream is different, we need to synchronize it.
             if stream == dest.device.stream:
-                result = runtime.core.array_copy_device(dest.device.context, dst_ptr, src_ptr, dst_type, src_type, src_elem_size)
+                result = runtime.core.array_copy_device(
+                    dest.device.context, dst_ptr, src_ptr, dst_type, src_type, src_elem_size
+                )
             else:
                 dest.device.stream.wait_stream(stream)
-                result = runtime.core.array_copy_device(dest.device.context, dst_ptr, src_ptr, dst_type, src_type, src_elem_size)
+                result = runtime.core.array_copy_device(
+                    dest.device.context, dst_ptr, src_ptr, dst_type, src_type, src_elem_size
+                )
                 stream.wait_stream(dest.device.stream)
         else:
             result = runtime.core.array_copy_host(dst_ptr, src_ptr, dst_type, src_type, src_elem_size)
