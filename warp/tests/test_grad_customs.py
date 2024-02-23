@@ -58,7 +58,7 @@ def test_custom_replay_grad(test, device):
             run_atomic_add, dim=num_threads, inputs=[inputs, counter, thread_ids], outputs=[outputs], device=device
         )
 
-    tape.backward(grads={outputs: wp.array(np.ones(num_threads, dtype=np.float32), device=device)})
+    tape.backward(grads={outputs: wp.ones(num_threads, dtype=wp.float32, device=device)})
     assert_np_equal(inputs.grad.numpy(), 2.0 * inputs.numpy(), tol=1e-4)
 
 
@@ -111,17 +111,19 @@ def run_overload_struct_fn(xs: wp.array(dtype=MyStruct), output: wp.array(dtype=
 
 def test_custom_overload_grad(test, device):
     dim = 3
-    xs_float = wp.array(np.arange(1.0, dim + 1.0), dtype=wp.float32, requires_grad=True)
-    ys_float = wp.array(np.arange(10.0, dim + 10.0), dtype=wp.float32, requires_grad=True)
-    out0_float = wp.zeros(dim)
-    out1_float = wp.zeros(dim)
+    xs_float = wp.array(np.arange(1.0, dim + 1.0), dtype=wp.float32, requires_grad=True, device=device)
+    ys_float = wp.array(np.arange(10.0, dim + 10.0), dtype=wp.float32, requires_grad=True, device=device)
+    out0_float = wp.zeros(dim, device=device)
+    out1_float = wp.zeros(dim, device=device)
     tape = wp.Tape()
     with tape:
-        wp.launch(run_overload_float_fn, dim=dim, inputs=[xs_float, ys_float], outputs=[out0_float, out1_float])
+        wp.launch(
+            run_overload_float_fn, dim=dim, inputs=[xs_float, ys_float], outputs=[out0_float, out1_float], device=device
+        )
     tape.backward(
         grads={
-            out0_float: wp.array(np.ones(dim), dtype=wp.float32),
-            out1_float: wp.array(np.ones(dim), dtype=wp.float32),
+            out0_float: wp.ones(dim, dtype=wp.float32, device=device),
+            out1_float: wp.ones(dim, dtype=wp.float32, device=device),
         }
     )
     assert_np_equal(xs_float.grad.numpy(), xs_float.numpy() * 42.0 + ys_float.numpy() * 10.0)
@@ -136,12 +138,12 @@ def test_custom_overload_grad(test, device):
     x2 = MyStruct()
     x2.vec = wp.vec3(8.0, 9.0, 10.0)
     x2.scalar = 19.0
-    xs_struct = wp.array([x0, x1, x2], dtype=MyStruct, requires_grad=True)
-    out_struct = wp.zeros(dim)
+    xs_struct = wp.array([x0, x1, x2], dtype=MyStruct, requires_grad=True, device=device)
+    out_struct = wp.zeros(dim, device=device)
     tape = wp.Tape()
     with tape:
-        wp.launch(run_overload_struct_fn, dim=dim, inputs=[xs_struct], outputs=[out_struct])
-    tape.backward(grads={out_struct: wp.array(np.ones(dim), dtype=wp.float32)})
+        wp.launch(run_overload_struct_fn, dim=dim, inputs=[xs_struct], outputs=[out_struct], device=device)
+    tape.backward(grads={out_struct: wp.ones(dim, dtype=wp.float32, device=device)})
     xs_struct_np = xs_struct.numpy()
     struct_grads = xs_struct.grad.numpy()
     # fmt: off
@@ -160,6 +162,41 @@ def test_custom_overload_grad(test, device):
     # fmt: on
 
 
+def test_custom_import_grad(test, device):
+    from warp.tests.aux_test_grad_customs import aux_custom_fn
+
+    @wp.kernel
+    def run_defined_float_fn(
+        xs: wp.array(dtype=float),
+        ys: wp.array(dtype=float),
+        output0: wp.array(dtype=float),
+        output1: wp.array(dtype=float),
+    ):
+        i = wp.tid()
+        out0, out1 = aux_custom_fn(xs[i], ys[i])
+        output0[i] = out0
+        output1[i] = out1
+
+    dim = 3
+    xs_float = wp.array(np.arange(1.0, dim + 1.0), dtype=wp.float32, requires_grad=True, device=device)
+    ys_float = wp.array(np.arange(10.0, dim + 10.0), dtype=wp.float32, requires_grad=True, device=device)
+    out0_float = wp.zeros(dim, device=device)
+    out1_float = wp.zeros(dim, device=device)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            run_defined_float_fn, dim=dim, inputs=[xs_float, ys_float], outputs=[out0_float, out1_float], device=device
+        )
+    tape.backward(
+        grads={
+            out0_float: wp.ones(dim, dtype=wp.float32, device=device),
+            out1_float: wp.ones(dim, dtype=wp.float32, device=device),
+        }
+    )
+    assert_np_equal(xs_float.grad.numpy(), xs_float.numpy() * 42.0 + ys_float.numpy() * 10.0)
+    assert_np_equal(ys_float.grad.numpy(), ys_float.numpy() * 3.0)
+
+
 devices = get_test_devices()
 
 
@@ -169,6 +206,7 @@ class TestGradCustoms(unittest.TestCase):
 
 add_function_test(TestGradCustoms, "test_custom_replay_grad", test_custom_replay_grad, devices=devices)
 add_function_test(TestGradCustoms, "test_custom_overload_grad", test_custom_overload_grad, devices=devices)
+add_function_test(TestGradCustoms, "test_custom_import_grad", test_custom_import_grad, devices=devices)
 
 
 if __name__ == "__main__":
