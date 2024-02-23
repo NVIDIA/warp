@@ -921,6 +921,10 @@ class Adjoint:
         # if it is a user-function then build it recursively
         if not func.is_builtin():
             adj.builder.build_function(func)
+            if func.custom_grad_func:
+                adj.builder.build_function(func.custom_grad_func)
+            if func.custom_replay_func:
+                adj.builder.build_function(func.custom_replay_func)
 
         # evaluate the function type based on inputs
         arg_types = [strip_reference(a.type) for a in args if not isinstance(a, warp.context.Function)]
