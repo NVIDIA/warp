@@ -428,7 +428,7 @@ def test_multi_valued_function_grad(test, device):
 
     @wp.func
     def multi_valued(x: float, y: float, z: float):
-        return wp.sin(x), wp.cos(y) * z, wp.sqrt(z) / wp.abs(x)
+        return wp.sin(x), wp.cos(y) * z, wp.sqrt(wp.abs(z)) / wp.abs(x)
 
     # test multi-valued functions
     def check_multi_valued(vs: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
