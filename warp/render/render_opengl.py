@@ -2453,7 +2453,7 @@ Instances: {len(self._instances)}"""
         )
 
     def render_sphere(
-        self, name: str, pos: tuple, rot: tuple, radius: float, parent_body: str = None, is_template: bool = False
+        self, name: str, pos: tuple, rot: tuple, radius: float, parent_body: str = None, is_template: bool = False, color: tuple = None
     ):
         """Add a sphere for visualization
 
@@ -2461,6 +2461,7 @@ Instances: {len(self._instances)}"""
             pos: The position of the sphere
             radius: The radius of the sphere
             name: A name for the USD prim on the stage
+            color: The color of the sphere
         """
         geo_hash = hash(("sphere", radius))
         if geo_hash in self._shape_geo_hash:
@@ -2469,7 +2470,7 @@ Instances: {len(self._instances)}"""
                 return shape
         else:
             vertices, indices = self._create_sphere_mesh(radius)
-            shape = self.register_shape(geo_hash, vertices, indices)
+            shape = self.register_shape(geo_hash, vertices, indices, color1=color, color2=color)
         if not is_template:
             body = self._resolve_body_id(parent_body)
             self.add_shape_instance(name, shape, body, pos, rot)
