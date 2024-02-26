@@ -3,6 +3,9 @@ set -e
 
 if [ "$CI" = "true" ]; then
     echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+
+    # Print out disk space info to diagnose runner issues
+    df -h
 fi
 
 USE_LINBUILD=1
