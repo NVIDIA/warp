@@ -5,6 +5,9 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+# Python specification for DLpack:
+# https://dmlc.github.io/dlpack/latest/python_spec.html
+
 import warp
 import ctypes
 
@@ -14,75 +17,102 @@ from warp.thirdparty.dlpack import (
     DLDeviceType,
     DLDataType,
     DLDataTypeCode,
-    DLTensor,
     _c_str_dltensor,
 )
 
-ctypes.pythonapi.PyMem_RawMalloc.restype = ctypes.c_void_p
-ctypes.pythonapi.PyMem_RawFree.argtypes = [ctypes.c_void_p]
+_c_str_used_dltensor = b"used_dltensor"
 
-ctypes.pythonapi.PyCapsule_New.restype = ctypes.py_object
-ctypes.pythonapi.PyCapsule_New.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p]
+PyMem_RawMalloc = ctypes.pythonapi.PyMem_RawMalloc
+PyMem_RawMalloc.argtypes = [ctypes.c_size_t]
+PyMem_RawMalloc.restype = ctypes.c_void_p
 
-ctypes.pythonapi.PyCapsule_IsValid.restype = ctypes.c_int
-ctypes.pythonapi.PyCapsule_IsValid.argtypes = [ctypes.py_object, ctypes.c_char_p]
+PyMem_RawFree = ctypes.pythonapi.PyMem_RawFree
+PyMem_RawFree.argtypes = [ctypes.c_void_p]
+PyMem_RawFree.restype = None
 
-ctypes.pythonapi.PyCapsule_GetPointer.restype = ctypes.c_void_p
-ctypes.pythonapi.PyCapsule_GetPointer.argtypes = [ctypes.py_object, ctypes.c_char_p]
+Py_IncRef = ctypes.pythonapi.Py_IncRef
+Py_IncRef.argtypes = [ctypes.py_object]
+Py_IncRef.restype = None
+
+Py_DecRef = ctypes.pythonapi.Py_DecRef
+Py_DecRef.argtypes = [ctypes.py_object]
+Py_DecRef.restype = None
+
+PyCapsule_Destructor = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
+
+PyCapsule_New = ctypes.pythonapi.PyCapsule_New
+PyCapsule_New.argtypes = [ctypes.c_void_p, ctypes.c_char_p, PyCapsule_Destructor]
+PyCapsule_New.restype = ctypes.py_object
+
+PyCapsule_IsValid = ctypes.pythonapi.PyCapsule_IsValid
+PyCapsule_IsValid.argtypes = [ctypes.py_object, ctypes.c_char_p]
+PyCapsule_IsValid.restype = ctypes.c_int
+
+PyCapsule_GetPointer = ctypes.pythonapi.PyCapsule_GetPointer
+PyCapsule_GetPointer.argtypes = [ctypes.py_object, ctypes.c_char_p]
+PyCapsule_GetPointer.restype = ctypes.c_void_p
+
+PyCapsule_SetName = ctypes.pythonapi.PyCapsule_SetName
+PyCapsule_SetName.argtypes = [ctypes.py_object, ctypes.c_char_p]
+PyCapsule_SetName.restype = ctypes.c_int
 
 
-class _Holder:
-    def __init__(self, wp_array) -> None:
-        self.wp_array = wp_array
+class _DLPackTensorHolder:
+    """Class responsible for deleting DLManagedTensor memory after ownership is transferred from a capsule."""
 
-    def _as_manager_ctx(self) -> ctypes.c_void_p:
-        py_obj = ctypes.py_object(self)
-        py_obj_ptr = ctypes.pointer(py_obj)
-        ctypes.pythonapi.Py_IncRef(py_obj)
-        ctypes.pythonapi.Py_IncRef(ctypes.py_object(py_obj_ptr))
-        return ctypes.cast(py_obj_ptr, ctypes.c_void_p)
+    def __init__(self, mem_ptr):
+        self.mem_ptr = mem_ptr
+    
+    def __del__(self):
+        managed_tensor = DLManagedTensor.from_address(self.mem_ptr)
+        if managed_tensor.deleter:
+            managed_tensor.deleter(self.mem_ptr)
 
 
 @ctypes.CFUNCTYPE(None, ctypes.c_void_p)
-def _warp_array_deleter(handle: ctypes.c_void_p) -> None:
-    """A function to deallocate the memory of a Warp array."""
+def _dlpack_tensor_deleter(managed_ptr) -> None:
+    """A function to deallocate a DLManagedTensor."""
 
-    dl_managed_tensor = DLManagedTensor.from_address(handle)
-    py_obj_ptr = ctypes.cast(dl_managed_tensor.manager_ctx, ctypes.POINTER(ctypes.py_object))
-    py_obj = py_obj_ptr.contents
-    ctypes.pythonapi.Py_DecRef(py_obj)
-    ctypes.pythonapi.Py_DecRef(ctypes.py_object(py_obj_ptr))
-    ctypes.pythonapi.PyMem_RawFree(handle)
+    managed_tensor = DLManagedTensor.from_address(managed_ptr)
+
+    # unreference the source array
+    manager = ctypes.cast(managed_tensor.manager_ctx, ctypes.py_object)
+    ctypes.pythonapi.Py_DecRef(manager)
+
+    # free the DLManagedTensor memory, including shape and strides
+    PyMem_RawFree(ctypes.c_void_p(managed_ptr))
 
 
-@ctypes.CFUNCTYPE(None, ctypes.c_void_p)
-def _warp_pycapsule_deleter(handle: ctypes.c_void_p) -> None:
-    """A function to deallocate a pycapsule that wraps a Warp array."""
+@PyCapsule_Destructor
+def _dlpack_capsule_deleter(ptr) -> None:
+    """Destructor for a capsule holding a DLManagedTensor."""
 
-    pycapsule: ctypes.py_object = ctypes.cast(handle, ctypes.py_object)
-    if ctypes.pythonapi.PyCapsule_IsValid(pycapsule, _c_str_dltensor):
-        dl_managed_tensor = ctypes.pythonapi.PyCapsule_GetPointer(pycapsule, _c_str_dltensor)
-        _warp_array_deleter(dl_managed_tensor)
-        ctypes.pythonapi.PyCapsule_SetDestructor(pycapsule, None)
+    capsule = ctypes.cast(ptr, ctypes.py_object)
+
+    if ctypes.pythonapi.PyCapsule_IsValid(capsule, _c_str_dltensor):
+        managed_ptr = ctypes.pythonapi.PyCapsule_GetPointer(capsule, _c_str_dltensor)
+        managed_tensor = DLManagedTensor.from_address(managed_ptr)
+        if managed_tensor.deleter:
+            managed_tensor.deleter(managed_ptr)
+
+
+def _device_to_dlpack(wp_device: warp.context.Device) -> DLDevice:
+    dl_device = DLDevice()
+
+    if wp_device.is_cpu:
+        dl_device.device_type = DLDeviceType.kDLCPU
+        dl_device.device_id = 0
+    elif wp_device.is_cuda:
+        dl_device.device_type = DLDeviceType.kDLCUDA
+        dl_device.device_id = wp_device.ordinal
+    else:
+        raise RuntimeError(f"Invalid device type converting to dlpack: {wp_device}")
+
+    return dl_device
 
 
 def device_to_dlpack(wp_device) -> DLDevice:
-    d = warp.get_device(wp_device)
-
-    if d.is_cpu:
-        device_type = DLDeviceType.kDLCPU
-        device_id = 0
-    elif d.is_cuda:
-        device_type = DLDeviceType.kDLCUDA
-        device_id = d.ordinal
-    else:
-        raise RuntimeError("Unhandled device type converting to dlpack")
-
-    dl_device = DLDevice()
-    dl_device.device_type = device_type
-    dl_device.device_id = device_id
-
-    return dl_device
+    return _device_to_dlpack(warp.get_device(wp_device))
 
 
 def dtype_to_dlpack(wp_dtype) -> DLDataType:
@@ -149,13 +179,15 @@ def dtype_from_dlpack(dl_dtype):
 
 
 def device_from_dlpack(dl_device):
+    assert warp.context.runtime is not None, "Warp not initialized, call wp.init() before use"
+
     if dl_device.device_type.value == DLDeviceType.kDLCPU or dl_device.device_type.value == DLDeviceType.kDLCUDAHost:
-        return "cpu"
+        return warp.context.runtime.cpu_device
     elif (
         dl_device.device_type.value == DLDeviceType.kDLCUDA
         or dl_device.device_type.value == DLDeviceType.kDLCUDAManaged
     ):
-        return f"cuda:{dl_device.device_id}"
+        return warp.context.runtime.cuda_devices[dl_device.device_id]
     else:
         raise RuntimeError(f"Unknown device type from dlpack: {dl_device.device_type.value}")
 
@@ -167,38 +199,28 @@ def shape_to_dlpack(shape):
 
 def strides_to_dlpack(strides, dtype):
     # convert from byte count to element count
-    s = []
-    for i in range(len(strides)):
-        s.append(int(int(strides[i]) / int(warp.types.type_size_in_bytes(dtype))))
-
-    a = (ctypes.c_int64 * len(strides))(*s)
+    ndim = len(strides)
+    a = (ctypes.c_int64 * ndim)()
+    dtype_size = warp.types.type_size_in_bytes(dtype)
+    for i in range(ndim):
+        a[i] = strides[i] // dtype_size
     return a
 
 
 def to_dlpack(wp_array: warp.array):
     """Convert a Warp array to another type of dlpack compatible array.
 
-    Parameters
-    ----------
-    np_array : np.ndarray
-        The source numpy array that will be converted.
+    Args:
+        wp_array: The source Warp array that will be converted.
 
-    Returns
-    -------
-    pycapsule : PyCapsule
-        A pycapsule containing a DLManagedTensor that can be converted
-        to other array formats without copying the underlying memory.
+    Returns:
+        A capsule containing a DLManagedTensor that can be converted
+        to another array type without copying the underlying memory.
     """
 
     # DLPack does not support structured arrays
     if isinstance(wp_array.dtype, warp.codegen.Struct):
         raise RuntimeError("Cannot convert structured Warp arrays to DLPack.")
-
-    holder = _Holder(wp_array)
-
-    # allocate DLManagedTensor
-    size = ctypes.c_size_t(ctypes.sizeof(DLManagedTensor))
-    dl_managed_tensor = DLManagedTensor.from_address(ctypes.pythonapi.PyMem_RawMalloc(size))
 
     # handle vector types
     if hasattr(wp_array.dtype, "_wp_scalar_type_"):
@@ -215,33 +237,60 @@ def to_dlpack(wp_array: warp.array):
         target_shape = wp_array.shape
         target_strides = wp_array.strides
 
-    # store the shape and stride arrays with the holder to prevent them from getting deallocated
-    holder._shape = shape_to_dlpack(target_shape)
-    holder._strides = strides_to_dlpack(target_strides, target_dtype)
-
     if wp_array.pinned:
-        dl_device = DLDeviceType.kDLCUDAHost
+        dl_device = DLDevice()
+        dl_device.device_type = DLDeviceType.kDLCUDAHost
+        dl_device.device_id = 0
     else:
-        dl_device = device_to_dlpack(wp_array.device)
+        dl_device = _device_to_dlpack(wp_array.device)
 
-    # set Tensor attributes
-    dl_managed_tensor.dl_tensor.data = wp_array.ptr
-    dl_managed_tensor.dl_tensor.device = dl_device
-    dl_managed_tensor.dl_tensor.ndim = target_ndim
-    dl_managed_tensor.dl_tensor.dtype = dtype_to_dlpack(target_dtype)
-    dl_managed_tensor.dl_tensor.shape = holder._shape
-    dl_managed_tensor.dl_tensor.strides = holder._strides
-    dl_managed_tensor.dl_tensor.byte_offset = 0
-    dl_managed_tensor.manager_ctx = holder._as_manager_ctx()
-    dl_managed_tensor.deleter = _warp_array_deleter
+    # allocate DLManagedTensor, shape, and strides together
+    managed_tensor_size = ctypes.sizeof(DLManagedTensor)
+    padding = managed_tensor_size & 7
+    shape_size = target_ndim * 8
+    mem_size = managed_tensor_size + padding + 2 * shape_size
+    mem_ptr = PyMem_RawMalloc(mem_size)
+    assert mem_ptr, "Failed to allocate memory for DLManagedTensor"
 
-    pycapsule = ctypes.pythonapi.PyCapsule_New(
-        ctypes.byref(dl_managed_tensor),
+    # set managed tensor attributes
+    managed_tensor = DLManagedTensor.from_address(mem_ptr)
+    managed_tensor.dl_tensor.data = wp_array.ptr
+    managed_tensor.dl_tensor.device = dl_device
+    managed_tensor.dl_tensor.ndim = target_ndim
+    managed_tensor.dl_tensor.dtype = dtype_to_dlpack(target_dtype)
+    managed_tensor.dl_tensor.byte_offset = 0
+
+    # shape
+    shape_offset = managed_tensor_size + padding
+    shape_ptr = ctypes.cast(mem_ptr + shape_offset, ctypes.POINTER(ctypes.c_int64))
+    for i in range(target_ndim):
+        shape_ptr[i] = target_shape[i]
+    managed_tensor.dl_tensor.shape = shape_ptr
+
+    # strides, if not contiguous
+    if wp_array.is_contiguous:
+        managed_tensor.dl_tensor.strides = None
+    else:
+        stride_offset = shape_offset + shape_size
+        stride_ptr = ctypes.cast(mem_ptr + stride_offset, ctypes.POINTER(ctypes.c_int64))
+        dtype_size = warp.types.type_size_in_bytes(target_dtype)
+        for i in range(target_ndim):
+            stride_ptr[i] = target_strides[i] // dtype_size
+        managed_tensor.dl_tensor.strides = stride_ptr
+
+    # DLManagedTensor holds a reference to the source array
+    managed_tensor.manager_ctx = id(wp_array)
+    Py_IncRef(wp_array)
+
+    managed_tensor.deleter = _dlpack_tensor_deleter
+
+    capsule = PyCapsule_New(
+        ctypes.byref(managed_tensor),
         _c_str_dltensor,
-        _warp_pycapsule_deleter,
+        _dlpack_capsule_deleter,
     )
 
-    return pycapsule
+    return capsule
 
 
 def dtype_is_compatible(dl_dtype, wp_dtype):
@@ -272,35 +321,28 @@ def dtype_is_compatible(dl_dtype, wp_dtype):
         raise RuntimeError(f"Unsupported dlpack dtype {(str(dl_dtype.type_code), dl_dtype.bits)}")
 
 
-def from_dlpack(pycapsule, dtype=None) -> warp.array:
-    """Convert a dlpack tensor into a numpy array without copying.
+def _from_dlpack(capsule, dtype=None) -> warp.array:
+    """Convert a DLPack capsule into a Warp array without copying.
 
-    Parameters
-    ----------
-    pycapsule : PyCapsule
-        A pycapsule wrapping a dlpack tensor that will be converted.
+    Args:
+        capsule: A DLPack capsule wrapping an external array or tensor.
+        dtype: An optional Warp data type to interpret the source data.
 
-    Returns
-    -------
-    np_array : np.ndarray
-        A new numpy array that uses the same underlying memory as the input
-        pycapsule.
+    Returns:
+        A new Warp array that uses the same underlying memory as the input capsule.
     """
 
-    assert ctypes.pythonapi.PyCapsule_IsValid(pycapsule, _c_str_dltensor)
-    dl_managed_tensor = ctypes.pythonapi.PyCapsule_GetPointer(pycapsule, _c_str_dltensor)
-    dl_managed_tensor_ptr = ctypes.cast(dl_managed_tensor, ctypes.POINTER(DLManagedTensor))
-    dl_managed_tensor = dl_managed_tensor_ptr.contents
+    assert PyCapsule_IsValid(capsule, _c_str_dltensor), "Invalid capsule"
+    mem_ptr = PyCapsule_GetPointer(capsule, _c_str_dltensor)
+    managed_tensor = DLManagedTensor.from_address(mem_ptr)
 
-    dlt = dl_managed_tensor.dl_tensor
-    assert isinstance(dlt, DLTensor)
+    dlt = managed_tensor.dl_tensor
 
     device = device_from_dlpack(dlt.device)
-
     pinned = dlt.device.device_type.value == DLDeviceType.kDLCUDAHost
-
     shape = tuple(dlt.shape[dim] for dim in range(dlt.ndim))
 
+    # strides, if not contiguous
     itemsize = dlt.dtype.bits // 8
     if dlt.strides:
         strides = tuple(dlt.strides[dim] * itemsize for dim in range(dlt.ndim))
@@ -351,7 +393,50 @@ def from_dlpack(pycapsule, dtype=None) -> warp.array:
         ptr=dlt.data, dtype=dtype, shape=shape, strides=strides, copy=False, device=device, pinned=pinned
     )
 
-    # keep a reference to the capsule so it doesn't get deleted
-    a._pycapsule = pycapsule
+    # take ownership of the DLManagedTensor
+    a._dlpack_tensor_holder = _DLPackTensorHolder(mem_ptr)
+
+    # rename the capsule so that it no longer owns the DLManagedTensor
+    PyCapsule_SetName(capsule, _c_str_used_dltensor)
 
     return a
+
+
+def from_dlpack(source, dtype=None) -> warp.array:
+    """Convert a source array or DLPack capsule into a Warp array without copying.
+
+    Args:
+        source: A DLPack-compatible array or PyCapsule
+        dtype: An optional Warp data type to interpret the source data.
+
+    Returns:
+        A new Warp array that uses the same underlying memory as the input
+        pycapsule.
+    """
+
+    # See https://data-apis.org/array-api/2022.12/API_specification/generated/array_api.array.__dlpack__.html
+
+    if hasattr(source, "__dlpack__"):
+        device_type, device_id = source.__dlpack_device__()
+        # Check if the source lives on a CUDA device
+        if device_type in (DLDeviceType.kDLCUDA, DLDeviceType.kDLCUDAManaged):
+            # Assume that the caller will use the array on its device's current stream.
+            # Note that we pass 1 for the null stream, per DLPack spec.
+            cuda_stream = warp.get_cuda_device(device_id).stream.cuda_stream or 1
+        elif device_type == DLDeviceType.kDLCPU:
+            # No stream sync for CPU arrays.
+            cuda_stream = None
+        elif device_type == DLDeviceType.kDLCUDAHost:
+            # For pinned memory, we sync with the current CUDA device's stream.
+            # Note that we pass 1 for the null stream, per DLPack spec.
+            cuda_stream = warp.get_cuda_device().stream.cuda_stream or 1
+        else:
+            raise TypeError("Unsupported source device")
+
+        capsule = source.__dlpack__(stream=cuda_stream)
+
+    else:
+        # legacy behaviour, assume source is a capsule
+        capsule = source
+
+    return _from_dlpack(capsule, dtype=dtype)

@@ -134,12 +134,54 @@ JAX
 Interoperability with JAX arrays is supported through the following methods.
 Internally these use the DLPack protocol to exchange data in a zero-copy way with JAX.
 
+It may be preferable to use the :ref:`DLPack` protocol directly for better performance and control over stream synchronization behaviour.
+
 .. automodule:: warp.jax
     :members:
     :undoc-members:
 
+.. _DLPack:
+
 DLPack
 ------
+
+Warp supports the DLPack protocol included in the Python Array API standard v2022.12.
+See the `Python Specification for DLPack <https://dmlc.github.io/dlpack/latest/python_spec.html>`_ for reference.
+
+The canonical way to import an external array into Warp is using the ``warp.from_dlpack()`` function::
+
+    warp_array = warp.from_dlpack(external_array)
+
+The external array can be a PyTorch tensor, Jax array, or any other array type compatible with this version of the DLPack protocol.
+For CUDA arrays, this approach requires the producer to perform stream synchronization which ensures that operations on the array
+are ordered correctly.  The ``warp.from_dlpack()`` function asks the producer to synchronize the current Warp stream on the device where
+the array resides.  Thus it should be safe to use the array in Warp kernels on that device without any additional synchronization.
+
+The canonical way to export a Warp array to an external framework is to use the ``from_dlpack()`` function in that framework::
+
+    jax_array = jax.dlpack.from_dlpack(warp_array)
+    torch_tensor = torch.utils.dlpack.from_dlpack(warp_array)
+
+For CUDA arrays, this will synchronize the current stream of the consumer framework with the current Warp stream on the array's device.
+Thus it should be safe to use the wrapped array in the consumer framework, even if the array was previously used in a Warp kernel
+on the device.
+
+Alternatively, arrays can be shared by explicitly creating PyCapsules using a ``to_dlpack()`` function provided by the producer framework.
+This approach may be used for older versions of frameworks that do not support the v2022.12 standard::
+
+    warp_array1 = warp.from_dlpack(jax.dlpack.to_dlpack(jax_array))
+    warp_array2 = warp.from_dlpack(torch.utils.dlpack.to_dlpack(torch_tensor))
+
+    jax_array = jax.dlpack.from_dlpack(warp.to_dlpack(warp_array))
+    torch_tensor = torch.utils.dlpack.from_dlpack(warp.to_dlpack(warp_array))
+
+This approach is generally faster because it skips any stream synchronization, but another solution must be used to ensure correct
+ordering of operations.  In situations where no synchronization is required, using this approach can yield better performance.
+This may be a good choice in situations like these:
+
+    - The external framework is using the synchronous CUDA default stream.
+    - Warp and the external framework are using the same CUDA stream.
+    - Another synchronization mechanism is already in place.
 
 .. automodule:: warp.dlpack
     :members:
