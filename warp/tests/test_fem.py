@@ -101,9 +101,15 @@ def test_interpolate_gradient(test_case, device):
         # Interpolate gradient at center point
         vector_field = vector_space.make_field()
         vector_field.dof_values.requires_grad = True
+        vector_field_restriction = fem.make_restriction(vector_field)
         tape = wp.Tape()
         with tape:
-            fem.interpolate(grad_field, dest=vector_field, fields={"p": scalar_field}, kernel_options={"enable_backward": True})
+            fem.interpolate(
+                grad_field,
+                dest=vector_field_restriction,
+                fields={"p": scalar_field},
+                kernel_options={"enable_backward": True},
+            )
 
         assert_np_equal(vector_field.dof_values.numpy(), np.array([[1.0, 1.0]]))
 
@@ -145,6 +151,7 @@ def test_interpolate_gradient(test_case, device):
             ),
         )
         assert_np_equal(point_coords.grad.numpy(), np.array([[[2.0, 0.0, 0.0]]]))
+
 
 @integrand
 def vector_divergence_form(s: Sample, u: Field, q: Field):
