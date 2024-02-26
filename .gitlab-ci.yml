@@ -22,6 +22,15 @@ workflow:
 
 default:
   interruptible: true
+  # Only retry on GitLab failures (not on script failures for example)
+  retry:
+    max: 2
+    when:
+      - api_failure
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - scheduler_failure
+      - unknown_failure
 
 variables:
   PM_PACKAGES_ROOT: '$CI_PROJECT_DIR/packman-repo'
@@ -71,20 +80,15 @@ stages:
     - .build_artifacts
 
 linux-aarch64 build release:
-  image: gitlab-master.nvidia.com:5005/jgorski-group/ci/docker_1804_aarch64:latest
-  services:
-   - name: docker:dind
+  image: urm.nvidia.com/ct-omniverse-docker-local/u18-aarch64-builder:3.2.0
   extends:
     - .build_common_release
   script:
-    - ./tools/ci/building/build-linux-x86_64/build.sh
+    - ./tools/ci/building/build-linux-x86_64/build.sh --no-docker # We are already using the builder image
     - mkdir warp/bin/linux-aarch64
     - mv warp/bin/*.so warp/bin/linux-aarch64
   tags:
-    - perflab-arm
-    - cpu/arm
-    - os/linux-arm
-    - type/docker
+    - arch/arm
 
 linux-x86_64 build release:
   extends:
@@ -108,6 +112,8 @@ mac-x86_64 build release:
     - .runner-build-macos-universal
   script:
     - ./tools/ci/building/build-linux-x86_64/build.sh
+  tags:
+    - pkg/xcode/13 # Avoid AWS-MAC-0
 
 # ================================================================
 # Build Jobs (Debug)
@@ -126,18 +132,13 @@ mac-x86_64 build release:
 
 # Hide this job for now until debug aarch64 builds work
 .linux-aarch64 build debug:
-  image: gitlab-master.nvidia.com:5005/jgorski-group/ci/docker_1804_aarch64:latest
-  services:
-   - name: docker:dind
+  image: urm.nvidia.com/ct-omniverse-docker-local/u18-aarch64-builder:3.2.0
   extends:
     - .build_common_debug
   script:
-    - ./tools/ci/building/build-linux-x86_64/build.sh --debug
+    - ./tools/ci/building/build-linux-x86_64/build.sh --debug --no-docker # We are already using the builder image
   tags:
-    - perflab-arm
-    - cpu/arm
-    - os/linux-arm
-    - type/docker
+    - arch/arm
 
 linux-x86_64 build debug:
   extends:
@@ -158,6 +159,8 @@ mac-x86_64 build debug:
     - .runner-build-macos-universal
   script:
     - ./tools/ci/building/build-linux-x86_64/build.sh --debug
+  tags:
+    - pkg/xcode/13 # Avoid AWS-MAC-0
 
 # ================================================================
 # Unit Testing Jobs (Release)
@@ -209,6 +212,7 @@ linux-aarch64 test release:
     - .test_common_release
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
     - apt-get update && apt-get install curl --no-install-recommends -y
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-aarch64/*.so warp/bin/
@@ -220,19 +224,16 @@ linux-aarch64 test release:
   script:
     - $PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
   tags:
-    - perflab-arm
-    - cpu/arm
-    - os/linux-arm
-    - type/docker
+    - arch/arm
 
 linux-x86_64 test release:
   needs: [linux-x86_64 build release]
   extends:
     - .omni_nvks_gpu_2x
-    #- .runner-test-linux-x86_64-gpu
     - .test_common_release
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/*.so warp/bin/
     - tools/packman/packman install -l _build/target-deps/python python 3.8.18+nv1-linux-x86_64
@@ -250,7 +251,6 @@ windows-x86_64 test release:
   stage: test
   needs: [windows-x86_64 build release]
   extends:
-    - .runner-test-windows-x86_64-gpu
     - .test_common_release
   before_script:
     - *define-GetTime
@@ -264,6 +264,9 @@ windows-x86_64 test release:
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
     - powershell.exe $env:PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+  tags:
+    - os/windows
+    - gpu/2x-A5000
 
 mac-x86_64 test release:
   stage: test
@@ -273,6 +276,7 @@ mac-x86_64 test release:
     - .test_common_release
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
     - tools/packman/packman install -l _build/target-deps/python python 3.7.16+nv1-macos-x86_64
     - $PYTHON -m pip install --upgrade pip
     - $PYTHON -m pip install matplotlib usd-core coverage[toml]
@@ -280,6 +284,8 @@ mac-x86_64 test release:
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - $PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+  tags:
+    - pkg/xcode/13 # Avoid AWS-MAC-0
 
 # ================================================================
 # Unit Testing Jobs (Debug)
@@ -309,6 +315,7 @@ mac-x86_64 test release:
     - .test_common_debug
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
     - apt-get update && apt-get install curl --no-install-recommends -y
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-aarch64/*.so warp/bin/
@@ -319,19 +326,16 @@ mac-x86_64 test release:
   script:
     - $PYTHON -m warp.tests --junit-report-xml rspec.xml -s autodetect
   tags:
-    - perflab-arm
-    - cpu/arm
-    - os/linux-arm
-    - type/docker
+    - arch/arm
 
 linux-x86_64 test debug:
   needs: [linux-x86_64 build debug]
   extends:
     - .omni_nvks_gpu_2x
-    #- .runner-test-linux-x86_64-gpu
     - .test_common_debug
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
     - tools/packman/packman install -l _build/target-deps/python python 3.8.18+nv1-linux-x86_64
     - export PATH="$CUDA_BIN:$PATH"
     - $PYTHON -m pip install --upgrade pip
@@ -361,6 +365,9 @@ windows-x86_64 test debug:
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
     - powershell.exe $env:PYTHON -m warp.tests --junit-report-xml rspec.xml -s autodetect
+  tags:
+    - os/windows
+    - gpu/2x-A5000
 
 mac-x86_64 test debug:
   stage: test
@@ -370,6 +377,7 @@ mac-x86_64 test debug:
     - .test_common_debug
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
     - tools/packman/packman install -l _build/target-deps/python python 3.7.16+nv1-macos-x86_64
     - $PYTHON -m pip install --upgrade pip
     - $PYTHON -m pip install matplotlib usd-core
@@ -377,6 +385,8 @@ mac-x86_64 test debug:
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - $PYTHON -m warp.tests --junit-report-xml rspec.xml -s autodetect
+  tags:
+    - pkg/xcode/13 # Avoid AWS-MAC-0
 
 # ================================================================
 # Packaging Jobs
