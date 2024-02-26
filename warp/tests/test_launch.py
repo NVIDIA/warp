@@ -301,7 +301,30 @@ def test_launch_tuple_args(test, device):
         outputs=(out,),
         device=device,
     )
+    assert_np_equal(out.numpy(), np.array((0, 3, 6, 9)))
 
+    wp.launch(
+        kernel_mul,
+        dim=len(values),
+        inputs=(
+            values,
+            coeff,
+            out,
+        ),
+        device=device,
+    )
+    assert_np_equal(out.numpy(), np.array((0, 3, 6, 9)))
+
+    wp.launch(
+        kernel_mul,
+        dim=len(values),
+        outputs=(
+            values,
+            coeff,
+            out,
+        ),
+        device=device,
+    )
     assert_np_equal(out.numpy(), np.array((0, 3, 6, 9)))
 
 
@@ -322,6 +345,8 @@ add_function_test(TestLaunch, "test_launch_cmd_set_param", test_launch_cmd_set_p
 add_function_test(TestLaunch, "test_launch_cmd_set_ctype", test_launch_cmd_set_ctype, devices=devices)
 add_function_test(TestLaunch, "test_launch_cmd_set_dim", test_launch_cmd_set_dim, devices=devices)
 add_function_test(TestLaunch, "test_launch_cmd_empty", test_launch_cmd_empty, devices=devices)
+
+add_function_test(TestLaunch, "test_launch_tuple_args", test_launch_tuple_args, devices=devices)
 
 
 if __name__ == "__main__":

@@ -4097,10 +4097,10 @@ class Launch:
 def launch(
     kernel,
     dim: Tuple[int],
-    inputs: List,
-    outputs: List = [],
-    adj_inputs: List = [],
-    adj_outputs: List = [],
+    inputs: Sequence = [],
+    outputs: Sequence = [],
+    adj_inputs: Sequence = [],
+    adj_outputs: Sequence = [],
     device: Devicelike = None,
     stream: Stream = None,
     adjoint=False,
@@ -4115,7 +4115,7 @@ def launch(
     Args:
         kernel: The name of a Warp kernel function, decorated with the ``@wp.kernel`` decorator
         dim: The number of threads to launch the kernel, can be an integer, or a Tuple of ints with max of 4 dimensions
-        inputs: The input parameters to the kernel
+        inputs: The input parameters to the kernel (optional)
         outputs: The output parameters (optional)
         adj_inputs: The adjoint inputs (optional)
         adj_outputs: The adjoint outputs (optional)
@@ -4160,8 +4160,13 @@ def launch(
 
                 params.append(pack_arg(kernel, arg_type, arg_name, a, device, adjoint))
 
-        fwd_args = inputs + outputs
-        adj_args = adj_inputs + adj_outputs
+        fwd_args = []
+        fwd_args.extend(inputs)
+        fwd_args.extend(outputs)
+
+        adj_args = []
+        adj_args.extend(adj_inputs)
+        adj_args.extend(adj_outputs)
 
         if (len(fwd_args)) != (len(kernel.adj.args)):
             raise RuntimeError(
