@@ -1264,18 +1264,30 @@ def type_scalar_type(dtype):
     return getattr(dtype, "_wp_scalar_type_", dtype)
 
 
-def type_size_in_bytes(dtype):
-    if dtype.__module__ == "ctypes":
-        return ctypes.sizeof(dtype)
-    elif isinstance(dtype, warp.codegen.Struct):
-        return ctypes.sizeof(dtype.ctype)
-    elif dtype == float or dtype == int:
-        return 4
-    elif hasattr(dtype, "_type_"):
-        return getattr(dtype, "_length_", 1) * ctypes.sizeof(dtype._type_)
+# Cache results of type_size_in_bytes(), because the function is actually quite slow.
+_type_size_cache = {
+    float: 4,
+    int: 4,
+}
 
-    else:
-        return 0
+
+def type_size_in_bytes(dtype):
+    size = _type_size_cache.get(dtype)
+
+    if size is None:
+        if dtype.__module__ == "ctypes":
+            size = ctypes.sizeof(dtype)
+        elif hasattr(dtype, "_type_"):
+            size = getattr(dtype, "_length_", 1) * ctypes.sizeof(dtype._type_)
+        elif isinstance(dtype, warp.codegen.Struct):
+            size = ctypes.sizeof(dtype.ctype)
+        elif dtype == Any:
+            raise TypeError(f"A concrete type is required")
+        else:
+            raise TypeError(f"Invalid data type: {dtype}")
+        _type_size_cache[dtype] = size
+
+    return size
 
 
 def type_to_warp(dtype):
@@ -1691,7 +1703,12 @@ class array(Array):
             shape = arr.shape or (1,)
             strides = arr.strides or (type_size_in_bytes(dtype),)
 
-        device = warp.get_device(device)
+        try:
+            # Performance note: try first, ask questions later
+            device = warp.context.runtime.get_device(device)
+        except:
+            warp.context.assert_initialized()
+            raise
 
         if device.is_cpu and not copy and not pinned:
             # reference numpy memory directly
@@ -1712,29 +1729,41 @@ class array(Array):
             warp.copy(self, src)
 
     def _init_from_ptr(self, ptr, dtype, shape, strides, capacity, device, pinned, deleter):
-        if dtype == Any:
-            raise RuntimeError("A concrete data type is required to create the array")
+        try:
+            # Performance note: try first, ask questions later
+            device = warp.context.runtime.get_device(device)
+        except:
+            warp.context.assert_initialized()
+            raise
 
-        device = warp.get_device(device)
+        ndim = len(shape)
+        dtype_size = type_size_in_bytes(dtype)
 
-        size = 1
-        for d in shape:
-            size *= d
-
-        contiguous_strides = strides_from_shape(shape, dtype)
+        # compute size and contiguous strides
+        # Performance note: we could use strides_from_shape() here, but inlining it is faster.
+        contiguous_strides = [None] * ndim
+        i = ndim - 1
+        contiguous_strides[i] = dtype_size
+        size = shape[i]
+        while i > 0:
+            contiguous_strides[i - 1] = contiguous_strides[i] * shape[i]
+            i -= 1
+            size *= shape[i]
+        contiguous_strides = tuple(contiguous_strides)
 
         if strides is None:
             strides = contiguous_strides
             is_contiguous = True
             if capacity is None:
-                capacity = size * type_size_in_bytes(dtype)
+                capacity = size * dtype_size
         else:
+            strides = tuple(strides)
             is_contiguous = strides == contiguous_strides
             if capacity is None:
                 capacity = shape[0] * strides[0]
 
         self.dtype = dtype
-        self.ndim = len(shape)
+        self.ndim = ndim
         self.size = size
         self.capacity = capacity
         self.shape = shape
@@ -1746,22 +1775,34 @@ class array(Array):
         self.deleter = deleter
 
     def _init_new(self, dtype, shape, strides, device, pinned):
-        if dtype == Any:
-            raise RuntimeError("A concrete data type is required to create the array")
+        try:
+            # Performance note: try first, ask questions later
+            device = warp.context.runtime.get_device(device)
+        except:
+            warp.context.assert_initialized()
+            raise
 
-        device = warp.get_device(device)
+        ndim = len(shape)
+        dtype_size = type_size_in_bytes(dtype)
 
-        size = 1
-        for d in shape:
-            size *= d
-
-        contiguous_strides = strides_from_shape(shape, dtype)
+        # compute size and contiguous strides
+        # Performance note: we could use strides_from_shape() here, but inlining it is faster.
+        contiguous_strides = [None] * ndim
+        i = ndim - 1
+        contiguous_strides[i] = dtype_size
+        size = shape[i]
+        while i > 0:
+            contiguous_strides[i - 1] = contiguous_strides[i] * shape[i]
+            i -= 1
+            size *= shape[i]
+        contiguous_strides = tuple(contiguous_strides)
 
         if strides is None:
             strides = contiguous_strides
             is_contiguous = True
-            capacity = size * type_size_in_bytes(dtype)
+            capacity = size * dtype_size
         else:
+            strides = tuple(strides)
             is_contiguous = strides == contiguous_strides
             capacity = shape[0] * strides[0]
 
@@ -1772,7 +1813,7 @@ class array(Array):
             ptr = None
 
         self.dtype = dtype
-        self.ndim = len(shape)
+        self.ndim = ndim
         self.size = size
         self.capacity = capacity
         self.shape = shape
@@ -1868,6 +1909,46 @@ class array(Array):
             }
 
         return self._array_interface
+
+    def __dlpack__(self, stream=None):
+        # See https://data-apis.org/array-api/2022.12/API_specification/generated/array_api.array.__dlpack__.html
+
+        if self.device is None:
+            raise RuntimeError("Array has no device assigned")
+
+        if self.device.is_cuda and stream != -1:
+            if not isinstance(stream, int):
+                raise TypeError("DLPack stream must be an integer or None")
+            
+            # assume that the array is being used on its device's current stream
+            array_stream = self.device.stream
+
+            # the external stream should wait for outstanding operations to complete
+            if stream in (None, 0, 1):
+                external_stream = 0
+            else:
+                external_stream = stream
+
+            # Performance note: avoid wrapping the external stream in a temporary Stream object
+            if external_stream != array_stream.cuda_stream:
+                warp.context.runtime.core.cuda_stream_wait_stream(external_stream,
+                                                                  array_stream.cuda_stream,
+                                                                  array_stream.last_event.cuda_event)
+
+        return warp.dlpack.to_dlpack(self)
+
+    def __dlpack_device__(self):
+        # See https://data-apis.org/array-api/2022.12/API_specification/generated/array_api.array.__dlpack_device__.html
+
+        if self.device is None:
+            raise RuntimeError("Array has no device assigned")
+        
+        if self.device.is_cuda:
+            return (warp.dlpack.DLDeviceType.kDLCUDA, self.device.ordinal)
+        elif self.pinned:
+            return (warp.dlpack.DLDeviceType.kDLCUDAHost, 0)
+        else:
+            return (warp.dlpack.DLDeviceType.kDLCPU, 0)
 
     def __len__(self):
         return self.shape[0]

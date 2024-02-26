@@ -14,7 +14,17 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
+N = 1024 * 1024
+
 wp.init()
+
+
+def _jax_version():
+    try:
+        import jax
+        return jax.__version_info__
+    except ImportError:
+        return (0, 0, 0)
 
 
 @wp.kernel
@@ -24,7 +34,7 @@ def inc(a: wp.array(dtype=float)):
 
 
 def test_dlpack_warp_to_warp(test, device):
-    a1 = wp.array(data=np.arange(10, dtype=np.float32), device=device)
+    a1 = wp.array(data=np.arange(N, dtype=np.float32), device=device)
 
     a2 = wp.from_dlpack(wp.to_dlpack(a1))
 
@@ -44,7 +54,7 @@ def test_dlpack_warp_to_warp(test, device):
 def test_dlpack_dtypes_and_shapes(test, device):
     # automatically determine scalar dtype
     def wrap_scalar_tensor_implicit(dtype):
-        a1 = wp.zeros(10, dtype=dtype, device=device)
+        a1 = wp.zeros(N, dtype=dtype, device=device)
         a2 = wp.from_dlpack(wp.to_dlpack(a1))
 
         test.assertEqual(a1.ptr, a2.ptr)
@@ -55,7 +65,7 @@ def test_dlpack_dtypes_and_shapes(test, device):
 
     # explicitly specify scalar dtype
     def wrap_scalar_tensor_explicit(dtype, target_dtype):
-        a1 = wp.zeros(10, dtype=dtype, device=device)
+        a1 = wp.zeros(N, dtype=dtype, device=device)
         a2 = wp.from_dlpack(wp.to_dlpack(a1), dtype=target_dtype)
 
         test.assertEqual(a1.ptr, a2.ptr)
@@ -70,7 +80,7 @@ def test_dlpack_dtypes_and_shapes(test, device):
         scalar_type = vec_dtype._wp_scalar_type_
         scalar_size = ctypes.sizeof(vec_dtype._type_)
 
-        a1 = wp.zeros(10, dtype=vec_dtype, device=device)
+        a1 = wp.zeros(N, dtype=vec_dtype, device=device)
         a2 = wp.from_dlpack(wp.to_dlpack(a1), dtype=scalar_type)
 
         test.assertEqual(a1.ptr, a2.ptr)
@@ -86,7 +96,7 @@ def test_dlpack_dtypes_and_shapes(test, device):
         scalar_type = vec_dtype._wp_scalar_type_
         scalar_size = ctypes.sizeof(vec_dtype._type_)
 
-        a1 = wp.zeros((10, vec_dtype._length_), dtype=scalar_type, device=device)
+        a1 = wp.zeros((N, vec_dtype._length_), dtype=scalar_type, device=device)
         a2 = wp.from_dlpack(wp.to_dlpack(a1), dtype=vec_dtype)
 
         test.assertEqual(a1.ptr, a2.ptr)
@@ -102,7 +112,7 @@ def test_dlpack_dtypes_and_shapes(test, device):
         scalar_type = mat_dtype._wp_scalar_type_
         scalar_size = ctypes.sizeof(mat_dtype._type_)
 
-        a1 = wp.zeros(10, dtype=mat_dtype, device=device)
+        a1 = wp.zeros(N, dtype=mat_dtype, device=device)
         a2 = wp.from_dlpack(wp.to_dlpack(a1), dtype=scalar_type)
 
         test.assertEqual(a1.ptr, a2.ptr)
@@ -118,7 +128,7 @@ def test_dlpack_dtypes_and_shapes(test, device):
         scalar_type = mat_dtype._wp_scalar_type_
         scalar_size = ctypes.sizeof(mat_dtype._type_)
 
-        a1 = wp.zeros((10, *mat_dtype._shape_), dtype=scalar_type, device=device)
+        a1 = wp.zeros((N, *mat_dtype._shape_), dtype=scalar_type, device=device)
         a2 = wp.from_dlpack(wp.to_dlpack(a1), dtype=mat_dtype)
 
         test.assertEqual(a1.ptr, a2.ptr)
@@ -182,9 +192,38 @@ def test_dlpack_dtypes_and_shapes(test, device):
 def test_dlpack_warp_to_torch(test, device):
     import torch.utils.dlpack
 
-    a = wp.array(data=np.arange(10, dtype=np.float32), device=device)
+    a = wp.array(data=np.arange(N, dtype=np.float32), device=device)
 
     t = torch.utils.dlpack.from_dlpack(wp.to_dlpack(a))
+
+    item_size = wp.types.type_size_in_bytes(a.dtype)
+
+    test.assertEqual(a.ptr, t.data_ptr())
+    test.assertEqual(a.device, wp.device_from_torch(t.device))
+    test.assertEqual(a.dtype, wp.torch.dtype_from_torch(t.dtype))
+    test.assertEqual(a.shape, tuple(t.shape))
+    test.assertEqual(a.strides, tuple(s * item_size for s in t.stride()))
+
+    assert_np_equal(a.numpy(), t.cpu().numpy())
+
+    wp.launch(inc, dim=a.size, inputs=[a], device=device)
+
+    assert_np_equal(a.numpy(), t.cpu().numpy())
+
+    t += 1
+
+    assert_np_equal(a.numpy(), t.cpu().numpy())
+
+
+def test_dlpack_warp_to_torch_v2(test, device):
+    # same as original test, but uses newer __dlpack__() method
+
+    import torch.utils.dlpack
+
+    a = wp.array(data=np.arange(N, dtype=np.float32), device=device)
+
+    # pass the array directly
+    t = torch.utils.dlpack.from_dlpack(a)
 
     item_size = wp.types.type_size_in_bytes(a.dtype)
 
@@ -209,9 +248,38 @@ def test_dlpack_torch_to_warp(test, device):
     import torch
     import torch.utils.dlpack
 
-    t = torch.arange(10, dtype=torch.float32, device=wp.device_to_torch(device))
+    t = torch.arange(N, dtype=torch.float32, device=wp.device_to_torch(device))
 
     a = wp.from_dlpack(torch.utils.dlpack.to_dlpack(t))
+
+    item_size = wp.types.type_size_in_bytes(a.dtype)
+
+    test.assertEqual(a.ptr, t.data_ptr())
+    test.assertEqual(a.device, wp.device_from_torch(t.device))
+    test.assertEqual(a.dtype, wp.torch.dtype_from_torch(t.dtype))
+    test.assertEqual(a.shape, tuple(t.shape))
+    test.assertEqual(a.strides, tuple(s * item_size for s in t.stride()))
+
+    assert_np_equal(a.numpy(), t.cpu().numpy())
+
+    wp.launch(inc, dim=a.size, inputs=[a], device=device)
+
+    assert_np_equal(a.numpy(), t.cpu().numpy())
+
+    t += 1
+
+    assert_np_equal(a.numpy(), t.cpu().numpy())
+
+
+def test_dlpack_torch_to_warp_v2(test, device):
+    # same as original test, but uses newer __dlpack__() method
+
+    import torch
+
+    t = torch.arange(N, dtype=torch.float32, device=wp.device_to_torch(device))
+
+    # pass tensor directly
+    a = wp.from_dlpack(t)
 
     item_size = wp.types.type_size_in_bytes(a.dtype)
 
@@ -236,10 +304,47 @@ def test_dlpack_warp_to_jax(test, device):
     import jax
     import jax.dlpack
 
-    a = wp.array(data=np.arange(10, dtype=np.float32), device=device)
+    a = wp.array(data=np.arange(N, dtype=np.float32), device=device)
 
     # use generic dlpack conversion
     j1 = jax.dlpack.from_dlpack(wp.to_dlpack(a))
+
+    # use jax wrapper
+    j2 = wp.to_jax(a)
+
+    test.assertEqual(a.ptr, j1.unsafe_buffer_pointer())
+    test.assertEqual(a.ptr, j2.unsafe_buffer_pointer())
+    test.assertEqual(a.device, wp.device_from_jax(j1.device()))
+    test.assertEqual(a.device, wp.device_from_jax(j2.device()))
+    test.assertEqual(a.shape, j1.shape)
+    test.assertEqual(a.shape, j2.shape)
+
+    assert_np_equal(a.numpy(), np.asarray(j1))
+    assert_np_equal(a.numpy(), np.asarray(j2))
+
+    wp.launch(inc, dim=a.size, inputs=[a], device=device)
+    wp.synchronize_device(device)
+
+    # HACK? Run a no-op operation so that Jax flags the arrays as dirty
+    # and gets the latest values, which were modified by Warp.
+    j1 += 0
+    j2 += 0
+
+    assert_np_equal(a.numpy(), np.asarray(j1))
+    assert_np_equal(a.numpy(), np.asarray(j2))
+
+
+@unittest.skipUnless(_jax_version() >= (0, 4, 15), "Jax version too old")
+def test_dlpack_warp_to_jax_v2(test, device):
+    # same as original test, but uses newer __dlpack__() method
+
+    import jax
+    import jax.dlpack
+
+    a = wp.array(data=np.arange(N, dtype=np.float32), device=device)
+
+    # pass warp array directly
+    j1 = jax.dlpack.from_dlpack(a)
 
     # use jax wrapper
     j2 = wp.to_jax(a)
@@ -271,10 +376,46 @@ def test_dlpack_jax_to_warp(test, device):
     import jax.dlpack
 
     with jax.default_device(wp.device_to_jax(device)):
-        j = jax.numpy.arange(10, dtype=jax.numpy.float32)
+        j = jax.numpy.arange(N, dtype=jax.numpy.float32)
 
         # use generic dlpack conversion
         a1 = wp.from_dlpack(jax.dlpack.to_dlpack(j))
+
+        # use jax wrapper
+        a2 = wp.from_jax(j)
+
+        test.assertEqual(a1.ptr, j.unsafe_buffer_pointer())
+        test.assertEqual(a2.ptr, j.unsafe_buffer_pointer())
+        test.assertEqual(a1.device, wp.device_from_jax(j.device()))
+        test.assertEqual(a2.device, wp.device_from_jax(j.device()))
+        test.assertEqual(a1.shape, j.shape)
+        test.assertEqual(a2.shape, j.shape)
+
+        assert_np_equal(a1.numpy(), np.asarray(j))
+        assert_np_equal(a2.numpy(), np.asarray(j))
+
+        wp.launch(inc, dim=a1.size, inputs=[a1], device=device)
+        wp.synchronize_device(device)
+
+        # HACK? Run a no-op operation so that Jax flags the array as dirty
+        # and gets the latest values, which were modified by Warp.
+        j += 0
+
+        assert_np_equal(a1.numpy(), np.asarray(j))
+        assert_np_equal(a2.numpy(), np.asarray(j))
+
+
+@unittest.skipUnless(_jax_version() >= (0, 4, 15), "Jax version too old")
+def test_dlpack_jax_to_warp_v2(test, device):
+    # same as original test, but uses newer __dlpack__() method
+
+    import jax
+
+    with jax.default_device(wp.device_to_jax(device)):
+        j = jax.numpy.arange(N, dtype=jax.numpy.float32)
+
+        # pass jax array directly
+        a1 = wp.from_dlpack(j)
 
         # use jax wrapper
         a2 = wp.from_jax(j)
@@ -331,7 +472,13 @@ try:
             TestDLPack, "test_dlpack_warp_to_torch", test_dlpack_warp_to_torch, devices=torch_compatible_devices
         )
         add_function_test(
+            TestDLPack, "test_dlpack_warp_to_torch_v2", test_dlpack_warp_to_torch_v2, devices=torch_compatible_devices
+        )
+        add_function_test(
             TestDLPack, "test_dlpack_torch_to_warp", test_dlpack_torch_to_warp, devices=torch_compatible_devices
+        )
+        add_function_test(
+            TestDLPack, "test_dlpack_torch_to_warp_v2", test_dlpack_torch_to_warp_v2, devices=torch_compatible_devices
         )
 
 except Exception as e:
@@ -364,7 +511,13 @@ try:
             TestDLPack, "test_dlpack_warp_to_jax", test_dlpack_warp_to_jax, devices=jax_compatible_devices
         )
         add_function_test(
+            TestDLPack, "test_dlpack_warp_to_jax_v2", test_dlpack_warp_to_jax_v2, devices=jax_compatible_devices
+        )
+        add_function_test(
             TestDLPack, "test_dlpack_jax_to_warp", test_dlpack_jax_to_warp, devices=jax_compatible_devices
+        )
+        add_function_test(
+            TestDLPack, "test_dlpack_jax_to_warp_v2", test_dlpack_jax_to_warp_v2, devices=jax_compatible_devices
         )
 
 except Exception as e:
