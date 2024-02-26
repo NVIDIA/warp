@@ -7,8 +7,9 @@ import unittest
 from warp.optim.linear import preconditioner, cg, bicgstab, gmres
 from warp.tests.unittest_utils import *
 
-
 wp.init()
+
+from warp.context import runtime  # noqa: E402
 
 
 def _check_linear_solve(test, A, b, func, *args, **kwargs):
@@ -75,6 +76,15 @@ def _make_indefinite_system(n: int, seed: int, dtype, device, spd=False):
     return wp.array(A, dtype=dtype, device=device), wp.array(b, dtype=dtype, device=device)
 
 
+def _make_identity_system(n: int, seed: int, dtype, device):
+    rng = np.random.default_rng(seed)
+
+    A = np.eye(n)
+    b = rng.uniform(low=-1.0, high=1.0, size=(n,))
+
+    return wp.array(A, dtype=dtype, device=device), wp.array(b, dtype=dtype, device=device)
+
+
 def test_cg(test, device):
     A, b = _make_spd_system(n=64, seed=123, device=device, dtype=wp.float64)
     M = preconditioner(A, "diag")
@@ -87,6 +97,9 @@ def test_cg(test, device):
 
     _check_linear_solve(test, A, b, cg, maxiter=1000)
     _check_linear_solve(test, A, b, cg, M=M, maxiter=1000)
+
+    A, b = _make_identity_system(n=5, seed=321, device=device, dtype=wp.float32)
+    _check_linear_solve(test, A, b, cg, maxiter=30)
 
 
 def test_bicgstab(test, device):
@@ -111,6 +124,9 @@ def test_bicgstab(test, device):
     _check_linear_solve(test, A, b, bicgstab, M=M, maxiter=1000)
     _check_linear_solve(test, A, b, bicgstab, M=M, maxiter=1000, is_left_preconditioner=True)
 
+    A, b = _make_identity_system(n=5, seed=321, device=device, dtype=wp.float32)
+    _check_linear_solve(test, A, b, bicgstab, maxiter=30)
+
 
 def test_gmres(test, device):
     A, b = _make_nonsymmetric_system(n=64, seed=456, device=device, dtype=wp.float64)
@@ -127,14 +143,15 @@ def test_gmres(test, device):
     _check_linear_solve(test, A, b, gmres, M=M, maxiter=1000, tol=1.0e-5)
     _check_linear_solve(test, A, b, gmres, M=M, maxiter=1000, tol=1.0e-5, is_left_preconditioner=True)
 
+    A, b = _make_identity_system(n=5, seed=123, device=device, dtype=wp.float32)
+    _check_linear_solve(test, A, b, gmres, maxiter=120)
+
 
 class TestLinearSolvers(unittest.TestCase):
     pass
 
 
 devices = get_test_devices()
-
-from warp.context import runtime
 
 if not runtime.core.is_cutlass_enabled():
     devices = [d for d in devices if not d.is_cuda]

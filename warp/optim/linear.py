@@ -366,6 +366,7 @@ def bicgstab(
             device=device,
             inputs=[atol_sq, r_norm_sq, rho, r0v, x, r, y, v],
         )
+        array_inner(r, r, out=r_norm_sq)
 
         # z = M r
         if M is not None:
@@ -473,6 +474,8 @@ def gmres(
     device = A.device
     scalar_dtype = wp.types.type_scalar_type(A.dtype)
 
+    pivot_tolerance = _get_dtype_epsilon(scalar_dtype) ** 2
+
     beta_sq = wp.empty_like(r_norm_sq, pinned=False)
     H = wp.empty(shape=(restart + 1, restart), dtype=scalar_dtype, device=device)
 
@@ -546,7 +549,7 @@ def gmres(
             do_arnoldi_iteration(j)
 
         wp.launch(_gmres_normalize_lower_diagonal, dim=restart, device=device, inputs=[H])
-        wp.launch(_gmres_solve_least_squares, dim=1, device=device, inputs=[restart, beta_sq, H, y])
+        wp.launch(_gmres_solve_least_squares, dim=1, device=device, inputs=[restart, pivot_tolerance, beta_sq, H, y])
 
         # update x
         if M is None or is_left_preconditioner:
@@ -573,16 +576,19 @@ def gmres(
     )
 
 
-def _get_absolute_tolerance(dtype, tol, atol, lhs_norm):
+def _get_dtype_epsilon(dtype):
     if dtype == wp.float64:
-        default_tol = 1.0e-12
-        min_tol = 1.0e-36
+        return 1.0e-16
     elif dtype == wp.float16:
-        default_tol = 1.0e-3
-        min_tol = 1.0e-9
-    else:
-        default_tol = 1.0e-6
-        min_tol = 1.0e-18
+        return 1.0e-4
+
+    return 1.0e-8
+
+
+def _get_absolute_tolerance(dtype, tol, atol, lhs_norm):
+    eps_tol = _get_dtype_epsilon(dtype)
+    default_tol = eps_tol ** (3 / 4)
+    min_tol = eps_tol ** (9 / 4)
 
     if tol is None and atol is None:
         tol = atol = default_tol
@@ -844,7 +850,9 @@ def _gmres_normalize_lower_diagonal(H: wp.array2d(dtype=Any)):
 
 
 @wp.kernel
-def _gmres_solve_least_squares(k: int, beta_sq: wp.array(dtype=Any), H: wp.array2d(dtype=Any), y: wp.array(dtype=Any)):
+def _gmres_solve_least_squares(
+    k: int, pivot_tolerance: float, beta_sq: wp.array(dtype=Any), H: wp.array2d(dtype=Any), y: wp.array(dtype=Any)
+):
     # Solve H y = (beta, 0, ..., 0)
     # H Hessenberg matrix of shape (k+1, k)
 
@@ -857,6 +865,7 @@ def _gmres_solve_least_squares(k: int, beta_sq: wp.array(dtype=Any), H: wp.array
 
     # Apply 2x2 rotations to H so as to remove lower diagonal,
     # and apply similar rotations to right-hand-side
+    max_k = int(k)
     for i in range(k):
         Ha = H[i]
         Hb = H[i + 1]
@@ -864,7 +873,14 @@ def _gmres_solve_least_squares(k: int, beta_sq: wp.array(dtype=Any), H: wp.array
         # Givens rotation [[c s], [-s c]]
         a = Ha[i]
         b = Hb[i]
-        abn = wp.sqrt(a * a + b * b)
+        abn_sq = a * a + b * b
+
+        if abn_sq < type(abn_sq)(pivot_tolerance):
+            # Arnoldi iteration finished early
+            max_k = i
+            break
+
+        abn = wp.sqrt(abn_sq)
         c = a / abn
         s = b / abn
 
@@ -879,12 +895,15 @@ def _gmres_solve_least_squares(k: int, beta_sq: wp.array(dtype=Any), H: wp.array
         y[i] = c * rhs
         rhs = -s * rhs
 
+    for i in range(max_k, k):
+        y[i] = y.dtype(0.0)
+
     # Triangular back-solve for y
-    for ii in range(k, 0, -1):
+    for ii in range(max_k, 0, -1):
         i = ii - 1
         Hi = H[i]
         yi = y[i]
-        for j in range(ii, k):
+        for j in range(ii, max_k):
             yi -= Hi[j] * y[j]
         y[i] = yi / Hi[i]
 
@@ -906,7 +925,7 @@ def _gmres_arnoldi_normalize_kernel(
     alpha: wp.array(dtype=Any),
 ):
     tid = wp.tid()
-    y[tid] = x[tid] / wp.sqrt(alpha[0])
+    y[tid] = wp.select(alpha[0] == alpha.dtype(0.0), x[tid] / wp.sqrt(alpha[0]), x[tid])
 
 
 @wp.kernel
