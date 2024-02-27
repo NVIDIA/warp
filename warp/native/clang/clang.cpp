@@ -81,7 +81,7 @@ static void initialize_llvm()
     llvm::InitializeAllAsmPrinters();
 }
 
-static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, const char* cpp_src, const char* include_dir, bool debug, llvm::LLVMContext& context)
+static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, const char* cpp_src, const char* include_dir, bool debug, bool verify_fp, llvm::LLVMContext& context)
 {
     // Compilation arguments
     std::vector<const char*> args;
@@ -124,6 +124,11 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
     if(!debug)
     {
         compiler_instance.getPreprocessorOpts().addMacroDef("NDEBUG");
+    }
+
+    if(verify_fp)
+    {
+        compiler_instance.getPreprocessorOpts().addMacroDef("WP_VERIFY_FP");
     }
 
     compiler_instance.getLangOpts().MicrosoftExt = 1;  // __forceinline / __int64
@@ -201,12 +206,12 @@ static std::unique_ptr<llvm::Module> cuda_to_llvm(const std::string& input_file,
 
 extern "C" {
 
-WP_API int compile_cpp(const char* cpp_src, const char *input_file, const char* include_dir, const char* output_file, bool debug)
+WP_API int compile_cpp(const char* cpp_src, const char *input_file, const char* include_dir, const char* output_file, bool debug, bool verify_fp)
 {
     initialize_llvm();
 
     llvm::LLVMContext context;
-    std::unique_ptr<llvm::Module> module = cpp_to_llvm(input_file, cpp_src, include_dir, debug, context);
+    std::unique_ptr<llvm::Module> module = cpp_to_llvm(input_file, cpp_src, include_dir, debug, verify_fp, context);
 
     if(!module)
     {
