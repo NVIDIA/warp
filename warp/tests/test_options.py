@@ -110,7 +110,7 @@ def test_options_5(test, device):
     tape = wp.Tape()
 
     with tape:
-        wp.matmul(A, x, b, y, device=device)
+        wp.matmul(A, x, b, y)
         wp.launch(loss_kernel, dim=2, inputs=[y.flatten(), loss], device=device)
 
     tape.backward(loss)
@@ -134,7 +134,7 @@ def test_options_6(test, device):
     tape = wp.Tape()
 
     with tape:
-        wp.matmul(A, x, b, y, device=device)
+        wp.matmul(A, x, b, y)
         wp.launch(loss_kernel, dim=2, inputs=[y.flatten(), loss], device=device)
 
     tape.backward(loss)
