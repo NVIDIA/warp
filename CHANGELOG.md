@@ -41,7 +41,6 @@
 ## [0.13.1] - 2024-02-22
 
 - Ensure that the results from the `Noise Deform` are deterministic across different Kit sessions
->>>>>>> CHANGELOG.md
 
 ## [0.13.0] - 2024-02-16
 
