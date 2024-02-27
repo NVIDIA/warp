@@ -550,7 +550,7 @@ Transforms can be constructed inside kernels from translation and rotation parts
         # create a transform from a vector/quaternion:
         t = wp.transform(
                 wp.vec3(1.0, 2.0, 3.0),
-                wp.quat_from_axis_angle(0.0, 1.0, 0.0, wp.degrees(30.0)))
+                wp.quat_from_axis_angle(wp.vec3(0.0, 1.0, 0.0), wp.degrees(30.0)))
 
         # transform a point
         p = wp.transform_point(t, wp.vec3(10.0, 0.5, 1.0))
