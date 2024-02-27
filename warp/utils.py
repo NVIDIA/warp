@@ -730,11 +730,18 @@ def add_kernel_2d(x: wp.array2d(dtype=Any), acc: wp.array2d(dtype=Any), beta: An
 
     x[i,j] = x[i,j] + beta * acc[i,j]
 
+
 @wp.kernel
 def add_kernel_3d(x: wp.array3d(dtype=Any), acc: wp.array3d(dtype=Any), beta: Any):
     i, j, k = wp.tid()
 
     x[i,j,k] = x[i,j,k] + beta * acc[i,j,k]
+
+
+# explicit instantiations of generic kernels for adj_matmul
+for T in [wp.float16, wp.float32, wp.float64]:
+    wp.overload(add_kernel_2d, [wp.array2d(dtype=T), wp.array2d(dtype=T), T])
+    wp.overload(add_kernel_3d, [wp.array3d(dtype=T), wp.array3d(dtype=T), T])
 
 
 def check_iommu():

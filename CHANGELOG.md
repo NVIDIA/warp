@@ -27,6 +27,7 @@
 - Fix `wp.matmul()` to always use the correct CUDA context
 - Fix memory leak in BSR transpose
 - Fix stream synchronization issues when copying non-contiguous arrays
+- API change: `wp.matmul()` no longer accepts a device as a parameter; instead, it infers the correct device from the arrays being multiplied
 - Updated DLPack utilities to the latest published standard
   - External arrays can be imported into Warp directly, e.g., `wp.from_dlpack(external_array)`
   - Warp arrays can be exported to consumer frameworks directly, e.g., `jax.dlpack.from_dlpack(warp_array)`
@@ -40,6 +41,7 @@
 ## [0.13.1] - 2024-02-22
 
 - Ensure that the results from the `Noise Deform` are deterministic across different Kit sessions
+>>>>>>> CHANGELOG.md
 
 ## [0.13.0] - 2024-02-16
 

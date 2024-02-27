@@ -76,7 +76,7 @@ class gemm_test_bed_runner:
         if batch_count == 1:
             tape = wp.Tape()
             with tape:
-                wp.matmul(A, B, C, D, alpha, beta, False, self.device)
+                wp.matmul(A, B, C, D, alpha, beta, False)
             tape.backward(grads={D: ones})
 
             D_np = alpha * (A.numpy() @ B.numpy()) + beta * C.numpy()
@@ -89,7 +89,7 @@ class gemm_test_bed_runner:
         else:
             tape = wp.Tape()
             with tape:
-                wp.batched_matmul(A, B, C, D, alpha, beta, False, self.device)
+                wp.batched_matmul(A, B, C, D, alpha, beta, False)
             tape.backward(grads={D: ones})
 
             D_np = alpha * np.matmul(A.numpy(), B.numpy()) + beta * C.numpy()
@@ -196,9 +196,9 @@ class gemm_test_bed_runner_transpose:
             BTT2 = BT2.transpose([1, 0])
             tape = wp.Tape()
             with tape:
-                wp.matmul(A, BTT1, C1, D1, alpha, beta, False, self.device)
-                wp.matmul(ATT1, B, C2, D2, alpha, beta, False, self.device)
-                wp.matmul(ATT2, BTT2, C3, D3, alpha, beta, False, self.device)
+                wp.matmul(A, BTT1, C1, D1, alpha, beta, False)
+                wp.matmul(ATT1, B, C2, D2, alpha, beta, False)
+                wp.matmul(ATT2, BTT2, C3, D3, alpha, beta, False)
             tape.backward(grads={D1: ones1, D2: ones2, D3: ones3})
 
             D_np = alpha * (A.numpy() @ B.numpy()) + beta * C1.numpy()
@@ -217,9 +217,9 @@ class gemm_test_bed_runner_transpose:
             BTT2 = BT2.transpose([0, 2, 1])
             tape = wp.Tape()
             with tape:
-                wp.batched_matmul(A, BTT1, C1, D1, alpha, beta, False, self.device)
-                wp.batched_matmul(ATT1, B, C2, D2, alpha, beta, False, self.device)
-                wp.batched_matmul(ATT2, BTT2, C3, D3, alpha, beta, False, self.device)
+                wp.batched_matmul(A, BTT1, C1, D1, alpha, beta, False)
+                wp.batched_matmul(ATT1, B, C2, D2, alpha, beta, False)
+                wp.batched_matmul(ATT2, BTT2, C3, D3, alpha, beta, False)
             tape.backward(grads={D1: ones1, D2: ones2, D3: ones3})
 
             D_np = alpha * np.matmul(A.numpy(), B.numpy()) + beta * C1.numpy()
@@ -288,7 +288,7 @@ def test_tape(test, device):
     # test tape
     tape = wp.Tape()
     with tape:
-        wp.matmul(A, B, C, D, device=device)
+        wp.matmul(A, B, C, D)
         wp.launch(matrix_sum_kernel, dim=(m, n), inputs=[D, loss], device=device)
 
     tape.backward(loss=loss)
@@ -296,8 +296,8 @@ def test_tape(test, device):
     tape.reset()
 
     # test adjoint
-    D.grad = wp.array2d(np.ones((m, n)), dtype=float, device=device)
-    wp.adj_matmul(A, B, C, A.grad, B.grad, C.grad, D.grad, device=device)
+    D.grad = wp.ones((m, n), dtype=float, device=device)
+    wp.adj_matmul(A, B, C, A.grad, B.grad, C.grad, D.grad)
     assert_np_equal(A_grad, A.grad.numpy())
 
     # test zero
@@ -330,7 +330,7 @@ def test_operator(test, device):
     tape.backward(loss=loss)
 
     # test adjoint
-    D.grad = wp.array2d(np.ones((m, n)), dtype=float, device=device)
+    D.grad = wp.ones((m, n), dtype=float, device=device)
     B_transpose = wp.array2d(B.transpose().numpy(), dtype=float, device=device)
 
     adj_A = D.grad @ B_transpose
@@ -377,7 +377,7 @@ def test_large_batch_count(test, device):
 
     tape = wp.Tape()
     with tape:
-        wp.batched_matmul(A, B, C, D, alpha=alpha, beta=beta, allow_tf32x3_arith=False, device=device)
+        wp.batched_matmul(A, B, C, D, alpha=alpha, beta=beta, allow_tf32x3_arith=False)
     tape.backward(grads={D: ones})
 
     D_np = alpha * np.matmul(A.numpy(), B.numpy()) + beta * C.numpy()

@@ -2099,7 +2099,7 @@ class array(Array):
         n = other.shape[1]
         c = warp.zeros(shape=(m, n), dtype=self.dtype, device=self.device, requires_grad=True)
         d = warp.zeros(shape=(m, n), dtype=self.dtype, device=self.device, requires_grad=True)
-        matmul(self, other, c, d, device=self.device)
+        matmul(self, other, c, d)
         return d
 
     @property
@@ -3330,8 +3330,7 @@ def matmul(
     d: array2d,
     alpha: float = 1.0,
     beta: float = 0.0,
-    allow_tf32x3_arith: builtins.bool = False,
-    device=None,
+    allow_tf32x3_arith: builtins.bool = False
 ):
     """Computes a generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
 
@@ -3344,14 +3343,12 @@ def matmul(
         beta (float): parameter beta of GEMM
         allow_tf32x3_arith (bool): whether to use CUTLASS's 3xTF32 GEMMs, which enable accuracy similar to FP32
                                    while using Tensor Cores
-        device: device we want to use to multiply matrices. Defaults to active runtime device. If "cpu", resorts to using numpy multiplication.
     """
     from warp.context import runtime
 
-    if device is None:
-        device = runtime.get_device(device)
+    device = a.device
 
-    if a.device != device or b.device != device or c.device != device or d.device != device:
+    if b.device != device or c.device != device or d.device != device:
         raise RuntimeError("Matrices A, B, C, and D must all be on the same device as the runtime device.")
 
     if a.dtype != b.dtype or a.dtype != c.dtype or a.dtype != d.dtype:
@@ -3380,7 +3377,7 @@ def matmul(
     if runtime.tape:
         runtime.tape.record_func(
             backward=lambda: adj_matmul(
-                a, b, c, a.grad, b.grad, c.grad, d.grad, alpha, beta, allow_tf32x3_arith, device
+                a, b, c, a.grad, b.grad, c.grad, d.grad, alpha, beta, allow_tf32x3_arith
             ),
             arrays=[a, b, c, d],
         )
@@ -3423,8 +3420,7 @@ def adj_matmul(
     adj_d: array2d,
     alpha: float = 1.0,
     beta: float = 0.0,
-    allow_tf32x3_arith: builtins.bool = False,
-    device=None,
+    allow_tf32x3_arith: builtins.bool = False
 ):
     """Computes the adjoint of a generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
         note: the adjoint of parameter alpha is not included but can be computed as `adj_alpha = np.sum(np.concatenate(np.multiply(a @ b, adj_d)))`.
@@ -3442,16 +3438,13 @@ def adj_matmul(
         beta (float): parameter beta of GEMM
         allow_tf32x3_arith (bool): whether to use CUTLASS's 3xTF32 GEMMs, which enable accuracy similar to FP32
                                    while using Tensor Cores
-        device: device we want to use to multiply matrices. Defaults to active runtime device. If "cpu", resorts to using numpy multiplication.
     """
     from warp.context import runtime
 
-    if device is None:
-        device = runtime.get_device(device)
+    device = a.device
 
     if (
-        a.device != device
-        or b.device != device
+        b.device != device
         or c.device != device
         or adj_a.device != device
         or adj_b.device != device
@@ -3619,8 +3612,7 @@ def batched_matmul(
     d: array3d,
     alpha: float = 1.0,
     beta: float = 0.0,
-    allow_tf32x3_arith: builtins.bool = False,
-    device=None,
+    allow_tf32x3_arith: builtins.bool = False
 ):
     """Computes a batched generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
 
@@ -3633,14 +3625,12 @@ def batched_matmul(
         beta (float): parameter beta of GEMM
         allow_tf32x3_arith (bool): whether to use CUTLASS's 3xTF32 GEMMs, which enable accuracy similar to FP32
                                    while using Tensor Cores
-        device: device we want to use to multiply matrices. Defaults to active runtime device. If "cpu", resorts to using numpy multiplication.
     """
     from warp.context import runtime
 
-    if device is None:
-        device = runtime.get_device(device)
+    device = a.device
 
-    if a.device != device or b.device != device or c.device != device or d.device != device:
+    if b.device != device or c.device != device or d.device != device:
         raise RuntimeError("Matrices A, B, C, and D must all be on the same device as the runtime device.")
 
     if a.dtype != b.dtype or a.dtype != c.dtype or a.dtype != d.dtype:
@@ -3670,7 +3660,7 @@ def batched_matmul(
     if runtime.tape:
         runtime.tape.record_func(
             backward=lambda: adj_batched_matmul(
-                a, b, c, a.grad, b.grad, c.grad, d.grad, alpha, beta, allow_tf32x3_arith, device
+                a, b, c, a.grad, b.grad, c.grad, d.grad, alpha, beta, allow_tf32x3_arith
             ),
             arrays=[a, b, c, d],
         )
@@ -3743,8 +3733,7 @@ def adj_batched_matmul(
     adj_d: array3d,
     alpha: float = 1.0,
     beta: float = 0.0,
-    allow_tf32x3_arith: builtins.bool = False,
-    device=None,
+    allow_tf32x3_arith: builtins.bool = False
 ):
     """Computes a batched generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
 
@@ -3760,16 +3749,13 @@ def adj_batched_matmul(
         beta (float): parameter beta of GEMM
         allow_tf32x3_arith (bool): whether to use CUTLASS's 3xTF32 GEMMs, which enable accuracy similar to FP32
                                    while using Tensor Cores
-        device: device we want to use to multiply matrices. Defaults to active runtime device. If "cpu", resorts to using numpy multiplication.
     """
     from warp.context import runtime
 
-    if device is None:
-        device = runtime.get_device(device)
+    device = a.device
 
     if (
-        a.device != device
-        or b.device != device
+        b.device != device
         or c.device != device
         or adj_a.device != device
         or adj_b.device != device
@@ -4025,8 +4011,9 @@ def adj_batched_matmul(
         dim=adj_c.shape,
         inputs=[adj_c, adj_d, adj_d.dtype(beta)],
         device=device,
-        record_tape=False,
-    )
+        record_tape=False
+    )  
+
 
 
 class HashGrid:

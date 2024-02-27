@@ -10,6 +10,7 @@ import unittest
 import numpy as np
 
 import warp as wp
+from typing import Any
 from warp.tests.unittest_utils import *
 
 wp.init()
@@ -76,7 +77,7 @@ class gemm_test_bed_runner:
         if batch_count == 1:
             tape = wp.Tape()
             with tape:
-                wp.matmul(A, B, C, D, alpha, beta, False, self.device)
+                wp.matmul(A, B, C, D, alpha, beta, False)
             tape.backward(grads={D: ones})
 
             D_np = alpha * (A.numpy() @ B.numpy()) + beta * C.numpy()
@@ -89,7 +90,7 @@ class gemm_test_bed_runner:
         else:
             tape = wp.Tape()
             with tape:
-                wp.batched_matmul(A, B, C, D, alpha, beta, False, self.device)
+                wp.batched_matmul(A, B, C, D, alpha, beta, False)
             tape.backward(grads={D: ones})
 
             D_np = alpha * np.matmul(A.numpy(), B.numpy()) + beta * C.numpy()
@@ -196,9 +197,9 @@ class gemm_test_bed_runner_transpose:
             BTT2 = BT2.transpose([1, 0])
             tape = wp.Tape()
             with tape:
-                wp.matmul(A, BTT1, C1, D1, alpha, beta, False, self.device)
-                wp.matmul(ATT1, B, C2, D2, alpha, beta, False, self.device)
-                wp.matmul(ATT2, BTT2, C3, D3, alpha, beta, False, self.device)
+                wp.matmul(A, BTT1, C1, D1, alpha, beta, False)
+                wp.matmul(ATT1, B, C2, D2, alpha, beta, False)
+                wp.matmul(ATT2, BTT2, C3, D3, alpha, beta, False)
             tape.backward(grads={D1: ones1, D2: ones2, D3: ones3})
 
             D_np = alpha * (A.numpy() @ B.numpy()) + beta * C1.numpy()
@@ -217,9 +218,9 @@ class gemm_test_bed_runner_transpose:
             BTT2 = BT2.transpose([0, 2, 1])
             tape = wp.Tape()
             with tape:
-                wp.batched_matmul(A, BTT1, C1, D1, alpha, beta, False, self.device)
-                wp.batched_matmul(ATT1, B, C2, D2, alpha, beta, False, self.device)
-                wp.batched_matmul(ATT2, BTT2, C3, D3, alpha, beta, False, self.device)
+                wp.batched_matmul(A, BTT1, C1, D1, alpha, beta, False)
+                wp.batched_matmul(ATT1, B, C2, D2, alpha, beta, False)
+                wp.batched_matmul(ATT2, BTT2, C3, D3, alpha, beta, False)
             tape.backward(grads={D1: ones1, D2: ones2, D3: ones3})
 
             D_np = alpha * np.matmul(A.numpy(), B.numpy()) + beta * C1.numpy()
@@ -300,7 +301,7 @@ def test_tape(test, device):
     # test tape
     tape = wp.Tape()
     with tape:
-        wp.matmul(A, B, C, D, device=device)
+        wp.matmul(A, B, C, D)
         wp.launch(matrix_sum_kernel, dim=(m, n), inputs=[D, loss], device=device)
 
     tape.backward(loss=loss)
@@ -308,8 +309,8 @@ def test_tape(test, device):
     tape.reset()
 
     # test adjoint
-    D.grad = wp.array2d(np.ones((m, n)), dtype=float, device=device)
-    wp.adj_matmul(A, B, C, A.grad, B.grad, C.grad, D.grad, device=device)
+    D.grad = wp.ones((m, n), dtype=float, device=device)
+    wp.adj_matmul(A, B, C, A.grad, B.grad, C.grad, D.grad)
     assert_np_equal(A_grad, A.grad.numpy())
 
     # test zero
@@ -342,7 +343,7 @@ def test_operator(test, device):
     tape.backward(loss=loss)
 
     # test adjoint
-    D.grad = wp.array2d(np.ones((m, n)), dtype=float, device=device)
+    D.grad = wp.ones((m, n), dtype=float, device=device)
     B_transpose = wp.array2d(B.transpose().numpy(), dtype=float, device=device)
 
     adj_A = D.grad @ B_transpose
@@ -389,7 +390,7 @@ def test_large_batch_count(test, device):
 
     tape = wp.Tape()
     with tape:
-        wp.batched_matmul(A, B, C, D, alpha=alpha, beta=beta, allow_tf32x3_arith=False, device=device)
+        wp.batched_matmul(A, B, C, D, alpha=alpha, beta=beta, allow_tf32x3_arith=False)
     tape.backward(grads={D: ones})
 
     D_np = alpha * np.matmul(A.numpy(), B.numpy()) + beta * C.numpy()
@@ -420,8 +421,8 @@ def test_adjoint_accumulation(test, device):
     tape = wp.Tape()
 
     with tape:
-        wp.matmul(a_wp, b_wp, c_wp, d1_wp, alpha=1.0, beta=1.0, device=device)
-        wp.matmul(a_wp, b_wp, d1_wp, d2_wp, alpha=1.0, beta=1.0, device=device)
+        wp.matmul(a_wp, b_wp, c_wp, d1_wp, alpha=1.0, beta=1.0)
+        wp.matmul(a_wp, b_wp, d1_wp, d2_wp, alpha=1.0, beta=1.0)
 
     d_grad = wp.zeros_like(d2_wp, device=device)
     d_grad.fill_(1.0)
@@ -433,8 +434,51 @@ def test_adjoint_accumulation(test, device):
     assert np.array_equal(c_wp.grad.numpy(), np.ones(shape=(2, 2)))
 
 
-devices = get_test_devices()
+@unittest.skipUnless(runtime.core.is_cutlass_enabled(), "Warp was not built with CUTLASS support")
+def test_cuda_graph_capture(test, device):
+    @wp.kernel
+    def mat_sum(mat: wp.array2d(dtype=Any), loss: wp.array(dtype=Any)):
+        i, j = wp.tid()
+        e = mat[i,j]
+        wp.atomic_add(loss, 0, e)
+    
+    for T in [wp.float16, wp.float32, wp.float64]:
+        wp.overload(mat_sum, [wp.array2d(dtype=T), wp.array(dtype=T)])
 
+    wp.load_module(device=device)
+    wp.load_module(module="warp.utils", device=device)
+    
+    for T in [wp.float16, wp.float32, wp.float64]:
+        m = 5
+        n = 5
+        k = 5
+
+        A = wp.ones((m, n), dtype=T, device=device, requires_grad=True)
+        B = wp.ones((n, k), dtype=T, device=device, requires_grad=True)
+        C = wp.zeros((m, k), dtype=T, device=device, requires_grad=True)
+        D = wp.zeros((m, k), dtype=T, device=device, requires_grad=True)
+
+        loss = wp.zeros(1, dtype=T, device=device, requires_grad=True)
+
+        wp.capture_begin(device, force_module_load=False)
+        try:
+            tape = wp.Tape()
+
+            with tape:
+                wp.matmul(A, B, C, D)
+                wp.launch(mat_sum, dim=(m, k), inputs=[D, loss], device=device)
+
+            tape.backward(loss=loss)
+        finally:
+            graph = wp.capture_end(device)
+
+        wp.capture_launch(graph)
+
+        assert_np_equal(A.grad.numpy(), 5.0 * np.ones((m, n), dtype=T))
+
+
+devices = get_test_devices()
+cuda_devices = get_unique_cuda_test_devices()
 
 class TestMatmul(unittest.TestCase):
     pass
@@ -447,6 +491,7 @@ add_function_test(TestMatmul, "test_tape", test_tape, devices=devices)
 add_function_test(TestMatmul, "test_operator", test_operator, devices=devices)
 add_function_test(TestMatmul, "test_large_batch_count", test_large_batch_count, devices=devices)
 add_function_test(TestMatmul, "test_adjoint_accumulation", test_adjoint_accumulation, devices=devices)
+add_function_test(TestMatmul, "test_cuda_graph_capture", test_cuda_graph_capture, devices=cuda_devices)
 
 
 if __name__ == "__main__":
