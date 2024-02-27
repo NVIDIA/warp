@@ -354,6 +354,12 @@ inline CUDA_CALLABLE uint32 sign(uint32 x) { return 1; }
 inline CUDA_CALLABLE uint64 sign(uint64 x) { return 1; }
 
 
+// Catch-all for non-float types
+template<typename T>
+inline bool CUDA_CALLABLE isfinite(const T&)
+{
+    return true;
+}
 
 inline bool CUDA_CALLABLE isfinite(half x)
 {
@@ -366,6 +372,12 @@ inline bool CUDA_CALLABLE isfinite(float x)
 inline bool CUDA_CALLABLE isfinite(double x)
 {
     return ::isfinite(x);
+}
+
+template<typename T>
+inline CUDA_CALLABLE void print(const T&)
+{
+    printf("<type without print implementation>\n");
 }
 
 inline CUDA_CALLABLE void print(float16 f)
