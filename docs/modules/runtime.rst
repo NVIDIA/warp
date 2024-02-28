@@ -790,10 +790,9 @@ To record a series of kernel launches use the :func:`wp.capture_begin() <capture
         # end capture and return a graph object
         graph = wp.capture_end()
 
-We strongly recommend the use of the the try-finally pattern when capturing graphs because
-:func:`wp.capture_begin <capture_begin>` disables Python garbage collection so that Warp objects are not
-garbage-collected during graph capture (CUDA does not allow memory to be deallocated during graph capture).
-:func:`wp.capture_end <capture_end>` reenables garbage collection.
+We strongly recommend the use of the the try-finally pattern when capturing graphs because the `finally`
+statement will ensure :func:`wp.capture_end <capture_end>` gets called, even if an exception occurs during
+capture, which would otherwise trap the stream in a capturing state.
 
 Once a graph has been constructed it can be executed: ::
 
