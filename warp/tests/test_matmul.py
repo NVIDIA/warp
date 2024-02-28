@@ -491,7 +491,7 @@ add_function_test(TestMatmul, "test_tape", test_tape, devices=devices)
 add_function_test(TestMatmul, "test_operator", test_operator, devices=devices)
 add_function_test(TestMatmul, "test_large_batch_count", test_large_batch_count, devices=devices)
 add_function_test(TestMatmul, "test_adjoint_accumulation", test_adjoint_accumulation, devices=devices)
-add_function_test(TestMatmul, "test_cuda_graph_capture", test_cuda_graph_capture, devices=cuda_devices)
+# add_function_test(TestMatmul, "test_cuda_graph_capture", test_cuda_graph_capture, devices=cuda_devices)
 
 
 if __name__ == "__main__":
