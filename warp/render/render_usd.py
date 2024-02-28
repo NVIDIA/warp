@@ -104,24 +104,20 @@ class UsdRenderer:
         elif up_axis == "Z":
             UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.z)
 
-        # add default lights
-        light_0 = UsdLux.DistantLight.Define(stage, "/light_0")
-        light_0.GetPrim().CreateAttribute("intensity", Sdf.ValueTypeNames.Float, custom=False).Set(2500.0)
-        light_0.GetPrim().CreateAttribute("color", Sdf.ValueTypeNames.Color3f, custom=False).Set(
-            Gf.Vec3f(0.98, 0.85, 0.7)
-        )
+        dome_light = UsdLux.DomeLight.Define(stage, "/dome_light")
+        dome_light.AddRotateXYZOp().Set((-90.0, -30.0, 0.0))
+        dome_light.GetEnableColorTemperatureAttr().Set(True)
+        dome_light.GetColorTemperatureAttr().Set(6150.0)
+        dome_light.GetIntensityAttr().Set(1.0)
+        dome_light.GetExposureAttr().Set(9.0)
+        dome_light.GetPrim().CreateAttribute("visibleInPrimaryRay", Sdf.ValueTypeNames.Bool).Set(False)
 
-        UsdGeom.Xform(light_0.GetPrim()).AddRotateYOp().Set(value=(70.0))
-        UsdGeom.Xform(light_0.GetPrim()).AddRotateXOp().Set(value=(-45.0))
-
-        light_1 = UsdLux.DistantLight.Define(stage, "/light_1")
-        light_1.GetPrim().CreateAttribute("intensity", Sdf.ValueTypeNames.Float, custom=False).Set(2500.0)
-        light_1.GetPrim().CreateAttribute("color", Sdf.ValueTypeNames.Color3f, custom=False).Set(
-            Gf.Vec3f(0.62, 0.82, 0.98)
-        )
-
-        UsdGeom.Xform(light_1.GetPrim()).AddRotateYOp().Set(value=(-70.0))
-        UsdGeom.Xform(light_1.GetPrim()).AddRotateXOp().Set(value=(-45.0))
+        distant_light = UsdLux.DistantLight.Define(stage, "/distant_light")
+        distant_light.AddRotateXYZOp().Set((-35.0, 45.0, 0.0))
+        distant_light.GetEnableColorTemperatureAttr().Set(True)
+        distant_light.GetColorTemperatureAttr().Set(7250.0)
+        distant_light.GetIntensityAttr().Set(1.0)
+        distant_light.GetExposureAttr().Set(10.0)
 
     def begin_frame(self, time):
         self.time = round(time * self.fps)
