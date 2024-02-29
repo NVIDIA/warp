@@ -1,9 +1,18 @@
-"""
-This example computes a 2D weakly-compressible Stokes flow around a moving object, including:
-  - defining active cells from a mask, and restricting the computation domain to those
-  - utilizing the PicQuadrature to integrate over unstructured particles 
-"""
+# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+###########################################################################
+# Example Stokes Transfer
+#
+# This example computes a 2D weakly-compressible Stokes flow around
+# a moving object, including:
+# - defining active cells from a mask, and restricting the computation domain to those
+# - utilizing the PicQuadrature to integrate over unstructured particles 
+###########################################################################
 
 import math
 import warp as wp
@@ -23,6 +32,8 @@ try:
 except ImportError:
     from bsr_utils import bsr_cg
     from plot_utils import Plot
+
+wp.init()
 
 
 @fem.integrand
@@ -134,7 +145,7 @@ class Example:
 
         self.renderer = Plot(stage)
 
-    def update(self):
+    def step(self):
         u_space = self._u_field.space
         p_space = self._p_field.space
 
@@ -229,11 +240,10 @@ class Example:
 
 
 if __name__ == "__main__":
-    wp.init()
     wp.set_module_options({"enable_backward": False})
 
     example = Example()
-    example.update()
+    example.step()
     example.render()
 
     example.renderer.plot(streamlines=["velocity"])

@@ -20,7 +20,7 @@ import math
 import warp as wp
 import warp.sim
 
-from environment import Environment, run_env
+from .environment import Environment, run_env
 
 
 class AntEnvironment(Environment):

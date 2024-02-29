@@ -1,11 +1,20 @@
-"""
-This example solves a 2D Stokes flow problem
+# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-  -nu D(u) + grad p = 0
-  Div u = 0
-
-with (soft) velocity-Dirichlet boundary conditions
-"""
+###########################################################################
+# Example Stokes
+#
+# This example solves a 2D Stokes flow problem
+#
+# -nu D(u) + grad p = 0
+# Div u = 0
+# 
+# with (soft) velocity-Dirichlet boundary conditions
+###########################################################################
 
 import argparse
 
@@ -24,6 +33,8 @@ except ImportError:
     from plot_utils import Plot
     from bsr_utils import bsr_solve_saddle, SaddleSystem
     from mesh_utils import gen_trimesh, gen_quadmesh
+
+wp.init()
 
 
 @fem.integrand
@@ -117,7 +128,7 @@ class Example:
 
         self.renderer = Plot(stage)
 
-    def update(self):
+    def step(self):
         args = self._args
         u_space = self._u_field.space
         p_space = self._p_field.space
@@ -170,13 +181,12 @@ class Example:
 
 
 if __name__ == "__main__":
-    wp.init()
     wp.set_module_options({"enable_backward": False})
 
     args = Example.parser.parse_args()
 
     example = Example(args=args)
-    example.update()
+    example.step()
     example.render()
 
     example.renderer.plot()

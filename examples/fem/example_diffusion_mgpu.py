@@ -1,6 +1,16 @@
-"""
-This example illustrates using domain decomposition to solve a diffusion PDE over multiple devices
-"""
+# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+###########################################################################
+# Example Diffusion MGPU
+#
+# This example illustrates using domain decomposition to
+# solve a diffusion PDE over multiple devices
+###########################################################################
 
 from typing import Tuple
 
@@ -19,6 +29,8 @@ except ImportError:
     from bsr_utils import bsr_cg
     from example_diffusion import diffusion_form, linear_form
     from plot_utils import Plot
+
+wp.init()
 
 
 @fem.integrand
@@ -109,7 +121,7 @@ class Example:
 
         self.renderer = Plot(stage)
 
-    def update(self):
+    def step(self):
         devices = wp.get_cuda_devices()
         main_device = self._main_device
 
@@ -193,11 +205,10 @@ class Example:
 
 
 if __name__ == "__main__":
-    wp.init()
     wp.set_module_options({"enable_backward": False})
 
     example = Example()
-    example.update()
+    example.step()
     example.render()
 
     example.renderer.plot()

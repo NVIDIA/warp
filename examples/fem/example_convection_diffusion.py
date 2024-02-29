@@ -1,12 +1,20 @@
-"""
-This example simulates a convection-diffusion PDE using semi-Lagrangian advection
+# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
 
- D phi / dt - nu d2 phi / dx^2 = 0
-
-"""
+###########################################################################
+# Example Convection Diffusion
+#
+# This example simulates a convection-diffusion PDE using
+# semi-Lagrangian advection
+#
+# D phi / dt - nu d2 phi / dx^2 = 0
+###########################################################################
 
 import argparse
-
 
 import warp as wp
 import warp.fem as fem
@@ -21,6 +29,8 @@ except ImportError:
     from bsr_utils import bsr_cg
     from mesh_utils import gen_trimesh
     from plot_utils import Plot
+
+wp.init()
 
 
 @fem.integrand
@@ -124,7 +134,7 @@ class Example:
         self.renderer = Plot(stage)
         self.renderer.add_surface("phi", self._phi_field)
 
-    def update(self):
+    def step(self):
         self.current_frame += 1
 
         # right-hand-side -- advected inertia
@@ -145,7 +155,6 @@ class Example:
 
 
 if __name__ == "__main__":
-    wp.init()
     wp.set_module_options({"enable_backward": False})
 
     args = Example.parser.parse_args()
@@ -153,7 +162,7 @@ if __name__ == "__main__":
     example = Example(args=args)
     for k in range(args.num_frames):
         print(f"Frame {k}:")
-        example.update()
+        example.step()
         example.render()
 
     example.renderer.plot()

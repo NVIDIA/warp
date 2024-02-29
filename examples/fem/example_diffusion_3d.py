@@ -1,8 +1,20 @@
-"""
-This example solves a 3d diffusion problem:
- nu Div u = 1
-with homogeneous Neumann conditions on horizontal sides and homogeneous Dirichlet boundary conditions other sides.
-"""
+# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+###########################################################################
+# Example Diffusion 3D
+#
+# This example solves a 3d diffusion problem:
+# 
+# nu Div u = 1
+#
+# with homogeneous Neumann conditions on horizontal sides
+# and homogeneous Dirichlet boundary conditions other sides.
+###########################################################################
 
 import argparse
 
@@ -23,6 +35,8 @@ except ImportError:
     from bsr_utils import bsr_cg
     from mesh_utils import gen_tetmesh, gen_hexmesh
     from plot_utils import Plot
+
+wp.init()
 
 
 @fem.integrand
@@ -86,7 +100,7 @@ class Example:
 
         self.renderer = Plot(stage)
 
-    def update(self):
+    def step(self):
         args = self._args
         geo = self._geo
 
@@ -127,13 +141,12 @@ class Example:
 
 
 if __name__ == "__main__":
-    wp.init()
     wp.set_module_options({"enable_backward": False})
 
     args = Example.parser.parse_args()
 
     example = Example(args=args)
-    example.update()
+    example.step()
     example.render()
 
     example.renderer.plot()

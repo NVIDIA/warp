@@ -1,12 +1,21 @@
-"""
-This example solves a 2D Navier-Stokes flow problem
+# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-  Du/dt -nu D(u) + grad p = 0
-  Div u = 0
-
-with (hard) velocity-Dirichlet boundary conditions
-and using semi-Lagrangian advection
-"""
+###########################################################################
+# Example Navier Stokes
+#
+# This example solves a 2D Navier-Stokes flow problem:
+#
+# Du/dt -nu D(u) + grad p = 0
+# Div u = 0
+#
+# with (hard) velocity-Dirichlet boundary conditions
+# and using semi-Lagrangian advection
+###########################################################################
 
 import argparse
 
@@ -25,6 +34,8 @@ except ImportError:
     from bsr_utils import bsr_solve_saddle, SaddleSystem
     from plot_utils import Plot
     from mesh_utils import gen_trimesh
+
+wp.init()
 
 
 @fem.integrand
@@ -176,7 +187,7 @@ class Example:
         self.renderer = Plot(stage)
         self.renderer.add_surface_vector("velocity", self._u_field)
 
-    def update(self):
+    def step(self):
         self.current_frame += 1
 
         u_rhs = fem.integrate(
@@ -218,7 +229,6 @@ class Example:
 
 
 if __name__ == "__main__":
-    wp.init()
     wp.set_module_options({"enable_backward": False})
 
     args = Example.parser.parse_args()
@@ -226,7 +236,7 @@ if __name__ == "__main__":
     example = Example(args=args)
     for k in range(args.num_frames):
         print(f"Frame {k}:")
-        example.update()
+        example.step()
         example.render()
 
     example.renderer.add_surface_vector("velocity_final", example._u_field)

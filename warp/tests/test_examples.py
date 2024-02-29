@@ -82,7 +82,7 @@ def add_example_test(cls, name, devices=None, options={}):
                 wp.ScopedTimer.enabled = False
 
                 for _ in range(num_frames):
-                    e.update()
+                    e.step()
                     e.render()
         except Exception as e:
             test.fail(f"{e}")

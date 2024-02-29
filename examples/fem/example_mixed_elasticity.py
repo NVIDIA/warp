@@ -1,7 +1,22 @@
-""" This example illustrates using Mixed FEM to solve a 2D linear elasticity problem
- Div[ E: D(u) ] = 0
-with Dirichlet boundary conditions on horizontal sides, and E the elasticity rank-4 tensor
-"""
+# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+###########################################################################
+# Example Mixed Elasticity
+#
+# This example illustrates using Mixed FEM to solve a
+# 2D linear elasticity problem:
+#
+# Div[ E: D(u) ] = 0
+# 
+# with Dirichlet boundary conditions on horizontal sides,
+# and E the elasticity rank-4 tensor
+###########################################################################
+
 import argparse
 
 import warp as wp
@@ -19,6 +34,8 @@ except ImportError:
     from plot_utils import Plot
     from bsr_utils import bsr_cg, invert_diagonal_bsr_mass_matrix
     from mesh_utils import gen_trimesh, gen_quadmesh
+
+wp.init()
 
 
 @wp.func
@@ -144,7 +161,7 @@ class Example:
 
         self.renderer = Plot(stage)
 
-    def update(self):
+    def step(self):
         boundary = fem.BoundarySides(self._geo)
         domain = fem.Cells(geometry=self._geo)
 
@@ -194,13 +211,12 @@ class Example:
 
 
 if __name__ == "__main__":
-    wp.init()
     wp.set_module_options({"enable_backward": False})
 
     args = Example.parser.parse_args()
 
     example = Example(args=args)
-    example.update()
+    example.step()
     example.render()
 
     example.renderer.plot()

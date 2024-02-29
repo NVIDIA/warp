@@ -1,3 +1,16 @@
+# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+###########################################################################
+# Example APIC Fluid Simulation
+#
+# Shows how to implement a apic fluid simulation.
+###########################################################################
+
 import os
 
 import warp as wp
@@ -13,11 +26,12 @@ from warp.fem import Field, Sample, Domain
 
 from warp.sparse import bsr_mv, bsr_copy, bsr_mm, bsr_transposed, bsr_zeros, BsrMatrix
 
-
 try:
     from .bsr_utils import bsr_cg
 except ImportError:
     from bsr_utils import bsr_cg
+
+wp.init()
 
 
 @integrand
@@ -252,7 +266,7 @@ class Example:
         except Exception as err:
             print(f"Could not initialize SimRenderer for stage '{stage}': {err}.")
 
-    def update(self):
+    def step(self):
         fem.set_default_temporary_store(self.temporary_store)
 
         self.current_frame = self.current_frame + 1
@@ -365,14 +379,13 @@ class Example:
 
 if __name__ == "__main__":
     wp.set_module_options({"enable_backward": False})
-    wp.init()
 
-    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_apic.usd")
+    stage_path = os.path.join(os.path.dirname(__file__), "example_apic_fluid.usd")
 
     example = Example(stage_path)
 
     for i in range(example.num_frames):
-        example.update()
+        example.step()
         example.render()
 
     example.renderer.save()

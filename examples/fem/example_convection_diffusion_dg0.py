@@ -1,10 +1,19 @@
-"""
-This example simulates a convection-diffusion PDE using FVM with upwind transport
+# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
 
- D phi / dt + nu Div f = 0
- f = grad phi
-
-"""
+###########################################################################
+# Example Convection Diffusion DG0
+#
+# This example simulates a convection-diffusion PDE using 
+# FVM with upwind transport
+#
+# D phi / dt + nu Div f = 0
+# f = grad phi
+###########################################################################
 
 import argparse
 
@@ -13,6 +22,7 @@ import warp.fem as fem
 
 from warp.sparse import bsr_mm, bsr_axpy, bsr_transposed
 
+wp.init()
 
 # Import example utilities
 # Make sure that works both when imported as module and run as standalone file
@@ -150,7 +160,7 @@ class Example:
         self.renderer = Plot(stage)
         self.renderer.add_surface("phi", self._phi_field)
 
-    def update(self):
+    def step(self):
         self.current_frame += 1
 
         rhs = fem.integrate(
@@ -171,7 +181,6 @@ class Example:
 
 
 if __name__ == "__main__":
-    wp.init()
     wp.set_module_options({"enable_backward": False})
 
     args = Example.parser.parse_args()
@@ -179,7 +188,7 @@ if __name__ == "__main__":
     example = Example(args=args)
     for k in range(args.num_frames):
         print(f"Frame {k}:")
-        example.update()
+        example.step()
         example.render()
 
     example.renderer.plot()
