@@ -108,7 +108,7 @@ struct CaptureInfo
 
 struct StreamInfo
 {
-    CUevent last_event = NULL;  // event used for synchronization between streams
+    CUevent cached_event = NULL;  // event used for stream synchronization (cached to avoid creating temporary events)
     CaptureInfo* capture = NULL;  // capture info (only if started on this stream)
 };
 
@@ -1906,9 +1906,9 @@ void cuda_context_set_stream(void* context, void* stream, int sync)
             StreamInfo* old_stream_info = get_stream_info(old_stream);
             if (old_stream_info)
             {
-                CUevent last_event = old_stream_info->last_event;
-                check_cu(cuEventRecord_f(last_event, old_stream));
-                check_cu(cuStreamWaitEvent_f(new_stream, last_event, CU_EVENT_WAIT_DEFAULT));
+                CUevent cached_event = old_stream_info->cached_event;
+                check_cu(cuEventRecord_f(cached_event, old_stream));
+                check_cu(cuStreamWaitEvent_f(new_stream, cached_event, CU_EVENT_WAIT_DEFAULT));
             }
         }
 
@@ -2160,7 +2160,7 @@ void cuda_stream_register(void* context, void* stream)
 
     // populate stream info
     StreamInfo& stream_info = g_streams[static_cast<CUstream>(stream)];
-    check_cu(cuEventCreate_f(&stream_info.last_event, CU_EVENT_DISABLE_TIMING));
+    check_cu(cuEventCreate_f(&stream_info.cached_event, CU_EVENT_DISABLE_TIMING));
 }
 
 void cuda_stream_unregister(void* context, void* stream)
@@ -2174,7 +2174,7 @@ void cuda_stream_unregister(void* context, void* stream)
     if (stream_info)
     {
         // release stream info
-        check_cu(cuEventDestroy_f(stream_info->last_event));
+        check_cu(cuEventDestroy_f(stream_info->cached_event));
         g_streams.erase(cuda_stream);
     }
 
