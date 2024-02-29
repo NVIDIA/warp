@@ -168,6 +168,7 @@ Additionally, arrays can be copied directly between memory spaces: ::
 .. autoclass:: array
     :members:
     :undoc-members:
+    :exclude-members: vars
 
 Multi-dimensional Arrays
 ########################
