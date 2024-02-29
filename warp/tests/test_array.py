@@ -248,6 +248,17 @@ def test_shape(test, device):
         wp.launch(f4, dim=1, inputs=[a4], device=device)
 
 
+def test_negative_shape(test, device):
+    with test.assertRaisesRegex(ValueError, "Array shapes must be non-negative"):
+        _ = wp.zeros(shape=-1, dtype=int, device=device)
+
+    with test.assertRaisesRegex(ValueError, "Array shapes must be non-negative"):
+        _ = wp.zeros(shape=-(2**32), dtype=int, device=device)
+
+    with test.assertRaisesRegex(ValueError, "Array shapes must be non-negative"):
+        _ = wp.zeros(shape=(10, -1), dtype=int, device=device)
+
+
 @wp.kernel
 def sum_array(arr: wp.array(dtype=float), loss: wp.array(dtype=float)):
     tid = wp.tid()
@@ -2264,6 +2275,7 @@ class TestArray(unittest.TestCase):
 
 
 add_function_test(TestArray, "test_shape", test_shape, devices=devices)
+add_function_test(TestArray, "test_negative_shape", test_negative_shape, devices=devices)
 add_function_test(TestArray, "test_flatten", test_flatten, devices=devices)
 add_function_test(TestArray, "test_reshape", test_reshape, devices=devices)
 add_function_test(TestArray, "test_slicing", test_slicing, devices=devices)

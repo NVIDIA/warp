@@ -81,8 +81,8 @@ def test_large_arrays_slow(test, device):
     # without changes to support how frequently a test may be run
     total_elements = 2**31 + 8
 
-    # 1-D to 4-D arrays: test zero_, fill_, then zero_ for scalar data types:
-    for total_dims in range(1, 5):
+    # 2-D to 4-D arrays: test zero_, fill_, then zero_ for scalar data types:
+    for total_dims in range(2, 5):
         dim_x = math.ceil(total_elements ** (1 / total_dims))
         shape_tuple = tuple([dim_x] * total_dims)
 
@@ -99,19 +99,40 @@ def test_large_arrays_slow(test, device):
 
 def test_large_arrays_fast(test, device):
     # A truncated version of test_large_arrays_slow meant to catch basic errors
-    total_elements = 2**31 + 8
+
+    # Make is so that a (dim_x, dim_x) array has more than 2**31 elements
+    dim_x = math.ceil(math.sqrt(2**31))
 
     nptype = np.dtype(np.int8)
     wptype = wp.types.np_dtype_to_warp_type[nptype]
 
-    a1 = wp.zeros((total_elements,), dtype=wptype, device=device)
-    assert_np_equal(a1.numpy(), np.zeros_like(a1.numpy()))
-
+    a1 = wp.zeros((dim_x, dim_x), dtype=wptype, device=device)
     a1.fill_(127)
+
     assert_np_equal(a1.numpy(), 127 * np.ones_like(a1.numpy()))
 
     a1.zero_()
     assert_np_equal(a1.numpy(), np.zeros_like(a1.numpy()))
+
+
+def test_large_array_excessive_zeros(test, device):
+    # Tests the allocation of an array with length exceeding 2**31-1 in a dimension
+
+    with test.assertRaisesRegex(
+        ValueError, "Array shapes must not exceed the maximum representable value of a signed 32-bit integer"
+    ):
+        _ = wp.zeros((2**31), dtype=int, device=device)
+
+
+def test_large_array_excessive_numpy(test, device):
+    # Tests the allocation of an array from a numpy array with length exceeding 2**31-1 in a dimension
+
+    large_np_array = np.empty((2**31), dtype=int)
+
+    with test.assertRaisesRegex(
+        ValueError, "Array shapes must not exceed the maximum representable value of a signed 32-bit integer"
+    ):
+        _ = wp.array(large_np_array, device=device)
 
 
 devices = get_test_devices()
@@ -134,6 +155,8 @@ add_function_test(
 )
 
 add_function_test(TestLarge, "test_large_arrays_fast", test_large_arrays_fast, devices=devices)
+add_function_test(TestLarge, "test_large_array_excessive_zeros", test_large_array_excessive_zeros, devices=devices)
+add_function_test(TestLarge, "test_large_array_excessive_numpy", test_large_array_excessive_numpy, devices=devices)
 
 
 if __name__ == "__main__":

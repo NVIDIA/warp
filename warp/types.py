@@ -1480,6 +1480,17 @@ def strides_from_shape(shape: Tuple, dtype):
     return tuple(strides)
 
 
+def check_array_shape(shape: Tuple):
+    """Checks that the size in each dimension is positive and less than 2^32."""
+
+    for dim_index, dim_size in enumerate(shape):
+        if dim_size < 0:
+            raise ValueError(f"Array shapes must be non-negative, got {dim_size} in dimension {dim_index}")
+        if dim_size >= 2**31:
+            raise ValueError("Array shapes must not exceed the maximum representable value of a signed 32-bit integer, "
+                            f"got {dim_size} in dimension {dim_index}.")
+
+
 class array(Array):
     # member attributes available during code-gen (e.g.: d = array.shape[0])
     # (initialized when needed)
@@ -1736,6 +1747,7 @@ class array(Array):
             warp.context.assert_initialized()
             raise
 
+        check_array_shape(shape)
         ndim = len(shape)
         dtype_size = type_size_in_bytes(dtype)
 
@@ -1782,6 +1794,7 @@ class array(Array):
             warp.context.assert_initialized()
             raise
 
+        check_array_shape(shape)
         ndim = len(shape)
         dtype_size = type_size_in_bytes(dtype)
 
