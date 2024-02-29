@@ -114,7 +114,7 @@ class Example:
             extent=[min_x, max_x, min_y, max_y],
             origin="lower",
             interpolation="bicubic",
-            cmap="RdBu",
+            cmap="coolwarm",
         )
         plt.contour(
             X,

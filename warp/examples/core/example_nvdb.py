@@ -151,7 +151,7 @@ class Example:
                 rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), math.pi),
                 scale=wp.vec3(1.0, 1.0, 1.0),
             )
-            self.renderer.render_points(name="points", points=self.positions.numpy(), radius=self.sim_margin)
+            self.renderer.render_points(name="points", points=self.positions.numpy(), radius=self.sim_margin, colors=((0.8, 0.3, 0.2),) * len(self.positions))
 
             self.renderer.end_frame()
 

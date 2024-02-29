@@ -681,11 +681,10 @@ class UsdRenderer:
 
                 instancer = UsdGeom.Points.Define(self.stage, instancer_path)
 
-                instancer.CreatePrimvar("displayColor", Sdf.ValueTypeNames.Float3Array, "vertex", 1)
                 if radius_is_scalar:
-                    instancer.GetWidthsAttr().Set([radius] * len(points))
+                    instancer.GetWidthsAttr().Set([radius * 2.0] * len(points))
                 else:
-                    instancer.GetWidthsAttr().Set(radius)
+                    instancer.GetWidthsAttr().Set(radius * 2.0)
 
         if colors is None:
             instancer.GetPositionsAttr().Set(points, self.time)

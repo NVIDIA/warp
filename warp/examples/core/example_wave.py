@@ -225,12 +225,13 @@ class Example:
             vertices = self.sim_verts.numpy()
 
             self.renderer.begin_frame(self.sim_time)
-            self.renderer.render_mesh("surface", vertices, self.indices)
+            self.renderer.render_mesh("surface", vertices, self.indices, colors=((0.35, 0.55, 0.9),) * len(vertices))
             self.renderer.render_sphere(
                 "sphere",
                 (self.cx * self.grid_size, 0.0, self.cy * self.grid_size),
                 (0.0, 0.0, 0.0, 1.0),
                 10.0 * self.grid_size,
+                color=(1.0, 1.0, 1.0),
             )
             self.renderer.end_frame()
 

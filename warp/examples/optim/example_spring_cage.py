@@ -203,6 +203,7 @@ class Example:
             pos=self.target_pos,
             rot=wp.quat_identity(),
             extents=(0.1, 0.1, 0.1),
+            color=(1.0, 0.0, 0.0),
         )
         self.renderer.end_frame()
 

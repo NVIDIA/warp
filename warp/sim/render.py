@@ -291,7 +291,7 @@ def CreateSimRenderer(renderer):
                 particle_q = state.particle_q.numpy()
 
                 # render particles
-                self.render_points("particles", particle_q, radius=self.model.particle_radius.numpy())
+                self.render_points("particles", particle_q, radius=self.model.particle_radius.numpy(), colors=((0.8, 0.3, 0.2),) * len(particle_q))
 
                 # render tris
                 if self.model.tri_count:
@@ -304,7 +304,7 @@ def CreateSimRenderer(renderer):
 
                 # render springs
                 if self.model.spring_count:
-                    self.render_line_list("springs", particle_q, self.model.spring_indices.numpy().flatten(), [], 0.05)
+                    self.render_line_list("springs", particle_q, self.model.spring_indices.numpy().flatten(), (0.25, 0.5, 0.25), 0.02)
 
             # render muscles
             if self.model.muscle_count:

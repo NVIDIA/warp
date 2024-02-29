@@ -178,7 +178,7 @@ class Example:
                 self.renderer.begin_frame(self.render_time)
                 self.renderer.render(self.states[i])
                 self.renderer.render_box(
-                    pos=self.target, rot=wp.quat_identity(), extents=(0.1, 0.1, 0.1), name="target"
+                    pos=self.target, rot=wp.quat_identity(), extents=(0.1, 0.1, 0.1), name="target", color=(1.0, 0.0, 0.0),
                 )
                 self.renderer.render_line_strip(
                     vertices=traj_verts,
