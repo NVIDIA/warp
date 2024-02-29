@@ -1509,7 +1509,7 @@ class array(Array):
         pinned=False,
         copy=True,
         owner=False,  # deprecated - pass deleter instead
-        deleter = None,
+        deleter=None,
         ndim=None,
         grad=None,
         requires_grad=False,
@@ -1604,7 +1604,7 @@ class array(Array):
                 self._requires_grad = requires_grad
                 if requires_grad:
                     self._alloc_grad()
-            
+
     def _init_from_data(self, data, dtype, shape, device, copy, pinned):
         if not hasattr(data, "__len__"):
             raise RuntimeError(f"Data must be a sequence or array, got scalar {data}")
@@ -1932,7 +1932,7 @@ class array(Array):
         if self.device.is_cuda and stream != -1:
             if not isinstance(stream, int):
                 raise TypeError("DLPack stream must be an integer or None")
-            
+
             # assume that the array is being used on its device's current stream
             array_stream = self.device.stream
 
@@ -1944,9 +1944,9 @@ class array(Array):
 
             # Performance note: avoid wrapping the external stream in a temporary Stream object
             if external_stream != array_stream.cuda_stream:
-                warp.context.runtime.core.cuda_stream_wait_stream(external_stream,
-                                                                  array_stream.cuda_stream,
-                                                                  array_stream.last_event.cuda_event)
+                warp.context.runtime.core.cuda_stream_wait_stream(
+                    external_stream, array_stream.cuda_stream, array_stream.last_event.cuda_event
+                )
 
         return warp.dlpack.to_dlpack(self)
 
@@ -1955,7 +1955,7 @@ class array(Array):
 
         if self.device is None:
             raise RuntimeError("Array has no device assigned")
-        
+
         if self.device.is_cuda:
             return (warp.dlpack.DLDeviceType.kDLCUDA, self.device.ordinal)
         elif self.pinned:
@@ -2820,7 +2820,7 @@ class Bvh:
             )
 
     def __del__(self):
-        
+
         if not self.id:
             return
 
@@ -2966,7 +2966,7 @@ class Volume:
             raise RuntimeError("Failed to create volume from input array")
 
     def __del__(self):
-    
+
         if not self.id:
             return
 
@@ -3343,7 +3343,7 @@ def matmul(
     d: array2d,
     alpha: float = 1.0,
     beta: float = 0.0,
-    allow_tf32x3_arith: builtins.bool = False
+    allow_tf32x3_arith: builtins.bool = False,
 ):
     """Computes a generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
 
@@ -3389,9 +3389,7 @@ def matmul(
 
     if runtime.tape:
         runtime.tape.record_func(
-            backward=lambda: adj_matmul(
-                a, b, c, a.grad, b.grad, c.grad, d.grad, alpha, beta, allow_tf32x3_arith
-            ),
+            backward=lambda: adj_matmul(a, b, c, a.grad, b.grad, c.grad, d.grad, alpha, beta, allow_tf32x3_arith),
             arrays=[a, b, c, d],
         )
 
@@ -3433,7 +3431,7 @@ def adj_matmul(
     adj_d: array2d,
     alpha: float = 1.0,
     beta: float = 0.0,
-    allow_tf32x3_arith: builtins.bool = False
+    allow_tf32x3_arith: builtins.bool = False,
 ):
     """Computes the adjoint of a generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
         note: the adjoint of parameter alpha is not included but can be computed as `adj_alpha = np.sum(np.concatenate(np.multiply(a @ b, adj_d)))`.
@@ -3625,7 +3623,7 @@ def batched_matmul(
     d: array3d,
     alpha: float = 1.0,
     beta: float = 0.0,
-    allow_tf32x3_arith: builtins.bool = False
+    allow_tf32x3_arith: builtins.bool = False,
 ):
     """Computes a batched generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
 
@@ -3746,7 +3744,7 @@ def adj_batched_matmul(
     adj_d: array3d,
     alpha: float = 1.0,
     beta: float = 0.0,
-    allow_tf32x3_arith: builtins.bool = False
+    allow_tf32x3_arith: builtins.bool = False,
 ):
     """Computes a batched generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
 
@@ -4024,9 +4022,8 @@ def adj_batched_matmul(
         dim=adj_c.shape,
         inputs=[adj_c, adj_d, adj_d.dtype(beta)],
         device=device,
-        record_tape=False
-    )  
-
+        record_tape=False,
+    )
 
 
 class HashGrid:
@@ -4071,9 +4068,13 @@ class HashGrid:
         """
 
         if self.device.is_cpu:
-            self.runtime.core.hash_grid_update_host(self.id, radius, ctypes.cast(points.ptr, ctypes.c_void_p), len(points))
+            self.runtime.core.hash_grid_update_host(
+                self.id, radius, ctypes.cast(points.ptr, ctypes.c_void_p), len(points)
+            )
         else:
-            self.runtime.core.hash_grid_update_device(self.id, radius, ctypes.cast(points.ptr, ctypes.c_void_p), len(points))
+            self.runtime.core.hash_grid_update_device(
+                self.id, radius, ctypes.cast(points.ptr, ctypes.c_void_p), len(points)
+            )
         self.reserved = True
 
     def reserve(self, num_points):
