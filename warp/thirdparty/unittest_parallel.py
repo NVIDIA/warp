@@ -53,7 +53,16 @@ def main(argv=None):
     """
 
     # Command line arguments
-    parser = argparse.ArgumentParser(prog="unittest-parallel")
+    parser = argparse.ArgumentParser(
+        prog="unittest-parallel",
+        # NVIDIA Modifications follow:
+        formatter_class=argparse.RawTextHelpFormatter,
+        epilog="""Example usage:
+        python -m warp.tests -s autodetect -p 'test_a*.py'
+        python -m warp.tests -s kit
+        python -m warp.tests -k 'mgpu' -k 'cuda'
+        """,
+    )
     # parser.add_argument("-v", "--verbose", action="store_const", const=2, default=1, help="Verbose output")
     parser.add_argument("-q", "--quiet", dest="verbose", action="store_const", const=0, default=2, help="Quiet output")
     parser.add_argument("-f", "--failfast", action="store_true", default=False, help="Stop on first fail or error")
