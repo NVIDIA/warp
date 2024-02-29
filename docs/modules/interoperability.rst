@@ -115,6 +115,109 @@ Here, we revisit the same example from above where now only a single conversion 
         wp.launch(loss, dim=len(xs), inputs=[xs], outputs=[l], device=xs.device)
         print(f"{i}\tloss: {l.numpy()[0]}")
 
+Example: Optimization using ``torch.autograd.function``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+One can insert Warp kernel launches in a PyTorch graph by defining a ``torch.autograd.function`` class, which
+requires forward and backward functions to be defined. After mapping incoming torch arrays to Warp arrays, a Warp kernel
+may be launched in the usual way. In the backward pass, the same kernel's adjoint may be launched by 
+setting ``adjoint = True`` in :func:`wp.launch() <launch>`. Alternatively, the user may choose to rely on Warp's tape.
+In the following example, we demonstrate how Warp may be used to evaluate the Rosenbrock function in an optimization context::
+    
+    import warp as wp
+    import numpy as np
+    import torch
+
+    wp.init()
+
+    pvec2 = wp.types.vector(length=2, dtype=wp.float32)
+
+    # Define the Rosenbrock function
+    @wp.func
+    def rosenbrock(x: float, y: float):
+        return (1.0 - x) ** 2.0 + 100.0 * (y - x**2.0) ** 2.0
+
+    @wp.kernel
+    def eval_rosenbrock(
+        xs: wp.array(dtype=pvec2),
+        # outputs
+        z: wp.array(dtype=float),
+    ):
+        i = wp.tid()
+        x = xs[i]
+        z[i] = rosenbrock(x[0], x[1])
+
+
+    class Rosenbrock(torch.autograd.Function):
+        @staticmethod
+        def forward(ctx, xy, num_points):
+            # ensure Torch operations complete before running Warp
+            wp.synchronize_device()
+
+            ctx.xy = wp.from_torch(xy, dtype=pvec2, requires_grad=True)
+            ctx.num_points = num_points
+
+            # allocate output
+            ctx.z = wp.zeros(num_points, requires_grad=True)
+
+            wp.launch(
+                kernel=eval_rosenbrock,
+                dim=ctx.num_points,
+                inputs=[ctx.xy],
+                outputs=[ctx.z]
+            )
+
+            # ensure Warp operations complete before returning data to Torch
+            wp.synchronize_device()
+
+            return wp.to_torch(ctx.z)
+
+        @staticmethod
+        def backward(ctx, adj_z):
+            # ensure Torch operations complete before running Warp
+            wp.synchronize_device()
+
+            # map incoming Torch grads to our output variables
+            ctx.z.grad = wp.from_torch(adj_z)
+
+            wp.launch(
+                kernel=eval_rosenbrock,
+                dim=ctx.num_points,
+                inputs=[ctx.xy],
+                outputs=[ctx.z],
+                adj_inputs=[ctx.xy.grad],
+                adj_outputs=[ctx.z.grad],
+                adjoint=True
+            )
+
+            # ensure Warp operations complete before returning data to Torch
+            wp.synchronize_device()
+
+            # return adjoint w.r.t. inputs
+            return (wp.to_torch(ctx.xy.grad), None)
+
+
+    num_points = 1500
+    learning_rate = 5e-2
+
+    torch_device = wp.device_to_torch(wp.get_device())
+
+    rng = np.random.default_rng(42)
+    xy = torch.tensor(rng.normal(size=(num_points, 2)), dtype=torch.float32, requires_grad=True, device=torch_device)
+    opt = torch.optim.Adam([xy], lr=learning_rate)
+
+    for _ in range(10000):
+        # step
+        opt.zero_grad()
+        z = Rosenbrock.apply(xy, num_points)
+        z.backward(torch.ones_like(z))
+
+        opt.step()
+
+    # minimum at (1, 1)
+    xy_np = xy.numpy(force=True)
+    print(np.mean(xy_np, axis=0))
+
 .. automodule:: warp.torch
     :members:
     :undoc-members:
