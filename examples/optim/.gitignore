@@ -1,0 +1,4 @@
+*.usd
+*.png
+*.gif
+!.gitignore

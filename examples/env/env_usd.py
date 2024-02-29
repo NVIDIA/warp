@@ -15,7 +15,7 @@
 import warp as wp
 import warp.sim
 
-from environment import Environment, run_env
+from .environment import Environment, run_env
 
 
 class UsdEnvironment(Environment):
