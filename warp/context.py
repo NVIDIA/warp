@@ -1836,6 +1836,9 @@ class Stream:
         self.cuda_stream = None
         self.owner = False
 
+        # event used internally for synchronization (cached to avoid creating temporary events)
+        self._cached_event = None
+
         # we can't use get_device() if called during init, but we can use an explicit Device arg
         if runtime is not None:
             device = runtime.get_device(device)
@@ -1859,9 +1862,6 @@ class Stream:
                 raise RuntimeError(f"Failed to create stream on device {device}")
             self.owner = True
 
-        # event used for synchronization (to avoid creating temporary events)
-        self.last_event = Event(self.device)
-
     def __del__(self):
         if not self.cuda_stream:
             return
@@ -1870,6 +1870,12 @@ class Stream:
             runtime.core.cuda_stream_destroy(self.device.context, self.cuda_stream)
         else:
             runtime.core.cuda_stream_unregister(self.device.context, self.cuda_stream)
+
+    @property
+    def cached_event(self):
+        if self._cached_event is None:
+            self._cached_event = Event(self.device)
+        return self._cached_event
 
     def record_event(self, event=None):
         if event is None:
@@ -1888,7 +1894,7 @@ class Stream:
 
     def wait_stream(self, other_stream, event=None):
         if event is None:
-            event = other_stream.last_event
+            event = other_stream.cached_event
 
         runtime.core.cuda_stream_wait_stream(self.cuda_stream, other_stream.cuda_stream, event.cuda_event)
 

@@ -1945,7 +1945,7 @@ class array(Array):
             # Performance note: avoid wrapping the external stream in a temporary Stream object
             if external_stream != array_stream.cuda_stream:
                 warp.context.runtime.core.cuda_stream_wait_stream(
-                    external_stream, array_stream.cuda_stream, array_stream.last_event.cuda_event
+                    external_stream, array_stream.cuda_stream, array_stream.cached_event.cuda_event
                 )
 
         return warp.dlpack.to_dlpack(self)
