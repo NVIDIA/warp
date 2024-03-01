@@ -14,12 +14,10 @@
 ###########################################################################
 
 import os
-from typing import (
-    Optional,
-    Tuple,
-)
+from typing import Optional, Tuple
 
 import numpy as np
+
 import warp as wp
 import warp.optim
 import warp.sim
@@ -32,7 +30,6 @@ from warp.sim.collide import (
     plane_sdf,
     sphere_sdf,
 )
-
 
 wp.init()
 
@@ -453,7 +450,7 @@ class Drone:
 class Example:
     def __init__(
         self,
-        stage_path: Optional[str] = None,
+        stage: Optional[str] = None,
         drone_path: Optional[str] = None,
         enable_rendering: bool = True,
         render_rollouts: bool = True,
@@ -489,8 +486,7 @@ class Example:
         )
 
         # Define the index of the active target.
-        # We start with -1 since it'll be incremented on the first frame.
-        self.target_idx = -1
+        self.target_idx = 0
 
         # Number of steps to run at each frame for the optimisation pass.
         self.optim_step_count = 20
@@ -553,12 +549,15 @@ class Example:
             import warp.sim.render
 
             # Helper to render the physics scene as a USD file.
-            self.renderer = wp.sim.render.SimRenderer(self.drone.model, stage_path, fps=self.fps)
+            self.renderer = wp.sim.render.SimRenderer(self.drone.model, stage, fps=self.fps)
 
             # Remove the default drone geometries.
             drone_root_prim = self.renderer.stage.GetPrimAtPath("/root/body_0_drone_0")
             for prim in drone_root_prim.GetChildren():
                 self.renderer.stage.RemovePrim(prim.GetPath())
+
+            if drone_path is None:
+                drone_path = os.path.join(os.path.dirname(__file__), "..", "assets", "crazyflie.usd")
 
             # Add a reference to the drone geometry.
             drone_prim = self.renderer.stage.OverridePrim(f"{drone_root_prim.GetPath()}/crazyflie")
@@ -790,7 +789,11 @@ class Example:
         # Render the rollout trajectories.
         if self.render_rollouts:
             costs = self.rollout_costs.numpy()
-            positions = np.fromiter((x.body_q.numpy()[:, :3] for x in self.rollouts.states), dtype=(float, (16, 3)))
+
+            # The following won't work on NumPy < 1.24
+            # positions = np.fromiter((x.body_q.numpy()[:, :3] for x in self.rollouts.states), dtype=(float, (16, 3)))
+            positions = np.stack([x.body_q.numpy()[:, :3] for x in self.rollouts.states], axis=0)
+
             min_cost = np.min(costs)
             max_cost = np.max(costs)
             for i in range(self.rollout_count):
@@ -805,16 +808,18 @@ class Example:
 
         self.renderer.end_frame()
 
+        self.frame += 1
+
 
 if __name__ == "__main__":
     this_dir = os.path.realpath(os.path.dirname(__file__))
     this_file = os.path.basename(__file__).split(".")[0]
     stage_path = os.path.join(this_dir, "outputs", f"{this_file}.usda")
-    drone_path = os.path.join(this_dir, "assets", "crazyflie.usd")
+    drone_path = os.path.join(this_dir, "..", "assets", "crazyflie.usd")
 
     example = Example(stage_path, drone_path, verbose=True)
     for i in range(example.frame_count):
-        if i % int((example.frame_count / len(example.targets))) == 0:
+        if i > 0 and i % int((example.frame_count / len(example.targets))) == 0:
             example.target_idx += 1
 
             # Force recapturing the CUDA graph for the optimisation pass
@@ -827,8 +832,6 @@ if __name__ == "__main__":
         if example.verbose:
             loss = np.min(example.rollout_costs.numpy())
             print(f"[{example.frame:3d}] loss={loss:.8f}")
-
-        example.frame += 1
 
     if example.renderer is not None:
         example.renderer.save()

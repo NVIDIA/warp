@@ -28,7 +28,7 @@ def add_example_test(cls, name, devices=None, options={}):
         test_options = options.copy()
 
         try:
-            module = importlib.import_module(f"examples.{name}")
+            module = importlib.import_module(f"warp.examples.{name}")
 
             torch_cuda_required = test_options.setdefault("torch_cuda_required", False)
             test_options.pop("torch_cuda_required", None)
@@ -64,31 +64,32 @@ def add_example_test(cls, name, devices=None, options={}):
         # Don't want to force load all modules by default for serial test runner
         wp.config.enable_graph_capture_module_load_by_default = False
 
-        try:
-            enable_backward = test_options.get("enable_backward", True)
-            wp.set_module_options({"enable_backward": enable_backward}, module)
-            test_options.pop("enable_backward", None)
+        with wp.ScopedTimer(f"{name}_{sanitize_identifier(device)}"):
+            try:
+                enable_backward = test_options.get("enable_backward", True)
+                wp.set_module_options({"enable_backward": enable_backward}, module)
+                test_options.pop("enable_backward", None)
 
-            with wp.ScopedDevice(device):
-                wp.load_module(module, device=wp.get_device())
-                extra_load_modules = test_options.get("load_modules", [])
-                for module_name in extra_load_modules:
-                    wp.load_module(module_name, device=wp.get_device())
-                test_options.pop("load_modules", None)
+                with wp.ScopedDevice(device):
+                    wp.load_module(module, device=wp.get_device())
+                    extra_load_modules = test_options.get("load_modules", [])
+                    for module_name in extra_load_modules:
+                        wp.load_module(module_name, device=wp.get_device())
+                    test_options.pop("load_modules", None)
 
-                e = module.Example(**test_options)
+                    e = module.Example(**test_options)
 
-                # disable scoped timer to avoid log spam from time steps
-                wp.ScopedTimer.enabled = False
+                    # disable scoped timer to avoid log spam from time steps
+                    wp.ScopedTimer.enabled = False
 
-                for _ in range(num_frames):
-                    e.step()
-                    e.render()
-        except Exception as e:
-            test.fail(f"{e}")
-        finally:
-            wp.ScopedTimer.enabled = True
-            wp.config.enable_graph_capture_module_load_by_default = True
+                    for _ in range(num_frames):
+                        e.step()
+                        e.render()
+            except Exception as e:
+                test.fail(f"{e}")
+            finally:
+                wp.ScopedTimer.enabled = True
+                wp.config.enable_graph_capture_module_load_by_default = True
 
     from warp.tests.unittest_utils import add_function_test
 
@@ -111,18 +112,16 @@ class TestExamples(unittest.TestCase):
 # Exclude unless we can run headless somehow
 # add_example_test(TestExamples, name="example_render_opengl", options={})
 
-add_example_test(TestExamples, name="example_dem", devices=cuda_test_devices)
-add_example_test(TestExamples, name="example_diffray", devices=cuda_test_devices)
-add_example_test(TestExamples, name="example_fluid", devices=cuda_test_devices)
-add_example_test(TestExamples, name="example_jacobian_ik", devices=cuda_test_devices)
-add_example_test(TestExamples, name="example_marching_cubes", devices=cuda_test_devices)
-add_example_test(TestExamples, name="example_mesh", devices=cuda_test_devices)
-add_example_test(TestExamples, name="example_mesh_intersect", devices=cuda_test_devices, options={"num_frames": 1})
-add_example_test(TestExamples, name="example_nvdb", devices=cuda_test_devices)
-add_example_test(TestExamples, name="example_raycast", devices=cuda_test_devices)
-add_example_test(TestExamples, name="example_raymarch", devices=cuda_test_devices)
-add_example_test(TestExamples, name="example_sph", devices=cuda_test_devices)
-add_example_test(TestExamples, name="example_wave", devices=cuda_test_devices, options={"resx": 256, "resy": 256})
+add_example_test(TestExamples, name="core.example_dem", devices=cuda_test_devices)
+add_example_test(TestExamples, name="core.example_fluid", devices=cuda_test_devices)
+add_example_test(TestExamples, name="core.example_marching_cubes", devices=cuda_test_devices)
+add_example_test(TestExamples, name="core.example_mesh", devices=cuda_test_devices)
+add_example_test(TestExamples, name="core.example_mesh_intersect", devices=cuda_test_devices, options={"num_frames": 1})
+add_example_test(TestExamples, name="core.example_nvdb", devices=cuda_test_devices)
+add_example_test(TestExamples, name="core.example_raycast", devices=cuda_test_devices)
+add_example_test(TestExamples, name="core.example_raymarch", devices=cuda_test_devices)
+add_example_test(TestExamples, name="core.example_sph", devices=cuda_test_devices)
+add_example_test(TestExamples, name="core.example_wave", devices=cuda_test_devices)
 
 
 class TestSimExamples(unittest.TestCase):
@@ -131,67 +130,82 @@ class TestSimExamples(unittest.TestCase):
 
 add_example_test(
     TestSimExamples,
-    name="example_sim_cartpole",
+    name="optim.example_bounce",
+    devices=cuda_test_devices,
+    options={"load_modules": ["warp.sim.integrator_euler", "warp.sim.particles"]},
+)
+add_example_test(
+    TestSimExamples,
+    name="sim.example_cartpole",
     devices=cuda_test_devices,
     options={"load_modules": ["warp.sim.collide", "warp.sim.integrator_euler", "warp.sim.articulation"]},
 )
 add_example_test(
     TestSimExamples,
-    name="example_sim_cloth",
+    name="sim.example_cloth",
     devices=cuda_test_devices,
     options={"load_modules": ["warp.sim.collide", "warp.sim.integrator_euler", "warp.sim.particles"]},
 )
-add_example_test(TestSimExamples, name="example_sim_fk_grad", devices=cuda_test_devices)
-add_example_test(
-    TestSimExamples, name="example_sim_fk_grad_torch", devices=cuda_test_devices, options={"torch_cuda_required": True}
-)
 add_example_test(
     TestSimExamples,
-    name="example_sim_grad_bounce",
+    name="optim.example_cloth_throw",
     devices=cuda_test_devices,
     options={"load_modules": ["warp.sim.integrator_euler", "warp.sim.particles"]},
 )
+add_example_test(TestSimExamples, name="optim.example_diffray", devices=cuda_test_devices)
+add_example_test(TestSimExamples, name="optim.example_drone", devices=cuda_test_devices, options={"num_frames": 1})
+add_example_test(TestSimExamples, name="sim.example_granular", devices=cuda_test_devices)
+add_example_test(TestSimExamples, name="sim.example_granular_collision_sdf", devices=cuda_test_devices)
+add_example_test(TestSimExamples, name="optim.example_inverse_kinematics", devices=cuda_test_devices)
 add_example_test(
     TestSimExamples,
-    name="example_sim_grad_cloth",
+    name="optim.example_inverse_kinematics_torch",
     devices=cuda_test_devices,
-    options={"load_modules": ["warp.sim.integrator_euler", "warp.sim.particles"]},
+    options={"torch_cuda_required": True},
 )
-add_example_test(TestSimExamples, name="example_sim_granular", devices=cuda_test_devices)
-add_example_test(TestSimExamples, name="example_sim_granular_collision_sdf", devices=cuda_test_devices)
-add_example_test(TestSimExamples, name="example_sim_neo_hookean", devices=cuda_test_devices)
-add_example_test(TestSimExamples, name="example_sim_particle_chain", devices=cuda_test_devices)
+add_example_test(TestExamples, name="sim.example_jacobian_ik", devices=cuda_test_devices)
 add_example_test(
     TestSimExamples,
-    name="example_sim_quadruped",
+    name="sim.example_particle_chain",
+    devices=cuda_test_devices,
+    options={"load_modules": ["warp.sim.integrator_xpbd"]},
+)
+add_example_test(
+    TestSimExamples,
+    name="sim.example_quadruped",
     devices=cuda_test_devices,
     options={"load_modules": ["warp.sim.integrator_xpbd", "warp.sim.integrator_euler"]},
 )
 add_example_test(
     TestSimExamples,
-    name="example_sim_rigid_chain",
+    name="sim.example_rigid_chain",
     devices=cuda_test_devices,
     options={"load_modules": ["warp.sim.integrator_xpbd", "warp.sim.integrator_euler"]},
 )
 add_example_test(
     TestSimExamples,
-    name="example_sim_rigid_contact",
+    name="sim.example_rigid_contact",
     devices=cuda_test_devices,
     options={"load_modules": ["warp.sim.integrator_euler"]},
 )
-add_example_test(TestSimExamples, name="example_sim_rigid_fem", devices=cuda_test_devices)
-add_example_test(TestSimExamples, name="example_sim_rigid_force", devices=cuda_test_devices)
-add_example_test(TestSimExamples, name="example_sim_rigid_gyroscopic", devices=cuda_test_devices)
-add_example_test(TestSimExamples, name="example_sim_rigid_kinematics", devices=cuda_test_devices)
-add_example_test(TestSimExamples, name="example_sim_trajopt", devices=cuda_test_devices)
+add_example_test(TestSimExamples, name="sim.example_rigid_soft_contact", devices=cuda_test_devices)
+add_example_test(TestSimExamples, name="sim.example_rigid_force", devices=cuda_test_devices)
+add_example_test(TestSimExamples, name="sim.example_rigid_gyroscopic", devices=cuda_test_devices)
+add_example_test(TestSimExamples, name="sim.example_soft_body", devices=cuda_test_devices)
+add_example_test(TestSimExamples, name="optim.example_spring_cage", devices=cuda_test_devices)
+add_example_test(TestSimExamples, name="optim.example_trajectory", devices=cuda_test_devices)
 
 
 class TestFemExamples(unittest.TestCase):
     pass
 
 
+class TestFemDiffusionExamples(unittest.TestCase):
+    pass
+
+
 add_example_test(
-    TestFemExamples,
+    TestFemDiffusionExamples,
     name="fem.example_diffusion_mgpu",
     devices=cuda_test_devices,
     options={"quiet": True, "num_frames": 1, "enable_backward": False},
@@ -205,13 +219,13 @@ add_example_test(
     options={"quiet": True, "res": [16, 16, 16], "enable_backward": False},
 )
 add_example_test(
-    TestFemExamples,
+    TestFemDiffusionExamples,
     name="fem.example_diffusion",
     devices=test_devices,
     options={"quiet": True, "resolution": 10, "mesh": "tri", "num_frames": 1, "enable_backward": False},
 )
 add_example_test(
-    TestFemExamples,
+    TestFemDiffusionExamples,
     name="fem.example_diffusion_3d",
     devices=test_devices,
     options={"quiet": True, "resolution": 10, "num_frames": 1, "enable_backward": False},
@@ -229,13 +243,13 @@ add_example_test(
     options={"quiet": True, "resolution": 20, "enable_backward": False},
 )
 add_example_test(
-    TestExamples,
+    TestFemExamples,
     name="fem.example_convection_diffusion_dg0",
     devices=test_devices,
     options={"quiet": True, "resolution": 20, "num_frames": 25, "mesh": "quad", "enable_backward": False},
 )
 add_example_test(
-    TestExamples,
+    TestFemExamples,
     name="fem.example_convection_diffusion_dg",
     devices=test_devices,
     options={"quiet": True, "resolution": 20, "num_frames": 25, "mesh": "tri", "enable_backward": False},
@@ -253,7 +267,7 @@ add_example_test(
     options={"quiet": True, "num_frames": 1, "enable_backward": False},
 )
 add_example_test(
-    TestExamples,
+    TestFemExamples,
     name="fem.example_stokes",
     devices=test_devices,
     options={
@@ -265,7 +279,7 @@ add_example_test(
     },
 )
 add_example_test(
-    TestExamples,
+    TestFemExamples,
     name="fem.example_navier_stokes",
     devices=test_devices,
     options={"quiet": True, "num_frames": 100, "resolution": 10, "tri_mesh": True, "enable_backward": False},
