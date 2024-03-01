@@ -12,6 +12,8 @@ from warp.tests.unittest_utils import *
 
 wp.init()
 
+from warp.context import runtime  # noqa: E402
+
 
 @wp.kernel
 def scale(
@@ -93,6 +95,7 @@ def test_options_4(test, device):
     assert_np_equal(tape.gradients[x].numpy(), np.array(0.0))
 
 
+@unittest.skipUnless(runtime.core.is_cutlass_enabled(), "Warp was not built with CUTLASS support")
 def test_options_5(test, device):
     wp.set_module_options({"enable_backward": True})
 
@@ -117,6 +120,7 @@ def test_options_5(test, device):
     assert_np_equal(x.grad.numpy(), np.array([[2.0], [2.0]]))
 
 
+@unittest.skipUnless(runtime.core.is_cutlass_enabled(), "Warp was not built with CUTLASS support")
 def test_options_6(test, device):
     wp.set_module_options({"enable_backward": False})
 

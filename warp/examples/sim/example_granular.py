@@ -70,7 +70,7 @@ class Example:
         if self.use_graph:
             wp.capture_begin()
             self.simulate()
-            self.graph = wp.capture_end()     
+            self.graph = wp.capture_end()
 
     def simulate(self):
         for _ in range(self.sim_substeps):
@@ -91,9 +91,9 @@ class Example:
         self.sim_time += self.frame_dt
 
     def render(self):
-        if example.renderer is None:
+        if self.renderer is None:
             return
-        
+
         with wp.ScopedTimer("render", active=True):
             self.renderer.begin_frame(self.sim_time)
             self.renderer.render(self.state_0)
