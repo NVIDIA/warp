@@ -449,9 +449,9 @@ def test_cuda_graph_capture(test, device):
     wp.load_module(module="warp.utils", device=device)
     
     for T in [wp.float16, wp.float32, wp.float64]:
-        m = 5
-        n = 5
-        k = 5
+        m = 8
+        n = 8
+        k = 8
 
         A = wp.ones((m, n), dtype=T, device=device, requires_grad=True)
         B = wp.ones((n, k), dtype=T, device=device, requires_grad=True)
@@ -474,7 +474,7 @@ def test_cuda_graph_capture(test, device):
 
         wp.capture_launch(graph)
 
-        assert_np_equal(A.grad.numpy(), 5.0 * np.ones((m, n), dtype=T))
+        assert_np_equal(A.grad.numpy(), 8.0 * np.ones((m, n), dtype=T))
 
 
 devices = get_test_devices()
@@ -491,7 +491,7 @@ add_function_test(TestMatmul, "test_tape", test_tape, devices=devices)
 add_function_test(TestMatmul, "test_operator", test_operator, devices=devices)
 add_function_test(TestMatmul, "test_large_batch_count", test_large_batch_count, devices=devices)
 add_function_test(TestMatmul, "test_adjoint_accumulation", test_adjoint_accumulation, devices=devices)
-# add_function_test(TestMatmul, "test_cuda_graph_capture", test_cuda_graph_capture, devices=cuda_devices)
+add_function_test(TestMatmul, "test_cuda_graph_capture", test_cuda_graph_capture, devices=cuda_devices)
 
 
 if __name__ == "__main__":
