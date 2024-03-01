@@ -2486,6 +2486,7 @@ Instances: {len(self._instances)}"""
         parent_body: str = None,
         is_template: bool = False,
         up_axis: int = 1,
+        color: tuple = None,
     ):
         """Add a capsule for visualization
 
@@ -2495,6 +2496,7 @@ Instances: {len(self._instances)}"""
             half_height: The half height of the capsule
             name: A name for the USD prim on the stage
             up_axis: The axis of the capsule that points up (0: x, 1: y, 2: z)
+            color: The color of the capsule
         """
         geo_hash = hash(("capsule", radius, half_height))
         if geo_hash in self._shape_geo_hash:
@@ -2503,7 +2505,7 @@ Instances: {len(self._instances)}"""
                 return shape
         else:
             vertices, indices = self._create_capsule_mesh(radius, half_height, up_axis=up_axis)
-            shape = self.register_shape(geo_hash, vertices, indices)
+            shape = self.register_shape(geo_hash, vertices, indices, color1=color, color2=color)
         if not is_template:
             body = self._resolve_body_id(parent_body)
             self.add_shape_instance(name, shape, body, pos, rot)
@@ -2519,6 +2521,7 @@ Instances: {len(self._instances)}"""
         parent_body: str = None,
         is_template: bool = False,
         up_axis: int = 1,
+        color: tuple = None,
     ):
         """Add a cylinder for visualization
 
@@ -2528,6 +2531,7 @@ Instances: {len(self._instances)}"""
             half_height: The half height of the cylinder
             name: A name for the USD prim on the stage
             up_axis: The axis of the cylinder that points up (0: x, 1: y, 2: z)
+            color: The color of the capsule
         """
         geo_hash = hash(("cylinder", radius, half_height))
         if geo_hash in self._shape_geo_hash:
@@ -2536,7 +2540,7 @@ Instances: {len(self._instances)}"""
                 return shape
         else:
             vertices, indices = self._create_cylinder_mesh(radius, half_height, up_axis=up_axis)
-            shape = self.register_shape(geo_hash, vertices, indices)
+            shape = self.register_shape(geo_hash, vertices, indices, color1=color, color2=color)
         if not is_template:
             body = self._resolve_body_id(parent_body)
             self.add_shape_instance(name, shape, body, pos, rot)
@@ -2552,6 +2556,7 @@ Instances: {len(self._instances)}"""
         parent_body: str = None,
         is_template: bool = False,
         up_axis: int = 1,
+        color: tuple = None,
     ):
         """Add a cone for visualization
 
@@ -2561,6 +2566,7 @@ Instances: {len(self._instances)}"""
             half_height: The half height of the cone
             name: A name for the USD prim on the stage
             up_axis: The axis of the cone that points up (0: x, 1: y, 2: z)
+            color: The color of the cone
         """
         geo_hash = hash(("cone", radius, half_height))
         if geo_hash in self._shape_geo_hash:
@@ -2569,14 +2575,14 @@ Instances: {len(self._instances)}"""
                 return shape
         else:
             vertices, indices = self._create_cone_mesh(radius, half_height, up_axis=up_axis)
-            shape = self.register_shape(geo_hash, vertices, indices)
+            shape = self.register_shape(geo_hash, vertices, indices, color1=color, color2=color)
         if not is_template:
             body = self._resolve_body_id(parent_body)
             self.add_shape_instance(name, shape, body, pos, rot)
         return shape
 
     def render_box(
-        self, name: str, pos: tuple, rot: tuple, extents: tuple, parent_body: str = None, is_template: bool = False
+        self, name: str, pos: tuple, rot: tuple, extents: tuple, parent_body: str = None, is_template: bool = False, color: tuple = None
     ):
         """Add a box for visualization
 
@@ -2584,6 +2590,7 @@ Instances: {len(self._instances)}"""
             pos: The position of the box
             extents: The extents of the box
             name: A name for the USD prim on the stage
+            color: The color of the box
         """
         geo_hash = hash(("box", tuple(extents)))
         if geo_hash in self._shape_geo_hash:
@@ -2592,7 +2599,7 @@ Instances: {len(self._instances)}"""
                 return shape
         else:
             vertices, indices = self._create_box_mesh(extents)
-            shape = self.register_shape(geo_hash, vertices, indices)
+            shape = self.register_shape(geo_hash, vertices, indices, color1=color, color2=color)
         if not is_template:
             body = self._resolve_body_id(parent_body)
             self.add_shape_instance(name, shape, body, pos, rot)
