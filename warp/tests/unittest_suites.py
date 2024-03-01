@@ -150,6 +150,7 @@ def default_suite(test_loader: unittest.TestLoader):
     from warp.tests.test_reload import TestReload
     from warp.tests.test_rounding import TestRounding
     from warp.tests.test_runlength_encode import TestRunlengthEncode
+    from warp.tests.test_sim_kinematics import TestSimKinematics
     from warp.tests.test_smoothstep import TestSmoothstep
     from warp.tests.test_snippet import TestSnippets
     from warp.tests.test_sparse import TestSparse
@@ -234,6 +235,7 @@ def default_suite(test_loader: unittest.TestLoader):
         TestReload,
         TestRounding,
         TestRunlengthEncode,
+        TestSimKinematics,
         TestSmoothstep,
         TestSparse,
         TestSnippets,

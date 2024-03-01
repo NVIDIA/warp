@@ -75,7 +75,7 @@ The typical steps for solving a linear PDE are as follow:
  - Solve the resulting linear system using the solver of your choice
 
 
-The following excerpt from the introductory example ``examples/fem/example_diffusion.py`` outlines this procedure: ::
+The following excerpt from the introductory example ``warp/examples/fem/example_diffusion.py`` outlines this procedure: ::
 
     # Grid geometry
     geo = Grid2D(n=50, cell_size=2)
@@ -114,7 +114,7 @@ The following excerpt from the introductory example ``examples/fem/example_diffu
 Introductory examples
 ---------------------
 
-``warp.fem`` ships with a list of examples in the ``examples/fem`` directory illustrating common model problems.
+``warp.fem`` ships with a list of examples in the ``warp/examples/fem`` directory illustrating common model problems.
 
  - ``example_diffusion.py``: 2D diffusion with homogeneous Neumann and Dirichlet boundary conditions
      * ``example_diffusion_3d.py``: 3D variant of the diffusion problem
@@ -167,7 +167,7 @@ Partitioning
 
 The FEM toolkit makes it possible to perform integration on a subset of the domain elements, 
 possibly re-indexing degrees of freedom so that the linear system contains the local ones only.
-This is useful for distributed computation (see ``examples/fem/example_diffusion_mgpu.py``), or simply to limit the simulation domain to a subset of active cells (see ``examples/fem/example_stokes_transfer.py``).
+This is useful for distributed computation (see ``warp/examples/fem/example_diffusion_mgpu.py``), or simply to limit the simulation domain to a subset of active cells (see ``warp/examples/fem/example_stokes_transfer.py``).
 
 A partition of the simulation geometry can be defined using subclasses of :class:`.GeometryPartition`
 such as :class:`.LinearGeometryPartition`  or :class:`.ExplicitGeometryPartition`.

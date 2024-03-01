@@ -6,7 +6,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 ###########################################################################
-# Example Diff Sim Drone
+# Example Drone
 #
 # A drone and its 4 propellers is simulated with the goal of reaching
 # different targets by finding the best trajectory at each point in time.
