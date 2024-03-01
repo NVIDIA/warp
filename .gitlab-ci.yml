@@ -179,9 +179,9 @@ flake8:
     - python -m pip install --upgrade pip
     - pip install flake8 flake8-gl-codeclimate black
   script:
-    - flake8 --format=gl-codeclimate --output-file=gl-code-quality-report.json warp/ exts/ examples/ *.py --exit-zero
-    - flake8 warp/ exts/ examples/ *.py --exit-zero --show-source
-    - python -m black --diff warp/ examples/ *.py
+    - flake8 --format=gl-codeclimate --output-file=gl-code-quality-report.json warp/ exts/ *.py --exit-zero
+    - flake8 warp/ exts/ *.py --exit-zero --show-source
+    - python -m black --diff warp/ *.py
   artifacts:
     reports:
       codequality: gl-code-quality-report.json

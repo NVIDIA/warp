@@ -16,8 +16,6 @@ archive
 *.pdb
 /_build
 /_repo
-examples/assets/.thumbs
-/examples/tmp
 /docs/_build
 /docs/modules/functions.rst
 /warp_lang.egg-info

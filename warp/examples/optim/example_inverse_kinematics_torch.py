@@ -29,8 +29,6 @@ wp.init()
 class ForwardKinematics(torch.autograd.Function):
     @staticmethod
     def forward(ctx, joint_q, joint_qd, model):
-        # ensure Torch operations complete before running Warp
-        wp.synchronize_device()
 
         ctx.tape = wp.Tape()
         ctx.model = model
@@ -43,24 +41,16 @@ class ForwardKinematics(torch.autograd.Function):
         with ctx.tape:
             wp.sim.eval_fk(model, ctx.joint_q, ctx.joint_qd, None, ctx.state)
 
-        # ensure Warp operations complete before returning data to Torch
-        wp.synchronize_device()
-
         return (wp.to_torch(ctx.state.body_q), wp.to_torch(ctx.state.body_qd))
 
     @staticmethod
     def backward(ctx, adj_body_q, adj_body_qd):
-        # ensure Torch operations complete before running Warp
-        wp.synchronize_device()
 
         # map incoming Torch grads to our output variables
         ctx.state.body_q.grad = wp.from_torch(adj_body_q, dtype=wp.transform)
         ctx.state.body_qd.grad = wp.from_torch(adj_body_qd, dtype=wp.spatial_vector)
 
         ctx.tape.backward()
-
-        # ensure Warp operations complete before returning data to Torch
-        wp.synchronize_device()
 
         # return adjoint w.r.t. inputs
         return (wp.to_torch(ctx.tape.gradients[ctx.joint_q]), wp.to_torch(ctx.tape.gradients[ctx.joint_qd]), None)
