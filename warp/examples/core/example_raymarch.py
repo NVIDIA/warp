@@ -20,6 +20,12 @@ import warp as wp
 wp.init()
 
 
+@wp.struct
+class Sdf:
+    d: float
+    color: wp.vec3
+
+
 @wp.func
 def sdf_sphere(p: wp.vec3, r: float):
     return wp.length(p) - r
@@ -42,31 +48,41 @@ def sdf_plane(p: wp.vec3, plane: wp.vec4):
 
 
 @wp.func
-def op_union(d1: float, d2: float):
-    return wp.min(d1, d2)
+def op_union(a: Sdf, b: Sdf):
+    if a.d < b.d:
+        return a
+
+    return b
 
 
 @wp.func
-def op_subtract(d1: float, d2: float):
-    return wp.max(-d1, d2)
+def op_subtract(a: Sdf, b: Sdf):
+    if -a.d > b.d:
+        return Sdf(-a.d, a.color)
 
-
-@wp.func
-def op_intersect(d1: float, d2: float):
-    return wp.max(d1, d2)
+    return b
 
 
 # simple scene
 @wp.func
 def sdf(p: wp.vec3):
-    sphere_1 = wp.vec3(0.0, 0.75, 0.0)
+    sphere = Sdf(
+        sdf_sphere(p - wp.vec3(0.0, 0.75, 0.0), 0.75),
+        wp.vec3(0.75, 0.25, 0.0),
+    )
+    box = Sdf(
+        sdf_box(wp.vec3(1.0, 0.5, 0.5), p),
+        wp.vec3(0.5, 0.75, 1.0),
+    )
+    plane = Sdf(
+        sdf_plane(p, wp.vec4(0.0, 1.0, 0.0, 1.0)),
+        wp.vec3(1.0, 1.0, 1.0),
+    )
 
-    d = op_subtract(sdf_sphere(p - sphere_1, 0.75), sdf_box(wp.vec3(1.0, 0.5, 0.5), p))
-
-    # ground plane
-    d = op_union(d, sdf_plane(p, wp.vec4(0.0, 1.0, 0.0, 1.0)))
-
-    return d
+    scene = Sdf(1.0, wp.vec3(0.0, 0.0, 0.0))
+    scene = op_union(scene, op_subtract(sphere, box))
+    scene = op_union(scene, plane)
+    return scene
 
 
 @wp.func
@@ -74,9 +90,9 @@ def normal(p: wp.vec3):
     eps = 1.0e-5
 
     # compute gradient of the SDF using finite differences
-    dx = sdf(p + wp.vec3(eps, 0.0, 0.0)) - sdf(p - wp.vec3(eps, 0.0, 0.0))
-    dy = sdf(p + wp.vec3(0.0, eps, 0.0)) - sdf(p - wp.vec3(0.0, eps, 0.0))
-    dz = sdf(p + wp.vec3(0.0, 0.0, eps)) - sdf(p - wp.vec3(0.0, 0.0, eps))
+    dx = sdf(p + wp.vec3(eps, 0.0, 0.0)).d - sdf(p - wp.vec3(eps, 0.0, 0.0)).d
+    dy = sdf(p + wp.vec3(0.0, eps, 0.0)).d - sdf(p - wp.vec3(0.0, eps, 0.0)).d
+    dz = sdf(p + wp.vec3(0.0, 0.0, eps)).d - sdf(p - wp.vec3(0.0, 0.0, eps)).d
 
     return wp.normalize(wp.vec3(dx, dy, dz))
 
@@ -87,7 +103,7 @@ def shadow(ro: wp.vec3, rd: wp.vec3):
     s = float(1.0)
 
     for _ in range(64):
-        d = sdf(ro + t * rd)
+        d = sdf(ro + t * rd).d
         t = t + wp.clamp(d, 0.0001, 2.0)
 
         h = wp.clamp(4.0 * d / t, 0.0, 1.0)
@@ -118,10 +134,10 @@ def draw(cam_pos: wp.vec3, cam_rot: wp.quat, width: int, height: int, pixels: wp
 
     # ray march
     for _ in range(128):
-        d = sdf(ro + rd * t)
-        t = t + d
+        scene = sdf(ro + rd * t)
+        t = t + scene.d
 
-    if d < 0.01:
+    if scene.d < 0.01:
         p = ro + rd * t
         n = normal(p)
         l = wp.normalize(wp.vec3(0.6, 0.4, 0.5))
@@ -135,7 +151,7 @@ def draw(cam_pos: wp.vec3, cam_rot: wp.quat, width: int, height: int, pixels: wp
 
         intensity = 2.0
         result = (
-            wp.vec3(0.6, 0.6, 0.59) * (diffuse * (1.0 - fresnel) + specular * fresnel * 10.0) * shadow(p, l) * intensity
+            scene.color * (diffuse * (1.0 - fresnel) + specular * fresnel * 10.0) * shadow(p, l) * intensity
         )
 
         # gamma
