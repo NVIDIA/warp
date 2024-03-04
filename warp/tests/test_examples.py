@@ -153,7 +153,16 @@ add_example_test(
     options={"load_modules": ["warp.sim.integrator_euler", "warp.sim.particles"]},
 )
 add_example_test(TestSimExamples, name="optim.example_diffray", devices=cuda_test_devices)
-add_example_test(TestSimExamples, name="optim.example_drone", devices=cuda_test_devices, options={"num_frames": 1})
+add_example_test(
+    TestSimExamples,
+    name="optim.example_drone",
+    devices=cuda_test_devices,
+    options={
+        "load_modules": ["warp.sim.collide", "warp.sim.integrator_euler", "warp.optim.sgd"],
+        "num_frames": 1,
+        "drone_path": os.path.join(os.path.dirname(__file__), "..", "examples", "assets", "crazyflie.usd"),
+    },
+)
 add_example_test(TestSimExamples, name="sim.example_granular", devices=cuda_test_devices)
 add_example_test(TestSimExamples, name="sim.example_granular_collision_sdf", devices=cuda_test_devices)
 add_example_test(TestSimExamples, name="optim.example_inverse_kinematics", devices=cuda_test_devices)

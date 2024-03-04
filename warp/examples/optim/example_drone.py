@@ -486,7 +486,8 @@ class Example:
         )
 
         # Define the index of the active target.
-        self.target_idx = 0
+        # We start with -1 since it'll be incremented on the first frame.
+        self.target_idx = -1
 
         # Number of steps to run at each frame for the optimisation pass.
         self.optim_step_count = 20
@@ -555,9 +556,6 @@ class Example:
             drone_root_prim = self.renderer.stage.GetPrimAtPath("/root/body_0_drone_0")
             for prim in drone_root_prim.GetChildren():
                 self.renderer.stage.RemovePrim(prim.GetPath())
-
-            if drone_path is None:
-                drone_path = os.path.join(os.path.dirname(__file__), "..", "assets", "crazyflie.usd")
 
             # Add a reference to the drone geometry.
             drone_prim = self.renderer.stage.OverridePrim(f"{drone_root_prim.GetPath()}/crazyflie")
@@ -683,7 +681,7 @@ class Example:
                 outputs=(self.rollout_costs,),
             )
 
-    def step(self):
+    def step_optimizer(self):
         if self.optim_graph is None:
             self.tape = wp.Tape()
             with self.tape:
@@ -704,15 +702,24 @@ class Example:
         )
         self.tape.zero()
 
-    def update(self):
+    def step(self):
+        if int((self.frame_count / len(self.targets))) == 0:
+            self.target_idx += 1
+
+            # Force recapturing the CUDA graph for the optimization pass
+            # by invalidating it.
+            self.optim_graph = None
+
         if self.use_cuda_graph and self.optim_graph is None:
             wp.capture_begin()
-            self.tape = wp.Tape()
-            with self.tape:
-                self.forward()
-            self.rollout_costs.grad.fill_(1.0)
-            self.tape.backward()
-            self.optim_graph = wp.capture_end()
+            try:
+                self.tape = wp.Tape()
+                with self.tape:
+                    self.forward()
+                self.rollout_costs.grad.fill_(1.0)
+                self.tape.backward()
+            finally:
+                self.optim_graph = wp.capture_end()
 
         # Sample control waypoints around the nominal trajectory.
         self.seed.zero_()
@@ -743,7 +750,7 @@ class Example:
         )
 
         for _ in range(self.optim_step_count):
-            self.step()
+            self.step_optimizer()
 
         # Pick the best trajectory.
         wp.synchronize()
@@ -790,9 +797,7 @@ class Example:
         if self.render_rollouts:
             costs = self.rollout_costs.numpy()
 
-            # The following won't work on NumPy < 1.24
-            # positions = np.fromiter((x.body_q.numpy()[:, :3] for x in self.rollouts.states), dtype=(float, (16, 3)))
-            positions = np.stack([x.body_q.numpy()[:, :3] for x in self.rollouts.states], axis=0)
+            positions = np.array([x.body_q.numpy()[:, :3] for x in self.rollouts.states])
 
             min_cost = np.min(costs)
             max_cost = np.max(costs)
@@ -812,21 +817,12 @@ class Example:
 
 
 if __name__ == "__main__":
-    this_dir = os.path.realpath(os.path.dirname(__file__))
-    this_file = os.path.basename(__file__).split(".")[0]
-    stage_path = os.path.join(this_dir, "outputs", f"{this_file}.usda")
-    drone_path = os.path.join(this_dir, "..", "assets", "crazyflie.usd")
+    stage_path = os.path.join(os.path.dirname(__file__), "example_drone.usd")
+    drone_path = os.path.join(os.path.dirname(__file__), "..", "assets", "crazyflie.usd")
 
     example = Example(stage_path, drone_path, verbose=True)
     for i in range(example.frame_count):
-        if i > 0 and i % int((example.frame_count / len(example.targets))) == 0:
-            example.target_idx += 1
-
-            # Force recapturing the CUDA graph for the optimisation pass
-            # by invalidating it.
-            example.optim_graph = None
-
-        example.update()
+        example.step()
         example.render()
 
         if example.verbose:
