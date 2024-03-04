@@ -3000,7 +3000,7 @@ class Runtime:
                 raise RuntimeError(
                     f"Failed to load the shared library '{dll_path}'.\n"
                     "The execution environment's libstdc++ runtime is older than the version the Warp library was built for.\n"
-                    "See https://nvidia.github.io/warp/_build/html/installation.html#conda-environments for details."
+                    "See https://nvidia.github.io/warp/installation.html#conda-environments for details."
                 ) from e
             else:
                 raise RuntimeError(f"Failed to load the shared library '{dll_path}'") from e
