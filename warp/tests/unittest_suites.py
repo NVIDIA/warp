@@ -165,6 +165,7 @@ def default_suite(test_loader: unittest.TestLoader):
     from warp.tests.test_vec import TestVec
     from warp.tests.test_vec_lite import TestVecLite
     from warp.tests.test_vec_scalar_ops import TestVecScalarOps
+    from warp.tests.test_verify_fp import TestVerifyFP
     from warp.tests.test_volume import TestVolume
     from warp.tests.test_volume_write import TestVolumeWrite
 
@@ -250,6 +251,7 @@ def default_suite(test_loader: unittest.TestLoader):
         TestVec,
         TestVecLite,
         TestVecScalarOps,
+        TestVerifyFP,
         TestVolume,
         TestVolumeWrite,
     ]
