@@ -140,6 +140,9 @@ class StdOutCapture:
         #    # despite the context synchronisation.
         #    time.sleep(0.01)
 
+        if LIBC is not None:
+            LIBC.fflush(None)
+
         os.dup2(self.target, self.saved.fileno())
         os.close(self.target)
 
