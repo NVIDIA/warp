@@ -267,55 +267,60 @@ class TestUtils(unittest.TestCase):
     def test_warn(self):
         # Multiple warnings get printed out each time.
         with contextlib.redirect_stdout(io.StringIO()) as f:
-            frame_info = inspect.getframeinfo(inspect.currentframe())
             wp.utils.warn("hello, world!")
             wp.utils.warn("hello, world!")
 
         expected = (
-            "{}:{}: {}\n"
-            "{}:{}: {}\n"
-        ).format(
-            frame_info.filename,
-            frame_info.lineno + 1,
-            "UserWarning: hello, world!\n  wp.utils.warn(\"hello, world!\")",
-            frame_info.filename,
-            frame_info.lineno + 2,
-            "UserWarning: hello, world!\n  wp.utils.warn(\"hello, world!\")",
+            "Warp UserWarning: hello, world!\n"
+            "Warp UserWarning: hello, world!\n"
         )
+
         self.assertEqual(f.getvalue(), expected)
+
+        # Test verbose warnings
+        saved_verbosity = wp.config.verbose_warnings
+        try:
+            wp.config.verbose_warnings = True
+            with contextlib.redirect_stdout(io.StringIO()) as f:
+                frame_info = inspect.getframeinfo(inspect.currentframe())
+                wp.utils.warn("hello, world!")
+                wp.utils.warn("hello, world!")
+
+            expected = (
+                f"Warp UserWarning: hello, world! ({frame_info.filename}:{frame_info.lineno + 1})\n"
+                "  wp.utils.warn(\"hello, world!\")\n"
+                f"Warp UserWarning: hello, world! ({frame_info.filename}:{frame_info.lineno + 2})\n"
+                "  wp.utils.warn(\"hello, world!\")\n"
+            )
+
+            self.assertEqual(f.getvalue(), expected)
+
+        finally:
+            # make sure to restore warning verbosity
+            wp.config.verbose_warnings = saved_verbosity
+
 
         # Multiple similar deprecation warnings get printed out only once.
         with contextlib.redirect_stdout(io.StringIO()) as f:
-            frame_info = inspect.getframeinfo(inspect.currentframe())
             wp.utils.warn("hello, world!", category=DeprecationWarning)
             wp.utils.warn("hello, world!", category=DeprecationWarning)
 
         expected = (
-            "{}:{}: {}\n"
-        ).format(
-            frame_info.filename,
-            frame_info.lineno + 1,
-            "DeprecationWarning: hello, world!\n  wp.utils.warn(\"hello, world!\", category=DeprecationWarning)",
+            "Warp DeprecationWarning: hello, world!\n"
         )
+
         self.assertEqual(f.getvalue(), expected)
 
         # Multiple different deprecation warnings get printed out each time.
         with contextlib.redirect_stdout(io.StringIO()) as f:
-            frame_info = inspect.getframeinfo(inspect.currentframe())
             wp.utils.warn("foo", category=DeprecationWarning)
             wp.utils.warn("bar", category=DeprecationWarning)
 
         expected = (
-            "{}:{}: {}\n"
-            "{}:{}: {}\n"
-        ).format(
-            frame_info.filename,
-            frame_info.lineno + 1,
-            "DeprecationWarning: foo\n  wp.utils.warn(\"foo\", category=DeprecationWarning)",
-            frame_info.filename,
-            frame_info.lineno + 2,
-            "DeprecationWarning: bar\n  wp.utils.warn(\"bar\", category=DeprecationWarning)",
+            "Warp DeprecationWarning: foo\n"
+            "Warp DeprecationWarning: bar\n"
         )
+
         self.assertEqual(f.getvalue(), expected)
 
     def test_transform_expand(self):

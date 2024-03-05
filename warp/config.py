@@ -13,6 +13,7 @@ print_launches = False  # if true will print out launch information
 
 mode = "release"
 verbose = False  # print extra informative messages
+verbose_warnings = False  # whether file and line info gets included in Warp warnings
 quiet = False  # suppress all output except errors and warnings
 
 cache_kernels = True

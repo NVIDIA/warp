@@ -57,6 +57,9 @@ Basic Global Settings
 |``verbose``                                     | Boolean | ``False``   | If ``True``, additional information will be printed to standard out      |
 |                                                |         |             | during code generation, compilation, etc.                                |
 +------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``verbose_warnings``                            | Boolean | ``False``   | If ``True``, Warp warnings will include extra information such as        |
+|                                                |         |             | the source file and line number.                                         |
++------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 |``quiet``                                       | Boolean | ``False``   | If ``True``, Warp module initialization messages will be disabled.       |
 |                                                |         |             | This setting does not affect error messages and warnings.                |
 +------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+

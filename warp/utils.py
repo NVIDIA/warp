@@ -23,7 +23,29 @@ warnings_seen = set()
 
 def warp_showwarning(message, category, filename, lineno, file=None, line=None):
     """Version of warnings.showwarning that always prints to sys.stdout."""
-    sys.stdout.write(warnings.formatwarning(message, category, filename, lineno, line=line))
+
+    if warp.config.verbose_warnings:
+        s =  f"Warp {category.__name__}: {message} ({filename}:{lineno})\n"
+
+        if line is None:
+            try:
+                import linecache
+                line = linecache.getline(filename, lineno)
+            except Exception:
+                # When a warning is logged during Python shutdown, linecache
+                # and the import machinery don't work anymore
+                line = None
+                linecache = None
+        else:
+            line = line
+        if line:
+            line = line.strip()
+            s += "  %s\n" % line
+    else:
+        # simple warning
+        s =  f"Warp {category.__name__}: {message}\n"
+
+    sys.stdout.write(s)
 
 
 def warn(message, category=None, stacklevel=1):
