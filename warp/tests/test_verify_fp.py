@@ -13,6 +13,14 @@ from warp.tests.unittest_utils import *
 wp.init()
 
 
+def setUpModule():
+    wp.config.verify_fp = True  # Enable checking floating-point values to be finite
+
+
+def tearDownModule():
+    wp.config.verify_fp = False
+
+
 @wp.struct
 class TestStruct:
     field: wp.float32
@@ -46,13 +54,7 @@ devices = get_test_devices()
 
 
 class TestVerifyFP(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        wp.config.verify_fp = True  # Enable checking floating-point values to be finite
-
-    @classmethod
-    def tearDownClass(cls):
-        wp.config.verify_fp = False
+    pass
 
 
 add_function_test(TestVerifyFP, "test_finite", test_finite, devices=devices)
