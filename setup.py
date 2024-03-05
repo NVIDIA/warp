@@ -195,6 +195,7 @@ setuptools.setup(
             "native/clang/*.cpp",
             "native/nanovdb/*.h",
             "tests/assets/*",
+            "examples/assets/*",
         ]
         + warp_binary_libraries,
     },
