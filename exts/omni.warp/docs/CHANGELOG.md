@@ -1,6 +1,33 @@
 # CHANGELOG
 
 
+## [0.15.0] - 2024-03-04
+
+- Add thumbnails to examples gallery
+- Apply colored lighting to examples
+- Moved `examples` directory under `warp/`
+- Add example usage to `python -m warp.tests --help`
+- Adding `torch.autograd.function` example + docs
+- Add error-checking to array shapes during creation
+- Adding `example_graph_capture`
+- Add a Diffsim Example of a Drone
+- Fix `verify_fp` causing compiler errors and support CPU kernels
+- Fix to enable `matmul` to be called in CUDA graph capture
+- Enable mempools by default
+- Update `wp.launch` to support tuple args
+- Fix BiCGSTAB and GMRES producing NaNs when converging early
+- Fix warning about backward codegen being disabled in `test_fem`
+- Fix `assert_np_equal` when NaN's and tolerance are involved
+- Improve error message to discern between CUDA being disabled or not supported
+- Support cross-module functions with user-defined gradients
+- Suppress superfluous CUDA error when ending capture after errors
+- Make output during initialization atomic
+- Add `warp.config.max_unroll`, fix custom gradient unrolling
+- Support native replay snippets using `@wp.func_native(snippet, replay_snippet=replay_snippet)`
+- Look for the CUDA Toolkit in default locations if the `CUDA_PATH` environment variable or `--cuda_path` build option are not used
+- Added `wp.ones()` to efficiently create one-initialized arrays
+- Rename `wp.config.graph_capture_module_load_default` to `wp.config.enable_graph_capture_module_load_by_default`
+
 ## [0.14.0] - 2024-02-19
 
 - Add support for CUDA pooled (stream-ordered) allocators
