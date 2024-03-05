@@ -10,24 +10,27 @@ are differentiable and can be used as part of machine-learning pipelines with fr
 
 Below are some examples of simulations implemented using Warp:
 
-.. image:: ./img/header.png
+.. image:: ./img/header.jpg
 
 Quickstart
-==========
+----------
 
-The easiest way is to install Warp is from PyPi:
+Warp supports Python versions 3.7 onwards. It can run on x86-64 and ARMv8 CPUs on Windows, Linux, and macOS. GPU support requires a CUDA-capable NVIDIA GPU and driver (minimum GeForce GTX 9xx).
+
+The easiest way to install Warp is from `PyPI <https://pypi.org/project/warp-lang>`_:
 
 .. code-block:: sh
 
     $ pip install warp-lang
 
-Pre-built binary packages for Windows, Linux and macOS are also available on the `Releases <https://github.com/NVIDIA/warp/releases>`__ page. To install in your local Python environment extract the archive and run the following command from the root directory:
+Pre-built binary packages are also available on the `Releases <https://github.com/NVIDIA/warp/releases>`_ page.
+To install in your local Python environment extract the archive and run the following command from the root directory:
 
 .. code-block:: sh
 
     $ pip install .
 
-Basic example
+Basic Example
 -------------
 
 An example first program that computes the lengths of random 3D vectors is given below::
@@ -61,27 +64,30 @@ An example first program that computes the lengths of random 3D vectors is given
 
     print(lengths)
 
-Additional examples
+Additional Examples
 -------------------
-The `examples <https://github.com/NVIDIA/warp/tree/main/warp/examples>`__ directory in
+
+The `examples <https://github.com/NVIDIA/warp/tree/main/warp/examples>`_ directory in
 the Github repository contains a number of scripts that show how to
 implement different simulation methods using the Warp API. Most examples
 will generate USD files containing time-sampled animations in the 
 same directory as the example. Before running examples users should
-ensure that the ``usd-core`` package is installed using:
-
-::
+ensure that the ``usd-core`` package is installed using::
 
     pip install usd-core
 
+Examples can be run from the command-line as follows::
+
+    python -m warp.examples.<example_subdir>.<example>
+
+Most examples can be run on either the CPU or a CUDA-capable device, but a handful require a CUDA-capable device. These are marked at the top of the example script.
+
 USD files can be viewed or rendered inside NVIDIA
-`Omniverse <https://developer.nvidia.com/omniverse>`__,
+`Omniverse <https://developer.nvidia.com/omniverse>`_,
 Pixar's UsdView, and Blender. Note that Preview in macOS is not
 recommended as it has limited support for time-sampled animations.
 
-Built-in unit tests can be run from the command-line as follows:
-
-::
+Built-in unit tests can be run from the command-line as follows::
 
     python -m warp.tests
 
@@ -93,7 +99,7 @@ Omniverse Kit or USD Composer.
 
 Enabling the extension will automatically install and initialize the
 Warp Python module inside the Kit Python environment. Please see the
-`Omniverse Warp Documentation <https://docs.omniverse.nvidia.com/extensions/latest/ext_warp.html>`__
+`Omniverse Warp Documentation <https://docs.omniverse.nvidia.com/extensions/latest/ext_warp.html>`_
 for more details on how to use Warp in Omniverse.
 
 
@@ -103,11 +109,11 @@ Learn More
 Please see the following resources for additional background on Warp:
 
 -  `GTC 2022
-   Presentation <https://www.nvidia.com/en-us/on-demand/session/gtcspring22-s41599>`__
+   Presentation <https://www.nvidia.com/en-us/on-demand/session/gtcspring22-s41599>`_
 -  `GTC 2021
-   Presentation <https://www.nvidia.com/en-us/on-demand/session/gtcspring21-s31838>`__
+   Presentation <https://www.nvidia.com/en-us/on-demand/session/gtcspring21-s31838>`_
 -  `SIGGRAPH Asia 2021 Differentiable Simulation
-   Course <https://dl.acm.org/doi/abs/10.1145/3476117.3483433>`__
+   Course <https://dl.acm.org/doi/abs/10.1145/3476117.3483433>`_
 
 The underlying technology in Warp has been used in a number of research
 projects at NVIDIA including the following publications:
@@ -115,15 +121,15 @@ projects at NVIDIA including the following publications:
 -  Accelerated Policy Learning with Parallel Differentiable Simulation -
    Xu, J., Makoviychuk, V., Narang, Y., Ramos, F., Matusik, W., Garg,
    A., & Macklin, M.
-   `(2022) <https://short-horizon-actor-critic.github.io>`__
+   `(2022) <https://short-horizon-actor-critic.github.io>`_
 -  DiSECt: Differentiable Simulator for Robotic Cutting - Heiden, E.,
    Macklin, M., Narang, Y., Fox, D., Garg, A., & Ramos, F
-   `(2021) <https://github.com/NVlabs/DiSECt>`__
+   `(2021) <https://github.com/NVlabs/DiSECt>`_
 -  gradSim: Differentiable Simulation for System Identification and
    Visuomotor Control - Murthy, J. Krishna, Miles Macklin, Florian
    Golemo, Vikram Voleti, Linda Petrini, Martin Weiss, Breandan
    Considine et
-   al. `(2021) <https://gradsim.github.io>`__
+   al. `(2021) <https://gradsim.github.io>`_
 
 Citing
 ------
