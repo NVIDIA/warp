@@ -136,8 +136,8 @@ class Example:
         
         with wp.ScopedTimer("render", detailed=False):
             self.renderer.begin_frame(self.sim_time)
-            self.renderer.render_mesh(name="mesh", points=self.mesh.points.numpy(), indices=self.mesh.indices.numpy())
-            self.renderer.render_points(name="points", points=self.positions.numpy(), radius=self.sim_margin)
+            self.renderer.render_mesh(name="mesh", points=self.mesh.points.numpy(), indices=self.mesh.indices.numpy(), colors=((0.35, 0.55, 0.9),) * len(self.mesh.points))
+            self.renderer.render_points(name="points", points=self.positions.numpy(), radius=self.sim_margin, colors=((0.8, 0.3, 0.2),) * len(self.mesh.points))
             self.renderer.end_frame()
 
 

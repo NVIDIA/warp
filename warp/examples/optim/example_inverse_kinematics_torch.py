@@ -151,7 +151,7 @@ class Example:
 
         self.renderer.begin_frame(self.render_time)
         self.renderer.render(s)
-        self.renderer.render_sphere(name="target", pos=self.target, rot=wp.quat_identity(), radius=0.1)
+        self.renderer.render_sphere(name="target", pos=self.target, rot=wp.quat_identity(), radius=0.1, color=(1.0, 0.0, 0.0))
         self.renderer.end_frame()
         self.render_time += self.frame_dt
 

@@ -104,24 +104,20 @@ class UsdRenderer:
         elif up_axis == "Z":
             UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.z)
 
-        # add default lights
-        light_0 = UsdLux.DistantLight.Define(stage, "/light_0")
-        light_0.GetPrim().CreateAttribute("intensity", Sdf.ValueTypeNames.Float, custom=False).Set(2500.0)
-        light_0.GetPrim().CreateAttribute("color", Sdf.ValueTypeNames.Color3f, custom=False).Set(
-            Gf.Vec3f(0.98, 0.85, 0.7)
-        )
+        dome_light = UsdLux.DomeLight.Define(stage, "/dome_light")
+        dome_light.AddRotateXYZOp().Set((-90.0, -30.0, 0.0))
+        dome_light.GetEnableColorTemperatureAttr().Set(True)
+        dome_light.GetColorTemperatureAttr().Set(6150.0)
+        dome_light.GetIntensityAttr().Set(1.0)
+        dome_light.GetExposureAttr().Set(9.0)
+        dome_light.GetPrim().CreateAttribute("visibleInPrimaryRay", Sdf.ValueTypeNames.Bool).Set(False)
 
-        UsdGeom.Xform(light_0.GetPrim()).AddRotateYOp().Set(value=(70.0))
-        UsdGeom.Xform(light_0.GetPrim()).AddRotateXOp().Set(value=(-45.0))
-
-        light_1 = UsdLux.DistantLight.Define(stage, "/light_1")
-        light_1.GetPrim().CreateAttribute("intensity", Sdf.ValueTypeNames.Float, custom=False).Set(2500.0)
-        light_1.GetPrim().CreateAttribute("color", Sdf.ValueTypeNames.Color3f, custom=False).Set(
-            Gf.Vec3f(0.62, 0.82, 0.98)
-        )
-
-        UsdGeom.Xform(light_1.GetPrim()).AddRotateYOp().Set(value=(-70.0))
-        UsdGeom.Xform(light_1.GetPrim()).AddRotateXOp().Set(value=(-45.0))
+        distant_light = UsdLux.DistantLight.Define(stage, "/distant_light")
+        distant_light.AddRotateXYZOp().Set((-35.0, 45.0, 0.0))
+        distant_light.GetEnableColorTemperatureAttr().Set(True)
+        distant_light.GetColorTemperatureAttr().Set(7250.0)
+        distant_light.GetIntensityAttr().Set(1.0)
+        distant_light.GetExposureAttr().Set(10.0)
 
     def begin_frame(self, time):
         self.time = round(time * self.fps)
@@ -302,6 +298,7 @@ class UsdRenderer:
         half_height: float,
         parent_body: str = None,
         is_template: bool = False,
+        color: tuple = None,
     ):
         """
         Debug helper to add a capsule for visualization
@@ -311,9 +308,10 @@ class UsdRenderer:
             radius: The radius of the capsule
             half_height: The half height of the capsule
             name: A name for the USD prim on the stage
+            color: The color of the capsule
         """
 
-        from pxr import UsdGeom, Sdf
+        from pxr import Gf, UsdGeom, Sdf
 
         if is_template:
             prim_path = self._resolve_path(name, parent_body, is_template)
@@ -335,6 +333,9 @@ class UsdRenderer:
         capsule.GetHeightAttr().Set(float(half_height * 2.0))
         capsule.GetAxisAttr().Set("Y")
 
+        if color is not None:
+            capsule.GetDisplayColorAttr().Set([Gf.Vec3f(color)], self.time)
+
         self._shape_constructors[name] = UsdGeom.Capsule
 
         if not is_template:
@@ -351,6 +352,7 @@ class UsdRenderer:
         half_height: float,
         parent_body: str = None,
         is_template: bool = False,
+        color: tuple = None,
     ):
         """
         Debug helper to add a cylinder for visualization
@@ -360,9 +362,10 @@ class UsdRenderer:
             radius: The radius of the cylinder
             half_height: The half height of the cylinder
             name: A name for the USD prim on the stage
+            color: The color of the cylinder
         """
 
-        from pxr import UsdGeom, Sdf
+        from pxr import Gf, UsdGeom, Sdf
 
         if is_template:
             prim_path = self._resolve_path(name, parent_body, is_template)
@@ -384,6 +387,9 @@ class UsdRenderer:
         cylinder.GetHeightAttr().Set(float(half_height * 2.0))
         cylinder.GetAxisAttr().Set("Y")
 
+        if color is not None:
+            cylinder.GetDisplayColorAttr().Set([Gf.Vec3f(color)], self.time)
+
         self._shape_constructors[name] = UsdGeom.Cylinder
 
         if not is_template:
@@ -400,6 +406,7 @@ class UsdRenderer:
         half_height: float,
         parent_body: str = None,
         is_template: bool = False,
+        color: tuple = None,
     ):
         """
         Debug helper to add a cone for visualization
@@ -409,9 +416,10 @@ class UsdRenderer:
             radius: The radius of the cone
             half_height: The half height of the cone
             name: A name for the USD prim on the stage
+            color: The color of the cone
         """
 
-        from pxr import UsdGeom, Sdf
+        from pxr import Gf, UsdGeom, Sdf
 
         if is_template:
             prim_path = self._resolve_path(name, parent_body, is_template)
@@ -433,6 +441,9 @@ class UsdRenderer:
         cone.GetHeightAttr().Set(float(half_height * 2.0))
         cone.GetAxisAttr().Set("Y")
 
+        if color is not None:
+            cone.GetDisplayColorAttr().Set([Gf.Vec3f(color)], self.time)
+
         self._shape_constructors[name] = UsdGeom.Cone
 
         if not is_template:
@@ -441,17 +452,18 @@ class UsdRenderer:
         return prim_path
 
     def render_box(
-        self, name: str, pos: tuple, rot: tuple, extents: tuple, parent_body: str = None, is_template: bool = False
+        self, name: str, pos: tuple, rot: tuple, extents: tuple, parent_body: str = None, is_template: bool = False, color: tuple = None
     ):
         """Debug helper to add a box for visualization
 
         Args:
-            pos: The position of the sphere
-            extents: The radius of the sphere
+            pos: The position of the box
+            extents: The radius of the box
             name: A name for the USD prim on the stage
+            color: The color of the box
         """
 
-        from pxr import UsdGeom, Sdf, Gf, Vt
+        from pxr import UsdGeom, Sdf, Gf
 
         if is_template:
             prim_path = self._resolve_path(name, parent_body, is_template)
@@ -468,6 +480,9 @@ class UsdRenderer:
         if not cube:
             cube = UsdGeom.Cube.Define(self.stage, cube_path)
             _usd_add_xform(cube)
+
+        if color is not None:
+            cube.GetDisplayColorAttr().Set([Gf.Vec3f(color)], self.time)
 
         self._shape_constructors[name] = UsdGeom.Cube
         self._shape_custom_scale[name] = extents
@@ -666,11 +681,10 @@ class UsdRenderer:
 
                 instancer = UsdGeom.Points.Define(self.stage, instancer_path)
 
-                instancer.CreatePrimvar("displayColor", Sdf.ValueTypeNames.Float3Array, "vertex", 1)
                 if radius_is_scalar:
-                    instancer.GetWidthsAttr().Set([radius] * len(points))
+                    instancer.GetWidthsAttr().Set([radius * 2.0] * len(points))
                 else:
-                    instancer.GetWidthsAttr().Set(radius)
+                    instancer.GetWidthsAttr().Set(radius * 2.0)
 
         if colors is None:
             instancer.GetPositionsAttr().Set(points, self.time)

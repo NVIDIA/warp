@@ -135,7 +135,7 @@ def draw(cam_pos: wp.vec3, cam_rot: wp.quat, width: int, height: int, pixels: wp
 
         intensity = 2.0
         result = (
-            wp.vec3(0.6, 0.6, 0.59) * (diffuse * (1.0 - fresnel) + specular * fresnel * 10.0) * shadow(p, l) * intensity
+            wp.vec3(0.85, 0.9, 0.95) * (diffuse * (1.0 - fresnel) + specular * fresnel * 10.0) * shadow(p, l) * intensity
         )
 
         # gamma

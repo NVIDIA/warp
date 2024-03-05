@@ -128,7 +128,7 @@ def CreateSimRenderer(renderer):
                 p = np.zeros(3, dtype=np.float32)
                 q = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float32)
                 scale = np.ones(3)
-                color = np.ones(3)
+                color = (1.0, 1.0, 1.0)
                 # loop over shapes excluding the ground plane
                 for s in range(model.shape_count - 1):
                     geo_type = shape_geo_type[s]
@@ -136,8 +136,6 @@ def CreateSimRenderer(renderer):
                     geo_thickness = float(shape_geo_thickness[s])
                     geo_is_solid = bool(shape_geo_is_solid[s])
                     geo_src = shape_geo_src[s]
-                    if self.use_unique_colors:
-                        color = self._get_new_color()
                     name = f"shape_{s}"
 
                     # shape transform in body frame
@@ -146,6 +144,9 @@ def CreateSimRenderer(renderer):
                         body = self.body_names[body]
                     else:
                         body = None
+
+                    if self.use_unique_colors and body is not None:
+                        color = self._get_new_color()
 
                     # shape transform in body frame
                     X_bs = wp.transform_expand(shape_transform[s])
@@ -167,25 +168,25 @@ def CreateSimRenderer(renderer):
                             )
 
                         elif geo_type == warp.sim.GEO_SPHERE:
-                            shape = self.render_sphere(name, p, q, geo_scale[0], parent_body=body, is_template=True)
+                            shape = self.render_sphere(name, p, q, geo_scale[0], parent_body=body, is_template=True, color=color)
 
                         elif geo_type == warp.sim.GEO_CAPSULE:
                             shape = self.render_capsule(
-                                name, p, q, geo_scale[0], geo_scale[1], parent_body=body, is_template=True
+                                name, p, q, geo_scale[0], geo_scale[1], parent_body=body, is_template=True, color=color
                             )
 
                         elif geo_type == warp.sim.GEO_CYLINDER:
                             shape = self.render_cylinder(
-                                name, p, q, geo_scale[0], geo_scale[1], parent_body=body, is_template=True
+                                name, p, q, geo_scale[0], geo_scale[1], parent_body=body, is_template=True, color=color
                             )
 
                         elif geo_type == warp.sim.GEO_CONE:
                             shape = self.render_cone(
-                                name, p, q, geo_scale[0], geo_scale[1], parent_body=body, is_template=True
+                                name, p, q, geo_scale[0], geo_scale[1], parent_body=body, is_template=True, color=color
                             )
 
                         elif geo_type == warp.sim.GEO_BOX:
-                            shape = self.render_box(name, p, q, geo_scale, parent_body=body, is_template=True)
+                            shape = self.render_box(name, p, q, geo_scale, parent_body=body, is_template=True, color=color)
 
                         elif geo_type == warp.sim.GEO_MESH:
                             if not geo_is_solid:
@@ -290,15 +291,20 @@ def CreateSimRenderer(renderer):
                 particle_q = state.particle_q.numpy()
 
                 # render particles
-                self.render_points("particles", particle_q, radius=self.model.particle_radius.numpy())
+                self.render_points("particles", particle_q, radius=self.model.particle_radius.numpy(), colors=((0.8, 0.3, 0.2),) * len(particle_q))
 
                 # render tris
                 if self.model.tri_count:
-                    self.render_mesh("surface", particle_q, self.model.tri_indices.numpy().flatten())
+                    self.render_mesh(
+                        "surface",
+                        particle_q,
+                        self.model.tri_indices.numpy().flatten(),
+                        colors=(((0.75, 0.25, 0.0),) * len(particle_q)),
+                    )
 
                 # render springs
                 if self.model.spring_count:
-                    self.render_line_list("springs", particle_q, self.model.spring_indices.numpy().flatten(), [], 0.05)
+                    self.render_line_list("springs", particle_q, self.model.spring_indices.numpy().flatten(), (0.25, 0.5, 0.25), 0.02)
 
             # render muscles
             if self.model.muscle_count:

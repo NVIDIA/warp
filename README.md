@@ -9,10 +9,11 @@ are differentiable and can be used as part of machine-learning pipelines with fr
 
 Please refer to the project [Documentation](https://nvidia.github.io/warp/) for API and language reference and [CHANGELOG.md](./CHANGELOG.md) for release history.
 
-![](https://github.com/NVIDIA/warp/raw/main/docs/img/gifs/aldina.gif) ![](https://github.com/NVIDIA/warp/raw/main/docs/img/gifs/nanovdb.gif)
-![](https://github.com/NVIDIA/warp/raw/main/docs/img/gifs/ocean.gif) ![](https://github.com/NVIDIA/warp/raw/main/docs/img/gifs/particles.gif)
+<div align="center">
+    <img src="https://github.com/NVIDIA/warp/raw/main/docs/img/header.jpg">
+    <p><i>A selection of physical simulations computed with Warp</i></p>
+</div>
 
-_A selection of physical simulations computed with Warp_
 
 ## Installing
 
@@ -78,6 +79,159 @@ USD files can be viewed or rendered inside [NVIDIA Omniverse](https://developer.
 Built-in unit tests can be run from the command-line as follows:
 
     python -m warp.tests
+
+
+### examples/core
+
+<table>
+    <tbody>
+        <tr>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_dem.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/core_dem.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_fluid.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/core_fluid.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_graph_capture.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/core_graph_capture.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_marching_cubes.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/core_marching_cubes.png"></a></td>
+        </tr>
+        <tr>
+            <td align="center">dem</td>
+            <td align="center">fluid</td>
+            <td align="center">graph capture</td>
+            <td align="center">marching cubes</td>
+        </tr>
+        <tr>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_mesh.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/core_mesh.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_nvdb.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/core_nvdb.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_raycast.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/core_raycast.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_raymarch.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/core_raymarch.png"></a></td>
+        </tr>
+        <tr>
+            <td align="center">mesh</td>
+            <td align="center">nvdb</td>
+            <td align="center">raycast</td>
+            <td align="center">raymarch</td>
+        </tr>
+        <tr>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_sph.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/core_sph.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_torch.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/core_torch.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_wave.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/core_wave.png"></a></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td align="center">sph</td>
+            <td align="center">torch</td>
+            <td align="center">wave</td>
+            <td align="center"></td>
+        </tr>
+    </tbody>
+</table>
+
+
+### examples/fem
+
+<table>
+    <tbody>
+        <tr>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_apic_fluid.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_apic_fluid.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_convection_diffusion.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_convection_diffusion.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_diffusion_3d.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_diffusion_3d.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_diffusion.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_diffusion.png"></a></td>
+        </tr>
+        <tr>
+            <td align="center">apic fluid</td>
+            <td align="center">convection diffusion</td>
+            <td align="center">diffusion 3d</td>
+            <td align="center">diffusion</td>
+        </tr>
+        <tr>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_mixed_elasticity.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_mixed_elasticity.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_navier_stokes.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_navier_stokes.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_stokes_transfer.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_stokes_transfer.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_stokes.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_stokes.png"></a></td>
+        </tr>
+        <tr>
+            <td align="center">mixed elasticity</td>
+            <td align="center">navier stokes</td>
+            <td align="center">stokes transfer</td>
+            <td align="center">stokes</td>
+        </tr>
+    </tbody>
+</table>
+
+
+### examples/optim
+
+<table>
+    <tbody>
+        <tr>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_bounce.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/optim_bounce.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_cloth_throw.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/optim_cloth_throw.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_diffray.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/optim_diffray.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_drone.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/optim_drone.png"></a></td>
+        </tr>
+        <tr>
+            <td align="center">bounce</td>
+            <td align="center">cloth throw</td>
+            <td align="center">diffray</td>
+            <td align="center">drone</td>
+        </tr>
+        <tr>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_inverse_kinematics.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/optim_inverse_kinematics.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_spring_cage.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/optim_spring_cage.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_trajectory.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/optim_trajectory.png"></a></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td align="center">inverse kinematics</td>
+            <td align="center">spring cage</td>
+            <td align="center">trajectory</td>
+            <td align="center"></td>
+        </tr>
+    </tbody>
+</table>
+
+
+### examples/sim
+
+<table>
+    <tbody>
+        <tr>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_cartpole.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/sim_cartpole.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_cloth.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/sim_cloth.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_granular.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/sim_granular.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_granular_collision_sdf.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/sim_granular_collision_sdf.png"></a></td>
+        </tr>
+        <tr>
+            <td align="center">cartpole</td>
+            <td align="center">cloth</td>
+            <td align="center">granular</td>
+            <td align="center">granular collision sdf</td>
+        </tr>
+        <tr>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_jacobian_ik.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/sim_jacobian_ik.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_quadruped.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/sim_quadruped.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_rigid_chain.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/sim_rigid_chain.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_rigid_contact.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/sim_rigid_contact.png"></a></td>
+        </tr>
+        <tr>
+            <td align="center">jacobian ik</td>
+            <td align="center">quadruped</td>
+            <td align="center">rigid chain</td>
+            <td align="center">rigid contact</td>
+        </tr>
+        <tr>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_rigid_force.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/sim_rigid_force.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_rigid_gyroscopic.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/sim_rigid_gyroscopic.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_rigid_soft_contact.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/sim_rigid_soft_contact.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_soft_body.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/sim_soft_body.png"></a></td>
+        </tr>
+        <tr>
+            <td align="center">rigid force</td>
+            <td align="center">rigid gyroscopic</td>
+            <td align="center">rigid soft contact</td>
+            <td align="center">soft body</td>
+        </tr>
+    </tbody>
+</table>
+
 
 ## Building
 

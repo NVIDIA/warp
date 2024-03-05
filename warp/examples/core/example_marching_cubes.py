@@ -15,8 +15,8 @@
 ###########################################################################
 
 
-import math
 import os
+from typing import Optional
 
 import warp as wp
 import warp.render
@@ -24,79 +24,104 @@ import warp.render
 wp.init()
 
 
-# signed sphere
 @wp.func
-def sdf_sphere(p: wp.vec3, r: float):
-    return wp.length(p) - r
-
-
-# signed box
-@wp.func
-def sdf_box(upper: wp.vec3, p: wp.vec3):
-    qx = wp.abs(p[0]) - upper[0]
-    qy = wp.abs(p[1]) - upper[1]
-    qz = wp.abs(p[2]) - upper[2]
-
-    e = wp.vec3(wp.max(qx, 0.0), wp.max(qy, 0.0), wp.max(qz, 0.0))
-
-    return wp.length(e) + wp.min(wp.max(qx, wp.max(qy, qz)), 0.0)
+def sdf_create_box(pos: wp.vec3, size: wp.vec3):
+    """Creates a SDF box primitive."""
+    # https://iquilezles.org/articles/distfunctions
+    q = wp.vec3(
+        wp.abs(pos[0]) - size[0],
+        wp.abs(pos[1]) - size[1],
+        wp.abs(pos[2]) - size[2],
+    )
+    qp = wp.vec3(wp.max(q[0], 0.0), wp.max(q[1], 0.0), wp.max(q[2], 0.0))
+    return wp.length(qp) + wp.min(wp.max(q[0], wp.max(q[1], q[2])), 0.0)
 
 
 @wp.func
-def op_union(d1: float, d2: float):
-    return wp.min(d1, d2)
+def sdf_create_torus(pos: wp.vec3, major_radius: float, minor_radius: float):
+    """Creates a SDF torus primitive."""
+    # https://iquilezles.org/articles/distfunctions
+    q = wp.vec2(wp.length(wp.vec2(pos[0], pos[2])) - major_radius, pos[1])
+    return wp.length(q) - minor_radius
 
 
 @wp.func
-def op_smooth_union(d1: float, d2: float, k: float):
-    a = d1
-    b = d2
-
-    h = wp.clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0)
-    return wp.lerp(b, a, h) - k * h * (1.0 - h)
+def sdf_translate(pos: wp.vec3, offset: wp.vec3):
+    """Translates a SDF position vector with an offset."""
+    return pos - offset
 
 
 @wp.func
-def op_subtract(d1: float, d2: float):
-    return wp.max(-d1, d2)
+def sdf_rotate(pos: wp.vec3, angles: wp.vec3):
+    """Rotates a SDF position vector using Euler angles."""
+    rot = wp.quat_rpy(
+        wp.radians(angles[0]),
+        wp.radians(angles[1]),
+        wp.radians(angles[2]),
+    )
+    return wp.quat_rotate_inv(rot, pos)
 
 
 @wp.func
-def op_intersect(d1: float, d2: float):
-    return wp.max(d1, d2)
+def sdf_smooth_min(a: float, b: float, radius: float):
+    """Creates a SDF torus primitive."""
+    # https://iquilezles.org/articles/smin
+    h = wp.max(radius - wp.abs(a - b), 0.0) / radius
+    return wp.min(a, b) - h * h * h * radius * (1.0 / 6.0)
 
 
-@wp.kernel
-def make_field(field: wp.array3d(dtype=float), center: wp.vec3, radius: float, time: float):
+@wp.kernel(enable_backward=False)
+def make_field(
+    torus_altitude: float,
+    torus_major_radius: float,
+    torus_minor_radius: float,
+    smooth_min_radius: float,
+    dim: int,
+    time: float,
+    out_data: wp.array3d(dtype=float),
+):
+    """Kernel to generate a SDF volume based on primitives."""
     i, j, k = wp.tid()
 
-    p = wp.vec3(float(i), float(j), float(k))
+    # Retrieve the position of the current cell in a normalized [-1, 1] range
+    # for each dimension.
+    pos = wp.vec3(
+        2.0 * ((float(i) + 0.5) / float(dim)) - 1.0,
+        2.0 * ((float(j) + 0.5) / float(dim)) - 1.0,
+        2.0 * ((float(k) + 0.5) / float(dim)) - 1.0,
+    )
 
-    rng = wp.rand_init(42)
-    noise = wp.noise(rng, wp.vec4(float(i) + 0.5, float(j) + 0.5, float(k) + 0.5, time) * 0.25)
-
-    sphere = 2.0 * noise + wp.length(p - center) - radius
-    box = sdf_box(wp.vec3(16.0, 48.0, 16.0), p - center)
-
-    d = op_smooth_union(sphere, box, 4.0)
-
-    field[i, j, k] = d
+    box = sdf_create_box(
+        sdf_translate(pos, wp.vec3(0.0, -0.7, 0.0)),
+        wp.vec3(0.9, 0.3, 0.9),
+    )
+    torus = sdf_create_torus(
+        sdf_rotate(
+            sdf_translate(pos, wp.vec3(0.0, torus_altitude, 0.0)),
+            wp.vec3(wp.sin(time) * 90.0, wp.cos(time) * 45.0, 0.0),
+        ),
+        torus_major_radius,
+        torus_minor_radius,
+    )
+    out_data[i, j, k] = sdf_smooth_min(box, torus, smooth_min_radius)
 
 
 class Example:
-    def __init__(self, stage):
-        self.dim = 128
-        self.max_verts = 10**6
-        self.max_tris = 10**6
+    def __init__(self, stage: Optional[str]):
+        self.dim = 64
+        self.max_verts = int(1e6)
+        self.max_tris = int(1e6)
 
-        self.time = 0.0
-        self.frame_dt = 1.0 / 60.0
+        self.torus_altitude = -0.5
+        self.torus_major_radius = 0.5
+        self.torus_minor_radius = 0.1
+        self.smooth_min_radius = 0.5
 
-        self.field = wp.zeros(shape=(self.dim, self.dim, self.dim), dtype=float)
+        self.fps = 60.0
+        self.frame = 0
 
-        self.iso = wp.MarchingCubes(
-            nx=self.dim, ny=self.dim, nz=self.dim, max_verts=self.max_verts, max_tris=self.max_tris
-        )
+        self.field = wp.zeros((self.dim, self.dim, self.dim), dtype=float)
+        self.mc = wp.MarchingCubes(self.dim, self.dim, self.dim, self.max_verts, self.max_tris)
 
         self.renderer = None
         if stage is not None:
@@ -107,31 +132,46 @@ class Example:
             wp.launch(
                 make_field,
                 dim=self.field.shape,
-                inputs=[self.field, wp.vec3(self.dim / 2, self.dim / 2, self.dim / 2), self.dim / 4, self.time],
+                inputs=(
+                    self.torus_altitude,
+                    self.torus_major_radius,
+                    self.torus_minor_radius,
+                    self.smooth_min_radius,
+                    self.dim,
+                    self.frame / self.fps,
+                ),
+                outputs=(self.field,),
             )
-            self.time += self.frame_dt
 
         with wp.ScopedTimer("Surface Extraction"):
-            self.iso.surface(field=self.field, threshold=math.sin(self.time) * self.dim / 8)
+            self.mc.surface(self.field, 0.0)
 
     def render(self):
         if self.renderer is None:
             return
 
         with wp.ScopedTimer("Render"):
-            self.renderer.begin_frame(self.time)
-            self.renderer.render_mesh("surface", self.iso.verts.numpy(), self.iso.indices.numpy(), update_topology=True)
+            self.renderer.begin_frame(self.frame / self.fps)
+            self.renderer.render_mesh(
+                "surface",
+                self.mc.verts.numpy(),
+                self.mc.indices.numpy(),
+                colors=((0.35, 0.55, 0.9),) * len(self.mc.verts),
+                update_topology=True,
+            )
             self.renderer.end_frame()
 
 
 if __name__ == "__main__":
-    stage_path = os.path.join(os.path.dirname(__file__), "example_marching_cubes.usd")
+    this_dir = os.path.realpath(os.path.dirname(__file__))
+    this_file = os.path.basename(__file__).split(".")[0]
+    stage_path = os.path.join(this_dir, f"{this_file}.usd")
 
     example = Example(stage_path)
-
-    for i in range(240):
+    for _ in range(240):
         example.step()
         example.render()
+        example.frame += 1
 
-    if example.renderer:
+    if example.renderer is not None:
         example.renderer.save()
