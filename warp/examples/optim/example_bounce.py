@@ -123,7 +123,7 @@ class Example:
         wp.launch(loss_kernel, dim=1, inputs=[self.states[-1].particle_q, self.target, self.loss])
 
         return self.loss
-    
+
     def step(self):
         with wp.ScopedTimer("step", active=self.profile):
             if self.use_graph:
@@ -163,7 +163,11 @@ class Example:
                 self.renderer.begin_frame(self.render_time)
                 self.renderer.render(self.states[i])
                 self.renderer.render_box(
-                    pos=self.target, rot=wp.quat_identity(), extents=(0.1, 0.1, 0.1), name="target", color=(0.0, 0.0, 0.0),
+                    pos=self.target,
+                    rot=wp.quat_identity(),
+                    extents=(0.1, 0.1, 0.1),
+                    name="target",
+                    color=(0.0, 0.0, 0.0),
                 )
                 self.renderer.render_line_strip(
                     vertices=traj_verts,
@@ -174,8 +178,9 @@ class Example:
                 self.renderer.end_frame()
 
                 from pxr import Gf, UsdGeom
-                particles_prim = example.renderer.stage.GetPrimAtPath("/root/particles")
-                particles = UsdGeom.Points.Get(example.renderer.stage, particles_prim.GetPath())
+
+                particles_prim = self.renderer.stage.GetPrimAtPath("/root/particles")
+                particles = UsdGeom.Points.Get(self.renderer.stage, particles_prim.GetPath())
                 particles.CreateDisplayColorAttr().Set([Gf.Vec3f(1.0, 1.0, 1.0)], time=self.renderer.time)
 
                 self.render_time += self.frame_dt
