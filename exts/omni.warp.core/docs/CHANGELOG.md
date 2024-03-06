@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## [0.15.1] - 2024-03-05
+
+- Add examples assets to the wheel packages
+- Fix broken image link in documentation
+- Fix codegen for custom grad functions calling their respective forward functions
+- Fix custom grad function handling for functions that have no outputs
+- Fix issues when `wp.config.quiet = True`
+
 ## [0.15.0] - 2024-03-04
 
 - Add thumbnails to examples gallery
