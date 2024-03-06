@@ -197,6 +197,109 @@ def test_custom_import_grad(test, device):
     assert_np_equal(ys_float.grad.numpy(), ys_float.numpy() * 3.0)
 
 
+@wp.func
+def sigmoid(x: float):
+    return 1.0 / (1.0 + wp.exp(-x))
+
+
+@wp.func_grad(sigmoid)
+def adj_sigmoid(x: float, adj: float):
+    # unused function to test that we don't run into infinite recursion when calling
+    # the forward function from within the gradient function
+    wp.adjoint[x] += adj * sigmoid(x) * (1.0 - sigmoid(x))
+
+
+@wp.func
+def sigmoid_no_return(i: int, xs: wp.array(dtype=float), ys: wp.array(dtype=float)):
+    # test function that does not return anything
+    ys[i] = sigmoid(xs[i])
+
+
+@wp.func_grad(sigmoid_no_return)
+def adj_sigmoid_no_return(i: int, xs: wp.array(dtype=float), ys: wp.array(dtype=float)):
+    wp.adjoint[xs][i] += ys[i] * (1.0 - ys[i])
+
+
+@wp.kernel
+def eval_sigmoid(xs: wp.array(dtype=float), ys: wp.array(dtype=float)):
+    i = wp.tid()
+    sigmoid_no_return(i, xs, ys)
+
+
+def test_custom_grad_no_return(test, device):
+    xs = wp.array([1.0, 2.0, 3.0, 4.0], dtype=wp.float32, requires_grad=True)
+    ys = wp.zeros_like(xs)
+    ys.grad.fill_(1.0)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(eval_sigmoid, dim=len(xs), inputs=[xs], outputs=[ys])
+    tape.backward()
+
+    sigmoids = ys.numpy()
+    grad = xs.grad.numpy()
+    assert_np_equal(grad, sigmoids * (1.0 - sigmoids))
+
+
+@wp.func
+def dense_gemm(
+    m: int,
+    n: int,
+    p: int,
+    transpose_A: bool,
+    transpose_B: bool,
+    add_to_C: bool,
+    A: wp.array(dtype=float),
+    B: wp.array(dtype=float),
+    # outputs
+    C: wp.array(dtype=float),
+):
+    # this function doesn't get called but it is an important test for code generation
+    # multiply a `m x p` matrix A by a `p x n` matrix B to produce a `m x n` matrix C
+    for i in range(m):
+        for j in range(n):
+            sum = float(0.0)
+            for k in range(p):
+                if transpose_A:
+                    a_i = k * m + i
+                else:
+                    a_i = i * p + k
+                if transpose_B:
+                    b_j = j * p + k
+                else:
+                    b_j = k * n + j
+                sum += A[a_i] * B[b_j]
+
+            if add_to_C:
+                C[i * n + j] += sum
+            else:
+                C[i * n + j] = sum
+
+
+@wp.func_grad(dense_gemm)
+def adj_dense_gemm(
+    m: int,
+    n: int,
+    p: int,
+    transpose_A: bool,
+    transpose_B: bool,
+    add_to_C: bool,
+    A: wp.array(dtype=float),
+    B: wp.array(dtype=float),
+    # outputs
+    C: wp.array(dtype=float),
+):
+    # code generation would break here if we didn't defer building the custom grad
+    # function until after the forward functions + kernels of the module have been built
+    add_to_C = True
+    if transpose_A:
+        dense_gemm(p, m, n, False, True, add_to_C, B, wp.adjoint[C], wp.adjoint[A])
+        dense_gemm(p, n, m, False, False, add_to_C, A, wp.adjoint[C], wp.adjoint[B])
+    else:
+        dense_gemm(m, p, n, False, not transpose_B, add_to_C, wp.adjoint[C], B, wp.adjoint[A])
+        dense_gemm(p, n, m, True, False, add_to_C, A, wp.adjoint[C], wp.adjoint[B])
+
+
 devices = get_test_devices()
 
 
@@ -207,6 +310,7 @@ class TestGradCustoms(unittest.TestCase):
 add_function_test(TestGradCustoms, "test_custom_replay_grad", test_custom_replay_grad, devices=devices)
 add_function_test(TestGradCustoms, "test_custom_overload_grad", test_custom_overload_grad, devices=devices)
 add_function_test(TestGradCustoms, "test_custom_import_grad", test_custom_import_grad, devices=devices)
+add_function_test(TestGradCustoms, "test_custom_grad_no_return", test_custom_grad_no_return, devices=devices)
 
 
 if __name__ == "__main__":

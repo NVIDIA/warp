@@ -710,7 +710,11 @@ def func_grad(forward_fn):
         def match_function(f):
             # check whether the function overload f matches the signature of the provided gradient function
             if not hasattr(f.adj, "return_var"):
-                f.adj.build(None, f.module.options)
+                # we have to temporarily build this function to figure out its return type(s);
+                # note that we do not have a ModuleBuilder instance here at this wrapping stage, hence we
+                # have to create a dummy builder
+                builder = ModuleBuilder(Module("dummy", None), f.module.options)
+                f.adj.build(builder)
             expected_args = list(f.input_types.items())
             if f.adj.return_var is not None:
                 expected_args += [(f"adj_ret_{var.label}", var.type) for var in f.adj.return_var]
@@ -1159,6 +1163,7 @@ class ModuleBuilder:
         self.structs = {}
         self.options = options
         self.module = module
+        self.deferred_functions = []
 
         # build all functions declared in the module
         for func in module.functions.values():
@@ -1174,6 +1179,10 @@ class ModuleBuilder:
             else:
                 for k in kernel.overloads.values():
                     self.build_kernel(k)
+
+        # build all functions outside this module which are called from functions or kernels in this module
+        for func in self.deferred_functions:
+            self.build_function(func)
 
     def build_struct_recursive(self, struct: warp.codegen.Struct):
         structs = []
@@ -2871,6 +2880,15 @@ class Runtime:
         # initialize kernel cache
         warp.build.init_kernel_cache(warp.config.kernel_cache_dir)
 
+        devices_without_uva = []
+        devices_without_mempool = []
+        for cuda_device in self.cuda_devices:
+            if cuda_device.is_primary:
+                if not cuda_device.is_uva:
+                    devices_without_uva.append(cuda_device)
+                if not cuda_device.is_mempool_supported:
+                    devices_without_mempool.append(cuda_device)
+
         # print device and version information
         if not warp.config.quiet:
             greeting = []
@@ -2893,16 +2911,12 @@ class Runtime:
             alias_str = f'"{self.cpu_device.alias}"'
             name_str = f'"{self.cpu_device.name}"'
             greeting.append(f"     {alias_str:10s} : {name_str}")
-            devices_without_uva = []
-            devices_without_mempool = []
             for cuda_device in self.cuda_devices:
                 alias_str = f'"{cuda_device.alias}"'
                 if cuda_device.is_primary:
                     name_str = f'"{cuda_device.name}"'
                     arch_str = f"sm_{cuda_device.arch}"
                     mem_str = f"{cuda_device.total_memory / 1024 / 1024 / 1024:.0f} GiB"
-                    if not cuda_device.is_uva:
-                        devices_without_uva.append(cuda_device)
                     if cuda_device.is_mempool_supported:
                         if cuda_device.is_mempool_enabled:
                             mempool_str = "mempool enabled"
@@ -2910,7 +2924,6 @@ class Runtime:
                             mempool_str = "mempool supported"
                     else:
                         mempool_str = "mempool not supported"
-                        devices_without_mempool.append(cuda_device)
                     greeting.append(f"     {alias_str:10s} : {name_str} ({mem_str}, {arch_str}, {mempool_str})")
                 else:
                     primary_alias_str = f'"{self.cuda_primary_devices[cuda_device.ordinal].alias}"'
