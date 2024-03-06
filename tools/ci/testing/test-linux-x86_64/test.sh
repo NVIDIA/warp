@@ -22,7 +22,7 @@ $PYTHON -m pip install usd-core
 $PYTHON -m pip install coverage[toml]
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
     $PYTHON -m pip install torch --extra-index-url https://download.pytorch.org/whl/cu115
-    $PYTHON -m pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    $PYTHON -m pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 fi
 
 if [ -n "$TEAMCITY_VERSION" ]; then

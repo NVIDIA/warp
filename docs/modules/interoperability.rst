@@ -235,13 +235,103 @@ JAX
 ---
 
 Interoperability with JAX arrays is supported through the following methods.
-Internally these use the DLPack protocol to exchange data in a zero-copy way with JAX.
+Internally these use the DLPack protocol to exchange data in a zero-copy way with JAX::
+
+    warp_array = wp.from_jax(jax_array)
+    jax_array = wp.to_jax(warp_array)
 
 It may be preferable to use the :ref:`DLPack` protocol directly for better performance and control over stream synchronization behaviour.
 
 .. automodule:: warp.jax
     :members:
     :undoc-members:
+
+
+Using Warp kernels as JAX primitives
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. note::
+    This is an experimental feature under development.
+
+Warp kernels can be used as JAX primitives, which can be used to call Warp kernels inside of jitted JAX functions::
+
+    import warp as wp
+    import jax
+    import jax.numpy as jp
+
+    # import experimental feature
+    from warp.jax_experimental import jax_kernel
+
+    @wp.kernel
+    def triple_kernel(input: wp.array(dtype=float), output: wp.array(dtype=float)):
+        tid = wp.tid()
+        output[tid] = 3.0 * input[tid]
+
+    wp.init()
+
+    # create a Jax primitive from a Warp kernel
+    jax_triple = jax_kernel(triple_kernel)
+
+    # use the Warp kernel in a Jax jitted function
+    @jax.jit
+    def f():
+        x = jp.arange(0, 64, dtype=jp.float32)
+        return jax_triple(x)
+
+    print(f())
+
+Since this is an experimental feature, there are some limitations:
+
+    - All kernel arguments must be arrays.
+    - Kernel launch dimensions are inferred from the shape of the first argument.
+    - Input arguments are followed by output arguments in the Warp kernel definition.
+    - There must be at least one input argument and at least one output argument.
+    - Output shapes must match the launch dimensions (i.e., output shapes must match the shape of the first argument).
+    - All arrays must be contiguous.
+    - Only the CUDA backend is supported.
+
+Here is an example of an operation with three inputs and two outputs::
+
+    import warp as wp
+    import jax
+    import jax.numpy as jp
+
+    # import experimental feature
+    from warp.jax_experimental import jax_kernel
+
+    # kernel with multiple inputs and outputs
+    @wp.kernel
+    def multiarg_kernel(
+        # inputs
+        a: wp.array(dtype=float),
+        b: wp.array(dtype=float),
+        c: wp.array(dtype=float),
+        # outputs
+        ab: wp.array(dtype=float),
+        bc: wp.array(dtype=float),
+    ):
+        tid = wp.tid()
+        ab[tid] = a[tid] + b[tid]
+        bc[tid] = b[tid] + c[tid]
+
+    wp.init()
+
+    # create a Jax primitive from a Warp kernel
+    jax_multiarg = jax_kernel(multiarg_kernel)
+
+    # use the Warp kernel in a Jax jitted function with three inputs and two outputs
+    @jax.jit
+    def f():
+        a = jp.full(64, 1, dtype=jp.float32)
+        b = jp.full(64, 2, dtype=jp.float32)
+        c = jp.full(64, 3, dtype=jp.float32)
+        return jax_multiarg(a, b, c)
+
+    x, y = f()
+
+    print(x)
+    print(y)
+
 
 .. _DLPack:
 

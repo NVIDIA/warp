@@ -1,0 +1,254 @@
+# Copyright (c) 2024 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+import numpy as np
+import os
+import unittest
+from typing import Any
+
+import warp as wp
+from warp.tests.unittest_utils import *
+
+wp.init()
+
+
+# basic kernel with one input and output
+@wp.kernel
+def triple_kernel(input: wp.array(dtype=float), output: wp.array(dtype=float)):
+    tid = wp.tid()
+    output[tid] = 3.0 * input[tid]
+
+
+# generic kernel with one scalar input and output
+@wp.kernel
+def triple_kernel_scalar(input: wp.array(dtype=Any), output: wp.array(dtype=Any)):
+    tid = wp.tid()
+    output[tid] = input.dtype(3) * input[tid]
+
+
+# generic kernel with one vector/matrix input and output
+@wp.kernel
+def triple_kernel_vecmat(input: wp.array(dtype=Any), output: wp.array(dtype=Any)):
+    tid = wp.tid()
+    output[tid] = input.dtype.dtype(3) * input[tid]
+
+
+# kernel with multiple inputs and outputs
+@wp.kernel
+def multiarg_kernel(
+    # inputs
+    a: wp.array(dtype=float),
+    b: wp.array(dtype=float),
+    c: wp.array(dtype=float),
+    # outputs
+    ab: wp.array(dtype=float),
+    bc: wp.array(dtype=float),
+):
+    tid = wp.tid()
+    ab[tid] = a[tid] + b[tid]
+    bc[tid] = b[tid] + c[tid]
+
+
+# various types for testing
+scalar_types = wp.types.scalar_types
+vector_types = []
+matrix_types = []
+for dim in [2, 3, 4]:
+    for T in scalar_types:
+        vector_types.append(wp.vec(dim, T))
+        matrix_types.append(wp.mat((dim, dim), T))
+
+# explicitly overload generic kernels to avoid module reloading during tests
+for T in scalar_types:
+    wp.overload(triple_kernel_scalar, [wp.array(dtype=T), wp.array(dtype=T)])
+for T in [*vector_types, *matrix_types]:
+    wp.overload(triple_kernel_vecmat, [wp.array(dtype=T), wp.array(dtype=T)])
+
+
+def _jax_version():
+    try:
+        import jax
+        return jax.__version_info__
+    except ImportError:
+        return (0, 0, 0)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 4, 25), "Jax version too old")
+def test_jax_kernel_basic(test, device):
+    import jax.numpy as jp
+    from warp.jax_experimental import jax_kernel
+
+    n = 64
+
+    jax_triple = jax_kernel(triple_kernel)
+
+    @jax.jit
+    def f():
+        x = jp.arange(n, dtype=jp.float32)
+        return jax_triple(x)
+
+    # run on the given device
+    with jax.default_device(wp.device_to_jax(device)):
+        y = f()
+    
+    result = np.asarray(y)
+    expected = 3 * np.arange(n, dtype=np.float32)
+
+    assert_np_equal(result, expected)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 4, 25), "Jax version too old")
+def test_jax_kernel_scalar(test, device):
+    import jax.numpy as jp
+    from warp.jax_experimental import jax_kernel
+
+    n = 64
+        
+    for T in scalar_types:
+
+        jp_dtype = wp.jax.dtype_to_jax(T)
+        np_dtype = wp.types.warp_type_to_np_dtype[T]
+
+        with test.subTest(msg=T.__name__):
+
+            # get the concrete overload
+            kernel_instance = triple_kernel_scalar.get_overload([wp.array(dtype=T), wp.array(dtype=T)])
+
+            jax_triple = jax_kernel(kernel_instance)
+
+            @jax.jit
+            def f():
+                x = jp.arange(n, dtype=jp_dtype)
+                return jax_triple(x)
+
+            # run on the given device
+            with jax.default_device(wp.device_to_jax(device)):
+                y = f()
+            
+            result = np.asarray(y)
+            expected = 3 * np.arange(n, dtype=np_dtype)
+
+            assert_np_equal(result, expected)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 4, 25), "Jax version too old")
+def test_jax_kernel_vecmat(test, device):
+    import jax.numpy as jp
+    from warp.jax_experimental import jax_kernel
+
+    for T in [*vector_types, *matrix_types]:
+
+        jp_dtype = wp.jax.dtype_to_jax(T._wp_scalar_type_)
+        np_dtype = wp.types.warp_type_to_np_dtype[T._wp_scalar_type_]
+
+        n = 64 // T._length_
+        scalar_shape = (n, *T._shape_)
+        scalar_len = n * T._length_
+
+        with test.subTest(msg=T.__name__):
+
+            # get the concrete overload
+            kernel_instance = triple_kernel_vecmat.get_overload([wp.array(dtype=T), wp.array(dtype=T)])
+
+            jax_triple = jax_kernel(kernel_instance)
+
+            @jax.jit
+            def f():
+                x = jp.arange(scalar_len, dtype=jp_dtype).reshape(scalar_shape)
+                return jax_triple(x)
+
+            # run on the given device
+            with jax.default_device(wp.device_to_jax(device)):
+                y = f()
+            
+            result = np.asarray(y)
+            expected = 3 * np.arange(scalar_len, dtype=np_dtype).reshape(scalar_shape)
+
+            assert_np_equal(result, expected)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 4, 25), "Jax version too old")
+def test_jax_kernel_multiarg(test, device):
+    import jax.numpy as jp
+    from warp.jax_experimental import jax_kernel
+
+    n = 64
+
+    jax_multiarg = jax_kernel(multiarg_kernel)
+
+    @jax.jit
+    def f():
+        a = jp.full(n, 1, dtype=jp.float32)
+        b = jp.full(n, 2, dtype=jp.float32)
+        c = jp.full(n, 3, dtype=jp.float32)
+        return jax_multiarg(a, b, c)
+
+    # run on the given device
+    with jax.default_device(wp.device_to_jax(device)):
+        x, y = f()
+    
+    result_x, result_y = np.asarray(x), np.asarray(y)
+    expected_x = np.full(n, 3, dtype=np.float32)
+    expected_y = np.full(n, 5, dtype=np.float32)
+
+    assert_np_equal(result_x, expected_x)
+    assert_np_equal(result_y, expected_y)
+
+
+class TestJax(unittest.TestCase):
+    pass
+
+
+# try adding Jax tests if Jax is installed correctly
+try:
+    # prevent Jax from gobbling up GPU memory
+    os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+    os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
+
+    import jax
+    import jax.dlpack
+
+    # NOTE: we must enable 64-bit types in Jax to test the full gamut of types
+    jax.config.update("jax_enable_x64", True)
+
+    # check which Warp devices work with Jax
+    # CUDA devices may fail if Jax cannot find a CUDA Toolkit
+    test_devices = get_test_devices()
+    jax_compatible_devices = []
+    jax_compatible_cuda_devices = []
+    for d in test_devices:
+        try:
+            with jax.default_device(wp.device_to_jax(d)):
+                j = jax.numpy.arange(10, dtype=jax.numpy.float32)
+                j += 1
+            jax_compatible_devices.append(d)
+            if d.is_cuda:
+                jax_compatible_cuda_devices.append(d)
+        except Exception as e:
+            print(f"Skipping Jax DLPack tests on device '{d}' due to exception: {e}")
+
+    if jax_compatible_cuda_devices:
+        add_function_test(
+            TestJax, "test_jax_kernel_basic", test_jax_kernel_basic, devices=jax_compatible_cuda_devices
+        )
+        add_function_test(
+            TestJax, "test_jax_kernel_scalar", test_jax_kernel_scalar, devices=jax_compatible_cuda_devices
+        )
+        add_function_test(
+            TestJax, "test_jax_kernel_vecmat", test_jax_kernel_vecmat, devices=jax_compatible_cuda_devices
+        )
+        add_function_test(
+            TestJax, "test_jax_kernel_multiarg", test_jax_kernel_multiarg, devices=jax_compatible_cuda_devices
+        )
+
+except Exception as e:
+    print(f"Skipping Jax tests due to exception: {e}")
+
+
+if __name__ == "__main__":
+    wp.build.clear_kernel_cache()
+    unittest.main(verbosity=2)
