@@ -919,12 +919,16 @@ class Adjoint:
                     break
 
         # if it is a user-function then build it recursively
-        if not func.is_builtin():
+        if not func.is_builtin() and func not in adj.builder.functions:
             adj.builder.build_function(func)
+            # add custom grad, replay functions to the list of functions
+            # to be built later (invalid code could be generated if we built them now)
+            # so that they are not missed when only the forward function is imported
+            # from another module
             if func.custom_grad_func:
-                adj.builder.build_function(func.custom_grad_func)
+                adj.builder.deferred_functions.append(func.custom_grad_func)
             if func.custom_replay_func:
-                adj.builder.build_function(func.custom_replay_func)
+                adj.builder.deferred_functions.append(func.custom_replay_func)
 
         # evaluate the function type based on inputs
         arg_types = [strip_reference(a.type) for a in args if not isinstance(a, warp.context.Function)]
