@@ -105,7 +105,12 @@ def default_suite(test_loader: unittest.TestLoader):
     from warp.tests.test_dense import TestDense
     from warp.tests.test_devices import TestDevices
     from warp.tests.test_dlpack import TestDLPack
-    from warp.tests.test_examples import TestExamples, TestFemExamples, TestSimExamples
+    from warp.tests.test_examples import (
+        TestExamples,
+        TestFemDiffusionExamples,
+        TestFemExamples,
+        TestSimExamples,
+    )
     from warp.tests.test_fabricarray import TestFabricArray
     from warp.tests.test_fast_math import TestFastMath
     from warp.tests.test_fem import TestFem, TestFemShapeFunctions
@@ -190,6 +195,7 @@ def default_suite(test_loader: unittest.TestLoader):
         TestDevices,
         TestDLPack,
         TestExamples,
+        TestFemDiffusionExamples,
         TestFemExamples,
         TestSimExamples,
         TestFabricArray,
