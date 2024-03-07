@@ -711,15 +711,13 @@ class Example:
             self.optim_graph = None
 
         if self.use_cuda_graph and self.optim_graph is None:
-            wp.capture_begin()
-            try:
+            with wp.ScopedCapture() as capture:
                 self.tape = wp.Tape()
                 with self.tape:
                     self.forward()
                 self.rollout_costs.grad.fill_(1.0)
                 self.tape.backward()
-            finally:
-                self.optim_graph = wp.capture_end()
+            self.optim_graph = capture.graph
 
         # Sample control waypoints around the nominal trajectory.
         self.seed.zero_()

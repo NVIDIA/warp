@@ -72,12 +72,9 @@ class Example:
         self.use_graph = wp.get_device().is_cuda
         if self.use_graph:
             # record launches
-            wp.capture_begin()
-            try:
+            with wp.ScopedCapture() as capture:
                 self.fbm()
-            finally:
-                # end capture and return a graph object
-                self.graph = wp.capture_end()
+            self.graph = capture.graph
 
     def fbm(self):
         for _ in range(16):
