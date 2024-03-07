@@ -12,7 +12,7 @@
 - Improve module load exception message
 - Add `wp.ScopedCapture`
 - Removing `enable_backward` warning for callables
-- Copy function attributes from wrapped kernels, functions, structs
+- Copy docstrings and annotations from wrapped kernels, functions, structs
 
 ## [0.15.1] - 2024-03-05
 
