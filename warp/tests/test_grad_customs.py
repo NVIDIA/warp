@@ -22,6 +22,7 @@ wp.init()
 def reversible_increment(
     counter: wp.array(dtype=int), counter_index: int, value: int, thread_values: wp.array(dtype=int), tid: int
 ):
+    """This is a docstring"""
     next_index = wp.atomic_add(counter, counter_index, value)
     thread_values[tid] = next_index
     return next_index
@@ -31,6 +32,7 @@ def reversible_increment(
 def replay_reversible_increment(
     counter: wp.array(dtype=int), counter_index: int, value: int, thread_values: wp.array(dtype=int), tid: int
 ):
+    """This is a docstring"""
     return thread_values[tid]
 
 
@@ -64,28 +66,33 @@ def test_custom_replay_grad(test, device):
 
 @wp.func
 def overload_fn(x: float, y: float):
+    """This is a docstring"""
     return x * 3.0 + y / 3.0, y**2.5
 
 
 @wp.func_grad(overload_fn)
 def overload_fn_grad(x: float, y: float, adj_ret0: float, adj_ret1: float):
+    """This is a docstring"""
     wp.adjoint[x] += x * adj_ret0 * 42.0 + y * adj_ret1 * 10.0
     wp.adjoint[y] += y * adj_ret1 * 3.0
 
 
 @wp.struct
 class MyStruct:
+    """This is a docstring"""
     scalar: float
     vec: wp.vec3
 
 
 @wp.func
 def overload_fn(x: MyStruct):
+    """This is a docstring"""
     return x.vec[0] * x.vec[1] * x.vec[2] * 4.0, wp.length(x.vec), x.scalar**0.5
 
 
 @wp.func_grad(overload_fn)
 def overload_fn_grad(x: MyStruct, adj_ret0: float, adj_ret1: float, adj_ret2: float):
+    """This is a docstring"""
     wp.adjoint[x.scalar] += x.scalar * adj_ret0 * 10.0
     wp.adjoint[x.vec][0] += adj_ret0 * x.vec[1] * x.vec[2] * 20.0
     wp.adjoint[x.vec][1] += adj_ret1 * x.vec[0] * x.vec[2] * 30.0
@@ -96,6 +103,7 @@ def overload_fn_grad(x: MyStruct, adj_ret0: float, adj_ret1: float, adj_ret2: fl
 def run_overload_float_fn(
     xs: wp.array(dtype=float), ys: wp.array(dtype=float), output0: wp.array(dtype=float), output1: wp.array(dtype=float)
 ):
+    """This is a docstring"""
     i = wp.tid()
     out0, out1 = overload_fn(xs[i], ys[i])
     output0[i] = out0
@@ -241,6 +249,15 @@ def test_custom_grad_no_return(test, device):
     assert_np_equal(grad, sigmoids * (1.0 - sigmoids))
 
 
+def test_wrapped_docstring(test, device):
+    assert "This is a docstring" in reversible_increment.__doc__
+    assert "This is a docstring" in replay_reversible_increment.__doc__
+    assert "This is a docstring" in overload_fn.__doc__
+    assert "This is a docstring" in overload_fn_grad.__doc__
+    assert "This is a docstring" in run_overload_float_fn.__doc__
+    assert "This is a docstring" in MyStruct.__doc__
+
+
 @wp.func
 def dense_gemm(
     m: int,
@@ -311,6 +328,7 @@ add_function_test(TestGradCustoms, "test_custom_replay_grad", test_custom_replay
 add_function_test(TestGradCustoms, "test_custom_overload_grad", test_custom_overload_grad, devices=devices)
 add_function_test(TestGradCustoms, "test_custom_import_grad", test_custom_import_grad, devices=devices)
 add_function_test(TestGradCustoms, "test_custom_grad_no_return", test_custom_grad_no_return, devices=devices)
+add_function_test(TestGradCustoms, "test_wrapped_docstring", test_wrapped_docstring, devices=devices)
 
 
 if __name__ == "__main__":

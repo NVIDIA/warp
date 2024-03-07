@@ -86,6 +86,7 @@ def test_shared_memory(test, device):
 
     @wp.func_native(snippet)
     def reverse(d: wp.array(dtype=int), N: int, tid: int):
+        """Reverse the array d in place using shared memory."""
         return
 
     @wp.kernel
@@ -100,6 +101,7 @@ def test_shared_memory(test, device):
     wp.launch(kernel=reverse_kernel, dim=N, inputs=[x, N], device=device)
 
     assert_np_equal(x.numpy(), y)
+    assert reverse.__doc__ == "Reverse the array d in place using shared memory."
 
 
 def test_cpu_snippet(test, device):

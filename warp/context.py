@@ -7,6 +7,7 @@
 
 import ast
 import ctypes
+import functools
 import gc
 import hashlib
 import inspect
@@ -643,8 +644,10 @@ def func(f):
         func=f, key=name, namespace="", module=m, value_func=None
     )  # value_type not known yet, will be inferred during Adjoint.build()
 
-    # return the top of the list of overloads for this key
-    return m.functions[name]
+    # use the top of the list of overloads for this key
+    g = m.functions[name]
+    # copy over the function attributes, including docstring
+    return functools.update_wrapper(g, f)
 
 
 def func_native(snippet, adj_snippet=None, replay_snippet=None):
@@ -665,8 +668,9 @@ def func_native(snippet, adj_snippet=None, replay_snippet=None):
             adj_native_snippet=adj_snippet,
             replay_snippet=replay_snippet,
         )  # cuda snippets do not have a return value_type
-
-        return m.functions[name]
+        g = m.functions[name]
+        # copy over the function attributes, including docstring
+        return functools.update_wrapper(g, f)
 
     return snippet_func
 
@@ -749,7 +753,7 @@ def func_grad(forward_fn):
                     continue
                 if match_function(f):
                     add_custom_grad(f)
-                    return
+                    return grad_fn
             raise RuntimeError(
                 f"No function overload found for gradient function {grad_fn.__qualname__} for function {forward_fn.key}"
             )
@@ -770,6 +774,8 @@ def func_grad(forward_fn):
                     "forward function arguments plus the adjoint variables corresponding to the return variables:"
                     f"\n{', '.join(map(lambda nt: f'{nt[0]}: {nt[1].__name__}', expected_args))}"
                 )
+
+        return grad_fn
 
     return wrapper
 
@@ -814,6 +820,7 @@ def func_replay(forward_fn):
             skip_adding_overload=True,
             code_transformers=f.adj.transformers,
         )
+        return replay_fn
 
     return wrapper
 
@@ -834,6 +841,7 @@ def kernel(f=None, *, enable_backward=None):
             module=m,
             options=options,
         )
+        k = functools.update_wrapper(k, f)
         return k
 
     if f is None:
@@ -847,7 +855,7 @@ def kernel(f=None, *, enable_backward=None):
 def struct(c):
     m = get_module(c.__module__)
     s = warp.codegen.Struct(cls=c, key=warp.codegen.make_full_qualified_name(c), module=m)
-
+    s = functools.update_wrapper(s, c)
     return s
 
 
@@ -2984,14 +2992,16 @@ class Runtime:
             # --quick flag.  The consequences of running with an older driver can be obscure and severe,
             # so make sure we print a very visible warning.
             if self.driver_version < self.toolkit_version and not self.core.is_cuda_compatibility_enabled():
-                print("******************************************************************\n"
-                      "* WARNING:                                                       *\n"
-                      "*   Warp was compiled without CUDA compatibility support         *\n"
-                      "*   (quick build).  The CUDA Toolkit version used to build       *\n"
-                      "*   Warp is not fully supported by the current driver.           *\n"
-                      "*   Some CUDA functionality may not work correctly!              *\n"
-                      "*   Update the driver or rebuild Warp without the --quick flag.  *\n"
-                      "******************************************************************\n")
+                print(
+                    "******************************************************************\n"
+                    "* WARNING:                                                       *\n"
+                    "*   Warp was compiled without CUDA compatibility support         *\n"
+                    "*   (quick build).  The CUDA Toolkit version used to build       *\n"
+                    "*   Warp is not fully supported by the current driver.           *\n"
+                    "*   Some CUDA functionality may not work correctly!              *\n"
+                    "*   Update the driver or rebuild Warp without the --quick flag.  *\n"
+                    "******************************************************************\n"
+                )
 
             # ensure initialization did not change the initial context (e.g. querying available memory)
             self.core.cuda_context_set_current(initial_context)
