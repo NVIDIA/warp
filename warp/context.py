@@ -1676,7 +1676,7 @@ class Module:
                     if cuda_module is not None:
                         self.cuda_modules[device.context] = cuda_module
                     else:
-                        raise Exception("Failed to load CUDA module")
+                        raise Exception(f"Failed to load CUDA module '{self.name}'")
 
                 except Exception as e:
                     self.cuda_build_failed = True
