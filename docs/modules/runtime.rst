@@ -781,7 +781,7 @@ To record a series of kernel launches use the :func:`wp.capture_begin() <capture
 .. code:: python
 
     # begin capture
-    wp.capture_begin()
+    wp.capture_begin(device="cuda")
 
     try:
         # record launches
@@ -789,7 +789,7 @@ To record a series of kernel launches use the :func:`wp.capture_begin() <capture
             wp.launch(kernel=compute1, inputs=[a, b], device="cuda")
     finally:
         # end capture and return a graph object
-        graph = wp.capture_end()
+        graph = wp.capture_end(device="cuda")
 
 We strongly recommend the use of the the try-finally pattern when capturing graphs because the `finally`
 statement will ensure :func:`wp.capture_end <capture_end>` gets called, even if an exception occurs during
@@ -799,12 +799,28 @@ Once a graph has been constructed it can be executed: ::
 
     wp.capture_launch(graph)
 
+The :class:`wp.ScopedCapture <ScopedCapture>` context manager can be used to simplify the code and
+ensure that :func:`wp.capture_end <capture_end>` is called regardless of exceptions:
+
+.. code:: python
+
+    with wp.ScopedCapture(device="cuda") as capture:
+        # record launches
+        for i in range(100):
+            wp.launch(kernel=compute1, inputs=[a, b], device="cuda")
+
+    wp.capture_launch(capture.graph)
+
 Note that only launch calls are recorded in the graph, any Python executed outside of the kernel code will not be recorded.
 Typically it is only beneficial to use CUDA graphs when the graph will be reused or launched multiple times.
 
 .. autofunction:: capture_begin
 .. autofunction:: capture_end
 .. autofunction:: capture_launch
+
+.. autoclass:: ScopedCapture
+    :members:
+
 
 Bounding Value Hierarchies (BVH)
 --------------------------------

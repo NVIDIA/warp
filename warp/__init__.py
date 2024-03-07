@@ -73,6 +73,7 @@ from warp.context import is_peer_access_supported, is_peer_access_enabled, set_p
 from warp.tape import Tape
 from warp.utils import ScopedTimer, ScopedDevice, ScopedStream
 from warp.utils import ScopedMempool, ScopedMempoolAccess, ScopedPeerAccess
+from warp.utils import ScopedCapture
 from warp.utils import transform_expand, quat_between_vectors
 
 from warp.torch import from_torch, to_torch

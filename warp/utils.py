@@ -723,6 +723,33 @@ class ScopedPeerAccess:
         wp.set_peer_access_enabled(self.target_device, self.peer_device, self.saved_setting)
 
 
+class ScopedCapture:
+    def __init__(self, device=None, stream=None, force_module_load=None, external=False):
+        self.device = device
+        self.stream = stream
+        self.force_module_load = force_module_load
+        self.external = external
+        self.active = False
+        self.graph = None
+
+    def __enter__(self):
+        try:
+            wp.capture_begin(
+                device=self.device, stream=self.stream, force_module_load=self.force_module_load, external=self.external
+            )
+            self.active = True
+            return self
+        except:
+            raise
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.active:
+            try:
+                self.graph = wp.capture_end(device=self.device, stream=self.stream)
+            finally:
+                self.active = False
+
+
 # helper kernels for adj_matmul
 @wp.kernel
 def add_kernel_2d(x: wp.array2d(dtype=Any), acc: wp.array2d(dtype=Any), beta: Any):
