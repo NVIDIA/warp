@@ -1,12 +1,18 @@
 # CHANGELOG
 
-## [0.15.2] - 2024-03-06
+
+## [1.0.0] - 2024-03-07
 
 - Add `FeatherstoneIntegrator` which provides more stable simulation of articulated rigid body dynamics in generalized coordinates (`State.joint_q` and `State.joint_qd`)
 - Introduce `warp.sim.Control` struct to store control inputs for simulations (optional, by default the `Model` control inputs are used as before); integrators now have a different simulation signature: `integrator.simulate(model: Model, state_in: State, state_out: State, dt: float, control: Control)`
 - `joint_act` can now behave in 3 modes: with `joint_axis_mode` set to `JOINT_MODE_FORCE` it behaves as a force/torque, with `JOINT_MODE_VELOCITY` it behaves as a velocity target, and with `JOINT_MODE_POSITION` it behaves as a position target; `joint_target` has been removed
 - Add adhesive contact to Euler integrators via `Model.shape_materials.ka` which controls the contact distance at which the adhesive force is applied
 - Improve handling of visual/collision shapes in URDF importer so visual shapes are not involved in contact dynamics
+- Experimental JAX kernel callback support
+- Improve module load exception message
+- Add `wp.ScopedCapture`
+- Removing `enable_backward` warning for callables
+- Copy function attributes from wrapped kernels, functions, structs
 
 ## [0.15.1] - 2024-03-05
 
