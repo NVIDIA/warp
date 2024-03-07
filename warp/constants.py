@@ -26,6 +26,8 @@ __all__ = [
     "phi",
     "PI",
     "pi",
+    "HALF_PI",
+    "half_pi",
     "TAU",
     "tau",
 ]
@@ -37,6 +39,7 @@ LN2 = ln2 = constant(0.69314718055994530942)  # ln(2)
 LN10 = ln10 = constant(2.30258509299404568402)  # ln(10)
 PHI = phi = constant(1.61803398874989484820)  # golden constant
 PI = pi = constant(3.14159265358979323846)  # pi
+HALF_PI = half_pi = constant(1.57079632679489661923)  # half pi
 TAU = tau = constant(6.28318530717958647692)  # 2 * pi
 
 INF = inf = constant(math.inf)

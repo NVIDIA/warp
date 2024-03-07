@@ -95,7 +95,11 @@ class Tape:
         # existing code before we added wp.array.grad attribute
         if grads:
             for a, g in grads.items():
-                a.grad = g
+                if a.grad is None:
+                    a.grad = g
+                else:
+                    # ensure we can capture this backward pass in a CUDA graph
+                    a.grad.assign(g)
                 self.const_gradients.add(a)
 
         # run launches backwards

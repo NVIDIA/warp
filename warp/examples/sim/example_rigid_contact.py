@@ -125,9 +125,9 @@ class Example:
 
         self.use_graph = wp.get_device().is_cuda
         if self.use_graph:
-            wp.capture_begin()
-            self.simulate()
-            self.graph = wp.capture_end()
+            with wp.ScopedCapture() as capture:
+                self.simulate()
+            self.graph = capture.graph
 
     def load_mesh(self, filename, path):
         asset_stage = Usd.Stage.Open(filename)
@@ -156,7 +156,7 @@ class Example:
     def render(self):
         if self.renderer is None:
             return
-        
+
         with wp.ScopedTimer("render", active=True):
             self.renderer.begin_frame(self.sim_time)
             self.renderer.render(self.state_0)

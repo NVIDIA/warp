@@ -18,14 +18,16 @@ def parse_usd(
     default_density=1.0e3,
     only_load_enabled_rigid_bodies=False,
     only_load_enabled_joints=True,
-    default_ke=1e5,
-    default_kd=250.0,
-    default_kf=500.0,
-    default_mu=0.6,
-    default_restitution=0.0,
-    default_thickness=0.0,
+    contact_ke=1e5,  # TODO rename to contact...
+    contact_kd=250.0,
+    contact_kf=500.0,
+    contact_ka=0.0,
+    contact_mu=0.6,
+    contact_restitution=0.0,
+    contact_thickness=0.0,
     joint_limit_ke=100.0,
     joint_limit_kd=10.0,
+    armature=0.0,
     invert_rotations=False,
     verbose=False,
     ignore_paths=[],
@@ -41,14 +43,16 @@ def parse_usd(
         default_density (float): The default density to use for bodies without a density attribute.
         only_load_enabled_rigid_bodies (bool): If True, only rigid bodies which do not have `physics:rigidBodyEnabled` set to False are loaded.
         only_load_enabled_joints (bool): If True, only joints which do not have `physics:jointEnabled` set to False are loaded.
-        default_ke (float): The default contact stiffness to use, only considered by SemiImplicitIntegrator.
-        default_kd (float): The default contact damping to use, only considered by SemiImplicitIntegrator.
-        default_kf (float): The default friction stiffness to use, only considered by SemiImplicitIntegrator.
-        default_mu (float): The default friction coefficient to use if a shape has not friction coefficient defined.
-        default_restitution (float): The default coefficient of restitution to use if a shape has not coefficient of restitution defined.
-        default_thickness (float): The thickness to add to the shape geometry.
-        joint_limit_ke (float): The default stiffness to use for joint limits, only considered by SemiImplicitIntegrator.
-        joint_limit_kd (float): The default damping to use for joint limits, only considered by SemiImplicitIntegrator.
+        contact_ke (float): The default contact stiffness to use, only considered by the Euler integrators.
+        contact_kd (float): The default contact damping to use, only considered by the Euler integrators.
+        contact_kf (float): The default friction stiffness to use, only considered by the Euler integrators.
+        contact_ka (float): The default adhesion distance to use, only considered by the Euler integrators.
+        contact_mu (float): The default friction coefficient to use if a shape has not friction coefficient defined.
+        contact_restitution (float): The default coefficient of restitution to use if a shape has not coefficient of restitution defined.
+        contact_thickness (float): The thickness to add to the shape geometry.
+        joint_limit_ke (float): The default stiffness to use for joint limits, only considered by the Euler integrators.
+        joint_limit_kd (float): The default damping to use for joint limits, only considered by the Euler integrators.
+        armature (float): The armature to use for the bodies.
         invert_rotations (bool): If True, inverts any rotations defined in the shape transforms.
         verbose (bool): If True, print additional information about the parsed USD file.
         ignore_paths (List[str]): A list of regular expressions matching prim paths to ignore.
@@ -150,14 +154,16 @@ def parse_usd(
     try:
         if UsdPhysics.StageHasAuthoredKilogramsPerUnit(stage):
             mass_unit = UsdPhysics.GetStageKilogramsPerUnit(stage)
-    except:
-        pass
+    except Exception as e:
+        if verbose:
+            print(f"Failed to get mass unit: {e}")
     linear_unit = 1.0
     try:
         if UsdGeom.StageHasAuthoredMetersPerUnit(stage):
             linear_unit = UsdGeom.GetStageMetersPerUnit(stage)
-    except:
-        pass
+    except Exception as e:
+        if verbose:
+            print(f"Failed to get linear unit: {e}")
 
     def parse_xform(prim):
         xform = UsdGeom.Xform(prim)
@@ -221,7 +227,8 @@ def parse_usd(
                 high = joint_data["upperLimit"]
             else:
                 high *= linear_unit
-        mode = wp.sim.JOINT_MODE_LIMIT
+
+        mode = wp.sim.JOINT_MODE_FORCE
         if f"DriveAPI:{type}" in schemas_str:
             if target_vel is not None and target_vel != 0.0:
                 mode = wp.sim.JOINT_MODE_TARGET_VELOCITY
@@ -234,7 +241,7 @@ def parse_usd(
             axis=(axis or joint_data["axis"]),
             limit_lower=low,
             limit_upper=high,
-            target=(target_pos or target_vel or (low + high) / 2),
+            action=(target_pos or target_vel or (low + high) / 2),
             target_ke=stiffness,
             target_kd=damping,
             mode=mode,
@@ -249,8 +256,9 @@ def parse_usd(
     axis_str = "Y"
     try:
         axis_str = UsdGeom.GetStageUpAxis(stage)
-    except:
-        pass
+    except Exception as e:
+        if verbose:
+            print(f"Failed to parse stage up axis: {e}")
     upaxis = str2axis(axis_str)
 
     shape_types = {"Cube", "Sphere", "Mesh", "Capsule", "Plane", "Cylinder", "Cone"}
@@ -344,11 +352,11 @@ def parse_usd(
             if has_attribute(prim, "physics:density"):
                 material["density"] = parse_float(prim, "physics:density") * mass_unit  # / (linear_unit**3)
             if has_attribute(prim, "physics:restitution"):
-                material["restitution"] = parse_float(prim, "physics:restitution", default_restitution)
+                material["restitution"] = parse_float(prim, "physics:restitution", contact_restitution)
             if has_attribute(prim, "physics:staticFriction"):
-                material["staticFriction"] = parse_float(prim, "physics:staticFriction", default_mu)
+                material["staticFriction"] = parse_float(prim, "physics:staticFriction", contact_mu)
             if has_attribute(prim, "physics:dynamicFriction"):
-                material["dynamicFriction"] = parse_float(prim, "physics:dynamicFriction", default_mu)
+                material["dynamicFriction"] = parse_float(prim, "physics:dynamicFriction", contact_mu)
             materials[path] = material
 
         elif type_name == "PhysicsScene":
@@ -364,8 +372,9 @@ def parse_usd(
                         builder.up_vector = -builder.up_vector
                 else:
                     builder.up_vector = upaxis
-            except:
-                pass
+            except Exception as e:
+                if verbose:
+                    print(f"Failed to parse physics scene: {e}")
 
     def parse_prim(prim, incoming_xform, incoming_scale, parent_body: int = -1):
         nonlocal builder
@@ -412,6 +421,7 @@ def parse_usd(
             body_id = builder.add_body(
                 origin=xform,
                 name=prim.GetName(),
+                armature=armature,
             )
             path_body_map[path] = body_id
             body_density[body_id] = 0.0
@@ -562,7 +572,12 @@ def parse_usd(
         elif type_name in shape_types:
             # parse shapes
             shape_params = dict(
-                ke=default_ke, kd=default_kd, kf=default_kf, mu=default_mu, restitution=default_restitution
+                ke=contact_ke,
+                kd=contact_kd,
+                kf=contact_kf,
+                ka=contact_ka,
+                mu=contact_mu,
+                restitution=contact_restitution,
             )
             if material is not None:
                 if "restitution" in material:
@@ -590,7 +605,7 @@ def parse_usd(
                     hy=extents[1] / 2,
                     hz=extents[2] / 2,
                     density=density,
-                    thickness=default_thickness,
+                    thickness=contact_thickness,
                     **shape_params,
                 )
             elif type_name == "Sphere":
@@ -626,7 +641,7 @@ def parse_usd(
                     rot=geo_rot,
                     width=width,
                     length=length,
-                    thickness=default_thickness,
+                    thickness=contact_thickness,
                     **shape_params,
                 )
             elif type_name == "Capsule":
@@ -699,7 +714,7 @@ def parse_usd(
                     scale=scale,
                     mesh=m,
                     density=density,
-                    thickness=default_thickness,
+                    thickness=contact_thickness,
                     **shape_params,
                 )
             else:
@@ -738,19 +753,19 @@ def parse_usd(
                     builder.body_inv_mass[body_id] = 0.0
                 # update inertia
                 builder.body_inertia[body_id] *= mass_ratio
-                if builder.body_inertia[body_id].any():
-                    builder.body_inv_inertia[body_id] = np.linalg.inv(builder.body_inertia[body_id])
+                if np.array(builder.body_inertia[body_id]).any():
+                    builder.body_inv_inertia[body_id] = wp.inverse(builder.body_inertia[body_id])
                 else:
-                    builder.body_inv_inertia[body_id] = np.zeros((3, 3), dtype=np.float32)
+                    builder.body_inv_inertia[body_id] = wp.mat33(*np.zeros((3, 3), dtype=np.float32))
 
             if np.linalg.norm(i_diag) > 0.0:
                 rot = np.array(wp.quat_to_matrix(i_rot), dtype=np.float32).reshape(3, 3)
                 inertia = rot @ np.diag(i_diag) @ rot.T
                 builder.body_inertia[body_id] = inertia
                 if inertia.any():
-                    builder.body_inv_inertia[body_id] = np.linalg.inv(inertia)
+                    builder.body_inv_inertia[body_id] = wp.inverse(wp.mat33(*inertia))
                 else:
-                    builder.body_inv_inertia[body_id] = np.zeros((3, 3), dtype=np.float32)
+                    builder.body_inv_inertia[body_id] = wp.mat33(*np.zeros((3, 3), dtype=np.float32))
 
     parse_prim(
         stage.GetDefaultPrim(), incoming_xform=wp.transform(), incoming_scale=np.ones(3, dtype=np.float32) * linear_unit

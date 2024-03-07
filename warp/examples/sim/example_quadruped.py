@@ -79,12 +79,12 @@ class Example:
             floating=True,
             density=1000,
             armature=0.01,
-            stiffness=120,
+            stiffness=200,
             damping=1,
-            shape_ke=1.0e4,
-            shape_kd=1.0e2,
-            shape_kf=1.0e2,
-            shape_mu=0.0,
+            contact_ke=1.0e4,
+            contact_kd=1.0e2,
+            contact_kf=1.0e2,
+            contact_mu=1.0,
             limit_ke=1.0e4,
             limit_kd=1.0e1,
         )
@@ -106,17 +106,21 @@ class Example:
 
             builder.joint_q[-12:] = [0.2, 0.4, -0.6, -0.2, -0.4, 0.6, -0.2, 0.4, -0.6, 0.2, -0.4, 0.6]
 
-            builder.joint_target[-12:] = [0.2, 0.4, -0.6, -0.2, -0.4, 0.6, -0.2, 0.4, -0.6, 0.2, -0.4, 0.6]
+            builder.joint_axis_mode = [wp.sim.JOINT_MODE_TARGET_POSITION] * len(builder.joint_axis_mode)
+            builder.joint_act[-12:] = [0.2, 0.4, -0.6, -0.2, -0.4, 0.6, -0.2, 0.4, -0.6, 0.2, -0.4, 0.6]
 
         np.set_printoptions(suppress=True)
         # finalize model
         self.model = builder.finalize()
         self.model.ground = True
+        # self.model.gravity = 0.0
 
         self.model.joint_attach_ke = 16000.0
         self.model.joint_attach_kd = 200.0
 
-        self.integrator = wp.sim.XPBDIntegrator()
+        # self.integrator = wp.sim.XPBDIntegrator()
+        # self.integrator = wp.sim.SemiImplicitIntegrator()
+        self.integrator = wp.sim.FeatherstoneIntegrator(self.model)
 
         self.renderer = None
         if stage:
@@ -130,10 +134,11 @@ class Example:
         wp.sim.eval_fk(self.model, self.model.joint_q, self.model.joint_qd, None, self.state_0)
 
         self.use_graph = wp.get_device().is_cuda
+        self.graph = None
         if self.use_graph:
-            wp.capture_begin()
-            self.simulate()
-            self.graph = wp.capture_end()
+            with wp.ScopedCapture() as capture:
+                self.simulate()
+            self.graph = capture.graph
 
     def simulate(self):
         for _ in range(self.sim_substeps):
@@ -172,4 +177,3 @@ if __name__ == "__main__":
 
     if example.renderer:
         example.renderer.save()
-

@@ -25,7 +25,7 @@ wp.init()
 
 class Example:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--opengl", action='store_true')
+    parser.add_argument("--opengl", action="store_true")
 
     def __init__(self, stage=None, args=None, **kwargs):
         if args is None:
@@ -33,7 +33,7 @@ class Example:
             args = argparse.Namespace(**kwargs)
             args = Example.parser.parse_args(args=[], namespace=args)
         self._args = args
-        
+
         self.sim_fps = 60.0
         self.sim_substeps = 5
         self.sim_duration = 5.0
@@ -64,9 +64,9 @@ class Example:
 
         self.use_graph = wp.get_device().is_cuda
         if self.use_graph:
-            wp.capture_begin()
-            self.simulate()
-            self.graph = wp.capture_end()
+            with wp.ScopedCapture() as capture:
+                self.simulate()
+            self.graph = capture.graph
 
     def simulate(self):
         for _ in range(self.sim_substeps):
@@ -77,7 +77,7 @@ class Example:
 
             self.state_0.body_f.assign(
                 [
-                    [0.0, 0.0, -10000.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, -7000.0, 0.0, 0.0, 0.0],
                 ]
             )
 

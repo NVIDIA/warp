@@ -119,9 +119,11 @@ class Example:
         if stage:
             self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=20.0)
 
-        wp.capture_begin()
-        self.simulate()
-        self.graph = wp.capture_end()            
+        self.use_graph = wp.get_device().is_cuda
+        if self.use_graph:
+            with wp.ScopedCapture() as capture:
+                self.simulate()
+            self.graph = capture.graph
 
     def simulate(self):
         for _ in range(self.sim_substeps):
@@ -135,7 +137,10 @@ class Example:
     def step(self):
         with wp.ScopedTimer("step", active=True):
             self.model.particle_grid.build(self.state_0.particle_q, self.radius * 2.0)
-            wp.capture_launch(self.graph)
+            if self.use_graph:
+                wp.capture_launch(self.graph)
+            else:
+                self.simulate()
 
         self.sim_time += self.frame_dt
 

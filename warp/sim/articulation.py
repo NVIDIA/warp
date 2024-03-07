@@ -105,7 +105,7 @@ def compute_3d_rotational_dofs(
     local_1 = wp.quat_rotate(q_off, wp.vec3(0.0, 1.0, 0.0))
     local_2 = wp.quat_rotate(q_off, wp.vec3(0.0, 0.0, 1.0))
 
-    # reconstruct rotation axes, todo: can probably use fact that rz'*ry'*rx' == rx*ry*rz to avoid some work here
+    # reconstruct rotation axes
     axis_0 = local_0
     q_0 = wp.quat_from_axis_angle(axis_0, q0)
 
@@ -331,10 +331,9 @@ def eval_articulation_fk(
             iq = q_start + lin_axis_count
             iqd = qd_start + lin_axis_count
             if ang_axis_count == 1:
-                axis = joint_axis[axis_start + lin_axis_count + 0]
-                qi = wp.quat_from_axis_angle(axis, joint_q[q_start + lin_axis_count + 0])
-                rot = qi * rot
-                vel_w = joint_qd[qd_start + lin_axis_count + 0] * axis
+                axis = joint_axis[ia]
+                rot = wp.quat_from_axis_angle(axis, joint_q[iq])
+                vel_w = joint_qd[iqd] * axis
             if ang_axis_count == 2:
                 rot, vel_w = compute_2d_rotational_dofs(
                     joint_axis[ia + 0],

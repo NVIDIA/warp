@@ -20,8 +20,11 @@ archive
 /docs/modules/functions.rst
 /warp_lang.egg-info
 exts/omni.warp/omni/warp/ogn/tests/usd
+.vs/
+outputs/
 build/lib/
 .venv/
+.usd_cache/
 exts/omni.warp/config/extension.gen.toml
 /external/llvm-project
 /build

@@ -11,6 +11,7 @@ import numpy as np
 
 import warp as wp
 from warp.tests.unittest_utils import *
+import warp.sim
 
 wp.init()
 
@@ -1871,6 +1872,21 @@ def test_quat_identity(test, device, dtype, register_kernels=False):
     assert_np_equal(output.numpy(), expected)
 
 
+############################################################
+
+
+def test_quat_euler_conversion(test, device, dtype, register_kernels=False):
+    rng = np.random.default_rng(123)
+    N = 3
+
+    rpy_arr = rng.uniform(low=-np.pi, high=np.pi, size=(N, 3))
+
+    quats_from_euler = [list(wp.sim.quat_from_euler(wp.vec3(*rpy), 0, 1, 2)) for rpy in rpy_arr]
+    quats_from_rpy = [list(wp.quat_rpy(rpy[0], rpy[1], rpy[2])) for rpy in rpy_arr]
+
+    assert_np_equal(np.array(quats_from_euler), np.array(quats_from_rpy), tol=1e-4)
+
+
 def test_anon_type_instance(test, device, dtype, register_kernels=False):
     rng = np.random.default_rng(123)
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
@@ -2052,6 +2068,13 @@ for dtype in np_float_types:
     )
     add_function_test_register_kernel(
         TestQuat, f"test_quat_to_matrix_{dtype.__name__}", test_quat_to_matrix, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestQuat,
+        f"test_quat_euler_conversion_{dtype.__name__}",
+        test_quat_euler_conversion,
+        devices=devices,
+        dtype=dtype,
     )
     add_function_test(
         TestQuat, f"test_py_arithmetic_ops_{dtype.__name__}", test_py_arithmetic_ops, devices=None, dtype=dtype

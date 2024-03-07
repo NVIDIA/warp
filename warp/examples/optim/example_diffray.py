@@ -411,12 +411,12 @@ class Example:
         # capture graph
         self.use_graph = wp.get_device().is_cuda
         if self.use_graph:
-            wp.capture_begin()
-            self.tape = wp.Tape()
-            with self.tape:
-                self.forward()
-            self.tape.backward(self.loss)
-            self.graph = wp.capture_end()
+            with wp.ScopedCapture() as capture:
+                self.tape = wp.Tape()
+                with self.tape:
+                    self.forward()
+                self.tape.backward(self.loss)
+            self.graph = capture.graph
 
         self.optimizer = SGD(
             [self.render_mesh.rot],
@@ -440,23 +440,21 @@ class Example:
                 self.rays,
                 self.lights,
                 self.render_mode,
-            ]
+            ],
         )
 
         # downsample
         wp.launch(
             kernel=downsample_kernel,
             dim=self.num_pixels,
-            inputs=[self.rays, self.pixels, self.rays_width, pow(2, self.num_samples)]
+            inputs=[self.rays, self.pixels, self.rays_width, pow(2, self.num_samples)],
         )
 
     def forward(self):
         self.ray_cast()
 
         # compute pixel loss
-        wp.launch(
-            loss_kernel, dim=self.num_pixels, inputs=[self.pixels, self.target_pixels, self.loss]
-        )
+        wp.launch(loss_kernel, dim=self.num_pixels, inputs=[self.pixels, self.target_pixels, self.loss])
 
     def step(self):
         if self.use_graph:
@@ -529,7 +527,7 @@ if __name__ == "__main__":
 
         if i % example.period == 0:
             example.render()
-    
+
     final_image = example.get_image()
     img.imsave(output_dir + "/example_diffray_final_image.png", final_image)
 

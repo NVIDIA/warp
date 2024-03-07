@@ -11,6 +11,7 @@ from .model import PARTICLE_FLAG_ACTIVE
 
 @wp.func
 def particle_force(n: wp.vec3, v: wp.vec3, c: float, k_n: float, k_d: float, k_f: float, k_mu: float):
+    # compute normal and tangential friction force for a single contact
     vn = wp.dot(n, v)
     jn = c * k_n
     jd = min(vn, 0.0) * k_d
@@ -89,7 +90,7 @@ def eval_particle_forces_kernel(
 
 
 def eval_particle_forces(model, state, forces):
-    if model.particle_max_radius > 0.0:
+    if model.particle_count > 1 and model.particle_max_radius > 0.0:
         wp.launch(
             kernel=eval_particle_forces_kernel,
             dim=model.particle_count,
