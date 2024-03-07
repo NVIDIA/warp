@@ -1,13 +1,20 @@
 import warp as wp
+import numpy as np
 
-PI = wp.constant(3.14159265359)
-PI_2 = wp.constant(1.57079632679)
+from typing import Tuple, List
 
 
 @wp.func
 def velocity_at_point(qd: wp.spatial_vector, r: wp.vec3):
     """
     Returns the velocity of a point relative to the frame with the given spatial velocity.
+
+    Args:
+        qd (spatial_vector): The spatial velocity of the frame.
+        r (vec3): The position of the point relative to the frame. 
+
+    Returns:
+        vec3: The velocity of the point.
     """
     return wp.cross(wp.spatial_top(qd), r) + wp.spatial_bottom(qd)
 
@@ -52,7 +59,7 @@ def quat_decompose(q: wp.quat):
     phi = wp.atan2(R[1, 2], R[2, 2])
     sinp = -R[0, 2]
     if wp.abs(sinp) >= 1.0:
-        theta = 1.57079632679 * wp.sign(sinp)
+        theta = wp.HALF_PI * wp.sign(sinp)
     else:
         theta = wp.asin(-R[0, 2])
     psi = wp.atan2(R[0, 1], R[0, 0])
@@ -63,7 +70,7 @@ def quat_decompose(q: wp.quat):
 @wp.func
 def quat_to_rpy(q: wp.quat):
     """
-    Convert a quaternion into euler angles (roll, pitch, yaw)
+    Convert a quaternion into Euler angles (roll, pitch, yaw)
     roll is rotation around x in radians (counterclockwise)
     pitch is rotation around y in radians (counterclockwise)
     yaw is rotation around z in radians (counterclockwise)
@@ -90,11 +97,27 @@ def quat_to_rpy(q: wp.quat):
 @wp.func
 def quat_to_euler(q: wp.quat, i: int, j: int, k: int) -> wp.vec3:
     """
-    Convert a quaternion into euler angles
-    i, j, k are the indices in [1,2,3] of the axes to use
-    (i != j, j != k)
+    Convert a quaternion into Euler angles.
+
+    :math:`i, j, k` are the indices in :math:`[0, 1, 2]` of the axes to use
+    (:math:`i \\neq j, j \\neq k`).
+
+    Reference: https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0276302
+
+    Args:
+        q (quat): The quaternion to convert
+        i (int): The index of the first axis
+        j (int): The index of the second axis
+        k (int): The index of the third axis
+
+    Returns:
+        vec3: The Euler angles (in radians)
     """
-    # https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0276302
+    # i, j, k are actually assumed to follow 1-based indexing but
+    # we want to be compatible with quat_from_euler
+    i += 1
+    j += 1
+    k += 1
     not_proper = True
     if i == k:
         not_proper = False
@@ -116,15 +139,52 @@ def quat_to_euler(q: wp.quat, i: int, j: int, k: int) -> wp.vec3:
     t3 = 0.0
     if wp.abs(t2) < 1e-6:
         t3 = 2.0 * tp - t1
-    elif wp.abs(t2 - PI_2) < 1e-6:
+    elif wp.abs(t2 - wp.HALF_PI) < 1e-6:
         t3 = 2.0 * tm + t1
     else:
         t1 = tp - tm
         t3 = tp + tm
     if not_proper:
-        t2 -= PI_2
+        t2 -= wp.HALF_PI
         t3 *= e
     return wp.vec3(t1, t2, t3)
+
+
+@wp.func
+def quat_from_euler(e: wp.vec3, i: int, j: int, k: int) -> wp.quat:
+    """
+    Convert Euler angles to a quaternion.
+
+    :math:`i, j, k` are the indices in :math:`[0, 1, 2]` of the axes in which the Euler angles are provided
+    (:math:`i \\neq j, j \\neq k`), e.g. (0, 1, 2) for Euler sequence XYZ.
+
+    Args:
+        e (vec3): The Euler angles (in radians)
+        i (int): The index of the first axis
+        j (int): The index of the second axis
+        k (int): The index of the third axis
+
+    Returns:
+        quat: The quaternion
+    """
+    # Half angles
+    half_e = e / 2.0
+
+    # Precompute sines and cosines of half angles
+    cr = wp.cos(half_e[i])
+    sr = wp.sin(half_e[i])
+    cp = wp.cos(half_e[j])
+    sp = wp.sin(half_e[j])
+    cy = wp.cos(half_e[k])
+    sy = wp.sin(half_e[k])
+
+    # Components of the quaternion based on the rotation sequence
+    return wp.quat(
+        (cy * sr * cp - sy * cr * sp),
+        (cy * cr * sp + sy * sr * cp),
+        (sy * cr * cp - cy * sr * sp),
+        (cy * cr * cp + sy * sr * sp),
+    )
 
 
 @wp.func
@@ -182,6 +242,35 @@ def transform_inertia(t: wp.transform, I: wp.spatial_matrix):
 
 
 @wp.func
+def boltzmann(a: float, b: float, alpha: float):
+    e1 = wp.exp(alpha * a)
+    e2 = wp.exp(alpha * b)
+    return (a * e1 + b * e2) / (e1 + e2)
+
+
+@wp.func
+def smooth_max(a: float, b: float, eps: float):
+    d = a - b
+    return 0.5 * (a + b + wp.sqrt(d * d + eps))
+
+
+@wp.func
+def smooth_min(a: float, b: float, eps: float):
+    d = a - b
+    return 0.5 * (a + b - wp.sqrt(d * d + eps))
+
+
+@wp.func
+def leaky_max(a: float, b: float):
+    return smooth_max(a, b, 1e-5)
+
+
+@wp.func
+def leaky_min(a: float, b: float):
+    return smooth_min(a, b, 1e-5)
+
+
+@wp.func
 def vec_min(a: wp.vec3, b: wp.vec3):
     return wp.vec3(wp.min(a[0], b[0]), wp.min(a[1], b[1]), wp.min(a[2], b[2]))
 
@@ -192,8 +281,130 @@ def vec_max(a: wp.vec3, b: wp.vec3):
 
 
 @wp.func
+def vec_leaky_min(a: wp.vec3, b: wp.vec3):
+    return wp.vec3(leaky_min(a[0], b[0]), leaky_min(a[1], b[1]), leaky_min(a[2], b[2]))
+
+
+@wp.func
+def vec_leaky_max(a: wp.vec3, b: wp.vec3):
+    return wp.vec3(leaky_max(a[0], b[0]), leaky_max(a[1], b[1]), leaky_max(a[2], b[2]))
+
+
+@wp.func
 def vec_abs(a: wp.vec3):
     return wp.vec3(wp.abs(a[0]), wp.abs(a[1]), wp.abs(a[2]))
 
 
-        
+def load_mesh(filename: str, method: str = None):
+    """
+    Loads a 3D triangular surface mesh from a file.
+
+    Args:
+        filename (str): The path to the 3D model file (obj, and other formats supported by the different methods) to load.
+        method (str): The method to use for loading the mesh (default None). Can be either `"trimesh"`, `"meshio"`, `"pcu"`, or `"openmesh"`. If None, every method is tried and the first successful mesh import where the number of vertices is greater than 0 is returned.
+
+    Returns:
+        Tuple of (mesh_points, mesh_indices), where mesh_points is a Nx3 numpy array of vertex positions (float32),
+        and mesh_indices is a Mx3 numpy array of vertex indices (int32) for the triangular faces.
+    """
+    import os
+
+    if not os.path.exists(filename):
+        raise ValueError(f"File not found: {filename}")
+
+    def load_mesh_with_method(method):
+        if method == "meshio":
+            import meshio
+
+            m = meshio.read(filename)
+            mesh_points = np.array(m.points)
+            mesh_indices = np.array(m.cells[0].data, dtype=np.int32)
+        elif method == "openmesh":
+            import openmesh
+
+            m = openmesh.read_trimesh(filename)
+            mesh_points = np.array(m.points())
+            mesh_indices = np.array(m.face_vertex_indices(), dtype=np.int32)
+        elif method == "pcu":
+            import point_cloud_utils as pcu
+
+            mesh_points, mesh_indices = pcu.load_mesh_vf(filename)
+            mesh_indices = mesh_indices.flatten()
+        else:
+            import trimesh
+
+            m = trimesh.load(filename)
+            if hasattr(m, "geometry"):
+                # multiple meshes are contained in a scene; combine to one mesh
+                mesh_points = []
+                mesh_indices = []
+                index_offset = 0
+                for geom in m.geometry.values():
+                    vertices = np.array(geom.vertices, dtype=np.float32)
+                    faces = np.array(geom.faces.flatten(), dtype=np.int32)
+                    mesh_points.append(vertices)
+                    mesh_indices.append(faces + index_offset)
+                    index_offset += len(vertices)
+                mesh_points = np.concatenate(mesh_points, axis=0)
+                mesh_indices = np.concatenate(mesh_indices)
+            else:
+                # a single mesh
+                mesh_points = np.array(m.vertices, dtype=np.float32)
+                mesh_indices = np.array(m.faces.flatten(), dtype=np.int32)
+        return mesh_points, mesh_indices
+
+    if method is None:
+        methods = ["trimesh", "meshio", "pcu", "openmesh"]
+        for method in methods:
+            try:
+                mesh = load_mesh_with_method(method)
+                if mesh is not None and len(mesh[0]) > 0:
+                    return mesh
+            except Exception:
+                pass
+        raise ValueError(f"Failed to load mesh using any of the methods: {methods}")
+    else:
+        mesh = load_mesh_with_method(method)
+        if mesh is None or len(mesh[0]) == 0:
+            raise ValueError(f"Failed to load mesh using method {method}")
+        return mesh
+
+
+def visualize_meshes(
+    meshes: List[Tuple[list, list]], num_cols=0, num_rows=0, titles=[], scale_axes=True, show_plot=True
+):
+    # render meshes in a grid with matplotlib
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+
+    num_cols = min(num_cols, len(meshes))
+    num_rows = min(num_rows, len(meshes))
+    if num_cols and not num_rows:
+        num_rows = int(np.ceil(len(meshes) / num_cols))
+    elif num_rows and not num_cols:
+        num_cols = int(np.ceil(len(meshes) / num_rows))
+    else:
+        num_cols = len(meshes)
+        num_rows = 1
+
+    vertices = [np.array(v).reshape((-1, 3)) for v, _ in meshes]
+    faces = [np.array(f, dtype=np.int32).reshape((-1, 3)) for _, f in meshes]
+    if scale_axes:
+        ranges = np.array([v.max(axis=0) - v.min(axis=0) for v in vertices])
+        max_range = ranges.max()
+        mid_points = np.array([v.max(axis=0) + v.min(axis=0) for v in vertices]) * 0.5
+
+    fig = plt.figure(figsize=(12, 6))
+    for i, (vertices, faces) in enumerate(meshes):
+        ax = fig.add_subplot(num_rows, num_cols, i + 1, projection="3d")
+        if i < len(titles):
+            ax.set_title(titles[i])
+        ax.plot_trisurf(vertices[:, 0], vertices[:, 1], vertices[:, 2], triangles=faces, edgecolor="k")
+        if scale_axes:
+            mid = mid_points[i]
+            ax.set_xlim(mid[0] - max_range, mid[0] + max_range)
+            ax.set_ylim(mid[1] - max_range, mid[1] + max_range)
+            ax.set_zlim(mid[2] - max_range, mid[2] + max_range)
+    if show_plot:
+        plt.show()
+    return fig

@@ -33,7 +33,7 @@ def triangle_inertia(
 
     Dm = wp.mat33(pcom[0], qcom[0], rcom[0], pcom[1], qcom[1], rcom[1], pcom[2], qcom[2], rcom[2])
 
-    volume = wp.determinant(Dm) / 6.0
+    volume = wp.abs(wp.determinant(Dm) / 6.0)
 
     # accumulate mass
     wp.atomic_add(mass, 0, 4.0 * density * volume)
@@ -260,6 +260,7 @@ def compute_mesh_inertia(
     """Computes mass, center of mass, 3x3 inertia matrix, and volume for a mesh."""
     com = wp.vec3(np.mean(vertices, 0))
 
+    indices = np.array(indices).flatten()
     num_tris = len(indices) // 3
 
     # compute signed inertia for each tetrahedron
@@ -305,7 +306,7 @@ def compute_mesh_inertia(
     # Extract mass and inertia and save to class attributes.
     mass = float(mass_warp.numpy()[0] * density)
     I = wp.mat33(*(I_warp.numpy()[0] * density))
-    volume = vol_warp.numpy()[0]
+    volume = float(vol_warp.numpy()[0])
     return mass, com, I, volume
 
 

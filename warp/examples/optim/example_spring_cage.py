@@ -113,9 +113,7 @@ class Example:
         self.integrator = warp.sim.SemiImplicitIntegrator()
 
         # Initialize a state for each simulation step.
-        self.states = tuple(
-            self.model.state(requires_grad=True) for _ in range(self.frame_count * self.sim_substep_count + 1)
-        )
+        self.states = tuple(self.model.state() for _ in range(self.frame_count * self.sim_substep_count + 1))
 
         # Initialize a loss value that will represent the distance of the main
         # particle to the target position. It needs to be defined as an array
@@ -126,7 +124,7 @@ class Example:
             import warp.sim.render
 
             # Helper to render the physics scene as a USD file.
-            self.renderer = warp.sim.render.SimRenderer(self.model, stage, fps=self.fps)
+            self.renderer = warp.sim.render.SimRenderer(self.model, stage, fps=self.fps, scaling=10.0)
 
             # Allows rendering one simulation to USD every N training iterations.
             self.render_iteration_steps = 2
@@ -140,12 +138,12 @@ class Example:
         if self.use_graph:
             # Capture all the kernel launches into a CUDA graph so that they can
             # all be run in a single graph launch, which helps with performance.
-            wp.capture_begin()
-            self.tape = wp.Tape()
-            with self.tape:
-                self.forward()
-            self.tape.backward(loss=self.loss)
-            self.graph = wp.capture_end()
+            with wp.ScopedCapture() as capture:
+                self.tape = wp.Tape()
+                with self.tape:
+                    self.forward()
+                self.tape.backward(loss=self.loss)
+            self.graph = capture.graph
 
         self.verbose = verbose
 
@@ -220,7 +218,7 @@ if __name__ == "__main__":
     stage_path = os.path.join(os.path.dirname(__file__), "example_spring_cage.usd")
 
     example = Example(stage_path, verbose=True)
-    
+
     for iteration in range(example.train_iters):
         example.step()
 
@@ -229,10 +227,7 @@ if __name__ == "__main__":
         if example.verbose:
             print(f"[{iteration:3d}] loss={loss:.8f}")
 
-        if (
-            iteration == example.train_iters - 1
-            or iteration % example.render_iteration_steps == 0
-        ):
+        if iteration == example.train_iters - 1 or iteration % example.render_iteration_steps == 0:
             example.render()
 
     if example.renderer:

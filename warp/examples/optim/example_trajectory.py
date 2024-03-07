@@ -100,9 +100,7 @@ class Example:
 
         # initial guess
         self.actions = wp.array(
-            np.zeros(self.episode_frames * self.action_dim) * 100.0,
-            dtype=wp.float32,
-            requires_grad=True
+            np.zeros(self.episode_frames * self.action_dim) * 100.0, dtype=wp.float32, requires_grad=True
         )
 
         self.optimizer = Adam([self.actions], lr=1e2)
@@ -115,7 +113,7 @@ class Example:
         # allocate sim states for trajectory
         self.states = []
         for _ in range(self.episode_frames + 1):
-            self.states.append(self.model.state(requires_grad=True))
+            self.states.append(self.model.state())
 
     def forward(self):
         """
@@ -134,32 +132,17 @@ class Example:
                 wp.sim.collide(self.model, state)
 
                 # apply generalized torques to rigid body here, instead of planar joints
-                wp.launch(
-                    apply_torque,
-                    1,
-                    inputs=[self.actions, i * self.action_dim],
-                    outputs=[state.body_f]
-                )
+                wp.launch(apply_torque, 1, inputs=[self.actions, i * self.action_dim], outputs=[state.body_f])
 
-                state = self.integrator.simulate(self.model, state, next_state, self.sim_dt, requires_grad=True)
+                state = self.integrator.simulate(self.model, state, next_state, self.sim_dt)
 
             self.states[i + 1] = state
 
             # save state
-            wp.launch(
-                save_state,
-                dim=1,
-                inputs=[self.states[i + 1].body_q, i],
-                outputs=[self.last_traj]
-            )
+            wp.launch(save_state, dim=1, inputs=[self.states[i + 1].body_q, i], outputs=[self.last_traj])
 
         # compute loss
-        wp.launch(
-            loss_l2,
-            dim=self.last_traj.shape,
-            inputs=[self.last_traj, self.ref_traj],
-            outputs=[self.loss]
-        )
+        wp.launch(loss_l2, dim=self.last_traj.shape, inputs=[self.last_traj, self.ref_traj], outputs=[self.loss])
 
     def step(self):
         """Runs a single optimizer iteration"""
@@ -168,7 +151,7 @@ class Example:
         with tape:
             self.forward()
         tape.backward(loss=self.loss)
-        
+
         if self.verbose and (self.iter + 1) % 10 == 0:
             print(f"Iter {self.iter+1} Loss: {self.loss.numpy()[0]:.3f}")
 

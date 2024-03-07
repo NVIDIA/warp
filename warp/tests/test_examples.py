@@ -128,29 +128,42 @@ class TestSimExamples(unittest.TestCase):
     pass
 
 
+warp_sim_modules = [
+    "warp.sim.integrator",
+    "warp.sim.integrator_euler",
+    "warp.sim.particles",
+    "warp.sim.collide",
+    "warp.sim.articulation",
+    "warp.sim.integrator_xpbd",
+    "warp.sim.integrator_featherstone",
+    "warp.sim.integrator_euler",
+    "warp.sim.integrator",
+    "warp.sim.utils",
+]
+
 add_example_test(
     TestSimExamples,
     name="optim.example_bounce",
     devices=cuda_test_devices,
-    options={"load_modules": ["warp.sim.integrator_euler", "warp.sim.particles"]},
+    options={"load_modules": warp_sim_modules},
 )
 add_example_test(
     TestSimExamples,
     name="sim.example_cartpole",
     devices=cuda_test_devices,
-    options={"load_modules": ["warp.sim.collide", "warp.sim.integrator_euler", "warp.sim.articulation"]},
+    options={"load_modules": warp_sim_modules},
 )
 add_example_test(
     TestSimExamples,
     name="sim.example_cloth",
     devices=cuda_test_devices,
-    options={"load_modules": ["warp.sim.collide", "warp.sim.integrator_euler", "warp.sim.particles"]},
+    options={"load_modules": warp_sim_modules},
 )
 add_example_test(
     TestSimExamples,
     name="optim.example_cloth_throw",
     devices=cuda_test_devices,
-    options={"load_modules": ["warp.sim.integrator_euler", "warp.sim.particles"]},
+    options={"load_modules": warp_sim_modules},
 )
 add_example_test(TestSimExamples, name="optim.example_diffray", devices=cuda_test_devices)
 add_example_test(
@@ -158,51 +171,105 @@ add_example_test(
     name="optim.example_drone",
     devices=cuda_test_devices,
     options={
-        "load_modules": ["warp.sim.collide", "warp.sim.integrator_euler", "warp.optim.sgd"],
+        "load_modules": warp_sim_modules + ["warp.optim.sgd"],
         "num_frames": 1,
         "drone_path": os.path.join(os.path.dirname(__file__), "..", "examples", "assets", "crazyflie.usd"),
     },
 )
-add_example_test(TestSimExamples, name="sim.example_granular", devices=cuda_test_devices)
-add_example_test(TestSimExamples, name="sim.example_granular_collision_sdf", devices=cuda_test_devices)
-add_example_test(TestSimExamples, name="optim.example_inverse_kinematics", devices=cuda_test_devices)
+add_example_test(
+    TestSimExamples,
+    name="sim.example_granular",
+    devices=cuda_test_devices,
+    options={
+        "load_modules": warp_sim_modules,
+    },
+)
+add_example_test(
+    TestSimExamples,
+    name="sim.example_granular_collision_sdf",
+    devices=cuda_test_devices,
+    options={
+        "load_modules": warp_sim_modules,
+    },
+)
+add_example_test(
+    TestSimExamples,
+    name="optim.example_inverse_kinematics",
+    devices=cuda_test_devices,
+    options={
+        "load_modules": warp_sim_modules,
+    },
+)
 add_example_test(
     TestSimExamples,
     name="optim.example_inverse_kinematics_torch",
     devices=cuda_test_devices,
-    options={"torch_cuda_required": True},
+    options={
+        "torch_cuda_required": True,
+        "load_modules": warp_sim_modules,
+    },
 )
 add_example_test(TestExamples, name="sim.example_jacobian_ik", devices=cuda_test_devices)
 add_example_test(
     TestSimExamples,
     name="sim.example_particle_chain",
     devices=cuda_test_devices,
-    options={"load_modules": ["warp.sim.integrator_xpbd"]},
+    options={"load_modules": warp_sim_modules},
 )
 add_example_test(
     TestSimExamples,
     name="sim.example_quadruped",
     devices=cuda_test_devices,
-    options={"load_modules": ["warp.sim.integrator_xpbd", "warp.sim.integrator_euler"]},
+    options={"load_modules": warp_sim_modules},
 )
 add_example_test(
     TestSimExamples,
     name="sim.example_rigid_chain",
     devices=cuda_test_devices,
-    options={"load_modules": ["warp.sim.integrator_xpbd", "warp.sim.integrator_euler"]},
+    options={"load_modules": warp_sim_modules},
 )
 add_example_test(
     TestSimExamples,
     name="sim.example_rigid_contact",
     devices=cuda_test_devices,
-    options={"load_modules": ["warp.sim.integrator_euler"]},
+    options={"load_modules": warp_sim_modules},
 )
-add_example_test(TestSimExamples, name="sim.example_rigid_soft_contact", devices=cuda_test_devices)
-add_example_test(TestSimExamples, name="sim.example_rigid_force", devices=cuda_test_devices)
-add_example_test(TestSimExamples, name="sim.example_rigid_gyroscopic", devices=cuda_test_devices)
-add_example_test(TestSimExamples, name="sim.example_soft_body", devices=cuda_test_devices)
-add_example_test(TestSimExamples, name="optim.example_spring_cage", devices=cuda_test_devices)
-add_example_test(TestSimExamples, name="optim.example_trajectory", devices=cuda_test_devices)
+add_example_test(
+    TestSimExamples,
+    name="sim.example_rigid_soft_contact",
+    devices=cuda_test_devices,
+    options={"load_modules": warp_sim_modules},
+)
+add_example_test(
+    TestSimExamples,
+    name="sim.example_rigid_force",
+    devices=cuda_test_devices,
+    options={"load_modules": warp_sim_modules},
+)
+add_example_test(
+    TestSimExamples,
+    name="sim.example_rigid_gyroscopic",
+    devices=cuda_test_devices,
+    options={"load_modules": warp_sim_modules},
+)
+add_example_test(
+    TestSimExamples,
+    name="sim.example_soft_body",
+    devices=cuda_test_devices,
+    options={"load_modules": warp_sim_modules},
+)
+add_example_test(
+    TestSimExamples,
+    name="optim.example_spring_cage",
+    devices=cuda_test_devices,
+    options={"load_modules": warp_sim_modules},
+)
+add_example_test(
+    TestSimExamples,
+    name="optim.example_trajectory",
+    devices=cuda_test_devices,
+    options={"load_modules": warp_sim_modules},
+)
 
 
 class TestFemExamples(unittest.TestCase):

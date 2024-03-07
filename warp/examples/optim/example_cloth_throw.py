@@ -118,12 +118,12 @@ class Example:
         # capture forward/backward passes
         self.use_graph = wp.get_device().is_cuda
         if self.use_graph:
-            wp.capture_begin()
-            self.tape = wp.Tape()
-            with self.tape:
-                self.forward()
-            self.tape.backward(self.loss)
-            self.graph = wp.capture_end()
+            with wp.ScopedCapture() as capture:
+                self.tape = wp.Tape()
+                with self.tape:
+                    self.forward()
+                self.tape.backward(self.loss)
+            self.graph = capture.graph
 
     def forward(self):
         # run control loop
@@ -137,7 +137,7 @@ class Example:
         wp.launch(
             com_kernel,
             dim=self.model.particle_count,
-            inputs=[self.states[-1].particle_q, self.model.particle_count, self.com]
+            inputs=[self.states[-1].particle_q, self.model.particle_count, self.com],
         )
         wp.launch(loss_kernel, dim=1, inputs=[self.com, self.target, self.loss])
 
@@ -178,7 +178,11 @@ class Example:
                 self.renderer.begin_frame(self.render_time)
                 self.renderer.render(self.states[i])
                 self.renderer.render_box(
-                    pos=self.target, rot=wp.quat_identity(), extents=(0.1, 0.1, 0.1), name="target", color=(1.0, 0.0, 0.0),
+                    pos=self.target,
+                    rot=wp.quat_identity(),
+                    extents=(0.1, 0.1, 0.1),
+                    name="target",
+                    color=(1.0, 0.0, 0.0),
                 )
                 self.renderer.render_line_strip(
                     vertices=traj_verts,

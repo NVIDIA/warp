@@ -21,6 +21,12 @@ Model
 .. autoclass:: Model
     :members:
 
+.. autoclass:: ModelShapeMaterials
+    :members:
+
+.. autoclass:: ModelShapeGeometry
+    :members:
+
 .. autoclass:: JointAxis
     :members:
 
@@ -73,27 +79,42 @@ Joint types
 
 .. _Joint modes:
 
-Joint modes
-^^^^^^^^^^^^^^
+Joint control modes
+^^^^^^^^^^^^^^^^^^^
 
-Joint modes control the behavior of joint axes and can be used to implement joint position or velocity drives.
+Joint modes control the behavior of how the joint control input :attr:`Control.joint_act` affects the torque applied at a given joint axis.
+By default, it behaves as a direct force application via :data:`JOINT_MODE_FORCE`. Other modes can be used to implement joint position or velocity drives:
 
-.. data:: JOINT_MODE_LIMIT
+.. data:: JOINT_MODE_FORCE
 
-    No target or velocity control is applied, the joint is limited to its joint limits
+    This is the default control mode where the control input is the torque :math:`\tau` applied at the joint axis.
 
 .. data:: JOINT_MODE_TARGET_POSITION
 
-    The joint is driven to a target position
+    The control input is the target position :math:`\mathbf{q}_{\text{target}}` which is achieved via PD control of torque :math:`\tau` where the proportional and derivative gains are set by :attr:`Model.joint_target_ke` and :attr:`Model.joint_target_kd`:
+
+    .. math::
+
+        \tau = k_e (\mathbf{q}_{\text{target}} - \mathbf{q}) - k_d \mathbf{\dot{q}}
 
 .. data:: JOINT_MODE_TARGET_VELOCITY
    
-    The joint is driven to a target velocity
+    The control input is the target velocity :math:`\mathbf{\dot{q}}_{\text{target}}` which is achieved via a controller of torque :math:`\tau` that brings the velocity at the joint axis to the target through proportional gain :attr:`Model.joint_target_ke`: 
+    
+    .. math::
+
+        \tau = k_e (\mathbf{\dot{q}}_{\text{target}} - \mathbf{\dot{q}})
 
 State
 --------------
 
 .. autoclass:: State
+    :members:
+
+Control
+--------------
+
+.. autoclass:: Control
     :members:
 
 .. _FK-IK:
@@ -124,7 +145,7 @@ Articulated rigid-body mechanisms are kinematically described by the joints that
    * - x_j
      - Joint transform from the joint parent anchor frame to the joint child anchor frame
 
-In the forward kinematics, the joint transform is determined by the joint coordinates (generalized joint positions :attr:`State.body_q` and velocities :attr:`State.body_qd`).
+In the forward kinematics, the joint transform is determined by the joint coordinates (generalized joint positions :attr:`State.joint_q` and velocities :attr:`State.joint_qd`).
 Given the parent body's world transform :math:`x_{wp}` and the joint transform :math:`x_{j}`, the child body's world transform :math:`x_{wc}` is computed as:
 
 .. math::
@@ -137,10 +158,16 @@ Given the parent body's world transform :math:`x_{wp}` and the joint transform :
 Integrators
 --------------
 
+.. autoclass:: Integrator
+    :members:
+
 .. autoclass:: SemiImplicitIntegrator
     :members:
 
 .. autoclass:: XPBDIntegrator
+    :members:
+
+.. autoclass:: FeatherstoneIntegrator
     :members:
 
 Importers
@@ -155,3 +182,16 @@ Warp sim supports the loading of simulation models from URDF, MuJoCo (MJCF), and
 .. autofunction:: parse_usd
 
 .. autofunction:: resolve_usd_from_url
+
+Utility functions
+------------------
+
+Common utility functions used in simulators.
+
+.. autofunction:: velocity_at_point
+
+.. autofunction:: quat_to_euler
+
+.. autofunction:: quat_from_euler
+
+.. autofunction:: load_mesh

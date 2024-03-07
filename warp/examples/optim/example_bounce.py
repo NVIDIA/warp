@@ -76,7 +76,8 @@ class Example:
 
         self.profile = profile
 
-        self.model = builder.finalize()
+        # use `requires_grad=True` to create a model for differentiable simulation
+        self.model = builder.finalize(requires_grad=True)
         self.model.ground = True
 
         self.model.soft_contact_ke = ke
@@ -94,7 +95,7 @@ class Example:
         # allocate sim states for trajectory
         self.states = []
         for i in range(self.sim_steps + 1):
-            self.states.append(self.model.state(requires_grad=True))
+            self.states.append(self.model.state())
 
         # one-shot contact creation (valid if we're doing simple collision against a constant normal plane)
         wp.sim.collide(self.model, self.states[0])
@@ -106,12 +107,12 @@ class Example:
         # capture forward/backward passes
         self.use_graph = wp.get_device().is_cuda
         if self.use_graph:
-            wp.capture_begin()
-            self.tape = wp.Tape()
-            with self.tape:
-                self.forward()
-            self.tape.backward(self.loss)
-            self.graph = wp.capture_end()
+            with wp.ScopedCapture() as capture:
+                self.tape = wp.Tape()
+                with self.tape:
+                    self.forward()
+                self.tape.backward(self.loss)
+            self.graph = capture.graph
 
     def forward(self):
         # run control loop

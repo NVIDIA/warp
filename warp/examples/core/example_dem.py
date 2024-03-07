@@ -148,12 +148,12 @@ class Example:
         if stage is not None:
             self.renderer = wp.render.UsdRenderer(stage)
             self.renderer.render_ground()
-        
+
         self.use_graph = wp.get_device().is_cuda
         if self.use_graph:
-            wp.capture_begin()
-            self.simulate()
-            self.graph = wp.capture_end()
+            with wp.ScopedCapture() as capture:
+                self.simulate()
+            self.graph = capture.graph
 
     def simulate(self):
         for _ in range(self.sim_substeps):
@@ -182,12 +182,12 @@ class Example:
         with wp.ScopedTimer("step", active=True):
             with wp.ScopedTimer("grid build", active=False):
                 self.grid.build(self.x, self.grid_cell_size)
-            
+
             if self.use_graph:
                 wp.capture_launch(self.graph)
             else:
                 self.simulate()
-            
+
             self.sim_time += self.frame_dt
 
     def render(self):

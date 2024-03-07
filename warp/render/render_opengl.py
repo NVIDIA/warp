@@ -667,6 +667,45 @@ class ShapeInstancer:
 
         self.face_count = len(indices)
 
+    def update_colors(self, colors1, colors2):
+        from pyglet import gl
+
+        if colors1 is None:
+            colors1 = np.tile(self.color1, (self.num_instances, 1))
+        if colors2 is None:
+            colors2 = np.tile(self.color2, (self.num_instances, 1))
+        if np.shape(colors1) != (self.num_instances, 3):
+            colors1 = np.tile(colors1, (self.num_instances, 1))
+        if np.shape(colors2) != (self.num_instances, 3):
+            colors2 = np.tile(colors2, (self.num_instances, 1))
+        colors1 = np.array(colors1, dtype=np.float32)
+        colors2 = np.array(colors2, dtype=np.float32)
+
+        gl.glBindVertexArray(self.vao)
+
+        # create buffer for checkerboard colors
+        if self.instance_color1_buffer is None:
+            self.instance_color1_buffer = gl.GLuint()
+            gl.glGenBuffers(1, self.instance_color1_buffer)
+        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.instance_color1_buffer)
+        gl.glBufferData(gl.GL_ARRAY_BUFFER, colors1.nbytes, colors1.ctypes.data, gl.GL_STATIC_DRAW)
+
+        if self.instance_color2_buffer is None:
+            self.instance_color2_buffer = gl.GLuint()
+            gl.glGenBuffers(1, self.instance_color2_buffer)
+        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.instance_color2_buffer)
+        gl.glBufferData(gl.GL_ARRAY_BUFFER, colors2.nbytes, colors2.ctypes.data, gl.GL_STATIC_DRAW)
+
+        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.instance_color1_buffer)
+        gl.glVertexAttribPointer(7, 3, gl.GL_FLOAT, gl.GL_FALSE, colors1[0].nbytes, ctypes.c_void_p(0))
+        gl.glEnableVertexAttribArray(7)
+        gl.glVertexAttribDivisor(7, 1)
+
+        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.instance_color2_buffer)
+        gl.glVertexAttribPointer(8, 3, gl.GL_FLOAT, gl.GL_FALSE, colors2[0].nbytes, ctypes.c_void_p(0))
+        gl.glEnableVertexAttribArray(8)
+        gl.glVertexAttribDivisor(8, 1)
+
     def allocate_instances(self, positions, rotations=None, colors1=None, colors2=None, scalings=None):
         from pyglet import gl
 
@@ -723,30 +762,10 @@ class ShapeInstancer:
             int(self.instance_transform_gl_buffer.value), self.device
         )
 
-        if colors1 is None:
-            colors1 = np.tile(self.color1, (self.num_instances, 1))
-        if colors2 is None:
-            colors2 = np.tile(self.color2, (self.num_instances, 1))
-        colors1 = np.array(colors1, dtype=np.float32)
-        colors2 = np.array(colors2, dtype=np.float32)
-
-        # create buffer for checkerboard colors
-        if self.instance_color1_buffer is None:
-            self.instance_color1_buffer = gl.GLuint()
-            gl.glGenBuffers(1, self.instance_color1_buffer)
-        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.instance_color1_buffer)
-        gl.glBufferData(gl.GL_ARRAY_BUFFER, colors1.nbytes, colors1.ctypes.data, gl.GL_STATIC_DRAW)
-
-        if self.instance_color2_buffer is None:
-            self.instance_color2_buffer = gl.GLuint()
-            gl.glGenBuffers(1, self.instance_color2_buffer)
-        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.instance_color2_buffer)
-        gl.glBufferData(gl.GL_ARRAY_BUFFER, colors2.nbytes, colors2.ctypes.data, gl.GL_STATIC_DRAW)
+        self.update_colors(colors1, colors2)
 
         # Set up instance attribute pointers
         matrix_size = vbo_transforms[0].nbytes
-
-        gl.glBindVertexArray(self.vao)
 
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.instance_transform_gl_buffer)
 
@@ -757,16 +776,6 @@ class ShapeInstancer:
             )
             gl.glEnableVertexAttribArray(3 + i)
             gl.glVertexAttribDivisor(3 + i, 1)
-
-        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.instance_color1_buffer)
-        gl.glVertexAttribPointer(7, 3, gl.GL_FLOAT, gl.GL_FALSE, colors1[0].nbytes, ctypes.c_void_p(0))
-        gl.glEnableVertexAttribArray(7)
-        gl.glVertexAttribDivisor(7, 1)
-
-        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.instance_color2_buffer)
-        gl.glVertexAttribPointer(8, 3, gl.GL_FLOAT, gl.GL_FALSE, colors2[0].nbytes, ctypes.c_void_p(0))
-        gl.glEnableVertexAttribArray(8)
-        gl.glVertexAttribDivisor(8, 1)
 
         gl.glBindVertexArray(0)
 
@@ -807,6 +816,9 @@ class ShapeInstancer:
             )
 
             self._instance_transform_cuda_buffer.unmap()
+
+        if colors1 is not None or colors2 is not None:
+            self.update_colors(colors1, colors2)
 
     def render(self):
         from pyglet import gl
@@ -914,9 +926,6 @@ class OpenGLRenderer:
         self.enable_mouse_interaction = enable_mouse_interaction
         self.enable_keyboard_interaction = enable_keyboard_interaction
 
-        self._camera_pos = PyVec3(*camera_pos)
-        self._camera_front = PyVec3(*camera_front)
-        self._camera_up = PyVec3(*camera_up)
         self._camera_speed = 0.04
         if isinstance(up_axis, int):
             self._camera_axis = up_axis
@@ -927,12 +936,19 @@ class OpenGLRenderer:
         self._first_mouse = True
         self._left_mouse_pressed = False
         self._keys_pressed = defaultdict(bool)
+        self._input_processors = []
         self._key_callbacks = []
 
         self.render_2d_callbacks = []
         self.render_3d_callbacks = []
 
-        self.update_view_matrix()
+        self._camera_pos = PyVec3(0.0, 0.0, 0.0)
+        self._camera_front = PyVec3(0.0, 0.0, -1.0)
+        self._camera_up = PyVec3(0.0, 1.0, 0.0)
+        self._scaling = scaling
+
+        self._model_matrix = self.compute_model_matrix(self._camera_axis, scaling)
+        self.update_view_matrix(cam_pos=camera_pos, cam_front=camera_front, cam_up=camera_up)
         self.update_projection_matrix()
 
         self._frame_dt = 1.0 / fps
@@ -1549,37 +1565,65 @@ class OpenGLRenderer:
             self.camera_fov, aspect_ratio, self.camera_near_plane, self.camera_far_plane
         )
 
-    def update_view_matrix(self):
-        from pyglet.math import Mat4 as PyMat4
+    @property
+    def camera_pos(self):
+        return self._camera_pos
 
-        cam_pos = self._camera_pos
-        self._view_matrix = np.array(PyMat4.look_at(cam_pos, cam_pos + self._camera_front, self._camera_up))
+    @camera_pos.setter
+    def camera_pos(self, value):
+        self.update_view_matrix(cam_pos=value)
 
-    def update_model_matrix(self):
+    @property
+    def camera_front(self):
+        return self._camera_front
+
+    @camera_front.setter
+    def camera_front(self, value):
+        self.update_view_matrix(cam_front=value)
+
+    @property
+    def camera_up(self):
+        return self._camera_up
+
+    @camera_up.setter
+    def camera_up(self, value):
+        self.update_view_matrix(cam_up=value)
+
+    def update_view_matrix(self, cam_pos=None, cam_front=None, cam_up=None, stiffness=1.0):
+        from pyglet.math import Vec3, Mat4
+
+        if cam_pos is not None:
+            self._camera_pos = self._camera_pos * (1.0 - stiffness) + Vec3(*cam_pos) * stiffness
+        if cam_front is not None:
+            self._camera_front = self._camera_front * (1.0 - stiffness) + Vec3(*cam_front) * stiffness
+        if cam_up is not None:
+            self._camera_up = self._camera_up * (1.0 - stiffness) + Vec3(*cam_up) * stiffness
+
+        model = np.array(self._model_matrix).reshape((4, 4))
+        cp = model @ np.array([*self._camera_pos / self._scaling, 1.0])
+        cf = model @ np.array([*self._camera_front / self._scaling, 1.0])
+        up = model @ np.array([*self._camera_up / self._scaling, 0.0])
+        cp = Vec3(*cp[:3])
+        cf = Vec3(*cf[:3])
+        up = Vec3(*up[:3])
+        self._view_matrix = np.array(Mat4.look_at(cp, cp + cf, up))
+
+    def compute_model_matrix(self, camera_axis: int, scaling: float):
+        if camera_axis == 0:
+            return np.array((0, 0, scaling, 0, scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, 0, 1))
+        elif camera_axis == 2:
+            return np.array((-scaling, 0, 0, 0, 0, 0, scaling, 0, 0, scaling, 0, 0, 0, 0, 0, 1))
+
+        return np.array((scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, 1))
+
+    def update_model_matrix(self, model_matrix: Optional[Mat44] = None):
         from pyglet import gl
 
         # fmt: off
-        if self._camera_axis == 0:
-            self._model_matrix = np.array((
-                0, 0, self._scaling, 0,
-                self._scaling, 0, 0, 0,
-                0, self._scaling, 0, 0,
-                0, 0, 0, 1
-            ))
-        elif self._camera_axis == 2:
-            self._model_matrix = np.array((
-                -self._scaling, 0, 0, 0,
-                0, 0, self._scaling, 0,
-                0, self._scaling, 0, 0,
-                0, 0, 0, 1
-            ))
+        if model_matrix is None:
+            self._model_matrix = self.compute_model_matrix(self._camera_axis, self._scaling)
         else:
-            self._model_matrix = np.array((
-                self._scaling, 0, 0, 0,
-                0, self._scaling, 0, 0,
-                0, 0, self._scaling, 0,
-                0, 0, 0, 1
-            ))
+            self._model_matrix = np.array(model_matrix).flatten()
         # fmt: on
         ptr = arr_pointer(self._model_matrix)
         gl.glUseProgram(self._shape_shader.id)
@@ -1890,6 +1934,10 @@ Instances: {len(self._instances)}"""
         import pyglet
         from pyglet.math import Vec3 as PyVec3
 
+        for cb in self._input_processors:
+            if cb(self._key_handler) == pyglet.event.EVENT_HANDLED:
+                return
+
         if self._key_handler[pyglet.window.key.W] or self._key_handler[pyglet.window.key.UP]:
             self._camera_pos += self._camera_front * (self._camera_speed * self._frame_speed)
             self.update_view_matrix()
@@ -1905,11 +1953,18 @@ Instances: {len(self._instances)}"""
             self._camera_pos += camera_side * (self._camera_speed * self._frame_speed)
             self.update_view_matrix()
 
+    def register_input_processor(self, callback):
+        self._input_processors.append(callback)
+
     def _key_press_callback(self, symbol, modifiers):
         import pyglet
 
         if not self.enable_keyboard_interaction:
             return
+
+        for cb in self._key_callbacks:
+            if cb(symbol, modifiers) == pyglet.event.EVENT_HANDLED:
+                return pyglet.event.EVENT_HANDLED
 
         if symbol == pyglet.window.key.ESCAPE:
             self.close()
@@ -1929,9 +1984,6 @@ Instances: {len(self._instances)}"""
             self.render_depth = not self.render_depth
         if symbol == pyglet.window.key.B:
             self.enable_backface_culling = not self.enable_backface_culling
-
-        for cb in self._key_callbacks:
-            cb(symbol, modifiers)
 
     def register_key_press_callback(self, callback):
         self._key_callbacks.append(callback)
@@ -2018,6 +2070,34 @@ Instances: {len(self._instances)}"""
         self._instance_count = len(self._instances)
         return instance
 
+    def update_instance_colors(self):
+        from pyglet import gl
+
+        colors1, colors2 = [], []
+        all_instances = list(self._instances.values())
+        for shape, instances in self._shape_instances.items():
+            for i in instances:
+                if i >= len(all_instances):
+                    continue
+                instance = all_instances[i]
+                colors1.append(instance[5])
+                colors2.append(instance[6])
+        colors1 = np.array(colors1, dtype=np.float32)
+        colors2 = np.array(colors2, dtype=np.float32)
+
+        # create buffer for checkerboard colors
+        if self._instance_color1_buffer is None:
+            self._instance_color1_buffer = gl.GLuint()
+            gl.glGenBuffers(1, self._instance_color1_buffer)
+        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._instance_color1_buffer)
+        gl.glBufferData(gl.GL_ARRAY_BUFFER, colors1.nbytes, colors1.ctypes.data, gl.GL_STATIC_DRAW)
+
+        if self._instance_color2_buffer is None:
+            self._instance_color2_buffer = gl.GLuint()
+            gl.glGenBuffers(1, self._instance_color2_buffer)
+        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._instance_color2_buffer)
+        gl.glBufferData(gl.GL_ARRAY_BUFFER, colors2.nbytes, colors2.ctypes.data, gl.GL_STATIC_DRAW)
+
     def allocate_shape_instances(self):
         from pyglet import gl
 
@@ -2051,28 +2131,7 @@ Instances: {len(self._instances)}"""
             int(self._instance_transform_gl_buffer.value), self._device
         )
 
-        colors1, colors2 = [], []
-        all_instances = list(self._instances.values())
-        for shape, instances in self._shape_instances.items():
-            for i in instances:
-                if i >= len(all_instances):
-                    continue
-                instance = all_instances[i]
-                colors1.append(instance[5])
-                colors2.append(instance[6])
-        colors1 = np.array(colors1, dtype=np.float32)
-        colors2 = np.array(colors2, dtype=np.float32)
-
-        # create buffer for checkerboard colors
-        self._instance_color1_buffer = gl.GLuint()
-        gl.glGenBuffers(1, self._instance_color1_buffer)
-        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._instance_color1_buffer)
-        gl.glBufferData(gl.GL_ARRAY_BUFFER, colors1.nbytes, colors1.ctypes.data, gl.GL_STATIC_DRAW)
-
-        self._instance_color2_buffer = gl.GLuint()
-        gl.glGenBuffers(1, self._instance_color2_buffer)
-        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._instance_color2_buffer)
-        gl.glBufferData(gl.GL_ARRAY_BUFFER, colors2.nbytes, colors2.ctypes.data, gl.GL_STATIC_DRAW)
+        self.update_instance_colors()
 
         # set up instance attribute pointers
         matrix_size = transforms[0].nbytes
@@ -2083,6 +2142,7 @@ Instances: {len(self._instances)}"""
         instances = list(self._instances.values())
         inverse_instance_ids = {}
         instance_count = 0
+        colors_size = np.zeros(3, dtype=np.float32).nbytes
         for shape, (vao, vbo, ebo, tri_count, vertex_cuda_buffer) in self._shape_gl_buffers.items():
             gl.glBindVertexArray(vao)
 
@@ -2097,12 +2157,12 @@ Instances: {len(self._instances)}"""
                 gl.glVertexAttribDivisor(3 + i, 1)
 
             gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._instance_color1_buffer)
-            gl.glVertexAttribPointer(7, 3, gl.GL_FLOAT, gl.GL_FALSE, colors1[0].nbytes, ctypes.c_void_p(0))
+            gl.glVertexAttribPointer(7, 3, gl.GL_FLOAT, gl.GL_FALSE, colors_size, ctypes.c_void_p(0))
             gl.glEnableVertexAttribArray(7)
             gl.glVertexAttribDivisor(7, 1)
 
             gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._instance_color2_buffer)
-            gl.glVertexAttribPointer(8, 3, gl.GL_FLOAT, gl.GL_FALSE, colors2[0].nbytes, ctypes.c_void_p(0))
+            gl.glVertexAttribPointer(8, 3, gl.GL_FLOAT, gl.GL_FALSE, colors_size, ctypes.c_void_p(0))
             gl.glEnableVertexAttribArray(8)
             gl.glVertexAttribDivisor(8, 1)
 
@@ -2124,7 +2184,7 @@ Instances: {len(self._instances)}"""
 
         gl.glBindVertexArray(0)
 
-    def update_shape_instance(self, name, pos, rot, color1=None, color2=None, visible=None):
+    def update_shape_instance(self, name, pos=None, rot=None, color1=None, color2=None, visible=None):
         """Update the instance transform of the shape
 
         Args:
@@ -2135,21 +2195,33 @@ Instances: {len(self._instances)}"""
             color2: The second color of the checker pattern
             visible: Whether the shape is visible
         """
+        from pyglet import gl
+
         if name in self._instances:
-            i, body, shape, _, scale, old_color1, old_color2, v = self._instances[name]
+            i, body, shape, tf, scale, old_color1, old_color2, v = self._instances[name]
             if visible is None:
                 visible = v
+            new_tf = np.copy(tf)
+            if pos is not None:
+                new_tf[:3] = pos
+            if rot is not None:
+                new_tf[3:] = rot
             self._instances[name] = (
                 i,
                 body,
                 shape,
-                [*pos, *rot],
+                new_tf,
                 scale,
                 color1 or old_color1,
                 color2 or old_color2,
                 visible,
             )
             self._update_shape_instances = True
+            if color1 is not None or color2 is not None:
+                vao, vbo, ebo, tri_count, vertex_cuda_buffer = self._shape_gl_buffers[shape]
+                gl.glBindVertexArray(vao)
+                self.update_instance_colors()
+                gl.glBindVertexArray(0)
             return True
         return False
 
@@ -2425,7 +2497,7 @@ Instances: {len(self._instances)}"""
             self.add_shape_instance(name, shape, body, pos, rot)
         return shape
 
-    def render_ground(self, size: float = 100.0):
+    def render_ground(self, size: float = 1000.0, plane=None):
         """Add a ground plane for visualization
 
         Args:
@@ -2440,9 +2512,22 @@ Instances: {len(self._instances)}"""
             q = (0.0, 0.0, 0.0, 1.0)
         elif self._camera_axis == 2:
             q = (sqh, 0.0, 0.0, sqh)
+        pos = (0.0, 0.0, 0.0)
+        if plane is not None:
+            normal = np.array(plane[:3])
+            normal /= np.linalg.norm(normal)
+            pos = plane[3] * normal
+            if np.allclose(normal, (0.0, 1.0, 0.0)):
+                # no rotation necessary
+                q = (0.0, 0.0, 0.0, 1.0)
+            else:
+                c = np.cross(normal, (0.0, 1.0, 0.0))
+                angle = np.arcsin(np.linalg.norm(c))
+                axis = np.abs(c) / np.linalg.norm(c)
+                q = wp.quat_from_axis_angle(axis, angle)
         return self.render_plane(
             "ground",
-            (0.0, 0.0, 0.0),
+            pos,
             q,
             size,
             size,
@@ -2453,7 +2538,14 @@ Instances: {len(self._instances)}"""
         )
 
     def render_sphere(
-        self, name: str, pos: tuple, rot: tuple, radius: float, parent_body: str = None, is_template: bool = False, color: tuple = None
+        self,
+        name: str,
+        pos: tuple,
+        rot: tuple,
+        radius: float,
+        parent_body: str = None,
+        is_template: bool = False,
+        color=None,
     ):
         """Add a sphere for visualization
 
@@ -2466,14 +2558,14 @@ Instances: {len(self._instances)}"""
         geo_hash = hash(("sphere", radius))
         if geo_hash in self._shape_geo_hash:
             shape = self._shape_geo_hash[geo_hash]
-            if self.update_shape_instance(name, pos, rot):
+            if self.update_shape_instance(name, pos, rot, color1=color, color2=color):
                 return shape
         else:
             vertices, indices = self._create_sphere_mesh(radius)
             shape = self.register_shape(geo_hash, vertices, indices, color1=color, color2=color)
         if not is_template:
             body = self._resolve_body_id(parent_body)
-            self.add_shape_instance(name, shape, body, pos, rot)
+            self.add_shape_instance(name, shape, body, pos, rot, color1=color, color2=color)
         return shape
 
     def render_capsule(
@@ -2800,6 +2892,7 @@ Instances: {len(self._instances)}"""
             instancer = self._shape_instancers[name]
             if len(lines) != instancer.num_instances:
                 instancer.allocate_instances(np.zeros((len(lines), 3)))
+            instancer.update_colors(color, color)
 
         lines_wp = wp.array(lines, dtype=wp.vec3, ndim=2, device=self._device)
         with instancer:

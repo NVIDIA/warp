@@ -105,15 +105,15 @@ class Example:
             kf=1.0e1,
         )
 
-        self.model = builder.finalize()
-        self.model.ground = True
-        self.model.soft_contact_ke = 1.0e4
-        self.model.soft_contact_kd = 1.0e2
-
         if self.integrator_type == IntegratorType.EULER:
             self.integrator = wp.sim.SemiImplicitIntegrator()
         else:
             self.integrator = wp.sim.XPBDIntegrator(iterations=1)
+
+        self.model = builder.finalize()
+        self.model.ground = True
+        self.model.soft_contact_ke = 1.0e4
+        self.model.soft_contact_kd = 1.0e2
 
         self.state_0 = self.model.state()
         self.state_1 = self.model.state()
@@ -121,12 +121,12 @@ class Example:
         self.renderer = None
         if stage:
             self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=40.0)
-        
+
         self.use_graph = wp.get_device().is_cuda
         if self.use_graph:
-            wp.capture_begin()
-            self.simulate()
-            self.graph = wp.capture_end()
+            with wp.ScopedCapture() as capture:
+                self.simulate()
+            self.graph = capture.graph
 
     def simulate(self):
         wp.sim.collide(self.model, self.state_0)
@@ -150,7 +150,7 @@ class Example:
     def render(self):
         if self.renderer is None:
             return
-        
+
         with wp.ScopedTimer("render", active=True):
             self.renderer.begin_frame(self.sim_time)
             self.renderer.render(self.state_0)

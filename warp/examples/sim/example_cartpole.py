@@ -43,10 +43,6 @@ class Example:
             armature=0.1,
             stiffness=0.0,
             damping=0.0,
-            shape_ke=1.0e4,
-            shape_kd=1.0e2,
-            shape_kf=1.0e2,
-            shape_mu=1.0,
             limit_ke=1.0e4,
             limit_kd=1.0e1,
             enable_self_collisions=False,
@@ -71,8 +67,6 @@ class Example:
             # joint initial positions
             builder.joint_q[-3:] = [0.0, 0.3, 0.0]
 
-            builder.joint_target[:3] = [0.0, 0.0, 0.0]
-
         # finalize model
         self.model = builder.finalize()
         self.model.ground = False
@@ -94,9 +88,9 @@ class Example:
 
         self.use_graph = wp.get_device().is_cuda
         if self.use_graph:
-            wp.capture_begin()
-            self.simulate()
-            self.graph = wp.capture_end()
+            with wp.ScopedCapture() as capture:
+                self.simulate()
+            self.graph = capture.graph
 
     def simulate(self):
         for _ in range(self.sim_substeps):

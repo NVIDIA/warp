@@ -28,9 +28,12 @@ def _usd_set_xform(xform, pos: tuple, rot: tuple, scale: tuple, time):
 
     xform_ops = xform.GetOrderedXformOps()
 
-    xform_ops[0].Set(Gf.Vec3d(float(pos[0]), float(pos[1]), float(pos[2])), time)
-    xform_ops[1].Set(Gf.Quatf(float(rot[3]), float(rot[0]), float(rot[1]), float(rot[2])), time)
-    xform_ops[2].Set(Gf.Vec3d(float(scale[0]), float(scale[1]), float(scale[2])), time)
+    if pos is not None:
+        xform_ops[0].Set(Gf.Vec3d(float(pos[0]), float(pos[1]), float(pos[2])), time)
+    if rot is not None:
+        xform_ops[1].Set(Gf.Quatf(float(rot[3]), float(rot[0]), float(rot[1]), float(rot[2])), time)
+    if scale is not None:
+        xform_ops[2].Set(Gf.Vec3d(float(scale[0]), float(scale[1]), float(scale[2])), time)
 
 
 # transforms a cylinder such that it connects the two points pos0, pos1
@@ -151,7 +154,11 @@ class UsdRenderer:
         rot: tuple,
         scale: tuple = (1.0, 1.0, 1.0),
         color: tuple = (1.0, 1.0, 1.0),
+        custom_index: int = -1,
+        visible: bool = True,
     ):
+        if not visible:
+            return
         sdf_path = self._resolve_path(name, body)
         instance = self._shape_constructors[shape.name].Define(self.stage, sdf_path)
         instance.GetPrim().GetReferences().AddInternalReference(shape)
@@ -224,7 +231,7 @@ class UsdRenderer:
 
         return prim_path
 
-    def render_ground(self, size: float = 100.0):
+    def render_ground(self, size: float = 100.0, plane=None):
         from pxr import UsdGeom
 
         mesh = UsdGeom.Mesh.Define(self.stage, self.root.GetPath().AppendChild("ground"))
@@ -239,6 +246,23 @@ class UsdRenderer:
         elif self.up_axis == "Z":
             points = ((-size, -size, 0.0), (size, -size, 0.0), (size, size, 0.0), (-size, size, 0.0))
             normals = ((0.0, 0.0, 1.0), (0.0, 0.0, 1.0), (0.0, 0.0, 1.0), (0.0, 0.0, 1.0))
+        if plane is not None:
+            normal = np.array(plane[:3])
+            normal /= np.linalg.norm(normal)
+            pos = plane[3] * normal
+            axis_up = [0.0, 0.0, 0.0]
+            axis_up["XYZ".index(self.up_axis)] = 1.0
+            if np.allclose(normal, axis_up):
+                # no rotation necessary
+                q = (0.0, 0.0, 0.0, 1.0)
+            else:
+                c = np.cross(normal, axis_up)
+                angle = np.arcsin(np.linalg.norm(c))
+                axis = np.abs(c) / np.linalg.norm(c)
+                q = wp.quat_from_axis_angle(axis, angle)
+            tf = wp.transform(pos, q)
+            points = [wp.transform_point(tf, p) for p in points]
+            normals = [wp.transform_vector(tf, n) for n in normals]
         counts = (4,)
         indices = [0, 1, 2, 3]
 
@@ -339,7 +363,7 @@ class UsdRenderer:
         self._shape_constructors[name] = UsdGeom.Capsule
 
         if not is_template:
-            _usd_set_xform(capsule, pos, rot, (1.0, 1.0, 1.0), 0.0)
+            _usd_set_xform(capsule, pos, rot, (1.0, 1.0, 1.0), self.time)
 
         return prim_path
 
@@ -393,7 +417,7 @@ class UsdRenderer:
         self._shape_constructors[name] = UsdGeom.Cylinder
 
         if not is_template:
-            _usd_set_xform(cylinder, pos, rot, (1.0, 1.0, 1.0), 0.0)
+            _usd_set_xform(cylinder, pos, rot, (1.0, 1.0, 1.0), self.time)
 
         return prim_path
 
@@ -447,7 +471,7 @@ class UsdRenderer:
         self._shape_constructors[name] = UsdGeom.Cone
 
         if not is_template:
-            _usd_set_xform(cone, pos, rot, (1.0, 1.0, 1.0), 0.0)
+            _usd_set_xform(cone, pos, rot, (1.0, 1.0, 1.0), self.time)
 
         return prim_path
 
@@ -488,7 +512,7 @@ class UsdRenderer:
         self._shape_custom_scale[name] = extents
 
         if not is_template:
-            _usd_set_xform(cube, pos, rot, extents, 0.0)
+            _usd_set_xform(cube, pos, rot, extents, self.time)
 
         return prim_path
 
@@ -712,6 +736,6 @@ class UsdRenderer:
         try:
             self.stage.Save()
             return True
-        except:
-            print("Failed to save USD stage")
+        except Exception as e:
+            print("Failed to save USD stage:", e)
             return False

@@ -187,9 +187,9 @@ class Example:
         # capture pressure solve as a CUDA graph
         self.use_graph = wp.get_device().is_cuda
         if self.use_graph:
-            wp.capture_begin()
-            self.pressure_iterations()
-            self.graph = wp.capture_end()
+            with wp.ScopedCapture() as capture:
+                self.pressure_iterations()
+            self.graph = capture.graph
 
     def step(self):
         with wp.ScopedTimer("step"):

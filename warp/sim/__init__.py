@@ -6,7 +6,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 
-from .model import State, Model, ModelBuilder, Mesh, SDF
+from .model import State, Control, Model, ModelBuilder, Mesh, SDF
 
 from .model import GEO_SPHERE
 from .model import GEO_BOX
@@ -17,13 +17,13 @@ from .model import GEO_MESH
 from .model import GEO_SDF
 from .model import GEO_PLANE
 from .model import GEO_NONE
-from .model import ModelShapeGeometry
 
-from .model import JOINT_MODE_LIMIT
+from .model import JOINT_MODE_FORCE
 from .model import JOINT_MODE_TARGET_POSITION
 from .model import JOINT_MODE_TARGET_VELOCITY
 
 from .model import JointAxis
+from .model import ModelShapeGeometry
 from .model import ModelShapeMaterials
 
 from .model import JOINT_PRISMATIC
@@ -36,8 +36,10 @@ from .model import JOINT_UNIVERSAL
 from .model import JOINT_DISTANCE
 from .model import JOINT_D6
 
+from .integrator import Integrator, integrate_particles, integrate_bodies
 from .integrator_euler import SemiImplicitIntegrator
-from .integrator_euler import VariationalImplicitIntegrator
+
+from .integrator_featherstone import FeatherstoneIntegrator
 
 from .integrator_xpbd import XPBDIntegrator
 
@@ -48,3 +50,10 @@ from .import_mjcf import parse_mjcf
 from .import_urdf import parse_urdf
 from .import_snu import parse_snu
 from .import_usd import parse_usd, resolve_usd_from_url
+
+from .utils import velocity_at_point
+from .utils import quat_from_euler
+from .utils import quat_to_euler
+from .utils import load_mesh
+
+from .inertia import transform_inertia

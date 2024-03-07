@@ -60,16 +60,6 @@ class Example:
             articulation_builder,
             xform=wp.transform_identity(),
             floating=False,
-            density=0,
-            armature=0.1,
-            stiffness=0.0,
-            damping=0.0,
-            shape_ke=1.0e4,
-            shape_kd=1.0e2,
-            shape_kf=1.0e2,
-            shape_mu=1.0,
-            limit_ke=1.0e4,
-            limit_kd=1.0e1,
         )
 
         builder = wp.sim.ModelBuilder()

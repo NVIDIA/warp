@@ -278,12 +278,12 @@ class InternalState:
         )
 
         widths = omni.warp.nodes.points_get_widths(db.inputs.particles)
-        model._particle_radius = wp.empty_like(widths)
+        model.particle_radius = wp.empty_like(widths)
         wp.launch(
             compute_particles_radius_kernel,
             dim=model.particle_count,
             inputs=[widths],
-            outputs=[model._particle_radius],
+            outputs=[model.particle_radius],
         )
 
         model.particle_flags = wp.empty(model.particle_count, dtype=wp.uint32)

@@ -45,7 +45,7 @@ class Example:
         episode_duration = 5.0  # seconds
         self.episode_frames = int(episode_duration / self.frame_dt)
 
-        self.sim_substeps = 32  # 5
+        self.sim_substeps = 10
         self.sim_dt = self.frame_dt / self.sim_substeps
 
         for c, t in enumerate(self.chain_types):
@@ -88,8 +88,8 @@ class Example:
                         limit_upper=joint_limit_upper,
                         target_ke=0.0,
                         target_kd=0.0,
-                        limit_ke=30.0,
-                        limit_kd=30.0,
+                        limit_ke=1e5,
+                        limit_kd=1.0,
                     )
 
                 elif joint_type == wp.sim.JOINT_UNIVERSAL:
@@ -128,11 +128,11 @@ class Example:
                         parent_xform=parent_joint_xform,
                         child_xform=wp.transform_identity(),
                     )
-        # finalize model
+
         self.model = builder.finalize()
         self.model.ground = False
 
-        self.integrator = wp.sim.XPBDIntegrator(iterations=5)
+        self.integrator = wp.sim.FeatherstoneIntegrator(self.model)
 
         self.renderer = None
         if stage:
@@ -145,9 +145,9 @@ class Example:
 
         self.use_graph = wp.get_device().is_cuda
         if self.use_graph:
-            wp.capture_begin()
-            self.simulate()
-            self.graph = wp.capture_end()
+            with wp.ScopedCapture() as capture:
+                self.simulate()
+            self.graph = capture.graph
 
     def simulate(self):
         for _ in range(self.sim_substeps):
@@ -167,6 +167,9 @@ class Example:
         if self.renderer is None:
             return
 
+        if self.renderer is None:
+            return
+
         with wp.ScopedTimer("render", active=True):
             self.renderer.begin_frame(self.sim_time)
             self.renderer.render(self.state_0)
@@ -182,5 +185,7 @@ if __name__ == "__main__":
         example.step()
         example.render()
 
+    if example.renderer:
+        example.renderer.save()
     if example.renderer:
         example.renderer.save()

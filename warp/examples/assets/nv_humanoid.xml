@@ -21,7 +21,7 @@
 
   <worldbody>
     <geom name="floor" type="plane" conaffinity="1" size="100 100 .2" material="grid"/>
-    <body name="torso" pos="0 0 1.5" childclass="body">
+    <body name="torso" pos="0 0 0" childclass="body">
       <light name="top" pos="0 0 2" mode="trackcom"/>
       <camera name="back" pos="-3 0 1" xyaxes="0 -1 0 1 0 2" mode="trackcom"/>
       <camera name="side" pos="0 -3 1" xyaxes="1 0 0 0 1 2" mode="trackcom"/>

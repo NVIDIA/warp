@@ -9,7 +9,8 @@
 # Example Drone
 #
 # A drone and its 4 propellers is simulated with the goal of reaching
-# different targets by finding the best trajectory at each point in time.
+# different targets via model-predictive control (MPC) that continuously
+# optimizes the control trajectory.
 #
 ###########################################################################
 
@@ -415,15 +416,18 @@ class Drone:
 
         # Initialize the required simulation states.
         if requires_grad:
-            self.states = tuple(self.model.state(requires_grad=True) for _ in range(state_count + 1))
+            self.states = tuple(self.model.state() for _ in range(state_count + 1))
+            self.controls = tuple(self.model.control() for _ in range(state_count))
         else:
             # When only running a forward simulation, we don't need to store
             # the history of the states at each step, instead we use double
             # buffering to represent the previous and next states.
             self.states = [self.model.state(), self.model.state()]
+            self.controls = (self.model.control(),)
 
-        for state in self.states:
-            state.prop_controls = wp.zeros(len(self.props), dtype=float, requires_grad=requires_grad)
+        # create array for the propeller controls
+        for control in self.controls:
+            control.prop_controls = wp.zeros(len(self.props), dtype=float, requires_grad=requires_grad)
 
         # Define the trajectories as arrays of control points.
         # The point data has an additional item to support linear interpolation.
@@ -445,6 +449,10 @@ class Drone:
     @property
     def next_state(self) -> wp.sim.State:
         return self.states[self.sim_tick + 1 if self.requires_grad else 1]
+
+    @property
+    def control(self) -> wp.sim.Control:
+        return self.controls[min(len(self.controls) - 1, self.sim_tick) if self.requires_grad else 0]
 
 
 class Example:
@@ -602,7 +610,7 @@ class Example:
                 drone.sim_tick / (self.sim_substep_count * self.control_point_step),
                 self.control_dim,
             ),
-            outputs=(drone.state.prop_controls,),
+            outputs=(drone.control.prop_controls,),
         )
 
         wp.sim.collide(drone.model, drone.state)
@@ -612,7 +620,7 @@ class Example:
             dim=len(drone.props),
             inputs=(
                 drone.props,
-                drone.state.prop_controls,
+                drone.control.prop_controls,
                 drone.state.body_q,
                 drone.model.body_com,
             ),
@@ -624,6 +632,7 @@ class Example:
             drone.state,
             drone.next_state,
             self.sim_dt,
+            drone.control,
         )
 
         drone.sim_tick += 1
@@ -657,7 +666,7 @@ class Example:
                     self.rollouts.state.body_q,
                     self.rollouts.state.body_qd,
                     self.targets[self.target_idx],
-                    self.rollouts.state.prop_controls,
+                    self.rollouts.control.prop_controls,
                     i,
                     self.rollout_step_count,
                     1e3,
@@ -815,17 +824,27 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage_path = os.path.join(os.path.dirname(__file__), "example_drone.usd")
-    drone_path = os.path.join(os.path.dirname(__file__), "..", "assets", "crazyflie.usd")
+    this_dir = os.path.realpath(os.path.dirname(__file__))
+    stage_path = os.path.join(this_dir, "example_drone.usd")
+    drone_path = os.path.join(this_dir, "..", "assets", "crazyflie.usd")
 
     example = Example(stage_path, drone_path, verbose=True)
     for i in range(example.frame_count):
+        if i > 0 and i % int((example.frame_count / len(example.targets))) == 0:
+            example.target_idx += 1
+            if example.verbose:
+                print(f"Choosing new flight target: {example.target_idx + 1}")
+
+            # Force recapturing the CUDA graph for the optimisation pass
+            # by invalidating it.
+            example.optim_graph = None
+
         example.step()
         example.render()
 
         if example.verbose:
             loss = np.min(example.rollout_costs.numpy())
-            print(f"[{example.frame:3d}] loss={loss:.8f}")
+            print(f"[{i+1:3d}/{example.frame_count}] loss={loss:.8f}")
 
     if example.renderer is not None:
         example.renderer.save()
