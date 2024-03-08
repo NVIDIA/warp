@@ -266,7 +266,7 @@ class Example:
     def __init__(self, stage):
         # render params
         self.frame_dt = 1.0 / 60.0
-        self.frame_count = 600
+        self.frame_count = 480
         self.sim_time = 0.0
 
         # simulation params
