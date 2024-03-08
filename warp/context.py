@@ -3325,12 +3325,16 @@ def set_mempool_enabled(device: Devicelike, enable: bool):
             raise ValueError("Memory pools are only supported on CUDA devices")
 
 
-def set_mempool_release_threshold(device: Devicelike, threshold: int):
+def set_mempool_release_threshold(device: Devicelike, threshold: Union[int, float]):
     """Set the CUDA memory pool release threshold on the device.
 
     This is the amount of reserved memory to hold onto before trying to release memory back to the OS.
     When more than this amount of bytes is held by the memory pool, the allocator will try to release
     memory back to the OS on the next call to stream, event, or device synchronize.
+
+    Values between 0 and 1 are interpreted as fractions of available memory.  For example, 0.5 means
+    half of the device's physical memory.  Greater values are interpreted as an absolute number of bytes.
+    For example, 1024**3 means one GiB of memory.
     """
 
     assert_initialized()
@@ -3342,6 +3346,11 @@ def set_mempool_release_threshold(device: Devicelike, threshold: int):
 
     if not device.is_mempool_supported:
         raise RuntimeError(f"Device {device} does not support memory pools")
+
+    if threshold < 0:
+        threshold = 0
+    elif threshold > 0 and threshold <= 1:
+        threshold = int(threshold * device.total_memory)
 
     if not runtime.core.cuda_device_set_mempool_release_threshold(device.ordinal, threshold):
         raise RuntimeError(f"Failed to set memory pool release threshold for device {device}")
