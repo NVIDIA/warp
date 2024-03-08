@@ -119,7 +119,7 @@ def integrate(
 class Example:
     def __init__(self, stage):
         self.frame_dt = 1.0 / 60
-        self.frame_count = 400
+        self.frame_count = 200
 
         self.sim_substeps = 64
         self.sim_dt = self.frame_dt / self.sim_substeps
@@ -138,10 +138,10 @@ class Example:
         self.grid = wp.HashGrid(128, 128, 128)
         self.grid_cell_size = self.point_radius * 5.0
 
-        self.points = self.particle_grid(32, 128, 32, (0.0, 0.3, 0.0), self.point_radius, 0.1)
+        self.points = self.particle_grid(32, 64, 32, (0.0, 0.5, 0.0), self.point_radius, 0.1)
 
         self.x = wp.array(self.points, dtype=wp.vec3)
-        self.v = wp.array(np.ones([len(self.x), 3]) * np.array([0.0, 0.0, 10.0]), dtype=wp.vec3)
+        self.v = wp.array(np.ones([len(self.x), 3]) * np.array([0.0, 0.0, 15.0]), dtype=wp.vec3)
         self.f = wp.zeros_like(self.v)
 
         self.renderer = None

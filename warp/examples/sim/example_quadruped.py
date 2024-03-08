@@ -94,7 +94,7 @@ class Example:
         self.sim_time = 0.0
         self.frame_dt = 1.0 / 100.0
 
-        episode_duration = 5.0  # seconds
+        episode_duration = 3.0  # seconds
         self.episode_frames = int(episode_duration / self.frame_dt)
 
         self.sim_substeps = 5
@@ -169,7 +169,7 @@ if __name__ == "__main__":
 
     stage = os.path.join(os.path.dirname(__file__), "example_quadruped.usd")
 
-    example = Example(stage, num_envs=25)
+    example = Example(stage, num_envs=8)
 
     for _ in range(example.episode_frames):
         example.step()

@@ -400,13 +400,6 @@ class Drone:
                         half_height=2.0,
                         collision_group=i,
                     ),
-                    builder.add_shape_capsule(
-                        -1,
-                        pos=(-0.5, 2.0, -0.5),
-                        radius=0.15,
-                        half_height=2.0,
-                        collision_group=i,
-                    ),
                 ),
             )
         self.props = wp.array(props, dtype=Propeller)
@@ -467,7 +460,7 @@ class Example:
         verbose: bool = False,
     ) -> None:
         # Duration of the simulation, in seconds.
-        duration = 15.0
+        duration = 6.0
 
         # Number of frames per second.
         self.fps = 60.0
@@ -491,8 +484,6 @@ class Example:
         self.targets = (
             wp.vec3(0.0, 0.5, 1.0),
             wp.vec3(1.0, 0.5, 0.0),
-            wp.vec3(0.0, 0.5, -1.0),
-            wp.vec3(-1.0, 0.5, 0.0),
         )
 
         # Define the index of the active target.
