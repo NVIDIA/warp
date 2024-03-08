@@ -66,8 +66,10 @@ class UsdRenderer:
             fps: The number of frames per second to use in the USD file
             scaling: Scaling factor to use for the entities in the scene
         """
-
-        from pxr import Usd, UsdGeom, UsdLux, Sdf, Gf
+        try:
+            from pxr import Usd, UsdGeom, UsdLux, Sdf, Gf
+        except ImportError:
+            raise ImportError("Failed to import pxr. Please install USD (e.g. via `pip install usd-core`).")
 
         if isinstance(stage, str):
             self.stage = stage = Usd.Stage.CreateNew(stage)
