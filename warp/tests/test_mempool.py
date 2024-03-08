@@ -53,9 +53,13 @@ def test_mempool_release_threshold(test, device):
 
     saved_threshold = wp.get_mempool_release_threshold(device)
 
-    # set new threshold
+    # set new absolute threshold
     wp.set_mempool_release_threshold(device, 42000)
     test.assertEqual(wp.get_mempool_release_threshold(device), 42000)
+
+    # set new fractional threshold
+    wp.set_mempool_release_threshold(device, 0.5)
+    test.assertEqual(wp.get_mempool_release_threshold(device), int(0.5 * device.total_memory))
 
     # restore threshold
     wp.set_mempool_release_threshold(device, saved_threshold)
