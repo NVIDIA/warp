@@ -306,7 +306,7 @@ def CreateSimRenderer(renderer):
                 particle_q = state.particle_q.numpy()
 
                 # render particles
-                self.render_points("particles", particle_q, radius=self.model.particle_radius.numpy(), colors=((0.8, 0.3, 0.2),) * len(particle_q))
+                self.render_points("particles", particle_q, radius=self.model.particle_radius.numpy(), colors=(0.8, 0.3, 0.2))
 
                 # render tris
                 if self.model.tri_count:
