@@ -6,35 +6,33 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import os
+import shutil
 import subprocess
 import sys
 
 from warp.context import export_functions_rst, export_stubs
 
-# docs
-
-# disable sphinx color output
-os.environ["NO_COLOR"] = "1"
-
 base_path = os.path.dirname(os.path.realpath(__file__))
-
-with open(os.path.join(base_path, "docs", "modules", "functions.rst"), "w") as function_ref:
-    export_functions_rst(function_ref)
-
-# run Sphinx build
-try:
-    docs_folder = os.path.join(base_path, "docs")
-    make_html_cmd = ["make.bat" if os.name == "nt" else "make html"]
-    subprocess.check_output(make_html_cmd, cwd=docs_folder, shell=True)
-except subprocess.CalledProcessError as e:
-    print(e.output.decode())
-    raise e
 
 # generate stubs for autocomplete
 with open(os.path.join(base_path, "warp", "stubs.py"), "w") as stub_file:
     export_stubs(stub_file)
 
-# code formatting
+# code formatting of stubs.py
 subprocess.run([sys.executable, "-m", "black", os.path.join(base_path, "warp", "stubs.py")])
+
+with open(os.path.join(base_path, "docs", "modules", "functions.rst"), "w") as function_ref:
+    export_functions_rst(function_ref)
+
+source_dir = os.path.join(base_path, "docs")
+output_dir = os.path.join(base_path, "docs", "_build", "html")
+
+# Clean previous HTML output
+if os.path.exists(output_dir):
+    shutil.rmtree(output_dir)
+
+command = ["sphinx-build", "-W", "-b", "html", source_dir, output_dir]
+
+subprocess.run(command, check=True)
 
 print("Finished")

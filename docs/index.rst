@@ -121,15 +121,15 @@ projects at NVIDIA including the following publications:
 -  Accelerated Policy Learning with Parallel Differentiable Simulation -
    Xu, J., Makoviychuk, V., Narang, Y., Ramos, F., Matusik, W., Garg,
    A., & Macklin, M.
-   `(2022) <https://short-horizon-actor-critic.github.io>`_
+   `(2022) <https://short-horizon-actor-critic.github.io>`__
 -  DiSECt: Differentiable Simulator for Robotic Cutting - Heiden, E.,
    Macklin, M., Narang, Y., Fox, D., Garg, A., & Ramos, F
-   `(2021) <https://github.com/NVlabs/DiSECt>`_
+   `(2021) <https://github.com/NVlabs/DiSECt>`__
 -  gradSim: Differentiable Simulation for System Identification and
    Visuomotor Control - Murthy, J. Krishna, Miles Macklin, Florian
    Golemo, Vikram Voleti, Linda Petrini, Martin Weiss, Breandan
    Considine et
-   al. `(2021) <https://gradsim.github.io>`_
+   al. `(2021) <https://gradsim.github.io>`__
 
 Citing
 ------

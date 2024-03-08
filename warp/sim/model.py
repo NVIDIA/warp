@@ -3218,7 +3218,7 @@ class ModelBuilder:
         """Adds a triangular FEM element between three particles in the system.
 
         Triangles are modeled as viscoelastic elements with elastic stiffness and damping
-        Parameters specified on the model. See model.tri_ke, model.tri_kd.
+        parameters specified on the model. See model.tri_ke, model.tri_kd.
 
         Args:
             i: The index of the first particle
@@ -3231,11 +3231,9 @@ class ModelBuilder:
         Note:
             The triangle is created with a rest-length based on the distance
             between the particles in their initial configuration.
-
-        Todo:
-            * Expose elastic parameters on a per-element basis
-
         """
+        # TODO: Expose elastic parameters on a per-element basis
+
         # compute basis for 2D rest pose
         p = self.particle_q[i]
         q = self.particle_q[j]
