@@ -7,7 +7,7 @@ echo "Installing test dependencies"
 call %PYTHON% -m pip install matplotlib
 call %PYTHON% -m pip install usd-core
 call %PYTHON% -m pip install coverage[toml]
-call %PYTHON% -m pip install torch --extra-index-url https://download.pytorch.org/whl/cu115
+call %PYTHON% -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
 :: According to Jax docs, the pip packages don't work on Windows and may fail silently
 ::call %PYTHON% -m pip install "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
