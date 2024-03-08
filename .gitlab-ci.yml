@@ -410,8 +410,6 @@ mac-x86_64 test debug:
     - python -m pip install --upgrade pip
     - python -m pip install -r docs/requirements.txt
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
-    - cd docs && make clean
-    - cd ..
   script:
     - python build_docs.py
     - mv docs/_build/html/ ./public/
