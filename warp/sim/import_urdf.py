@@ -72,7 +72,7 @@ def parse_urdf(
         joint_limit_lower (float): The default lower joint limit if not specified in the URDF.
         joint_limit_upper (float): The default upper joint limit if not specified in the URDF.
         scale (float): The scaling factor to apply to the imported mechanism.
-        parse_visuals_as_colliders (bool): If True, the geometry defined under the `<visual>` tags is used for collision handling instead of the `<collision>` geoemtries.
+        parse_visuals_as_colliders (bool): If True, the geometry defined under the `<visual>` tags is used for collision handling instead of the `<collision>` geometries.
         force_show_colliders (bool): If True, the collision shapes are always shown, even if there are visual shapes.
         enable_self_collisions (bool): If True, self-collisions are enabled.
         ignore_inertial_definitions (bool): If True, the inertial parameters defined in the URDF are ignored and the inertia is calculated from the shape geometry.
