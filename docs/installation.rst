@@ -1,7 +1,7 @@
 Installation
 ============
 
-Warp supports Python versions 3.7 onwards. It can run on x86-64 and ARMv8 CPUs on Windows, Linux, and macOS. GPU support requires a CUDA-capable NVIDIA GPU and driver (minimum GeForce GTX 9xx).
+Python version 3.9 or newer is recommended. Warp can run on x86-64 and ARMv8 CPUs on Windows, Linux, and macOS. GPU support requires a CUDA-capable NVIDIA GPU and driver (minimum GeForce GTX 9xx).
 
 The easiest way to install Warp is from `PyPI <https://pypi.org/project/warp-lang>`_:
 
@@ -19,7 +19,9 @@ To install in your local Python environment extract the archive and run the foll
 Dependencies
 ------------
 
-Warp supports Python versions 3.7 or later and requires `NumPy <https://numpy.org>`_ to be installed.
+Warp supports Python versions 3.7 onwards, with 3.9 or newer recommended for full functionality. Note that :ref:`some optional dependencies may not support the latest version of Python<conda>`.
+
+`NumPy <https://numpy.org>`_ must be installed.
 
 The following optional dependencies are required to support certain features:
 
@@ -64,13 +66,15 @@ the path to the CUDA Toolkit can be passed to the build command as
 Which ensures that subsequent modifications to the library will be
 reflected in the Python package.
 
+.. _conda:
+
 Conda environments
 ------------------
 
 Some modules, such as ``usd-core``, don't support the latest Python version.
 To manage running Warp and other projects on different Python versions one can
 make use of an environment management system such as
-`Conda <https://docs.conda.io/>`_.
+`Conda <https://docs.conda.io/>`__.
 
 **WARNING:** When building and running Warp in a different environment, make sure
 the build environment has the same C++ runtime library version, or an older
