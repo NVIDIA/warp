@@ -24,7 +24,7 @@ class LinearOperator:
     .. code-block:: python
 
         def matvec(x: wp.array, y: wp.array, z: wp.array, alpha: Scalar, beta: Scalar):
-            '''Perfoms the operation z = alpha * x + beta * y'''
+            '''Performs the operation z = alpha * x + beta * y'''
             ...
 
     For performance reasons, by default the iterative linear solvers in this module will try to capture the calls
