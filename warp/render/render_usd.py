@@ -740,7 +740,10 @@ class UsdRenderer:
     def save(self):
         try:
             self.stage.Save()
-            return True
         except Exception as e:
             print("Failed to save USD stage:", e)
             return False
+
+        file_path = self.stage.GetRootLayer().realPath
+        print(f"Saved the USD stage file at `{file_path}`")
+        return True
