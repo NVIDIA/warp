@@ -30,9 +30,8 @@ def test_print(test, device):
     wp.synchronize_device(device)
     s = capture.end()
 
-    # The CPU kernel printouts don't get captured by StdOutCapture()
     # We skip the win32 comparison for now since the capture sometimes is an empty string
-    if device.is_cuda and sys.platform != "win32":
+    if sys.platform != "win32":
         test.assertRegex(
             s,
             rf"1{os.linesep}"
