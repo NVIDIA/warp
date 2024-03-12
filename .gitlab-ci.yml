@@ -204,6 +204,15 @@ flake8:
     - .test_artifacts_release
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
 
+.test_minimal_release:
+  stage: test
+  artifacts:
+    when: always
+    paths:
+      - rspec.xml
+    reports:
+      junit: rspec.xml
+
 # PyPI currently only has binary wheels of numpy for Python 3.9+.
 linux-aarch64 test release:
   image: ubuntu:22.04
@@ -286,6 +295,41 @@ mac-x86_64 test release:
     - $PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
   tags:
     - pkg/xcode/13 # Avoid AWS-MAC-0
+
+# Test the Linux release build in an environment with minimal Python dependencies installed
+linux-x86_64 test minimal release:
+  needs: [linux-x86_64 build release]
+  extends:
+    - .omni_nvks_gpu # Use single-GPU for job throughput
+    - .test_minimal_release
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/*.so warp/bin/
+    - tools/packman/packman install -l _build/target-deps/python python 3.8.18+nv1-linux-x86_64
+    - $PYTHON -m pip install --upgrade pip
+    - $PYTHON -m pip install -e .
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - $PYTHON -m warp.tests --junit-report-xml rspec.xml -s autodetect
+
+# Test the Windows release build in an environment with minimal Python dependencies installed
+windows-x86_64 test minimal release:
+  needs: [windows-x86_64 build release]
+  extends:
+    - .runner-test-windows-x86_64-gpu
+    - .test_minimal_release
+  before_script:
+    - *define-GetTime
+    - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
+    - tools/packman/packman.cmd install -l _build/target-deps/python python 3.8.18+nv1-windows-x86_64
+    - $env:PYTHON = "$env:CI_PROJECT_DIR\_build\target-deps\python\python.exe"
+    - powershell.exe $env:PYTHON -m pip install --upgrade pip
+    - powershell.exe $env:PYTHON -m pip install -e .
+    - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
+  script:
+    - powershell.exe $env:PYTHON -m warp.tests --junit-report-xml rspec.xml -s autodetect
 
 # ================================================================
 # Unit Testing Jobs (Debug)

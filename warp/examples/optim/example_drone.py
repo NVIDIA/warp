@@ -18,10 +18,12 @@ import os
 from typing import Optional, Tuple
 
 import numpy as np
+from pxr import UsdGeom
 
 import warp as wp
 import warp.optim
 import warp.sim
+import warp.sim.render
 from warp.sim.collide import (
     box_sdf,
     capsule_sdf,
@@ -553,10 +555,6 @@ class Example:
         self.tape = None
 
         if enable_rendering:
-            from pxr import UsdGeom
-
-            import warp.sim.render
-
             # Helper to render the physics scene as a USD file.
             self.renderer = wp.sim.render.SimRenderer(self.drone.model, stage, fps=self.fps)
 
@@ -712,7 +710,10 @@ class Example:
         self.tape.zero()
 
     def step(self):
-        if int((self.frame_count / len(self.targets))) == 0:
+        if self.frame % int((self.frame_count / len(self.targets))) == 0:
+            if self.verbose:
+                print(f"Choosing new flight target: {self.target_idx+1}")
+
             self.target_idx += 1
 
             # Force recapturing the CUDA graph for the optimization pass
@@ -820,8 +821,6 @@ class Example:
 
         self.renderer.end_frame()
 
-        self.frame += 1
-
 
 if __name__ == "__main__":
     this_dir = os.path.realpath(os.path.dirname(__file__))
@@ -830,21 +829,13 @@ if __name__ == "__main__":
 
     example = Example(stage_path, drone_path, verbose=True)
     for i in range(example.frame_count):
-        if i > 0 and i % int((example.frame_count / len(example.targets))) == 0:
-            example.target_idx += 1
-            if example.verbose:
-                print(f"Choosing new flight target: {example.target_idx + 1}")
-
-            # Force recapturing the CUDA graph for the optimisation pass
-            # by invalidating it.
-            example.optim_graph = None
-
         example.step()
         example.render()
+        example.frame += 1
 
         if example.verbose:
             loss = np.min(example.rollout_costs.numpy())
-            print(f"[{i+1:3d}/{example.frame_count}] loss={loss:.8f}")
+            print(f"[{example.frame:3d}/{example.frame_count}] loss={loss:.8f}")
 
     if example.renderer is not None:
         example.renderer.save()
