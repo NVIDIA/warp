@@ -41,3 +41,5 @@ warp/native/cutlass/examples
 warp/native/cutlass/media
 warp/native/cutlass/python
 warp/native/cutlass/test
+warp/native/cutlass/tools/profiler
+warp/native/cutlass/tools/library
