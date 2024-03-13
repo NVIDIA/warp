@@ -74,7 +74,7 @@ def test_nan(test, device):
 
     # Check that the output contains warnings about "nan" being produced.
     # Older Windows C runtimes have a bug where stdout sometimes does not get properly flushed.
-    if output != "" or device.is_cuda or sys.platform != "win32":
+    if output != "" or sys.platform != "win32":
         test.assertRegex(output, r"nan")
 
 
