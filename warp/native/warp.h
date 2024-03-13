@@ -279,6 +279,7 @@ extern "C"
     WP_API void* cuda_event_create(void* context, unsigned flags);
     WP_API void cuda_event_destroy(void* event);
     WP_API void cuda_event_record(void* event, void* stream);
+    WP_API void cuda_event_synchronize(void* event);
 
     WP_API bool cuda_graph_begin_capture(void* context, void* stream, int external);
     WP_API bool cuda_graph_end_capture(void* context, void* stream, void** graph_ret);

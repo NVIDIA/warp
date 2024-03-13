@@ -88,6 +88,7 @@ static PFN_cuEventCreate_v2000 pfn_cuEventCreate;
 static PFN_cuEventDestroy_v4000 pfn_cuEventDestroy;
 static PFN_cuEventRecord_v2000 pfn_cuEventRecord;
 static PFN_cuEventRecordWithFlags_v11010 pfn_cuEventRecordWithFlags;
+static PFN_cuEventSynchronize_v2000 pfn_cuEventSynchronize;
 static PFN_cuModuleLoadDataEx_v2010 pfn_cuModuleLoadDataEx;
 static PFN_cuModuleUnload_v2000 pfn_cuModuleUnload;
 static PFN_cuModuleGetFunction_v2000 pfn_cuModuleGetFunction;
@@ -202,6 +203,7 @@ bool init_cuda_driver()
     get_driver_entry_point("cuEventDestroy", &(void*&)pfn_cuEventDestroy);
     get_driver_entry_point("cuEventRecord", &(void*&)pfn_cuEventRecord);
     get_driver_entry_point("cuEventRecordWithFlags", &(void*&)pfn_cuEventRecordWithFlags);
+    get_driver_entry_point("cuEventSynchronize", &(void*&)pfn_cuEventSynchronize);
     get_driver_entry_point("cuModuleLoadDataEx", &(void*&)pfn_cuModuleLoadDataEx);
     get_driver_entry_point("cuModuleUnload", &(void*&)pfn_cuModuleUnload);
     get_driver_entry_point("cuModuleGetFunction", &(void*&)pfn_cuModuleGetFunction);
@@ -473,6 +475,11 @@ CUresult cuEventRecord_f(CUevent event, CUstream stream)
 CUresult cuEventRecordWithFlags_f(CUevent event, CUstream stream, unsigned int flags)
 {
     return pfn_cuEventRecordWithFlags ? pfn_cuEventRecordWithFlags(event, stream, flags) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuEventSynchronize_f(CUevent event)
+{
+    return pfn_cuEventSynchronize ? pfn_cuEventSynchronize(event) : DRIVER_ENTRY_POINT_ERROR;
 }
 
 CUresult cuModuleLoadDataEx_f(CUmodule *module, const void *image, unsigned int numOptions, CUjit_option *options, void **optionValues)
