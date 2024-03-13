@@ -33,7 +33,7 @@ class Example:
         self.sim_time = 0.0
         self.frame_dt = 1.0 / 60.0
 
-        episode_duration = 20.0  # seconds
+        episode_duration = 5.0  # seconds
         self.episode_frames = int(episode_duration / self.frame_dt)
 
         self.sim_substeps = 10

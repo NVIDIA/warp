@@ -2855,6 +2855,8 @@ Instances: {len(self._instances)}"""
                 vertices, indices = self._create_sphere_mesh(1.0)
             if colors is None:
                 color = tab10_color_map(len(self._shape_geo_hash))
+            elif len(colors) == 3:
+                color = colors
             else:
                 color = colors[0]
             instancer.register_shape(vertices, indices, color, color)

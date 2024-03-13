@@ -400,13 +400,6 @@ class Drone:
                         half_height=2.0,
                         collision_group=i,
                     ),
-                    builder.add_shape_capsule(
-                        -1,
-                        pos=(-0.5, 2.0, -0.5),
-                        radius=0.15,
-                        half_height=2.0,
-                        collision_group=i,
-                    ),
                 ),
             )
         self.props = wp.array(props, dtype=Propeller)
@@ -467,7 +460,7 @@ class Example:
         verbose: bool = False,
     ) -> None:
         # Duration of the simulation, in seconds.
-        duration = 15.0
+        duration = 6.0
 
         # Number of frames per second.
         self.fps = 60.0
@@ -491,8 +484,6 @@ class Example:
         self.targets = (
             wp.vec3(0.0, 0.5, 1.0),
             wp.vec3(1.0, 0.5, 0.0),
-            wp.vec3(0.0, 0.5, -1.0),
-            wp.vec3(-1.0, 0.5, 0.0),
         )
 
         # Define the index of the active target.
@@ -558,31 +549,34 @@ class Example:
             # Helper to render the physics scene as a USD file.
             self.renderer = wp.sim.render.SimRenderer(self.drone.model, stage, fps=self.fps)
 
-            # Remove the default drone geometries.
-            drone_root_prim = self.renderer.stage.GetPrimAtPath("/root/body_0_drone_0")
-            for prim in drone_root_prim.GetChildren():
-                self.renderer.stage.RemovePrim(prim.GetPath())
+            if isinstance(self.renderer, warp.sim.render.SimRendererUsd):
+                from pxr import UsdGeom
 
-            # Add a reference to the drone geometry.
-            drone_prim = self.renderer.stage.OverridePrim(f"{drone_root_prim.GetPath()}/crazyflie")
-            drone_prim.GetReferences().AddReference(drone_path)
-            drone_xform = UsdGeom.Xform(drone_prim)
-            drone_xform.AddTranslateOp().Set((0.0, -0.05, 0.0))
-            drone_xform.AddRotateYOp().Set(45.0)
-            drone_xform.AddScaleOp().Set((drone_size * 0.2,) * 3)
+                # Remove the default drone geometries.
+                drone_root_prim = self.renderer.stage.GetPrimAtPath("/root/body_0_drone_0")
+                for prim in drone_root_prim.GetChildren():
+                    self.renderer.stage.RemovePrim(prim.GetPath())
 
-            # Get the propellers to spin
-            for turning_direction in ("CW", "CCW"):
-                spin = 100.0 * 360.0 * self.frame_count / self.fps
-                spin = spin if turning_direction == "CCW" else -spin
-                for side in ("Back", "Front"):
-                    prop_prim = self.renderer.stage.OverridePrim(
-                        f"{drone_prim.GetPath()}/Propeller{turning_direction}{side}"
-                    )
-                    prop_xform = UsdGeom.Xform(prop_prim)
-                    rot = prop_xform.AddRotateYOp()
-                    rot.Set(0.0, 0.0)
-                    rot.Set(spin, self.frame_count)
+                # Add a reference to the drone geometry.
+                drone_prim = self.renderer.stage.OverridePrim(f"{drone_root_prim.GetPath()}/crazyflie")
+                drone_prim.GetReferences().AddReference(drone_path)
+                drone_xform = UsdGeom.Xform(drone_prim)
+                drone_xform.AddTranslateOp().Set((0.0, -0.05, 0.0))
+                drone_xform.AddRotateYOp().Set(45.0)
+                drone_xform.AddScaleOp().Set((drone_size * 0.2,) * 3)
+
+                # Get the propellers to spin
+                for turning_direction in ("CW", "CCW"):
+                    spin = 100.0 * 360.0 * self.frame_count / self.fps
+                    spin = spin if turning_direction == "CCW" else -spin
+                    for side in ("Back", "Front"):
+                        prop_prim = self.renderer.stage.OverridePrim(
+                            f"{drone_prim.GetPath()}/Propeller{turning_direction}{side}"
+                        )
+                        prop_xform = UsdGeom.Xform(prop_prim)
+                        rot = prop_xform.AddRotateYOp()
+                        rot.Set(0.0, 0.0)
+                        rot.Set(spin, self.frame_count)
         else:
             self.renderer = None
 

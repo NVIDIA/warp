@@ -266,7 +266,7 @@ class Example:
     def __init__(self, stage):
         # render params
         self.frame_dt = 1.0 / 60.0
-        self.frame_count = 600
+        self.frame_count = 480
         self.sim_time = 0.0
 
         # simulation params
@@ -372,7 +372,7 @@ class Example:
 
         with wp.ScopedTimer("render", active=True):
             self.renderer.begin_frame(self.sim_time)
-            self.renderer.render_points(points=self.x.numpy(), radius=self.smoothing_length, name="points", colors=((0.8, 0.3, 0.2),) * len(self.x))
+            self.renderer.render_points(points=self.x.numpy(), radius=self.smoothing_length, name="points", colors=(0.8, 0.3, 0.2))
             self.renderer.end_frame()
 
 

@@ -66,8 +66,10 @@ class UsdRenderer:
             fps: The number of frames per second to use in the USD file
             scaling: Scaling factor to use for the entities in the scene
         """
-
-        from pxr import Usd, UsdGeom, UsdLux, Sdf, Gf
+        try:
+            from pxr import Usd, UsdGeom, UsdLux, Sdf, Gf
+        except ImportError:
+            raise ImportError("Failed to import pxr. Please install USD (e.g. via `pip install usd-core`).")
 
         if isinstance(stage, str):
             self.stage = stage = Usd.Stage.CreateNew(stage)
@@ -685,7 +687,7 @@ class UsdRenderer:
         instancer = UsdGeom.PointInstancer.Get(self.stage, instancer_path)
         radius_is_scalar = np.isscalar(radius)
         if not instancer:
-            if colors is None:
+            if colors is None or len(colors) == 3:
                 instancer = UsdGeom.PointInstancer.Define(self.stage, instancer_path)
                 instancer_sphere = UsdGeom.Sphere.Define(self.stage, instancer.GetPath().AppendChild("sphere"))
                 if radius_is_scalar:
@@ -693,6 +695,9 @@ class UsdRenderer:
                 else:
                     instancer_sphere.GetRadiusAttr().Set(1.0)
                     instancer.GetScalesAttr().Set(np.tile(radius, (3, 1)).T)
+
+                if colors is not None:
+                    instancer_sphere.GetDisplayColorAttr().Set([Gf.Vec3f(colors)], self.time)
 
                 instancer.CreatePrototypesRel().SetTargets([instancer_sphere.GetPath()])
                 instancer.CreateProtoIndicesAttr().Set([0] * len(points))
@@ -710,7 +715,7 @@ class UsdRenderer:
                 else:
                     instancer.GetWidthsAttr().Set(radius * 2.0)
 
-        if colors is None:
+        if colors is None or len(colors) == 3:
             instancer.GetPositionsAttr().Set(points, self.time)
         else:
             instancer.GetPointsAttr().Set(points, self.time)
@@ -735,7 +740,10 @@ class UsdRenderer:
     def save(self):
         try:
             self.stage.Save()
-            return True
         except Exception as e:
             print("Failed to save USD stage:", e)
             return False
+
+        file_path = self.stage.GetRootLayer().realPath
+        print(f"Saved the USD stage file at `{file_path}`")
+        return True
