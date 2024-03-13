@@ -1702,6 +1702,9 @@ class Module:
         if self.cuda_modules:
             saved_context = runtime.core.cuda_context_get_current()
             for context, module in self.cuda_modules.items():
+                device = runtime.context_map[context]
+                if device.is_capturing:
+                    raise RuntimeError(f"Failed to unload CUDA module '{self.name}' because graph capture is active")
                 runtime.core.cuda_unload_module(context, module)
             runtime.core.cuda_context_set_current(saved_context)
             self.cuda_modules = {}
