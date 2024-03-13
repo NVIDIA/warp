@@ -78,6 +78,7 @@ CUresult cuEventCreate_f(CUevent* event, unsigned int flags);
 CUresult cuEventDestroy_f(CUevent event);
 CUresult cuEventRecord_f(CUevent event, CUstream stream);
 CUresult cuEventRecordWithFlags_f(CUevent event, CUstream stream, unsigned int flags);
+CUresult cuEventSynchronize_f(CUevent event);
 CUresult cuModuleUnload_f(CUmodule hmod);
 CUresult cuModuleLoadDataEx_f(CUmodule *module, const void *image, unsigned int numOptions, CUjit_option *options, void **optionValues);
 CUresult cuModuleGetFunction_f(CUfunction *hfunc, CUmodule hmod, const char *name);

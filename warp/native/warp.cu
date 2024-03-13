@@ -2237,6 +2237,11 @@ void cuda_event_record(void* event, void* stream)
     check_cu(cuEventRecord_f(static_cast<CUevent>(event), static_cast<CUstream>(stream)));
 }
 
+void cuda_event_synchronize(void* event)
+{
+    check_cu(cuEventSynchronize_f(static_cast<CUevent>(event)));
+}
+
 bool cuda_graph_begin_capture(void* context, void* stream, int external)
 {
     ContextGuard guard(context);

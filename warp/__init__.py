@@ -62,8 +62,8 @@ from warp.context import (
 from warp.context import set_module_options, get_module_options, get_module
 from warp.context import capture_begin, capture_end, capture_launch
 from warp.context import Kernel, Function, Launch
-from warp.context import Stream, get_stream, set_stream, synchronize_stream
-from warp.context import Event, record_event, wait_event, wait_stream
+from warp.context import Stream, get_stream, set_stream, wait_stream, synchronize_stream
+from warp.context import Event, record_event, wait_event, synchronize_event
 from warp.context import RegisteredGLBuffer
 from warp.context import is_mempool_supported, is_mempool_enabled, set_mempool_enabled
 from warp.context import set_mempool_release_threshold, get_mempool_release_threshold

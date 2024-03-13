@@ -2766,6 +2766,8 @@ class Runtime:
         self.core.cuda_event_destroy.restype = None
         self.core.cuda_event_record.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
         self.core.cuda_event_record.restype = None
+        self.core.cuda_event_synchronize.argtypes = [ctypes.c_void_p]
+        self.core.cuda_event_synchronize.restype = None
 
         self.core.cuda_graph_begin_capture.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
         self.core.cuda_graph_begin_capture.restype = ctypes.c_bool
@@ -4327,10 +4329,10 @@ def synchronize():
 
 
 def synchronize_device(device: Devicelike = None):
-    """Manually synchronize the calling CPU thread with any outstanding CUDA work on the specified device
+    """Synchronize the calling CPU thread with any outstanding CUDA work on the specified device
 
-    This method allows the host application code to ensure that any kernel launches
-    or memory copies have completed.
+    This function allows the host application code to ensure that all kernel launches
+    and memory copies have completed on the device.
 
     Args:
         device: Device to synchronize.
@@ -4345,7 +4347,10 @@ def synchronize_device(device: Devicelike = None):
 
 
 def synchronize_stream(stream_or_device=None):
-    """Manually synchronize the calling CPU thread with any outstanding CUDA work on the specified stream.
+    """Synchronize the calling CPU thread with any outstanding CUDA work on the specified stream.
+
+    This function allows the host application code to ensure that all kernel launches
+    and memory copies have completed on the stream.
 
     Args:
         stream_or_device: `wp.Stream` or a device.  If the argument is a device, synchronize the device's current stream.
@@ -4357,6 +4362,18 @@ def synchronize_stream(stream_or_device=None):
         stream = runtime.get_device(stream_or_device).stream
 
     runtime.core.cuda_stream_synchronize(stream.cuda_stream)
+
+
+def synchronize_event(event: Event):
+    """Synchronize the calling CPU thread with an event recorded on a CUDA stream.
+
+    This function allows the host application code to ensure that a specific synchronization point was reached.
+
+    Args:
+        event: Event to wait for.
+    """
+
+    runtime.core.cuda_event_synchronize(event.cuda_event)
 
 
 def force_load(device: Union[Device, str, List[Device], List[str]] = None, modules: List[Module] = None):
