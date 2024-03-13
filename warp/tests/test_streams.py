@@ -300,6 +300,28 @@ def test_stream_scope_wait_stream(test, device):
         assert_np_equal(d.numpy(), np.full(N, fill_value=4.0))
 
 
+def test_event_synchronize(test, device):
+    stream = wp.get_stream(device)
+
+    a_host = wp.empty(N, dtype=float, device="cpu", pinned=True)
+    b_host = wp.empty(N, dtype=float, device="cpu", pinned=True)
+
+    # initialize GPU array and do an asynchronous readback
+    a = wp.full(N, 17, dtype=float, device=device)
+    wp.copy(a_host, a)
+    a_event = stream.record_event()
+
+    b = wp.full(N, 42, dtype=float, device=device)
+    wp.copy(b_host, b)
+    b_event = stream.record_event()
+
+    wp.synchronize_event(a_event)
+    assert_np_equal(a_host.numpy(), np.full(N, fill_value=17.0))
+
+    wp.synchronize_event(b_event)
+    assert_np_equal(b_host.numpy(), np.full(N, fill_value=42.0))
+
+
 devices = get_unique_cuda_test_devices()
 
 
@@ -444,6 +466,7 @@ add_function_test(TestStreams, "test_stream_scope_synchronize", test_stream_scop
 add_function_test(TestStreams, "test_stream_scope_wait_event", test_stream_scope_wait_event, devices=devices)
 add_function_test(TestStreams, "test_stream_scope_wait_stream", test_stream_scope_wait_stream, devices=devices)
 
+add_function_test(TestStreams, "test_event_synchronize", test_event_synchronize, devices=devices)
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()

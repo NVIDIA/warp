@@ -1023,6 +1023,7 @@ WP_API int cuda_stream_is_capturing(void* stream) { return 0; }
 WP_API void* cuda_event_create(void* context, unsigned flags) { return NULL; }
 WP_API void cuda_event_destroy(void* event) {}
 WP_API void cuda_event_record(void* event, void* stream) {}
+WP_API void cuda_event_synchronize(void* event) {}
 
 WP_API bool cuda_graph_begin_capture(void* context, void* stream, int external) { return false; }
 WP_API bool cuda_graph_end_capture(void* context, void* stream, void** graph_ret) { return false; }
