@@ -485,7 +485,6 @@ pages:
 # Creates wheel files for PyPI
 create pypi wheels:
   stage: package
-  image: python:3.11-slim
   needs:
     - linux-aarch64 build release
     - linux-x86_64 build release
@@ -503,24 +502,32 @@ create pypi wheels:
     - mv warp/bin/*.dll warp/bin/windows-x86_64/
     - mkdir warp/bin/macos-universal
     - mv warp/bin/*.dylib warp/bin/macos-universal/
-    - python -m pip install --upgrade pip
-    - pip install build
+    - apt-get update && apt-get install curl --no-install-recommends -y
+    - python3 -m pip install --upgrade pip
+    - python3 -m pip install build
   script:
-    - python -m build --wheel -C--build-option=-Pwindows-x86_64
-    - python -m build --wheel -C--build-option=-Plinux-x86_64
-    - python -m build --wheel -C--build-option=-Plinux-aarch64
-    - python -m build --wheel -C--build-option=-Pmacos-universal
+    - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
+    - python3 -m build --wheel -C--build-option=-Plinux-x86_64
+    - python3 -m build --wheel -C--build-option=-Plinux-aarch64
+    - python3 -m build --wheel -C--build-option=-Pmacos-universal
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +
+    - mv dist/*.whl .
+    - VERSION=$(cat VERSION.md)
+    - |
+      for file in $(find . -name '*.whl'); do
+          filename=$(basename -- "$file")
+          curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "$file" "https://gitlab-master.nvidia.com/api/v4/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/${filename}"
+      done
   artifacts:
-    name: $CI_JOB_NAME_SLUG
+    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
     paths:
-      - dist/
+      - "*.whl"
+    when: always
 
 # Creates an artifact suitable for publishing the Kit extensions
 create kit artifacts:
   stage: package
-  image: python:3.10-alpine
   needs:
     - linux-x86_64 build release
     - windows-x86_64 build release
@@ -536,12 +543,12 @@ create kit artifacts:
     - rm -r warp/bin/linux-x86_64/
     - rm -rf warp/native/cutlass
   script:
-    - python tools/ci/publishing/build_nodes_info.py
+    - python3 tools/ci/publishing/build_nodes_info.py
     - mv warp exts/omni.warp.core/
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +
   artifacts:
-    name: $CI_JOB_NAME_SLUG
+    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
     paths:
       - exts
     exclude:
