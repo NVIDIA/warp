@@ -809,6 +809,12 @@ def check_iommu():
             return False
         if os.path.isdir("/sys/kernel/iommu_groups") and os.listdir("/sys/kernel/iommu_groups"):
             return False
+
+        # HACK: disable P2P tests on misbehaving agents
+        disable_p2p_tests = os.getenv("WARP_DISABLE_P2P_TESTS", default="0")
+        if int(disable_p2p_tests):
+            return False
+
         return True
     else:
         # doesn't matter
