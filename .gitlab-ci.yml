@@ -252,6 +252,8 @@ linux-x86_64 test release:
     - $PYTHON -m pip install torch --index-url https://download.pytorch.org/whl/cu118
     - $PYTHON -m pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
     - $PYTHON -m pip install -e .
+    # Kill switch for P2P tests in case of misbehaving agents
+    - export WARP_DISABLE_P2P_TESTS=1
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - $PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
@@ -310,6 +312,8 @@ linux-x86_64 test minimal release:
     - tools/packman/packman install -l _build/target-deps/python python 3.8.18+nv1-linux-x86_64
     - $PYTHON -m pip install --upgrade pip
     - $PYTHON -m pip install -e .
+    # Kill switch for P2P tests in case of misbehaving agents
+    - export WARP_DISABLE_P2P_TESTS=1
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - $PYTHON -m warp.tests --junit-report-xml rspec.xml -s autodetect
@@ -387,6 +391,8 @@ linux-x86_64 test debug:
     - $PYTHON -m pip install torch --index-url https://download.pytorch.org/whl/cu118
     - $PYTHON -m pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
     - $PYTHON -m pip install -e .
+    # Kill switch for P2P tests in case of misbehaving agents
+    - export WARP_DISABLE_P2P_TESTS=1
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - $PYTHON -m warp.tests --junit-report-xml rspec.xml -s autodetect
