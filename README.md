@@ -339,6 +339,8 @@ a2 = cpu_array_2.numpy()
 a3 = cpu_array_3.numpy()
 ```
 
+For more information about asynchronous operations, please refer to the [concurrency documentation](https://nvidia.github.io/warp/modules/concurrency.html) and [synchronization guidance](https://nvidia.github.io/warp/modules/concurrency.html#synchronization-guidance).
+
 ### What happens when you differentiate a function like `wp.abs(x)`?
 -------
 
