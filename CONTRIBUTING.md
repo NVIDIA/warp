@@ -29,7 +29,7 @@ When you're ready to submit your changes, please follow these steps to create a 
    - Unit / regression tests are written.
    - Docs have been updated.
    - Run `flake8` or `black` to auto-format changes (GitLab pipeline will indicate if there are Flake8 errors).
-   - [TeamCity](https://teamcity.nvidia.com/project/Omniverse_Warp?mode=builds#all-projects) is passing on all platforms.
+   - The GitLab CI/CD pipeline for the merge request is successful.
 
 4. **Assign Reviewers**: Select one or more reviewers from the owners list below to review your changes.
 Use the **Assignees** field to indicate reviewers who must _all_ approve the MR before it can be merged.
