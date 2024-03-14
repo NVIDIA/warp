@@ -183,7 +183,7 @@ Built-in unit tests can be run from the command-line as follows:
             <td align="center">inverse kinematics</td>
             <td align="center">spring cage</td>
             <td align="center">trajectory</td>
-            <td align="center"></td>
+            <td align="center">walker</td>
         </tr>
     </tbody>
 </table>
