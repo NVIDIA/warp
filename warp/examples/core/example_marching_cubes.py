@@ -163,9 +163,8 @@ class Example:
 
 
 if __name__ == "__main__":
-    this_dir = os.path.realpath(os.path.dirname(__file__))
     this_file = os.path.basename(__file__).split(".")[0]
-    stage_path = os.path.join(this_dir, f"{this_file}.usd")
+    stage_path = os.path.join(wp.examples.get_output_directory(), f"{this_file}.usd")
 
     example = Example(stage_path)
     for _ in range(240):

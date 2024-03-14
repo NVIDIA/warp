@@ -280,7 +280,7 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage_path = os.path.join(os.path.dirname(__file__), "example_walker.usd")
+    stage_path = os.path.join(wp.examples.get_output_directory(), "example_walker.usd")
 
     example = Example(stage_path, profile=False, verbose=True)
 
