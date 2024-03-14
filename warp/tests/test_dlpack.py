@@ -200,7 +200,7 @@ def test_dlpack_warp_to_torch(test, device):
 
     test.assertEqual(a.ptr, t.data_ptr())
     test.assertEqual(a.device, wp.device_from_torch(t.device))
-    test.assertEqual(a.dtype, wp.torch.dtype_from_torch(t.dtype))
+    test.assertEqual(a.dtype, wp.dtype_from_torch(t.dtype))
     test.assertEqual(a.shape, tuple(t.shape))
     test.assertEqual(a.strides, tuple(s * item_size for s in t.stride()))
 
@@ -229,7 +229,7 @@ def test_dlpack_warp_to_torch_v2(test, device):
 
     test.assertEqual(a.ptr, t.data_ptr())
     test.assertEqual(a.device, wp.device_from_torch(t.device))
-    test.assertEqual(a.dtype, wp.torch.dtype_from_torch(t.dtype))
+    test.assertEqual(a.dtype, wp.dtype_from_torch(t.dtype))
     test.assertEqual(a.shape, tuple(t.shape))
     test.assertEqual(a.strides, tuple(s * item_size for s in t.stride()))
 
@@ -256,7 +256,7 @@ def test_dlpack_torch_to_warp(test, device):
 
     test.assertEqual(a.ptr, t.data_ptr())
     test.assertEqual(a.device, wp.device_from_torch(t.device))
-    test.assertEqual(a.dtype, wp.torch.dtype_from_torch(t.dtype))
+    test.assertEqual(a.dtype, wp.dtype_from_torch(t.dtype))
     test.assertEqual(a.shape, tuple(t.shape))
     test.assertEqual(a.strides, tuple(s * item_size for s in t.stride()))
 
@@ -285,7 +285,7 @@ def test_dlpack_torch_to_warp_v2(test, device):
 
     test.assertEqual(a.ptr, t.data_ptr())
     test.assertEqual(a.device, wp.device_from_torch(t.device))
-    test.assertEqual(a.dtype, wp.torch.dtype_from_torch(t.dtype))
+    test.assertEqual(a.dtype, wp.dtype_from_torch(t.dtype))
     test.assertEqual(a.shape, tuple(t.shape))
     test.assertEqual(a.strides, tuple(s * item_size for s in t.stride()))
 

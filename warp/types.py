@@ -1073,6 +1073,22 @@ vector_types = [
 ]
 
 np_dtype_to_warp_type = {
+    # Numpy scalar types
+    np.bool_: bool,
+    np.int8: int8,
+    np.uint8: uint8,
+    np.int16: int16,
+    np.uint16: uint16,
+    np.int32: int32,
+    np.int64: int64,
+    np.uint32: uint32,
+    np.uint64: uint64,
+    np.byte: int8,
+    np.ubyte: uint8,
+    np.float16: float16,
+    np.float32: float32,
+    np.float64: float64,
+    # Numpy dtype objects
     np.dtype(np.bool_): bool,
     np.dtype(np.int8): int8,
     np.dtype(np.uint8): uint8,
@@ -1103,6 +1119,24 @@ warp_type_to_np_dtype = {
     float32: np.float32,
     float64: np.float64,
 }
+
+
+def dtype_from_numpy(numpy_dtype):
+    """Return the Warp dtype corresponding to a NumPy dtype."""
+    wp_dtype = np_dtype_to_warp_type.get(numpy_dtype)
+    if wp_dtype is not None:
+        return wp_dtype
+    else:
+        raise TypeError(f"Cannot convert {numpy_dtype} to a Warp type")
+
+
+def dtype_to_numpy(warp_dtype):
+    """Return the NumPy dtype corresponding to a Warp dtype."""
+    np_dtype = warp_type_to_np_dtype.get(warp_dtype)
+    if np_dtype is not None:
+        return np_dtype
+    else:
+        raise TypeError(f"Cannot convert {warp_dtype} to a NumPy type")
 
 
 # represent a Python range iterator

@@ -68,6 +68,49 @@ def copy2d_mat22_kernel(dst: wp.array2d(dtype=wp.mat22), src: wp.array2d(dtype=w
     dst[i, j] = src[i, j]
 
 
+def test_dtype_from_torch(test, device):
+    import torch
+
+    def test_conversions(torch_type, warp_type):
+        test.assertEqual(wp.dtype_from_torch(torch_type), warp_type)
+
+    test_conversions(torch.float16, wp.float16)
+    test_conversions(torch.float32, wp.float32)
+    test_conversions(torch.float64, wp.float64)
+    test_conversions(torch.int8, wp.int8)
+    test_conversions(torch.int16, wp.int16)
+    test_conversions(torch.int32, wp.int32)
+    test_conversions(torch.int64, wp.int64)
+    test_conversions(torch.uint8, wp.uint8)
+    test_conversions(torch.bool, wp.bool)
+
+
+def test_dtype_to_torch(test, device):
+    import torch
+
+    def test_conversions(warp_type, torch_type):
+        test.assertEqual(wp.dtype_to_torch(warp_type), torch_type)
+
+    test_conversions(wp.float16, torch.float16)
+    test_conversions(wp.float32, torch.float32)
+    test_conversions(wp.float64, torch.float64)
+    test_conversions(wp.int8, torch.int8)
+    test_conversions(wp.int16, torch.int16)
+    test_conversions(wp.int32, torch.int32)
+    test_conversions(wp.int64, torch.int64)
+    test_conversions(wp.uint8, torch.uint8)
+    test_conversions(wp.uint16, torch.int16)
+    test_conversions(wp.uint32, torch.int32)
+    test_conversions(wp.uint64, torch.int64)
+    test_conversions(wp.bool, torch.bool)
+
+
+def test_device_conversion(test, device):
+    torch_device = wp.device_to_torch(device)
+    warp_device = wp.device_from_torch(torch_device)
+    test.assertEqual(warp_device, device)
+
+
 def test_torch_zerocopy(test, device):
     import torch
 
@@ -642,7 +685,11 @@ try:
         except Exception as e:
             print(f"Skipping Torch tests on device '{d}' due to exception: {e}")
 
+    add_function_test(TestTorch, "test_dtype_from_torch", test_dtype_from_torch, devices=None)
+    add_function_test(TestTorch, "test_dtype_to_torch", test_dtype_to_torch, devices=None)
+
     if torch_compatible_devices:
+        add_function_test(TestTorch, "test_device_conversion", test_device_conversion, devices=torch_compatible_devices)
         add_function_test(TestTorch, "test_from_torch", test_from_torch, devices=torch_compatible_devices)
         add_function_test(TestTorch, "test_from_torch_slices", test_from_torch_slices, devices=torch_compatible_devices)
         add_function_test(

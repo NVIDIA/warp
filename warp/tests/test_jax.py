@@ -77,6 +77,53 @@ def _jax_version():
         return (0, 0, 0)
 
 
+def test_dtype_from_jax(test, device):
+    import jax.numpy as jp
+
+    def test_conversions(jax_type, warp_type):
+        test.assertEqual(wp.dtype_from_jax(jax_type), warp_type)
+        test.assertEqual(wp.dtype_from_jax(jp.dtype(jax_type)), warp_type)
+
+    test_conversions(jp.float16, wp.float16)
+    test_conversions(jp.float32, wp.float32)
+    test_conversions(jp.float64, wp.float64)
+    test_conversions(jp.int8, wp.int8)
+    test_conversions(jp.int16, wp.int16)
+    test_conversions(jp.int32, wp.int32)
+    test_conversions(jp.int64, wp.int64)
+    test_conversions(jp.uint8, wp.uint8)
+    test_conversions(jp.uint16, wp.uint16)
+    test_conversions(jp.uint32, wp.uint32)
+    test_conversions(jp.uint64, wp.uint64)
+    test_conversions(jp.bool_, wp.bool)
+
+
+def test_dtype_to_jax(test, device):
+    import jax.numpy as jp
+
+    def test_conversions(warp_type, jax_type):
+        test.assertEqual(wp.dtype_to_jax(warp_type), jax_type)
+
+    test_conversions(wp.float16, jp.float16)
+    test_conversions(wp.float32, jp.float32)
+    test_conversions(wp.float64, jp.float64)
+    test_conversions(wp.int8, jp.int8)
+    test_conversions(wp.int16, jp.int16)
+    test_conversions(wp.int32, jp.int32)
+    test_conversions(wp.int64, jp.int64)
+    test_conversions(wp.uint8, jp.uint8)
+    test_conversions(wp.uint16, jp.uint16)
+    test_conversions(wp.uint32, jp.uint32)
+    test_conversions(wp.uint64, jp.uint64)
+    test_conversions(wp.bool, jp.bool_)
+
+
+def test_device_conversion(test, device):
+    jax_device = wp.device_to_jax(device)
+    warp_device = wp.device_from_jax(jax_device)
+    test.assertEqual(warp_device, device)
+
+
 @unittest.skipUnless(_jax_version() >= (0, 4, 25), "Jax version too old")
 def test_jax_kernel_basic(test, device):
     import jax.numpy as jp
@@ -110,8 +157,8 @@ def test_jax_kernel_scalar(test, device):
         
     for T in scalar_types:
 
-        jp_dtype = wp.jax.dtype_to_jax(T)
-        np_dtype = wp.types.warp_type_to_np_dtype[T]
+        jp_dtype = wp.dtype_to_jax(T)
+        np_dtype = wp.dtype_to_numpy(T)
 
         with test.subTest(msg=T.__name__):
 
@@ -142,8 +189,8 @@ def test_jax_kernel_vecmat(test, device):
 
     for T in [*vector_types, *matrix_types]:
 
-        jp_dtype = wp.jax.dtype_to_jax(T._wp_scalar_type_)
-        np_dtype = wp.types.warp_type_to_np_dtype[T._wp_scalar_type_]
+        jp_dtype = wp.dtype_to_jax(T._wp_scalar_type_)
+        np_dtype = wp.dtype_to_numpy(T._wp_scalar_type_)
 
         n = 64 // T._length_
         scalar_shape = (n, *T._shape_)
@@ -230,6 +277,12 @@ try:
                 jax_compatible_cuda_devices.append(d)
         except Exception as e:
             print(f"Skipping Jax DLPack tests on device '{d}' due to exception: {e}")
+
+    add_function_test(TestJax, "test_dtype_from_jax", test_dtype_from_jax, devices=None)
+    add_function_test(TestJax, "test_dtype_to_jax", test_dtype_to_jax, devices=None)
+
+    if jax_compatible_devices:
+        add_function_test(TestJax, "test_device_conversion", test_device_conversion, devices=jax_compatible_devices)
 
     if jax_compatible_cuda_devices:
         add_function_test(

@@ -28,14 +28,15 @@ from warp.types import spatial_matrix, spatial_matrixh, spatial_matrixf, spatial
 from warp.types import Bvh, Mesh, HashGrid, Volume, MarchingCubes
 from warp.types import bvh_query_t, hash_grid_query_t, mesh_query_aabb_t, mesh_query_point_t, mesh_query_ray_t
 
-
-
 # device-wide gemms
 from warp.types import matmul, adj_matmul, batched_matmul, adj_batched_matmul, from_ptr
 
 # deprecated
 from warp.types import vector as vec
 from warp.types import matrix as mat
+
+# numpy interop
+from warp.types import dtype_from_numpy, dtype_to_numpy
 
 from warp.context import init, func, func_grad, func_replay, func_native, kernel, struct, overload
 from warp.context import is_cpu_available, is_cuda_available, is_device_available
@@ -77,10 +78,12 @@ from warp.utils import ScopedCapture
 from warp.utils import transform_expand, quat_between_vectors
 
 from warp.torch import from_torch, to_torch
+from warp.torch import dtype_from_torch, dtype_to_torch
 from warp.torch import device_from_torch, device_to_torch
 from warp.torch import stream_from_torch, stream_to_torch
 
 from warp.jax import from_jax, to_jax
+from warp.jax import dtype_from_jax, dtype_to_jax
 from warp.jax import device_from_jax, device_to_jax
 
 from warp.dlpack import from_dlpack, to_dlpack
