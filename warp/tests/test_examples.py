@@ -176,6 +176,15 @@ add_example_test(
         "drone_path": os.path.join(os.path.dirname(__file__), "..", "examples", "assets", "crazyflie.usd"),
     },
 )
+# add_example_test(
+#     TestSimExamples,
+#     name="optim.example_walker",
+#     devices=cuda_test_devices,
+#     options={
+#         "load_modules": warp_sim_modules + ["warp.optim.adam", "warp.utils"],
+#         "num_frames": 1,
+#     },
+# )
 add_example_test(
     TestSimExamples,
     name="sim.example_granular",
