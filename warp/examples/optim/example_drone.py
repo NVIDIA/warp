@@ -818,7 +818,7 @@ class Example:
 
 if __name__ == "__main__":
     this_dir = os.path.realpath(os.path.dirname(__file__))
-    stage_path = os.path.join(this_dir, "example_drone.usd")
+    stage_path = os.path.join(wp.examples.get_output_directory(), "example_drone.usd")
     drone_path = os.path.join(this_dir, "..", "assets", "crazyflie.usd")
 
     example = Example(stage_path, drone_path, verbose=True)

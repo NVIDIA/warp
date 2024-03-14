@@ -233,7 +233,7 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage_path = os.path.join(os.path.dirname(__file__), "example_bounce.usd")
+    stage_path = os.path.join(wp.examples.get_output_directory(), "example_bounce.usd")
 
     example = Example(stage_path, profile=False, verbose=True)
     example.check_grad()

@@ -101,7 +101,7 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage_path = os.path.join(os.path.dirname(__file__), "example_granular.usd")
+    stage_path = os.path.join(wp.examples.get_output_directory(), "example_granular.usd")
 
     example = Example(stage_path)
 

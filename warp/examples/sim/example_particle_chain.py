@@ -94,7 +94,7 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage_path = os.path.join(os.path.dirname(__file__), "example_particle_chain.usd")
+    stage_path = os.path.join(wp.examples.get_output_directory(), "example_particle_chain.usd")
 
     example = Example(stage_path)
 
