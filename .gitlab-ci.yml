@@ -302,7 +302,7 @@ mac-x86_64 test release:
 linux-x86_64 test minimal release:
   needs: [linux-x86_64 build release]
   extends:
-    - .omni_nvks_gpu # Use single-GPU for job throughput
+    - .runner-test-linux-x86_64-gpu # Use single-GPU for job throughput
     - .test_minimal_release
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
