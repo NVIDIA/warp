@@ -156,7 +156,7 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage_path = os.path.join(os.path.dirname(__file__), "example_inverse_kinematics.usd")
+    stage_path = os.path.join(wp.examples.get_output_directory(), "example_inverse_kinematics.usd")
     example = Example(stage_path, device=wp.get_preferred_device(), verbose=True)
 
     train_iters = 512

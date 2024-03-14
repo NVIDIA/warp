@@ -64,13 +64,17 @@ print(lengths)
 
 ## Running Examples
 
-The `examples` directory contains a number of scripts that show how to implement different simulation methods using the Warp API. Most examples will generate USD files containing time-sampled animations (stored in the same directory as the example). Before running examples, users should ensure that the ``usd-core`` package is installed using:
+The `examples` directory contains a number of scripts that show how to implement different simulation methods using the Warp API. Most examples will generate USD files containing time-sampled animations (stored in the same directory as the example). Before running examples, users should ensure that the ``usd-core`` and ``matplotlib`` packages are installed using:
 
-    pip install usd-core
+    pip install usd-core matplotlib
 
 Examples can be run from the command-line as follows:
 
     python -m warp.examples.<example_subdir>.<example>
+
+To browse the example source code, you can open the directory where the files are located like this:
+
+    python -m warp.examples.browse
 
 Most examples can be run on either the CPU or a CUDA-capable device, but a handful require a CUDA-capable device. These are marked at the top of the example script.
 

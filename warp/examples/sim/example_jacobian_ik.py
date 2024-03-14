@@ -185,7 +185,7 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage_path = os.path.join(os.path.dirname(__file__), "example_jacobian_ik.usd")
+    stage_path = os.path.join(wp.examples.get_output_directory(), "example_jacobian_ik.usd")
 
     example = Example(stage_path, num_envs=10)
 

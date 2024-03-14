@@ -169,7 +169,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    stage_path = os.path.join(os.path.dirname(__file__), "example_cloth.usd")
+    stage_path = os.path.join(wp.examples.get_output_directory(), "example_cloth.usd")
 
     example = Example(stage_path, integrator=args.integrator)
 

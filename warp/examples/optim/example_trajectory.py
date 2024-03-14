@@ -175,7 +175,7 @@ class Example:
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    stage_path = os.path.join(os.path.dirname(__file__), "example_trajectory.usd")
+    stage_path = os.path.join(wp.examples.get_output_directory(), "example_trajectory.usd")
 
     example = Example(stage_path, verbose=True)
 
