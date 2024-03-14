@@ -163,6 +163,9 @@ Full Table of Contents
     installation
     basics
     modules/devices
+    modules/allocators
+    modules/concurrency
+    modules/generics
     modules/interoperability
     configuration
     debugging

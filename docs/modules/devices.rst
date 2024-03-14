@@ -202,3 +202,55 @@ In either case, mapping the custom CUDA context allows us to target the context 
     with wp.ScopedDevice("foo"):
         a = wp.zeros(n)
         wp.launch(kernel, dim=a.size, inputs=[a])
+
+.. _peer_access:
+
+CUDA Peer Access
+----------------
+
+CUDA allows direct memory access between different GPUs if the system hardware configuration supports it.  Typically, the GPUs should be of the same type and a special interconnect may be required (e.g., NVLINK or PCIe topology).
+
+During initialization, Warp reports whether peer access is supported on multi-GPU systems:
+
+.. code:: text
+
+    Warp 0.15.1 initialized:
+       CUDA Toolkit 11.5, Driver 12.2
+       Devices:
+         "cpu"      : "x86_64"
+         "cuda:0"   : "NVIDIA L40" (48 GiB, sm_89, mempool enabled)
+         "cuda:1"   : "NVIDIA L40" (48 GiB, sm_89, mempool enabled)
+         "cuda:2"   : "NVIDIA L40" (48 GiB, sm_89, mempool enabled)
+         "cuda:3"   : "NVIDIA L40" (48 GiB, sm_89, mempool enabled)
+       CUDA peer access:
+         Supported fully (all-directional)
+
+If the message reports that CUDA peer access is ``Supported fully``, it means that every CUDA device can access every other CUDA device in the system.  If it says ``Supported partially``, it will be followed by the access matrix that shows which devices can access each other.  If it says ``Not supported``, it means that access is not supported between any devices.
+
+In code, we can check support and enable peer access like this:
+
+.. code:: python
+
+    if wp.is_peer_access_supported("cuda:0", "cuda:1"):
+        wp.set_peer_access_enabled("cuda:0", "cuda:1", True):
+
+This will allow the memory of device ``cuda:0`` to be directly accessed on device ``cuda:1``.  Peer access is directional, which means that enabling access to ``cuda:0`` from ``cuda:1`` does not automatically enable access to ``cuda:1`` from ``cuda:0``.
+
+The benefit of enabling peer access is that it allows direct memory transfers (DMA) between the devices.  This is generally a faster way to copy data, since otherwise the transfer needs to be done using a CPU staging buffer.
+
+The drawback is that enabling peer access can reduce the performance of allocations and deallocations.  Programs that don't rely on peer-to-peer memory transfers should leave this setting disabled.
+
+It's possible to temporarily enable or disable peer access using a scoped manager:
+
+.. code:: python
+
+    with wp.ScopedPeerAccess("cuda:0", "cuda:1", True):
+        ...
+
+.. note::
+
+    Peer access does not accelerate memory transfers between arrays allocated using the :ref:`stream-ordered memory pool allocators<mempool_allocators>` introduced in Warp 0.14.0.  To accelerate memory pool transfers, :ref:`memory pool access<mempool_access>` should be enabled instead.
+
+.. autofunction:: warp.is_peer_access_supported
+.. autofunction:: warp.is_peer_access_enabled
+.. autofunction:: warp.set_peer_access_enabled
