@@ -187,5 +187,3 @@ if __name__ == "__main__":
 
     if example.renderer:
         example.renderer.save()
-    if example.renderer:
-        example.renderer.save()
