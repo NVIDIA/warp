@@ -6,21 +6,19 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import ctypes
-
 import numpy
-
 import warp
 
 
 # return the warp device corresponding to a torch device
 def device_from_torch(torch_device):
-    """Return the warp device corresponding to a torch device."""
+    """Return the Warp device corresponding to a Torch device."""
     return warp.get_device(str(torch_device))
 
 
-def device_to_torch(wp_device):
-    """Return the torch device corresponding to a warp device."""
-    device = warp.get_device(wp_device)
+def device_to_torch(warp_device):
+    """Return the Torch device corresponding to a Warp device."""
+    device = warp.get_device(warp_device)
     if device.is_cpu or device.is_primary:
         return str(device)
     elif device.is_cuda and device.is_uva:
@@ -29,20 +27,49 @@ def device_to_torch(wp_device):
     raise RuntimeError(f"Warp device {device} is not compatible with torch")
 
 
+def dtype_to_torch(warp_dtype):
+    """Return the Torch dtype corresponding to a Warp dtype."""
+    # initialize lookup table on first call to defer torch import
+    if dtype_to_torch.type_map is None:
+        import torch
+
+        dtype_to_torch.type_map = {
+            warp.float16: torch.float16,
+            warp.float32: torch.float32,
+            warp.float64: torch.float64,
+            warp.int8: torch.int8,
+            warp.int16: torch.int16,
+            warp.int32: torch.int32,
+            warp.int64: torch.int64,
+            warp.uint8: torch.uint8,
+            # torch doesn't support unsigned ints bigger than 8 bits
+            warp.uint16: torch.int16,
+            warp.uint32: torch.int32,
+            warp.uint64: torch.int64,
+            warp.bool: torch.bool,
+        }
+
+    torch_dtype = dtype_to_torch.type_map.get(warp_dtype)
+    if torch_dtype is not None:
+        return torch_dtype
+    else:
+        raise TypeError(f"Cannot convert {warp_dtype} to a Torch type")
+
+
 def dtype_from_torch(torch_dtype):
-    """Return the Warp dtype corresponding to a torch dtype."""
+    """Return the Warp dtype corresponding to a Torch dtype."""
     # initialize lookup table on first call to defer torch import
     if dtype_from_torch.type_map is None:
         import torch
 
         dtype_from_torch.type_map = {
-            torch.float64: warp.float64,
-            torch.float32: warp.float32,
             torch.float16: warp.float16,
-            torch.int64: warp.int64,
-            torch.int32: warp.int32,
-            torch.int16: warp.int16,
+            torch.float32: warp.float32,
+            torch.float64: warp.float64,
             torch.int8: warp.int8,
+            torch.int16: warp.int16,
+            torch.int32: warp.int32,
+            torch.int64: warp.int64,
             torch.uint8: warp.uint8,
             torch.bool: warp.bool,
             # currently unsupported by Warp
@@ -56,10 +83,7 @@ def dtype_from_torch(torch_dtype):
     if warp_dtype is not None:
         return warp_dtype
     else:
-        raise TypeError(f"Invalid or unsupported data type: {torch_dtype}")
-
-
-dtype_from_torch.type_map = None
+        raise TypeError(f"Cannot convert {torch_dtype} to a Warp type")
 
 
 def dtype_is_compatible(torch_dtype, warp_dtype):
@@ -88,20 +112,24 @@ def dtype_is_compatible(torch_dtype, warp_dtype):
     compatible_set = dtype_is_compatible.compatible_sets.get(torch_dtype)
 
     if compatible_set is not None:
+        if warp_dtype in compatible_set:
+            return True
+        # check if it's a vector or matrix type
         if hasattr(warp_dtype, "_wp_scalar_type_"):
             return warp_dtype._wp_scalar_type_ in compatible_set
-        else:
-            return warp_dtype in compatible_set
-    else:
-        raise TypeError(f"Invalid or unsupported data type: {torch_dtype}")
+
+    return False
 
 
+# lookup tables initialized when needed
+dtype_from_torch.type_map = None
+dtype_to_torch.type_map = None
 dtype_is_compatible.compatible_sets = None
 
 
 # wrap a torch tensor to a wp array, data is not copied
 def from_torch(t, dtype=None, requires_grad=None, grad=None):
-    """Wrap a PyTorch tensor to a Warp array without copying the data.
+    """Convert a Torch tensor to a Warp array without copying the data.
 
     Args:
         t (torch.Tensor): The torch tensor to wrap.
@@ -114,7 +142,7 @@ def from_torch(t, dtype=None, requires_grad=None, grad=None):
     if dtype is None:
         dtype = dtype_from_torch(t.dtype)
     elif not dtype_is_compatible(t.dtype, dtype):
-        raise RuntimeError(f"Incompatible data types: {t.dtype} and {dtype}")
+        raise RuntimeError(f"Cannot convert Torch type {t.dtype} to Warp type {dtype}")
 
     # get size of underlying data type to compute strides
     ctype_size = ctypes.sizeof(dtype._type_)
@@ -184,7 +212,7 @@ def from_torch(t, dtype=None, requires_grad=None, grad=None):
 
 def to_torch(a, requires_grad=None):
     """
-    Convert a Warp array to a PyTorch tensor without copying the data.
+    Convert a Warp array to a Torch tensor without copying the data.
 
     Args:
         a (warp.array): The Warp array to convert.
@@ -228,7 +256,7 @@ def to_torch(a, requires_grad=None):
 
 
 def stream_from_torch(stream_or_device=None):
-    """Convert from a PyTorch CUDA stream to a Warp.Stream."""
+    """Convert from a Torch CUDA stream to a Warp CUDA stream."""
     import torch
 
     if isinstance(stream_or_device, torch.cuda.Stream):
@@ -248,7 +276,7 @@ def stream_from_torch(stream_or_device=None):
 
 
 def stream_to_torch(stream_or_device=None):
-    """Convert from a Warp.Stream to a PyTorch CUDA stream."""
+    """Convert from a Warp CUDA stream to a Torch CUDA stream."""
     import torch
 
     if isinstance(stream_or_device, warp.Stream):

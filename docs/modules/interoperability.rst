@@ -18,22 +18,34 @@ directly::
     print(a)   
     > [1. 2. 3.]
 
+Data type conversion utilities are also available for convenience:
+
+.. code:: python
+
+    warp_type = wp.float32
+    ...
+    numpy_type = wp.dtype_to_numpy(warp_type)
+    ...
+    a = wp.zeros(n, dtype=warp_type)
+    b = np.zeros(n, dtype=numpy_type)
+
+.. autofunction:: warp.dtype_from_numpy
+.. autofunction:: warp.dtype_to_numpy
+
 .. _pytorch-interop:
 
 PyTorch
 -------
 
-Warp provides helper functions to convert arrays to/from PyTorch. Please see the ``warp.torch`` module for more details. Example usage is shown below::
-
-    import warp.torch
+Warp provides helper functions to convert arrays to/from PyTorch::
 
     w = wp.array([1.0, 2.0, 3.0], dtype=float, device="cpu")
 
     # convert to Torch tensor
-    t = warp.to_torch(w)
+    t = wp.to_torch(w)
 
     # convert from Torch tensor
-    w = warp.from_torch(t)
+    w = wp.from_torch(t)
 
 These helper functions allow the conversion of Warp arrays to/from PyTorch tensors without copying the underlying data.
 At the same time, if available, gradient arrays and tensors are converted to/from PyTorch autograd tensors, allowing the use of Warp arrays
@@ -218,9 +230,12 @@ In the following example, we demonstrate how Warp may be used to evaluate the Ro
     xy_np = xy.numpy(force=True)
     print(np.mean(xy_np, axis=0))
 
-.. automodule:: warp.torch
-    :members:
-    :undoc-members:
+.. autofunction:: warp.from_torch
+.. autofunction:: warp.to_torch
+.. autofunction:: warp.device_from_torch
+.. autofunction:: warp.device_to_torch
+.. autofunction:: warp.dtype_from_torch
+.. autofunction:: warp.dtype_to_torch
 
 CuPy/Numba
 ----------
@@ -242,9 +257,12 @@ Internally these use the DLPack protocol to exchange data in a zero-copy way wit
 
 It may be preferable to use the :ref:`DLPack` protocol directly for better performance and control over stream synchronization behaviour.
 
-.. automodule:: warp.jax
-    :members:
-    :undoc-members:
+.. autofunction:: warp.from_jax
+.. autofunction:: warp.to_jax
+.. autofunction:: warp.device_from_jax
+.. autofunction:: warp.device_to_jax
+.. autofunction:: warp.dtype_from_jax
+.. autofunction:: warp.dtype_to_jax
 
 
 Using Warp kernels as JAX primitives
@@ -332,7 +350,6 @@ Here is an example of an operation with three inputs and two outputs::
     print(x)
     print(y)
 
-
 .. _DLPack:
 
 DLPack
@@ -343,7 +360,7 @@ See the `Python Specification for DLPack <https://dmlc.github.io/dlpack/latest/p
 
 The canonical way to import an external array into Warp is using the ``warp.from_dlpack()`` function::
 
-    warp_array = warp.from_dlpack(external_array)
+    warp_array = wp.from_dlpack(external_array)
 
 The external array can be a PyTorch tensor, Jax array, or any other array type compatible with this version of the DLPack protocol.
 For CUDA arrays, this approach requires the producer to perform stream synchronization which ensures that operations on the array
@@ -362,11 +379,11 @@ on the device.
 Alternatively, arrays can be shared by explicitly creating PyCapsules using a ``to_dlpack()`` function provided by the producer framework.
 This approach may be used for older versions of frameworks that do not support the v2022.12 standard::
 
-    warp_array1 = warp.from_dlpack(jax.dlpack.to_dlpack(jax_array))
-    warp_array2 = warp.from_dlpack(torch.utils.dlpack.to_dlpack(torch_tensor))
+    warp_array1 = wp.from_dlpack(jax.dlpack.to_dlpack(jax_array))
+    warp_array2 = wp.from_dlpack(torch.utils.dlpack.to_dlpack(torch_tensor))
 
-    jax_array = jax.dlpack.from_dlpack(warp.to_dlpack(warp_array))
-    torch_tensor = torch.utils.dlpack.from_dlpack(warp.to_dlpack(warp_array))
+    jax_array = jax.dlpack.from_dlpack(wp.to_dlpack(warp_array))
+    torch_tensor = torch.utils.dlpack.from_dlpack(wp.to_dlpack(warp_array))
 
 This approach is generally faster because it skips any stream synchronization, but another solution must be used to ensure correct
 ordering of operations.  In situations where no synchronization is required, using this approach can yield better performance.
@@ -376,6 +393,5 @@ This may be a good choice in situations like these:
     - Warp and the external framework are using the same CUDA stream.
     - Another synchronization mechanism is already in place.
 
-.. automodule:: warp.dlpack
-    :members:
-    :undoc-members:
+.. autofunction:: warp.from_dlpack
+.. autofunction:: warp.to_dlpack

@@ -571,6 +571,49 @@ def test_matrix_error_invalid_set_item_value(test, device):
         m[0][:1] = (1, 2)
 
 
+def test_dtype_from_numpy(test, device):
+    import numpy as np
+
+    def test_conversions(np_type, warp_type):
+        test.assertEqual(wp.dtype_from_numpy(np_type), warp_type)
+        test.assertEqual(wp.dtype_from_numpy(np.dtype(np_type)), warp_type)
+
+    test_conversions(np.float16, wp.float16)
+    test_conversions(np.float32, wp.float32)
+    test_conversions(np.float64, wp.float64)
+    test_conversions(np.int8, wp.int8)
+    test_conversions(np.int16, wp.int16)
+    test_conversions(np.int32, wp.int32)
+    test_conversions(np.int64, wp.int64)
+    test_conversions(np.uint8, wp.uint8)
+    test_conversions(np.uint16, wp.uint16)
+    test_conversions(np.uint32, wp.uint32)
+    test_conversions(np.uint64, wp.uint64)
+    test_conversions(np.bool_, wp.bool)
+    test_conversions(np.byte, wp.int8)
+    test_conversions(np.ubyte, wp.uint8)
+
+
+def test_dtype_to_numpy(test, device):
+    import numpy as np
+
+    def test_conversions(warp_type, np_type):
+        test.assertEqual(wp.dtype_to_numpy(warp_type), np_type)
+
+    test_conversions(wp.float16, np.float16)
+    test_conversions(wp.float32, np.float32)
+    test_conversions(wp.float64, np.float64)
+    test_conversions(wp.int8, np.int8)
+    test_conversions(wp.int16, np.int16)
+    test_conversions(wp.int32, np.int32)
+    test_conversions(wp.int64, np.int64)
+    test_conversions(wp.uint8, np.uint8)
+    test_conversions(wp.uint16, np.uint16)
+    test_conversions(wp.uint32, np.uint32)
+    test_conversions(wp.uint64, np.uint64)
+    test_conversions(wp.bool, np.bool_)
+
+
 devices = [x for x in get_test_devices() if x.is_cpu]
 
 
@@ -608,6 +651,8 @@ add_function_test(TestTypes, "test_matrix_error_invalid_set_item_key", test_matr
 add_function_test(TestTypes, "test_matrix_error_invalid_set_item_key_length", test_matrix_error_invalid_set_item_key_length, devices=devices)
 add_function_test(TestTypes, "test_matrix_error_invalid_set_item_value", test_matrix_error_invalid_set_item_value, devices=devices)
 
+add_function_test(TestTypes, "test_dtype_from_numpy", test_dtype_from_numpy, devices=None)
+add_function_test(TestTypes, "test_dtype_to_numpy", test_dtype_to_numpy, devices=None)
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()

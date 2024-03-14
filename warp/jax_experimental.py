@@ -175,8 +175,8 @@ def _create_jax_warp_primitive():
 
     def base_type_to_jax(warp_dtype):
         if hasattr(warp_dtype, "_wp_scalar_type_"):
-            return wp.jax.dtype_to_jax(warp_dtype._wp_scalar_type_)
-        return wp.jax.dtype_to_jax(warp_dtype)
+            return wp.dtype_to_jax(warp_dtype._wp_scalar_type_)
+        return wp.dtype_to_jax(warp_dtype)
 
     def base_type_to_jax_ir(warp_dtype):
         warp_to_jax_dict = {

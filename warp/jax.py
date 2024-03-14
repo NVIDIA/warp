@@ -6,86 +6,136 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import warp
-from warp.context import type_str
 
 
-def device_to_jax(wp_device):
+def device_to_jax(warp_device):
+    """Return the Jax device corresponding to a Warp device."""
     import jax
 
-    d = warp.get_device(wp_device)
+    d = warp.get_device(warp_device)
 
     if d.is_cuda:
         cuda_devices = jax.devices("cuda")
         if d.ordinal >= len(cuda_devices):
-            raise RuntimeError(f"Jax device corresponding to '{wp_device}' is not available")
+            raise RuntimeError(f"Jax device corresponding to '{warp_device}' is not available")
         return cuda_devices[d.ordinal]
     else:
         cpu_devices = jax.devices("cpu")
         if not cpu_devices:
-            raise RuntimeError(f"Jax device corresponding to '{wp_device}' is not available")
+            raise RuntimeError(f"Jax device corresponding to '{warp_device}' is not available")
         return cpu_devices[0]
 
 
 def device_from_jax(jax_device):
+    """Return the Warp device corresponding to a Jax device."""
     if jax_device.platform == "cpu":
         return warp.get_device("cpu")
     elif jax_device.platform == "gpu":
         return warp.get_cuda_device(jax_device.id)
     else:
-        raise RuntimeError(f"Unknown or unsupported Jax device platform '{jax_device.platform}'")
+        raise RuntimeError(f"Unsupported Jax device platform '{jax_device.platform}'")
 
 
-def dtype_to_jax(wp_dtype):
-    import jax.numpy as jp
+def dtype_to_jax(warp_dtype):
+    """Return the Jax dtype corresponding to a Warp dtype."""
+    # initialize lookup table on first call to defer jax import
+    if dtype_to_jax.type_map is None:
+        import jax.numpy as jp
 
-    warp_to_jax_dict = {
-        warp.float16: jp.float16,
-        warp.float32: jp.float32,
-        warp.float64: jp.float64,
-        warp.int8: jp.int8,
-        warp.int16: jp.int16,
-        warp.int32: jp.int32,
-        warp.int64: jp.int64,
-        warp.uint8: jp.uint8,
-        warp.uint16: jp.uint16,
-        warp.uint32: jp.uint32,
-        warp.uint64: jp.uint64,
-    }
-    jax_dtype = warp_to_jax_dict.get(wp_dtype)
-    if jax_dtype is None:
-        raise TypeError(f"Invalid or unsupported data type: {type_str(wp_dtype)}")
-    return jax_dtype
+        dtype_to_jax.type_map = {
+            warp.float16: jp.float16,
+            warp.float32: jp.float32,
+            warp.float64: jp.float64,
+            warp.int8: jp.int8,
+            warp.int16: jp.int16,
+            warp.int32: jp.int32,
+            warp.int64: jp.int64,
+            warp.uint8: jp.uint8,
+            warp.uint16: jp.uint16,
+            warp.uint32: jp.uint32,
+            warp.uint64: jp.uint64,
+            warp.bool: jp.bool_,
+        }
+
+    jax_dtype = dtype_to_jax.type_map.get(warp_dtype)
+    if jax_dtype is not None:
+        return jax_dtype
+    else:
+        raise TypeError(f"Cannot convert {warp_dtype} to a Jax type")
 
 
 def dtype_from_jax(jax_dtype):
-    import jax.numpy as jp
+    """Return the Warp dtype corresponding to a Jax dtype."""
+    # initialize lookup table on first call to defer jax import
+    if dtype_from_jax.type_map is None:
+        import jax.numpy as jp
 
-    jax_to_warp_dict = {
-        jp.float16: warp.float16,
-        jp.float32: warp.float32,
-        jp.float64: warp.float64,
-        jp.int8: warp.int8,
-        jp.int16: warp.int16,
-        jp.int32: warp.int32,
-        jp.int64: warp.int64,
-        jp.uint8: warp.uint8,
-        jp.uint16: warp.uint16,
-        jp.uint32: warp.uint32,
-        jp.uint64: warp.uint64,
-    }
-    wp_dtype = jax_to_warp_dict.get(jax_dtype)
-    if wp_dtype is None:
-        raise TypeError(f"Invalid or unsupported data type: {jax_dtype}")
-    return wp_dtype
+        dtype_from_jax.type_map = {
+            # Jax scalar types
+            jp.float16: warp.float16,
+            jp.float32: warp.float32,
+            jp.float64: warp.float64,
+            jp.int8: warp.int8,
+            jp.int16: warp.int16,
+            jp.int32: warp.int32,
+            jp.int64: warp.int64,
+            jp.uint8: warp.uint8,
+            jp.uint16: warp.uint16,
+            jp.uint32: warp.uint32,
+            jp.uint64: warp.uint64,
+            jp.bool_: warp.bool,
+            # Jax dtype objects
+            jp.dtype(jp.float16): warp.float16,
+            jp.dtype(jp.float32): warp.float32,
+            jp.dtype(jp.float64): warp.float64,
+            jp.dtype(jp.int8): warp.int8,
+            jp.dtype(jp.int16): warp.int16,
+            jp.dtype(jp.int32): warp.int32,
+            jp.dtype(jp.int64): warp.int64,
+            jp.dtype(jp.uint8): warp.uint8,
+            jp.dtype(jp.uint16): warp.uint16,
+            jp.dtype(jp.uint32): warp.uint32,
+            jp.dtype(jp.uint64): warp.uint64,
+            jp.dtype(jp.bool_): warp.bool,
+        }
+
+    wp_dtype = dtype_from_jax.type_map.get(jax_dtype)
+    if wp_dtype is not None:
+        return wp_dtype
+    else:
+        raise TypeError(f"Cannot convert {jax_dtype} to a Warp type")
 
 
-def to_jax(wp_array):
+# lookup tables initialized when needed
+dtype_from_jax.type_map = None
+dtype_to_jax.type_map = None
+
+
+def to_jax(warp_array):
+    """
+    Convert a Warp array to a Jax array without copying the data.
+
+    Args:
+        warp_array (warp.array): The Warp array to convert.
+
+    Returns:
+        The converted Jax array.
+    """
     import jax.dlpack
 
-    return jax.dlpack.from_dlpack(warp.to_dlpack(wp_array))
+    return jax.dlpack.from_dlpack(warp.to_dlpack(warp_array))
 
 
 def from_jax(jax_array, dtype=None):
+    """Convert a Jax array to a Warp array without copying the data.
+
+    Args:
+        jax_array: The Jax array to convert.
+        dtype (optional): The target data type of the resulting Warp array. Defaults to the Jax array's data type mapped to a Warp data type.
+
+    Returns:
+        warp.array: The converted Warp array.
+    """
     import jax.dlpack
 
     return warp.from_dlpack(jax.dlpack.to_dlpack(jax_array), dtype=dtype)
