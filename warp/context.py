@@ -2167,6 +2167,10 @@ class Device:
 
     @property
     def total_memory(self):
+        """The total amount of device memory available in bytes.
+
+        This function is currently only implemented for CUDA devices. 0 will be returned if called on a CPU device.
+        """
         if self.is_cuda:
             total_mem = ctypes.c_size_t()
             self.runtime.core.cuda_device_get_memory_info(self.ordinal, None, ctypes.byref(total_mem))
@@ -2177,6 +2181,10 @@ class Device:
 
     @property
     def free_memory(self):
+        """The amount of memory on the device that is free according to the OS in bytes.
+
+        This function is currently only implemented for CUDA devices. 0 will be returned if called on a CPU device.
+        """
         if self.is_cuda:
             free_mem = ctypes.c_size_t()
             self.runtime.core.cuda_device_get_memory_info(self.ordinal, ctypes.byref(free_mem), None)
