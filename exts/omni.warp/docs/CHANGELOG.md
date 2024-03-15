@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## [1.0.1] - 2024-03-15
+
+- Document Device `total_memory` and `free_memory`
+- Documentation for allocators, streams, peer access, and generics
+- Changed example output directory to current working directory
+- Added `python -m warp.examples.browse` for browsing the examples folder
+- Print where the USD stage file is being saved
+- Added `examples/optim/example_walker.py` sample
+- Make the drone example not specific to USD
+- Reduce the time taken to run some examples
+- Optimise rendering points with a single colour
+- Clarify an error message around needing USD
+- Raise exception when module is unloaded during graph capture
+- Added `wp.synchronize_event()` for blocking the host thread until a recorded event completes
+- Flush C print buffers when ending `stdout` capture
+- Remove more unneeded CUTLASS files
+- Allow setting mempool release threshold as a fractional value
+
 ## [1.0.0] - 2024-03-07
 
 - Add `FeatherstoneIntegrator` which provides more stable simulation of articulated rigid body dynamics in generalized coordinates (`State.joint_q` and `State.joint_qd`)
