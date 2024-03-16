@@ -8,10 +8,7 @@
 ###########################################################################
 # Example Graph Capture
 #
-# Shows how to implement CUDA graph capture using Python's try-finally
-# pattern. The finally block ensures wp.capture_end() gets called, even
-# if an exception occurs during capture, which would otherwise
-# trap the stream in a capturing state.
+# Shows how to implement CUDA graph capture using wp.ScopedCapture().
 #
 ###########################################################################
 
