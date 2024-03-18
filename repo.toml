@@ -3,32 +3,8 @@
 ########################################################################################################################
 
 [repo]
-
-# Use the Kit Template repo configuration as a base. Only override things specific to the repo.
-import_configs = [
-    "${root}/_repo/deps/repo_kit_tools/kit-template/repo.toml",
-]
-
 # Repository Name
 name = "warp"
-
-########################################################################################################################
-# Documentation building
-########################################################################################################################
-
-[repo_docs]
-#name = "Kit App Template"
-
-# kit-manual doc
-[[repo_docs.kit.custom_project]]
-name = "kit-app-template"
-root = "${root}"
-config_path = "${root}/docs/docs.toml"
-
-
-[repo_docs.kit]
-extensions = [
-]
 
 ########################################################################################################################
 # Build tool setup
