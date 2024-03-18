@@ -5,9 +5,11 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# ================================================================
+# ==============================================================================
 # CI/CD Pipeline Configuration
-# ================================================================
+# ==============================================================================
+
+include: /.gitlab-ci/common.yml
 
 workflow:
   rules:
@@ -20,18 +22,6 @@ workflow:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
 
-default:
-  interruptible: true
-  # Only retry on GitLab failures (not on script failures for example)
-  retry:
-    max: 2
-    when:
-      - api_failure
-      - runner_system_failure
-      - stuck_or_timeout_failure
-      - scheduler_failure
-      - unknown_failure
-
 variables:
   PM_PACKAGES_ROOT: '$CI_PROJECT_DIR/packman-repo'
   PIP_CACHE_DIR: '$CI_PROJECT_DIR/.cache/pip'
@@ -41,133 +31,77 @@ variables:
   LINBUILD: '$CI_PROJECT_DIR/_build/host-deps/linbuild/linbuild.sh'
   WARP_CACHE_ROOT: '$CI_PROJECT_DIR/.cache/warp' # Used by the parallel test runner
   GIT_DEPTH: 1
-
-include:
-  - project: 'omniverse/devplat/gitlab/templates/runners'
-    file: '/modules/include.yml'
-    ref: v1_latest
+  DEFAULT_PYTHON:
+    value: "3.9.18+nv1"
+    options:
+      - "3.11.8+nv1"
+      - "3.10.13+nv3"
+      - "3.9.18+nv1"
+      - "3.8.18+nv1"
+      - "3.7.17+nv1"
+    description: "The default Python version used in the main testing jobs."
 
 stages:
   - build
   - test
+  - debug
   - package
+  - deploy
 
-# Used to define collapsible sections on Windows runners
-.define-get-time: &define-GetTime
-  - |
-    function GetTime {
-      $time = Get-Date -UFormat "%s"
-      return $time.Substring(0, $time.IndexOf('.'))
-    }
-
-# ================================================================
+# ==============================================================================
 # Build Jobs (Release)
-# ================================================================
+# ==============================================================================
 
-.build_artifacts:
-  artifacts:
-    name: $CI_JOB_NAME_SLUG
-    paths:
-      - warp/native/exports.h
-      - warp/bin/**/*.dll
-      - warp/bin/**/*.so
-      - warp/bin/**/*.dylib
-    expire_in: 1 week
-
-.build_common_release:
+linux-aarch64 build:
   stage: build
-  extends:
-    - .build_artifacts
-
-linux-aarch64 build release:
   image: urm.nvidia.com/ct-omniverse-docker-local/u18-aarch64-builder:3.2.0
   extends:
-    - .build_common_release
+    - .save_warp_bin_artifact
   script:
     - ./tools/ci/building/build-linux-x86_64/build.sh --no-docker # We are already using the builder image
     - mkdir warp/bin/linux-aarch64
-    - mv warp/bin/*.so warp/bin/linux-aarch64
+    - mv warp/bin/warp.so warp/bin/linux-aarch64
+    - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
   tags:
     - arch/arm
 
-linux-x86_64 build release:
+linux-x86_64 build:
+  stage: build
+  image: urm.nvidia.com/ct-omniverse-docker/centos7-gcc7-builder:3.1.0
   extends:
-    - .build_common_release
-    - .omni_nvks_runner_with_docker
+    - .save_warp_bin_artifact
+    - .runner-build-linux-x86_64
   script:
-    - ./tools/ci/building/build-linux-x86_64/build.sh
+    - ./tools/ci/building/build-linux-x86_64/build.sh --no-docker # We are already using the builder image
     - mkdir warp/bin/linux-x86_64
-    - mv warp/bin/*.so warp/bin/linux-x86_64
+    - mv warp/bin/warp.so warp/bin/linux-x86_64
+    - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
 
-windows-x86_64 build release:
+windows-x86_64 build:
+  stage: build
   extends:
-    - .build_common_release
-    - .runner-utility-windows-x86_64
+    - .save_warp_bin_artifact
+    - .runner-build-windows-x86_64
+  before_script:
+    - powershell -command "Get-Volume | Format-Table -AutoSize"
   script:
     - ./tools/ci/building/build-windows-x86_64/build.bat
 
-mac-x86_64 build release:
-  extends:
-    - .build_common_release
-    - .runner-build-macos-universal
-  script:
-    - ./tools/ci/building/build-linux-x86_64/build.sh
-  tags:
-    - pkg/xcode/13 # Avoid AWS-MAC-0
-
-# ================================================================
-# Build Jobs (Debug)
-#
-# To save shared resources, we don't test debug by default on MR's
-# ================================================================
-
-.build_common_debug:
+mac-x86_64 build:
   stage: build
   extends:
-    - .build_artifacts
-  rules:
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-      when: never
-    - when: on_success
-
-# Hide this job for now until debug aarch64 builds work
-.linux-aarch64 build debug:
-  image: urm.nvidia.com/ct-omniverse-docker-local/u18-aarch64-builder:3.2.0
-  extends:
-    - .build_common_debug
-  script:
-    - ./tools/ci/building/build-linux-x86_64/build.sh --debug --no-docker # We are already using the builder image
-  tags:
-    - arch/arm
-
-linux-x86_64 build debug:
-  extends:
-    - .build_common_debug
-    - .omni_nvks_runner_with_docker
-  script:
-    - ./tools/ci/building/build-linux-x86_64/build.sh --debug
-windows-x86_64 build debug:
-  extends:
-    - .build_common_debug
-    - .runner-utility-windows-x86_64
-  script:
-    - ./tools/ci/building/build-windows-x86_64/build.bat --debug
-
-mac-x86_64 build debug:
-  extends:
-    - .build_common_debug
+    - .save_warp_bin_artifact
     - .runner-build-macos-universal
+    - .macos_warp_tags
   script:
-    - ./tools/ci/building/build-linux-x86_64/build.sh --debug
-  tags:
-    - pkg/xcode/13 # Avoid AWS-MAC-0
+    - ./tools/ci/building/build-linux-x86_64/build.sh
 
-# ================================================================
-# Unit Testing Jobs (Release)
+# ==============================================================================
+# Linting Jobs
 #
-# Currently, each job generates coverage reports, which adds to
-# the runtime.
-# ================================================================
+# The jobs here are meant to assist with code quality analysis.
+# They can run immediately without waiting for the build jobs to complete.
+# ==============================================================================
 
 flake8:
   stage: test
@@ -177,16 +111,27 @@ flake8:
     - .runner-utility-linux-x86_64
   before_script:
     - python -m pip install --upgrade pip
-    - pip install flake8 flake8-gl-codeclimate black
+    - pip install --upgrade flake8 flake8-gl-codeclimate black
   script:
     - flake8 --format=gl-codeclimate --output-file=gl-code-quality-report.json warp/ exts/ *.py --exit-zero
     - flake8 warp/ exts/ *.py --exit-zero --show-source
+    # For the curious, save the output of the Black formatter to the job log
     - python -m black --diff warp/ *.py
   artifacts:
     reports:
       codequality: gl-code-quality-report.json
 
-.test_artifacts_release:
+# ==============================================================================
+# Main Unit Testing Jobs
+#
+# The jobs here will always be run when the pipeline is triggered. The jobs that
+# compute code coverage run slower than jobs that do not. The minimal jobs were
+# added to test the user experience without any optional Python packages.
+# ==============================================================================
+
+.test_common_main:
+  stage: test
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
     when: always
     paths:
@@ -198,255 +143,293 @@ flake8:
         coverage_format: cobertura
         path: coverage.xml
 
-.test_common_release:
-  stage: test
-  extends:
-    - .test_artifacts_release
-  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
-
-.test_minimal_release:
-  stage: test
-  artifacts:
-    when: always
-    paths:
-      - rspec.xml
-    reports:
-      junit: rspec.xml
-
-# PyPI currently only has binary wheels of numpy for Python 3.9+.
-linux-aarch64 test release:
+linux-aarch64 test:
   image: ubuntu:22.04
-  needs: [linux-aarch64 build release]
+  needs: [linux-aarch64 build]
   extends:
-    - .test_common_release
+    - .test_common_main
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - df -h
-    - apt-get update && apt-get install curl --no-install-recommends -y
-    # Move compiled binaries out of platform-specific directory
-    - mv warp/bin/linux-aarch64/*.so warp/bin/
-    - tools/packman/packman install -l _build/target-deps/python python 3.9.18+nv1-linux-aarch64
-    - $PYTHON -m pip install --upgrade pip
+    - !reference [.snippets, install-python+warp-aarch64]
     - $PYTHON -m pip install coverage[toml]
-    - $PYTHON -m pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - $PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
   tags:
     - arch/arm
 
-linux-x86_64 test release:
-  needs: [linux-x86_64 build release]
+linux-x86_64 test:
+  needs: [linux-x86_64 build]
   extends:
     - .omni_nvks_gpu_2x
-    - .test_common_release
+    - .test_common_main
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
     # Move compiled binaries out of platform-specific directory
-    - mv warp/bin/linux-x86_64/*.so warp/bin/
-    - tools/packman/packman install -l _build/target-deps/python python 3.8.18+nv1-linux-x86_64
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    - tools/packman/packman install -l _build/target-deps/python python ${DEFAULT_PYTHON}-linux-x86_64
     - export PATH="$CUDA_BIN:$PATH"
     - $PYTHON -m pip install --upgrade pip
-    - $PYTHON -m pip install usd-core coverage[toml]
-    - $PYTHON -m pip install torch --index-url https://download.pytorch.org/whl/cu118
+    - $PYTHON -m pip install --upgrade usd-core coverage[toml]
+    - $PYTHON -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
     - $PYTHON -m pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
     - $PYTHON -m pip install -e .
-    # Kill switch for P2P tests in case of misbehaving agents
-    - export WARP_DISABLE_P2P_TESTS=1
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - $PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
-windows-x86_64 test release:
+windows-x86_64 test:
   stage: test
-  needs: [windows-x86_64 build release]
+  needs: [windows-x86_64 build]
   extends:
-    - .test_common_release
+    - .test_common_main
   before_script:
-    - *define-GetTime
+    - !reference [.snippets, define-powershell-GetTime]
     - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
-    - tools/packman/packman.cmd install -l _build/target-deps/python python 3.8.18+nv1-windows-x86_64
+    - powershell -command "Get-Volume | Format-Table -AutoSize"
+    - $python_name = $DEFAULT_PYTHON + "-windows-x86_64"
+    - tools/packman/packman.cmd install -l _build/target-deps/python python $python_name
     - $env:PYTHON = "$env:CI_PROJECT_DIR\_build\target-deps\python\python.exe"
-    - powershell.exe $env:PYTHON -m pip install --upgrade pip
-    - powershell.exe $env:PYTHON -m pip install usd-core coverage[toml]
-    - powershell.exe $env:PYTHON -m pip install torch --index-url https://download.pytorch.org/whl/cu118
-    - powershell.exe $env:PYTHON -m pip install -e .
+    - '& $env:PYTHON -m pip install --upgrade pip'
+    - '& $env:PYTHON -m pip install --upgrade usd-core coverage[toml]'
+    - '& $env:PYTHON -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121'
+    - '& $env:PYTHON -m pip install -e .'
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
-    - powershell.exe $env:PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+    - '& $env:PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect'
   tags:
     - os/windows
     - gpu/2x-A5000
 
-mac-x86_64 test release:
+mac-x86_64 test:
   stage: test
-  needs: [mac-x86_64 build release]
+  needs: [mac-x86_64 build]
   extends:
     - .runner-test-macos-universal
-    - .test_common_release
+    - .test_common_main
+    - .macos_warp_tags
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - df -h
-    - tools/packman/packman install -l _build/target-deps/python python 3.7.16+nv1-macos-x86_64
-    - $PYTHON -m pip install --upgrade pip
-    - $PYTHON -m pip install matplotlib usd-core coverage[toml]
-    - $PYTHON -m pip install -e .
+    - !reference [.snippets, install-python+warp-macos]
+    - $PYTHON -m pip install --upgrade matplotlib usd-core coverage[toml]
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - $PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
-  tags:
-    - pkg/xcode/13 # Avoid AWS-MAC-0
 
 # Test the Linux release build in an environment with minimal Python dependencies installed
-linux-x86_64 test minimal release:
-  needs: [linux-x86_64 build release]
+linux-x86_64 test minimal:
+  stage: test
+  needs: [linux-x86_64 build]
   extends:
     - .runner-test-linux-x86_64-gpu # Use single-GPU for job throughput
-    - .test_minimal_release
+    - .save_test_report_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
     # Move compiled binaries out of platform-specific directory
-    - mv warp/bin/linux-x86_64/*.so warp/bin/
-    - tools/packman/packman install -l _build/target-deps/python python 3.8.18+nv1-linux-x86_64
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    - tools/packman/packman install -l _build/target-deps/python python ${DEFAULT_PYTHON}-linux-x86_64
     - $PYTHON -m pip install --upgrade pip
     - $PYTHON -m pip install -e .
-    # Kill switch for P2P tests in case of misbehaving agents
-    - export WARP_DISABLE_P2P_TESTS=1
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - $PYTHON -m warp.tests --junit-report-xml rspec.xml -s autodetect
 
 # Test the Windows release build in an environment with minimal Python dependencies installed
-windows-x86_64 test minimal release:
-  needs: [windows-x86_64 build release]
+windows-x86_64 test minimal:
+  stage: test
+  needs: [windows-x86_64 build]
   extends:
     - .runner-test-windows-x86_64-gpu
-    - .test_minimal_release
+    - .save_test_report_artifact
   before_script:
-    - *define-GetTime
+    - !reference [.snippets, define-powershell-GetTime]
     - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
-    - tools/packman/packman.cmd install -l _build/target-deps/python python 3.8.18+nv1-windows-x86_64
+    - powershell -command "Get-Volume | Format-Table -AutoSize"
+    - $python_name = $DEFAULT_PYTHON + "-windows-x86_64"
+    - tools/packman/packman.cmd install -l _build/target-deps/python python $python_name
     - $env:PYTHON = "$env:CI_PROJECT_DIR\_build\target-deps\python\python.exe"
-    - powershell.exe $env:PYTHON -m pip install --upgrade pip
-    - powershell.exe $env:PYTHON -m pip install -e .
+    - '& $env:PYTHON -m pip install --upgrade pip'
+    - '& $env:PYTHON -m pip install -e .'
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
-    - powershell.exe $env:PYTHON -m warp.tests --junit-report-xml rspec.xml -s autodetect
+    - '& $env:PYTHON -m warp.tests --junit-report-xml rspec.xml -s autodetect'
 
-# ================================================================
-# Unit Testing Jobs (Debug)
-#
-# To save shared resources, we don't test debug by default on MR's
-# ================================================================
-
-.test_artifacts_debug:
+# The only purpose of this job is to make sure documentation can be built on Windows.
+# The output does not get published anywhere, but the website can be viewed in the
+# artifacts.
+windows-x64_64 docs:
+  stage: test
+  needs: []
+  extends:
+    - .runner-utility-windows-x86_64
   artifacts:
-    reports:
-      junit: rspec.xml
-
-.test_common_debug:
-  stage: test
-  extends:
-    - .test_artifacts_debug
-  rules:
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-      when: never
-    - when: on_success
-
-# Hide this job for now until debug aarch64 builds work
-.linux-aarch64 test debug:
-  image: ubuntu:22.04
-  needs: [linux-aarch64 build debug]
-  extends:
-    - .test_common_debug
+    paths:
+      - public
   before_script:
-    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - df -h
-    - apt-get update && apt-get install curl --no-install-recommends -y
-    # Move compiled binaries out of platform-specific directory
-    - mv warp/bin/linux-aarch64/*.so warp/bin/
-    - tools/packman/packman install -l _build/target-deps/python python 3.9.18+nv1-linux-aarch64
-    - $PYTHON -m pip install --upgrade pip
-    - $PYTHON -m pip install -e .
-    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
-  script:
-    - $PYTHON -m warp.tests --junit-report-xml rspec.xml -s autodetect
-  tags:
-    - arch/arm
-
-linux-x86_64 test debug:
-  needs: [linux-x86_64 build debug]
-  extends:
-    - .omni_nvks_gpu_2x
-    - .test_common_debug
-  before_script:
-    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - df -h
-    - tools/packman/packman install -l _build/target-deps/python python 3.8.18+nv1-linux-x86_64
-    - export PATH="$CUDA_BIN:$PATH"
-    - $PYTHON -m pip install --upgrade pip
-    - $PYTHON -m pip install usd-core
-    - $PYTHON -m pip install torch --index-url https://download.pytorch.org/whl/cu118
-    - $PYTHON -m pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-    - $PYTHON -m pip install -e .
-    # Kill switch for P2P tests in case of misbehaving agents
-    - export WARP_DISABLE_P2P_TESTS=1
-    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
-  script:
-    - $PYTHON -m warp.tests --junit-report-xml rspec.xml -s autodetect
-
-windows-x86_64 test debug:
-  stage: test
-  needs: [windows-x86_64 build debug]
-  extends:
-    - .runner-test-windows-x86_64-gpu
-    - .test_common_debug
-  before_script:
-    - *define-GetTime
+    - !reference [.snippets, define-powershell-GetTime]
     - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
-    - tools/packman/packman.cmd install -l _build/target-deps/python python 3.8.18+nv1-windows-x86_64
+    - powershell -command "Get-Volume | Format-Table -AutoSize"
+    - $python_name = $DEFAULT_PYTHON + "-windows-x86_64"
+    - tools/packman/packman.cmd install -l _build/target-deps/python python $python_name
     - $env:PYTHON = "$env:CI_PROJECT_DIR\_build\target-deps\python\python.exe"
-    - powershell.exe $env:PYTHON -m pip install --upgrade pip
-    - powershell.exe $env:PYTHON -m pip install usd-core
-    - powershell.exe $env:PYTHON -m pip install torch --index-url https://download.pytorch.org/whl/cu118
-    - powershell.exe $env:PYTHON -m pip install -e .
+    - $env:Path += ";$env:CI_PROJECT_DIR\_build\target-deps\python\Scripts"
+    - '& $env:PYTHON -m pip install --upgrade pip'
+    - '& $env:PYTHON -m pip install -r docs/requirements.txt'
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
-    - powershell.exe $env:PYTHON -m warp.tests --junit-report-xml rspec.xml -s autodetect
-  tags:
-    - os/windows
-    - gpu/2x-A5000
+    - '& $env:PYTHON build_docs.py'
+    - mv docs/_build/html/ ./public/
+  after_script:
+    - echo "You can view the website at https://omniverse.gitlab-master-pages.nvidia.com/-/warp/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
 
-mac-x86_64 test debug:
+# ==============================================================================
+# Child pipelines
+#
+# The child pipelines defined here are only run in specific
+# circumstances. Most developers don't need to worry about the
+# jobs in this section.
+# ==============================================================================
+
+# Trigger test (no code coverage) pipelines for Python 3.7
+python 3.7 test:
   stage: test
-  needs: [mac-x86_64 build debug]
+  trigger:
+    include: /.gitlab-ci/additional-tests.yml
   extends:
-    - .runner-test-macos-universal
-    - .test_common_debug
-  before_script:
-    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - df -h
-    - tools/packman/packman install -l _build/target-deps/python python 3.7.16+nv1-macos-x86_64
-    - $PYTHON -m pip install --upgrade pip
-    - $PYTHON -m pip install matplotlib usd-core
-    - $PYTHON -m pip install -e .
-    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
-  script:
-    - $PYTHON -m warp.tests --junit-report-xml rspec.xml -s autodetect
-  tags:
-    - pkg/xcode/13 # Avoid AWS-MAC-0
+    - .trigger_common
+  variables:
+    DEFAULT_PYTHON: "3.7.17+nv1"
 
-# ================================================================
+# Trigger test (no code coverage) pipelines for Python 3.8
+python 3.8 test:
+  stage: test
+  trigger:
+    include: /.gitlab-ci/additional-tests.yml
+  extends:
+    - .trigger_common
+  variables:
+    DEFAULT_PYTHON: "3.8.18+nv1"
+
+# Trigger debug build and test (no code coverage) pipelines
+# Uses the same Python version as the main pipeline.
+debug build and test:
+  stage: debug
+  needs: []
+  trigger:
+    include: /.gitlab-ci/debug-build-and-test.yml
+  extends:
+    - .trigger_common
+
+# ==============================================================================
 # Packaging Jobs
 #
-# Documentation is only built and deployed on the default branch pipeline
 # Kit and PyPI jobs only run for tag pipelines
-# ================================================================
+# ==============================================================================
 
-.build_docs_common:
+# Creates wheel files for PyPI
+create pypi wheels:
   stage: package
+  needs:
+    - linux-aarch64 build
+    - linux-x86_64 build
+    - windows-x86_64 build
+    - mac-x86_64 build
+  extends:
+    - .runner-utility-linux-x86_64
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
+    - if: $CI_COMMIT_BRANCH =~ /release-.*/
+  before_script:
+    # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
+    - mkdir warp/bin/windows-x86_64
+    - mv warp/bin/warp.dll warp/bin/windows-x86_64/
+    - mv warp/bin/warp-clang.dll warp/bin/windows-x86_64/
+    - mkdir warp/bin/macos-universal
+    - mv warp/bin/libwarp.dylib warp/bin/macos-universal/
+    - mv warp/bin/libwarp-clang.dylib warp/bin/macos-universal/
+    - python3 -m pip install --upgrade pip
+    - python3 -m pip install build
+  script:
+    - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
+    - python3 -m build --wheel -C--build-option=-Plinux-x86_64
+    - python3 -m build --wheel -C--build-option=-Plinux-aarch64
+    - python3 -m build --wheel -C--build-option=-Pmacos-universal
+    - find . -type f -exec chmod 664 {} +
+    - find . -type d -exec chmod 775 {} +
+    - mv dist/*.whl .
+  artifacts:
+    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    paths:
+      - "*.whl"
+    when: always
+
+# Creates an artifact suitable for publishing the Kit extensions
+create kit artifacts:
+  stage: package
+  needs:
+    - linux-x86_64 build
+    - windows-x86_64 build
+  extends:
+    - .runner-utility-linux-x86_64
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
+    - if: $CI_COMMIT_BRANCH =~ /release-.*/
+  before_script:
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    - rm -r warp/bin/linux-x86_64/
+    - rm -rf warp/native/cutlass
+  script:
+    - python3 tools/ci/publishing/build_nodes_info.py
+    - mv warp exts/omni.warp.core/
+    - find . -type f -exec chmod 664 {} +
+    - find . -type d -exec chmod 775 {} +
+  artifacts:
+    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    paths:
+      - exts
+    exclude:
+      - "**/.gitignore"
+      - "**/.gitattributes"
+
+# ==============================================================================
+# Deployment Jobs
+#
+# This section currently contains jobs that publish files to the internal
+# GitLab service.
+# ==============================================================================
+
+# Uploads the wheels to the internal GitLab package registry in the Warp project
+# This is only run if all previous stages have passed.
+# See files at https://gitlab-master.nvidia.com/omniverse/warp/-/packages
+publish wheels to gitlab package registry:
+  stage: deploy
+  dependencies: [create pypi wheels]
+  extends:
+    - .runner-utility-linux-x86_64
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH =~ /release-.*/
+  before_script:
+    - apt-get update && apt-get install curl --no-install-recommends -y
+  script:
+    - VERSION=$(cat VERSION.md)
+    - |
+      for file in $(find . -name '*.whl'); do
+          filename=$(basename -- "$file")
+          curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "$file" "https://gitlab-master.nvidia.com/api/v4/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/${filename}"
+      done
+
+.build-docs-common:
+  stage: deploy
   image: python:3.11-slim
   needs: []
   extends:
@@ -464,11 +447,11 @@ mac-x86_64 test debug:
     - python build_docs.py
     - mv docs/_build/html/ ./public/
 
-
 # Merge requests: Build documentation and save as an artifact
+# A link to the generated documentation is added to the merge request.
 merge request docs:
   extends:
-    - .build_docs_common
+    - .build-docs-common
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   environment:
@@ -479,84 +462,12 @@ merge request docs:
 
 # Build documentation and publish on gitlab-master
 # This only runs in the default branch pipeline. The "pages" name is special for GitLab.
+# Documentation is available at https://omniverse.gitlab-master-pages.nvidia.com/warp/
 pages:
   extends:
-    - .build_docs_common
+    - .build-docs-common
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   environment:
     name: staging
     url: https://omniverse.gitlab-master-pages.nvidia.com/warp/
-
-# Creates wheel files for PyPI
-create pypi wheels:
-  stage: package
-  needs:
-    - linux-aarch64 build release
-    - linux-x86_64 build release
-    - windows-x86_64 build release
-    - mac-x86_64 build release
-  extends:
-    - .runner-utility-linux-x86_64
-  rules:
-    - if: $CI_COMMIT_TAG
-    - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
-    - if: $CI_COMMIT_BRANCH =~ /release-.*/
-  before_script:
-    # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
-    - mkdir warp/bin/windows-x86_64
-    - mv warp/bin/*.dll warp/bin/windows-x86_64/
-    - mkdir warp/bin/macos-universal
-    - mv warp/bin/*.dylib warp/bin/macos-universal/
-    - apt-get update && apt-get install curl --no-install-recommends -y
-    - python3 -m pip install --upgrade pip
-    - python3 -m pip install build
-  script:
-    - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
-    - python3 -m build --wheel -C--build-option=-Plinux-x86_64
-    - python3 -m build --wheel -C--build-option=-Plinux-aarch64
-    - python3 -m build --wheel -C--build-option=-Pmacos-universal
-    - find . -type f -exec chmod 664 {} +
-    - find . -type d -exec chmod 775 {} +
-    - mv dist/*.whl .
-    - VERSION=$(cat VERSION.md)
-    - |
-      for file in $(find . -name '*.whl'); do
-          filename=$(basename -- "$file")
-          curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "$file" "https://gitlab-master.nvidia.com/api/v4/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/${filename}"
-      done
-  artifacts:
-    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
-    paths:
-      - "*.whl"
-    when: always
-
-# Creates an artifact suitable for publishing the Kit extensions
-create kit artifacts:
-  stage: package
-  needs:
-    - linux-x86_64 build release
-    - windows-x86_64 build release
-  extends:
-    - .runner-utility-linux-x86_64
-  rules:
-    - if: $CI_COMMIT_TAG
-    - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
-    - if: $CI_COMMIT_BRANCH =~ /release-.*/
-  before_script:
-    # Move compiled binaries out of platform-specific directory
-    - mv warp/bin/linux-x86_64/*.so warp/bin/
-    - rm -r warp/bin/linux-x86_64/
-    - rm -rf warp/native/cutlass
-  script:
-    - python3 tools/ci/publishing/build_nodes_info.py
-    - mv warp exts/omni.warp.core/
-    - find . -type f -exec chmod 664 {} +
-    - find . -type d -exec chmod 775 {} +
-  artifacts:
-    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
-    paths:
-      - exts
-    exclude:
-      - "**/.gitignore"
-      - "**/.gitattributes"
