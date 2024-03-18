@@ -1,0 +1,103 @@
+# Copyright (c) 2024 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+# ==============================================================================
+# Default pipeline configuration
+# ==============================================================================
+default:
+  interruptible: true
+  # Only retry on GitLab failures (not on script failures for example)
+  retry:
+    max: 2
+    when:
+      - api_failure
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - scheduler_failure
+      - unknown_failure
+
+# ==============================================================================
+# Include the Omniverse DevPlat runner job definitions
+# ==============================================================================
+include:
+  - project: 'omniverse/devplat/gitlab/templates/runners'
+    file: '/modules/include.yml'
+    ref: v1_latest
+
+# ==============================================================================
+# Use !reference [.snippets, NAME] to reuse the following snippets
+# in the before_script, script, after_script job sections
+# ==============================================================================
+.snippets:
+  define-powershell-GetTime:
+    - |
+      function GetTime {
+        $time = Get-Date -UFormat "%s"
+        return $time.Substring(0, $time.IndexOf('.'))
+      }
+  install-python+warp-aarch64:
+    - df -h
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-aarch64/warp.so warp/bin/
+    - mv warp/bin/linux-aarch64/warp-clang.so warp/bin/
+    - apt-get update && apt-get install curl --no-install-recommends -y
+    - tools/packman/packman install -l _build/target-deps/python python ${DEFAULT_PYTHON}-linux-aarch64
+    - $PYTHON -m pip install --upgrade pip
+    - $PYTHON -m pip install -e .
+  install-python+warp-macos:
+    - df -h
+    # This is required because there is no macos-universal for Python 3.7 in Packman sources
+    - if [[ $DEFAULT_PYTHON == 3.7* ]]; then
+        export PYTHON_NAME="${DEFAULT_PYTHON}-macos-x86_64";
+      else
+        export PYTHON_NAME="${DEFAULT_PYTHON}-macos-universal";
+      fi
+    - tools/packman/packman install -l _build/target-deps/python python ${PYTHON_NAME}
+    - $PYTHON -m pip install --upgrade pip
+    - $PYTHON -m pip install -e .
+
+# Used to log the output of jobs that run only run unit tests (no coverage report)
+.save_test_report_artifact:
+  artifacts:
+    reports:
+      junit: rspec.xml
+
+# Used to save the compiled Warp binaries
+.save_warp_bin_artifact:
+  artifacts:
+    name: $CI_JOB_NAME_SLUG
+    paths:
+      - warp/native/exports.h
+      - warp/bin/**/*.dll
+      - warp/bin/**/*.so
+      - warp/bin/**/*.dylib
+    expire_in: 1 week
+
+# All MacOS jobs use this definition
+.macos_warp_tags:
+  tags:
+    - pkg/xcode/13 # Avoid AWS-MAC-0
+
+# Common settings used by all child pipelines
+.trigger_common:
+  variables:
+    PARENT_PIPELINE_ID: $CI_PIPELINE_ID
+    PARENT_PROJECT_DIR: $CI_PROJECT_DIR
+    PM_PACKAGES_ROOT: '$PARENT_PROJECT_DIR/packman-repo'
+    PIP_CACHE_DIR: '$PARENT_PROJECT_DIR/.cache/pip'
+    CUDA_BIN: '$PARENT_PROJECT_DIR/_build/target-deps/cuda/bin'
+    CUDA: '$PARENT_PROJECT_DIR/_build/target-deps/cuda'
+    PYTHON: '$PARENT_PROJECT_DIR/_build/target-deps/python/python'
+    LINBUILD: '$PARENT_PROJECT_DIR/_build/host-deps/linbuild/linbuild.sh'
+    WARP_CACHE_ROOT: '$PARENT_PROJECT_DIR/.cache/warp' # Used by the parallel test runner
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
+    - if: $CI_COMMIT_BRANCH =~ /release-.*/
+  trigger:
+    strategy: depend
