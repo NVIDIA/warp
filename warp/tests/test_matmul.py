@@ -6,11 +6,11 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import unittest
+from typing import Any
 
 import numpy as np
 
 import warp as wp
-from typing import Any
 from warp.tests.unittest_utils import *
 
 wp.init()
@@ -439,26 +439,26 @@ def test_cuda_graph_capture(test, device):
     @wp.kernel
     def mat_sum(mat: wp.array2d(dtype=Any), loss: wp.array(dtype=Any)):
         i, j = wp.tid()
-        e = mat[i,j]
+        e = mat[i, j]
         wp.atomic_add(loss, 0, e)
-    
+
     for T in [wp.float16, wp.float32, wp.float64]:
         wp.overload(mat_sum, [wp.array2d(dtype=T), wp.array(dtype=T)])
 
     wp.load_module(device=device)
     wp.load_module(module="warp.utils", device=device)
-    
-    for T in [wp.float16, wp.float32, wp.float64]:
+
+    for dtype in [wp.float16, wp.float32, wp.float64]:
         m = 8
         n = 8
         k = 8
 
-        A = wp.ones((m, n), dtype=T, device=device, requires_grad=True)
-        B = wp.ones((n, k), dtype=T, device=device, requires_grad=True)
-        C = wp.zeros((m, k), dtype=T, device=device, requires_grad=True)
-        D = wp.zeros((m, k), dtype=T, device=device, requires_grad=True)
+        A = wp.ones((m, n), dtype=dtype, device=device, requires_grad=True)
+        B = wp.ones((n, k), dtype=dtype, device=device, requires_grad=True)
+        C = wp.zeros((m, k), dtype=dtype, device=device, requires_grad=True)
+        D = wp.zeros((m, k), dtype=dtype, device=device, requires_grad=True)
 
-        loss = wp.zeros(1, dtype=T, device=device, requires_grad=True)
+        loss = wp.zeros(1, dtype=dtype, device=device, requires_grad=True)
 
         wp.capture_begin(device, force_module_load=False)
         try:
@@ -474,11 +474,12 @@ def test_cuda_graph_capture(test, device):
 
         wp.capture_launch(graph)
 
-        assert_np_equal(A.grad.numpy(), 8.0 * np.ones((m, n), dtype=T))
+        assert_np_equal(A.grad.numpy(), 8.0 * np.ones((m, n), dtype=wp.types.warp_type_to_np_dtype[dtype]))
 
 
 devices = get_test_devices()
 cuda_devices = get_unique_cuda_test_devices()
+
 
 class TestMatmul(unittest.TestCase):
     pass

@@ -594,7 +594,7 @@ def test_spatial_top_bottom(test, device, dtype, register_kernels=False):
         tape.backward(loss=cmp)
         expectedgrads = np.zeros(6)
         expectedgrads[i] = 2
-        assert_np_equal(tape.gradients[s].numpy(), expectedgrads)
+        assert_np_equal(tape.gradients[s].numpy(), expectedgrads.reshape((1, 6)))
         tape.zero()
 
 
@@ -917,7 +917,7 @@ def test_transform_get_trans_rot(test, device, dtype, register_kernels=False):
         tape.backward(loss=cmp)
         expectedgrads = np.zeros(7)
         expectedgrads[i] = 2
-        assert_np_equal(tape.gradients[s].numpy(), expectedgrads)
+        assert_np_equal(tape.gradients[s].numpy(), expectedgrads.reshape((1, 7)))
         tape.zero()
 
 

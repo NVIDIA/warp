@@ -7,7 +7,6 @@
 
 import ctypes
 import ctypes.util
-import math
 import os
 import sys
 import time
@@ -184,21 +183,14 @@ def assert_array_equal(result: wp.array, expect: wp.array):
     np.testing.assert_equal(result.numpy(), expect.numpy())
 
 
-def assert_np_equal(result, expect, tol=0.0):
-    a = result.flatten()
-    b = expect.flatten()
+def assert_np_equal(result: np.ndarray, expect: np.ndarray, tol=0.0):
 
-    if tol == 0.0:
-        if not (a == b).all():
-            raise AssertionError(f"Unexpected result, got: {a} expected: {b}")
-
+    if tol != 0.0:
+        # TODO: Get all tests working without the .flatten()
+        np.testing.assert_allclose(result.flatten(), expect.flatten(), atol=tol, equal_nan=True)
     else:
-        delta = a - b
-        err = np.max(np.abs(delta))
-        if err > tol or math.isnan(err):
-            raise AssertionError(
-                f"Maximum expected error exceeds absolute tolerance got: {a}, expected: {b}, with err: {err} > {tol}"
-            )
+        # TODO: Get all tests working with strict=True
+        np.testing.assert_array_equal(result, expect)
 
 
 # if check_output is True any output to stdout will be treated as an error

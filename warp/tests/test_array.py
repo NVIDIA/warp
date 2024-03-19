@@ -1411,7 +1411,7 @@ def test_full_struct(test, device):
         test.assertEqual(a.dtype, FillStruct)
         test.assertEqual(na.shape, shape)
         test.assertEqual(na.dtype, FillStruct.numpy_dtype())
-        assert_np_equal(na, np.zeros(a.size, dtype=FillStruct.numpy_dtype()))
+        assert_np_equal(na, np.zeros(a.shape, dtype=FillStruct.numpy_dtype()))
 
         # scalars
         s.i1 = -17
@@ -2208,7 +2208,7 @@ def test_array_from_numpy(test, device):
     )
     assert_np_equal(result.numpy(), expected.numpy())
 
-    result = wp.from_numpy(arr, dtype=wp.vec4)
+    result = wp.from_numpy(arr, dtype=wp.vec4).reshape((8,))  # Reshape from (2, 4)
     expected = wp.array(
         (
             (1.0, 2.0, 3.0, 4.0),
