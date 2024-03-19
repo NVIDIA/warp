@@ -223,7 +223,7 @@ linux-x86_64 test minimal:
   stage: test
   needs: [linux-x86_64 build]
   extends:
-    - .omni_nvks_gpu # Use single-GPU for job throughput
+    - .omni_nvks_gpu_2x
     - .save_test_report_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
