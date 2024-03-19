@@ -1459,16 +1459,18 @@ def test_vecmat_multiplication(test, device, dtype, register_kernels=False):
 
     wp.launch(kernel, dim=1, inputs=[v2, v3, v4, v5, v32, m2, m3, m4, m5, m23], outputs=[outcomponents], device=device)
 
-    assert_np_equal(outcomponents.numpy()[:2], 2 * np.matmul(v2.numpy()[0], m2.numpy()[0]), tol=tol)
-    assert_np_equal(outcomponents.numpy()[2:5], 2 * np.matmul(v3.numpy()[0], m3.numpy()[0]), tol=tol)
-    assert_np_equal(outcomponents.numpy()[5:9], 2 * np.matmul(v4.numpy()[0], m4.numpy()[0]), tol=5 * tol)
-    assert_np_equal(outcomponents.numpy()[9:14], 2 * np.matmul(v5.numpy()[0], m5.numpy()[0]), tol=5 * tol)
-    assert_np_equal(outcomponents.numpy()[14:17], 2 * np.matmul(v32.numpy()[0], m23.numpy()[0]), tol=5 * tol)
-    assert_np_equal(outcomponents.numpy()[17:19], 2 * np.matmul(v2.numpy()[0], m2.numpy()[0]), tol=tol)
-    assert_np_equal(outcomponents.numpy()[19:22], 2 * np.matmul(v3.numpy()[0], m3.numpy()[0]), tol=tol)
-    assert_np_equal(outcomponents.numpy()[22:26], 2 * np.matmul(v4.numpy()[0], m4.numpy()[0]), tol=5 * tol)
-    assert_np_equal(outcomponents.numpy()[26:31], 2 * np.matmul(v5.numpy()[0], m5.numpy()[0]), tol=5 * tol)
-    assert_np_equal(outcomponents.numpy()[31:34], 2 * np.matmul(v32.numpy()[0], m23.numpy()[0]), tol=5 * tol)
+    outcomponents_np = outcomponents.numpy()
+
+    assert_np_equal(outcomponents_np[:2], 2 * np.matmul(v2.numpy()[0], m2.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents_np[2:5], 2 * np.matmul(v3.numpy()[0], m3.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents_np[5:9], 2 * np.matmul(v4.numpy()[0], m4.numpy()[0]), tol=5 * tol)
+    assert_np_equal(outcomponents_np[9:14], 2 * np.matmul(v5.numpy()[0], m5.numpy()[0]), tol=5 * tol)
+    assert_np_equal(outcomponents_np[14:17], 2 * np.matmul(v32.numpy()[0], m23.numpy()[0]), tol=5 * tol)
+    assert_np_equal(outcomponents_np[17:19], 2 * np.matmul(v2.numpy()[0], m2.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents_np[19:22], 2 * np.matmul(v3.numpy()[0], m3.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents_np[22:26], 2 * np.matmul(v4.numpy()[0], m4.numpy()[0]), tol=5 * tol)
+    assert_np_equal(outcomponents_np[26:31], 2 * np.matmul(v5.numpy()[0], m5.numpy()[0]), tol=5 * tol)
+    assert_np_equal(outcomponents_np[31:34], 2 * np.matmul(v32.numpy()[0], m23.numpy()[0]), tol=5 * tol)
 
     if dtype in np_float_types:
         idx = 0
@@ -1624,18 +1626,24 @@ def test_matmat_multiplication(test, device, dtype, register_kernels=False):
 
     wp.launch(kernel, dim=1, inputs=[v2, v3, v4, v5, v32, m2, m3, m4, m5, m32], outputs=[outcomponents], device=device)
 
-    assert_np_equal(outcomponents.numpy()[:4], 2 * np.matmul(m2.numpy()[0], v2.numpy()[0]), tol=tol)
-    assert_np_equal(outcomponents.numpy()[4:13], 2 * np.matmul(m3.numpy()[0], v3.numpy()[0]), tol=tol)
-    assert_np_equal(outcomponents.numpy()[13:29], 2 * np.matmul(m4.numpy()[0], v4.numpy()[0]), tol=2 * tol)
-    assert_np_equal(outcomponents.numpy()[29:54], 2 * np.matmul(m5.numpy()[0], v5.numpy()[0]), tol=10 * tol)
-    assert_np_equal(outcomponents.numpy()[54:60], 2 * np.matmul(m32.numpy()[0], v2.numpy()[0]), tol=5 * tol)
-    assert_np_equal(outcomponents.numpy()[60:66], 2 * np.matmul(m3.numpy()[0], v32.numpy()[0]), tol=5 * tol)
-    assert_np_equal(outcomponents.numpy()[66:70], 2 * np.matmul(m2.numpy()[0], v2.numpy()[0]), tol=tol)
-    assert_np_equal(outcomponents.numpy()[70:79], 2 * np.matmul(m3.numpy()[0], v3.numpy()[0]), tol=tol)
-    assert_np_equal(outcomponents.numpy()[79:95], 2 * np.matmul(m4.numpy()[0], v4.numpy()[0]), tol=2 * tol)
-    assert_np_equal(outcomponents.numpy()[95:120], 2 * np.matmul(m5.numpy()[0], v5.numpy()[0]), tol=10 * tol)
-    assert_np_equal(outcomponents.numpy()[120:126], 2 * np.matmul(m32.numpy()[0], v2.numpy()[0]), tol=5 * tol)
-    assert_np_equal(outcomponents.numpy()[126:132], 2 * np.matmul(m3.numpy()[0], v32.numpy()[0]), tol=5 * tol)
+    outcomponents_np = outcomponents.numpy()
+
+    assert_np_equal(outcomponents_np[:4].reshape((2, 2)), 2 * np.matmul(m2.numpy()[0], v2.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents_np[4:13].reshape((3, 3)), 2 * np.matmul(m3.numpy()[0], v3.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents_np[13:29].reshape((4, 4)), 2 * np.matmul(m4.numpy()[0], v4.numpy()[0]), tol=2 * tol)
+    assert_np_equal(outcomponents_np[29:54].reshape((5, 5)), 2 * np.matmul(m5.numpy()[0], v5.numpy()[0]), tol=10 * tol)
+    assert_np_equal(outcomponents_np[54:60].reshape((3, 2)), 2 * np.matmul(m32.numpy()[0], v2.numpy()[0]), tol=5 * tol)
+    assert_np_equal(outcomponents_np[60:66].reshape((3, 2)), 2 * np.matmul(m3.numpy()[0], v32.numpy()[0]), tol=5 * tol)
+    assert_np_equal(outcomponents_np[66:70].reshape((2, 2)), 2 * np.matmul(m2.numpy()[0], v2.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents_np[70:79].reshape((3, 3)), 2 * np.matmul(m3.numpy()[0], v3.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents_np[79:95].reshape((4, 4)), 2 * np.matmul(m4.numpy()[0], v4.numpy()[0]), tol=2 * tol)
+    assert_np_equal(outcomponents_np[95:120].reshape((5, 5)), 2 * np.matmul(m5.numpy()[0], v5.numpy()[0]), tol=10 * tol)
+    assert_np_equal(
+        outcomponents_np[120:126].reshape((3, 2)), 2 * np.matmul(m32.numpy()[0], v2.numpy()[0]), tol=5 * tol
+    )
+    assert_np_equal(
+        outcomponents_np[126:132].reshape((3, 2)), 2 * np.matmul(m3.numpy()[0], v32.numpy()[0]), tol=5 * tol
+    )
 
     if dtype in np_float_types:
         idx = 0
@@ -1757,10 +1765,12 @@ def test_cw_multiplication(test, device, dtype, register_kernels=False):
         device=device,
     )
 
-    assert_np_equal(outcomponents.numpy()[:4], 2 * (v2.numpy() * s2.numpy()).reshape(-1), tol=50 * tol)
-    assert_np_equal(outcomponents.numpy()[4:13], 2 * (v3.numpy() * s3.numpy()).reshape(-1), tol=50 * tol)
-    assert_np_equal(outcomponents.numpy()[13:29], 2 * (v4.numpy() * s4.numpy()).reshape(-1), tol=50 * tol)
-    assert_np_equal(outcomponents.numpy()[29:54], 2 * (v5.numpy() * s5.numpy()).reshape(-1), tol=50 * tol)
+    outcomponents_np = outcomponents.numpy()
+
+    assert_np_equal(outcomponents_np[:4], 2 * (v2.numpy() * s2.numpy()).reshape(-1), tol=50 * tol)
+    assert_np_equal(outcomponents_np[4:13], 2 * (v3.numpy() * s3.numpy()).reshape(-1), tol=50 * tol)
+    assert_np_equal(outcomponents_np[13:29], 2 * (v4.numpy() * s4.numpy()).reshape(-1), tol=50 * tol)
+    assert_np_equal(outcomponents_np[29:54], 2 * (v5.numpy() * s5.numpy()).reshape(-1), tol=50 * tol)
 
     if dtype in np_float_types:
         idx = 0
@@ -2035,11 +2045,21 @@ def test_outer_product(test, device, dtype, register_kernels=False):
 
     wp.launch(kernel, dim=1, inputs=[s2, s3, s4, s5, v2, v3, v4, v5], outputs=[outcomponents], device=device)
 
-    assert_np_equal(outcomponents.numpy()[:4], 2 * s2.numpy()[0, :, None] * v2.numpy()[0, None, :], tol=tol)
-    assert_np_equal(outcomponents.numpy()[4:13], 2 * s3.numpy()[0, :, None] * v3.numpy()[0, None, :], tol=10 * tol)
-    assert_np_equal(outcomponents.numpy()[13:29], 2 * s4.numpy()[0, :, None] * v4.numpy()[0, None, :], tol=10 * tol)
-    assert_np_equal(outcomponents.numpy()[29:54], 2 * s5.numpy()[0, :, None] * v5.numpy()[0, None, :], tol=10 * tol)
-    assert_np_equal(outcomponents.numpy()[54:], 2 * s2.numpy()[0, :, None] * v5.numpy()[0, None, :], tol=10 * tol)
+    outcomponents_np = outcomponents.numpy()
+
+    assert_np_equal(outcomponents_np[:4].reshape((2, 2)), 2 * s2.numpy()[0, :, None] * v2.numpy()[0, None, :], tol=tol)
+    assert_np_equal(
+        outcomponents_np[4:13].reshape((3, 3)), 2 * s3.numpy()[0, :, None] * v3.numpy()[0, None, :], tol=10 * tol
+    )
+    assert_np_equal(
+        outcomponents_np[13:29].reshape((4, 4)), 2 * s4.numpy()[0, :, None] * v4.numpy()[0, None, :], tol=10 * tol
+    )
+    assert_np_equal(
+        outcomponents_np[29:54].reshape((5, 5)), 2 * s5.numpy()[0, :, None] * v5.numpy()[0, None, :], tol=10 * tol
+    )
+    assert_np_equal(
+        outcomponents_np[54:].reshape(2, 5), 2 * s2.numpy()[0, :, None] * v5.numpy()[0, None, :], tol=10 * tol
+    )
 
     if dtype in np_float_types:
         idx = 0
@@ -2671,7 +2691,7 @@ def test_diag(test, device, dtype, register_kernels=False):
 
     wp.launch(kernel, dim=1, inputs=[s5], outputs=[outcomponents], device=device)
 
-    assert_np_equal(outcomponents.numpy(), 2 * np.diag(s5.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents.reshape((5, 5)).numpy(), 2 * np.diag(s5.numpy()[0]), tol=tol)
 
     if dtype in np_float_types:
         idx = 0

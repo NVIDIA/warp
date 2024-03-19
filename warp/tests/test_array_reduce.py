@@ -62,7 +62,7 @@ def test_array_sum_empty(test, device):
     assert_np_equal(array_sum(values), np.zeros(2))
 
     values = wp.array([], shape=(0, 3), device=device, dtype=float)
-    assert_np_equal(array_sum(values, axis=0).numpy(), np.zeros(3))
+    assert_np_equal(array_sum(values, axis=0).numpy(), np.zeros((1, 3)))
 
 
 def make_test_array_inner(dtype):
@@ -123,7 +123,7 @@ def test_array_inner_empty(test, device):
     test.assertEqual(array_inner(values, values), 0.0)
 
     values = wp.array([], shape=(0, 3), device=device, dtype=float)
-    assert_np_equal(array_inner(values, values, axis=0).numpy(), np.zeros(3))
+    assert_np_equal(array_inner(values, values, axis=0).numpy(), np.zeros((1, 3)))
 
 
 devices = get_test_devices()

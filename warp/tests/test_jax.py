@@ -5,10 +5,11 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import numpy as np
 import os
 import unittest
 from typing import Any
+
+import numpy as np
 
 import warp as wp
 from warp.tests.unittest_utils import *
@@ -72,6 +73,7 @@ for T in [*vector_types, *matrix_types]:
 def _jax_version():
     try:
         import jax
+
         return jax.__version_info__
     except ImportError:
         return (0, 0, 0)
@@ -127,6 +129,7 @@ def test_device_conversion(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 4, 25), "Jax version too old")
 def test_jax_kernel_basic(test, device):
     import jax.numpy as jp
+
     from warp.jax_experimental import jax_kernel
 
     n = 64
@@ -141,8 +144,8 @@ def test_jax_kernel_basic(test, device):
     # run on the given device
     with jax.default_device(wp.device_to_jax(device)):
         y = f()
-    
-    result = np.asarray(y)
+
+    result = np.asarray(y).reshape((n,))
     expected = 3 * np.arange(n, dtype=np.float32)
 
     assert_np_equal(result, expected)
@@ -151,10 +154,11 @@ def test_jax_kernel_basic(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 4, 25), "Jax version too old")
 def test_jax_kernel_scalar(test, device):
     import jax.numpy as jp
+
     from warp.jax_experimental import jax_kernel
 
     n = 64
-        
+
     for T in scalar_types:
 
         jp_dtype = wp.dtype_to_jax(T)
@@ -175,8 +179,8 @@ def test_jax_kernel_scalar(test, device):
             # run on the given device
             with jax.default_device(wp.device_to_jax(device)):
                 y = f()
-            
-            result = np.asarray(y)
+
+            result = np.asarray(y).reshape((n,))
             expected = 3 * np.arange(n, dtype=np_dtype)
 
             assert_np_equal(result, expected)
@@ -185,6 +189,7 @@ def test_jax_kernel_scalar(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 4, 25), "Jax version too old")
 def test_jax_kernel_vecmat(test, device):
     import jax.numpy as jp
+
     from warp.jax_experimental import jax_kernel
 
     for T in [*vector_types, *matrix_types]:
@@ -211,8 +216,8 @@ def test_jax_kernel_vecmat(test, device):
             # run on the given device
             with jax.default_device(wp.device_to_jax(device)):
                 y = f()
-            
-            result = np.asarray(y)
+
+            result = np.asarray(y).reshape(scalar_shape)
             expected = 3 * np.arange(scalar_len, dtype=np_dtype).reshape(scalar_shape)
 
             assert_np_equal(result, expected)
@@ -221,6 +226,7 @@ def test_jax_kernel_vecmat(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 4, 25), "Jax version too old")
 def test_jax_kernel_multiarg(test, device):
     import jax.numpy as jp
+
     from warp.jax_experimental import jax_kernel
 
     n = 64
@@ -237,7 +243,7 @@ def test_jax_kernel_multiarg(test, device):
     # run on the given device
     with jax.default_device(wp.device_to_jax(device)):
         x, y = f()
-    
+
     result_x, result_y = np.asarray(x), np.asarray(y)
     expected_x = np.full(n, 3, dtype=np.float32)
     expected_y = np.full(n, 5, dtype=np.float32)
@@ -285,9 +291,7 @@ try:
         add_function_test(TestJax, "test_device_conversion", test_device_conversion, devices=jax_compatible_devices)
 
     if jax_compatible_cuda_devices:
-        add_function_test(
-            TestJax, "test_jax_kernel_basic", test_jax_kernel_basic, devices=jax_compatible_cuda_devices
-        )
+        add_function_test(TestJax, "test_jax_kernel_basic", test_jax_kernel_basic, devices=jax_compatible_cuda_devices)
         add_function_test(
             TestJax, "test_jax_kernel_scalar", test_jax_kernel_scalar, devices=jax_compatible_cuda_devices
         )
