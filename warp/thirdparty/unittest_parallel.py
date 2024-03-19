@@ -213,6 +213,10 @@ def main(argv=None):
             if args.verbose > 1:
                 print(file=sys.stderr)
 
+            # Create the shared index object used in Warp caches (NVIDIA Modification)
+            manager = multiprocessing.Manager()
+            shared_index = manager.Value("i", -1)
+
             # Run the tests in parallel
             start_time = time.perf_counter()
 
@@ -223,8 +227,8 @@ def main(argv=None):
                     process_count,
                     maxtasksperchild=maxtasksperchild,
                     initializer=set_worker_cache,
-                    initargs=(args, temp_dir),
-                ) as pool, multiprocessing.Manager() as manager:
+                    initargs=(manager.Lock(), shared_index, args, temp_dir),
+                ) as pool:
                     test_manager = ParallelTestManager(manager, args, temp_dir)
                     results = pool.map(test_manager.run_tests, test_suites)
             else:
@@ -233,8 +237,8 @@ def main(argv=None):
                     max_workers=process_count,
                     mp_context=multiprocessing.get_context(method="spawn"),
                     initializer=set_worker_cache,
-                    initargs=(args, temp_dir),
-                ) as executor, multiprocessing.Manager() as manager:
+                    initargs=(manager.Lock(), shared_index, args, temp_dir),
+                ) as executor:
                     test_manager = ParallelTestManager(manager, args, temp_dir)
                     results = list(executor.map(test_manager.run_tests, test_suites, timeout=3600))
         else:
@@ -457,12 +461,6 @@ class ParallelTestManager:
             if result.shouldStop:
                 self.failfast.set()
 
-            # Clean up kernel cache (NVIDIA modification)
-            import warp as wp
-
-            wp.init()
-            wp.build.clear_kernel_cache()
-
             # Return (test_count, errors, failures, skipped_count, expected_failure_count, unexpected_success_count)
             return (
                 result.testsRun,
@@ -533,23 +531,25 @@ class ParallelTextTestResult(unittest.TextTestResult):
         pass
 
 
-def set_worker_cache(args, temp_dir):
+def set_worker_cache(lock, shared_index, args, temp_dir):
     """Change the Warp cache to avoid conflicts.
     This function is run at the start of every new process. (NVIDIA modification)
     If the environment variable `WARP_CACHE_ROOT` is detected, the cache will be placed in the provided path.
     """
 
+    with lock:
+        shared_index.value += 1
+        worker_index = shared_index.value
+
     with _coverage(args, temp_dir):
         import warp as wp
         from warp.thirdparty import appdirs
 
-        pid = os.getpid()
-
         if "WARP_CACHE_ROOT" in os.environ:
-            cache_root_dir = os.path.join(os.getenv("WARP_CACHE_ROOT"), f"{wp.config.version}-{pid}")
+            cache_root_dir = os.path.join(os.getenv("WARP_CACHE_ROOT"), f"{wp.config.version}-{worker_index:03d}")
         else:
             cache_root_dir = appdirs.user_cache_dir(
-                appname="warp", appauthor="NVIDIA", version=f"{wp.config.version}-{pid}"
+                appname="warp", appauthor="NVIDIA", version=f"{wp.config.version}-{worker_index:03d}"
             )
 
         wp.config.kernel_cache_dir = cache_root_dir
