@@ -24,3 +24,6 @@ fetch.packman_target_files_to_pull = [
 # Extensions precache
 fetch.after_pull_commands = [
 ]
+
+[repo_build_number]
+enabled = true
