@@ -320,6 +320,7 @@ class InternalState:
             pos = prim.GetAttribute("xformOp:translate").Get()
             prim.CreateAttribute("_worldPosition", usdrt.Sdf.ValueTypeNames.Double3, True).Set(pos)
             prim.CreateAttribute("_worldOrientation", usdrt.Sdf.ValueTypeNames.Quatf, True).Set(usdrt.Gf.Quatf(1, 0, 0, 0))
+            prim.CreateAttribute("_worldScale", usdrt.Sdf.ValueTypeNames.Float3, True).Set(usdrt.Gf.Vec3f(1, 1, 1))
 
             # create a custom tag for the boids (could use applied schema too)
             prim.CreateAttribute("BoidTag", usdrt.Sdf.ValueTypeNames.AppliedSchemaTypeTag, True)
