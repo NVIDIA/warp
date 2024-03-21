@@ -91,6 +91,153 @@ Built-in unit tests can be run from the command-line as follows::
 
     python -m warp.tests
 
+examples/core
+^^^^^^^^^^^^^
+
+.. list-table::
+    :class: gallery
+
+    * - .. image:: ./img/examples/core_dem.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_dem.py
+      - .. image:: ./img/examples/core_fluid.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_fluid.py
+      - .. image:: ./img/examples/core_graph_capture.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_graph_capture.py
+      - .. image:: ./img/examples/core_marching_cubes.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_marching_cubes.py
+    * - dem
+      - fluid
+      - graph capture
+      - marching cubes
+    * - .. image:: ./img/examples/core_mesh.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_mesh.py
+      - .. image:: ./img/examples/core_nvdb.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_nvdb.py
+      - .. image:: ./img/examples/core_raycast.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_raycast.py
+      - .. image:: ./img/examples/core_raymarch.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_raymarch.py
+    * - mesh
+      - nvdb
+      - raycast
+      - raymarch
+    * - .. image:: ./img/examples/core_sph.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_sph.py
+      - .. image:: ./img/examples/core_torch.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_torch.py
+      - .. image:: ./img/examples/core_wave.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_wave.py
+      -
+    * - sph
+      - torch
+      - wave
+      -
+
+examples/fem
+^^^^^^^^^^^^
+
+.. list-table::
+    :class: gallery
+
+    * - .. image:: ./img/examples/fem_apic_fluid.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_apic_fluid.py
+      - .. image:: ./img/examples/fem_convection_diffusion.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_convection_diffusion.py
+      - .. image:: ./img/examples/fem_diffusion_3d.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_diffusion_3d.py
+      - .. image:: ./img/examples/fem_diffusion.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_diffusion.py
+    * - apic fluid
+      - convection diffusion
+      - diffusion 3d
+      - diffusion
+    * - .. image:: ./img/examples/fem_mixed_elasticity.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_mixed_elasticity.py
+      - .. image:: ./img/examples/fem_navier_stokes.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_navier_stokes.py
+      - .. image:: ./img/examples/fem_stokes_transfer.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_stokes_transfer.py
+      - .. image:: ./img/examples/fem_stokes.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_stokes.py
+    * - mixed elasticity
+      - navier stokes
+      - stokes transfer
+      - stokes
+
+examples/optim
+^^^^^^^^^^^^^^
+
+.. list-table::
+    :class: gallery
+
+    * - .. image:: ./img/examples/optim_bounce.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_bounce.py
+      - .. image:: ./img/examples/optim_cloth_throw.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_cloth_throw.py
+      - .. image:: ./img/examples/optim_diffray.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_diffray.py
+      - .. image:: ./img/examples/optim_drone.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_drone.py
+    * - bounce
+      - cloth throw
+      - diffray
+      - drone
+    * - .. image:: ./img/examples/optim_inverse_kinematics.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_inverse_kinematics.py
+      - .. image:: ./img/examples/optim_spring_cage.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_spring_cage.py
+      - .. image:: ./img/examples/optim_trajectory.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_trajectory.py
+      - .. image:: ./img/examples/optim_walker.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_walker.py
+    * - inverse kinematics
+      - spring cage
+      - trajectory
+      - walker
+
+examples/sim
+^^^^^^^^^^^^
+
+.. list-table::
+    :class: gallery
+
+    * - .. image:: ./img/examples/sim_cartpole.png
+            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_cartpole.py
+      - .. image:: ./img/examples/sim_cloth.png
+            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_cloth.py
+      - .. image:: ./img/examples/sim_granular.png
+            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_granular.py
+      - .. image:: ./img/examples/sim_granular_collision_sdf.png
+            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_granular_collision_sdf.py
+    * - cartpole
+      - cloth
+      - granular
+      - granular collision sdf
+    * - .. image:: ./img/examples/sim_jacobian_ik.png
+            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_jacobian_ik.py
+      - .. image:: ./img/examples/sim_quadruped.png
+            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_quadruped.py
+      - .. image:: ./img/examples/sim_rigid_chain.png
+            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_rigid_chain.py
+      - .. image:: ./img/examples/sim_rigid_contact.png
+            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_rigid_contact.py
+    * - jacobian ik
+      - quadruped
+      - rigid chain
+      - rigid contact
+    * - .. image:: ./img/examples/sim_rigid_force.png
+            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_rigid_force.py
+      - .. image:: ./img/examples/sim_rigid_gyroscopic.png
+            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_rigid_gyroscopic.py
+      - .. image:: ./img/examples/sim_rigid_soft_contact.png
+            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_rigid_soft_contact.py
+      - .. image:: ./img/examples/sim_soft_body.png
+            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_soft_body.py
+    * - rigid force
+      - rigid gyroscopic
+      - rigid soft contact
+      - soft body
+
 Omniverse
 ---------
 
