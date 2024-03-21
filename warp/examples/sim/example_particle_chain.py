@@ -94,6 +94,8 @@ class Example:
 
 
 if __name__ == "__main__":
+    import warp.examples
+
     stage_path = os.path.join(wp.examples.get_output_directory(), "example_particle_chain.usd")
 
     example = Example(stage_path)

@@ -196,6 +196,8 @@ class Example:
 
 
 if __name__ == "__main__":
+    import warp.examples
+
     stage_path = os.path.join(wp.examples.get_output_directory(), "example_cloth_throw.usd")
 
     example = Example(stage_path, profile=False, verbose=True)
