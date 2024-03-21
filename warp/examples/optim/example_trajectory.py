@@ -173,6 +173,7 @@ class Example:
 
 
 if __name__ == "__main__":
+    import warp.examples
     import matplotlib.pyplot as plt
 
     stage_path = os.path.join(wp.examples.get_output_directory(), "example_trajectory.usd")

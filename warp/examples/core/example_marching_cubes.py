@@ -163,6 +163,8 @@ class Example:
 
 
 if __name__ == "__main__":
+    import warp.examples
+
     this_file = os.path.basename(__file__).split(".")[0]
     stage_path = os.path.join(wp.examples.get_output_directory(), f"{this_file}.usd")
 

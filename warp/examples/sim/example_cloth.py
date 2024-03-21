@@ -13,7 +13,6 @@
 #
 ###########################################################################
 
-import argparse
 import math
 import os
 from enum import Enum
@@ -158,6 +157,9 @@ class Example:
 
 
 if __name__ == "__main__":
+    import argparse
+    import warp.examples
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--integrator",
