@@ -8,7 +8,6 @@
 import os
 import subprocess
 import sys
-import warp.examples
 
 
 def open_file(filename):
@@ -19,7 +18,9 @@ def open_file(filename):
 
 
 if __name__ == "__main__":
-    source_dir = warp.examples.get_source_directory()
+    import warp.examples
+
+    source_dir = wp.examples.get_source_directory()
     print(f"Example source directory: {source_dir}")
 
     try:

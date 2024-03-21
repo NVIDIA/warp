@@ -378,6 +378,8 @@ class Example:
 
 
 if __name__ == "__main__":
+    import warp.examples
+
     wp.set_module_options({"enable_backward": False})
 
     stage_path = os.path.join(wp.examples.get_output_directory(), "example_apic_fluid.usd")
