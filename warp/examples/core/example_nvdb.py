@@ -21,6 +21,7 @@ import os
 import numpy as np
 
 import warp as wp
+import warp.examples
 import warp.render
 
 wp.init()
@@ -108,7 +109,7 @@ class Example:
         self.velocities = wp.from_numpy(init_vel.astype(np.float32), dtype=wp.vec3)
 
         # load collision volume
-        file = open(os.path.join(os.path.dirname(__file__), "../assets/rocks.nvdb"), "rb")
+        file = open(os.path.join(warp.examples.get_asset_directory(), "rocks.nvdb"), "rb")
 
         # create Volume object
         self.volume = wp.Volume.load_from_nvdb(file)
@@ -146,7 +147,7 @@ class Example:
 
             self.renderer.render_ref(
                 name="collision",
-                path=os.path.join(os.path.dirname(__file__), "../assets/rocks.usd"),
+                path=os.path.join(warp.examples.get_asset_directory(), "rocks.usd"),
                 pos=wp.vec3(0.0, 0.0, 0.0),
                 rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), math.pi),
                 scale=wp.vec3(1.0, 1.0, 1.0),
@@ -157,9 +158,7 @@ class Example:
 
 
 if __name__ == "__main__":
-    import warp.examples
-
-    stage_path = os.path.join(wp.examples.get_output_directory(), "example_nvdb.usd")
+    stage_path = "example_nvdb.usd"
 
     example = Example(stage_path)
 

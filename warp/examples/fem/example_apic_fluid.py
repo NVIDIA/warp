@@ -11,8 +11,6 @@
 # Shows how to implement a apic fluid simulation.
 ###########################################################################
 
-import os
-
 import warp as wp
 import numpy as np
 
@@ -378,11 +376,9 @@ class Example:
 
 
 if __name__ == "__main__":
-    import warp.examples
-
     wp.set_module_options({"enable_backward": False})
 
-    stage_path = os.path.join(wp.examples.get_output_directory(), "example_apic_fluid.usd")
+    stage_path = "example_apic_fluid.usd"
 
     example = Example(stage_path)
 

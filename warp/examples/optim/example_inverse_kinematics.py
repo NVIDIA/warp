@@ -13,8 +13,6 @@
 #
 ###########################################################################
 
-import os
-
 import numpy as np
 
 import warp as wp
@@ -156,9 +154,7 @@ class Example:
 
 
 if __name__ == "__main__":
-    import warp.examples
-
-    stage_path = os.path.join(wp.examples.get_output_directory(), "example_inverse_kinematics.usd")
+    stage_path = "example_inverse_kinematics.usd"
 
     example = Example(stage_path, device=wp.get_preferred_device(), verbose=True)
 

@@ -14,8 +14,6 @@
 #
 ###########################################################################
 
-import os
-
 import numpy as np
 import warp as wp
 
@@ -214,9 +212,7 @@ class Example:
 
 
 if __name__ == "__main__":
-    import warp.examples
-
-    stage_path = os.path.join(wp.examples.get_output_directory(), "example_spring_cage.usd")
+    stage_path = "example_spring_cage.usd"
 
     example = Example(stage_path, verbose=True)
 

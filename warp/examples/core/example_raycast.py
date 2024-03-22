@@ -19,6 +19,7 @@ import numpy as np
 from pxr import Usd, UsdGeom
 
 import warp as wp
+import warp.examples
 
 wp.init()
 
@@ -52,7 +53,7 @@ class Example:
         self.height = 1024
         self.cam_pos = (0.0, 1.0, 2.0)
 
-        asset_stage = Usd.Stage.Open(os.path.join(os.path.dirname(__file__), "../assets/bunny.usd"))
+        asset_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
         mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath("/bunny/bunny"))
 
         points = np.array(mesh_geom.GetPointsAttr().Get())

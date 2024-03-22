@@ -17,8 +17,6 @@
 #
 ###########################################################################
 
-import os
-
 import numpy as np
 
 import warp as wp
@@ -233,9 +231,7 @@ class Example:
 
 
 if __name__ == "__main__":
-    import warp.examples
-
-    stage_path = os.path.join(wp.examples.get_output_directory(), "example_bounce.usd")
+    stage_path = "example_bounce.usd"
 
     example = Example(stage_path, profile=False, verbose=True)
     example.check_grad()

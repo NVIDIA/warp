@@ -21,6 +21,7 @@ import numpy as np
 from pxr import Usd, UsdGeom
 
 import warp as wp
+import warp.examples
 import warp.render
 
 wp.init()
@@ -93,7 +94,7 @@ class Example:
 
         self.sim_margin = 0.1
 
-        usd_stage = Usd.Stage.Open(os.path.join(os.path.dirname(__file__), "../assets/bunny.usd"))
+        usd_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
         usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/bunny/bunny"))
         usd_scale = 10.0
 
@@ -142,9 +143,7 @@ class Example:
 
 
 if __name__ == "__main__":
-    import warp.examples
-
-    stage_path = os.path.join(wp.examples.get_output_directory(), "example_mesh.usd")
+    stage_path = "example_mesh.usd"
 
     example = Example(stage_path)
 

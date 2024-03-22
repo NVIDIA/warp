@@ -12,5 +12,5 @@ def get_source_directory():
     return os.path.realpath(os.path.dirname(__file__))
 
 
-def get_output_directory():
-    return os.getcwd()
+def get_asset_directory():
+    return os.path.join(get_source_directory(), "assets")
