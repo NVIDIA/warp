@@ -21,6 +21,7 @@ import numpy as np
 from pxr import Usd, UsdGeom
 
 import warp as wp
+import warp.examples
 import warp.sim
 import warp.sim.render
 
@@ -85,7 +86,7 @@ class Example:
                 spring_kd=0.0,
             )
 
-        usd_stage = Usd.Stage.Open(os.path.join(os.path.dirname(__file__), "../assets/bunny.usd"))
+        usd_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
         usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/bunny/bunny"))
 
         mesh_points = np.array(usd_geom.GetPointsAttr().Get())
@@ -158,7 +159,6 @@ class Example:
 
 if __name__ == "__main__":
     import argparse
-    import warp.examples
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -171,7 +171,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    stage_path = os.path.join(wp.examples.get_output_directory(), "example_cloth.usd")
+    stage_path = "example_cloth.usd"
 
     example = Example(stage_path, integrator=args.integrator)
 

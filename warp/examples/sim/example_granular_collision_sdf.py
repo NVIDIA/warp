@@ -21,6 +21,7 @@ import os
 import numpy as np
 
 import warp as wp
+import warp.examples
 import warp.sim
 import warp.sim.render
 
@@ -55,7 +56,7 @@ class Example:
             mass=0.1,
             jitter=self.radius * 0.1,
         )
-        rock_file = open(os.path.join(os.path.dirname(__file__), "../assets/rocks.nvdb"), "rb")
+        rock_file = open(os.path.join(warp.examples.get_asset_directory(), "rocks.nvdb"), "rb")
         rock_vdb = wp.Volume.load_from_nvdb(rock_file.read())
         rock_file.close()
 
@@ -154,7 +155,7 @@ class Example:
             # Note the extra wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), math.pi) is because .usd is oriented differently from .nvdb
             self.renderer.render_ref(
                 name="collision",
-                path=os.path.join(os.path.dirname(__file__), "../assets/rocks.usd"),
+                path=os.path.join(warp.examples.get_asset_directory(), "rocks.usd"),
                 pos=wp.vec3(0.0, 0.0, 0.0),
                 rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), -0.5 * math.pi)
                 * wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), math.pi),
@@ -173,9 +174,7 @@ class Example:
 
 
 if __name__ == "__main__":
-    import warp.examples
-
-    stage_path = os.path.join(wp.examples.get_output_directory(), "example_granular_collision_sdf.usd")
+    stage_path = "example_granular_collision_sdf.usd"
 
     example = Example(stage_path)
 

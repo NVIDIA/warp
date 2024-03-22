@@ -20,6 +20,7 @@ import os
 import numpy as np
 
 import warp as wp
+import warp.examples
 import warp.sim
 import warp.sim.render
 
@@ -73,7 +74,7 @@ class Example:
         self.num_envs = num_envs
         articulation_builder = wp.sim.ModelBuilder()
         wp.sim.parse_urdf(
-            os.path.join(os.path.dirname(__file__), "../assets/quadruped.urdf"),
+            os.path.join(warp.examples.get_asset_directory(), "quadruped.urdf"),
             articulation_builder,
             xform=wp.transform([0.0, 0.7, 0.0], wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), -math.pi * 0.5)),
             floating=True,
@@ -167,9 +168,9 @@ class Example:
 
 if __name__ == "__main__":
 
-    stage = os.path.join(os.path.dirname(__file__), "example_quadruped.usd")
+    stage_path = "example_quadruped.usd"
 
-    example = Example(stage, num_envs=8)
+    example = Example(stage_path, num_envs=8)
 
     for _ in range(example.episode_frames):
         example.step()

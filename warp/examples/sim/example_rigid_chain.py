@@ -14,8 +14,6 @@
 #
 ###########################################################################
 
-import os
-
 import numpy as np
 
 import warp as wp
@@ -177,9 +175,9 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage = os.path.join(os.path.dirname(__file__), "example_rigid_chain.usd")
+    stage_path = "example_rigid_chain.usd"
 
-    example = Example(stage)
+    example = Example(stage_path)
 
     for _ in range(example.episode_frames):
         example.step()

@@ -20,7 +20,7 @@ def open_file(filename):
 if __name__ == "__main__":
     import warp.examples
 
-    source_dir = wp.examples.get_source_directory()
+    source_dir = warp.examples.get_source_directory()
     print(f"Example source directory: {source_dir}")
 
     try:
