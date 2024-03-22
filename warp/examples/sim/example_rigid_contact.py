@@ -20,6 +20,7 @@ import numpy as np
 from pxr import Usd, UsdGeom
 
 import warp as wp
+import warp.examples
 import warp.sim
 import warp.sim.render
 
@@ -88,7 +89,7 @@ class Example:
             builder.body_qd[i] = (0.0, 2.0, 10.0, 0.0, 0.0, 0.0)
 
         # meshes
-        bunny = self.load_mesh(os.path.join(os.path.dirname(__file__), "../assets/bunny.usd"), "/bunny/bunny")
+        bunny = self.load_mesh(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"), "/bunny/bunny")
         for i in range(self.num_bodies):
             b = builder.add_body(
                 origin=wp.transform(
@@ -164,9 +165,9 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage = os.path.join(os.path.dirname(__file__), "example_rigid_contact.usd")
+    stage_path = "example_rigid_contact.usd"
 
-    example = Example(stage)
+    example = Example(stage_path)
 
     for _ in range(example.episode_frames):
         example.step()

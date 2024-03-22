@@ -14,8 +14,6 @@
 #
 ###########################################################################
 
-import os
-
 import numpy as np
 import torch
 
@@ -157,9 +155,7 @@ class Example:
 
 
 if __name__ == "__main__":
-    import warp.examples
-
-    stage_path = os.path.join(wp.examples.get_output_directory(), "example_inverse_kinematics_torch.usd")
+    stage_path = "example_inverse_kinematics_torch.usd"
 
     example = Example(stage_path, device=wp.get_preferred_device(), verbose=True)
 

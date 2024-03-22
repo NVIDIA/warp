@@ -20,6 +20,7 @@ import numpy as np
 from pxr import Usd, UsdGeom
 
 import warp as wp
+import warp.examples
 from warp.optim import SGD
 
 wp.init()
@@ -308,7 +309,7 @@ class Example:
         self.width = int(aspect * self.height)
         self.num_pixels = self.width * self.height
 
-        asset_stage = Usd.Stage.Open(os.path.join(os.path.dirname(__file__), "../assets/bunny.usd"))
+        asset_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
         mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath("/bunny/bunny"))
 
         points = np.array(mesh_geom.GetPointsAttr().Get())

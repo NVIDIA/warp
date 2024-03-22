@@ -22,6 +22,7 @@ import os
 import numpy as np
 
 import warp as wp
+import warp.examples
 import warp.sim
 import warp.sim.render
 
@@ -56,7 +57,7 @@ class Example:
         articulation_builder = wp.sim.ModelBuilder()
 
         wp.sim.parse_urdf(
-            os.path.join(os.path.dirname(__file__), "../assets/cartpole.urdf"),
+            os.path.join(warp.examples.get_asset_directory(), "cartpole.urdf"),
             articulation_builder,
             xform=wp.transform_identity(),
             floating=False,
@@ -185,9 +186,7 @@ class Example:
 
 
 if __name__ == "__main__":
-    import warp.examples
-
-    stage_path = os.path.join(wp.examples.get_output_directory(), "example_jacobian_ik.usd")
+    stage_path = "example_jacobian_ik.usd"
 
     example = Example(stage_path, num_envs=10)
 

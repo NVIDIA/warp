@@ -14,7 +14,6 @@
 ###########################################################################
 
 import math
-import os
 
 import warp as wp
 import warp.render
@@ -237,9 +236,7 @@ class Example:
 
 
 if __name__ == "__main__":
-    import warp.examples
-
-    stage_path = os.path.join(wp.examples.get_output_directory(), "example_wave.usd")
+    stage_path = "example_wave.usd"
 
     example = Example(stage_path)
 

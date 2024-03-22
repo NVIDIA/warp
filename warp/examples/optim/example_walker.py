@@ -21,6 +21,7 @@ import os
 import math
 
 import warp as wp
+import warp.examples
 import warp.sim
 import warp.optim
 import warp.sim.render
@@ -92,7 +93,7 @@ class Example:
         self.render_time = 0.0
 
         # bear
-        asset_stage = Usd.Stage.Open(os.path.join(os.path.dirname(__file__), "../assets/bear.usd"))
+        asset_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bear.usd"))
 
         geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath("/bear"))
         points = geom.GetPointsAttr().Get()
@@ -280,9 +281,7 @@ class Example:
 
 
 if __name__ == "__main__":
-    import warp.examples
-
-    stage_path = os.path.join(wp.examples.get_output_directory(), "example_walker.usd")
+    stage_path = "example_walker.usd"
 
     example = Example(stage_path, profile=False, verbose=True)
 

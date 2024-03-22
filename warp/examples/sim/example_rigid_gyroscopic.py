@@ -13,8 +13,6 @@
 #
 ###########################################################################
 
-import os
-
 import warp as wp
 import warp.sim
 import warp.sim.render
@@ -85,9 +83,7 @@ class Example:
 
 
 if __name__ == "__main__":
-    import warp.examples
-
-    stage_path = os.path.join(wp.examples.get_output_directory(), "example_rigid_gyroscopic.usd")
+    stage_path = "example_rigid_gyroscopic.usd"
 
     example = Example(stage_path)
 

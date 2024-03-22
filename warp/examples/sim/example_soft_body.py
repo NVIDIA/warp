@@ -14,7 +14,6 @@
 ###########################################################################
 
 import math
-import os
 
 import warp as wp
 import warp.sim
@@ -166,9 +165,7 @@ class Example:
 
 
 if __name__ == "__main__":
-    import warp.examples
-
-    stage_path = os.path.join(wp.examples.get_output_directory(), "example_soft_body.usd")
+    stage_path = "example_soft_body.usd"
 
     example = Example(stage_path)
 

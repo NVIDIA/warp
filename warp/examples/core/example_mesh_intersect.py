@@ -18,6 +18,7 @@ import numpy as np
 from pxr import Usd, UsdGeom
 
 import warp as wp
+import warp.examples
 import warp.render
 
 
@@ -86,8 +87,8 @@ class Example:
         self.query_count = 1024
         self.has_queried = False
 
-        self.path_0 = "../assets/cube.usda"
-        self.path_1 = "../assets/sphere.usda"
+        self.path_0 = os.path.join(warp.examples.get_asset_directory(), "cube.usda")
+        self.path_1 = os.path.join(warp.examples.get_asset_directory(), "sphere.usda")
 
         self.mesh_0 = self.load_mesh(self.path_0, "/Cube/Cube_001")
         self.mesh_1 = self.load_mesh(self.path_1, "/Sphere/Sphere")
@@ -143,14 +144,14 @@ class Example:
                 xform = self.xforms[i]
                 self.renderer.render_ref(
                     f"mesh_{i}_0",
-                    os.path.join(os.path.dirname(__file__), self.path_0),
+                    self.path_0,
                     pos=wp.vec3(xform.p[0] + offset, xform.p[1], xform.p[2]),
                     rot=xform.q,
                     scale=wp.vec3(1.0, 1.0, 1.0),
                 )
                 self.renderer.render_ref(
                     f"mesh_{i}_1",
-                    os.path.join(os.path.dirname(__file__), self.path_1),
+                    self.path_1,
                     pos=wp.vec3(offset, 0.0, 0.0),
                     rot=wp.quat_identity(),
                     scale=wp.vec3(1.0, 1.0, 1.0),
@@ -169,8 +170,7 @@ class Example:
 
     # create collision meshes
     def load_mesh(self, path, prim):
-        usd_path = os.path.join(os.path.dirname(__file__), path)
-        usd_stage = Usd.Stage.Open(usd_path)
+        usd_stage = Usd.Stage.Open(path)
         usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath(prim))
 
         mesh = wp.Mesh(
@@ -182,9 +182,7 @@ class Example:
 
 
 if __name__ == "__main__":
-    import warp.examples
-
-    stage_path = os.path.join(wp.examples.get_output_directory(), "example_mesh_intersect.usd")
+    stage_path = "example_mesh_intersect.usd"
 
     example = Example(stage_path)
 

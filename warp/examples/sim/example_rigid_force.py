@@ -13,7 +13,6 @@
 #
 ###########################################################################
 
-import os
 import argparse
 
 import warp as wp
@@ -105,9 +104,7 @@ class Example:
 
 
 if __name__ == "__main__":
-    import warp.examples
-
-    stage_path = os.path.join(wp.examples.get_output_directory(), "example_rigid_force.usd")
+    stage_path = "example_rigid_force.usd"
 
     args = Example.parser.parse_args()
 

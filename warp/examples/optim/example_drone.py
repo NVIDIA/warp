@@ -21,6 +21,7 @@ import numpy as np
 from pxr import UsdGeom
 
 import warp as wp
+import warp.examples
 import warp.optim
 import warp.sim
 import warp.sim.render
@@ -817,11 +818,8 @@ class Example:
 
 
 if __name__ == "__main__":
-    import warp.examples
-
-    this_dir = os.path.realpath(os.path.dirname(__file__))
-    stage_path = os.path.join(wp.examples.get_output_directory(), "example_drone.usd")
-    drone_path = os.path.join(this_dir, "..", "assets", "crazyflie.usd")
+    drone_path = os.path.join(warp.examples.get_asset_directory(), "crazyflie.usd")
+    stage_path = "example_drone.usd"
 
     example = Example(stage_path, drone_path, verbose=True)
     for i in range(example.frame_count):
