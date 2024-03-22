@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## [1.0.2] - 2024-03-22
+
+- Make examples runnable from any location
+- Fix the examples not running directly from their Python file
+- Add the example gallery to the documentation
+- Update `README.md` examples USD location
+- Update `example_graph_capture.py` description
+
 ## [1.0.1] - 2024-03-15
 
 - Document Device `total_memory` and `free_memory`
