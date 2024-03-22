@@ -607,56 +607,87 @@ def solve_tetrahedra(
 
     tr = wp.dot(f1, f1) + wp.dot(f2, f2) + wp.dot(f3, f3)
 
-    C = float(0.0)
-    dC = wp.mat33(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-    compliance = float(0.0)
-
     stretching_compliance = relaxation
     volume_compliance = relaxation
 
-    num_terms = 2
-    for term in range(0, num_terms):
+    c_deviatoric = tr - 3.0
+    dC_deviatoric = F * 2.0
 
-        if term == 0:
-            # deviatoric, stable
-            C = tr - 3.0
-            dC = F * 2.0
-            compliance = stretching_compliance
-        elif term == 1:
-            # volume conservation
-            C = wp.determinant(F) - 1.0
-            dC = wp.mat33(wp.cross(f2, f3), wp.cross(f3, f1), wp.cross(f1, f2))
-            compliance = volume_compliance
+    c_hidro = wp.determinant(F) - 1.0
+    dC_hidro = wp.mat33(wp.cross(f2, f3), wp.cross(f3, f1), wp.cross(f1, f2))
 
-        if C != 0.0:
+    # Project both at once
+    if c_deviatoric != 0 and c_hidro != 0:
+        compliance = wp.mat22(stretching_compliance / dt / dt, 0, volume_compliance / dt / dt, 0)
 
-            dP = dC * inv_QT
-            grad1 = wp.vec3(dP[0][0], dP[1][0], dP[2][0])
-            grad2 = wp.vec3(dP[0][1], dP[1][1], dP[2][1])
-            grad3 = wp.vec3(dP[0][2], dP[1][2], dP[2][2])
-            grad0 = -grad1 - grad2 - grad3
+        dP_deviatoric = dC_deviatoric * inv_QT
+        grad1_deviatoric = wp.vec3(dP_deviatoric[0][0], dP_deviatoric[1][0], dP_deviatoric[2][0])
+        grad2_deviatoric = wp.vec3(dP_deviatoric[0][1], dP_deviatoric[1][1], dP_deviatoric[2][1])
+        grad3_deviatoric = wp.vec3(dP_deviatoric[0][2], dP_deviatoric[1][2], dP_deviatoric[2][2])
+        grad0_deviatoric = -grad1_deviatoric - grad2_deviatoric - grad3_deviatoric
 
-            w = (
-                wp.dot(grad0, grad0) * w0
-                + wp.dot(grad1, grad1) * w1
-                + wp.dot(grad2, grad2) * w2
-                + wp.dot(grad3, grad3) * w3
-            )
+        dP_hidro = dC_hidro * inv_QT
+        grad1_hidro = wp.vec3(dP_hidro[0][0], dP_hidro[1][0], dP_hidro[2][0])
+        grad2_hidro = wp.vec3(dP_hidro[0][1], dP_hidro[1][1], dP_hidro[2][1])
+        grad3_hidro = wp.vec3(dP_hidro[0][2], dP_hidro[1][2], dP_hidro[2][2])
+        grad0_hidro = -grad1_hidro - grad2_hidro - grad3_hidro
 
-            if w > 0.0:
-                alpha = compliance / dt / dt
-                if inv_rest_volume > 0.0:
-                    alpha *= inv_rest_volume
-                dlambda = -C / (w + alpha)
+        grad = wp.array([[grad0_deviatoric, grad1_deviatoric, grad2_deviatoric, grad3_deviatoric],
+                         [grad0_hidro, grad1_hidro, grad2_hidro, grad3_hidro]])
+        
+        a_mat = grad @ wp.mat44(w0,0,0,0, 0,w1,0,0, 0,0,w2,0, 0,0,0,3) @ grad + compliance
 
-                wp.atomic_add(delta, i, w0 * dlambda * grad0)
-                wp.atomic_add(delta, j, w1 * dlambda * grad1)
-                wp.atomic_add(delta, k, w2 * dlambda * grad2)
-                wp.atomic_add(delta, l, w3 * dlambda * grad3)
-                # wp.atomic_add(particle.num_corr, id0, 1)
-                # wp.atomic_add(particle.num_corr, id1, 1)
-                # wp.atomic_add(particle.num_corr, id2, 1)
-                # wp.atomic_add(particle.num_corr, id3, 1)
+        dlambda = a_mat.inverse() * (-wp.vec2(c_deviatoric, c_hidro))
+
+        wp.atomic_add(delta, i, w0 * dlambda * wp.vec2(grad0_deviatoric, grad0_hidro))
+        wp.atomic_add(delta, j, w1 * dlambda * wp.vec2(grad1_deviatoric, grad1_hidro))
+        wp.atomic_add(delta, k, w2 * dlambda * wp.vec2(grad2_deviatoric, grad2_hidro))
+        wp.atomic_add(delta, l, w3 * dlambda * wp.vec2(grad3_deviatoric, grad3_hidro))
+
+    else:
+        num_terms = 2
+        for term in range(0, num_terms):
+
+            if term == 0:
+                # deviatoric, stable
+                C = c_deviatoric
+                dC = dC_deviatoric
+                compliance = stretching_compliance
+            elif term == 1:
+                # volume conservation
+                C = c_hidro
+                dC = dC_hidro
+                compliance = volume_compliance
+
+            if C != 0.0:
+
+                dP = dC * inv_QT
+                grad1 = wp.vec3(dP[0][0], dP[1][0], dP[2][0])
+                grad2 = wp.vec3(dP[0][1], dP[1][1], dP[2][1])
+                grad3 = wp.vec3(dP[0][2], dP[1][2], dP[2][2])
+                grad0 = -grad1 - grad2 - grad3
+
+                w = (
+                    wp.dot(grad0, grad0) * w0
+                    + wp.dot(grad1, grad1) * w1
+                    + wp.dot(grad2, grad2) * w2
+                    + wp.dot(grad3, grad3) * w3
+                )
+
+                if w > 0.0:
+                    alpha = compliance / dt / dt
+                    if inv_rest_volume > 0.0:
+                        alpha *= inv_rest_volume
+                    dlambda = -C / (w + alpha)
+
+                    wp.atomic_add(delta, i, w0 * dlambda * grad0)
+                    wp.atomic_add(delta, j, w1 * dlambda * grad1)
+                    wp.atomic_add(delta, k, w2 * dlambda * grad2)
+                    wp.atomic_add(delta, l, w3 * dlambda * grad3)
+                    # wp.atomic_add(particle.num_corr, id0, 1)
+                    # wp.atomic_add(particle.num_corr, id1, 1)
+                    # wp.atomic_add(particle.num_corr, id2, 1)
+                    # wp.atomic_add(particle.num_corr, id3, 1)
 
     # C_Spherical
     # r_s = wp.sqrt(wp.dot(f1, f1) + wp.dot(f2, f2) + wp.dot(f3, f3))
