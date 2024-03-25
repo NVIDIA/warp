@@ -1733,6 +1733,29 @@ class Adjoint:
 
         return adj.eval(node.value)
 
+    # returns the object being indexed, and the list of indices
+    def eval_subscript(adj, node):
+        target = adj.eval(node.value)
+        indices = []
+
+        if isinstance(node.slice, ast.Tuple):
+            # handles the x[i, j] case (Python 3.8.x upward)
+            for arg in node.slice.elts:
+                var = adj.eval(arg)
+                indices.append(var)
+
+        elif isinstance(node.slice, ast.Index) and isinstance(node.slice.value, ast.Tuple):
+            # handles the x[i, j] case (Python 3.7.x)
+            for arg in node.slice.value.elts:
+                var = adj.eval(arg)
+                indices.append(var)
+        else:
+            # simple expression, e.g.: x[i]
+            var = adj.eval(node.slice)
+            indices.append(var)
+
+        return target, indices
+
     def emit_Subscript(adj, node):
         if hasattr(node.value, "attr") and node.value.attr == "adjoint":
             # handle adjoint of a variable, i.e. wp.adjoint[var]
@@ -1742,24 +1765,7 @@ class Adjoint:
             var = Var(f"adj_{var_name}", type=var.type, constant=None, prefix=False)
             return var
 
-        target = adj.eval(node.value)
-        indices = []
-
-        if isinstance(node.slice, ast.Tuple):
-            # handles the x[i,j] case (Python 3.8.x upward)
-            for arg in node.slice.elts:
-                var = adj.eval(arg)
-                indices.append(var)
-
-        elif isinstance(node.slice, ast.Index) and isinstance(node.slice.value, ast.Tuple):
-            # handles the x[i,j] case (Python 3.7.x)
-            for arg in node.slice.value.elts:
-                var = adj.eval(arg)
-                indices.append(var)
-        else:
-            # simple expression, e.g.: x[i]
-            var = adj.eval(node.slice)
-            indices.append(var)
+        target, indices = adj.eval_subscript(node)
 
         target_type = strip_reference(target.type)
         if is_array(target_type):
@@ -1821,40 +1827,22 @@ class Adjoint:
 
         # handles the case where we are assigning to an array index (e.g.: arr[i] = 2.0)
         elif isinstance(lhs, ast.Subscript):
+            rhs = adj.eval(node.value)
+
             if hasattr(lhs.value, "attr") and lhs.value.attr == "adjoint":
                 # handle adjoint of a variable, i.e. wp.adjoint[var]
                 lhs.slice.is_adjoint = True
                 src_var = adj.eval(lhs.slice)
                 var = Var(f"adj_{src_var.label}", type=src_var.type, constant=None, prefix=False)
-                value = adj.eval(node.value)
-                adj.add_forward(f"{var.emit()} = {value.emit()};")
+                adj.add_forward(f"{var.emit()} = {rhs.emit()};")
                 return
 
-            target = adj.eval(lhs.value)
-            value = adj.eval(node.value)
-
-            slice = lhs.slice
-            indices = []
-
-            if isinstance(slice, ast.Tuple):
-                # handles the x[i, j] case (Python 3.8.x upward)
-                for arg in slice.elts:
-                    var = adj.eval(arg)
-                    indices.append(var)
-            elif isinstance(slice, ast.Index) and isinstance(slice.value, ast.Tuple):
-                # handles the x[i, j] case (Python 3.7.x)
-                for arg in slice.value.elts:
-                    var = adj.eval(arg)
-                    indices.append(var)
-            else:
-                # simple expression, e.g.: x[i]
-                var = adj.eval(slice)
-                indices.append(var)
+            target, indices = adj.eval_subscript(lhs)
 
             target_type = strip_reference(target.type)
 
             if is_array(target_type):
-                adj.add_builtin_call("array_store", [target, *indices, value])
+                adj.add_builtin_call("array_store", [target, *indices, rhs])
 
             elif type_is_vector(target_type) or type_is_matrix(target_type):
                 if is_reference(target.type):
@@ -1862,7 +1850,7 @@ class Adjoint:
                 else:
                     attr = adj.add_builtin_call("index", [target, *indices])
 
-                adj.add_builtin_call("store", [attr, value])
+                adj.add_builtin_call("store", [attr, rhs])
 
                 if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
