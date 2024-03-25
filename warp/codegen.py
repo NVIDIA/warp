@@ -17,6 +17,8 @@ import sys
 import textwrap
 import types
 from typing import Any, Callable, Mapping
+from types import ModuleType
+
 
 import warp.config
 from warp.types import *
@@ -496,11 +498,6 @@ class Block:
 
         # list of vars declared in this block
         self.vars = []
-
-
-def is_local_value(value) -> bool:
-    """Check whether a variable is defined inside a kernel."""
-    return isinstance(value, (warp.context.Function, Var))
 
 
 class Adjoint:
@@ -1292,7 +1289,14 @@ class Adjoint:
 
         # the named object is either a function, class name, or module
         # pass it back to the caller for processing
-        return obj
+        if isinstance(obj, warp.context.Function):
+            return obj
+        if isinstance(obj, type):
+            return obj
+        if isinstance(obj, ModuleType):
+            return obj
+
+        raise RuntimeError("Cannot reference a global variable from a kernel unless `wp.constant()` is being used")
 
     @staticmethod
     def resolve_type_attribute(var_type: type, attr: str):
@@ -1692,10 +1696,6 @@ class Adjoint:
         # eval all arguments
         for arg in node.args:
             var = adj.eval(arg)
-            if not is_local_value(var):
-                raise RuntimeError(
-                    "Cannot reference a global variable from a kernel unless `wp.constant()` is being used"
-                )
             args.append(var)
 
         # eval all keyword args
@@ -1743,9 +1743,6 @@ class Adjoint:
             return var
 
         target = adj.eval(node.value)
-        if not is_local_value(target):
-            raise RuntimeError("Cannot reference a global variable from a kernel unless `wp.constant()` is being used")
-
         indices = []
 
         if isinstance(node.slice, ast.Tuple):
@@ -1835,10 +1832,6 @@ class Adjoint:
 
             target = adj.eval(lhs.value)
             value = adj.eval(node.value)
-            if not is_local_value(value):
-                raise RuntimeError(
-                    "Cannot reference a global variable from a kernel unless `wp.constant()` is being used"
-                )
 
             slice = lhs.slice
             indices = []
