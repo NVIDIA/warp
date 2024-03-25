@@ -1735,24 +1735,52 @@ class Adjoint:
 
     # returns the object being indexed, and the list of indices
     def eval_subscript(adj, node):
-        target = adj.eval(node.value)
+        # We want to coalesce multi-dimentional array indexing into a single operation. This needs to deal with expressions like `a[i][j][x][y]` where `a` is a 2D array of matrices,
+        # and essentially rewrite it into `a[i, j][x][y]`. Since the AST observes the indexing right-to-left, and we don't want to evaluate the index expressions prematurely,
+        # this requires a first loop to check if this `node` only performs indexing on the array, and a second loop to evaluate and collect index variables.
+        root = node
+        count = 0
+        array = None
+        while isinstance(root, ast.Subscript):
+
+            if isinstance(root.slice, ast.Tuple):
+                # handles the x[i, j] case (Python 3.8.x upward)
+                count += len(root.slice.elts)
+            elif isinstance(root.slice, ast.Index) and isinstance(root.slice.value, ast.Tuple):
+                # handles the x[i, j] case (Python 3.7.x)
+                count += len(root.slice.value.elts)
+            else:
+                # simple expression, e.g.: x[i]
+                count += 1
+
+            if isinstance(root.value, ast.Name):
+                symbol = adj.emit_Name(root.value)
+                symbol_type = strip_reference(symbol.type)
+                if is_array(symbol_type):
+                    array = symbol
+                    break
+
+            root = root.value
+
+        # If not all indices index into the array, just evaluate the right-most indexing operation.
+        if not array or (count > array.type.ndim):
+            count = 1
+
         indices = []
+        root = node
+        while len(indices) < count:
+            if isinstance(root.slice, ast.Tuple):
+                ij = [adj.eval(arg) for arg in root.slice.elts]
+            elif isinstance(root.slice, ast.Index) and isinstance(root.slice.value, ast.Tuple):
+                ij = [adj.eval(arg) for arg in root.slice.value.elts]
+            else:
+                ij = [adj.eval(root.slice)]
 
-        if isinstance(node.slice, ast.Tuple):
-            # handles the x[i, j] case (Python 3.8.x upward)
-            for arg in node.slice.elts:
-                var = adj.eval(arg)
-                indices.append(var)
+            indices = ij + indices  # prepend
 
-        elif isinstance(node.slice, ast.Index) and isinstance(node.slice.value, ast.Tuple):
-            # handles the x[i, j] case (Python 3.7.x)
-            for arg in node.slice.value.elts:
-                var = adj.eval(arg)
-                indices.append(var)
-        else:
-            # simple expression, e.g.: x[i]
-            var = adj.eval(node.slice)
-            indices.append(var)
+            root = root.value
+
+        target = adj.eval(root)
 
         return target, indices
 
