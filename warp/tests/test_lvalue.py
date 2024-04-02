@@ -455,6 +455,39 @@ def test_swizzle(test, device):
             raise AssertionError(f"Unexpected result, got: {f} expected: {expected}")
 
 
+@wp.kernel
+def slice_kernel(a: wp.array2d(dtype=wp.vec3), b: wp.array2d(dtype=wp.vec3), c: wp.array2d(dtype=wp.vec3)):
+    tid = wp.tid()
+    c[tid][0] = a[tid][0] + b[tid][0]
+
+
+def test_slice(test, device):
+    a = wp.full((1, 1), value=1.0, dtype=wp.vec3, requires_grad=True)
+    b = wp.full((1, 1), value=1.0, dtype=wp.vec3, requires_grad=True)
+    c = wp.zeros((1, 1), dtype=wp.vec3, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            kernel=slice_kernel,
+            dim=1,
+            inputs=[a, b],
+            outputs=[c],
+        )
+
+    c.grad = wp.full((1, 1), value=1.0, dtype=wp.vec3)
+    tape.backward()
+
+    x = a.grad.list()[0]
+    y = b.grad.list()[0]
+
+    expected = wp.vec3(1.0)
+    if x != expected:
+        raise AssertionError(f"Unexpected result, got: {x} expected: {expected}")
+    if y != expected:
+        raise AssertionError(f"Unexpected result, got: {y} expected: {expected}")
+
+
 devices = get_test_devices()
 
 
@@ -486,6 +519,7 @@ add_function_test(TestLValue, "test_array_struct_assign", test_array_struct_assi
 add_function_test(TestLValue, "test_array_struct_struct_assign", test_array_struct_struct_assign, devices=devices)
 add_function_test(TestLValue, "test_complex", test_complex, devices=devices)
 add_function_test(TestLValue, "test_swizzle", test_swizzle, devices=devices)
+add_function_test(TestLValue, "test_slice", test_slice, devices=devices)
 
 
 if __name__ == "__main__":

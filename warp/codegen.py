@@ -17,6 +17,8 @@ import sys
 import textwrap
 import types
 from typing import Any, Callable, Mapping
+from types import ModuleType
+
 
 import warp.config
 from warp.types import *
@@ -496,11 +498,6 @@ class Block:
 
         # list of vars declared in this block
         self.vars = []
-
-
-def is_local_value(value) -> bool:
-    """Check whether a variable is defined inside a kernel."""
-    return isinstance(value, (warp.context.Function, Var))
 
 
 class Adjoint:
@@ -1292,7 +1289,14 @@ class Adjoint:
 
         # the named object is either a function, class name, or module
         # pass it back to the caller for processing
-        return obj
+        if isinstance(obj, warp.context.Function):
+            return obj
+        if isinstance(obj, type):
+            return obj
+        if isinstance(obj, ModuleType):
+            return obj
+
+        raise RuntimeError("Cannot reference a global variable from a kernel unless `wp.constant()` is being used")
 
     @staticmethod
     def resolve_type_attribute(var_type: type, attr: str):
@@ -1692,10 +1696,6 @@ class Adjoint:
         # eval all arguments
         for arg in node.args:
             var = adj.eval(arg)
-            if not is_local_value(var):
-                raise RuntimeError(
-                    "Cannot reference a global variable from a kernel unless `wp.constant()` is being used"
-                )
             args.append(var)
 
         # eval all keyword args
@@ -1733,6 +1733,57 @@ class Adjoint:
 
         return adj.eval(node.value)
 
+    # returns the object being indexed, and the list of indices
+    def eval_subscript(adj, node):
+        # We want to coalesce multi-dimentional array indexing into a single operation. This needs to deal with expressions like `a[i][j][x][y]` where `a` is a 2D array of matrices,
+        # and essentially rewrite it into `a[i, j][x][y]`. Since the AST observes the indexing right-to-left, and we don't want to evaluate the index expressions prematurely,
+        # this requires a first loop to check if this `node` only performs indexing on the array, and a second loop to evaluate and collect index variables.
+        root = node
+        count = 0
+        array = None
+        while isinstance(root, ast.Subscript):
+
+            if isinstance(root.slice, ast.Tuple):
+                # handles the x[i, j] case (Python 3.8.x upward)
+                count += len(root.slice.elts)
+            elif isinstance(root.slice, ast.Index) and isinstance(root.slice.value, ast.Tuple):
+                # handles the x[i, j] case (Python 3.7.x)
+                count += len(root.slice.value.elts)
+            else:
+                # simple expression, e.g.: x[i]
+                count += 1
+
+            if isinstance(root.value, ast.Name):
+                symbol = adj.emit_Name(root.value)
+                symbol_type = strip_reference(symbol.type)
+                if is_array(symbol_type):
+                    array = symbol
+                    break
+
+            root = root.value
+
+        # If not all indices index into the array, just evaluate the right-most indexing operation.
+        if not array or (count > array.type.ndim):
+            count = 1
+
+        indices = []
+        root = node
+        while len(indices) < count:
+            if isinstance(root.slice, ast.Tuple):
+                ij = [adj.eval(arg) for arg in root.slice.elts]
+            elif isinstance(root.slice, ast.Index) and isinstance(root.slice.value, ast.Tuple):
+                ij = [adj.eval(arg) for arg in root.slice.value.elts]
+            else:
+                ij = [adj.eval(root.slice)]
+
+            indices = ij + indices  # prepend
+
+            root = root.value
+
+        target = adj.eval(root)
+
+        return target, indices
+
     def emit_Subscript(adj, node):
         if hasattr(node.value, "attr") and node.value.attr == "adjoint":
             # handle adjoint of a variable, i.e. wp.adjoint[var]
@@ -1742,27 +1793,7 @@ class Adjoint:
             var = Var(f"adj_{var_name}", type=var.type, constant=None, prefix=False)
             return var
 
-        target = adj.eval(node.value)
-        if not is_local_value(target):
-            raise RuntimeError("Cannot reference a global variable from a kernel unless `wp.constant()` is being used")
-
-        indices = []
-
-        if isinstance(node.slice, ast.Tuple):
-            # handles the x[i,j] case (Python 3.8.x upward)
-            for arg in node.slice.elts:
-                var = adj.eval(arg)
-                indices.append(var)
-
-        elif isinstance(node.slice, ast.Index) and isinstance(node.slice.value, ast.Tuple):
-            # handles the x[i,j] case (Python 3.7.x)
-            for arg in node.slice.value.elts:
-                var = adj.eval(arg)
-                indices.append(var)
-        else:
-            # simple expression, e.g.: x[i]
-            var = adj.eval(node.slice)
-            indices.append(var)
+        target, indices = adj.eval_subscript(node)
 
         target_type = strip_reference(target.type)
         if is_array(target_type):
@@ -1824,44 +1855,22 @@ class Adjoint:
 
         # handles the case where we are assigning to an array index (e.g.: arr[i] = 2.0)
         elif isinstance(lhs, ast.Subscript):
+            rhs = adj.eval(node.value)
+
             if hasattr(lhs.value, "attr") and lhs.value.attr == "adjoint":
                 # handle adjoint of a variable, i.e. wp.adjoint[var]
                 lhs.slice.is_adjoint = True
                 src_var = adj.eval(lhs.slice)
                 var = Var(f"adj_{src_var.label}", type=src_var.type, constant=None, prefix=False)
-                value = adj.eval(node.value)
-                adj.add_forward(f"{var.emit()} = {value.emit()};")
+                adj.add_forward(f"{var.emit()} = {rhs.emit()};")
                 return
 
-            target = adj.eval(lhs.value)
-            value = adj.eval(node.value)
-            if not is_local_value(value):
-                raise RuntimeError(
-                    "Cannot reference a global variable from a kernel unless `wp.constant()` is being used"
-                )
-
-            slice = lhs.slice
-            indices = []
-
-            if isinstance(slice, ast.Tuple):
-                # handles the x[i, j] case (Python 3.8.x upward)
-                for arg in slice.elts:
-                    var = adj.eval(arg)
-                    indices.append(var)
-            elif isinstance(slice, ast.Index) and isinstance(slice.value, ast.Tuple):
-                # handles the x[i, j] case (Python 3.7.x)
-                for arg in slice.value.elts:
-                    var = adj.eval(arg)
-                    indices.append(var)
-            else:
-                # simple expression, e.g.: x[i]
-                var = adj.eval(slice)
-                indices.append(var)
+            target, indices = adj.eval_subscript(lhs)
 
             target_type = strip_reference(target.type)
 
             if is_array(target_type):
-                adj.add_builtin_call("array_store", [target, *indices, value])
+                adj.add_builtin_call("array_store", [target, *indices, rhs])
 
             elif type_is_vector(target_type) or type_is_matrix(target_type):
                 if is_reference(target.type):
@@ -1869,7 +1878,7 @@ class Adjoint:
                 else:
                     attr = adj.add_builtin_call("index", [target, *indices])
 
-                adj.add_builtin_call("store", [attr, value])
+                adj.add_builtin_call("store", [attr, rhs])
 
                 if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
