@@ -11,8 +11,8 @@
 
 import sys
 
-if sys.version_info[0] < 3:
-    raise Exception("Warp requires Python 3.x minimum")
+if sys.version_info < (3, 7):
+    raise Exception("Warp requires Python 3.7 minimum")
 
 import argparse
 import os

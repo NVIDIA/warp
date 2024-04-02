@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "warp-lang"
-requires-python = ">=3.7"
+requires-python = ">=3.7"  # 3.9 recommended
 authors = [{ name = "NVIDIA", email = "mmacklin@nvidia.com" }]
 description = "A Python framework for high-performance simulation and graphics programming"
 license = { text = "NVIDIA Software License" }
 classifiers = [
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.7",  # Deprecated
+    "Programming Language :: Python :: 3.8",  # Deprecated
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",

@@ -2250,10 +2250,15 @@ class Graph:
 
 class Runtime:
     def __init__(self):
+        if sys.version_info < (3, 7):
+            raise RuntimeError("Warp requires Python 3.7 as a minimum")
+        if sys.version_info < (3, 9):
+            warp.utils.warn(f"Python 3.9 or newer is recommended for running Warp, detected {sys.version_info}")
+
         bin_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
 
         if os.name == "nt":
-            if sys.version_info[0] > 3 or sys.version_info[0] == 3 and sys.version_info[1] >= 8:
+            if sys.version_info >= (3, 8):
                 # Python >= 3.8 this method to add dll search paths
                 os.add_dll_directory(bin_path)
 
@@ -3040,7 +3045,7 @@ class Runtime:
 
     def load_dll(self, dll_path):
         try:
-            if sys.version_info[0] > 3 or sys.version_info[0] == 3 and sys.version_info[1] >= 8:
+            if sys.version_info >= (3, 8):
                 dll = ctypes.CDLL(dll_path, winmode=0)
             else:
                 dll = ctypes.CDLL(dll_path)
