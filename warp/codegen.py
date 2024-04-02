@@ -732,11 +732,11 @@ class Adjoint:
     def dedent(adj):
         adj.indentation = adj.indentation[:-4]
 
-    def begin_block(adj):
+    def begin_block(adj, name="block"):
         b = Block()
 
         # give block a unique id
-        b.label = adj.label_count
+        b.label = name + "_" + str(adj.label_count)
         adj.label_count += 1
 
         adj.blocks.append(b)
@@ -1059,13 +1059,13 @@ class Adjoint:
 
     # define a for-loop
     def begin_for(adj, iter):
-        cond_block = adj.begin_block()
+        cond_block = adj.begin_block("for")
         adj.loop_blocks.append(cond_block)
-        adj.add_forward(f"for_start_{cond_block.label}:;")
+        adj.add_forward(f"start_{cond_block.label}:;")
         adj.indent()
 
         # evaluate cond
-        adj.add_forward(f"if (iter_cmp({iter.emit()}) == 0) goto for_end_{cond_block.label};")
+        adj.add_forward(f"if (iter_cmp({iter.emit()}) == 0) goto end_{cond_block.label};")
 
         # evaluate iter
         val = adj.add_builtin_call("iter_next", [iter])
@@ -1088,10 +1088,10 @@ class Adjoint:
         for i in body_block.body_forward:
             adj.blocks[-1].body_forward.append(i)
 
-        adj.add_forward(f"goto for_start_{cond_block.label};", skip_replay=True)
+        adj.add_forward(f"goto start_{cond_block.label};", skip_replay=True)
 
         adj.dedent()
-        adj.add_forward(f"for_end_{cond_block.label}:;", skip_replay=True)
+        adj.add_forward(f"end_{cond_block.label}:;", skip_replay=True)
 
         ####################
         # reverse pass
@@ -1116,8 +1116,8 @@ class Adjoint:
         for i in reversed(body_block.body_reverse):
             reverse.append(i)
 
-        reverse.append(adj.indentation + f"\tgoto for_start_{cond_block.label};")
-        reverse.append(adj.indentation + f"for_end_{cond_block.label}:;")
+        reverse.append(adj.indentation + f"\tgoto start_{cond_block.label};")
+        reverse.append(adj.indentation + f"end_{cond_block.label}:;")
 
         adj.blocks[-1].body_reverse.extend(reversed(reverse))
 
@@ -1125,13 +1125,13 @@ class Adjoint:
     def begin_while(adj, cond):
         # evaluate condition in its own block
         # so we can control replay
-        cond_block = adj.begin_block()
+        cond_block = adj.begin_block("while")
         adj.loop_blocks.append(cond_block)
-        cond_block.body_forward.append(f"while_start_{cond_block.label}:;")
+        cond_block.body_forward.append(f"start_{cond_block.label}:;")
 
         c = adj.eval(cond)
 
-        cond_block.body_forward.append(f"if (({c.emit()}) == false) goto while_end_{cond_block.label};")
+        cond_block.body_forward.append(f"if (({c.emit()}) == false) goto end_{cond_block.label};")
 
         # being block around loop
         adj.begin_block()
@@ -1152,8 +1152,8 @@ class Adjoint:
         for i in body_block.body_forward:
             adj.blocks[-1].body_forward.append(i)
 
-        adj.blocks[-1].body_forward.append(f"goto while_start_{cond_block.label};")
-        adj.blocks[-1].body_forward.append(f"while_end_{cond_block.label}:;")
+        adj.blocks[-1].body_forward.append(f"goto start_{cond_block.label};")
+        adj.blocks[-1].body_forward.append(f"end_{cond_block.label}:;")
 
         ####################
         # reverse pass
@@ -1175,8 +1175,8 @@ class Adjoint:
         for i in reversed(body_block.body_reverse):
             reverse.append(i)
 
-        reverse.append(f"goto while_start_{cond_block.label};")
-        reverse.append(f"while_end_{cond_block.label}:;")
+        reverse.append(f"goto start_{cond_block.label};")
+        reverse.append(f"end_{cond_block.label}:;")
 
         # output
         adj.blocks[-1].body_reverse.extend(reversed(reverse))
@@ -1627,12 +1627,12 @@ class Adjoint:
     def emit_Break(adj, node):
         adj.materialize_redefinitions(adj.loop_symbols[-1])
 
-        adj.add_forward(f"goto for_end_{adj.loop_blocks[-1].label};")
+        adj.add_forward(f"goto end_{adj.loop_blocks[-1].label};")
 
     def emit_Continue(adj, node):
         adj.materialize_redefinitions(adj.loop_symbols[-1])
 
-        adj.add_forward(f"goto for_start_{adj.loop_blocks[-1].label};")
+        adj.add_forward(f"goto start_{adj.loop_blocks[-1].label};")
 
     def emit_Expr(adj, node):
         return adj.eval(node.value)
