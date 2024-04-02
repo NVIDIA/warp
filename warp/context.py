@@ -2282,561 +2282,574 @@ class Runtime:
             self.llvm = None
 
         # setup c-types for warp.dll
-        self.core.get_error_string.argtypes = []
-        self.core.get_error_string.restype = ctypes.c_char_p
-        self.core.set_error_output_enabled.argtypes = [ctypes.c_int]
-        self.core.set_error_output_enabled.restype = None
-        self.core.is_error_output_enabled.argtypes = []
-        self.core.is_error_output_enabled.restype = ctypes.c_int
+        try:
+            self.core.get_error_string.argtypes = []
+            self.core.get_error_string.restype = ctypes.c_char_p
+            self.core.set_error_output_enabled.argtypes = [ctypes.c_int]
+            self.core.set_error_output_enabled.restype = None
+            self.core.is_error_output_enabled.argtypes = []
+            self.core.is_error_output_enabled.restype = ctypes.c_int
 
-        self.core.alloc_host.argtypes = [ctypes.c_size_t]
-        self.core.alloc_host.restype = ctypes.c_void_p
-        self.core.alloc_pinned.argtypes = [ctypes.c_size_t]
-        self.core.alloc_pinned.restype = ctypes.c_void_p
-        self.core.alloc_device.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
-        self.core.alloc_device.restype = ctypes.c_void_p
-        self.core.alloc_device_default.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
-        self.core.alloc_device_default.restype = ctypes.c_void_p
-        self.core.alloc_device_async.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
-        self.core.alloc_device_async.restype = ctypes.c_void_p
+            self.core.alloc_host.argtypes = [ctypes.c_size_t]
+            self.core.alloc_host.restype = ctypes.c_void_p
+            self.core.alloc_pinned.argtypes = [ctypes.c_size_t]
+            self.core.alloc_pinned.restype = ctypes.c_void_p
+            self.core.alloc_device.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+            self.core.alloc_device.restype = ctypes.c_void_p
+            self.core.alloc_device_default.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+            self.core.alloc_device_default.restype = ctypes.c_void_p
+            self.core.alloc_device_async.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+            self.core.alloc_device_async.restype = ctypes.c_void_p
 
-        self.core.float_to_half_bits.argtypes = [ctypes.c_float]
-        self.core.float_to_half_bits.restype = ctypes.c_uint16
-        self.core.half_bits_to_float.argtypes = [ctypes.c_uint16]
-        self.core.half_bits_to_float.restype = ctypes.c_float
+            self.core.float_to_half_bits.argtypes = [ctypes.c_float]
+            self.core.float_to_half_bits.restype = ctypes.c_uint16
+            self.core.half_bits_to_float.argtypes = [ctypes.c_uint16]
+            self.core.half_bits_to_float.restype = ctypes.c_float
 
-        self.core.free_host.argtypes = [ctypes.c_void_p]
-        self.core.free_host.restype = None
-        self.core.free_pinned.argtypes = [ctypes.c_void_p]
-        self.core.free_pinned.restype = None
-        self.core.free_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-        self.core.free_device.restype = None
-        self.core.free_device_default.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-        self.core.free_device_default.restype = None
-        self.core.free_device_async.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-        self.core.free_device_async.restype = None
+            self.core.free_host.argtypes = [ctypes.c_void_p]
+            self.core.free_host.restype = None
+            self.core.free_pinned.argtypes = [ctypes.c_void_p]
+            self.core.free_pinned.restype = None
+            self.core.free_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.free_device.restype = None
+            self.core.free_device_default.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.free_device_default.restype = None
+            self.core.free_device_async.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.free_device_async.restype = None
 
-        self.core.memset_host.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t]
-        self.core.memset_host.restype = None
-        self.core.memset_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t]
-        self.core.memset_device.restype = None
+            self.core.memset_host.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t]
+            self.core.memset_host.restype = None
+            self.core.memset_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t]
+            self.core.memset_device.restype = None
 
-        self.core.memtile_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t]
-        self.core.memtile_host.restype = None
-        self.core.memtile_device.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_size_t,
-            ctypes.c_size_t,
-        ]
-        self.core.memtile_device.restype = None
+            self.core.memtile_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t]
+            self.core.memtile_host.restype = None
+            self.core.memtile_device.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_size_t,
+                ctypes.c_size_t,
+            ]
+            self.core.memtile_device.restype = None
 
-        self.core.memcpy_h2h.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
-        self.core.memcpy_h2h.restype = ctypes.c_bool
-        self.core.memcpy_h2d.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_size_t,
-            ctypes.c_void_p,
-        ]
-        self.core.memcpy_h2d.restype = ctypes.c_bool
-        self.core.memcpy_d2h.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_size_t,
-            ctypes.c_void_p,
-        ]
-        self.core.memcpy_d2h.restype = ctypes.c_bool
-        self.core.memcpy_d2d.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_size_t,
-            ctypes.c_void_p,
-        ]
-        self.core.memcpy_d2d.restype = ctypes.c_bool
-        self.core.memcpy_p2p.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_size_t,
-            ctypes.c_void_p,
-        ]
-        self.core.memcpy_p2p.restype = ctypes.c_bool
+            self.core.memcpy_h2h.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
+            self.core.memcpy_h2h.restype = ctypes.c_bool
+            self.core.memcpy_h2d.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_size_t,
+                ctypes.c_void_p,
+            ]
+            self.core.memcpy_h2d.restype = ctypes.c_bool
+            self.core.memcpy_d2h.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_size_t,
+                ctypes.c_void_p,
+            ]
+            self.core.memcpy_d2h.restype = ctypes.c_bool
+            self.core.memcpy_d2d.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_size_t,
+                ctypes.c_void_p,
+            ]
+            self.core.memcpy_d2d.restype = ctypes.c_bool
+            self.core.memcpy_p2p.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_size_t,
+                ctypes.c_void_p,
+            ]
+            self.core.memcpy_p2p.restype = ctypes.c_bool
 
-        self.core.array_copy_host.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-        ]
-        self.core.array_copy_host.restype = ctypes.c_bool
-        self.core.array_copy_device.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-        ]
-        self.core.array_copy_device.restype = ctypes.c_bool
+            self.core.array_copy_host.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
+            self.core.array_copy_host.restype = ctypes.c_bool
+            self.core.array_copy_device.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
+            self.core.array_copy_device.restype = ctypes.c_bool
 
-        self.core.array_fill_host.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_int]
-        self.core.array_fill_host.restype = None
-        self.core.array_fill_device.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_int,
-            ctypes.c_void_p,
-            ctypes.c_int,
-        ]
-        self.core.array_fill_device.restype = None
+            self.core.array_fill_host.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_int]
+            self.core.array_fill_host.restype = None
+            self.core.array_fill_device.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_void_p,
+                ctypes.c_int,
+            ]
+            self.core.array_fill_device.restype = None
 
-        self.core.array_sum_double_host.argtypes = [
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-        ]
-        self.core.array_sum_float_host.argtypes = [
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-        ]
-        self.core.array_sum_double_device.argtypes = [
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-        ]
-        self.core.array_sum_float_device.argtypes = [
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-        ]
+            self.core.array_sum_double_host.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
+            self.core.array_sum_float_host.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
+            self.core.array_sum_double_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
+            self.core.array_sum_float_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
 
-        self.core.array_inner_double_host.argtypes = [
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-        ]
-        self.core.array_inner_float_host.argtypes = [
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-        ]
-        self.core.array_inner_double_device.argtypes = [
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-        ]
-        self.core.array_inner_float_device.argtypes = [
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-        ]
+            self.core.array_inner_double_host.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
+            self.core.array_inner_float_host.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
+            self.core.array_inner_double_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
+            self.core.array_inner_float_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
 
-        self.core.array_scan_int_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
-        self.core.array_scan_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
-        self.core.array_scan_int_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
-        self.core.array_scan_float_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
+            self.core.array_scan_int_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
+            self.core.array_scan_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
+            self.core.array_scan_int_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
+            self.core.array_scan_float_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
 
-        self.core.radix_sort_pairs_int_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
-        self.core.radix_sort_pairs_int_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+            self.core.radix_sort_pairs_int_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+            self.core.radix_sort_pairs_int_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
 
-        self.core.runlength_encode_int_host.argtypes = [
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_int,
-        ]
-        self.core.runlength_encode_int_device.argtypes = [
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_int,
-        ]
+            self.core.runlength_encode_int_host.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+            ]
+            self.core.runlength_encode_int_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+            ]
 
-        self.core.bvh_create_host.restype = ctypes.c_uint64
-        self.core.bvh_create_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
+            self.core.bvh_create_host.restype = ctypes.c_uint64
+            self.core.bvh_create_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
 
-        self.core.bvh_create_device.restype = ctypes.c_uint64
-        self.core.bvh_create_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
+            self.core.bvh_create_device.restype = ctypes.c_uint64
+            self.core.bvh_create_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
 
-        self.core.bvh_destroy_host.argtypes = [ctypes.c_uint64]
-        self.core.bvh_destroy_device.argtypes = [ctypes.c_uint64]
+            self.core.bvh_destroy_host.argtypes = [ctypes.c_uint64]
+            self.core.bvh_destroy_device.argtypes = [ctypes.c_uint64]
 
-        self.core.bvh_refit_host.argtypes = [ctypes.c_uint64]
-        self.core.bvh_refit_device.argtypes = [ctypes.c_uint64]
+            self.core.bvh_refit_host.argtypes = [ctypes.c_uint64]
+            self.core.bvh_refit_device.argtypes = [ctypes.c_uint64]
 
-        self.core.mesh_create_host.restype = ctypes.c_uint64
-        self.core.mesh_create_host.argtypes = [
-            warp.types.array_t,
-            warp.types.array_t,
-            warp.types.array_t,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-        ]
+            self.core.mesh_create_host.restype = ctypes.c_uint64
+            self.core.mesh_create_host.argtypes = [
+                warp.types.array_t,
+                warp.types.array_t,
+                warp.types.array_t,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
 
-        self.core.mesh_create_device.restype = ctypes.c_uint64
-        self.core.mesh_create_device.argtypes = [
-            ctypes.c_void_p,
-            warp.types.array_t,
-            warp.types.array_t,
-            warp.types.array_t,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-        ]
+            self.core.mesh_create_device.restype = ctypes.c_uint64
+            self.core.mesh_create_device.argtypes = [
+                ctypes.c_void_p,
+                warp.types.array_t,
+                warp.types.array_t,
+                warp.types.array_t,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
 
-        self.core.mesh_destroy_host.argtypes = [ctypes.c_uint64]
-        self.core.mesh_destroy_device.argtypes = [ctypes.c_uint64]
+            self.core.mesh_destroy_host.argtypes = [ctypes.c_uint64]
+            self.core.mesh_destroy_device.argtypes = [ctypes.c_uint64]
 
-        self.core.mesh_refit_host.argtypes = [ctypes.c_uint64]
-        self.core.mesh_refit_device.argtypes = [ctypes.c_uint64]
+            self.core.mesh_refit_host.argtypes = [ctypes.c_uint64]
+            self.core.mesh_refit_device.argtypes = [ctypes.c_uint64]
 
-        self.core.hash_grid_create_host.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        self.core.hash_grid_create_host.restype = ctypes.c_uint64
-        self.core.hash_grid_destroy_host.argtypes = [ctypes.c_uint64]
-        self.core.hash_grid_update_host.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
-        self.core.hash_grid_reserve_host.argtypes = [ctypes.c_uint64, ctypes.c_int]
+            self.core.hash_grid_create_host.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+            self.core.hash_grid_create_host.restype = ctypes.c_uint64
+            self.core.hash_grid_destroy_host.argtypes = [ctypes.c_uint64]
+            self.core.hash_grid_update_host.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
+            self.core.hash_grid_reserve_host.argtypes = [ctypes.c_uint64, ctypes.c_int]
 
-        self.core.hash_grid_create_device.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        self.core.hash_grid_create_device.restype = ctypes.c_uint64
-        self.core.hash_grid_destroy_device.argtypes = [ctypes.c_uint64]
-        self.core.hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
-        self.core.hash_grid_reserve_device.argtypes = [ctypes.c_uint64, ctypes.c_int]
+            self.core.hash_grid_create_device.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+            self.core.hash_grid_create_device.restype = ctypes.c_uint64
+            self.core.hash_grid_destroy_device.argtypes = [ctypes.c_uint64]
+            self.core.hash_grid_update_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_float,
+                ctypes.c_void_p,
+                ctypes.c_int,
+            ]
+            self.core.hash_grid_reserve_device.argtypes = [ctypes.c_uint64, ctypes.c_int]
 
-        self.core.cutlass_gemm.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_char_p,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_bool,
-            ctypes.c_bool,
-            ctypes.c_bool,
-            ctypes.c_int,
-        ]
-        self.core.cutlass_gemm.restype = ctypes.c_bool
+            self.core.cutlass_gemm.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_char_p,
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_bool,
+                ctypes.c_bool,
+                ctypes.c_bool,
+                ctypes.c_int,
+            ]
+            self.core.cutlass_gemm.restype = ctypes.c_bool
 
-        self.core.volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
-        self.core.volume_create_host.restype = ctypes.c_uint64
-        self.core.volume_get_buffer_info_host.argtypes = [
-            ctypes.c_uint64,
-            ctypes.POINTER(ctypes.c_void_p),
-            ctypes.POINTER(ctypes.c_uint64),
-        ]
-        self.core.volume_get_tiles_host.argtypes = [
-            ctypes.c_uint64,
-            ctypes.POINTER(ctypes.c_void_p),
-            ctypes.POINTER(ctypes.c_uint64),
-        ]
-        self.core.volume_destroy_host.argtypes = [ctypes.c_uint64]
+            self.core.volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.volume_create_host.restype = ctypes.c_uint64
+            self.core.volume_get_buffer_info_host.argtypes = [
+                ctypes.c_uint64,
+                ctypes.POINTER(ctypes.c_void_p),
+                ctypes.POINTER(ctypes.c_uint64),
+            ]
+            self.core.volume_get_tiles_host.argtypes = [
+                ctypes.c_uint64,
+                ctypes.POINTER(ctypes.c_void_p),
+                ctypes.POINTER(ctypes.c_uint64),
+            ]
+            self.core.volume_destroy_host.argtypes = [ctypes.c_uint64]
 
-        self.core.volume_create_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64]
-        self.core.volume_create_device.restype = ctypes.c_uint64
-        self.core.volume_f_from_tiles_device.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_int,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_bool,
-        ]
-        self.core.volume_f_from_tiles_device.restype = ctypes.c_uint64
-        self.core.volume_v_from_tiles_device.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_int,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_bool,
-        ]
-        self.core.volume_v_from_tiles_device.restype = ctypes.c_uint64
-        self.core.volume_i_from_tiles_device.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_int,
-            ctypes.c_float,
-            ctypes.c_int,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_bool,
-        ]
-        self.core.volume_i_from_tiles_device.restype = ctypes.c_uint64
-        self.core.volume_get_buffer_info_device.argtypes = [
-            ctypes.c_uint64,
-            ctypes.POINTER(ctypes.c_void_p),
-            ctypes.POINTER(ctypes.c_uint64),
-        ]
-        self.core.volume_get_tiles_device.argtypes = [
-            ctypes.c_uint64,
-            ctypes.POINTER(ctypes.c_void_p),
-            ctypes.POINTER(ctypes.c_uint64),
-        ]
-        self.core.volume_destroy_device.argtypes = [ctypes.c_uint64]
+            self.core.volume_create_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64]
+            self.core.volume_create_device.restype = ctypes.c_uint64
+            self.core.volume_f_from_tiles_device.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_bool,
+            ]
+            self.core.volume_f_from_tiles_device.restype = ctypes.c_uint64
+            self.core.volume_v_from_tiles_device.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_bool,
+            ]
+            self.core.volume_v_from_tiles_device.restype = ctypes.c_uint64
+            self.core.volume_i_from_tiles_device.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_float,
+                ctypes.c_int,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_bool,
+            ]
+            self.core.volume_i_from_tiles_device.restype = ctypes.c_uint64
+            self.core.volume_get_buffer_info_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.POINTER(ctypes.c_void_p),
+                ctypes.POINTER(ctypes.c_uint64),
+            ]
+            self.core.volume_get_tiles_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.POINTER(ctypes.c_void_p),
+                ctypes.POINTER(ctypes.c_uint64),
+            ]
+            self.core.volume_destroy_device.argtypes = [ctypes.c_uint64]
 
-        self.core.volume_get_voxel_size.argtypes = [
-            ctypes.c_uint64,
-            ctypes.POINTER(ctypes.c_float),
-            ctypes.POINTER(ctypes.c_float),
-            ctypes.POINTER(ctypes.c_float),
-        ]
+            self.core.volume_get_voxel_size.argtypes = [
+                ctypes.c_uint64,
+                ctypes.POINTER(ctypes.c_float),
+                ctypes.POINTER(ctypes.c_float),
+                ctypes.POINTER(ctypes.c_float),
+            ]
 
-        bsr_matrix_from_triplets_argtypes = [
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-        ]
-        self.core.bsr_matrix_from_triplets_float_host.argtypes = bsr_matrix_from_triplets_argtypes
-        self.core.bsr_matrix_from_triplets_double_host.argtypes = bsr_matrix_from_triplets_argtypes
-        self.core.bsr_matrix_from_triplets_float_device.argtypes = bsr_matrix_from_triplets_argtypes
-        self.core.bsr_matrix_from_triplets_double_device.argtypes = bsr_matrix_from_triplets_argtypes
+            bsr_matrix_from_triplets_argtypes = [
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+            ]
+            self.core.bsr_matrix_from_triplets_float_host.argtypes = bsr_matrix_from_triplets_argtypes
+            self.core.bsr_matrix_from_triplets_double_host.argtypes = bsr_matrix_from_triplets_argtypes
+            self.core.bsr_matrix_from_triplets_float_device.argtypes = bsr_matrix_from_triplets_argtypes
+            self.core.bsr_matrix_from_triplets_double_device.argtypes = bsr_matrix_from_triplets_argtypes
 
-        self.core.bsr_matrix_from_triplets_float_host.restype = ctypes.c_int
-        self.core.bsr_matrix_from_triplets_double_host.restype = ctypes.c_int
-        self.core.bsr_matrix_from_triplets_float_device.restype = ctypes.c_int
-        self.core.bsr_matrix_from_triplets_double_device.restype = ctypes.c_int
+            self.core.bsr_matrix_from_triplets_float_host.restype = ctypes.c_int
+            self.core.bsr_matrix_from_triplets_double_host.restype = ctypes.c_int
+            self.core.bsr_matrix_from_triplets_float_device.restype = ctypes.c_int
+            self.core.bsr_matrix_from_triplets_double_device.restype = ctypes.c_int
 
-        bsr_transpose_argtypes = [
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-            ctypes.c_uint64,
-        ]
-        self.core.bsr_transpose_float_host.argtypes = bsr_transpose_argtypes
-        self.core.bsr_transpose_double_host.argtypes = bsr_transpose_argtypes
-        self.core.bsr_transpose_float_device.argtypes = bsr_transpose_argtypes
-        self.core.bsr_transpose_double_device.argtypes = bsr_transpose_argtypes
+            bsr_transpose_argtypes = [
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+            ]
+            self.core.bsr_transpose_float_host.argtypes = bsr_transpose_argtypes
+            self.core.bsr_transpose_double_host.argtypes = bsr_transpose_argtypes
+            self.core.bsr_transpose_float_device.argtypes = bsr_transpose_argtypes
+            self.core.bsr_transpose_double_device.argtypes = bsr_transpose_argtypes
 
-        self.core.is_cuda_enabled.argtypes = None
-        self.core.is_cuda_enabled.restype = ctypes.c_int
-        self.core.is_cuda_compatibility_enabled.argtypes = None
-        self.core.is_cuda_compatibility_enabled.restype = ctypes.c_int
-        self.core.is_cutlass_enabled.argtypes = None
-        self.core.is_cutlass_enabled.restype = ctypes.c_int
+            self.core.is_cuda_enabled.argtypes = None
+            self.core.is_cuda_enabled.restype = ctypes.c_int
+            self.core.is_cuda_compatibility_enabled.argtypes = None
+            self.core.is_cuda_compatibility_enabled.restype = ctypes.c_int
+            self.core.is_cutlass_enabled.argtypes = None
+            self.core.is_cutlass_enabled.restype = ctypes.c_int
 
-        self.core.cuda_driver_version.argtypes = None
-        self.core.cuda_driver_version.restype = ctypes.c_int
-        self.core.cuda_toolkit_version.argtypes = None
-        self.core.cuda_toolkit_version.restype = ctypes.c_int
-        self.core.cuda_driver_is_initialized.argtypes = None
-        self.core.cuda_driver_is_initialized.restype = ctypes.c_bool
+            self.core.cuda_driver_version.argtypes = None
+            self.core.cuda_driver_version.restype = ctypes.c_int
+            self.core.cuda_toolkit_version.argtypes = None
+            self.core.cuda_toolkit_version.restype = ctypes.c_int
+            self.core.cuda_driver_is_initialized.argtypes = None
+            self.core.cuda_driver_is_initialized.restype = ctypes.c_bool
 
-        self.core.nvrtc_supported_arch_count.argtypes = None
-        self.core.nvrtc_supported_arch_count.restype = ctypes.c_int
-        self.core.nvrtc_supported_archs.argtypes = [ctypes.POINTER(ctypes.c_int)]
-        self.core.nvrtc_supported_archs.restype = None
+            self.core.nvrtc_supported_arch_count.argtypes = None
+            self.core.nvrtc_supported_arch_count.restype = ctypes.c_int
+            self.core.nvrtc_supported_archs.argtypes = [ctypes.POINTER(ctypes.c_int)]
+            self.core.nvrtc_supported_archs.restype = None
 
-        self.core.cuda_device_get_count.argtypes = None
-        self.core.cuda_device_get_count.restype = ctypes.c_int
-        self.core.cuda_device_get_primary_context.argtypes = [ctypes.c_int]
-        self.core.cuda_device_get_primary_context.restype = ctypes.c_void_p
-        self.core.cuda_device_get_name.argtypes = [ctypes.c_int]
-        self.core.cuda_device_get_name.restype = ctypes.c_char_p
-        self.core.cuda_device_get_arch.argtypes = [ctypes.c_int]
-        self.core.cuda_device_get_arch.restype = ctypes.c_int
-        self.core.cuda_device_is_uva.argtypes = [ctypes.c_int]
-        self.core.cuda_device_is_uva.restype = ctypes.c_int
-        self.core.cuda_device_is_mempool_supported.argtypes = [ctypes.c_int]
-        self.core.cuda_device_is_mempool_supported.restype = ctypes.c_int
-        self.core.cuda_device_set_mempool_release_threshold.argtypes = [ctypes.c_int, ctypes.c_uint64]
-        self.core.cuda_device_set_mempool_release_threshold.restype = ctypes.c_int
-        self.core.cuda_device_get_mempool_release_threshold.argtypes = [ctypes.c_int]
-        self.core.cuda_device_get_mempool_release_threshold.restype = ctypes.c_uint64
-        self.core.cuda_device_get_memory_info.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
-        self.core.cuda_device_get_memory_info.restype = None
-        self.core.cuda_device_get_uuid.argtypes = [ctypes.c_int, ctypes.c_char * 16]
-        self.core.cuda_device_get_uuid.restype = None
-        self.core.cuda_device_get_pci_domain_id.argtypes = [ctypes.c_int]
-        self.core.cuda_device_get_pci_domain_id.restype = ctypes.c_int
-        self.core.cuda_device_get_pci_bus_id.argtypes = [ctypes.c_int]
-        self.core.cuda_device_get_pci_bus_id.restype = ctypes.c_int
-        self.core.cuda_device_get_pci_device_id.argtypes = [ctypes.c_int]
-        self.core.cuda_device_get_pci_device_id.restype = ctypes.c_int
+            self.core.cuda_device_get_count.argtypes = None
+            self.core.cuda_device_get_count.restype = ctypes.c_int
+            self.core.cuda_device_get_primary_context.argtypes = [ctypes.c_int]
+            self.core.cuda_device_get_primary_context.restype = ctypes.c_void_p
+            self.core.cuda_device_get_name.argtypes = [ctypes.c_int]
+            self.core.cuda_device_get_name.restype = ctypes.c_char_p
+            self.core.cuda_device_get_arch.argtypes = [ctypes.c_int]
+            self.core.cuda_device_get_arch.restype = ctypes.c_int
+            self.core.cuda_device_is_uva.argtypes = [ctypes.c_int]
+            self.core.cuda_device_is_uva.restype = ctypes.c_int
+            self.core.cuda_device_is_mempool_supported.argtypes = [ctypes.c_int]
+            self.core.cuda_device_is_mempool_supported.restype = ctypes.c_int
+            self.core.cuda_device_set_mempool_release_threshold.argtypes = [ctypes.c_int, ctypes.c_uint64]
+            self.core.cuda_device_set_mempool_release_threshold.restype = ctypes.c_int
+            self.core.cuda_device_get_mempool_release_threshold.argtypes = [ctypes.c_int]
+            self.core.cuda_device_get_mempool_release_threshold.restype = ctypes.c_uint64
+            self.core.cuda_device_get_memory_info.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
+            self.core.cuda_device_get_memory_info.restype = None
+            self.core.cuda_device_get_uuid.argtypes = [ctypes.c_int, ctypes.c_char * 16]
+            self.core.cuda_device_get_uuid.restype = None
+            self.core.cuda_device_get_pci_domain_id.argtypes = [ctypes.c_int]
+            self.core.cuda_device_get_pci_domain_id.restype = ctypes.c_int
+            self.core.cuda_device_get_pci_bus_id.argtypes = [ctypes.c_int]
+            self.core.cuda_device_get_pci_bus_id.restype = ctypes.c_int
+            self.core.cuda_device_get_pci_device_id.argtypes = [ctypes.c_int]
+            self.core.cuda_device_get_pci_device_id.restype = ctypes.c_int
 
-        self.core.cuda_context_get_current.argtypes = None
-        self.core.cuda_context_get_current.restype = ctypes.c_void_p
-        self.core.cuda_context_set_current.argtypes = [ctypes.c_void_p]
-        self.core.cuda_context_set_current.restype = None
-        self.core.cuda_context_push_current.argtypes = [ctypes.c_void_p]
-        self.core.cuda_context_push_current.restype = None
-        self.core.cuda_context_pop_current.argtypes = None
-        self.core.cuda_context_pop_current.restype = None
-        self.core.cuda_context_create.argtypes = [ctypes.c_int]
-        self.core.cuda_context_create.restype = ctypes.c_void_p
-        self.core.cuda_context_destroy.argtypes = [ctypes.c_void_p]
-        self.core.cuda_context_destroy.restype = None
-        self.core.cuda_context_synchronize.argtypes = [ctypes.c_void_p]
-        self.core.cuda_context_synchronize.restype = None
-        self.core.cuda_context_check.argtypes = [ctypes.c_void_p]
-        self.core.cuda_context_check.restype = ctypes.c_uint64
+            self.core.cuda_context_get_current.argtypes = None
+            self.core.cuda_context_get_current.restype = ctypes.c_void_p
+            self.core.cuda_context_set_current.argtypes = [ctypes.c_void_p]
+            self.core.cuda_context_set_current.restype = None
+            self.core.cuda_context_push_current.argtypes = [ctypes.c_void_p]
+            self.core.cuda_context_push_current.restype = None
+            self.core.cuda_context_pop_current.argtypes = None
+            self.core.cuda_context_pop_current.restype = None
+            self.core.cuda_context_create.argtypes = [ctypes.c_int]
+            self.core.cuda_context_create.restype = ctypes.c_void_p
+            self.core.cuda_context_destroy.argtypes = [ctypes.c_void_p]
+            self.core.cuda_context_destroy.restype = None
+            self.core.cuda_context_synchronize.argtypes = [ctypes.c_void_p]
+            self.core.cuda_context_synchronize.restype = None
+            self.core.cuda_context_check.argtypes = [ctypes.c_void_p]
+            self.core.cuda_context_check.restype = ctypes.c_uint64
 
-        self.core.cuda_context_get_device_ordinal.argtypes = [ctypes.c_void_p]
-        self.core.cuda_context_get_device_ordinal.restype = ctypes.c_int
-        self.core.cuda_context_is_primary.argtypes = [ctypes.c_void_p]
-        self.core.cuda_context_is_primary.restype = ctypes.c_int
-        self.core.cuda_context_get_stream.argtypes = [ctypes.c_void_p]
-        self.core.cuda_context_get_stream.restype = ctypes.c_void_p
-        self.core.cuda_context_set_stream.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
-        self.core.cuda_context_set_stream.restype = None
+            self.core.cuda_context_get_device_ordinal.argtypes = [ctypes.c_void_p]
+            self.core.cuda_context_get_device_ordinal.restype = ctypes.c_int
+            self.core.cuda_context_is_primary.argtypes = [ctypes.c_void_p]
+            self.core.cuda_context_is_primary.restype = ctypes.c_int
+            self.core.cuda_context_get_stream.argtypes = [ctypes.c_void_p]
+            self.core.cuda_context_get_stream.restype = ctypes.c_void_p
+            self.core.cuda_context_set_stream.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
+            self.core.cuda_context_set_stream.restype = None
 
-        # peer access
-        self.core.cuda_is_peer_access_supported.argtypes = [ctypes.c_int, ctypes.c_int]
-        self.core.cuda_is_peer_access_supported.restype = ctypes.c_int
-        self.core.cuda_is_peer_access_enabled.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-        self.core.cuda_is_peer_access_enabled.restype = ctypes.c_int
-        self.core.cuda_set_peer_access_enabled.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
-        self.core.cuda_set_peer_access_enabled.restype = ctypes.c_int
-        self.core.cuda_is_mempool_access_enabled.argtypes = [ctypes.c_int, ctypes.c_int]
-        self.core.cuda_is_mempool_access_enabled.restype = ctypes.c_int
-        self.core.cuda_set_mempool_access_enabled.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        self.core.cuda_set_mempool_access_enabled.restype = ctypes.c_int
+            # peer access
+            self.core.cuda_is_peer_access_supported.argtypes = [ctypes.c_int, ctypes.c_int]
+            self.core.cuda_is_peer_access_supported.restype = ctypes.c_int
+            self.core.cuda_is_peer_access_enabled.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.cuda_is_peer_access_enabled.restype = ctypes.c_int
+            self.core.cuda_set_peer_access_enabled.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
+            self.core.cuda_set_peer_access_enabled.restype = ctypes.c_int
+            self.core.cuda_is_mempool_access_enabled.argtypes = [ctypes.c_int, ctypes.c_int]
+            self.core.cuda_is_mempool_access_enabled.restype = ctypes.c_int
+            self.core.cuda_set_mempool_access_enabled.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+            self.core.cuda_set_mempool_access_enabled.restype = ctypes.c_int
 
-        self.core.cuda_stream_create.argtypes = [ctypes.c_void_p]
-        self.core.cuda_stream_create.restype = ctypes.c_void_p
-        self.core.cuda_stream_destroy.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-        self.core.cuda_stream_destroy.restype = None
-        self.core.cuda_stream_register.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-        self.core.cuda_stream_register.restype = None
-        self.core.cuda_stream_unregister.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-        self.core.cuda_stream_unregister.restype = None
-        self.core.cuda_stream_synchronize.argtypes = [ctypes.c_void_p]
-        self.core.cuda_stream_synchronize.restype = None
-        self.core.cuda_stream_wait_event.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-        self.core.cuda_stream_wait_event.restype = None
-        self.core.cuda_stream_wait_stream.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
-        self.core.cuda_stream_wait_stream.restype = None
-        self.core.cuda_stream_is_capturing.argtypes = [ctypes.c_void_p]
-        self.core.cuda_stream_is_capturing.restype = ctypes.c_int
+            self.core.cuda_stream_create.argtypes = [ctypes.c_void_p]
+            self.core.cuda_stream_create.restype = ctypes.c_void_p
+            self.core.cuda_stream_destroy.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.cuda_stream_destroy.restype = None
+            self.core.cuda_stream_register.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.cuda_stream_register.restype = None
+            self.core.cuda_stream_unregister.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.cuda_stream_unregister.restype = None
+            self.core.cuda_stream_synchronize.argtypes = [ctypes.c_void_p]
+            self.core.cuda_stream_synchronize.restype = None
+            self.core.cuda_stream_wait_event.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.cuda_stream_wait_event.restype = None
+            self.core.cuda_stream_wait_stream.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
+            self.core.cuda_stream_wait_stream.restype = None
+            self.core.cuda_stream_is_capturing.argtypes = [ctypes.c_void_p]
+            self.core.cuda_stream_is_capturing.restype = ctypes.c_int
 
-        self.core.cuda_event_create.argtypes = [ctypes.c_void_p, ctypes.c_uint]
-        self.core.cuda_event_create.restype = ctypes.c_void_p
-        self.core.cuda_event_destroy.argtypes = [ctypes.c_void_p]
-        self.core.cuda_event_destroy.restype = None
-        self.core.cuda_event_record.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-        self.core.cuda_event_record.restype = None
-        self.core.cuda_event_synchronize.argtypes = [ctypes.c_void_p]
-        self.core.cuda_event_synchronize.restype = None
+            self.core.cuda_event_create.argtypes = [ctypes.c_void_p, ctypes.c_uint]
+            self.core.cuda_event_create.restype = ctypes.c_void_p
+            self.core.cuda_event_destroy.argtypes = [ctypes.c_void_p]
+            self.core.cuda_event_destroy.restype = None
+            self.core.cuda_event_record.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.cuda_event_record.restype = None
+            self.core.cuda_event_synchronize.argtypes = [ctypes.c_void_p]
+            self.core.cuda_event_synchronize.restype = None
 
-        self.core.cuda_graph_begin_capture.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
-        self.core.cuda_graph_begin_capture.restype = ctypes.c_bool
-        self.core.cuda_graph_end_capture.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
-        self.core.cuda_graph_end_capture.restype = ctypes.c_bool
-        self.core.cuda_graph_launch.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-        self.core.cuda_graph_launch.restype = ctypes.c_bool
-        self.core.cuda_graph_destroy.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-        self.core.cuda_graph_destroy.restype = ctypes.c_bool
+            self.core.cuda_graph_begin_capture.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
+            self.core.cuda_graph_begin_capture.restype = ctypes.c_bool
+            self.core.cuda_graph_end_capture.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.POINTER(ctypes.c_void_p),
+            ]
+            self.core.cuda_graph_end_capture.restype = ctypes.c_bool
+            self.core.cuda_graph_launch.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.cuda_graph_launch.restype = ctypes.c_bool
+            self.core.cuda_graph_destroy.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.cuda_graph_destroy.restype = ctypes.c_bool
 
-        self.core.cuda_compile_program.argtypes = [
-            ctypes.c_char_p,
-            ctypes.c_int,
-            ctypes.c_char_p,
-            ctypes.c_bool,
-            ctypes.c_bool,
-            ctypes.c_bool,
-            ctypes.c_bool,
-            ctypes.c_char_p,
-        ]
-        self.core.cuda_compile_program.restype = ctypes.c_size_t
+            self.core.cuda_compile_program.argtypes = [
+                ctypes.c_char_p,
+                ctypes.c_int,
+                ctypes.c_char_p,
+                ctypes.c_bool,
+                ctypes.c_bool,
+                ctypes.c_bool,
+                ctypes.c_bool,
+                ctypes.c_char_p,
+            ]
+            self.core.cuda_compile_program.restype = ctypes.c_size_t
 
-        self.core.cuda_load_module.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        self.core.cuda_load_module.restype = ctypes.c_void_p
+            self.core.cuda_load_module.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+            self.core.cuda_load_module.restype = ctypes.c_void_p
 
-        self.core.cuda_unload_module.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-        self.core.cuda_unload_module.restype = None
+            self.core.cuda_unload_module.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.cuda_unload_module.restype = None
 
-        self.core.cuda_get_kernel.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p]
-        self.core.cuda_get_kernel.restype = ctypes.c_void_p
+            self.core.cuda_get_kernel.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p]
+            self.core.cuda_get_kernel.restype = ctypes.c_void_p
 
-        self.core.cuda_launch_kernel.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_size_t,
-            ctypes.c_int,
-            ctypes.POINTER(ctypes.c_void_p),
-            ctypes.c_void_p,
-        ]
-        self.core.cuda_launch_kernel.restype = ctypes.c_size_t
+            self.core.cuda_launch_kernel.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_size_t,
+                ctypes.c_int,
+                ctypes.POINTER(ctypes.c_void_p),
+                ctypes.c_void_p,
+            ]
+            self.core.cuda_launch_kernel.restype = ctypes.c_size_t
 
-        self.core.cuda_graphics_map.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-        self.core.cuda_graphics_map.restype = None
-        self.core.cuda_graphics_unmap.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-        self.core.cuda_graphics_unmap.restype = None
-        self.core.cuda_graphics_device_ptr_and_size.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.POINTER(ctypes.c_uint64),
-            ctypes.POINTER(ctypes.c_size_t),
-        ]
-        self.core.cuda_graphics_device_ptr_and_size.restype = None
-        self.core.cuda_graphics_register_gl_buffer.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint]
-        self.core.cuda_graphics_register_gl_buffer.restype = ctypes.c_void_p
-        self.core.cuda_graphics_unregister_resource.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-        self.core.cuda_graphics_unregister_resource.restype = None
+            self.core.cuda_graphics_map.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.cuda_graphics_map.restype = None
+            self.core.cuda_graphics_unmap.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.cuda_graphics_unmap.restype = None
+            self.core.cuda_graphics_device_ptr_and_size.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.POINTER(ctypes.c_uint64),
+                ctypes.POINTER(ctypes.c_size_t),
+            ]
+            self.core.cuda_graphics_device_ptr_and_size.restype = None
+            self.core.cuda_graphics_register_gl_buffer.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint]
+            self.core.cuda_graphics_register_gl_buffer.restype = ctypes.c_void_p
+            self.core.cuda_graphics_unregister_resource.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.cuda_graphics_unregister_resource.restype = None
 
-        self.core.init.restype = ctypes.c_int
+            self.core.init.restype = ctypes.c_int
+
+        except AttributeError as e:
+            raise RuntimeError(f"Setting C-types for {warp_lib} failed. It may need rebuilding.") from e
 
         error = self.core.init()
 
