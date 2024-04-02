@@ -140,6 +140,26 @@ class StructInstance:
             else:
                 self.__dict__[field] = var.type()
 
+    def __getattribute__(self, name):
+        cls = super().__getattribute__("_cls")
+        if name in cls.vars:
+            var = cls.vars[name]
+            if isinstance(var.type, type) and issubclass(var.type, ctypes.Array):
+                # Each field stored in a `StructInstance` is exposed as
+                # a standard Python attribute but also has a `ctypes`
+                # equivalent that is being updated in `__setattr__`.
+                # However, when assigning in place an object such as a vec/mat
+                # (e.g.: `my_struct.my_vec[0] = 1.23`), the `__setattr__` method
+                # from `StructInstance` isn't called, and the synchronization
+                # mechanism has no chance of updating the underlying ctype data.
+                # As a workaround, we catch here all attempts at accessing such
+                # objects and directly return their underlying ctype since
+                # the Python-facing Warp vectors and matrices are implemented
+                # using `ctypes.Array` anyways.
+                return getattr(self._ctype, name)
+
+        return super().__getattribute__(name)
+
     def __setattr__(self, name, value):
         if name not in self._cls.vars:
             raise RuntimeError(f"Trying to set Warp struct attribute that does not exist {name}")

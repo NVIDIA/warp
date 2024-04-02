@@ -423,6 +423,22 @@ def test_nested_array_struct(test, device):
 
 
 @wp.struct
+class VecStruct:
+    value: wp.vec3
+
+
+def test_nested_vec_assignment(test, device):
+    v = VecStruct()
+    v.value[0] = 1.0
+    v.value[1] = 2.0
+    v.value[2] = 3.0
+
+    arr = wp.array([v], dtype=VecStruct)
+    expected = np.array(([1., 2., 3.],))
+    assert np.all(arr.numpy().tolist() == expected)
+
+
+@wp.struct
 class EmptyNest1:
     a: Empty
     z: int
@@ -586,6 +602,7 @@ add_kernel_test(
 add_kernel_test(TestStruct, kernel=test_return, name="test_return", dim=1, inputs=[], devices=devices)
 add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
 add_function_test(TestStruct, "test_nested_array_struct", test_nested_array_struct, devices=devices)
+add_function_test(TestStruct, "test_nested_vec_assignment", test_nested_vec_assignment, devices=devices)
 add_function_test(TestStruct, "test_nested_empty_struct", test_nested_empty_struct, devices=devices)
 add_function_test(TestStruct, "test_struct_math_conversions", test_struct_math_conversions, devices=devices)
 add_function_test(
