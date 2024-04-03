@@ -932,6 +932,7 @@ builtin_functions = {}
 def add_builtin(
     key,
     input_types={},
+    constraint=None,
     value_type=None,
     value_func=None,
     template_func=None,
@@ -1036,13 +1037,13 @@ def add_builtin(
             typelists = [typelist(param) for param in input_types.values()]
             for argtypes in itertools.product(*typelists):
                 # Some of these argument lists won't work, eg if the function is mul(), we won't be
-                # able to do a matrix vector multiplication for a mat22 and a vec3, so we call value_func
-                # on the generated argument list and skip generation if it fails.
-                # This also gives us the return type, which we keep for later:
-                try:
-                    return_type = value_func(argtypes, {}, [])
-                except Exception:
-                    continue
+                # able to do a matrix vector multiplication for a mat22 and a vec3. The `constraint`
+                # function determines which combinations are valid:
+                if constraint:
+                    if constraint(argtypes) is False:
+                        continue
+
+                return_type = value_func(argtypes, {}, [])
 
                 # The return_type might just be vector_t(length=3,dtype=wp.float32), so we've got to match that
                 # in the list of hard coded types so it knows it's returning one of them:
