@@ -5063,15 +5063,9 @@ def export_builtins(file: io.TextIOBase):  # pragma: no cover
             if not f.export or f.generic:
                 continue
 
-            simple = True
-            for k, v in f.input_types.items():
-                if isinstance(v, warp.array) or v == Any or v == Callable or v == Tuple:
-                    simple = False
-                    break
-
             # only export simple types that don't use arrays
             # or templated types
-            if not simple or f.variadic:
+            if not f.is_simple():
                 continue
 
             args = ", ".join(f"{ctype_arg_str(v)} {k}" for k, v in f.input_types.items())
