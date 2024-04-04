@@ -14,8 +14,12 @@ from warp.types import *
 from .context import add_builtin
 
 
+def sametypes(arg_types):
+    return all(types_equal(arg_types[0], t) for t in arg_types[1:])
+
+
 def sametype_value_func(arg_types, kwds, _):
-    if not all(types_equal(arg_types[0], t) for t in arg_types[1:]):
+    if not sametypes(arg_types):
         raise RuntimeError(f"Input types must be the same, found: {[type_repr(t) for t in arg_types]}")
     return arg_types[0]
 
@@ -290,7 +294,7 @@ def infer_scalar_type(arg_types):
 
 
 def sametype_scalar_value_func(arg_types, kwds, _):
-    if not all(types_equal(arg_types[0], t) for t in arg_types[1:]):
+    if not sametypes(arg_types):
         raise RuntimeError(f"Input types must be exactly the same, {[t for t in arg_types]}")
 
     return infer_scalar_type(arg_types)
@@ -302,6 +306,7 @@ def sametype_scalar_value_func(arg_types, kwds, _):
 add_builtin(
     "dot",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
+    constraint=sametypes,
     value_func=sametype_scalar_value_func,
     group="Vector Math",
     doc="Compute the dot product between two vectors.",
@@ -309,6 +314,7 @@ add_builtin(
 add_builtin(
     "ddot",
     input_types={"x": matrix(shape=(Any, Any), dtype=Scalar), "y": matrix(shape=(Any, Any), dtype=Scalar)},
+    constraint=sametypes,
     value_func=sametype_scalar_value_func,
     group="Vector Math",
     doc="Compute the double dot product between two matrices.",
@@ -317,6 +323,7 @@ add_builtin(
 add_builtin(
     "min",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
+    constraint=sametypes,
     value_func=sametype_value_func,
     doc="Return the element-wise minimum of two vectors.",
     group="Vector Math",
@@ -324,6 +331,7 @@ add_builtin(
 add_builtin(
     "max",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
+    constraint=sametypes,
     value_func=sametype_value_func,
     doc="Return the element-wise maximum of two vectors.",
     group="Vector Math",
@@ -554,6 +562,7 @@ add_builtin(
 add_builtin(
     "cw_mul",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
+    constraint=sametypes,
     value_func=sametype_value_func,
     group="Vector Math",
     doc="Component-wise multiplication of two 2D vectors.",
@@ -561,6 +570,7 @@ add_builtin(
 add_builtin(
     "cw_div",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
+    constraint=sametypes,
     value_func=sametype_value_func,
     group="Vector Math",
     doc="Component-wise division of two 2D vectors.",
@@ -570,6 +580,7 @@ add_builtin(
 add_builtin(
     "cw_mul",
     input_types={"x": matrix(shape=(Any, Any), dtype=Scalar), "y": matrix(shape=(Any, Any), dtype=Scalar)},
+    constraint=sametypes,
     value_func=sametype_value_func,
     group="Vector Math",
     doc="Component-wise multiplication of two 2D vectors.",
@@ -577,6 +588,7 @@ add_builtin(
 add_builtin(
     "cw_div",
     input_types={"x": matrix(shape=(Any, Any), dtype=Scalar), "y": matrix(shape=(Any, Any), dtype=Scalar)},
+    constraint=sametypes,
     value_func=sametype_value_func,
     group="Vector Math",
     doc="Component-wise division of two 2D vectors.",
@@ -2838,6 +2850,7 @@ def expect_eq_val_func(arg_types, kwds, _):
 add_builtin(
     "expect_eq",
     input_types={"arg1": vector(length=Any, dtype=Scalar), "arg2": vector(length=Any, dtype=Scalar)},
+    constraint=sametypes,
     value_func=expect_eq_val_func,
     doc="Prints an error to stdout if ``arg1`` and ``arg2`` are not equal",
     group="Utility",
@@ -2846,6 +2859,7 @@ add_builtin(
 add_builtin(
     "expect_neq",
     input_types={"arg1": vector(length=Any, dtype=Scalar), "arg2": vector(length=Any, dtype=Scalar)},
+    constraint=sametypes,
     value_func=expect_eq_val_func,
     doc="Prints an error to stdout if ``arg1`` and ``arg2`` are equal",
     group="Utility",
@@ -2855,6 +2869,7 @@ add_builtin(
 add_builtin(
     "expect_eq",
     input_types={"arg1": matrix(shape=(Any, Any), dtype=Scalar), "arg2": matrix(shape=(Any, Any), dtype=Scalar)},
+    constraint=sametypes,
     value_func=expect_eq_val_func,
     doc="Prints an error to stdout if ``arg1`` and ``arg2`` are not equal",
     group="Utility",
@@ -2863,6 +2878,7 @@ add_builtin(
 add_builtin(
     "expect_neq",
     input_types={"arg1": matrix(shape=(Any, Any), dtype=Scalar), "arg2": matrix(shape=(Any, Any), dtype=Scalar)},
+    constraint=sametypes,
     value_func=expect_eq_val_func,
     doc="Prints an error to stdout if ``arg1`` and ``arg2`` are equal",
     group="Utility",
@@ -2886,9 +2902,13 @@ add_builtin(
 )
 
 
+def lerp_constraint(arg_types):
+    return types_equal(arg_types[0], arg_types[1])
+
+
 def lerp_value_func(arg_types, kwds, _):
     scalar_type = arg_types[-1]
-    if not types_equal(arg_types[0], arg_types[1]):
+    if not lerp_constraint(arg_types):
         raise RuntimeError("Can't lerp between objects with different types")
     if arg_types[0]._wp_scalar_type_ != scalar_type:
         raise RuntimeError("'t' parameter must have the same scalar type as objects you're lerping between")
@@ -2899,6 +2919,7 @@ def lerp_value_func(arg_types, kwds, _):
 add_builtin(
     "lerp",
     input_types={"a": vector(length=Any, dtype=Float), "b": vector(length=Any, dtype=Float), "t": Float},
+    constraint=lerp_constraint,
     value_func=lerp_value_func,
     doc="Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``",
     group="Utility",
@@ -2906,6 +2927,7 @@ add_builtin(
 add_builtin(
     "lerp",
     input_types={"a": matrix(shape=(Any, Any), dtype=Float), "b": matrix(shape=(Any, Any), dtype=Float), "t": Float},
+    constraint=lerp_constraint,
     value_func=lerp_value_func,
     doc="Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``",
     group="Utility",
@@ -2970,6 +2992,7 @@ add_builtin(
 add_builtin(
     "add",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
+    constraint=sametypes,
     value_func=sametype_value_func,
     doc="",
     group="Operators",
@@ -2984,6 +3007,7 @@ add_builtin(
 add_builtin(
     "add",
     input_types={"x": matrix(shape=(Any, Any), dtype=Scalar), "y": matrix(shape=(Any, Any), dtype=Scalar)},
+    constraint=sametypes,
     value_func=sametype_value_func,
     doc="",
     group="Operators",
@@ -3004,6 +3028,7 @@ add_builtin(
 add_builtin(
     "sub",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
+    constraint=sametypes,
     value_func=sametype_value_func,
     doc="",
     group="Operators",
@@ -3011,6 +3036,7 @@ add_builtin(
 add_builtin(
     "sub",
     input_types={"x": matrix(shape=(Any, Any), dtype=Scalar), "y": matrix(shape=(Any, Any), dtype=Scalar)},
+    constraint=sametypes,
     value_func=sametype_value_func,
     doc="",
     group="Operators",
@@ -3051,18 +3077,26 @@ def scalar_mul_value_func(arg_types, kwds, _):
     return compound
 
 
+def mul_matvec_constraint(arg_types):
+    return arg_types[0]._shape_[1] == arg_types[1]._length_
+
+
 def mul_matvec_value_func(arg_types, kwds, _):
     if arg_types[0]._wp_scalar_type_ != arg_types[1]._wp_scalar_type_:
         raise RuntimeError(
             f"Can't multiply matrix and vector with different types {arg_types[0]._wp_scalar_type_}, {arg_types[1]._wp_scalar_type_}"
         )
 
-    if arg_types[0]._shape_[1] != arg_types[1]._length_:
+    if not mul_matmat_constraint(arg_types):
         raise RuntimeError(
             f"Can't multiply matrix of shape {arg_types[0]._shape_} and vector with length {arg_types[1]._length_}"
         )
 
     return vector(length=arg_types[0]._shape_[0], dtype=arg_types[0]._wp_scalar_type_)
+
+
+def mul_vecmat_constraint(arg_types):
+    return arg_types[1]._shape_[0] == arg_types[0]._length_
 
 
 def mul_vecmat_value_func(arg_types, kwds, _):
@@ -3071,12 +3105,16 @@ def mul_vecmat_value_func(arg_types, kwds, _):
             f"Can't multiply vector and matrix with different types {arg_types[1]._wp_scalar_type_}, {arg_types[0]._wp_scalar_type_}"
         )
 
-    if arg_types[1]._shape_[0] != arg_types[0]._length_:
+    if not mul_vecmat_constraint(arg_types):
         raise RuntimeError(
             f"Can't multiply vector with length {arg_types[0]._length_} and matrix of shape {arg_types[1]._shape_}"
         )
 
     return vector(length=arg_types[1]._shape_[1], dtype=arg_types[1]._wp_scalar_type_)
+
+
+def mul_matmat_constraint(arg_types):
+    return arg_types[0]._shape_[1] == arg_types[1]._shape_[0]
 
 
 def mul_matmat_value_func(arg_types, kwds, _):
@@ -3085,7 +3123,7 @@ def mul_matmat_value_func(arg_types, kwds, _):
             f"Can't multiply matrices with different types {arg_types[0]._wp_scalar_type_}, {arg_types[1]._wp_scalar_type_}"
         )
 
-    if arg_types[0]._shape_[1] != arg_types[1]._shape_[0]:
+    if not mul_matmat_constraint(arg_types):
         raise RuntimeError(f"Can't multiply matrix of shapes {arg_types[0]._shape_} and {arg_types[1]._shape_}")
 
     return matrix(shape=(arg_types[0]._shape_[0], arg_types[1]._shape_[1]), dtype=arg_types[0]._wp_scalar_type_)
@@ -3148,6 +3186,7 @@ add_builtin(
 add_builtin(
     "mul",
     input_types={"x": matrix(shape=(Any, Any), dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
+    constraint=mul_matvec_constraint,
     value_func=mul_matvec_value_func,
     doc="",
     group="Operators",
@@ -3155,6 +3194,7 @@ add_builtin(
 add_builtin(
     "mul",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": matrix(shape=(Any, Any), dtype=Scalar)},
+    constraint=mul_vecmat_constraint,
     value_func=mul_vecmat_value_func,
     doc="",
     group="Operators",
@@ -3162,6 +3202,7 @@ add_builtin(
 add_builtin(
     "mul",
     input_types={"x": matrix(shape=(Any, Any), dtype=Scalar), "y": matrix(shape=(Any, Any), dtype=Scalar)},
+    constraint=mul_matmat_constraint,
     value_func=mul_matmat_value_func,
     doc="",
     group="Operators",
