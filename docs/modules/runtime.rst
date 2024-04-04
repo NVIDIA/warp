@@ -233,6 +233,8 @@ Using the ``@`` operator (``D = A @ B``) will default to the same CUTLASS algori
 
 .. autofunction:: matmul
 
+.. autofunction:: batched_matmul
+
 Data Types
 ----------
 

@@ -3780,7 +3780,7 @@ def adj_batched_matmul(
     beta: float = 0.0,
     allow_tf32x3_arith: builtins.bool = False,
 ):
-    """Computes a batched generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
+    """Computes the adjoint of a batched generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
 
     Args:
         a (array3d): three-dimensional array containing A matrices. Overall array dimension is {batch_count, M, K}
