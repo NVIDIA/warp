@@ -8,8 +8,15 @@
 import warp
 
 
-def device_to_jax(warp_device):
-    """Return the Jax device corresponding to a Warp device."""
+def device_to_jax(warp_device: warp.context.Devicelike):
+    """Return the Jax device corresponding to a Warp device.
+
+    Returns:
+        :class:`jax.Device`
+
+    Raises:
+        RuntimeError: Failed to find the corresponding Jax device.
+    """
     import jax
 
     d = warp.get_device(warp_device)
@@ -26,8 +33,15 @@ def device_to_jax(warp_device):
         return cpu_devices[0]
 
 
-def device_from_jax(jax_device):
-    """Return the Warp device corresponding to a Jax device."""
+def device_from_jax(jax_device) -> warp.context.Device:
+    """Return the Warp device corresponding to a Jax device.
+
+    Args:
+        jax_device (jax.Device): A Jax device descriptor.
+
+    Raises:
+        RuntimeError: The Jax device is neither a CPU nor GPU device.
+    """
     if jax_device.platform == "cpu":
         return warp.get_device("cpu")
     elif jax_device.platform == "gpu":
@@ -37,7 +51,14 @@ def device_from_jax(jax_device):
 
 
 def dtype_to_jax(warp_dtype):
-    """Return the Jax dtype corresponding to a Warp dtype."""
+    """Return the Jax dtype corresponding to a Warp dtype.
+
+    Args:
+        warp_dtype: A Warp data type that has a corresponding Jax data type.
+
+    Raises:
+        TypeError: Unable to find a corresponding Jax data type.
+    """
     # initialize lookup table on first call to defer jax import
     if dtype_to_jax.type_map is None:
         import jax.numpy as jp
@@ -65,7 +86,11 @@ def dtype_to_jax(warp_dtype):
 
 
 def dtype_from_jax(jax_dtype):
-    """Return the Warp dtype corresponding to a Jax dtype."""
+    """Return the Warp dtype corresponding to a Jax dtype.
+
+    Raises:
+        TypeError: Unable to find a corresponding Warp data type.
+    """
     # initialize lookup table on first call to defer jax import
     if dtype_from_jax.type_map is None:
         import jax.numpy as jp
@@ -119,18 +144,18 @@ def to_jax(warp_array):
         warp_array (warp.array): The Warp array to convert.
 
     Returns:
-        The converted Jax array.
+        jax.Array: The converted Jax array.
     """
     import jax.dlpack
 
     return jax.dlpack.from_dlpack(warp.to_dlpack(warp_array))
 
 
-def from_jax(jax_array, dtype=None):
+def from_jax(jax_array, dtype=None) -> warp.array:
     """Convert a Jax array to a Warp array without copying the data.
 
     Args:
-        jax_array: The Jax array to convert.
+        jax_array (jax.Array): The Jax array to convert.
         dtype (optional): The target data type of the resulting Warp array. Defaults to the Jax array's data type mapped to a Warp data type.
 
     Returns:

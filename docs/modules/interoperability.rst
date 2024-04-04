@@ -29,6 +29,9 @@ Data type conversion utilities are also available for convenience:
     a = wp.zeros(n, dtype=warp_type)
     b = np.zeros(n, dtype=numpy_type)
 
+To create Warp arrays from NumPy arrays, use :func:`warp.from_numpy`
+or pass the NumPy array as the ``data`` argument of the :class:`warp.array` constructor.
+
 .. autofunction:: warp.dtype_from_numpy
 .. autofunction:: warp.dtype_to_numpy
 
@@ -51,10 +54,23 @@ These helper functions allow the conversion of Warp arrays to/from PyTorch tenso
 At the same time, if available, gradient arrays and tensors are converted to/from PyTorch autograd tensors, allowing the use of Warp arrays
 in PyTorch autograd computations.
 
+.. autofunction:: warp.from_torch
+.. autofunction:: warp.to_torch
+.. autofunction:: warp.device_from_torch
+.. autofunction:: warp.device_to_torch
+.. autofunction:: warp.dtype_from_torch
+.. autofunction:: warp.dtype_to_torch
+
+To convert a PyTorch CUDA stream to a Warp CUDA stream and vice versa, Warp provides the following functions:
+
+.. autofunction:: warp.stream_from_torch
+.. autofunction:: warp.stream_to_torch
+
 Example: Optimization using ``warp.from_torch()``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-An example usage of minimizing a loss function over an array of 2D points written in Warp via PyTorch's Adam optimizer using ``warp.from_torch`` is as follows::
+An example usage of minimizing a loss function over an array of 2D points written in Warp via PyTorch's Adam optimizer
+using :func:`warp.from_torch` is as follows::
 
     import warp as wp
     import torch
@@ -94,7 +110,7 @@ An example usage of minimizing a loss function over an array of 2D points writte
 Example: Optimization using ``warp.to_torch``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Less code is needed when we declare the optimization variables directly in Warp and use ``warp.to_torch`` to convert them to PyTorch tensors.
+Less code is needed when we declare the optimization variables directly in Warp and use :func:`warp.to_torch` to convert them to PyTorch tensors.
 Here, we revisit the same example from above where now only a single conversion to a torch tensor is needed to supply Adam with the optimization variables::
 
     import warp as wp
@@ -130,7 +146,7 @@ Here, we revisit the same example from above where now only a single conversion 
 Example: Optimization using ``torch.autograd.function``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-One can insert Warp kernel launches in a PyTorch graph by defining a ``torch.autograd.function`` class, which
+One can insert Warp kernel launches in a PyTorch graph by defining a :class:`torch.autograd.Function` class, which
 requires forward and backward functions to be defined. After mapping incoming torch arrays to Warp arrays, a Warp kernel
 may be launched in the usual way. In the backward pass, the same kernel's adjoint may be launched by 
 setting ``adjoint = True`` in :func:`wp.launch() <launch>`. Alternatively, the user may choose to rely on Warp's tape.
@@ -229,13 +245,6 @@ In the following example, we demonstrate how Warp may be used to evaluate the Ro
     # minimum at (1, 1)
     xy_np = xy.numpy(force=True)
     print(np.mean(xy_np, axis=0))
-
-.. autofunction:: warp.from_torch
-.. autofunction:: warp.to_torch
-.. autofunction:: warp.device_from_torch
-.. autofunction:: warp.device_to_torch
-.. autofunction:: warp.dtype_from_torch
-.. autofunction:: warp.dtype_to_torch
 
 CuPy/Numba
 ----------

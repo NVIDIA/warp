@@ -57,6 +57,8 @@ autodoc_member_order = "bysource"
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "numpy": ("https://numpy.org/doc/stable", None),
+    "jax": ("https://jax.readthedocs.io/en/latest", None),
+    "pytorch": ("https://pytorch.org/docs/stable", None),
 }
 
 extlinks = {
@@ -101,7 +103,7 @@ html_theme_options = {
         "color-admonition-title--note": "#ffffff",
     },
     "dark_css_variables": {
-        "color-admonition-title-background--note": "#535353",
+        "color-admonition-title-background--note": "#76b900",
         "color-admonition-title--note": "#ffffff",
     },
     "light_logo": "logo-light-mode.png",
