@@ -1521,8 +1521,10 @@ def check_array_shape(shape: Tuple):
         if dim_size < 0:
             raise ValueError(f"Array shapes must be non-negative, got {dim_size} in dimension {dim_index}")
         if dim_size >= 2**31:
-            raise ValueError("Array shapes must not exceed the maximum representable value of a signed 32-bit integer, "
-                            f"got {dim_size} in dimension {dim_index}.")
+            raise ValueError(
+                "Array shapes must not exceed the maximum representable value of a signed 32-bit integer, "
+                f"got {dim_size} in dimension {dim_index}."
+            )
 
 
 class array(Array):
@@ -1568,7 +1570,7 @@ class array(Array):
         are taken into account and no memory is allocated for the array.
 
         Args:
-            data (Union[list, tuple, ndarray]) An object to construct the array from, can be a Tuple, List, or generally any type convertible to an np.array
+            data (Union[list, tuple, ndarray]): An object to construct the array from, can be a Tuple, List, or generally any type convertible to an np.array
             dtype (Union): One of the built-in types, e.g.: :class:`warp.mat33`, if dtype is Any and data an ndarray then it will be inferred from the array data type
             shape (tuple): Dimensions of the array
             strides (tuple): Number of bytes in each dimension between successive elements of the array

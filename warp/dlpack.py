@@ -8,15 +8,15 @@
 # Python specification for DLpack:
 # https://dmlc.github.io/dlpack/latest/python_spec.html
 
-import warp
 import ctypes
 
+import warp
 from warp.thirdparty.dlpack import (
-    DLManagedTensor,
-    DLDevice,
-    DLDeviceType,
     DLDataType,
     DLDataTypeCode,
+    DLDevice,
+    DLDeviceType,
+    DLManagedTensor,
     _c_str_dltensor,
 )
 
@@ -62,7 +62,7 @@ class _DLPackTensorHolder:
 
     def __init__(self, mem_ptr):
         self.mem_ptr = mem_ptr
-    
+
     def __del__(self):
         managed_tensor = DLManagedTensor.from_address(self.mem_ptr)
         if managed_tensor.deleter:
@@ -106,7 +106,7 @@ def _device_to_dlpack(wp_device: warp.context.Device) -> DLDevice:
         dl_device.device_type = DLDeviceType.kDLCUDA
         dl_device.device_id = wp_device.ordinal
     else:
-        raise RuntimeError(f"Invalid device type converting to dlpack: {wp_device}")
+        raise RuntimeError(f"Invalid device type converting to DLPack: {wp_device}")
 
     return dl_device
 
@@ -175,7 +175,7 @@ def dtype_from_dlpack(dl_dtype):
     elif dl_dtype == (DLDataTypeCode.kDLComplex, 128):
         raise RuntimeError("Warp does not support complex types")
     else:
-        raise RuntimeError(f"Unknown dlpack datatype {dl_dtype}")
+        raise RuntimeError(f"Unknown DLPack datatype {dl_dtype}")
 
 
 def device_from_dlpack(dl_device):
@@ -189,7 +189,7 @@ def device_from_dlpack(dl_device):
     ):
         return warp.context.runtime.cuda_devices[dl_device.device_id]
     else:
-        raise RuntimeError(f"Unknown device type from dlpack: {dl_device.device_type.value}")
+        raise RuntimeError(f"Unknown device type from DLPack: {dl_device.device_type.value}")
 
 
 def shape_to_dlpack(shape):
@@ -208,7 +208,7 @@ def strides_to_dlpack(strides, dtype):
 
 
 def to_dlpack(wp_array: warp.array):
-    """Convert a Warp array to another type of dlpack compatible array.
+    """Convert a Warp array to another type of DLPack-compatible array.
 
     Args:
         wp_array: The source Warp array that will be converted.
@@ -318,7 +318,7 @@ def dtype_is_compatible(dl_dtype, wp_dtype):
     elif dl_dtype.type_code.value == DLDataTypeCode.kDLComplex:
         raise RuntimeError("Complex data types are not supported")
     else:
-        raise RuntimeError(f"Unsupported dlpack dtype {(str(dl_dtype.type_code), dl_dtype.bits)}")
+        raise RuntimeError(f"Unsupported DLPack dtype {(str(dl_dtype.type_code), dl_dtype.bits)}")
 
 
 def _from_dlpack(capsule, dtype=None) -> warp.array:

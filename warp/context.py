@@ -3932,6 +3932,18 @@ def from_numpy(
     device: Optional[Devicelike] = None,
     requires_grad: bool = False,
 ) -> warp.array:
+    """Returns a Warp array created from a NumPy array.
+
+    Args:
+        arr: The NumPy array providing the data to construct the Warp array.
+        dtype: The data type of the new Warp array. If this is not provided, the data type will be inferred.
+        shape: The shape of the Warp array.
+        device: The device on which the Warp array will be constructed.
+        requires_grad: Whether or not gradients will be tracked for this array.
+
+    Raises:
+        RuntimeError: The data type of the NumPy array is not supported.
+    """
     if dtype is None:
         base_type = warp.types.np_dtype_to_warp_type.get(arr.dtype)
         if base_type is None:

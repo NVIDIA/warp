@@ -6,18 +6,27 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import ctypes
+
 import numpy
+
 import warp
 
 
 # return the warp device corresponding to a torch device
-def device_from_torch(torch_device):
+def device_from_torch(torch_device) -> warp.context.Device:
     """Return the Warp device corresponding to a Torch device."""
     return warp.get_device(str(torch_device))
 
 
-def device_to_torch(warp_device):
-    """Return the Torch device corresponding to a Warp device."""
+def device_to_torch(warp_device: warp.context.Devicelike) -> str:
+    """Return the Torch device string corresponding to a Warp device.
+
+    Args:
+        warp_device: An identifier that can be resolved to a :class:`warp.context.Device`.
+
+    Raises:
+        RuntimeError: The Warp device is not compatible with PyTorch.
+    """
     device = warp.get_device(warp_device)
     if device.is_cpu or device.is_primary:
         return str(device)
@@ -28,7 +37,15 @@ def device_to_torch(warp_device):
 
 
 def dtype_to_torch(warp_dtype):
-    """Return the Torch dtype corresponding to a Warp dtype."""
+    """Return the Torch dtype corresponding to a Warp dtype.
+
+    Args:
+        warp_dtype: A Warp data type that has a corresponding ``torch.dtype``.
+            ``warp.uint16``, ``warp.uint32``, and ``warp.uint64`` are mapped
+            to the signed integer ``torch.dtype`` of the same width.
+    Raises:
+        TypeError: Unable to find a corresponding PyTorch data type.
+    """
     # initialize lookup table on first call to defer torch import
     if dtype_to_torch.type_map is None:
         import torch
@@ -57,7 +74,16 @@ def dtype_to_torch(warp_dtype):
 
 
 def dtype_from_torch(torch_dtype):
-    """Return the Warp dtype corresponding to a Torch dtype."""
+    """Return the Warp dtype corresponding to a Torch dtype.
+
+    Args:
+        torch_dtype: A ``torch.dtype`` that has a corresponding Warp data type.
+            Currently ``torch.bfloat16``, ``torch.complex64``, and
+            ``torch.complex128`` are not supported.
+
+    Raises:
+        TypeError: Unable to find a corresponding Warp data type.
+    """
     # initialize lookup table on first call to defer torch import
     if dtype_from_torch.type_map is None:
         import torch
@@ -86,8 +112,8 @@ def dtype_from_torch(torch_dtype):
         raise TypeError(f"Cannot convert {torch_dtype} to a Warp type")
 
 
-def dtype_is_compatible(torch_dtype, warp_dtype):
-    """Evaluates whether the given torch dtype is compatible with the given warp dtype."""
+def dtype_is_compatible(torch_dtype, warp_dtype) -> bool:
+    """Evaluates whether the given torch dtype is compatible with the given Warp dtype."""
     # initialize lookup table on first call to defer torch import
     if dtype_is_compatible.compatible_sets is None:
         import torch

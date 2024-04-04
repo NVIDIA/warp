@@ -170,6 +170,8 @@ Additionally, arrays can be copied directly between memory spaces: ::
     :undoc-members:
     :exclude-members: vars
 
+.. autofunction:: from_numpy
+
 Multi-dimensional Arrays
 ########################
 
@@ -204,6 +206,8 @@ The following construction methods are provided for allocating zero-initialized 
 
 .. autofunction:: zeros
 .. autofunction:: zeros_like
+.. autofunction:: ones
+.. autofunction:: ones_like
 .. autofunction:: full
 .. autofunction:: full_like
 .. autofunction:: empty
