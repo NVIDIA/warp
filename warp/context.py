@@ -56,6 +56,7 @@ class Function:
         key,
         namespace,
         input_types=None,
+        value_type=None,
         value_func=None,
         template_func=None,
         module=None,
@@ -86,6 +87,7 @@ class Function:
         self.func = func  # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
         self.namespace = namespace
+        self.value_type = value_type
         self.value_func = value_func  # a function that takes a list of args and a list of templates and returns the value type, e.g.: load(array, index) returns the type of value being loaded
         self.template_func = template_func
         self.input_types = {}
@@ -162,7 +164,7 @@ class Function:
                 self.input_types[k] = warp.types.type_to_warp(v)
 
             # cache mangled name
-            if self.is_simple():
+            if self.export and self.is_simple():
                 self.mangled_name = self.mangle()
             else:
                 self.mangled_name = None
@@ -240,16 +242,7 @@ class Function:
             if isinstance(v, warp.array) or v == Any or v == Callable or v == Tuple:
                 return False
 
-        return_type = ""
-
-        try:
-            # todo: construct a default value for each of the functions args
-            # so we can generate the return type for overloaded functions
-            return_type = type_str(self.value_func(None, None, None))
-        except Exception:
-            return False
-
-        if return_type.startswith("Tuple"):
+        if type(self.value_type) is tuple:
             return False
 
         return True
@@ -1086,6 +1079,7 @@ def add_builtin(
         key=key,
         namespace=namespace,
         input_types=input_types,
+        value_type=value_type,
         value_func=value_func,
         template_func=template_func,
         variadic=variadic,
@@ -5069,15 +5063,9 @@ def export_builtins(file: io.TextIOBase):  # pragma: no cover
             if not f.export or f.generic:
                 continue
 
-            simple = True
-            for k, v in f.input_types.items():
-                if isinstance(v, warp.array) or v == Any or v == Callable or v == Tuple:
-                    simple = False
-                    break
-
             # only export simple types that don't use arrays
             # or templated types
-            if not simple or f.variadic:
+            if not f.is_simple():
                 continue
 
             args = ", ".join(f"{ctype_arg_str(v)} {k}" for k, v in f.input_types.items())

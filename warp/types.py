@@ -1379,10 +1379,7 @@ def type_repr(t):
     if t in scalar_types:
         return t.__name__
 
-    try:
-        return t.__module__ + "." + t.__qualname__
-    except AttributeError:
-        return str(t)
+    return t.__module__ + "." + t.__qualname__
 
 
 def type_is_int(t):

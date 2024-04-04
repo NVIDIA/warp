@@ -11,18 +11,14 @@ import os
 import sys
 import time
 import unittest
+import importlib
 
 import numpy as np
 
 import warp as wp
 
-try:
-    import pxr  # noqa: F401
-
-    USD_AVAILABLE = True
-except ImportError as e:
-    USD_AVAILABLE = False
-    print(f"Skipping USD tests for reason: {e}")
+pxr = importlib.util.find_spec("pxr")
+USD_AVAILABLE = pxr is not None
 
 # default test mode (see get_test_devices())
 #   "basic" - only run on CPU and first GPU device
