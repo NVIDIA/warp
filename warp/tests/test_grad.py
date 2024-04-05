@@ -610,6 +610,52 @@ def test_struct_attribute_gradient(test_case, device):
     test_case.assertEqual(src.grad.numpy()[0], 5.0)
 
 
+@wp.kernel
+def copy_kernel(a: wp.array(dtype=wp.float32), b: wp.array(dtype=wp.float32)):
+    tid = wp.tid()
+    ai = a[tid]
+    bi = ai
+    b[tid] = bi
+
+
+def test_copy(test_case, device):
+    a = wp.array([-1.0, 2.0, 3.0], dtype=wp.float32, requires_grad=True)
+    b = wp.array([0.0, 0.0, 0.0], dtype=wp.float32, requires_grad=True)
+
+    wp.launch(copy_kernel, 1, inputs=[a, b])
+
+    b.grad = wp.array([1.0, 1.0, 1.0], dtype=wp.float32)
+    wp.launch(copy_kernel, a.shape[0], inputs=[a, b], adjoint=True, adj_inputs=[None, None])
+
+    assert_np_equal(a.grad.numpy(), np.array([1.0, 1.0, 1.0]))
+
+
+@wp.kernel
+def aliasing_kernel(a: wp.array(dtype=wp.float32), b: wp.array(dtype=wp.float32)):
+    tid = wp.tid()
+    x = a[tid]
+
+    y = x
+    if y > 0.0:
+        y = x * x
+    else:
+        y = x * x * x
+
+    b[tid] = y
+
+
+def test_aliasing(test_case, device):
+    a = wp.array([-1.0, 2.0, 3.0], dtype=wp.float32, requires_grad=True)
+    b = wp.array([0.0, 0.0, 0.0], dtype=wp.float32, requires_grad=True)
+
+    wp.launch(aliasing_kernel, 1, inputs=[a, b])
+
+    b.grad = wp.array([1.0, 1.0, 1.0], dtype=wp.float32)
+    wp.launch(aliasing_kernel, a.shape[0], inputs=[a, b], adjoint=True, adj_inputs=[None, None])
+
+    assert_np_equal(a.grad.numpy(), np.array([3.0, 4.0, 6.0]))
+
+
 devices = get_test_devices()
 
 
@@ -633,6 +679,8 @@ add_function_test(TestGrad, "test_multi_valued_function_grad", test_multi_valued
 add_function_test(TestGrad, "test_mesh_grad", test_mesh_grad, devices=devices)
 add_function_test(TestGrad, "test_name_clash", test_name_clash, devices=devices)
 add_function_test(TestGrad, "test_struct_attribute_gradient", test_struct_attribute_gradient, devices=devices)
+add_function_test(TestGrad, "test_copy", test_copy, devices=devices)
+add_function_test(TestGrad, "test_aliasing", test_aliasing, devices=devices)
 
 
 if __name__ == "__main__":

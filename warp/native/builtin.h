@@ -1041,7 +1041,7 @@ CUDA_CALLABLE inline T copy(const T& src)
 template <typename T>
 CUDA_CALLABLE inline void adj_copy(const T& src, T& adj_src, T& adj_dest)
 {
-    adj_src = adj_dest;
+    adj_src += adj_dest;
     adj_dest = T{};
 }
 
