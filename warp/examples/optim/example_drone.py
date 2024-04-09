@@ -176,7 +176,7 @@ def collision_cost(
     X_bs = shape_X_bs[shape_index]
 
     # transform particle position to shape local space
-    x_local = wp.transform_point(X_bs, px)
+    x_local = wp.transform_point(wp.transform_inverse(X_bs), px)
 
     # geo description
     geo_type = geo.type[shape_index]
@@ -436,7 +436,7 @@ class Drone:
         # Store some miscellaneous info.
         self.body_count = len(builder.body_q)
         self.collider_count = self.colliders.shape[1]
-        self.collision_radius = crossbar_length * 2.0
+        self.collision_radius = crossbar_length
 
     @property
     def state(self) -> wp.sim.State:
@@ -606,8 +606,6 @@ class Example:
             outputs=(drone.control.prop_controls,),
         )
 
-        wp.sim.collide(drone.model, drone.state)
-
         wp.launch(
             compute_prop_wrenches,
             dim=len(drone.props),
@@ -725,7 +723,6 @@ class Example:
             self.optim_graph = capture.graph
 
         # Sample control waypoints around the nominal trajectory.
-        self.seed.zero_()
         noise_scale = 0.15
         wp.launch(
             sample_gaussian,
