@@ -597,17 +597,18 @@ def test_struct_attribute_gradient_kernel(src: wp.array(dtype=float), res: wp.ar
 
 
 def test_struct_attribute_gradient(test_case, device):
-    src = wp.array([1], dtype=float, requires_grad=True)
-    res = wp.empty_like(src)
+    with wp.ScopedDevice(device):
+        src = wp.array([1], dtype=float, requires_grad=True)
+        res = wp.empty_like(src)
 
-    tape = wp.Tape()
-    with tape:
-        wp.launch(test_struct_attribute_gradient_kernel, dim=1, inputs=[src, res])
+        tape = wp.Tape()
+        with tape:
+            wp.launch(test_struct_attribute_gradient_kernel, dim=1, inputs=[src, res])
 
-    res.grad.fill_(1.0)
-    tape.backward()
+        res.grad.fill_(1.0)
+        tape.backward()
 
-    test_case.assertEqual(src.grad.numpy()[0], 5.0)
+        test_case.assertEqual(src.grad.numpy()[0], 5.0)
 
 
 @wp.kernel
@@ -619,15 +620,16 @@ def copy_kernel(a: wp.array(dtype=wp.float32), b: wp.array(dtype=wp.float32)):
 
 
 def test_copy(test_case, device):
-    a = wp.array([-1.0, 2.0, 3.0], dtype=wp.float32, requires_grad=True)
-    b = wp.array([0.0, 0.0, 0.0], dtype=wp.float32, requires_grad=True)
+    with wp.ScopedDevice(device):
+        a = wp.array([-1.0, 2.0, 3.0], dtype=wp.float32, requires_grad=True)
+        b = wp.array([0.0, 0.0, 0.0], dtype=wp.float32, requires_grad=True)
 
-    wp.launch(copy_kernel, 1, inputs=[a, b])
+        wp.launch(copy_kernel, 1, inputs=[a, b])
 
-    b.grad = wp.array([1.0, 1.0, 1.0], dtype=wp.float32)
-    wp.launch(copy_kernel, a.shape[0], inputs=[a, b], adjoint=True, adj_inputs=[None, None])
+        b.grad = wp.array([1.0, 1.0, 1.0], dtype=wp.float32)
+        wp.launch(copy_kernel, a.shape[0], inputs=[a, b], adjoint=True, adj_inputs=[None, None])
 
-    assert_np_equal(a.grad.numpy(), np.array([1.0, 1.0, 1.0]))
+        assert_np_equal(a.grad.numpy(), np.array([1.0, 1.0, 1.0]))
 
 
 @wp.kernel
@@ -645,15 +647,68 @@ def aliasing_kernel(a: wp.array(dtype=wp.float32), b: wp.array(dtype=wp.float32)
 
 
 def test_aliasing(test_case, device):
-    a = wp.array([-1.0, 2.0, 3.0], dtype=wp.float32, requires_grad=True)
-    b = wp.array([0.0, 0.0, 0.0], dtype=wp.float32, requires_grad=True)
+    with wp.ScopedDevice(device):
+        a = wp.array([-1.0, 2.0, 3.0], dtype=wp.float32, requires_grad=True)
+        b = wp.array([0.0, 0.0, 0.0], dtype=wp.float32, requires_grad=True)
 
-    wp.launch(aliasing_kernel, 1, inputs=[a, b])
+        wp.launch(aliasing_kernel, 1, inputs=[a, b])
 
-    b.grad = wp.array([1.0, 1.0, 1.0], dtype=wp.float32)
-    wp.launch(aliasing_kernel, a.shape[0], inputs=[a, b], adjoint=True, adj_inputs=[None, None])
+        b.grad = wp.array([1.0, 1.0, 1.0], dtype=wp.float32)
+        wp.launch(aliasing_kernel, a.shape[0], inputs=[a, b], adjoint=True, adj_inputs=[None, None])
 
-    assert_np_equal(a.grad.numpy(), np.array([3.0, 4.0, 6.0]))
+        assert_np_equal(a.grad.numpy(), np.array([3.0, 4.0, 6.0]))
+
+
+@wp.kernel
+def square_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+    tid = wp.tid()
+    y[tid] = x[tid] ** 2.0
+
+
+def test_gradient_internal(test_case, device):
+    with wp.ScopedDevice(device):
+        a = wp.array([1.0, 2.0, 3.0], dtype=float, requires_grad=True)
+        b = wp.array([0.0, 0.0, 0.0], dtype=float, requires_grad=True)
+
+        wp.launch(square_kernel, a.size, inputs=[a, b])
+
+        # use internal gradients (.grad), adj_inputs are None
+        b.grad = wp.array([1.0, 1.0, 1.0], dtype=float)
+        wp.launch(square_kernel, a.shape[0], inputs=[a, b], adjoint=True, adj_inputs=[None, None])
+
+        assert_np_equal(a.grad.numpy(), np.array([2.0, 4.0, 6.0]))
+
+
+def test_gradient_external(test_case, device):
+    with wp.ScopedDevice(device):
+        a = wp.array([1.0, 2.0, 3.0], dtype=float, requires_grad=False)
+        b = wp.array([0.0, 0.0, 0.0], dtype=float, requires_grad=False)
+
+        wp.launch(square_kernel, a.size, inputs=[a, b])
+
+        # use external gradients passed in adj_inputs
+        a_grad = wp.array([0.0, 0.0, 0.0], dtype=float)
+        b_grad = wp.array([1.0, 1.0, 1.0], dtype=float)
+        wp.launch(square_kernel, a.shape[0], inputs=[a, b], adjoint=True, adj_inputs=[a_grad, b_grad])
+
+        assert_np_equal(a_grad.numpy(), np.array([2.0, 4.0, 6.0]))
+
+
+def test_gradient_precedence(test_case, device):
+    with wp.ScopedDevice(device):
+        a = wp.array([1.0, 2.0, 3.0], dtype=float, requires_grad=True)
+        b = wp.array([0.0, 0.0, 0.0], dtype=float, requires_grad=True)
+
+        wp.launch(square_kernel, a.size, inputs=[a, b])
+
+        # if both internal and external gradients are present, the external one takes precedence,
+        # because it's explicitly passed by the user in adj_inputs
+        a_grad = wp.array([0.0, 0.0, 0.0], dtype=float)
+        b_grad = wp.array([1.0, 1.0, 1.0], dtype=float)
+        wp.launch(square_kernel, a.shape[0], inputs=[a, b], adjoint=True, adj_inputs=[a_grad, b_grad])
+
+        assert_np_equal(a_grad.numpy(), np.array([2.0, 4.0, 6.0]))  # used
+        assert_np_equal(a.grad.numpy(), np.array([0.0, 0.0, 0.0]))  # unused
 
 
 devices = get_test_devices()
@@ -681,6 +736,9 @@ add_function_test(TestGrad, "test_name_clash", test_name_clash, devices=devices)
 add_function_test(TestGrad, "test_struct_attribute_gradient", test_struct_attribute_gradient, devices=devices)
 add_function_test(TestGrad, "test_copy", test_copy, devices=devices)
 add_function_test(TestGrad, "test_aliasing", test_aliasing, devices=devices)
+add_function_test(TestGrad, "test_gradient_internal", test_gradient_internal, devices=devices)
+add_function_test(TestGrad, "test_gradient_external", test_gradient_external, devices=devices)
+add_function_test(TestGrad, "test_gradient_precedence", test_gradient_precedence, devices=devices)
 
 
 if __name__ == "__main__":
