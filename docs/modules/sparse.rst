@@ -23,7 +23,7 @@ Iterative Linear Solvers
 
 .. currentmodule:: warp.optim.linear
 
-Warp provides a few common iterative linear solvers (:func:`cg`, :func:`bicgstab`, :func:`gmres`) with optional preconditioning.
+Warp provides a few common iterative linear solvers (:func:`cg`, :func:`cr`, :func:`bicgstab`, :func:`gmres`) with optional preconditioning.
 
 .. note:: While primarily intended to work with sparse matrices, those solvers also accept dense linear operators provided as 2D Warp arrays.
     It is also possible to provide custom operators, see :class:`LinearOperator`.

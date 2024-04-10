@@ -71,12 +71,14 @@ def scipy_to_bsr(
 
 
 def get_linear_solver_func(method_name: str):
-    from warp.optim.linear import cg, bicgstab, gmres
+    from warp.optim.linear import cg, cr, bicgstab, gmres
 
     if method_name == "bicgstab":
         return bicgstab
     if method_name == "gmres":
         return gmres
+    if method_name == "cr":
+        return cr
     return cg
 
 

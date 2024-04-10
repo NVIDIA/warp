@@ -279,6 +279,130 @@ def cg(
     )
 
 
+def cr(
+    A: _Matrix,
+    b: wp.array,
+    x: wp.array,
+    tol: Optional[float] = None,
+    atol: Optional[float] = None,
+    maxiter: Optional[float] = 0,
+    M: Optional[_Matrix] = None,
+    callback: Optional[Callable] = None,
+    check_every=10,
+    use_cuda_graph=True,
+) -> Tuple[int, float, float]:
+    """Computes an approximate solution to a symmetric, positive-definite linear system
+    using the Conjugate Residual algorithm.
+
+    Args:
+        A: the linear system's left-hand-side
+        b: the linear system's right-hand-side
+        x: initial guess and solution vector
+        tol: relative tolerance for the residual, as a ratio of the right-hand-side norm
+        atol: absolute tolerance for the residual
+        maxiter: maximum number of iterations to perform before aborting. Defaults to the system size.
+            Note that the current implementation always performs iterations in pairs, and as a result may exceed the specified maximum number of iterations by one.
+        M: optional left-preconditioner, ideally chosen such that ``M A`` is close to identity.
+        callback: function to be called every `check_every` iteration with the current iteration number, residual and tolerance
+        check_every: number of iterations every which to call `callback`, check the residual against the tolerance and possibility terminate the algorithm.
+        use_cuda_graph: If true and when run on a CUDA device, capture the solver iteration as a CUDA graph for reduced launch overhead.
+          The linear operator and preconditioner must only perform graph-friendly operations.
+
+    Returns:
+        Tuple (final iteration number, residual norm, absolute tolerance)
+
+    If both `tol` and `atol` are provided, the absolute tolerance used as the termination criterion for the residual norm is ``max(atol, tol * norm(b))``.
+    """
+
+    A = aslinearoperator(A)
+    M = aslinearoperator(M)
+
+    if maxiter == 0:
+        maxiter = A.shape[0]
+
+    r, r_norm_sq, atol = _initialize_residual_and_tolerance(A, b, x, tol=tol, atol=atol)
+
+    device = A.device
+    scalar_dtype = wp.types.type_scalar_type(A.dtype)
+
+    # Notations below follow roughly pseudo-code from https://en.wikipedia.org/wiki/Conjugate_residual_method
+    # with z := M^-1 r and y := M^-1 Ap
+
+    # z = M r
+    if M is None:
+        z = r
+    else:
+        z = wp.zeros_like(r)
+        M.matvec(r, z, z, alpha=1.0, beta=0.0)
+
+    Az = wp.zeros_like(b)
+    A.matvec(z, Az, Az, alpha=1, beta=0)
+
+    p = wp.clone(z)
+    Ap = wp.clone(Az)
+
+    if M is None:
+        y = Ap
+    else:
+        y = wp.zeros_like(Ap)
+
+    zAz_old = wp.empty(n=1, dtype=scalar_dtype, device=device)
+    zAz_new = wp.empty(n=1, dtype=scalar_dtype, device=device)
+    y_Ap = wp.empty(n=1, dtype=scalar_dtype, device=device)
+
+    array_inner(z, Az, out=zAz_new)
+
+    def do_iteration(atol_sq, rr, zAz_old, zAz_new):
+
+        if M is not None:
+            M.matvec(Ap, y, y, alpha=1.0, beta=0.0)
+        array_inner(Ap, y, out=y_Ap)
+
+        if M is None:
+            # In non-preconditioned case, first kernel is same as CG
+            wp.launch(
+                kernel=_cg_kernel_1,
+                dim=x.shape[0],
+                device=device,
+                inputs=[atol_sq, rr, zAz_old, y_Ap, x, r, p, Ap],
+            )
+        else:
+            # In preconditioned case, we have one more vector to update
+            wp.launch(
+                kernel=_cr_kernel_1,
+                dim=x.shape[0],
+                device=device,
+                inputs=[atol_sq, rr, zAz_old, y_Ap, x, r, z, p, Ap, y],
+            )
+
+        array_inner(r, r, out=rr)
+
+        A.matvec(z, Az, Az, alpha=1, beta=0)
+        array_inner(z, Az, out=zAz_new)
+
+        # beta = rz_new / rz_old
+        wp.launch(
+            kernel=_cr_kernel_2, dim=z.shape[0], device=device, inputs=[atol_sq, rr, zAz_old, zAz_new, z, p, Az, Ap]
+        )
+
+    # We do iterations by pairs, switching old and new residual norm buffers for each odd-even couple
+    def do_odd_even_cycle(atol_sq: float):
+        do_iteration(atol_sq, r_norm_sq, zAz_new, zAz_old)
+        do_iteration(atol_sq, r_norm_sq, zAz_old, zAz_new)
+
+    return _run_solver_loop(
+        do_odd_even_cycle,
+        cycle_size=2,
+        r_norm_sq=r_norm_sq,
+        maxiter=maxiter,
+        atol=atol,
+        callback=callback,
+        check_every=check_every,
+        use_cuda_graph=use_cuda_graph,
+        device=device,
+    )
+
+
 def bicgstab(
     A: _Matrix,
     b: wp.array,
@@ -782,6 +906,48 @@ def _cg_kernel_2(
     beta = wp.select(resid[0] > tol, rz_old.dtype(0.0), rz_new[0] / rz_old[0])
 
     p[i] = z[i] + beta * p[i]
+
+
+@wp.kernel
+def _cr_kernel_1(
+    tol: Any,
+    resid: wp.array(dtype=Any),
+    zAz_old: wp.array(dtype=Any),
+    y_Ap: wp.array(dtype=Any),
+    x: wp.array(dtype=Any),
+    r: wp.array(dtype=Any),
+    z: wp.array(dtype=Any),
+    p: wp.array(dtype=Any),
+    Ap: wp.array(dtype=Any),
+    y: wp.array(dtype=Any),
+):
+    i = wp.tid()
+
+    alpha = wp.select(resid[0] > tol and y_Ap[0] > 0.0, zAz_old.dtype(0.0), zAz_old[0] / y_Ap[0])
+
+    x[i] = x[i] + alpha * p[i]
+    r[i] = r[i] - alpha * Ap[i]
+    z[i] = z[i] - alpha * y[i]
+
+
+@wp.kernel
+def _cr_kernel_2(
+    tol: Any,
+    resid: wp.array(dtype=Any),
+    zAz_old: wp.array(dtype=Any),
+    zAz_new: wp.array(dtype=Any),
+    z: wp.array(dtype=Any),
+    p: wp.array(dtype=Any),
+    Az: wp.array(dtype=Any),
+    Ap: wp.array(dtype=Any),
+):
+    #    p = r + (rz_new / rz_old) * p;
+    i = wp.tid()
+
+    beta = wp.select(resid[0] > tol and zAz_old[0] > 0.0, zAz_old.dtype(0.0), zAz_new[0] / zAz_old[0])
+
+    p[i] = z[i] + beta * p[i]
+    Ap[i] = Az[i] + beta * Ap[i]
 
 
 @wp.kernel
