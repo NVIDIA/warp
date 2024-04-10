@@ -77,6 +77,9 @@ are being performed back to CPU asynchronously, e.g.:
     a2 = cpu_array_2.numpy()
     a3 = cpu_array_3.numpy()
 
+For more information about asynchronous operations, please refer to the :doc:`concurrency documentation <modules/concurrency>`
+and :ref:`synchronization guidance <synchronization_guidance>`.
+
 What happens when you differentiate a function like ``wp.abs(x)``?
 ------------------------------------------------------------------
 

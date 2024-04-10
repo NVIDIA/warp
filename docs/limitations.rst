@@ -4,8 +4,7 @@ Limitations
 .. currentmodule:: warp
 
 This section summarizes various limitations and currently unsupported features in Warp.
-Requests for new features can be made at `GitHub Discussions <https://github.com/NVIDIA/warp/discussions>`_,
-and issues can be opened at `GitHub Issues <https://github.com/NVIDIA/warp/issues>`_.
+Problems, questions, and feature requests can be opened on `GitHub Issues <https://github.com/NVIDIA/warp/issues>`_.
 
 Unsupported Features
 --------------------

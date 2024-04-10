@@ -176,7 +176,7 @@ Warp uses a Python->C++/CUDA compilation model that generates kernel code from P
 
 Note that compilation is triggered on the first kernel launch for that module. Any kernels registered in the module with ``@wp.kernel`` will be included in the shared library.
 
-.. image:: ./img/compiler_pipeline.png
+.. image:: ./img/compiler_pipeline.svg
 
 
 Language Details
