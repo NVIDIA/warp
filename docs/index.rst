@@ -261,6 +261,7 @@ Please see the following resources for additional background on Warp:
    Presentation <https://www.nvidia.com/en-us/on-demand/session/gtcspring21-s31838>`_
 -  `SIGGRAPH Asia 2021 Differentiable Simulation
    Course <https://dl.acm.org/doi/abs/10.1145/3476117.3483433>`_
+-  `GTC 2024 Presentation <https://www.nvidia.com/en-us/on-demand/session/gtc24-s63345>`_
 
 The underlying technology in Warp has been used in a number of research
 projects at NVIDIA including the following publications:
@@ -293,6 +294,15 @@ If you use Warp in your research please use the following citation:
         note= {NVIDIA GPU Technology Conference (GTC)},
         howpublished = {\url{https://github.com/nvidia/warp}}
     }
+
+Support
+-------
+
+Problems, questions, and feature requests can be opened on
+`GitHub Issues <https://github.com/NVIDIA/warp/issues>`_.
+
+The Warp team also monitors the **#warp** channel on the public
+`Omniverse Discord <https://discord.com/invite/nvidiaomniverse>`_ server, come chat to us!
 
 License
 -------
