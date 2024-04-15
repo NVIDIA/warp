@@ -420,6 +420,7 @@ def call_builtin(func: Function, *params) -> Tuple[bool, Any]:
                     elem_type is expected_elem_type
                     or (elem_type is float and expected_elem_type is warp.types.float32)
                     or (elem_type is int and expected_elem_type is warp.types.int32)
+                    or (elem_type is bool and expected_elem_type is warp.types.bool)
                     or (
                         issubclass(elem_type, np.number)
                         and warp.types.np_dtype_to_warp_type[np.dtype(elem_type)] is expected_elem_type
@@ -459,6 +460,7 @@ def call_builtin(func: Function, *params) -> Tuple[bool, Any]:
                 isinstance(param, arg_type)
                 or (type(param) is float and arg_type is warp.types.float32)
                 or (type(param) is int and arg_type is warp.types.int32)
+                or (type(param) is bool and arg_type is warp.types.bool)
                 or warp.types.np_dtype_to_warp_type.get(getattr(param, "dtype", None)) is arg_type
             ):
                 return (False, None)
@@ -478,6 +480,8 @@ def call_builtin(func: Function, *params) -> Tuple[bool, Any]:
         value_ctype = ctypes.c_float
     elif value_type == int:
         value_ctype = ctypes.c_int32
+    elif value_type == bool:
+        value_ctype = ctypes.c_bool
     elif issubclass(value_type, (ctypes.Array, ctypes.Structure)):
         value_ctype = value_type
     else:
@@ -3776,6 +3780,8 @@ def full(
             dtype = warp.int32
         elif value_type == float:
             dtype = warp.float32
+        elif value_type == bool:
+            dtype = warp.bool
         elif value_type in warp.types.scalar_types or hasattr(value_type, "_wp_scalar_type_"):
             dtype = value_type
         elif isinstance(value, warp.codegen.StructInstance):
