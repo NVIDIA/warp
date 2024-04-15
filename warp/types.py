@@ -93,6 +93,8 @@ def vector(length, dtype):
         dtype = int32
     elif dtype == float:
         dtype = float32
+    elif dtype == builtins.bool:
+        dtype = bool
 
     class vec_t(ctypes.Array):
         # ctypes.Array data for length, shape and c type:
@@ -273,6 +275,8 @@ def matrix(shape, dtype):
         dtype = int32
     elif dtype == float:
         dtype = float32
+    elif dtype == builtins.bool:
+        dtype = bool
 
     class mat_t(ctypes.Array):
         _length_ = 0 if shape[0] == Any or shape[1] == Any else shape[0] * shape[1]
@@ -1014,6 +1018,7 @@ spatial_matrix = spatial_matrixf
 int_types = [int8, uint8, int16, uint16, int32, uint32, int64, uint64]
 float_types = [float16, float32, float64]
 scalar_types = int_types + float_types
+scalar_and_bool_types = scalar_types + [bool]
 
 vector_types = [
     vec2b,
@@ -1329,6 +1334,8 @@ def type_to_warp(dtype):
         return float32
     elif dtype == int:
         return int32
+    elif dtype == builtins.bool:
+        return bool
     else:
         return dtype
 
@@ -1444,21 +1451,23 @@ def types_equal(a, b, match_generic=False):
         a = float32
     elif a == int:
         a = int32
+    elif a == builtins.bool:
+        a = bool
 
     if b == float:
         b = float32
     elif b == int:
         b = int32
-
-    compatible_bool_types = [builtins.bool, bool]
+    elif b == builtins.bool:
+        b = bool
 
     def are_equal(p1, p2):
         if match_generic:
             if p1 == Any or p2 == Any:
                 return True
-            if p1 == Scalar and p2 in scalar_types + [bool]:
+            if p1 == Scalar and p2 in scalar_and_bool_types:
                 return True
-            if p2 == Scalar and p1 in scalar_types + [bool]:
+            if p2 == Scalar and p1 in scalar_and_bool_types:
                 return True
             if p1 == Scalar and p2 == Scalar:
                 return True
@@ -1474,16 +1483,17 @@ def types_equal(a, b, match_generic=False):
             p1 = float32
         elif p1 == int:
             p1 = int32
+        elif p1 == builtins.bool:
+            p1 = bool
 
         if p2 == float:
             p2 = float32
-        elif b == int:
+        elif p2 == int:
             p2 = int32
+        elif p2 == builtins.bool:
+            p2 = bool
 
-        if p1 in compatible_bool_types and p2 in compatible_bool_types:
-            return True
-        else:
-            return p1 == p2
+        return p1 == p2
 
     if (
         hasattr(a, "_wp_generic_type_str_")
@@ -1599,6 +1609,8 @@ class array(Array):
             dtype = int32
         elif dtype == float:
             dtype = float32
+        elif dtype == builtins.bool:
+            dtype = bool
 
         # convert shape to tuple (or leave shape=None if neither shape nor length were specified)
         if shape is not None:
@@ -4305,7 +4317,7 @@ def infer_argument_types(args, template_types, arg_names=None):
         arg_name = arg_names[i] if arg_names else str(i)
         if arg_type in warp.types.array_types:
             arg_types.append(arg_type(dtype=arg.dtype, ndim=arg.ndim))
-        elif arg_type in warp.types.scalar_types + [bool]:
+        elif arg_type in warp.types.scalar_and_bool_types:
             arg_types.append(arg_type)
         elif arg_type in [int, float]:
             # canonicalize type

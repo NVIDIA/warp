@@ -4,7 +4,6 @@
 # and any modifications thereto.  Any use, reproduction, disclosure or
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
-
 import builtins
 from typing import Any, Callable, Tuple
 
@@ -282,7 +281,7 @@ def infer_scalar_type(arg_types):
         for t in arg_types:
             if hasattr(t, "_wp_scalar_type_"):
                 yield t._wp_scalar_type_
-            elif t in scalar_types:
+            elif t in scalar_and_bool_types:
                 yield t
 
     scalarTypes = set(iterate_scalar_types(arg_types))
@@ -2373,15 +2372,8 @@ add_builtin(
 add_builtin("assign", variadic=True, hidden=True, export=False, group="Utility")
 add_builtin(
     "select",
-    input_types={"cond": bool, "arg1": Any, "arg2": Any},
-    value_func=lambda arg_types, kwds, _: arg_types[1],
-    doc="Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``",
-    group="Utility",
-)
-add_builtin(
-    "select",
     input_types={"cond": builtins.bool, "arg1": Any, "arg2": Any},
-    value_func=lambda args, kwds, _: args[1].type,
+    value_func=lambda arg_types, kwds, _: arg_types[1],
     doc="Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``",
     group="Utility",
 )
@@ -2828,7 +2820,7 @@ add_builtin(
     skip_replay=True,
 )
 
-for t in scalar_types + vector_types + [bool, builtins.bool]:
+for t in scalar_types + vector_types + [bool]:
     if "vec" in t.__name__ or "mat" in t.__name__:
         continue
     add_builtin(

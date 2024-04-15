@@ -52,6 +52,8 @@ def identity_test(data: wp.array(dtype=wp.bool)):
     else:
         data[i] = False
 
+    data[i] = wp.select(data[i], False, True)
+
 
 def test_bool_identity_ops(test, device):
     rng = np.random.default_rng(123)
@@ -82,9 +84,13 @@ def test_bool_constant(test, device):
     wp.launch(check_compile_constant, 1, inputs=[compile_constant_value], device=device)
     test.assertTrue(compile_constant_value.numpy()[0])
 
+    # Repeat the comparison with dtype=bool for the array
+    compile_constant_value = wp.zeros(1, dtype=bool, device=device)
+    wp.launch(check_compile_constant, 1, inputs=[compile_constant_value], device=device)
+    test.assertTrue(compile_constant_value.numpy()[0])
+
 
 def test_bool_constant_vec(test, device):
-
     vec3bool = wp.vec(length=3, dtype=wp.bool)
     bool_selector_vec = wp.constant(vec3bool([True, False, True]))
 
@@ -107,7 +113,6 @@ def test_bool_constant_vec(test, device):
 
 
 def test_bool_constant_mat(test, device):
-
     mat22bool = wp.mat((2, 2), dtype=wp.bool)
     bool_selector_mat = wp.constant(mat22bool([True, False, False, True]))
 
@@ -131,6 +136,60 @@ def test_bool_constant_mat(test, device):
     assert_np_equal(result_array.numpy(), np.full(result_array.shape, 9))
 
 
+def test_bool_vec_typing(test, device):
+    vec3bool_type = wp.types.vector(length=3, dtype=bool)
+    # Zero initialize
+    vec3bool_z = vec3bool_type()
+    test.assertEqual(tuple(vec3bool_z), (False, False, False))
+    # Scalar initialize
+    vec3bool_s = vec3bool_type(True)
+    test.assertEqual(tuple(vec3bool_s), (True, True, True))
+    # Component-wise initialize
+    vec3bool_c = vec3bool_type(True, False, True)
+    test.assertEqual(tuple(vec3bool_c), (True, False, True))
+
+    @wp.kernel
+    def test_bool_vec_anonymous_typing():
+        # Zero initialize
+        vec3bool_z = wp.types.vector(length=3, dtype=bool)
+        wp.expect_eq(vec3bool_z, vec3bool_type(False, False, False))
+        # Scalar initialize
+        vec3bool_s = wp.types.vector(True, length=3)
+        wp.expect_eq(vec3bool_s, vec3bool_type(True, True, True))
+        # Component-wise initialize
+        vec3bool_c = wp.types.vector(True, False, True)
+        wp.expect_eq(vec3bool_c, vec3bool_type(True, False, True))
+
+    wp.launch(test_bool_vec_anonymous_typing, (1,), inputs=[])
+
+
+def test_bool_mat_typing(test, device):
+    mat22bool_type = wp.types.matrix((2, 2), dtype=bool)
+    # Zero initialize
+    mat22bool_z = mat22bool_type()
+    test.assertEqual(tuple(mat22bool_z), ((False, False), (False, False)))
+    # Scalar initialize
+    mat22bool_s = mat22bool_type(True)
+    test.assertEqual(tuple(mat22bool_s), ((True, True), (True, True)))
+    # Component-wise initialize
+    mat22bool_c = mat22bool_type(True, False, True, False)
+    test.assertEqual(tuple(mat22bool_c), ((True, False), (True, False)))
+
+    @wp.kernel
+    def test_bool_mat_anonymous_typing():
+        # Zero initialize
+        mat22bool_z = wp.types.matrix(shape=(2, 2), dtype=bool)
+        wp.expect_eq(mat22bool_z, mat22bool_type(False, False, False, False))
+        # Scalar initialize
+        mat22bool_s = wp.types.matrix(True, shape=(2, 2))
+        wp.expect_eq(mat22bool_s, mat22bool_type(True, True, True, True))
+        # Component-wise initialize
+        mat22bool_c = wp.types.matrix(True, False, True, False, shape=(2, 2))
+        wp.expect_eq(mat22bool_c, mat22bool_type(True, False, True, False))
+
+    wp.launch(test_bool_mat_anonymous_typing, (1,), inputs=[])
+
+
 devices = get_test_devices()
 
 
@@ -142,6 +201,8 @@ add_function_test(TestBool, "test_bool_identity_ops", test_bool_identity_ops, de
 add_function_test(TestBool, "test_bool_constant", test_bool_constant, devices=devices)
 add_function_test(TestBool, "test_bool_constant_vec", test_bool_constant_vec, devices=devices)
 add_function_test(TestBool, "test_bool_constant_mat", test_bool_constant_mat, devices=devices)
+add_function_test(TestBool, "test_bool_vec_typing", test_bool_vec_typing, devices=devices)
+add_function_test(TestBool, "test_bool_mat_typing", test_bool_mat_typing, devices=devices)
 
 
 if __name__ == "__main__":

@@ -456,6 +456,8 @@ class Var:
             type = float32
         elif type == int:
             type = int32
+        elif type == builtins.bool:
+            type = bool
 
         self.label = label
         self.type = type
