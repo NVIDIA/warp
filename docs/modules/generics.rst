@@ -201,7 +201,7 @@ Consider the following generic function:
     def triple(x: Any):
         return 3 * x
 
-Using numeric literals like ``3`` is problematic in generic expressions due to Warp's strict typing rules.  Operands in arithmetic expressions must have the same data types, but integer literals are always treated as ``wp.int32``.  This function will fail to compile if ``x`` has a data type other than ``wp.int32``, which means that it's not geneneric at all.
+Using numeric literals like ``3`` is problematic in generic expressions due to Warp's strict typing rules.  Operands in arithmetic expressions must have the same data types, but integer literals are always treated as ``wp.int32``.  This function will fail to compile if ``x`` has a data type other than ``wp.int32``, which means that it's not generic at all.
 
 The ``type()`` operator comes to the rescue here.  The ``type()`` operator returns the type of its argument, which is handy in generic functions or kernels where the data types are not known in advance.  We can rewrite the function like this to make it work with a wider range of types:
 

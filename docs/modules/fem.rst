@@ -31,7 +31,7 @@ The main mechanism is the :py:func:`.integrand` decorator, for instance: ::
             grad(v, s),
         )
 
-Integrands are normal warp kernels, meaning any usual warp function can be used. 
+Integrands are normal Warp kernels, meaning any usual Warp function can be used. 
 However, they accept a few special parameters:
 
   - :class:`.Sample` contains information about the current integration sample point, such as the element index and coordinates in element.

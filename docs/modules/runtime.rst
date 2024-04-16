@@ -94,7 +94,7 @@ In practice, we might use our kernel generator, ``make_kernel()`` as follows: ::
     wp.launch(sqr_float, dim=N, inputs=[data_float], outputs=[out_float], device=device)
     wp.launch(cube_double, dim=N, inputs=[data_double], outputs=[out_double], device=device)
 
-We can specialize kernel definitions over warp constants similarly. The following generates kernels that add a specified constant
+We can specialize kernel definitions over Warp constants similarly. The following generates kernels that add a specified constant
 to a generic-typed array value: ::
 
     def make_add_kernel(key, constant):

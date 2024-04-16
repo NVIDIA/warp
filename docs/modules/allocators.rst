@@ -160,7 +160,7 @@ Reusing memory this way can improve performance, but may also add undesirable co
 Release Threshold
 ^^^^^^^^^^^^^^^^^
 
-The memory pool release threshold determines how much reserved memory the allocator should hold on to before releasing it back to the operating system.  For programs that frequenty allocate and release memory, setting a higher release threshold can improve the performance of allocations.
+The memory pool release threshold determines how much reserved memory the allocator should hold on to before releasing it back to the operating system.  For programs that frequently allocate and release memory, setting a higher release threshold can improve the performance of allocations.
 
 By default, the release threshold is set to 0.  Setting it to a higher number will reduce the cost of allocations if memory was previously acquired and returned to the pool.
 
