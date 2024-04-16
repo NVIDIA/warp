@@ -1535,14 +1535,6 @@ def select(cond: bool, arg1: Any, arg2: Any):
 
 
 @over
-def select(cond: bool, arg1: Any, arg2: Any):
-    """
-    Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``
-    """
-    ...
-
-
-@over
 def select(cond: int8, arg1: Any, arg2: Any):
     """
     Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``

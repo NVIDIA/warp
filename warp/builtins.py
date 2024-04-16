@@ -17,10 +17,15 @@ def sametypes(arg_types):
     return all(types_equal(arg_types[0], t) for t in arg_types[1:])
 
 
-def sametype_value_func(arg_types, kwds, _):
-    if not sametypes(arg_types):
-        raise RuntimeError(f"Input types must be the same, found: {[type_repr(t) for t in arg_types]}")
-    return arg_types[0]
+def sametype_value_func(default):
+    def fn(arg_types, kwds, _):
+        if arg_types is None:
+            return default
+        if not sametypes(arg_types):
+            raise RuntimeError(f"Input types must be the same, found: {[type_repr(t) for t in arg_types]}")
+        return arg_types[0]
+
+    return fn
 
 
 # ---------------------------------
@@ -29,7 +34,7 @@ def sametype_value_func(arg_types, kwds, _):
 add_builtin(
     "min",
     input_types={"x": Scalar, "y": Scalar},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Scalar),
     doc="Return the minimum of two scalars.",
     group="Scalar Math",
 )
@@ -37,7 +42,7 @@ add_builtin(
 add_builtin(
     "max",
     input_types={"x": Scalar, "y": Scalar},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Scalar),
     doc="Return the maximum of two scalars.",
     group="Scalar Math",
 )
@@ -45,7 +50,7 @@ add_builtin(
 add_builtin(
     "clamp",
     input_types={"x": Scalar, "a": Scalar, "b": Scalar},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Scalar),
     doc="Clamp the value of ``x`` to the range [a, b].",
     group="Scalar Math",
 )
@@ -53,14 +58,14 @@ add_builtin(
 add_builtin(
     "abs",
     input_types={"x": Scalar},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Scalar),
     doc="Return the absolute value of ``x``.",
     group="Scalar Math",
 )
 add_builtin(
     "sign",
     input_types={"x": Scalar},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Scalar),
     doc="Return -1 if ``x`` < 0, return 1 otherwise.",
     group="Scalar Math",
 )
@@ -68,14 +73,14 @@ add_builtin(
 add_builtin(
     "step",
     input_types={"x": Scalar},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Scalar),
     doc="Return 1.0 if ``x`` < 0.0, return 0.0 otherwise.",
     group="Scalar Math",
 )
 add_builtin(
     "nonzero",
     input_types={"x": Scalar},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Scalar),
     doc="Return 1.0 if ``x`` is not equal to zero, return 0.0 otherwise.",
     group="Scalar Math",
 )
@@ -83,35 +88,35 @@ add_builtin(
 add_builtin(
     "sin",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="Return the sine of ``x`` in radians.",
     group="Scalar Math",
 )
 add_builtin(
     "cos",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="Return the cosine of ``x`` in radians.",
     group="Scalar Math",
 )
 add_builtin(
     "acos",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="Return arccos of ``x`` in radians. Inputs are automatically clamped to [-1.0, 1.0].",
     group="Scalar Math",
 )
 add_builtin(
     "asin",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="Return arcsin of ``x`` in radians. Inputs are automatically clamped to [-1.0, 1.0].",
     group="Scalar Math",
 )
 add_builtin(
     "sqrt",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="Return the square root of ``x``, where ``x`` is positive.",
     group="Scalar Math",
     require_original_output_arg=True,
@@ -119,7 +124,7 @@ add_builtin(
 add_builtin(
     "cbrt",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="Return the cube root of ``x``.",
     group="Scalar Math",
     require_original_output_arg=True,
@@ -127,42 +132,42 @@ add_builtin(
 add_builtin(
     "tan",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="Return the tangent of ``x`` in radians.",
     group="Scalar Math",
 )
 add_builtin(
     "atan",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="Return the arctangent of ``x`` in radians.",
     group="Scalar Math",
 )
 add_builtin(
     "atan2",
     input_types={"y": Float, "x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="Return the 2-argument arctangent, atan2, of the point ``(x, y)`` in radians.",
     group="Scalar Math",
 )
 add_builtin(
     "sinh",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="Return the sinh of ``x``.",
     group="Scalar Math",
 )
 add_builtin(
     "cosh",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="Return the cosh of ``x``.",
     group="Scalar Math",
 )
 add_builtin(
     "tanh",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="Return the tanh of ``x``.",
     group="Scalar Math",
     require_original_output_arg=True,
@@ -170,14 +175,14 @@ add_builtin(
 add_builtin(
     "degrees",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="Convert ``x`` from radians into degrees.",
     group="Scalar Math",
 )
 add_builtin(
     "radians",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="Convert ``x`` from degrees into radians.",
     group="Scalar Math",
 )
@@ -185,28 +190,28 @@ add_builtin(
 add_builtin(
     "log",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="Return the natural logarithm (base-e) of ``x``, where ``x`` is positive.",
     group="Scalar Math",
 )
 add_builtin(
     "log2",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="Return the binary logarithm (base-2) of ``x``, where ``x`` is positive.",
     group="Scalar Math",
 )
 add_builtin(
     "log10",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="Return the common logarithm (base-10) of ``x``, where ``x`` is positive.",
     group="Scalar Math",
 )
 add_builtin(
     "exp",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="Return the value of the exponential function :math:`e^x`.",
     group="Scalar Math",
     require_original_output_arg=True,
@@ -214,7 +219,7 @@ add_builtin(
 add_builtin(
     "pow",
     input_types={"x": Float, "y": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="Return the result of ``x`` raised to power of ``y``.",
     group="Scalar Math",
     require_original_output_arg=True,
@@ -223,7 +228,7 @@ add_builtin(
 add_builtin(
     "round",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     group="Scalar Math",
     doc="""Return the nearest integer value to ``x``, rounding halfway cases away from zero.
    This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like :func:`warp.rint()`.
@@ -233,7 +238,7 @@ add_builtin(
 add_builtin(
     "rint",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     group="Scalar Math",
     doc="""Return the nearest integer value to ``x``, rounding halfway cases to nearest even integer.
    It is generally faster than :func:`warp.round()`. Equivalent to :func:`numpy.rint()`.""",
@@ -242,7 +247,7 @@ add_builtin(
 add_builtin(
     "trunc",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     group="Scalar Math",
     doc="""Return the nearest integer that is closer to zero than ``x``.
    In other words, it discards the fractional part of ``x``.
@@ -253,7 +258,7 @@ add_builtin(
 add_builtin(
     "floor",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     group="Scalar Math",
     doc="""Return the largest integer that is less than or equal to ``x``.""",
 )
@@ -261,7 +266,7 @@ add_builtin(
 add_builtin(
     "ceil",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     group="Scalar Math",
     doc="""Return the smallest integer that is greater than or equal to ``x``.""",
 )
@@ -269,7 +274,7 @@ add_builtin(
 add_builtin(
     "frac",
     input_types={"x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     group="Scalar Math",
     doc="""Retrieve the fractional part of x.
     In other words, it discards the integer part of x and is equivalent to ``x - trunc(x)``.""",
@@ -277,6 +282,9 @@ add_builtin(
 
 
 def infer_scalar_type(arg_types):
+    if arg_types is None:
+        return Scalar
+
     def iterate_scalar_types(arg_types):
         for t in arg_types:
             if hasattr(t, "_wp_scalar_type_"):
@@ -293,6 +301,8 @@ def infer_scalar_type(arg_types):
 
 
 def sametype_scalar_value_func(arg_types, kwds, _):
+    if arg_types is None:
+        return Scalar
     if not sametypes(arg_types):
         raise RuntimeError(f"Input types must be exactly the same, {[t for t in arg_types]}")
 
@@ -323,7 +333,7 @@ add_builtin(
     "min",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
     constraint=sametypes,
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
     doc="Return the element-wise minimum of two vectors.",
     group="Vector Math",
 )
@@ -331,7 +341,7 @@ add_builtin(
     "max",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
     constraint=sametypes,
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
     doc="Return the element-wise maximum of two vectors.",
     group="Vector Math",
 )
@@ -370,6 +380,9 @@ add_builtin(
 
 
 def value_func_outer(arg_types, kwds, _):
+    if arg_types is None:
+        return matrix(shape=(Any, Any), dtype=Scalar)
+
     scalarType = infer_scalar_type(arg_types)
     vectorLengths = [t._length_ for t in arg_types]
     return matrix(shape=(vectorLengths), dtype=scalarType)
@@ -386,7 +399,7 @@ add_builtin(
 add_builtin(
     "cross",
     input_types={"x": vector(length=3, dtype=Scalar), "y": vector(length=3, dtype=Scalar)},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(vector(length=3, dtype=Scalar)),
     group="Vector Math",
     doc="Compute the cross product of two 3D vectors.",
 )
@@ -431,7 +444,7 @@ add_builtin(
 add_builtin(
     "normalize",
     input_types={"x": vector(length=Any, dtype=Float)},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
     group="Vector Math",
     doc="Compute the normalized value of ``x``. If ``length(x)`` is 0 then the zero vector is returned.",
     require_original_output_arg=True,
@@ -439,7 +452,7 @@ add_builtin(
 add_builtin(
     "normalize",
     input_types={"x": quaternion(dtype=Float)},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(quaternion(dtype=Scalar)),
     group="Vector Math",
     doc="Compute the normalized value of ``x``. If ``length(x)`` is 0, then the zero quaternion is returned.",
 )
@@ -456,6 +469,8 @@ add_builtin(
 
 
 def value_func_mat_inv(arg_types, kwds, _):
+    if arg_types is None:
+        return matrix(shape=(Any, Any), dtype=Float)
     return arg_types[0]
 
 
@@ -488,6 +503,8 @@ add_builtin(
 
 
 def value_func_mat_det(arg_types, kwds, _):
+    if arg_types is None:
+        return Scalar
     return arg_types[0]._wp_scalar_type_
 
 
@@ -517,6 +534,8 @@ add_builtin(
 
 
 def value_func_mat_trace(arg_types, kwds, _):
+    if arg_types is None:
+        return Scalar
     if arg_types[0]._shape_[0] != arg_types[0]._shape_[1]:
         raise RuntimeError(f"Matrix shape is {arg_types[0]._shape_}. Cannot find the trace of non square matrices")
     return arg_types[0]._wp_scalar_type_
@@ -532,7 +551,10 @@ add_builtin(
 
 
 def value_func_diag(arg_types, kwds, _):
-    return matrix(shape=(arg_types[0]._length_, arg_types[0]._length_), dtype=arg_types[0]._wp_scalar_type_)
+    if arg_types is None:
+        return matrix(shape=(Any, Any), dtype=Scalar)
+    else:
+        return matrix(shape=(arg_types[0]._length_, arg_types[0]._length_), dtype=arg_types[0]._wp_scalar_type_)
 
 
 add_builtin(
@@ -545,9 +567,14 @@ add_builtin(
 
 
 def value_func_get_diag(arg_types, kwds, _):
-    if arg_types[0]._shape_[0] != arg_types[0]._shape_[1]:
-        raise RuntimeError(f"Matrix shape is {arg_types[0]._shape_}; get_diag is only available for square matrices.")
-    return vector(length=arg_types[0]._shape_[0], dtype=arg_types[0]._wp_scalar_type_)
+    if arg_types is None:
+        return vector(length=(Any), dtype=Scalar)
+    else:
+        if arg_types[0]._shape_[0] != arg_types[0]._shape_[1]:
+            raise RuntimeError(
+                f"Matrix shape is {arg_types[0]._shape_}; get_diag is only available for square matrices."
+            )
+        return vector(length=arg_types[0]._shape_[0], dtype=arg_types[0]._wp_scalar_type_)
 
 
 add_builtin(
@@ -562,7 +589,7 @@ add_builtin(
     "cw_mul",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
     constraint=sametypes,
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
     group="Vector Math",
     doc="Component-wise multiplication of two 2D vectors.",
 )
@@ -570,7 +597,7 @@ add_builtin(
     "cw_div",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
     constraint=sametypes,
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
     group="Vector Math",
     doc="Component-wise division of two 2D vectors.",
     require_original_output_arg=True,
@@ -580,7 +607,7 @@ add_builtin(
     "cw_mul",
     input_types={"x": matrix(shape=(Any, Any), dtype=Scalar), "y": matrix(shape=(Any, Any), dtype=Scalar)},
     constraint=sametypes,
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
     group="Vector Math",
     doc="Component-wise multiplication of two 2D vectors.",
 )
@@ -588,7 +615,7 @@ add_builtin(
     "cw_div",
     input_types={"x": matrix(shape=(Any, Any), dtype=Scalar), "y": matrix(shape=(Any, Any), dtype=Scalar)},
     constraint=sametypes,
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
     group="Vector Math",
     doc="Component-wise division of two 2D vectors.",
     require_original_output_arg=True,
@@ -612,6 +639,9 @@ for t in scalar_types_all:
 
 
 def vector_constructor_func(arg_types, kwds, templates):
+    if arg_types is None:
+        return vector(length=Any, dtype=Scalar)
+
     if templates is None or len(templates) == 0:
         # handle construction of anonymous (undeclared) vector types
 
@@ -712,6 +742,9 @@ add_builtin(
 
 
 def matrix_constructor_func(arg_types, kwds, templates):
+    if arg_types is None:
+        return matrix(shape=(Any, Any), dtype=Scalar)
+
     if len(templates) == 0:
         # anonymous construction
         if "shape" not in kwds:
@@ -811,6 +844,9 @@ add_builtin(
 
 # identity:
 def matrix_identity_value_func(arg_types, kwds, templates):
+    if arg_types is None:
+        return matrix(shape=(Any, Any), dtype=Scalar)
+
     if len(arg_types):
         raise RuntimeError("identity() function does not accept positional arguments")
 
@@ -924,6 +960,9 @@ add_builtin(
 
 
 def quaternion_value_func(arg_types, kwds, templates):
+    if arg_types is None:
+        return quaternion(dtype=Float)
+
     if len(templates) == 0:
         if "dtype" in kwds:
             # casting constructor
@@ -941,6 +980,8 @@ def quaternion_value_func(arg_types, kwds, templates):
 
 
 def quat_cast_value_func(arg_types, kwds, templates):
+    if arg_types is None:
+        raise RuntimeError("Missing quaternion argument.")
     if "dtype" not in kwds:
         raise RuntimeError("Missing 'dtype' kwd.")
 
@@ -1204,7 +1245,7 @@ add_builtin(
 add_builtin(
     "transform_inverse",
     input_types={"t": transformation(dtype=Float)},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(transformation(dtype=Float)),
     group="Transformations",
     doc="Compute the inverse of the transformation ``t``.",
 )
@@ -1255,14 +1296,14 @@ add_builtin(
 add_builtin(
     "spatial_cross",
     input_types={"a": vector(length=6, dtype=Float), "b": vector(length=6, dtype=Float)},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(vector(length=6, dtype=Float)),
     group="Spatial Math",
     doc="Compute the cross product of two 6D screw vectors.",
 )
 add_builtin(
     "spatial_cross_dual",
     input_types={"a": vector(length=6, dtype=Float), "b": vector(length=6, dtype=Float)},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(vector(length=6, dtype=Float)),
     group="Spatial Math",
     doc="Compute the dual cross product of two 6D screw vectors.",
 )
@@ -2880,14 +2921,14 @@ add_builtin(
 add_builtin(
     "lerp",
     input_types={"a": Float, "b": Float, "t": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``",
     group="Utility",
 )
 add_builtin(
     "smoothstep",
     input_types={"edge0": Float, "edge1": Float, "x": Float},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Float),
     doc="""Smoothly interpolate between two values ``edge0`` and ``edge1`` using a factor ``x``,
    and return a result between 0 and 1 using a cubic Hermite interpolation after clamping.""",
     group="Utility",
@@ -2898,21 +2939,26 @@ def lerp_constraint(arg_types):
     return types_equal(arg_types[0], arg_types[1])
 
 
-def lerp_value_func(arg_types, kwds, _):
-    scalar_type = arg_types[-1]
-    if not lerp_constraint(arg_types):
-        raise RuntimeError("Can't lerp between objects with different types")
-    if arg_types[0]._wp_scalar_type_ != scalar_type:
-        raise RuntimeError("'t' parameter must have the same scalar type as objects you're lerping between")
+def lerp_value_func(default):
+    def fn(arg_types, kwds, _):
+        if arg_types is None:
+            return default
+        scalar_type = arg_types[-1]
+        if not lerp_constraint(arg_types):
+            raise RuntimeError("Can't lerp between objects with different types")
+        if arg_types[0]._wp_scalar_type_ != scalar_type:
+            raise RuntimeError("'t' parameter must have the same scalar type as objects you're lerping between")
 
-    return arg_types[0]
+        return arg_types[0]
+
+    return fn
 
 
 add_builtin(
     "lerp",
     input_types={"a": vector(length=Any, dtype=Float), "b": vector(length=Any, dtype=Float), "t": Float},
     constraint=lerp_constraint,
-    value_func=lerp_value_func,
+    value_func=lerp_value_func(vector(length=Any, dtype=Float)),
     doc="Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``",
     group="Utility",
 )
@@ -2920,21 +2966,21 @@ add_builtin(
     "lerp",
     input_types={"a": matrix(shape=(Any, Any), dtype=Float), "b": matrix(shape=(Any, Any), dtype=Float), "t": Float},
     constraint=lerp_constraint,
-    value_func=lerp_value_func,
+    value_func=lerp_value_func(matrix(shape=(Any, Any), dtype=Float)),
     doc="Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``",
     group="Utility",
 )
 add_builtin(
     "lerp",
     input_types={"a": quaternion(dtype=Float), "b": quaternion(dtype=Float), "t": Float},
-    value_func=lerp_value_func,
+    value_func=lerp_value_func(quaternion(dtype=Float)),
     doc="Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``",
     group="Utility",
 )
 add_builtin(
     "lerp",
     input_types={"a": transformation(dtype=Float), "b": transformation(dtype=Float), "t": Float},
-    value_func=lerp_value_func,
+    value_func=lerp_value_func(transformation(dtype=Float)),
     doc="Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``",
     group="Utility",
 )
@@ -2976,23 +3022,19 @@ add_builtin(
 # ---------------------------------
 # Operators
 
-add_builtin(
-    "add",
-    input_types={"x": Scalar, "y": Scalar},
-    value_func=sametype_value_func,
-)
+add_builtin("add", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar))
 add_builtin(
     "add",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
     constraint=sametypes,
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "add",
     input_types={"x": quaternion(dtype=Scalar), "y": quaternion(dtype=Scalar)},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(quaternion(dtype=Scalar)),
     doc="",
     group="Operators",
 )
@@ -3000,28 +3042,24 @@ add_builtin(
     "add",
     input_types={"x": matrix(shape=(Any, Any), dtype=Scalar), "y": matrix(shape=(Any, Any), dtype=Scalar)},
     constraint=sametypes,
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "add",
     input_types={"x": transformation(dtype=Scalar), "y": transformation(dtype=Scalar)},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(transformation(dtype=Scalar)),
     doc="",
     group="Operators",
 )
 
-add_builtin(
-    "sub",
-    input_types={"x": Scalar, "y": Scalar},
-    value_func=sametype_value_func,
-)
+add_builtin("sub", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar))
 add_builtin(
     "sub",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
     constraint=sametypes,
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
     doc="",
     group="Operators",
 )
@@ -3029,44 +3067,45 @@ add_builtin(
     "sub",
     input_types={"x": matrix(shape=(Any, Any), dtype=Scalar), "y": matrix(shape=(Any, Any), dtype=Scalar)},
     constraint=sametypes,
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "sub",
     input_types={"x": quaternion(dtype=Scalar), "y": quaternion(dtype=Scalar)},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(quaternion(dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "sub",
     input_types={"x": transformation(dtype=Scalar), "y": transformation(dtype=Scalar)},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(transformation(dtype=Scalar)),
     doc="",
     group="Operators",
 )
 
 # bitwise operators
-add_builtin("bit_and", input_types={"x": Int, "y": Int}, value_func=sametype_value_func)
-add_builtin("bit_or", input_types={"x": Int, "y": Int}, value_func=sametype_value_func)
-add_builtin("bit_xor", input_types={"x": Int, "y": Int}, value_func=sametype_value_func)
-add_builtin("lshift", input_types={"x": Int, "y": Int}, value_func=sametype_value_func)
-add_builtin(
-    "rshift",
-    input_types={"x": Int, "y": Int},
-    value_func=sametype_value_func,
-)
-add_builtin("invert", input_types={"x": Int}, value_func=sametype_value_func)
+add_builtin("bit_and", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int))
+add_builtin("bit_or", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int))
+add_builtin("bit_xor", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int))
+add_builtin("lshift", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int))
+add_builtin("rshift", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int))
+add_builtin("invert", input_types={"x": Int}, value_func=sametype_value_func(Int))
 
 
-def scalar_mul_value_func(arg_types, kwds, _):
-    scalar = [t for t in arg_types if t in scalar_types][0]
-    compound = [t for t in arg_types if t not in scalar_types][0]
-    if scalar != compound._wp_scalar_type_:
-        raise RuntimeError("Object and coefficient must have the same scalar type when multiplying by scalar")
-    return compound
+def scalar_mul_value_func(default):
+    def fn(arg_types, kwds, _):
+        if arg_types is None:
+            return default
+        scalar = [t for t in arg_types if t in scalar_types][0]
+        compound = [t for t in arg_types if t not in scalar_types][0]
+        if scalar != compound._wp_scalar_type_:
+            raise RuntimeError("Object and coefficient must have the same scalar type when multiplying by scalar")
+        return compound
+
+    return fn
 
 
 def mul_matvec_constraint(arg_types):
@@ -3074,6 +3113,9 @@ def mul_matvec_constraint(arg_types):
 
 
 def mul_matvec_value_func(arg_types, kwds, _):
+    if arg_types is None:
+        return vector(length=Any, dtype=Scalar)
+
     if arg_types[0]._wp_scalar_type_ != arg_types[1]._wp_scalar_type_:
         raise RuntimeError(
             f"Can't multiply matrix and vector with different types {arg_types[0]._wp_scalar_type_}, {arg_types[1]._wp_scalar_type_}"
@@ -3092,6 +3134,9 @@ def mul_vecmat_constraint(arg_types):
 
 
 def mul_vecmat_value_func(arg_types, kwds, _):
+    if arg_types is None:
+        return vector(length=Any, dtype=Scalar)
+
     if arg_types[1]._wp_scalar_type_ != arg_types[0]._wp_scalar_type_:
         raise RuntimeError(
             f"Can't multiply vector and matrix with different types {arg_types[1]._wp_scalar_type_}, {arg_types[0]._wp_scalar_type_}"
@@ -3110,6 +3155,9 @@ def mul_matmat_constraint(arg_types):
 
 
 def mul_matmat_value_func(arg_types, kwds, _):
+    if arg_types is None:
+        return matrix(length=Any, dtype=Scalar)
+
     if arg_types[0]._wp_scalar_type_ != arg_types[1]._wp_scalar_type_:
         raise RuntimeError(
             f"Can't multiply matrices with different types {arg_types[0]._wp_scalar_type_}, {arg_types[1]._wp_scalar_type_}"
@@ -3121,57 +3169,53 @@ def mul_matmat_value_func(arg_types, kwds, _):
     return matrix(shape=(arg_types[0]._shape_[0], arg_types[1]._shape_[1]), dtype=arg_types[0]._wp_scalar_type_)
 
 
-add_builtin(
-    "mul",
-    input_types={"x": Scalar, "y": Scalar},
-    value_func=sametype_value_func,
-)
+add_builtin("mul", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar))
 add_builtin(
     "mul",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": Scalar},
-    value_func=scalar_mul_value_func,
+    value_func=scalar_mul_value_func(vector(length=Any, dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "mul",
     input_types={"x": Scalar, "y": vector(length=Any, dtype=Scalar)},
-    value_func=scalar_mul_value_func,
+    value_func=scalar_mul_value_func(vector(length=Any, dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "mul",
     input_types={"x": quaternion(dtype=Scalar), "y": Scalar},
-    value_func=scalar_mul_value_func,
+    value_func=scalar_mul_value_func(quaternion(dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "mul",
     input_types={"x": Scalar, "y": quaternion(dtype=Scalar)},
-    value_func=scalar_mul_value_func,
+    value_func=scalar_mul_value_func(quaternion(dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "mul",
     input_types={"x": quaternion(dtype=Scalar), "y": quaternion(dtype=Scalar)},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(quaternion(dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "mul",
     input_types={"x": Scalar, "y": matrix(shape=(Any, Any), dtype=Scalar)},
-    value_func=scalar_mul_value_func,
+    value_func=scalar_mul_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "mul",
     input_types={"x": matrix(shape=(Any, Any), dtype=Scalar), "y": Scalar},
-    value_func=scalar_mul_value_func,
+    value_func=scalar_mul_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
     doc="",
     group="Operators",
 )
@@ -3203,35 +3247,31 @@ add_builtin(
 add_builtin(
     "mul",
     input_types={"x": transformation(dtype=Scalar), "y": transformation(dtype=Scalar)},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(transformation(dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "mul",
     input_types={"x": Scalar, "y": transformation(dtype=Scalar)},
-    value_func=scalar_mul_value_func,
+    value_func=scalar_mul_value_func(transformation(dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "mul",
     input_types={"x": transformation(dtype=Scalar), "y": Scalar},
-    value_func=scalar_mul_value_func,
+    value_func=scalar_mul_value_func(transformation(dtype=Scalar)),
     doc="",
     group="Operators",
 )
 
-add_builtin(
-    "mod",
-    input_types={"x": Scalar, "y": Scalar},
-    value_func=sametype_value_func,
-)
+add_builtin("mod", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar))
 
 add_builtin(
     "div",
     input_types={"x": Scalar, "y": Scalar},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Scalar),
     doc="",
     group="Operators",
     require_original_output_arg=True,
@@ -3239,42 +3279,42 @@ add_builtin(
 add_builtin(
     "div",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": Scalar},
-    value_func=scalar_mul_value_func,
+    value_func=scalar_mul_value_func(vector(length=Any, dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "div",
     input_types={"x": Scalar, "y": vector(length=Any, dtype=Scalar)},
-    value_func=scalar_mul_value_func,
+    value_func=scalar_mul_value_func(vector(length=Any, dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "div",
     input_types={"x": matrix(shape=(Any, Any), dtype=Scalar), "y": Scalar},
-    value_func=scalar_mul_value_func,
+    value_func=scalar_mul_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "div",
     input_types={"x": Scalar, "y": matrix(shape=(Any, Any), dtype=Scalar)},
-    value_func=scalar_mul_value_func,
+    value_func=scalar_mul_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "div",
     input_types={"x": quaternion(dtype=Scalar), "y": Scalar},
-    value_func=scalar_mul_value_func,
+    value_func=scalar_mul_value_func(quaternion(dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "div",
     input_types={"x": Scalar, "y": quaternion(dtype=Scalar)},
-    value_func=scalar_mul_value_func,
+    value_func=scalar_mul_value_func(quaternion(dtype=Scalar)),
     doc="",
     group="Operators",
 )
@@ -3282,52 +3322,52 @@ add_builtin(
 add_builtin(
     "floordiv",
     input_types={"x": Scalar, "y": Scalar},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(Scalar),
     doc="",
     group="Operators",
 )
 
-add_builtin("pos", input_types={"x": Scalar}, value_func=sametype_value_func)
+add_builtin("pos", input_types={"x": Scalar}, value_func=sametype_value_func(Scalar))
 add_builtin(
     "pos",
     input_types={"x": vector(length=Any, dtype=Scalar)},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "pos",
     input_types={"x": quaternion(dtype=Scalar)},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(quaternion(dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "pos",
     input_types={"x": matrix(shape=(Any, Any), dtype=Scalar)},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
     doc="",
     group="Operators",
 )
-add_builtin("neg", input_types={"x": Scalar}, value_func=sametype_value_func)
+add_builtin("neg", input_types={"x": Scalar}, value_func=sametype_value_func(Scalar))
 add_builtin(
     "neg",
     input_types={"x": vector(length=Any, dtype=Scalar)},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(vector(length=Any, dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "neg",
     input_types={"x": quaternion(dtype=Scalar)},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(quaternion(dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "neg",
     input_types={"x": matrix(shape=(Any, Any), dtype=Scalar)},
-    value_func=sametype_value_func,
+    value_func=sametype_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
     doc="",
     group="Operators",
 )
