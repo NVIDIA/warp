@@ -18,7 +18,7 @@ def parse_usd(
     default_density=1.0e3,
     only_load_enabled_rigid_bodies=False,
     only_load_enabled_joints=True,
-    contact_ke=1e5,  # TODO rename to contact...
+    contact_ke=1e5,
     contact_kd=250.0,
     contact_kf=500.0,
     contact_ka=0.0,
@@ -442,6 +442,7 @@ def parse_usd(
                     enabled=joint["enabled"],
                     parent_xform=joint["parent_tf"],
                     child_xform=joint["child_tf"],
+                    armature=armature,
                 )
 
                 parent_path = joint["parent"]

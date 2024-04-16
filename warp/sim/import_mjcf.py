@@ -329,6 +329,7 @@ def parse_mjcf(
             name="_".join(joint_name),
             parent_xform=wp.transform(body_pos + joint_pos, body_ori),
             child_xform=wp.transform(joint_pos, wp.quat_identity()),
+            armature=joint_armature[0] if len(joint_armature) > 0 else armature,
         )
 
         # -----------------

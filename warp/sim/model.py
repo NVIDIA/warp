@@ -1577,7 +1577,7 @@ class ModelBuilder:
             child_xform (:ref:`transform <transform>`): The transform of the joint in the child body's local frame
             linear_compliance (float): The linear compliance of the joint
             angular_compliance (float): The angular compliance of the joint
-            armature (float): Artificial inertia added around the joint axis (only considered by :class:`FeatherstoneIntegrator`)
+            armature (float): Artificial inertia added around the joint axes (only considered by :class:`FeatherstoneIntegrator`)
             collision_filter_parent (bool): Whether to filter collisions between shapes of the parent and child bodies
             enabled (bool): Whether the joint is enabled (not considered by :class:`FeatherstoneIntegrator`)
 
@@ -1693,6 +1693,7 @@ class ModelBuilder:
         limit_kd: float = default_joint_limit_kd,
         linear_compliance: float = 0.0,
         angular_compliance: float = 0.0,
+        armature: float = 1e-2,
         name: str = None,
         collision_filter_parent: bool = True,
         enabled: bool = True,
@@ -1714,6 +1715,7 @@ class ModelBuilder:
             limit_kd: The damping of the joint limit
             linear_compliance: The linear compliance of the joint
             angular_compliance: The angular compliance of the joint
+            armature: Artificial inertia added around the joint axis
             name: The name of the joint
             collision_filter_parent: Whether to filter collisions between shapes of the parent and child bodies
             enabled: Whether the joint is enabled
@@ -1749,6 +1751,7 @@ class ModelBuilder:
             angular_axes=[ax],
             linear_compliance=linear_compliance,
             angular_compliance=angular_compliance,
+            armature=armature,
             name=name,
             collision_filter_parent=collision_filter_parent,
             enabled=enabled,
@@ -1771,6 +1774,7 @@ class ModelBuilder:
         limit_kd: float = default_joint_limit_kd,
         linear_compliance: float = 0.0,
         angular_compliance: float = 0.0,
+        armature: float = 1e-2,
         name: str = None,
         collision_filter_parent: bool = True,
         enabled: bool = True,
@@ -1792,6 +1796,7 @@ class ModelBuilder:
             limit_kd: The damping of the joint limit
             linear_compliance: The linear compliance of the joint
             angular_compliance: The angular compliance of the joint
+            armature: Artificial inertia added around the joint axis
             name: The name of the joint
             collision_filter_parent: Whether to filter collisions between shapes of the parent and child bodies
             enabled: Whether the joint is enabled
@@ -1827,6 +1832,7 @@ class ModelBuilder:
             linear_axes=[ax],
             linear_compliance=linear_compliance,
             angular_compliance=angular_compliance,
+            armature=armature,
             name=name,
             collision_filter_parent=collision_filter_parent,
             enabled=enabled,
@@ -1885,6 +1891,7 @@ class ModelBuilder:
         child_xform: wp.transform = wp.transform(),
         linear_compliance: float = 0.0,
         angular_compliance: float = 0.0,
+        armature: float = 1e-2,
         name: str = None,
         collision_filter_parent: bool = True,
         enabled: bool = True,
@@ -1899,6 +1906,7 @@ class ModelBuilder:
             child_xform (:ref:`transform <transform>`): The transform of the joint in the child body's local frame
             linear_compliance: The linear compliance of the joint
             angular_compliance: The angular compliance of the joint
+            armature (float): Artificial inertia added around the joint axis (only considered by FeatherstoneIntegrator)
             name: The name of the joint
             collision_filter_parent: Whether to filter collisions between shapes of the parent and child bodies
             enabled: Whether the joint is enabled
@@ -1915,6 +1923,7 @@ class ModelBuilder:
             child_xform=child_xform,
             linear_compliance=linear_compliance,
             angular_compliance=angular_compliance,
+            armature=armature,
             name=name,
             collision_filter_parent=collision_filter_parent,
             enabled=enabled,
@@ -2019,6 +2028,7 @@ class ModelBuilder:
         child_xform: wp.transform = wp.transform(),
         linear_compliance: float = 0.0,
         angular_compliance: float = 0.0,
+        armature: float = 1e-2,
         name: str = None,
         collision_filter_parent: bool = True,
         enabled: bool = True,
@@ -2034,6 +2044,7 @@ class ModelBuilder:
             child_xform (:ref:`transform <transform>`): The transform of the joint in the child body's local frame
             linear_compliance: The linear compliance of the joint
             angular_compliance: The angular compliance of the joint
+            armature: Artificial inertia added around the joint axes
             name: The name of the joint
             collision_filter_parent: Whether to filter collisions between shapes of the parent and child bodies
             enabled: Whether the joint is enabled
@@ -2051,6 +2062,7 @@ class ModelBuilder:
             child_xform=child_xform,
             linear_compliance=linear_compliance,
             angular_compliance=angular_compliance,
+            armature=armature,
             name=name,
             collision_filter_parent=collision_filter_parent,
             enabled=enabled,
@@ -2065,6 +2077,9 @@ class ModelBuilder:
         axis_2: JointAxis,
         parent_xform: wp.transform = wp.transform(),
         child_xform: wp.transform = wp.transform(),
+        linear_compliance: float = 0.0,
+        angular_compliance: float = 0.0,
+        armature: float = 1e-2,
         name: str = None,
         collision_filter_parent: bool = True,
         enabled: bool = True,
@@ -2082,6 +2097,9 @@ class ModelBuilder:
             axis_2 (3D vector or JointAxis): The third axis of the joint, can be a JointAxis object whose settings will be used instead of the other arguments
             parent_xform (:ref:`transform <transform>`): The transform of the joint in the parent body's local frame
             child_xform (:ref:`transform <transform>`): The transform of the joint in the child body's local frame
+            linear_compliance: The linear compliance of the joint
+            angular_compliance: The angular compliance of the joint
+            armature: Artificial inertia added around the joint axes
             name: The name of the joint
             collision_filter_parent: Whether to filter collisions between shapes of the parent and child bodies
             enabled: Whether the joint is enabled
@@ -2097,6 +2115,9 @@ class ModelBuilder:
             angular_axes=[JointAxis(axis_0), JointAxis(axis_1), JointAxis(axis_2)],
             parent_xform=parent_xform,
             child_xform=child_xform,
+            linear_compliance=linear_compliance,
+            angular_compliance=angular_compliance,
+            armature=armature,
             name=name,
             collision_filter_parent=collision_filter_parent,
             enabled=enabled,
@@ -2113,6 +2134,7 @@ class ModelBuilder:
         child_xform: wp.transform = wp.transform(),
         linear_compliance: float = 0.0,
         angular_compliance: float = 0.0,
+        armature: float = 1e-2,
         collision_filter_parent: bool = True,
         enabled: bool = True,
     ):
@@ -2128,6 +2150,7 @@ class ModelBuilder:
             child_xform (:ref:`transform <transform>`): The transform of the joint in the child body's local frame
             linear_compliance: The linear compliance of the joint
             angular_compliance: The angular compliance of the joint
+            armature: Artificial inertia added around the joint axes
             collision_filter_parent: Whether to filter collisions between shapes of the parent and child bodies
             enabled: Whether the joint is enabled
 
@@ -2145,6 +2168,7 @@ class ModelBuilder:
             angular_axes=[JointAxis(a) for a in angular_axes],
             linear_compliance=linear_compliance,
             angular_compliance=angular_compliance,
+            armature=armature,
             name=name,
             collision_filter_parent=collision_filter_parent,
             enabled=enabled,
