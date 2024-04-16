@@ -165,7 +165,19 @@ def parse_urdf(
                 filename = mesh.get("filename")
                 if filename is None:
                     continue
-                if filename.startswith("http://") or filename.startswith("https://"):
+                if filename.startswith("package://"):
+                    fn = filename.replace("package://", "")
+                    package_name = fn.split("/")[0]
+                    urdf_folder = os.path.dirname(urdf_filename)
+                    # resolve file path from package name, i.e. find
+                    # the package folder from the URDF folder
+                    if package_name in urdf_folder:
+                        filename = os.path.join(urdf_folder[: urdf_folder.index(package_name)], fn)
+                    else:
+                        wp.utils.warn(
+                            f'Warning: package "{package_name}" not found in URDF folder while loading mesh at "{filename}"'
+                        )
+                elif filename.startswith("http://") or filename.startswith("https://"):
                     # download mesh
                     import shutil
                     import tempfile
@@ -188,7 +200,9 @@ def parse_urdf(
 
                 import trimesh
 
-                m = trimesh.load_mesh(filename)
+                # use force='mesh' to load the mesh as a trimesh object
+                # with baked in transforms, e.g. from COLLADA files
+                m = trimesh.load(filename, force="mesh")
                 scaling = mesh.get("scale") or "1 1 1"
                 scaling = np.array([float(x) * scale for x in scaling.split()])
                 if hasattr(m, "geometry"):
@@ -215,8 +229,8 @@ def parse_urdf(
                     mesh = Mesh(vertices, faces)
                     s = builder.add_shape_mesh(
                         body=link,
-                        pos=tf.p,
-                        rot=tf.q,
+                        pos=wp.vec3(tf.p),
+                        rot=wp.quat(tf.q),
                         mesh=mesh,
                         density=density,
                         is_visible=visible,
@@ -445,6 +459,7 @@ def parse_urdf(
             parent_xform=parent_xform,
             child_xform=child_xform,
             name=joint["name"],
+            armature=armature,
         )
 
         if joint["type"] == "revolute" or joint["type"] == "continuous":
