@@ -5,7 +5,7 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-version = "1.0.2"
+version = "1.0.3"
 
 verify_fp = False  # verify inputs and outputs are finite after each launch
 verify_cuda = False  # if true will check CUDA errors after each kernel launch / memory operation
