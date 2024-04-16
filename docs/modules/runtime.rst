@@ -275,6 +275,20 @@ The following scalar storage types are supported for array structures:
 
 Warp supports ``float`` and ``int`` as aliases for ``wp.float32`` and ``wp.int32`` respectively.
 
+Positive and negative infinity can be used with floating-point types
+in Warp using the ``wp.inf`` constant:
+
+.. code-block:: python
+
+    @wp.kernel
+    def test_infinity(outputs: wp.array(dtype=wp.float32)):
+        outputs[0] = wp.float32(wp.inf)        # inf
+        outputs[1] = wp.float32(-wp.inf)       # -inf
+        outputs[2] = wp.float32(2.0 * wp.inf)  # inf
+        outputs[3] = wp.float32(-2.0 * wp.inf) # -inf
+        outputs[4] = wp.float32(2.0 / 0.0)     # inf
+        outputs[5] = wp.float32(-2.0 / 0.0)    # -inf
+
 .. _vec:
 
 Vectors
