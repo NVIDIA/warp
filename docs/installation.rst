@@ -42,7 +42,7 @@ Building from source
 For developers who want to build the library themselves the following tools are required:
 
 * Microsoft Visual Studio (Windows), minimum version 2019
-* GCC (Linux), minimum version 7.2
+* GCC (Linux), minimum version 7.4
 * `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_, minimum version 11.5
 * `Git Large File Storage <https://git-lfs.com>`_
 
