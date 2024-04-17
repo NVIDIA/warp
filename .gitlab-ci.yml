@@ -452,6 +452,11 @@ publish wheels to gitlab package registry:
 merge request docs:
   extends:
     - .build-docs-common
+  artifacts:
+    paths:
+      - warp/stubs.py
+      - docs/modules/functions.rst
+      - public
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   environment:
@@ -459,6 +464,29 @@ merge request docs:
     url: https://omniverse.gitlab-master-pages.nvidia.com/-/warp/-/jobs/$CI_JOB_ID/artifacts/public/index.html
   after_script:
     - echo "You can view the website at https://omniverse.gitlab-master-pages.nvidia.com/-/warp/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
+
+# Merge requests: Ensure that exports.h, stubs.py, functions.rst have been
+# manually added to the MR if they are changed
+check generated files:
+  needs: [linux-x86_64 build, merge request docs]
+  stage: deploy
+  artifacts:
+    expose_as: 'Generated source files'
+    paths:
+      - warp/native/exports.h
+      - warp/stubs.py
+      - docs/modules/functions.rst
+  extends:
+    - .runner-utility-linux-x86_64
+  script:
+    - >
+      git diff --exit-code warp/stubs.py docs/modules/functions.rst ||
+      (echo "Please run build_docs.py (or download job artifacts) and add modified files to your merge request." && false)
+    - >
+      git diff --exit-code warp/native/exports.h ||
+      (echo "Please run build_lib.py  (or download job artifacts) and add warp/native/exports.h to your merge request." && false)
+  after_script:
+    - echo "Generated files can be downloaded from https://gitlab-master.nvidia.com/omniverse/warp/-/jobs/$CI_JOB_ID/artifacts/browse"
 
 # Build documentation and publish on gitlab-master
 # This only runs in the default branch pipeline. The "pages" name is special for GitLab.
