@@ -58,11 +58,14 @@ def build_from_source_for_arch(args, arch, llvm_source):
         print(f"Cloning LLVM project from {repo_url}...")
 
         shallow_clone = True  # https://github.blog/2020-12-21-get-up-to-speed-with-partial-clone-and-shallow-clone/
+        version = "15.0.7"
         if shallow_clone:
-            repo = Repo.clone_from(repo_url, to_path=llvm_source, single_branch=True, branch="llvmorg-15.0.7", depth=1)
+            repo = Repo.clone_from(
+                repo_url, to_path=llvm_source, single_branch=True, branch=f"llvmorg-{version}", depth=1
+            )
         else:
             repo = Repo.clone_from(repo_url, to_path=llvm_source)
-            repo.git.checkout("tags/llvmorg-15.0.7", "-b", "llvm-15.0.7")
+            repo.git.checkout(f"tags/llvmorg-{version}", "-b", f"llvm-{version}")
 
     print(f"Using LLVM project source from {llvm_source}")
 
