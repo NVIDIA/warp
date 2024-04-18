@@ -10,8 +10,8 @@ import unittest
 import numpy as np
 
 import warp as wp
-from warp.utils import check_iommu
 from warp.tests.unittest_utils import *
+from warp.utils import check_iommu
 
 wp.init()
 
@@ -20,17 +20,17 @@ class Capturable:
     def __init__(self, use_graph=True, stream=None):
         self.use_graph = use_graph
         self.stream = stream
-    
+
     def __enter__(self):
         if self.use_graph:
             wp.capture_begin(stream=self.stream)
-    
+
     def __exit__(self, exc_type, exc_value, traceback):
         if self.use_graph:
             try:
                 # need to call capture_end() to terminate the CUDA stream capture
                 graph = wp.capture_end(stream=self.stream)
-            except:
+            except Exception:
                 # capture_end() will raise if there was an error during capture, but we squash it here
                 # if we already had an exception so that the original exception percolates to the caller
                 if exc_type is None:
@@ -138,7 +138,7 @@ def test_async_kernels_v1(test, device, use_mempools, use_graph):
 
         with Capturable(use_graph):
             a = wp.zeros(n, dtype=float)
-            for i in range(num_iters):
+            for _i in range(num_iters):
                 wp.launch(inc, dim=a.size, inputs=[a])
 
         assert_np_equal(a.numpy(), np.full(n, num_iters, dtype=np.float32))
@@ -152,7 +152,7 @@ def test_async_kernels_v2(test, device, use_mempools, use_graph):
         a = wp.zeros(n, dtype=float)
 
         with Capturable(use_graph):
-            for i in range(num_iters):
+            for _i in range(num_iters):
                 wp.launch(inc, dim=a.size, inputs=[a])
 
         assert_np_equal(a.numpy(), np.full(n, num_iters, dtype=np.float32))
@@ -182,18 +182,23 @@ for target_device in cuda_devices_with_mempools:
     if cuda_devices_with_mempool_access:
         break
 
-def add_test_variants(
-        func,
-        device_count=1,
-        graph_allocs=False,
-        requires_mempool_access_with_graph=False,
-    ):
 
+def add_test_variants(
+    func,
+    device_count=1,
+    graph_allocs=False,
+    requires_mempool_access_with_graph=False,
+):
     # test that works with default allocators
     if not graph_allocs and device_count <= len(cuda_devices):
         devices = cuda_devices[:device_count]
-        func1 = lambda t, d: func(t, *devices, False, False)
-        func2 = lambda t, d: func(t, *devices, False, True)
+
+        def func1(t, d):
+            return func(t, *devices, False, False)
+
+        def func2(t, d):
+            return func(t, *devices, False, True)
+
         name1 = f"{func.__name__}_DefaultAlloc_NoGraph"
         name2 = f"{func.__name__}_DefaultAlloc_WithGraph"
         if device_count == 1:
@@ -206,7 +211,10 @@ def add_test_variants(
     # test that works with mempool allocators
     if device_count <= len(cuda_devices_with_mempools):
         devices = cuda_devices_with_mempools[:device_count]
-        func3 = lambda t, d: func(t, *devices, True, False)
+
+        def func3(t, d):
+            return func(t, *devices, True, False)
+
         name3 = f"{func.__name__}_MempoolAlloc_NoGraph"
         if device_count == 1:
             add_function_test(TestAsync, name3, func3, devices=devices)
@@ -221,12 +229,16 @@ def add_test_variants(
 
     if device_count <= len(suitable_devices):
         devices = suitable_devices[:device_count]
-        func4 = lambda t, d: func(t, *devices, True, True)
+
+        def func4(t, d):
+            return func(t, *devices, True, True)
+
         name4 = f"{func.__name__}_MempoolAlloc_WithGraph"
         if device_count == 1:
             add_function_test(TestAsync, name4, func4, devices=devices)
         else:
             add_function_test(TestAsync, name4, func4)
+
 
 add_test_variants(test_async_empty, graph_allocs=True)
 add_test_variants(test_async_zeros, graph_allocs=True)
@@ -239,9 +251,10 @@ add_test_variants(test_async_kernels_v1, graph_allocs=True)
 add_test_variants(test_async_kernels_v2, graph_allocs=False)
 
 
-#=================================================================================
+# =================================================================================
 # wp.copy() tests
-#=================================================================================
+# =================================================================================
+
 
 def as_contiguous_array(data, device=None, grad_data=None):
     a = wp.array(data=data, device=device, copy=True)
@@ -274,6 +287,7 @@ def as_indexed_array(data, device=None, **kwargs):
 
 def as_fabric_array(data, device=None, **kwargs):
     from warp.tests.test_fabricarray import _create_fabric_array_interface
+
     a = wp.array(data=data, device=device)
     iface = _create_fabric_array_interface(a, "foo")
     fa = wp.fabricarray(data=iface, attrib="foo")
@@ -283,6 +297,7 @@ def as_fabric_array(data, device=None, **kwargs):
 
 def as_indexed_fabric_array(data, device=None, **kwargs):
     from warp.tests.test_fabricarray import _create_fabric_array_interface
+
     a = wp.array(data=data, device=device)
     shape = (*a.shape[:-1], 2 * a.shape[-1])
     # allocate double the elements so we can index half of them
@@ -297,15 +312,16 @@ def as_indexed_fabric_array(data, device=None, **kwargs):
 
 
 class CopyParams:
-    def __init__(self,
-                 with_grad=False,  # whether to use arrays with gradients (contiguous and strided only)
-                 src_use_mempool=False, # whether to enable memory pool on source device
-                 dst_use_mempool=False, # whether to enable memory pool on destination device
-                 access_dst_src=False,  # whether destination device has access to the source mempool
-                 access_src_dst=False,  # whether source device has access to the destination mempool
-                 stream_device=None, # the device for the stream (None for default behaviour)
-                 use_graph=False, # whether to use a graph
-                 value_offset=0, # unique offset for generated data values per test
+    def __init__(
+        self,
+        with_grad=False,  # whether to use arrays with gradients (contiguous and strided only)
+        src_use_mempool=False,  # whether to enable memory pool on source device
+        dst_use_mempool=False,  # whether to enable memory pool on destination device
+        access_dst_src=False,  # whether destination device has access to the source mempool
+        access_src_dst=False,  # whether source device has access to the destination mempool
+        stream_device=None,  # the device for the stream (None for default behaviour)
+        use_graph=False,  # whether to use a graph
+        value_offset=0,  # unique offset for generated data values per test
     ):
         self.with_grad = with_grad
         self.src_use_mempool = src_use_mempool
@@ -317,22 +333,13 @@ class CopyParams:
         self.value_offset = value_offset
 
 
-def copy_template(
-        test,
-        src_ctor,
-        dst_ctor,
-        src_device,
-        dst_device,
-        n,
-        params: CopyParams
-    ):
-
+def copy_template(test, src_ctor, dst_ctor, src_device, dst_device, n, params: CopyParams):
     # activate the given memory pool configuration
-    with wp.ScopedMempool(src_device, params.src_use_mempool), \
-         wp.ScopedMempool(dst_device, params.dst_use_mempool), \
-         wp.ScopedMempoolAccess(dst_device, src_device, params.access_dst_src), \
-         wp.ScopedMempoolAccess(src_device, dst_device, params.access_src_dst):
-
+    with wp.ScopedMempool(src_device, params.src_use_mempool), wp.ScopedMempool(
+        dst_device, params.dst_use_mempool
+    ), wp.ScopedMempoolAccess(dst_device, src_device, params.access_dst_src), wp.ScopedMempoolAccess(
+        src_device, dst_device, params.access_src_dst
+    ):
         # make sure the data are different between tests by adding a unique offset
         # this avoids aliasing issues with older memory
         src_data = np.arange(params.value_offset, params.value_offset + n, dtype=np.float32)
@@ -372,7 +379,6 @@ def copy_template(
 
         # restrictions on copying between different devices during graph capture
         if params.use_graph and src_device != dst_device:
-
             # errors with allocating staging buffer on source device
             if not src.is_contiguous:
                 if src_device.is_cuda and not src_device.is_mempool_enabled:
@@ -394,15 +400,15 @@ def copy_template(
 
             # p2p copies and mempool access
             if expected_error_type is None and src_device.is_cuda and dst_device.is_cuda:
-
                 # If the source is a contiguous mempool allocation or a non-contiguous array
                 # AND the destination is a contiguous mempool allocation or a non-contiguous array,
                 # then memory pool access needs to be enabled EITHER from src_device to dst_device
                 # OR from dst_device to src_device.
-                if (((src.is_contiguous and params.src_use_mempool) or not src.is_contiguous) and
-                    ((dst.is_contiguous and params.dst_use_mempool) or not dst.is_contiguous) and
-                    not wp.is_mempool_access_enabled(src_device, dst_device) and
-                    not wp.is_mempool_access_enabled(dst_device, src_device)
+                if (
+                    ((src.is_contiguous and params.src_use_mempool) or not src.is_contiguous)
+                    and ((dst.is_contiguous and params.dst_use_mempool) or not dst.is_contiguous)
+                    and not wp.is_mempool_access_enabled(src_device, dst_device)
+                    and not wp.is_mempool_access_enabled(dst_device, src_device)
                 ):
                     expected_error_type, expected_error_regex = RuntimeError, r"^Warp copy error"
 
@@ -435,7 +441,7 @@ def copy_template(
 
             if params.with_grad:
                 assert_np_equal(dst.grad.numpy(), src.grad.numpy())
-            
+
             # print("SUCCESSFUL COPY")
 
 
@@ -480,20 +486,27 @@ num_copy_tests = 0
 
 
 def add_copy_test(test_name, src_ctor, dst_ctor, src_device, dst_device, n, params):
-    test_func = \
-        lambda test, device, src_ctor=src_ctor, dst_ctor=dst_ctor, src_device=src_device, dst_device=dst_device, n=n, params=params: \
-            copy_template(test, src_ctor, dst_ctor, src_device, dst_device, n, params)
+    def test_func(
+        test,
+        device,
+        src_ctor=src_ctor,
+        dst_ctor=dst_ctor,
+        src_device=src_device,
+        dst_device=dst_device,
+        n=n,
+        params=params,
+    ):
+        return copy_template(test, src_ctor, dst_ctor, src_device, dst_device, n, params)
+
     add_function_test(TestAsync, test_name, test_func, check_output=False)
 
 
 # Procedurally add tests with argument combinations supported by the system.
 for src_type, src_ctor in array_constructors.items():
     for dst_type, dst_ctor in array_constructors.items():
-
         copy_type = f"{array_type_codes[src_type]}2{array_type_codes[dst_type]}"
 
         for transfer_type, device_pair in device_pairs.items():
-
             # skip p2p tests if IOMMU is enabled on Linux
             if transfer_type == "p2p" and not check_iommu():
                 continue
@@ -567,7 +580,7 @@ for src_type, src_ctor in array_constructors.items():
                 access_dst_src_flags = [False, True]
             else:
                 access_dst_src_flags = [False]
-            
+
             # access from source device to destination mempool
             if wp.is_mempool_access_supported(src_device, dst_device):
                 access_src_dst_flags = [False, True]
@@ -581,7 +594,6 @@ for src_type, src_ctor in array_constructors.items():
                             for access_src_dst in access_src_dst_flags:
                                 for with_grad in grad_flags:
                                     for use_graph in graph_flags:
-
                                         test_name = f"test_copy_{copy_type}_{transfer_type}"
 
                                         if src_use_mempool:
@@ -603,7 +615,7 @@ for src_type, src_ctor in array_constructors.items():
                                         elif stream_device == cuda2:
                                             test_name += "_Stream2"
                                         else:
-                                            assert False
+                                            raise AssertionError
 
                                         if with_grad:
                                             test_name += "_Grad"

@@ -12,9 +12,9 @@ import traceback
 
 import omni.graph.core as og
 import omni.warp.nodes
-import warp as wp
-
 from omni.warp.nodes.ogn.OgnTextureWriteDatabase import OgnTextureWriteDatabase
+
+import warp as wp
 
 try:
     import omni.ui as ui
@@ -35,9 +35,7 @@ class InternalState:
         self.is_valid = False
 
         self.attr_tracking = omni.warp.nodes.AttrTracking(
-            (
-                "uri",
-            ),
+            ("uri",),
         )
 
     def needs_initialization(self, db: OgnTextureWriteDatabase) -> bool:

@@ -16,9 +16,8 @@ import re
 import sys
 import textwrap
 import types
-from typing import Any, Callable, Mapping
 from types import ModuleType
-
+from typing import Any, Callable, Mapping
 
 import warp.config
 from warp.types import *
@@ -535,7 +534,7 @@ class Adjoint:
         skip_reverse_codegen=False,
         custom_reverse_mode=False,
         custom_reverse_num_input_args=-1,
-        transformers: List[ast.NodeTransformer] = [],
+        transformers: Optional[List[ast.NodeTransformer]] = None,
     ):
         adj.func = func
 
@@ -557,6 +556,9 @@ class Adjoint:
         adj.source = textwrap.dedent(adj.source)
 
         adj.source_lines = adj.source.splitlines()
+
+        if transformers is None:
+            transformers = []
 
         # build AST and apply node transformers
         adj.tree = ast.parse(adj.source)
@@ -617,11 +619,14 @@ class Adjoint:
         adj.skip_build = False
 
     # generate function ssa form and adjoint
-    def build(adj, builder, default_builder_options={}):
+    def build(adj, builder, default_builder_options=None):
         if adj.skip_build:
             return
 
         adj.builder = builder
+
+        if default_builder_options is None:
+            default_builder_options = {}
 
         if adj.builder:
             adj.builder_options = adj.builder.options
@@ -925,11 +930,14 @@ class Adjoint:
             f"Couldn't find function overload for '{func.key}' that matched inputs with types: [{', '.join(arg_types)}]"
         )
 
-    def add_call(adj, func, args, min_outputs=None, templates=[], kwds=None):
+    def add_call(adj, func, args, min_outputs=None, templates=None, kwds=None):
+        if templates is None:
+            templates = []
+
         func = adj.resolve_func(func, args, min_outputs, templates, kwds)
 
         # push any default values onto args
-        for i, (arg_name, arg_type) in enumerate(func.input_types.items()):
+        for i, (arg_name, _arg_type) in enumerate(func.input_types.items()):
             if i >= len(args):
                 if arg_name in func.defaults:
                     const = adj.add_constant(func.defaults[arg_name])
@@ -1027,7 +1035,10 @@ class Adjoint:
 
         return output
 
-    def add_builtin_call(adj, func_name, args, min_outputs=None, templates=[], kwds=None):
+    def add_builtin_call(adj, func_name, args, min_outputs=None, templates=None, kwds=None):
+        if templates is None:
+            templates = []
+
         func = warp.context.builtin_functions[func_name]
         return adj.add_call(func, args, min_outputs, templates, kwds)
 
@@ -1397,7 +1408,7 @@ class Adjoint:
 
                 return attr
 
-        except (KeyError, AttributeError):
+        except (KeyError, AttributeError) as e:
             # Try resolving as type attribute
             aggregate_type = strip_reference(aggregate.type) if isinstance(aggregate, Var) else aggregate
 
@@ -1408,8 +1419,8 @@ class Adjoint:
             if isinstance(aggregate, Var):
                 raise WarpCodegenAttributeError(
                     f"Error, `{node.attr}` is not an attribute of '{node.value.id}' ({type_repr(aggregate.type)})"
-                )
-            raise WarpCodegenAttributeError(f"Error, `{node.attr}` is not an attribute of '{aggregate}'")
+                ) from e
+            raise WarpCodegenAttributeError(f"Error, `{node.attr}` is not an attribute of '{aggregate}'") from e
 
     def emit_String(adj, node):
         # string constant
@@ -1761,7 +1772,6 @@ class Adjoint:
         count = 0
         array = None
         while isinstance(root, ast.Subscript):
-
             if isinstance(root.slice, ast.Tuple):
                 # handles the x[i, j] case (Python 3.8.x upward)
                 count += len(root.slice.elts)
@@ -1982,7 +1992,7 @@ class Adjoint:
                 )
 
         if var is not None:
-            adj.return_var = tuple()
+            adj.return_var = ()
             for ret in var:
                 if is_reference(ret.type):
                     ret = adj.add_builtin_call("copy", [ret])
@@ -2061,8 +2071,7 @@ class Adjoint:
 
         capturedvars = dict(
             zip(
-                adj.func.__code__.co_freevars,
-                [extract_contents(c.cell_contents) for c in (adj.func.__closure__ or [])],
+                adj.func.__code__.co_freevars, [extract_contents(c.cell_contents) for c in (adj.func.__closure__ or [])]
             )
         )
         vars_dict = {**adj.func.__globals__, **capturedvars}
@@ -2408,7 +2417,7 @@ def constant_str(value):
 
 def indent(args, stops=1):
     sep = ",\n"
-    for i in range(stops):
+    for _i in range(stops):
         sep += "    "
 
     # return sep + args.replace(", ", "," + sep)
@@ -2571,7 +2580,10 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
     return "".join([indent_block + l for l in lines])
 
 
-def codegen_func(adj, c_func_name: str, device="cpu", options={}):
+def codegen_func(adj, c_func_name: str, device="cpu", options=None):
+    if options is None:
+        options = {}
+
     # forward header
     if adj.return_var is not None and len(adj.return_var) == 1:
         return_type = adj.return_var[0].ctype()
@@ -2663,13 +2675,13 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet):
     reverse_args = []
 
     # forward args
-    for i, arg in enumerate(adj.args):
+    for _i, arg in enumerate(adj.args):
         s = f"{arg.ctype()} {arg.emit().replace('var_', '')}"
         forward_args.append(s)
         reverse_args.append(s)
 
     # reverse args
-    for i, arg in enumerate(adj.args):
+    for _i, arg in enumerate(adj.args):
         if isinstance(arg.type, indexedarray):
             _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
             reverse_args.append(_arg.ctype() + " & adj_" + arg.label)

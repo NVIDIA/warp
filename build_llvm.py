@@ -104,8 +104,8 @@ def build_from_source_for_arch(args, arch, llvm_source):
     install_path = os.path.join(llvm_install_path, f"{args.mode}-{arch}")
 
     # Build LLVM and Clang
+    # fmt: off
     cmake_gen = [
-        # fmt: off
         "cmake",
         "-S", llvm_path,
         "-B", build_path,
@@ -268,8 +268,8 @@ def build_from_source_for_arch(args, arch, llvm_source):
         "-D", "LLVM_TOOL_VFABI_DEMANGLE_FUZZER_BUILD=FALSE",
         "-D", "LLVM_TOOL_XCODE_TOOLCHAIN_BUILD=FALSE",
         "-D", "LLVM_TOOL_YAML2OBJ_BUILD=FALSE",
-        # fmt: on
     ]
+    # fmt: on
     subprocess.check_call(cmake_gen, stderr=subprocess.STDOUT)
 
     cmake_build = ["cmake", "--build", build_path]
@@ -318,7 +318,10 @@ def build_warp_clang_for_arch(args, lib_name, arch):
             fetch_prebuilt_libraries()
             libpath = os.path.join(base_path, f"_build/host-deps/llvm-project/release-{arch}/lib")
 
-        for _, _, libs in os.walk(libpath):
+        libs = []
+
+        for _, _, libraries in os.walk(libpath):
+            libs.extend(libraries)
             break  # just the top level contains library files
 
         if os.name == "nt":

@@ -22,6 +22,7 @@ wp.init()
 def _jax_version():
     try:
         import jax
+
         return jax.__version_info__
     except ImportError:
         return (0, 0, 0)

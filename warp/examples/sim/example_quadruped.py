@@ -167,7 +167,6 @@ class Example:
 
 
 if __name__ == "__main__":
-
     stage_path = "example_quadruped.usd"
 
     example = Example(stage_path, num_envs=8)

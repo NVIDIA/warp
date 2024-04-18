@@ -28,7 +28,9 @@ When you're ready to submit your changes, please follow these steps to create a 
 3. **Pre-Review Checklist**: The following should be checked before assigning reviews:
    - Unit / regression tests are written.
    - Docs have been updated.
-   - Run `flake8` or `black` to auto-format changes (GitLab pipeline will indicate if there are Flake8 errors).
+   - Use `ruff check` and `ruff format --check` to check for code quality issues.
+     The GitLab pipeline will fail if there are issues.
+     Exclusions may be used as appropriate, e.g. `# noqa: F841` or `#fmt: skip`.
    - The GitLab CI/CD pipeline for the merge request is successful.
 
 4. **Assign Reviewers**: Select one or more reviewers from the owners list below to review your changes.

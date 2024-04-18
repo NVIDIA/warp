@@ -25,5 +25,5 @@ if __name__ == "__main__":
 
     try:
         open_file(source_dir)
-    except:
+    except Exception:
         pass

@@ -14,11 +14,11 @@ from typing import (
     Tuple,
 )
 
+import omni.ui as ui
 from omni.kit.property.usd.usd_attribute_model import TfTokenAttributeModel
 from omni.kit.property.usd.usd_property_widget import UsdPropertyUiEntry
 from omni.kit.property.usd.usd_property_widget_builder import UsdPropertiesWidgetBuilder
 from omni.kit.window.property.templates import HORIZONTAL_SPACING
-import omni.ui as ui
 
 
 def get_source_picker_prop_builder(

@@ -11,18 +11,18 @@
 # This example computes a 2D weakly-compressible Stokes flow around
 # a moving object, including:
 # - defining active cells from a mask, and restricting the computation domain to those
-# - utilizing the PicQuadrature to integrate over unstructured particles 
+# - utilizing the PicQuadrature to integrate over unstructured particles
 ###########################################################################
 
 import math
-import warp as wp
+
 import numpy as np
 
+import warp as wp
 import warp.fem as fem
-
-from warp.utils import array_cast
 from warp.fem.utils import array_axpy
-from warp.sparse import bsr_transposed, bsr_mm, bsr_axpy, bsr_mv
+from warp.sparse import bsr_axpy, bsr_mm, bsr_mv, bsr_transposed
+from warp.utils import array_cast
 
 # Import example utilities
 # Make sure that works both when imported as module and run as standalone file

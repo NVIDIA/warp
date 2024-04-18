@@ -1,14 +1,16 @@
 import warp as wp
-
-from warp.fem.types import ElementIndex, Coords
-from warp.fem.geometry import Trimesh2D
 from warp.fem import cache
+from warp.fem.geometry import Trimesh2D
+from warp.fem.types import Coords, ElementIndex
 
-from .topology import SpaceTopology, DiscontinuousSpaceTopologyMixin, forward_base_topology
 from .basis_space import ShapeBasisSpace, TraceBasisSpace
-
-from .shape import ShapeFunction, ConstantShapeFunction
-from .shape import Triangle2DPolynomialShapeFunctions, Triangle2DNonConformingPolynomialShapeFunctions
+from .shape import (
+    ConstantShapeFunction,
+    ShapeFunction,
+    Triangle2DNonConformingPolynomialShapeFunctions,
+    Triangle2DPolynomialShapeFunctions,
+)
+from .topology import DiscontinuousSpaceTopologyMixin, SpaceTopology, forward_base_topology
 
 
 @wp.struct

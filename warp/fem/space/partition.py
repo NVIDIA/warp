@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 import warp as wp
 from warp.fem.cache import (

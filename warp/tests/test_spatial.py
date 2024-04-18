@@ -16,7 +16,7 @@ wp.init()
 
 np_float_types = [np.float32, np.float64, np.float16]
 
-kernel_cache = dict()
+kernel_cache = {}
 
 
 def getkernel(func, suffix=""):
@@ -499,7 +499,7 @@ def test_spatial_cross(test, device, dtype, register_kernels=False):
             wp.launch(output_select_kernel, dim=1, inputs=[outputs_wcrossv, i], outputs=[cmp_wcrossv], device=device)
             wp.launch(output_select_kernel, dim=1, inputs=[outputs_vcrossv, i], outputs=[cmp_vcrossv], device=device)
 
-        def getgrads(cmp):
+        def getgrads(cmp, tape=tape):
             tape.backward(loss=cmp)
             sgrads = 1.0 * tape.gradients[s].numpy()
             vgrads = 1.0 * tape.gradients[v].numpy()

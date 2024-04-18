@@ -9,20 +9,17 @@ import math
 import unittest
 
 import numpy as np
+
 import warp as wp
-from warp.tests.unittest_utils import *
-
-
-from warp.fem import Field, Sample, Domain, Coords
-from warp.fem import integrand, div, grad, curl, D, normal
 import warp.fem as fem
-
-from warp.fem.types import make_free_sample
-from warp.fem.geometry.closest_point import project_on_tri_at_origin, project_on_tet_at_origin
-from warp.fem.geometry import DeformedGeometry
-from warp.fem.space import shape
+from warp.fem import Coords, D, Domain, Field, Sample, curl, div, grad, integrand, normal
 from warp.fem.cache import dynamic_kernel
-from warp.fem.utils import grid_to_tets, grid_to_tris, grid_to_quads, grid_to_hexes
+from warp.fem.geometry import DeformedGeometry
+from warp.fem.geometry.closest_point import project_on_tet_at_origin, project_on_tri_at_origin
+from warp.fem.space import shape
+from warp.fem.types import make_free_sample
+from warp.fem.utils import grid_to_hexes, grid_to_quads, grid_to_tets, grid_to_tris
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -756,7 +753,7 @@ def test_closest_point_queries(test_case, device):
 
 
 def test_regular_quadrature(test_case, device):
-    from warp.fem.geometry.element import LinearEdge, Triangle, Polynomial
+    from warp.fem.geometry.element import LinearEdge, Polynomial, Triangle
 
     for family in Polynomial:
         # test integrating monomials

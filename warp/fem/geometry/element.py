@@ -1,7 +1,7 @@
-from typing import Tuple, List
+from typing import List, Tuple
 
-from warp.fem.types import Coords
 from warp.fem.polynomial import Polynomial, quadrature_1d
+from warp.fem.types import Coords
 
 
 class Element:

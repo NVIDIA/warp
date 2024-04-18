@@ -5,12 +5,9 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import numpy as np
-
 import jax.lax
 import jax.numpy as jnp
-
-import os
+import numpy as np
 
 
 @jax.jit
@@ -82,7 +79,7 @@ class JxIntegrator:
     def simulate(self, dt, substeps):
         sim_dt = dt / substeps
 
-        for s in range(substeps):
+        for _s in range(substeps):
             f = eval_springs(
                 self.positions,
                 self.velocities,

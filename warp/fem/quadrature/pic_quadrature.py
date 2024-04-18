@@ -1,14 +1,12 @@
-from typing import Union, Tuple, Any, Optional
+from typing import Any, Optional, Tuple, Union
 
 import warp as wp
-
+from warp.fem.cache import TemporaryStore, borrow_temporary, cached_arg_value, dynamic_kernel
 from warp.fem.domain import GeometryDomain
-from warp.fem.types import ElementIndex, Coords, make_free_sample
+from warp.fem.types import Coords, ElementIndex, make_free_sample
 from warp.fem.utils import compress_node_indices
-from warp.fem.cache import cached_arg_value, TemporaryStore, borrow_temporary, dynamic_kernel
 
 from .quadrature import Quadrature
-
 
 wp.set_module_options({"enable_backward": False})
 

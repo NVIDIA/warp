@@ -1,12 +1,12 @@
 import math
 
-import warp as wp
 import numpy as np
 
-from warp.fem.geometry import Grid3D
-from warp.fem.polynomial import Polynomial, quadrature_1d, lagrange_scales, is_closed
-from warp.fem.types import Coords
+import warp as wp
 from warp.fem import cache
+from warp.fem.geometry import Grid3D
+from warp.fem.polynomial import Polynomial, is_closed, lagrange_scales, quadrature_1d
+from warp.fem.types import Coords
 
 from .tet_shape_function import TetrahedronPolynomialShapeFunctions
 

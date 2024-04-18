@@ -86,7 +86,7 @@ def test_large_arrays_slow(test, device):
         dim_x = math.ceil(total_elements ** (1 / total_dims))
         shape_tuple = tuple([dim_x] * total_dims)
 
-        for nptype, wptype in wp.types.np_dtype_to_warp_type.items():
+        for _nptype, wptype in wp.types.np_dtype_to_warp_type.items():
             a1 = wp.zeros(shape_tuple, dtype=wptype, device=device)
             assert_np_equal(a1.numpy(), np.zeros_like(a1.numpy()))
 

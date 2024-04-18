@@ -1,10 +1,9 @@
-from typing import Union
 from enum import Enum
+from typing import Union
 
 import warp as wp
 import warp.codegen
 import warp.context
-
 from warp.fem.geometry import (
     Element,
     Geometry,

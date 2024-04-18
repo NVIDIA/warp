@@ -92,7 +92,7 @@ class Example:
 
         # allocate sim states for trajectory
         self.states = []
-        for i in range(self.sim_steps + 1):
+        for _i in range(self.sim_steps + 1):
             self.states.append(self.model.state())
 
         # one-shot contact creation (valid if we're doing simple collision against a constant normal plane)

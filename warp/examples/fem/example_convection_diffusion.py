@@ -149,7 +149,7 @@ class Example:
         bsr_cg(self._matrix, x=self._phi_field.dof_values, b=rhs, quiet=self._quiet, tol=1.0e-12)
 
     def render(self):
-        self.renderer.begin_frame(time = self.current_frame * self.sim_dt)
+        self.renderer.begin_frame(time=self.current_frame * self.sim_dt)
         self.renderer.add_surface("phi", self._phi_field)
         self.renderer.end_frame()
 

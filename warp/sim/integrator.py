@@ -6,7 +6,8 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import warp as wp
-from .model import Model, State, Control, PARTICLE_FLAG_ACTIVE
+
+from .model import PARTICLE_FLAG_ACTIVE, Control, Model, State
 
 
 @wp.kernel

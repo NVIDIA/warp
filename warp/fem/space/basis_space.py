@@ -1,14 +1,13 @@
 from typing import Optional
 
 import warp as wp
-
-from warp.fem.types import ElementIndex, Coords, make_free_sample
+from warp.fem import cache
 from warp.fem.geometry import Geometry
 from warp.fem.quadrature import Quadrature
-from warp.fem import cache
+from warp.fem.types import Coords, ElementIndex, make_free_sample
 
-from .topology import SpaceTopology, DiscontinuousSpaceTopology
 from .shape import ShapeFunction
+from .topology import DiscontinuousSpaceTopology, SpaceTopology
 
 
 class BasisSpace:

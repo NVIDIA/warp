@@ -10,11 +10,23 @@ import unittest
 import numpy as np
 
 import warp as wp
-from warp.sparse import bsr_zeros, bsr_set_from_triplets, bsr_get_diag, bsr_diag, bsr_identity, bsr_copy, bsr_scale
-from warp.sparse import bsr_set_transpose, bsr_transposed
-from warp.sparse import bsr_axpy, bsr_mm, bsr_axpy_work_arrays, bsr_mm_work_arrays, bsr_mv
+from warp.sparse import (
+    bsr_axpy,
+    bsr_axpy_work_arrays,
+    bsr_copy,
+    bsr_diag,
+    bsr_get_diag,
+    bsr_identity,
+    bsr_mm,
+    bsr_mm_work_arrays,
+    bsr_mv,
+    bsr_scale,
+    bsr_set_from_triplets,
+    bsr_set_transpose,
+    bsr_transposed,
+    bsr_zeros,
+)
 from warp.tests.unittest_utils import *
-
 
 wp.init()
 

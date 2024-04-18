@@ -7,28 +7,25 @@
 
 import warp as wp
 
-from .model import Model, State, Control
-
-from .integrator import Integrator
-
-from .integrator_euler import (
-    eval_spring_forces,
-    eval_triangle_forces,
-    eval_triangle_contact_forces,
-    eval_bending_forces,
-    eval_tetrahedral_forces,
-    eval_particle_forces,
-    eval_particle_ground_contact_forces,
-    eval_particle_body_contact_forces,
-    eval_muscle_forces,
-    eval_rigid_contacts,
-    eval_joint_force,
-)
-
 from .articulation import (
     compute_2d_rotational_dofs,
     compute_3d_rotational_dofs,
 )
+from .integrator import Integrator
+from .integrator_euler import (
+    eval_bending_forces,
+    eval_joint_force,
+    eval_muscle_forces,
+    eval_particle_body_contact_forces,
+    eval_particle_forces,
+    eval_particle_ground_contact_forces,
+    eval_rigid_contacts,
+    eval_spring_forces,
+    eval_tetrahedral_forces,
+    eval_triangle_contact_forces,
+    eval_triangle_forces,
+)
+from .model import Control, Model, State
 
 
 # Frank & Park definition 3.20, pg 100
@@ -809,7 +806,7 @@ def compute_link_velocity(
     qd_start = joint_qd_start[i]
 
     X_pj = joint_X_p[i]
-    X_cj = joint_X_c[i]
+    # X_cj = joint_X_c[i]
 
     # parent anchor frame in world space
     X_wpj = X_pj
@@ -1639,7 +1636,6 @@ class FeatherstoneIntegrator(Integrator):
             # articulations
 
             if model.joint_count:
-
                 # evaluate body transforms
                 wp.launch(
                     eval_rigid_fk,

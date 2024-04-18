@@ -1,13 +1,11 @@
 from typing import Any
 
 import warp as wp
-
-from warp.fem.types import ElementIndex, NULL_ELEMENT_INDEX
+from warp.fem.cache import TemporaryStore, borrow_temporary, cached_arg_value
+from warp.fem.types import NULL_ELEMENT_INDEX, ElementIndex
 from warp.fem.utils import masked_indices
-from warp.fem.cache import cached_arg_value, TemporaryStore, borrow_temporary
 
 from .geometry import Geometry
-
 
 wp.set_module_options({"enable_backward": False})
 

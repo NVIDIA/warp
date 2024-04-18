@@ -110,7 +110,7 @@ class Example:
 
         self.positions = wp.from_numpy(init_pos, dtype=wp.vec3)
         self.velocities = wp.from_numpy(init_vel, dtype=wp.vec3)
-        
+
         # renderer
         self.renderer = None
         if stage:
@@ -128,17 +128,24 @@ class Example:
                 dim=self.num_particles,
                 inputs=[self.positions, self.velocities, self.mesh.id, self.sim_margin, self.sim_dt],
             )
-            
+
             self.sim_time += self.sim_dt
 
     def render(self):
         if self.renderer is None:
             return
-        
+
         with wp.ScopedTimer("render", detailed=False):
             self.renderer.begin_frame(self.sim_time)
-            self.renderer.render_mesh(name="mesh", points=self.mesh.points.numpy(), indices=self.mesh.indices.numpy(), colors=((0.35, 0.55, 0.9),) * len(self.mesh.points))
-            self.renderer.render_points(name="points", points=self.positions.numpy(), radius=self.sim_margin, colors=(0.8, 0.3, 0.2))
+            self.renderer.render_mesh(
+                name="mesh",
+                points=self.mesh.points.numpy(),
+                indices=self.mesh.indices.numpy(),
+                colors=((0.35, 0.55, 0.9),) * len(self.mesh.points),
+            )
+            self.renderer.render_points(
+                name="points", points=self.positions.numpy(), radius=self.sim_margin, colors=(0.8, 0.3, 0.2)
+            )
             self.renderer.end_frame()
 
 
@@ -147,7 +154,7 @@ if __name__ == "__main__":
 
     example = Example(stage_path)
 
-    for i in range(example.sim_steps):
+    for _i in range(example.sim_steps):
         example.step()
         example.render()
 

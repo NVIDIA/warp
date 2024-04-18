@@ -16,7 +16,11 @@ from typing import (
 
 import omni.graph.core as og
 import omni.ui as ui
-
+from omni.warp.nodes._impl.attributes import (
+    ATTR_BUNDLE_TYPE,
+    attr_get_name,
+    attr_join_name,
+)
 from omni.warp.nodes._impl.kernel import (
     ArrayAttributeFormat,
     UserAttributeDesc,
@@ -24,13 +28,7 @@ from omni.warp.nodes._impl.kernel import (
     deserialize_user_attribute_descs,
     serialize_user_attribute_descs,
 )
-from omni.warp.nodes._impl.attributes import (
-    ATTR_BUNDLE_TYPE,
-    attr_get_name,
-    attr_join_name,
-)
 from omni.warp.nodes._impl.widgets.attributeeditor import AttributeEditor
-
 
 _BUTTON_WIDTH = 100
 
@@ -79,9 +77,7 @@ def _get_attribute_creation_handler(state: _State) -> Callable:
         elif attr_desc.array_format == ArrayAttributeFormat.BUNDLE:
             attr_type = ATTR_BUNDLE_TYPE
         else:
-            assert False, "Unexpected array attribute format '{}'.".format(
-                attr_desc.array_format,
-            )
+            raise AssertionError("Unexpected array attribute format '{}'.".format(attr_desc.array_format))
 
         attr = og.Controller.create_attribute(
             state.layout.node,

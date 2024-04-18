@@ -12,13 +12,14 @@ import re
 import xml.etree.ElementTree as ET
 
 import numpy as np
+
 import warp as wp
 
 
 def parse_mjcf(
     mjcf_filename,
     builder,
-    xform=wp.transform(),
+    xform=None,
     density=1000.0,
     stiffness=0.0,
     damping=0.0,
@@ -37,7 +38,7 @@ def parse_mjcf(
     parse_meshes=True,
     enable_self_collisions=False,
     up_axis="Z",
-    ignore_classes=[],
+    ignore_classes=None,
     collapse_fixed_joints=False,
 ):
     """
@@ -73,19 +74,25 @@ def parse_mjcf(
 
         The handling of advanced features, such as MJCF classes, is still experimental.
     """
+    if xform is None:
+        xform = wp.transform()
+
+    if ignore_classes is None:
+        ignore_classes = []
+
     mjcf_dirname = os.path.dirname(mjcf_filename)
     file = ET.parse(mjcf_filename)
     root = file.getroot()
 
-    contact_vars = dict(
-        ke=contact_ke,
-        kd=contact_kd,
-        kf=contact_kf,
-        ka=contact_ka,
-        mu=contact_mu,
-        restitution=contact_restitution,
-        thickness=contact_thickness,
-    )
+    contact_vars = {
+        "ke": contact_ke,
+        "kd": contact_kd,
+        "kf": contact_kf,
+        "ka": contact_ka,
+        "mu": contact_mu,
+        "restitution": contact_restitution,
+        "thickness": contact_thickness,
+    }
 
     use_degrees = True  # angles are in degrees by default
     euler_seq = [1, 2, 3]  # XYZ by default
@@ -258,7 +265,7 @@ def parse_mjcf(
             joint_name.append(freejoint_tags[0].attrib.get("name", f"{body_name}_freejoint"))
         else:
             joints = body.findall("joint")
-            for i, joint in enumerate(joints):
+            for _i, joint in enumerate(joints):
                 if "joint" in defaults:
                     joint_attrib = merge_attrib(defaults["joint"], joint.attrib)
                 else:

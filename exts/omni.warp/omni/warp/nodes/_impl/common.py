@@ -15,8 +15,8 @@ from typing import (
 )
 
 import omni.graph.core as og
-import warp as wp
 
+import warp as wp
 
 #   General
 # ------------------------------------------------------------------------------

@@ -14,14 +14,13 @@ from typing import (
 
 import numpy as np
 import omni.graph.core as og
-import warp as wp
-
 from omni.warp.nodes._impl.attributes import (
     attr_get,
     attr_get_array_on_gpu,
     attr_set,
 )
 
+import warp as wp
 
 #   High-level Bundle API (og.BundleContents)
 # ------------------------------------------------------------------------------

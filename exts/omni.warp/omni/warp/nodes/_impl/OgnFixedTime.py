@@ -30,7 +30,7 @@ class OgnFixedTime:
         timeline = omni.timeline.get_timeline_interface()
         context = db.internal_state
 
-        if context.initialized == False:
+        if not context.initialized:
             context.time = db.inputs.start
             context.initialized = True
 

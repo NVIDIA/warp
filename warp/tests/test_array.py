@@ -1540,7 +1540,6 @@ def test_ones_like_scalar(test, device):
         shape = (dim,) * ndim
 
         for nptype, wptype in wp.types.np_dtype_to_warp_type.items():
-
             # source array
             a = wp.zeros(shape, dtype=wptype, device=device)
             na = a.numpy()

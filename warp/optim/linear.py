@@ -1,5 +1,5 @@
-from typing import Optional, Union, Callable, Tuple, Any
 from math import sqrt
+from typing import Any, Callable, Optional, Tuple, Union
 
 import warp as wp
 import warp.sparse as sparse
@@ -353,7 +353,6 @@ def cr(
     array_inner(z, Az, out=zAz_new)
 
     def do_iteration(atol_sq, rr, zAz_old, zAz_new):
-
         if M is not None:
             M.matvec(Ap, y, y, alpha=1.0, beta=0.0)
         array_inner(Ap, y, out=y_Ap)

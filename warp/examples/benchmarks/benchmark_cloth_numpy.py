@@ -60,7 +60,7 @@ class NpIntegrator:
     def simulate(self, dt, substeps):
         sim_dt = dt / substeps
 
-        for s in range(substeps):
+        for _s in range(substeps):
             eval_springs(
                 self.cloth.positions,
                 self.cloth.velocities,

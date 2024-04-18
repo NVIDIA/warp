@@ -242,12 +242,17 @@ class Plot:
 
         self._volumes[name][1].append(field.dof_values.numpy())
 
-    def plot(self, streamlines: Set[str] = []):
+    def plot(self, streamlines: Set[str] = None):
+        if streamlines is None:
+            streamlines = []
         return self._plot_matplotlib(streamlines)
 
-    def _plot_matplotlib(self, streamlines: Set[str] = []):
-        import matplotlib.pyplot as plt
+    def _plot_matplotlib(self, streamlines: Set[str] = None):
         import matplotlib.animation as animation
+        import matplotlib.pyplot as plt
+
+        if streamlines is None:
+            streamlines = []
 
         def make_animation(ax, field, values, plot_func, num_frames: int):
             def animate(i):
@@ -263,12 +268,12 @@ class Plot:
                 frames=len(values),
             )
 
-        for name, (field, values) in self._surfaces.items():
+        for _name, (field, values) in self._surfaces.items():
             field.dof_values = values[0]
             ax = plot_surface(field).axes
 
             if len(values) > 1:
-                anim = make_animation(ax, field, values, plot_func=plot_surface, num_frames=len(values))
+                _anim = make_animation(ax, field, values, plot_func=plot_surface, num_frames=len(values))
 
         for name, (field, values) in self._surface_vectors.items():
             field.dof_values = values[0]
@@ -278,9 +283,9 @@ class Plot:
                 ax = plot_velocities(field).axes
 
                 if len(values) > 1:
-                    anim = make_animation(ax, field, values, plot_func=plot_velocities, num_frames=len(values))
+                    _anim = make_animation(ax, field, values, plot_func=plot_velocities, num_frames=len(values))
 
-        for name, (field, values) in self._volumes.items():
+        for _name, (field, values) in self._volumes.items():
             field.dof_values = values[0]
             ax = plot_3d_scatter(field).axes
 

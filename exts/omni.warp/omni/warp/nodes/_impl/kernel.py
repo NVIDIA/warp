@@ -9,7 +9,6 @@
 
 from __future__ import annotations
 
-from enum import IntFlag
 import functools
 import hashlib
 import importlib.util
@@ -17,6 +16,7 @@ import json
 import operator
 import os
 import tempfile
+from enum import IntFlag
 from typing import (
     Any,
     Callable,
@@ -29,13 +29,6 @@ from typing import (
 )
 
 import omni.graph.core as og
-import warp as wp
-
-from omni.warp.nodes._impl.common import (
-    IntEnum,
-    get_warp_type_from_data_type_name,
-    type_convert_og_to_warp,
-)
 from omni.warp.nodes._impl.attributes import (
     ATTR_BUNDLE_TYPE,
     attr_cast_array_to_warp,
@@ -43,7 +36,13 @@ from omni.warp.nodes._impl.attributes import (
     attr_get_name,
     attr_join_name,
 )
+from omni.warp.nodes._impl.common import (
+    IntEnum,
+    get_warp_type_from_data_type_name,
+    type_convert_og_to_warp,
+)
 
+import warp as wp
 
 _ATTR_PORT_TYPE_INPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_INPUT
 _ATTR_PORT_TYPE_OUTPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_OUTPUT
@@ -368,7 +367,7 @@ def gather_attribute_infos(
         elif array_shape_source == OutputArrayShapeSource.AS_KERNEL:
             dim_count = kernel_dim_count
         else:
-            assert False, "Unexpected array shape source method '{}'.".format(array_shape_source)
+            raise AssertionError("Unexpected array shape source method '{}'.".format(array_shape_source))
 
         og_data_type = og.Type(
             og_type.base_type,
@@ -478,7 +477,7 @@ def _get_user_code(code_provider: str, code_str: str, code_file: str) -> str:
         with open(code_file, "r") as f:
             return f.read()
 
-    assert False, "Unexpected code provider '{}'.".format(code_provider)
+    raise AssertionError("Unexpected code provider '{}'.".format(code_provider))
 
 
 #   Kernel Module
@@ -585,7 +584,7 @@ def _infer_output_array_shape(
     if attr_info.output.array_shape_source == OutputArrayShapeSource.AS_KERNEL:
         return tuple(kernel_shape)
 
-    assert False, "Unexpected array shape source method '{}'.".format(attr_info.output.array_shape_source)
+    raise AssertionError("Unexpected array shape source method '{}'.".format(attr_info.output.array_shape_source))
 
 
 class KernelArgsConfig(NamedTuple):
@@ -666,7 +665,7 @@ def get_kernel_args(
         elif info.is_bundle:
             raise NotImplementedError("Bundle attributes are not yet supported.")
         else:
-            assert False, "Output attributes are expected to be arrays or bundles."
+            raise AssertionError("Output attributes are expected to be arrays or bundles.")
 
         # Store the result in the outputs struct.
         setattr(outputs, info.base_name, value)
@@ -767,7 +766,7 @@ class InternalStateBase:
             ):
                 return True
         else:
-            assert False, ("Unexpected code provider '{}'.".format(self._code_provider),)
+            raise AssertionError("Unexpected code provider '{}'.".format(self._code_provider))
 
         return False
 

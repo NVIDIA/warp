@@ -21,10 +21,14 @@ wp.init()
 
 
 # registers an example to run as a TestCase
-def add_example_test(cls, name, devices=None, options={}):
+def add_example_test(cls, name, devices=None, options=None):
+    if options is None:
+        options = {}
+
     def run(test, device):
         # The copy() is needed because pop() is used to avoid passing extra args to Example()
         # Can remove once all examples accept **kwargs and we no longer need to pop()
+
         test_options = options.copy()
 
         try:
@@ -174,6 +178,7 @@ add_example_test(
         "load_modules": warp_sim_modules + ["warp.optim.sgd"],
         "num_frames": 1,
         "drone_path": os.path.join(os.path.dirname(__file__), "..", "examples", "assets", "crazyflie.usd"),
+        "enable_rendering": False,
     },
 )
 # add_example_test(

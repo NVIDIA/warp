@@ -103,7 +103,7 @@ mac-x86_64 build:
 # They can run immediately without waiting for the build jobs to complete.
 # ==============================================================================
 
-flake8:
+ruff lint:
   stage: test
   image: python:3.11-slim
   needs: []
@@ -111,15 +111,25 @@ flake8:
     - .runner-utility-linux-x86_64
   before_script:
     - python -m pip install --upgrade pip
-    - pip install --upgrade flake8 flake8-gl-codeclimate black
+    - pip install ruff==0.3.5
   script:
-    - flake8 --format=gl-codeclimate --output-file=gl-code-quality-report.json warp/ exts/ *.py --exit-zero
-    - flake8 warp/ exts/ *.py --exit-zero --show-source
-    # For the curious, save the output of the Black formatter to the job log
-    - python -m black --diff warp/ *.py
+    - ruff check --show-source --exit-zero # Just to get something in the log
+    - ruff check --output-format gitlab > gl-code-quality-report.json
   artifacts:
     reports:
       codequality: gl-code-quality-report.json
+
+ruff format:
+  stage: test
+  image: python:3.11-slim
+  needs: []
+  extends:
+    - .runner-utility-linux-x86_64
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install ruff==0.3.5
+  script:
+    - ruff format --diff
 
 # ==============================================================================
 # Main Unit Testing Jobs

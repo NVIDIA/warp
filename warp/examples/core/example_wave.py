@@ -167,10 +167,10 @@ class Example:
         self.renderer = None
         if stage:
             self.renderer = wp.render.UsdRenderer(stage)
-    
+
     def step(self):
         with wp.ScopedTimer("step", active=True):
-            for s in range(self.sim_substeps):
+            for _s in range(self.sim_substeps):
                 # create surface displacement around a point
                 self.cx = self.sim_width / 2 + math.sin(self.sim_time) * self.sim_width / 3
                 self.cy = self.sim_height / 2 + math.cos(self.sim_time) * self.sim_height / 3
@@ -240,7 +240,7 @@ if __name__ == "__main__":
 
     example = Example(stage_path)
 
-    for i in range(example.sim_frames):
+    for _i in range(example.sim_frames):
         example.step()
         example.render()
 

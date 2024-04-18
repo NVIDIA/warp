@@ -1,10 +1,9 @@
 from typing import Any
 
 import warp as wp
-
-from warp.fem.types import Sample
+from warp.fem.geometry import DeformedGeometry, Geometry
 from warp.fem.space import FunctionSpace, SpacePartition
-from warp.fem.geometry import Geometry, DeformedGeometry
+from warp.fem.types import Sample
 
 
 class FieldLike:
@@ -16,7 +15,7 @@ class FieldLike:
     ElementEvalArg: wp.codegen.Struct
     """Structure combining geometry-level and field-level arguments passed to device functions for field evaluation"""
 
-    def eval_arg_value(self, device) -> "EvalArg":
+    def eval_arg_value(self, device) -> "EvalArg":  # noqa: F821
         """Value of the field-level arguments to be passed to device functions"""
         raise NotImplementedError
 
@@ -38,32 +37,32 @@ class FieldLike:
         raise NotImplementedError
 
     @staticmethod
-    def eval_inner(args: "ElementEvalArg", s: "Sample"):
+    def eval_inner(args: "ElementEvalArg", s: "Sample"):  # noqa: F821
         """Device function evaluating the inner field value at a sample point"""
         raise NotImplementedError
 
     @staticmethod
-    def eval_grad_inner(args: "ElementEvalArg", s: "Sample"):
+    def eval_grad_inner(args: "ElementEvalArg", s: "Sample"):  # noqa: F821
         """Device function evaluating the inner field gradient at a sample point"""
         raise NotImplementedError
 
     @staticmethod
-    def eval_div_inner(args: "ElementEvalArg", s: "Sample"):
+    def eval_div_inner(args: "ElementEvalArg", s: "Sample"):  # noqa: F821
         """Device function evaluating the inner field divergence at a sample point"""
         raise NotImplementedError
 
     @staticmethod
-    def eval_outer(args: "ElementEvalArg", s: "Sample"):
+    def eval_outer(args: "ElementEvalArg", s: "Sample"):  # noqa: F821
         """Device function evaluating the outer field value at a sample point"""
         raise NotImplementedError
 
     @staticmethod
-    def eval_grad_outer(args: "ElementEvalArg", s: "Sample"):
+    def eval_grad_outer(args: "ElementEvalArg", s: "Sample"):  # noqa: F821
         """Device function evaluating the outer field gradient at a sample point"""
         raise NotImplementedError
 
     @staticmethod
-    def eval_div_outer(args: "ElementEvalArg", s: "Sample"):
+    def eval_div_outer(args: "ElementEvalArg", s: "Sample"):  # noqa: F821
         """Device function evaluating the outer field divergence at a sample point"""
         raise NotImplementedError
 

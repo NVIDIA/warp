@@ -5,14 +5,13 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import warp as wp
-import warp.sim
-import warp.render
-
 from collections import defaultdict
 
 import numpy as np
 
+import warp as wp
+import warp.render
+import warp.sim
 from warp.render.utils import solidify_mesh, tab10_color_map
 
 # TODO allow NaNs in Warp kernels
@@ -175,7 +174,9 @@ def CreateSimRenderer(renderer):
                             )
 
                         elif geo_type == warp.sim.GEO_SPHERE:
-                            shape = self.render_sphere(name, p, q, geo_scale[0], parent_body=body, is_template=True, color=color)
+                            shape = self.render_sphere(
+                                name, p, q, geo_scale[0], parent_body=body, is_template=True, color=color
+                            )
 
                         elif geo_type == warp.sim.GEO_CAPSULE:
                             shape = self.render_capsule(
@@ -193,7 +194,9 @@ def CreateSimRenderer(renderer):
                             )
 
                         elif geo_type == warp.sim.GEO_BOX:
-                            shape = self.render_box(name, p, q, geo_scale, parent_body=body, is_template=True, color=color)
+                            shape = self.render_box(
+                                name, p, q, geo_scale, parent_body=body, is_template=True, color=color
+                            )
 
                         elif geo_type == warp.sim.GEO_MESH:
                             if not geo_is_solid:
@@ -220,7 +223,9 @@ def CreateSimRenderer(renderer):
 
                     if shape_visible[s]:
                         # TODO support dynamic visibility
-                        self.add_shape_instance(name, shape, body, X_bs.p, X_bs.q, scale, custom_index=s, visible=shape_visible[s])
+                        self.add_shape_instance(
+                            name, shape, body, X_bs.p, X_bs.q, scale, custom_index=s, visible=shape_visible[s]
+                        )
                     self.instance_count += 1
 
                 if self.show_joints and model.joint_count:
@@ -232,15 +237,20 @@ def CreateSimRenderer(renderer):
                     joint_child = model.joint_child.numpy()
                     joint_tf = model.joint_X_p.numpy()
                     shape_collision_radius = model.shape_collision_radius.numpy()
-                    y_axis = wp.vec3(0., 1., 0.)
-                    color = (1., 0., 1.)
+                    y_axis = wp.vec3(0.0, 1.0, 0.0)
+                    color = (1.0, 0.0, 1.0)
 
                     shape = self.render_arrow(
-                        "joint_arrow", None, None,
-                        base_radius=0.01, base_height=0.4,
-                        cap_radius=0.02, cap_height=0.1,
-                        parent_body=None, is_template=True,
-                        color=color
+                        "joint_arrow",
+                        None,
+                        None,
+                        base_radius=0.01,
+                        base_height=0.4,
+                        cap_radius=0.02,
+                        cap_height=0.1,
+                        parent_body=None,
+                        is_template=True,
+                        color=color,
                     )
                     for i, t in enumerate(joint_type):
                         if t not in {
@@ -306,7 +316,9 @@ def CreateSimRenderer(renderer):
                 particle_q = state.particle_q.numpy()
 
                 # render particles
-                self.render_points("particles", particle_q, radius=self.model.particle_radius.numpy(), colors=(0.8, 0.3, 0.2))
+                self.render_points(
+                    "particles", particle_q, radius=self.model.particle_radius.numpy(), colors=(0.8, 0.3, 0.2)
+                )
 
                 # render tris
                 if self.model.tri_count:
@@ -319,7 +331,9 @@ def CreateSimRenderer(renderer):
 
                 # render springs
                 if self.model.spring_count:
-                    self.render_line_list("springs", particle_q, self.model.spring_indices.numpy().flatten(), (0.25, 0.5, 0.25), 0.02)
+                    self.render_line_list(
+                        "springs", particle_q, self.model.spring_indices.numpy().flatten(), (0.25, 0.5, 0.25), 0.02
+                    )
 
             # render muscles
             if self.model.muscle_count:

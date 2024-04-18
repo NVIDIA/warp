@@ -4,7 +4,6 @@ import pathlib
 import platform
 import shutil
 import sys
-
 from typing import NamedTuple
 
 import setuptools
@@ -90,7 +89,7 @@ def detect_warp_libraries():
 
 
 detected_libraries = detect_warp_libraries()
-detected_platforms = set([lib.platform for lib in detected_libraries])
+detected_platforms = {lib.platform for lib in detected_libraries}
 
 wheel_platform = None  # The one platform for which we're building a wheel
 

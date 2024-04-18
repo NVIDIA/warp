@@ -9,7 +9,6 @@ import unittest
 
 from warp.tests.unittest_utils import *
 
-
 wp.init()
 
 
@@ -310,21 +309,21 @@ def test_vector_error_invalid_set_item_value(test, device):
 def test_matrix(test, device):
     for dtype in tuple(wp.types.float_types) + (float,):
 
-        def make_scalar(x):
+        def make_scalar(x, dtype=dtype):
             # Cast to the correct integer type to simulate wrapping.
             if dtype in wp.types.int_types:
                 return dtype._type_(x).value
 
             return x
 
-        def make_vec(*args):
+        def make_vec(*args, dtype=dtype):
             if dtype in wp.types.int_types:
                 # Cast to the correct integer type to simulate wrapping.
                 return tuple(dtype._type_(x).value for x in args)
 
             return args
 
-        def make_mat(*args):
+        def make_mat(*args, dtype=dtype):
             if dtype in wp.types.int_types:
                 # Cast to the correct integer type to simulate wrapping.
                 return tuple(tuple(dtype._type_(x).value for x in row) for row in args)
@@ -635,21 +634,51 @@ for dtype in tuple(wp.types.scalar_types) + (int, float):
     add_function_test(TestTypes, f"test_vector_{dtype.__name__}", test_vector, devices=devices, dtype=dtype)
 
 add_function_test(TestTypes, "test_vector_assign", test_vector_assign, devices=devices)
-add_function_test(TestTypes, "test_vector_error_invalid_arg_count", test_vector_error_invalid_arg_count, devices=devices)
+add_function_test(
+    TestTypes, "test_vector_error_invalid_arg_count", test_vector_error_invalid_arg_count, devices=devices
+)
 add_function_test(TestTypes, "test_vector_error_invalid_ptr", test_vector_error_invalid_ptr, devices=devices)
-add_function_test(TestTypes, "test_vector_error_invalid_get_item_key", test_vector_error_invalid_get_item_key, devices=devices)
-add_function_test(TestTypes, "test_vector_error_invalid_set_item_key", test_vector_error_invalid_set_item_key, devices=devices)
-add_function_test(TestTypes, "test_vector_error_invalid_set_item_value", test_vector_error_invalid_set_item_value, devices=devices)
+add_function_test(
+    TestTypes, "test_vector_error_invalid_get_item_key", test_vector_error_invalid_get_item_key, devices=devices
+)
+add_function_test(
+    TestTypes, "test_vector_error_invalid_set_item_key", test_vector_error_invalid_set_item_key, devices=devices
+)
+add_function_test(
+    TestTypes, "test_vector_error_invalid_set_item_value", test_vector_error_invalid_set_item_value, devices=devices
+)
 add_function_test(TestTypes, "test_matrix", test_matrix, devices=devices)
-add_function_test(TestTypes, "test_matrix_error_invalid_arg_count", test_matrix_error_invalid_arg_count, devices=devices)
-add_function_test(TestTypes, "test_matrix_error_invalid_row_count", test_matrix_error_invalid_row_count, devices=devices)
+add_function_test(
+    TestTypes, "test_matrix_error_invalid_arg_count", test_matrix_error_invalid_arg_count, devices=devices
+)
+add_function_test(
+    TestTypes, "test_matrix_error_invalid_row_count", test_matrix_error_invalid_row_count, devices=devices
+)
 add_function_test(TestTypes, "test_matrix_error_invalid_ptr", test_matrix_error_invalid_ptr, devices=devices)
-add_function_test(TestTypes, "test_matrix_error_invalid_set_row_index", test_matrix_error_invalid_set_row_index, devices=devices)
-add_function_test(TestTypes, "test_matrix_error_invalid_get_item_key", test_matrix_error_invalid_get_item_key, devices=devices)
-add_function_test(TestTypes, "test_matrix_error_invalid_get_item_key_length", test_matrix_error_invalid_get_item_key_length, devices=devices)
-add_function_test(TestTypes, "test_matrix_error_invalid_set_item_key", test_matrix_error_invalid_set_item_key, devices=devices)
-add_function_test(TestTypes, "test_matrix_error_invalid_set_item_key_length", test_matrix_error_invalid_set_item_key_length, devices=devices)
-add_function_test(TestTypes, "test_matrix_error_invalid_set_item_value", test_matrix_error_invalid_set_item_value, devices=devices)
+add_function_test(
+    TestTypes, "test_matrix_error_invalid_set_row_index", test_matrix_error_invalid_set_row_index, devices=devices
+)
+add_function_test(
+    TestTypes, "test_matrix_error_invalid_get_item_key", test_matrix_error_invalid_get_item_key, devices=devices
+)
+add_function_test(
+    TestTypes,
+    "test_matrix_error_invalid_get_item_key_length",
+    test_matrix_error_invalid_get_item_key_length,
+    devices=devices,
+)
+add_function_test(
+    TestTypes, "test_matrix_error_invalid_set_item_key", test_matrix_error_invalid_set_item_key, devices=devices
+)
+add_function_test(
+    TestTypes,
+    "test_matrix_error_invalid_set_item_key_length",
+    test_matrix_error_invalid_set_item_key_length,
+    devices=devices,
+)
+add_function_test(
+    TestTypes, "test_matrix_error_invalid_set_item_value", test_matrix_error_invalid_set_item_value, devices=devices
+)
 
 add_function_test(TestTypes, "test_dtype_from_numpy", test_dtype_from_numpy, devices=None)
 add_function_test(TestTypes, "test_dtype_to_numpy", test_dtype_to_numpy, devices=None)

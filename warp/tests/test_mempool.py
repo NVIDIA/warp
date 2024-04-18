@@ -34,7 +34,6 @@ def get_device_pair_without_mempool_access_support():
 
 
 def test_mempool_release_threshold(test, device):
-
     device = wp.get_device(device)
 
     assert device.is_mempool_supported
@@ -67,7 +66,6 @@ def test_mempool_release_threshold(test, device):
 
 
 def test_mempool_exceptions(test, device):
-
     device = wp.get_device(device)
 
     assert not device.is_mempool_supported
@@ -85,7 +83,6 @@ def test_mempool_exceptions(test, device):
 
 
 def test_mempool_access_self(test, device):
-
     device = wp.get_device(device)
 
     assert device.is_mempool_supported
@@ -101,7 +98,6 @@ def test_mempool_access_self(test, device):
 
 @unittest.skipUnless(get_device_pair_with_mempool_access_support(), "Requires devices with mempool access support")
 def test_mempool_access(test, _):
-
     target_device, peer_device = get_device_pair_with_mempool_access_support()
 
     was_enabled = wp.is_mempool_access_enabled(target_device, peer_device)
@@ -128,9 +124,10 @@ def test_mempool_access(test, _):
         test.assertFalse(is_enabled)
 
 
-@unittest.skipUnless(get_device_pair_without_mempool_access_support(), "Requires devices without mempool access support")
+@unittest.skipUnless(
+    get_device_pair_without_mempool_access_support(), "Requires devices without mempool access support"
+)
 def test_mempool_access_exceptions_unsupported(test, _):
-
     # get a CUDA device pair without mempool access support
     target_device, peer_device = get_device_pair_without_mempool_access_support()
 
@@ -147,7 +144,6 @@ def test_mempool_access_exceptions_unsupported(test, _):
 
 @unittest.skipUnless(wp.is_cpu_available() and wp.is_cuda_available(), "Requires both CUDA and CPU devices")
 def test_mempool_access_exceptions_cpu(test, _):
-
     # querying is ok, but must return False
     test.assertFalse(wp.is_mempool_access_enabled("cuda:0", "cpu"))
     test.assertFalse(wp.is_mempool_access_enabled("cpu", "cuda:0"))
@@ -171,7 +167,9 @@ devices_with_mempools = [d for d in get_test_devices() if d.is_mempool_supported
 devices_without_mempools = [d for d in get_test_devices() if not d.is_mempool_supported]
 
 # test devices with mempool support
-add_function_test(TestMempool, "test_mempool_release_threshold", test_mempool_release_threshold, devices=devices_with_mempools)
+add_function_test(
+    TestMempool, "test_mempool_release_threshold", test_mempool_release_threshold, devices=devices_with_mempools
+)
 add_function_test(TestMempool, "test_mempool_access_self", test_mempool_access_self, devices=devices_with_mempools)
 
 # test devices without mempool support

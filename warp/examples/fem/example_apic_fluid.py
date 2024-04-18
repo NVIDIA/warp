@@ -11,18 +11,14 @@
 # Shows how to implement a apic fluid simulation.
 ###########################################################################
 
-import warp as wp
 import numpy as np
 
-from warp.sim import Model, State
-import warp.sim.render
-
+import warp as wp
 import warp.fem as fem
-
-from warp.fem import integrand, lookup, normal, grad, at_node, div
-from warp.fem import Field, Sample, Domain
-
-from warp.sparse import bsr_mv, bsr_copy, bsr_mm, bsr_transposed, bsr_zeros, BsrMatrix
+import warp.sim.render
+from warp.fem import Domain, Field, Sample, at_node, div, grad, integrand, lookup, normal
+from warp.sim import Model, State
+from warp.sparse import BsrMatrix, bsr_copy, bsr_mm, bsr_mv, bsr_transposed, bsr_zeros
 
 try:
     from .bsr_utils import bsr_cg
@@ -160,7 +156,7 @@ def solve_incompressibility(divergence_mat: BsrMatrix, inv_volume, pressure, vel
 
 
 class Example:
-    def __init__(self, stage, num_frames=1000, res=[32, 64, 16], quiet=False):
+    def __init__(self, stage, num_frames=1000, res=None, quiet=False):
         self.frame_dt = 1.0 / 60
         self.num_frames = num_frames
         self.current_frame = 0
@@ -170,6 +166,9 @@ class Example:
         self.sim_steps = self.num_frames * self.sim_substeps
 
         self._quiet = quiet
+
+        if res is None:
+            res = [32, 64, 16]
 
         # grid dimensions and particle emission
         grid_res = np.array(res, dtype=int)
@@ -269,7 +268,7 @@ class Example:
 
         self.current_frame = self.current_frame + 1
         with wp.ScopedTimer(f"simulate frame {self.current_frame}", active=True):
-            for s in range(self.sim_substeps):
+            for _s in range(self.sim_substeps):
                 # Bin particles to grid cells
                 pic = fem.PicQuadrature(
                     domain=fem.Cells(self.grid), positions=self.state_0.particle_q, measures=self.model.particle_mass
@@ -382,7 +381,7 @@ if __name__ == "__main__":
 
     example = Example(stage_path)
 
-    for i in range(example.num_frames):
+    for _i in range(example.num_frames):
         example.step()
         example.render()
 

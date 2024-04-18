@@ -1,9 +1,8 @@
 from typing import Any, Optional
 
 import warp as wp
-
-from warp.types import type_length, type_is_matrix
-from warp.sparse import BsrMatrix, bsr_copy, bsr_mv, bsr_mm, bsr_assign, bsr_axpy
+from warp.sparse import BsrMatrix, bsr_assign, bsr_axpy, bsr_copy, bsr_mm, bsr_mv
+from warp.types import type_is_matrix, type_length
 
 from .utils import array_axpy
 

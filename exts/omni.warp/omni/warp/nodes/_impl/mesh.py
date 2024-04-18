@@ -11,8 +11,6 @@ from typing import Optional
 
 import numpy as np
 import omni.graph.core as og
-import warp as wp
-
 from omni.warp.nodes._impl.attributes import (
     attr_get,
     attr_get_array_on_gpu,
@@ -29,11 +27,13 @@ from omni.warp.nodes._impl.bundles import (
 )
 from omni.warp.nodes._impl.points import (
     points_get_display_color,
+    points_get_local_extent,
     points_get_points,
     points_get_velocities,
-    points_get_local_extent,
     points_get_world_extent,
 )
+
+import warp as wp
 
 
 def mesh_create_bundle(

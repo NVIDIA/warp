@@ -8,20 +8,20 @@
 """Entry point for the extension."""
 
 import asyncio
-from contextlib import suppress
 import os
 import subprocess
 import sys
-from typing import Sequence
 import webbrowser
+from contextlib import suppress
+from typing import Sequence
 
 import carb
 import carb.dictionary
 import omni.ext
 import omni.graph.core as og
 import omni.kit.actions.core
-import warp as wp
 
+import warp as wp
 
 SCENES_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../data/scenes"))
 NODES_INIT_PATH = os.path.normpath(

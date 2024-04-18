@@ -740,7 +740,7 @@ Utility
 .. py:function:: tid() -> int
 
     Return the current thread index for a 1D kernel launch.
-    
+
     Note that this is the *global* index of the thread in the range [0, dim)
     where dim is the parameter passed to kernel launch.
 
@@ -752,7 +752,7 @@ Utility
     :nocontentsentry:
 
     Return the current thread indices for a 2D kernel launch.
-    
+
     Use ``i,j = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
 
     This function may not be called from user-defined Warp functions.
@@ -763,9 +763,9 @@ Utility
     :nocontentsentry:
 
     Return the current thread indices for a 3D kernel launch.
-    
+
     Use ``i,j,k = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
-    
+
     This function may not be called from user-defined Warp functions.
 
 
@@ -774,9 +774,9 @@ Utility
     :nocontentsentry:
 
     Return the current thread indices for a 4D kernel launch.
-    
+
     Use ``i,j,k,l = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
-    
+
     This function may not be called from user-defined Warp functions.
 
 
@@ -1282,7 +1282,7 @@ Geometry
 .. py:function:: bvh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> bvh_query_t
 
     Construct an axis-aligned bounding box query against a BVH object.
-    
+
     This query can be used to iterate over all bounds inside a BVH.
 
     :param id: The BVH identifier
@@ -1293,7 +1293,7 @@ Geometry
 .. py:function:: bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> bvh_query_t
 
     Construct a ray query against a BVH object.
-   
+
     This query can be used to iterate over all bounds that intersect the ray.
 
     :param id: The BVH identifier
@@ -1415,21 +1415,21 @@ Geometry
 .. py:function:: hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> hash_grid_query_t
 
     Construct a point query against a :class:`HashGrid`.
-    
+
     This query can be used to iterate over all neighboring point within a fixed radius from the query point.
 
 
 .. py:function:: hash_grid_query_next(query: hash_grid_query_t, index: int32) -> bool
 
     Move to the next point in the hash grid query.
-    
+
     The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.
 
 
 .. py:function:: hash_grid_point_id(id: uint64, index: int32) -> int
 
     Return the index of a point in the :class:`HashGrid`.
-    
+
     This can be used to reorder threads such that grid traversal occurs in a spatially coherent order.
 
     Returns -1 if the :class:`HashGrid` has not been reserved.
@@ -1438,7 +1438,7 @@ Geometry
 .. py:function:: intersect_tri_tri(v0: vec3f, v1: vec3f, v2: vec3f, u0: vec3f, u1: vec3f, u2: vec3f) -> int
 
     Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method.
-    
+
     Returns > 0 if triangles intersect.
 
 
@@ -1470,7 +1470,7 @@ Geometry
 .. py:function:: closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon: float32) -> vec3f
 
     Finds the closest points between two edges.
-    
+
     Returns barycentric weights to the points on each edge, as well as the closest distance between the edges.
 
     :param p1: First point of first edge
@@ -1494,7 +1494,7 @@ Volumes
 
 .. py:function:: volume_sample_grad_f(id: uint64, uvw: vec3f, sampling_mode: int32, grad: vec3f) -> float
 
-    Sample the volume and its gradient given by ``id`` at the volume local-space point ``uvw``. 
+    Sample the volume and its gradient given by ``id`` at the volume local-space point ``uvw``.
 
     Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`
 

@@ -1,8 +1,7 @@
 import warp as wp
-
-from warp.fem.space import CollocatedFunctionSpace, SpacePartition
 from warp.fem import cache, utils
-from warp.fem.types import Sample, ElementIndex, NULL_NODE_INDEX
+from warp.fem.space import CollocatedFunctionSpace, SpacePartition
+from warp.fem.types import NULL_NODE_INDEX, ElementIndex, Sample
 
 from .field import DiscreteField
 

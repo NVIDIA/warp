@@ -1,8 +1,8 @@
-import warp as wp
 import numpy as np
 
-from warp.fem.types import Coords
+import warp as wp
 from warp.fem import cache
+from warp.fem.types import Coords
 
 
 def _triangle_node_index(tx: int, ty: int, degree: int):
@@ -10,7 +10,7 @@ def _triangle_node_index(tx: int, ty: int, degree: int):
     SIDE_INTERIOR_NODE_COUNT = degree - 1
 
     # Index in similar order to e.g. VTK
-    # First vertices, then edge (counterclokwise) then interior points (recursively)
+    # First vertices, then edge (counterclockwise) then interior points (recursively)
 
     if tx == 0:
         if ty == 0:

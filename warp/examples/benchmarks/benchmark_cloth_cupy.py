@@ -70,7 +70,7 @@ class CpIntegrator:
     def simulate(self, dt, substeps):
         sim_dt = dt / substeps
 
-        for s in range(substeps):
+        for _s in range(substeps):
             eval_springs(
                 self.positions,
                 self.velocities,

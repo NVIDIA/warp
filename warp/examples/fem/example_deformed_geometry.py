@@ -9,10 +9,10 @@
 # Example Deformed Geometry
 #
 # This example solves a 2d diffusion problem:
-# 
+#
 # nu Div u = 1
 #
-# with Dirichlet boundary conditions on vertical edges and 
+# with Dirichlet boundary conditions on vertical edges and
 # homogeneous Neumann on horizontal edges.
 ###########################################################################
 
@@ -21,20 +21,17 @@ import argparse
 import warp as wp
 import warp.fem as fem
 
-from warp.sparse import bsr_axpy
-from warp.fem.utils import array_axpy
-
 # Import example utilities
 # Make sure that works both when imported as module and run as standalone file
 try:
-    from .example_diffusion import linear_form, diffusion_form
     from .bsr_utils import bsr_cg
-    from .mesh_utils import gen_trimesh, gen_quadmesh
+    from .example_diffusion import diffusion_form, linear_form
+    from .mesh_utils import gen_quadmesh, gen_trimesh
     from .plot_utils import Plot
 except ImportError:
-    from example_diffusion import linear_form, diffusion_form 
     from bsr_utils import bsr_cg
-    from mesh_utils import gen_trimesh, gen_quadmesh
+    from example_diffusion import diffusion_form, linear_form
+    from mesh_utils import gen_quadmesh, gen_trimesh
     from plot_utils import Plot
 
 wp.init()

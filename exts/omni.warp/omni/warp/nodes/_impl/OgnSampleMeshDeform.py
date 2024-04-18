@@ -10,11 +10,10 @@
 import traceback
 
 import omni.graph.core as og
-import warp as wp
-
 import omni.warp.nodes
 from omni.warp.nodes.ogn.OgnSampleMeshDeformDatabase import OgnSampleMeshDeformDatabase
 
+import warp as wp
 
 PROFILING = False
 

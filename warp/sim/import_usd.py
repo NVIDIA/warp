@@ -6,8 +6,9 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 
-import numpy as np
 import re
+
+import numpy as np
 
 import warp as wp
 
@@ -30,7 +31,7 @@ def parse_usd(
     armature=0.0,
     invert_rotations=False,
     verbose=False,
-    ignore_paths=[],
+    ignore_paths=None,
 ):
     """
     Parses a Universal Scene Description (USD) stage containing UsdPhysics schema definitions for rigid-body articulations and adds the bodies, shapes and joints to the given ModelBuilder.
@@ -86,8 +87,11 @@ def parse_usd(
     """
     try:
         from pxr import Usd, UsdGeom, UsdPhysics
-    except ImportError:
-        raise ImportError("Failed to import pxr. Please install USD (e.g. via `pip install usd-core`).")
+    except ImportError as e:
+        raise ImportError("Failed to import pxr. Please install USD (e.g. via `pip install usd-core`).") from e
+
+    if ignore_paths is None:
+        ignore_paths = []
 
     def get_attribute(prim, name):
         if "*" in name:
@@ -434,16 +438,16 @@ def parse_usd(
             if path in joint_data:
                 joint = joint_data[path]
 
-                joint_params = dict(
-                    child=body_id,
-                    linear_axes=joint["linear_axes"],
-                    angular_axes=joint["angular_axes"],
-                    name=joint["name"],
-                    enabled=joint["enabled"],
-                    parent_xform=joint["parent_tf"],
-                    child_xform=joint["child_tf"],
-                    armature=armature,
-                )
+                joint_params = {
+                    "child": body_id,
+                    "linear_axes": joint["linear_axes"],
+                    "angular_axes": joint["angular_axes"],
+                    "name": joint["name"],
+                    "enabled": joint["enabled"],
+                    "parent_xform": joint["parent_tf"],
+                    "child_xform": joint["child_tf"],
+                    "armature": armature,
+                }
 
                 parent_path = joint["parent"]
                 if parent_path is None:
@@ -572,14 +576,14 @@ def parse_usd(
                 parse_prim(child, incoming_xform, incoming_scale, parent_body)
         elif type_name in shape_types:
             # parse shapes
-            shape_params = dict(
-                ke=contact_ke,
-                kd=contact_kd,
-                kf=contact_kf,
-                ka=contact_ka,
-                mu=contact_mu,
-                restitution=contact_restitution,
-            )
+            shape_params = {
+                "ke": contact_ke,
+                "kd": contact_kd,
+                "kf": contact_kf,
+                "ka": contact_ka,
+                "mu": contact_mu,
+                "restitution": contact_restitution,
+            }
             if material is not None:
                 if "restitution" in material:
                     shape_params["restitution"] = material["restitution"]
@@ -594,7 +598,7 @@ def parse_usd(
                 if has_attribute(prim, "extents"):
                     extents = parse_vec(prim, "extents") * scale
                     # TODO position geom at extents center?
-                    geo_pos = 0.5 * (extents[0] + extents[1])
+                    # geo_pos = 0.5 * (extents[0] + extents[1])
                     extents = extents[1] - extents[0]
                 else:
                     extents = scale * size
@@ -615,7 +619,7 @@ def parse_usd(
                 if has_attribute(prim, "extents"):
                     extents = parse_vec(prim, "extents") * scale
                     # TODO position geom at extents center?
-                    geo_pos = 0.5 * (extents[0] + extents[1])
+                    # geo_pos = 0.5 * (extents[0] + extents[1])
                     extents = extents[1] - extents[0]
                     if not (extents[0] == extents[1] == extents[2]):
                         print("Warning: Non-uniform extents of spheres are not supported.")
@@ -811,14 +815,15 @@ def resolve_usd_from_url(url: str, target_folder_name: str = None, export_usda: 
     Returns:
         str: File path to the downloaded USD file.
     """
-    import requests
     import datetime
     import os
 
+    import requests
+
     try:
         from pxr import Usd
-    except ImportError:
-        raise ImportError("Failed to import pxr. Please install USD (e.g. via `pip install usd-core`).")
+    except ImportError as e:
+        raise ImportError("Failed to import pxr. Please install USD (e.g. via `pip install usd-core`).") from e
 
     response = requests.get(url, allow_redirects=True)
     if response.status_code != 200:

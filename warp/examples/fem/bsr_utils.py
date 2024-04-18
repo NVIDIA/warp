@@ -1,18 +1,18 @@
-from typing import Union, Any, Tuple, Optional
+from typing import Any, Optional, Tuple, Union
 
 import warp as wp
 import warp.types
+from warp.optim.linear import LinearOperator, aslinearoperator, preconditioner
+from warp.sparse import BsrMatrix, bsr_get_diag, bsr_mv, bsr_transposed, bsr_zeros
 
-from warp.sparse import BsrMatrix, bsr_zeros, bsr_transposed, bsr_mv, bsr_get_diag
-from warp.optim.linear import preconditioner, LinearOperator, aslinearoperator
 
-
-def bsr_to_scipy(matrix: BsrMatrix) -> "scipy.sparse.bsr_array":
+def bsr_to_scipy(matrix: BsrMatrix) -> "scipy.sparse.bsr_array":  # noqa: F821
     try:
-        from scipy.sparse import csr_array, bsr_array
+        from scipy.sparse import bsr_array, csr_array
     except ImportError:
         # WAR for older scipy
-        from scipy.sparse import csr_matrix as csr_array, bsr_matrix as bsr_array
+        from scipy.sparse import bsr_matrix as bsr_array
+        from scipy.sparse import csr_matrix as csr_array
 
     if matrix.block_shape == (1, 1):
         return csr_array(
@@ -35,7 +35,7 @@ def bsr_to_scipy(matrix: BsrMatrix) -> "scipy.sparse.bsr_array":
 
 
 def scipy_to_bsr(
-    sp: Union["scipy.sparse.bsr_array", "scipy.sparse.csr_array"],
+    sp: Union["scipy.sparse.bsr_array", "scipy.sparse.csr_array"],  # noqa: F821
     device=None,
     dtype=None,
 ) -> BsrMatrix:
@@ -71,7 +71,7 @@ def scipy_to_bsr(
 
 
 def get_linear_solver_func(method_name: str):
-    from warp.optim.linear import cg, cr, bicgstab, gmres
+    from warp.optim.linear import bicgstab, cg, cr, gmres
 
     if method_name == "bicgstab":
         return bicgstab
@@ -112,8 +112,6 @@ def bsr_cg(
         Tuple (residual norm, iteration count)
 
     """
-
-    from warp.optim.linear import preconditioner, LinearOperator
 
     if mv_routine is None:
         M = preconditioner(A, "diag") if use_diag_precond else None
@@ -159,8 +157,6 @@ class SaddleSystem(LinearOperator):
         Bt: Optional[BsrMatrix] = None,
         use_diag_precond: bool = True,
     ):
-        from warp.optim.linear import preconditioner, LinearOperator, aslinearoperator
-
         if Bt is None:
             Bt = bsr_transposed(B)
 

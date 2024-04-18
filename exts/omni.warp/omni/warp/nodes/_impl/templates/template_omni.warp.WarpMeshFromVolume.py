@@ -18,7 +18,6 @@ from omni.kit.property.usd.custom_layout_helper import (
 )
 from omni.kit.property.usd.usd_property_widget import UsdPropertyUiEntry
 
-
 PROPS = (
     "inputs:size",
     "inputs:dim1",

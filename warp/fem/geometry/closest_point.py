@@ -1,7 +1,6 @@
 from typing import Any
 
 import warp as wp
-
 from warp.fem.types import Coords
 
 

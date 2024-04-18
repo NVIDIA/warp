@@ -116,7 +116,7 @@ class Example:
             compute_endeffector_position,
             dim=self.num_envs,
             inputs=[self.state.body_q, self.num_links, self.ee_link_index, self.ee_link_offset],
-            outputs=[self.ee_pos]
+            outputs=[self.ee_pos],
         )
         return self.ee_pos
 

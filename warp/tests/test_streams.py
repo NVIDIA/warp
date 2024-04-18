@@ -10,8 +10,8 @@ import unittest
 import numpy as np
 
 import warp as wp
-from warp.utils import check_iommu
 from warp.tests.unittest_utils import *
+from warp.utils import check_iommu
 
 wp.init()
 
@@ -39,7 +39,6 @@ N = 10 * 1024 * 1024
 
 
 def test_stream_set(test, device):
-
     device = wp.get_device(device)
 
     old_stream = device.stream
@@ -80,7 +79,6 @@ def test_stream_arg_explicit_sync(test, device):
 
 
 def test_stream_scope_implicit_sync(test, device):
-
     with wp.ScopedDevice(device):
         a = wp.zeros(N, dtype=float)
         b = wp.full(N, 42, dtype=float)
@@ -356,7 +354,6 @@ class TestStreams(unittest.TestCase):
         # allocated using pooled allocators and mempool access is not enabled.
         # Here, we force default CUDA allocators and pre-allocate the memory.
         with wp.ScopedMempool("cuda:0", False), wp.ScopedMempool("cuda:1", False):
-
             # resources on GPU 0
             stream0 = wp.get_stream("cuda:0")
             a0 = wp.zeros(N, dtype=float, device="cuda:0")
@@ -407,7 +404,6 @@ class TestStreams(unittest.TestCase):
         # allocated using pooled allocators and mempool access is not enabled.
         # Here, we force default CUDA allocators and pre-allocate the memory.
         with wp.ScopedMempool("cuda:0", False), wp.ScopedMempool("cuda:1", False):
-
             # resources on GPU 0
             with wp.ScopedDevice("cuda:0"):
                 stream0 = wp.get_stream()

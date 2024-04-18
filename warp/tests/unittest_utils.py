@@ -7,11 +7,11 @@
 
 import ctypes
 import ctypes.util
+import importlib
 import os
 import sys
 import time
 import unittest
-import importlib
 
 import numpy as np
 
@@ -180,7 +180,6 @@ def assert_array_equal(result: wp.array, expect: wp.array):
 
 
 def assert_np_equal(result: np.ndarray, expect: np.ndarray, tol=0.0):
-
     if tol != 0.0:
         # TODO: Get all tests working without the .flatten()
         np.testing.assert_allclose(result.flatten(), expect.flatten(), atol=tol, equal_nan=True)

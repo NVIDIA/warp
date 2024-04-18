@@ -372,7 +372,7 @@ for value_type, path in volume_paths.items():
         try:
             volume = wp.Volume.load_from_nvdb(volume_data, device)
         except RuntimeError as e:
-            raise RuntimeError(f'Failed to load volume from "{path}" to {device} memory:\n{e}')
+            raise RuntimeError(f'Failed to load volume from "{path}" to {device} memory:\n{e}') from e
 
         volumes[value_type][device.alias] = volume
 

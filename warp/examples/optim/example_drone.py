@@ -18,7 +18,6 @@ import os
 from typing import Optional, Tuple
 
 import numpy as np
-from pxr import UsdGeom
 
 import warp as wp
 import warp.examples
@@ -77,7 +76,7 @@ def sample_gaussian(
     mean = mean_trajectory[0, point_id, control_id]
     lo, hi = control_limits[control_id, 0], control_limits[control_id, 1]
     sample = mean + noise_scale * wp.randn(r)
-    for i in range(10):
+    for _i in range(10):
         if sample < lo or sample > hi:
             sample = mean + noise_scale * wp.randn(r)
         else:
@@ -819,7 +818,7 @@ if __name__ == "__main__":
     stage_path = "example_drone.usd"
 
     example = Example(stage_path, drone_path, verbose=True)
-    for i in range(example.frame_count):
+    for _i in range(example.frame_count):
         example.step()
         example.render()
         example.frame += 1

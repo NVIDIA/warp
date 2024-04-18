@@ -6,7 +6,9 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 from typing import Union
+
 import numpy as np
+
 import warp as wp
 
 

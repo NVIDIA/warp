@@ -6,13 +6,15 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 # include parent path
+import csv
 import os
-import sys, getopt
+import sys
+
 import numpy as np
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
 
-from pxr import Usd, UsdGeom, Gf, Sdf
+from pxr import Usd, UsdGeom
 
 import warp as wp
 
@@ -131,7 +133,7 @@ def run_benchmark(mode, dim, timers, render=False):
     k_stretch = 1000.0
     k_shear = 1000.0
     k_bend = 1000.0
-    k_damp = 0.0
+    # k_damp = 0.0
 
     cloth = Cloth(
         lower=(0.0, 0.0, 0.0),
@@ -226,7 +228,7 @@ def run_benchmark(mode, dim, timers, render=False):
     label = "Dim ({}^2)".format(dim)
 
     # run simulation
-    for i in range(sim_frames):
+    for _i in range(sim_frames):
         # simulate
         with wp.ScopedTimer(label, dict=timers):
             positions = integrator.simulate(sim_dt, sim_substeps)
@@ -253,7 +255,6 @@ run_benchmark(mode, 64, timers, render=False)
 run_benchmark(mode, 128, timers, render=False)
 
 # write results
-import csv
 
 for k, v in timers.items():
     print("{:16} min: {:8.2f} max: {:8.2f} avg: {:8.2f}".format(k, np.min(v), np.max(v), np.mean(v)))

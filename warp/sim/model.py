@@ -5,8 +5,7 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-"""A module for building simulation models and state.
-"""
+"""A module for building simulation models and state."""
 
 import copy
 import math
@@ -163,11 +162,11 @@ class SDF:
         com (Vec3): The center of mass of the SDF
     """
 
-    def __init__(self, volume=None, I=wp.mat33(np.eye(3)), mass=1.0, com=wp.vec3()):
+    def __init__(self, volume=None, I=None, mass=1.0, com=None):
         self.volume = volume
-        self.I = I
+        self.I = I if I is not None else wp.mat33(np.eye(3))
         self.mass = mass
-        self.com = com
+        self.com = com if com is not None else wp.vec3()
 
         # Need to specify these for now
         self.has_inertia = True
@@ -1046,9 +1045,9 @@ class ModelBuilder:
         builder.add_particle((0, 1.0, 0.0), (0.0, 0.0, 0.0), 0.0)
 
         # build chain
-        for i in range(1,10):
+        for i in range(1, 10):
             builder.add_particle((i, 1.0, 0.0), (0.0, 0.0, 0.0), 1.0)
-            builder.add_spring(i-1, i, 1.e+3, 0.0, 0)
+            builder.add_spring(i - 1, i, 1.0e3, 0.0, 0)
 
         # create model
         model = builder.finalize("cuda")
@@ -1058,9 +1057,8 @@ class ModelBuilder:
         integrator = wp.sim.SemiImplicitIntegrator()
 
         for i in range(100):
-
-           state.clear_forces()
-           integrator.simulate(model, state, state, dt=1.0/60.0, control=control)
+            state.clear_forces()
+            integrator.simulate(model, state, state, dt=1.0 / 60.0, control=control)
 
     Note:
         It is strongly recommended to use the ModelBuilder to construct a simulation rather
@@ -1232,16 +1230,16 @@ class ModelBuilder:
         # indicates whether a ground plane has been created
         self._ground_created = False
         # constructor parameters for ground plane shape
-        self._ground_params = dict(
-            plane=(*up_vector, 0.0),
-            width=0.0,
-            length=0.0,
-            ke=self.default_shape_ke,
-            kd=self.default_shape_kd,
-            kf=self.default_shape_kf,
-            mu=self.default_shape_mu,
-            restitution=self.default_shape_restitution,
-        )
+        self._ground_params = {
+            "plane": (*up_vector, 0.0),
+            "width": 0.0,
+            "length": 0.0,
+            "ke": self.default_shape_ke,
+            "kd": self.default_shape_kd,
+            "kf": self.default_shape_kf,
+            "mu": self.default_shape_mu,
+            "restitution": self.default_shape_restitution,
+        }
 
         # Maximum number of soft contacts that can be registered
         self.soft_contact_max = 64 * 1024
@@ -1497,10 +1495,10 @@ class ModelBuilder:
     # register a rigid body and return its index.
     def add_body(
         self,
-        origin: Transform = wp.transform(),
+        origin: Optional[Transform] = None,
         armature: float = 0.0,
-        com: Vec3 = wp.vec3(),
-        I_m: Mat33 = wp.mat33(),
+        com: Optional[Vec3] = None,
+        I_m: Optional[Mat33] = None,
         m: float = 0.0,
         name: str = None,
     ) -> int:
@@ -1521,6 +1519,15 @@ class ModelBuilder:
             If the mass (m) is zero then the body is treated as kinematic with no dynamics
 
         """
+
+        if origin is None:
+            origin = wp.transform()
+
+        if com is None:
+            com = wp.vec3()
+
+        if I_m is None:
+            I_m = wp.mat33()
 
         body_id = len(self.body_mass)
 
@@ -1552,11 +1559,11 @@ class ModelBuilder:
         joint_type: wp.constant,
         parent: int,
         child: int,
-        linear_axes: List[JointAxis] = [],
-        angular_axes: List[JointAxis] = [],
+        linear_axes: Optional[List[JointAxis]] = None,
+        angular_axes: Optional[List[JointAxis]] = None,
         name: str = None,
-        parent_xform: wp.transform = wp.transform(),
-        child_xform: wp.transform = wp.transform(),
+        parent_xform: Optional[wp.transform] = None,
+        child_xform: Optional[wp.transform] = None,
         linear_compliance: float = 0.0,
         angular_compliance: float = 0.0,
         armature: float = 1e-2,
@@ -1584,6 +1591,18 @@ class ModelBuilder:
         Returns:
             The index of the added joint
         """
+        if linear_axes is None:
+            linear_axes = []
+
+        if angular_axes is None:
+            angular_axes = []
+
+        if parent_xform is None:
+            parent_xform = wp.transform()
+
+        if child_xform is None:
+            child_xform = wp.transform()
+
         if len(self.articulation_start) == 0:
             # automatically add an articulation if none exists
             self.add_articulation()
@@ -1652,10 +1671,10 @@ class ModelBuilder:
             dof_count = len(linear_axes) + len(angular_axes)
             coord_count = dof_count
 
-        for i in range(coord_count):
+        for _i in range(coord_count):
             self.joint_q.append(0.0)
 
-        for i in range(dof_count):
+        for _i in range(dof_count):
             self.joint_qd.append(0.0)
             self.joint_armature.append(armature)
 
@@ -1680,8 +1699,8 @@ class ModelBuilder:
         self,
         parent: int,
         child: int,
-        parent_xform: wp.transform = wp.transform(),
-        child_xform: wp.transform = wp.transform(),
+        parent_xform: Optional[wp.transform] = None,
+        child_xform: Optional[wp.transform] = None,
         axis: Vec3 = (1.0, 0.0, 0.0),
         target: float = None,
         target_ke: float = 0.0,
@@ -1724,6 +1743,12 @@ class ModelBuilder:
             The index of the added joint
 
         """
+        if parent_xform is None:
+            parent_xform = wp.transform()
+
+        if child_xform is None:
+            child_xform = wp.transform()
+
         action = 0.0
         if target is None and mode == JOINT_MODE_TARGET_POSITION:
             action = 0.5 * (limit_lower + limit_upper)
@@ -1761,8 +1786,8 @@ class ModelBuilder:
         self,
         parent: int,
         child: int,
-        parent_xform: wp.transform = wp.transform(),
-        child_xform: wp.transform = wp.transform(),
+        parent_xform: Optional[wp.transform] = None,
+        child_xform: Optional[wp.transform] = None,
         axis: Vec3 = (1.0, 0.0, 0.0),
         target: float = None,
         target_ke: float = 0.0,
@@ -1805,6 +1830,12 @@ class ModelBuilder:
             The index of the added joint
 
         """
+        if parent_xform is None:
+            parent_xform = wp.transform()
+
+        if child_xform is None:
+            child_xform = wp.transform()
+
         action = 0.0
         if target is None and mode == JOINT_MODE_TARGET_POSITION:
             action = 0.5 * (limit_lower + limit_upper)
@@ -1842,8 +1873,8 @@ class ModelBuilder:
         self,
         parent: int,
         child: int,
-        parent_xform: wp.transform = wp.transform(),
-        child_xform: wp.transform = wp.transform(),
+        parent_xform: Optional[wp.transform] = None,
+        child_xform: Optional[wp.transform] = None,
         linear_compliance: float = 0.0,
         angular_compliance: float = 0.0,
         armature: float = 1e-2,
@@ -1869,6 +1900,12 @@ class ModelBuilder:
             The index of the added joint
 
         """
+        if parent_xform is None:
+            parent_xform = wp.transform()
+
+        if child_xform is None:
+            child_xform = wp.transform()
+
         return self.add_joint(
             JOINT_BALL,
             parent,
@@ -1887,8 +1924,8 @@ class ModelBuilder:
         self,
         parent: int,
         child: int,
-        parent_xform: wp.transform = wp.transform(),
-        child_xform: wp.transform = wp.transform(),
+        parent_xform: Optional[wp.transform] = None,
+        child_xform: Optional[wp.transform] = None,
         linear_compliance: float = 0.0,
         angular_compliance: float = 0.0,
         armature: float = 1e-2,
@@ -1915,6 +1952,12 @@ class ModelBuilder:
             The index of the added joint
 
         """
+        if parent_xform is None:
+            parent_xform = wp.transform()
+
+        if child_xform is None:
+            child_xform = wp.transform()
+
         return self.add_joint(
             JOINT_FIXED,
             parent,
@@ -1932,8 +1975,8 @@ class ModelBuilder:
     def add_joint_free(
         self,
         child: int,
-        parent_xform: wp.transform = wp.transform(),
-        child_xform: wp.transform = wp.transform(),
+        parent_xform: Optional[wp.transform] = None,
+        child_xform: Optional[wp.transform] = None,
         armature: float = 0.0,
         parent: int = -1,
         name: str = None,
@@ -1957,6 +2000,12 @@ class ModelBuilder:
             The index of the added joint
 
         """
+        if parent_xform is None:
+            parent_xform = wp.transform()
+
+        if child_xform is None:
+            child_xform = wp.transform()
+
         return self.add_joint(
             JOINT_FREE,
             parent,
@@ -1973,8 +2022,8 @@ class ModelBuilder:
         self,
         parent: int,
         child: int,
-        parent_xform: wp.transform = wp.transform(),
-        child_xform: wp.transform = wp.transform(),
+        parent_xform: Optional[wp.transform] = None,
+        child_xform: Optional[wp.transform] = None,
         min_distance: float = -1.0,
         max_distance: float = 1.0,
         compliance: float = 0.0,
@@ -2001,6 +2050,12 @@ class ModelBuilder:
         .. note:: Distance joints are currently only supported in the :class:`XPBDIntegrator` at the moment.
 
         """
+        if parent_xform is None:
+            parent_xform = wp.transform()
+
+        if child_xform is None:
+            child_xform = wp.transform()
+
         ax = JointAxis(
             axis=(1.0, 0.0, 0.0),
             limit_lower=min_distance,
@@ -2024,8 +2079,8 @@ class ModelBuilder:
         child: int,
         axis_0: JointAxis,
         axis_1: JointAxis,
-        parent_xform: wp.transform = wp.transform(),
-        child_xform: wp.transform = wp.transform(),
+        parent_xform: Optional[wp.transform] = None,
+        child_xform: Optional[wp.transform] = None,
         linear_compliance: float = 0.0,
         angular_compliance: float = 0.0,
         armature: float = 1e-2,
@@ -2053,6 +2108,12 @@ class ModelBuilder:
             The index of the added joint
 
         """
+        if parent_xform is None:
+            parent_xform = wp.transform()
+
+        if child_xform is None:
+            child_xform = wp.transform()
+
         return self.add_joint(
             JOINT_UNIVERSAL,
             parent,
@@ -2075,8 +2136,8 @@ class ModelBuilder:
         axis_0: JointAxis,
         axis_1: JointAxis,
         axis_2: JointAxis,
-        parent_xform: wp.transform = wp.transform(),
-        child_xform: wp.transform = wp.transform(),
+        parent_xform: Optional[wp.transform] = None,
+        child_xform: Optional[wp.transform] = None,
         linear_compliance: float = 0.0,
         angular_compliance: float = 0.0,
         armature: float = 1e-2,
@@ -2108,6 +2169,12 @@ class ModelBuilder:
             The index of the added joint
 
         """
+        if parent_xform is None:
+            parent_xform = wp.transform()
+
+        if child_xform is None:
+            child_xform = wp.transform()
+
         return self.add_joint(
             JOINT_COMPOUND,
             parent,
@@ -2127,11 +2194,11 @@ class ModelBuilder:
         self,
         parent: int,
         child: int,
-        linear_axes: List[JointAxis] = [],
-        angular_axes: List[JointAxis] = [],
+        linear_axes: Optional[List[JointAxis]] = None,
+        angular_axes: Optional[List[JointAxis]] = None,
         name: str = None,
-        parent_xform: wp.transform = wp.transform(),
-        child_xform: wp.transform = wp.transform(),
+        parent_xform: Optional[wp.transform] = None,
+        child_xform: Optional[wp.transform] = None,
         linear_compliance: float = 0.0,
         angular_compliance: float = 0.0,
         armature: float = 1e-2,
@@ -2158,6 +2225,18 @@ class ModelBuilder:
             The index of the added joint
 
         """
+        if linear_axes is None:
+            linear_axes = []
+
+        if angular_axes is None:
+            angular_axes = []
+
+        if parent_xform is None:
+            parent_xform = wp.transform()
+
+        if child_xform is None:
+            child_xform = wp.transform()
+
         return self.add_joint(
             JOINT_D6,
             parent,
@@ -2945,10 +3024,10 @@ class ModelBuilder:
     def add_shape_mesh(
         self,
         body: int,
-        pos: Vec3 = wp.vec3(0.0, 0.0, 0.0),
-        rot: Quat = wp.quat(0.0, 0.0, 0.0, 1.0),
-        mesh: Mesh = None,
-        scale: Vec3 = wp.vec3(1.0, 1.0, 1.0),
+        pos: Optional[Vec3] = None,
+        rot: Optional[Quat] = None,
+        mesh: Optional[Mesh] = None,
+        scale: Optional[Vec3] = None,
         density: float = None,
         ke: float = None,
         kd: float = None,
@@ -2967,9 +3046,11 @@ class ModelBuilder:
         Args:
             body: The index of the parent body this shape belongs to (use -1 for static shapes)
             pos: The location of the shape with respect to the parent frame
+              (None to use the default value ``wp.vec3(0.0, 0.0, 0.0)``)
             rot: The rotation of the shape with respect to the parent frame
+              (None to use the default value ``wp.quat(0.0, 0.0, 0.0, 1.0)``)
             mesh: The mesh object
-            scale: Scale to use for the collider
+            scale: Scale to use for the collider. (None to use the default value ``wp.vec3(1.0, 1.0, 1.0)``)
             density: The density of the shape (None to use the default value :attr:`default_shape_density`)
             ke: The contact elastic stiffness (None to use the default value :attr:`default_shape_ke`)
             kd: The contact damping stiffness (None to use the default value :attr:`default_shape_kd`)
@@ -2987,6 +3068,15 @@ class ModelBuilder:
             The index of the added shape
 
         """
+
+        if pos is None:
+            pos = wp.vec3(0.0, 0.0, 0.0)
+
+        if rot is None:
+            rot = wp.quat(0.0, 0.0, 0.0, 1.0)
+
+        if scale is None:
+            scale = wp.vec3(1.0, 1.0, 1.0)
 
         return self._add_shape(
             body,
@@ -3660,7 +3750,7 @@ class ModelBuilder:
 
         spring_indices = set()
 
-        for k, e in adj.edges.items():
+        for _k, e in adj.edges.items():
             # skip open edges
             if e.f0 == -1 or e.f1 == -1:
                 continue
@@ -3944,7 +4034,7 @@ class ModelBuilder:
                         add_tet(v5, v2, v7, v0)
 
         # add triangles
-        for k, v in faces.items():
+        for _k, v in faces.items():
             self.add_triangle(v[0], v[1], v[2], tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
 
     def add_soft_mesh(
@@ -4022,7 +4112,7 @@ class ModelBuilder:
                 add_face(v0, v3, v2)
 
         # add triangles
-        for k, v in faces.items():
+        for _k, v in faces.items():
             try:
                 self.add_triangle(v[0], v[1], v[2], tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
             except np.linalg.LinAlgError:
@@ -4079,9 +4169,16 @@ class ModelBuilder:
         """
         if normal is None:
             normal = self.up_vector
-        self._ground_params = dict(
-            plane=(*normal, offset), width=0.0, length=0.0, ke=ke, kd=kd, kf=kf, mu=mu, restitution=restitution
-        )
+        self._ground_params = {
+            "plane": (*normal, offset),
+            "width": 0.0,
+            "length": 0.0,
+            "ke": ke,
+            "kd": kd,
+            "kf": kf,
+            "mu": mu,
+            "restitution": restitution,
+        }
 
     def _create_ground_plane(self):
         ground_id = self.add_shape_plane(**self._ground_params)

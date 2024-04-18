@@ -1,5 +1,7 @@
-from typing import Optional
+# isort: skip_file
+
 from enum import Enum
+from typing import Optional
 
 import warp.fem.domain as _domain
 import warp.fem.geometry as _geometry
@@ -68,7 +70,7 @@ def make_space_restriction(
     domain: Optional[_domain.GeometryDomain] = None,
     space_topology: Optional[SpaceTopology] = None,
     device=None,
-    temporary_store: "Optional[warp.fem.cache.TemporaryStore]" = None,
+    temporary_store: "Optional[warp.fem.cache.TemporaryStore]" = None,  # noqa: F821
 ) -> SpaceRestriction:
     """
     Restricts a function space partition to a Domain, i.e. a subset of its elements.

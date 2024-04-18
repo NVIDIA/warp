@@ -1,7 +1,8 @@
-import warp as wp
+from typing import List, Tuple
+
 import numpy as np
 
-from typing import Tuple, List
+import warp as wp
 
 
 @wp.func
@@ -11,7 +12,7 @@ def velocity_at_point(qd: wp.spatial_vector, r: wp.vec3):
 
     Args:
         qd (spatial_vector): The spatial velocity of the frame.
-        r (vec3): The position of the point relative to the frame. 
+        r (vec3): The position of the point relative to the frame.
 
     Returns:
         vec3: The velocity of the point.
@@ -371,11 +372,13 @@ def load_mesh(filename: str, method: str = None):
 
 
 def visualize_meshes(
-    meshes: List[Tuple[list, list]], num_cols=0, num_rows=0, titles=[], scale_axes=True, show_plot=True
+    meshes: List[Tuple[list, list]], num_cols=0, num_rows=0, titles=None, scale_axes=True, show_plot=True
 ):
     # render meshes in a grid with matplotlib
     import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d import Axes3D
+
+    if titles is None:
+        titles = []
 
     num_cols = min(num_cols, len(meshes))
     num_rows = min(num_rows, len(meshes))

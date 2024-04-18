@@ -12,11 +12,10 @@ from typing import Tuple
 
 import numpy as np
 import omni.graph.core as og
-import warp as wp
-
 import omni.warp.nodes
 from omni.warp.nodes.ogn.OgnParticlesFromMeshDatabase import OgnParticlesFromMeshDatabase
 
+import warp as wp
 
 PROFILING = False
 

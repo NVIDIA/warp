@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "warp-lang"
-requires-python = ">=3.7"  # 3.9 recommended
+requires-python = ">=3.7" # 3.9 recommended
 authors = [{ name = "NVIDIA", email = "mmacklin@nvidia.com" }]
 description = "A Python framework for high-performance simulation and graphics programming"
 license = { text = "NVIDIA Software License" }
@@ -26,15 +26,7 @@ Documentation = "https://nvidia.github.io/warp"
 Changelog = "https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-dev = [
-    "flake8",
-    "black",
-    "isort",
-    "nvtx",
-    "furo",
-    "sphinx-copybutton",
-    "coverage[toml]",
-]
+dev = ["ruff", "nvtx", "furo", "sphinx-copybutton", "coverage[toml]"]
 
 [tool.setuptools.packages.find]
 include = ["warp*"]
@@ -43,19 +35,47 @@ include = ["warp*"]
 version = { attr = "warp.config.version" }
 readme = { file = ["README.md"], content-type = "text/markdown" }
 
-[tool.black]
+[tool.ruff]
 line-length = 120
-extend-exclude = '''
-(
-  warp/native/cutlass/
-  | warp/thirdparty/appdirs.py
-  | warp/thirdparty/dlpack.py
-)
-'''
+indent-width = 4
+extend-exclude = [
+    "warp/native/cutlass/",
+    "warp/thirdparty/appdirs.py",
+    "warp/thirdparty/dlpack.py",
+    "tools",
+    "stubs.py",
+]
 
-[tool.isort]
-profile = "black"
-skip_gitignore = true
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "I",  # isort
+    "F", # pyflakes
+    "W",  # pycodestyle warnings
+    "B",  # flake8-bugbear
+    "C4",  # flake8-comprehensions
+]
+ignore = [
+    "E501", # Many lines are over 120 characters already
+    "E741", # Warp often uses l as a variable name
+    "F403", # Allow wildcard imports
+    "F405", # Related to use of wildcard imports
+    "F811", # Warp often uses overloads
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"warp/tests/*.py" = ["F841"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
 
 [tool.coverage.run]
 source = ["warp", "warp.sim", "warp.render"]

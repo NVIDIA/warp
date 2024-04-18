@@ -9,10 +9,7 @@
 
 import omni.graph.core as og
 import omni.graph.core.tests as ogts
-
 import omni.warp
-import warp as wp
-
 from omni.warp.nodes.tests._common import (
     array_are_equal,
     attr_set_array,
@@ -21,6 +18,7 @@ from omni.warp.nodes.tests._common import (
     register_node,
 )
 
+import warp as wp
 
 #   Test Node Definitions
 # -----------------------------------------------------------------------------
@@ -339,14 +337,38 @@ def compute(db: og.Database) -> None:
         result = omni.warp.from_omni_graph(data, dtype=wp.float64, shape=(32,))
         expected = wp.array(
             (
-                1.0, 2.0, 3.0, 4.0,
-                2.0, 3.0, 4.0, 5.0,
-                3.0, 4.0, 5.0, 6.0,
-                4.0, 5.0, 6.0, 7.0,
-                2.0, 3.0, 4.0, 5.0,
-                3.0, 4.0, 5.0, 6.0,
-                4.0, 5.0, 6.0, 7.0,
-                5.0, 6.0, 7.0, 8.0,
+                1.0,
+                2.0,
+                3.0,
+                4.0,
+                2.0,
+                3.0,
+                4.0,
+                5.0,
+                3.0,
+                4.0,
+                5.0,
+                6.0,
+                4.0,
+                5.0,
+                6.0,
+                7.0,
+                2.0,
+                3.0,
+                4.0,
+                5.0,
+                3.0,
+                4.0,
+                5.0,
+                6.0,
+                4.0,
+                5.0,
+                6.0,
+                7.0,
+                5.0,
+                6.0,
+                7.0,
+                8.0,
             ),
             dtype=wp.float64,
             shape=(32,),

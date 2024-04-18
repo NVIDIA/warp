@@ -11,9 +11,8 @@ from typing import Any
 import numpy as np
 
 import warp as wp
-from warp.tests.unittest_utils import *
-
 from warp.fem import Sample as StructFromAnotherModule
+from warp.tests.unittest_utils import *
 
 wp.init()
 
@@ -434,7 +433,7 @@ def test_nested_vec_assignment(test, device):
     v.value[2] = 3.0
 
     arr = wp.array([v], dtype=VecStruct)
-    expected = np.array(([1., 2., 3.],))
+    expected = np.array(([1.0, 2.0, 3.0],))
     assert np.all(arr.numpy().tolist() == expected)
 
 

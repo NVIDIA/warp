@@ -53,7 +53,7 @@ def test_tape_mul_constant(test, device):
         x0 = wp.array(np.zeros(dim), dtype=wp.float32, device=device, requires_grad=True)
         x = x0
 
-        for i in range(iters):
+        for _i in range(iters):
             y = wp.empty_like(x, requires_grad=True)
             wp.launch(kernel=mul_constant, dim=dim, inputs=[x], outputs=[y], device=device)
             x = y

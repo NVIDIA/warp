@@ -1,10 +1,9 @@
 import unittest
 
 import numpy as np
-import warp as wp
-import unittest
 
-from warp.optim.linear import preconditioner, cg, cr, bicgstab, gmres
+import warp as wp
+from warp.optim.linear import bicgstab, cg, cr, gmres, preconditioner
 from warp.tests.unittest_utils import *
 
 wp.init()

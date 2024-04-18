@@ -66,7 +66,7 @@ class Field:
     Tag for field-like integrand arguments
     """
 
-    call_operator: "warp.fem.operator.Operator" = None  # Set in operator.py
+    call_operator: "warp.fem.operator.Operator" = None  # noqa: F821 Set in operator.py
 
 
 class Domain:
@@ -74,4 +74,4 @@ class Domain:
     Tag for domain-like integrand arguments
     """
 
-    call_operator: "warp.fem.operator.Operator" = None  # Set in operator.py
+    call_operator: "warp.fem.operator.Operator" = None  # noqa: F821 Set in operator.py

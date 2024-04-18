@@ -1,25 +1,23 @@
 import warp as wp
-
-from warp.fem.types import ElementIndex, Coords
-from warp.fem.polynomial import Polynomial, is_closed
-from warp.fem.geometry import Hexmesh
 from warp.fem import cache
-
-from .topology import SpaceTopology, DiscontinuousSpaceTopologyMixin, forward_base_topology
-from .basis_space import ShapeBasisSpace, TraceBasisSpace
-
-from .shape import ShapeFunction, ConstantShapeFunction
-from .shape import (
-    CubeTripolynomialShapeFunctions,
-    CubeSerendipityShapeFunctions,
-    CubeNonConformingPolynomialShapeFunctions,
-)
-
+from warp.fem.geometry import Hexmesh
 from warp.fem.geometry.hexmesh import (
     EDGE_VERTEX_INDICES,
     FACE_ORIENTATION,
     FACE_TRANSLATION,
 )
+from warp.fem.polynomial import Polynomial, is_closed
+from warp.fem.types import Coords, ElementIndex
+
+from .basis_space import ShapeBasisSpace, TraceBasisSpace
+from .shape import (
+    ConstantShapeFunction,
+    CubeNonConformingPolynomialShapeFunctions,
+    CubeSerendipityShapeFunctions,
+    CubeTripolynomialShapeFunctions,
+    ShapeFunction,
+)
+from .topology import DiscontinuousSpaceTopologyMixin, SpaceTopology, forward_base_topology
 
 _FACE_ORIENTATION_I = wp.constant(wp.mat(shape=(16, 2), dtype=int)(FACE_ORIENTATION))
 _FACE_TRANSLATION_I = wp.constant(wp.mat(shape=(4, 2), dtype=int)(FACE_TRANSLATION))

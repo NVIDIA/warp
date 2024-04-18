@@ -5,18 +5,17 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import ctypes
 import sys
 import time
-
-import warp as wp
-from .utils import tab10_color_map
-
 from collections import defaultdict
-from typing import List, Tuple, Union, Optional
-from enum import Enum
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
-import ctypes
+
+import warp as wp
+
+from .utils import tab10_color_map
 
 Mat44 = Union[List[float], List[List[float]], np.ndarray]
 
@@ -726,7 +725,9 @@ class ShapeInstancer:
             )
         else:
             self.instance_transforms = wp.array(
-                [(*pos, *rot) for pos, rot in zip(positions, rotations)], dtype=wp.transform, device=self.device
+                [(*pos, *rot) for pos, rot in zip(positions, rotations)],
+                dtype=wp.transform,
+                device=self.device,
             )
 
         if scalings is None:
@@ -892,10 +893,10 @@ class OpenGLRenderer:
             pyglet.options["debug_gl"] = False
 
             from pyglet import gl
-            from pyglet.math import Vec3 as PyVec3
             from pyglet.graphics.shader import Shader, ShaderProgram
-        except ImportError:
-            raise Exception("OpenGLRenderer requires pyglet (version >= 2.0) to be installed.")
+            from pyglet.math import Vec3 as PyVec3
+        except ImportError as e:
+            raise Exception("OpenGLRenderer requires pyglet (version >= 2.0) to be installed.") from e
 
         self.camera_near_plane = near_plane
         self.camera_far_plane = far_plane
@@ -1275,7 +1276,7 @@ class OpenGLRenderer:
                 gl.glDeleteBuffers(1, self._instance_color2_buffer)
             except gl.GLException:
                 pass
-        for vao, vbo, ebo, _, vertex_cuda_buffer in self._shape_gl_buffers.values():
+        for vao, vbo, ebo, _, _vertex_cuda_buffer in self._shape_gl_buffers.values():
             try:
                 gl.glDeleteVertexArrays(1, vao)
                 gl.glDeleteBuffers(1, vbo)
@@ -1388,10 +1389,10 @@ class OpenGLRenderer:
             self._tile_nrows = None
             self._tile_width = None
             self._tile_height = None
-            if all([tile_sizes[i][0] == tile_sizes[0][0] for i in range(n)]):
+            if all(tile_sizes[i][0] == tile_sizes[0][0] for i in range(n)):
                 # tiles all have the same width
                 self._tile_width = tile_sizes[0][0]
-            if all([tile_sizes[i][1] == tile_sizes[0][1] for i in range(n)]):
+            if all(tile_sizes[i][1] == tile_sizes[0][1] for i in range(n)):
                 # tiles all have the same height
                 self._tile_height = tile_sizes[0][1]
             self._tile_viewports = [(x, y, w, h) for (x, y), (w, h) in zip(tile_positions, tile_sizes)]
@@ -1590,7 +1591,7 @@ class OpenGLRenderer:
         self.update_view_matrix(cam_up=value)
 
     def update_view_matrix(self, cam_pos=None, cam_front=None, cam_up=None, stiffness=1.0):
-        from pyglet.math import Vec3, Mat4
+        from pyglet.math import Mat4, Vec3
 
         if cam_pos is not None:
             self._camera_pos = self._camera_pos * (1.0 - stiffness) + Vec3(*cam_pos) * stiffness
@@ -2075,7 +2076,7 @@ Instances: {len(self._instances)}"""
 
         colors1, colors2 = [], []
         all_instances = list(self._instances.values())
-        for shape, instances in self._shape_instances.items():
+        for _shape, instances in self._shape_instances.items():
             for i in instances:
                 if i >= len(all_instances):
                     continue
@@ -2143,7 +2144,7 @@ Instances: {len(self._instances)}"""
         inverse_instance_ids = {}
         instance_count = 0
         colors_size = np.zeros(3, dtype=np.float32).nbytes
-        for shape, (vao, vbo, ebo, tri_count, vertex_cuda_buffer) in self._shape_gl_buffers.items():
+        for shape, (vao, _vbo, _ebo, _tri_count, _vertex_cuda_buffer) in self._shape_gl_buffers.items():
             gl.glBindVertexArray(vao)
 
             gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._instance_transform_gl_buffer)
@@ -2319,11 +2320,14 @@ Instances: {len(self._instances)}"""
             assert all(
                 vp[3] == self._tile_height for vp in self._tile_viewports
             ), "Tile heights do not all equal global tile_height, use `get_tile_pixels` instead to retrieve pixels for a single tile"
-            assert target_image.shape == (
-                self.num_tiles,
-                self._tile_height,
-                self._tile_width,
-                channels,
+            assert (
+                target_image.shape
+                == (
+                    self.num_tiles,
+                    self._tile_height,
+                    self._tile_width,
+                    channels,
+                )
             ), f"Shape of `target_image` array does not match {self.num_tiles} x {self.screen_height} x {self.screen_width} x {channels}"
         else:
             assert target_image.shape == (
@@ -2674,7 +2678,14 @@ Instances: {len(self._instances)}"""
         return shape
 
     def render_box(
-        self, name: str, pos: tuple, rot: tuple, extents: tuple, parent_body: str = None, is_template: bool = False, color: tuple = None
+        self,
+        name: str,
+        pos: tuple,
+        rot: tuple,
+        extents: tuple,
+        parent_body: str = None,
+        is_template: bool = False,
+        color: tuple = None,
     ):
         """Add a box for visualization
 

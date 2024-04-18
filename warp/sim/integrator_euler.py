@@ -12,9 +12,9 @@ models + state forward in time.
 
 import warp as wp
 
-from .integrator import Integrator
 from .collide import triangle_closest_point_barycentric
-from .model import Model, State, Control, PARTICLE_FLAG_ACTIVE, ModelShapeGeometry, ModelShapeMaterials
+from .integrator import Integrator
+from .model import PARTICLE_FLAG_ACTIVE, Control, Model, ModelShapeGeometry, ModelShapeMaterials, State
 from .particles import eval_particle_forces
 from .utils import quat_decompose, quat_twist
 
@@ -270,11 +270,11 @@ def eval_triangles_contact(
     face_no = tid // num_particles  # which face
     particle_no = tid % num_particles  # which particle
 
-    k_mu = materials[face_no, 0]
-    k_lambda = materials[face_no, 1]
-    k_damp = materials[face_no, 2]
-    k_drag = materials[face_no, 3]
-    k_lift = materials[face_no, 4]
+    # k_mu = materials[face_no, 0]
+    # k_lambda = materials[face_no, 1]
+    # k_damp = materials[face_no, 2]
+    # k_drag = materials[face_no, 3]
+    # k_lift = materials[face_no, 4]
 
     # at the moment, just one particle
     pos = x[particle_no]
@@ -1107,7 +1107,7 @@ def eval_body_joints(
 
     # joint properties (for 1D joints)
     # q_start = joint_q_start[tid]
-    qd_start = joint_qd_start[tid]
+    # qd_start = joint_qd_start[tid]
     axis_start = joint_axis_start[tid]
 
     lin_axis_count = joint_axis_dim[tid, 0]

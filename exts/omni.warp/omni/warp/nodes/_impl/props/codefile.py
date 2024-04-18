@@ -12,10 +12,10 @@ from typing import (
     Callable,
 )
 
+import omni.ui as ui
 from omni.kit.property.usd.usd_property_widget import UsdPropertyUiEntry
 from omni.kit.property.usd.usd_property_widget_builder import UsdPropertiesWidgetBuilder
 from omni.kit.window.property.templates import HORIZONTAL_SPACING
-import omni.ui as ui
 
 
 def get_code_file_prop_builder(layout: Any) -> Callable:

@@ -107,7 +107,7 @@ class Example:
 
         # allocate sim states for trajectory
         self.states = []
-        for i in range(self.sim_steps + 1):
+        for _i in range(self.sim_steps + 1):
             self.states.append(self.model.state(requires_grad=True))
 
         self.renderer = None

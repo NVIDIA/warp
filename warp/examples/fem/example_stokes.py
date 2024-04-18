@@ -12,27 +12,25 @@
 #
 # -nu D(u) + grad p = 0
 # Div u = 0
-# 
+#
 # with (soft) velocity-Dirichlet boundary conditions
 ###########################################################################
 
 import argparse
 
 import warp as wp
-
 import warp.fem as fem
+import warp.sparse as sparse
 from warp.fem.utils import array_axpy
 
-import warp.sparse as sparse
-
 try:
+    from .bsr_utils import SaddleSystem, bsr_solve_saddle
+    from .mesh_utils import gen_quadmesh, gen_trimesh
     from .plot_utils import Plot
-    from .bsr_utils import bsr_solve_saddle, SaddleSystem
-    from .mesh_utils import gen_trimesh, gen_quadmesh
 except ImportError:
+    from bsr_utils import SaddleSystem, bsr_solve_saddle
+    from mesh_utils import gen_quadmesh, gen_trimesh
     from plot_utils import Plot
-    from bsr_utils import bsr_solve_saddle, SaddleSystem
-    from mesh_utils import gen_trimesh, gen_quadmesh
 
 wp.init()
 

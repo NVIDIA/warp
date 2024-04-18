@@ -1,17 +1,13 @@
-from typing import Any, Optional
+from typing import Optional
 
 import warp as wp
-
-from warp.fem.types import DofIndex, get_node_coord
-from warp.fem.geometry import GeometryPartition
 from warp.fem import cache, utils
-
-
-from .function_space import FunctionSpace
-from .dof_mapper import DofMapper, IdentityMapper
-from .partition import make_space_partition, SpacePartition
+from warp.fem.types import DofIndex, get_node_coord
 
 from .basis_space import BasisSpace
+from .dof_mapper import DofMapper, IdentityMapper
+from .function_space import FunctionSpace
+from .partition import SpacePartition, make_space_partition
 
 
 class CollocatedFunctionSpace(FunctionSpace):
@@ -65,7 +61,6 @@ class CollocatedFunctionSpace(FunctionSpace):
         self,
         space_partition: Optional[SpacePartition] = None,
     ) -> "wp.fem.field.NodalField":
-
         from warp.fem.field import NodalField
 
         if space_partition is None:
@@ -83,7 +78,7 @@ class CollocatedFunctionSpace(FunctionSpace):
     def node_count(self):
         return self.topology.node_count()
 
-    def node_positions(self, out:Optional[wp.array] = None) -> wp.array:
+    def node_positions(self, out: Optional[wp.array] = None) -> wp.array:
         return self._basis.node_positions(out=out)
 
     def trace(self) -> "CollocatedFunctionSpace":

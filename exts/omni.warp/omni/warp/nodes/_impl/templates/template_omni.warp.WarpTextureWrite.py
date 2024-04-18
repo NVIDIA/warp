@@ -5,7 +5,6 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-from functools import partial
 from typing import (
     Optional,
     Sequence,
@@ -18,6 +17,7 @@ from omni.kit.property.usd.custom_layout_helper import (
     CustomLayoutProperty,
 )
 from omni.kit.property.usd.usd_property_widget import UsdPropertyUiEntry
+
 import warp as wp
 
 
