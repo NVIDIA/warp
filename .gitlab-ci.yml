@@ -17,9 +17,15 @@ workflow:
       when: never
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     - if: $CI_COMMIT_TAG # Run for tagged releases
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH =~ /release-.*/
     - if: $CI_PIPELINE_SOURCE == "schedule"
+      auto_cancel:
+        on_new_commit: none
+        on_job_failure: none
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      auto_cancel:
+        on_new_commit: none
+        on_job_failure: none
+    - if: $CI_COMMIT_BRANCH =~ /release-.*/
     - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
 
 variables:
