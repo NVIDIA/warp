@@ -199,6 +199,22 @@ def test_copy_indexed(test, device):
         assert_np_equal(a4.numpy(), expected4 * s)
 
 
+def test_copy_adjoint(test, device):
+    state_in = wp.from_numpy(
+        np.array([1.0, 2.0, 3.0]).astype(np.float32), dtype=wp.float32, requires_grad=True, device=device
+    )
+    state_out = wp.zeros(state_in.shape, dtype=wp.float32, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.copy(state_out, state_in)
+
+    grads = {state_out: wp.from_numpy(np.array([1.0, 1.0, 1.0]).astype(np.float32), dtype=wp.float32)}
+    tape.backward(grads=grads)
+
+    assert_np_equal(state_in.grad.numpy(), np.array([1.0, 1.0, 1.0]).astype(np.float32))
+
+
 devices = get_test_devices()
 
 
@@ -208,6 +224,7 @@ class TestCopy(unittest.TestCase):
 
 add_function_test(TestCopy, "test_copy_strided", test_copy_strided, devices=devices)
 add_function_test(TestCopy, "test_copy_indexed", test_copy_indexed, devices=devices)
+add_function_test(TestCopy, "test_copy_adjoint", test_copy_adjoint, devices=devices)
 
 
 if __name__ == "__main__":
