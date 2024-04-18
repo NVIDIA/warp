@@ -181,15 +181,16 @@ add_example_test(
         "enable_rendering": False,
     },
 )
-# add_example_test(
-#     TestSimExamples,
-#     name="optim.example_walker",
-#     devices=cuda_test_devices,
-#     options={
-#         "load_modules": warp_sim_modules + ["warp.optim.adam", "warp.utils"],
-#         "num_frames": 1,
-#     },
-# )
+add_example_test(
+    TestSimExamples,
+    name="optim.example_walker",
+    devices=cuda_test_devices,
+    options={
+        "load_modules": warp_sim_modules + ["warp.optim.adam", "warp.utils"],
+        "num_frames": 1,
+        "episode_duration": 1.0,
+    },
+)
 add_example_test(
     TestSimExamples,
     name="sim.example_granular",

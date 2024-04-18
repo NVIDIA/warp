@@ -71,12 +71,12 @@ activation_strength = wp.constant(0.3)
 
 
 class Example:
-    def __init__(self, stage=None, profile=False, verbose=False):
+    def __init__(self, stage=None, profile=False, verbose=False, episode_duration=5.0):
         self.profile = profile
         self.verbose = verbose
 
         # sim settings
-        self.episode_duration = 5.0  # seconds
+        self.episode_duration = episode_duration  # seconds
 
         self.frame_dt = 1.0 / 60.0
         self.frame_count = int(self.episode_duration / self.frame_dt)
@@ -102,7 +102,7 @@ class Example:
         for i in range(len(points)):
             points[i] = xform.Transform(points[i])
 
-        self.points = points
+        self.points = [wp.vec3(point) for point in points]
         self.tet_indices = geom.GetPrim().GetAttribute("tetraIndices").Get()
 
         # sim model
