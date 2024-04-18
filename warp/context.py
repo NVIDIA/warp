@@ -4663,6 +4663,8 @@ def copy(
 
     """
 
+    from warp.context import runtime
+
     if not warp.types.is_array(src) or not warp.types.is_array(dest):
         raise RuntimeError("Copy source and destination must be arrays")
 
@@ -4816,6 +4818,20 @@ def copy(
     # copy gradient, if needed
     if hasattr(src, "grad") and src.grad is not None and hasattr(dest, "grad") and dest.grad is not None:
         copy(dest.grad, src.grad, stream=stream)
+
+        if runtime.tape:
+            runtime.tape.record_func(backward=lambda: adj_copy(dest.grad, src.grad, stream=stream), arrays=[dest, src])
+
+
+def adj_copy(adj_dest: warp.array, adj_src: warp.array, stream: Stream = None):
+    """Copy adjoint operation for wp.copy() calls on the tape.
+
+    Args:
+        adj_dest: Destination array adjoint
+        adj_src: Source array adjoint
+        stream: The stream on which the copy was performed in the forward pass
+    """
+    copy(adj_src, adj_dest, stream=stream)
 
 
 def type_str(t):

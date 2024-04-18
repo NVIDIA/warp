@@ -429,6 +429,37 @@ def test_view(test, device):
     assert_array_equal(wp_arr_e.view(dtype=wp.quat), wp_arr_f)
 
 
+def test_clone_adjoint(test, device):
+    state_in = wp.from_numpy(
+        np.array([1.0, 2.0, 3.0]).astype(np.float32), dtype=wp.float32, requires_grad=True, device=device
+    )
+
+    tape = wp.Tape()
+    with tape:
+        state_out = wp.clone(state_in)
+
+    grads = {state_out: wp.from_numpy(np.array([1.0, 1.0, 1.0]).astype(np.float32), dtype=wp.float32)}
+    tape.backward(grads=grads)
+
+    assert_np_equal(state_in.grad.numpy(), np.array([1.0, 1.0, 1.0]).astype(np.float32))
+
+
+def test_assign_adjoint(test, device):
+    state_in = wp.from_numpy(
+        np.array([1.0, 2.0, 3.0]).astype(np.float32), dtype=wp.float32, requires_grad=True, device=device
+    )
+    state_out = wp.zeros(state_in.shape, dtype=wp.float32, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        state_out.assign(state_in)
+
+    grads = {state_out: wp.from_numpy(np.array([1.0, 1.0, 1.0]).astype(np.float32), dtype=wp.float32)}
+    tape.backward(grads=grads)
+
+    assert_np_equal(state_in.grad.numpy(), np.array([1.0, 1.0, 1.0]).astype(np.float32))
+
+
 @wp.kernel
 def compare_2darrays(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float), z: wp.array2d(dtype=int)):
     i, j = wp.tid()
@@ -2280,6 +2311,8 @@ add_function_test(TestArray, "test_reshape", test_reshape, devices=devices)
 add_function_test(TestArray, "test_slicing", test_slicing, devices=devices)
 add_function_test(TestArray, "test_transpose", test_transpose, devices=devices)
 add_function_test(TestArray, "test_view", test_view, devices=devices)
+add_function_test(TestArray, "test_clone_adjoint", test_clone_adjoint, devices=devices)
+add_function_test(TestArray, "test_assign_adjoint", test_assign_adjoint, devices=devices)
 
 add_function_test(TestArray, "test_1d_array", test_1d, devices=devices)
 add_function_test(TestArray, "test_2d_array", test_2d, devices=devices)
