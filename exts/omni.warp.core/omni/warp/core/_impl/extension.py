@@ -13,7 +13,6 @@ from typing import Optional
 
 import omni.ext
 
-
 HERE = os.path.dirname(__file__)
 
 # Path to the `exts/omni.warp.core` folder.
@@ -43,9 +42,7 @@ def _read_link(path: str) -> Optional[str]:
 
 
 class OmniWarpCoreExtension(omni.ext.IExt):
-
     def on_startup(self, ext_id):
-
         # We want to make Warp's library available through this `omni.warp.core`
         # extension. Due to `extension.toml` expecting the Python package to be
         # located at `exts/omni.warp.core/warp`, one way to do achieve that is
@@ -89,7 +86,7 @@ class OmniWarpCoreExtension(omni.ext.IExt):
 
             try:
                 os.symlink(LIB_PATH_REL, LOCAL_LIB_PATH, target_is_directory=True)
-            except OSError:
+            except OSError as e:
                 # On Windows, creating symbolic links might fail due to lack of
                 # privileges. In that case, try creating a junction instead.
                 if os.name == "nt":
@@ -98,7 +95,7 @@ class OmniWarpCoreExtension(omni.ext.IExt):
                     cmd = ("mklink", "/j", LOCAL_LIB_PATH, LIB_PATH_ABS)
                     subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True)
                 else:
-                    raise RuntimeError(f"Failed to create the symlink `{LOCAL_LIB_PATH}`")
+                    raise RuntimeError(f"Failed to create the symlink `{LOCAL_LIB_PATH}`") from e
 
             # Due to Kit's fast importer mechanism having already cached our
             # extension's Python path before we had a chance to create the link,
@@ -108,4 +105,5 @@ class OmniWarpCoreExtension(omni.ext.IExt):
 
         # Initialize the library.
         import warp as wp
+
         wp.init()
