@@ -263,8 +263,8 @@ class UsdRenderer:
                 axis = np.abs(c) / np.linalg.norm(c)
                 q = wp.quat_from_axis_angle(axis, angle)
             tf = wp.transform(pos, q)
-            points = [wp.transform_point(tf, p) for p in points]
-            normals = [wp.transform_vector(tf, n) for n in normals]
+            points = [wp.transform_point(tf, wp.vec3(p)) for p in points]
+            normals = [wp.transform_vector(tf, wp.vec3(n)) for n in normals]
         counts = (4,)
         indices = [0, 1, 2, 3]
 
