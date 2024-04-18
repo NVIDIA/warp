@@ -9,7 +9,7 @@ class Polynomial(Enum):
 
     GAUSS_LEGENDRE = 0
     """Gauss--Legendre 1D polynomial family (does not include endpoints)"""
-    
+
     LOBATTO_GAUSS_LEGENDRE = 1
     """Lobatto--Gauss--Legendre 1D polynomial family (includes endpoints)"""
 
@@ -21,6 +21,7 @@ class Polynomial(Enum):
 
     def __str__(self):
         return self.name
+
 
 def is_closed(family: Polynomial):
     """Whether the polynomial roots include interval endpoints"""

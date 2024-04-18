@@ -45,7 +45,7 @@ def randvals(rng, shape, dtype):
     return rng.integers(1, high=5, size=shape, dtype=dtype)
 
 
-kernel_cache = dict()
+kernel_cache = {}
 
 
 def getkernel(func, suffix=""):
@@ -64,8 +64,6 @@ def get_select_kernel(dtype):
         out[0] = input[index]
 
     return getkernel(output_select_kernel_fn, suffix=dtype.__name__)
-
-    wp.launch(kernel, dim=1, inputs=[])
 
 
 def test_arrays(test, device, dtype):

@@ -1,8 +1,8 @@
 import warp as wp
+from warp.fem import cache, utils
 from warp.fem.domain import GeometryDomain
 from warp.fem.space import FunctionSpace, SpacePartition
 from warp.fem.types import Sample, get_node_index_in_element
-from warp.fem import utils, cache
 
 from .field import SpaceField
 

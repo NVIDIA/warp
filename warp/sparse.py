@@ -20,7 +20,7 @@ class _ScalarBlockType(Generic[Scalar]):
 
 BlockType = Union[_MatrixBlockType[Rows, Cols, Scalar], _ScalarBlockType[Scalar]]
 
-_struct_cache = dict()
+_struct_cache = {}
 
 
 class BsrMatrix(Generic[_BlockType]):
@@ -65,14 +65,14 @@ class BsrMatrix(Generic[_BlockType]):
 
     @property
     def device(self) -> wp.context.Device:
-        """Device on which offsets, columns and values are allocated -- assumed to be the same for all three arrays """
+        """Device on which offsets, columns and values are allocated -- assumed to be the same for all three arrays"""
         return self.values.device
 
 
 def bsr_matrix_t(dtype: BlockType):
     dtype = wp.types.type_to_warp(dtype)
 
-    if not warp.types.type_is_matrix(dtype) and not dtype in warp.types.scalar_types:
+    if not warp.types.type_is_matrix(dtype) and dtype not in warp.types.scalar_types:
         raise ValueError(
             f"BsrMatrix block type must be either warp matrix or scalar; got {warp.types.type_repr(dtype)}"
         )

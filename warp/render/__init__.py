@@ -5,6 +5,6 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-from .utils import bourke_color_map
-from .render_usd import UsdRenderer
 from .render_opengl import OpenGLRenderer
+from .render_usd import UsdRenderer
+from .utils import bourke_color_map

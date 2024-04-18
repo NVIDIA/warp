@@ -314,19 +314,19 @@ class Hexmesh(Geometry):
         return v1, v2
 
     @wp.func
-    def side_deformation_gradient(args: SideArg, s:Sample):
+    def side_deformation_gradient(args: SideArg, s: Sample):
         """Transposed side deformation gradient at `coords`"""
         v1, v2 = Hexmesh._side_deformation_vecs(args, s.element_index, s.element_coords)
         return _mat32(v1, v2)
 
     @wp.func
-    def side_inner_inverse_deformation_gradient(args: SideArg, s:Sample):
+    def side_inner_inverse_deformation_gradient(args: SideArg, s: Sample):
         cell_index = Hexmesh.side_inner_cell_index(args, s.element_index)
         cell_coords = Hexmesh.side_inner_cell_coords(args, s.element_index, s.element_coords)
         return Hexmesh.cell_inverse_deformation_gradient(args.cell_arg, make_free_sample(cell_index, cell_coords))
 
     @wp.func
-    def side_outer_inverse_deformation_gradient(args: SideArg, s:Sample):
+    def side_outer_inverse_deformation_gradient(args: SideArg, s: Sample):
         cell_index = Hexmesh.side_outer_cell_index(args, s.element_index)
         cell_coords = Hexmesh.side_outer_cell_coords(args, s.element_index, s.element_coords)
         return Hexmesh.cell_inverse_deformation_gradient(args.cell_arg, make_free_sample(cell_index, cell_coords))

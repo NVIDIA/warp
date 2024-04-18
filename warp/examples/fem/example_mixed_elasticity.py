@@ -12,28 +12,27 @@
 # 2D linear elasticity problem:
 #
 # Div[ E: D(u) ] = 0
-# 
+#
 # with Dirichlet boundary conditions on horizontal sides,
 # and E the elasticity rank-4 tensor
 ###########################################################################
 
 import argparse
 
-import warp as wp
 import numpy as np
 
+import warp as wp
 import warp.fem as fem
-
-from warp.sparse import bsr_transposed, bsr_mm
+from warp.sparse import bsr_mm, bsr_transposed
 
 try:
-    from .plot_utils import Plot
     from .bsr_utils import bsr_cg, invert_diagonal_bsr_mass_matrix
-    from .mesh_utils import gen_trimesh, gen_quadmesh
+    from .mesh_utils import gen_quadmesh, gen_trimesh
+    from .plot_utils import Plot
 except ImportError:
-    from plot_utils import Plot
     from bsr_utils import bsr_cg, invert_diagonal_bsr_mass_matrix
-    from mesh_utils import gen_trimesh, gen_quadmesh
+    from mesh_utils import gen_quadmesh, gen_trimesh
+    from plot_utils import Plot
 
 wp.init()
 

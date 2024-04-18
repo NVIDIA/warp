@@ -80,7 +80,7 @@ class Example:
             self.graph = capture.graph
 
     def simulate(self):
-        for s in range(self.sim_substeps):
+        for _s in range(self.sim_substeps):
             wp.sim.collide(self.model, self.state_0)
 
             self.state_0.clear_forces()
@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
     example = Example(stage_path)
 
-    for i in range(example.sim_frames):
+    for _i in range(example.sim_frames):
         example.step()
         example.render()
 

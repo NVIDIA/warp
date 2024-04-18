@@ -10,18 +10,14 @@
 from typing import Any
 
 import omni.graph.core as og
-
 import omni.kit
 import omni.warp
+
 import warp as wp
 
 
 def are_array_annotations_equal(a: Any, b: Any) -> bool:
-    return (
-        isinstance(a, wp.array) and isinstance(b, wp.array)
-        and a.dtype == b.dtype
-        and a.ndim == b.ndim
-    )
+    return isinstance(a, wp.array) and isinstance(b, wp.array) and a.dtype == b.dtype and a.ndim == b.ndim
 
 
 class TestApiTypeConversions(omni.kit.test.AsyncTestCase):

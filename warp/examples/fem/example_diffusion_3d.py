@@ -9,7 +9,7 @@
 # Example Diffusion 3D
 #
 # This example solves a 3d diffusion problem:
-# 
+#
 # nu Div u = 1
 #
 # with homogeneous Neumann conditions on horizontal sides
@@ -20,20 +20,19 @@ import argparse
 
 import warp as wp
 import warp.fem as fem
-
 from warp.sparse import bsr_axpy
 
 # Import example utilities
 # Make sure that works both when imported as module and run as standalone file
 try:
-    from .example_diffusion import diffusion_form, linear_form
     from .bsr_utils import bsr_cg
+    from .example_diffusion import diffusion_form, linear_form
     from .mesh_utils import gen_tetmesh
     from .plot_utils import Plot
 except ImportError:
-    from example_diffusion import diffusion_form, linear_form
     from bsr_utils import bsr_cg
-    from mesh_utils import gen_tetmesh, gen_hexmesh
+    from example_diffusion import diffusion_form, linear_form
+    from mesh_utils import gen_hexmesh, gen_tetmesh
     from plot_utils import Plot
 
 wp.init()

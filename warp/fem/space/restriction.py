@@ -1,11 +1,9 @@
 import warp as wp
-
+from warp.fem.cache import TemporaryStore, borrow_temporary, borrow_temporary_like, cached_arg_value
 from warp.fem.domain import GeometryDomain
 from warp.fem.types import NodeElementIndex
 from warp.fem.utils import compress_node_indices
-from warp.fem.cache import cached_arg_value, borrow_temporary, borrow_temporary_like, TemporaryStore
 
-from .function_space import FunctionSpace
 from .partition import SpacePartition
 
 wp.set_module_options({"enable_backward": False})

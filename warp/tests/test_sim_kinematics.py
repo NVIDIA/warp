@@ -5,24 +5,18 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import math
+import os
 import unittest
 
 import warp as wp
-from warp.tests.unittest_utils import *
-
-import math
-import os
-
-import numpy as np
-
-import warp as wp
 import warp.sim
+from warp.tests.unittest_utils import *
 
 wp.init()
 
 
 def test_fk_ik(test, device):
-
     builder = wp.sim.ModelBuilder()
 
     num_envs = 1

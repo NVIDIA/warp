@@ -15,8 +15,8 @@
 ###########################################################################
 
 import numpy as np
-import warp as wp
 
+import warp as wp
 
 wp.init()
 

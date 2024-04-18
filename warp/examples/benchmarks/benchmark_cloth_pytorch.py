@@ -64,12 +64,12 @@ class TrIntegrator:
         self.spring_damping = torch.tensor(self.cloth.spring_damping, device=device)
 
         self.forces = torch.zeros((self.cloth.num_particles, 3), dtype=torch.float32, device=device)
-        self.gravity = g = torch.tensor((0.0, 0.0 - 9.8, 0.0), dtype=torch.float32, device=device)
+        self.gravity = torch.tensor((0.0, 0.0 - 9.8, 0.0), dtype=torch.float32, device=device)
 
     def simulate(self, dt, substeps):
         sim_dt = dt / substeps
 
-        for s in range(substeps):
+        for _s in range(substeps):
             eval_springs(
                 self.positions,
                 self.velocities,

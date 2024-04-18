@@ -34,7 +34,6 @@ def get_device_pair_without_peer_access_support():
 
 
 def test_peer_access_self(test, device):
-
     device = wp.get_device(device)
 
     assert device.is_cuda
@@ -48,13 +47,12 @@ def test_peer_access_self(test, device):
     wp.set_peer_access_enabled(device, device, False)
 
     # should always be enabled
-    enabled = wp.is_peer_access_enabled(device, device)        
+    enabled = wp.is_peer_access_enabled(device, device)
     test.assertTrue(enabled)
 
 
 @unittest.skipUnless(get_device_pair_with_peer_access_support(), "Requires devices with peer access support")
 def test_peer_access(test, _):
-
     target_device, peer_device = get_device_pair_with_peer_access_support()
 
     was_enabled = wp.is_peer_access_enabled(target_device, peer_device)
@@ -83,7 +81,6 @@ def test_peer_access(test, _):
 
 @unittest.skipUnless(get_device_pair_without_peer_access_support(), "Requires devices without peer access support")
 def test_peer_access_exceptions_unsupported(test, _):
-
     # get a CUDA device pair without peer access support
     target_device, peer_device = get_device_pair_without_peer_access_support()
 
@@ -100,7 +97,6 @@ def test_peer_access_exceptions_unsupported(test, _):
 
 @unittest.skipUnless(wp.is_cpu_available() and wp.is_cuda_available(), "Requires both CUDA and CPU devices")
 def test_peer_access_exceptions_cpu(test, _):
-
     # querying is ok, but must return False
     test.assertFalse(wp.is_peer_access_enabled("cuda:0", "cpu"))
     test.assertFalse(wp.is_peer_access_enabled("cpu", "cuda:0"))

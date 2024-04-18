@@ -14,13 +14,11 @@ import numpy as np
 import warp as wp
 from warp.sim.model import Mesh
 
-from typing import Union
-
 
 def parse_urdf(
     urdf_filename,
     builder,
-    xform=wp.transform(),
+    xform=None,
     floating=False,
     base_joint: Union[dict, str] = None,
     density=1000.0,
@@ -80,19 +78,21 @@ def parse_urdf(
         static_link_mass (float): The mass to assign to links with zero mass (if `ensure_nonstatic_links` is set to True).
         collapse_fixed_joints (bool): If True, fixed joints are removed and the respective bodies are merged.
     """
+    if xform is None:
+        xform = wp.transform()
 
     file = ET.parse(urdf_filename)
     root = file.getroot()
 
-    contact_vars = dict(
-        ke=contact_ke,
-        kd=contact_kd,
-        kf=contact_kf,
-        ka=contact_ka,
-        mu=contact_mu,
-        restitution=contact_restitution,
-        thickness=contact_thickness,
-    )
+    contact_vars = {
+        "ke": contact_ke,
+        "kd": contact_kd,
+        "kf": contact_kf,
+        "ka": contact_ka,
+        "mu": contact_mu,
+        "restitution": contact_restitution,
+        "thickness": contact_thickness,
+    }
 
     def parse_transform(element):
         if element is None or element.find("origin") is None:
@@ -251,7 +251,7 @@ def parse_urdf(
     start_shape_count = len(builder.shape_geo_type)
 
     # add links
-    for i, urdf_link in enumerate(root.findall("link")):
+    for _i, urdf_link in enumerate(root.findall("link")):
         name = urdf_link.get("name")
         link = builder.add_body(origin=wp.transform_identity(), armature=armature, name=name)
 
@@ -453,14 +453,14 @@ def parse_urdf(
         if stiffness > 0.0:
             joint_mode = wp.sim.JOINT_MODE_TARGET_POSITION
 
-        joint_params = dict(
-            parent=parent,
-            child=child,
-            parent_xform=parent_xform,
-            child_xform=child_xform,
-            name=joint["name"],
-            armature=armature,
-        )
+        joint_params = {
+            "parent": parent,
+            "child": child,
+            "parent_xform": parent_xform,
+            "child_xform": child_xform,
+            "name": joint["name"],
+            "armature": armature,
+        }
 
         if joint["type"] == "revolute" or joint["type"] == "continuous":
             builder.add_joint_revolute(

@@ -308,7 +308,7 @@ def sametype_scalar_value_func(arg_types, kwds, _):
     if arg_types is None:
         return Scalar
     if not sametypes(arg_types):
-        raise RuntimeError(f"Input types must be exactly the same, {[t for t in arg_types]}")
+        raise RuntimeError(f"Input types must be exactly the same, {list(arg_types)}")
 
     return infer_scalar_type(arg_types)
 
@@ -707,7 +707,7 @@ def vector_constructor_func(arg_types, kwds, templates):
                 vectype = vectype._wp_scalar_type_
             elif not all(vectype == t for t in arg_types):
                 raise RuntimeError(
-                    f"All numeric arguments to vec() constructor should have the same type, expected {veclen} arg_types of type {vectype}, received { ','.join(map(lambda t : str(t), arg_types)) }"
+                    f"All numeric arguments to vec() constructor should have the same type, expected {veclen} arg_types of type {vectype}, received { ','.join([str(t) for t in arg_types]) }"
                 )
 
         # update the templates list, so we can generate vec<len, type>() correctly in codegen
@@ -725,7 +725,7 @@ def vector_constructor_func(arg_types, kwds, templates):
                 )
         elif not all(vectype == t for t in arg_types):
             raise RuntimeError(
-                f"All numeric arguments to vec() constructor should have the same type, expected {veclen} arg_types of type {vectype}, received { ','.join(map(lambda t : str(t), arg_types)) }"
+                f"All numeric arguments to vec() constructor should have the same type, expected {veclen} arg_types of type {vectype}, received { ','.join([str(t) for t in arg_types]) }"
             )
 
     retvalue = vector(length=veclen, dtype=vectype)
@@ -1147,7 +1147,7 @@ def transform_constructor_value_func(arg_types, kwds, templates):
         # if constructing predeclared type then check arg_types match expectation
         if infer_scalar_type(arg_types) != templates[0]:
             raise RuntimeError(
-                f"Wrong scalar type for transform constructor expected {templates[0]}, got {','.join(map(lambda t : str(t), arg_types))}"
+                f"Wrong scalar type for transform constructor expected {templates[0]}, got {','.join([ str(t) for t in arg_types])}"
             )
 
     return transformation(dtype=templates[0])
@@ -1505,7 +1505,7 @@ add_builtin(
     value_type=bvh_query_t,
     group="Geometry",
     doc="""Construct an axis-aligned bounding box query against a BVH object.
-    
+
     This query can be used to iterate over all bounds inside a BVH.
 
     :param id: The BVH identifier
@@ -1519,7 +1519,7 @@ add_builtin(
     value_type=bvh_query_t,
     group="Geometry",
     doc="""Construct a ray query against a BVH object.
-   
+
     This query can be used to iterate over all bounds that intersect the ray.
 
     :param id: The BVH identifier
@@ -1895,7 +1895,7 @@ add_builtin(
     value_type=hash_grid_query_t,
     group="Geometry",
     doc="""Construct a point query against a :class:`HashGrid`.
-    
+
     This query can be used to iterate over all neighboring point within a fixed radius from the query point.""",
 )
 
@@ -1905,7 +1905,7 @@ add_builtin(
     value_type=builtins.bool,
     group="Geometry",
     doc="""Move to the next point in the hash grid query.
-    
+
     The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.""",
 )
 
@@ -1915,7 +1915,7 @@ add_builtin(
     value_type=int,
     group="Geometry",
     doc="""Return the index of a point in the :class:`HashGrid`.
-    
+
     This can be used to reorder threads such that grid traversal occurs in a spatially coherent order.
 
     Returns -1 if the :class:`HashGrid` has not been reserved.""",
@@ -1927,7 +1927,7 @@ add_builtin(
     value_type=int,
     group="Geometry",
     doc="""Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method.
-    
+
     Returns > 0 if triangles intersect.""",
 )
 
@@ -1979,7 +1979,7 @@ add_builtin(
     value_type=vec3,
     group="Geometry",
     doc="""Finds the closest points between two edges.
-    
+
     Returns barycentric weights to the points on each edge, as well as the closest distance between the edges.
 
     :param p1: First point of first edge
@@ -2031,7 +2031,7 @@ add_builtin(
     input_types={"id": uint64, "uvw": vec3, "sampling_mode": int, "grad": vec3},
     value_type=float,
     group="Volumes",
-    doc="""Sample the volume and its gradient given by ``id`` at the volume local-space point ``uvw``. 
+    doc="""Sample the volume and its gradient given by ``id`` at the volume local-space point ``uvw``.
 
     Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`""",
 )
@@ -2387,7 +2387,7 @@ add_builtin(
     export=False,
     group="Utility",
     doc="""Return the current thread index for a 1D kernel launch.
-    
+
     Note that this is the *global* index of the thread in the range [0, dim)
     where dim is the parameter passed to kernel launch.
 
@@ -2402,7 +2402,7 @@ add_builtin(
     value_type=[int, int],
     group="Utility",
     doc="""Return the current thread indices for a 2D kernel launch.
-    
+
     Use ``i,j = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
 
     This function may not be called from user-defined Warp functions.""",
@@ -2416,9 +2416,9 @@ add_builtin(
     value_type=[int, int, int],
     group="Utility",
     doc="""Return the current thread indices for a 3D kernel launch.
-    
+
     Use ``i,j,k = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
-    
+
     This function may not be called from user-defined Warp functions.""",
     namespace="",
     native_func="builtin_tid3d",
@@ -2430,9 +2430,9 @@ add_builtin(
     value_type=[int, int, int, int],
     group="Utility",
     doc="""Return the current thread indices for a 4D kernel launch.
-    
+
     Use ``i,j,k,l = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
-    
+
     This function may not be called from user-defined Warp functions.""",
     namespace="",
     native_func="builtin_tid4d",

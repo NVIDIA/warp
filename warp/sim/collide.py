@@ -10,6 +10,7 @@ Collision handling functions and kernels.
 """
 
 import warp as wp
+
 from .model import PARTICLE_FLAG_ACTIVE, ModelShapeGeometry
 
 
@@ -287,7 +288,7 @@ def closest_edge_coordinate_box(upper: wp.vec3, edge_a: wp.vec3, edge_b: wp.vec3
     query = (1.0 - d) * edge_a + d * edge_b
     yd = box_sdf(upper, query)
 
-    for k in range(max_iter):
+    for _k in range(max_iter):
         if yc < yd:  # yc > yd to find the maximum
             b = d
             d = c
@@ -332,7 +333,7 @@ def closest_edge_coordinate_plane(
     query = (1.0 - d) * edge_a + d * edge_b
     yd = plane_sdf(plane_width, plane_length, query)
 
-    for k in range(max_iter):
+    for _k in range(max_iter):
         if yc < yd:  # yc > yd to find the maximum
             b = d
             d = c
@@ -371,7 +372,7 @@ def closest_edge_coordinate_capsule(radius: float, half_height: float, edge_a: w
     query = (1.0 - d) * edge_a + d * edge_b
     yd = capsule_sdf(radius, half_height, query)
 
-    for k in range(max_iter):
+    for _k in range(max_iter):
         if yc < yd:  # yc > yd to find the maximum
             b = d
             d = c
@@ -439,7 +440,7 @@ def closest_edge_coordinate_mesh(mesh: wp.uint64, edge_a: wp.vec3, edge_b: wp.ve
     query = (1.0 - d) * edge_a + d * edge_b
     yd = mesh_sdf(mesh, query, max_dist)
 
-    for k in range(max_iter):
+    for _k in range(max_iter):
         if yc < yd:  # yc > yd to find the maximum
             b = d
             d = c
@@ -1440,7 +1441,6 @@ def collide(model, state, edge_sdf_iter: int = 10, iterate_mesh_vertices: bool =
         requires_grad = model.requires_grad
 
     with wp.ScopedTimer("collide", False):
-
         # generate soft contacts for particles and shapes except ground plane (last shape)
         if model.particle_count and model.shape_count > 1:
             if requires_grad:
@@ -1542,7 +1542,6 @@ def collide(model, state, edge_sdf_iter: int = 10, iterate_mesh_vertices: bool =
             )
 
         if model.shape_contact_pair_count or model.ground and model.shape_ground_contact_pair_count:
-
             model.rigid_contact_count.zero_()
             model.rigid_contact_pairwise_counter.zero_()
             model.rigid_contact_tids.zero_()

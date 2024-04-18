@@ -1,20 +1,19 @@
-import warp as wp
 import numpy as np
 
-from warp.fem.types import ElementIndex, Coords
-from warp.fem.polynomial import Polynomial, is_closed
-from warp.fem.geometry import Grid3D
+import warp as wp
 from warp.fem import cache
+from warp.fem.geometry import Grid3D
+from warp.fem.polynomial import Polynomial, is_closed
+from warp.fem.types import Coords, ElementIndex
 
-from .topology import SpaceTopology, DiscontinuousSpaceTopologyMixin, forward_base_topology
 from .basis_space import ShapeBasisSpace, TraceBasisSpace
-
-from .shape import ShapeFunction, ConstantShapeFunction
+from .shape import ConstantShapeFunction, ShapeFunction
 from .shape.cube_shape_function import (
-    CubeTripolynomialShapeFunctions,
-    CubeSerendipityShapeFunctions,
     CubeNonConformingPolynomialShapeFunctions,
+    CubeSerendipityShapeFunctions,
+    CubeTripolynomialShapeFunctions,
 )
+from .topology import DiscontinuousSpaceTopologyMixin, SpaceTopology, forward_base_topology
 
 
 class Grid3DSpaceTopology(SpaceTopology):

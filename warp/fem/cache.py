@@ -1,15 +1,13 @@
-from typing import Callable, Optional, Union, Tuple, Dict, Any
-from copy import copy
 import bisect
 import re
-
+from copy import copy
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import warp as wp
 
-
-_kernel_cache = dict()
-_struct_cache = dict()
-_func_cache = dict()
+_kernel_cache = {}
+_struct_cache = {}
+_func_cache = {}
 
 _key_re = re.compile("[^0-9a-zA-Z_]+")
 
@@ -46,8 +44,11 @@ def get_kernel(
     func,
     suffix: str,
     use_qualified_name: bool = False,
-    kernel_options: Dict[str, Any] = {},
+    kernel_options: Dict[str, Any] = None,
 ):
+    if kernel_options is None:
+        kernel_options = {}
+
     key = _make_key(func, suffix, use_qualified_name)
 
     if key not in _kernel_cache:
@@ -62,7 +63,10 @@ def get_kernel(
     return _kernel_cache[key]
 
 
-def dynamic_kernel(suffix: str, use_qualified_name=False, kernel_options: Dict[str, Any] = {}):
+def dynamic_kernel(suffix: str, use_qualified_name=False, kernel_options: Dict[str, Any] = None):
+    if kernel_options is None:
+        kernel_options = {}
+
     def wrap_kernel(func: Callable):
         return get_kernel(func, suffix=suffix, use_qualified_name=use_qualified_name, kernel_options=kernel_options)
 
@@ -93,12 +97,15 @@ def dynamic_struct(suffix: str, use_qualified_name=False):
 
 
 def get_integrand_function(
-    integrand: "warp.fem.operator.Integrand",
+    integrand: "warp.fem.operator.Integrand",  # noqa: F821
     suffix: str,
     func=None,
     annotations=None,
-    code_transformers=[],
+    code_transformers=None,
 ):
+    if code_transformers is None:
+        code_transformers = []
+
     key = _make_key(integrand.func, suffix, use_qualified_name=True)
 
     if key not in _func_cache:
@@ -115,12 +122,18 @@ def get_integrand_function(
 
 
 def get_integrand_kernel(
-    integrand: "warp.fem.operator.Integrand",
+    integrand: "warp.fem.operator.Integrand",  # noqa: F821
     suffix: str,
     kernel_fn: Optional[Callable] = None,
-    kernel_options: Dict[str, Any] = {},
-    code_transformers=[],
+    kernel_options: Dict[str, Any] = None,
+    code_transformers=None,
 ):
+    if kernel_options is None:
+        kernel_options = {}
+
+    if code_transformers is None:
+        code_transformers = []
+
     key = _make_key(integrand.func, suffix, use_qualified_name=True)
 
     if key not in _kernel_cache:

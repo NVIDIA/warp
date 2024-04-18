@@ -13,8 +13,7 @@ from typing import Tuple
 import omni.graph.core as og
 import omni.graph.tools.ogn as ogn
 import omni.timeline
-import warp as wp
-
+from omni.warp.nodes._impl.attributes import attr_join_name
 from omni.warp.nodes._impl.kernel import (
     EXPLICIT_SOURCE,
     InternalStateBase,
@@ -26,9 +25,9 @@ from omni.warp.nodes._impl.kernel import (
     validate_input_arrays,
     write_output_attrs,
 )
-from omni.warp.nodes._impl.attributes import attr_join_name
 from omni.warp.nodes.ogn.OgnKernelDatabase import OgnKernelDatabase
 
+import warp as wp
 
 QUIET_DEFAULT = wp.config.quiet
 
@@ -47,9 +46,7 @@ class InternalState(InternalStateBase):
         super().__init__()
 
         self.attr_tracking = omni.warp.nodes.AttrTracking(
-            (
-                "dimCount",
-            ),
+            ("dimCount",),
         )
 
     def needs_initialization(
@@ -125,21 +122,21 @@ def infer_kernel_shape(
 
     try:
         value = getattr(db.inputs, source)
-    except AttributeError:
+    except AttributeError as e:
         raise RuntimeError(
             "The attribute '{}' used to source the dimension doesn't exist.".format(
                 attr_join_name(ATTR_PORT_TYPE_INPUT, source)
             )
-        )
+        ) from e
 
     try:
         return (value.shape[0],)
-    except AttributeError:
+    except AttributeError as e:
         raise RuntimeError(
             "The attribute '{}' used to source the dimension isn't an array.".format(
                 attr_join_name(ATTR_PORT_TYPE_INPUT, source)
             )
-        )
+        ) from e
 
 
 def compute(db: OgnKernelDatabase, device: wp.context.Device) -> None:

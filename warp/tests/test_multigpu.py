@@ -10,8 +10,8 @@ import unittest
 import numpy as np
 
 import warp as wp
-from warp.utils import check_iommu
 from warp.tests.unittest_utils import *
+from warp.utils import check_iommu
 
 wp.init()
 

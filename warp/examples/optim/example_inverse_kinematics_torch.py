@@ -27,7 +27,6 @@ wp.init()
 class ForwardKinematics(torch.autograd.Function):
     @staticmethod
     def forward(ctx, joint_q, joint_qd, model):
-
         ctx.tape = wp.Tape()
         ctx.model = model
         ctx.joint_q = wp.from_torch(joint_q)
@@ -43,7 +42,6 @@ class ForwardKinematics(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, adj_body_q, adj_body_qd):
-
         # map incoming Torch grads to our output variables
         ctx.state.body_q.grad = wp.from_torch(adj_body_q, dtype=wp.transform)
         ctx.state.body_qd.grad = wp.from_torch(adj_body_qd, dtype=wp.spatial_vector)
@@ -149,7 +147,9 @@ class Example:
 
         self.renderer.begin_frame(self.render_time)
         self.renderer.render(s)
-        self.renderer.render_sphere(name="target", pos=self.target, rot=wp.quat_identity(), radius=0.1, color=(1.0, 0.0, 0.0))
+        self.renderer.render_sphere(
+            name="target", pos=self.target, rot=wp.quat_identity(), radius=0.1, color=(1.0, 0.0, 0.0)
+        )
         self.renderer.end_frame()
         self.render_time += self.frame_dt
 

@@ -12,10 +12,9 @@ from typing import Union
 
 import numpy as np
 import omni.graph.core as og
-import warp as wp
-
 from omni.warp.nodes.ogn.OgnBundleInspectChangesDatabase import OgnBundleInspectChangesDatabase
 
+import warp as wp
 
 _ATTR_NAMES_PER_PRIM_TYPE = {
     "Mesh": (

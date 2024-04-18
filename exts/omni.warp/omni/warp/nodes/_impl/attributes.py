@@ -14,16 +14,15 @@ import operator
 from typing import (
     Any,
     Optional,
-    Union,
     Sequence,
+    Union,
 )
 
 import numpy as np
 import omni.graph.core as og
-import warp as wp
-
 from omni.warp.nodes._impl.common import type_convert_og_to_warp
 
+import warp as wp
 
 ATTR_BUNDLE_TYPE = og.Type(
     og.BaseDataType.RELATIONSHIP,
@@ -154,7 +153,7 @@ def attr_cast_array_to_warp(
             device=device,
         )
 
-    assert False, "Unexpected device '{}'.".format(device.alias)
+    raise AssertionError("Unexpected device '{}'.".format(device.alias))
 
 
 #   Tracking
@@ -247,8 +246,9 @@ def from_omni_graph(
         if shape is None:
             if arr_size % element_size != 0:
                 raise RuntimeError(
-                    "Cannot infer a size matching the Warp data type '{}' with "
-                    "an array size of '{}' bytes.".format(dtype.__name__, arr_size)
+                    "Cannot infer a size matching the Warp data type '{}' with " "an array size of '{}' bytes.".format(
+                        dtype.__name__, arr_size
+                    )
                 )
             size = arr_size // element_size
         else:
@@ -356,6 +356,6 @@ def from_omni_graph(
         elif device.is_cuda:
             return from_data_wrapper(value.gpu, dtype, shape, device)
         else:
-            assert False, "Unexpected device '{}'.".format(device.alias)
+            raise AssertionError("Unexpected device '{}'.".format(device.alias))
 
     return None

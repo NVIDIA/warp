@@ -59,17 +59,17 @@ def compare_unittest_suites(
 
     test_suite = test_suite_fn(test_loader)
 
-    test_suite_classes_str = set(
+    test_suite_classes_str = {
         type(test_suite._tests[0]).__name__
         for test_suite in list(_iter_class_suites(test_suite))
         if test_suite.countTestCases() > 0
-    )
+    }
 
-    reference_suite_classes_str = set(
+    reference_suite_classes_str = {
         type(test_suite._tests[0]).__name__
         for test_suite in list(_iter_class_suites(reference_suite))
         if test_suite.countTestCases() > 0
-    )
+    }
 
     set_difference = reference_suite_classes_str - test_suite_classes_str
 

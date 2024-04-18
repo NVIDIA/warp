@@ -21,7 +21,6 @@ import warp as wp
 import warp.examples
 import warp.render
 
-
 wp.init()
 
 
@@ -99,7 +98,7 @@ class Example:
         # generate random relative transforms
         self.xforms = []
 
-        for i in range(self.query_count):
+        for _i in range(self.query_count):
             # random offset
             p = wp.vec3(rng.random(3) * 0.5 - 0.5) * 5.0
 

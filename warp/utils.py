@@ -17,7 +17,6 @@ import numpy as np
 import warp as wp
 import warp.types
 
-
 warnings_seen = set()
 
 
@@ -25,11 +24,12 @@ def warp_showwarning(message, category, filename, lineno, file=None, line=None):
     """Version of warnings.showwarning that always prints to sys.stdout."""
 
     if warp.config.verbose_warnings:
-        s =  f"Warp {category.__name__}: {message} ({filename}:{lineno})\n"
+        s = f"Warp {category.__name__}: {message} ({filename}:{lineno})\n"
 
         if line is None:
             try:
                 import linecache
+
                 line = linecache.getline(filename, lineno)
             except Exception:
                 # When a warning is logged during Python shutdown, linecache
@@ -43,7 +43,7 @@ def warp_showwarning(message, category, filename, lineno, file=None, line=None):
             s += "  %s\n" % line
     else:
         # simple warning
-        s =  f"Warp {category.__name__}: {message}\n"
+        s = f"Warp {category.__name__}: {message}\n"
 
     sys.stdout.write(s)
 
@@ -55,7 +55,11 @@ def warn(message, category=None, stacklevel=1):
     with warnings.catch_warnings():
         warnings.simplefilter("default")  # Change the filter in this process
         warnings.showwarning = warp_showwarning
-        warnings.warn(message, category, stacklevel + 1)  # Increment stacklevel by 1 since we are in a wrapper
+        warnings.warn(
+            message,
+            category,
+            stacklevel=stacklevel + 1,  # Increment stacklevel by 1 since we are in a wrapper
+        )
 
     if category is DeprecationWarning:
         warnings_seen.add((category, message))
@@ -502,7 +506,7 @@ class MeshAdjacency:
         self.edges[key] = edge
 
 
-def mem_report(): #pragma: no cover
+def mem_report():  # pragma: no cover
     def _mem_report(tensors, mem_type):
         """Print the selected tensors of type
         There are two major storage types in our major concern:
@@ -528,13 +532,6 @@ def mem_report(): #pragma: no cover
             element_size = tensor.storage().element_size()
             mem = numel * element_size / 1024 / 1024  # 32bit=4Byte, MByte
             total_mem += mem
-            element_type = type(tensor).__name__
-            size = tuple(tensor.size())
-
-            # print('%s\t\t%s\t\t%.2f' % (
-            #     element_type,
-            #     size,
-            #     mem) )
         print("Type: %s Total Tensors: %d \tUsed Memory Space: %.2f MBytes" % (mem_type, total_numel, total_mem))
 
     import gc
@@ -552,7 +549,6 @@ def mem_report(): #pragma: no cover
     _mem_report(cuda_tensors, "GPU")
     _mem_report(host_tensors, "CPU")
     print("=" * LEN)
-
 
 
 class ScopedDevice:
@@ -693,7 +689,7 @@ class ScopedTimer:
 
             if self.print:
                 indent = ""
-                for i in range(ScopedTimer.indent):
+                for _i in range(ScopedTimer.indent):
                     indent += "\t"
 
                 print("{}{} took {:.2f} ms".format(indent, self.name, self.elapsed))
@@ -777,14 +773,14 @@ class ScopedCapture:
 def add_kernel_2d(x: wp.array2d(dtype=Any), acc: wp.array2d(dtype=Any), beta: Any):
     i, j = wp.tid()
 
-    x[i,j] = x[i,j] + beta * acc[i,j]
+    x[i, j] = x[i, j] + beta * acc[i, j]
 
 
 @wp.kernel
 def add_kernel_3d(x: wp.array3d(dtype=Any), acc: wp.array3d(dtype=Any), beta: Any):
     i, j, k = wp.tid()
 
-    x[i,j,k] = x[i,j,k] + beta * acc[i,j,k]
+    x[i, j, k] = x[i, j, k] + beta * acc[i, j, k]
 
 
 # explicit instantiations of generic kernels for adj_matmul

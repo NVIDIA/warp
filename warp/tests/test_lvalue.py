@@ -498,7 +498,7 @@ class TestLValue(unittest.TestCase):
             AttributeError,
             r"'vec3f' object has no attribute 'foo'$",
         ):
-            v.foo
+            v.foo  # noqa: B018
 
         try:
             v.bar = 123

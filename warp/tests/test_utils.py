@@ -270,10 +270,7 @@ class TestUtils(unittest.TestCase):
             wp.utils.warn("hello, world!")
             wp.utils.warn("hello, world!")
 
-        expected = (
-            "Warp UserWarning: hello, world!\n"
-            "Warp UserWarning: hello, world!\n"
-        )
+        expected = "Warp UserWarning: hello, world!\n" "Warp UserWarning: hello, world!\n"
 
         self.assertEqual(f.getvalue(), expected)
 
@@ -288,9 +285,9 @@ class TestUtils(unittest.TestCase):
 
             expected = (
                 f"Warp UserWarning: hello, world! ({frame_info.filename}:{frame_info.lineno + 1})\n"
-                "  wp.utils.warn(\"hello, world!\")\n"
+                '  wp.utils.warn("hello, world!")\n'
                 f"Warp UserWarning: hello, world! ({frame_info.filename}:{frame_info.lineno + 2})\n"
-                "  wp.utils.warn(\"hello, world!\")\n"
+                '  wp.utils.warn("hello, world!")\n'
             )
 
             self.assertEqual(f.getvalue(), expected)
@@ -299,15 +296,12 @@ class TestUtils(unittest.TestCase):
             # make sure to restore warning verbosity
             wp.config.verbose_warnings = saved_verbosity
 
-
         # Multiple similar deprecation warnings get printed out only once.
         with contextlib.redirect_stdout(io.StringIO()) as f:
             wp.utils.warn("hello, world!", category=DeprecationWarning)
             wp.utils.warn("hello, world!", category=DeprecationWarning)
 
-        expected = (
-            "Warp DeprecationWarning: hello, world!\n"
-        )
+        expected = "Warp DeprecationWarning: hello, world!\n"
 
         self.assertEqual(f.getvalue(), expected)
 
@@ -316,10 +310,7 @@ class TestUtils(unittest.TestCase):
             wp.utils.warn("foo", category=DeprecationWarning)
             wp.utils.warn("bar", category=DeprecationWarning)
 
-        expected = (
-            "Warp DeprecationWarning: foo\n"
-            "Warp DeprecationWarning: bar\n"
-        )
+        expected = "Warp DeprecationWarning: foo\n" "Warp DeprecationWarning: bar\n"
 
         self.assertEqual(f.getvalue(), expected)
 

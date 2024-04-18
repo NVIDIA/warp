@@ -60,27 +60,27 @@ class Sz:
 
 @wp.kernel
 def k0():
-    tid = wp.tid()
+    tid = wp.tid()  # noqa: F841
 
 
 @wp.kernel
 def kf(x: float, y: float, z: float):
-    tid = wp.tid()
+    tid = wp.tid()  # noqa: F841
 
 
 @wp.kernel
 def kv(u: wp.vec3, v: wp.vec3, w: wp.vec3):
-    tid = wp.tid()
+    tid = wp.tid()  # noqa: F841
 
 
 @wp.kernel
 def km(M: wp.mat33, N: wp.mat33, O: wp.mat33):
-    tid = wp.tid()
+    tid = wp.tid()  # noqa: F841
 
 
 @wp.kernel
 def ka(a: wp.array(dtype=float), b: wp.array(dtype=float), c: wp.array(dtype=float)):
-    tid = wp.tid()
+    tid = wp.tid()  # noqa: F841
 
 
 @wp.kernel
@@ -95,37 +95,37 @@ def kz(
     v: wp.vec3,
     w: wp.vec3,
 ):
-    tid = wp.tid()
+    tid = wp.tid()  # noqa: F841
 
 
 @wp.kernel
 def ks0(s: S0):
-    tid = wp.tid()
+    tid = wp.tid()  # noqa: F841
 
 
 @wp.kernel
 def ksf(s: Sf):
-    tid = wp.tid()
+    tid = wp.tid()  # noqa: F841
 
 
 @wp.kernel
 def ksv(s: Sv):
-    tid = wp.tid()
+    tid = wp.tid()  # noqa: F841
 
 
 @wp.kernel
 def ksm(s: Sm):
-    tid = wp.tid()
+    tid = wp.tid()  # noqa: F841
 
 
 @wp.kernel
 def ksa(s: Sa):
-    tid = wp.tid()
+    tid = wp.tid()  # noqa: F841
 
 
 @wp.kernel
 def ksz(s: Sz):
-    tid = wp.tid()
+    tid = wp.tid()  # noqa: F841
 
 
 wp.init()

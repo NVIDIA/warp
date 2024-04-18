@@ -5,10 +5,10 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import sys
 import os
-import subprocess
 import platform
+import subprocess
+import sys
 
 from warp.utils import ScopedTimer
 
@@ -361,7 +361,10 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
                 )
 
 
-def build_dll(args, dll_path, cpp_paths, cu_path, libs=[]):
+def build_dll(args, dll_path, cpp_paths, cu_path, libs=None):
+    if libs is None:
+        libs = []
+
     if sys.platform == "darwin":
         # create a universal binary by combining x86-64 and AArch64 builds
         build_dll_for_arch(args, dll_path + "-x86_64", cpp_paths, cu_path, libs, "x86_64")

@@ -8,7 +8,7 @@
 ###########################################################################
 # Example Convection Diffusion DG0
 #
-# This example simulates a convection-diffusion PDE using 
+# This example simulates a convection-diffusion PDE using
 # FVM with upwind transport
 #
 # D phi / dt + nu Div f = 0
@@ -19,8 +19,7 @@ import argparse
 
 import warp as wp
 import warp.fem as fem
-
-from warp.sparse import bsr_mm, bsr_axpy, bsr_transposed
+from warp.sparse import bsr_axpy, bsr_mm, bsr_transposed
 
 wp.init()
 
@@ -28,14 +27,14 @@ wp.init()
 # Make sure that works both when imported as module and run as standalone file
 try:
     from .bsr_utils import bsr_cg, invert_diagonal_bsr_mass_matrix
+    from .example_convection_diffusion import inertia_form, initial_condition, velocity
+    from .mesh_utils import gen_quadmesh, gen_trimesh
     from .plot_utils import Plot
-    from .mesh_utils import gen_trimesh, gen_quadmesh
-    from .example_convection_diffusion import initial_condition, velocity, inertia_form
 except ImportError:
     from bsr_utils import bsr_cg, invert_diagonal_bsr_mass_matrix
+    from example_convection_diffusion import inertia_form, initial_condition, velocity
+    from mesh_utils import gen_quadmesh, gen_trimesh
     from plot_utils import Plot
-    from mesh_utils import gen_trimesh, gen_quadmesh
-    from example_convection_diffusion import initial_condition, velocity, inertia_form
 
 
 @fem.integrand
@@ -170,7 +169,7 @@ class Example:
         )
 
         phi = wp.zeros_like(rhs)
-        bsr_cg(self._matrix, b=rhs, x=phi, method='bicgstab', quiet=self._quiet)
+        bsr_cg(self._matrix, b=rhs, x=phi, method="bicgstab", quiet=self._quiet)
 
         wp.utils.array_cast(in_array=phi, out_array=self._phi_field.dof_values)
 

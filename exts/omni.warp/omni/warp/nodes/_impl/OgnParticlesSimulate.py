@@ -7,17 +7,16 @@
 
 """Node simulating particles."""
 
-from math import inf
 import traceback
+from math import inf
 
 import numpy as np
 import omni.graph.core as og
 import omni.timeline
-import warp as wp
-
 import omni.warp.nodes
 from omni.warp.nodes.ogn.OgnParticlesSimulateDatabase import OgnParticlesSimulateDatabase
 
+import warp as wp
 
 USE_GRAPH = True
 

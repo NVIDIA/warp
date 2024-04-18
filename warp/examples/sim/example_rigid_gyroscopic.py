@@ -87,7 +87,7 @@ if __name__ == "__main__":
 
     example = Example(stage_path)
 
-    for i in range(example.sim_steps):
+    for _i in range(example.sim_steps):
         example.step()
         example.render()
 

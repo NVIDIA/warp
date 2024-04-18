@@ -33,7 +33,7 @@ def randvals(rng, shape, dtype):
     return rng.integers(1, high=5, size=shape, dtype=dtype)
 
 
-kernel_cache = dict()
+kernel_cache = {}
 
 
 def getkernel(func, suffix=""):
@@ -52,8 +52,6 @@ def get_select_kernel(dtype):
         out[0] = input[index]
 
     return getkernel(output_select_kernel_fn, suffix=dtype.__name__)
-
-    wp.launch(kernel, dim=1, inputs=[])
 
 
 def test_anon_constructor_error_shape_keyword_missing(test, device):
@@ -339,8 +337,8 @@ def test_quat_constructor(test, device, dtype, register_kernels=False):
     idx = 0
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     out_alt = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
-    for i in range(4):
-        for j in range(4):
+    for _i in range(4):
+        for _j in range(4):
             tape = wp.Tape()
             with tape:
                 wp.launch(kernel, dim=1, inputs=[p, r, s], outputs=[outcomponents, outcomponents_alt], device=device)

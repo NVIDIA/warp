@@ -165,7 +165,6 @@ def init(rho: wp.array2d(dtype=float), u: wp.array2d(dtype=wp.vec2), radius: int
 
 class Example:
     def __init__(self, **kwargs):
-
         self.sim_fps = 60.0
         self.sim_substeps = 2
         self.iterations = 100

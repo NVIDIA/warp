@@ -5,16 +5,14 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import unittest
 import contextlib
 import io
+import unittest
 
 import warp as wp
 from warp.tests.unittest_utils import *
 
 wp.init()
-
-from warp.context import runtime  # noqa: E402
 
 
 @wp.kernel

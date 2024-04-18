@@ -5,8 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import taichi as ti
 import numpy as np
+import taichi as ti
 
 
 @ti.func
@@ -104,7 +104,7 @@ class TiIntegrator:
     def simulate(self, dt, substeps):
         sim_dt = dt / substeps
 
-        for s in range(substeps):
+        for _s in range(substeps):
             self.eval_springs()
 
             self.integrate_particles(sim_dt)

@@ -1,10 +1,9 @@
 from typing import Optional, Type
 
 import warp as wp
-
-from warp.fem.types import ElementIndex
-from warp.fem.geometry import Geometry, DeformedGeometry
 from warp.fem import cache
+from warp.fem.geometry import DeformedGeometry, Geometry
+from warp.fem.types import ElementIndex
 
 
 class SpaceTopology:
@@ -21,7 +20,7 @@ class SpaceTopology:
 
     NODES_PER_ELEMENT: int
     """Number of interpolation nodes per element of the geometry.
-    
+
     .. note:: This will change to be defined per-element in future versions
     """
 
@@ -59,7 +58,10 @@ class SpaceTopology:
 
     @staticmethod
     def element_node_index(
-        geo_arg: "ElementArg", topo_arg: "TopologyArg", element_index: ElementIndex, node_index_in_elt: int
+        geo_arg: "ElementArg",  # noqa: F821
+        topo_arg: "TopologyArg",
+        element_index: ElementIndex,
+        node_index_in_elt: int,
     ):
         """Global node index for a given node in a given element"""
         raise NotImplementedError

@@ -1,20 +1,20 @@
-import warp as wp
 import numpy as np
 
-from warp.fem.types import ElementIndex, Coords
-from warp.fem.polynomial import Polynomial, is_closed
-from warp.fem.geometry import Grid2D
+import warp as wp
 from warp.fem import cache
+from warp.fem.geometry import Grid2D
+from warp.fem.polynomial import Polynomial, is_closed
+from warp.fem.types import Coords, ElementIndex
 
-from .topology import SpaceTopology, DiscontinuousSpaceTopologyMixin, forward_base_topology
 from .basis_space import ShapeBasisSpace, TraceBasisSpace
-
-from .shape import ShapeFunction, ConstantShapeFunction
 from .shape import (
+    ConstantShapeFunction,
+    ShapeFunction,
     SquareBipolynomialShapeFunctions,
-    SquareSerendipityShapeFunctions,
     SquareNonConformingPolynomialShapeFunctions,
+    SquareSerendipityShapeFunctions,
 )
+from .topology import DiscontinuousSpaceTopologyMixin, SpaceTopology, forward_base_topology
 
 
 class Grid2DSpaceTopology(SpaceTopology):

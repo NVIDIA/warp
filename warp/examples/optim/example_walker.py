@@ -17,17 +17,17 @@
 #
 ###########################################################################
 
-import os
 import math
-
-import warp as wp
-import warp.examples
-import warp.sim
-import warp.optim
-import warp.sim.render
+import os
 
 import numpy as np
 from pxr import Usd, UsdGeom
+
+import warp as wp
+import warp.examples
+import warp.optim
+import warp.sim
+import warp.sim.render
 
 wp.init()
 
@@ -141,7 +141,7 @@ class Example:
 
         # allocate sim states
         self.states = []
-        for i in range(self.frame_count * self.sim_substeps + 1):
+        for _i in range(self.frame_count * self.sim_substeps + 1):
             self.states.append(self.model.state(requires_grad=True))
 
         # initialize the integrator.
@@ -149,7 +149,7 @@ class Example:
 
         # model input
         self.phases = []
-        for i in range(self.frame_count):
+        for _i in range(self.frame_count):
             self.phases.append(wp.zeros(self.phase_count, dtype=float, requires_grad=True))
 
         # single layer linear network
@@ -162,14 +162,14 @@ class Example:
         # tanh activation layer
         self.activation_inputs = []
         self.tet_activations = []
-        for i in range(self.frame_count):
+        for _i in range(self.frame_count):
             self.activation_inputs.append(wp.zeros(self.model.tet_count, dtype=float, requires_grad=True))
             self.tet_activations.append(wp.zeros(self.model.tet_count, dtype=float, requires_grad=True))
 
         # optimization
         self.loss = wp.zeros(1, dtype=float, requires_grad=True)
         self.coms = []
-        for i in range(self.frame_count):
+        for _i in range(self.frame_count):
             self.coms.append(wp.zeros(1, dtype=wp.vec3, requires_grad=True))
         self.optimizer = warp.optim.Adam([self.weights.flatten()], lr=self.train_rate)
 
@@ -285,7 +285,7 @@ if __name__ == "__main__":
 
     example = Example(stage_path, profile=False, verbose=True)
 
-    for i in range(30):
+    for _i in range(30):
         example.step()
         example.render()
 

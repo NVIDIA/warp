@@ -1,8 +1,7 @@
 import warp as wp
-
-from warp.fem.space import SpaceRestriction, FunctionSpace
+from warp.fem import cache, utils
+from warp.fem.space import FunctionSpace, SpaceRestriction
 from warp.fem.types import Sample, get_node_index_in_element
-from warp.fem import utils, cache
 
 from .field import SpaceField
 

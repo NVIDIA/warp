@@ -160,19 +160,17 @@ def test_jax_kernel_scalar(test, device):
     n = 64
 
     for T in scalar_types:
-
         jp_dtype = wp.dtype_to_jax(T)
         np_dtype = wp.dtype_to_numpy(T)
 
         with test.subTest(msg=T.__name__):
-
             # get the concrete overload
             kernel_instance = triple_kernel_scalar.get_overload([wp.array(dtype=T), wp.array(dtype=T)])
 
             jax_triple = jax_kernel(kernel_instance)
 
             @jax.jit
-            def f():
+            def f(jax_triple=jax_triple, jp_dtype=jp_dtype):
                 x = jp.arange(n, dtype=jp_dtype)
                 return jax_triple(x)
 
@@ -193,7 +191,6 @@ def test_jax_kernel_vecmat(test, device):
     from warp.jax_experimental import jax_kernel
 
     for T in [*vector_types, *matrix_types]:
-
         jp_dtype = wp.dtype_to_jax(T._wp_scalar_type_)
         np_dtype = wp.dtype_to_numpy(T._wp_scalar_type_)
 
@@ -202,14 +199,13 @@ def test_jax_kernel_vecmat(test, device):
         scalar_len = n * T._length_
 
         with test.subTest(msg=T.__name__):
-
             # get the concrete overload
             kernel_instance = triple_kernel_vecmat.get_overload([wp.array(dtype=T), wp.array(dtype=T)])
 
             jax_triple = jax_kernel(kernel_instance)
 
             @jax.jit
-            def f():
+            def f(jax_triple=jax_triple, jp_dtype=jp_dtype, scalar_len=scalar_len, scalar_shape=scalar_shape):
                 x = jp.arange(scalar_len, dtype=jp_dtype).reshape(scalar_shape)
                 return jax_triple(x)
 

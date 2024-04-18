@@ -1,10 +1,9 @@
 import inspect
-from typing import Callable, Any
+from typing import Any, Callable
 
 import warp as wp
-
-from warp.fem.types import Domain, Field, Sample
 from warp.fem import utils
+from warp.fem.types import Domain, Field, Sample
 
 
 class Integrand:

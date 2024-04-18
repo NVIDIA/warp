@@ -1,9 +1,6 @@
-from typing import Any
-
 import warp as wp
-
-from warp.fem.types import DofIndex, ElementIndex, Coords
 from warp.fem.geometry import Geometry
+from warp.fem.types import Coords, DofIndex, ElementIndex
 
 from .topology import SpaceTopology
 
@@ -82,20 +79,26 @@ class FunctionSpace:
         raise NotImplementedError
 
     @staticmethod
-    def unit_dof_value(elt_arg: "SpaceTopology.ElementArg", space_arg: "SpaceArg", dof: DofIndex):
+    def unit_dof_value(elt_arg: "SpaceTopology.ElementArg", space_arg: "SpaceArg", dof: DofIndex):  # noqa: F821
         """Unit value for a given degree of freedom. Typically a rank-1 tensor"""
         raise NotImplementedError
 
     @staticmethod
     def node_coords_in_element(
-        elt_arg: "SpaceTopology.ElementArg", space_arg: "SpaceArg", element_index: ElementIndex, node_index_in_elt: int
+        elt_arg: "SpaceTopology.ElementArg",
+        space_arg: "SpaceArg",  # noqa: F821
+        element_index: ElementIndex,
+        node_index_in_elt: int,
     ):
         """Coordinates inside element of a given node"""
         raise NotImplementedError
 
     @staticmethod
     def node_quadrature_weight(
-        elt_arg: "SpaceTopology.ElementArg", space_arg: "SpaceArg", element_index: ElementIndex, node_index_in_elt: int
+        elt_arg: "SpaceTopology.ElementArg",
+        space_arg: "SpaceArg",  # noqa: F821
+        element_index: ElementIndex,
+        node_index_in_elt: int,
     ):
         """Weight of a given node when used as a quadrature point"""
         raise NotImplementedError
@@ -103,7 +106,7 @@ class FunctionSpace:
     @staticmethod
     def element_inner_weight(
         elt_arg: "SpaceTopology.ElementArg",
-        space_arg: "SpaceArg",
+        space_arg: "SpaceArg",  # noqa: F821
         element_index: ElementIndex,
         coords: Coords,
         node_index_in_elt: int,
@@ -114,7 +117,7 @@ class FunctionSpace:
     @staticmethod
     def element_inner_weight_gradient(
         elt_arg: "SpaceTopology.ElementArg",
-        space_arg: "SpaceArg",
+        space_arg: "SpaceArg",  # noqa: F821
         element_index: ElementIndex,
         coords: Coords,
         node_index_in_elt: int,
@@ -125,7 +128,7 @@ class FunctionSpace:
     @staticmethod
     def element_outer_weight(
         elt_arg: "SpaceTopology.ElementArg",
-        space_arg: "SpaceArg",
+        space_arg: "SpaceArg",  # noqa: F821
         element_index: ElementIndex,
         coords: Coords,
         node_index_in_elt: int,
@@ -136,7 +139,7 @@ class FunctionSpace:
     @staticmethod
     def element_outer_weight_gradient(
         elt_arg: "SpaceTopology.ElementArg",
-        space_arg: "SpaceArg",
+        space_arg: "SpaceArg",  # noqa: F821
         element_index: ElementIndex,
         coords: Coords,
         node_index_in_elt: int,

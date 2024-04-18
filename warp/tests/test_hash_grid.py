@@ -156,7 +156,12 @@ class TestHashGrid(unittest.TestCase):
 
 
 add_function_test(TestHashGrid, "test_hashgrid_query", test_hashgrid_query, devices=devices)
-add_function_test(TestHashGrid, "test_hashgrid_codegen_adjoints_with_select", test_hashgrid_codegen_adjoints_with_select, devices=devices)
+add_function_test(
+    TestHashGrid,
+    "test_hashgrid_codegen_adjoints_with_select",
+    test_hashgrid_codegen_adjoints_with_select,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":

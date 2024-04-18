@@ -10,15 +10,13 @@
 from functools import partial
 
 import omni.graph.core as og
-from omni.kit.widget.searchfield import SearchField
 import omni.ui as ui
-
+from omni.kit.widget.searchfield import SearchField
 from omni.warp.nodes._impl.kernel import (
     ArrayAttributeFormat,
     OutputArrayShapeSource,
     UserAttributeDesc,
 )
-
 
 _DIALOG_TITLE = "Attribute Creator"
 _DIALOG_PADDING = 15

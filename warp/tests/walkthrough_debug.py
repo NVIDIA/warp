@@ -17,26 +17,26 @@
 #
 
 """
-        {
-            "name": "Warp Debugger",
-            "type": "pythoncpp",
-            "request": "launch",
-            "pythonLaunchName": "Python: Current File",
-            "cppAttachName": "(lldb) Attach",
-        },
-        {
-            "name": "Python: Current File",
-            "type": "python",
-            "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal",
-            "stopOnEntry": false,
-        },
-        {
-            "name": "(lldb) Attach",
-            "type": "lldb",
-            "request": "attach",
-        },
+{
+    "name": "Warp Debugger",
+    "type": "pythoncpp",
+    "request": "launch",
+    "pythonLaunchName": "Python: Current File",
+    "cppAttachName": "(lldb) Attach",
+},
+{
+    "name": "Python: Current File",
+    "type": "python",
+    "request": "launch",
+    "program": "${file}",
+    "console": "integratedTerminal",
+    "stopOnEntry": false,
+},
+{
+    "name": "(lldb) Attach",
+    "type": "lldb",
+    "request": "attach",
+},
 """
 
 #
@@ -67,7 +67,7 @@ assert wp.context.runtime.core.is_debug_enabled(), "Warp must be built in debug 
 def example_breakpoint(n: int):
     a = int(0)
 
-    for i in range(0, n):
+    for _i in range(0, n):
         if a == 5:
             # Your debugger should halt at the C++ code corresponding with the next line,
             # namely a call to the __debugbreak() intrinsic function.

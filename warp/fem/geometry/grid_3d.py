@@ -1,11 +1,11 @@
-from typing import Any
+from typing import Any, Optional
+
 import warp as wp
-
-from warp.fem.types import ElementIndex, Coords, Sample, make_free_sample, OUTSIDE
 from warp.fem.cache import cached_arg_value
+from warp.fem.types import OUTSIDE, Coords, ElementIndex, Sample, make_free_sample
 
+from .element import Cube, Square
 from .geometry import Geometry
-from .element import Square, Cube
 
 
 @wp.struct
@@ -27,7 +27,7 @@ class Grid3D(Geometry):
     LOC_TO_WORLD = wp.constant(Permutation(0, 1, 2, 1, 2, 0, 2, 0, 1))
     WORLD_TO_LOC = wp.constant(Permutation(0, 1, 2, 2, 0, 1, 1, 2, 0))
 
-    def __init__(self, res: wp.vec3i, bounds_lo: wp.vec3 = wp.vec3(0.0), bounds_hi: wp.vec3 = wp.vec3(1.0)):
+    def __init__(self, res: wp.vec3i, bounds_lo: Optional[wp.vec3] = None, bounds_hi: Optional[wp.vec3] = None):
         """Constructs a dense 3D grid
 
         Args:
@@ -35,6 +35,12 @@ class Grid3D(Geometry):
             bounds_lo: Position of the lower bound of the axis-aligned grid
             bounds_up: Position of the upper bound of the axis-aligned grid
         """
+
+        if bounds_lo is None:
+            bounds_lo = wp.vec3(0.0)
+
+        if bounds_hi is None:
+            bounds_hi = wp.vec3(1.0)
 
         self.bounds_lo = bounds_lo
         self.bounds_hi = bounds_hi

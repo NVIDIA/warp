@@ -27,17 +27,18 @@ def test_fast_math(test, device):
     wp.set_module_options({"fast_math": False})
     wp.launch(test_pow, dim=1, inputs=[-2.0, 2.0, 4.0], device=device)
 
+
+@unittest.expectedFailure
+def test_fast_math_cuda(test, device):
     # on CUDA with --fast-math enabled taking the pow()
     # of a negative number will result in a NaN
-    if wp.get_device(device).is_cuda:
-        wp.set_module_options({"fast_math": True})
 
-        with test.assertRaises(Exception):
-            with CheckOutput():
-                wp.launch(test_pow, dim=1, inputs=[-2.0, 2.0, 2.0], device=device)
+    wp.set_module_options({"fast_math": True})
 
-        # Turn fast math back off
-        wp.set_module_options({"fast_math": False})
+    wp.launch(test_pow, dim=1, inputs=[-2.0, 2.0, 2.0], device=device)
+
+    # Turn fast math back off
+    wp.set_module_options({"fast_math": False})
 
 
 class TestFastMath(unittest.TestCase):
@@ -47,6 +48,7 @@ class TestFastMath(unittest.TestCase):
 devices = get_test_devices()
 
 add_function_test(TestFastMath, "test_fast_math", test_fast_math, devices=devices)
+add_function_test(TestFastMath, "test_fast_math_cuda", test_fast_math_cuda, devices=get_cuda_test_devices())
 
 
 if __name__ == "__main__":

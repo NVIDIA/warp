@@ -9,18 +9,17 @@
 
 import math
 import traceback
-import numpy as np
 
 import carb.settings
-import omni.kit.app
+import numpy as np
 import omni.graph.core as og
+import omni.kit.app
 import omni.usd
-import usdrt
-import warp as wp
-
 import omni.warp.nodes
+import usdrt
 from omni.warp.nodes.ogn.OgnSamplePrimFlockingDatabase import OgnSamplePrimFlockingDatabase
 
+import warp as wp
 
 # device used for flocking simulation
 MAIN_DEVICE = "cuda:0"
@@ -69,7 +68,7 @@ def assign_colors(
     glows: wp.array(dtype=float),
     groups: wp.array(dtype=int),
     color_ramps: wp.array2d(dtype=wp.vec3f),
-    colors: wp.fabricarrayarray(dtype=wp.vec3f)
+    colors: wp.fabricarrayarray(dtype=wp.vec3f),
 ):
     tid = wp.tid()
 
@@ -89,18 +88,17 @@ def assign_colors(
 
 @wp.func
 def intersect_ray_sphere(origin: wp.vec3f, dir: wp.vec3f, center: wp.vec3f, radius: float):
-
     to_sphere = center - origin
 
     tc = wp.dot(to_sphere, dir)
 
     if tc < 0.0:
         return tc
-    
+
     d = wp.sqrt(wp.length_sq(to_sphere) - tc * tc)
     if d < 0.0:
         return -999999.0
-    
+
     ts = wp.sqrt(radius * radius - d * d)
 
     return tc - ts
@@ -118,7 +116,7 @@ def boids(
     tid = wp.tid()
 
     boid = boids[tid]
-    
+
     old_pos = positions[tid]
     old_rot = orientations[tid]
 
@@ -277,9 +275,7 @@ class InternalState:
     def __init__(self) -> None:
         self.initialized = False
 
-
     def initialize(self, device):
-
         # requirement checks
         ext_mgr = omni.kit.app.get_app().get_extension_manager()
 
@@ -293,7 +289,9 @@ class InternalState:
         usdrt_version_string = ext_mgr.get_extension_dict(usdrt_ext_id)["package"]["version"].split("-")[0]
         usdrt_version = tuple(int(v) for v in usdrt_version_string.split("."))
         if usdrt_version < (7, 3, 0):
-            raise RuntimeError(f"USDRT version 7.3.0 is required, found {usdrt_version_string}.  Please update to a newer version of Kit to run this sample.")
+            raise RuntimeError(
+                f"USDRT version 7.3.0 is required, found {usdrt_version_string}.  Please update to a newer version of Kit to run this sample."
+            )
 
         # check if FSD is enabled
         settings = carb.settings.get_settings()
@@ -306,11 +304,11 @@ class InternalState:
             print("***")
 
         stage_id = omni.usd.get_context().get_stage_id()
-        
+
         usdrt_stage = usdrt.Usd.Stage.Attach(stage_id)
 
         # import to Fabric
-        for prim in usdrt_stage.Traverse():
+        for _prim in usdrt_stage.Traverse():
             pass
 
         # set up for Fabric interop
@@ -319,7 +317,9 @@ class InternalState:
         for prim in boid_prims:
             pos = prim.GetAttribute("xformOp:translate").Get()
             prim.CreateAttribute("_worldPosition", usdrt.Sdf.ValueTypeNames.Double3, True).Set(pos)
-            prim.CreateAttribute("_worldOrientation", usdrt.Sdf.ValueTypeNames.Quatf, True).Set(usdrt.Gf.Quatf(1, 0, 0, 0))
+            prim.CreateAttribute("_worldOrientation", usdrt.Sdf.ValueTypeNames.Quatf, True).Set(
+                usdrt.Gf.Quatf(1, 0, 0, 0)
+            )
             prim.CreateAttribute("_worldScale", usdrt.Sdf.ValueTypeNames.Float3, True).Set(usdrt.Gf.Vec3f(1, 1, 1))
 
             # create a custom tag for the boids (could use applied schema too)
@@ -453,9 +453,7 @@ def compute(db: OgnSamplePrimFlockingDatabase) -> None:
 
     # get transform attributes
     selection = state.stage.SelectPrims(
-        require_applied_schemas=state.require_schemas,
-        require_attrs=state.transform_attrs,
-        device=str(device)
+        require_applied_schemas=state.require_schemas, require_attrs=state.transform_attrs, device=str(device)
     )
 
     fpos = wp.fabricarray(data=selection, attrib="_worldPosition")
@@ -477,7 +475,7 @@ def compute(db: OgnSamplePrimFlockingDatabase) -> None:
 
     # step the flocking simulation
     wp.launch(boids, dim=state.num_boids, inputs=[state.boids, state.world, dt, fpos, frot, state.glows_m])
-    
+
     # async copy from main device and remember the stream so we can sync later
     if COLOR_DEVICE != device:
         if device.is_cuda:
@@ -490,16 +488,13 @@ def compute(db: OgnSamplePrimFlockingDatabase) -> None:
 
     # get color attributes
     color_selection = state.stage.SelectPrims(
-        require_applied_schemas=state.require_schemas,
-        require_attrs=state.color_attrs,
-        device=COLOR_DEVICE
+        require_applied_schemas=state.require_schemas, require_attrs=state.color_attrs, device=COLOR_DEVICE
     )
 
     fcolor = wp.fabricarray(data=color_selection, attrib="primvars:_emissive")
 
     # occasionally update group biases (whether they are attracted or repelled from each other)
     if state.num_groups > 1 and state.time >= state.next_group_think:
-
         # pick two random groups
         group0 = np.random.randint(state.num_groups)
         group1 = np.random.randint(state.num_groups)
@@ -510,18 +505,26 @@ def compute(db: OgnSamplePrimFlockingDatabase) -> None:
         state.world.biases[group0, group1] = 1.0 - 5.0 * np.random.rand()
         state.world.biases[group1, group0] = 1.0 - 5.0 * np.random.rand()
 
-        state.next_group_think += state.min_group_think + (state.max_group_think - state.min_group_think) * np.random.rand()
+        state.next_group_think += (
+            state.min_group_think + (state.max_group_think - state.min_group_think) * np.random.rand()
+        )
 
     if work_stream is not None:
         # wait for async GPU work to complete
         wp.synchronize_stream(work_stream)
 
     # update colors
-    wp.launch(assign_colors, dim=state.num_boids, inputs=[state.glows_c, state.groups_c, state.color_ramps_c, fcolor], device=COLOR_DEVICE)
+    wp.launch(
+        assign_colors,
+        dim=state.num_boids,
+        inputs=[state.glows_c, state.groups_c, state.color_ramps_c, fcolor],
+        device=COLOR_DEVICE,
+    )
 
 
 #   Node Entry Point
 # ------------------------------------------------------------------------------
+
 
 class OgnSamplePrimFlocking:
     """Node."""

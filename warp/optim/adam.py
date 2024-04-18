@@ -68,16 +68,16 @@ class Adam:
 
     def set_params(self, params):
         self.params = params
-        if params != None and type(params) == list and len(params) > 0:
+        if params is not None and isinstance(params, list) and len(params) > 0:
             if len(self.m) != len(params):
                 self.m = [None] * len(params)  # reset first moment
             if len(self.v) != len(params):
                 self.v = [None] * len(params)  # reset second moment
             for i in range(len(params)):
                 param = params[i]
-                if self.m[i] == None or self.m[i].shape != param.shape or self.m[i].dtype != param.dtype:
+                if self.m[i] is None or self.m[i].shape != param.shape or self.m[i].dtype != param.dtype:
                     self.m[i] = wp.zeros_like(param)
-                if self.v[i] == None or self.v[i].shape != param.shape or self.v[i].dtype != param.dtype:
+                if self.v[i] is None or self.v[i].shape != param.shape or self.v[i].dtype != param.dtype:
                     self.v[i] = wp.zeros_like(param)
 
     def reset_internal_state(self):
@@ -88,7 +88,7 @@ class Adam:
         self.t = 0
 
     def step(self, grad):
-        assert self.params != None
+        assert self.params is not None
         for i in range(len(self.params)):
             Adam.step_detail(
                 grad[i], self.m[i], self.v[i], self.lr, self.beta1, self.beta2, self.t, self.eps, self.params[i]

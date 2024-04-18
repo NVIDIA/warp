@@ -1,8 +1,8 @@
-from numba import cuda, float32
-import numpy as np
-import cupy as cp
-
 import math
+
+import cupy as cp
+import numpy as np
+from numba import cuda, float32
 
 # Notes:
 #
@@ -81,7 +81,11 @@ z = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 
 @cuda.jit
 def integrate_particles_cuda(
-    xs, vs, fs, ws, dt  # position  (N, 3)  # velocity  (N, 3)  # force     (N, 3)  # inverse of mass (N,)
+    xs,  # position  (N, 3)
+    vs,  # velocity  (N, 3)
+    fs,  # force     (N, 3)
+    ws,  # inverse of mass (N,)
+    dt,
 ):  # dt        (1,)
     i = cuda.grid(1)
 
@@ -122,7 +126,7 @@ class NbIntegrator:
     def simulate(self, dt, substeps):
         sim_dt = dt / substeps
 
-        for s in range(substeps):
+        for _s in range(substeps):
             eval_springs_cuda[self.spring_nb, self.spring_tpb](
                 self.cloth.num_springs,
                 self.positions,

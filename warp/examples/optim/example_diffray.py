@@ -297,7 +297,7 @@ class Example:
     render_mesh.tex_coords: 2D texture coordinates
     """
 
-    def __init__(self, stage=None, rot_array=[0.0, 0.0, 0.0, 1.0], verbose=False):
+    def __init__(self, stage=None, rot_array=None, verbose=False):
         self.verbose = verbose
         cam_pos = wp.vec3(0.0, 0.75, 7.0)
         cam_rot = wp.quat(0.0, 0.0, 0.0, 1.0)
@@ -308,6 +308,9 @@ class Example:
         self.height = 1024
         self.width = int(aspect * self.height)
         self.num_pixels = self.width * self.height
+
+        if rot_array is None:
+            rot_array = [0.0, 0.0, 0.0, 1.0]
 
         asset_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
         mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath("/bunny/bunny"))

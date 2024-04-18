@@ -1,10 +1,9 @@
 from typing import Any
 
 import warp as wp
-
-from warp.fem import domain, cache
-from warp.fem.types import ElementIndex, Coords
+from warp.fem import cache, domain
 from warp.fem.space import FunctionSpace
+from warp.fem.types import Coords, ElementIndex
 
 from ..polynomial import Polynomial
 
@@ -248,7 +247,9 @@ class ExplicitQuadrature(Quadrature):
         points: wp.array2d(dtype=Coords)
         weights: wp.array2d(dtype=float)
 
-    def __init__(self, domain: domain.GeometryDomain, points: "wp.array2d(dtype=Coords)", weights: "wp.array2d(dtype=float)"):
+    def __init__(
+        self, domain: domain.GeometryDomain, points: "wp.array2d(dtype=Coords)", weights: "wp.array2d(dtype=float)"
+    ):
         super().__init__(domain)
 
         if points.shape != weights.shape:

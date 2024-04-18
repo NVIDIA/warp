@@ -94,7 +94,7 @@ def test_transform_multiply(test, device, n):
     a = wp.transform((0.0, 1.0, 0.0), wp.quat_identity())
 
     x = []
-    for i in range(10):
+    for _i in range(10):
         x.append(wp.transform_identity())
 
     xforms = wp.array(x, dtype=wp.transform, device=device)

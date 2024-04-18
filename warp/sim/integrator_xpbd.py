@@ -6,18 +6,19 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import warp as wp
+
 from .integrator import Integrator
 from .model import (
-    Model,
-    State,
-    Control,
-    PARTICLE_FLAG_ACTIVE,
-    ModelShapeMaterials,
+    JOINT_MODE_FORCE,
     JOINT_MODE_TARGET_POSITION,
     JOINT_MODE_TARGET_VELOCITY,
-    JOINT_MODE_FORCE,
+    PARTICLE_FLAG_ACTIVE,
+    Control,
+    Model,
+    ModelShapeMaterials,
+    State,
 )
-from .utils import velocity_at_point, vec_min, vec_max, vec_abs, vec_leaky_min, vec_leaky_max
+from .utils import vec_abs, vec_leaky_max, vec_leaky_min, vec_max, vec_min, velocity_at_point
 
 
 @wp.kernel
@@ -115,15 +116,15 @@ def apply_particle_shape_restitution(
     v_old = particle_v_old[particle_index]
 
     X_wb = wp.transform_identity()
-    X_com = wp.vec3()
+    # X_com = wp.vec3()
 
     if body_index >= 0:
         X_wb = body_q[body_index]
-        X_com = body_com[body_index]
+        # X_com = body_com[body_index]
 
     # body position in world space
     bx = wp.transform_point(X_wb, contact_body_pos[tid])
-    r = bx - wp.transform_point(X_wb, X_com)
+    # r = bx - wp.transform_point(X_wb, X_com)
 
     n = contact_normal[tid]
     c = wp.dot(n, px - bx) - particle_radius[particle_index]
@@ -452,7 +453,6 @@ def bending_constraint(
     lambdas: wp.array(dtype=float),
     delta: wp.array(dtype=wp.vec3),
 ):
-
     tid = wp.tid()
     eps = 1.0e-6
 
@@ -562,21 +562,21 @@ def solve_tetrahedra(
     k = indices[tid, 2]
     l = indices[tid, 3]
 
-    act = activation[tid]
+    # act = activation[tid]
 
-    k_mu = materials[tid, 0]
-    k_lambda = materials[tid, 1]
-    k_damp = materials[tid, 2]
+    # k_mu = materials[tid, 0]
+    # k_lambda = materials[tid, 1]
+    # k_damp = materials[tid, 2]
 
     x0 = x[i]
     x1 = x[j]
     x2 = x[k]
     x3 = x[l]
 
-    v0 = v[i]
-    v1 = v[j]
-    v2 = v[k]
-    v3 = v[l]
+    # v0 = v[i]
+    # v1 = v[j]
+    # v2 = v[k]
+    # v3 = v[l]
 
     w0 = inv_mass[i]
     w1 = inv_mass[j]
@@ -587,16 +587,11 @@ def solve_tetrahedra(
     x20 = x2 - x0
     x30 = x3 - x0
 
-    v10 = v1 - v0
-    v20 = v2 - v0
-    v30 = v3 - v0
-
     Ds = wp.mat33(x10, x20, x30)
     Dm = rest_matrix[tid]
     inv_QT = wp.transpose(Dm)
 
     inv_rest_volume = wp.determinant(Dm) * 6.0
-    rest_volume = 1.0 / inv_rest_volume
 
     # F = Xs*Xm^-1
     F = Ds * Dm
@@ -616,7 +611,6 @@ def solve_tetrahedra(
 
     num_terms = 2
     for term in range(0, num_terms):
-
         if term == 0:
             # deviatoric, stable
             C = tr - 3.0
@@ -629,7 +623,6 @@ def solve_tetrahedra(
             compliance = volume_compliance
 
         if C != 0.0:
-
             dP = dC * inv_QT
             grad1 = wp.vec3(dP[0][0], dP[1][0], dP[2][0])
             grad2 = wp.vec3(dP[0][1], dP[1][1], dP[2][1])
@@ -740,21 +733,21 @@ def solve_tetrahedra2(
     k = indices[tid, 2]
     l = indices[tid, 3]
 
-    act = activation[tid]
+    # act = activation[tid]
 
     k_mu = materials[tid, 0]
     k_lambda = materials[tid, 1]
-    k_damp = materials[tid, 2]
+    # k_damp = materials[tid, 2]
 
     x0 = x[i]
     x1 = x[j]
     x2 = x[k]
     x3 = x[l]
 
-    v0 = v[i]
-    v1 = v[j]
-    v2 = v[k]
-    v3 = v[l]
+    # v0 = v[i]
+    # v1 = v[j]
+    # v2 = v[k]
+    # v3 = v[l]
 
     w0 = inv_mass[i]
     w1 = inv_mass[j]
@@ -764,10 +757,6 @@ def solve_tetrahedra2(
     x10 = x1 - x0
     x20 = x2 - x0
     x30 = x3 - x0
-
-    v10 = v1 - v0
-    v20 = v2 - v0
-    v30 = v3 - v0
 
     Ds = wp.mat33(x10, x20, x30)
     Dm = pose[tid]
@@ -1016,7 +1005,7 @@ def apply_joint_torques(
     id_p = joint_parent[tid]
 
     X_pj = joint_X_p[tid]
-    X_cj = joint_X_c[tid]
+    # X_cj = joint_X_c[tid]
 
     X_wp = X_pj
     pose_p = X_pj
@@ -1039,7 +1028,7 @@ def apply_joint_torques(
     # q_c = wp.transform_get_rotation(X_wc)
 
     # joint properties (for 1D joints)
-    q_start = joint_q_start[tid]
+    # q_start = joint_q_start[tid]
     qd_start = joint_qd_start[tid]
     axis_start = joint_axis_start[tid]
     lin_axis_count = joint_axis_dim[tid, 0]
@@ -1238,7 +1227,6 @@ def compute_linear_correction_3d(
     damping: float,
     dt: float,
 ) -> float:
-
     c = wp.length(dx)
     if c == 0.0:
         # print("c == 0.0 in positional correction")
@@ -1397,19 +1385,19 @@ def solve_simple_body_joints(
     lin_delta_c = wp.vec3(0.0)
     ang_delta_c = wp.vec3(0.0)
 
-    rel_pose = wp.transform_inverse(X_wp) * X_wc
-    rel_p = wp.transform_get_translation(rel_pose)
+    # rel_pose = wp.transform_inverse(X_wp) * X_wc
+    # rel_p = wp.transform_get_translation(rel_pose)
 
     # joint connection points
     # x_p = wp.transform_get_translation(X_wp)
     x_c = wp.transform_get_translation(X_wc)
 
-    linear_compliance = joint_linear_compliance[tid]
+    # linear_compliance = joint_linear_compliance[tid]
     angular_compliance = joint_angular_compliance[tid]
     damping = 0.0
 
     axis_start = joint_axis_start[tid]
-    mode = joint_axis_mode[axis_start]
+    # mode = joint_axis_mode[axis_start]
 
     # local joint rotations
     q_p = wp.transform_get_rotation(X_wp)
@@ -1427,7 +1415,7 @@ def solve_simple_body_joints(
         limit_lower = joint_limit_lower[axis_start]
         limit_upper = joint_limit_upper[axis_start]
 
-    linear_alpha_tilde = linear_compliance / dt / dt
+    # linear_alpha_tilde = linear_compliance / dt / dt
     angular_alpha_tilde = angular_compliance / dt / dt
 
     # prevent division by zero
@@ -1525,7 +1513,7 @@ def solve_simple_body_joints(
 
         # handle joint targets
         target_ke = joint_target_ke[axis_start]
-        target_kd = joint_target_kd[axis_start]
+        # target_kd = joint_target_kd[axis_start]
         target = joint_target[axis_start]
         if target_ke > 0.0:
             # find a perpendicular vector to joint axis
@@ -2558,14 +2546,14 @@ def apply_rigid_restitution(
 
     if body_a >= 0:
         X_wb_a_prev = body_q_prev[body_a]
-        X_wb_a = body_q[body_a]
+        # X_wb_a = body_q[body_a]
         m_inv_a = body_m_inv[body_a]
         I_inv_a = body_I_inv[body_a]
         com_a = body_com[body_a]
 
     if body_b >= 0:
         X_wb_b_prev = body_q_prev[body_b]
-        X_wb_b = body_q[body_b]
+        # X_wb_b = body_q[body_b]
         m_inv_b = body_m_inv[body_b]
         I_inv_b = body_I_inv[body_b]
         com_b = body_com[body_b]
@@ -2823,7 +2811,6 @@ class XPBDIntegrator(Integrator):
             control = model.control(clone_variables=False)
 
         with wp.ScopedTimer("simulate", False):
-
             if model.particle_count:
                 if requires_grad:
                     particle_q = state_out.particle_q
@@ -2883,18 +2870,14 @@ class XPBDIntegrator(Integrator):
                 edge_constraint_lambdas = wp.empty_like(model.edge_rest_angle)
 
             for i in range(self.iterations):
-
                 with wp.ScopedTimer(f"iteration_{i}", False):
-
                     if model.body_count:
-
                         if requires_grad and i > 0:
                             body_deltas = wp.zeros_like(body_deltas)
                         else:
                             body_deltas.zero_()
 
                     if model.particle_count:
-
                         if requires_grad and i > 0:
                             particle_deltas = wp.zeros_like(particle_deltas)
                         else:
@@ -3049,7 +3032,6 @@ class XPBDIntegrator(Integrator):
                     # ----------------------------
 
                     if model.joint_count:
-
                         # wp.launch(
                         #     kernel=solve_simple_body_joints,
                         #     dim=model.joint_count,

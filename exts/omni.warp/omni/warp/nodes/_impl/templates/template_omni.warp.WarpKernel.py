@@ -18,18 +18,18 @@ from omni.kit.property.usd.custom_layout_helper import (
     CustomLayoutProperty,
 )
 from omni.kit.property.usd.usd_property_widget import UsdPropertyUiEntry
-import warp as wp
-
-from omni.warp.nodes._impl.common import SUPPORTED_SDF_DATA_TYPE_NAMES
-from omni.warp.nodes._impl.kernel import EXPLICIT_SOURCE
 from omni.warp.nodes._impl.attributes import (
     attr_get_base_name,
     attr_get_name,
 )
+from omni.warp.nodes._impl.common import SUPPORTED_SDF_DATA_TYPE_NAMES
+from omni.warp.nodes._impl.kernel import EXPLICIT_SOURCE
 from omni.warp.nodes._impl.props.codefile import get_code_file_prop_builder
 from omni.warp.nodes._impl.props.codestr import get_code_str_prop_builder
 from omni.warp.nodes._impl.props.editattrs import get_edit_attrs_prop_builder
 from omni.warp.nodes._impl.props.sourcepicker import get_source_picker_prop_builder
+
+import warp as wp
 
 
 def find_prop(

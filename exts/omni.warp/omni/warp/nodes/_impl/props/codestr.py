@@ -13,12 +13,11 @@ from typing import (
 )
 
 import omni.graph.core as og
+import omni.ui as ui
 from omni.kit.property.usd.usd_property_widget import UsdPropertyUiEntry
 from omni.kit.property.usd.usd_property_widget_builder import UsdPropertiesWidgetBuilder
 from omni.kit.widget.text_editor import TextEditor
 from omni.kit.window.property.templates import HORIZONTAL_SPACING
-import omni.ui as ui
-
 
 _DIALOG_TITLE = "Kernel Editor"
 _DIALOG_WIDTH = 800

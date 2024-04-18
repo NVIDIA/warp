@@ -33,7 +33,7 @@ def build_cuda(cu_path, arch, output_path, config="release", verify_fp=False, fa
 # load PTX or CUBIN as a CUDA runtime module (input type determined by input_path extension)
 def load_cuda(input_path, device):
     if not device.is_cuda:
-        raise ("Not a CUDA device")
+        raise RuntimeError("Not a CUDA device")
 
     return warp.context.runtime.core.cuda_load_module(device.context, input_path.encode("utf-8"))
 

@@ -8,7 +8,6 @@
 import ast
 import ctypes
 import functools
-import gc
 import hashlib
 import inspect
 import io
@@ -80,10 +79,13 @@ class Function:
         custom_reverse_num_input_args=-1,
         custom_reverse_mode=False,
         overloaded_annotations=None,
-        code_transformers=[],
+        code_transformers=None,
         skip_adding_overload=False,
         require_original_output_arg=False,
     ):
+        if code_transformers is None:
+            code_transformers = []
+
         self.func = func  # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
         self.namespace = namespace
@@ -238,7 +240,7 @@ class Function:
             return False
 
         # only export simple types that don't use arrays
-        for k, v in self.input_types.items():
+        for _k, v in self.input_types.items():
             if isinstance(v, warp.array) or v == Any or v == Callable or v == Tuple:
                 return False
 
@@ -458,9 +460,9 @@ def call_builtin(func: Function, *params) -> Tuple[bool, Any]:
 
             if not (
                 isinstance(param, arg_type)
-                or (type(param) is float and arg_type is warp.types.float32)
-                or (type(param) is int and arg_type is warp.types.int32)
-                or (type(param) is bool and arg_type is warp.types.bool)
+                or (type(param) is float and arg_type is warp.types.float32)  # noqa: E721
+                or (type(param) is int and arg_type is warp.types.int32)  # noqa: E721
+                or (type(param) is bool and arg_type is warp.types.bool)  # noqa: E721
                 or warp.types.np_dtype_to_warp_type.get(getattr(param, "dtype", None)) is arg_type
             ):
                 return (False, None)
@@ -525,7 +527,7 @@ class KernelHooks:
 
 # caches source and compiled entry points for a kernel (will be populated after module loads)
 class Kernel:
-    def __init__(self, func, key=None, module=None, options=None, code_transformers=[]):
+    def __init__(self, func, key=None, module=None, options=None, code_transformers=None):
         self.func = func
 
         if module is None:
@@ -540,6 +542,9 @@ class Kernel:
             self.key = key
 
         self.options = {} if options is None else options
+
+        if code_transformers is None:
+            code_transformers = []
 
         self.adj = warp.codegen.Adjoint(func, transformers=code_transformers)
 
@@ -557,7 +562,7 @@ class Kernel:
         self.overloads = {}
 
         # argument indices by name
-        self.arg_indices = dict((a.label, i) for i, a in enumerate(self.adj.args))
+        self.arg_indices = {a.label: i for i, a in enumerate(self.adj.args)}
 
         if self.module:
             self.module.register_kernel(self)
@@ -656,7 +661,7 @@ def func_native(snippet, adj_snippet=None, replay_snippet=None):
         name = warp.codegen.make_full_qualified_name(f)
 
         m = get_module(f.__module__)
-        func = Function(
+        Function(
             func=f,
             key=name,
             namespace="",
@@ -769,7 +774,7 @@ def func_grad(forward_fn):
                 raise RuntimeError(
                     f"Gradient function {grad_fn.__qualname__} for function {forward_fn.key} has an incorrect signature. The arguments must match the "
                     "forward function arguments plus the adjoint variables corresponding to the return variables:"
-                    f"\n{', '.join(map(lambda nt: f'{nt[0]}: {nt[1].__name__}', expected_args))}"
+                    f"\n{', '.join(f'{nt[0]}: {nt[1].__name__}' for nt in expected_args)}"
                 )
 
         return grad_fn
@@ -935,7 +940,7 @@ builtin_functions = {}
 
 def add_builtin(
     key,
-    input_types={},
+    input_types=None,
     constraint=None,
     value_type=None,
     value_func=None,
@@ -953,6 +958,9 @@ def add_builtin(
     defaults=None,
     require_original_output_arg=False,
 ):
+    if input_types is None:
+        input_types = {}
+
     # wrap simple single-type functions with a value_func()
     if value_func is None:
 
@@ -1026,7 +1034,7 @@ def add_builtin(
             # {"vec":[wp.vec2,wp.vec3,wp.vec4], "mat":[wp.mat22,wp.mat33,wp.mat44]})
             consistenttypes = {k: [x for x in v if scalar_type(x) == stype] for k, v in gtypes.items()}
 
-            def typelist(param):
+            def typelist(param, stype=stype, consistenttypes=consistenttypes):
                 if warp.types.type_is_generic_scalar(param):
                     return [stype]
                 if hasattr(param, "_wp_generic_type_str_"):
@@ -3792,7 +3800,7 @@ def full(
                 # try to convert to a numpy array first
                 na = np.array(value, copy=False)
             except Exception as e:
-                raise ValueError(f"Failed to interpret the value as a vector or matrix: {e}")
+                raise ValueError(f"Failed to interpret the value as a vector or matrix: {e}") from e
 
             # determine the scalar type
             scalar_type = warp.types.np_dtype_to_warp_type.get(na.dtype)
@@ -4024,8 +4032,8 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             # try constructing the required value from the argument (handles tuple / list, Gf.Vec3 case)
             try:
                 return arg_type(value)
-            except Exception:
-                raise ValueError(f"Failed to convert argument for param {arg_name} to {type_str(arg_type)}")
+            except Exception as e:
+                raise ValueError(f"Failed to convert argument for param {arg_name} to {type_str(arg_type)}") from e
 
     elif isinstance(value, bool):
         return ctypes.c_bool(value)
@@ -4037,11 +4045,11 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
                 return arg_type._type_(warp.types.float_to_half_bits(value.value))
             else:
                 return arg_type._type_(value.value)
-        except Exception:
+        except Exception as e:
             raise RuntimeError(
                 "Error launching kernel, unable to pack kernel parameter type "
                 f"{type(value)} for param {arg_name}, expected {arg_type}"
-            )
+            ) from e
 
     else:
         try:
@@ -4055,7 +4063,7 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             raise RuntimeError(
                 "Error launching kernel, unable to pack kernel parameter type "
                 f"{type(value)} for param {arg_name}, expected {arg_type}"
-            )
+            ) from e
 
 
 # represents all data required for a kernel launch
@@ -4954,7 +4962,7 @@ def export_functions_rst(file):  # pragma: no cover
     # build dictionary of all functions by group
     groups = {}
 
-    for k, f in builtin_functions.items():
+    for _k, f in builtin_functions.items():
         # build dict of groups
         if f.group not in groups:
             groups[f.group] = []

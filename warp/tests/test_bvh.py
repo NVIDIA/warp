@@ -163,7 +163,9 @@ class TestBvh(unittest.TestCase):
 
 add_function_test(TestBvh, "test_bvh_aabb", test_bvh_query_aabb, devices=devices)
 add_function_test(TestBvh, "test_bvh_ray", test_bvh_query_ray, devices=devices)
-add_function_test(TestBvh, "test_bvh_codegen_adjoints_with_select", test_bvh_codegen_adjoints_with_select, devices=devices)
+add_function_test(
+    TestBvh, "test_bvh_codegen_adjoints_with_select", test_bvh_codegen_adjoints_with_select, devices=devices
+)
 
 
 if __name__ == "__main__":

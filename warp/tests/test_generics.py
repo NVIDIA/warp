@@ -253,22 +253,22 @@ def generic_transform(v: Any, m: Any, expected: Any):
 
 # use overload decorator syntax
 @wp.overload
-def generic_transform(v: wp.vec2, m: wp.mat22, expected: wp.vec2):
+def generic_transform(v: wp.vec2, m: wp.mat22, expected: wp.vec2):  # fmt: skip
     ...
 
 
 @wp.overload
-def generic_transform(v: wp.vec3, m: wp.mat33, expected: wp.vec3):
+def generic_transform(v: wp.vec3, m: wp.mat33, expected: wp.vec3):  # fmt: skip
     ...
 
 
 @wp.overload
-def generic_transform(v: wp.vec4, m: wp.mat44, expected: wp.vec4):
+def generic_transform(v: wp.vec4, m: wp.mat44, expected: wp.vec4):  # fmt: skip
     ...
 
 
 @wp.overload
-def generic_transform(v: my_vec5, m: my_mat55, expected: my_vec5):
+def generic_transform(v: my_vec5, m: my_mat55, expected: my_vec5):  # fmt: skip
     ...
 
 

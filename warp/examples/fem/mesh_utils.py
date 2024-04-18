@@ -1,10 +1,12 @@
+from typing import Optional
+
 import numpy as np
+
 import warp as wp
+from warp.fem.utils import grid_to_hexes, grid_to_quads, grid_to_tets, grid_to_tris
 
-from warp.fem.utils import grid_to_tets, grid_to_tris, grid_to_quads, grid_to_hexes
 
-
-def gen_trimesh(res, bounds_lo: wp.vec2 = wp.vec2(0.0), bounds_hi: wp.vec2 = wp.vec2(1.0)):
+def gen_trimesh(res, bounds_lo: Optional[wp.vec2] = None, bounds_hi: Optional[wp.vec2] = None):
     """Constructs a triangular mesh by diving each cell of a dense 2D grid into two triangles
 
     Args:
@@ -15,6 +17,12 @@ def gen_trimesh(res, bounds_lo: wp.vec2 = wp.vec2(0.0), bounds_hi: wp.vec2 = wp.
     Returns:
         Tuple of ndarrays: (Vertex positions, Triangle vertex indices)
     """
+
+    if bounds_lo is None:
+        bounds_lo = wp.vec2(0.0)
+
+    if bounds_hi is None:
+        bounds_hi = wp.vec2(1.0)
 
     Nx = res[0]
     Ny = res[1]
@@ -29,7 +37,7 @@ def gen_trimesh(res, bounds_lo: wp.vec2 = wp.vec2(0.0), bounds_hi: wp.vec2 = wp.
     return wp.array(positions, dtype=wp.vec2), wp.array(vidx, dtype=int)
 
 
-def gen_tetmesh(res, bounds_lo: wp.vec3 = wp.vec3(0.0), bounds_hi: wp.vec3 = wp.vec3(1.0)):
+def gen_tetmesh(res, bounds_lo: Optional[wp.vec3] = None, bounds_hi: Optional[wp.vec3] = None):
     """Constructs a tetrahedral mesh by diving each cell of a dense 3D grid into five tetrahedrons
 
     Args:
@@ -40,6 +48,12 @@ def gen_tetmesh(res, bounds_lo: wp.vec3 = wp.vec3(0.0), bounds_hi: wp.vec3 = wp.
     Returns:
         Tuple of ndarrays: (Vertex positions, Tetrahedron vertex indices)
     """
+
+    if bounds_lo is None:
+        bounds_lo = wp.vec3(0.0)
+
+    if bounds_hi is None:
+        bounds_hi = wp.vec3(1.0)
 
     Nx = res[0]
     Ny = res[1]
@@ -56,7 +70,7 @@ def gen_tetmesh(res, bounds_lo: wp.vec3 = wp.vec3(0.0), bounds_hi: wp.vec3 = wp.
     return wp.array(positions, dtype=wp.vec3), wp.array(vidx, dtype=int)
 
 
-def gen_quadmesh(res, bounds_lo: wp.vec2 = wp.vec2(0.0), bounds_hi: wp.vec2 = wp.vec2(1.0)):
+def gen_quadmesh(res, bounds_lo: Optional[wp.vec2] = None, bounds_hi: Optional[wp.vec2] = None):
     """Constructs a quadrilateral mesh from a dense 2D grid
 
     Args:
@@ -67,6 +81,11 @@ def gen_quadmesh(res, bounds_lo: wp.vec2 = wp.vec2(0.0), bounds_hi: wp.vec2 = wp
     Returns:
         Tuple of ndarrays: (Vertex positions, Triangle vertex indices)
     """
+    if bounds_lo is None:
+        bounds_lo = wp.vec2(0.0)
+
+    if bounds_hi is None:
+        bounds_hi = wp.vec2(1.0)
 
     Nx = res[0]
     Ny = res[1]
@@ -81,7 +100,7 @@ def gen_quadmesh(res, bounds_lo: wp.vec2 = wp.vec2(0.0), bounds_hi: wp.vec2 = wp
     return wp.array(positions, dtype=wp.vec2), wp.array(vidx, dtype=int)
 
 
-def gen_hexmesh(res, bounds_lo: wp.vec3 = wp.vec3(0.0), bounds_hi: wp.vec3 = wp.vec3(1.0)):
+def gen_hexmesh(res, bounds_lo: Optional[wp.vec3] = None, bounds_hi: Optional[wp.vec3] = None):
     """Constructs a quadrilateral mesh from a dense 2D grid
 
     Args:
@@ -92,6 +111,12 @@ def gen_hexmesh(res, bounds_lo: wp.vec3 = wp.vec3(0.0), bounds_hi: wp.vec3 = wp.
     Returns:
         Tuple of ndarrays: (Vertex positions, Triangle vertex indices)
     """
+
+    if bounds_lo is None:
+        bounds_lo = wp.vec3(0.0)
+
+    if bounds_hi is None:
+        bounds_hi = wp.vec3(1.0)
 
     Nx = res[0]
     Ny = res[1]
@@ -106,4 +131,3 @@ def gen_hexmesh(res, bounds_lo: wp.vec3 = wp.vec3(0.0), bounds_hi: wp.vec3 = wp.
     vidx = grid_to_hexes(Nx, Ny, Nz)
 
     return wp.array(positions, dtype=wp.vec3), wp.array(vidx, dtype=int)
-

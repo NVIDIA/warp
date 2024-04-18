@@ -6,11 +6,10 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 
-import math
-import numpy as np
 import os
-
 import xml.etree.ElementTree as ET
+
+import numpy as np
 
 import warp as wp
 
@@ -70,8 +69,8 @@ class Skeleton:
 
                 body_mesh = body.attrib["obj"]
                 body_size = np.fromstring(body.attrib["size"], sep=" ")
-                body_type = body.attrib["type"]
-                body_mass = body.attrib["mass"]
+                # body_type = body.attrib["type"]
+                # body_mass = body.attrib["mass"]
 
                 body_R_s = np.fromstring(body_xform.attrib["linear"], sep=" ").reshape((3, 3))
                 body_t_s = np.fromstring(body_xform.attrib["translation"], sep=" ")
@@ -87,7 +86,7 @@ class Skeleton:
                 try:
                     joint_lower = np.fromstring(joint.attrib["lower"], sep=" ")
                     joint_upper = np.fromstring(joint.attrib["upper"], sep=" ")
-                except:
+                except Exception:
                     pass
 
                 if "axis" in joint.attrib:
@@ -99,7 +98,7 @@ class Skeleton:
                 joint_X_s = wp.transform(joint_t_s, wp.quat_from_matrix(joint_R_s))
 
                 mesh_base = os.path.splitext(body_mesh)[0]
-                mesh_file = mesh_base + ".usd"
+                # mesh_file = mesh_base + ".usd"
 
                 # -----------------------------------
                 # one time conversion, put meshes into local body space (and meter units)
@@ -149,7 +148,7 @@ class Skeleton:
                     )
 
                     # add shape
-                    shape = builder.add_shape_box(
+                    builder.add_shape_box(
                         body=link,
                         pos=body_X_c.p,
                         rot=body_X_c.q,

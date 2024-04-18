@@ -6,11 +6,12 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import ctypes
-import warp as wp
-from warp.types import array_t, launch_bounds_t, strides_from_shape
-from warp.context import type_str
+
 import jax
-import jax.numpy as jp
+
+import warp as wp
+from warp.context import type_str
+from warp.types import array_t, launch_bounds_t, strides_from_shape
 
 _jax_warp_p = None
 
@@ -35,10 +36,10 @@ def jax_kernel(wp_kernel):
     - Only the CUDA backend is supported.
     """
 
-    if _jax_warp_p == None:
+    if _jax_warp_p is None:
         # Create and register the primitive
         _create_jax_warp_primitive()
-    if not wp_kernel in _registered_kernel_to_id:
+    if wp_kernel not in _registered_kernel_to_id:
         id = len(_registered_kernels)
         _registered_kernels.append(wp_kernel)
         _registered_kernel_to_id[wp_kernel] = id
@@ -96,9 +97,7 @@ def _warp_custom_callback(stream, buffers, opaque, opaque_len):
     assert hooks.forward, "Failed to find kernel entry point"
 
     # Launch the kernel.
-    wp.context.runtime.core.cuda_launch_kernel(
-        device.context, hooks.forward, bounds.size, 0, kernel_params, stream
-    )
+    wp.context.runtime.core.cuda_launch_kernel(device.context, hooks.forward, bounds.size, 0, kernel_params, stream)
 
 
 # TODO: is there a simpler way of getting the Jax "current" device?
@@ -113,6 +112,7 @@ def _get_jax_device():
 
 def _create_jax_warp_primitive():
     from functools import reduce
+
     import jax
     from jax._src.interpreters import batching
     from jax.interpreters import mlir
@@ -289,7 +289,9 @@ def _create_jax_warp_primitive():
                 raise Exception("Only contiguous arrays are supported for Jax kernel arguments")
 
             if not base_type_is_compatible(wtype.dtype, rtt.element_type):
-                raise TypeError(f"Incompatible data type for argument '{warg.label}', expected {type_str(wtype.dtype)}, got {rtt.element_type}")
+                raise TypeError(
+                    f"Incompatible data type for argument '{warg.label}', expected {type_str(wtype.dtype)}, got {rtt.element_type}"
+                )
 
             # Infer array dimension (by removing the vector/matrix dimensions and
             # collapsing the initial dimensions).

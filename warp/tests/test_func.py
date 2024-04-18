@@ -237,7 +237,9 @@ class TestFunc(unittest.TestCase):
             wp.quat(4.0, 5.0, 6.0, 7.0),
         )
         self.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
-        self.assertSequenceEqual(t * wp.transform(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0), (396.0, 432.0, 720.0, 56.0, 70.0, 84.0, -28.0))
+        self.assertSequenceEqual(
+            t * wp.transform(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0), (396.0, 432.0, 720.0, 56.0, 70.0, 84.0, -28.0)
+        )
         self.assertSequenceEqual(
             t * wp.transform((1.0, 2.0, 3.0), (4.0, 5.0, 6.0, 7.0)), (396.0, 432.0, 720.0, 56.0, 70.0, 84.0, -28.0)
         )
@@ -311,7 +313,6 @@ class TestFunc(unittest.TestCase):
         assert m == wp.mat22(-1.0, -1.0, -1.0, -1.0)
         m = m * m
         assert m == wp.mat22(2.0, 2.0, 2.0, 2.0)
-
 
     def test_native_function_error_resolution(self):
         a = wp.mat22f(1.0, 2.0, 3.0, 4.0)

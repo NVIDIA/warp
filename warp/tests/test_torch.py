@@ -544,7 +544,7 @@ def test_torch_graph_torch_stream(test, device):
 
     # replay graph
     num_iters = 10
-    for i in range(num_iters):
+    for _i in range(num_iters):
         g.replay()
 
     passed = (t == num_iters * 4.0).all()
@@ -580,7 +580,7 @@ def test_torch_graph_warp_stream(test, device):
 
     # replay graph
     num_iters = 10
-    for i in range(num_iters):
+    for _i in range(num_iters):
         g.replay()
 
     passed = (t == num_iters * 4.0).all()
@@ -614,7 +614,7 @@ def test_warp_graph_warp_stream(test, device):
 
     # replay graph
     num_iters = 10
-    for i in range(num_iters):
+    for _i in range(num_iters):
         wp.capture_launch(g)
 
     passed = (t == num_iters * 4.0).all()
@@ -654,7 +654,7 @@ def test_warp_graph_torch_stream(test, device):
 
     # replay graph
     num_iters = 10
-    for i in range(num_iters):
+    for _i in range(num_iters):
         wp.capture_launch(g)
 
     passed = (t == num_iters * 4.0).all()

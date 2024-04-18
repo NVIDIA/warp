@@ -1,8 +1,7 @@
 import warp as wp
-
-from warp.fem.types import Coords, OUTSIDE
-from warp.fem.geometry import Element
 from warp.fem import cache
+from warp.fem.geometry import Element
+from warp.fem.types import Coords
 
 
 class ShapeFunction:

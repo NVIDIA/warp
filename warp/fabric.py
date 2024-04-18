@@ -193,7 +193,9 @@ class fabricarray(noncontiguous_array_base[T]):
                     allocator = self.device.get_allocator()
                     buckets_ptr = allocator.alloc(buckets_size)
                     cuda_stream = self.device.stream.cuda_stream
-                    runtime.core.memcpy_h2d(self.device.context, buckets_ptr, ctypes.addressof(buckets), buckets_size, cuda_stream)
+                    runtime.core.memcpy_h2d(
+                        self.device.context, buckets_ptr, ctypes.addressof(buckets), buckets_size, cuda_stream
+                    )
                     self.deleter = allocator.deleter
                 else:
                     buckets_ptr = ctypes.addressof(buckets)

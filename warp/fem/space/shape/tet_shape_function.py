@@ -1,10 +1,8 @@
-import math
-
-import warp as wp
 import numpy as np
 
-from warp.fem.types import Coords
+import warp as wp
 from warp.fem import cache
+from warp.fem.types import Coords
 
 
 def _tet_node_index(tx: int, ty: int, tz: int, degree: int):
@@ -17,7 +15,7 @@ def _tet_node_index(tx: int, ty: int, tz: int, degree: int):
     VERTEX_EDGE_FACE_NODE_COUNT = VERTEX_EDGE_NODE_COUNT + 4 * FACE_INTERIOR_NODE_COUNT
 
     # Index in similar order to e.g. VTK
-    # First vertices, then edges (counterclokwise), then faces, then interior points (recursively)
+    # First vertices, then edges (counterclockwise), then faces, then interior points (recursively)
 
     if tx == 0:
         if ty == 0:

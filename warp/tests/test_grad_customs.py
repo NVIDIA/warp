@@ -80,6 +80,7 @@ def overload_fn_grad(x: float, y: float, adj_ret0: float, adj_ret1: float):
 @wp.struct
 class MyStruct:
     """This is a docstring"""
+
     scalar: float
     vec: wp.vec3
 

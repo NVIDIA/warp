@@ -12,11 +12,12 @@
 #
 ###########################################################################
 
-import warp as wp
-import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib.colors
+import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.animation import FuncAnimation
+
+import warp as wp
 
 wp.init()
 

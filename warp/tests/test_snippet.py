@@ -25,7 +25,7 @@ def test_basic(test, device):
         y: wp.array(dtype=wp.float32),
         out: wp.array(dtype=wp.float32),
         tid: int,
-    ):
+    ):  # fmt: skip
         ...
 
     @wp.kernel
@@ -115,7 +115,7 @@ def test_cpu_snippet(test, device):
         x: wp.array(dtype=wp.int32),
         out: wp.array(dtype=wp.int32),
         tid: int,
-    ):
+    ):  # fmt: skip
         ...
 
     @wp.kernel
@@ -146,9 +146,7 @@ def test_custom_replay_grad(test, device):
     replay_snippet = ""
 
     @wp.func_native(snippet, replay_snippet=replay_snippet)
-    def reversible_increment(
-        counter: wp.array(dtype=int), thread_values: wp.array(dtype=int), tid: int
-    ):
+    def reversible_increment(counter: wp.array(dtype=int), thread_values: wp.array(dtype=int), tid: int):  # fmt: skip
         ...
 
     @wp.kernel
@@ -184,15 +182,11 @@ def test_replay_simplification(test, device):
     adj_snippet = "adj_x[tid] += 2.0 * adj_y[tid];"
 
     @wp.func_native(snippet, adj_snippet=adj_snippet, replay_snippet=replay_snippet)
-    def square(x: wp.array(dtype=float), y: wp.array(dtype=float), tid: int):
+    def square(x: wp.array(dtype=float), y: wp.array(dtype=float), tid: int):  # fmt: skip
         ...
 
     @wp.kernel
-    def log_square_kernel(
-        x: wp.array(dtype=float),
-        y: wp.array(dtype=float),
-        z: wp.array(dtype=float)
-    ):
+    def log_square_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float), z: wp.array(dtype=float)):
         tid = wp.tid()
         square(x, y, tid)
         z[tid] = wp.log(y[tid])
@@ -216,7 +210,7 @@ def test_recompile_snippet(test, device):
         x: wp.array(dtype=wp.int32),
         out: wp.array(dtype=wp.int32),
         tid: int,
-    ):
+    ):  # fmt: skip
         ...
 
     @wp.kernel
@@ -242,7 +236,7 @@ def test_recompile_snippet(test, device):
         x: wp.array(dtype=wp.int32),
         out: wp.array(dtype=wp.int32),
         tid: int,
-    ):
+    ):  # fmt: skip
         ...
 
     wp.launch(kernel=increment, dim=N, inputs=[x], outputs=[out], device=device)
@@ -257,9 +251,15 @@ class TestSnippets(unittest.TestCase):
 add_function_test(TestSnippets, "test_basic", test_basic, devices=get_unique_cuda_test_devices())
 add_function_test(TestSnippets, "test_shared_memory", test_shared_memory, devices=get_unique_cuda_test_devices())
 add_function_test(TestSnippets, "test_cpu_snippet", test_cpu_snippet, devices=["cpu"])
-add_function_test(TestSnippets, "test_custom_replay_grad", test_custom_replay_grad, devices=get_unique_cuda_test_devices())
-add_function_test(TestSnippets, "test_replay_simplification", test_replay_simplification, devices=get_unique_cuda_test_devices())
-add_function_test(TestSnippets, "test_recompile_snippet", test_recompile_snippet, devices=get_unique_cuda_test_devices())
+add_function_test(
+    TestSnippets, "test_custom_replay_grad", test_custom_replay_grad, devices=get_unique_cuda_test_devices()
+)
+add_function_test(
+    TestSnippets, "test_replay_simplification", test_replay_simplification, devices=get_unique_cuda_test_devices()
+)
+add_function_test(
+    TestSnippets, "test_recompile_snippet", test_recompile_snippet, devices=get_unique_cuda_test_devices()
+)
 
 
 if __name__ == "__main__":

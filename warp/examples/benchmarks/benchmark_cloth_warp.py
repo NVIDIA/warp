@@ -109,7 +109,7 @@ class WpIntegrator:
     def simulate(self, dt, substeps):
         sim_dt = dt / substeps
 
-        for s in range(substeps):
+        for _s in range(substeps):
             wp.launch(
                 kernel=eval_springs,
                 dim=self.cloth.num_springs,

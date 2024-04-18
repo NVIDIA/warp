@@ -5,15 +5,14 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-"""Helper functions for computing rigid body inertia properties.
-"""
-
-import warp as wp
-import numpy as np
+"""Helper functions for computing rigid body inertia properties."""
 
 import math
-
 from typing import List, Union
+
+import numpy as np
+
+import warp as wp
 
 
 @wp.func
@@ -274,7 +273,7 @@ def compute_mesh_inertia(
 
     if is_solid:
         weight = 0.25
-        alpha = math.sqrt(5.0) / 5.0
+        # alpha = math.sqrt(5.0) / 5.0
         wp.launch(
             kernel=compute_solid_mesh_inertia,
             dim=num_tris,

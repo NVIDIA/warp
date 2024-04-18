@@ -1,9 +1,7 @@
 from typing import Any
 
 import warp as wp
-
-from warp.fem.types import Sample, ElementIndex, Coords
-from warp.fem import cache
+from warp.fem.types import Coords, ElementIndex, Sample
 
 from .element import Element
 

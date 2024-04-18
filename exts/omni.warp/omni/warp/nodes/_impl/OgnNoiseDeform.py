@@ -11,11 +11,10 @@ import hashlib
 import traceback
 
 import omni.graph.core as og
-import warp as wp
-
 import omni.warp.nodes
 from omni.warp.nodes.ogn.OgnNoiseDeformDatabase import OgnNoiseDeformDatabase
 
+import warp as wp
 
 USE_GRAPH = True
 

@@ -194,7 +194,9 @@ class Example:
 
         with wp.ScopedTimer("render", active=True):
             self.renderer.begin_frame(self.sim_time)
-            self.renderer.render_points(points=self.x.numpy(), radius=self.point_radius, name="points", colors=(0.8, 0.3, 0.2))
+            self.renderer.render_points(
+                points=self.x.numpy(), radius=self.point_radius, name="points", colors=(0.8, 0.3, 0.2)
+            )
             self.renderer.end_frame()
 
     # creates a grid of particles
@@ -211,7 +213,7 @@ if __name__ == "__main__":
 
     example = Example(stage_path)
 
-    for i in range(example.frame_count):
+    for _i in range(example.frame_count):
         example.step()
         example.render()
 

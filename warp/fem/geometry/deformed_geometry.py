@@ -1,11 +1,10 @@
 from typing import Any
 
 import warp as wp
+from warp.fem import cache
+from warp.fem.types import Coords, ElementIndex, Sample, make_free_sample
 
 from .geometry import Geometry
-
-from warp.fem.types import Sample, ElementIndex, Coords, make_free_sample
-from warp.fem import cache
 
 _mat32 = wp.mat(shape=(3, 2), dtype=float)
 

@@ -18,31 +18,30 @@ import argparse
 
 import warp as wp
 import warp.fem as fem
-
 from warp.sparse import bsr_axpy
 
 # Import example utilities
 # Make sure that works both when imported as module and run as standalone file
 try:
     from .bsr_utils import bsr_cg
-    from .mesh_utils import gen_trimesh, gen_quadmesh
-    from .plot_utils import Plot
     from .example_convection_diffusion import (
+        diffusion_form,
+        inertia_form,
         initial_condition,
         velocity,
-        inertia_form,
-        diffusion_form,
     )
+    from .mesh_utils import gen_quadmesh, gen_trimesh
+    from .plot_utils import Plot
 except ImportError:
     from bsr_utils import bsr_cg
-    from mesh_utils import gen_trimesh, gen_quadmesh
-    from plot_utils import Plot
     from example_convection_diffusion import (
+        diffusion_form,
+        inertia_form,
         initial_condition,
         velocity,
-        inertia_form,
-        diffusion_form,
     )
+    from mesh_utils import gen_quadmesh, gen_trimesh
+    from plot_utils import Plot
 
 wp.init()
 
@@ -174,7 +173,6 @@ class Example:
         self.renderer = Plot(stage)
         self.renderer.add_surface("phi", self._phi_field)
 
-
     def step(self):
         self.current_frame += 1
 
@@ -185,12 +183,12 @@ class Example:
         )
 
         phi = wp.zeros_like(rhs)
-        bsr_cg(self._matrix, b=rhs, x=phi, method='bicgstab', quiet=self._quiet)
+        bsr_cg(self._matrix, b=rhs, x=phi, method="bicgstab", quiet=self._quiet)
 
         wp.utils.array_cast(in_array=phi, out_array=self._phi_field.dof_values)
 
     def render(self):
-        self.renderer.begin_frame(time = self.current_frame * self.sim_dt)
+        self.renderer.begin_frame(time=self.current_frame * self.sim_dt)
         self.renderer.add_surface("phi", self._phi_field)
         self.renderer.end_frame()
 

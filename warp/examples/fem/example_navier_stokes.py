@@ -21,19 +21,17 @@ import argparse
 
 import warp as wp
 import warp.fem as fem
-
 from warp.fem.utils import array_axpy
-
-from warp.sparse import bsr_mm, bsr_mv, bsr_copy 
+from warp.sparse import bsr_copy, bsr_mm, bsr_mv
 
 try:
-    from .bsr_utils import bsr_solve_saddle, SaddleSystem
-    from .plot_utils import Plot
+    from .bsr_utils import SaddleSystem, bsr_solve_saddle
     from .mesh_utils import gen_trimesh
+    from .plot_utils import Plot
 except ImportError:
-    from bsr_utils import bsr_solve_saddle, SaddleSystem
-    from plot_utils import Plot
+    from bsr_utils import SaddleSystem, bsr_solve_saddle
     from mesh_utils import gen_trimesh
+    from plot_utils import Plot
 
 wp.init()
 
@@ -240,4 +238,4 @@ if __name__ == "__main__":
         example.render()
 
     example.renderer.add_surface_vector("velocity_final", example._u_field)
-    example.renderer.plot(streamlines=set(["velocity_final"]))
+    example.renderer.plot(streamlines={"velocity_final"})

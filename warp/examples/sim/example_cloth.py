@@ -175,7 +175,7 @@ if __name__ == "__main__":
 
     example = Example(stage_path, integrator=args.integrator)
 
-    for i in range(example.sim_frames):
+    for _i in range(example.sim_frames):
         example.step()
         example.render()
 

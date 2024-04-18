@@ -14,25 +14,28 @@
 #              f(x, y) = (a - x)^2 + b * (y - x^2)^2
 # where a = 1 and b = 100. The minimum value of the function is 0 at (1, 1).
 #
-# The example demonstrates how to set up a torch.autograd.Function to 
+# The example demonstrates how to set up a torch.autograd.Function to
 # incorporate Warp kernel launches within a PyTorch graph.
 ###########################################################################
 
-import warp as wp
-import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
+import numpy as np
 import torch
+from matplotlib.animation import FuncAnimation
+
+import warp as wp
 
 wp.init()
 
 
 pvec2 = wp.types.vector(length=2, dtype=wp.float32)
 
+
 # Define the Rosenbrock function
 @wp.func
 def rosenbrock(x: float, y: float):
     return (1.0 - x) ** 2.0 + 100.0 * (y - x**2.0) ** 2.0
+
 
 @wp.kernel
 def eval_rosenbrock(
@@ -48,25 +51,18 @@ def eval_rosenbrock(
 class Rosenbrock(torch.autograd.Function):
     @staticmethod
     def forward(ctx, xy, num_particles):
-
         ctx.xy = wp.from_torch(xy, dtype=pvec2, requires_grad=True)
         ctx.num_particles = num_particles
 
         # allocate output
         ctx.z = wp.zeros(num_particles, requires_grad=True)
 
-        wp.launch(
-            kernel=eval_rosenbrock,
-            dim=ctx.num_particles,
-            inputs=[ctx.xy],
-            outputs=[ctx.z]
-        )
+        wp.launch(kernel=eval_rosenbrock, dim=ctx.num_particles, inputs=[ctx.xy], outputs=[ctx.z])
 
         return wp.to_torch(ctx.z)
 
     @staticmethod
     def backward(ctx, adj_z):
-
         # map incoming Torch grads to our output variables
         ctx.z.grad = wp.from_torch(adj_z)
 
@@ -77,7 +73,7 @@ class Rosenbrock(torch.autograd.Function):
             outputs=[ctx.z],
             adj_inputs=[ctx.xy.grad],
             adj_outputs=[ctx.z.grad],
-            adjoint=True
+            adjoint=True,
         )
 
         # return adjoint w.r.t. inputs
@@ -85,9 +81,7 @@ class Rosenbrock(torch.autograd.Function):
 
 
 class Example:
-
     def __init__(self):
-
         self.num_particles = 1500
 
         min_x, max_x = -2.0, 2.0
@@ -99,7 +93,7 @@ class Example:
         X, Y = np.meshgrid(x, y)
         xy = np.column_stack((X.flatten(), Y.flatten()))
         N = len(xy)
-        
+
         xy = wp.array(xy, dtype=pvec2)
         Z = wp.empty(N, dtype=wp.float32)
 
@@ -142,7 +136,9 @@ class Example:
         self.torch_device = wp.device_to_torch(wp.get_device())
 
         rng = np.random.default_rng(42)
-        self.xy = torch.tensor(rng.normal(size=(self.num_particles, 2)), dtype=torch.float32, requires_grad=True, device=self.torch_device)
+        self.xy = torch.tensor(
+            rng.normal(size=(self.num_particles, 2)), dtype=torch.float32, requires_grad=True, device=self.torch_device
+        )
         self.opt = torch.optim.Adam([self.xy], lr=self.learning_rate)
 
     def forward(self):
@@ -171,7 +167,6 @@ class Example:
 
 
 if __name__ == "__main__":
-
     example = Example()
 
     # Create the animation

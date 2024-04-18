@@ -1,14 +1,13 @@
-from typing import Union, Optional
+from typing import Optional, Union
 
-from warp.fem.domain import GeometryDomain, Cells
-from warp.fem.space import FunctionSpace, SpaceRestriction, SpacePartition, make_space_partition, make_space_restriction
+from warp.fem.domain import Cells, GeometryDomain
+from warp.fem.space import FunctionSpace, SpacePartition, SpaceRestriction, make_space_partition, make_space_restriction
 
-from .field import DiscreteField, SpaceField, FieldLike
+from .field import DiscreteField, FieldLike, SpaceField
+from .nodal_field import NodalField
 from .restriction import FieldRestriction
 from .test import TestField
 from .trial import TrialField
-
-from .nodal_field import NodalField
 
 
 def make_restriction(

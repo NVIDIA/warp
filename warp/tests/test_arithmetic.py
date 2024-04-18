@@ -46,7 +46,7 @@ def randvals(rng, shape, dtype):
     return rng.integers(1, high=5, size=shape, dtype=dtype)
 
 
-kernel_cache = dict()
+kernel_cache = {}
 
 
 def getkernel(func, suffix=""):

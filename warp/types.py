@@ -432,7 +432,7 @@ def matrix(shape, dtype):
                 if len(key) != 2:
                     raise KeyError(f"Invalid key, expected one or two indices, got {len(key)}")
                 if any(isinstance(x, slice) for x in key):
-                    raise KeyError(f"Slices are not supported when indexing matrices using the `m[i, j]` notation")
+                    raise KeyError("Slices are not supported when indexing matrices using the `m[i, j]` notation")
                 return mat_t.scalar_export(super().__getitem__(key[0] * self._shape_[1] + key[1]))
             elif isinstance(key, int):
                 # row vector indexing m[r]
@@ -446,7 +446,7 @@ def matrix(shape, dtype):
                 if len(key) != 2:
                     raise KeyError(f"Invalid key, expected one or two indices, got {len(key)}")
                 if any(isinstance(x, slice) for x in key):
-                    raise KeyError(f"Slices are not supported when indexing matrices using the `m[i, j]` notation")
+                    raise KeyError("Slices are not supported when indexing matrices using the `m[i, j]` notation")
                 try:
                     return super().__setitem__(key[0] * self._shape_[1] + key[1], mat_t.scalar_import(value))
                 except (TypeError, ctypes.ArgumentError):
@@ -458,7 +458,7 @@ def matrix(shape, dtype):
                 # row vector indexing m[r] = v
                 return self.set_row(key, value)
             elif isinstance(key, slice):
-                raise KeyError(f"Slices are not supported when indexing matrices using the `m[start:end]` notation")
+                raise KeyError("Slices are not supported when indexing matrices using the `m[start:end]` notation")
             else:
                 raise KeyError(f"Invalid key {key}, expected int or pair of ints")
 
@@ -757,7 +757,7 @@ def transformation(dtype=Any):
 
         def __init__(self, *args, **kwargs):
             if len(args) == 1 and len(kwargs) == 0:
-                if getattr(args[0], "_wp_generic_type_str_") == self._wp_generic_type_str_:
+                if args[0]._wp_generic_type_str_ == self._wp_generic_type_str_:
                     # Copy constructor.
                     super().__init__(*args[0])
                     return
@@ -1321,7 +1321,7 @@ def type_size_in_bytes(dtype):
         elif isinstance(dtype, warp.codegen.Struct):
             size = ctypes.sizeof(dtype.ctype)
         elif dtype == Any:
-            raise TypeError(f"A concrete type is required")
+            raise TypeError("A concrete type is required")
         else:
             raise TypeError(f"Invalid data type: {dtype}")
         _type_size_cache[dtype] = size
@@ -1500,7 +1500,7 @@ def types_equal(a, b, match_generic=False):
         and hasattr(b, "_wp_generic_type_str_")
         and a._wp_generic_type_str_ == b._wp_generic_type_str_
     ):
-        return all([are_equal(p1, p2) for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_)])
+        return all(are_equal(p1, p2) for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_))
     if is_array(a) and type(a) is type(b):
         return True
     else:
@@ -1669,7 +1669,7 @@ class array(Array):
             try:
                 arr = np.array(data, copy=False, ndmin=1)
             except Exception as e:
-                raise RuntimeError(f"Failed to convert input data to an array: {e}")
+                raise RuntimeError(f"Failed to convert input data to an array: {e}") from e
             dtype = np_dtype_to_warp_type.get(arr.dtype)
             if dtype is None:
                 raise RuntimeError(f"Unsupported input data dtype: {arr.dtype}")
@@ -1693,7 +1693,7 @@ class array(Array):
                 except Exception as e:
                     raise RuntimeError(
                         f"Error while trying to construct Warp array from a sequence of Warp structs: {e}"
-                    )
+                    ) from e
             else:
                 raise RuntimeError(
                     "Invalid data argument for array of structs, expected a sequence of structs or a NumPy structured array"
@@ -1708,7 +1708,7 @@ class array(Array):
             try:
                 arr = np.array(data, dtype=npdtype, copy=False, ndmin=1)
             except Exception as e:
-                raise RuntimeError(f"Failed to convert input data to an array with type {npdtype}: {e}")
+                raise RuntimeError(f"Failed to convert input data to an array with type {npdtype}: {e}") from e
 
         # determine whether the input needs reshaping
         target_npshape = None
@@ -1740,7 +1740,7 @@ class array(Array):
             except Exception as e:
                 raise RuntimeError(
                     f"Failed to reshape the input data to the given shape {shape} and type {warp.context.type_str(dtype)}: {e}"
-                )
+                ) from e
 
         # determine final shape and strides
         if dtype_ndim > 0:
@@ -1895,7 +1895,6 @@ class array(Array):
         self.is_contiguous = False
 
     def __del__(self):
-
         if self.deleter is None:
             return
 
@@ -1904,7 +1903,6 @@ class array(Array):
 
     @property
     def __array_interface__(self):
-
         # raising an AttributeError here makes hasattr() return False
         if self.device is None or not self.device.is_cpu:
             raise AttributeError(f"__array_interface__ not supported because device is {self.device}")
@@ -1941,7 +1939,6 @@ class array(Array):
 
     @property
     def __cuda_array_interface__(self):
-
         # raising an AttributeError here makes hasattr() return False
         if self.device is None or not self.device.is_cuda:
             raise AttributeError(f"__cuda_array_interface__ is not supported because device is {self.device}")
@@ -2041,7 +2038,7 @@ class array(Array):
         new_key = []
         for i in range(0, len(key)):
             new_key.append(key[i])
-        for i in range(len(key), self.ndim):
+        for _i in range(len(key), self.ndim):
             new_key.append(slice(None, None, None))
         key = tuple(new_key)
 
@@ -2278,7 +2275,7 @@ class array(Array):
                 else:
                     cvalue = self.dtype._type_(value)
         except Exception as e:
-            raise ValueError(f"Failed to convert the value to the array data type: {e}")
+            raise ValueError(f"Failed to convert the value to the array data type: {e}") from e
 
         cvalue_ptr = ctypes.pointer(cvalue)
         cvalue_size = ctypes.sizeof(cvalue)
@@ -2652,7 +2649,7 @@ class noncontiguous_array_base(Generic[T]):
                 else:
                     cvalue = self.dtype._type_(value)
         except Exception as e:
-            raise ValueError(f"Failed to convert the value to the array data type: {e}")
+            raise ValueError(f"Failed to convert the value to the array data type: {e}") from e
 
         cvalue_ptr = ctypes.pointer(cvalue)
         cvalue_size = ctypes.sizeof(cvalue)
@@ -2865,7 +2862,6 @@ class Bvh:
             )
 
     def __del__(self):
-
         if not self.id:
             return
 
@@ -2954,7 +2950,6 @@ class Mesh:
             )
 
     def __del__(self):
-
         if not self.id:
             return
 
@@ -3011,7 +3006,6 @@ class Volume:
             raise RuntimeError("Failed to create volume from input array")
 
     def __del__(self):
-
         if not self.id:
             return
 
@@ -4123,7 +4117,6 @@ class HashGrid:
         self.reserved = True
 
     def reserve(self, num_points):
-
         if self.device.is_cpu:
             self.runtime.core.hash_grid_reserve_host(self.id, num_points)
         else:
@@ -4131,7 +4124,6 @@ class HashGrid:
         self.reserved = True
 
     def __del__(self):
-
         if not self.id:
             return
 
@@ -4145,7 +4137,6 @@ class HashGrid:
 
 class MarchingCubes:
     def __init__(self, nx: int, ny: int, nz: int, max_verts: int, max_tris: int, device=None):
-
         self.id = 0
 
         self.runtime = warp.context.runtime
@@ -4177,7 +4168,6 @@ class MarchingCubes:
         self.id = ctypes.c_uint64(self.alloc(self.device.context))
 
     def __del__(self):
-
         if not self.id:
             return
 
@@ -4452,7 +4442,7 @@ def get_signature(arg_types, func_name=None, arg_names=None):
                 func_str = f" of function {func_name}"
             else:
                 func_str = ""
-            raise RuntimeError(f"Failed to determine type code for argument {arg_str}{func_str}: {e}")
+            raise RuntimeError(f"Failed to determine type code for argument {arg_str}{func_str}: {e}") from e
 
     return "_".join(type_codes)
 

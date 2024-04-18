@@ -10,11 +10,10 @@
 import traceback
 
 import omni.graph.core as og
-import warp as wp
-
 import omni.warp.nodes
 from omni.warp.nodes.ogn.OgnSampleProceduralVolumeDatabase import OgnSampleProceduralVolumeDatabase
 
+import warp as wp
 
 MIN_RES = 8
 

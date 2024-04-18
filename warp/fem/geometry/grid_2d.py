@@ -1,10 +1,11 @@
+from typing import Optional
+
 import warp as wp
-
-from warp.fem.types import ElementIndex, Coords, Sample, make_free_sample, OUTSIDE
 from warp.fem.cache import cached_arg_value
+from warp.fem.types import OUTSIDE, Coords, ElementIndex, Sample, make_free_sample
 
+from .element import LinearEdge, Square
 from .geometry import Geometry
-from .element import Square, LinearEdge
 
 
 @wp.struct
@@ -22,7 +23,7 @@ class Grid2D(Geometry):
     Permutation = wp.types.matrix(shape=(2, 2), dtype=int)
     ROTATION = wp.constant(Permutation(0, 1, 1, 0))
 
-    def __init__(self, res: wp.vec2i, bounds_lo: wp.vec2 = wp.vec2(0.0), bounds_hi: wp.vec2 = wp.vec2(1.0)):
+    def __init__(self, res: wp.vec2i, bounds_lo: Optional[wp.vec2] = None, bounds_hi: Optional[wp.vec2] = None):
         """Constructs a dense 2D grid
 
         Args:
@@ -30,6 +31,12 @@ class Grid2D(Geometry):
             bounds_lo: Position of the lower bound of the axis-aligned grid
             bounds_up: Position of the upper bound of the axis-aligned grid
         """
+
+        if bounds_lo is None:
+            bounds_lo = wp.vec2(0.0)
+
+        if bounds_hi is None:
+            bounds_hi = wp.vec2(1.0)
 
         self.bounds_lo = bounds_lo
         self.bounds_hi = bounds_hi
