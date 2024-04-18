@@ -3269,8 +3269,8 @@ class ModelBuilder:
             pos: The initial position of the particle
             vel: The initial velocity of the particle
             mass: The mass of the particle
+            radius: The radius of the particle used in collision handling. If None, the radius is set to the default value (:attr:`default_particle_radius`).
             flags: The flags that control the dynamical behavior of the particle, see PARTICLE_FLAG_* constants
-            radius: The radius of the particle used in collision handling. If None, the radius is set to the default value (default_particle_radius).
 
         Note:
             Set the mass equal to zero to create a 'kinematic' particle that does is not subject to dynamics.
@@ -4061,8 +4061,8 @@ class ModelBuilder:
             pos: The position of the solid in world space
             rot: The orientation of the solid in world space
             vel: The velocity of the solid in world space
-            vertices: A list of vertex positions
-            indices: A list of tetrahedron indices, 4 entries per-element
+            vertices: A list of vertex positions, array of 3D points
+            indices: A list of tetrahedron indices, 4 entries per-element, flattened array
             density: The density per-area of the mesh
             k_mu: The first elastic Lame parameter
             k_lambda: The second elastic Lame parameter
@@ -4083,9 +4083,11 @@ class ModelBuilder:
             else:
                 del faces[key]
 
+        pos = wp.vec3(pos[0], pos[1], pos[2])
         # add particles
         for v in vertices:
-            p = wp.quat_rotate(rot, v * scale) + np.array(pos)
+            v = wp.vec3(v[0], v[1], v[2])
+            p = wp.quat_rotate(rot, v * scale) + pos
 
             self.add_particle(p, vel, 0.0)
 
