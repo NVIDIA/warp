@@ -250,7 +250,8 @@ linux-x86_64 test release:
     - $PYTHON -m pip install --upgrade pip
     - $PYTHON -m pip install usd-core coverage[toml]
     - $PYTHON -m pip install torch --index-url https://download.pytorch.org/whl/cu118
-    - $PYTHON -m pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    - $PYTHON -m pip install --upgrade jax==0.3.25
+    - $PYTHON -m pip install --upgrade jaxlib==0.3.25+cuda11.cudnn82 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
     - $PYTHON -m pip install -e .
     # Kill switch for P2P tests in case of misbehaving agents
     - export WARP_DISABLE_P2P_TESTS=1
@@ -389,7 +390,8 @@ linux-x86_64 test debug:
     - $PYTHON -m pip install --upgrade pip
     - $PYTHON -m pip install usd-core
     - $PYTHON -m pip install torch --index-url https://download.pytorch.org/whl/cu118
-    - $PYTHON -m pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    - $PYTHON -m pip install --upgrade jax==0.3.25
+    - $PYTHON -m pip install --upgrade jaxlib==0.3.25+cuda11.cudnn82 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
     - $PYTHON -m pip install -e .
     # Kill switch for P2P tests in case of misbehaving agents
     - export WARP_DISABLE_P2P_TESTS=1
