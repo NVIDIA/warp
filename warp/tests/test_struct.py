@@ -438,6 +438,35 @@ def test_nested_vec_assignment(test, device):
 
 
 @wp.struct
+class Bar2:
+    z: wp.array(dtype=float)
+
+
+@wp.struct
+class Foo2:
+    x: wp.array(dtype=float)
+    y: Bar2
+
+
+def test_convert_to_device(test, device):
+    foo = Foo2()
+    foo.x = wp.array((1.23, 2.34), dtype=float, device=device)
+    foo.y = Bar2()
+    foo.y.z = wp.array((3.45, 4.56), dtype=float, device=device)
+
+    if device.is_cpu and wp.is_cuda_available():
+        dst_device = "cuda:0"
+    elif device.is_cuda and wp.is_cpu_available():
+        dst_device = "cpu"
+    else:
+        return
+
+    result = foo.to(dst_device)
+    assert result.x.device == dst_device
+    assert result.y.z.device == dst_device
+
+
+@wp.struct
 class EmptyNest1:
     a: Empty
     z: int
@@ -602,6 +631,7 @@ add_kernel_test(TestStruct, kernel=test_return, name="test_return", dim=1, input
 add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
 add_function_test(TestStruct, "test_nested_array_struct", test_nested_array_struct, devices=devices)
 add_function_test(TestStruct, "test_nested_vec_assignment", test_nested_vec_assignment, devices=devices)
+add_function_test(TestStruct, "test_convert_to_device", test_convert_to_device, devices=devices)
 add_function_test(TestStruct, "test_nested_empty_struct", test_nested_empty_struct, devices=devices)
 add_function_test(TestStruct, "test_struct_math_conversions", test_struct_math_conversions, devices=devices)
 add_function_test(
