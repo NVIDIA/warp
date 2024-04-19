@@ -209,7 +209,7 @@ def test_copy_adjoint(test, device):
     with tape:
         wp.copy(state_out, state_in)
 
-    grads = {state_out: wp.from_numpy(np.array([1.0, 1.0, 1.0]).astype(np.float32), dtype=wp.float32)}
+    grads = {state_out: wp.from_numpy(np.array([1.0, 1.0, 1.0]).astype(np.float32), dtype=wp.float32, device=device)}
     tape.backward(grads=grads)
 
     assert_np_equal(state_in.grad.numpy(), np.array([1.0, 1.0, 1.0]).astype(np.float32))
