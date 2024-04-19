@@ -438,7 +438,7 @@ def test_clone_adjoint(test, device):
     with tape:
         state_out = wp.clone(state_in)
 
-    grads = {state_out: wp.from_numpy(np.array([1.0, 1.0, 1.0]).astype(np.float32), dtype=wp.float32)}
+    grads = {state_out: wp.from_numpy(np.array([1.0, 1.0, 1.0]).astype(np.float32), dtype=wp.float32, device=device)}
     tape.backward(grads=grads)
 
     assert_np_equal(state_in.grad.numpy(), np.array([1.0, 1.0, 1.0]).astype(np.float32))
@@ -454,7 +454,7 @@ def test_assign_adjoint(test, device):
     with tape:
         state_out.assign(state_in)
 
-    grads = {state_out: wp.from_numpy(np.array([1.0, 1.0, 1.0]).astype(np.float32), dtype=wp.float32)}
+    grads = {state_out: wp.from_numpy(np.array([1.0, 1.0, 1.0]).astype(np.float32), dtype=wp.float32, device=device)}
     tape.backward(grads=grads)
 
     assert_np_equal(state_in.grad.numpy(), np.array([1.0, 1.0, 1.0]).astype(np.float32))
@@ -2152,11 +2152,11 @@ def test_array_of_structs_roundtrip(test, device):
 def test_array_from_numpy(test, device):
     arr = np.array((1.0, 2.0, 3.0), dtype=float)
 
-    result = wp.from_numpy(arr)
+    result = wp.from_numpy(arr, device=device)
     expected = wp.array((1.0, 2.0, 3.0), dtype=wp.float32, shape=(3,))
     assert_np_equal(result.numpy(), expected.numpy())
 
-    result = wp.from_numpy(arr, dtype=wp.vec3)
+    result = wp.from_numpy(arr, dtype=wp.vec3, device=device)
     expected = wp.array(((1.0, 2.0, 3.0),), dtype=wp.vec3, shape=(1,))
     assert_np_equal(result.numpy(), expected.numpy())
 
@@ -2164,15 +2164,15 @@ def test_array_from_numpy(test, device):
 
     arr = np.array(((1.0, 2.0, 3.0), (4.0, 5.0, 6.0)), dtype=float)
 
-    result = wp.from_numpy(arr)
+    result = wp.from_numpy(arr, device=device)
     expected = wp.array(((1.0, 2.0, 3.0), (4.0, 5.0, 6.0)), dtype=wp.vec3, shape=(2,))
     assert_np_equal(result.numpy(), expected.numpy())
 
-    result = wp.from_numpy(arr, dtype=wp.float32)
+    result = wp.from_numpy(arr, dtype=wp.float32, device=device)
     expected = wp.array(((1.0, 2.0, 3.0), (4.0, 5.0, 6.0)), dtype=wp.float32, shape=(2, 3))
     assert_np_equal(result.numpy(), expected.numpy())
 
-    result = wp.from_numpy(arr, dtype=wp.float32, shape=(6,))
+    result = wp.from_numpy(arr, dtype=wp.float32, shape=(6,), device=device)
     expected = wp.array((1.0, 2.0, 3.0, 4.0, 5.0, 6.0), dtype=wp.float32, shape=(6,))
     assert_np_equal(result.numpy(), expected.numpy())
 
@@ -2196,7 +2196,7 @@ def test_array_from_numpy(test, device):
         dtype=float,
     )
 
-    result = wp.from_numpy(arr)
+    result = wp.from_numpy(arr, device=device)
     expected = wp.array(
         (
             (
@@ -2217,7 +2217,7 @@ def test_array_from_numpy(test, device):
     )
     assert_np_equal(result.numpy(), expected.numpy())
 
-    result = wp.from_numpy(arr, dtype=wp.float32)
+    result = wp.from_numpy(arr, dtype=wp.float32, device=device)
     expected = wp.array(
         (
             (
@@ -2238,7 +2238,7 @@ def test_array_from_numpy(test, device):
     )
     assert_np_equal(result.numpy(), expected.numpy())
 
-    result = wp.from_numpy(arr, dtype=wp.vec4).reshape((8,))  # Reshape from (2, 4)
+    result = wp.from_numpy(arr, dtype=wp.vec4, device=device).reshape((8,))  # Reshape from (2, 4)
     expected = wp.array(
         (
             (1.0, 2.0, 3.0, 4.0),
@@ -2255,7 +2255,7 @@ def test_array_from_numpy(test, device):
     )
     assert_np_equal(result.numpy(), expected.numpy())
 
-    result = wp.from_numpy(arr, dtype=wp.float32, shape=(32,))
+    result = wp.from_numpy(arr, dtype=wp.float32, shape=(32,), device=device)
     expected = wp.array(
         (
             1.0,
