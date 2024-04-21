@@ -9,6 +9,7 @@ repository="https://github.com/nvidia/warp"
 category = "core"
 keywords = ["warp", "simulation"]
 changelog="docs/CHANGELOG.md"
+support_level = "Enterprise"
 
 preview_image = "data/preview.png"
 icon = "data/icon.png"
