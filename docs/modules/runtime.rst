@@ -275,20 +275,6 @@ The following scalar storage types are supported for array structures:
 
 Warp supports ``float`` and ``int`` as aliases for ``wp.float32`` and ``wp.int32`` respectively.
 
-Positive and negative infinity can be used with floating-point types
-in Warp using the ``wp.inf`` constant:
-
-.. code-block:: python
-
-    @wp.kernel
-    def test_infinity(outputs: wp.array(dtype=wp.float32)):
-        outputs[0] = wp.float32(wp.inf)        # inf
-        outputs[1] = wp.float32(-wp.inf)       # -inf
-        outputs[2] = wp.float32(2.0 * wp.inf)  # inf
-        outputs[3] = wp.float32(-2.0 * wp.inf) # -inf
-        outputs[4] = wp.float32(2.0 / 0.0)     # inf
-        outputs[5] = wp.float32(-2.0 / 0.0)    # -inf
-
 .. _vec:
 
 Vectors
@@ -725,6 +711,42 @@ Constants are defined using the ``wp.constant()`` function. An example is shown 
 
 .. autoclass:: constant
 
+Predefined Constants
+####################
+
+For convenience, Warp has a number of predefined mathematical constants that
+may be used both inside and outside Warp kernels.
+The constants in the following table also have lowercase versions defined,
+e.g. ``wp.E`` and ``wp.e`` are equivalent.
+
+================ =========================
+Name             Value
+================ =========================
+wp.E             2.71828182845904523536
+wp.LOG2E         1.44269504088896340736
+wp.LOG10E        0.43429448190325182765
+wp.LN2           0.69314718055994530942
+wp.LN10          2.30258509299404568402
+wp.PHI           1.61803398874989484820
+wp.PI            3.14159265358979323846
+wp.HALF_PI       1.57079632679489661923
+wp.TAU           6.28318530717958647692
+wp.INF           math.inf
+================ =========================
+
+The following example shows how positive and negative infinity
+can be used with floating-point types in Warp using the ``wp.inf`` constant:
+
+.. code-block:: python
+
+    @wp.kernel
+    def test_infinity(outputs: wp.array(dtype=wp.float32)):
+        outputs[0] = wp.float32(wp.inf)        # inf
+        outputs[1] = wp.float32(-wp.inf)       # -inf
+        outputs[2] = wp.float32(2.0 * wp.inf)  # inf
+        outputs[3] = wp.float32(-2.0 * wp.inf) # -inf
+        outputs[4] = wp.float32(2.0 / 0.0)     # inf
+        outputs[5] = wp.float32(-2.0 / 0.0)    # -inf
 
 Operators
 ----------
