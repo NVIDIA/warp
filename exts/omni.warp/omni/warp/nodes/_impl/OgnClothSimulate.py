@@ -548,9 +548,7 @@ def compute(db: OgnClothSimulateDatabase, device: wp.context.Device) -> None:
     # Visualize the spring constraints as curves.
     if db.inputs.springVisualize and db.inputs.springIndexPairs.size > 0:
         spring_indices = omni.warp.nodes.from_omni_graph(
-            db.inputs.springIndexPairs,
-            dtype=int,
-            shape=(db.inputs.springIndexPairs.size,)
+            db.inputs.springIndexPairs, dtype=int, shape=(db.inputs.springIndexPairs.size,)
         )
 
         # Create a new set of geometry curves within the output bundle.
