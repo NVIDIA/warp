@@ -54,7 +54,7 @@ class Example:
         self.cam_pos = (0.0, 1.0, 2.0)
 
         asset_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
-        mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath("/bunny/bunny"))
+        mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath("/root/bunny"))
 
         points = np.array(mesh_geom.GetPointsAttr().Get())
         indices = np.array(mesh_geom.GetFaceVertexIndicesAttr().Get())

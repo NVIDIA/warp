@@ -157,8 +157,7 @@ class Example:
                 name="collision",
                 path=os.path.join(warp.examples.get_asset_directory(), "rocks.usd"),
                 pos=wp.vec3(0.0, 0.0, 0.0),
-                rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), -0.5 * math.pi)
-                * wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), math.pi),
+                rot=wp.quat(0.0, 0.0, 0.0, 1.0),
                 scale=wp.vec3(0.01, 0.01, 0.01),
             )
 

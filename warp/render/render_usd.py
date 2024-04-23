@@ -240,13 +240,13 @@ class UsdRenderer:
         mesh.CreateDoubleSidedAttr().Set(True)
 
         if self.up_axis == "X":
-            points = ((0.0, -size, -size), (0.0, size, -size), (0.0, size, size), (0.0, -size, size))
+            points = ((0.0, size, -size), (0.0, -size, -size), (0.0, size, size), (0.0, -size, size))
             normals = ((1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 0.0))
         elif self.up_axis == "Y":
-            points = ((-size, 0.0, -size), (size, 0.0, -size), (size, 0.0, size), (-size, 0.0, size))
+            points = ((-size, 0.0, -size), (size, 0.0, -size), (-size, 0.0, size), (size, 0.0, size))
             normals = ((0.0, 1.0, 0.0), (0.0, 1.0, 0.0), (0.0, 1.0, 0.0), (0.0, 1.0, 0.0))
         elif self.up_axis == "Z":
-            points = ((-size, -size, 0.0), (size, -size, 0.0), (size, size, 0.0), (-size, size, 0.0))
+            points = ((-size, size, 0.0), (size, size, 0.0), (-size, -size, 0.0), (size, -size, 0.0))
             normals = ((0.0, 0.0, 1.0), (0.0, 0.0, 1.0), (0.0, 0.0, 1.0), (0.0, 0.0, 1.0))
         if plane is not None:
             normal = np.array(plane[:3])
@@ -266,7 +266,7 @@ class UsdRenderer:
             points = [wp.transform_point(tf, wp.vec3(p)) for p in points]
             normals = [wp.transform_vector(tf, wp.vec3(n)) for n in normals]
         counts = (4,)
-        indices = [0, 1, 2, 3]
+        indices = [0, 2, 3, 1]
 
         mesh.GetPointsAttr().Set(points)
         mesh.GetNormalsAttr().Set(normals)
@@ -532,8 +532,8 @@ class UsdRenderer:
 
         return prim_path
 
-    def render_ref(self, name: str, path: str, pos: tuple, rot: tuple, scale: tuple):
-        from pxr import UsdGeom
+    def render_ref(self, name: str, path: str, pos: tuple, rot: tuple, scale: tuple, color: tuple = None):
+        from pxr import Gf, Usd, UsdGeom
 
         ref_path = "/root/" + name
 
@@ -545,6 +545,13 @@ class UsdRenderer:
 
         # update transform
         _usd_set_xform(ref, pos, rot, scale, self.time)
+
+        if color is not None:
+            it = iter(Usd.PrimRange(ref.GetPrim()))
+            for prim in it:
+                if prim.IsA(UsdGeom.Gprim):
+                    UsdGeom.Gprim(prim).GetDisplayColorAttr().Set([Gf.Vec3f(color)], self.time)
+                    it.PruneChildren()
 
     def render_mesh(
         self,
