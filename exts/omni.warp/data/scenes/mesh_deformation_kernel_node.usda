@@ -101,8 +101,8 @@ def compute(inputs: Inputs, outputs: Outputs):\r
     displacement = wp.vec3(0.0, wp.sin(inputs.time + pos[0] * 0.1) * 10.0, 0.0)\r
     outputs.points[tid] = pos + displacement\r
 """
-            custom token inputs:device = "cuda:0" (
-                allowedTokens = ["cpu", "cuda:0"]
+            custom token inputs:device = "cuda" (
+                allowedTokens = ["cpu", "cuda"]
             )
             custom int inputs:dim
             custom int inputs:dim1 = 1

@@ -149,7 +149,7 @@ class OgnSampleProceduralVolume:
 
     @staticmethod
     def compute(db: OgnSampleProceduralVolumeDatabase) -> None:
-        device = wp.get_device("cuda:0")
+        device = omni.warp.nodes.device_get_cuda_compute()
 
         try:
             with wp.ScopedDevice(device):

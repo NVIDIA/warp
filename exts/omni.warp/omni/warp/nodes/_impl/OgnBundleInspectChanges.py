@@ -14,6 +14,7 @@ import numpy as np
 import omni.graph.core as og
 import warp as wp
 
+import omni.warp.nodes
 from omni.warp.nodes.ogn.OgnBundleInspectChangesDatabase import OgnBundleInspectChangesDatabase
 
 
@@ -89,7 +90,7 @@ class OgnBundleInspectChanges:
 
     @staticmethod
     def compute(db: OgnBundleInspectChangesDatabase) -> None:
-        device = wp.get_device("cuda:0")
+        device = omni.warp.nodes.device_get_cuda_compute()
 
         try:
             with wp.ScopedDevice(device):
