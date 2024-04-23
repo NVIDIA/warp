@@ -493,6 +493,7 @@ check generated files:
       optional: true
   stage: deploy
   artifacts:
+    when: on_failure
     expose_as: 'Generated source files'
     paths:
       - warp/native/exports.h
@@ -505,12 +506,10 @@ check generated files:
   script:
     - >
       git diff --exit-code warp/stubs.py docs/modules/functions.rst ||
-      (echo "Please run build_docs.py (or download job artifacts) and add modified files to your merge request." && false)
+      (echo "Please run build_docs.py (or download from https://gitlab-master.nvidia.com/omniverse/warp/-/jobs/$CI_JOB_ID/artifacts/browse) and add modified files to your merge request." && false)
     - >
       git diff --exit-code warp/native/exports.h ||
-      (echo "Please run build_lib.py  (or download job artifacts) and add warp/native/exports.h to your merge request." && false)
-  after_script:
-    - echo "Generated files can be downloaded from https://gitlab-master.nvidia.com/omniverse/warp/-/jobs/$CI_JOB_ID/artifacts/browse"
+      (echo "Please run build_lib.py  (or download from https://gitlab-master.nvidia.com/omniverse/warp/-/jobs/$CI_JOB_ID/artifacts/browse) and add warp/native/exports.h to your merge request." && false)
 
 # Build documentation and publish on gitlab-master
 # This only runs in the default branch pipeline. The "pages" name is special for GitLab.
