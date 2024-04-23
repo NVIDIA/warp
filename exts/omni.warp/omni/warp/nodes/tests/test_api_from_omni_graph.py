@@ -380,7 +380,7 @@ def compute(db: og.Database) -> None:
 class FromOmniGraphNode:
     @staticmethod
     def compute(db: og.Database) -> bool:
-        device = wp.get_device(db.inputs.device)
+        device = omni.warp.nodes.device_get_cuda_compute()
 
         try:
             with wp.ScopedDevice(device):
@@ -437,6 +437,6 @@ class TestApiFromOmniGraph(ogts.OmniGraphTestCase):
         await og.Controller.evaluate(self.graph)
         self.assertTrue(success_attr.get())
 
-        device_attr.set("cuda:0")
+        device_attr.set("cuda")
         await og.Controller.evaluate(self.graph)
         self.assertTrue(success_attr.get())

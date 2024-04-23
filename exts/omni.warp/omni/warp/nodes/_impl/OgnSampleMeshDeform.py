@@ -76,7 +76,7 @@ class OgnSampleMeshDeform:
 
     @staticmethod
     def compute(db: OgnSampleMeshDeformDatabase) -> None:
-        device = wp.get_device("cuda:0")
+        device = omni.warp.nodes.device_get_cuda_compute()
 
         try:
             with wp.ScopedDevice(device):

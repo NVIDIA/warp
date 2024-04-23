@@ -16,7 +16,7 @@
                 "type": "token",
                 "description": "Device to launch on.",
                 "uiName": "Device",
-                "default": "cuda:0"
+                "default": "cuda"
             },
             "dimSource": {
                 "type": "token",
