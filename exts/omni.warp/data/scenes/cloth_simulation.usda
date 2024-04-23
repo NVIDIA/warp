@@ -170,7 +170,9 @@ def Xform "World"
             custom float inputs:clothEdgeDampingStiffness = 0
             custom float inputs:clothTriAreaStiffness = 1000000
             custom float inputs:clothTriDampingStiffness = 100
+            custom float inputs:clothTriDrag = 0
             custom float inputs:clothTriElasticStiffness = 1000000
+            custom float inputs:clothTriLift = 0
             custom rel inputs:collider
             prepend rel inputs:collider = </World/ActionGraph/read_collider/outputs_primsBundle>
             custom float inputs:colliderContactDistance = 5

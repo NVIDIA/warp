@@ -117,6 +117,24 @@
                     "min": 0.0
                 }
             },
+            "clothTriDrag": {
+                "type": "float",
+                "description": "Triangle drag force. Multiple of the global scale value.",
+                "uiName": "Cloth Triangle Drag",
+                "default": 0.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "clothTriLift": {
+                "type": "float",
+                "description": "Triangle lift force. Multiple of the global scale value.",
+                "uiName": "Cloth Triangle Lift",
+                "default": 0.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
             "clothEdgeBendingStiffness": {
                 "type": "float",
                 "description": "Edge bending stiffness. Multiple of the global scale value.",
@@ -160,6 +178,47 @@
                     "min": 1.0
                 }
             },
+            "springIndexPairs": {
+                "type": "int[2][]",
+                "description": "Vertex indices where each pair represents a spring constraint.",
+                "uiName": "Spring Index Pairs"
+            },
+            "springElasticStiffness": {
+                "type": "float",
+                "description": "Spring elastic stiffness. Multiple of the global scale value.",
+                "uiName": "Spring Elastic Stiffness",
+                "default": 1000.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "springDampingStiffness": {
+                "type": "float",
+                "description": "Spring elastic stiffness. Multiple of the global scale value.",
+                "uiName": "Spring Damping Stiffness",
+                "default": 1.0,
+                "metadata": {
+                    "min": 0.0
+                }
+            },
+            "springVisualize": {
+                "type": "bool",
+                "description": "Whether to visualize the spring constraints.",
+                "uiName": "Spring Visualize",
+                "default": false
+            },
+            "springVisualizeWidth": {
+                "type": "float",
+                "description": "Visualization width for the spring constraints.",
+                "uiName": "Spring Visualize Width",
+                "default": 0.5
+            },
+            "springVisualizeColor": {
+                "type": "colorf[3]",
+                "description": "Visualization colour for the spring constraints.",
+                "uiName": "Spring Visualize Color",
+                "default": [10.0, 10.0, 0.0]
+            },
             "groundEnabled": {
                 "type": "bool",
                 "description": "Whether to add a ground collider.",
@@ -186,6 +245,12 @@
                 "type": "bundle",
                 "description": "Output particles geometry.",
                 "uiName": "Cloth",
+                "memoryType": "cuda"
+            },
+            "visualization": {
+                "type": "bundle",
+                "description": "Output visualization.",
+                "uiName": "Visualization",
                 "memoryType": "cuda"
             }
         }
