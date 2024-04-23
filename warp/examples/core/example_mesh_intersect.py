@@ -86,11 +86,11 @@ class Example:
         self.query_count = 1024
         self.has_queried = False
 
-        self.path_0 = os.path.join(warp.examples.get_asset_directory(), "cube.usda")
-        self.path_1 = os.path.join(warp.examples.get_asset_directory(), "sphere.usda")
+        self.path_0 = os.path.join(warp.examples.get_asset_directory(), "cube.usd")
+        self.path_1 = os.path.join(warp.examples.get_asset_directory(), "sphere.usd")
 
-        self.mesh_0 = self.load_mesh(self.path_0, "/Cube/Cube_001")
-        self.mesh_1 = self.load_mesh(self.path_1, "/Sphere/Sphere")
+        self.mesh_0 = self.load_mesh(self.path_0, "/root/cube")
+        self.mesh_1 = self.load_mesh(self.path_1, "/root/sphere")
 
         self.query_num_faces = int(len(self.mesh_0.indices) / 3)
         self.query_num_points = len(self.mesh_0.points)

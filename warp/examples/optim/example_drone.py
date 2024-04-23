@@ -563,15 +563,15 @@ class Example:
                 drone_xform = UsdGeom.Xform(drone_prim)
                 drone_xform.AddTranslateOp().Set((0.0, -0.05, 0.0))
                 drone_xform.AddRotateYOp().Set(45.0)
-                drone_xform.AddScaleOp().Set((drone_size * 0.2,) * 3)
+                drone_xform.AddScaleOp().Set((drone_size * 20.0,) * 3)
 
                 # Get the propellers to spin
-                for turning_direction in ("CW", "CCW"):
+                for turning_direction in ("cw", "ccw"):
                     spin = 100.0 * 360.0 * self.frame_count / self.fps
-                    spin = spin if turning_direction == "CCW" else -spin
-                    for side in ("Back", "Front"):
+                    spin = spin if turning_direction == "ccw" else -spin
+                    for side in ("back", "front"):
                         prop_prim = self.renderer.stage.OverridePrim(
-                            f"{drone_prim.GetPath()}/Propeller{turning_direction}{side}"
+                            f"{drone_prim.GetPath()}/propeller_{turning_direction}_{side}"
                         )
                         prop_xform = UsdGeom.Xform(prop_prim)
                         rot = prop_xform.AddRotateYOp()

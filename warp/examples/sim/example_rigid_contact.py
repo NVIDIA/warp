@@ -89,7 +89,7 @@ class Example:
             builder.body_qd[i] = (0.0, 2.0, 10.0, 0.0, 0.0, 0.0)
 
         # meshes
-        bunny = self.load_mesh(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"), "/bunny/bunny")
+        bunny = self.load_mesh(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"), "/root/bunny")
         for i in range(self.num_bodies):
             b = builder.add_body(
                 origin=wp.transform(

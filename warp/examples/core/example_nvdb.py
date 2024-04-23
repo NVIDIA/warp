@@ -15,7 +15,6 @@
 #
 ###########################################################################
 
-import math
 import os
 
 import numpy as np
@@ -59,7 +58,7 @@ def simulate(
     x = positions[tid]
     v = velocities[tid]
 
-    v = v + wp.vec3(0.0, 0.0, -980.0) * dt - v * 0.1 * dt
+    v = v + wp.vec3(0.0, -9.8, 0.0) * dt - v * 0.1 * dt
     xpred = x + v * dt
     xpred_local = wp.volume_world_to_index(volume, xpred)
 
@@ -76,8 +75,8 @@ def simulate(
         xpred = xpred - n * err
 
     # ground collision
-    if xpred[2] < 0.0:
-        xpred = wp.vec3(xpred[0], xpred[1], 0.0)
+    if xpred[1] < 0.0:
+        xpred = wp.vec3(xpred[0], 0.0, xpred[2])
 
     # pbd update
     v = (xpred - x) * (1.0 / dt)
@@ -100,9 +99,9 @@ class Example:
         self.sim_time = 0.0
         self.sim_timers = {}
 
-        self.sim_margin = 15.0
+        self.sim_margin = 0.15
 
-        init_pos = 1000.0 * (rng.random((self.num_particles, 3)) * 2.0 - 1.0) + np.array((0.0, 0.0, 3000.0))
+        init_pos = 10.0 * (rng.random((self.num_particles, 3)) * 2.0 - 1.0) + np.array((0.0, 30.0, 0.0))
         init_vel = rng.random((self.num_particles, 3))
 
         self.positions = wp.from_numpy(init_pos.astype(np.float32), dtype=wp.vec3)
@@ -119,8 +118,8 @@ class Example:
         # renderer
         self.renderer = None
         if stage:
-            self.renderer = wp.render.UsdRenderer(stage, up_axis="z")
-            self.renderer.render_ground(size=10000.0)
+            self.renderer = wp.render.UsdRenderer(stage)
+            self.renderer.render_ground(size=100.0)
 
     def step(self):
         with wp.ScopedTimer("step", detailed=False, dict=self.sim_timers):
@@ -149,8 +148,9 @@ class Example:
                 name="collision",
                 path=os.path.join(warp.examples.get_asset_directory(), "rocks.usd"),
                 pos=wp.vec3(0.0, 0.0, 0.0),
-                rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), math.pi),
+                rot=wp.quat(0.0, 0.0, 0.0, 1.0),
                 scale=wp.vec3(1.0, 1.0, 1.0),
+                color=(0.35, 0.55, 0.9),
             )
             self.renderer.render_points(
                 name="points", points=self.positions.numpy(), radius=self.sim_margin, colors=(0.8, 0.3, 0.2)

@@ -95,7 +95,7 @@ class Example:
         self.sim_margin = 0.1
 
         usd_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
-        usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/bunny/bunny"))
+        usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/root/bunny"))
         usd_scale = 10.0
 
         # create collision mesh

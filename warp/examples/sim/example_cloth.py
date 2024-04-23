@@ -87,7 +87,7 @@ class Example:
             )
 
         usd_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
-        usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/bunny/bunny"))
+        usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/root/bunny"))
 
         mesh_points = np.array(usd_geom.GetPointsAttr().Get())
         mesh_indices = np.array(usd_geom.GetFaceVertexIndicesAttr().Get())

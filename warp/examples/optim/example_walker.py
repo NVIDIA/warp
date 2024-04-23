@@ -38,7 +38,7 @@ def loss_kernel(com: wp.array(dtype=wp.vec3), loss: wp.array(dtype=float)):
     vx = com[tid][0]
     vy = com[tid][1]
     vz = com[tid][2]
-    delta = wp.sqrt(vz * vz) + wp.sqrt(vy * vy) - vx
+    delta = wp.sqrt(vx * vx) + wp.sqrt(vy * vy) - vz
 
     wp.atomic_add(loss, 0, delta)
 
@@ -95,7 +95,7 @@ class Example:
         # bear
         asset_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bear.usd"))
 
-        geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath("/bear"))
+        geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath("/root/bear"))
         points = geom.GetPointsAttr().Get()
 
         xform = geom.ComputeLocalToWorldTransform(0.0)
@@ -108,9 +108,9 @@ class Example:
         # sim model
         builder = wp.sim.ModelBuilder()
         builder.add_soft_mesh(
-            pos=wp.vec3(0.0, 0.0, 0.0),
+            pos=wp.vec3(0.0, 0.5, 0.0),
             rot=wp.quat_identity(),
-            scale=2.0,
+            scale=1.0,
             vel=wp.vec3(0.0, 0.0, 0.0),
             vertices=self.points,
             indices=self.tet_indices,

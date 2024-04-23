@@ -2826,13 +2826,15 @@ Instances: {len(self._instances)}"""
             self.add_shape_instance(name, shape, body, pos, rot, color1=color, color2=color)
         return shape
 
-    def render_ref(self, name: str, path: str, pos: tuple, rot: tuple, scale: tuple):
+    def render_ref(self, name: str, path: str, pos: tuple, rot: tuple, scale: tuple, color: tuple = None):
         """
         Create a reference (instance) with the given name to the given path.
         """
 
         if path in self._instances:
             _, body, shape, _, original_scale, color1, color2 = self._instances[path]
+            if color is not None:
+                color1 = color2 = color
             self.add_shape_instance(name, shape, body, pos, rot, scale or original_scale, color1, color2)
             return
 

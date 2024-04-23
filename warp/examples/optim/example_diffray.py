@@ -313,7 +313,7 @@ class Example:
             rot_array = [0.0, 0.0, 0.0, 1.0]
 
         asset_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
-        mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath("/bunny/bunny"))
+        mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath("/root/bunny"))
 
         points = np.array(mesh_geom.GetPointsAttr().Get())
         indices = np.array(mesh_geom.GetFaceVertexIndicesAttr().Get())
@@ -508,14 +508,12 @@ if __name__ == "__main__":
     import matplotlib.image as img
     import matplotlib.pyplot as plt
 
-    output_dir = os.path.dirname(__file__)
-
     reference_example = Example()
 
     # render target rotation
     reference_example.ray_cast()
     target_image = reference_example.get_image()
-    img.imsave(output_dir + "/example_diffray_target_image.png", target_image)
+    img.imsave("example_diffray_target_image.png", target_image)
 
     # offset mesh rotation
     example = Example(
@@ -533,7 +531,7 @@ if __name__ == "__main__":
             example.render()
 
     final_image = example.get_image()
-    img.imsave(output_dir + "/example_diffray_final_image.png", final_image)
+    img.imsave("example_diffray_final_image.png", final_image)
 
     video = example.get_animation()
-    video.save(output_dir + "/example_diffray_animation.gif", dpi=300, writer=animation.PillowWriter(fps=5))
+    video.save("example_diffray_animation.gif", dpi=300, writer=animation.PillowWriter(fps=5))
