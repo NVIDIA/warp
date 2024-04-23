@@ -581,6 +581,13 @@ class Kernel:
         if len(arg_types) != len(self.adj.arg_types):
             raise RuntimeError(f"Invalid number of arguments for kernel {self.key}")
 
+        # get a type signature from the given argument types
+        sig = warp.types.get_signature(arg_types, func_name=self.key)
+        ovl = self.overloads.get(sig)
+        if ovl is not None:
+            # return the existing overload matching the signature
+            return ovl
+
         arg_names = list(self.adj.arg_types.keys())
         template_types = list(self.adj.arg_types.values())
 
@@ -595,13 +602,6 @@ class Kernel:
                     raise TypeError(
                         f"Kernel {self.key} argument '{arg_names[i]}' type mismatch: expected {template_types[i]}, got {arg_types[i]}"
                     )
-
-        # get a type signature from the given argument types
-        sig = warp.types.get_signature(arg_types, func_name=self.key)
-        if sig in self.overloads:
-            raise RuntimeError(
-                f"Duplicate overload for kernel {self.key}, an overload with the given arguments already exists"
-            )
 
         overload_annotations = dict(zip(arg_names, arg_types))
 
@@ -620,12 +620,7 @@ class Kernel:
 
     def get_overload(self, arg_types):
         sig = warp.types.get_signature(arg_types, func_name=self.key)
-
-        ovl = self.overloads.get(sig)
-        if ovl is not None:
-            return ovl
-        else:
-            return self.add_overload(arg_types)
+        return self.overloads.get(sig)
 
     def get_mangled_name(self):
         if self.sig:
@@ -4261,7 +4256,7 @@ def launch(
         # if it's a generic kernel, infer the required overload from the arguments
         if kernel.is_generic:
             fwd_types = kernel.infer_argument_types(fwd_args)
-            kernel = kernel.get_overload(fwd_types)
+            kernel = kernel.add_overload(fwd_types)
 
         # delay load modules, including new overload if needed
         module = kernel.module
