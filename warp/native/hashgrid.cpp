@@ -49,7 +49,7 @@ void hash_grid_rem_descriptor(uint64_t id)
 }
 
 // implemented in hashgrid.cu
-void hash_grid_rebuild_device(const HashGrid& grid, const wp::vec3* points, int num_points);
+void hash_grid_rebuild_device(const HashGrid& grid, const wp::array_t<wp::vec3>& points);
 
 } // namespace wp
 
@@ -102,9 +102,23 @@ void hash_grid_reserve_host(uint64_t id, int num_points)
     grid->num_points = num_points;
 }
 
-void hash_grid_update_host(uint64_t id, float cell_width, const wp::vec3* points, int num_points)
+void hash_grid_update_host(uint64_t id, float cell_width, const wp::array_t<wp::vec3>* points)
 {
+    // Python enforces this, but let's be defensive anyways
+    if (!points || points->ndim != 1)
+    {
+        fprintf(stderr, "Warp error: Invalid points array passed to %s\n", __FUNCTION__);
+        return;
+    }
+
+    if (!id)
+    {
+        fprintf(stderr, "Warp error: Invalid grid passed to %s\n", __FUNCTION__);
+        return;
+    }
+
     HashGrid* grid = (HashGrid*)(id);
+    int num_points = points->shape[0];
 
     hash_grid_reserve_host(id, num_points);
 
@@ -114,7 +128,8 @@ void hash_grid_update_host(uint64_t id, float cell_width, const wp::vec3* points
     // calculate cell for each position
     for (int i=0; i < num_points; ++i)
     {
-        grid->point_cells[i] = hash_grid_index(*grid, points[i]);
+        const vec3& point = wp::index(*points, i);
+        grid->point_cells[i] = hash_grid_index(*grid, point);
         grid->point_ids[i] = i;
     }
     
@@ -233,9 +248,17 @@ void hash_grid_reserve_device(uint64_t id, int num_points)
     }
 }
 
-void hash_grid_update_device(uint64_t id, float cell_width, const wp::vec3* points, int num_points)
+void hash_grid_update_device(uint64_t id, float cell_width, const wp::array_t<wp::vec3>* points)
 {
-    
+    // Python enforces this, but let's be defensive anyways
+    if (!points || points->ndim != 1)
+    {
+        fprintf(stderr, "Warp error: Invalid points array passed to %s\n", __FUNCTION__);
+        return;
+    }
+
+    int num_points = points->shape[0];
+
     // ensure we have enough memory reserved for update
     // this must be done before retrieving the descriptor
     // below since it may update it
@@ -254,7 +277,7 @@ void hash_grid_update_device(uint64_t id, float cell_width, const wp::vec3* poin
         grid.cell_width = cell_width;
         grid.cell_width_inv = 1.0f / cell_width;
 
-        hash_grid_rebuild_device(grid, points, num_points);
+        hash_grid_rebuild_device(grid, *points);
 
         // update device side grid descriptor
         memcpy_h2d(WP_CURRENT_CONTEXT, (HashGrid*)id, &grid, sizeof(HashGrid));
@@ -269,7 +292,7 @@ void hash_grid_update_device(uint64_t id, float cell_width, const wp::vec3* poin
 namespace wp
 {
 
-void hash_grid_rebuild_device(const HashGrid& grid, const wp::vec3* points, int num_points)
+void hash_grid_rebuild_device(const HashGrid& grid, const wp::array_t<wp::vec3>& points)
 {
 
 }

@@ -84,12 +84,12 @@ extern "C"
     WP_API uint64_t hash_grid_create_host(int dim_x, int dim_y, int dim_z);
     WP_API void hash_grid_reserve_host(uint64_t id, int num_points);
     WP_API void hash_grid_destroy_host(uint64_t id);
-    WP_API void hash_grid_update_host(uint64_t id, float cell_width, const wp::vec3* positions, int num_points);
+    WP_API void hash_grid_update_host(uint64_t id, float cell_width, const wp::array_t<wp::vec3>* points);
 
     WP_API uint64_t hash_grid_create_device(void* context, int dim_x, int dim_y, int dim_z);
     WP_API void hash_grid_reserve_device(uint64_t id, int num_points);
     WP_API void hash_grid_destroy_device(uint64_t id);
-    WP_API void hash_grid_update_device(uint64_t id, float cell_width, const wp::vec3* positions, int num_points);
+    WP_API void hash_grid_update_device(uint64_t id, float cell_width, const wp::array_t<wp::vec3>* points);
 
     WP_API bool cutlass_gemm(void* context, int compute_capability, int m, int n, int k, const char* datatype,
                              const void* a, const void* b, const void* c, void* d, float alpha, float beta,

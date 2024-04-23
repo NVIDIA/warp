@@ -2541,18 +2541,13 @@ class Runtime:
             self.core.hash_grid_create_host.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
             self.core.hash_grid_create_host.restype = ctypes.c_uint64
             self.core.hash_grid_destroy_host.argtypes = [ctypes.c_uint64]
-            self.core.hash_grid_update_host.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
+            self.core.hash_grid_update_host.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p]
             self.core.hash_grid_reserve_host.argtypes = [ctypes.c_uint64, ctypes.c_int]
 
             self.core.hash_grid_create_device.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
             self.core.hash_grid_create_device.restype = ctypes.c_uint64
             self.core.hash_grid_destroy_device.argtypes = [ctypes.c_uint64]
-            self.core.hash_grid_update_device.argtypes = [
-                ctypes.c_uint64,
-                ctypes.c_float,
-                ctypes.c_void_p,
-                ctypes.c_int,
-            ]
+            self.core.hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p]
             self.core.hash_grid_reserve_device.argtypes = [ctypes.c_uint64, ctypes.c_int]
 
             self.core.cutlass_gemm.argtypes = [
