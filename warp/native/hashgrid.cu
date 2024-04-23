@@ -14,13 +14,14 @@
 namespace wp
 {
 
-__global__ void compute_cell_indices(HashGrid grid, const wp::vec3* points, int num_points)
+__global__ void compute_cell_indices(HashGrid grid, wp::array_t<wp::vec3> points)
 {
     const int tid = blockIdx.x*blockDim.x + threadIdx.x;
 
-    if (tid < num_points)
+    if (tid < points.shape[0])
     {
-        grid.point_cells[tid] = hash_grid_index(grid, points[tid]);
+        const vec3& point = wp::index(points, tid);
+        grid.point_cells[tid] = hash_grid_index(grid, point);
         grid.point_ids[tid] = tid;
     }
 }
@@ -55,12 +56,14 @@ __global__ void compute_cell_offsets(int* cell_starts, int* cell_ends, const int
 	}    
 }
 
-void hash_grid_rebuild_device(const wp::HashGrid& grid, const wp::vec3* points, int num_points)
+void hash_grid_rebuild_device(const wp::HashGrid& grid, const wp::array_t<wp::vec3>& points)
 {
     ContextGuard guard(grid.context);
 
-    wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_cell_indices, num_points, (grid, points, num_points));
-    
+    int num_points = points.shape[0];
+
+    wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_cell_indices, num_points, (grid, points));
+
     radix_sort_pairs_device(WP_CURRENT_CONTEXT, grid.point_cells, grid.point_ids, num_points);
 
     const int num_cells = grid.dim_x * grid.dim_y * grid.dim_z;
@@ -73,5 +76,3 @@ void hash_grid_rebuild_device(const wp::HashGrid& grid, const wp::vec3* points, 
 
 
 } // namespace wp
-
-

@@ -29,7 +29,7 @@ struct HashGrid
     int num_points;
     int max_points;
 
-    void* context;
+    void* context{nullptr};
 };
 
 // convert a virtual (world) cell coordinate to a physical one

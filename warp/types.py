@@ -4106,14 +4106,16 @@ class HashGrid:
                             the radius used when performing queries.
         """
 
+        if not warp.types.types_equal(points.dtype, warp.vec3):
+            raise TypeError("Hash grid points should have type warp.vec3")
+
+        if points.ndim > 1:
+            points = points.contiguous().flatten()
+
         if self.device.is_cpu:
-            self.runtime.core.hash_grid_update_host(
-                self.id, radius, ctypes.cast(points.ptr, ctypes.c_void_p), len(points)
-            )
+            self.runtime.core.hash_grid_update_host(self.id, radius, ctypes.byref(points.__ctype__()))
         else:
-            self.runtime.core.hash_grid_update_device(
-                self.id, radius, ctypes.cast(points.ptr, ctypes.c_void_p), len(points)
-            )
+            self.runtime.core.hash_grid_update_device(self.id, radius, ctypes.byref(points.__ctype__()))
         self.reserved = True
 
     def reserve(self, num_points):
