@@ -236,6 +236,33 @@ class StructInstance:
     def __repr__(self):
         return struct_instance_repr_recursive(self, 0)
 
+    def to(self, device):
+        """Copies this struct with all array members moved onto the given device.
+
+        Arrays already living on the desired device are referenced as-is, while
+        arrays being moved are copied.
+        """
+        out = self._cls()
+        stack = [(self, out, k, v) for k, v in self._cls.vars.items()]
+        while stack:
+            src, dst, name, var = stack.pop()
+            value = getattr(src, name)
+            if isinstance(var.type, array):
+                # array_t
+                setattr(dst, name, value.to(device))
+            elif isinstance(var.type, Struct):
+                # nested struct
+                new_struct = value._cls()
+                setattr(dst, name, new_struct)
+                # The call to `setattr()` just above makes a copy of `new_struct`
+                # so we need to reference that new instance of the struct.
+                new_struct = getattr(dst, name)
+                stack.extend((value, new_struct, k, v) for k, v in value._cls.vars.items())
+            else:
+                setattr(dst, name, value)
+
+        return out
+
     # type description used in numpy structured arrays
     def numpy_dtype(self):
         return self._cls.numpy_dtype()
