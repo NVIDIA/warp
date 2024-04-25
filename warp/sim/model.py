@@ -513,6 +513,7 @@ class Model:
         shape_collision_filter_pairs (set): Pairs of shape indices that should not collide
         shape_collision_radius (array): Collision radius of each shape used for bounding sphere broadphase collision checking, shape [shape_count], float
         shape_ground_collision (list): Indicates whether each shape should collide with the ground, shape [shape_count], bool
+        shape_shape_collision (list): Indicates whether each shape should collide with any other shape, shape [shape_count], bool
         shape_contact_pairs (array): Pairs of shape indices that may collide, shape [contact_pair_count, 2], int
         shape_ground_contact_pairs (array): Pairs of shape, ground indices that may collide, shape [ground_contact_pair_count, 2], int
 
@@ -679,6 +680,7 @@ class Model:
         self.shape_collision_filter_pairs = None
         self.shape_collision_radius = None
         self.shape_ground_collision = None
+        self.shape_shape_collision = None
         self.shape_contact_pairs = None
         self.shape_ground_contact_pairs = None
 
@@ -898,6 +900,10 @@ class Model:
         # iterate over collision groups (islands)
         for group, shapes in self.shape_collision_group_map.items():
             for shape_a, shape_b in itertools.product(shapes, shapes):
+                if not self.shape_shape_collision[shape_a]:
+                    continue
+                if not self.shape_shape_collision[shape_b]:
+                    continue
                 if shape_a < shape_b and (shape_a, shape_b) not in filters:
                     contact_pairs.append((shape_a, shape_b))
             if group != -1 and -1 in self.shape_collision_group_map:
@@ -1134,6 +1140,8 @@ class ModelBuilder:
         self.shape_collision_radius = []
         # whether the shape collides with the ground
         self.shape_ground_collision = []
+        # whether the shape collides with any other shape
+        self.shape_shape_collision = []
 
         # filtering to ignore certain collision pairs
         self.shape_collision_filter_pairs = set()
@@ -1460,6 +1468,7 @@ class ModelBuilder:
             "shape_material_restitution",
             "shape_collision_radius",
             "shape_ground_collision",
+            "shape_shape_collision",
             "particle_qd",
             "particle_mass",
             "particle_radius",
@@ -2586,6 +2595,7 @@ class ModelBuilder:
         restitution: float = None,
         thickness: float = None,
         has_ground_collision: bool = False,
+        has_shape_collision: bool = True,
         is_visible: bool = True,
         collision_group: int = -1,
     ):
@@ -2608,7 +2618,8 @@ class ModelBuilder:
             mu: The coefficient of friction (None to use the default value :attr:`default_shape_mu`)
             restitution: The coefficient of restitution (None to use the default value :attr:`default_shape_restitution`)
             thickness: The thickness of the plane (0 by default) for collision handling (None to use the default value :attr:`default_shape_thickness`)
-            has_ground_collision: If True, the mesh will collide with the ground plane if `Model.ground` is True
+            has_ground_collision: If True, the shape will collide with the ground plane if `Model.ground` is True
+            has_shape_collision: If True, the shape will collide with other shapes
             is_visible: Whether the plane is visible
             collision_group: The collision group of the shape
 
@@ -2647,6 +2658,7 @@ class ModelBuilder:
             restitution,
             thickness,
             has_ground_collision=has_ground_collision,
+            has_shape_collision=has_shape_collision,
             is_visible=is_visible,
             collision_group=collision_group,
         )
@@ -2667,6 +2679,7 @@ class ModelBuilder:
         is_solid: bool = True,
         thickness: float = None,
         has_ground_collision: bool = True,
+        has_shape_collision: bool = True,
         collision_group: int = -1,
         is_visible: bool = True,
     ):
@@ -2686,7 +2699,8 @@ class ModelBuilder:
             restitution: The coefficient of restitution (None to use the default value :attr:`default_shape_restitution`)
             is_solid: Whether the sphere is solid or hollow
             thickness: Thickness to use for computing inertia of a hollow sphere, and for collision handling (None to use the default value :attr:`default_shape_thickness`)
-            has_ground_collision: If True, the mesh will collide with the ground plane if `Model.ground` is True
+            has_ground_collision: If True, the shape will collide with the ground plane if `Model.ground` is True
+            has_shape_collision: If True, the shape will collide with other shapes
             collision_group: The collision group of the shape
             is_visible: Whether the sphere is visible
 
@@ -2713,6 +2727,7 @@ class ModelBuilder:
             thickness + radius,
             is_solid,
             has_ground_collision=has_ground_collision,
+            has_shape_collision=has_shape_collision,
             collision_group=collision_group,
             is_visible=is_visible,
         )
@@ -2735,6 +2750,7 @@ class ModelBuilder:
         is_solid: bool = True,
         thickness: float = None,
         has_ground_collision: bool = True,
+        has_shape_collision: bool = True,
         collision_group: int = -1,
         is_visible: bool = True,
     ):
@@ -2756,7 +2772,8 @@ class ModelBuilder:
             restitution: The coefficient of restitution (None to use the default value :attr:`default_shape_restitution`)
             is_solid: Whether the box is solid or hollow
             thickness: Thickness to use for computing inertia of a hollow box, and for collision handling (None to use the default value :attr:`default_shape_thickness`)
-            has_ground_collision: If True, the mesh will collide with the ground plane if `Model.ground` is True
+            has_ground_collision: If True, the shape will collide with the ground plane if `Model.ground` is True
+            has_shape_collision: If True, the shape will collide with other shapes
             collision_group: The collision group of the shape
             is_visible: Whether the box is visible
 
@@ -2782,6 +2799,7 @@ class ModelBuilder:
             thickness,
             is_solid,
             has_ground_collision=has_ground_collision,
+            has_shape_collision=has_shape_collision,
             collision_group=collision_group,
             is_visible=is_visible,
         )
@@ -2804,6 +2822,7 @@ class ModelBuilder:
         is_solid: bool = True,
         thickness: float = None,
         has_ground_collision: bool = True,
+        has_shape_collision: bool = True,
         collision_group: int = -1,
         is_visible: bool = True,
     ):
@@ -2825,7 +2844,8 @@ class ModelBuilder:
             restitution: The coefficient of restitution (None to use the default value :attr:`default_shape_restitution`)
             is_solid: Whether the capsule is solid or hollow
             thickness: Thickness to use for computing inertia of a hollow capsule, and for collision handling (None to use the default value :attr:`default_shape_thickness`)
-            has_ground_collision: If True, the mesh will collide with the ground plane if `Model.ground` is True
+            has_ground_collision: If True, the shape will collide with the ground plane if `Model.ground` is True
+            has_shape_collision: If True, the shape will collide with other shapes
             collision_group: The collision group of the shape
             is_visible: Whether the capsule is visible
 
@@ -2859,6 +2879,7 @@ class ModelBuilder:
             thickness + radius,
             is_solid,
             has_ground_collision=has_ground_collision,
+            has_shape_collision=has_shape_collision,
             collision_group=collision_group,
             is_visible=is_visible,
         )
@@ -2881,6 +2902,7 @@ class ModelBuilder:
         is_solid: bool = True,
         thickness: float = None,
         has_ground_collision: bool = True,
+        has_shape_collision: bool = True,
         collision_group: int = -1,
         is_visible: bool = True,
     ):
@@ -2902,7 +2924,8 @@ class ModelBuilder:
             restitution: The coefficient of restitution (None to use the default value :attr:`default_shape_restitution`)
             is_solid: Whether the cylinder is solid or hollow
             thickness: Thickness to use for computing inertia of a hollow cylinder, and for collision handling (None to use the default value :attr:`default_shape_thickness`)
-            has_ground_collision: If True, the mesh will collide with the ground plane if `Model.ground` is True
+            has_ground_collision: If True, the shape will collide with the ground plane if `Model.ground` is True
+            has_shape_collision: If True, the shape will collide with other shapes
             collision_group: The collision group of the shape
             is_visible: Whether the cylinder is visible
 
@@ -2938,6 +2961,7 @@ class ModelBuilder:
             thickness,
             is_solid,
             has_ground_collision=has_ground_collision,
+            has_shape_collision=has_shape_collision,
             collision_group=collision_group,
             is_visible=is_visible,
         )
@@ -2960,6 +2984,7 @@ class ModelBuilder:
         is_solid: bool = True,
         thickness: float = None,
         has_ground_collision: bool = True,
+        has_shape_collision: bool = True,
         collision_group: int = -1,
         is_visible: bool = True,
     ):
@@ -2981,7 +3006,8 @@ class ModelBuilder:
             restitution: The coefficient of restitution (None to use the default value :attr:`default_shape_restitution`)
             is_solid: Whether the cone is solid or hollow
             thickness: Thickness to use for computing inertia of a hollow cone, and for collision handling (None to use the default value :attr:`default_shape_thickness`)
-            has_ground_collision: If True, the mesh will collide with the ground plane if `Model.ground` is True
+            has_ground_collision: If True, the shape will collide with the ground plane if `Model.ground` is True
+            has_shape_collision: If True, the shape will collide with other shapes
             collision_group: The collision group of the shape
             is_visible: Whether the cone is visible
 
@@ -3017,6 +3043,7 @@ class ModelBuilder:
             thickness,
             is_solid,
             has_ground_collision=has_ground_collision,
+            has_shape_collision=has_shape_collision,
             collision_group=collision_group,
             is_visible=is_visible,
         )
@@ -3038,6 +3065,7 @@ class ModelBuilder:
         is_solid: bool = True,
         thickness: float = None,
         has_ground_collision: bool = True,
+        has_shape_collision: bool = True,
         collision_group: int = -1,
         is_visible: bool = True,
     ):
@@ -3060,7 +3088,8 @@ class ModelBuilder:
             restitution: The coefficient of restitution (None to use the default value :attr:`default_shape_restitution`)
             is_solid: If True, the mesh is solid, otherwise it is a hollow surface with the given wall thickness
             thickness: Thickness to use for computing inertia of a hollow mesh, and for collision handling (None to use the default value :attr:`default_shape_thickness`)
-            has_ground_collision: If True, the mesh will collide with the ground plane if `Model.ground` is True
+            has_ground_collision: If True, the shape will collide with the ground plane if `Model.ground` is True
+            has_shape_collision: If True, the shape will collide with other shapes
             collision_group: The collision group of the shape
             is_visible: Whether the mesh is visible
 
@@ -3095,6 +3124,7 @@ class ModelBuilder:
             thickness,
             is_solid,
             has_ground_collision=has_ground_collision,
+            has_shape_collision=has_shape_collision,
             collision_group=collision_group,
             is_visible=is_visible,
         )
@@ -3116,6 +3146,7 @@ class ModelBuilder:
         is_solid: bool = True,
         thickness: float = None,
         has_ground_collision: bool = True,
+        has_shape_collision: bool = True,
         collision_group: int = -1,
         is_visible: bool = True,
     ):
@@ -3137,6 +3168,7 @@ class ModelBuilder:
             is_solid: If True, the SDF is solid, otherwise it is a hollow surface with the given wall thickness
             thickness: Thickness to use for collision handling (None to use the default value :attr:`default_shape_thickness`)
             has_ground_collision: If True, the shape will collide with the ground plane if `Model.ground` is True
+            has_shape_collision: If True, the shape will collide with other shapes
             collision_group: The collision group of the shape
             is_visible: Whether the shape is visible
 
@@ -3161,6 +3193,7 @@ class ModelBuilder:
             thickness,
             is_solid,
             has_ground_collision=has_ground_collision,
+            has_shape_collision=has_shape_collision,
             collision_group=collision_group,
             is_visible=is_visible,
         )
@@ -3207,6 +3240,7 @@ class ModelBuilder:
         collision_group=-1,
         collision_filter_parent=True,
         has_ground_collision=True,
+        has_shape_collision=True,
         is_visible=True,
     ):
         self.shape_body.append(body)
@@ -3253,6 +3287,7 @@ class ModelBuilder:
         if body == -1:
             has_ground_collision = False
         self.shape_ground_collision.append(has_ground_collision)
+        self.shape_shape_collision.append(has_shape_collision)
 
         (m, c, I) = compute_shape_mass(type, scale, src, density, is_solid, thickness)
 
@@ -4290,6 +4325,7 @@ class ModelBuilder:
                 self.shape_collision_radius, dtype=wp.float32, requires_grad=requires_grad
             )
             m.shape_ground_collision = self.shape_ground_collision
+            m.shape_shape_collision = self.shape_shape_collision
 
             # ---------------------
             # springs
