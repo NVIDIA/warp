@@ -149,6 +149,19 @@ Note that for multi-dimensional data the ``dtype`` parameter must be specified e
 
 If the shapes are incompatible, an error will be raised.
 
+Warp arrays can also be constructed from objects that define the ``__cuda_array_interface__`` attribute. For example: ::
+
+    import cupy
+    import warp as wp
+
+    wp.init()
+
+    device = wp.get_cuda_device()
+
+    r = cupy.arange(10)
+
+    # return a Warp array wrapper around the cupy data (zero-copy)
+    a = wp.array(r, device=device)
 
 Arrays can be moved between devices using the ``array.to()`` method: ::
 
