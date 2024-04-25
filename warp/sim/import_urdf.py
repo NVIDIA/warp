@@ -129,6 +129,7 @@ def parse_urdf(
                     density=density,
                     is_visible=visible,
                     has_ground_collision=not just_visual,
+                    has_shape_collision=not just_visual,
                     **contact_vars,
                 )
                 shapes.append(s)
@@ -142,6 +143,7 @@ def parse_urdf(
                     density=density,
                     is_visible=visible,
                     has_ground_collision=not just_visual,
+                    has_shape_collision=not just_visual,
                     **contact_vars,
                 )
                 shapes.append(s)
@@ -157,6 +159,7 @@ def parse_urdf(
                     up_axis=2,  # cylinders in URDF are aligned with z-axis
                     is_visible=visible,
                     has_ground_collision=not just_visual,
+                    has_shape_collision=not just_visual,
                     **contact_vars,
                 )
                 shapes.append(s)
@@ -205,6 +208,7 @@ def parse_urdf(
                             density=density,
                             is_visible=visible,
                             has_ground_collision=not just_visual,
+                            has_shape_collision=not just_visual,
                             **contact_vars,
                         )
                         shapes.append(s)
@@ -221,6 +225,7 @@ def parse_urdf(
                         density=density,
                         is_visible=visible,
                         has_ground_collision=not just_visual,
+                        has_shape_collision=not just_visual,
                         **contact_vars,
                     )
                     shapes.append(s)
