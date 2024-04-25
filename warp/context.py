@@ -4535,16 +4535,24 @@ def capture_begin(device: Devicelike = None, stream=None, force_module_load=None
     stream of the current device.
 
     Args:
-
         device: The CUDA device to capture on
         stream: The CUDA stream to capture on
-        force_module_load: Whether or not to force loading of all kernels before capture, in general it is better to use :func:`~warp.load_module()` to selectively load kernels.
+        force_module_load: Whether or not to force loading of all kernels before capture.
+          In general it is better to use :func:`~warp.load_module()` to selectively load kernels.
+          When running with CUDA drivers that support CUDA 12.3 or newer, this option is not recommended to be set to
+          ``True`` because kernels can be loaded during graph capture on more recent drivers. If this argument is
+          ``None``, then the behavior inherits from ``wp.config.enable_graph_capture_module_load_by_default`` if the
+          driver is older than CUDA 12.3.
         external: Whether the capture was already started externally
 
     """
 
     if force_module_load is None:
-        force_module_load = warp.config.enable_graph_capture_module_load_by_default
+        if runtime.driver_version >= 12030:
+            # Driver versions 12.3 and can compile modules during graph capture
+            force_module_load = False
+        else:
+            force_module_load = warp.config.enable_graph_capture_module_load_by_default
 
     if warp.config.verify_cuda:
         raise RuntimeError("Cannot use CUDA error verification during graph capture")
