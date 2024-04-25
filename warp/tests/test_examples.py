@@ -12,8 +12,8 @@ import unittest
 import warp as wp
 from warp.tests.unittest_utils import (
     USD_AVAILABLE,
+    get_selected_cuda_test_devices,
     get_test_devices,
-    get_unique_cuda_test_devices,
     sanitize_identifier,
 )
 
@@ -101,7 +101,7 @@ def add_example_test(cls, name, devices=None, options=None):
 
 
 # TODO: Make the example classes use the passed in device
-cuda_test_devices = get_unique_cuda_test_devices()
+cuda_test_devices = get_selected_cuda_test_devices()
 test_devices = get_test_devices()
 
 # NOTE: To give the parallel test runner more opportunities to parallelize test cases,

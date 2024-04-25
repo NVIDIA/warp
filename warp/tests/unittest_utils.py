@@ -12,6 +12,7 @@ import os
 import sys
 import time
 import unittest
+from typing import Optional
 
 import numpy as np
 
@@ -23,8 +24,9 @@ USD_AVAILABLE = pxr is not None
 # default test mode (see get_test_devices())
 #   "basic" - only run on CPU and first GPU device
 #   "unique" - run on CPU and all unique GPU arches
+#   "unique_or_2x" - run on CPU and all unique GPU arches. If there is a single GPU arch, add a second GPU if it exists.
 #   "all" - run on all devices
-test_mode = "unique"
+test_mode = "unique_or_2x"
 
 try:
     if sys.platform == "win32":
@@ -36,11 +38,19 @@ except OSError:
     LIBC = None
 
 
-def get_unique_cuda_test_devices(mode=None):
-    """Returns a list of unique CUDA devices according to the CUDA arch.
+def get_selected_cuda_test_devices(mode: Optional[str] = None):
+    """Returns a list of CUDA devices according the selected ``mode`` behavior.
 
     If ``mode`` is ``None``, the ``global test_mode`` value will be used and
     this list will be a subset of the devices returned from ``get_test_devices()``.
+
+    Args:
+        mode: ``"basic"``, returns a list containing up to a single CUDA device.
+          ``"unique"``, returns a list containing no more than one device of
+          every CUDA architecture on the system.
+          ``"unique_or_2x"`` behaves like ``"unique"`` but adds up to one
+          additional CUDA device if the system only devices of a single CUDA
+          architecture.
     """
 
     if mode is None:
@@ -48,26 +58,39 @@ def get_unique_cuda_test_devices(mode=None):
         mode = test_mode
 
     if mode == "basic":
-        cuda_devices = [wp.get_device("cuda:0")]
-    else:
-        cuda_devices = wp.get_cuda_devices()
+        if wp.is_cuda_available():
+            return [wp.get_device("cuda:0")]
+        else:
+            return []
 
-    unique_cuda_devices = {}
+    cuda_devices = wp.get_cuda_devices()
+    first_cuda_devices = {}
+
     for d in cuda_devices:
-        if d.arch not in unique_cuda_devices:
-            unique_cuda_devices[d.arch] = d
+        if d.arch not in first_cuda_devices:
+            first_cuda_devices[d.arch] = d
 
-    return list(unique_cuda_devices.values())
+    selected_cuda_devices = list(first_cuda_devices.values())
+
+    if mode == "unique_or_2x" and len(selected_cuda_devices) == 1 and len(cuda_devices) > 1:
+        for d in cuda_devices:
+            if d not in selected_cuda_devices:
+                selected_cuda_devices.append(d)
+                break
+
+    return selected_cuda_devices
 
 
-def get_test_devices(mode=None):
+def get_test_devices(mode: Optional[str] = None):
     """Returns a list of devices based on the mode selected.
 
     Args:
-        mode (str, optional): The testing mode to specify which devices to include. If not provided or ``None``, the
+        mode: The testing mode to specify which devices to include. If not provided or ``None``, the
           ``global test_mode`` value will be used.
-          "basic" (default): Returns the CPU and the first GPU device when available.
+          "basic": Returns the CPU and the first GPU device when available.
           "unique": Returns the CPU and all unique GPU architectures.
+          "unique_or_2x" (default): Behaves like "unique" but adds up to one additional CUDA device
+            if the system only devices of a single CUDA architecture.
           "all": Returns all available devices.
     """
     if mode is None:
@@ -76,23 +99,22 @@ def get_test_devices(mode=None):
 
     devices = []
 
-    # only run on CPU and first GPU device
     if mode == "basic":
+        # only run on CPU and first GPU device
         if wp.is_cpu_available():
             devices.append(wp.get_device("cpu"))
         if wp.is_cuda_available():
             devices.append(wp.get_device("cuda:0"))
-
-    # run on CPU and all unique GPU arches
-    elif mode == "unique":
+    elif mode == "unique" or mode == "unique_or_2x":
+        # run on CPU and a subset of GPUs
         if wp.is_cpu_available():
             devices.append(wp.get_device("cpu"))
-
-        devices.extend(get_unique_cuda_test_devices())
-
-    # run on all devices
+        devices.extend(get_selected_cuda_test_devices(mode))
     elif mode == "all":
+        # run on all devices
         devices = wp.get_devices()
+    else:
+        raise ValueError(f"Unknown test mode selected: {mode}")
 
     return devices
 

@@ -143,7 +143,10 @@ class TestLarge(unittest.TestCase):
 
 
 add_function_test(
-    TestLarge, "test_large_launch_large_kernel", test_large_launch_large_kernel, devices=get_unique_cuda_test_devices()
+    TestLarge,
+    "test_large_launch_large_kernel",
+    test_large_launch_large_kernel,
+    devices=get_selected_cuda_test_devices(),
 )
 
 add_function_test(TestLarge, "test_large_launch_max_blocks", test_large_launch_max_blocks, devices=devices)
@@ -151,7 +154,7 @@ add_function_test(
     TestLarge,
     "test_large_launch_very_large_kernel",
     test_large_launch_very_large_kernel,
-    devices=get_unique_cuda_test_devices(),
+    devices=get_selected_cuda_test_devices(),
 )
 
 add_function_test(TestLarge, "test_large_arrays_fast", test_large_arrays_fast, devices=devices)

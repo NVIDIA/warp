@@ -50,7 +50,7 @@ def test_marching_cubes(test, device):
     iso.resize(nx=dim * 2, ny=dim * 2, nz=dim * 2, max_verts=max_verts, max_tris=max_tris)
 
 
-devices = get_unique_cuda_test_devices()
+devices = get_selected_cuda_test_devices()
 
 
 class TestMarchingCubes(unittest.TestCase):

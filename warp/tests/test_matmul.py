@@ -478,7 +478,7 @@ def test_cuda_graph_capture(test, device):
 
 
 devices = get_test_devices()
-cuda_devices = get_unique_cuda_test_devices()
+cuda_devices = get_selected_cuda_test_devices()
 
 
 class TestMatmul(unittest.TestCase):

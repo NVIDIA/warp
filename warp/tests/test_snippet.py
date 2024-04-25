@@ -248,17 +248,17 @@ class TestSnippets(unittest.TestCase):
     pass
 
 
-add_function_test(TestSnippets, "test_basic", test_basic, devices=get_unique_cuda_test_devices())
-add_function_test(TestSnippets, "test_shared_memory", test_shared_memory, devices=get_unique_cuda_test_devices())
+add_function_test(TestSnippets, "test_basic", test_basic, devices=get_selected_cuda_test_devices())
+add_function_test(TestSnippets, "test_shared_memory", test_shared_memory, devices=get_selected_cuda_test_devices())
 add_function_test(TestSnippets, "test_cpu_snippet", test_cpu_snippet, devices=["cpu"])
 add_function_test(
-    TestSnippets, "test_custom_replay_grad", test_custom_replay_grad, devices=get_unique_cuda_test_devices()
+    TestSnippets, "test_custom_replay_grad", test_custom_replay_grad, devices=get_selected_cuda_test_devices()
 )
 add_function_test(
-    TestSnippets, "test_replay_simplification", test_replay_simplification, devices=get_unique_cuda_test_devices()
+    TestSnippets, "test_replay_simplification", test_replay_simplification, devices=get_selected_cuda_test_devices()
 )
 add_function_test(
-    TestSnippets, "test_recompile_snippet", test_recompile_snippet, devices=get_unique_cuda_test_devices()
+    TestSnippets, "test_recompile_snippet", test_recompile_snippet, devices=get_selected_cuda_test_devices()
 )
 
 

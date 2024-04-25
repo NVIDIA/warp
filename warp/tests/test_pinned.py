@@ -63,7 +63,7 @@ def test_pinned(test: unittest.TestCase, device):
     test.assertTrue(pinned_timer.elapsed < pageable_timer.elapsed, "Pinned transfers did not take less CPU time")
 
 
-devices = get_unique_cuda_test_devices()
+devices = get_selected_cuda_test_devices()
 
 
 class TestPinned(unittest.TestCase):

@@ -248,7 +248,7 @@ def test_volume_allocate_by_tiles_v(test, device):
     np.testing.assert_equal(values_res, values_ref)
 
 
-devices = get_unique_cuda_test_devices()
+devices = get_selected_cuda_test_devices()
 
 
 class TestVolumeWrite(unittest.TestCase):
