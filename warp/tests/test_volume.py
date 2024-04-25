@@ -646,16 +646,18 @@ add_function_test(
 add_function_test(TestVolume, "test_volume_transform_gradient", test_volume_transform_gradient, devices=devices)
 add_function_test(TestVolume, "test_volume_store", test_volume_store, devices=devices)
 add_function_test(
-    TestVolume, "test_volume_allocation_f", test_volume_allocation_f, devices=get_unique_cuda_test_devices()
+    TestVolume, "test_volume_allocation_f", test_volume_allocation_f, devices=get_selected_cuda_test_devices()
 )
 add_function_test(
-    TestVolume, "test_volume_allocation_v", test_volume_allocation_v, devices=get_unique_cuda_test_devices()
+    TestVolume, "test_volume_allocation_v", test_volume_allocation_v, devices=get_selected_cuda_test_devices()
 )
 add_function_test(
-    TestVolume, "test_volume_allocation_i", test_volume_allocation_i, devices=get_unique_cuda_test_devices()
+    TestVolume, "test_volume_allocation_i", test_volume_allocation_i, devices=get_selected_cuda_test_devices()
 )
 add_function_test(TestVolume, "test_volume_introspection", test_volume_introspection, devices=devices)
-add_function_test(TestVolume, "test_volume_from_numpy", test_volume_from_numpy, devices=get_unique_cuda_test_devices())
+add_function_test(
+    TestVolume, "test_volume_from_numpy", test_volume_from_numpy, devices=get_selected_cuda_test_devices()
+)
 
 points = {}
 points_jittered = {}

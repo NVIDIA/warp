@@ -320,7 +320,7 @@ def test_event_synchronize(test, device):
     assert_np_equal(b_host.numpy(), np.full(N, fill_value=42.0))
 
 
-devices = get_unique_cuda_test_devices()
+devices = get_selected_cuda_test_devices()
 
 
 class TestStreams(unittest.TestCase):

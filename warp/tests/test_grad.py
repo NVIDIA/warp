@@ -723,7 +723,7 @@ add_function_test(TestGrad, "test_for_loop_nested_for_grad", test_for_loop_neste
 add_function_test(TestGrad, "test_scalar_grad", test_scalar_grad, devices=devices)
 add_function_test(TestGrad, "test_for_loop_grad", test_for_loop_grad, devices=devices)
 add_function_test(
-    TestGrad, "test_for_loop_graph_grad", test_for_loop_graph_grad, devices=get_unique_cuda_test_devices()
+    TestGrad, "test_for_loop_graph_grad", test_for_loop_graph_grad, devices=get_selected_cuda_test_devices()
 )
 add_function_test(TestGrad, "test_for_loop_nested_if_grad", test_for_loop_nested_if_grad, devices=devices)
 add_function_test(TestGrad, "test_preserve_outputs_grad", test_preserve_outputs_grad, devices=devices)

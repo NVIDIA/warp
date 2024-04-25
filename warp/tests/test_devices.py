@@ -80,10 +80,10 @@ add_function_test(
     TestDevices,
     "test_devices_get_cuda_device_functions",
     test_devices_get_cuda_device_functions,
-    devices=get_unique_cuda_test_devices(),
+    devices=get_selected_cuda_test_devices(),
 )
 add_function_test(
-    TestDevices, "test_devices_map_cuda_device", test_devices_map_cuda_device, devices=get_unique_cuda_test_devices()
+    TestDevices, "test_devices_map_cuda_device", test_devices_map_cuda_device, devices=get_selected_cuda_test_devices()
 )
 add_function_test(
     TestDevices, "test_devices_unmap_imaginary_device", test_devices_unmap_imaginary_device, devices=devices
