@@ -2297,6 +2297,39 @@ def test_array_from_numpy(test, device):
     assert_np_equal(result.numpy(), expected.numpy())
 
 
+def test_array_from_cai(test, device):
+    import torch
+
+    @wp.kernel
+    def first_row_plus_one(x: wp.array2d(dtype=float)):
+        i, j = wp.tid()
+        if i == 0:
+            x[i, j] += 1.0
+
+    # start with torch tensor
+    arr = torch.zeros((3, 3))
+    torch_device = wp.device_to_torch(device)
+    arr_torch = arr.to(torch_device)
+
+    # wrap as warp array via __cuda_array_interface__
+    arr_warp = wp.array(arr_torch, device=device)
+
+    wp.launch(kernel=first_row_plus_one, dim=(3, 3), inputs=[arr_warp], device=device)
+
+    # re-wrap as torch array
+    arr_torch = wp.to_torch(arr_warp)
+
+    # transpose
+    arr_torch = torch.as_strided(arr_torch, size=(3, 3), stride=(arr_torch.stride(1), arr_torch.stride(0)))
+
+    # re-wrap as warp array with new strides
+    arr_warp = wp.array(arr_torch, device=device)
+
+    wp.launch(kernel=first_row_plus_one, dim=(3, 3), inputs=[arr_warp], device=device)
+
+    assert_np_equal(arr_warp.numpy(), np.array([[2, 1, 1], [1, 0, 0], [1, 0, 0]]))
+
+
 devices = get_test_devices()
 
 
@@ -2351,6 +2384,29 @@ add_function_test(TestArray, "test_array_of_structs_grad", test_array_of_structs
 add_function_test(TestArray, "test_array_of_structs_from_numpy", test_array_of_structs_from_numpy, devices=devices)
 add_function_test(TestArray, "test_array_of_structs_roundtrip", test_array_of_structs_roundtrip, devices=devices)
 add_function_test(TestArray, "test_array_from_numpy", test_array_from_numpy, devices=devices)
+
+try:
+    import torch
+
+    # check which Warp devices work with Torch
+    # CUDA devices may fail if Torch was not compiled with CUDA support
+    torch_compatible_devices = []
+    torch_compatible_cuda_devices = []
+
+    for d in devices:
+        try:
+            t = torch.arange(10, device=wp.device_to_torch(d))
+            t += 1
+            torch_compatible_devices.append(d)
+            if d.is_cuda:
+                torch_compatible_cuda_devices.append(d)
+        except Exception as e:
+            print(f"Skipping Array tests that use Torch on device '{d}' due to exception: {e}")
+
+    add_function_test(TestArray, "test_array_from_cai", test_array_from_cai, devices=torch_compatible_cuda_devices)
+
+except Exception as e:
+    print(f"Skipping Array tests that use Torch due to exception: {e}")
 
 
 if __name__ == "__main__":

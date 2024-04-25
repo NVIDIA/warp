@@ -1654,6 +1654,31 @@ class array(Array):
         if not hasattr(data, "__len__"):
             raise RuntimeError(f"Data must be a sequence or array, got scalar {data}")
 
+        if hasattr(data, "__cuda_array_interface__"):
+            try:
+                # Performance note: try first, ask questions later
+                device = warp.context.runtime.get_device(device)
+            except:
+                warp.context.assert_initialized()
+                raise
+
+            if device.is_cuda:
+                desc = data.__cuda_array_interface__
+                shape = desc.get("shape")
+                strides = desc.get("strides")
+                dtype = np_dtype_to_warp_type[np.dtype(desc.get("typestr"))]
+                ptr = desc.get("data")[0]
+
+                self._init_from_ptr(ptr, dtype, shape, strides, None, device, False, None)
+
+                # keep a ref to the source data to keep allocation alive
+                self._ref = data
+                return
+            else:
+                raise RuntimeError(
+                    f"Trying to construct a Warp array from data argument's __cuda_array_interface__ but {device} is not CUDA-capable"
+                )
+
         if hasattr(dtype, "_wp_scalar_type_"):
             dtype_shape = dtype._shape_
             dtype_ndim = len(dtype_shape)
@@ -2569,8 +2594,6 @@ def array4d(*args, **kwargs):
 def from_ptr(ptr, length, dtype=None, shape=None, device=None):
     return array(
         dtype=dtype,
-        length=length,
-        capacity=length * type_size_in_bytes(dtype),
         ptr=0 if ptr == 0 else ctypes.cast(ptr, ctypes.POINTER(ctypes.c_size_t)).contents.value,
         shape=shape,
         device=device,
