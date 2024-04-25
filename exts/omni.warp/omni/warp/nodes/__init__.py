@@ -28,6 +28,7 @@ __all__ = [
     "bundle_have_attrs_changed",
     "bundle_set_prim_type",
     "bundle_set_world_xform",
+    "device_get_cuda_compute",
     "from_omni_graph",
     "mesh_create_bundle",
     "mesh_copy_bundle",
@@ -85,6 +86,7 @@ from omni.warp.nodes._impl.bundles import (
 )
 from omni.warp.nodes._impl.common import (
     NodeTimer,
+    device_get_cuda_compute,
     type_convert_og_to_warp,
     type_convert_sdf_name_to_og,
     type_convert_sdf_name_to_warp,

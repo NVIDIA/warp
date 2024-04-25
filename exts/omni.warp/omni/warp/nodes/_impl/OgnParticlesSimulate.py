@@ -549,7 +549,7 @@ class OgnParticlesSimulate:
 
     @staticmethod
     def compute(db: OgnParticlesSimulateDatabase) -> None:
-        device = wp.get_device("cuda:0")
+        device = omni.warp.nodes.device_get_cuda_compute()
 
         try:
             with wp.ScopedDevice(device):

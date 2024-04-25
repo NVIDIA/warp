@@ -170,8 +170,8 @@ def compute(inputs: Inputs, outputs: Outputs):\r
         inputs.points[tid][2],\r
     )\r
 """
-            custom token inputs:device = "cuda:0" (
-                allowedTokens = ["cpu", "cuda:0"]
+            custom token inputs:device = "cuda" (
+                allowedTokens = ["cpu", "cuda"]
             )
             custom int inputs:dim1 = 1
             custom int inputs:dim2 = 1
@@ -235,8 +235,8 @@ def compute(inputs: Inputs, outputs: Outputs):\r
         inputs.points[tid][2],\r
     )\r
 """
-            custom token inputs:device = "cuda:0" (
-                allowedTokens = ["cpu", "cuda:0"]
+            custom token inputs:device = "cuda" (
+                allowedTokens = ["cpu", "cuda"]
             )
             custom int inputs:dim1 = 1
             custom int inputs:dim2 = 1
@@ -352,8 +352,8 @@ def compute(inputs: Inputs, outputs: Outputs):\r
     # Store the result.\r
     outputs.points[tid] = point\r
 """
-            custom token inputs:device = "cuda:0" (
-                allowedTokens = ["cpu", "cuda:0"]
+            custom token inputs:device = "cuda" (
+                allowedTokens = ["cpu", "cuda"]
             )
             custom int inputs:dim1 = 1
             custom int inputs:dim2 = 1

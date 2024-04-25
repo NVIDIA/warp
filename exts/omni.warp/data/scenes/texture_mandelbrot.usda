@@ -170,8 +170,8 @@ def compute(inputs: Inputs, outputs: Outputs):\r
     color = bourke_color_map(0.0, 1.0, gradient)\r
     outputs.texture[u, v] = wp.vec4(color[0], color[1], color[2], 1.0)\r
 """
-            custom token inputs:device = "cuda:0" (
-                allowedTokens = ["cpu", "cuda:0"]
+            custom token inputs:device = "cuda" (
+                allowedTokens = ["cpu", "cuda"]
             )
             custom int inputs:dim
             prepend int inputs:dim.connect = </World/ActionGraph/dimension.inputs:value>
