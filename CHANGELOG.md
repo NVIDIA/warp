@@ -1,6 +1,10 @@
 # CHANGELOG
 
 
+## [1.0.3] - 2024-04-17
+
+- Add a `support_level` entry to the configuration file of the extensions
+
 ## [1.0.2] - 2024-03-22
 
 - Make examples runnable from any location
