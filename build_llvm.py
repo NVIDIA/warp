@@ -14,7 +14,7 @@ llvm_install_path = os.path.join(llvm_project_path, "out/install/")
 
 
 # Fetch prebuilt Clang/LLVM libraries
-def fetch_prebuilt_libraries():
+def fetch_prebuilt_libraries(arch):
     if os.name == "nt":
         packman = "tools\\packman\\packman.cmd"
         packages = {"x86_64": "15.0.7-windows-x86_64-ptx-vs142"}
@@ -31,17 +31,16 @@ def fetch_prebuilt_libraries():
                 "x86_64": "15.0.7-linux-x86_64-ptx-gcc7.5-cxx11abi0",
             }
 
-    for arch in packages:
-        subprocess.check_call(
-            [
-                packman,
-                "install",
-                "-l",
-                f"./_build/host-deps/llvm-project/release-{arch}",
-                "clang+llvm-warp",
-                packages[arch],
-            ]
-        )
+    subprocess.check_call(
+        [
+            packman,
+            "install",
+            "-l",
+            f"./_build/host-deps/llvm-project/release-{arch}",
+            "clang+llvm-warp",
+            packages[arch],
+        ]
+    )
 
 
 def build_from_source_for_arch(args, arch, llvm_source):
@@ -61,7 +60,11 @@ def build_from_source_for_arch(args, arch, llvm_source):
         version = "18.1.3"
         if shallow_clone:
             repo = Repo.clone_from(
-                repo_url, to_path=llvm_source, single_branch=True, branch=f"llvmorg-{version}", depth=1
+                repo_url,
+                to_path=llvm_source,
+                single_branch=True,
+                branch=f"llvmorg-{version}",
+                depth=1,
             )
         else:
             repo = Repo.clone_from(repo_url, to_path=llvm_source)
@@ -317,7 +320,7 @@ def build_warp_clang_for_arch(args, lib_name, arch):
             libpath = os.path.join(install_path, "lib")
         else:
             # obtain Clang and LLVM libraries from packman
-            fetch_prebuilt_libraries()
+            fetch_prebuilt_libraries(arch)
             libpath = os.path.join(base_path, f"_build/host-deps/llvm-project/release-{arch}/lib")
 
         libs = []
