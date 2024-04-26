@@ -28,7 +28,7 @@ def fetch_prebuilt_libraries(arch):
         else:
             packages = {
                 "aarch64": "15.0.7-linux-aarch64-gcc7.5",
-                "x86_64": "15.0.7-linux-x86_64-ptx-gcc7.5-cxx11abi0",
+                "x86_64": "18.1.3-linux-x86_64-gcc9.4",
             }
 
     subprocess.check_call(
@@ -100,12 +100,15 @@ def build_from_source_for_arch(args, arch, llvm_source):
     if sys.platform == "darwin":
         host_triple = f"{arch}-apple-macos11"
         osx_architectures = arch  # build one architecture only
+        abi_version = ""
     elif os.name == "nt":
         host_triple = f"{arch}-pc-windows"
         osx_architectures = ""
+        abi_version = ""
     else:
         host_triple = f"{arch}-pc-linux"
         osx_architectures = ""
+        abi_version = "-fabi-version=13"  # GCC 8.2+
 
     llvm_path = os.path.join(llvm_source, "llvm")
     build_path = os.path.join(llvm_build_path, f"{args.mode}-{arch}")
@@ -137,7 +140,7 @@ def build_from_source_for_arch(args, arch, llvm_source):
         "-D", "LLVM_INCLUDE_TESTS=FALSE",
         "-D", "LLVM_INCLUDE_TOOLS=TRUE",  # Needed by Clang
         "-D", "LLVM_INCLUDE_UTILS=FALSE",
-        "-D", "CMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0",  # The pre-C++11 ABI is still the default on the CentOS 7 toolchain
+        "-D", f"CMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0 {abi_version}",  # The pre-C++11 ABI is still the default on the CentOS 7 toolchain
         "-D", f"CMAKE_INSTALL_PREFIX={install_path}",
         "-D", f"LLVM_HOST_TRIPLE={host_triple}",
         "-D", f"CMAKE_OSX_ARCHITECTURES={osx_architectures}",
