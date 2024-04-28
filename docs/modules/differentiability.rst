@@ -3,8 +3,10 @@ Differentiability
 
 .. currentmodule:: warp
 
-By default, Warp generates a forward and backward (adjoint) version of each kernel definition.
-Buffers that participate in the chain of computation should be created with ``requires_grad=True``, for example::
+By default, Warp generates a forward and backward (adjoint) version of each kernel definition. The backward version of a kernel can be used 
+to compute gradients of loss functions that can be back propagated to machine learning frameworks like PyTorch.
+
+Arrays that participate in the chain of computation which require gradients should be created with ``requires_grad=True``, for example::
 
     a = wp.zeros(1024, dtype=wp.vec3, device="cuda", requires_grad=True)
 
@@ -21,10 +23,10 @@ The ``wp.Tape`` class can then be used to record kernel launches, and replay the
     # reverse pass
     tape.backward(l)
 
-After the backward pass has completed, the gradients with respect to the inputs are available via a mapping in the :class:`wp.Tape <Tape>` object::
+After the backward pass has completed, the gradients with respect to the inputs are available from the ``array.grad`` attribute::
 
     # gradient of loss with respect to input a
-    print(tape.gradients[a])
+    print(a.grad)
 
 Note that gradients are accumulated on the participating buffers, so if you wish to reuse the same buffers for multiple backward passes you should first zero the gradients::
 
@@ -53,36 +55,51 @@ In Warp, instead of passing a scalar loss buffer to the ``tape.backward()`` meth
 
     # compute the Jacobian for a function of single output
     jacobian = np.empty((output_dim, input_dim), dtype=np.float32)
+    
+    # record computation
     tape = wp.Tape()
     with tape:
         output_buffer = launch_kernels_to_be_differentiated(input_buffer)
+
+    # compute each row of the Jacobian
     for output_index in range(output_dim):
+        
         # select which row of the Jacobian we want to compute
         select_index = np.zeros(output_dim)
         select_index[output_index] = 1.0
         e = wp.array(select_index, dtype=wp.float32)
+        
         # pass input gradients to the output buffer to apply selection
         tape.backward(grads={output_buffer: e})
         q_grad_i = tape.gradients[input_buffer]
         jacobian[output_index, :] = q_grad_i.numpy()
+        
+        # zero gradient arrays for next row
         tape.zero()
 
 When we run simulations independently in parallel, the Jacobian corresponding to the entire system dynamics is a block-diagonal matrix. In this case, we can compute the Jacobian in parallel for all environments by choosing a selection vector that has the output indices active for all environment copies. For example, to get the first rows of the Jacobians of all environments, :math:`\mathbf{e}=[\begin{smallmatrix}1 & 0 & 0 & \dots & 1 & 0 & 0 & \dots\end{smallmatrix}]^\top`, to compute the second rows, :math:`\mathbf{e}=[\begin{smallmatrix}0 & 1 & 0 & \dots & 0 & 1 & 0 & \dots\end{smallmatrix}]^\top`, etc.::
 
     # compute the Jacobian for a function over multiple environments in parallel
     jacobians = np.empty((num_envs, output_dim, input_dim), dtype=np.float32)
+    
+    # record computation
     tape = wp.Tape()
     with tape:
         output_buffer = launch_kernels_to_be_differentiated(input_buffer)
+    
+    # compute each row of the Jacobian
     for output_index in range(output_dim):
+        
         # select which row of the Jacobian we want to compute
         select_index = np.zeros(output_dim)
         select_index[output_index] = 1.0
+        
         # assemble selection vector for all environments (can be precomputed)
         e = wp.array(np.tile(select_index, num_envs), dtype=wp.float32)
         tape.backward(grads={output_buffer: e})
         q_grad_i = tape.gradients[input_buffer]
         jacobians[:, output_index, :] = q_grad_i.numpy().reshape(num_envs, input_dim)
+        
         tape.zero()
 
 
@@ -160,10 +177,12 @@ Calling the kernel for an array of values ``[1.0, 2.0, 0.0]`` yields the expecte
 
     xs = wp.array([1.0, 2.0, 0.0], dtype=wp.float32, requires_grad=True)
     ys = wp.zeros_like(xs)
+    
     tape = wp.Tape()
     with tape:
         wp.launch(run_safe_sqrt, dim=len(xs), inputs=[xs], outputs=[ys])
     tape.backward(grads={ys: wp.array(np.ones(len(xs)), dtype=wp.float32)})
+    
     print("ys     ", ys)
     print("xs.grad", xs.grad)
 
@@ -465,10 +484,10 @@ Example usage::
         wp.launch(add, dim=1, inputs=[b, e], outputs=[a])
 
         # ScopedTimer registers itself as a scope on the tape
-        with wp.ScopedTimer("adder"):
+        with wp.ScopedTimer("Adder"):
 
             # we can also manually record scopes
-            tape.record_scope_begin("my custom scope")
+            tape.record_scope_begin("Custom Scope")
             wp.launch(add, dim=1, inputs=[a, b], outputs=[c])
             tape.record_scope_end()
 
@@ -490,7 +509,13 @@ The resulting SVG image can be rendererd in a web browser:
 
 .. image:: ../img/tape.svg
 
-The graph visualization shows the kernel launches as boxes with the ports below them indicating the input and output arguments.
-Arrays can be labeled with custom names using the ``array_labels`` argument to the ``tape.visualize()`` method.
+The graph visualization shows the kernel launches as grey boxes with the ports below them indicating the input and output arguments. Arrays 
+are shown as ellipses, where gray ellipses indicate arrays that do not require gradients, and green ellipses indicate arrays that do not have ``requires_grad=True``.
 
-Arrays are shown as ellipses, where gray ellipses indicate arrays that do not require gradients, and green ellipses indicate arrays that require gradients (where ``requires_grad=True``).
+In the example above we can see that the array ``c`` does not have its ``requires_grad`` flag set, which means gradients will not be propagated throug this path.
+
+.. note::
+    Arrays can be labeled with custom names using the ``array_labels`` argument to the ``tape.visualize()`` method.
+
+
+
