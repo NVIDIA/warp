@@ -127,6 +127,30 @@ def test_tape_dot_product(test, device):
     assert_np_equal(tape.gradients[y].numpy(), x.numpy())
 
 
+def test_tape_visualize(test, device):
+    dim = 8
+    tape = wp.Tape()
+
+    # record onto tape
+    with tape:
+        # input data
+        x = wp.array(np.ones(dim) * 16.0, dtype=wp.float32, device=device, requires_grad=True)
+        y = wp.array(np.ones(dim) * 32.0, dtype=wp.float32, device=device, requires_grad=True)
+        z = wp.zeros(n=1, dtype=wp.float32, device=device, requires_grad=True)
+
+        tape.record_scope_begin("my loop")
+        for _ in range(16):
+            wp.launch(kernel=dot_product, dim=dim, inputs=[x, y], outputs=[z], device=device)
+        tape.record_scope_end()
+
+    # generate GraphViz diagram code
+    dot_code = tape.visualize(simplify_graph=True)
+
+    assert "repeated 16x" in dot_code
+    assert "my loop" in dot_code
+    assert dot_code.count("dot_product") == 1
+
+
 devices = get_test_devices()
 
 
@@ -141,6 +165,7 @@ class TestTape(unittest.TestCase):
 add_function_test(TestTape, "test_tape_mul_constant", test_tape_mul_constant, devices=devices)
 add_function_test(TestTape, "test_tape_mul_variable", test_tape_mul_variable, devices=devices)
 add_function_test(TestTape, "test_tape_dot_product", test_tape_dot_product, devices=devices)
+add_function_test(TestTape, "test_tape_visualize", test_tape_visualize, devices=devices)
 
 
 if __name__ == "__main__":

@@ -4354,7 +4354,10 @@ def launch(
 
     # record on tape if one is active
     if runtime.tape and record_tape:
-        runtime.tape.record_launch(kernel, dim, max_blocks, inputs, outputs, device)
+        # record file, lineno, func as metadata
+        frame = inspect.currentframe().f_back
+        caller = {"file": frame.f_code.co_filename, "lineno": frame.f_lineno, "func": frame.f_code.co_name}
+        runtime.tape.record_launch(kernel, dim, max_blocks, inputs, outputs, device, metadata={"caller": caller})
 
 
 def synchronize():
