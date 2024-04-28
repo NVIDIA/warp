@@ -320,6 +320,7 @@ Full Table of Contents
     installation
     basics
     modules/devices
+    modules/differentiability
     modules/allocators
     modules/concurrency
     modules/generics

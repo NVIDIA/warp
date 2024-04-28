@@ -614,6 +614,7 @@ class ScopedTimer:
         use_nvtx=False,
         color="rapids",
         synchronize=False,
+        skip_tape=False,
     ):
         """Context manager object for a timer
 
@@ -626,6 +627,7 @@ class ScopedTimer:
             use_nvtx (bool): If true, timing functionality is replaced by an NVTX range
             color (int or str): ARGB value (e.g. 0x00FFFF) or color name (e.g. 'cyan') associated with the NVTX range
             synchronize (bool): Synchronize the CPU thread with any outstanding CUDA work to return accurate GPU timings
+            skip_tape (bool): If true, the timer will not be recorded in the tape
 
         Attributes:
             elapsed (float): The duration of the ``with`` block used with this object
@@ -638,6 +640,7 @@ class ScopedTimer:
         self.use_nvtx = use_nvtx
         self.color = color
         self.synchronize = synchronize
+        self.skip_tape = skip_tape
         self.elapsed = 0.0
 
         if self.dict is not None:
@@ -645,6 +648,8 @@ class ScopedTimer:
                 self.dict[name] = []
 
     def __enter__(self):
+        if not self.skip_tape and warp.context.runtime is not None and warp.context.runtime.tape is not None:
+            warp.context.runtime.tape.record_scope_begin(self.name)
         if self.active:
             if self.synchronize:
                 wp.synchronize()
@@ -668,6 +673,8 @@ class ScopedTimer:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        if not self.skip_tape and warp.context.runtime is not None and warp.context.runtime.tape is not None:
+            warp.context.runtime.tape.record_scope_end()
         if self.active:
             if self.synchronize:
                 wp.synchronize()
