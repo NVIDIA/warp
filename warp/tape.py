@@ -439,7 +439,7 @@ class GraphvizTapeVisitor(TapeVisitor):
 
         table = []
         table.append(
-            '<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" border="0" cellspacing="2" cellpadding="4" bgcolor="#222222" gradientangle="0">'
+            '<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" border="0" cellspacing="2" cellpadding="4" bgcolor="#888888" gradientangle="0">'
         )
         table.append(f'<TR><TD BGCOLOR="#ffffffaa" colspan="2" align="center"><b>{kernel.key}</b></TD></TR>')
         num_inputs = len(launch_data["inputs"])
@@ -456,7 +456,7 @@ class GraphvizTapeVisitor(TapeVisitor):
                 else:
                     tooltip = f"dtype={self.sanitize(self.dtype2str(arg.type))}"
                 row.append(
-                    f'<TD PORT="{port_id}" BGCOLOR="#333333" align="left" title="{tooltip}"><font color="white">{arg.label}</font></TD>'
+                    f'<TD PORT="{port_id}" BGCOLOR="#BBBBBB" align="left" title="{tooltip}"><font color="black">{arg.label}</font></TD>'
                 )
                 launch_data["inputs"][i]
                 # if var is not None and isinstance(var, wp.array):
@@ -471,7 +471,7 @@ class GraphvizTapeVisitor(TapeVisitor):
                 arg = kernel.adj.args[i + num_inputs].label
                 port_id = f"out_{i}"
                 row.append(
-                    f'<TD PORT="{port_id}" BGCOLOR="#333333" align="right"><font color="white">{arg}</font></TD>'
+                    f'<TD PORT="{port_id}" BGCOLOR="#BBBBBB" align="right"><font color="black">{arg}</font></TD>'
                 )
                 launch_data["outputs"][i]
                 # if var is not None and isinstance(var, wp.array):
