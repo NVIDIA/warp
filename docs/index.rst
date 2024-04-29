@@ -334,6 +334,7 @@ Full Table of Contents
 
     modules/allocators
     modules/concurrency
+    profiling
 
 .. toctree::
     :maxdepth: 2

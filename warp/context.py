@@ -2800,6 +2800,8 @@ class Runtime:
             self.core.cuda_event_record.restype = None
             self.core.cuda_event_synchronize.argtypes = [ctypes.c_void_p]
             self.core.cuda_event_synchronize.restype = None
+            self.core.cuda_event_elapsed_time.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.cuda_event_elapsed_time.restype = ctypes.c_float
 
             self.core.cuda_graph_begin_capture.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
             self.core.cuda_graph_begin_capture.restype = ctypes.c_bool
@@ -2860,6 +2862,13 @@ class Runtime:
             self.core.cuda_graphics_register_gl_buffer.restype = ctypes.c_void_p
             self.core.cuda_graphics_unregister_resource.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.cuda_graphics_unregister_resource.restype = None
+
+            self.core.cuda_timing_begin.argtypes = [ctypes.c_int]
+            self.core.cuda_timing_begin.restype = None
+            self.core.cuda_timing_get_result_count.argtypes = []
+            self.core.cuda_timing_get_result_count.restype = int
+            self.core.cuda_timing_end.argtypes = []
+            self.core.cuda_timing_end.restype = None
 
             self.core.init.restype = ctypes.c_int
 
@@ -3594,6 +3603,29 @@ def wait_event(event: Event):
     """
 
     get_stream().wait_event(event)
+
+
+def get_event_elapsed_time(start_event: Event, end_event: Event, synchronize: bool = True):
+    """Get the elapsed time between two recorded events.
+
+    The result is in milliseconds with a resolution of about 0.5 microsecond.
+
+    Both events must have been previously recorded with ``wp.record_event()`` or ``wp.Stream.record_event()``.
+
+    If ``synchronize`` is False, the caller must ensure that device execution has reached ``end_event``
+    prior to calling ``get_event_elapsed_time()``.
+
+    Args:
+        start_event (Event): The start event.
+        end_event (Event): The end event.
+        synchronize (bool, optional): Whether Warp should synchronize on the ``end_event``.
+    """
+
+    # ensure the end_event is reached
+    if synchronize:
+        synchronize_event(end_event)
+
+    return runtime.core.cuda_event_elapsed_time(start_event.cuda_event, end_event.cuda_event)
 
 
 def wait_stream(stream: Stream, event: Event = None):
