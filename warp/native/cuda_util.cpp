@@ -82,6 +82,7 @@ static PFN_cuStreamCreate_v2000 pfn_cuStreamCreate;
 static PFN_cuStreamDestroy_v4000 pfn_cuStreamDestroy;
 static PFN_cuStreamSynchronize_v2000 pfn_cuStreamSynchronize;
 static PFN_cuStreamWaitEvent_v3020 pfn_cuStreamWaitEvent;
+static PFN_cuStreamGetCtx_v9020 pfn_cuStreamGetCtx;
 static PFN_cuStreamGetCaptureInfo_v11030 pfn_cuStreamGetCaptureInfo;
 static PFN_cuStreamUpdateCaptureDependencies_v11030 pfn_cuStreamUpdateCaptureDependencies;
 static PFN_cuEventCreate_v2000 pfn_cuEventCreate;
@@ -104,6 +105,8 @@ static PFN_cuGraphicsUnregisterResource_v3000 pfn_cuGraphicsUnregisterResource;
 static bool cuda_driver_initialized = false;
 
 bool ContextGuard::always_restore = false;
+
+CudaTimingState* g_cuda_timing_state = NULL;
 
 static bool get_driver_entry_point(const char* name, void** pfn)
 {
@@ -197,6 +200,7 @@ bool init_cuda_driver()
     get_driver_entry_point("cuStreamDestroy", &(void*&)pfn_cuStreamDestroy);
     get_driver_entry_point("cuStreamSynchronize", &(void*&)pfn_cuStreamSynchronize);
     get_driver_entry_point("cuStreamWaitEvent", &(void*&)pfn_cuStreamWaitEvent);
+    get_driver_entry_point("cuStreamGetCtx", &(void*&)pfn_cuStreamGetCtx);
     get_driver_entry_point("cuStreamGetCaptureInfo", &(void*&)pfn_cuStreamGetCaptureInfo);
     get_driver_entry_point("cuStreamUpdateCaptureDependencies", &(void*&)pfn_cuStreamUpdateCaptureDependencies);
     get_driver_entry_point("cuEventCreate", &(void*&)pfn_cuEventCreate);
@@ -445,6 +449,11 @@ CUresult cuStreamSynchronize_f(CUstream stream)
 CUresult cuStreamWaitEvent_f(CUstream stream, CUevent event, unsigned int flags)
 {
     return pfn_cuStreamWaitEvent ? pfn_cuStreamWaitEvent(stream, event, flags) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuStreamGetCtx_f(CUstream stream, CUcontext* pctx)
+{
+    return pfn_cuStreamGetCtx ? pfn_cuStreamGetCtx(stream, pctx) : DRIVER_ENTRY_POINT_ERROR;
 }
 
 CUresult cuStreamGetCaptureInfo_f(CUstream stream, CUstreamCaptureStatus *captureStatus_out, cuuint64_t *id_out, CUgraph *graph_out, const CUgraphNode **dependencies_out, size_t *numDependencies_out)
