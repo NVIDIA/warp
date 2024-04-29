@@ -33,29 +33,11 @@ Launches a 3D grid of threads with dimension 128 x 128 x 3. To retrieve the 3D i
 
 .. autofunction:: launch
 
-Large Kernel Launches
-#####################
 
-A limitation of Warp is that each dimension of the grid used to launch a kernel must be representable as a 32-bit
-signed integer. Therefore, no single dimension of a grid should exceed :math:`2^{31}-1`.
-
-Warp also currently uses a fixed block size of 256 (CUDA) threads per block.
-By default, Warp will try to process one element from the Warp grid in one CUDA thread.
-This is not always possible for kernels launched with multi-dimensional grid bounds, as there are
-`hardware limitations <https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications-technical-specifications-per-compute-capability>`_
-on CUDA block dimensions.
-
-Warp will automatically resort to using
-`grid-stride loops <https://developer.nvidia.com/blog/cuda-pro-tip-write-flexible-kernels-grid-stride-loops/>`_ when
-it is not possible for a CUDA thread to process only one element from the Warp grid
-When this happens, some CUDA threads may process more than one element from the Warp grid.
-Users can also set the ``max_blocks`` parameter to fine-tune the grid-striding behavior of kernels, even for kernels that are otherwise
-able to process one Warp-grid element per CUDA thread. 
-
-Runtime Kernel Specialization
+Runtime Kernel Creation
 #############################
 
-It is often desirable to specialize kernels for different types, constants, or functions.
+It is often desirable to specialize kernels for different types, constants, or functions at runtime.
 We can achieve this through the use of runtime kernel specialization using Python closures.
 
 For example, we might require a variety of kernels that execute particular functions for each item in an array.
@@ -116,6 +98,8 @@ to a generic-typed array value: ::
     wp.launch(add_ones_int, dim=a.size, inputs=[a], outputs=[a_out], device=device)
     wp.launch(add_ones_vec3, dim=b.size, inputs=[b], outputs=[b_out], device=device)
 
+
+.. _Arrays:
 
 Arrays
 ------
@@ -183,7 +167,6 @@ Additionally, arrays can be copied directly between memory spaces: ::
     :undoc-members:
     :exclude-members: vars
 
-.. autofunction:: from_numpy
 
 Multi-dimensional Arrays
 ########################
@@ -591,6 +574,8 @@ You can also create identity transforms and anonymously typed instances inside a
         # create double precision identity transform:
         qd = wp.transform_identity(dtype=wp.float64)
 
+.. _Structs:
+
 Structs
 #######
 
@@ -631,17 +616,15 @@ An array of structs can also be initialized from a list of struct objects::
 
     a = wp.array([MyStruct(), MyStruct(), MyStruct()], dtype=MyStruct)
 
-Example: Using a custom struct in gradient computation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Example: Using a struct in gradient computation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code:: python
 
     import numpy as np
-
     import warp as wp
 
     wp.init()
-
 
     @wp.struct
     class TestStruct:
@@ -649,13 +632,11 @@ Example: Using a custom struct in gradient computation
         a: wp.array(dtype=wp.vec3)
         b: wp.array(dtype=wp.vec3)
 
-
     @wp.kernel
     def test_kernel(s: TestStruct):
         tid = wp.tid()
 
         s.b[tid] = s.a[tid] + s.x
-
 
     @wp.kernel
     def loss_kernel(s: TestStruct, loss: wp.array(dtype=float)):
@@ -663,7 +644,6 @@ Example: Using a custom struct in gradient computation
 
         v = s.b[tid]
         wp.atomic_add(loss, 0, float(tid + 1) * (v[0] + 2.0 * v[1] + 3.0 * v[2]))
-
 
     # create struct
     ts = TestStruct()
@@ -683,7 +663,7 @@ Example: Using a custom struct in gradient computation
     tape.backward(loss)
 
     print(loss)
-    print(tape.gradients[ts].a)
+    print(ts.a)
 
 
 Type Conversions
@@ -877,109 +857,6 @@ Typically it is only beneficial to use CUDA graphs when the graph will be reused
     :members:
 
 
-Bounding Value Hierarchies (BVH)
---------------------------------
-
-The :class:`wp.Bvh <Bvh>` class can be used to create a BVH for a group of bounding volumes. This object can then be traversed
-to determine which parts are intersected by a ray using :func:`bvh_query_ray` and which parts are fully contained
-within a certain bounding volume using :func:`bvh_query_aabb`.
-
-The following snippet demonstrates how to create a :class:`wp.Bvh <Bvh>` object from 100 random bounding volumes:
-
-.. code:: python
-
-    rng = np.random.default_rng(123)
-
-    num_bounds = 100
-    lowers = rng.random(size=(num_bounds, 3)) * 5.0
-    uppers = lowers + rng.random(size=(num_bounds, 3)) * 5.0
-
-    device_lowers = wp.array(lowers, dtype=wp.vec3, device="cuda:0")
-    device_uppers = wp.array(uppers, dtype=wp.vec3, device="cuda:0")
-
-    bvh = wp.Bvh(device_lowers, device_uppers)
-
-.. autoclass:: Bvh
-    :members:
-
-Example: BVH Ray Traversal
-##########################
-
-An example of performing a ray traversal on the data structure is as follows:
-
-.. code:: python
-
-    @wp.kernel
-    def bvh_query_ray(
-        bvh_id: wp.uint64,
-        start: wp.vec3,
-        dir: wp.vec3,
-        bounds_intersected: wp.array(dtype=wp.bool),
-    ):
-        query = wp.bvh_query_ray(bvh_id, start, dir)
-        bounds_nr = wp.int32(0)
-
-        while wp.bvh_query_next(query, bounds_nr):
-            # The ray intersects the volume with index bounds_nr
-            bounds_intersected[bounds_nr] = True
-
-
-    bounds_intersected = wp.zeros(shape=(num_bounds), dtype=wp.bool, device="cuda:0")
-    query_start = wp.vec3(0.0, 0.0, 0.0)
-    query_dir = wp.normalize(wp.vec3(1.0, 1.0, 1.0))
-
-    wp.launch(
-        kernel=bvh_query_ray,
-        dim=1,
-        inputs=[bvh.id, query_start, query_dir, bounds_intersected],
-        device="cuda:0",
-    )
-
-The Warp kernel ``bvh_query_ray`` is launched with a single thread, provided the unique :class:`uint64`
-identifier of the :class:`wp.Bvh <Bvh>` object, parameters describing the ray, and an array to store the results.
-In ``bvh_query_ray``, :func:`wp.bvh_query_ray() <bvh_query_ray>` is called once to obtain an object that is stored in the
-variable ``query``. An integer is also allocated as ``bounds_nr`` to store the volume index of the traversal.
-A while statement is used for the actual traversal using :func:`wp.bvh_query_next() <bvh_query_next>`,
-which returns ``True`` as long as there are intersecting bounds.
-
-Example: BVH Volume Traversal
-#############################
-
-Similar to the ray-traversal example, we can perform volume traversal to find the volumes that are fully contained
-within a specified bounding box.
-
-.. code:: python
-
-    @wp.kernel
-    def bvh_query_aabb(
-        bvh_id: wp.uint64,
-        lower: wp.vec3,
-        upper: wp.vec3,
-        bounds_intersected: wp.array(dtype=wp.bool),
-    ):
-        query = wp.bvh_query_aabb(bvh_id, lower, upper)
-        bounds_nr = wp.int32(0)
-
-        while wp.bvh_query_next(query, bounds_nr):
-            # The volume with index bounds_nr is fully contained
-            # in the (lower,upper) bounding box
-            bounds_intersected[bounds_nr] = True
-
-
-    bounds_intersected = wp.zeros(shape=(num_bounds), dtype=wp.bool, device="cuda:0")
-    query_lower = wp.vec3(4.0, 4.0, 4.0)
-    query_upper = wp.vec3(6.0, 6.0, 6.0)
-
-    wp.launch(
-        kernel=bvh_query_aabb,
-        dim=1,
-        inputs=[bvh.id, query_lower, query_upper, bounds_intersected],
-        device="cuda:0",
-    )
-
-The kernel is nearly identical to the ray-traversal example, except we obtain ``query`` using
-:func:`wp.bvh_query_aabb() <bvh_query_aabb>`.
-
 Meshes
 ------
 
@@ -1143,6 +1020,110 @@ To sample the volume inside a kernel we pass a reference to it by ID, and use th
     :undoc-members:
 
 .. seealso:: `Reference <functions.html#volumes>`__ for the volume functions available in kernels.
+
+
+Bounding Value Hierarchies (BVH)
+--------------------------------
+
+The :class:`wp.Bvh <Bvh>` class can be used to create a BVH for a group of bounding volumes. This object can then be traversed
+to determine which parts are intersected by a ray using :func:`bvh_query_ray` and which parts are fully contained
+within a certain bounding volume using :func:`bvh_query_aabb`.
+
+The following snippet demonstrates how to create a :class:`wp.Bvh <Bvh>` object from 100 random bounding volumes:
+
+.. code:: python
+
+    rng = np.random.default_rng(123)
+
+    num_bounds = 100
+    lowers = rng.random(size=(num_bounds, 3)) * 5.0
+    uppers = lowers + rng.random(size=(num_bounds, 3)) * 5.0
+
+    device_lowers = wp.array(lowers, dtype=wp.vec3, device="cuda:0")
+    device_uppers = wp.array(uppers, dtype=wp.vec3, device="cuda:0")
+
+    bvh = wp.Bvh(device_lowers, device_uppers)
+
+.. autoclass:: Bvh
+    :members:
+
+Example: BVH Ray Traversal
+##########################
+
+An example of performing a ray traversal on the data structure is as follows:
+
+.. code:: python
+
+    @wp.kernel
+    def bvh_query_ray(
+        bvh_id: wp.uint64,
+        start: wp.vec3,
+        dir: wp.vec3,
+        bounds_intersected: wp.array(dtype=wp.bool),
+    ):
+        query = wp.bvh_query_ray(bvh_id, start, dir)
+        bounds_nr = wp.int32(0)
+
+        while wp.bvh_query_next(query, bounds_nr):
+            # The ray intersects the volume with index bounds_nr
+            bounds_intersected[bounds_nr] = True
+
+
+    bounds_intersected = wp.zeros(shape=(num_bounds), dtype=wp.bool, device="cuda:0")
+    query_start = wp.vec3(0.0, 0.0, 0.0)
+    query_dir = wp.normalize(wp.vec3(1.0, 1.0, 1.0))
+
+    wp.launch(
+        kernel=bvh_query_ray,
+        dim=1,
+        inputs=[bvh.id, query_start, query_dir, bounds_intersected],
+        device="cuda:0",
+    )
+
+The Warp kernel ``bvh_query_ray`` is launched with a single thread, provided the unique :class:`uint64`
+identifier of the :class:`wp.Bvh <Bvh>` object, parameters describing the ray, and an array to store the results.
+In ``bvh_query_ray``, :func:`wp.bvh_query_ray() <bvh_query_ray>` is called once to obtain an object that is stored in the
+variable ``query``. An integer is also allocated as ``bounds_nr`` to store the volume index of the traversal.
+A while statement is used for the actual traversal using :func:`wp.bvh_query_next() <bvh_query_next>`,
+which returns ``True`` as long as there are intersecting bounds.
+
+Example: BVH Volume Traversal
+#############################
+
+Similar to the ray-traversal example, we can perform volume traversal to find the volumes that are fully contained
+within a specified bounding box.
+
+.. code:: python
+
+    @wp.kernel
+    def bvh_query_aabb(
+        bvh_id: wp.uint64,
+        lower: wp.vec3,
+        upper: wp.vec3,
+        bounds_intersected: wp.array(dtype=wp.bool),
+    ):
+        query = wp.bvh_query_aabb(bvh_id, lower, upper)
+        bounds_nr = wp.int32(0)
+
+        while wp.bvh_query_next(query, bounds_nr):
+            # The volume with index bounds_nr is fully contained
+            # in the (lower,upper) bounding box
+            bounds_intersected[bounds_nr] = True
+
+
+    bounds_intersected = wp.zeros(shape=(num_bounds), dtype=wp.bool, device="cuda:0")
+    query_lower = wp.vec3(4.0, 4.0, 4.0)
+    query_upper = wp.vec3(6.0, 6.0, 6.0)
+
+    wp.launch(
+        kernel=bvh_query_aabb,
+        dim=1,
+        inputs=[bvh.id, query_lower, query_upper, bounds_intersected],
+        device="cuda:0",
+    )
+
+The kernel is nearly identical to the ray-traversal example, except we obtain ``query`` using
+:func:`wp.bvh_query_aabb() <bvh_query_aabb>`.
 
 Profiling
 ---------

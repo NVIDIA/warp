@@ -321,14 +321,19 @@ Full Table of Contents
     basics
     modules/devices
     modules/differentiability
-    modules/allocators
-    modules/concurrency
     modules/generics
     modules/interoperability
     configuration
     debugging
     limitations
     faq
+
+.. toctree::
+    :maxdepth: 2
+    :caption: Advanced Topics
+
+    modules/allocators
+    modules/concurrency
 
 .. toctree::
     :maxdepth: 2

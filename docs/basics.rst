@@ -81,57 +81,12 @@ We retrieve a 2D thread index inside the kernel as follows:
         # get thread index
         i, j = wp.tid()
 
-.. _example-cache-management:
-
-Example: Changing the kernel cache directory
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The following example illustrates how the location for generated and compiled
-kernel code can be changed before and after calling ``wp.init()``.
-
-.. code:: python
-
-    import os
-
-    import warp as wp
-
-    example_dir = os.path.dirname(os.path.realpath(__file__))
-
-    # set default cache directory before wp.init()
-    wp.config.kernel_cache_dir = os.path.join(example_dir, "tmp", "warpcache1")
-
-    wp.init()
-
-    print("+++ Current cache directory: ", wp.config.kernel_cache_dir)
-
-    # change cache directory after wp.init()
-    wp.build.init_kernel_cache(os.path.join(example_dir, "tmp", "warpcache2"))
-
-    print("+++ Current cache directory: ", wp.config.kernel_cache_dir)
-
-    # clear kernel cache (forces fresh kernel builds every time)
-    wp.build.clear_kernel_cache()
-
-
-    @wp.kernel
-    def basic(x: wp.array(dtype=float)):
-        tid = wp.tid()
-        x[tid] = float(tid)
-
-
-    device = "cpu"
-    n = 10
-    x = wp.zeros(n, dtype=float, device=device)
-
-    wp.launch(kernel=basic, dim=n, inputs=[x], device=device)
-    print(x.numpy())
-
 Arrays
 ------
 
 Memory allocations are exposed via the ``wp.array`` type. Arrays wrap an underlying memory allocation that may live in
 either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in values
-(``float,``, ``int``, ``vec3``, ``matrix33``, etc).
+(``float``, ``int``, ``vec3``, ``matrix33``, etc).
 
 Arrays can be allocated similar to PyTorch::
 
@@ -161,6 +116,8 @@ copy the array back to CPU memory where it is passed to NumPy.
 Calling :func:`array.numpy` on a CPU array will return a zero-copy NumPy view
 onto the Warp data.
 
+Please see the :ref:`Arrays Reference <Arrays>` for more details.
+
 User Functions
 --------------
 
@@ -171,6 +128,28 @@ Users can write their own functions using the ``@wp.func`` decorator, for exampl
         return x*x
 
 User functions can be called freely from within kernels inside the same module and accept arrays as inputs. 
+
+User Structs
+--------------
+
+Users can define their own structures using the ``@wp.struct`` decorator, for example::
+
+    @wp.struct
+    class MyStruct:
+
+        pos: wp.vec3
+        vel: wp.vec3
+        active: int
+        indices: wp.array(dtype=int)
+
+
+Structs may be used as a ``dtype`` for ``wp.arrays``, and may be passed to kernels directly as arguments,
+please see :ref:`Structs Reference <Structs>` for more details.
+
+.. note:: 
+
+    As with kernel parameters, all attributes of a struct must have valid type hints at class definition time.
+
 
 Compilation Model
 -----------------
@@ -218,66 +197,6 @@ Tuple initialization is not supported, instead variables should be explicitly ty
     # valid
     a = wp.vec3(1.0, 2.0, 3.0) 
 
-Scalar Math Functions
-^^^^^^^^^^^^^^^^^^^^^
-
-Modulus Operator
-""""""""""""""""
-
-Deviation from Python behavior can occur when the modulus operator (``%``) is used with a negative dividend or divisor
-(also see :func:`wp.mod() <mod>`).
-The behavior of the modulus operator in a Warp kernel follows that of C++11: The sign of the result follows the sign of
-*dividend*. In Python, the sign of the result follows the sign of the *divisor*:
-
-.. code-block:: python
-
-    @wp.kernel
-    def modulus_test():
-        # Kernel-scope behavior:
-        a = -3 % 2 # a is -1 
-        b = 3 % -2 # b is 1
-        c = 3 % 0  # Undefined behavior
-
-    # Python-scope behavior:
-    a = -3 % 2 # a is 1
-    b = 3 % -2 # b is -1
-    c = 3 % 0  # ZeroDivisionError
-
-Power Operator
-""""""""""""""
-
-The power operator (``**``) in Warp kernels only works on floating-point numbers (also see :func:`wp.pow <pow>`).
-In Python, the power operator can also be used on integers.
-
-Inverse Sine and Cosine
-"""""""""""""""""""""""
-
-:func:`wp.asin() <asin>` and :func:`wp.acos() <acos>` automatically clamp the input to fall in the range [-1, 1].
-In Python, using :external+python:py:func:`math.asin` or :external+python:py:func:`math.acos`
-with an input outside [-1, 1] raises a ``ValueError`` exception.
-
-Rounding
-""""""""
-
-:func:`wp.round() <round>` rounds halfway cases away from zero, but Python's
-:external+python:py:func:`round` rounds halfway cases to the nearest even
-choice (Banker's rounding). Use :func:`wp.rint() <rint>` when Banker's rounding is
-desired. Unlike Python, the return type in Warp of both of these rounding
-functions is the same type as the input:
-
-.. code-block:: python
-
-    @wp.kernel
-    def halfway_rounding_test():
-        # Kernel-scope behavior:
-        a = wp.round(0.5) # a is 1.0
-        b = wp.rint(0.5)  # b is 0.0
-        c = wp.round(1.5) # c is 2.0
-        d = wp.rint(1.5)  # d is 2.0
-
-    # Python-scope behavior:
-    a = round(0.5) # a is 0
-    c = round(1.5) # c is 2
 
 Limitations and Unsupported Features
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
