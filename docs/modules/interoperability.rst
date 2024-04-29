@@ -29,9 +29,10 @@ Data type conversion utilities are also available for convenience:
     a = wp.zeros(n, dtype=warp_type)
     b = np.zeros(n, dtype=numpy_type)
 
-To create Warp arrays from NumPy arrays, use :func:`warp.from_numpy`
-or pass the NumPy array as the ``data`` argument of the :class:`warp.array` constructor.
+To create Warp arrays from NumPy arrays, use :func:`warp.from_numpy` 
+or pass the NumPy array as the ``data`` argument of the :class:`warp.array` constructor directly.
 
+.. autofunction:: warp.from_numpy
 .. autofunction:: warp.dtype_from_numpy
 .. autofunction:: warp.dtype_to_numpy
 

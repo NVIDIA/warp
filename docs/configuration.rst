@@ -1,8 +1,10 @@
+.. _Configuration:
+
 Configuration
 =============
 
 Warp has settings at the global, module, and kernel level that can be used to fine-tune the compilation and verbosity
-of Warp programs. In cases in which a setting can be changed at multiple levels (e.g ``enable_backward``),
+of Warp programs. In cases in which a setting can be changed at multiple levels (e.g.: ``enable_backward``),
 the setting at the more-specific scope takes precedence.
 
 Global Settings

@@ -104,7 +104,7 @@ copying between multiple GPUs in a single process. We follow the naming
 conventions of PyTorch and use aliases such as ``cuda:0``, ``cuda:1``,
 ``cpu`` to identify individual devices.
 
-Should I switch to Warp over IsaacGym / PhysX?
+Should I switch to Warp over IsaacGym/PhysX?
 ----------------------------------------------
 
 Warp is not a replacement for IsaacGym, IsaacSim, or PhysX - while Warp
@@ -114,12 +114,13 @@ featured physics engine. Warp is also integrated with IsaacGym and is
 great for performing auxiliary tasks such as reward and observation
 computations for reinforcement learning.
 
-Why assignments to Warp arrays aren't supported outside of kernels?
--------------------------------------------------------------------
+Why aren't assignments to Warp arrays aren'supported outside of kernels?
+------------------------------------------------------------------------
 
-Reading or writing data that is living on the GPU can only be achieved through
-launching CUDA kernels, whereas any code defined outside of these kernels is
-exclusively evaluated on the CPU by Python's runtime.
+For best performance, reading and writing data that is living on the GPU can 
+only be performed inside Warp CUDA kernels. Otherwise individual element accesses
+such as ``array[i] = 1.0`` in Python scope would require prohibitively slow device
+synchronization and copies.
 
 We recommend to either initialize Warp arrays from other native arrays
 (e.g.: Python list, NumPy array, ...) or by launching a kernel to set its values.
@@ -127,7 +128,7 @@ We recommend to either initialize Warp arrays from other native arrays
 For the common use case of wanting to fill an array with a given value, we
 also support the following forms:
 
-- `wp.full(8, 1.23, dtype=float)`: initializes a new array of 8 float values set
-  to `1.23`.
-- `arr.fill_(1.23)`: sets the content of an existing float array to `1.23`.
-- `arr[:4].fill(1.23)`: sets the four first values of an existing float array to `1.23`.
+- ``wp.full(8, 1.23, dtype=float)``: initializes a new array of 8 float values set
+  to ``1.23``.
+- ``arr.fill_(1.23)``: sets the content of an existing float array to ``1.23``.
+- ``arr[:4].fill(1.23)``: sets the four first values of an existing float array to ``1.23``.
