@@ -103,7 +103,7 @@ def replicate_states(
 def drone_cost(
     body_q: wp.array(dtype=wp.transform),
     body_qd: wp.array(dtype=wp.spatial_vector),
-    target: wp.vec3,
+    targets: wp.array(dtype=wp.vec3),
     prop_control: wp.array(dtype=float),
     step: int,
     horizon_length: int,
@@ -112,6 +112,7 @@ def drone_cost(
 ):
     env_id = wp.tid()
     tf = body_q[env_id]
+    target = targets[0]
 
     pos_drone = wp.transform_get_translation(tf)
     pos_cost = wp.length_sq(pos_drone - target)
@@ -489,6 +490,9 @@ class Example:
         # Define the index of the active target.
         # We start with -1 since it'll be incremented on the first frame.
         self.target_idx = -1
+        # use a Warp array to store the current target so that we can assign
+        # a new target to it while retaining the original CUDA graph.
+        self.current_target = wp.array([self.targets[self.target_idx + 1]], dtype=wp.vec3)
 
         # Number of steps to run at each frame for the optimisation pass.
         self.optim_step_count = 20
@@ -547,7 +551,7 @@ class Example:
 
         if enable_rendering:
             # Helper to render the physics scene as a USD file.
-            self.renderer = wp.sim.render.SimRenderer(self.drone.model, stage, fps=self.fps)
+            self.renderer = wp.sim.render.SimRendererOpenGL(self.drone.model, stage, fps=self.fps)
 
             if isinstance(self.renderer, warp.sim.render.SimRendererUsd):
                 from pxr import UsdGeom
@@ -655,7 +659,7 @@ class Example:
                 inputs=(
                     self.rollouts.state.body_q,
                     self.rollouts.state.body_qd,
-                    self.targets[self.target_idx],
+                    self.current_target,
                     self.rollouts.control.prop_controls,
                     i,
                     self.rollout_step_count,
@@ -707,10 +711,10 @@ class Example:
                 print(f"Choosing new flight target: {self.target_idx+1}")
 
             self.target_idx += 1
+            self.target_idx %= len(self.targets)
 
-            # Force recapturing the CUDA graph for the optimization pass
-            # by invalidating it.
-            self.optim_graph = None
+            # Assign the new target to the current target array.
+            self.current_target.assign([self.targets[self.target_idx]])
 
         if self.use_cuda_graph and self.optim_graph is None:
             with wp.ScopedCapture() as capture:

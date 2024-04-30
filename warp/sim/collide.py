@@ -1542,12 +1542,6 @@ def collide(model, state, edge_sdf_iter: int = 10, iterate_mesh_vertices: bool =
             )
 
         if model.shape_contact_pair_count or model.ground and model.shape_ground_contact_pair_count:
-            model.rigid_contact_count.zero_()
-            model.rigid_contact_pairwise_counter.zero_()
-            model.rigid_contact_tids.zero_()
-            model.rigid_contact_shape0.fill_(-1)
-            model.rigid_contact_shape1.fill_(-1)
-
             if requires_grad:
                 model.rigid_contact_point0 = wp.clone(model.rigid_contact_point0)
                 model.rigid_contact_point1 = wp.clone(model.rigid_contact_point1)
@@ -1555,6 +1549,17 @@ def collide(model, state, edge_sdf_iter: int = 10, iterate_mesh_vertices: bool =
                 model.rigid_contact_offset1 = wp.clone(model.rigid_contact_offset1)
                 model.rigid_contact_normal = wp.clone(model.rigid_contact_normal)
                 model.rigid_contact_thickness = wp.clone(model.rigid_contact_thickness)
+                model.rigid_contact_count = wp.zeros_like(model.rigid_contact_count)
+                model.rigid_contact_pairwise_counter = wp.zeros_like(model.rigid_contact_pairwise_counter)
+                model.rigid_contact_tids = wp.zeros_like(model.rigid_contact_tids)
+                model.rigid_contact_shape0 = wp.empty_like(model.rigid_contact_shape0)
+                model.rigid_contact_shape1 = wp.empty_like(model.rigid_contact_shape1)
+            else:
+                model.rigid_contact_count.zero_()
+                model.rigid_contact_pairwise_counter.zero_()
+                model.rigid_contact_tids.zero_()
+            model.rigid_contact_shape0.fill_(-1)
+            model.rigid_contact_shape1.fill_(-1)
 
             wp.launch(
                 kernel=handle_contact_pairs,
