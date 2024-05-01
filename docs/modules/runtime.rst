@@ -1144,3 +1144,4 @@ This results in a printout at runtime to the standard output stream like:
 See :doc:`../profiling` documentation for more information.
 
 .. autoclass:: warp.ScopedTimer
+    :noindex:

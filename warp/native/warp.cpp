@@ -1052,6 +1052,6 @@ WP_API void cuda_graphics_unregister_resource(void* context, void* resource) {}
 
 WP_API void cuda_timing_begin(int flags) {}
 WP_API int cuda_timing_get_result_count() { return 0; }
-WP_API void cuda_timing_end(cuda_timing_result_t* results, int size) {}
+WP_API void cuda_timing_end(timing_result_t* results, int size) {}
 
 #endif // !WP_ENABLE_CUDA

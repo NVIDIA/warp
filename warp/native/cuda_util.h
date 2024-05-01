@@ -32,10 +32,10 @@
         cudaStream_t stream = (cudaStream_t)cuda_stream_get_current(); \
         const int num_threads = 256; \
         const int num_blocks = (dim+num_threads-1)/num_threads; \
-        begin_cuda_interval(WP_TIMING_KERNEL_BUILTIN, stream, context, #kernel); \
+        begin_cuda_range(WP_TIMING_KERNEL_BUILTIN, stream, context, #kernel); \
         kernel<<<num_blocks, 256, 0, stream>>>args; \
         check_cuda(cuda_context_check(WP_CURRENT_CONTEXT)); \
-        end_cuda_interval(WP_TIMING_KERNEL_BUILTIN, stream); }}
+        end_cuda_range(WP_TIMING_KERNEL_BUILTIN, stream); }}
 #else
     // helper for launching kernels (no error checking)
     #define wp_launch_device(context, kernel, dim, args) { \
@@ -44,9 +44,9 @@
         cudaStream_t stream = (cudaStream_t)cuda_stream_get_current(); \
         const int num_threads = 256; \
         const int num_blocks = (dim+num_threads-1)/num_threads; \
-        begin_cuda_interval(WP_TIMING_KERNEL_BUILTIN, stream, context, #kernel); \
+        begin_cuda_range(WP_TIMING_KERNEL_BUILTIN, stream, context, #kernel); \
         kernel<<<num_blocks, 256, 0, stream>>>args; \
-        end_cuda_interval(WP_TIMING_KERNEL_BUILTIN, stream); }}
+        end_cuda_range(WP_TIMING_KERNEL_BUILTIN, stream); }}
 #endif // _DEBUG
 #endif // defined(__CUDACC__)
 
@@ -195,8 +195,8 @@ private:
 };
 
 
-// CUDA timing interval used during event-based timing
-struct CudaTimingInterval
+// CUDA timing range used during event-based timing
+struct CudaTimingRange
 {
     void* context;
     const char* name;
@@ -205,8 +205,8 @@ struct CudaTimingInterval
     CUevent end;
 };
 
-// CUDA timing result used to pass timings to Python
-struct cuda_timing_result_t
+// Timing result used to pass timings to Python
+struct timing_result_t
 {
     void* context;
     const char* name;
@@ -217,7 +217,7 @@ struct cuda_timing_result_t
 struct CudaTimingState
 {
     int flags;
-    std::vector<CudaTimingInterval> intervals;
+    std::vector<CudaTimingRange> ranges;
     CudaTimingState* parent;
 
     CudaTimingState(int flags, CudaTimingState* parent)
@@ -233,26 +233,26 @@ constexpr int WP_TIMING_MEMCPY = 4;  // memcpy operation
 constexpr int WP_TIMING_MEMSET = 8;  // memset operation
 constexpr int WP_TIMING_GRAPH = 16;  // graph launch
 
-#define begin_cuda_interval(_flag, _stream, _context, _name) \
-    CudaTimingInterval _timing_info; \
+#define begin_cuda_range(_flag, _stream, _context, _name) \
+    CudaTimingRange _timing_range; \
     bool _timing_enabled; \
     if ((g_cuda_timing_state->flags & _flag) && !cuda_stream_is_capturing(_stream)) { \
         ContextGuard guard(_context, true); \
         _timing_enabled = true; \
-        _timing_info.context = _context ? _context : get_current_context(); \
-        _timing_info.name = _name; \
-        _timing_info.flag = _flag; \
-        check_cu(cuEventCreate_f(&_timing_info.start, CU_EVENT_DEFAULT)); \
-        check_cu(cuEventCreate_f(&_timing_info.end, CU_EVENT_DEFAULT)); \
-        check_cu(cuEventRecord_f(_timing_info.start, static_cast<CUstream>(_stream))); \
+        _timing_range.context = _context ? _context : get_current_context(); \
+        _timing_range.name = _name; \
+        _timing_range.flag = _flag; \
+        check_cu(cuEventCreate_f(&_timing_range.start, CU_EVENT_DEFAULT)); \
+        check_cu(cuEventCreate_f(&_timing_range.end, CU_EVENT_DEFAULT)); \
+        check_cu(cuEventRecord_f(_timing_range.start, static_cast<CUstream>(_stream))); \
     } else { \
         _timing_enabled = false; \
     }
 
-#define end_cuda_interval(_flag, _stream) \
+#define end_cuda_range(_flag, _stream) \
     if (_timing_enabled) { \
-        check_cu(cuEventRecord_f(_timing_info.end, static_cast<CUstream>(_stream))); \
-        g_cuda_timing_state->intervals.push_back(_timing_info); \
+        check_cu(cuEventRecord_f(_timing_range.end, static_cast<CUstream>(_stream))); \
+        g_cuda_timing_state->ranges.push_back(_timing_range); \
     }
 
 extern CudaTimingState* g_cuda_timing_state;
