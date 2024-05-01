@@ -4248,7 +4248,7 @@ class MarchingCubes:
 
         if error:
             raise RuntimeError(
-                "Buffers may not be large enough, marching cubes required at least {num_verts} vertices, and {num_tris} triangles."
+                f"Buffers may not be large enough, marching cubes required at least {num_verts} vertices, and {num_tris} triangles."
             )
 
         # resize the geometry arrays
