@@ -13,7 +13,7 @@
 
 #define WP_CURRENT_STREAM ((void*)0xffffffffffffffff)
 
-struct cuda_timing_result_t;
+struct timing_result_t;
 
 // this is the core runtime API exposed on the DLL level
 extern "C"
@@ -308,6 +308,6 @@ extern "C"
     // CUDA timing
     WP_API void cuda_timing_begin(int flags);
     WP_API int cuda_timing_get_result_count();
-    WP_API void cuda_timing_end(cuda_timing_result_t* results, int size);
+    WP_API void cuda_timing_end(timing_result_t* results, int size);
 
 } // extern "C"

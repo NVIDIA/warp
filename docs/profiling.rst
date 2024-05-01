@@ -87,7 +87,7 @@ Note that synchronization was not enabled in this run, so the NVTX range only sp
 CUDA Activity Profiling
 -----------------------
 
-``ScopedTimer`` supports timing individual CUDA activities like kernels and memory operations.  This is done by measuring the time taken between :ref:`CUDA events <cuda_events>` on the device.  To get information about CUDA activities, pass the ``cuda_flags`` argument to the ``ScopedTimer`` constructor.  The ``cuda_flags`` can be a bitwise combination of the following values:
+``ScopedTimer`` supports timing individual CUDA activities like kernels and memory operations.  This is done by measuring the time taken between :ref:`CUDA events <cuda_events>` on the device.  To get information about CUDA activities, pass the ``cuda_filter`` argument to the ``ScopedTimer`` constructor.  The ``cuda_filter`` can be a bitwise combination of the following values:
 
 .. list-table:: CUDA profiling flags
     :widths: 25 50
@@ -106,7 +106,7 @@ CUDA Activity Profiling
     * - ``wp.TIMING_ALL``
       - Combines all of the above for convenience.
 
-When the ``cuda_flags`` are specified, Warp will inject CUDA events for timing purposes and summarize the results when the ``ScopeTimer`` finishes.  This adds some overhead to the code, so should be used only during profiling.
+When a non-zero ``cuda_filter`` is specified, Warp will inject CUDA events for timing purposes and report the results when the ``ScopeTimer`` finishes.  This adds some overhead to the code, so should be used only during profiling.
 
 CUDA event timing resolution is about 0.5 microseconds.  The reported execution time of short operations will likely be longer than the operations actually took on the device.  This is due to the timing resolution and the overhead of added instrumentation code.  For more precise analysis of short operations, a tool like Nsight Systems can report more accurate data.
 
@@ -114,7 +114,7 @@ Enabling CUDA profiling with the demo code can be done like this:
 
 .. code:: python
 
-    with wp.ScopedTimer("Demo", cuda_flags=wp.TIMING_ALL):
+    with wp.ScopedTimer("Demo", cuda_filter=wp.TIMING_ALL):
         ...
 
 This adds additional information to the output:
@@ -122,37 +122,109 @@ This adds additional information to the output:
 .. code::
 
     CUDA timeline:
-    -------------------------+---------+----------------
-    Activity                 | Device  | Time
-    -------------------------+---------+----------------
-    memset                   | cuda:0  |     0.023328 ms
-    forward kernel inc_loop  | cuda:0  |     0.272384 ms
-    forward kernel inc_loop  | cuda:0  |     0.516096 ms
-    forward kernel inc_loop  | cuda:0  |     0.759808 ms
-    memcpy DtoH              | cuda:0  |     3.779968 ms
+    ----------------+---------+------------------------
+    Time            | Device  | Activity
+    ----------------+---------+------------------------
+        0.021504 ms | cuda:0  | memset
+        0.163840 ms | cuda:0  | forward kernel inc_loop
+        0.306176 ms | cuda:0  | forward kernel inc_loop
+        0.451584 ms | cuda:0  | forward kernel inc_loop
+        2.455520 ms | cuda:0  | memcpy DtoH
+        0.051200 ms | cuda:1  | memset
+        0.374784 ms | cuda:1  | forward kernel inc_loop
+        0.707584 ms | cuda:1  | forward kernel inc_loop
+        1.042432 ms | cuda:1  | forward kernel inc_loop
+        2.136096 ms | cuda:1  | memcpy DtoH
 
     CUDA activity summary:
-    -------------------------+---------+----------------
-    Activity                 | Count   | Total Time
-    -------------------------+---------+----------------
-    memset                   |       1 |     0.023328 ms
-    forward kernel inc_loop  |       3 |     1.548288 ms
-    memcpy DtoH              |       1 |     3.779968 ms
+    ----------------+---------+------------------------
+    Total time      | Count   | Activity
+    ----------------+---------+------------------------
+        0.072704 ms |       2 | memset
+        3.046400 ms |       6 | forward kernel inc_loop
+        4.591616 ms |       2 | memcpy DtoH
 
     CUDA device summary:
-    -------------------------+---------+----------------
-    Device                   | Count   | Total time
-    -------------------------+---------+----------------
-    cuda:0                   |       5 |     5.351584 ms
-    Demo took 8.06 ms
+    ----------------+---------+------------------------
+    Total time      | Count   | Device
+    ----------------+---------+------------------------
+        3.398624 ms |       5 | cuda:0
+        4.312096 ms |       5 | cuda:1
+    Demo took 0.92 ms
 
 The first section is the `CUDA timeline`, which lists all captured activities in issue order.  We see a `memset` on device ``cuda:0``, which corresponds to clearing the memory in ``wp.zeros()``.  This is followed by three launches of the ``inc_loop`` kernel on ``cuda:0`` and a memory transfer from device to host issued by ``wp.copy()``.  The remaining entries repeat similar operations on device ``cuda:1``.
 
 The next section is the `CUDA activity summary`, which reports the cumulative time taken by each activity type.  Here, the `memsets`, kernel launches, and memory transfer operations are grouped together.  This is a good way to see where time is being spent overall.  The `memsets` are quite fast.  The ``inc_loop`` kernel launches took about three milliseconds of combined GPU time.  The memory transfers took the longest, over four milliseconds.
 
-The `CUDA device summary` shows the total time taken per device.  We see that device ``cuda:0`` took about 3.3 ms to complete the tasks and device ``cuda:1`` took about 4.2 ms.  This summary can be used to asses the workload distribution in multi-GPU applications.
+The `CUDA device summary` shows the total time taken per device.  We see that device ``cuda:0`` took about 3.4 ms to complete the tasks and device ``cuda:1`` took about 4.3 ms.  This summary can be used to asses the workload distribution in multi-GPU applications.
 
 The final line shows the time taken by the CPU, as with the default ``ScopedTimer`` options (without synchronization in this case).
+
+Customizing the output
+~~~~~~~~~~~~~~~~~~~~~~
+
+It is possible to customize how the activity timing results are reported.  The function :func:`warp.timing_print` is used by default.  To use a different reporting function, pass it as the ``report_func`` argument to ``ScopedTimer``.  The custom report function should take a list of :class:`warp.TimingResult` objects as the first argument.  Each result in the list corresponds to a single activity and the list represents the complete recorded timeline.  By manually traversing the list, you can customize the formatting of the output, apply custom sorting rules, and aggregate the results as desired.  The second argument is a string indent that should be printed at the beginning of each line.  This is for compatibility with ``ScopedTimer`` indenting rules used with nested timers.
+
+Here is an example of a custom reporting function, which aggregates the total time spend in forward and backward kernels:
+
+.. code:: python
+
+    def print_custom_report(results, indent=""):
+        forward_time = 0
+        backward_time = 0
+
+        for r in results:
+            # aggregate all forward kernels
+            if r.name.startswith("forward kernel"):
+                forward_time += r.elapsed
+            # aggregate all backward kernels
+            elif r.name.startswith("backward kernel"):
+                backward_time += r.elapsed
+
+        print(f"{indent}Forward kernels  : {forward_time:.6f} ms")
+        print(f"{indent}Backward kernels : {backward_time:.6f} ms")
+
+Let's apply it to one of the Warp examples:
+
+.. code:: python
+
+    from warp.examples.optim.example_cloth_throw import Example
+
+    example = Example(None)
+    example.use_graph = False  # disable graphs so we get timings for individual kernels
+
+    with wp.ScopedTimer("Example", cuda_filter=wp.TIMING_KERNEL, report_func=print_custom_report):
+        for iteration in range(5):
+            example.step()
+
+This produces a report like this:
+
+.. code::
+
+    Forward kernels  : 187.098367 ms
+    Backward kernels : 245.070177 ms
+
+
+Using the activity timing functions directly
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It is also possible to capture activity timings without using the ``ScopedTimer`` at all.  Simply call :func:`warp.timing_begin` to start recording activity timings and :func:`warp.timing_end` to stop and get a list of recorded activities.  You can use :func:`warp.timing_print` to print the default activity report or generate your own report from the list of results.
+
+.. code:: python
+
+    wp.timing_begin(cuda_filter=wp.TIMING_ALL)
+    ...
+    results = wp.timing_end()
+
+    wp.timing_print(results)
+
+
+Limitations
+~~~~~~~~~~~
+
+Currently, detailed activity timing is only available for CUDA devices, but support for CPU timing may be added in the future.
+
+The activity profiling only records activities initiated using the Warp API.  It does not capture CUDA activity initiated by other frameworks.  A profiling tool like Nsight Systems can be used to examine whole program activities.
 
 
 Using CUDA Events
@@ -186,12 +258,20 @@ CUDA events can be used for timing purposes outside of the ``ScopedTimer``.  Her
         elapsed = wp.get_event_elapsed_time(e1, e2)
         print(elapsed)
 
-The events must be created with the flag ``enable_timing=True``.  The first event is recorded at the start of the timed code and the second event is recorded at the end.  The function ``wp.get_event_elapsed_time()`` is used to compute the time difference between the two events.  We must ensure that both events have completed on the device before calling ``wp.get_event_elapsed_time()``.  By default, this function will synchronize on the second event using ``wp.synchronize_event()``.  If that is not desired, the user may pass the ``synchronize=False`` flag and must use some other means of ensuring that both events have completed prior to calling the function.
+The events must be created with the flag ``enable_timing=True``.  The first event is recorded at the start of the timed code and the second event is recorded at the end.  The function :func:`warp.get_event_elapsed_time()` is used to compute the time difference between the two events.  We must ensure that both events have completed on the device before calling :func:`warp.get_event_elapsed_time()`.  By default, this function will synchronize on the second event using :func:`warp.synchronize_event()`.  If that is not desired, the user may pass the ``synchronize=False`` flag and must use some other means of ensuring that both events have completed prior to calling the function.
 
-Note that timing very short operations may yield inflated results, due to the timing resolution of CUDA events and the overhead of the profiling code.  In most cases, CUDA activity profiling with ``ScopedTimer`` will have less overhead and better precision.  For the most accurate results, a profiling tool such as Nsight Systems should be used.  The main benefit of using the manual event timing API is that it allows timing arbitrary sections of code without wrapping them in the ``ScopedTimer`` manager.
+Note that timing very short operations may yield inflated results, due to the timing resolution of CUDA events and the overhead of the profiling code.  In most cases, CUDA activity profiling with ``ScopedTimer`` will have less overhead and better precision.  For the most accurate results, a profiling tool such as Nsight Systems should be used.  The main benefit of using the manual event timing API is that it allows timing arbitrary sections of code rather than individual activities.
+
+Profiling API Reference
+-----------------------
+
+.. autoclass:: warp.ScopedTimer
 
 .. autofunction:: warp.get_event_elapsed_time
 .. autofunction:: warp.synchronize_event
 
-.. autoclass:: warp.ScopedTimer
-    :noindex:
+.. autoclass:: warp.TimingResult
+
+.. autofunction:: warp.timing_begin
+.. autofunction:: warp.timing_end
+.. autofunction:: warp.timing_print

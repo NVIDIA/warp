@@ -624,7 +624,8 @@ class ScopedTimer:
         use_nvtx=False,
         color="rapids",
         synchronize=False,
-        cuda_flags=0,
+        cuda_filter=0,
+        report_func=None,
         skip_tape=False,
     ):
         """Context manager object for a timer
@@ -638,11 +639,13 @@ class ScopedTimer:
             use_nvtx (bool): If true, timing functionality is replaced by an NVTX range
             color (int or str): ARGB value (e.g. 0x00FFFF) or color name (e.g. 'cyan') associated with the NVTX range
             synchronize (bool): Synchronize the CPU thread with any outstanding CUDA work to return accurate GPU timings
-            cuda_flags (int): Filter flags for CUDA activity timing, e.g. ``warp.TIMING_KERNEL`` or ``warp.TIMING_ALL``
+            cuda_filter (int): Filter flags for CUDA activity timing, e.g. ``warp.TIMING_KERNEL`` or ``warp.TIMING_ALL``
+            report_func (Callable): A callback function to print the activity report (``wp.timing_print()`` is used by default)
             skip_tape (bool): If true, the timer will not be recorded in the tape
 
         Attributes:
             elapsed (float): The duration of the ``with`` block used with this object
+            timing_results (list[TimingResult]): The list of activity timing results, if collection was requested using ``cuda_filter``
         """
         self.name = name
         self.active = active and self.enabled
@@ -654,7 +657,8 @@ class ScopedTimer:
         self.synchronize = synchronize
         self.skip_tape = skip_tape
         self.elapsed = 0.0
-        self.cuda_flags = cuda_flags
+        self.cuda_filter = cuda_filter
+        self.report_func = report_func or wp.timing_print
 
         if self.dict is not None:
             if name not in self.dict:
@@ -667,9 +671,9 @@ class ScopedTimer:
             if self.synchronize:
                 wp.synchronize()
 
-            if self.cuda_flags:
+            if self.cuda_filter:
                 # begin CUDA activity collection, synchronizing if needed
-                cuda_timing_begin(self.cuda_flags, synchronize=not self.synchronize)
+                timing_begin(self.cuda_filter, synchronize=not self.synchronize)
 
             if self.detailed:
                 self.cp = cProfile.Profile()
@@ -706,11 +710,11 @@ class ScopedTimer:
                 self.cp.disable()
                 self.cp.print_stats(sort="tottime")
 
-            if self.cuda_flags:
+            if self.cuda_filter:
                 # end CUDA activity collection, synchronizing if needed
-                cuda_results = cuda_timing_end(synchronize=not self.synchronize)
+                self.timing_results = timing_end(synchronize=not self.synchronize)
             else:
-                cuda_results = None
+                self.timing_results = []
 
             if self.dict is not None:
                 self.dict[self.name].append(self.elapsed)
@@ -718,8 +722,9 @@ class ScopedTimer:
             if self.print:
                 indent = "\t" * ScopedTimer.indent
 
-                if cuda_results:
-                    cuda_timing_print(cuda_results, indent=indent)
+                if self.timing_results:
+                    self.report_func(self.timing_results, indent=indent)
+                    print()
 
                 print(f"{indent}{self.name} took {self.elapsed :.2f} ms")
 
@@ -846,35 +851,61 @@ def check_iommu():
         return True
 
 
-class cuda_timing_result_t(ctypes.Structure):
+class timing_result_t(ctypes.Structure):
     """CUDA timing struct for fetching values from C++"""
 
     _fields_ = [
         ("context", ctypes.c_void_p),
         ("name", ctypes.c_char_p),
-        ("flag", ctypes.c_int),
+        ("filter", ctypes.c_int),
         ("elapsed", ctypes.c_float),
     ]
 
 
-class CudaTimingResult:
-    """CUDA timing result"""
+class TimingResult:
+    """Timing result for a single activity.
 
-    def __init__(self, raw_result: cuda_timing_result_t):
-        self.device = warp.context.runtime.context_map[raw_result.context]
-        self.name = raw_result.name.decode()
-        self.flag = raw_result.flag
-        self.elapsed = raw_result.elapsed
+    Parameters:
+        raw_result (warp.utils.timing_result_t): The result structure obtained from C++ (internal use only)
+
+    Attributes:
+        device (warp.Device): The device where the activity was recorded.
+        name (str): The activity name.
+        filter (int): The type of activity (e.g., ``warp.TIMING_KERNEL``).
+        elapsed (float): The elapsed time in milliseconds.
+    """
+
+    def __init__(self, device, name, filter, elapsed):
+        self.device = device
+        self.name = name
+        self.filter = filter
+        self.elapsed = elapsed
 
 
-def cuda_timing_begin(flags, synchronize=True):
+def timing_begin(cuda_filter=TIMING_ALL, synchronize=True):
+    """Begin detailed activity timing.
+
+    Parameters:
+        cuda_filter (int): Filter flags for CUDA activity timing, e.g. ``warp.TIMING_KERNEL`` or ``warp.TIMING_ALL``
+        synchronize (bool): Whether to synchronize all CUDA devices before timing starts
+    """
+
     if synchronize:
         warp.synchronize()
 
-    warp.context.runtime.core.cuda_timing_begin(flags)
+    warp.context.runtime.core.cuda_timing_begin(cuda_filter)
 
 
-def cuda_timing_end(synchronize=True):
+def timing_end(synchronize=True):
+    """End detailed activity timing.
+
+    Parameters:
+        synchronize (bool): Whether to synchronize all CUDA devices before timing ends
+
+    Returns:
+        list[TimingResult]: A list of ``TimingResult`` objects for all recorded activities.
+    """
+
     if synchronize:
         warp.synchronize()
 
@@ -882,46 +913,58 @@ def cuda_timing_end(synchronize=True):
     count = warp.context.runtime.core.cuda_timing_get_result_count()
 
     # get result array from C++
-    results = (cuda_timing_result_t * count)()
-    warp.context.runtime.core.cuda_timing_end(ctypes.byref(results), count)
+    result_buffer = (timing_result_t * count)()
+    warp.context.runtime.core.cuda_timing_end(ctypes.byref(result_buffer), count)
 
-    # return Python result list
-    return [CudaTimingResult(r) for r in results]
+    # prepare Python result list
+    results = []
+    for r in result_buffer:
+        device = warp.context.runtime.context_map.get(r.context)
+        filter = r.filter
+        elapsed = r.elapsed
 
-
-def cuda_timing_print(results, indent=""):
-    if not results:
-        print("No CUDA activity")
-        return
-
-    def format_name(flag: int, name: str):
-        if flag == TIMING_KERNEL:
+        name = r.name.decode()
+        if filter == TIMING_KERNEL:
             if name.endswith("forward"):
                 # strip trailing "_cuda_kernel_forward"
-                return f"forward kernel {name[:-20]}"
+                name = f"forward kernel {name[:-20]}"
             else:
                 # strip trailing "_cuda_kernel_backward"
-                return f"backward kernel {name[:-21]}"
-        elif flag == TIMING_KERNEL_BUILTIN:
+                name = f"backward kernel {name[:-21]}"
+        elif filter == TIMING_KERNEL_BUILTIN:
             if name.startswith("wp::"):
-                return f"builtin kernel {name[4:]}"
+                name = f"builtin kernel {name[4:]}"
             else:
-                return f"builtin kernel {name}"
-        else:
-            return name
+                name = f"builtin kernel {name}"
+
+        results.append(TimingResult(device, name, filter, elapsed))
+
+    return results
+
+
+def timing_print(results, indent=""):
+    """Print timing results.
+
+    Parameters:
+        results (list[TimingResult]): List of ``TimingResult`` objects.
+        indent (str): Optional indentation for the output.
+    """
+
+    if not results:
+        print("No activity")
+        return
 
     class Aggregate:
-        def __init__(self, count=0, elapsed=0, flag=0):
+        def __init__(self, count=0, elapsed=0):
             self.count = count
             self.elapsed = elapsed
-            self.flag = flag
 
     device_totals = {}
-    name_totals = {}
+    activity_totals = {}
 
     max_name_len = len("Activity")
     for r in results:
-        name_len = len(format_name(r.flag, r.name))
+        name_len = len(r.name)
         max_name_len = max(max_name_len, name_len)
 
     activity_width = max_name_len + 1
@@ -939,24 +982,22 @@ def cuda_timing_print(results, indent=""):
             device_agg.count += 1
             device_agg.elapsed += r.elapsed
 
-        name_agg = name_totals.get(r.name)
-        if name_agg is None:
-            name_totals[r.name] = Aggregate(count=1, elapsed=r.elapsed, flag=r.flag)
+        activity_agg = activity_totals.get(r.name)
+        if activity_agg is None:
+            activity_totals[r.name] = Aggregate(count=1, elapsed=r.elapsed)
         else:
-            name_agg.count += 1
-            name_agg.elapsed += r.elapsed
+            activity_agg.count += 1
+            activity_agg.elapsed += r.elapsed
 
-        name_str = format_name(r.flag, r.name)
-        print(f"{indent}{r.elapsed :12.6f} ms | {r.device.alias :7s} | {name_str}")
+        print(f"{indent}{r.elapsed :12.6f} ms | {r.device.alias :7s} | {r.name}")
 
     print()
     print(f"{indent}CUDA activity summary:")
     print(f"{indent}----------------+---------+{activity_dashes}")
     print(f"{indent}Total time      | Count   | Activity")
     print(f"{indent}----------------+---------+{activity_dashes}")
-    for name, agg in name_totals.items():
-        name_str = format_name(agg.flag, name)
-        print(f"{indent}{agg.elapsed :12.6f} ms | {agg.count :7d} | {name_str}")
+    for name, agg in activity_totals.items():
+        print(f"{indent}{agg.elapsed :12.6f} ms | {agg.count :7d} | {name}")
 
     print()
     print(f"{indent}CUDA device summary:")
