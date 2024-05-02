@@ -11,6 +11,11 @@
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Basic/DiagnosticOptions.h>
 #include <clang/Frontend/TextDiagnosticPrinter.h>
+#if LLVM_VERSION_MAJOR >= 18
+#include <llvm/Frontend/Debug/Options.h>
+#else
+#include <llvm/Support/CodeGen.h>
+#endif
 #include <clang/CodeGen/CodeGenAction.h>
 #include <clang/Basic/TargetInfo.h>
 #include <clang/Lex/PreprocessorOptions.h>
@@ -21,7 +26,6 @@
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/MC/TargetRegistry.h>
-#include <llvm/Support/Host.h>
 #include <llvm/PassRegistry.h>
 #include <llvm/InitializePasses.h>
 #include <llvm/IR/LegacyPassManager.h>
@@ -114,7 +118,11 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
 
     if(debug)
     {
+        #if LLVM_VERSION_MAJOR >= 18
+        compiler_invocation.getCodeGenOpts().setDebugInfo(llvm::codegenoptions::FullDebugInfo);
+        #else
         compiler_invocation.getCodeGenOpts().setDebugInfo(clang::codegenoptions::FullDebugInfo);
+        #endif
     }
 
     // Map code to a MemoryBuffer
@@ -174,7 +182,11 @@ static std::unique_ptr<llvm::Module> cuda_to_llvm(const std::string& input_file,
 
     if(debug)
     {
+        #if LLVM_VERSION_MAJOR >= 18
+        compiler_invocation.getCodeGenOpts().setDebugInfo(llvm::codegenoptions::FullDebugInfo);
+        #else
         compiler_invocation.getCodeGenOpts().setDebugInfo(clang::codegenoptions::FullDebugInfo);
+        #endif
     }
 
     // Map code to a MemoryBuffer
@@ -234,7 +246,11 @@ WP_API int compile_cpp(const char* cpp_src, const char *input_file, const char* 
     llvm::raw_fd_ostream output(output_file, error_code, llvm::sys::fs::OF_None);
 
     llvm::legacy::PassManager pass_manager;
+    #if LLVM_VERSION_MAJOR >= 18
+    llvm::CodeGenFileType file_type = llvm::CodeGenFileType::ObjectFile;
+    #else
     llvm::CodeGenFileType file_type = llvm::CGFT_ObjectFile;
+    #endif
     target_machine->addPassesToEmitFile(pass_manager, output, nullptr, file_type);
 
     pass_manager.run(*module);
@@ -287,7 +303,11 @@ WP_API int compile_cuda(const char* cpp_src, const char *input_file, const char*
     llvm::raw_fd_ostream output(output_file, error_code, llvm::sys::fs::OF_None);
 
     llvm::legacy::PassManager pass_manager;
+    #if LLVM_VERSION_MAJOR >= 18
+    llvm::CodeGenFileType file_type = llvm::CodeGenFileType::AssemblyFile;
+    #else
     llvm::CodeGenFileType file_type = llvm::CGFT_AssemblyFile;
+    #endif
     target_machine->addPassesToEmitFile(pass_manager, output, nullptr, file_type);
 
     pass_manager.run(*module);
@@ -352,10 +372,17 @@ WP_API int load_obj(const char* object_file, const char* module_name)
         #endif
 
         const auto flags = llvm::JITSymbolFlags::Exported | llvm::JITSymbolFlags::Absolute;
+        #if LLVM_VERSION_MAJOR >= 18
+        #define SYMBOL(sym) { jit->getExecutionSession().intern(MANGLING_PREFIX #sym), { llvm::orc::ExecutorAddr::fromPtr(&::sym), flags} }
+        #define SYMBOL_T(sym, T) { jit->getExecutionSession().intern(MANGLING_PREFIX #sym), { llvm::orc::ExecutorAddr::fromPtr(static_cast<T>(&::sym)), flags} }
+
+        auto error = dll->define(llvm::orc::absoluteSymbols(llvm::orc::SymbolMap({
+        #else
         #define SYMBOL(sym) { jit->getExecutionSession().intern(MANGLING_PREFIX #sym), { llvm::pointerToJITTargetAddress(&::sym), flags} }
         #define SYMBOL_T(sym, T) { jit->getExecutionSession().intern(MANGLING_PREFIX #sym), { llvm::pointerToJITTargetAddress(static_cast<T>(&::sym)), flags} }
 
         auto error = dll->define(llvm::orc::absoluteSymbols({
+        #endif
             SYMBOL(printf), SYMBOL(puts), SYMBOL(putchar),
             SYMBOL_T(abs, int(*)(int)), SYMBOL(llabs),
             SYMBOL(fmodf), SYMBOL_T(fmod, double(*)(double, double)),
@@ -397,7 +424,11 @@ WP_API int load_obj(const char* object_file, const char* module_name)
         #else
             SYMBOL(sincosf), SYMBOL_T(sincos, void(*)(double,double*,double*)),
         #endif
+        #if LLVM_VERSION_MAJOR >= 18
+        })));
+        #else
         }));
+        #endif
 
         if(error)
         {

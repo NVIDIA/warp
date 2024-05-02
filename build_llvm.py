@@ -14,7 +14,7 @@ llvm_install_path = os.path.join(llvm_project_path, "out/install/")
 
 
 # Fetch prebuilt Clang/LLVM libraries
-def fetch_prebuilt_libraries():
+def fetch_prebuilt_libraries(arch):
     if os.name == "nt":
         packman = "tools\\packman\\packman.cmd"
         packages = {"x86_64": "15.0.7-windows-x86_64-ptx-vs142"}
@@ -28,20 +28,19 @@ def fetch_prebuilt_libraries():
         else:
             packages = {
                 "aarch64": "15.0.7-linux-aarch64-gcc7.5",
-                "x86_64": "15.0.7-linux-x86_64-ptx-gcc7.5-cxx11abi0",
+                "x86_64": "18.1.3-linux-x86_64-gcc9.4",
             }
 
-    for arch in packages:
-        subprocess.check_call(
-            [
-                packman,
-                "install",
-                "-l",
-                f"./_build/host-deps/llvm-project/release-{arch}",
-                "clang+llvm-warp",
-                packages[arch],
-            ]
-        )
+    subprocess.check_call(
+        [
+            packman,
+            "install",
+            "-l",
+            f"./_build/host-deps/llvm-project/release-{arch}",
+            "clang+llvm-warp",
+            packages[arch],
+        ]
+    )
 
 
 def build_from_source_for_arch(args, arch, llvm_source):
@@ -58,10 +57,14 @@ def build_from_source_for_arch(args, arch, llvm_source):
         print(f"Cloning LLVM project from {repo_url}...")
 
         shallow_clone = True  # https://github.blog/2020-12-21-get-up-to-speed-with-partial-clone-and-shallow-clone/
-        version = "15.0.7"
+        version = "18.1.3"
         if shallow_clone:
             repo = Repo.clone_from(
-                repo_url, to_path=llvm_source, single_branch=True, branch=f"llvmorg-{version}", depth=1
+                repo_url,
+                to_path=llvm_source,
+                single_branch=True,
+                branch=f"llvmorg-{version}",
+                depth=1,
             )
         else:
             repo = Repo.clone_from(repo_url, to_path=llvm_source)
@@ -71,9 +74,11 @@ def build_from_source_for_arch(args, arch, llvm_source):
 
     # CMake supports Debug, Release, RelWithDebInfo, and MinSizeRel builds
     if args.mode == "release":
+        msvc_runtime = "MultiThreaded"
         # prefer smaller size over aggressive speed
         cmake_build_type = "MinSizeRel"
     else:
+        msvc_runtime = "MultiThreadedDebug"
         # When args.mode == "debug" we build a Debug version of warp.dll but
         # we generally don't want warp-clang.dll to be a slow Debug version.
         if args.debug_llvm:
@@ -95,12 +100,15 @@ def build_from_source_for_arch(args, arch, llvm_source):
     if sys.platform == "darwin":
         host_triple = f"{arch}-apple-macos11"
         osx_architectures = arch  # build one architecture only
+        abi_version = ""
     elif os.name == "nt":
         host_triple = f"{arch}-pc-windows"
         osx_architectures = ""
+        abi_version = ""
     else:
         host_triple = f"{arch}-pc-linux"
         osx_architectures = ""
+        abi_version = "-fabi-version=13"  # GCC 8.2+
 
     llvm_path = os.path.join(llvm_source, "llvm")
     build_path = os.path.join(llvm_build_path, f"{args.mode}-{arch}")
@@ -114,10 +122,7 @@ def build_from_source_for_arch(args, arch, llvm_source):
         "-B", build_path,
         "-G", "Ninja",
         "-D", f"CMAKE_BUILD_TYPE={cmake_build_type}",
-        "-D", "LLVM_USE_CRT_RELEASE=MT",
-        "-D", "LLVM_USE_CRT_MINSIZEREL=MT",
-        "-D", "LLVM_USE_CRT_DEBUG=MTd",
-        "-D", "LLVM_USE_CRT_RELWITHDEBINFO=MTd",
+        "-D", f"CMAKE_MSVC_RUNTIME_LIBRARY={msvc_runtime}",
         "-D", f"LLVM_TARGETS_TO_BUILD={target_backend};NVPTX",
         "-D", "LLVM_ENABLE_PROJECTS=clang",
         "-D", "LLVM_ENABLE_ZLIB=FALSE",
@@ -135,7 +140,7 @@ def build_from_source_for_arch(args, arch, llvm_source):
         "-D", "LLVM_INCLUDE_TESTS=FALSE",
         "-D", "LLVM_INCLUDE_TOOLS=TRUE",  # Needed by Clang
         "-D", "LLVM_INCLUDE_UTILS=FALSE",
-        "-D", "CMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0",  # The pre-C++11 ABI is still the default on the CentOS 7 toolchain
+        "-D", f"CMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0 {abi_version}",  # The pre-C++11 ABI is still the default on the CentOS 7 toolchain
         "-D", f"CMAKE_INSTALL_PREFIX={install_path}",
         "-D", f"LLVM_HOST_TRIPLE={host_triple}",
         "-D", f"CMAKE_OSX_ARCHITECTURES={osx_architectures}",
@@ -318,7 +323,7 @@ def build_warp_clang_for_arch(args, lib_name, arch):
             libpath = os.path.join(install_path, "lib")
         else:
             # obtain Clang and LLVM libraries from packman
-            fetch_prebuilt_libraries()
+            fetch_prebuilt_libraries(arch)
             libpath = os.path.join(base_path, f"_build/host-deps/llvm-project/release-{arch}/lib")
 
         libs = []
@@ -329,6 +334,7 @@ def build_warp_clang_for_arch(args, lib_name, arch):
 
         if os.name == "nt":
             libs.append("Version.lib")
+            libs.append("Ws2_32.lib")
             libs.append(f'/LIBPATH:"{libpath}"')
         else:
             libs = [f"-l{lib[3:-2]}" for lib in libs if os.path.splitext(lib)[1] == ".a"]
@@ -340,6 +346,8 @@ def build_warp_clang_for_arch(args, lib_name, arch):
             libs.append(f"-L{libpath}")
             libs.append("-lpthread")
             libs.append("-ldl")
+            if sys.platform != "darwin":
+                libs.append("-lrt")
 
         build_dll_for_arch(
             args,

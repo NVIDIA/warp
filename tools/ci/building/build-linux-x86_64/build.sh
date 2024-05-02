@@ -54,7 +54,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 else
     if [ ${USE_LINBUILD} -ne 0 ]; then
         # build with docker for increased compatibility
-        $LINBUILD -- $PYTHON "$SCRIPT_DIR/../../../../build_lib.py" --cuda_path=$CUDA --mode=$BUILD_MODE
+        $LINBUILD --profile=centos7-gcc10-builder -- $PYTHON "$SCRIPT_DIR/../../../../build_lib.py" --cuda_path=$CUDA --mode=$BUILD_MODE
     else
         # build without docker
         $PYTHON "$SCRIPT_DIR/../../../../build_lib.py" --cuda_path=$CUDA --mode=$BUILD_MODE
