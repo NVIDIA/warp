@@ -8,6 +8,7 @@ from typing import Optional
 import numpy as np
 import omni.graph.core as og
 import omni.graph.tools.ogn as ogn
+from omni.warp.nodes._impl.common import from_omni_graph_ptr
 
 import warp as wp
 
@@ -97,7 +98,7 @@ def attr_set_array(
             get_for_write=True,
             reserved_element_count=attr.size(),
         )
-        data = wp.from_ptr(ptr, attr.size(), dtype=value.dtype)
+        data = from_omni_graph_ptr(ptr, (attr.size(),), dtype=value.dtype)
         wp.copy(data, value)
     else:
         attr.set(value.numpy(), on_gpu=False)

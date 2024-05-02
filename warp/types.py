@@ -2603,8 +2603,12 @@ def array4d(*args, **kwargs):
     return array(*args, **kwargs)
 
 
-# TODO: Rewrite so that we take only shape, not length and optional shape
 def from_ptr(ptr, length, dtype=None, shape=None, device=None):
+    warp.utils.warn(
+        "This version of wp.from_ptr() is deprecated. OmniGraph applications should use from_omni_graph_ptr() instead. In the future, wp.from_ptr() will work only with regular pointers.",
+        category=DeprecationWarning,
+    )
+
     return array(
         dtype=dtype,
         length=length,
