@@ -90,10 +90,10 @@ def inverse_array_kernel(m: wp.array(dtype=wp.float64)):
 
 
 class Example:
-    def __init__(self, stage=None, quiet=False):
+    def __init__(self, quiet=False, resolution=50):
         self._quiet = quiet
 
-        self.res = 50
+        self.res = resolution
         self.cell_size = 1.0 / self.res
 
         self.vel = 1.0
@@ -143,7 +143,7 @@ class Example:
         self._pic_quadrature = fem.PicQuadrature(domain, particles, particle_areas)
         self._particle_velocities = particle_velocities
 
-        self.renderer = Plot(stage)
+        self.renderer = Plot()
 
     def step(self):
         u_space = self._u_field.space
@@ -240,10 +240,26 @@ class Example:
 
 
 if __name__ == "__main__":
+    import argparse
+
     wp.set_module_options({"enable_backward": False})
 
-    example = Example()
-    example.step()
-    example.render()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument("--resolution", type=int, default=50, help="Grid resolution.")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing the opening of any graphical windows.",
+    )
+    parser.add_argument("--quiet", action="store_true", help="Suppresses the printing out of iteration residuals.")
 
-    example.renderer.plot(streamlines=["velocity"])
+    args = parser.parse_known_args()[0]
+
+    with wp.ScopedDevice(args.device):
+        example = Example(quiet=args.quiet, resolution=args.resolution)
+        example.step()
+        example.render()
+
+        if not args.headless:
+            example.renderer.plot(streamlines=["velocity"])

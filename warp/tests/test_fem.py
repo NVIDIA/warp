@@ -626,7 +626,9 @@ def test_deformed_geometry(test_case, device):
 
     side_measures, cell_measures = _launch_test_geometry_kernel(deformed_geo, device)
 
-    test_case.assertAlmostEqual(np.sum(cell_measures.numpy()), scale**3, places=4)
+    test_case.assertAlmostEqual(
+        np.sum(cell_measures.numpy()), scale**3, places=4, msg=f"cell_measures = {cell_measures.numpy()}"
+    )
     test_case.assertAlmostEqual(
         np.sum(side_measures.numpy()), scale**2 * (0.5 * 6 * (N + 1) + N * 2 * math.sqrt(3.0)), places=4
     )

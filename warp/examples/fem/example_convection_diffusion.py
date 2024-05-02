@@ -14,8 +14,6 @@
 # D phi / dt - nu d2 phi / dx^2 = 0
 ###########################################################################
 
-import argparse
-
 import warp as wp
 import warp.fem as fem
 
@@ -88,34 +86,23 @@ def diffusion_and_inertia_form(s: fem.Sample, phi: fem.Field, psi: fem.Field, dt
 
 
 class Example:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--resolution", type=int, default=50)
-    parser.add_argument("--degree", type=int, default=2)
-    parser.add_argument("--num_frames", type=int, default=250)
-    parser.add_argument("--viscosity", type=float, default=0.001)
-    parser.add_argument("--ang_vel", type=float, default=1.0)
-    parser.add_argument("--tri_mesh", action="store_true", help="Use a triangular mesh")
-
-    def __init__(self, stage=None, quiet=False, args=None, **kwargs):
-        if args is None:
-            # Read args from kwargs, add default arg values from parser
-            args = argparse.Namespace(**kwargs)
-            args = Example.parser.parse_args(args=[], namespace=args)
-        self._args = args
+    def __init__(self, quiet=False, degree=2, resolution=50, tri_mesh=False, viscosity=0.001, ang_vel=1.0):
         self._quiet = quiet
 
-        res = args.resolution
-        self.sim_dt = 1.0 / (args.ang_vel * res)
+        self._ang_vel = ang_vel
+
+        res = resolution
+        self.sim_dt = 1.0 / (ang_vel * res)
         self.current_frame = 0
 
-        if args.tri_mesh:
+        if tri_mesh:
             positions, tri_vidx = gen_trimesh(res=wp.vec2i(res))
             geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
         else:
             geo = fem.Grid2D(res=wp.vec2i(res))
 
         domain = fem.Cells(geometry=geo)
-        scalar_space = fem.make_polynomial_space(geo, degree=args.degree)
+        scalar_space = fem.make_polynomial_space(geo, degree=degree)
 
         # Initial condition
         self._phi_field = scalar_space.make_field()
@@ -127,11 +114,11 @@ class Example:
         self._matrix = fem.integrate(
             diffusion_and_inertia_form,
             fields={"phi": self._trial, "psi": self._test},
-            values={"nu": args.viscosity, "dt": self.sim_dt},
+            values={"nu": viscosity, "dt": self.sim_dt},
             output_dtype=float,
         )
 
-        self.renderer = Plot(stage)
+        self.renderer = Plot()
         self.renderer.add_surface("phi", self._phi_field)
 
     def step(self):
@@ -141,7 +128,7 @@ class Example:
         rhs = fem.integrate(
             transported_inertia_form,
             fields={"phi": self._phi_field, "psi": self._test},
-            values={"ang_vel": self._args.ang_vel, "dt": self.sim_dt},
+            values={"ang_vel": self._ang_vel, "dt": self.sim_dt},
             output_dtype=float,
         )
 
@@ -155,14 +142,41 @@ class Example:
 
 
 if __name__ == "__main__":
+    import argparse
+
     wp.set_module_options({"enable_backward": False})
 
-    args = Example.parser.parse_args()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument("--resolution", type=int, default=50, help="Grid resolution.")
+    parser.add_argument("--degree", type=int, default=2, help="Polynomial degree of shape functions.")
+    parser.add_argument("--num_frames", type=int, default=250, help="Total number of frames.")
+    parser.add_argument("--viscosity", type=float, default=0.001, help="Fluid viscosity parameter.")
+    parser.add_argument("--ang_vel", type=float, default=1.0, help="Angular velocity.")
+    parser.add_argument("--tri_mesh", action="store_true", help="Use a triangular mesh.")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing the opening of any graphical windows.",
+    )
+    parser.add_argument("--quiet", action="store_true", help="Suppresses the printing out of iteration residuals.")
 
-    example = Example(args=args)
-    for k in range(args.num_frames):
-        print(f"Frame {k}:")
-        example.step()
-        example.render()
+    args = parser.parse_known_args()[0]
 
-    example.renderer.plot()
+    with wp.ScopedDevice(args.device):
+        example = Example(
+            quiet=args.quiet,
+            degree=args.degree,
+            resolution=args.resolution,
+            tri_mesh=args.tri_mesh,
+            viscosity=args.viscosity,
+            ang_vel=args.ang_vel,
+        )
+
+        for k in range(args.num_frames):
+            print(f"Frame {k}:")
+            example.step()
+            example.render()
+
+        if not args.headless:
+            example.renderer.plot()

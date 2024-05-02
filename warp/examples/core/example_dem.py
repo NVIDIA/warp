@@ -115,13 +115,12 @@ def integrate(
 
 
 class Example:
-    def __init__(self, stage):
-        self.frame_dt = 1.0 / 60
-        self.frame_count = 200
+    def __init__(self, stage_path="example_dem.usd"):
+        fps = 60
+        self.frame_dt = 1.0 / fps
 
         self.sim_substeps = 64
         self.sim_dt = self.frame_dt / self.sim_substeps
-        self.sim_steps = self.frame_count * self.sim_substeps
         self.sim_time = 0.0
 
         self.point_radius = 0.1
@@ -142,13 +141,14 @@ class Example:
         self.v = wp.array(np.ones([len(self.x), 3]) * np.array([0.0, 0.0, 15.0]), dtype=wp.vec3)
         self.f = wp.zeros_like(self.v)
 
-        self.renderer = None
-        if stage is not None:
-            self.renderer = wp.render.UsdRenderer(stage)
+        if stage_path:
+            self.renderer = wp.render.UsdRenderer(stage_path)
             self.renderer.render_ground()
+        else:
+            self.renderer = None
 
-        self.use_graph = wp.get_device().is_cuda
-        if self.use_graph:
+        self.use_cuda_graph = wp.get_device().is_cuda
+        if self.use_cuda_graph:
             with wp.ScopedCapture() as capture:
                 self.simulate()
             self.graph = capture.graph
@@ -177,11 +177,11 @@ class Example:
             )
 
     def step(self):
-        with wp.ScopedTimer("step", active=True):
+        with wp.ScopedTimer("step"):
             with wp.ScopedTimer("grid build", active=False):
                 self.grid.build(self.x, self.grid_cell_size)
 
-            if self.use_graph:
+            if self.use_cuda_graph:
                 wp.capture_launch(self.graph)
             else:
                 self.simulate()
@@ -192,7 +192,7 @@ class Example:
         if self.renderer is None:
             return
 
-        with wp.ScopedTimer("render", active=True):
+        with wp.ScopedTimer("render"):
             self.renderer.begin_frame(self.sim_time)
             self.renderer.render_points(
                 points=self.x.numpy(), radius=self.point_radius, name="points", colors=(0.8, 0.3, 0.2)
@@ -209,13 +209,26 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage_path = "example_dem.usd"
+    import argparse
 
-    example = Example(stage_path)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_dem.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--num_frames", type=int, default=200, help="Total number of frames.")
 
-    for _i in range(example.frame_count):
-        example.step()
-        example.render()
+    args = parser.parse_known_args()[0]
 
-    if example.renderer:
-        example.renderer.save()
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path)
+
+        for _ in range(args.num_frames):
+            example.step()
+            example.render()
+
+        if example.renderer:
+            example.renderer.save()

@@ -261,10 +261,12 @@ def initialize_particles(
 
 
 class Example:
-    def __init__(self, stage):
+    def __init__(self, stage_path="example_sph.usd", verbose=False):
+        self.verbose = verbose
+
         # render params
-        self.frame_dt = 1.0 / 60.0
-        self.frame_count = 480
+        fps = 60
+        self.frame_dt = 1.0 / fps
         self.sim_time = 0.0
 
         # simulation params
@@ -312,17 +314,17 @@ class Example:
 
         # renderer
         self.renderer = None
-        if stage:
-            self.renderer = wp.render.UsdRenderer(stage)
+        if stage_path:
+            self.renderer = wp.render.UsdRenderer(stage_path)
 
     def step(self):
-        with wp.ScopedTimer("step", active=True):
+        with wp.ScopedTimer("step"):
             for _ in range(self.sim_step_to_frame_ratio):
-                with wp.ScopedTimer("grid build", active=False):
+                with wp.ScopedTimer("grid build", active=self.verbose):
                     # build grid
                     self.grid.build(self.x, self.smoothing_length)
 
-                with wp.ScopedTimer("forces", active=False):
+                with wp.ScopedTimer("forces", active=self.verbose):
                     # compute density of points
                     wp.launch(
                         kernel=compute_density,
@@ -368,7 +370,7 @@ class Example:
         if self.renderer is None:
             return
 
-        with wp.ScopedTimer("render", active=True):
+        with wp.ScopedTimer("render"):
             self.renderer.begin_frame(self.sim_time)
             self.renderer.render_points(
                 points=self.x.numpy(), radius=self.smoothing_length, name="points", colors=(0.8, 0.3, 0.2)
@@ -377,13 +379,27 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage_path = "example_sph.usd"
+    import argparse
 
-    example = Example(stage_path)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_sph.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--num_frames", type=int, default=480, help="Total number of frames.")
+    parser.add_argument("--verbose", action="store_true", help="Print out additional status messages during execution.")
 
-    for _i in range(example.frame_count):
-        example.render()
-        example.step()
+    args = parser.parse_known_args()[0]
 
-    if example.renderer:
-        example.renderer.save()
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path, verbose=args.verbose)
+
+        for _ in range(args.num_frames):
+            example.render()
+            example.step()
+
+        if example.renderer:
+            example.renderer.save()

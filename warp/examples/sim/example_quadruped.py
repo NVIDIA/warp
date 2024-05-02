@@ -70,8 +70,7 @@ def compute_env_offsets(num_envs, env_offset=(5.0, 0.0, 5.0), up_axis="Y"):
 
 
 class Example:
-    def __init__(self, stage=None, num_envs=1, print_timers=True):
-        self.num_envs = num_envs
+    def __init__(self, stage_path="example_quadruped.usd", num_envs=8):
         articulation_builder = wp.sim.ModelBuilder()
         wp.sim.parse_urdf(
             os.path.join(warp.examples.get_asset_directory(), "quadruped.urdf"),
@@ -93,16 +92,16 @@ class Example:
         builder = wp.sim.ModelBuilder()
 
         self.sim_time = 0.0
-        self.frame_dt = 1.0 / 100.0
-
-        episode_duration = 3.0  # seconds
-        self.episode_frames = int(episode_duration / self.frame_dt)
+        fps = 100
+        self.frame_dt = 1.0 / fps
 
         self.sim_substeps = 5
         self.sim_dt = self.frame_dt / self.sim_substeps
 
-        offsets = compute_env_offsets(num_envs)
-        for i in range(num_envs):
+        self.num_envs = num_envs
+
+        offsets = compute_env_offsets(self.num_envs)
+        for i in range(self.num_envs):
             builder.add_builder(articulation_builder, xform=wp.transform(offsets[i], wp.quat_identity()))
 
             builder.joint_q[-12:] = [0.2, 0.4, -0.6, -0.2, -0.4, 0.6, -0.2, 0.4, -0.6, 0.2, -0.4, 0.6]
@@ -123,23 +122,24 @@ class Example:
         # self.integrator = wp.sim.SemiImplicitIntegrator()
         self.integrator = wp.sim.FeatherstoneIntegrator(self.model)
 
-        self.renderer = None
-        if stage:
-            self.renderer = wp.sim.render.SimRenderer(self.model, stage)
-
-        self.print_timers = print_timers
+        if stage_path:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage_path)
+        else:
+            self.renderer = None
 
         self.state_0 = self.model.state()
         self.state_1 = self.model.state()
 
         wp.sim.eval_fk(self.model, self.model.joint_q, self.model.joint_qd, None, self.state_0)
 
-        self.use_graph = wp.get_device().is_cuda
-        self.graph = None
-        if self.use_graph:
+        # simulate() allocates memory via a clone, so we can't use graph capture if the device does not support mempools
+        self.use_cuda_graph = wp.get_device().is_cuda and wp.is_mempool_enabled(wp.get_device())
+        if self.use_cuda_graph:
             with wp.ScopedCapture() as capture:
                 self.simulate()
             self.graph = capture.graph
+        else:
+            self.graph = None
 
     def simulate(self):
         for _ in range(self.sim_substeps):
@@ -149,8 +149,8 @@ class Example:
             self.state_0, self.state_1 = self.state_1, self.state_0
 
     def step(self):
-        with wp.ScopedTimer("step", active=True, print=self.print_timers):
-            if self.use_graph:
+        with wp.ScopedTimer("step"):
+            if self.use_cuda_graph:
                 wp.capture_launch(self.graph)
             else:
                 self.simulate()
@@ -160,20 +160,34 @@ class Example:
         if self.renderer is None:
             return
 
-        with wp.ScopedTimer("render", active=True, print=self.print_timers):
+        with wp.ScopedTimer("render"):
             self.renderer.begin_frame(self.sim_time)
             self.renderer.render(self.state_0)
             self.renderer.end_frame()
 
 
 if __name__ == "__main__":
-    stage_path = "example_quadruped.usd"
+    import argparse
 
-    example = Example(stage_path, num_envs=8)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_quadruped.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--num_frames", type=int, default=300, help="Total number of frames.")
+    parser.add_argument("--num_envs", type=int, default=8, help="Total number of simulated environments.")
 
-    for _ in range(example.episode_frames):
-        example.step()
-        example.render()
+    args = parser.parse_known_args()[0]
 
-    if example.renderer:
-        example.renderer.save()
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path, num_envs=args.num_envs)
+
+        for _ in range(args.num_frames):
+            example.step()
+            example.render()
+
+        if example.renderer:
+            example.renderer.save()

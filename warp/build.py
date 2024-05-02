@@ -65,6 +65,8 @@ def init_kernel_cache(path=None):
 
     if path is not None:
         cache_root_dir = os.path.realpath(path)
+    elif "WARP_CACHE_PATH" in os.environ:
+        cache_root_dir = os.path.realpath(os.environ.get("WARP_CACHE_PATH"))
     else:
         cache_root_dir = appdirs.user_cache_dir(appname="warp", appauthor="NVIDIA", version=warp.config.version)
 

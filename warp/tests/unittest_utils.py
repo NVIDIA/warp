@@ -28,6 +28,10 @@ USD_AVAILABLE = pxr is not None
 #   "all" - run on all devices
 test_mode = "unique_or_2x"
 
+coverage_enabled = False
+coverage_temp_dir = None
+coverage_branch = None
+
 try:
     if sys.platform == "win32":
         LIBC = ctypes.CDLL("ucrtbase.dll")
@@ -142,7 +146,11 @@ class StdOutCapture:
         import tempfile
 
         self.tempfile = io.TextIOWrapper(
-            tempfile.TemporaryFile(buffering=0), encoding="utf-8", errors="replace", newline="", write_through=True
+            tempfile.TemporaryFile(buffering=0),
+            encoding="utf-8",
+            errors="replace",
+            newline="",
+            write_through=True,
         )
 
         os.dup2(self.tempfile.fileno(), self.saved.fileno())
@@ -255,7 +263,11 @@ def add_function_test(cls, name, func, devices=None, check_output=True, **kwargs
                     create_test_func(func, device, check_output, **kwargs),
                 )
     else:
-        setattr(cls, name + "_" + sanitize_identifier(devices), create_test_func(func, devices, check_output, **kwargs))
+        setattr(
+            cls,
+            name + "_" + sanitize_identifier(devices),
+            create_test_func(func, devices, check_output, **kwargs),
+        )
 
 
 def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devices=None):
@@ -400,7 +412,11 @@ def write_junit_results(
         test_status = test_data[2]
 
         test_case = ET.SubElement(
-            root, "testcase", classname=test.__class__.__name__, name=test._testMethodName, time=f"{test_duration:.3f}"
+            root,
+            "testcase",
+            classname=test.__class__.__name__,
+            name=test._testMethodName,
+            time=f"{test_duration:.3f}",
         )
 
         if test_status == "FAIL":

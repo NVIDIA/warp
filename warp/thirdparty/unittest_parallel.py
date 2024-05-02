@@ -240,7 +240,7 @@ def main(argv=None):
                     initargs=(manager.Lock(), shared_index, args, temp_dir),
                 ) as executor:
                     test_manager = ParallelTestManager(manager, args, temp_dir)
-                    results = list(executor.map(test_manager.run_tests, test_suites, timeout=3600))
+                    results = list(executor.map(test_manager.run_tests, test_suites, timeout=7200))
         else:
             # This entire path is an NVIDIA Modification
 
@@ -438,6 +438,11 @@ class ParallelTestManager:
             return [0, [], [], 0, 0, 0]
 
         # NVIDIA Modification for TeamCity and GitLab
+        import warp.tests.unittest_utils
+
+        warp.tests.unittest_utils.coverage_enabled = self.args.coverage
+        warp.tests.unittest_utils.coverage_temp_dir = self.temp_dir
+        warp.tests.unittest_utils.coverage_branch = self.args.coverage_branch
 
         if RUNNING_IN_TEAMCITY:
             resultclass = ParallelTeamCityTestResult

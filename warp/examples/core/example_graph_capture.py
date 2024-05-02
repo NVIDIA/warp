@@ -12,10 +12,7 @@
 #
 ###########################################################################
 
-import matplotlib.colors
-import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.animation import FuncAnimation
 
 import warp as wp
 
@@ -48,18 +45,18 @@ def slide(x: wp.array(dtype=float), shift: float):
 
 class Example:
     def __init__(self):
-        self.W = 128
-        self.H = 128
+        self.width = 128
+        self.height = 128
         min_x, max_x = 0.0, 2.0
         min_y, max_y = 0.0, 2.0
 
         # create a grid of pixels
-        x = np.linspace(min_x, max_x, self.W)
-        y = np.linspace(min_y, max_y, self.H)
+        x = np.linspace(min_x, max_x, self.width)
+        y = np.linspace(min_y, max_y, self.height)
 
         self.x = wp.array(x, dtype=float)
         self.y = wp.array(y, dtype=float)
-        self.pixel_values = wp.zeros((self.W, self.H), dtype=float)
+        self.pixel_values = wp.zeros((self.width, self.height), dtype=float)
 
         self.seed = 42
         self.shift = 2e-2
@@ -67,8 +64,8 @@ class Example:
         self.amplitude = 1.0
 
         # use graph capture if launching from a CUDA-capable device
-        self.use_graph = wp.get_device().is_cuda
-        if self.use_graph:
+        self.use_cuda_graph = wp.get_device().is_cuda
+        if self.use_cuda_graph:
             # record launches
             with wp.ScopedCapture() as capture:
                 self.fbm()
@@ -78,7 +75,7 @@ class Example:
         for _ in range(16):
             wp.launch(
                 kernel=fbm,
-                dim=(self.H, self.W),
+                dim=(self.height, self.width),
                 inputs=[self.seed, self.frequency, self.amplitude, self.x, self.y],
                 outputs=[self.pixel_values],
             )
@@ -91,15 +88,12 @@ class Example:
         self.amplitude = 1.0
 
         with wp.ScopedTimer("step", active=True):
-            wp.launch(kernel=slide, dim=self.W, inputs=[self.x, self.shift])
+            wp.launch(kernel=slide, dim=self.width, inputs=[self.x, self.shift])
 
-            if self.use_graph:
+            if self.use_cuda_graph:
                 wp.capture_launch(self.graph)
             else:  # cpu path
                 self.fbm()
-
-    def render(self):
-        pass
 
     def step_and_render(self, frame_num=None, img=None):
         self.step()
@@ -114,14 +108,37 @@ class Example:
 
 
 if __name__ == "__main__":
-    example = Example()
+    import argparse
 
-    # Create the animation
-    fig = plt.figure()
-    img = plt.imshow(example.pixel_values.numpy(), "gray", origin="lower", animated=True)
-    img.set_norm(matplotlib.colors.Normalize(0.0, 1.0))
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument("--num_frames", type=int, default=1000, help="Total number of frames.")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing the opening of any graphical windows.",
+    )
 
-    ani = FuncAnimation(fig, example.step_and_render, fargs=(img,), frames=1000, interval=30)
+    args = parser.parse_known_args()[0]
 
-    # Display the animation
-    plt.show()
+    with wp.ScopedDevice(args.device):
+        example = Example()
+
+        if not args.headless:
+            import matplotlib.colors
+            import matplotlib.pyplot as plt
+            from matplotlib.animation import FuncAnimation
+
+            # Create the animation
+            fig = plt.figure()
+            img = plt.imshow(example.pixel_values.numpy(), "gray", origin="lower", animated=True)
+            img.set_norm(matplotlib.colors.Normalize(0.0, 1.0))
+
+            ani = FuncAnimation(fig, example.step_and_render, fargs=(img,), frames=1000, interval=30)
+
+            # Display the animation
+            plt.show()
+
+        else:
+            for _ in range(args.num_frames):
+                example.step()

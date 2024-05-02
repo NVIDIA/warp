@@ -16,8 +16,6 @@
 # homogeneous Neumann on horizontal edges.
 ###########################################################################
 
-import argparse
-
 import warp as wp
 import warp.fem as fem
 from warp.fem.utils import array_axpy
@@ -77,44 +75,43 @@ def y_boundary_projector_form(
 
 
 class Example:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--resolution", type=int, default=50)
-    parser.add_argument("--degree", type=int, default=2)
-    parser.add_argument("--serendipity", action="store_true", default=False)
-    parser.add_argument("--viscosity", type=float, default=2.0)
-    parser.add_argument("--boundary_value", type=float, default=5.0)
-    parser.add_argument("--boundary_compliance", type=float, default=0, help="Dirichlet boundary condition compliance")
-    parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type")
-
-    def __init__(self, stage=None, quiet=False, args=None, **kwargs):
-        if args is None:
-            # Read args from kwargs, add default arg values from parser
-            args = argparse.Namespace(**kwargs)
-            args = Example.parser.parse_args(args=[], namespace=args)
-        self._args = args
+    def __init__(
+        self,
+        quiet=False,
+        degree=2,
+        resolution=50,
+        mesh="grid",
+        serendipity=False,
+        viscosity=2.0,
+        boundary_value=5.0,
+        boundary_compliance=0.0,
+    ):
         self._quiet = quiet
 
+        self._viscosity = viscosity
+        self._boundary_value = boundary_value
+        self._boundary_compliance = boundary_compliance
+
         # Grid or triangle mesh geometry
-        if args.mesh == "tri":
-            positions, tri_vidx = gen_trimesh(res=wp.vec2i(args.resolution))
+        if mesh == "tri":
+            positions, tri_vidx = gen_trimesh(res=wp.vec2i(resolution))
             self._geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
-        elif args.mesh == "quad":
-            positions, quad_vidx = gen_quadmesh(res=wp.vec2i(args.resolution))
+        elif mesh == "quad":
+            positions, quad_vidx = gen_quadmesh(res=wp.vec2i(resolution))
             self._geo = fem.Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions)
         else:
-            self._geo = fem.Grid2D(res=wp.vec2i(args.resolution))
+            self._geo = fem.Grid2D(res=wp.vec2i(resolution))
 
         # Scalar function space
-        element_basis = fem.ElementBasis.SERENDIPITY if args.serendipity else None
-        self._scalar_space = fem.make_polynomial_space(self._geo, degree=args.degree, element_basis=element_basis)
+        element_basis = fem.ElementBasis.SERENDIPITY if serendipity else None
+        self._scalar_space = fem.make_polynomial_space(self._geo, degree=degree, element_basis=element_basis)
 
         # Scalar field over our function space
         self._scalar_field = self._scalar_space.make_field()
 
-        self.renderer = Plot(stage)
+        self.renderer = Plot()
 
     def step(self):
-        args = self._args
         geo = self._geo
 
         domain = fem.Cells(geometry=geo)
@@ -125,7 +122,7 @@ class Example:
 
         # Diffusion form
         trial = fem.make_trial(space=self._scalar_space, domain=domain)
-        matrix = fem.integrate(diffusion_form, fields={"u": trial, "v": test}, values={"nu": args.viscosity})
+        matrix = fem.integrate(diffusion_form, fields={"u": trial, "v": test}, values={"nu": self._viscosity})
 
         # Boundary conditions on Y sides
         # Use nodal integration so that boundary conditions are specified on each node independently
@@ -135,16 +132,16 @@ class Example:
 
         bd_matrix = fem.integrate(y_boundary_projector_form, fields={"u": bd_trial, "v": bd_test}, nodal=True)
         bd_rhs = fem.integrate(
-            y_boundary_value_form, fields={"v": bd_test}, values={"val": args.boundary_value}, nodal=True
+            y_boundary_value_form, fields={"v": bd_test}, values={"val": self._boundary_value}, nodal=True
         )
 
         # Assemble linear system
-        if args.boundary_compliance == 0.0:
+        if self._boundary_compliance == 0.0:
             # Hard BC: project linear system
             fem.project_linear_system(matrix, rhs, bd_matrix, bd_rhs)
         else:
-            # Weak BC: add toegether diffusion and boundary condition matrices
-            boundary_strength = 1.0 / args.boundary_compliance
+            # Weak BC: add together diffusion and boundary condition matrices
+            boundary_strength = 1.0 / self._boundary_compliance
             bsr_axpy(x=bd_matrix, y=matrix, alpha=boundary_strength, beta=1)
             array_axpy(x=bd_rhs, y=rhs, alpha=boundary_strength, beta=1)
 
@@ -160,12 +157,45 @@ class Example:
 
 
 if __name__ == "__main__":
+    import argparse
+
     wp.set_module_options({"enable_backward": False})
 
-    args = Example.parser.parse_args()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument("--resolution", type=int, default=50, help="Grid resolution.")
+    parser.add_argument("--degree", type=int, default=2, help="Polynomial degree of shape functions.")
+    parser.add_argument("--serendipity", action="store_true", default=False, help="Use Serendipity basis functions.")
+    parser.add_argument("--viscosity", type=float, default=2.0, help="Fluid viscosity parameter.")
+    parser.add_argument(
+        "--boundary_value", type=float, default=5.0, help="Value of Dirichlet boundary condition on vertical edges."
+    )
+    parser.add_argument(
+        "--boundary_compliance", type=float, default=0.0, help="Dirichlet boundary condition compliance."
+    )
+    parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type.")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing the opening of any graphical windows.",
+    )
+    parser.add_argument("--quiet", action="store_true", help="Suppresses the printing out of iteration residuals.")
 
-    example = Example(args=args)
-    example.step()
-    example.render()
+    args = parser.parse_known_args()[0]
 
-    example.renderer.plot()
+    with wp.ScopedDevice(args.device):
+        example = Example(
+            quiet=args.quiet,
+            degree=args.degree,
+            resolution=args.resolution,
+            mesh=args.mesh,
+            serendipity=args.serendipity,
+            viscosity=args.viscosity,
+            boundary_value=args.boundary_value,
+            boundary_compliance=args.boundary_compliance,
+        )
+        example.step()
+        example.render()
+
+        if not args.headless:
+            example.renderer.plot()

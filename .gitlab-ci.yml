@@ -167,10 +167,10 @@ linux-aarch64 test:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - !reference [.snippets, install-python+warp-aarch64]
-    - $PYTHON -m pip install coverage[toml]
+    - python -m pip install coverage[toml]
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - $PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
   tags:
     - arch/arm
 
@@ -187,14 +187,16 @@ linux-x86_64 test:
     - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
     - tools/packman/packman install -l _build/target-deps/python python ${DEFAULT_PYTHON}-linux-x86_64
     - export PATH="$CUDA_BIN:$PATH"
-    - $PYTHON -m pip install --upgrade pip
-    - $PYTHON -m pip install --upgrade usd-core coverage[toml]
-    - $PYTHON -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
-    - $PYTHON -m pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-    - $PYTHON -m pip install -e .
+    - $PYTHON -m venv _venv
+    - source _venv/bin/activate
+    - python -m pip install --upgrade pip
+    - python -m pip install --upgrade usd-core coverage[toml]
+    - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
+    - python -m pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    - python -m pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - $PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
 windows-x86_64 test:
   stage: test
@@ -207,14 +209,15 @@ windows-x86_64 test:
     - powershell -command "Get-Volume | Format-Table -AutoSize"
     - $python_name = $DEFAULT_PYTHON + "-windows-x86_64"
     - tools/packman/packman.cmd install -l _build/target-deps/python python $python_name
-    - $env:PYTHON = "$env:CI_PROJECT_DIR\_build\target-deps\python\python.exe"
-    - '& $env:PYTHON -m pip install --upgrade pip'
-    - '& $env:PYTHON -m pip install --upgrade usd-core coverage[toml]'
-    - '& $env:PYTHON -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121'
-    - '& $env:PYTHON -m pip install -e .'
+    - '& $env:CI_PROJECT_DIR\_build\target-deps\python\python.exe -m venv _venv'
+    - .\_venv\Scripts\Activate.ps1
+    - python -m pip install --upgrade pip
+    - python -m pip install --upgrade usd-core coverage[toml]
+    - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
+    - python -m pip install -e .
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
-    - '& $env:PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect'
+    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
   tags:
     - os/windows
     - gpu/2x-A5000
@@ -229,10 +232,10 @@ mac-x86_64 test:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - !reference [.snippets, install-python+warp-macos]
-    - $PYTHON -m pip install --upgrade matplotlib usd-core coverage[toml]
+    - python -m pip install --upgrade usd-core coverage[toml]
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - $PYTHON -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
 # Test the Linux release build in an environment with minimal Python dependencies installed
 linux-x86_64 test minimal:
@@ -248,11 +251,13 @@ linux-x86_64 test minimal:
     - mv warp/bin/linux-x86_64/warp.so warp/bin/
     - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
     - tools/packman/packman install -l _build/target-deps/python python ${DEFAULT_PYTHON}-linux-x86_64
-    - $PYTHON -m pip install --upgrade pip
-    - $PYTHON -m pip install -e .
+    - $PYTHON -m venv _venv
+    - source _venv/bin/activate
+    - python -m pip install --upgrade pip
+    - python -m pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - $PYTHON -m warp.tests --junit-report-xml rspec.xml -s autodetect
+    - python -m warp.tests --junit-report-xml rspec.xml -s autodetect
 
 # Test the Windows release build in an environment with minimal Python dependencies installed
 windows-x86_64 test minimal:
@@ -267,12 +272,13 @@ windows-x86_64 test minimal:
     - powershell -command "Get-Volume | Format-Table -AutoSize"
     - $python_name = $DEFAULT_PYTHON + "-windows-x86_64"
     - tools/packman/packman.cmd install -l _build/target-deps/python python $python_name
-    - $env:PYTHON = "$env:CI_PROJECT_DIR\_build\target-deps\python\python.exe"
-    - '& $env:PYTHON -m pip install --upgrade pip'
-    - '& $env:PYTHON -m pip install -e .'
+    - '& $env:CI_PROJECT_DIR\_build\target-deps\python\python.exe -m venv _venv'
+    - .\_venv\Scripts\Activate.ps1
+    - python -m pip install --upgrade pip
+    - python -m pip install -e .
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
-    - '& $env:PYTHON -m warp.tests --junit-report-xml rspec.xml -s autodetect'
+    - python -m warp.tests --junit-report-xml rspec.xml -s autodetect
   tags:
     - os/windows
     - gpu/2x-A5000
@@ -294,13 +300,13 @@ windows-x64_64 docs:
     - powershell -command "Get-Volume | Format-Table -AutoSize"
     - $python_name = $DEFAULT_PYTHON + "-windows-x86_64"
     - tools/packman/packman.cmd install -l _build/target-deps/python python $python_name
-    - $env:PYTHON = "$env:CI_PROJECT_DIR\_build\target-deps\python\python.exe"
-    - $env:Path += ";$env:CI_PROJECT_DIR\_build\target-deps\python\Scripts"
-    - '& $env:PYTHON -m pip install --upgrade pip'
-    - '& $env:PYTHON -m pip install -r docs/requirements.txt'
+    - '& $env:CI_PROJECT_DIR\_build\target-deps\python\python.exe -m venv _venv'
+    - .\_venv\Scripts\Activate.ps1
+    - python -m pip install --upgrade pip
+    - python -m pip install -r docs/requirements.txt
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
-    - '& $env:PYTHON build_docs.py'
+    - python build_docs.py
     - mv docs/_build/html/ ./public/
   after_script:
     - echo "You can view the website at https://omniverse.gitlab-master-pages.nvidia.com/-/warp/-/jobs/$CI_JOB_ID/artifacts/public/index.html"

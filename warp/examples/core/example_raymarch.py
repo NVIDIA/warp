@@ -14,7 +14,6 @@
 #
 ###########################################################################
 
-
 import warp as wp
 
 wp.init()
@@ -153,16 +152,13 @@ def draw(cam_pos: wp.vec3, cam_rot: wp.quat, width: int, height: int, pixels: wp
 
 
 class Example:
-    def __init__(self, **kwargs):
-        self.width = 2048
-        self.height = 1024
+    def __init__(self, height=1024, width=2048):
+        self.width = width
+        self.height = height
         self.cam_pos = (-1.25, 1.0, 2.0)
         self.cam_rot = wp.quat_rpy(-0.5, -0.5, 0.0)
 
         self.pixels = wp.zeros(self.width * self.height, dtype=wp.vec3)
-
-    def step(self):
-        pass
 
     def render(self):
         with wp.ScopedTimer("render"):
@@ -174,12 +170,30 @@ class Example:
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
+    import argparse
 
-    example = Example()
-    example.render()
-
-    plt.imshow(
-        example.pixels.numpy().reshape((example.height, example.width, 3)), origin="lower", interpolation="antialiased"
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing the opening of any graphical windows.",
     )
-    plt.show()
+    parser.add_argument("--width", type=int, default=2048, help="Output image width in pixels.")
+    parser.add_argument("--height", type=int, default=1024, help="Output image height in pixels.")
+
+    args = parser.parse_known_args()[0]
+
+    with wp.ScopedDevice(args.device):
+        example = Example(height=args.height, width=args.width)
+        example.render()
+
+        if not args.headless:
+            import matplotlib.pyplot as plt
+
+            plt.imshow(
+                example.pixels.numpy().reshape((example.height, example.width, 3)),
+                origin="lower",
+                interpolation="antialiased",
+            )
+            plt.show()

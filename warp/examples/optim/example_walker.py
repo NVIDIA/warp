@@ -71,15 +71,12 @@ activation_strength = wp.constant(0.3)
 
 
 class Example:
-    def __init__(self, stage=None, profile=False, verbose=False, episode_duration=5.0):
-        self.profile = profile
+    def __init__(self, stage_path="example_walker.usd", verbose=False, num_frames=300):
         self.verbose = verbose
 
-        # sim settings
-        self.episode_duration = episode_duration  # seconds
-
-        self.frame_dt = 1.0 / 60.0
-        self.frame_count = int(self.episode_duration / self.frame_dt)
+        fps = 60
+        self.frame_dt = 1.0 / fps
+        self.num_frames = num_frames
 
         self.sim_substeps = 80
         self.sim_dt = self.frame_dt / self.sim_substeps
@@ -141,7 +138,7 @@ class Example:
 
         # allocate sim states
         self.states = []
-        for _i in range(self.frame_count * self.sim_substeps + 1):
+        for _i in range(self.num_frames * self.sim_substeps + 1):
             self.states.append(self.model.state(requires_grad=True))
 
         # initialize the integrator.
@@ -149,7 +146,7 @@ class Example:
 
         # model input
         self.phases = []
-        for _i in range(self.frame_count):
+        for _i in range(self.num_frames):
             self.phases.append(wp.zeros(self.phase_count, dtype=float, requires_grad=True))
 
         # single layer linear network
@@ -162,35 +159,36 @@ class Example:
         # tanh activation layer
         self.activation_inputs = []
         self.tet_activations = []
-        for _i in range(self.frame_count):
+        for _i in range(self.num_frames):
             self.activation_inputs.append(wp.zeros(self.model.tet_count, dtype=float, requires_grad=True))
             self.tet_activations.append(wp.zeros(self.model.tet_count, dtype=float, requires_grad=True))
 
         # optimization
         self.loss = wp.zeros(1, dtype=float, requires_grad=True)
         self.coms = []
-        for _i in range(self.frame_count):
+        for _i in range(self.num_frames):
             self.coms.append(wp.zeros(1, dtype=wp.vec3, requires_grad=True))
         self.optimizer = warp.optim.Adam([self.weights.flatten()], lr=self.train_rate)
 
         # rendering
-        self.renderer = None
-        if stage:
-            self.renderer = wp.sim.render.SimRenderer(self.model, stage)
+        if stage_path:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage_path)
+        else:
+            self.renderer = None
 
         # capture forward/backward passes
-        self.use_graph = wp.get_device().is_cuda
-        if self.use_graph:
+        self.use_cuda_graph = wp.get_device().is_cuda
+        if self.use_cuda_graph:
             with wp.ScopedCapture() as capture:
                 self.tape = wp.Tape()
                 with self.tape:
-                    for i in range(self.frame_count):
+                    for i in range(self.num_frames):
                         self.forward(i)
                 self.tape.backward(self.loss)
             self.graph = capture.graph
 
     def forward(self, frame):
-        with wp.ScopedTimer("network", active=self.profile):
+        with wp.ScopedTimer("network", active=self.verbose):
             # build sinusoidal input phases
             wp.launch(kernel=compute_phases, dim=self.phase_count, inputs=[self.phases[frame], self.sim_time])
             # fully connected, linear transformation layer
@@ -208,7 +206,7 @@ class Example:
             )
             self.control.tet_activations = self.tet_activations[frame]
 
-        with wp.ScopedTimer("simulate", active=self.profile):
+        with wp.ScopedTimer("simulate", active=self.verbose):
             # run simulation loop
             for i in range(self.sim_substeps):
                 self.states[frame * self.sim_substeps + i].clear_forces()
@@ -221,7 +219,7 @@ class Example:
                 )
                 self.sim_time += self.sim_dt
 
-        with wp.ScopedTimer("loss", active=self.profile):
+        with wp.ScopedTimer("loss", active=self.verbose):
             # compute center of mass velocity
             wp.launch(
                 com_kernel,
@@ -237,13 +235,13 @@ class Example:
             wp.launch(loss_kernel, dim=1, inputs=[self.coms[frame], self.loss], outputs=[])
 
     def step(self):
-        with wp.ScopedTimer("step", active=self.profile):
-            if self.use_graph:
+        with wp.ScopedTimer("step"):
+            if self.use_cuda_graph:
                 wp.capture_launch(self.graph)
             else:
                 self.tape = wp.Tape()
                 with self.tape:
-                    for i in range(self.frame_count):
+                    for i in range(self.num_frames):
                         self.forward(i)
                 self.tape.backward(self.loss)
 
@@ -262,7 +260,7 @@ class Example:
         # clear grads and zero arrays for next iteration
         self.tape.zero()
         self.loss.zero_()
-        for i in range(self.frame_count):
+        for i in range(self.num_frames):
             self.coms[i].zero_()
 
         self.iter += 1
@@ -271,8 +269,8 @@ class Example:
         if self.renderer is None:
             return
 
-        with wp.ScopedTimer("render", active=self.profile):
-            for i in range(self.frame_count + 1):
+        with wp.ScopedTimer("render"):
+            for i in range(self.num_frames + 1):
                 self.renderer.begin_frame(self.render_time)
                 self.renderer.render(self.states[i * self.sim_substeps])
                 self.renderer.end_frame()
@@ -281,13 +279,28 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage_path = "example_walker.usd"
+    import argparse
 
-    example = Example(stage_path, profile=False, verbose=True)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_walker.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--num_frames", type=int, default=300, help="Total number of frames per training iteration.")
+    parser.add_argument("--train_iters", type=int, default=30, help="Total number of training iterations.")
+    parser.add_argument("--verbose", action="store_true", help="Print out additional status messages during execution.")
 
-    for _i in range(30):
-        example.step()
-        example.render()
+    args = parser.parse_known_args()[0]
 
-    if example.renderer:
-        example.renderer.save()
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path, verbose=args.verbose, num_frames=args.num_frames)
+
+        for _ in range(args.train_iters):
+            example.step()
+            example.render()
+
+        if example.renderer:
+            example.renderer.save()

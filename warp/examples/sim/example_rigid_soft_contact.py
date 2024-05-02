@@ -21,16 +21,14 @@ wp.init()
 
 
 class Example:
-    def __init__(self, stage):
+    def __init__(self, stage_path="example_rigid_soft_contact.usd"):
         self.sim_width = 8
         self.sim_height = 8
 
-        self.sim_fps = 60.0
-        self.frame_dt = 1.0 / self.sim_fps
+        fps = 60
+        self.frame_dt = 1.0 / fps
         self.sim_substeps = 32
-        self.sim_duration = 5.0
-        self.sim_frames = int(self.sim_duration * self.sim_fps)
-        self.sim_dt = (1.0 / self.sim_fps) / self.sim_substeps
+        self.sim_dt = self.frame_dt / self.sim_substeps
         self.sim_time = 0.0
         self.sim_iterations = 1
         self.sim_relaxation = 1.0
@@ -69,12 +67,13 @@ class Example:
         self.state_0 = self.model.state()
         self.state_1 = self.model.state()
 
-        self.renderer = None
-        if stage:
-            self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=1.0)
+        if stage_path:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage_path, scaling=1.0)
+        else:
+            self.renderer = None
 
-        self.use_graph = wp.get_device().is_cuda
-        if self.use_graph:
+        self.use_cuda_graph = wp.get_device().is_cuda
+        if self.use_cuda_graph:
             with wp.ScopedCapture() as capture:
                 self.simulate()
             self.graph = capture.graph
@@ -93,7 +92,7 @@ class Example:
 
     def step(self):
         with wp.ScopedTimer("step", dict=self.profiler):
-            if self.use_graph:
+            if self.use_cuda_graph:
                 wp.capture_launch(self.graph)
             else:
                 self.simulate()
@@ -103,20 +102,33 @@ class Example:
         if self.renderer is None:
             return
 
-        with wp.ScopedTimer("render", active=True):
+        with wp.ScopedTimer("render"):
             self.renderer.begin_frame(self.sim_time)
             self.renderer.render(self.state_0)
             self.renderer.end_frame()
 
 
 if __name__ == "__main__":
-    stage_path = "example_rigid_soft_contact.usd"
+    import argparse
 
-    example = Example(stage_path)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_rigid_soft_contact.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--num_frames", type=int, default=300, help="Total number of frames.")
 
-    for _i in range(example.sim_frames):
-        example.step()
-        example.render()
+    args = parser.parse_known_args()[0]
 
-    if example.renderer:
-        example.renderer.save()
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path)
+
+        for _ in range(args.num_frames):
+            example.step()
+            example.render()
+
+        if example.renderer:
+            example.renderer.save()

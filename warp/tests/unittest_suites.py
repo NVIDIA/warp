@@ -106,7 +106,7 @@ def default_suite(test_loader: unittest.TestLoader):
     from warp.tests.test_devices import TestDevices
     from warp.tests.test_dlpack import TestDLPack
     from warp.tests.test_examples import (
-        TestExamples,
+        TestCoreExamples,
         TestFemDiffusionExamples,
         TestFemExamples,
         TestSimExamples,
@@ -156,6 +156,7 @@ def default_suite(test_loader: unittest.TestLoader):
     from warp.tests.test_reload import TestReload
     from warp.tests.test_rounding import TestRounding
     from warp.tests.test_runlength_encode import TestRunlengthEncode
+    from warp.tests.test_sim_grad import TestSimGradients
     from warp.tests.test_sim_kinematics import TestSimKinematics
     from warp.tests.test_smoothstep import TestSmoothstep
     from warp.tests.test_snippet import TestSnippets
@@ -194,7 +195,7 @@ def default_suite(test_loader: unittest.TestLoader):
         TestDense,
         TestDevices,
         TestDLPack,
-        TestExamples,
+        TestCoreExamples,
         TestFemDiffusionExamples,
         TestFemExamples,
         TestSimExamples,
@@ -244,6 +245,7 @@ def default_suite(test_loader: unittest.TestLoader):
         TestReload,
         TestRounding,
         TestRunlengthEncode,
+        TestSimGradients,
         TestSimKinematics,
         TestSmoothstep,
         TestSparse,

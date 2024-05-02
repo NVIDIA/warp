@@ -17,8 +17,6 @@
 # and E the elasticity rank-4 tensor
 ###########################################################################
 
-import argparse
-
 import numpy as np
 
 import warp as wp
@@ -95,38 +93,34 @@ def tensor_mass_form(
 
 
 class Example:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--resolution", type=int, default=25)
-    parser.add_argument("--degree", type=int, default=2)
-    parser.add_argument("--displacement", type=float, default=0.1)
-    parser.add_argument("--young_modulus", type=float, default=1.0)
-    parser.add_argument("--poisson_ratio", type=float, default=0.5)
-    parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type")
-    parser.add_argument(
-        "--nonconforming_stresses", action="store_true", help="For grid, use non-conforming stresses (Q_d/P_d)"
-    )
-
-    def __init__(self, stage=None, quiet=False, args=None, **kwargs):
-        if args is None:
-            # Read args from kwargs, add default arg values from parser
-            args = argparse.Namespace(**kwargs)
-            args = Example.parser.parse_args(args=[], namespace=args)
-        self._args = args
+    def __init__(
+        self,
+        quiet=False,
+        degree=2,
+        resolution=25,
+        mesh="grid",
+        displacement=0.1,
+        young_modulus=1.0,
+        poisson_ratio=0.5,
+        nonconforming_stresses=False,
+    ):
         self._quiet = quiet
 
+        self._displacement = displacement
+
         # Grid or triangle mesh geometry
-        if args.mesh == "tri":
-            positions, tri_vidx = gen_trimesh(res=wp.vec2i(args.resolution))
+        if mesh == "tri":
+            positions, tri_vidx = gen_trimesh(res=wp.vec2i(resolution))
             self._geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
-        elif args.mesh == "quad":
-            positions, quad_vidx = gen_quadmesh(res=wp.vec2i(args.resolution))
+        elif mesh == "quad":
+            positions, quad_vidx = gen_quadmesh(res=wp.vec2i(resolution))
             self._geo = fem.Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions)
         else:
-            self._geo = fem.Grid2D(res=wp.vec2i(args.resolution))
+            self._geo = fem.Grid2D(res=wp.vec2i(resolution))
 
         # Strain-stress matrix
-        young = args.young_modulus
-        poisson = args.poisson_ratio
+        young = young_modulus
+        poisson = poisson_ratio
         self._elasticity_mat = wp.mat33(
             young
             / (1.0 - poisson * poisson)
@@ -141,16 +135,14 @@ class Example:
 
         # Function spaces -- S_k for displacement, Q_{k-1}d for stress
         self._u_space = fem.make_polynomial_space(
-            self._geo, degree=args.degree, dtype=wp.vec2, element_basis=fem.ElementBasis.SERENDIPITY
+            self._geo, degree=degree, dtype=wp.vec2, element_basis=fem.ElementBasis.SERENDIPITY
         )
 
         # Store stress degrees of freedom as symmetric tensors (3 dof) rather than full 2x2 matrices
-        tau_basis = (
-            fem.ElementBasis.NONCONFORMING_POLYNOMIAL if args.nonconforming_stresses else fem.ElementBasis.LAGRANGE
-        )
+        tau_basis = fem.ElementBasis.NONCONFORMING_POLYNOMIAL if nonconforming_stresses else fem.ElementBasis.LAGRANGE
         self._tau_space = fem.make_polynomial_space(
             self._geo,
-            degree=args.degree - 1,
+            degree=degree - 1,
             discontinuous=True,
             element_basis=tau_basis,
             dof_mapper=fem.SymmetricTensorMapper(wp.mat22),
@@ -158,7 +150,7 @@ class Example:
 
         self._u_field = self._u_space.make_field()
 
-        self.renderer = Plot(stage)
+        self.renderer = Plot()
 
     def step(self):
         boundary = fem.BoundarySides(self._geo)
@@ -170,7 +162,7 @@ class Example:
         u_bd_rhs = fem.integrate(
             horizontal_displacement_form,
             fields={"v": u_bd_test},
-            values={"displacement": self._args.displacement},
+            values={"displacement": self._displacement},
             nodal=True,
             output_dtype=wp.vec2d,
         )
@@ -210,12 +202,43 @@ class Example:
 
 
 if __name__ == "__main__":
+    import argparse
+
     wp.set_module_options({"enable_backward": False})
 
-    args = Example.parser.parse_args()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument("--resolution", type=int, default=25, help="Grid resolution.")
+    parser.add_argument("--degree", type=int, default=2, help="Polynomial degree of shape functions.")
+    parser.add_argument("--displacement", type=float, default=0.1)
+    parser.add_argument("--young_modulus", type=float, default=1.0)
+    parser.add_argument("--poisson_ratio", type=float, default=0.5)
+    parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type")
+    parser.add_argument(
+        "--nonconforming_stresses", action="store_true", help="For grid, use non-conforming stresses (Q_d/P_d)"
+    )
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing the opening of any graphical windows.",
+    )
+    parser.add_argument("--quiet", action="store_true", help="Suppresses the printing out of iteration residuals.")
 
-    example = Example(args=args)
-    example.step()
-    example.render()
+    args = parser.parse_known_args()[0]
 
-    example.renderer.plot()
+    with wp.ScopedDevice(args.device):
+        example = Example(
+            quiet=args.quiet,
+            degree=args.degree,
+            resolution=args.resolution,
+            mesh=args.mesh,
+            displacement=args.displacement,
+            young_modulus=args.young_modulus,
+            poisson_ratio=args.poisson_ratio,
+            nonconforming_stresses=args.nonconforming_stresses,
+        )
+        example.step()
+        example.render()
+
+        if not args.headless:
+            example.renderer.plot()

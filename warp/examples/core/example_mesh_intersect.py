@@ -80,7 +80,7 @@ def intersect(
 
 
 class Example:
-    def __init__(self, stage):
+    def __init__(self, stage_path="example_mesh_intersect.usd"):
         rng = np.random.default_rng(42)
 
         self.query_count = 1024
@@ -98,7 +98,7 @@ class Example:
         # generate random relative transforms
         self.xforms = []
 
-        for _i in range(self.query_count):
+        for _ in range(self.query_count):
             # random offset
             p = wp.vec3(rng.random(3) * 0.5 - 0.5) * 5.0
 
@@ -114,12 +114,13 @@ class Example:
         self.array_xforms = wp.array(self.xforms, dtype=wp.transform)
 
         # renderer
-        self.renderer = None
-        if stage is not None:
-            self.renderer = wp.render.UsdRenderer(stage)
+        if stage_path:
+            self.renderer = wp.render.UsdRenderer(stage_path)
+        else:
+            self.renderer = None
 
     def step(self):
-        with wp.ScopedTimer("intersect", active=True):
+        with wp.ScopedTimer("step"):
             wp.launch(
                 kernel=intersect,
                 dim=self.query_num_faces * self.query_count,
@@ -181,12 +182,24 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage_path = "example_mesh_intersect.usd"
+    import argparse
 
-    example = Example(stage_path)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_mesh_intersect.usd",
+        help="Path to the output USD file.",
+    )
 
-    example.step()
-    example.render()
+    args = parser.parse_known_args()[0]
 
-    if example.renderer:
-        example.renderer.save()
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path)
+
+        example.step()
+        example.render()
+
+        if example.renderer:
+            example.renderer.save()
