@@ -346,6 +346,8 @@ def build_warp_clang_for_arch(args, lib_name, arch):
             libs.append(f"-L{libpath}")
             libs.append("-lpthread")
             libs.append("-ldl")
+            if sys.platform != "darwin":
+                libs.append("-lrt")
 
         build_dll_for_arch(
             args,
