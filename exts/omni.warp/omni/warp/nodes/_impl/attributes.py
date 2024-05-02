@@ -7,6 +7,7 @@
 
 """Helpers to author OmniGraph attributes."""
 
+import ctypes
 import functools
 import inspect
 import math
@@ -125,7 +126,7 @@ def attr_get_array_on_gpu(
         get_for_write=not read_only,
         reserved_element_count=0 if read_only else attr.size(),
     )
-    return wp.from_ptr(ptr, attr.size(), dtype=dtype)
+    return from_omni_graph_ptr(ptr, (attr.size(),), dtype=dtype)
 
 
 def attr_cast_array_to_warp(
@@ -144,12 +145,10 @@ def attr_cast_array_to_warp(
         )
 
     elif device.is_cuda:
-        size = functools.reduce(operator.mul, shape)
-        return wp.types.from_ptr(
+        return from_omni_graph_ptr(
             value.memory,
-            size,
-            dtype=dtype,
             shape=shape,
+            dtype=dtype,
             device=device,
         )
 
@@ -192,6 +191,16 @@ class AttrTracking:
 
 #   High-level Helper
 # ------------------------------------------------------------------------------
+
+
+def from_omni_graph_ptr(ptr, shape, dtype=None, device=None):
+    return wp.array(
+        dtype=dtype,
+        ptr=0 if ptr == 0 else ctypes.cast(ptr, ctypes.POINTER(ctypes.c_size_t)).contents.value,
+        shape=shape,
+        device=device,
+        requires_grad=False,
+    )
 
 
 def from_omni_graph(
@@ -243,24 +252,12 @@ def from_omni_graph(
                     shape = data.shape[: i + 1]
                     break
 
-        if shape is None:
-            if arr_size % element_size != 0:
-                raise RuntimeError(
-                    "Cannot infer a size matching the Warp data type '{}' with " "an array size of '{}' bytes.".format(
-                        dtype.__name__, arr_size
-                    )
-                )
-            size = arr_size // element_size
-        else:
-            size = functools.reduce(operator.mul, shape)
-
         src_device = wp.get_device(str(data.device))
         dst_device = device
-        return wp.from_ptr(
+        return from_omni_graph_ptr(
             data.memory,
-            size,
-            dtype=dtype,
             shape=shape,
+            dtype=dtype,
             device=src_device,
         ).to(dst_device)
 
@@ -307,16 +304,6 @@ def from_omni_graph(
                         shape = arr_shape[: i + 1]
                         break
 
-            if shape is None:
-                if arr_size % element_size != 0:
-                    raise RuntimeError(
-                        "Cannot infer a size matching the Warp data type '{}' with "
-                        "an array size of '{}' bytes.".format(dtype.__name__, arr_size)
-                    )
-                size = arr_size // element_size
-            else:
-                size = functools.reduce(operator.mul, shape)
-
             data.gpu_ptr_kind = og.PtrToPtrKind.CPU
             (ptr, _) = data.get_array(
                 on_gpu=True,
@@ -326,11 +313,10 @@ def from_omni_graph(
 
             src_device = wp.get_device("cuda")
             dst_device = device
-            return wp.from_ptr(
+            return from_omni_graph_ptr(
                 ptr,
-                size,
-                dtype=dtype,
                 shape=shape,
+                dtype=dtype,
                 device=src_device,
             ).to(dst_device)
         else:
