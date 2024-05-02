@@ -16,8 +16,6 @@
 # homogeneous Neumann on horizontal edges.
 ###########################################################################
 
-import argparse
-
 import warp as wp
 import warp.fem as fem
 
@@ -69,49 +67,46 @@ def boundary_projector_form(
 
 
 class Example:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--resolution", type=int, default=50)
-    parser.add_argument("--degree", type=int, default=2)
-    parser.add_argument("--serendipity", action="store_true", default=False)
-    parser.add_argument("--viscosity", type=float, default=2.0)
-    parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type")
-
-    def __init__(self, stage=None, quiet=False, args=None, **kwargs):
-        if args is None:
-            # Read args from kwargs, add default arg values from parser
-            args = argparse.Namespace(**kwargs)
-            args = Example.parser.parse_args(args=[], namespace=args)
-        self._args = args
+    def __init__(
+        self,
+        quiet=False,
+        degree=2,
+        resolution=50,
+        mesh="grid",
+        serendipity=False,
+        viscosity=2.0,
+    ):
         self._quiet = quiet
 
+        self._viscosity = viscosity
+
         # Grid or triangle mesh geometry
-        if args.mesh == "tri":
-            positions, tri_vidx = gen_trimesh(res=wp.vec2i(args.resolution))
+        if mesh == "tri":
+            positions, tri_vidx = gen_trimesh(res=wp.vec2i(resolution))
             base_geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
-        elif args.mesh == "quad":
-            positions, quad_vidx = gen_quadmesh(res=wp.vec2i(args.resolution))
+        elif mesh == "quad":
+            positions, quad_vidx = gen_quadmesh(res=wp.vec2i(resolution))
             base_geo = fem.Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions)
         else:
-            base_geo = fem.Grid2D(res=wp.vec2i(args.resolution))
+            base_geo = fem.Grid2D(res=wp.vec2i(resolution))
 
         # Construct deformation field on base geometry
-        deformation_space = fem.make_polynomial_space(base_geo, degree=args.degree, dtype=wp.vec2)
+        deformation_space = fem.make_polynomial_space(base_geo, degree=degree, dtype=wp.vec2)
         deformation_field = deformation_space.make_field()
         fem.interpolate(deformation_field_expr, dest=deformation_field)
 
         self._geo = deformation_field.make_deformed_geometry()
 
         # Scalar function space on deformed geometry
-        element_basis = fem.ElementBasis.SERENDIPITY if args.serendipity else None
-        self._scalar_space = fem.make_polynomial_space(self._geo, degree=args.degree, element_basis=element_basis)
+        element_basis = fem.ElementBasis.SERENDIPITY if serendipity else None
+        self._scalar_space = fem.make_polynomial_space(self._geo, degree=degree, element_basis=element_basis)
 
         # Scalar field over our function space
         self._scalar_field = self._scalar_space.make_field()
 
-        self.renderer = Plot(stage)
+        self.renderer = Plot()
 
     def step(self):
-        args = self._args
         geo = self._geo
 
         domain = fem.Cells(geometry=geo)
@@ -122,7 +117,7 @@ class Example:
 
         # Diffusion form
         trial = fem.make_trial(space=self._scalar_space, domain=domain)
-        matrix = fem.integrate(diffusion_form, fields={"u": trial, "v": test}, values={"nu": args.viscosity})
+        matrix = fem.integrate(diffusion_form, fields={"u": trial, "v": test}, values={"nu": self._viscosity})
 
         # Weakly-imposed boundary conditions on all sides
         boundary = fem.BoundarySides(geo)
@@ -145,12 +140,38 @@ class Example:
 
 
 if __name__ == "__main__":
+    import argparse
+
     wp.set_module_options({"enable_backward": False})
 
-    args = Example.parser.parse_args()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument("--resolution", type=int, default=50, help="Grid resolution.")
+    parser.add_argument("--degree", type=int, default=2, help="Polynomial degree of shape functions.")
+    parser.add_argument("--serendipity", action="store_true", default=False, help="Use Serendipity basis functions.")
+    parser.add_argument("--viscosity", type=float, default=2.0, help="Fluid viscosity parameter.")
+    parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing the opening of any graphical windows.",
+    )
+    parser.add_argument("--quiet", action="store_true", help="Suppresses the printing out of iteration residuals.")
 
-    example = Example(args=args)
-    example.step()
-    example.render()
+    args = parser.parse_known_args()[0]
 
-    example.renderer.plot()
+    with wp.ScopedDevice(args.device):
+        example = Example(
+            quiet=args.quiet,
+            degree=args.degree,
+            resolution=args.resolution,
+            mesh=args.mesh,
+            serendipity=args.serendipity,
+            viscosity=args.viscosity,
+        )
+
+        example.step()
+        example.render()
+
+        if not args.headless:
+            example.renderer.plot()

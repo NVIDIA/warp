@@ -110,15 +110,13 @@ def grid_update(heights: wp.array(dtype=float), vertices: wp.array(dtype=wp.vec3
 
 
 class Example:
-    def __init__(self, stage):
+    def __init__(self, stage_path="example_wave.usd", verbose=False):
         self.sim_width = 128
         self.sim_height = 128
 
-        self.sim_fps = 60.0
+        fps = 60
         self.sim_substeps = 16
-        self.sim_duration = 5.0
-        self.sim_frames = int(self.sim_duration * self.sim_fps)
-        self.sim_dt = (1.0 / self.sim_fps) / self.sim_substeps
+        self.sim_dt = (1.0 / fps) / self.sim_substeps
         self.sim_time = 0.0
 
         # wave constants
@@ -128,6 +126,8 @@ class Example:
         # grid constants
         self.grid_size = 0.1
         self.grid_displace = 0.5
+
+        self.verbose = verbose
 
         vertices = []
         self.indices = []
@@ -164,12 +164,13 @@ class Example:
         self.cx = self.sim_width / 2 + math.sin(self.sim_time) * self.sim_width / 3
         self.cy = self.sim_height / 2 + math.cos(self.sim_time) * self.sim_height / 3
 
-        self.renderer = None
-        if stage:
-            self.renderer = wp.render.UsdRenderer(stage)
+        if stage_path:
+            self.renderer = wp.render.UsdRenderer(stage_path)
+        else:
+            self.renderer = None
 
     def step(self):
-        with wp.ScopedTimer("step", active=True):
+        with wp.ScopedTimer("step"):
             for _s in range(self.sim_substeps):
                 # create surface displacement around a point
                 self.cx = self.sim_width / 2 + math.sin(self.sim_time) * self.sim_width / 3
@@ -212,7 +213,7 @@ class Example:
 
                 self.sim_time += self.sim_dt
 
-        with wp.ScopedTimer("mesh", active=False):
+        with wp.ScopedTimer("mesh", self.verbose):
             # update grid vertices from heights
             wp.launch(kernel=grid_update, dim=self.sim_width * self.sim_height, inputs=[self.sim_grid0, self.sim_verts])
 
@@ -220,7 +221,7 @@ class Example:
         if self.renderer is None:
             return
 
-        with wp.ScopedTimer("render", active=True):
+        with wp.ScopedTimer("render"):
             vertices = self.sim_verts.numpy()
 
             self.renderer.begin_frame(self.sim_time)
@@ -236,13 +237,27 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage_path = "example_wave.usd"
+    import argparse
 
-    example = Example(stage_path)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_wave.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--num_frames", type=int, default=300, help="Total number of frames.")
+    parser.add_argument("--verbose", action="store_true", help="Print out additional status messages during execution.")
 
-    for _i in range(example.sim_frames):
-        example.step()
-        example.render()
+    args = parser.parse_known_args()[0]
 
-    if example.renderer:
-        example.renderer.save()
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path, verbose=args.verbose)
+
+        for _ in range(args.num_frames):
+            example.step()
+            example.render()
+
+        if example.renderer:
+            example.renderer.save()

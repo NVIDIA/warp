@@ -14,8 +14,6 @@
 # D phi / dt - nu d2 phi / dx^2 = 0
 ###########################################################################
 
-import argparse
-
 import warp as wp
 import warp.fem as fem
 from warp.sparse import bsr_axpy
@@ -83,41 +81,28 @@ def sip_diffusion_form(
 
 
 class Example:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--resolution", type=int, default=50)
-    parser.add_argument("--degree", type=int, default=2)
-    parser.add_argument("--num_frames", type=int, default=100)
-    parser.add_argument("--viscosity", type=float, default=0.001)
-    parser.add_argument("--ang_vel", type=float, default=1.0)
-    parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type")
-
-    def __init__(self, stage=None, quiet=False, args=None, **kwargs):
-        if args is None:
-            # Read args from kwargs, add default arg values from parser
-            args = argparse.Namespace(**kwargs)
-            args = Example.parser.parse_args(args=[], namespace=args)
-        self._args = args
+    def __init__(self, quiet=False, degree=2, resolution=50, mesh="grid", viscosity=0.001, ang_vel=1.0):
         self._quiet = quiet
 
-        res = args.resolution
-        self.sim_dt = 1.0 / (args.ang_vel * res)
+        res = resolution
+        self.sim_dt = 1.0 / (ang_vel * res)
         self.current_frame = 0
 
-        if args.mesh == "tri":
-            positions, tri_vidx = gen_trimesh(res=wp.vec2i(args.resolution))
+        if mesh == "tri":
+            positions, tri_vidx = gen_trimesh(res=wp.vec2i(resolution))
             geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
-        elif args.mesh == "quad":
-            positions, quad_vidx = gen_quadmesh(res=wp.vec2i(args.resolution))
+        elif mesh == "quad":
+            positions, quad_vidx = gen_quadmesh(res=wp.vec2i(resolution))
             geo = fem.Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions)
         else:
-            geo = fem.Grid2D(res=wp.vec2i(args.resolution))
+            geo = fem.Grid2D(res=wp.vec2i(resolution))
 
         domain = fem.Cells(geometry=geo)
         sides = fem.Sides(geo)
         scalar_space = fem.make_polynomial_space(
             geo,
             discontinuous=True,
-            degree=args.degree,
+            degree=degree,
             family=fem.Polynomial.GAUSS_LEGENDRE,
         )
 
@@ -135,7 +120,7 @@ class Example:
         matrix_transport = fem.integrate(
             transport_form,
             fields={"phi": trial, "psi": self._test},
-            values={"ang_vel": args.ang_vel},
+            values={"ang_vel": ang_vel},
         )
 
         side_test = fem.make_test(space=scalar_space, domain=sides)
@@ -145,7 +130,7 @@ class Example:
             fem.integrate(
                 upwind_transport_form,
                 fields={"phi": side_trial, "psi": side_test},
-                values={"ang_vel": args.ang_vel},
+                values={"ang_vel": ang_vel},
             ),
             y=matrix_transport,
         )
@@ -164,13 +149,13 @@ class Example:
 
         self._matrix = matrix_inertia
         bsr_axpy(x=matrix_transport, y=self._matrix)
-        bsr_axpy(x=matrix_diffusion, y=self._matrix, alpha=args.viscosity)
+        bsr_axpy(x=matrix_diffusion, y=self._matrix, alpha=viscosity)
 
         # Initial condition
         self._phi_field = scalar_space.make_field()
         fem.interpolate(initial_condition, dest=self._phi_field)
 
-        self.renderer = Plot(stage)
+        self.renderer = Plot()
         self.renderer.add_surface("phi", self._phi_field)
 
     def step(self):
@@ -194,14 +179,41 @@ class Example:
 
 
 if __name__ == "__main__":
+    import argparse
+
     wp.set_module_options({"enable_backward": False})
 
-    args = Example.parser.parse_args()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument("--resolution", type=int, default=50, help="Grid resolution.")
+    parser.add_argument("--degree", type=int, default=2, help="Polynomial degree of shape functions.")
+    parser.add_argument("--num_frames", type=int, default=100, help="Total number of frames.")
+    parser.add_argument("--viscosity", type=float, default=0.001, help="Fluid viscosity parameter.")
+    parser.add_argument("--ang_vel", type=float, default=1.0, help="Angular velocity.")
+    parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type.")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing the opening of any graphical windows.",
+    )
+    parser.add_argument("--quiet", action="store_true")
 
-    example = Example(args=args)
-    for k in range(args.num_frames):
-        print(f"Frame {k}:")
-        example.step()
-        example.render()
+    args = parser.parse_known_args()[0]
 
-    example.renderer.plot()
+    with wp.ScopedDevice(args.device):
+        example = Example(
+            quiet=args.quiet,
+            degree=args.degree,
+            resolution=args.resolution,
+            mesh=args.mesh,
+            viscosity=args.viscosity,
+            ang_vel=args.ang_vel,
+        )
+
+        for k in range(args.num_frames):
+            print(f"Frame {k}:")
+            example.step()
+            example.render()
+
+        if not args.headless:
+            example.renderer.plot()

@@ -21,9 +21,9 @@ wp.init()
 
 
 class Example:
-    def __init__(self, stage):
-        self.sim_steps = 2000
-        self.sim_dt = 1.0 / 120.0
+    def __init__(self, stage_path="example_rigid_gyroscopic.usd"):
+        fps = 120
+        self.sim_dt = 1.0 / fps
         self.sim_time = 0.0
 
         self.scale = 0.5
@@ -62,12 +62,13 @@ class Example:
         self.integrator = wp.sim.SemiImplicitIntegrator()
         self.state = self.model.state()
 
-        self.renderer = None
-        if stage:
-            self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=100.0)
+        if stage_path:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage_path, scaling=100.0)
+        else:
+            self.renderer = None
 
     def step(self):
-        with wp.ScopedTimer("step", active=True):
+        with wp.ScopedTimer("step"):
             self.state.clear_forces()
             self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
             self.sim_time += self.sim_dt
@@ -76,20 +77,33 @@ class Example:
         if self.renderer is None:
             return
 
-        with wp.ScopedTimer("render", active=True):
+        with wp.ScopedTimer("render"):
             self.renderer.begin_frame(self.sim_time)
             self.renderer.render(self.state)
             self.renderer.end_frame()
 
 
 if __name__ == "__main__":
-    stage_path = "example_rigid_gyroscopic.usd"
+    import argparse
 
-    example = Example(stage_path)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_rigid_gyroscopic.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--num_frames", type=int, default=2000, help="Total number of frames.")
 
-    for _i in range(example.sim_steps):
-        example.step()
-        example.render()
+    args = parser.parse_known_args()[0]
 
-    if example.renderer:
-        example.renderer.save()
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path)
+
+        for _ in range(args.num_frames):
+            example.step()
+            example.render()
+
+        if example.renderer:
+            example.renderer.save()

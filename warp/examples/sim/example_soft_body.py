@@ -12,7 +12,6 @@
 # 180 degree rotation.
 #
 ###########################################################################
-
 import math
 
 import warp as wp
@@ -61,13 +60,13 @@ def compute_volume(points: wp.array(dtype=wp.vec3), indices: wp.array2d(dtype=in
 
 
 class Example:
-    def __init__(self, stage):
-        sim_fps = 60.0
+    def __init__(self, stage_path="example_soft_body.usd", num_frames=300):
         self.sim_substeps = 64
-        sim_duration = 5.0
-        self.sim_frames = int(sim_duration * sim_fps)
-        self.frame_dt = 1.0 / sim_fps
-        self.sim_dt = (1.0 / sim_fps) / self.sim_substeps
+        self.num_frames = num_frames
+        fps = 60
+        sim_duration = self.num_frames / fps
+        self.frame_dt = 1.0 / fps
+        self.sim_dt = self.frame_dt / self.sim_substeps
         self.sim_time = 0.0
         self.lift_speed = 2.5 / sim_duration * 2.0  # from Smith et al.
         self.rot_speed = math.pi / sim_duration
@@ -111,12 +110,13 @@ class Example:
 
         self.volume = wp.zeros(1, dtype=wp.float32)
 
-        self.renderer = None
-        if stage:
-            self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=20.0)
+        if stage_path:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage_path, scaling=20.0)
+        else:
+            self.renderer = None
 
-        self.use_graph = wp.get_device().is_cuda
-        if self.use_graph:
+        self.use_cuda_graph = wp.get_device().is_cuda
+        if self.use_cuda_graph:
             with wp.ScopedCapture() as capture:
                 self.simulate()
             self.graph = capture.graph
@@ -142,7 +142,7 @@ class Example:
                 dim=len(self.state_0.particle_q),
                 inputs=[self.rest.particle_q, self.state_0.particle_q, self.model.particle_mass, xform],
             )
-            if self.use_graph:
+            if self.use_cuda_graph:
                 wp.capture_launch(self.graph)
             else:
                 self.simulate()
@@ -165,13 +165,26 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage_path = "example_soft_body.usd"
+    import argparse
 
-    example = Example(stage_path)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_soft_body.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--num_frames", type=int, default=300, help="Total number of frames.")
 
-    for _i in range(example.sim_frames):
-        example.step()
-        example.render()
+    args = parser.parse_known_args()[0]
 
-    if example.renderer:
-        example.renderer.save()
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path, num_frames=args.num_frames)
+
+        for _ in range(args.num_frames):
+            example.step()
+            example.render()
+
+        if example.renderer:
+            example.renderer.save()

@@ -156,19 +156,15 @@ def solve_incompressibility(divergence_mat: BsrMatrix, inv_volume, pressure, vel
 
 
 class Example:
-    def __init__(self, stage, num_frames=1000, res=None, quiet=False):
-        self.frame_dt = 1.0 / 60
-        self.num_frames = num_frames
+    def __init__(self, quiet=False, stage_path="example_apic_fluid.usd", res=(32, 64, 16)):
+        fps = 60
+        self.frame_dt = 1.0 / fps
         self.current_frame = 0
 
         self.sim_substeps = 1
         self.sim_dt = self.frame_dt / self.sim_substeps
-        self.sim_steps = self.num_frames * self.sim_substeps
 
         self._quiet = quiet
-
-        if res is None:
-            res = [32, 64, 16]
 
         # grid dimensions and particle emission
         grid_res = np.array(res, dtype=int)
@@ -257,11 +253,13 @@ class Example:
         self.state_1: State = self.model.state()
         self.state_1.particle_qd_grad = wp.zeros(shape=(self.model.particle_count), dtype=wp.mat33)
 
-        self.renderer = None
         try:
-            self.renderer = warp.sim.render.SimRenderer(self.model, stage, scaling=20.0)
+            if stage_path:
+                self.renderer = warp.sim.render.SimRenderer(self.model, stage_path, scaling=20.0)
+            else:
+                self.renderer = None
         except Exception as err:
-            print(f"Could not initialize SimRenderer for stage '{stage}': {err}.")
+            print(f"Could not initialize SimRenderer for stage '{stage_path}': {err}.")
 
     def step(self):
         fem.set_default_temporary_store(self.temporary_store)
@@ -375,14 +373,35 @@ class Example:
 
 
 if __name__ == "__main__":
+    import argparse
+
     wp.set_module_options({"enable_backward": False})
 
-    stage_path = "example_apic_fluid.usd"
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_apic_fluid.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--num_frames", type=int, default=1000, help="Total number of frames.")
+    parser.add_argument("--quiet", action="store_true")
+    parser.add_argument(
+        "--res",
+        type=lambda s: [int(item) for item in s.split(",")],
+        default="32,64,16",
+        help="Delimited list specifying resolution in x, y, and z.",
+    )
 
-    example = Example(stage_path)
+    args = parser.parse_known_args()[0]
 
-    for _i in range(example.num_frames):
-        example.step()
-        example.render()
+    with wp.ScopedDevice(args.device):
+        example = Example(quiet=args.quiet, stage_path=args.stage_path, res=args.res)
 
-    example.renderer.save()
+        for _ in range(args.num_frames):
+            example.step()
+            example.render()
+
+        if example.renderer:
+            example.renderer.save()

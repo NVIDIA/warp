@@ -53,10 +53,11 @@ class ForwardKinematics(torch.autograd.Function):
 
 
 class Example:
-    def __init__(self, stage, device=None, verbose=False):
+    def __init__(self, stage_path="example_inverse_kinematics_torch.usd", verbose=False):
         self.verbose = verbose
 
-        self.frame_dt = 1.0 / 60.0
+        fps = 60
+        self.frame_dt = 1.0 / fps
         self.render_time = 0.0
 
         builder = wp.sim.ModelBuilder()
@@ -101,14 +102,15 @@ class Example:
                 )
 
         # finalize model
-        self.model = builder.finalize(device)
+        self.model = builder.finalize()
         self.model.ground = False
 
-        self.torch_device = wp.device_to_torch(self.model.device)
+        self.torch_device = wp.device_to_torch(wp.get_device())
 
-        self.renderer = None
-        if stage:
-            self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=50.0)
+        if stage_path:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage_path, scaling=50.0)
+        else:
+            self.renderer = None
 
         self.target = torch.from_numpy(np.array((2.0, 1.0, 0.0))).to(self.torch_device)
 
@@ -126,44 +128,58 @@ class Example:
         self.loss = torch.norm(self.body_q[self.model.body_count - 1][0:3] - self.target) ** 2.0
 
     def step(self):
-        self.forward()
-        self.loss.backward()
+        with wp.ScopedTimer("step"):
+            self.forward()
+            self.loss.backward()
 
-        if self.verbose:
-            print(f"loss: {self.loss}")
-            print(f"loss: {self.joint_q.grad}")
+            if self.verbose:
+                print(f"loss: {self.loss}")
+                print(f"loss: {self.joint_q.grad}")
 
-        with torch.no_grad():
-            self.joint_q -= self.joint_q.grad * self.train_rate
-            self.joint_q.grad.zero_()
+            with torch.no_grad():
+                self.joint_q -= self.joint_q.grad * self.train_rate
+                self.joint_q.grad.zero_()
 
     def render(self):
         if self.renderer is None:
             return
 
-        s = self.model.state()
-        s.body_q = wp.from_torch(self.body_q, dtype=wp.transform, requires_grad=False)
-        s.body_qd = wp.from_torch(self.body_qd, dtype=wp.spatial_vector, requires_grad=False)
+        with wp.ScopedTimer("render"):
+            s = self.model.state()
+            s.body_q = wp.from_torch(self.body_q, dtype=wp.transform, requires_grad=False)
+            s.body_qd = wp.from_torch(self.body_qd, dtype=wp.spatial_vector, requires_grad=False)
 
-        self.renderer.begin_frame(self.render_time)
-        self.renderer.render(s)
-        self.renderer.render_sphere(
-            name="target", pos=self.target, rot=wp.quat_identity(), radius=0.1, color=(1.0, 0.0, 0.0)
-        )
-        self.renderer.end_frame()
-        self.render_time += self.frame_dt
+            self.renderer.begin_frame(self.render_time)
+            self.renderer.render(s)
+            self.renderer.render_sphere(
+                name="target", pos=self.target, rot=wp.quat_identity(), radius=0.1, color=(1.0, 0.0, 0.0)
+            )
+            self.renderer.end_frame()
+            self.render_time += self.frame_dt
 
 
 if __name__ == "__main__":
-    stage_path = "example_inverse_kinematics_torch.usd"
+    import argparse
 
-    example = Example(stage_path, device=wp.get_preferred_device(), verbose=True)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_inverse_kinematics_torch.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--train_iters", type=int, default=512, help="Total number of training iterations.")
+    parser.add_argument("--verbose", action="store_true", help="Print out additional status messages during execution.")
 
-    train_iters = 512
+    args = parser.parse_known_args()[0]
 
-    for _ in range(train_iters):
-        example.step()
-        example.render()
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path, verbose=args.verbose)
 
-    if example.renderer:
-        example.renderer.save()
+        for _ in range(args.train_iters):
+            example.step()
+            example.render()
+
+        if example.renderer:
+            example.renderer.save()

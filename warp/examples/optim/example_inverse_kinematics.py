@@ -41,14 +41,11 @@ def step_kernel(x: wp.array(dtype=float), grad: wp.array(dtype=float), alpha: fl
 
 
 class Example:
-    def __init__(self, stage, device=None, verbose=False):
+    def __init__(self, stage_path="example_inverse_kinematics.usd", verbose=False):
         self.verbose = verbose
-        if device is None:
-            self.device = wp.get_device()
-        else:
-            self.device = device
 
-        self.frame_dt = 1.0 / 60.0
+        fps = 60
+        self.frame_dt = 1.0 / fps
         self.render_time = 0.0
 
         builder = wp.sim.ModelBuilder()
@@ -93,17 +90,18 @@ class Example:
                 )
 
         # finalize model
-        self.model = builder.finalize(self.device)
+        self.model = builder.finalize()
         self.model.ground = False
 
         self.state = self.model.state()
 
-        self.renderer = None
-        if stage:
-            self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=50.0)
+        if stage_path:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage_path, scaling=50.0)
+        else:
+            self.renderer = None
 
         # optimization variables
-        self.loss = wp.zeros(1, dtype=float, device=self.device)
+        self.loss = wp.zeros(1, dtype=float)
 
         self.model.joint_q.requires_grad = True
         self.state.body_q.requires_grad = True
@@ -114,57 +112,65 @@ class Example:
     def forward(self):
         wp.sim.eval_fk(self.model, self.model.joint_q, self.model.joint_qd, None, self.state)
 
-        wp.launch(
-            compute_loss,
-            dim=1,
-            inputs=[self.state.body_q, len(self.state.body_q) - 1, self.loss],
-            device=self.device,
-        )
+        wp.launch(compute_loss, dim=1, inputs=[self.state.body_q, len(self.state.body_q) - 1, self.loss])
 
     def step(self):
-        tape = wp.Tape()
-        with tape:
-            self.forward()
-        tape.backward(loss=self.loss)
+        with wp.ScopedTimer("step"):
+            tape = wp.Tape()
+            with tape:
+                self.forward()
+            tape.backward(loss=self.loss)
 
-        if self.verbose:
-            print(f"loss: {self.loss}")
-            print(f"joint_grad: {tape.gradients[self.model.joint_q]}")
+            if self.verbose:
+                print(f"loss: {self.loss}")
+                print(f"joint_grad: {tape.gradients[self.model.joint_q]}")
 
-        # gradient descent
-        wp.launch(
-            step_kernel,
-            dim=len(self.model.joint_q),
-            inputs=[self.model.joint_q, tape.gradients[self.model.joint_q], self.train_rate],
-            device=self.device,
-        )
+            # gradient descent
+            wp.launch(
+                step_kernel,
+                dim=len(self.model.joint_q),
+                inputs=[self.model.joint_q, tape.gradients[self.model.joint_q], self.train_rate],
+            )
 
-        # zero gradients
-        tape.zero()
+            # zero gradients
+            tape.zero()
 
     def render(self):
         if self.renderer is None:
             return
 
-        self.renderer.begin_frame(self.render_time)
-        self.renderer.render(self.state)
-        self.renderer.render_sphere(
-            name="target", pos=TARGET, rot=wp.quat_identity(), radius=0.1, color=(1.0, 0.0, 0.0)
-        )
-        self.renderer.end_frame()
-        self.render_time += self.frame_dt
+        with wp.ScopedTimer("render"):
+            self.renderer.begin_frame(self.render_time)
+            self.renderer.render(self.state)
+            self.renderer.render_sphere(
+                name="target", pos=TARGET, rot=wp.quat_identity(), radius=0.1, color=(1.0, 0.0, 0.0)
+            )
+            self.renderer.end_frame()
+            self.render_time += self.frame_dt
 
 
 if __name__ == "__main__":
-    stage_path = "example_inverse_kinematics.usd"
+    import argparse
 
-    example = Example(stage_path, device=wp.get_preferred_device(), verbose=True)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_inverse_kinematics.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--train_iters", type=int, default=512, help="Total number of training iterations.")
+    parser.add_argument("--verbose", action="store_true", help="Print out additional status messages during execution.")
 
-    train_iters = 512
+    args = parser.parse_known_args()[0]
 
-    for _ in range(train_iters):
-        example.step()
-        example.render()
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path, verbose=args.verbose)
 
-    if example.renderer:
-        example.renderer.save()
+        for _ in range(args.train_iters):
+            example.step()
+            example.render()
+
+        if example.renderer:
+            example.renderer.save()

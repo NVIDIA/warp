@@ -42,14 +42,15 @@ def step_kernel(x: wp.array(dtype=wp.vec3), grad: wp.array(dtype=wp.vec3), alpha
 
 
 class Example:
-    def __init__(self, stage=None, profile=False, verbose=False):
+    def __init__(self, stage_path="example_bounce.usd", verbose=False):
         self.verbose = verbose
 
         # seconds
         sim_duration = 0.6
 
         # control frequency
-        self.frame_dt = 1.0 / 60.0
+        fps = 60
+        self.frame_dt = 1.0 / fps
         frame_steps = int(sim_duration / self.frame_dt)
 
         # sim frequency
@@ -60,7 +61,6 @@ class Example:
         self.iter = 0
         self.render_time = 0.0
 
-        self.train_iters = 250
         self.train_rate = 0.02
 
         ke = 1.0e4
@@ -71,8 +71,6 @@ class Example:
         builder = wp.sim.ModelBuilder()
         builder.add_particle(pos=wp.vec3(-0.5, 1.0, 0.0), vel=wp.vec3(5.0, -5.0, 0.0), mass=1.0)
         builder.add_shape_box(body=-1, pos=wp.vec3(2.0, 1.0, 0.0), hx=0.25, hy=1.0, hz=1.0, ke=ke, kf=kf, kd=kd, mu=mu)
-
-        self.profile = profile
 
         # use `requires_grad=True` to create a model for differentiable simulation
         self.model = builder.finalize(requires_grad=True)
@@ -98,13 +96,14 @@ class Example:
         # one-shot contact creation (valid if we're doing simple collision against a constant normal plane)
         wp.sim.collide(self.model, self.states[0])
 
-        self.renderer = None
-        if stage:
-            self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=1.0)
+        if stage_path:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage_path, scaling=1.0)
+        else:
+            self.renderer = None
 
         # capture forward/backward passes
-        self.use_graph = wp.get_device().is_cuda
-        if self.use_graph:
+        self.use_cuda_graph = wp.get_device().is_cuda
+        if self.use_cuda_graph:
             with wp.ScopedCapture() as capture:
                 self.tape = wp.Tape()
                 with self.tape:
@@ -124,8 +123,8 @@ class Example:
         return self.loss
 
     def step(self):
-        with wp.ScopedTimer("step", active=self.profile):
-            if self.use_graph:
+        with wp.ScopedTimer("step"):
+            if self.use_cuda_graph:
                 wp.capture_launch(self.graph)
             else:
                 self.tape = wp.Tape()
@@ -152,7 +151,7 @@ class Example:
         if self.renderer is None:
             return
 
-        with wp.ScopedTimer("render", active=self.profile):
+        with wp.ScopedTimer("render"):
             # draw trajectory
             traj_verts = [self.states[0].particle_q.numpy()[0].tolist()]
 
@@ -231,16 +230,31 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage_path = "example_bounce.usd"
+    import argparse
 
-    example = Example(stage_path, profile=False, verbose=True)
-    example.check_grad()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_bounce.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--train_iters", type=int, default=250, help="Total number of training iterations.")
+    parser.add_argument("--verbose", action="store_true", help="Print out additional status messages during execution.")
 
-    # replay and optimize
-    for i in range(example.train_iters):
-        example.step()
-        if i % 16 == 0:
-            example.render()
+    args = parser.parse_known_args()[0]
 
-    if example.renderer:
-        example.renderer.save()
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path, verbose=args.verbose)
+
+        example.check_grad()
+
+        # replay and optimize
+        for i in range(args.train_iters):
+            example.step()
+            if i % 16 == 0:
+                example.render()
+
+        if example.renderer:
+            example.renderer.save()

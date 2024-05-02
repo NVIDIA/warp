@@ -13,7 +13,6 @@
 #
 ###########################################################################
 
-
 import numpy as np
 
 import warp as wp
@@ -49,10 +48,12 @@ def save_state(body_q: wp.array(dtype=wp.transform), write_index: int, states: w
 
 
 class Example:
-    def __init__(self, stage, verbose=False):
+    def __init__(self, stage_path="example_trajectory.usd", verbose=False, num_frames=100):
         self.verbose = verbose
-        self.frame_dt = 1.0 / 60.0
-        self.episode_frames = 100
+
+        fps = 60
+        self.frame_dt = 1.0 / fps
+        self.num_frames = num_frames
 
         self.sim_substeps = 1
         self.sim_dt = self.frame_dt / self.sim_substeps
@@ -70,7 +71,7 @@ class Example:
         builder.add_shape_sphere(pos=wp.vec3(0.0, 0.0, 0.0), radius=0.1, density=100.0, body=b)
 
         # compute reference trajectory
-        rad = np.linspace(0.0, np.pi * 2, self.episode_frames)
+        rad = np.linspace(0.0, np.pi * 2, self.num_frames)
         self.ref_traj = np.stack([np.cos(rad), np.sin(rad)], axis=1)
 
         # set initial joint configuration to first reference state
@@ -92,25 +93,26 @@ class Example:
         self.action_dim = 2
         self.state_dim = 2
 
-        assert self.ref_traj.shape == (self.episode_frames, self.state_dim)
+        assert self.ref_traj.shape == (self.num_frames, self.state_dim)
 
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
         # initial guess
         self.actions = wp.array(
-            np.zeros(self.episode_frames * self.action_dim) * 100.0, dtype=wp.float32, requires_grad=True
+            np.zeros(self.num_frames * self.action_dim) * 100.0, dtype=wp.float32, requires_grad=True
         )
 
         self.optimizer = Adam([self.actions], lr=1e2)
         self.loss = wp.zeros(1, dtype=wp.float32, requires_grad=True)
 
-        self.renderer = None
-        if stage:
-            self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=100.0)
+        if stage_path:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage_path, scaling=100.0)
+        else:
+            self.renderer = None
 
         # allocate sim states for trajectory
         self.states = []
-        for _ in range(self.episode_frames + 1):
+        for _ in range(self.num_frames + 1):
             self.states.append(self.model.state())
 
     def forward(self):
@@ -121,7 +123,7 @@ class Example:
 
         self.last_traj.zero_()
 
-        for i in range(self.episode_frames):
+        for i in range(self.num_frames):
             state = self.states[i]
 
             for _ in range(self.sim_substeps):
@@ -144,56 +146,78 @@ class Example:
 
     def step(self):
         """Runs a single optimizer iteration"""
-        self.loss.zero_()
-        tape = wp.Tape()
-        with tape:
-            self.forward()
-        tape.backward(loss=self.loss)
 
-        if self.verbose and (self.iter + 1) % 10 == 0:
-            print(f"Iter {self.iter+1} Loss: {self.loss.numpy()[0]:.3f}")
+        with wp.ScopedTimer("step"):
+            self.loss.zero_()
+            tape = wp.Tape()
+            with tape:
+                self.forward()
+            tape.backward(loss=self.loss)
 
-        assert not np.isnan(self.actions.grad.numpy()).any(), "NaN in gradient"
+            if self.verbose and (self.iter + 1) % 10 == 0:
+                print(f"Iter {self.iter+1} Loss: {self.loss.numpy()[0]:.3f}")
 
-        self.optimizer.step([self.actions.grad])
-        tape.zero()
-        self.iter = self.iter + 1
+            assert not np.isnan(self.actions.grad.numpy()).any(), "NaN in gradient"
+
+            self.optimizer.step([self.actions.grad])
+            tape.zero()
+            self.iter = self.iter + 1
 
     def render(self):
         if self.renderer is None:
             return
 
-        for i in range(self.episode_frames):
-            self.renderer.begin_frame(self.render_time)
-            self.renderer.render(self.states[i + 1])
-            self.renderer.end_frame()
-            self.render_time += self.frame_dt
+        with wp.ScopedTimer("render"):
+            for i in range(self.num_frames):
+                self.renderer.begin_frame(self.render_time)
+                self.renderer.render(self.states[i + 1])
+                self.renderer.end_frame()
+                self.render_time += self.frame_dt
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
+    import argparse
 
-    stage_path = "example_trajectory.usd"
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_trajectory.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--num_frames", type=int, default=100, help="Total number of frames per training iteration.")
+    parser.add_argument("--train_iters", type=int, default=250, help="Total number of training iterations.")
+    parser.add_argument("--verbose", action="store_true", help="Print out additional status messages during execution.")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing the opening of any graphical windows.",
+    )
 
-    example = Example(stage_path, verbose=True)
+    args = parser.parse_known_args()[0]
 
-    # Optimize
-    num_iter = 250
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path, verbose=args.verbose, num_frames=args.num_frames)
 
-    for i in range(num_iter):
-        example.step()
+        for i in range(args.train_iters):
+            example.step()
 
-        if i % 25 == 0:
-            example.render()
+            if i % 25 == 0:
+                example.render()
 
-    if example.renderer:
-        example.renderer.save()
+        if example.renderer:
+            example.renderer.save()
 
-    np_states = example.last_traj.numpy()
-    np_ref = example.ref_traj.numpy()
-    plt.plot(np_ref[:, 0], np_ref[:, 1], label="Reference Trajectory")
-    plt.plot(np_states[:, 0], np_states[:, 1], label="Optimized Trajectory")
-    plt.grid()
-    plt.legend()
-    plt.axis("equal")
-    plt.show()
+        np_states = example.last_traj.numpy()
+        np_ref = example.ref_traj.numpy()
+
+        if not args.headless:
+            import matplotlib.pyplot as plt
+
+            plt.plot(np_ref[:, 0], np_ref[:, 1], label="Reference Trajectory")
+            plt.plot(np_states[:, 0], np_states[:, 1], label="Optimized Trajectory")
+            plt.grid()
+            plt.legend()
+            plt.axis("equal")
+            plt.show()

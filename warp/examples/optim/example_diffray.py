@@ -297,15 +297,14 @@ class Example:
     render_mesh.tex_coords: 2D texture coordinates
     """
 
-    def __init__(self, stage=None, rot_array=None, verbose=False):
-        self.verbose = verbose
+    def __init__(self, height=1024, train_iters=150, rot_array=None):
         cam_pos = wp.vec3(0.0, 0.75, 7.0)
         cam_rot = wp.quat(0.0, 0.0, 0.0, 1.0)
         horizontal_aperture = 36.0
         vertical_aperture = 20.25
         aspect = horizontal_aperture / vertical_aperture
         focal_length = 50.0
-        self.height = 1024
+        self.height = height
         self.width = int(aspect * self.height)
         self.num_pixels = self.width * self.height
 
@@ -340,17 +339,16 @@ class Example:
         self.render_mode = RenderMode.texture
 
         # set training iterations
-        self.train_rate = 3.0e-8
         self.train_rate = 5.00e-8
         self.momentum = 0.5
         self.dampening = 0.1
         self.weight_decay = 0.0
-        self.train_iters = 150
-        self.period = 10
+        self.train_iters = train_iters
+        self.period = 10  # Training iterations between render() calls
         self.iter = 0
 
         # storage for training animation
-        self.images = np.zeros((self.height, self.width, 3, int(self.train_iters / self.period)))
+        self.images = np.zeros((self.height, self.width, 3, max(int(self.train_iters / self.period), 1)))
         self.image_counter = 0
 
         # construct RenderMesh
@@ -413,8 +411,8 @@ class Example:
         self.loss = wp.zeros(1, dtype=float, requires_grad=True)
 
         # capture graph
-        self.use_graph = wp.get_device().is_cuda
-        if self.use_graph:
+        self.use_cuda_graph = wp.get_device().is_cuda
+        if self.use_cuda_graph:
             with wp.ScopedCapture() as capture:
                 self.tape = wp.Tape()
                 with self.tape:
@@ -461,29 +459,31 @@ class Example:
         wp.launch(loss_kernel, dim=self.num_pixels, inputs=[self.pixels, self.target_pixels, self.loss])
 
     def step(self):
-        if self.use_graph:
-            wp.capture_launch(self.graph)
-        else:
-            self.tape = wp.Tape()
-            with self.tape:
-                self.forward()
-            self.tape.backward(self.loss)
+        with wp.ScopedTimer("step"):
+            if self.use_cuda_graph:
+                wp.capture_launch(self.graph)
+            else:
+                self.tape = wp.Tape()
+                with self.tape:
+                    self.forward()
+                self.tape.backward(self.loss)
 
-        rot_grad = self.tape.gradients[self.render_mesh.rot]
-        self.optimizer.step([rot_grad])
-        wp.launch(normalize, dim=1, inputs=[self.render_mesh.rot])
+            rot_grad = self.tape.gradients[self.render_mesh.rot]
+            self.optimizer.step([rot_grad])
+            wp.launch(normalize, dim=1, inputs=[self.render_mesh.rot])
 
-        if self.verbose and self.iter % self.period == 0:
-            print(f"Iter: {self.iter} Loss: {self.loss}")
+            if self.iter % self.period == 0:
+                print(f"Iter: {self.iter} Loss: {self.loss}")
 
-        self.tape.zero()
-        self.loss.zero_()
+            self.tape.zero()
+            self.loss.zero_()
 
-        self.iter = self.iter + 1
+            self.iter = self.iter + 1
 
     def render(self):
-        self.images[:, :, :, self.image_counter] = self.get_image()
-        self.image_counter += 1
+        with wp.ScopedTimer("render"):
+            self.images[:, :, :, self.image_counter] = self.get_image()
+            self.image_counter += 1
 
     def get_image(self):
         return self.pixels.numpy().reshape((self.height, self.width, 3))
@@ -504,34 +504,63 @@ class Example:
 
 
 if __name__ == "__main__":
-    import matplotlib.animation as animation
-    import matplotlib.image as img
-    import matplotlib.pyplot as plt
+    import argparse
 
-    reference_example = Example()
-
-    # render target rotation
-    reference_example.ray_cast()
-    target_image = reference_example.get_image()
-    img.imsave("example_diffray_target_image.png", target_image)
-
-    # offset mesh rotation
-    example = Example(
-        rot_array=[0.0, (math.sqrt(3) - 1) / (2.0 * math.sqrt(2.0)), 0.0, (math.sqrt(3) + 1) / (2.0 * math.sqrt(2.0))],
-        verbose=True,
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument("--train_iters", type=int, default=150, help="Total number of training iterations.")
+    parser.add_argument("--height", type=int, default=1024, help="Height of rendered image in pixels.")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing the opening of any graphical windows.",
     )
 
-    wp.copy(example.target_pixels, reference_example.pixels)
+    args = parser.parse_known_args()[0]
 
-    # recover target rotation
-    for i in range(example.train_iters):
-        example.step()
+    with wp.ScopedDevice(args.device):
+        reference_example = Example(height=args.height)
 
-        if i % example.period == 0:
-            example.render()
+        # render target rotation
+        reference_example.ray_cast()
 
-    final_image = example.get_image()
-    img.imsave("example_diffray_final_image.png", final_image)
+        # offset mesh rotation
+        example = Example(
+            train_iters=args.train_iters,
+            height=args.height,
+            rot_array=[
+                0.0,
+                (math.sqrt(3) - 1) / (2.0 * math.sqrt(2.0)),
+                0.0,
+                (math.sqrt(3) + 1) / (2.0 * math.sqrt(2.0)),
+            ],
+        )
 
-    video = example.get_animation()
-    video.save("example_diffray_animation.gif", dpi=300, writer=animation.PillowWriter(fps=5))
+        wp.copy(example.target_pixels, reference_example.pixels)
+
+        # recover target rotation
+        for i in range(example.train_iters):
+            example.step()
+
+            if i % example.period == 0:
+                example.render()
+
+        if not args.headless:
+            import matplotlib.animation as animation
+            import matplotlib.image as img
+            import matplotlib.pyplot as plt
+
+            target_image = reference_example.get_image()
+            target_image_filename = "example_diffray_target_image.png"
+            img.imsave(target_image_filename, target_image)
+            print(f"Saved the target image at `{target_image_filename}`")
+
+            final_image = example.get_image()
+            final_image_filename = "example_diffray_final_image.png"
+            img.imsave(final_image_filename, final_image)
+            print(f"Saved the final image at `{final_image_filename}`")
+
+            anim = example.get_animation()
+            anim_filename = "example_diffray_animation.gif"
+            anim.save(anim_filename, dpi=300, writer=animation.PillowWriter(fps=5))
+            print(f"Saved the animation at `{anim_filename}`")
