@@ -321,7 +321,9 @@ class InternalState:
                 usdrt.Gf.Quatf(1, 0, 0, 0)
             )
             prim.CreateAttribute("_worldScale", usdrt.Sdf.ValueTypeNames.Float3, True).Set(usdrt.Gf.Vec3f(1, 1, 1))
-            prim.CreateAttribute("primvars:_emissive", usdrt.Sdf.ValueTypeNames.Float3Array, True).Set(usdrt.Vt.Vec3fArray([usdrt.Gf.Vec3f(1, 0, 1)]))
+            prim.CreateAttribute("primvars:_emissive", usdrt.Sdf.ValueTypeNames.Float3Array, True).Set(
+                usdrt.Vt.Vec3fArray([usdrt.Gf.Vec3f(1, 0, 1)])
+            )
 
             # create a custom tag for the boids (could use applied schema too)
             prim.CreateAttribute("BoidTag", usdrt.Sdf.ValueTypeNames.AppliedSchemaTypeTag, True)
