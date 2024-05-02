@@ -247,6 +247,10 @@ In the following example, we demonstrate how Warp may be used to evaluate the Ro
     xy_np = xy.numpy(force=True)
     print(np.mean(xy_np, axis=0))
 
+Note that if Warp code is wrapped in a torch.autograd.function that gets called in ``torch.compile()``, it will automatically
+exclude that function from compiler optimizations. If your script uses ``torch.compile()``, we recommend using Pytorch version 2.3.0+,
+which has improvements that address this scenario.
+
 CuPy/Numba
 ----------
 

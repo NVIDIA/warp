@@ -1552,6 +1552,11 @@ class array(Array):
     # (initialized when needed)
     _vars = None
 
+    def __new__(cls, *args, **kwargs):
+        instance = super(array, cls).__new__(cls)
+        instance.deleter = None
+        return instance
+
     def __init__(
         self,
         data=None,
@@ -1607,7 +1612,6 @@ class array(Array):
 
         """
 
-        self.deleter = None
         self.ctype = None
 
         # properties
