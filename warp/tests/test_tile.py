@@ -82,7 +82,7 @@ def gemm_tiled(A: wp.array2d(dtype=float),
     N = B.shape[1]
     K = A.shape[1]
 
-    count = int(K / 16) # TODO: code-gen bug if you use a constant before passing it to a kwd arg (in this case TILE_K)
+    count = int(K / 8) # TODO: code-gen bug if you use a constant before passing it to a kwd arg (in this case TILE_K)
 
     for k in range(count):
 
