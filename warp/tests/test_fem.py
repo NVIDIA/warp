@@ -29,7 +29,7 @@ def linear_form(s: Sample, u: Field):
     return u(s)
 
 
-def test_integrate_gradient(test_case, device):
+def test_integrate_gradient(test, device):
     with wp.ScopedDevice(device):
         # Grid geometry
         geo = fem.Grid2D(res=wp.vec2i(5))
@@ -53,11 +53,11 @@ def test_integrate_gradient(test_case, device):
 
         tape.backward(result)
 
-        test = fem.make_test(space=scalar_space, domain=domain)
-        rhs = fem.integrate(linear_form, quadrature=quadrature, fields={"u": test})
+        test_field = fem.make_test(space=scalar_space, domain=domain)
+        rhs = fem.integrate(linear_form, quadrature=quadrature, fields={"u": test_field})
 
         err = np.linalg.norm(rhs.numpy() - u.dof_values.grad.numpy())
-        test_case.assertLess(err, 1.0e-8)
+        test.assertLess(err, 1.0e-8)
 
 
 @fem.integrand
@@ -71,7 +71,7 @@ def grad_field(s: fem.Sample, p: fem.Field):
     return fem.grad(p, s)
 
 
-def test_interpolate_gradient(test_case, device):
+def test_interpolate_gradient(test, device):
     with wp.ScopedDevice(device):
         # Quad mesh with single element
         # so we can test gradient with respect to vertex positions
@@ -165,7 +165,7 @@ def vector_boundary_form(domain: Domain, s: Sample, u: Field, q: Field):
     return wp.dot(u(s) * q(s), normal(domain, s))
 
 
-def test_vector_divergence_theorem(test_case, device):
+def test_vector_divergence_theorem(test, device):
     rng = np.random.default_rng(123)
 
     with wp.ScopedDevice(device):
@@ -201,7 +201,7 @@ def test_vector_divergence_theorem(test_case, device):
             kernel_options={"enable_backward": False},
         )
 
-        test_case.assertAlmostEqual(div_int, boundary_int, places=5)
+        test.assertAlmostEqual(div_int, boundary_int, places=5)
 
         # Integration by parts
         q = scalar_space.make_field()
@@ -228,7 +228,7 @@ def test_vector_divergence_theorem(test_case, device):
             kernel_options={"enable_backward": False},
         )
 
-        test_case.assertAlmostEqual(div_int + grad_int, boundary_int, places=5)
+        test.assertAlmostEqual(div_int + grad_int, boundary_int, places=5)
 
 
 @integrand
@@ -246,7 +246,7 @@ def tensor_boundary_form(domain: Domain, s: Sample, tau: Field, v: Field):
     return wp.dot(tau(s) * v(s), normal(domain, s))
 
 
-def test_tensor_divergence_theorem(test_case, device):
+def test_tensor_divergence_theorem(test, device):
     rng = np.random.default_rng(123)
 
     with wp.ScopedDevice(device):
@@ -282,7 +282,7 @@ def test_tensor_divergence_theorem(test_case, device):
             kernel_options={"enable_backward": False},
         )
 
-        test_case.assertAlmostEqual(div_int, boundary_int, places=5)
+        test.assertAlmostEqual(div_int, boundary_int, places=5)
 
         # Integration by parts
         v = vector_space.make_field()
@@ -309,7 +309,7 @@ def test_tensor_divergence_theorem(test_case, device):
             kernel_options={"enable_backward": False},
         )
 
-        test_case.assertAlmostEqual(div_int + grad_int, boundary_int, places=5)
+        test.assertAlmostEqual(div_int + grad_int, boundary_int, places=5)
 
 
 @integrand
@@ -317,7 +317,7 @@ def grad_decomposition(s: Sample, u: Field, v: Field):
     return wp.length_sq(grad(u, s) * v(s) - D(u, s) * v(s) - wp.cross(curl(u, s), v(s)))
 
 
-def test_grad_decomposition(test_case, device):
+def test_grad_decomposition(test, device):
     rng = np.random.default_rng(123)
 
     with wp.ScopedDevice(device):
@@ -334,7 +334,7 @@ def test_grad_decomposition(test_case, device):
         u.dof_values = rng.random(size=(u.dof_values.shape[0], 3))
 
         err = fem.integrate(grad_decomposition, quadrature=quadrature, fields={"u": u, "v": u})
-        test_case.assertLess(err, 1.0e-8)
+        test.assertLess(err, 1.0e-8)
 
 
 def _gen_trimesh(N):
@@ -478,15 +478,15 @@ def _launch_test_geometry_kernel(geo: fem.Geometry, device):
     return side_measures, cell_measures
 
 
-def test_grid_2d(test_case, device):
+def test_grid_2d(test, device):
     N = 3
 
     geo = fem.Grid2D(res=wp.vec2i(N))
 
-    test_case.assertEqual(geo.cell_count(), N**2)
-    test_case.assertEqual(geo.vertex_count(), (N + 1) ** 2)
-    test_case.assertEqual(geo.side_count(), 2 * (N + 1) * N)
-    test_case.assertEqual(geo.boundary_side_count(), 4 * N)
+    test.assertEqual(geo.cell_count(), N**2)
+    test.assertEqual(geo.vertex_count(), (N + 1) ** 2)
+    test.assertEqual(geo.side_count(), 2 * (N + 1) * N)
+    test.assertEqual(geo.boundary_side_count(), 4 * N)
 
     side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
 
@@ -494,7 +494,7 @@ def test_grid_2d(test_case, device):
     assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 1.0 / (N**2)), tol=1.0e-4)
 
 
-def test_triangle_mesh(test_case, device):
+def test_triangle_mesh(test, device):
     N = 3
 
     with wp.ScopedDevice(device):
@@ -502,18 +502,18 @@ def test_triangle_mesh(test_case, device):
 
     geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
 
-    test_case.assertEqual(geo.cell_count(), 2 * (N) ** 2)
-    test_case.assertEqual(geo.vertex_count(), (N + 1) ** 2)
-    test_case.assertEqual(geo.side_count(), 2 * (N + 1) * N + (N**2))
-    test_case.assertEqual(geo.boundary_side_count(), 4 * N)
+    test.assertEqual(geo.cell_count(), 2 * (N) ** 2)
+    test.assertEqual(geo.vertex_count(), (N + 1) ** 2)
+    test.assertEqual(geo.side_count(), 2 * (N + 1) * N + (N**2))
+    test.assertEqual(geo.boundary_side_count(), 4 * N)
 
     side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
 
     assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 0.5 / (N**2)), tol=1.0e-4)
-    test_case.assertAlmostEqual(np.sum(side_measures.numpy()), 2 * (N + 1) + N * math.sqrt(2.0), places=4)
+    test.assertAlmostEqual(np.sum(side_measures.numpy()), 2 * (N + 1) + N * math.sqrt(2.0), places=4)
 
 
-def test_quad_mesh(test_case, device):
+def test_quad_mesh(test, device):
     N = 3
 
     with wp.ScopedDevice(device):
@@ -521,10 +521,10 @@ def test_quad_mesh(test_case, device):
 
     geo = fem.Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions)
 
-    test_case.assertEqual(geo.cell_count(), N**2)
-    test_case.assertEqual(geo.vertex_count(), (N + 1) ** 2)
-    test_case.assertEqual(geo.side_count(), 2 * (N + 1) * N)
-    test_case.assertEqual(geo.boundary_side_count(), 4 * N)
+    test.assertEqual(geo.cell_count(), N**2)
+    test.assertEqual(geo.vertex_count(), (N + 1) ** 2)
+    test.assertEqual(geo.side_count(), 2 * (N + 1) * N)
+    test.assertEqual(geo.boundary_side_count(), 4 * N)
 
     side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
 
@@ -532,16 +532,16 @@ def test_quad_mesh(test_case, device):
     assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 1.0 / (N**2)), tol=1.0e-4)
 
 
-def test_grid_3d(test_case, device):
+def test_grid_3d(test, device):
     N = 3
 
     geo = fem.Grid3D(res=wp.vec3i(N))
 
-    test_case.assertEqual(geo.cell_count(), (N) ** 3)
-    test_case.assertEqual(geo.vertex_count(), (N + 1) ** 3)
-    test_case.assertEqual(geo.side_count(), 3 * (N + 1) * N**2)
-    test_case.assertEqual(geo.boundary_side_count(), 6 * N * N)
-    test_case.assertEqual(geo.edge_count(), 3 * N * (N + 1) ** 2)
+    test.assertEqual(geo.cell_count(), (N) ** 3)
+    test.assertEqual(geo.vertex_count(), (N + 1) ** 3)
+    test.assertEqual(geo.side_count(), 3 * (N + 1) * N**2)
+    test.assertEqual(geo.boundary_side_count(), 6 * N * N)
+    test.assertEqual(geo.edge_count(), 3 * N * (N + 1) ** 2)
 
     side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
 
@@ -549,7 +549,7 @@ def test_grid_3d(test_case, device):
     assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 1.0 / (N**3)), tol=1.0e-4)
 
 
-def test_tet_mesh(test_case, device):
+def test_tet_mesh(test, device):
     N = 3
 
     with wp.ScopedDevice(device):
@@ -557,19 +557,19 @@ def test_tet_mesh(test_case, device):
 
     geo = fem.Tetmesh(tet_vertex_indices=tet_vidx, positions=positions)
 
-    test_case.assertEqual(geo.cell_count(), 5 * (N) ** 3)
-    test_case.assertEqual(geo.vertex_count(), (N + 1) ** 3)
-    test_case.assertEqual(geo.side_count(), 6 * (N + 1) * N**2 + (N**3) * 4)
-    test_case.assertEqual(geo.boundary_side_count(), 12 * N * N)
-    test_case.assertEqual(geo.edge_count(), 3 * N * (N + 1) * (2 * N + 1))
+    test.assertEqual(geo.cell_count(), 5 * (N) ** 3)
+    test.assertEqual(geo.vertex_count(), (N + 1) ** 3)
+    test.assertEqual(geo.side_count(), 6 * (N + 1) * N**2 + (N**3) * 4)
+    test.assertEqual(geo.boundary_side_count(), 12 * N * N)
+    test.assertEqual(geo.edge_count(), 3 * N * (N + 1) * (2 * N + 1))
 
     side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
 
-    test_case.assertAlmostEqual(np.sum(cell_measures.numpy()), 1.0, places=4)
-    test_case.assertAlmostEqual(np.sum(side_measures.numpy()), 0.5 * 6 * (N + 1) + N * 2 * math.sqrt(3.0), places=4)
+    test.assertAlmostEqual(np.sum(cell_measures.numpy()), 1.0, places=4)
+    test.assertAlmostEqual(np.sum(side_measures.numpy()), 0.5 * 6 * (N + 1) + N * 2 * math.sqrt(3.0), places=4)
 
 
-def test_hex_mesh(test_case, device):
+def test_hex_mesh(test, device):
     N = 3
 
     with wp.ScopedDevice(device):
@@ -577,11 +577,11 @@ def test_hex_mesh(test_case, device):
 
     geo = fem.Hexmesh(hex_vertex_indices=tet_vidx, positions=positions)
 
-    test_case.assertEqual(geo.cell_count(), (N) ** 3)
-    test_case.assertEqual(geo.vertex_count(), (N + 1) ** 3)
-    test_case.assertEqual(geo.side_count(), 3 * (N + 1) * N**2)
-    test_case.assertEqual(geo.boundary_side_count(), 6 * N * N)
-    test_case.assertEqual(geo.edge_count(), 3 * N * (N + 1) ** 2)
+    test.assertEqual(geo.cell_count(), (N) ** 3)
+    test.assertEqual(geo.vertex_count(), (N + 1) ** 3)
+    test.assertEqual(geo.side_count(), 3 * (N + 1) * N**2)
+    test.assertEqual(geo.boundary_side_count(), 6 * N * N)
+    test.assertEqual(geo.edge_count(), 3 * N * (N + 1) ** 2)
 
     side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
 
@@ -595,7 +595,7 @@ def _rigid_deformation_field(s: Sample, domain: Domain, translation: wp.vec3, ro
     return translation + scale * wp.quat_rotate(q, domain(s)) - domain(s)
 
 
-def test_deformed_geometry(test_case, device):
+def test_deformed_geometry(test, device):
     N = 3
 
     with wp.ScopedDevice(device):
@@ -619,17 +619,17 @@ def test_deformed_geometry(test_case, device):
 
     # rigidly-deformed geometry
 
-    test_case.assertEqual(geo.cell_count(), 5 * (N) ** 3)
-    test_case.assertEqual(geo.vertex_count(), (N + 1) ** 3)
-    test_case.assertEqual(geo.side_count(), 6 * (N + 1) * N**2 + (N**3) * 4)
-    test_case.assertEqual(geo.boundary_side_count(), 12 * N * N)
+    test.assertEqual(geo.cell_count(), 5 * (N) ** 3)
+    test.assertEqual(geo.vertex_count(), (N + 1) ** 3)
+    test.assertEqual(geo.side_count(), 6 * (N + 1) * N**2 + (N**3) * 4)
+    test.assertEqual(geo.boundary_side_count(), 12 * N * N)
 
     side_measures, cell_measures = _launch_test_geometry_kernel(deformed_geo, device)
 
-    test_case.assertAlmostEqual(
+    test.assertAlmostEqual(
         np.sum(cell_measures.numpy()), scale**3, places=4, msg=f"cell_measures = {cell_measures.numpy()}"
     )
-    test_case.assertAlmostEqual(
+    test.assertAlmostEqual(
         np.sum(side_measures.numpy()), scale**2 * (0.5 * 6 * (N + 1) + N * 2 * math.sqrt(3.0)), places=4
     )
 
@@ -691,7 +691,7 @@ def _test_closest_point_on_tet_kernel(
     coords[i] = c
 
 
-def test_closest_point_queries(test_case, device):
+def test_closest_point_queries(test, device):
     # Test some simple lookup queries
     e0 = wp.vec2(2.0, 0.0)
     e1 = wp.vec2(0.0, 2.0)
@@ -754,7 +754,7 @@ def test_closest_point_queries(test_case, device):
     assert_np_equal(sq_dist.numpy(), expected_sq_dist, tol=1.0e-4)
 
 
-def test_regular_quadrature(test_case, device):
+def test_regular_quadrature(test, device):
     from warp.fem.geometry.element import LinearEdge, Polynomial, Triangle
 
     for family in Polynomial:
@@ -764,7 +764,7 @@ def test_regular_quadrature(test_case, device):
             res = sum(w * pow(c[0], degree) for w, c in zip(weights, coords))
             ref = 1.0 / (degree + 1)
 
-            test_case.assertAlmostEqual(ref, res, places=4)
+            test.assertAlmostEqual(ref, res, places=4)
 
         # test integrating y^k1 (1 - x)^k2 on triangle using transformation to square
         for x_degree in range(4):
@@ -774,7 +774,7 @@ def test_regular_quadrature(test_case, device):
 
                 ref = 1.0 / ((x_degree + y_degree + 2) * (y_degree + 1))
                 # print(x_degree, y_degree, family, len(coords), res, ref)
-                test_case.assertAlmostEqual(ref, res, places=4)
+                test.assertAlmostEqual(ref, res, places=4)
 
     # test integrating y^k1 (1 - x)^k2 on triangle using direct formulas
     for x_degree in range(5):
@@ -783,10 +783,10 @@ def test_regular_quadrature(test_case, device):
             res = 0.5 * sum(w * pow(1.0 - c[1], x_degree) * pow(c[2], y_degree) for w, c in zip(weights, coords))
 
             ref = 1.0 / ((x_degree + y_degree + 2) * (y_degree + 1))
-            test_case.assertAlmostEqual(ref, res, places=4)
+            test.assertAlmostEqual(ref, res, places=4)
 
 
-def test_dof_mapper(test_case, device):
+def test_dof_mapper(test, device):
     matrix_types = [wp.mat22, wp.mat33]
 
     # Symmetric mapper
@@ -808,7 +808,7 @@ def test_dof_mapper(test_case, device):
 
                 # Check that value is unitary for Frobenius norm 0.5 * |tau:tau|
                 frob_norm2 = 0.5 * wp.ddot(mat, mat)
-                test_case.assertAlmostEqual(frob_norm2, 1.0, places=6)
+                test.assertAlmostEqual(frob_norm2, 1.0, places=6)
 
     # Skew-symmetric mapper
     for dtype in matrix_types:
@@ -829,21 +829,21 @@ def test_dof_mapper(test_case, device):
 
                 # Check that value is unitary for Frobenius norm 0.5 * |tau:tau|
                 frob_norm2 = 0.5 * wp.ddot(mat, mat)
-                test_case.assertAlmostEqual(frob_norm2, 1.0, places=6)
+                test.assertAlmostEqual(frob_norm2, 1.0, places=6)
         else:
             dof_val = 1.0
 
             mat = mapper.dof_to_value(dof_val)
             dof_round_trip = mapper.value_to_dof(mat)
 
-            test_case.assertAlmostEqual(dof_round_trip, dof_val)
+            test.assertAlmostEqual(dof_round_trip, dof_val)
 
             # Check that value is unitary for Frobenius norm 0.5 * |tau:tau|
             frob_norm2 = 0.5 * wp.ddot(mat, mat)
-            test_case.assertAlmostEqual(frob_norm2, 1.0, places=6)
+            test.assertAlmostEqual(frob_norm2, 1.0, places=6)
 
 
-def test_shape_function_weight(test_case, shape: shape.ShapeFunction, coord_sampler, CENTER_COORDS):
+def test_shape_function_weight(test, shape: shape.ShapeFunction, coord_sampler, CENTER_COORDS):
     NODE_COUNT = shape.NODES_PER_ELEMENT
     weight_fn = shape.make_element_inner_weight()
     node_coords_fn = shape.make_node_coords_in_element()
@@ -892,7 +892,7 @@ def test_shape_function_weight(test_case, shape: shape.ShapeFunction, coord_samp
     wp.launch(partition_of_unity_test, dim=n_samples, inputs=[])
 
 
-def test_shape_function_trace(test_case, shape: shape.ShapeFunction, CENTER_COORDS):
+def test_shape_function_trace(test, shape: shape.ShapeFunction, CENTER_COORDS):
     NODE_COUNT = shape.NODES_PER_ELEMENT
     node_coords_fn = shape.make_node_coords_in_element()
 
@@ -919,7 +919,7 @@ def test_shape_function_trace(test_case, shape: shape.ShapeFunction, CENTER_COOR
     wp.launch(trace_node_quadrature_unity_test, dim=1, inputs=[])
 
 
-def test_shape_function_gradient(test_case, shape: shape.ShapeFunction, coord_sampler, coord_delta_sampler):
+def test_shape_function_gradient(test, shape: shape.ShapeFunction, coord_sampler, coord_delta_sampler):
     weight_fn = shape.make_element_inner_weight()
     weight_gradient_fn = shape.make_element_inner_weight_gradient()
 
@@ -951,7 +951,7 @@ def test_shape_function_gradient(test_case, shape: shape.ShapeFunction, coord_sa
     wp.launch(finite_difference_test, dim=(n_samples, shape.NODES_PER_ELEMENT), inputs=[])
 
 
-def test_square_shape_functions(test_case, device):
+def test_square_shape_functions(test, device):
     SQUARE_CENTER_COORDS = wp.constant(Coords(0.5, 0.5, 0.0))
     SQUARE_SIDE_CENTER_COORDS = wp.constant(Coords(0.0, 0.5, 0.0))
 
@@ -968,52 +968,52 @@ def test_square_shape_functions(test_case, device):
     Q_2 = shape.SquareBipolynomialShapeFunctions(degree=2, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
     Q_3 = shape.SquareBipolynomialShapeFunctions(degree=3, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
 
-    test_shape_function_weight(test_case, Q_1, square_coord_sampler, SQUARE_CENTER_COORDS)
-    test_shape_function_weight(test_case, Q_2, square_coord_sampler, SQUARE_CENTER_COORDS)
-    test_shape_function_weight(test_case, Q_3, square_coord_sampler, SQUARE_CENTER_COORDS)
-    test_shape_function_trace(test_case, Q_1, SQUARE_SIDE_CENTER_COORDS)
-    test_shape_function_trace(test_case, Q_2, SQUARE_SIDE_CENTER_COORDS)
-    test_shape_function_trace(test_case, Q_3, SQUARE_SIDE_CENTER_COORDS)
-    test_shape_function_gradient(test_case, Q_1, square_coord_sampler, square_coord_delta_sampler)
-    test_shape_function_gradient(test_case, Q_2, square_coord_sampler, square_coord_delta_sampler)
-    test_shape_function_gradient(test_case, Q_3, square_coord_sampler, square_coord_delta_sampler)
+    test_shape_function_weight(test, Q_1, square_coord_sampler, SQUARE_CENTER_COORDS)
+    test_shape_function_weight(test, Q_2, square_coord_sampler, SQUARE_CENTER_COORDS)
+    test_shape_function_weight(test, Q_3, square_coord_sampler, SQUARE_CENTER_COORDS)
+    test_shape_function_trace(test, Q_1, SQUARE_SIDE_CENTER_COORDS)
+    test_shape_function_trace(test, Q_2, SQUARE_SIDE_CENTER_COORDS)
+    test_shape_function_trace(test, Q_3, SQUARE_SIDE_CENTER_COORDS)
+    test_shape_function_gradient(test, Q_1, square_coord_sampler, square_coord_delta_sampler)
+    test_shape_function_gradient(test, Q_2, square_coord_sampler, square_coord_delta_sampler)
+    test_shape_function_gradient(test, Q_3, square_coord_sampler, square_coord_delta_sampler)
 
     Q_1 = shape.SquareBipolynomialShapeFunctions(degree=1, family=fem.Polynomial.GAUSS_LEGENDRE)
     Q_2 = shape.SquareBipolynomialShapeFunctions(degree=2, family=fem.Polynomial.GAUSS_LEGENDRE)
     Q_3 = shape.SquareBipolynomialShapeFunctions(degree=3, family=fem.Polynomial.GAUSS_LEGENDRE)
 
-    test_shape_function_weight(test_case, Q_1, square_coord_sampler, SQUARE_CENTER_COORDS)
-    test_shape_function_weight(test_case, Q_2, square_coord_sampler, SQUARE_CENTER_COORDS)
-    test_shape_function_weight(test_case, Q_3, square_coord_sampler, SQUARE_CENTER_COORDS)
-    test_shape_function_gradient(test_case, Q_1, square_coord_sampler, square_coord_delta_sampler)
-    test_shape_function_gradient(test_case, Q_2, square_coord_sampler, square_coord_delta_sampler)
-    test_shape_function_gradient(test_case, Q_3, square_coord_sampler, square_coord_delta_sampler)
+    test_shape_function_weight(test, Q_1, square_coord_sampler, SQUARE_CENTER_COORDS)
+    test_shape_function_weight(test, Q_2, square_coord_sampler, SQUARE_CENTER_COORDS)
+    test_shape_function_weight(test, Q_3, square_coord_sampler, SQUARE_CENTER_COORDS)
+    test_shape_function_gradient(test, Q_1, square_coord_sampler, square_coord_delta_sampler)
+    test_shape_function_gradient(test, Q_2, square_coord_sampler, square_coord_delta_sampler)
+    test_shape_function_gradient(test, Q_3, square_coord_sampler, square_coord_delta_sampler)
 
     S_2 = shape.SquareSerendipityShapeFunctions(degree=2, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
     S_3 = shape.SquareSerendipityShapeFunctions(degree=3, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
 
-    test_shape_function_weight(test_case, S_2, square_coord_sampler, SQUARE_CENTER_COORDS)
-    test_shape_function_weight(test_case, S_3, square_coord_sampler, SQUARE_CENTER_COORDS)
-    test_shape_function_trace(test_case, S_2, SQUARE_SIDE_CENTER_COORDS)
-    test_shape_function_trace(test_case, S_3, SQUARE_SIDE_CENTER_COORDS)
-    test_shape_function_gradient(test_case, S_2, square_coord_sampler, square_coord_delta_sampler)
-    test_shape_function_gradient(test_case, S_3, square_coord_sampler, square_coord_delta_sampler)
+    test_shape_function_weight(test, S_2, square_coord_sampler, SQUARE_CENTER_COORDS)
+    test_shape_function_weight(test, S_3, square_coord_sampler, SQUARE_CENTER_COORDS)
+    test_shape_function_trace(test, S_2, SQUARE_SIDE_CENTER_COORDS)
+    test_shape_function_trace(test, S_3, SQUARE_SIDE_CENTER_COORDS)
+    test_shape_function_gradient(test, S_2, square_coord_sampler, square_coord_delta_sampler)
+    test_shape_function_gradient(test, S_3, square_coord_sampler, square_coord_delta_sampler)
 
     P_c1 = shape.SquareNonConformingPolynomialShapeFunctions(degree=1)
     P_c2 = shape.SquareNonConformingPolynomialShapeFunctions(degree=2)
     P_c3 = shape.SquareNonConformingPolynomialShapeFunctions(degree=3)
 
-    test_shape_function_weight(test_case, P_c1, square_coord_sampler, SQUARE_CENTER_COORDS)
-    test_shape_function_weight(test_case, P_c2, square_coord_sampler, SQUARE_CENTER_COORDS)
-    test_shape_function_weight(test_case, P_c3, square_coord_sampler, SQUARE_CENTER_COORDS)
-    test_shape_function_gradient(test_case, P_c1, square_coord_sampler, square_coord_delta_sampler)
-    test_shape_function_gradient(test_case, P_c2, square_coord_sampler, square_coord_delta_sampler)
-    test_shape_function_gradient(test_case, P_c3, square_coord_sampler, square_coord_delta_sampler)
+    test_shape_function_weight(test, P_c1, square_coord_sampler, SQUARE_CENTER_COORDS)
+    test_shape_function_weight(test, P_c2, square_coord_sampler, SQUARE_CENTER_COORDS)
+    test_shape_function_weight(test, P_c3, square_coord_sampler, SQUARE_CENTER_COORDS)
+    test_shape_function_gradient(test, P_c1, square_coord_sampler, square_coord_delta_sampler)
+    test_shape_function_gradient(test, P_c2, square_coord_sampler, square_coord_delta_sampler)
+    test_shape_function_gradient(test, P_c3, square_coord_sampler, square_coord_delta_sampler)
 
     wp.synchronize()
 
 
-def test_cube_shape_functions(test_case, device):
+def test_cube_shape_functions(test, device):
     CUBE_CENTER_COORDS = wp.constant(Coords(0.5, 0.5, 0.5))
     CUBE_SIDE_CENTER_COORDS = wp.constant(Coords(0.0, 0.5, 0.5))
 
@@ -1030,52 +1030,52 @@ def test_cube_shape_functions(test_case, device):
     Q_2 = shape.CubeTripolynomialShapeFunctions(degree=2, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
     Q_3 = shape.CubeTripolynomialShapeFunctions(degree=3, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
 
-    test_shape_function_weight(test_case, Q_1, cube_coord_sampler, CUBE_CENTER_COORDS)
-    test_shape_function_weight(test_case, Q_2, cube_coord_sampler, CUBE_CENTER_COORDS)
-    test_shape_function_weight(test_case, Q_3, cube_coord_sampler, CUBE_CENTER_COORDS)
-    test_shape_function_trace(test_case, Q_1, CUBE_SIDE_CENTER_COORDS)
-    test_shape_function_trace(test_case, Q_2, CUBE_SIDE_CENTER_COORDS)
-    test_shape_function_trace(test_case, Q_3, CUBE_SIDE_CENTER_COORDS)
-    test_shape_function_gradient(test_case, Q_1, cube_coord_sampler, cube_coord_delta_sampler)
-    test_shape_function_gradient(test_case, Q_2, cube_coord_sampler, cube_coord_delta_sampler)
-    test_shape_function_gradient(test_case, Q_3, cube_coord_sampler, cube_coord_delta_sampler)
+    test_shape_function_weight(test, Q_1, cube_coord_sampler, CUBE_CENTER_COORDS)
+    test_shape_function_weight(test, Q_2, cube_coord_sampler, CUBE_CENTER_COORDS)
+    test_shape_function_weight(test, Q_3, cube_coord_sampler, CUBE_CENTER_COORDS)
+    test_shape_function_trace(test, Q_1, CUBE_SIDE_CENTER_COORDS)
+    test_shape_function_trace(test, Q_2, CUBE_SIDE_CENTER_COORDS)
+    test_shape_function_trace(test, Q_3, CUBE_SIDE_CENTER_COORDS)
+    test_shape_function_gradient(test, Q_1, cube_coord_sampler, cube_coord_delta_sampler)
+    test_shape_function_gradient(test, Q_2, cube_coord_sampler, cube_coord_delta_sampler)
+    test_shape_function_gradient(test, Q_3, cube_coord_sampler, cube_coord_delta_sampler)
 
     Q_1 = shape.CubeTripolynomialShapeFunctions(degree=1, family=fem.Polynomial.GAUSS_LEGENDRE)
     Q_2 = shape.CubeTripolynomialShapeFunctions(degree=2, family=fem.Polynomial.GAUSS_LEGENDRE)
     Q_3 = shape.CubeTripolynomialShapeFunctions(degree=3, family=fem.Polynomial.GAUSS_LEGENDRE)
 
-    test_shape_function_weight(test_case, Q_1, cube_coord_sampler, CUBE_CENTER_COORDS)
-    test_shape_function_weight(test_case, Q_2, cube_coord_sampler, CUBE_CENTER_COORDS)
-    test_shape_function_weight(test_case, Q_3, cube_coord_sampler, CUBE_CENTER_COORDS)
-    test_shape_function_gradient(test_case, Q_1, cube_coord_sampler, cube_coord_delta_sampler)
-    test_shape_function_gradient(test_case, Q_2, cube_coord_sampler, cube_coord_delta_sampler)
-    test_shape_function_gradient(test_case, Q_3, cube_coord_sampler, cube_coord_delta_sampler)
+    test_shape_function_weight(test, Q_1, cube_coord_sampler, CUBE_CENTER_COORDS)
+    test_shape_function_weight(test, Q_2, cube_coord_sampler, CUBE_CENTER_COORDS)
+    test_shape_function_weight(test, Q_3, cube_coord_sampler, CUBE_CENTER_COORDS)
+    test_shape_function_gradient(test, Q_1, cube_coord_sampler, cube_coord_delta_sampler)
+    test_shape_function_gradient(test, Q_2, cube_coord_sampler, cube_coord_delta_sampler)
+    test_shape_function_gradient(test, Q_3, cube_coord_sampler, cube_coord_delta_sampler)
 
     S_2 = shape.CubeSerendipityShapeFunctions(degree=2, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
     S_3 = shape.CubeSerendipityShapeFunctions(degree=3, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
 
-    test_shape_function_weight(test_case, S_2, cube_coord_sampler, CUBE_CENTER_COORDS)
-    test_shape_function_weight(test_case, S_3, cube_coord_sampler, CUBE_CENTER_COORDS)
-    test_shape_function_trace(test_case, S_2, CUBE_SIDE_CENTER_COORDS)
-    test_shape_function_trace(test_case, S_3, CUBE_SIDE_CENTER_COORDS)
-    test_shape_function_gradient(test_case, S_2, cube_coord_sampler, cube_coord_delta_sampler)
-    test_shape_function_gradient(test_case, S_3, cube_coord_sampler, cube_coord_delta_sampler)
+    test_shape_function_weight(test, S_2, cube_coord_sampler, CUBE_CENTER_COORDS)
+    test_shape_function_weight(test, S_3, cube_coord_sampler, CUBE_CENTER_COORDS)
+    test_shape_function_trace(test, S_2, CUBE_SIDE_CENTER_COORDS)
+    test_shape_function_trace(test, S_3, CUBE_SIDE_CENTER_COORDS)
+    test_shape_function_gradient(test, S_2, cube_coord_sampler, cube_coord_delta_sampler)
+    test_shape_function_gradient(test, S_3, cube_coord_sampler, cube_coord_delta_sampler)
 
     P_c1 = shape.CubeNonConformingPolynomialShapeFunctions(degree=1)
     P_c2 = shape.CubeNonConformingPolynomialShapeFunctions(degree=2)
     P_c3 = shape.CubeNonConformingPolynomialShapeFunctions(degree=3)
 
-    test_shape_function_weight(test_case, P_c1, cube_coord_sampler, CUBE_CENTER_COORDS)
-    test_shape_function_weight(test_case, P_c2, cube_coord_sampler, CUBE_CENTER_COORDS)
-    test_shape_function_weight(test_case, P_c3, cube_coord_sampler, CUBE_CENTER_COORDS)
-    test_shape_function_gradient(test_case, P_c1, cube_coord_sampler, cube_coord_delta_sampler)
-    test_shape_function_gradient(test_case, P_c2, cube_coord_sampler, cube_coord_delta_sampler)
-    test_shape_function_gradient(test_case, P_c3, cube_coord_sampler, cube_coord_delta_sampler)
+    test_shape_function_weight(test, P_c1, cube_coord_sampler, CUBE_CENTER_COORDS)
+    test_shape_function_weight(test, P_c2, cube_coord_sampler, CUBE_CENTER_COORDS)
+    test_shape_function_weight(test, P_c3, cube_coord_sampler, CUBE_CENTER_COORDS)
+    test_shape_function_gradient(test, P_c1, cube_coord_sampler, cube_coord_delta_sampler)
+    test_shape_function_gradient(test, P_c2, cube_coord_sampler, cube_coord_delta_sampler)
+    test_shape_function_gradient(test, P_c3, cube_coord_sampler, cube_coord_delta_sampler)
 
     wp.synchronize()
 
 
-def test_tri_shape_functions(test_case, device):
+def test_tri_shape_functions(test, device):
     TRI_CENTER_COORDS = wp.constant(Coords(1 / 3.0, 1 / 3.0, 1 / 3.0))
     TRI_SIDE_CENTER_COORDS = wp.constant(Coords(0.0, 0.5, 0.5))
 
@@ -1096,31 +1096,31 @@ def test_tri_shape_functions(test_case, device):
     P_2 = shape.Triangle2DPolynomialShapeFunctions(degree=2)
     P_3 = shape.Triangle2DPolynomialShapeFunctions(degree=3)
 
-    test_shape_function_weight(test_case, P_1, tri_coord_sampler, TRI_CENTER_COORDS)
-    test_shape_function_weight(test_case, P_2, tri_coord_sampler, TRI_CENTER_COORDS)
-    test_shape_function_weight(test_case, P_3, tri_coord_sampler, TRI_CENTER_COORDS)
-    test_shape_function_trace(test_case, P_1, TRI_SIDE_CENTER_COORDS)
-    test_shape_function_trace(test_case, P_2, TRI_SIDE_CENTER_COORDS)
-    test_shape_function_trace(test_case, P_3, TRI_SIDE_CENTER_COORDS)
-    test_shape_function_gradient(test_case, P_1, tri_coord_sampler, tri_coord_delta_sampler)
-    test_shape_function_gradient(test_case, P_2, tri_coord_sampler, tri_coord_delta_sampler)
-    test_shape_function_gradient(test_case, P_3, tri_coord_sampler, tri_coord_delta_sampler)
+    test_shape_function_weight(test, P_1, tri_coord_sampler, TRI_CENTER_COORDS)
+    test_shape_function_weight(test, P_2, tri_coord_sampler, TRI_CENTER_COORDS)
+    test_shape_function_weight(test, P_3, tri_coord_sampler, TRI_CENTER_COORDS)
+    test_shape_function_trace(test, P_1, TRI_SIDE_CENTER_COORDS)
+    test_shape_function_trace(test, P_2, TRI_SIDE_CENTER_COORDS)
+    test_shape_function_trace(test, P_3, TRI_SIDE_CENTER_COORDS)
+    test_shape_function_gradient(test, P_1, tri_coord_sampler, tri_coord_delta_sampler)
+    test_shape_function_gradient(test, P_2, tri_coord_sampler, tri_coord_delta_sampler)
+    test_shape_function_gradient(test, P_3, tri_coord_sampler, tri_coord_delta_sampler)
 
     P_1d = shape.Triangle2DNonConformingPolynomialShapeFunctions(degree=1)
     P_2d = shape.Triangle2DNonConformingPolynomialShapeFunctions(degree=2)
     P_3d = shape.Triangle2DNonConformingPolynomialShapeFunctions(degree=3)
 
-    test_shape_function_weight(test_case, P_1d, tri_coord_sampler, TRI_CENTER_COORDS)
-    test_shape_function_weight(test_case, P_2d, tri_coord_sampler, TRI_CENTER_COORDS)
-    test_shape_function_weight(test_case, P_3d, tri_coord_sampler, TRI_CENTER_COORDS)
-    test_shape_function_gradient(test_case, P_1d, tri_coord_sampler, tri_coord_delta_sampler)
-    test_shape_function_gradient(test_case, P_2d, tri_coord_sampler, tri_coord_delta_sampler)
-    test_shape_function_gradient(test_case, P_3d, tri_coord_sampler, tri_coord_delta_sampler)
+    test_shape_function_weight(test, P_1d, tri_coord_sampler, TRI_CENTER_COORDS)
+    test_shape_function_weight(test, P_2d, tri_coord_sampler, TRI_CENTER_COORDS)
+    test_shape_function_weight(test, P_3d, tri_coord_sampler, TRI_CENTER_COORDS)
+    test_shape_function_gradient(test, P_1d, tri_coord_sampler, tri_coord_delta_sampler)
+    test_shape_function_gradient(test, P_2d, tri_coord_sampler, tri_coord_delta_sampler)
+    test_shape_function_gradient(test, P_3d, tri_coord_sampler, tri_coord_delta_sampler)
 
     wp.synchronize()
 
 
-def test_tet_shape_functions(test_case, device):
+def test_tet_shape_functions(test, device):
     TET_CENTER_COORDS = wp.constant(Coords(1 / 4.0, 1 / 4.0, 1 / 4.0))
     TET_SIDE_CENTER_COORDS = wp.constant(Coords(0.0, 1.0 / 3.0, 1.0 / 3.0))
 
@@ -1137,31 +1137,31 @@ def test_tet_shape_functions(test_case, device):
     P_2 = shape.TetrahedronPolynomialShapeFunctions(degree=2)
     P_3 = shape.TetrahedronPolynomialShapeFunctions(degree=3)
 
-    test_shape_function_weight(test_case, P_1, tet_coord_sampler, TET_CENTER_COORDS)
-    test_shape_function_weight(test_case, P_2, tet_coord_sampler, TET_CENTER_COORDS)
-    test_shape_function_weight(test_case, P_3, tet_coord_sampler, TET_CENTER_COORDS)
-    test_shape_function_trace(test_case, P_1, TET_SIDE_CENTER_COORDS)
-    test_shape_function_trace(test_case, P_2, TET_SIDE_CENTER_COORDS)
-    test_shape_function_trace(test_case, P_3, TET_SIDE_CENTER_COORDS)
-    test_shape_function_gradient(test_case, P_1, tet_coord_sampler, tet_coord_delta_sampler)
-    test_shape_function_gradient(test_case, P_2, tet_coord_sampler, tet_coord_delta_sampler)
-    test_shape_function_gradient(test_case, P_3, tet_coord_sampler, tet_coord_delta_sampler)
+    test_shape_function_weight(test, P_1, tet_coord_sampler, TET_CENTER_COORDS)
+    test_shape_function_weight(test, P_2, tet_coord_sampler, TET_CENTER_COORDS)
+    test_shape_function_weight(test, P_3, tet_coord_sampler, TET_CENTER_COORDS)
+    test_shape_function_trace(test, P_1, TET_SIDE_CENTER_COORDS)
+    test_shape_function_trace(test, P_2, TET_SIDE_CENTER_COORDS)
+    test_shape_function_trace(test, P_3, TET_SIDE_CENTER_COORDS)
+    test_shape_function_gradient(test, P_1, tet_coord_sampler, tet_coord_delta_sampler)
+    test_shape_function_gradient(test, P_2, tet_coord_sampler, tet_coord_delta_sampler)
+    test_shape_function_gradient(test, P_3, tet_coord_sampler, tet_coord_delta_sampler)
 
     P_1d = shape.TetrahedronNonConformingPolynomialShapeFunctions(degree=1)
     P_2d = shape.TetrahedronNonConformingPolynomialShapeFunctions(degree=2)
     P_3d = shape.TetrahedronNonConformingPolynomialShapeFunctions(degree=3)
 
-    test_shape_function_weight(test_case, P_1d, tet_coord_sampler, TET_CENTER_COORDS)
-    test_shape_function_weight(test_case, P_2d, tet_coord_sampler, TET_CENTER_COORDS)
-    test_shape_function_weight(test_case, P_3d, tet_coord_sampler, TET_CENTER_COORDS)
-    test_shape_function_gradient(test_case, P_1d, tet_coord_sampler, tet_coord_delta_sampler)
-    test_shape_function_gradient(test_case, P_2d, tet_coord_sampler, tet_coord_delta_sampler)
-    test_shape_function_gradient(test_case, P_3d, tet_coord_sampler, tet_coord_delta_sampler)
+    test_shape_function_weight(test, P_1d, tet_coord_sampler, TET_CENTER_COORDS)
+    test_shape_function_weight(test, P_2d, tet_coord_sampler, TET_CENTER_COORDS)
+    test_shape_function_weight(test, P_3d, tet_coord_sampler, TET_CENTER_COORDS)
+    test_shape_function_gradient(test, P_1d, tet_coord_sampler, tet_coord_delta_sampler)
+    test_shape_function_gradient(test, P_2d, tet_coord_sampler, tet_coord_delta_sampler)
+    test_shape_function_gradient(test, P_3d, tet_coord_sampler, tet_coord_delta_sampler)
 
     wp.synchronize()
 
 
-def test_point_basis(test_case, device):
+def test_point_basis(test, device):
     geo = fem.Grid2D(res=wp.vec2i(2))
 
     domain = fem.Cells(geo)
@@ -1174,13 +1174,13 @@ def test_point_basis(test_case, device):
 
     # Sample at particle positions
     ones = fem.integrate(linear_form, fields={"u": point_test}, nodal=True)
-    test_case.assertAlmostEqual(np.sum(ones.numpy()), 1.0, places=5)
+    test.assertAlmostEqual(np.sum(ones.numpy()), 1.0, places=5)
 
     # Sampling outside of particle positions
     other_quadrature = fem.RegularQuadrature(domain, order=2, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
     zeros = fem.integrate(linear_form, quadrature=other_quadrature, fields={"u": point_test})
 
-    test_case.assertAlmostEqual(np.sum(zeros.numpy()), 0.0, places=5)
+    test.assertAlmostEqual(np.sum(zeros.numpy()), 0.0, places=5)
 
 
 @fem.integrand
@@ -1194,7 +1194,7 @@ def _piecewise_constant(s: Sample):
     return float(s.element_index)
 
 
-def test_particle_quadratures(test_case, device):
+def test_particle_quadratures(test, device):
     geo = fem.Grid2D(res=wp.vec2i(2))
 
     domain = fem.Cells(geo)
@@ -1209,11 +1209,11 @@ def test_particle_quadratures(test_case, device):
 
     explicit_quadrature = fem.ExplicitQuadrature(domain, points, weights)
 
-    test_case.assertEqual(explicit_quadrature.points_per_element(), points_per_cell)
-    test_case.assertEqual(explicit_quadrature.total_point_count(), points_per_cell * geo.cell_count())
+    test.assertEqual(explicit_quadrature.points_per_element(), points_per_cell)
+    test.assertEqual(explicit_quadrature.total_point_count(), points_per_cell * geo.cell_count())
 
     val = fem.integrate(_bicubic, quadrature=explicit_quadrature)
-    test_case.assertAlmostEqual(val, 1.0 / 16, places=5)
+    test.assertAlmostEqual(val, 1.0 / 16, places=5)
 
     element_indices = wp.array([3, 3, 2], dtype=int, device=device)
     element_coords = wp.array(
@@ -1228,12 +1228,12 @@ def test_particle_quadratures(test_case, device):
 
     pic_quadrature = fem.PicQuadrature(domain, positions=(element_indices, element_coords))
 
-    test_case.assertIsNone(pic_quadrature.points_per_element())
-    test_case.assertEqual(pic_quadrature.total_point_count(), 3)
-    test_case.assertEqual(pic_quadrature.active_cell_count(), 2)
+    test.assertIsNone(pic_quadrature.points_per_element())
+    test.assertEqual(pic_quadrature.total_point_count(), 3)
+    test.assertEqual(pic_quadrature.active_cell_count(), 2)
 
     val = fem.integrate(_piecewise_constant, quadrature=pic_quadrature)
-    test_case.assertAlmostEqual(val, 1.25, places=5)
+    test.assertAlmostEqual(val, 1.25, places=5)
 
 
 devices = get_test_devices()

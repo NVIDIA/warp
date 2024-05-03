@@ -109,6 +109,7 @@ def default_suite(test_loader: unittest.TestLoader):
         TestCoreExamples,
         TestFemDiffusionExamples,
         TestFemExamples,
+        TestOptimExamples,
         TestSimExamples,
     )
     from warp.tests.test_fabricarray import TestFabricArray
@@ -198,6 +199,7 @@ def default_suite(test_loader: unittest.TestLoader):
         TestCoreExamples,
         TestFemDiffusionExamples,
         TestFemExamples,
+        TestOptimExamples,
         TestSimExamples,
         TestFabricArray,
         TestFastMath,

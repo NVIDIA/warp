@@ -656,46 +656,36 @@ def test_mesh_query_furthest_point(test, device):
     assert_np_equal(dist_query.numpy(), dist_brute.numpy(), tol=1.0e-3)
 
 
-def test_mesh_query_point_codegen_adjoints_with_select(test, device):
-    def kernel_fn(
-        mesh: wp.uint64,
-    ):
-        v = wp.vec3(0.0, 0.0, 0.0)
-        d = 1e-6
-
-        if True:
-            query_1 = wp.mesh_query_point(mesh, v, d)
-            query_2 = wp.mesh_query_point_no_sign(mesh, v, d)
-            query_3 = wp.mesh_query_furthest_point_no_sign(mesh, v, d)
-            query_4 = wp.mesh_query_point_sign_normal(mesh, v, d)
-            query_5 = wp.mesh_query_point_sign_winding_number(mesh, v, d)
-        else:
-            query_1 = wp.mesh_query_point(mesh, v, d)
-            query_2 = wp.mesh_query_point_no_sign(mesh, v, d)
-            query_3 = wp.mesh_query_furthest_point_no_sign(mesh, v, d)
-            query_4 = wp.mesh_query_point_sign_normal(mesh, v, d)
-            query_5 = wp.mesh_query_point_sign_winding_number(mesh, v, d)
-
-    wp.Kernel(func=kernel_fn)
-
-
 devices = get_test_devices()
 
 
 class TestMeshQueryPoint(unittest.TestCase):
-    pass
+    def test_mesh_query_point_codegen_adjoints_with_select(self):
+        def kernel_fn(
+            mesh: wp.uint64,
+        ):
+            v = wp.vec3(0.0, 0.0, 0.0)
+            d = 1e-6
+
+            if True:
+                query_1 = wp.mesh_query_point(mesh, v, d)
+                query_2 = wp.mesh_query_point_no_sign(mesh, v, d)
+                query_3 = wp.mesh_query_furthest_point_no_sign(mesh, v, d)
+                query_4 = wp.mesh_query_point_sign_normal(mesh, v, d)
+                query_5 = wp.mesh_query_point_sign_winding_number(mesh, v, d)
+            else:
+                query_1 = wp.mesh_query_point(mesh, v, d)
+                query_2 = wp.mesh_query_point_no_sign(mesh, v, d)
+                query_3 = wp.mesh_query_furthest_point_no_sign(mesh, v, d)
+                query_4 = wp.mesh_query_point_sign_normal(mesh, v, d)
+                query_5 = wp.mesh_query_point_sign_winding_number(mesh, v, d)
+
+        wp.Kernel(func=kernel_fn)
 
 
 add_function_test(TestMeshQueryPoint, "test_mesh_query_point", test_mesh_query_point, devices=devices)
 add_function_test(TestMeshQueryPoint, "test_mesh_query_furthest_point", test_mesh_query_furthest_point, devices=devices)
 add_function_test(TestMeshQueryPoint, "test_adj_mesh_query_point", test_adj_mesh_query_point, devices=devices)
-add_function_test(
-    TestMeshQueryPoint,
-    "test_mesh_query_point_codegen_adjoints_with_select",
-    test_mesh_query_point_codegen_adjoints_with_select,
-    devices=devices,
-)
-
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()

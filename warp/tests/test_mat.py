@@ -212,20 +212,6 @@ def test_tpl_constructor_error_invalid_arg_count(test, device):
         )
 
 
-def test_tpl_ops_with_anon(test, device):
-    mat22f = wp.mat((2, 2), dtype=float)
-
-    m = wp.mat22f(1.0, 2.0, 3.0, 4.0)
-    m += mat22f(2.0, 3.0, 4.0, 5.0)
-    m -= mat22f(3.0, 4.0, 5.0, 6.0)
-    test.assertSequenceEqual(m, ((0.0, 1.0), (2.0, 3.0)))
-
-    m = mat22f(1.0, 2.0, 3.0, 4.0)
-    m += wp.mat22f(2.0, 3.0, 4.0, 5.0)
-    m -= wp.mat22f(3.0, 4.0, 5.0, 6.0)
-    test.assertSequenceEqual(m, ((0.0, 1.0), (2.0, 3.0)))
-
-
 def test_py_arithmetic_ops(test, device, dtype):
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
 
@@ -1681,7 +1667,18 @@ devices = get_test_devices()
 
 
 class TestMat(unittest.TestCase):
-    pass
+    def test_tpl_ops_with_anon(self):
+        mat22f = wp.mat((2, 2), dtype=float)
+
+        m = wp.mat22f(1.0, 2.0, 3.0, 4.0)
+        m += mat22f(2.0, 3.0, 4.0, 5.0)
+        m -= mat22f(3.0, 4.0, 5.0, 6.0)
+        self.assertSequenceEqual(m, ((0.0, 1.0), (2.0, 3.0)))
+
+        m = mat22f(1.0, 2.0, 3.0, 4.0)
+        m += wp.mat22f(2.0, 3.0, 4.0, 5.0)
+        m -= wp.mat22f(3.0, 4.0, 5.0, 6.0)
+        self.assertSequenceEqual(m, ((0.0, 1.0), (2.0, 3.0)))
 
 
 add_kernel_test(TestMat, test_constructors_explicit_precision, dim=1, devices=devices)
@@ -1696,40 +1693,20 @@ add_kernel_test(
     dim=1,
     inputs=[
         mat103(
-            1.0,
-            2.0,
-            3.0,
-            2.0,
-            4.0,
-            6.0,
-            3.0,
-            6.0,
-            9.0,
-            4.0,
-            8.0,
-            12.0,
-            5.0,
-            10.0,
-            15.0,
-            6.0,
-            12.0,
-            18.0,
-            7.0,
-            14.0,
-            21.0,
-            8.0,
-            16.0,
-            24.0,
-            9.0,
-            18.0,
-            27.0,
-            10.0,
-            20.0,
-            30.0,
+            1.0, 2.0, 3.0,
+            2.0, 4.0, 6.0,
+            3.0, 6.0, 9.0,
+            4.0, 8.0, 12.0,
+            5.0, 10.0, 15.0,
+            6.0, 12.0, 18.0,
+            7.0, 14.0, 21.0,
+            8.0, 16.0, 24.0,
+            9.0, 18.0, 27.0,
+            10.0, 20.0, 30.0,
         )
     ],
     devices=devices,
-)
+)  # fmt: skip
 
 for dtype in np_signed_int_types + np_float_types:
     add_function_test_register_kernel(
@@ -1793,7 +1770,6 @@ add_function_test(
     test_tpl_constructor_error_invalid_arg_count,
     devices=devices,
 )
-add_function_test(TestMat, "test_tpl_ops_with_anon", test_tpl_ops_with_anon)
 
 for dtype in np_float_types:
     add_function_test(

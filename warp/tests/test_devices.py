@@ -41,11 +41,6 @@ def test_devices_map_cuda_device(test, device):
         wp.context.runtime.rename_device(device, saved_alias)
 
 
-def test_devices_unmap_imaginary_device(test, device):
-    with test.assertRaises(RuntimeError):
-        wp.unmap_cuda_device("imaginary_device:0")
-
-
 def test_devices_verify_cuda_device(test, device):
     verify_cuda_saved = wp.config.verify_cuda
 
@@ -73,7 +68,9 @@ devices = get_test_devices()
 
 
 class TestDevices(unittest.TestCase):
-    pass
+    def test_devices_unmap_imaginary_device(self):
+        with self.assertRaises(RuntimeError):
+            wp.unmap_cuda_device("imaginary_device:0")
 
 
 add_function_test(
@@ -85,11 +82,7 @@ add_function_test(
 add_function_test(
     TestDevices, "test_devices_map_cuda_device", test_devices_map_cuda_device, devices=get_selected_cuda_test_devices()
 )
-add_function_test(
-    TestDevices, "test_devices_unmap_imaginary_device", test_devices_unmap_imaginary_device, devices=devices
-)
 add_function_test(TestDevices, "test_devices_verify_cuda_device", test_devices_verify_cuda_device, devices=devices)
-
 add_function_test(TestDevices, "test_devices_can_access_self", test_devices_can_access_self, devices=devices)
 
 

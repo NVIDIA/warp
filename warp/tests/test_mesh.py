@@ -91,38 +91,20 @@ def read_indices_kernel(
 
 
 def test_mesh_read_properties(test, device):
-    points = wp.array(POINT_POSITIONS, dtype=wp.vec3)
-    indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int)
+    points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
+    indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
     mesh = wp.Mesh(points=points, indices=indices)
 
     assert mesh.points.size == POINT_COUNT
     assert mesh.indices.size == VERTEX_COUNT
     assert int(mesh.indices.size / 3) == FACE_COUNT
 
-    out_points = wp.empty(POINT_COUNT, dtype=wp.vec3)
-    wp.launch(
-        read_points_kernel,
-        dim=POINT_COUNT,
-        inputs=[
-            mesh.id,
-        ],
-        outputs=[
-            out_points,
-        ],
-    )
+    out_points = wp.empty(POINT_COUNT, dtype=wp.vec3, device=device)
+    wp.launch(read_points_kernel, dim=POINT_COUNT, inputs=[mesh.id], outputs=[out_points], device=device)
     assert_np_equal(out_points.numpy(), np.array(POINT_POSITIONS))
 
-    out_indices = wp.empty(VERTEX_COUNT, dtype=int)
-    wp.launch(
-        read_indices_kernel,
-        dim=FACE_COUNT,
-        inputs=[
-            mesh.id,
-        ],
-        outputs=[
-            out_indices,
-        ],
-    )
+    out_indices = wp.empty(VERTEX_COUNT, dtype=int, device=device)
+    wp.launch(read_indices_kernel, dim=FACE_COUNT, inputs=[mesh.id], outputs=[out_indices], device=device)
     assert_np_equal(out_indices.numpy(), np.array(RIGHT_HANDED_FACE_VERTEX_INDICES))
 
 
@@ -139,15 +121,7 @@ def query_point_kernel(
     bary_u = float(0.0)
     bary_v = float(0.0)
 
-    wp.mesh_query_point(
-        mesh_id,
-        point,
-        1e6,
-        sign,
-        face,
-        bary_u,
-        bary_v,
-    )
+    wp.mesh_query_point(mesh_id, point, 1e6, sign, face, bary_u, bary_v)
     pos = wp.mesh_eval_position(mesh_id, face, bary_u, bary_v)
 
     wp.expect_eq(wp.sign(sign), expected_sign)
@@ -156,31 +130,17 @@ def query_point_kernel(
 
 
 def test_mesh_query_point(test, device):
-    points = wp.array(POINT_POSITIONS, dtype=wp.vec3)
+    points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
 
-    indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int)
+    indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
     mesh = wp.Mesh(points=points, indices=indices)
     expected_sign = -1.0
-    wp.launch(
-        query_point_kernel,
-        dim=1,
-        inputs=[
-            mesh.id,
-            expected_sign,
-        ],
-    )
+    wp.launch(query_point_kernel, dim=1, inputs=[mesh.id, expected_sign], device=device)
 
-    indices = wp.array(LEFT_HANDED_FACE_VERTEX_INDICES, dtype=int)
+    indices = wp.array(LEFT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
     mesh = wp.Mesh(points=points, indices=indices)
     expected_sign = 1.0
-    wp.launch(
-        query_point_kernel,
-        dim=1,
-        inputs=[
-            mesh.id,
-            expected_sign,
-        ],
-    )
+    wp.launch(query_point_kernel, dim=1, inputs=[mesh.id, expected_sign], device=device)
 
 
 @wp.kernel(enable_backward=False)

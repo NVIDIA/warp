@@ -1882,7 +1882,7 @@ def test_constants(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    wp.launch(kernel, dim=1, inputs=[])
+    wp.launch(kernel, dim=1, inputs=[], device=device)
 
 
 def test_minmax(test, device, dtype, register_kernels=False):

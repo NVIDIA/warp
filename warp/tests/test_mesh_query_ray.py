@@ -208,7 +208,6 @@ def raycast_kernel(
     mesh: wp.uint64,
     ray_starts: wp.array(dtype=wp.vec3),
     ray_directions: wp.array(dtype=wp.vec3),
-    ray_hits: wp.array(dtype=wp.vec3),
     count: wp.array(dtype=int),
 ):
     t = float(0.0)  # hit distance along ray
@@ -258,44 +257,34 @@ def test_mesh_query_ray_edge(test, device):
 
     ray_starts = wp.array(ray_starts, shape=(n,), dtype=wp.vec3, device=device)
     ray_dirs = wp.array(ray_dirs, shape=(n,), dtype=wp.vec3, device=device)
-    ray_hits = wp.zeros((n,), dtype=wp.vec3, device=device)
 
-    wp.launch(kernel=raycast_kernel, dim=n, inputs=[mesh.id, ray_starts, ray_dirs, ray_hits, counts], device=device)
+    wp.launch(kernel=raycast_kernel, dim=n, inputs=[mesh.id, ray_starts, ray_dirs, counts], device=device)
     wp.synchronize()
 
     test.assertEqual(counts.numpy()[0], n)
-
-
-def test_mesh_query_codegen_adjoints_with_select(test, device):
-    def kernel_fn(
-        mesh: wp.uint64,
-    ):
-        v = wp.vec3(0.0, 0.0, 0.0)
-        d = 1e-6
-
-        if True:
-            query = wp.mesh_query_ray(mesh, v, v, d)
-        else:
-            query = wp.mesh_query_ray(mesh, v, v, d)
-
-    wp.Kernel(func=kernel_fn)
 
 
 devices = get_test_devices()
 
 
 class TestMeshQueryRay(unittest.TestCase):
-    pass
+    def test_mesh_query_codegen_adjoints_with_select(self):
+        def kernel_fn(
+            mesh: wp.uint64,
+        ):
+            v = wp.vec3(0.0, 0.0, 0.0)
+            d = 1e-6
+
+            if True:
+                query = wp.mesh_query_ray(mesh, v, v, d)
+            else:
+                query = wp.mesh_query_ray(mesh, v, v, d)
+
+        wp.Kernel(func=kernel_fn)
 
 
 add_function_test(TestMeshQueryRay, "test_mesh_query_ray_edge", test_mesh_query_ray_edge, devices=devices)
 add_function_test(TestMeshQueryRay, "test_mesh_query_ray_grad", test_mesh_query_ray_grad, devices=devices)
-add_function_test(
-    TestMeshQueryRay,
-    "test_mesh_query_codegen_adjoints_with_select",
-    test_mesh_query_codegen_adjoints_with_select,
-    devices=devices,
-)
 
 
 if __name__ == "__main__":

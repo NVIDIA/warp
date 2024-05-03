@@ -171,7 +171,7 @@ def test_mlp_grad(test, device):
     assert_np_equal(tape.gradients[y].numpy().reshape(m, b), torch_y_grad, tol=1.0e-1)
 
 
-def profile_mlp_torch(device):
+def profile_mlp_torch():
     import torch
 
     rng = np.random.default_rng(123)
@@ -257,7 +257,7 @@ def profile_mlp_warp(device):
 
 
 # profile_mlp_warp("cuda")
-# profile_mlp_torch("cuda")
+# profile_mlp_torch()
 
 
 devices = get_test_devices()

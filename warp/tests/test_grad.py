@@ -596,7 +596,7 @@ def test_struct_attribute_gradient_kernel(src: wp.array(dtype=float), res: wp.ar
     res[tid] = p.a + sum2(p.n.v)
 
 
-def test_struct_attribute_gradient(test_case, device):
+def test_struct_attribute_gradient(test, device):
     with wp.ScopedDevice(device):
         src = wp.array([1], dtype=float, requires_grad=True)
         res = wp.empty_like(src)
@@ -608,7 +608,7 @@ def test_struct_attribute_gradient(test_case, device):
         res.grad.fill_(1.0)
         tape.backward()
 
-        test_case.assertEqual(src.grad.numpy()[0], 5.0)
+        test.assertEqual(src.grad.numpy()[0], 5.0)
 
 
 @wp.kernel
@@ -619,7 +619,7 @@ def copy_kernel(a: wp.array(dtype=wp.float32), b: wp.array(dtype=wp.float32)):
     b[tid] = bi
 
 
-def test_copy(test_case, device):
+def test_copy(test, device):
     with wp.ScopedDevice(device):
         a = wp.array([-1.0, 2.0, 3.0], dtype=wp.float32, requires_grad=True)
         b = wp.array([0.0, 0.0, 0.0], dtype=wp.float32, requires_grad=True)
@@ -646,7 +646,7 @@ def aliasing_kernel(a: wp.array(dtype=wp.float32), b: wp.array(dtype=wp.float32)
     b[tid] = y
 
 
-def test_aliasing(test_case, device):
+def test_aliasing(test, device):
     with wp.ScopedDevice(device):
         a = wp.array([-1.0, 2.0, 3.0], dtype=wp.float32, requires_grad=True)
         b = wp.array([0.0, 0.0, 0.0], dtype=wp.float32, requires_grad=True)
@@ -665,7 +665,7 @@ def square_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
     y[tid] = x[tid] ** 2.0
 
 
-def test_gradient_internal(test_case, device):
+def test_gradient_internal(test, device):
     with wp.ScopedDevice(device):
         a = wp.array([1.0, 2.0, 3.0], dtype=float, requires_grad=True)
         b = wp.array([0.0, 0.0, 0.0], dtype=float, requires_grad=True)
@@ -679,7 +679,7 @@ def test_gradient_internal(test_case, device):
         assert_np_equal(a.grad.numpy(), np.array([2.0, 4.0, 6.0]))
 
 
-def test_gradient_external(test_case, device):
+def test_gradient_external(test, device):
     with wp.ScopedDevice(device):
         a = wp.array([1.0, 2.0, 3.0], dtype=float, requires_grad=False)
         b = wp.array([0.0, 0.0, 0.0], dtype=float, requires_grad=False)
@@ -694,7 +694,7 @@ def test_gradient_external(test_case, device):
         assert_np_equal(a_grad.numpy(), np.array([2.0, 4.0, 6.0]))
 
 
-def test_gradient_precedence(test_case, device):
+def test_gradient_precedence(test, device):
     with wp.ScopedDevice(device):
         a = wp.array([1.0, 2.0, 3.0], dtype=float, requires_grad=True)
         b = wp.array([0.0, 0.0, 0.0], dtype=float, requires_grad=True)
