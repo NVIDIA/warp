@@ -2,6 +2,8 @@ import numpy as np
 import warp as wp
 
 wp.init()
+wp.set_module_options({"enable_backwards": False})
+wp.set_device("cuda:0")
 
 @wp.kernel
 def gemm(A: wp.array2d(dtype=float),
@@ -30,20 +32,21 @@ def gemm_tiled(A: wp.array2d(dtype=float),
     # output tile index
     i, j = wp.tid()
 
-    sum = wp.tile_zeros((TILE_M, TILE_N), dtype=wp.float32)
+    sum = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32)
 
     M = A.shape[0]
-    N = A.shape[1]
-    K = B.shape[1]
+    N = B.shape[1]
+    K = A.shape[1]
 
     for k in range(0, K, TILE_K):
 
-        a = wp.tile_load(A, i, j+k, TILE_M, TILE_K)
-        b = wp.tile_load(B, i+k, j, TILE_K, TILE_N)
+        a = wp.tile_load(A, i, j+k, m=TILE_M, n=TILE_K)
+        b = wp.tile_load(B, i+k, j, m=TILE_K, n=TILE_N)
 
-        sum += wp.tile_matmul(a, b)
+        # sum += a*b
+        wp.tile_matmul(a, b, sum)
 
-    wp.tile_store(C, i, j, TILE_M, TILE_N)
+    wp.tile_store(C, i, j, sum)
 
 
 M = 240
@@ -66,9 +69,9 @@ with wp.ScopedTimer("NumPy"):
     for i in range(iters):
         C = A@B
 
-wp.force_load()
+#wp.force_load()
 
-with wp.ScopedTimer("Warp", cuda_flags=wp.CUDA_TIMING_KERNEL):
+with wp.ScopedTimer("Warp", cuda_flags=wp.TIMING_KERNEL):
 
     for i in range(iters):
         wp.launch(gemm, dim=(M, N), inputs=[A_wp, B_wp, C_wp])
