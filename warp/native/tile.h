@@ -3,17 +3,21 @@
 #include "builtin.h"
 
 // #define WP_CONCAT(x, y) x ## y
-// #define WP_SHARED_MEM(name, id) WP_CONCAT(name, id)
+// #define WP_TILE_SHARED_MEM(name, id) WP_CONCAT(name, id)
 
 // #define zero(a) memset(a, 0, sizeof(a));
 
 // #define tile_zeros(a, b, dtype) [](){\
-// static dtype WP_SHARED_MEM(data_, __LINE__)[a][b]; \
-// zero(WP_SHARED_MEM(data_, __LINE__)); \
-// return array_t<dtype>WP_SHARED_MEM(data_, __LINE__; )}()
+// static dtype WP_TILE_SHARED_MEM(data_, __LINE__)[a][b]; \
+// zero(WP_TILE_SHARED_MEM(data_, __LINE__)); \
+// return array_t<dtype>WP_TILE_SHARED_MEM(data_, __LINE__; )}()
 
 #if !defined(__CUDA_ARCH__)
-#define __shared__ static
+#define WP_TILE_SHARED static
+#define WP_TILE_SYNC void
+#else
+#define WP_TILE_SHARED __shared__
+#define WP_TILE_SYNC __syncthreads
 #endif
 
 namespace wp
@@ -23,8 +27,15 @@ namespace wp
 template <typename T, int M, int N, int Index>
 inline CUDA_CALLABLE array_t<T> tile_zeros()
 {
-    __shared__ T data[M*N];
+    const int length = M*N;
+
+    WP_TILE_SHARED T data[length];
     
+    for (int t=threadIdx.x; t < length; t += blockDim.x)
+    {  
+        data[t] = T(0.0);
+    }
+
     return array_t<T>(data, M, N, nullptr);
 }
 
@@ -34,11 +45,11 @@ inline CUDA_CALLABLE array_t<T> tile_load(const array_t<T>& src, int i, int j)
 {
     const int length = M*N;
 
-    __shared__ T data[length];
+    WP_TILE_SHARED T data[length];
     
     // cooperatively load the tile, using a block-stride iterator
     // todo: use cub::BlockLoad or cg::memcpy_async()?
-    for (int t=threadIdx.y; t < length; t += blockDim.y)
+    for (int t=threadIdx.x; t < length; t += blockDim.x)
     {  
         data[t] = index(src, i*M + t/N, j*N + t%N);
     }
@@ -48,18 +59,19 @@ inline CUDA_CALLABLE array_t<T> tile_load(const array_t<T>& src, int i, int j)
 
 // 2D tile store
 template <typename T>
-inline CUDA_CALLABLE array_t<T> tile_store(const array_t<T>& dest, const array_t<T>& src, int i, int j)
+inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int i, int j, const array_t<T>& src)
 {
-    const int length = src.shape[0]*src.shape[1];
+    const int M = src.shape[0];
+    const int N = src.shape[1];
+    
+    const int length = M*N;
 
     // cooperatively store the tile, using a block-stride iterator
     // todo: use cub::BlockStore or cg::memcpy_async()?
-    for (int t=threadIdx.y; t < length; t += blockDim.y)
+    for (int t=threadIdx.x; t < length; t += blockDim.x)
     {  
-        index(dest, i*M + t/N, j*N + t%N, i) = src.data[t];
+        index(dest, i*M + t/N, j*N + t%N) = src.data[t];
     }
-        
-    return array_t<T>(data, M, N, nullptr);
 }
 
 
@@ -69,11 +81,13 @@ inline CUDA_CALLABLE void tile_matmul(const array_t<T>& A, const array_t<T>& B, 
 {    
     const int length = out.shape[0]*out.shape[1];
 
-    for (int t=threadIdx.y; t < length; t += blockDim.y)
+    WP_TILE_SYNC();
+
+    for (int t=threadIdx.x; t < length; t += blockDim.x)
     {  
         // compute output index
-        const int i = t%out.shape[0];
-        const int j = t/out.shape[1];
+        const int i = t/out.shape[1];
+        const int j = t%out.shape[1];
 
         T sum = T(0.0);
 
@@ -84,6 +98,8 @@ inline CUDA_CALLABLE void tile_matmul(const array_t<T>& A, const array_t<T>& B, 
 
         index(out, i, j) += sum;
     }
+
+    WP_TILE_SYNC();
 }
 
 

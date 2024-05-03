@@ -1383,9 +1383,9 @@ def tile_zeros_value_func(arg_types, kwds, templates):
 
     m, n, dtype = kwds["m"], kwds["n"], kwds["dtype"]
 
+    templates.append(dtype)
     templates.append(m)
     templates.append(n)
-    templates.append(dtype)
 
     global shared_memory_id
     templates.append(shared_memory_id)
@@ -1432,9 +1432,9 @@ def tile_load_value_func(arg_types, kwds, templates):
 
     m, n = kwds["m"], kwds["n"]
 
+    templates.append(arg_types[0].dtype)
     templates.append(m)
     templates.append(n)
-    templates.append(arg_types[0].dtype)
 
     global shared_memory_id
     templates.append(shared_memory_id)
