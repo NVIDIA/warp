@@ -301,11 +301,8 @@ add_example_test(
     test_options_cpu={"num_frames": 3},
 )
 add_example_test(
-    TestSimExamples,
-    name="sim.example_rigid_soft_contact",
-    devices=cuda_test_devices,
-    test_options_cpu={"num_frames": 10},
-)  # TODO: Segfaults on CPU in some cases, add back in CPU testing when fixed
+    TestSimExamples, name="sim.example_rigid_soft_contact", devices=test_devices, test_options_cpu={"num_frames": 10}
+)
 add_example_test(TestSimExamples, name="sim.example_rigid_force", devices=test_devices)
 add_example_test(TestSimExamples, name="sim.example_rigid_gyroscopic", devices=test_devices)
 add_example_test(
