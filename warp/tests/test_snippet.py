@@ -244,6 +244,44 @@ def test_recompile_snippet(test, device):
     assert_np_equal(out.numpy(), 1 + np.arange(1, N + 1, 1, dtype=np.int32))
 
 
+def test_return_type(test, device):
+    snippet = """
+        float sq = x * x;
+        return sq;
+        """
+    adj_snippet = """
+        adj_x += 2 * x * adj_ret;
+        """
+
+    # check python built-in return type compilation
+    @wp.func_native(snippet, adj_snippet)
+    def square(x: float) -> float: ...
+
+    # check warp built-in return type compilation
+    @wp.func_native(snippet, adj_snippet)
+    def square(x: wp.float32) -> wp.float32: ...
+
+    @wp.kernel
+    def square_kernel(i: wp.array(dtype=float), o: wp.array(dtype=float)):
+        tid = wp.tid()
+        x = i[tid]
+        o[tid] = square(x)
+
+    N = 5
+    x = wp.array(np.arange(N, dtype=float), dtype=float, requires_grad=True, device=device)
+    y = wp.zeros_like(x)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel=square_kernel, dim=N, inputs=[x, y], device=device)
+
+    y.grad = wp.ones(N, dtype=float, device=device)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([0.0, 1.0, 4.0, 9.0, 16.0]))
+    assert_np_equal(x.grad.numpy(), np.array([0.0, 2.0, 4.0, 6.0, 8.0]))
+
+
 class TestSnippets(unittest.TestCase):
     pass
 
@@ -260,6 +298,7 @@ add_function_test(
 add_function_test(
     TestSnippets, "test_recompile_snippet", test_recompile_snippet, devices=get_selected_cuda_test_devices()
 )
+add_function_test(TestSnippets, "test_return_type", test_return_type, devices=get_selected_cuda_test_devices())
 
 
 if __name__ == "__main__":

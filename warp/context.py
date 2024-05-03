@@ -668,7 +668,7 @@ def func_native(snippet, adj_snippet=None, replay_snippet=None):
             native_snippet=snippet,
             adj_native_snippet=adj_snippet,
             replay_snippet=replay_snippet,
-        )  # cuda snippets do not have a return value_type
+        )  # value_type not known yet, will be inferred during Adjoint.build()
         g = m.functions[name]
         # copy over the function attributes, including docstring
         return functools.update_wrapper(g, f)

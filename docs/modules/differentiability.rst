@@ -323,26 +323,37 @@ These accept native code as strings that get compiled after code generation, and
 For example::
 
     snippet = """
-        __shared__ int s[128];
+        __shared__ int sum[128];
 
-        s[tid] = d[tid];
+        sum[tid] = arr[tid];
         __syncthreads();
-        d[tid] = s[N - tid - 1];
+
+        for (int stride = 64; stride > 0; stride >>= 1) {
+            if (tid < stride) {
+                sum[tid] += sum[tid + stride];
+            }
+            __syncthreads();
+        }
+
+        if (tid == 0) {
+            out[0] = sum[0];
+        }
         """
 
     @wp.func_native(snippet)
-    def reverse(d: wp.array(dtype=int), N: int, tid: int):
+    def reduce(arr: wp.array(dtype=int), out: wp.array(dtype=int), tid: int):
         ...
 
     @wp.kernel
-    def reverse_kernel(d: wp.array(dtype=int), N: int):
+    def reduce_kernel(arr: wp.array(dtype=int), out: wp.array(dtype=int)):
         tid = wp.tid()
-        reverse(d, N, tid)
+        reduce(arr, out, tid)
 
     N = 128
     x = wp.array(np.arange(N, dtype=int), dtype=int, device=device)
+    out = wp.zeros(1, dtype=int, device=device)
 
-    wp.launch(kernel=reverse_kernel, dim=N, inputs=[x, N], device=device)
+    wp.launch(kernel=reduce_kernel, dim=N, inputs=[x, out], device=device)
 
 Notice the use of shared memory here: the Warp library does not expose shared memory as a feature, but the CUDA compiler will
 readily accept the above snippet. This means CUDA features not exposed in Warp are still accessible in Warp scripts.
@@ -359,9 +370,9 @@ alongside your snippet as an additional input to the decorator, as in the follow
     out[tid] = a * x[tid] + y[tid];
     """
     adj_snippet = """
-    adj_a = x[tid] * adj_out[tid];
-    adj_x[tid] = a * adj_out[tid];
-    adj_y[tid] = adj_out[tid];
+    adj_a += x[tid] * adj_out[tid];
+    adj_x[tid] += a * adj_out[tid];
+    adj_y[tid] += adj_out[tid];
     """
 
     @wp.func_native(snippet, adj_snippet)
@@ -443,6 +454,35 @@ Consider the following example::
 By default, ``snippet`` would be called in the backward pass, but in this case, we have a custom replay snippet defined, which is called instead.
 In this case, ``replay_snippet`` is a no-op, which is all that we require, since ``thread_values`` are cached in the forward pass.
 If we did not have a ``replay_snippet`` defined, ``thread_values`` would be overwritten with counter values that exceed the input array size in the backward pass.
+
+A native snippet may also include a return statement. If this is the case, you must specify the return type in the native function definition, as in the following example::
+
+    snippet = """
+        float sq = x * x;
+        return sq;
+        """
+    adj_snippet = """
+        adj_x += 2.f * x * adj_ret;
+        """
+
+    @wp.func_native(snippet, adj_snippet)
+    def square(x: float) -> float: ...
+
+    @wp.kernel
+    def square_kernel(input: wp.array(dtype=Any), output: wp.array(dtype=Any)):
+        tid = wp.tid()
+        x = input[tid]
+        output[tid] = square(x)
+
+    N = 5
+    x = wp.array(np.arange(N, dtype=float), dtype=float, requires_grad=True)
+    y = wp.zeros_like(x)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel=square_kernel, dim=N, inputs=[x, y])
+
+    tape.backward(grads={y: wp.ones(N, dtype=float)})
 
 Debugging Gradients
 ###################

@@ -1246,6 +1246,23 @@ class Adjoint:
             if not isinstance(node.body[-1], ast.Return):
                 adj.add_forward("return {};", skip_replay=True)
 
+        # native function case: return type is specified, eg -> int or -> wp.float32
+        is_func_native = False
+        if node.decorator_list is not None and len(node.decorator_list) == 1:
+            obj = node.decorator_list[0]
+            if isinstance(obj, ast.Call):
+                if isinstance(obj.func, ast.Attribute):
+                    if obj.func.attr == "func_native":
+                        is_func_native = True
+        if is_func_native and node.returns is not None:
+            if isinstance(node.returns, ast.Name):  # python built-in type
+                var = Var(label="return_type", type=eval(node.returns.id))
+            elif isinstance(node.returns, ast.Attribute):  # warp type
+                var = Var(label="return_type", type=eval(node.returns.attr))
+            else:
+                raise WarpCodegenTypeError("Native function return type not recognized")
+            adj.return_var = (var,)
+
     def emit_If(adj, node):
         if len(node.body) == 0:
             return None
@@ -2698,6 +2715,11 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None):
 
 
 def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet):
+    if adj.return_var is not None and len(adj.return_var) == 1:
+        return_type = adj.return_var[0].ctype()
+    else:
+        return_type = "void"
+
     forward_args = []
     reverse_args = []
 
@@ -2714,6 +2736,8 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet):
             reverse_args.append(_arg.ctype() + " & adj_" + arg.label)
         else:
             reverse_args.append(arg.ctype() + " & adj_" + arg.label)
+    if return_type != "void":
+        reverse_args.append(return_type + " & adj_ret")
 
     forward_template = cuda_forward_function_template
     replay_template = cuda_forward_function_template
@@ -2722,7 +2746,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet):
     s = ""
     s += forward_template.format(
         name=name,
-        return_type="void",
+        return_type=return_type,
         forward_args=indent(forward_args),
         forward_body=snippet,
         filename=adj.filename,
@@ -2732,7 +2756,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet):
     if replay_snippet is not None:
         s += replay_template.format(
             name="replay_" + name,
-            return_type="void",
+            return_type=return_type,
             forward_args=indent(forward_args),
             forward_body=replay_snippet,
             filename=adj.filename,
@@ -2746,7 +2770,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet):
 
     s += reverse_template.format(
         name=name,
-        return_type="void",
+        return_type=return_type,
         reverse_args=indent(reverse_args),
         forward_body=snippet,
         reverse_body=reverse_body,
