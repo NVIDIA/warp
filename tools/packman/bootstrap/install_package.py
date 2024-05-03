@@ -19,7 +19,8 @@ import sys
 import os
 import stat
 import time
-from typing import Any, Callable
+import hashlib
+from typing import Any, Callable, Union
 
 
 RENAME_RETRY_COUNT = 100
@@ -130,7 +131,24 @@ def rename_folder_with_retry(staging_dir: StagingDirectory, folder_name):
     )
 
 
-def install_package(package_path, install_path):
+def generate_sha256_for_file(file_path: Union[str, os.PathLike]) -> str:
+    """Returns the SHA-256 hex digest for the file at `file_path`"""
+    hash = hashlib.sha256()
+    # Read the file in binary mode and update the hash object with data
+    with open(file_path, "rb") as file:
+        for chunk in iter(lambda: file.read(4096), b""):
+            hash.update(chunk)
+    return hash.hexdigest()
+
+
+def install_common_module(package_path, install_path):
+    COMMON_SHA256 = "d4117f80ecc6dcc36444e04da85b125a4269f2abfe59a8984150138ad7d832c1"
+    package_sha256 = generate_sha256_for_file(package_path)
+    if package_sha256 != COMMON_SHA256:
+        raise RuntimeError(
+            f"Package at '{package_path}' must have a sha256 of '{COMMON_SHA256}' "
+            f"but was found to have '{package_sha256}'"
+        )
     staging_path, version = os.path.split(install_path)
     with StagingDirectory(staging_path) as staging_dir:
         output_folder = staging_dir.get_temp_folder_path()
@@ -151,4 +169,4 @@ if __name__ == "__main__":
     for exec_path in paths_list:
         if os.path.normcase(os.path.normpath(exec_path)) == target_path_np_nc:
             raise RuntimeError(f"packman will not install to executable path '{exec_path}'")
-    install_package(sys.argv[1], target_path_np)
+    install_common_module(sys.argv[1], target_path_np)
