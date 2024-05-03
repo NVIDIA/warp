@@ -17,6 +17,8 @@
 import numpy as np
 
 import warp as wp
+import warp.sim
+import warp.sim.render
 
 wp.init()
 
@@ -42,21 +44,12 @@ def apply_gradient_kernel(
 
 
 class Example:
-    def __init__(
-        self,
-        stage=None,
-        verbose=False,
-    ):
-        import warp.sim
-
-        # Duration of the simulation, in seconds.
-        duration = 1.0
-
+    def __init__(self, stage_path="example_spring_cage.usd", num_frames=30, train_iters=25):
         # Number of frames per second.
-        self.fps = 30.0
+        self.fps = 30
 
         # Duration of a single simulation iteration in number of frames.
-        self.frame_count = int(duration * self.fps)
+        self.num_frames = num_frames
 
         # Number of simulation steps to take per frame.
         self.sim_substep_count = 1
@@ -69,7 +62,7 @@ class Example:
         self.target_pos = (0.125, 0.25, 0.375)
 
         # Number of training iterations.
-        self.train_iters = 100
+        self.train_iters = train_iters
 
         # Factor by which the rest lengths of the springs are adjusted after each
         # iteration, relatively to the corresponding gradients. Lower values
@@ -77,7 +70,7 @@ class Example:
         self.train_rate = 0.5
 
         # Initialize the helper to build a physics scene.
-        builder = warp.sim.ModelBuilder()
+        builder = wp.sim.ModelBuilder()
 
         # Define the main particle at the origin.
         particle_mass = 1.0
@@ -108,21 +101,19 @@ class Example:
         self.model.ground = False
 
         # Use the Euler integrator for stepping through the simulation.
-        self.integrator = warp.sim.SemiImplicitIntegrator()
+        self.integrator = wp.sim.SemiImplicitIntegrator()
 
         # Initialize a state for each simulation step.
-        self.states = tuple(self.model.state() for _ in range(self.frame_count * self.sim_substep_count + 1))
+        self.states = tuple(self.model.state() for _ in range(self.num_frames * self.sim_substep_count + 1))
 
         # Initialize a loss value that will represent the distance of the main
         # particle to the target position. It needs to be defined as an array
         # so that it can be written out by a kernel.
         self.loss = wp.zeros(1, dtype=float, requires_grad=True)
 
-        if stage:
-            import warp.sim.render
-
+        if stage_path:
             # Helper to render the physics scene as a USD file.
-            self.renderer = warp.sim.render.SimRenderer(self.model, stage, fps=self.fps, scaling=10.0)
+            self.renderer = warp.sim.render.SimRenderer(self.model, stage_path, fps=self.fps, scaling=10.0)
 
             # Allows rendering one simulation to USD every N training iterations.
             self.render_iteration_steps = 2
@@ -132,8 +123,8 @@ class Example:
         else:
             self.renderer = None
 
-        self.use_graph = wp.get_device().is_cuda
-        if self.use_graph:
+        self.use_cuda_graph = wp.get_device().is_cuda
+        if self.use_cuda_graph:
             # Capture all the kernel launches into a CUDA graph so that they can
             # all be run in a single graph launch, which helps with performance.
             with wp.ScopedCapture() as capture:
@@ -142,8 +133,6 @@ class Example:
                     self.forward()
                 self.tape.backward(loss=self.loss)
             self.graph = capture.graph
-
-        self.verbose = verbose
 
     def forward(self):
         for i in range(1, len(self.states)):
@@ -169,63 +158,82 @@ class Example:
         )
 
     def step(self):
-        if self.use_graph:
-            wp.capture_launch(self.graph)
-        else:
-            self.tape = wp.Tape()
-            with self.tape:
-                self.forward()
-            self.tape.backward(loss=self.loss)
+        with wp.ScopedTimer("step"):
+            if self.use_cuda_graph:
+                wp.capture_launch(self.graph)
+            else:
+                self.tape = wp.Tape()
+                with self.tape:
+                    self.forward()
+                self.tape.backward(loss=self.loss)
 
-        wp.launch(
-            apply_gradient_kernel,
-            dim=self.model.spring_count,
-            inputs=(
-                self.model.spring_rest_length.grad,
-                self.train_rate,
-            ),
-            outputs=(self.model.spring_rest_length,),
-        )
+            wp.launch(
+                apply_gradient_kernel,
+                dim=self.model.spring_count,
+                inputs=(
+                    self.model.spring_rest_length.grad,
+                    self.train_rate,
+                ),
+                outputs=(self.model.spring_rest_length,),
+            )
 
-        self.tape.zero()
+            self.tape.zero()
 
     def render(self):
         if self.renderer is None:
             return
 
-        self.renderer.begin_frame(0.0)
-        self.renderer.render_box(
-            name="target",
-            pos=self.target_pos,
-            rot=wp.quat_identity(),
-            extents=(0.1, 0.1, 0.1),
-            color=(1.0, 0.0, 0.0),
-        )
-        self.renderer.end_frame()
-
-        for frame in range(self.frame_count):
-            self.renderer.begin_frame(self.render_frame / self.fps)
-            self.renderer.render(self.states[frame * self.sim_substep_count])
+        with wp.ScopedTimer("render"):
+            self.renderer.begin_frame(0.0)
+            self.renderer.render_box(
+                name="target",
+                pos=self.target_pos,
+                rot=wp.quat_identity(),
+                extents=(0.1, 0.1, 0.1),
+                color=(1.0, 0.0, 0.0),
+            )
             self.renderer.end_frame()
 
-            self.render_frame += 1
+            for frame in range(self.num_frames):
+                self.renderer.begin_frame(self.render_frame / self.fps)
+                self.renderer.render(self.states[frame * self.sim_substep_count])
+                self.renderer.end_frame()
+
+                self.render_frame += 1
 
 
 if __name__ == "__main__":
-    stage_path = "example_spring_cage.usd"
+    import argparse
 
-    example = Example(stage_path, verbose=True)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_spring_cage.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--num_frames", type=int, default=30, help="Total number of frames per training iteration.")
+    parser.add_argument("--train_iters", type=int, default=25, help="Total number of training iterations.")
+    parser.add_argument("--verbose", action="store_true", help="Print out additional status messages during execution.")
 
-    for iteration in range(example.train_iters):
-        example.step()
+    args = parser.parse_known_args()[0]
 
-        loss = example.loss.numpy()[0]
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path, num_frames=args.num_frames, train_iters=args.train_iters)
 
-        if example.verbose:
-            print(f"[{iteration:3d}] loss={loss:.8f}")
+        for iteration in range(args.train_iters):
+            example.step()
 
-        if iteration == example.train_iters - 1 or iteration % example.render_iteration_steps == 0:
-            example.render()
+            loss = example.loss.numpy()[0]
 
-    if example.renderer:
-        example.renderer.save()
+            if args.verbose:
+                print(f"[{iteration:3d}] loss={loss:.8f}")
+
+            if example.renderer and (
+                iteration == example.train_iters - 1 or iteration % example.render_iteration_steps == 0
+            ):
+                example.render()
+
+        if example.renderer:
+            example.renderer.save()

@@ -51,14 +51,15 @@ def step_kernel(x: wp.array(dtype=wp.vec3), grad: wp.array(dtype=wp.vec3), alpha
 
 
 class Example:
-    def __init__(self, stage, profile=False, verbose=False):
+    def __init__(self, stage_path="example_cloth_throw.usd", verbose=False):
         self.verbose = verbose
 
         # seconds
         sim_duration = 2.0
 
         # control frequency
-        self.frame_dt = 1.0 / 60.0
+        fps = 60
+        self.frame_dt = 1.0 / fps
         frame_steps = int(sim_duration / self.frame_dt)
 
         # sim frequency
@@ -69,7 +70,6 @@ class Example:
         self.iter = 0
         self.render_time = 0.0
 
-        self.train_iters = 64
         self.train_rate = 5.0
 
         builder = wp.sim.ModelBuilder()
@@ -94,8 +94,6 @@ class Example:
             tri_drag=5.0,
         )
 
-        self.profile = profile
-
         self.model = builder.finalize()
         self.model.ground = False
 
@@ -110,13 +108,14 @@ class Example:
         for _i in range(self.sim_steps + 1):
             self.states.append(self.model.state(requires_grad=True))
 
-        self.renderer = None
-        if stage:
-            self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=4.0)
+        if stage_path:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage_path, scaling=4.0)
+        else:
+            self.renderer = None
 
         # capture forward/backward passes
-        self.use_graph = wp.get_device().is_cuda
-        if self.use_graph:
+        self.use_cuda_graph = wp.get_device().is_cuda
+        if self.use_cuda_graph:
             with wp.ScopedCapture() as capture:
                 self.tape = wp.Tape()
                 with self.tape:
@@ -141,8 +140,8 @@ class Example:
         wp.launch(loss_kernel, dim=1, inputs=[self.com, self.target, self.loss])
 
     def step(self):
-        with wp.ScopedTimer("step", active=self.profile):
-            if self.use_graph:
+        with wp.ScopedTimer("step"):
+            if self.use_cuda_graph:
                 wp.capture_launch(self.graph)
             else:
                 self.tape = wp.Tape()
@@ -167,7 +166,7 @@ class Example:
         if self.renderer is None:
             return
 
-        with wp.ScopedTimer("render", active=self.profile):
+        with wp.ScopedTimer("render"):
             # draw trajectory
             traj_verts = [self.states[0].particle_q.numpy().mean(axis=0)]
 
@@ -195,15 +194,29 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage_path = "example_cloth_throw.usd"
+    import argparse
 
-    example = Example(stage_path, profile=False, verbose=True)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_cloth_throw.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--train_iters", type=int, default=64, help="Total number of training iterations.")
+    parser.add_argument("--verbose", action="store_true", help="Print out additional status messages during execution.")
 
-    # replay and optimize
-    for i in range(example.train_iters):
-        example.step()
-        if i % 4 == 0:
-            example.render()
+    args = parser.parse_known_args()[0]
 
-    if example.renderer:
-        example.renderer.save()
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path, verbose=args.verbose)
+
+        # replay and optimize
+        for i in range(args.train_iters):
+            example.step()
+            if i % 4 == 0:
+                example.render()
+
+        if example.renderer:
+            example.renderer.save()

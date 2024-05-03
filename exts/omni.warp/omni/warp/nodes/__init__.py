@@ -29,6 +29,7 @@ __all__ = [
     "bundle_set_prim_type",
     "bundle_set_world_xform",
     "device_get_cuda_compute",
+    "from_omni_graph_ptr",
     "from_omni_graph",
     "mesh_create_bundle",
     "mesh_copy_bundle",
@@ -63,6 +64,7 @@ __all__ = [
 from omni.warp.nodes._impl.attributes import (
     AttrTracking,
     from_omni_graph,
+    from_omni_graph_ptr,
 )
 from omni.warp.nodes._impl.basis_curves import (
     basis_curves_copy_bundle,

@@ -17,8 +17,6 @@
 # and using semi-Lagrangian advection
 ###########################################################################
 
-import argparse
-
 import warp as wp
 import warp.fem as fem
 from warp.fem.utils import array_axpy
@@ -94,29 +92,16 @@ def div_form(
 
 
 class Example:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--resolution", type=int, default=25)
-    parser.add_argument("--degree", type=int, default=2)
-    parser.add_argument("--num_frames", type=int, default=1000)
-    parser.add_argument("--top_velocity", type=float, default=1.0)
-    parser.add_argument("--Re", type=float, default=1000.0)
-    parser.add_argument("--tri_mesh", action="store_true", help="Use a triangular mesh")
-
-    def __init__(self, stage=None, quiet=False, args=None, **kwargs):
-        if args is None:
-            # Read args from kwargs, add default arg values from parser
-            args = argparse.Namespace(**kwargs)
-            args = Example.parser.parse_args(args=[], namespace=args)
-        self._args = args
+    def __init__(self, quiet=False, degree=2, resolution=25, Re=1000.0, top_velocity=1.0, tri_mesh=False):
         self._quiet = quiet
 
-        res = args.resolution
-        self.sim_dt = 1.0 / args.resolution
+        res = resolution
+        self.sim_dt = 1.0 / resolution
         self.current_frame = 0
 
-        viscosity = args.top_velocity / args.Re
+        viscosity = top_velocity / Re
 
-        if args.tri_mesh:
+        if tri_mesh:
             positions, tri_vidx = gen_trimesh(res=wp.vec2i(res))
             geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
         else:
@@ -126,7 +111,7 @@ class Example:
         boundary = fem.BoundarySides(geo)
 
         # Functions spaces: Q(d)-Q(d-1)
-        u_degree = args.degree
+        u_degree = degree
         u_space = fem.make_polynomial_space(geo, degree=u_degree, dtype=wp.vec2)
         p_space = fem.make_polynomial_space(geo, degree=u_degree - 1)
 
@@ -152,7 +137,7 @@ class Example:
         u_bd_value = fem.integrate(
             u_boundary_value,
             fields={"v": u_bd_test},
-            values={"top_vel": args.top_velocity},
+            values={"top_vel": top_velocity},
             nodal=True,
             output_dtype=wp.vec2d,
         )
@@ -182,7 +167,7 @@ class Example:
         self._u_field = u_space.make_field()
         self._p_field = p_space.make_field()
 
-        self.renderer = Plot(stage)
+        self.renderer = Plot()
         self.renderer.add_surface_vector("velocity", self._u_field)
 
     def step(self):
@@ -227,15 +212,48 @@ class Example:
 
 
 if __name__ == "__main__":
+    import argparse
+
     wp.set_module_options({"enable_backward": False})
 
-    args = Example.parser.parse_args()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument("--resolution", type=int, default=25, help="Grid resolution.")
+    parser.add_argument("--degree", type=int, default=2, help="Polynomial degree of shape functions.")
+    parser.add_argument("--num_frames", type=int, default=1000, help="Total number of frames.")
+    parser.add_argument(
+        "--top_velocity",
+        type=float,
+        default=1.0,
+        help="Horizontal velocity boundary condition at the top of the domain.",
+    )
+    parser.add_argument("--Re", type=float, default=1000.0, help="Reynolds number.")
+    parser.add_argument("--tri_mesh", action="store_true", help="Use a triangular mesh.")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing the opening of any graphical windows.",
+    )
+    parser.add_argument("--quiet", action="store_true", help="Suppresses the printing out of iteration residuals.")
 
-    example = Example(args=args)
-    for k in range(args.num_frames):
-        print(f"Frame {k}:")
-        example.step()
-        example.render()
+    args = parser.parse_known_args()[0]
 
-    example.renderer.add_surface_vector("velocity_final", example._u_field)
-    example.renderer.plot(streamlines={"velocity_final"})
+    with wp.ScopedDevice(args.device):
+        example = Example(
+            quiet=args.quiet,
+            degree=args.degree,
+            resolution=args.resolution,
+            Re=args.Re,
+            top_velocity=args.top_velocity,
+            tri_mesh=args.tri_mesh,
+        )
+
+        for k in range(args.num_frames):
+            print(f"Frame {k}:")
+            example.step()
+            example.render()
+
+        example.renderer.add_surface_vector("velocity_final", example._u_field)
+
+        if not args.headless:
+            example.renderer.plot(streamlines={"velocity_final"})

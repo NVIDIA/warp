@@ -21,13 +21,12 @@ wp.init()
 
 
 class Example:
-    def __init__(self, stage):
-        self.frame_dt = 1.0 / 60
-        self.frame_count = 400
+    def __init__(self, stage_path="example_granular.usd"):
+        fps = 60
+        self.frame_dt = 1.0 / fps
 
         self.sim_substeps = 64
         self.sim_dt = self.frame_dt / self.sim_substeps
-        self.sim_steps = self.frame_count * self.sim_substeps
         self.sim_time = 0.0
 
         self.radius = 0.1
@@ -60,12 +59,13 @@ class Example:
 
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
-        self.renderer = None
-        if stage:
-            self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=20.0)
+        if stage_path:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage_path, scaling=20.0)
+        else:
+            self.renderer = None
 
-        self.use_graph = wp.get_device().is_cuda
-        if self.use_graph:
+        self.use_cuda_graph = wp.get_device().is_cuda
+        if self.use_cuda_graph:
             with wp.ScopedCapture() as capture:
                 self.simulate()
             self.graph = capture.graph
@@ -79,9 +79,9 @@ class Example:
             (self.state_0, self.state_1) = (self.state_1, self.state_0)
 
     def step(self):
-        with wp.ScopedTimer("step", active=True):
+        with wp.ScopedTimer("step"):
             self.model.particle_grid.build(self.state_0.particle_q, self.radius * 2.0)
-            if self.use_graph:
+            if self.use_cuda_graph:
                 wp.capture_launch(self.graph)
             else:
                 self.simulate()
@@ -92,20 +92,33 @@ class Example:
         if self.renderer is None:
             return
 
-        with wp.ScopedTimer("render", active=True):
+        with wp.ScopedTimer("render"):
             self.renderer.begin_frame(self.sim_time)
             self.renderer.render(self.state_0)
             self.renderer.end_frame()
 
 
 if __name__ == "__main__":
-    stage_path = "example_granular.usd"
+    import argparse
 
-    example = Example(stage_path)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_granular.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--num_frames", type=int, default=400, help="Total number of frames.")
 
-    for _ in range(example.frame_count):
-        example.step()
-        example.render()
+    args = parser.parse_known_args()[0]
 
-    if example.renderer:
-        example.renderer.save()
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path)
+
+        for _ in range(args.num_frames):
+            example.step()
+            example.render()
+
+        if example.renderer:
+            example.renderer.save()

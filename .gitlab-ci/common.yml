@@ -46,8 +46,10 @@ include:
     - mv warp/bin/linux-aarch64/warp-clang.so warp/bin/
     - apt-get update && apt-get install curl --no-install-recommends -y
     - tools/packman/packman install -l _build/target-deps/python python ${DEFAULT_PYTHON}-linux-aarch64
-    - $PYTHON -m pip install --upgrade pip
-    - $PYTHON -m pip install -e .
+    - $PYTHON -m venv _venv
+    - source _venv/bin/activate
+    - python -m pip install --upgrade pip
+    - python -m pip install -e .
   install-python+warp-macos:
     - df -h
     # This is required because there is no macos-universal for Python 3.7 in Packman sources
@@ -57,8 +59,10 @@ include:
         export PYTHON_NAME="${DEFAULT_PYTHON}-macos-universal";
       fi
     - tools/packman/packman install -l _build/target-deps/python python ${PYTHON_NAME}
-    - $PYTHON -m pip install --upgrade pip
-    - $PYTHON -m pip install -e .
+    - $PYTHON -m venv _venv
+    - source _venv/bin/activate
+    - python -m pip install --upgrade pip
+    - python -m pip install -e .
 
 # Used to log the output of jobs that run only run unit tests (no coverage report)
 .save_test_report_artifact:

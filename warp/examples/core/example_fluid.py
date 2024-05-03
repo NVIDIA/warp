@@ -164,11 +164,12 @@ def init(rho: wp.array2d(dtype=float), u: wp.array2d(dtype=wp.vec2), radius: int
 
 
 class Example:
-    def __init__(self, **kwargs):
-        self.sim_fps = 60.0
+    def __init__(self):
+        fps = 60
+        self.frame_dt = 1.0 / fps
         self.sim_substeps = 2
-        self.iterations = 100
-        self.sim_dt = (1.0 / self.sim_fps) / self.sim_substeps
+        self.iterations = 100  # Number of pressure iterations
+        self.sim_dt = self.frame_dt / self.sim_substeps
         self.sim_time = 0.0
 
         shape = (grid_width, grid_height)
@@ -184,8 +185,8 @@ class Example:
         self.div = wp.zeros(shape, dtype=float)
 
         # capture pressure solve as a CUDA graph
-        self.use_graph = wp.get_device().is_cuda
-        if self.use_graph:
+        self.use_cuda_graph = wp.get_device().is_cuda
+        if self.use_cuda_graph:
             with wp.ScopedCapture() as capture:
                 self.pressure_iterations()
             self.graph = capture.graph
@@ -211,7 +212,7 @@ class Example:
                 self.p0.zero_()
                 self.p1.zero_()
 
-                if self.use_graph:
+                if self.use_cuda_graph:
                     wp.capture_launch(self.graph)
                 else:
                     self.pressure_iterations()
@@ -227,9 +228,6 @@ class Example:
                 (self.rho0, self.rho1) = (self.rho1, self.rho0)
 
                 self.sim_time += dt
-
-    def render(self):
-        pass
 
     def pressure_iterations(self):
         for _ in range(self.iterations):
@@ -249,18 +247,47 @@ class Example:
 
 
 if __name__ == "__main__":
-    import matplotlib
-    import matplotlib.animation as anim
-    import matplotlib.pyplot as plt
+    import argparse
 
-    example = Example()
-
-    fig = plt.figure()
-
-    img = plt.imshow(example.rho0.numpy(), origin="lower", animated=True, interpolation="antialiased")
-    img.set_norm(matplotlib.colors.Normalize(0.0, 1.0))
-    seq = anim.FuncAnimation(
-        fig, example.step_and_render_frame, fargs=(img,), frames=100000, blit=True, interval=8, repeat=False
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument("--num_frames", type=int, default=100000, help="Total number of frames.")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing the opening of any graphical windows.",
     )
 
-    plt.show()
+    args = parser.parse_known_args()[0]
+
+    with wp.ScopedDevice(args.device):
+        example = Example()
+
+        if args.headless:
+            for _ in range(args.num_frames):
+                example.step()
+        else:
+            import matplotlib
+            import matplotlib.animation as anim
+            import matplotlib.pyplot as plt
+
+            fig = plt.figure()
+
+            img = plt.imshow(
+                example.rho0.numpy(),
+                origin="lower",
+                animated=True,
+                interpolation="antialiased",
+            )
+            img.set_norm(matplotlib.colors.Normalize(0.0, 1.0))
+            seq = anim.FuncAnimation(
+                fig,
+                example.step_and_render_frame,
+                fargs=(img,),
+                frames=args.num_frames,
+                blit=True,
+                interval=8,
+                repeat=False,
+            )
+
+            plt.show()

@@ -11,6 +11,7 @@ import traceback
 
 import omni.graph.core as og
 import omni.warp.nodes
+from omni.warp.nodes import from_omni_graph_ptr
 from omni.warp.nodes.ogn.OgnMeshFromVolumeDatabase import OgnMeshFromVolumeDatabase
 
 import warp as wp
@@ -118,11 +119,10 @@ def compute(db: OgnMeshFromVolumeDatabase) -> None:
         )
 
     # Alias the incoming memory to a Warp array.
-    data = wp.from_ptr(
+    data = from_omni_graph_ptr(
         db.inputs.data.memory,
-        size,
-        dtype=float,
         shape=dims,
+        dtype=float,
     )
 
     with omni.warp.nodes.NodeTimer("surface_mesh", db, active=PROFILING):

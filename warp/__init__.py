@@ -66,7 +66,7 @@ from warp.context import set_module_options, get_module_options, get_module
 from warp.context import capture_begin, capture_end, capture_launch
 from warp.context import Kernel, Function, Launch
 from warp.context import Stream, get_stream, set_stream, wait_stream, synchronize_stream
-from warp.context import Event, record_event, wait_event, synchronize_event
+from warp.context import Event, record_event, wait_event, synchronize_event, get_event_elapsed_time
 from warp.context import RegisteredGLBuffer
 from warp.context import is_mempool_supported, is_mempool_enabled, set_mempool_enabled
 from warp.context import set_mempool_release_threshold, get_mempool_release_threshold
@@ -78,6 +78,15 @@ from warp.utils import ScopedTimer, ScopedDevice, ScopedStream
 from warp.utils import ScopedMempool, ScopedMempoolAccess, ScopedPeerAccess
 from warp.utils import ScopedCapture
 from warp.utils import transform_expand, quat_between_vectors
+from warp.utils import TimingResult, timing_begin, timing_end, timing_print
+from warp.utils import (
+    TIMING_KERNEL,
+    TIMING_KERNEL_BUILTIN,
+    TIMING_MEMCPY,
+    TIMING_MEMSET,
+    TIMING_GRAPH,
+    TIMING_ALL,
+)
 
 from warp.torch import from_torch, to_torch
 from warp.torch import dtype_from_torch, dtype_to_torch

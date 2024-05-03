@@ -28,7 +28,7 @@ wp.init()
 
 
 class Example:
-    def __init__(self, stage=None, num_envs=1, print_timers=True):
+    def __init__(self, stage_path="example_cartpole.usd", num_envs=8):
         builder = wp.sim.ModelBuilder()
 
         self.num_envs = num_envs
@@ -52,15 +52,13 @@ class Example:
         builder = wp.sim.ModelBuilder()
 
         self.sim_time = 0.0
-        self.frame_dt = 1.0 / 60.0
-
-        episode_duration = 20.0  # seconds
-        self.episode_frames = int(episode_duration / self.frame_dt)
+        fps = 60
+        self.frame_dt = 1.0 / fps
 
         self.sim_substeps = 10
         self.sim_dt = self.frame_dt / self.sim_substeps
 
-        for i in range(num_envs):
+        for i in range(self.num_envs):
             builder.add_builder(
                 articulation_builder, xform=wp.transform(np.array((i * 2.0, 4.0, 0.0)), wp.quat_identity())
             )
@@ -78,17 +76,15 @@ class Example:
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
         self.renderer = None
-        if stage:
-            self.renderer = wp.sim.render.SimRenderer(path=stage, model=self.model, scaling=15.0)
-
-        self.print_timers = print_timers
+        if stage_path:
+            self.renderer = wp.sim.render.SimRenderer(path=stage_path, model=self.model, scaling=15.0)
 
         self.state = self.model.state()
 
         wp.sim.eval_fk(self.model, self.model.joint_q, self.model.joint_qd, None, self.state)
 
-        self.use_graph = wp.get_device().is_cuda
-        if self.use_graph:
+        self.use_cuda_graph = wp.get_device().is_cuda
+        if self.use_cuda_graph:
             with wp.ScopedCapture() as capture:
                 self.simulate()
             self.graph = capture.graph
@@ -99,8 +95,8 @@ class Example:
             self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
 
     def step(self):
-        with wp.ScopedTimer("step", active=True, print=self.print_timers):
-            if self.use_graph:
+        with wp.ScopedTimer("step"):
+            if self.use_cuda_graph:
                 wp.capture_launch(self.graph)
             else:
                 self.simulate()
@@ -110,20 +106,34 @@ class Example:
         if self.renderer is None:
             return
 
-        with wp.ScopedTimer("render", active=True, print=self.print_timers):
+        with wp.ScopedTimer("render"):
             self.renderer.begin_frame(self.sim_time)
             self.renderer.render(self.state)
             self.renderer.end_frame()
 
 
 if __name__ == "__main__":
-    stage_path = "example_cartpole.usd"
+    import argparse
 
-    example = Example(stage_path, num_envs=10)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_cartpole.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--num_frames", type=int, default=1200, help="Total number of frames.")
+    parser.add_argument("--num_envs", type=int, default=8, help="Total number of simulated environments.")
 
-    for _ in range(example.episode_frames):
-        example.step()
-        example.render()
+    args = parser.parse_known_args()[0]
 
-    if example.renderer:
-        example.renderer.save()
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path, num_envs=args.num_envs)
+
+        for _ in range(args.num_frames):
+            example.step()
+            example.render()
+
+        if example.renderer:
+            example.renderer.save()

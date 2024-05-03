@@ -1552,6 +1552,11 @@ class array(Array):
     # (initialized when needed)
     _vars = None
 
+    def __new__(cls, *args, **kwargs):
+        instance = super(array, cls).__new__(cls)
+        instance.deleter = None
+        return instance
+
     def __init__(
         self,
         data=None,
@@ -1607,7 +1612,6 @@ class array(Array):
 
         """
 
-        self.deleter = None
         self.ctype = None
 
         # properties
@@ -2603,8 +2607,12 @@ def array4d(*args, **kwargs):
     return array(*args, **kwargs)
 
 
-# TODO: Rewrite so that we take only shape, not length and optional shape
 def from_ptr(ptr, length, dtype=None, shape=None, device=None):
+    warp.utils.warn(
+        "This version of wp.from_ptr() is deprecated. OmniGraph applications should use from_omni_graph_ptr() instead. In the future, wp.from_ptr() will work only with regular pointers.",
+        category=DeprecationWarning,
+    )
+
     return array(
         dtype=dtype,
         length=length,
@@ -4248,7 +4256,7 @@ class MarchingCubes:
 
         if error:
             raise RuntimeError(
-                "Buffers may not be large enough, marching cubes required at least {num_verts} vertices, and {num_tris} triangles."
+                f"Buffers may not be large enough, marching cubes required at least {num_verts} vertices, and {num_tris} triangles."
             )
 
         # resize the geometry arrays

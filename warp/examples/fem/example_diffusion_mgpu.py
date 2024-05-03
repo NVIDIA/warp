@@ -105,19 +105,19 @@ class DistributedSystem:
 
 
 class Example:
-    def __init__(self, stage=None, quiet=False):
+    def __init__(self, quiet=False, device=None):
         self._bd_weight = 100.0
         self._quiet = quiet
 
         self._geo = fem.Grid2D(res=wp.vec2i(25))
 
-        self._main_device = wp.get_device("cuda")
+        self._main_device = wp.get_device(device)
 
         with wp.ScopedDevice(self._main_device):
             self._scalar_space = fem.make_polynomial_space(self._geo, degree=3)
             self._scalar_field = self._scalar_space.make_field()
 
-        self.renderer = Plot(stage)
+        self.renderer = Plot()
 
     def step(self):
         devices = wp.get_cuda_devices()
@@ -196,10 +196,26 @@ class Example:
 
 
 if __name__ == "__main__":
+    import argparse
+
     wp.set_module_options({"enable_backward": False})
 
-    example = Example()
-    example.step()
-    example.render()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument("--quiet", action="store_true", help="Suppresses the printing out of iteration residuals.")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing the opening of any graphical windows.",
+    )
 
-    example.renderer.plot()
+    args = parser.parse_known_args()[0]
+
+    with wp.ScopedTimer(__file__):
+        example = Example(quiet=args.quiet, device=args.device)
+
+        example.step()
+        example.render()
+
+        if not args.headless:
+            example.renderer.plot()

@@ -320,6 +320,22 @@ def test_event_synchronize(test, device):
     assert_np_equal(b_host.numpy(), np.full(N, fill_value=42.0))
 
 
+def test_event_elapsed_time(test, device):
+    stream = wp.get_stream(device)
+    e1 = wp.Event(device, enable_timing=True)
+    e2 = wp.Event(device, enable_timing=True)
+
+    a = wp.zeros(N, dtype=float, device=device)
+
+    stream.record_event(e1)
+    wp.launch(inc, dim=N, inputs=[a], device=device)
+    stream.record_event(e2)
+
+    elapsed = wp.get_event_elapsed_time(e1, e2)
+
+    test.assertGreater(elapsed, 0)
+
+
 devices = get_selected_cuda_test_devices()
 
 
@@ -463,6 +479,7 @@ add_function_test(TestStreams, "test_stream_scope_wait_event", test_stream_scope
 add_function_test(TestStreams, "test_stream_scope_wait_stream", test_stream_scope_wait_stream, devices=devices)
 
 add_function_test(TestStreams, "test_event_synchronize", test_event_synchronize, devices=devices)
+add_function_test(TestStreams, "test_event_elapsed_time", test_event_elapsed_time, devices=devices)
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()

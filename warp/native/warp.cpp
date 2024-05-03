@@ -1024,6 +1024,7 @@ WP_API void* cuda_event_create(void* context, unsigned flags) { return NULL; }
 WP_API void cuda_event_destroy(void* event) {}
 WP_API void cuda_event_record(void* event, void* stream) {}
 WP_API void cuda_event_synchronize(void* event) {}
+WP_API float cuda_event_elapsed_time(void* start_event, void* end_event) { return 0.0f; }
 
 WP_API bool cuda_graph_begin_capture(void* context, void* stream, int external) { return false; }
 WP_API bool cuda_graph_end_capture(void* context, void* stream, void** graph_ret) { return false; }
@@ -1048,5 +1049,9 @@ WP_API void cuda_graphics_unmap(void* context, void* resource) {}
 WP_API void cuda_graphics_device_ptr_and_size(void* context, void* resource, uint64_t* ptr, size_t* size) {}
 WP_API void* cuda_graphics_register_gl_buffer(void* context, uint32_t gl_buffer, unsigned int flags) { return NULL; }
 WP_API void cuda_graphics_unregister_resource(void* context, void* resource) {}
+
+WP_API void cuda_timing_begin(int flags) {}
+WP_API int cuda_timing_get_result_count() { return 0; }
+WP_API void cuda_timing_end(timing_result_t* results, int size) {}
 
 #endif // !WP_ENABLE_CUDA

@@ -42,12 +42,13 @@ def compute_endeffector_position(
 
 
 class Example:
-    def __init__(self, stage, num_envs=1):
+    def __init__(self, stage_path="example_jacobian_ik.usd", num_envs=10):
         builder = wp.sim.ModelBuilder()
 
         self.num_envs = num_envs
 
-        self.frame_dt = 1.0 / 60.0
+        fps = 60
+        self.frame_dt = 1.0 / fps
 
         self.render_time = 0.0
 
@@ -73,7 +74,7 @@ class Example:
         self.dof = len(articulation_builder.joint_q)
 
         self.target_origin = []
-        for i in range(num_envs):
+        for i in range(self.num_envs):
             builder.add_builder(
                 articulation_builder,
                 xform=wp.transform(
@@ -97,9 +98,10 @@ class Example:
 
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
-        self.renderer = None
-        if stage:
-            self.renderer = wp.sim.render.SimRenderer(self.model, stage)
+        if stage_path:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage_path)
+        else:
+            self.renderer = None
 
         self.ee_pos = wp.zeros(self.num_envs, dtype=wp.vec3, requires_grad=True)
 
@@ -186,29 +188,49 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage_path = "example_jacobian_ik.usd"
+    import argparse
 
-    example = Example(stage_path, num_envs=10)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_jacobian_ik.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--train_iters", type=int, default=50, help="Total number of training iterations.")
+    parser.add_argument("--num_envs", type=int, default=10, help="Total number of simulated environments.")
+    parser.add_argument(
+        "--num_rollouts",
+        type=int,
+        default=5,
+        help="Total number of rollouts. In each rollout, a new set of target points is resampled for all environments.",
+    )
 
-    print("autodiff:")
-    print(example.compute_jacobian())
-    print("finite diff:")
-    print(example.compute_fd_jacobian())
+    args = parser.parse_known_args()[0]
 
-    for _ in range(5):
-        # select new random target points
-        example.targets = example.target_origin.copy()
-        example.targets[:, 1:] += np.random.uniform(-0.5, 0.5, size=(example.num_envs, 2))
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path, num_envs=args.num_envs)
 
-        for iter in range(50):
-            example.step()
-            example.render()
-            print("iter:", iter, "error:", example.error.mean())
+        print("autodiff:")
+        print(example.compute_jacobian())
+        print("finite diff:")
+        print(example.compute_fd_jacobian())
 
-    if example.renderer:
-        example.renderer.save()
+        for _ in range(args.num_rollouts):
+            # select new random target points for all envs
+            example.targets = example.target_origin.copy()
+            example.targets[:, 1:] += np.random.uniform(-0.5, 0.5, size=(example.num_envs, 2))
 
-    avg_time = np.array(example.profiler["jacobian"]).mean()
-    avg_steps_second = 1000.0 * float(example.num_envs) / avg_time
+            for iter in range(args.train_iters):
+                example.step()
+                example.render()
+                print("iter:", iter, "error:", example.error.mean())
 
-    print(f"envs: {example.num_envs} steps/second {avg_steps_second} avg_time {avg_time}")
+        if example.renderer:
+            example.renderer.save()
+
+        avg_time = np.array(example.profiler["jacobian"]).mean()
+        avg_steps_second = 1000.0 * float(example.num_envs) / avg_time
+
+        print(f"envs: {example.num_envs} steps/second {avg_steps_second} avg_time {avg_time}")

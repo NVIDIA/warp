@@ -24,15 +24,9 @@ import warp.examples
 import warp.optim
 import warp.sim
 import warp.sim.render
-from warp.sim.collide import (
-    box_sdf,
-    capsule_sdf,
-    cone_sdf,
-    cylinder_sdf,
-    mesh_sdf,
-    plane_sdf,
-    sphere_sdf,
-)
+from warp.sim.collide import box_sdf, capsule_sdf, cone_sdf, cylinder_sdf, mesh_sdf, plane_sdf, sphere_sdf
+
+DEFAULT_DRONE_PATH = os.path.join(warp.examples.get_asset_directory(), "crazyflie.usd")  # Path to input drone asset
 
 wp.init()
 
@@ -103,7 +97,7 @@ def replicate_states(
 def drone_cost(
     body_q: wp.array(dtype=wp.transform),
     body_qd: wp.array(dtype=wp.spatial_vector),
-    target: wp.vec3,
+    targets: wp.array(dtype=wp.vec3),
     prop_control: wp.array(dtype=float),
     step: int,
     horizon_length: int,
@@ -112,6 +106,7 @@ def drone_cost(
 ):
     env_id = wp.tid()
     tf = body_q[env_id]
+    target = targets[0]
 
     pos_drone = wp.transform_get_translation(tf)
     pos_cost = wp.length_sq(pos_drone - target)
@@ -453,20 +448,19 @@ class Drone:
 class Example:
     def __init__(
         self,
-        stage: Optional[str] = None,
-        drone_path: Optional[str] = None,
-        enable_rendering: bool = True,
-        render_rollouts: bool = True,
-        verbose: bool = False,
+        stage_path="example_drone.usd",
+        verbose=False,
+        render_rollouts=False,
+        drone_path=DEFAULT_DRONE_PATH,
+        num_frames=360,
+        num_rollouts=16,
+        headless=True,
     ) -> None:
-        # Duration of the simulation, in seconds.
-        duration = 6.0
-
         # Number of frames per second.
-        self.fps = 60.0
+        self.fps = 60
 
         # Duration of the simulation in number of frames.
-        self.frame_count = int(duration * self.fps)
+        self.num_frames = num_frames
 
         # Number of simulation substeps to take per step.
         self.sim_substep_count = 1
@@ -489,6 +483,9 @@ class Example:
         # Define the index of the active target.
         # We start with -1 since it'll be incremented on the first frame.
         self.target_idx = -1
+        # use a Warp array to store the current target so that we can assign
+        # a new target to it while retaining the original CUDA graph.
+        self.current_target = wp.array([self.targets[self.target_idx + 1]], dtype=wp.vec3)
 
         # Number of steps to run at each frame for the optimisation pass.
         self.optim_step_count = 20
@@ -518,7 +515,7 @@ class Example:
         # Declare the drone's rollouts.
         # These allow to run parallel simulations in order to find the best
         # trajectory at each control point.
-        self.rollout_count = 16
+        self.rollout_count = num_rollouts
         self.rollout_step_count = self.control_point_step * self.control_point_count
         self.rollouts = Drone(
             "rollout",
@@ -545,9 +542,12 @@ class Example:
 
         self.tape = None
 
-        if enable_rendering:
-            # Helper to render the physics scene as a USD file.
-            self.renderer = wp.sim.render.SimRenderer(self.drone.model, stage, fps=self.fps)
+        if stage_path:
+            if not headless:
+                self.renderer = wp.sim.render.SimRendererOpenGL(self.drone.model, stage_path, fps=self.fps)
+            else:
+                # Helper to render the physics scene as a USD file.
+                self.renderer = wp.sim.render.SimRenderer(self.drone.model, stage_path, fps=self.fps)
 
             if isinstance(self.renderer, warp.sim.render.SimRendererUsd):
                 from pxr import UsdGeom
@@ -567,7 +567,7 @@ class Example:
 
                 # Get the propellers to spin
                 for turning_direction in ("cw", "ccw"):
-                    spin = 100.0 * 360.0 * self.frame_count / self.fps
+                    spin = 100.0 * 360.0 * self.num_frames / self.fps
                     spin = spin if turning_direction == "ccw" else -spin
                     for side in ("back", "front"):
                         prop_prim = self.renderer.stage.OverridePrim(
@@ -576,11 +576,11 @@ class Example:
                         prop_xform = UsdGeom.Xform(prop_prim)
                         rot = prop_xform.AddRotateYOp()
                         rot.Set(0.0, 0.0)
-                        rot.Set(spin, self.frame_count)
+                        rot.Set(spin, self.num_frames)
         else:
             self.renderer = None
 
-        self.use_cuda_graph = True
+        self.use_cuda_graph = wp.get_device().is_cuda
         self.optim_graph = None
 
         self.render_rollouts = render_rollouts
@@ -655,7 +655,7 @@ class Example:
                 inputs=(
                     self.rollouts.state.body_q,
                     self.rollouts.state.body_qd,
-                    self.targets[self.target_idx],
+                    self.current_target,
                     self.rollouts.control.prop_controls,
                     i,
                     self.rollout_step_count,
@@ -702,15 +702,15 @@ class Example:
         self.tape.zero()
 
     def step(self):
-        if self.frame % int((self.frame_count / len(self.targets))) == 0:
+        if self.frame % int((self.num_frames / len(self.targets))) == 0:
             if self.verbose:
                 print(f"Choosing new flight target: {self.target_idx+1}")
 
             self.target_idx += 1
+            self.target_idx %= len(self.targets)
 
-            # Force recapturing the CUDA graph for the optimization pass
-            # by invalidating it.
-            self.optim_graph = None
+            # Assign the new target to the current target array.
+            self.current_target.assign([self.targets[self.target_idx]])
 
         if self.use_cuda_graph and self.optim_graph is None:
             with wp.ScopedCapture() as capture:
@@ -814,18 +814,51 @@ class Example:
 
 
 if __name__ == "__main__":
-    drone_path = os.path.join(warp.examples.get_asset_directory(), "crazyflie.usd")
-    stage_path = "example_drone.usd"
+    import argparse
 
-    example = Example(stage_path, drone_path, verbose=True)
-    for _i in range(example.frame_count):
-        example.step()
-        example.render()
-        example.frame += 1
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_drone.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--num_frames", type=int, default=360, help="Total number of frames.")
+    parser.add_argument("--num_rollouts", type=int, default=16, help="Number of drone rollouts.")
+    parser.add_argument(
+        "--drone_path",
+        type=str,
+        default=os.path.join(warp.examples.get_asset_directory(), "crazyflie.usd"),
+        help="Path to the USD file to use as the reference for the drone prim in the output stage.",
+    )
+    parser.add_argument("--render_rollouts", action="store_true", help="Add rollout trajectories to the output stage.")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing the opening of any graphical windows.",
+    )
+    parser.add_argument("--verbose", action="store_true", help="Print out additional status messages during execution.")
 
-        if example.verbose:
+    args = parser.parse_known_args()[0]
+
+    with wp.ScopedDevice(args.device):
+        example = Example(
+            stage_path=args.stage_path,
+            verbose=args.verbose,
+            render_rollouts=args.render_rollouts,
+            drone_path=args.drone_path,
+            num_frames=args.num_frames,
+            num_rollouts=args.num_rollouts,
+            headless=args.headless,
+        )
+        for _i in range(args.num_frames):
+            example.step()
+            example.render()
+            example.frame += 1
+
             loss = np.min(example.rollout_costs.numpy())
-            print(f"[{example.frame:3d}/{example.frame_count}] loss={loss:.8f}")
+            print(f"[{example.frame:3d}/{example.num_frames}] loss={loss:.8f}")
 
-    if example.renderer is not None:
-        example.renderer.save()
+        if example.renderer is not None:
+            example.renderer.save()

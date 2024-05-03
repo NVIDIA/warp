@@ -82,11 +82,10 @@ def simulate(
 
 
 class Example:
-    def __init__(self, stage):
+    def __init__(self, stage_path="example_mesh.usd"):
         rng = np.random.default_rng(42)
         self.num_particles = 1000
 
-        self.sim_steps = 500
         self.sim_dt = 1.0 / 60.0
 
         self.sim_time = 0.0
@@ -113,11 +112,11 @@ class Example:
 
         # renderer
         self.renderer = None
-        if stage:
-            self.renderer = wp.render.UsdRenderer(stage)
+        if stage_path:
+            self.renderer = wp.render.UsdRenderer(stage_path)
 
     def step(self):
-        with wp.ScopedTimer("step", detailed=False, dict=self.sim_timers):
+        with wp.ScopedTimer("step", dict=self.sim_timers):
             wp.launch(kernel=deform, dim=len(self.mesh.points), inputs=[self.mesh.points, self.sim_time])
 
             # refit the mesh BVH to account for the deformation
@@ -135,7 +134,7 @@ class Example:
         if self.renderer is None:
             return
 
-        with wp.ScopedTimer("render", detailed=False):
+        with wp.ScopedTimer("render"):
             self.renderer.begin_frame(self.sim_time)
             self.renderer.render_mesh(
                 name="mesh",
@@ -150,13 +149,26 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage_path = "example_mesh.usd"
+    import argparse
 
-    example = Example(stage_path)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_mesh.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--num_frames", type=int, default=500, help="Total number of frames.")
 
-    for _i in range(example.sim_steps):
-        example.step()
-        example.render()
+    args = parser.parse_known_args()[0]
 
-    if example.renderer:
-        example.renderer.save()
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path)
+
+        for _ in range(args.num_frames):
+            example.step()
+            example.render()
+
+        if example.renderer:
+            example.renderer.save()

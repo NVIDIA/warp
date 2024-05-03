@@ -14,9 +14,6 @@
 # Note: requires a CUDA-capable device
 ###########################################################################
 
-
-from typing import Optional
-
 import warp as wp
 import warp.render
 
@@ -106,7 +103,9 @@ def make_field(
 
 
 class Example:
-    def __init__(self, stage: Optional[str]):
+    def __init__(self, stage_path="example_marching_cubes.usd", verbose=False):
+        self.verbose = verbose
+
         self.dim = 64
         self.max_verts = int(1e6)
         self.max_tris = int(1e6)
@@ -116,34 +115,35 @@ class Example:
         self.torus_minor_radius = 0.1
         self.smooth_min_radius = 0.5
 
-        self.fps = 60.0
+        self.fps = 60
         self.frame = 0
 
         self.field = wp.zeros((self.dim, self.dim, self.dim), dtype=float)
         self.mc = wp.MarchingCubes(self.dim, self.dim, self.dim, self.max_verts, self.max_tris)
 
         self.renderer = None
-        if stage is not None:
-            self.renderer = wp.render.UsdRenderer(stage)
+        if stage_path:
+            self.renderer = wp.render.UsdRenderer(stage_path)
 
     def step(self):
-        with wp.ScopedTimer("Update Field"):
-            wp.launch(
-                make_field,
-                dim=self.field.shape,
-                inputs=(
-                    self.torus_altitude,
-                    self.torus_major_radius,
-                    self.torus_minor_radius,
-                    self.smooth_min_radius,
-                    self.dim,
-                    self.frame / self.fps,
-                ),
-                outputs=(self.field,),
-            )
+        with wp.ScopedTimer("step"):
+            with wp.ScopedTimer("Update Field", active=self.verbose):
+                wp.launch(
+                    make_field,
+                    dim=self.field.shape,
+                    inputs=(
+                        self.torus_altitude,
+                        self.torus_major_radius,
+                        self.torus_minor_radius,
+                        self.smooth_min_radius,
+                        self.dim,
+                        self.frame / self.fps,
+                    ),
+                    outputs=(self.field,),
+                )
 
-        with wp.ScopedTimer("Surface Extraction"):
-            self.mc.surface(self.field, 0.0)
+            with wp.ScopedTimer("Surface Extraction", active=self.verbose):
+                self.mc.surface(self.field, 0.0)
 
     def render(self):
         if self.renderer is None:
@@ -162,13 +162,27 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage_path = "example_marching_cubes.usd"
+    import argparse
 
-    example = Example(stage_path)
-    for _ in range(240):
-        example.step()
-        example.render()
-        example.frame += 1
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_marching_cubes.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--num_frames", type=int, default=240, help="Total number of frames.")
+    parser.add_argument("--verbose", action="store_true", help="Print out additional status messages during execution.")
 
-    if example.renderer is not None:
-        example.renderer.save()
+    args = parser.parse_known_args()[0]
+
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path, verbose=args.verbose)
+        for _ in range(args.num_frames):
+            example.step()
+            example.render()
+            example.frame += 1
+
+        if example.renderer is not None:
+            example.renderer.save()

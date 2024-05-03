@@ -249,6 +249,8 @@ For example, if a program has multiple compute and transfer streams, the host mi
 to complete, without waiting for the other streams.  By synchronizing only one stream, we allow the others to continue running
 concurrently with the host thread.
 
+.. _cuda_events:
+
 Events
 ~~~~~~
 

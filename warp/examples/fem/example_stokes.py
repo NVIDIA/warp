@@ -16,8 +16,6 @@
 # with (soft) velocity-Dirichlet boundary conditions
 ###########################################################################
 
-import argparse
-
 import warp as wp
 import warp.fem as fem
 import warp.sparse as sparse
@@ -76,43 +74,40 @@ def div_form(
 
 
 class Example:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--resolution", type=int, default=50)
-    parser.add_argument("--degree", type=int, default=2)
-    parser.add_argument("--top_velocity", type=float, default=1.0)
-    parser.add_argument("--viscosity", type=float, default=1.0)
-    parser.add_argument("--boundary_strength", type=float, default=100.0)
-    parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type")
-    parser.add_argument(
-        "--nonconforming_pressures", action="store_true", help="For grid, use non-conforming pressure (Q_d/P_{d-1})"
-    )
-
-    def __init__(self, stage=None, quiet=False, args=None, **kwargs):
-        if args is None:
-            # Read args from kwargs, add default arg values from parser
-            args = argparse.Namespace(**kwargs)
-            args = Example.parser.parse_args(args=[], namespace=args)
-        self._args = args
+    def __init__(
+        self,
+        quiet=False,
+        mesh="grid",
+        degree=2,
+        resolution=50,
+        viscosity=1.0,
+        top_velocity=1.0,
+        boundary_strength=100.0,
+        nonconforming_pressures=False,
+    ):
         self._quiet = quiet
 
+        self.viscosity = viscosity
+        self.boundary_strength = boundary_strength
+
         # Grid or triangle mesh geometry
-        if args.mesh == "tri":
-            positions, tri_vidx = gen_trimesh(res=wp.vec2i(args.resolution))
+        if mesh == "tri":
+            positions, tri_vidx = gen_trimesh(res=wp.vec2i(resolution))
             geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
-        elif args.mesh == "quad":
-            positions, quad_vidx = gen_quadmesh(res=wp.vec2i(args.resolution))
+        elif mesh == "quad":
+            positions, quad_vidx = gen_quadmesh(res=wp.vec2i(resolution))
             geo = fem.Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions)
         else:
-            geo = fem.Grid2D(res=wp.vec2i(args.resolution))
+            geo = fem.Grid2D(res=wp.vec2i(resolution))
 
         # Function spaces -- Q_d for vel, P_{d-1} for pressure
-        u_space = fem.make_polynomial_space(geo, degree=args.degree, dtype=wp.vec2)
-        if args.mesh != "tri" and args.nonconforming_pressures:
+        u_space = fem.make_polynomial_space(geo, degree=degree, dtype=wp.vec2)
+        if mesh != "tri" and nonconforming_pressures:
             p_space = fem.make_polynomial_space(
-                geo, degree=args.degree - 1, element_basis=fem.ElementBasis.NONCONFORMING_POLYNOMIAL
+                geo, degree=degree - 1, element_basis=fem.ElementBasis.NONCONFORMING_POLYNOMIAL
             )
         else:
-            p_space = fem.make_polynomial_space(geo, degree=args.degree - 1)
+            p_space = fem.make_polynomial_space(geo, degree=degree - 1)
 
         # Vector and scalar fields
         self._u_field = u_space.make_field()
@@ -121,13 +116,12 @@ class Example:
         # Interpolate initial condition on boundary (for example purposes)
         self._bd_field = u_space.make_field()
         f_boundary = fem.make_restriction(self._bd_field, domain=fem.BoundarySides(geo))
-        top_velocity = wp.vec2(args.top_velocity, 0.0)
+        top_velocity = wp.vec2(top_velocity, 0.0)
         fem.interpolate(constant_form, dest=f_boundary, values={"val": top_velocity})
 
-        self.renderer = Plot(stage)
+        self.renderer = Plot()
 
     def step(self):
-        args = self._args
         u_space = self._u_field.space
         p_space = self._p_field.space
         geo = u_space.geometry
@@ -142,7 +136,7 @@ class Example:
         u_visc_matrix = fem.integrate(
             viscosity_form,
             fields={"u": u_trial, "v": u_test},
-            values={"nu": args.viscosity},
+            values={"nu": self.viscosity},
         )
 
         # Weak velocity boundary conditions
@@ -159,8 +153,8 @@ class Example:
 
         # Define and solve the saddle-point system
         u_matrix = u_visc_matrix
-        sparse.bsr_axpy(x=u_bd_matrix, y=u_matrix, alpha=args.boundary_strength, beta=1.0)
-        array_axpy(x=u_rhs, y=u_rhs, alpha=0.0, beta=args.boundary_strength)
+        sparse.bsr_axpy(x=u_bd_matrix, y=u_matrix, alpha=self.boundary_strength, beta=1.0)
+        array_axpy(x=u_rhs, y=u_rhs, alpha=0.0, beta=self.boundary_strength)
 
         p_rhs = wp.zeros(p_space.node_count(), dtype=wp.float64)
         x_u = wp.zeros_like(u_rhs)
@@ -179,12 +173,48 @@ class Example:
 
 
 if __name__ == "__main__":
+    import argparse
+
     wp.set_module_options({"enable_backward": False})
 
-    args = Example.parser.parse_args()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument("--resolution", type=int, default=50, help="Grid resolution.")
+    parser.add_argument("--degree", type=int, default=2, help="Polynomial degree of shape functions.")
+    parser.add_argument(
+        "--top_velocity",
+        type=float,
+        default=1.0,
+        help="Horizontal velocity initial condition at the top of the domain.",
+    )
+    parser.add_argument("--viscosity", type=float, default=1.0, help="Fluid viscosity parameter.")
+    parser.add_argument("--boundary_strength", type=float, default=100.0, help="Soft boundary condition strength.")
+    parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type.")
+    parser.add_argument(
+        "--nonconforming_pressures", action="store_true", help="For grid, use non-conforming pressure (Q_d/P_{d-1})."
+    )
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing the opening of any graphical windows.",
+    )
+    parser.add_argument("--quiet", action="store_true", help="Suppresses the printing out of iteration residuals.")
 
-    example = Example(args=args)
-    example.step()
-    example.render()
+    args = parser.parse_known_args()[0]
 
-    example.renderer.plot()
+    with wp.ScopedDevice(args.device):
+        example = Example(
+            quiet=args.quiet,
+            mesh=args.mesh,
+            degree=args.degree,
+            resolution=args.resolution,
+            viscosity=args.viscosity,
+            top_velocity=args.top_velocity,
+            boundary_strength=args.boundary_strength,
+            nonconforming_pressures=args.nonconforming_pressures,
+        )
+        example.step()
+        example.render()
+
+        if not args.headless:
+            example.renderer.plot()

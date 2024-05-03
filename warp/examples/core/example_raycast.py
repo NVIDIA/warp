@@ -48,9 +48,9 @@ def draw(mesh: wp.uint64, cam_pos: wp.vec3, width: int, height: int, pixels: wp.
 
 
 class Example:
-    def __init__(self, **kwargs):
-        self.width = 1024
-        self.height = 1024
+    def __init__(self, height=1024, width=1024):
+        self.height = height
+        self.width = width
         self.cam_pos = (0.0, 1.0, 2.0)
 
         asset_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
@@ -66,9 +66,6 @@ class Example:
             points=wp.array(points, dtype=wp.vec3), velocities=None, indices=wp.array(indices, dtype=int)
         )
 
-    def step(self):
-        pass
-
     def render(self):
         with wp.ScopedTimer("render"):
             wp.launch(
@@ -79,12 +76,30 @@ class Example:
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
+    import argparse
 
-    example = Example()
-    example.render()
-
-    plt.imshow(
-        example.pixels.numpy().reshape((example.height, example.width, 3)), origin="lower", interpolation="antialiased"
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument("--width", type=int, default=1024, help="Output image width in pixels.")
+    parser.add_argument("--height", type=int, default=1024, help="Output image height in pixels.")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing the opening of any graphical windows.",
     )
-    plt.show()
+
+    args = parser.parse_known_args()[0]
+
+    with wp.ScopedDevice(args.device):
+        example = Example(height=args.height, width=args.width)
+        example.render()
+
+        if not args.headless:
+            import matplotlib.pyplot as plt
+
+            plt.imshow(
+                example.pixels.numpy().reshape((example.height, example.width, 3)),
+                origin="lower",
+                interpolation="antialiased",
+            )
+            plt.show()

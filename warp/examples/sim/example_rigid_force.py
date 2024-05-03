@@ -13,8 +13,6 @@
 #
 ###########################################################################
 
-import argparse
-
 import warp as wp
 import warp.sim
 import warp.sim.render
@@ -23,22 +21,11 @@ wp.init()
 
 
 class Example:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--opengl", action="store_true")
-
-    def __init__(self, stage=None, args=None, **kwargs):
-        if args is None:
-            # Read args from kwargs, add default arg values from parser
-            args = argparse.Namespace(**kwargs)
-            args = Example.parser.parse_args(args=[], namespace=args)
-        self._args = args
-
-        self.sim_fps = 60.0
+    def __init__(self, stage_path="example_rigid_force.usd", use_opengl=False):
+        fps = 60
+        self.frame_dt = 1.0 / fps
         self.sim_substeps = 5
-        self.sim_duration = 5.0
-        self.frame_dt = 1.0 / self.sim_fps
-        self.sim_frames = int(self.sim_duration * self.sim_fps)
-        self.sim_dt = (1.0 / self.sim_fps) / self.sim_substeps
+        self.sim_dt = self.frame_dt / self.sim_substeps
         self.sim_time = 0.0
 
         builder = wp.sim.ModelBuilder()
@@ -54,15 +41,16 @@ class Example:
         self.state_0 = self.model.state()
         self.state_1 = self.model.state()
 
-        self.renderer = None
-        if args.opengl:
-            self.renderer = wp.sim.render.SimRendererOpenGL(self.model, stage)
+        if use_opengl:
+            self.renderer = wp.sim.render.SimRendererOpenGL(self.model, stage_path)
+        elif stage_path:
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage_path)
         else:
-            if stage:
-                self.renderer = wp.sim.render.SimRenderer(self.model, stage)
+            self.renderer = None
 
-        self.use_graph = wp.get_device().is_cuda
-        if self.use_graph:
+        # simulate() allocates memory via a clone, so we can't use graph capture if the device does not support mempools
+        self.use_cuda_graph = wp.get_device().is_cuda and wp.is_mempool_enabled(wp.get_device())
+        if self.use_cuda_graph:
             with wp.ScopedCapture() as capture:
                 self.simulate()
             self.graph = capture.graph
@@ -87,7 +75,7 @@ class Example:
 
     def step(self):
         with wp.ScopedTimer("step"):
-            if self.use_graph:
+            if self.use_cuda_graph:
                 wp.capture_launch(self.graph)
             else:
                 self.simulate()
@@ -104,22 +92,36 @@ class Example:
 
 
 if __name__ == "__main__":
-    stage_path = "example_rigid_force.usd"
+    import argparse
 
-    args = Example.parser.parse_args()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--stage_path",
+        type=lambda x: None if x == "None" else str(x),
+        default="example_rigid_force.usd",
+        help="Path to the output USD file.",
+    )
+    parser.add_argument("--num_frames", type=int, default=300, help="Total number of frames.")
+    parser.add_argument(
+        "--opengl",
+        action="store_true",
+        help="Open an interactive window to play back animations in real time. Ignores --num_frames if used.",
+    )
 
-    example = Example(stage_path, args=args)
+    args = parser.parse_known_args()[0]
 
-    if args.opengl:
-        while example.renderer.is_running():
-            example.step()
-            example.render()
-    else:
-        for _i in range(example.sim_frames):
-            example.step()
-            example.render()
+    with wp.ScopedDevice(args.device):
+        example = Example(stage_path=args.stage_path, use_opengl=args.opengl)
 
-    if example.renderer:
-        example.renderer.save()
+        if args.opengl:
+            while example.renderer.is_running():
+                example.step()
+                example.render()
+        else:
+            for _ in range(args.num_frames):
+                example.step()
+                example.render()
 
-    example.renderer = None
+        if example.renderer:
+            example.renderer.save()
