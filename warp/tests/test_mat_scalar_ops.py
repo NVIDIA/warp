@@ -2898,7 +2898,7 @@ for dtype in np_scalar_types:
         TestMatScalarOps, f"test_conversions_{dtype.__name__}", test_conversions, devices=devices, dtype=dtype
     )
     add_function_test_register_kernel(
-        TestMatScalarOps, f"test_constants_{dtype.__name__}", test_constants, devices=devices, dtype=dtype
+        TestMatScalarOps, f"test_constants_{dtype.__name__}", test_constants, devices=None, dtype=dtype
     )
 
 

@@ -192,20 +192,6 @@ def test_tpl_constructor_error_numeric_args_mismatch(test, device):
         )
 
 
-def test_tpl_ops_with_anon(test, device):
-    vec3i = wp.vec(3, dtype=int)
-
-    v = wp.vec3i(1, 2, 3)
-    v += vec3i(2, 3, 4)
-    v -= vec3i(3, 4, 5)
-    test.assertSequenceEqual(v, (0, 1, 2))
-
-    v = vec3i(1, 2, 3)
-    v += wp.vec3i(2, 3, 4)
-    v -= wp.vec3i(3, 4, 5)
-    test.assertSequenceEqual(v, (0, 1, 2))
-
-
 def test_negation(test, device, dtype, register_kernels=False):
     rng = np.random.default_rng(123)
 
@@ -1160,7 +1146,18 @@ devices = get_test_devices()
 
 
 class TestVec(unittest.TestCase):
-    pass
+    def test_tpl_ops_with_anon(self):
+        vec3i = wp.vec(3, dtype=int)
+
+        v = wp.vec3i(1, 2, 3)
+        v += vec3i(2, 3, 4)
+        v -= vec3i(3, 4, 5)
+        self.assertSequenceEqual(v, (0, 1, 2))
+
+        v = vec3i(1, 2, 3)
+        v += wp.vec3i(2, 3, 4)
+        v -= wp.vec3i(3, 4, 5)
+        self.assertSequenceEqual(v, (0, 1, 2))
 
 
 add_kernel_test(TestVec, test_vector_constructor_value_func, dim=1, devices=devices)
@@ -1260,7 +1257,6 @@ add_function_test(
     test_tpl_constructor_error_numeric_args_mismatch,
     devices=devices,
 )
-add_function_test(TestVec, "test_tpl_ops_with_anon", test_tpl_ops_with_anon)
 
 
 if __name__ == "__main__":

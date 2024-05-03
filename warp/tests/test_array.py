@@ -2297,12 +2297,6 @@ def test_array_from_numpy(test, device):
     assert_np_equal(result.numpy(), expected.numpy())
 
 
-def test_array_new_del(test, device):
-    # test the scenario in which an array instance is created but not initalized before gc
-    instance = wp.array.__new__(wp.array)
-    instance.__del__()
-
-
 def test_array_from_cai(test, device):
     import torch
 
@@ -2340,7 +2334,10 @@ devices = get_test_devices()
 
 
 class TestArray(unittest.TestCase):
-    pass
+    def test_array_new_del(self):
+        # test the scenario in which an array instance is created but not initalized before gc
+        instance = wp.array.__new__(wp.array)
+        instance.__del__()
 
 
 add_function_test(TestArray, "test_shape", test_shape, devices=devices)
@@ -2390,8 +2387,6 @@ add_function_test(TestArray, "test_array_of_structs_grad", test_array_of_structs
 add_function_test(TestArray, "test_array_of_structs_from_numpy", test_array_of_structs_from_numpy, devices=devices)
 add_function_test(TestArray, "test_array_of_structs_roundtrip", test_array_of_structs_roundtrip, devices=devices)
 add_function_test(TestArray, "test_array_from_numpy", test_array_from_numpy, devices=devices)
-
-add_function_test(TestArray, "test_array_new_del", test_array_new_del, devices=devices)
 
 try:
     import torch

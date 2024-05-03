@@ -106,7 +106,7 @@ def test_hashgrid_query(test, device):
                     inputs=[query_radius, points_arr, counts_arr_ref, len(points)],
                     device=device,
                 )
-                wp.synchronize()
+                wp.synchronize_device(device)
 
             with wp.ScopedTimer("grid build", print=print_enabled, dict=profiler, synchronize=True):
                 grid.build(points_arr, cell_radius)
@@ -131,20 +131,6 @@ def test_hashgrid_query(test, device):
         test.assertTrue(np.array_equal(counts, counts_ref))
 
 
-def test_hashgrid_codegen_adjoints_with_select(test, device):
-    def kernel_fn(
-        grid: wp.uint64,
-    ):
-        v = wp.vec3(0.0, 0.0, 0.0)
-
-        if True:
-            query = wp.hash_grid_query(grid, v, 0.0)
-        else:
-            query = wp.hash_grid_query(grid, v, 0.0)
-
-    wp.Kernel(func=kernel_fn)
-
-
 def test_hashgrid_inputs(test, device):
     points = particle_grid(16, 32, 16, (0.0, 0.3, 0.0), cell_radius * 0.25, 0.1)
     points_ref = wp.array(points, dtype=wp.vec3, device=device)
@@ -155,10 +141,7 @@ def test_hashgrid_inputs(test, device):
 
     # get reference counts
     wp.launch(
-        kernel=count_neighbors,
-        dim=len(points),
-        inputs=[grid.id, query_radius, points_ref, counts_ref],
-        device=device,
+        kernel=count_neighbors, dim=len(points), inputs=[grid.id, query_radius, points_ref, counts_ref], device=device
     )
 
     # test with strided 1d input arrays
@@ -206,16 +189,19 @@ devices = get_test_devices()
 
 
 class TestHashGrid(unittest.TestCase):
-    pass
+    def test_hashgrid_codegen_adjoints_with_select(self):
+        def kernel_fn(grid: wp.uint64):
+            v = wp.vec3(0.0, 0.0, 0.0)
+
+            if True:
+                query = wp.hash_grid_query(grid, v, 0.0)
+            else:
+                query = wp.hash_grid_query(grid, v, 0.0)
+
+        wp.Kernel(func=kernel_fn)
 
 
 add_function_test(TestHashGrid, "test_hashgrid_query", test_hashgrid_query, devices=devices)
-add_function_test(
-    TestHashGrid,
-    "test_hashgrid_codegen_adjoints_with_select",
-    test_hashgrid_codegen_adjoints_with_select,
-    devices=devices,
-)
 add_function_test(TestHashGrid, "test_hashgrid_inputs", test_hashgrid_inputs, devices=devices)
 
 

@@ -56,15 +56,6 @@ def test_constants_float(x: float):
     expect_near(wp.float32(ONE_FP16), 1.0, 1e-6)
 
 
-def test_constant_math(test, device):
-    # test doing math with Python defined constants in *Python* scope
-    twopi = wp.pi * 2.0
-
-    import math
-
-    test.assertEqual(twopi, math.pi * 2.0)
-
-
 def test_constant_closure_capture(test, device):
     def make_closure_kernel(cst):
         def closure_kernel_fn(expected: int):
@@ -80,7 +71,13 @@ def test_constant_closure_capture(test, device):
 
 
 class TestConstants(unittest.TestCase):
-    pass
+    def test_constant_math(self):
+        # test doing math with python defined constants in *python* scope
+        twopi = wp.pi * 2.0
+
+        import math
+
+        self.assertEqual(twopi, math.pi * 2.0)
 
 
 a = 0
@@ -92,7 +89,6 @@ add_kernel_test(TestConstants, test_constants_bool, dim=1, inputs=[], devices=de
 add_kernel_test(TestConstants, test_constants_int, dim=1, inputs=[a], devices=devices)
 add_kernel_test(TestConstants, test_constants_float, dim=1, inputs=[x], devices=devices)
 
-add_function_test(TestConstants, "test_constant_math", test_constant_math, devices=devices)
 add_function_test(TestConstants, "test_constant_closure_capture", test_constant_closure_capture, devices=devices)
 
 

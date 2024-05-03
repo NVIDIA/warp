@@ -58,7 +58,7 @@ def _make_spd_system(n: int, seed: int, dtype, device):
     return wp.array(A, dtype=dtype, device=device), wp.array(b, dtype=dtype, device=device)
 
 
-def _make_nonsymmetric_system(n: int, seed: int, dtype, device, spd=False):
+def _make_nonsymmetric_system(n: int, seed: int, dtype, device):
     rng = np.random.default_rng(seed)
     s = rng.uniform(low=0.1, high=10, size=(n,))
 
@@ -68,7 +68,7 @@ def _make_nonsymmetric_system(n: int, seed: int, dtype, device, spd=False):
     return wp.array(A, dtype=dtype, device=device), wp.array(b, dtype=dtype, device=device)
 
 
-def _make_indefinite_system(n: int, seed: int, dtype, device, spd=False):
+def _make_indefinite_system(n: int, seed: int, dtype, device):
     rng = np.random.default_rng(seed)
     s = rng.uniform(low=0.1, high=10, size=(n,))
 

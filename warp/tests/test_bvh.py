@@ -131,42 +131,33 @@ def test_bvh_query_ray(test, device):
     test_bvh(test, "ray", device)
 
 
-def test_bvh_codegen_adjoints_with_select(test, device):
-    def kernel_fn(
-        bvh: wp.uint64,
-    ):
-        v = wp.vec3(0.0, 0.0, 0.0)
-        bounds_nr = int(0)
-
-        if True:
-            query_1 = wp.bvh_query_aabb(bvh, v, v)
-            query_2 = wp.bvh_query_ray(bvh, v, v)
-
-            wp.bvh_query_next(query_1, bounds_nr)
-            wp.bvh_query_next(query_2, bounds_nr)
-        else:
-            query_1 = wp.bvh_query_aabb(bvh, v, v)
-            query_2 = wp.bvh_query_ray(bvh, v, v)
-
-            wp.bvh_query_next(query_1, bounds_nr)
-            wp.bvh_query_next(query_2, bounds_nr)
-
-    wp.Kernel(func=kernel_fn)
-
-
 devices = get_test_devices()
 
 
 class TestBvh(unittest.TestCase):
-    pass
+    def test_bvh_codegen_adjoints_with_select(self):
+        def kernel_fn(bvh: wp.uint64):
+            v = wp.vec3(0.0, 0.0, 0.0)
+            bounds_nr = int(0)
+
+            if True:
+                query_1 = wp.bvh_query_aabb(bvh, v, v)
+                query_2 = wp.bvh_query_ray(bvh, v, v)
+
+                wp.bvh_query_next(query_1, bounds_nr)
+                wp.bvh_query_next(query_2, bounds_nr)
+            else:
+                query_1 = wp.bvh_query_aabb(bvh, v, v)
+                query_2 = wp.bvh_query_ray(bvh, v, v)
+
+                wp.bvh_query_next(query_1, bounds_nr)
+                wp.bvh_query_next(query_2, bounds_nr)
+
+        wp.Kernel(func=kernel_fn)
 
 
 add_function_test(TestBvh, "test_bvh_aabb", test_bvh_query_aabb, devices=devices)
 add_function_test(TestBvh, "test_bvh_ray", test_bvh_query_ray, devices=devices)
-add_function_test(
-    TestBvh, "test_bvh_codegen_adjoints_with_select", test_bvh_codegen_adjoints_with_select, devices=devices
-)
-
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()

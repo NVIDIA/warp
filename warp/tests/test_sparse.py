@@ -217,26 +217,6 @@ def make_test_bsr_transpose(block_shape, scalar_type):
     return test_bsr_transpose
 
 
-def test_bsr_copy_scale(test, device):
-    nrow = 6
-    bsize = 2
-
-    diag_bsr = bsr_diag(diag=np.eye(bsize, dtype=float) * 2.0, rows_of_blocks=nrow)
-    diag_copy = bsr_copy(diag_bsr, scalar_type=wp.float64)
-
-    test.assertTrue(wp.types.types_equal(diag_copy.values.dtype, wp.mat(shape=(bsize, bsize), dtype=wp.float64)))
-    bsr_scale(x=diag_copy, alpha=0.5)
-
-    res = _bsr_to_dense(diag_copy)
-    ref = np.eye(nrow * bsize)
-    assert_np_equal(res, ref, 0.0001)
-
-    bsr_scale(x=diag_copy, alpha=0.0)
-    test.assertEqual(diag_copy.nrow, nrow)
-    test.assertEqual(diag_copy.ncol, nrow)
-    test.assertEqual(diag_copy.nnz, 0)
-
-
 def make_test_bsr_axpy(block_shape, scalar_type):
     def test_bsr_axpy(test, device):
         rng = np.random.default_rng(123)
@@ -442,13 +422,29 @@ devices = get_test_devices()
 
 
 class TestSparse(unittest.TestCase):
-    pass
+    def test_bsr_copy_scale(self):
+        nrow = 6
+        bsize = 2
+
+        diag_bsr = bsr_diag(diag=np.eye(bsize, dtype=float) * 2.0, rows_of_blocks=nrow)
+        diag_copy = bsr_copy(diag_bsr, scalar_type=wp.float64)
+
+        self.assertTrue(wp.types.types_equal(diag_copy.values.dtype, wp.mat(shape=(bsize, bsize), dtype=wp.float64)))
+        bsr_scale(x=diag_copy, alpha=0.5)
+
+        res = _bsr_to_dense(diag_copy)
+        ref = np.eye(nrow * bsize)
+        assert_np_equal(res, ref, 0.0001)
+
+        bsr_scale(x=diag_copy, alpha=0.0)
+        self.assertEqual(diag_copy.nrow, nrow)
+        self.assertEqual(diag_copy.ncol, nrow)
+        self.assertEqual(diag_copy.nnz, 0)
 
 
 add_function_test(TestSparse, "test_csr_from_triplets", test_csr_from_triplets, devices=devices)
 add_function_test(TestSparse, "test_bsr_from_triplets", test_bsr_from_triplets, devices=devices)
 add_function_test(TestSparse, "test_bsr_get_diag", test_bsr_get_set_diag, devices=devices)
-add_function_test(TestSparse, "test_bsr_copy_scale", test_bsr_copy_scale, devices=devices)
 
 add_function_test(TestSparse, "test_csr_transpose", make_test_bsr_transpose((1, 1), wp.float32), devices=devices)
 add_function_test(TestSparse, "test_bsr_transpose_1_3", make_test_bsr_transpose((1, 3), wp.float32), devices=devices)

@@ -151,16 +151,13 @@ def test_bool_vec_typing(test, device):
     @wp.kernel
     def test_bool_vec_anonymous_typing():
         # Zero initialize
-        vec3bool_z = wp.types.vector(length=3, dtype=bool)
-        wp.expect_eq(vec3bool_z, vec3bool_type(False, False, False))
+        wp.expect_eq(vec3bool_type(), wp.vector(False, False, False))
         # Scalar initialize
-        vec3bool_s = wp.types.vector(True, length=3)
-        wp.expect_eq(vec3bool_s, vec3bool_type(True, True, True))
+        wp.expect_eq(vec3bool_type(True), wp.vector(True, True, True))
         # Component-wise initialize
-        vec3bool_c = wp.types.vector(True, False, True)
-        wp.expect_eq(vec3bool_c, vec3bool_type(True, False, True))
+        wp.expect_eq(vec3bool_type(True, False, True), wp.vector(True, False, True))
 
-    wp.launch(test_bool_vec_anonymous_typing, (1,), inputs=[])
+    wp.launch(test_bool_vec_anonymous_typing, (1,), inputs=[], device=device)
 
 
 def test_bool_mat_typing(test, device):
@@ -178,16 +175,13 @@ def test_bool_mat_typing(test, device):
     @wp.kernel
     def test_bool_mat_anonymous_typing():
         # Zero initialize
-        mat22bool_z = wp.types.matrix(shape=(2, 2), dtype=bool)
-        wp.expect_eq(mat22bool_z, mat22bool_type(False, False, False, False))
+        wp.expect_eq(mat22bool_type(), wp.matrix(False, False, False, False, shape=(2, 2)))
         # Scalar initialize
-        mat22bool_s = wp.types.matrix(True, shape=(2, 2))
-        wp.expect_eq(mat22bool_s, mat22bool_type(True, True, True, True))
+        wp.expect_eq(mat22bool_type(True), wp.matrix(True, True, True, True, shape=(2, 2)))
         # Component-wise initialize
-        mat22bool_c = wp.types.matrix(True, False, True, False, shape=(2, 2))
-        wp.expect_eq(mat22bool_c, mat22bool_type(True, False, True, False))
+        wp.expect_eq(mat22bool_type(True, False, True, False), wp.matrix(True, False, True, False, shape=(2, 2)))
 
-    wp.launch(test_bool_mat_anonymous_typing, (1,), inputs=[])
+    wp.launch(test_bool_mat_anonymous_typing, (1,), inputs=[], device=device)
 
 
 devices = get_test_devices()

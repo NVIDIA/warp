@@ -194,33 +194,27 @@ def test_mesh_query_aabb_count_nonoverlap(test, device):
         test.assertTrue(c == 1)
 
 
-def test_mesh_query_aabb_codegen_adjoints_with_select(test, device):
-    def kernel_fn(
-        mesh: wp.uint64,
-    ):
-        v = wp.vec3(0.0, 0.0, 0.0)
-
-        if True:
-            query = wp.mesh_query_aabb(mesh, v, v)
-        else:
-            query = wp.mesh_query_aabb(mesh, v, v)
-
-    wp.Kernel(func=kernel_fn)
-
-
 devices = get_test_devices()
 
 
 class TestMeshQueryAABBMethods(unittest.TestCase):
-    pass
+    def test_mesh_query_aabb_codegen_adjoints_with_select(self):
+        def kernel_fn(
+            mesh: wp.uint64,
+        ):
+            v = wp.vec3(0.0, 0.0, 0.0)
+
+            if True:
+                query = wp.mesh_query_aabb(mesh, v, v)
+            else:
+                query = wp.mesh_query_aabb(mesh, v, v)
+
+        wp.Kernel(func=kernel_fn)
 
 
 add_function_test(TestMeshQueryAABBMethods, "test_compute_bounds", test_compute_bounds, devices=devices)
 add_function_test(
-    TestMeshQueryAABBMethods,
-    "test_mesh_query_aabb_count_overlap",
-    test_mesh_query_aabb_count_overlap,
-    devices=devices,
+    TestMeshQueryAABBMethods, "test_mesh_query_aabb_count_overlap", test_mesh_query_aabb_count_overlap, devices=devices
 )
 add_function_test(
     TestMeshQueryAABBMethods,
@@ -228,13 +222,6 @@ add_function_test(
     test_mesh_query_aabb_count_nonoverlap,
     devices=devices,
 )
-add_function_test(
-    TestMeshQueryAABBMethods,
-    "test_mesh_query_aabb_codegen_adjoints_with_select",
-    test_mesh_query_aabb_codegen_adjoints_with_select,
-    devices=devices,
-)
-
 
 if __name__ == "__main__":
     wp.build.clear_kernel_cache()

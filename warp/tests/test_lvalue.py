@@ -7,6 +7,8 @@
 
 import unittest
 
+import numpy as np
+
 import warp as wp
 from warp.tests.unittest_utils import *
 
@@ -23,17 +25,9 @@ def rmw_array_kernel(foos: wp.array(dtype=wp.uint32)):
 def test_rmw_array(test, device):
     arr = wp.zeros((10,), dtype=wp.uint32, device=device)
 
-    wp.launch(
-        kernel=rmw_array_kernel,
-        dim=(10,),
-        inputs=[arr],
-        device=device,
-    )
-    wp.synchronize()
+    wp.launch(kernel=rmw_array_kernel, dim=(10,), inputs=[arr], device=device)
 
-    for f in arr.list():
-        if f != 1:
-            raise AssertionError(f"Unexpected result, got: {f} expected: {1}")
+    assert_np_equal(arr.numpy(), np.ones(10))
 
 
 @wp.struct
@@ -50,19 +44,12 @@ def rmw_array_struct_kernel(foos: wp.array(dtype=RmwFoo)):
 def test_rmw_array_struct(test, device):
     foos = wp.zeros((10,), dtype=RmwFoo, device=device)
 
-    wp.launch(
-        kernel=rmw_array_struct_kernel,
-        dim=(10,),
-        inputs=[foos],
-        device=device,
-    )
-    wp.synchronize()
+    wp.launch(kernel=rmw_array_struct_kernel, dim=(10,), inputs=[foos], device=device)
 
     expected = RmwFoo()
     expected.field = 1
     for f in foos.list():
-        if f.field != expected.field:
-            raise AssertionError(f"Unexpected result, got: {f} expected: {expected}")
+        test.assertEqual(f.field, expected.field)
 
 
 @wp.func
@@ -81,17 +68,9 @@ def lookup_kernel(foos: wp.array(dtype=wp.uint32)):
 def test_lookup(test, device):
     arr = wp.zeros((10,), dtype=wp.uint32, device=device)
 
-    wp.launch(
-        kernel=lookup_kernel,
-        dim=(10,),
-        inputs=[arr],
-        device=device,
-    )
-    wp.synchronize()
+    wp.launch(kernel=lookup_kernel, dim=(10,), inputs=[arr], device=device)
 
-    for f in arr.list():
-        if f != 1:
-            raise AssertionError(f"Unexpected result, got: {f} expected: {1}")
+    assert_np_equal(arr.numpy(), np.ones(10))
 
 
 @wp.func
@@ -117,29 +96,17 @@ def test_grad(test, device):
 
     tape = wp.Tape()
     with tape:
-        wp.launch(
-            kernel=grad_kernel,
-            dim=(num,),
-            inputs=[input],
-            outputs=[output],
-            device=device,
-        )
+        wp.launch(kernel=grad_kernel, dim=(num,), inputs=[input], outputs=[output], device=device)
 
     tape.backward(grads={output: ones})
 
-    wp.synchronize()
-
     # test forward results
     for i, f in enumerate(output.list()):
-        expected = data[i] * i + 1
-        if f != expected:
-            raise AssertionError(f"Unexpected result, got: {f} expected: {expected}")
+        test.assertEqual(f, data[i] * i + 1)
 
     # test backward results
     for i, f in enumerate(tape.gradients[input].list()):
-        expected = i
-        if f != expected:
-            raise AssertionError(f"Unexpected result, got: {f} expected: {expected}")
+        test.assertEqual(f, i)
 
 
 @wp.func
@@ -163,17 +130,9 @@ def lookup2_kernel(foos: wp.array(dtype=wp.uint32)):
 def test_lookup2(test, device):
     arr = wp.zeros((10,), dtype=wp.uint32, device=device)
 
-    wp.launch(
-        kernel=lookup2_kernel,
-        dim=(10,),
-        inputs=[arr],
-        device=device,
-    )
-    wp.synchronize()
+    wp.launch(kernel=lookup2_kernel, dim=(10,), inputs=[arr], device=device)
 
-    for f in arr.list():
-        if f != 1:
-            raise AssertionError(f"Unexpected result, got: {f} expected: {1}")
+    assert_np_equal(arr.numpy(), np.ones(10))
 
 
 @wp.kernel
@@ -188,17 +147,9 @@ def unary_kernel(foos: wp.array(dtype=wp.uint32)):
 def test_unary(test, device):
     arr = wp.zeros((10,), dtype=wp.uint32, device=device)
 
-    wp.launch(
-        kernel=unary_kernel,
-        dim=(10,),
-        inputs=[arr],
-        device=device,
-    )
-    wp.synchronize()
+    wp.launch(kernel=unary_kernel, dim=(10,), inputs=[arr], device=device)
 
-    for f in arr.list():
-        if f != 1:
-            raise AssertionError(f"Unexpected result, got: {f} expected: {1}")
+    assert_np_equal(arr.numpy(), np.ones(10))
 
 
 @wp.kernel
@@ -212,17 +163,9 @@ def rvalue_kernel(foos: wp.array(dtype=wp.uint32)):
 def test_rvalue(test, device):
     arr = wp.zeros((10,), dtype=wp.uint32, device=device)
 
-    wp.launch(
-        kernel=rvalue_kernel,
-        dim=(10,),
-        inputs=[arr],
-        device=device,
-    )
-    wp.synchronize()
+    wp.launch(kernel=rvalue_kernel, dim=(10,), inputs=[arr], device=device)
 
-    for f in arr.list():
-        if f != 1:
-            raise AssertionError(f"Unexpected result, got: {f} expected: {1}")
+    assert_np_equal(arr.numpy(), np.ones(10))
 
 
 # Tests, among other things, that assigning a reference to a new variable does
@@ -239,17 +182,9 @@ def intermediate_kernel(foos: wp.array(dtype=wp.uint32)):
 def test_intermediate(test, device):
     arr = wp.zeros((10,), dtype=wp.uint32, device=device)
 
-    wp.launch(
-        kernel=intermediate_kernel,
-        dim=(10,),
-        inputs=[arr],
-        device=device,
-    )
-    wp.synchronize()
+    wp.launch(kernel=intermediate_kernel, dim=(10,), inputs=[arr], device=device)
 
-    for f in arr.list():
-        if f != 1:
-            raise AssertionError(f"Unexpected result, got: {f} expected: {1}")
+    assert_np_equal(arr.numpy(), np.ones(10))
 
 
 @wp.kernel
@@ -261,17 +196,9 @@ def array_kernel(foos: wp.array(dtype=wp.uint32)):
 def test_array_assign(test, device):
     arr = wp.zeros((10,), dtype=wp.uint32, device=device)
 
-    wp.launch(
-        kernel=array_kernel,
-        dim=(10,),
-        inputs=[arr],
-        device=device,
-    )
-    wp.synchronize()
+    wp.launch(kernel=array_kernel, dim=(10,), inputs=[arr], device=device)
 
-    for f in arr.list():
-        if f != 1:
-            raise AssertionError(f"Unexpected result, got: {f} expected: {1}")
+    assert_np_equal(arr.numpy(), np.ones(10))
 
 
 @wp.func
@@ -288,17 +215,9 @@ def array_call_kernel(foos: wp.array(dtype=wp.uint32)):
 def test_array_call_assign(test, device):
     arr = wp.zeros((10,), dtype=wp.uint32, device=device)
 
-    wp.launch(
-        kernel=array_kernel,
-        dim=(10,),
-        inputs=[arr],
-        device=device,
-    )
-    wp.synchronize()
+    wp.launch(kernel=array_kernel, dim=(10,), inputs=[arr], device=device)
 
-    for f in arr.list():
-        if f != 1:
-            raise AssertionError(f"Unexpected result, got: {f} expected: {1}")
+    assert_np_equal(arr.numpy(), np.ones(10))
 
 
 @wp.struct
@@ -315,19 +234,15 @@ def array_struct_kernel(foos: wp.array(dtype=Foo)):
 def test_array_struct_assign(test, device):
     foos = wp.zeros((10,), dtype=Foo, device=device)
 
-    wp.launch(
-        kernel=array_struct_kernel,
-        dim=(10,),
-        inputs=[foos],
-        device=device,
-    )
-    wp.synchronize()
+    wp.launch(kernel=array_struct_kernel, dim=(10,), inputs=[foos], device=device)
 
     expected = Foo()
     expected.field = 1
+
+    test.assertEqual(expected.field, 1)
+
     for f in foos.list():
-        if f.field != expected.field:
-            raise AssertionError(f"Unexpected result, got: {f} expected: {expected}")
+        test.assertEqual(f.field, 1)
 
 
 @wp.struct
@@ -349,19 +264,15 @@ def array_struct_struct_kernel(foos: wp.array(dtype=Baz)):
 def test_array_struct_struct_assign(test, device):
     foos = wp.zeros((10,), dtype=Baz, device=device)
 
-    wp.launch(
-        kernel=array_struct_struct_kernel,
-        dim=(10,),
-        inputs=[foos],
-        device=device,
-    )
-    wp.synchronize()
+    wp.launch(kernel=array_struct_struct_kernel, dim=(10,), inputs=[foos], device=device)
 
     expected = Baz()
     expected.bar.field = 1
+
+    test.assertEqual(expected.bar.field, 1)
+
     for f in foos.list():
-        if f.bar.field != expected.bar.field:
-            raise AssertionError(f"Unexpected result, got: {f} expected: {expected}")
+        test.assertEqual(f.bar.field, 1)
 
 
 @wp.struct
@@ -389,13 +300,7 @@ def complex_kernel(foos: wp.array(dtype=F)):
 def test_complex(test, device):
     foos = wp.zeros((10,), dtype=F, device=device)
 
-    wp.launch(
-        kernel=complex_kernel,
-        dim=(10,),
-        inputs=[foos],
-        device=device,
-    )
-    wp.synchronize()
+    wp.launch(kernel=complex_kernel, dim=(10,), inputs=[foos], device=device)
 
     expected = F()
     expected.x = 1.0
@@ -403,8 +308,10 @@ def test_complex(test, device):
     expected.s.b = 3.0
     expected.s.a = expected.y
     for f in foos.list():
-        if f.x != expected.x or f.y != expected.y or f.s.a != expected.s.a or f.s.b != expected.s.b:
-            raise AssertionError(f"Unexpected result, got: {f} expected: {expected}")
+        test.assertEqual(f.x, expected.x)
+        test.assertEqual(f.y, expected.y)
+        test.assertEqual(f.s.a, expected.s.a)
+        test.assertEqual(f.s.b, expected.s.b)
 
 
 @wp.struct
@@ -435,13 +342,7 @@ def swizzle_kernel(foos: wp.array(dtype=Fvec)):
 def test_swizzle(test, device):
     foos = wp.zeros((10,), dtype=Fvec, device=device)
 
-    wp.launch(
-        kernel=swizzle_kernel,
-        dim=(10,),
-        inputs=[foos],
-        device=device,
-    )
-    wp.synchronize()
+    wp.launch(kernel=swizzle_kernel, dim=(10,), inputs=[foos], device=device)
 
     expected = Fvec()
     expected.x = wp.vec2f(1.0, 2.0)
@@ -450,9 +351,12 @@ def test_swizzle(test, device):
     expected.s.b.y = 6.0
     expected.s.b.x = expected.x.y
     expected.s.a = expected.y
+
     for f in foos.list():
-        if f.x != expected.x or f.y != expected.y or f.s.a != expected.s.a or f.s.b != expected.s.b:
-            raise AssertionError(f"Unexpected result, got: {f} expected: {expected}")
+        test.assertEqual(f.x, expected.x)
+        test.assertEqual(f.y, expected.y)
+        test.assertEqual(f.s.a, expected.s.a)
+        test.assertEqual(f.s.b, expected.s.b)
 
 
 @wp.kernel
@@ -462,30 +366,23 @@ def slice_kernel(a: wp.array2d(dtype=wp.vec3), b: wp.array2d(dtype=wp.vec3), c: 
 
 
 def test_slice(test, device):
-    a = wp.full((1, 1), value=1.0, dtype=wp.vec3, requires_grad=True)
-    b = wp.full((1, 1), value=1.0, dtype=wp.vec3, requires_grad=True)
-    c = wp.zeros((1, 1), dtype=wp.vec3, requires_grad=True)
+    a = wp.full((1, 1), value=1.0, dtype=wp.vec3, requires_grad=True, device=device)
+    b = wp.full((1, 1), value=1.0, dtype=wp.vec3, requires_grad=True, device=device)
+    c = wp.zeros((1, 1), dtype=wp.vec3, requires_grad=True, device=device)
 
     tape = wp.Tape()
     with tape:
-        wp.launch(
-            kernel=slice_kernel,
-            dim=1,
-            inputs=[a, b],
-            outputs=[c],
-        )
+        wp.launch(kernel=slice_kernel, dim=1, inputs=[a, b], outputs=[c], device=device)
 
-    c.grad = wp.full((1, 1), value=1.0, dtype=wp.vec3)
+    c.grad = wp.full((1, 1), value=1.0, dtype=wp.vec3, device=device)
     tape.backward()
 
     x = a.grad.list()[0]
     y = b.grad.list()[0]
 
     expected = wp.vec3(1.0)
-    if x != expected:
-        raise AssertionError(f"Unexpected result, got: {x} expected: {expected}")
-    if y != expected:
-        raise AssertionError(f"Unexpected result, got: {y} expected: {expected}")
+    test.assertEqual(x, expected)
+    test.assertEqual(y, expected)
 
 
 devices = get_test_devices()
@@ -494,10 +391,7 @@ devices = get_test_devices()
 class TestLValue(unittest.TestCase):
     def test_swizzle_error_invalid_attribute(self):
         v = wp.vec3(1, 2, 3)
-        with self.assertRaisesRegex(
-            AttributeError,
-            r"'vec3f' object has no attribute 'foo'$",
-        ):
+        with self.assertRaisesRegex(AttributeError, r"'vec3f' object has no attribute 'foo'$"):
             v.foo  # noqa: B018
 
         try:

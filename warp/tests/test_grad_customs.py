@@ -236,27 +236,18 @@ def eval_sigmoid(xs: wp.array(dtype=float), ys: wp.array(dtype=float)):
 
 
 def test_custom_grad_no_return(test, device):
-    xs = wp.array([1.0, 2.0, 3.0, 4.0], dtype=wp.float32, requires_grad=True)
-    ys = wp.zeros_like(xs)
+    xs = wp.array([1.0, 2.0, 3.0, 4.0], dtype=wp.float32, requires_grad=True, device=device)
+    ys = wp.zeros_like(xs, device=device)
     ys.grad.fill_(1.0)
 
     tape = wp.Tape()
     with tape:
-        wp.launch(eval_sigmoid, dim=len(xs), inputs=[xs], outputs=[ys])
+        wp.launch(eval_sigmoid, dim=len(xs), inputs=[xs], outputs=[ys], device=device)
     tape.backward()
 
     sigmoids = ys.numpy()
     grad = xs.grad.numpy()
     assert_np_equal(grad, sigmoids * (1.0 - sigmoids))
-
-
-def test_wrapped_docstring(test, device):
-    assert "This is a docstring" in reversible_increment.__doc__
-    assert "This is a docstring" in replay_reversible_increment.__doc__
-    assert "This is a docstring" in overload_fn.__doc__
-    assert "This is a docstring" in overload_fn_grad.__doc__
-    assert "This is a docstring" in run_overload_float_fn.__doc__
-    assert "This is a docstring" in MyStruct.__doc__
 
 
 @wp.func
@@ -322,14 +313,19 @@ devices = get_test_devices()
 
 
 class TestGradCustoms(unittest.TestCase):
-    pass
+    def test_wrapped_docstring(self):
+        self.assertTrue("This is a docstring" in reversible_increment.__doc__)
+        self.assertTrue("This is a docstring" in replay_reversible_increment.__doc__)
+        self.assertTrue("This is a docstring" in overload_fn.__doc__)
+        self.assertTrue("This is a docstring" in overload_fn_grad.__doc__)
+        self.assertTrue("This is a docstring" in run_overload_float_fn.__doc__)
+        self.assertTrue("This is a docstring" in MyStruct.__doc__)
 
 
 add_function_test(TestGradCustoms, "test_custom_replay_grad", test_custom_replay_grad, devices=devices)
 add_function_test(TestGradCustoms, "test_custom_overload_grad", test_custom_overload_grad, devices=devices)
 add_function_test(TestGradCustoms, "test_custom_import_grad", test_custom_import_grad, devices=devices)
 add_function_test(TestGradCustoms, "test_custom_grad_no_return", test_custom_grad_no_return, devices=devices)
-add_function_test(TestGradCustoms, "test_wrapped_docstring", test_wrapped_docstring, devices=devices)
 
 
 if __name__ == "__main__":
