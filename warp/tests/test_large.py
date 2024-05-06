@@ -7,6 +7,7 @@
 
 import math
 import unittest
+from typing import Any
 
 import warp as wp
 from warp.tests.unittest_utils import *
@@ -86,7 +87,7 @@ def test_large_arrays_slow(test, device):
         dim_x = math.ceil(total_elements ** (1 / total_dims))
         shape_tuple = tuple([dim_x] * total_dims)
 
-        for _nptype, wptype in wp.types.np_dtype_to_warp_type.items():
+        for wptype in wp.types.scalar_types:
             a1 = wp.zeros(shape_tuple, dtype=wptype, device=device)
             assert_np_equal(a1.numpy(), np.zeros_like(a1.numpy()))
 
@@ -97,22 +98,25 @@ def test_large_arrays_slow(test, device):
             assert_np_equal(a1.numpy(), np.zeros_like(a1.numpy()))
 
 
+@wp.kernel
+def check_array_equal_value(data: wp.array2d(dtype=Any), expect: Any):
+    i, j = wp.tid()
+    wp.expect_eq(data[i, j], expect)
+
+
 def test_large_arrays_fast(test, device):
     # A truncated version of test_large_arrays_slow meant to catch basic errors
 
     # Make is so that a (dim_x, dim_x) array has more than 2**31 elements
     dim_x = math.ceil(math.sqrt(2**31))
 
-    nptype = np.dtype(np.int8)
-    wptype = wp.types.np_dtype_to_warp_type[nptype]
-
-    a1 = wp.zeros((dim_x, dim_x), dtype=wptype, device=device)
+    a1 = wp.zeros((dim_x, dim_x), dtype=wp.int8, device=device)
     a1.fill_(127)
 
-    assert_np_equal(a1.numpy(), 127 * np.ones_like(a1.numpy()))
+    wp.launch(check_array_equal_value, a1.shape, inputs=[a1, wp.int8(127)], device=device)
 
     a1.zero_()
-    assert_np_equal(a1.numpy(), np.zeros_like(a1.numpy()))
+    wp.launch(check_array_equal_value, a1.shape, inputs=[a1, wp.int8(0)], device=device)
 
 
 def test_large_array_excessive_zeros(test, device):
