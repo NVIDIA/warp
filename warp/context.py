@@ -63,7 +63,6 @@ class Function:
         input_types=None,
         value_type=None,
         value_func=None,
-        template_func=None,
         module=None,
         variadic=False,
         initializer_list_func=None,
@@ -97,7 +96,6 @@ class Function:
         self.namespace = namespace
         self.value_type = value_type
         self.value_func = value_func  # a function that takes a list of args and a list of templates and returns the value type, e.g.: load(array, index) returns the type of value being loaded
-        self.template_func = template_func
         self.input_types = {}
         self.export = export
         self.doc = doc
@@ -742,7 +740,6 @@ def func_grad(forward_fn):
                 input_types=reverse_args,
                 value_func=None,
                 module=f.module,
-                template_func=f.template_func,
                 skip_forward_codegen=True,
                 custom_reverse_mode=True,
                 custom_reverse_num_input_args=len(f.input_types),
@@ -820,7 +817,6 @@ def func_replay(forward_fn):
             input_types=f.input_types,
             value_func=f.value_func,
             module=f.module,
-            template_func=f.template_func,
             skip_reverse_codegen=True,
             skip_adding_overload=True,
             code_transformers=f.adj.transformers,
@@ -965,7 +961,6 @@ def add_builtin(
     constraint=None,
     value_type=None,
     value_func=None,
-    template_func=None,
     doc="",
     namespace="wp::",
     variadic=False,
@@ -1106,7 +1101,6 @@ def add_builtin(
         input_types=input_types,
         value_type=value_type,
         value_func=value_func,
-        template_func=template_func,
         variadic=variadic,
         initializer_list_func=initializer_list_func,
         export=export,
