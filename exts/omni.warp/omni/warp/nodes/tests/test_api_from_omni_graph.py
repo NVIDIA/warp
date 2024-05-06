@@ -81,56 +81,58 @@ class MakeDataNode:
         )
 
         for variant in ("cpuBundle", "gpuBundle"):
-            attr = bundle_create_attr(
-                db.outputs.bundleAttr,
-                "{}FloatArray".format(variant),
-                og.Type(
-                    og.BaseDataType.FLOAT,
-                    tuple_count=1,
-                    array_depth=1,
-                    role=og.AttributeRole.NONE,
-                ),
-                size=3,
-            )
-            attr_set_array(
-                attr,
-                wp.array(db.outputs.floatArrayAttr, dtype=wp.float32),
-                on_gpu=variant == "gpuBundle",
-            )
+            device = omni.warp.nodes.device_get_cuda_compute() if variant == "gpuBundle" else wp.get_device("cpu")
+            with wp.ScopedDevice(device):
+                attr = bundle_create_attr(
+                    db.outputs.bundleAttr,
+                    "{}FloatArray".format(variant),
+                    og.Type(
+                        og.BaseDataType.FLOAT,
+                        tuple_count=1,
+                        array_depth=1,
+                        role=og.AttributeRole.NONE,
+                    ),
+                    size=3,
+                )
+                attr_set_array(
+                    attr,
+                    wp.array(db.outputs.floatArrayAttr, dtype=wp.float32),
+                    on_gpu=device.is_cuda,
+                )
 
-            attr = bundle_create_attr(
-                db.outputs.bundleAttr,
-                "{}Vec3Array".format(variant),
-                og.Type(
-                    og.BaseDataType.FLOAT,
-                    tuple_count=3,
-                    array_depth=1,
-                    role=og.AttributeRole.NONE,
-                ),
-                size=2,
-            )
-            attr_set_array(
-                attr,
-                wp.array(db.outputs.vec3ArrayAttr, dtype=wp.vec3),
-                on_gpu=variant == "gpuBundle",
-            )
+                attr = bundle_create_attr(
+                    db.outputs.bundleAttr,
+                    "{}Vec3Array".format(variant),
+                    og.Type(
+                        og.BaseDataType.FLOAT,
+                        tuple_count=3,
+                        array_depth=1,
+                        role=og.AttributeRole.NONE,
+                    ),
+                    size=2,
+                )
+                attr_set_array(
+                    attr,
+                    wp.array(db.outputs.vec3ArrayAttr, dtype=wp.vec3),
+                    on_gpu=device.is_cuda,
+                )
 
-            attr = bundle_create_attr(
-                db.outputs.bundleAttr,
-                "{}Mat4Array".format(variant),
-                og.Type(
-                    og.BaseDataType.DOUBLE,
-                    tuple_count=16,
-                    array_depth=1,
-                    role=og.AttributeRole.MATRIX,
-                ),
-                size=2,
-            )
-            attr_set_array(
-                attr,
-                wp.array(db.outputs.mat4ArrayAttr, dtype=wp.mat44d),
-                on_gpu=variant == "gpuBundle",
-            )
+                attr = bundle_create_attr(
+                    db.outputs.bundleAttr,
+                    "{}Mat4Array".format(variant),
+                    og.Type(
+                        og.BaseDataType.DOUBLE,
+                        tuple_count=16,
+                        array_depth=1,
+                        role=og.AttributeRole.MATRIX,
+                    ),
+                    size=2,
+                )
+                attr_set_array(
+                    attr,
+                    wp.array(db.outputs.mat4ArrayAttr, dtype=wp.mat44d),
+                    on_gpu=device.is_cuda,
+                )
 
         return True
 
@@ -380,7 +382,9 @@ def compute(db: og.Database) -> None:
 class FromOmniGraphNode:
     @staticmethod
     def compute(db: og.Database) -> bool:
-        device = omni.warp.nodes.device_get_cuda_compute()
+        device = (
+            omni.warp.nodes.device_get_cuda_compute() if db.inputs.device == "cuda" else wp.get_device(db.inputs.device)
+        )
 
         try:
             with wp.ScopedDevice(device):
