@@ -1,6 +1,40 @@
 # CHANGELOG
 
 
+## [1.1.0] - 2024-03-22
+
+- Support returning a value from native CUDA functions using type hints
+- Improved diff sim
+- Added support for event-based timing
+- Added `Tape` visualization and debugging functions
+- Support constructing Warp arrays from objects that define the `__cuda_array_interface__` attribute.
+- Change default test behavior to test redundant GPUs (up to 2x)
+- Support copying a struct to another device
+- Allow converting a struct onto a different device
+- Allow rigid shapes to not have any collisions with other shapes
+- Test each example in an individual subprocess
+- Polish and optimize various examples and tests
+- Allow non-contiguous point arrays to populate `HashGrid`
+- Upgrade LLVM to 18.1.3 for from-source builds and Linux x86-64 builds
+- Build DLL source code as C++17 and require GCC 9.4 as a minimum
+- Array clone, assign, and copy are now differentiable
+- Use `Ruff` for formatting and linting
+- Various documentation improvements (infinity, math constants, etc.)
+- Improve URDF importer, handle joint armature
+- Allow builtins.bool to be used in Warp data structures
+- Use external gradient arrays in backward passes when given
+- Add Conjugate Residual linear solver
+- Fix propagation of gradients on aliased copy
+- Facilitate debugging and speed up `import warp` by eliminating raising any exceptions
+- Improve support for nested vec/mat assignments
+- Recommend Python 3.9 or higher, which is required for JAX and soon PyTorch.
+- Support gradient propagation for indexing sliced multi-dimensional arrays, i.e. `a[i][j]` vs. `a[i, j]`
+- Provide an informative message if setting DLL C-types failed, instructing to try rebuilding the library
+
+## [1.0.3] - 2024-04-17
+
+- Add a `support_level` entry to the configuration file of the extensions
+
 ## [1.0.2] - 2024-03-22
 
 - Make examples runnable from any location
