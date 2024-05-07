@@ -252,6 +252,15 @@ def from_omni_graph(
                     shape = data.shape[: i + 1]
                     break
 
+        if shape is None:
+            if arr_size % element_size != 0:
+                raise RuntimeError(
+                    "Cannot infer a size matching the Warp data type '{}' with " "an array size of '{}' bytes.".format(
+                        dtype.__name__, arr_size
+                    )
+                )
+            shape = (arr_size // element_size,)
+
         src_device = wp.get_device(str(data.device))
         dst_device = device
         return from_omni_graph_ptr(
@@ -303,6 +312,14 @@ def from_omni_graph(
                     if functools.reduce(operator.mul, arr_shape[: i + 1]) * element_size == arr_size:
                         shape = arr_shape[: i + 1]
                         break
+
+            if shape is None:
+                if arr_size % element_size != 0:
+                    raise RuntimeError(
+                        "Cannot infer a size matching the Warp data type '{}' with "
+                        "an array size of '{}' bytes.".format(dtype.__name__, arr_size)
+                    )
+                shape = (arr_size // element_size,)
 
             data.gpu_ptr_kind = og.PtrToPtrKind.CPU
             (ptr, _) = data.get_array(
