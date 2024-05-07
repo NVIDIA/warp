@@ -470,6 +470,24 @@ def copy_rgb_frame(
 
 
 @wp.kernel
+def copy_rgb_frame_uint8(
+    input_img: wp.array(dtype=wp.uint8),
+    width: int,
+    height: int,
+    # outputs
+    output_img: wp.array(dtype=wp.uint8, ndim=3),
+):
+    w, v = wp.tid()
+    pixel = v * width + w
+    pixel *= 3
+    # flip vertically (OpenGL coordinates start at bottom)
+    v = height - v - 1
+    output_img[v, w, 0] = input_img[pixel + 0]
+    output_img[v, w, 1] = input_img[pixel + 1]
+    output_img[v, w, 2] = input_img[pixel + 2]
+
+
+@wp.kernel
 def copy_depth_frame(
     input_img: wp.array(dtype=wp.float32),
     width: int,
@@ -517,6 +535,34 @@ def copy_rgb_frame_tiles(
     output_img[tile, y, x, 0] = r / 255.0
     output_img[tile, y, x, 1] = g / 255.0
     output_img[tile, y, x, 2] = b / 255.0
+
+
+@wp.kernel
+def copy_rgb_frame_tiles_uint8(
+    input_img: wp.array(dtype=wp.uint8),
+    positions: wp.array(dtype=int, ndim=2),
+    screen_width: int,
+    screen_height: int,
+    tile_height: int,
+    # outputs
+    output_img: wp.array(dtype=wp.uint8, ndim=4),
+):
+    tile, x, y = wp.tid()
+    p = positions[tile]
+    qx = x + p[0]
+    qy = y + p[1]
+    pixel = qy * screen_width + qx
+    # flip vertically (OpenGL coordinates start at bottom)
+    y = tile_height - y - 1
+    if qx >= screen_width or qy >= screen_height:
+        output_img[tile, y, x, 0] = wp.uint8(0)
+        output_img[tile, y, x, 1] = wp.uint8(0)
+        output_img[tile, y, x, 2] = wp.uint8(0)
+        return  # prevent out-of-bounds access
+    pixel *= 3
+    output_img[tile, y, x, 0] = input_img[pixel + 0]
+    output_img[tile, y, x, 1] = input_img[pixel + 1]
+    output_img[tile, y, x, 2] = input_img[pixel + 2]
 
 
 @wp.kernel
@@ -575,6 +621,34 @@ def copy_rgb_frame_tile(
     output_img[tile, y, x, 0] = r / 255.0
     output_img[tile, y, x, 1] = g / 255.0
     output_img[tile, y, x, 2] = b / 255.0
+
+
+@wp.kernel
+def copy_rgb_frame_tile_uint8(
+    input_img: wp.array(dtype=wp.uint8),
+    offset_x: int,
+    offset_y: int,
+    screen_width: int,
+    screen_height: int,
+    tile_height: int,
+    # outputs
+    output_img: wp.array(dtype=wp.uint8, ndim=4),
+):
+    tile, x, y = wp.tid()
+    qx = x + offset_x
+    qy = y + offset_y
+    pixel = qy * screen_width + qx
+    # flip vertically (OpenGL coordinates start at bottom)
+    y = tile_height - y - 1
+    if qx >= screen_width or qy >= screen_height:
+        output_img[tile, y, x, 0] = wp.uint8(0)
+        output_img[tile, y, x, 1] = wp.uint8(0)
+        output_img[tile, y, x, 2] = wp.uint8(0)
+        return  # prevent out-of-bounds access
+    pixel *= 3
+    output_img[tile, y, x, 0] = input_img[pixel + 0]
+    output_img[tile, y, x, 1] = input_img[pixel + 1]
+    output_img[tile, y, x, 2] = input_img[pixel + 2]
 
 
 def check_gl_error():
@@ -1590,8 +1664,20 @@ class OpenGLRenderer:
     def camera_up(self, value):
         self.update_view_matrix(cam_up=value)
 
-    def update_view_matrix(self, cam_pos=None, cam_front=None, cam_up=None, stiffness=1.0):
+    def compute_view_matrix(self, cam_pos, cam_front, cam_up):
         from pyglet.math import Mat4, Vec3
+
+        model = np.array(self._model_matrix).reshape((4, 4))
+        cp = model @ np.array([*cam_pos / self._scaling, 1.0])
+        cf = model @ np.array([*cam_front / self._scaling, 1.0])
+        up = model @ np.array([*cam_up / self._scaling, 0.0])
+        cp = Vec3(*cp[:3])
+        cf = Vec3(*cf[:3])
+        up = Vec3(*up[:3])
+        return np.array(Mat4.look_at(cp, cp + cf, up), dtype=np.float32)
+
+    def update_view_matrix(self, cam_pos=None, cam_front=None, cam_up=None, stiffness=1.0):
+        from pyglet.math import Vec3
 
         if cam_pos is not None:
             self._camera_pos = self._camera_pos * (1.0 - stiffness) + Vec3(*cam_pos) * stiffness
@@ -1600,22 +1686,16 @@ class OpenGLRenderer:
         if cam_up is not None:
             self._camera_up = self._camera_up * (1.0 - stiffness) + Vec3(*cam_up) * stiffness
 
-        model = np.array(self._model_matrix).reshape((4, 4))
-        cp = model @ np.array([*self._camera_pos / self._scaling, 1.0])
-        cf = model @ np.array([*self._camera_front / self._scaling, 1.0])
-        up = model @ np.array([*self._camera_up / self._scaling, 0.0])
-        cp = Vec3(*cp[:3])
-        cf = Vec3(*cf[:3])
-        up = Vec3(*up[:3])
-        self._view_matrix = np.array(Mat4.look_at(cp, cp + cf, up))
+        self._view_matrix = self.compute_view_matrix(self._camera_pos, self._camera_front, self._camera_up)
 
-    def compute_model_matrix(self, camera_axis: int, scaling: float):
+    @staticmethod
+    def compute_model_matrix(camera_axis: int, scaling: float):
         if camera_axis == 0:
-            return np.array((0, 0, scaling, 0, scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, 0, 1))
+            return np.array((0, 0, scaling, 0, scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, 0, 1), dtype=np.float32)
         elif camera_axis == 2:
-            return np.array((-scaling, 0, 0, 0, 0, 0, scaling, 0, 0, scaling, 0, 0, 0, 0, 0, 1))
+            return np.array((-scaling, 0, 0, 0, 0, 0, scaling, 0, 0, scaling, 0, 0, 0, 0, 0, 1), dtype=np.float32)
 
-        return np.array((scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, 1))
+        return np.array((scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, 1), dtype=np.float32)
 
     def update_model_matrix(self, model_matrix: Optional[Mat44] = None):
         from pyglet import gl
@@ -1860,7 +1940,9 @@ Instances: {len(self._instances)}"""
 
         for i, viewport in enumerate(self._tile_viewports):
             projection_matrix_ptr = arr_pointer(self._tile_projection_matrices[i])
-            view_matrix_ptr = arr_pointer(self._tile_view_matrices[i] or self._view_matrix)
+            view_matrix_ptr = arr_pointer(
+                self._tile_view_matrices[i] if self._tile_view_matrices[i] is not None else self._view_matrix
+            )
 
             gl.glViewport(*viewport)
             if self.draw_grid:
@@ -2289,7 +2371,7 @@ Instances: {len(self._instances)}"""
             self.clear()
             self.app.event_loop.exit()
 
-    def get_pixels(self, target_image: wp.array, split_up_tiles=True, mode="rgb"):
+    def get_pixels(self, target_image: wp.array, split_up_tiles=True, mode="rgb", use_uint8=False):
         """
         Read the pixels from the frame buffer (RGB or depth are supported) into the given array.
 
@@ -2302,6 +2384,7 @@ Instances: {len(self._instances)}"""
             target_image (array): The array to read the pixels into. Must have float32 as dtype and be on a CUDA device.
             split_up_tiles (bool): Whether to split up the viewport into tiles, see :meth:`setup_tiled_rendering`.
             mode (str): can be either "rgb" or "depth"
+            use_uint8 (bool): Whether to use uint8 as dtype in RGB mode for the target_image array and return values in the range [0, 255]. Otherwise, float32 is assumed as dtype with values in the range [0, 1].
 
         Returns:
             bool: Whether the pixels were successfully read.
@@ -2328,7 +2411,7 @@ Instances: {len(self._instances)}"""
                     self._tile_width,
                     channels,
                 )
-            ), f"Shape of `target_image` array does not match {self.num_tiles} x {self.screen_height} x {self.screen_width} x {channels}"
+            ), f"Shape of `target_image` array does not match {self.num_tiles} x {self._tile_height} x {self._tile_width} x {channels}"
         else:
             assert target_image.shape == (
                 self.screen_height,
@@ -2368,7 +2451,7 @@ Instances: {len(self._instances)}"""
             positions = wp.array(self._tile_viewports, ndim=2, dtype=wp.int32, device=target_image.device)
             if mode == "rgb":
                 wp.launch(
-                    copy_rgb_frame_tiles,
+                    copy_rgb_frame_tiles_uint8 if use_uint8 else copy_rgb_frame_tiles,
                     dim=(self.num_tiles, self._tile_width, self._tile_height),
                     inputs=[img, positions, self.screen_width, self.screen_height, self._tile_height],
                     outputs=[target_image],
@@ -2393,7 +2476,7 @@ Instances: {len(self._instances)}"""
         else:
             if mode == "rgb":
                 wp.launch(
-                    copy_rgb_frame,
+                    copy_rgb_frame_uint8 if use_uint8 else copy_rgb_frame,
                     dim=(self.screen_width, self.screen_height),
                     inputs=[img, self.screen_width, self.screen_height],
                     outputs=[target_image],
