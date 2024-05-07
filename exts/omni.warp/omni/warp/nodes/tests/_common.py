@@ -8,7 +8,7 @@ from typing import Optional
 import numpy as np
 import omni.graph.core as og
 import omni.graph.tools.ogn as ogn
-from omni.warp.nodes._impl.common import from_omni_graph_ptr
+from omni.warp.nodes._impl.attributes import from_omni_graph_ptr
 
 import warp as wp
 
