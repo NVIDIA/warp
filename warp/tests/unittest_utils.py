@@ -397,7 +397,7 @@ def write_junit_results(
     import xml.etree.ElementTree as ET
 
     root = ET.Element(
-        "testsuites",
+        "testsuite",
         name="Warp Tests",
         failures=str(tests_failed),
         errors=str(tests_errored),
@@ -412,11 +412,7 @@ def write_junit_results(
         test_status = test_data[2]
 
         test_case = ET.SubElement(
-            root,
-            "testcase",
-            classname=test.__class__.__name__,
-            name=test._testMethodName,
-            time=f"{test_duration:.3f}",
+            root, "testcase", classname=test.__class__.__name__, name=test._testMethodName, time=f"{test_duration:.3f}"
         )
 
         if test_status == "FAIL":
