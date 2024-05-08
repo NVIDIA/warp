@@ -315,8 +315,8 @@ def test_dlpack_warp_to_jax(test, device):
 
     test.assertEqual(a.ptr, j1.unsafe_buffer_pointer())
     test.assertEqual(a.ptr, j2.unsafe_buffer_pointer())
-    test.assertEqual(a.device, wp.device_from_jax(j1.device()))
-    test.assertEqual(a.device, wp.device_from_jax(j2.device()))
+    test.assertEqual(a.device, wp.device_from_jax(list(j1.devices())[0]))
+    test.assertEqual(a.device, wp.device_from_jax(list(j2.devices())[0]))
     test.assertEqual(a.shape, j1.shape)
     test.assertEqual(a.shape, j2.shape)
 
@@ -352,8 +352,8 @@ def test_dlpack_warp_to_jax_v2(test, device):
 
     test.assertEqual(a.ptr, j1.unsafe_buffer_pointer())
     test.assertEqual(a.ptr, j2.unsafe_buffer_pointer())
-    test.assertEqual(a.device, wp.device_from_jax(j1.device()))
-    test.assertEqual(a.device, wp.device_from_jax(j2.device()))
+    test.assertEqual(a.device, wp.device_from_jax(list(j1.devices())[0]))
+    test.assertEqual(a.device, wp.device_from_jax(list(j2.devices())[0]))
     test.assertEqual(a.shape, j1.shape)
     test.assertEqual(a.shape, j2.shape)
 
@@ -387,8 +387,8 @@ def test_dlpack_jax_to_warp(test, device):
 
         test.assertEqual(a1.ptr, j.unsafe_buffer_pointer())
         test.assertEqual(a2.ptr, j.unsafe_buffer_pointer())
-        test.assertEqual(a1.device, wp.device_from_jax(j.device()))
-        test.assertEqual(a2.device, wp.device_from_jax(j.device()))
+        test.assertEqual(a1.device, wp.device_from_jax(list(j.devices())[0]))
+        test.assertEqual(a2.device, wp.device_from_jax(list(j.devices())[0]))
         test.assertEqual(a1.shape, j.shape)
         test.assertEqual(a2.shape, j.shape)
 
@@ -423,8 +423,8 @@ def test_dlpack_jax_to_warp_v2(test, device):
 
         test.assertEqual(a1.ptr, j.unsafe_buffer_pointer())
         test.assertEqual(a2.ptr, j.unsafe_buffer_pointer())
-        test.assertEqual(a1.device, wp.device_from_jax(j.device()))
-        test.assertEqual(a2.device, wp.device_from_jax(j.device()))
+        test.assertEqual(a1.device, wp.device_from_jax(list(j.devices())[0]))
+        test.assertEqual(a2.device, wp.device_from_jax(list(j.devices())[0]))
         test.assertEqual(a1.shape, j.shape)
         test.assertEqual(a2.shape, j.shape)
 
