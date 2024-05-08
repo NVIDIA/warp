@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-if [ "$CI" = "true" ]; then
+if [ "$GITLAB_CI" = "true" ]; then
     echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
 
     # Print out disk space info to diagnose runner issues
@@ -45,7 +45,7 @@ $PYTHON -m pip install gitpython
 $PYTHON -m pip install cmake
 $PYTHON -m pip install ninja
 
-if [ "$CI" = "true" ]; then
+if [ "$GITLAB_CI" = "true" ]; then
     echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
 fi
 
