@@ -16,7 +16,7 @@ import re
 import sys
 import textwrap
 import types
-from typing import Any, Callable, Dict, Mapping
+from typing import Any, Callable, Dict, Mapping, Sequence
 
 import warp.config
 from warp.types import *
@@ -869,7 +869,7 @@ class Adjoint:
 
         return output
 
-    def resolve_func(adj, func, args, min_outputs, templates, kwds):
+    def resolve_func(adj, func, args, min_outputs):
         arg_types = [strip_reference(a.type) for a in args if not isinstance(a, warp.context.Function)]
 
         if not func.is_builtin():
@@ -918,13 +918,7 @@ class Adjoint:
 
                 # check output dimensions match expectations
                 if min_outputs:
-                    try:
-                        value_type = f.value_func(args, kwds, templates)
-                        if not hasattr(value_type, "__len__") or len(value_type) != min_outputs:
-                            continue
-                    except Exception:
-                        # value func may fail if the user has given
-                        # incorrect args, so we need to catch this
+                    if not isinstance(f.value_type, Sequence) or len(f.value_type) != min_outputs:
                         continue
 
                 # found a match, use it
@@ -956,7 +950,7 @@ class Adjoint:
         if templates is None:
             templates = []
 
-        func = adj.resolve_func(func, args, min_outputs, templates, kwds)
+        func = adj.resolve_func(func, args, min_outputs)
 
         # push any default values onto args
         for i, (arg_name, _arg_type) in enumerate(func.input_types.items()):
