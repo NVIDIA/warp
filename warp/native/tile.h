@@ -279,15 +279,15 @@ mat_t<M, N, T> partition_load(const partition_t<M, N, T>& tile, int i, int j)
 	const int tile_i = i*M;
 	const int tile_j = j*N;
 
-	// WP_PRAGMA_UNROLL
-	// for (int i=0; i < M; ++i)
-	// {
-	// 	WP_PRAGMA_UNROLL
-	// 	for (int j=0; j < N; ++j)
-	// 	{
-	// 		out.data[i][j] = index(tile.data, tile_i + i, tile_j + j);
-	// 	}
-	// }
+	WP_PRAGMA_UNROLL
+	for (int i=0; i < M; ++i)
+	{
+		WP_PRAGMA_UNROLL
+		for (int j=0; j < N; ++j)
+		{
+			out.data[i][j] = index(tile.data, tile_i + i, tile_j + j);
+		}
+	}
 	
 
 	return out;
