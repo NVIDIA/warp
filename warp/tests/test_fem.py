@@ -601,63 +601,62 @@ def test_deformed_geometry(test, device):
     with wp.ScopedDevice(device):
         positions, tet_vidx = _gen_tetmesh(N)
 
-    geo = fem.Tetmesh(tet_vertex_indices=tet_vidx, positions=positions)
+        geo = fem.Tetmesh(tet_vertex_indices=tet_vidx, positions=positions)
 
-    translation = [1.0, 2.0, 3.0]
-    rotation = [0.0, math.pi / 4.0, 0.0]
-    scale = 2.0
+        translation = [1.0, 2.0, 3.0]
+        rotation = [0.0, math.pi / 4.0, 0.0]
+        scale = 2.0
 
-    vector_space = fem.make_polynomial_space(geo, dtype=wp.vec3, degree=2)
-    pos_field = vector_space.make_field()
-    fem.interpolate(
-        _rigid_deformation_field,
-        dest=pos_field,
-        values={"translation": translation, "rotation": rotation, "scale": scale},
-    )
+        vector_space = fem.make_polynomial_space(geo, dtype=wp.vec3, degree=2)
+        pos_field = vector_space.make_field()
+        fem.interpolate(
+            _rigid_deformation_field,
+            dest=pos_field,
+            values={"translation": translation, "rotation": rotation, "scale": scale},
+        )
 
-    deformed_geo = pos_field.make_deformed_geometry()
+        deformed_geo = pos_field.make_deformed_geometry()
 
-    # rigidly-deformed geometry
+        # rigidly-deformed geometry
 
-    test.assertEqual(geo.cell_count(), 5 * (N) ** 3)
-    test.assertEqual(geo.vertex_count(), (N + 1) ** 3)
-    test.assertEqual(geo.side_count(), 6 * (N + 1) * N**2 + (N**3) * 4)
-    test.assertEqual(geo.boundary_side_count(), 12 * N * N)
+        test.assertEqual(geo.cell_count(), 5 * (N) ** 3)
+        test.assertEqual(geo.vertex_count(), (N + 1) ** 3)
+        test.assertEqual(geo.side_count(), 6 * (N + 1) * N**2 + (N**3) * 4)
+        test.assertEqual(geo.boundary_side_count(), 12 * N * N)
 
-    side_measures, cell_measures = _launch_test_geometry_kernel(deformed_geo, device)
+        side_measures, cell_measures = _launch_test_geometry_kernel(deformed_geo, wp.get_device())
 
-    test.assertAlmostEqual(
-        np.sum(cell_measures.numpy()), scale**3, places=4, msg=f"cell_measures = {cell_measures.numpy()}"
-    )
-    test.assertAlmostEqual(
-        np.sum(side_measures.numpy()), scale**2 * (0.5 * 6 * (N + 1) + N * 2 * math.sqrt(3.0)), places=4
-    )
+        test.assertAlmostEqual(
+            np.sum(cell_measures.numpy()), scale**3, places=4, msg=f"cell_measures = {cell_measures.numpy()}"
+        )
+        test.assertAlmostEqual(
+            np.sum(side_measures.numpy()), scale**2 * (0.5 * 6 * (N + 1) + N * 2 * math.sqrt(3.0)), places=4
+        )
 
-    @wp.kernel
-    def _test_deformed_geometry_normal(
-        geo_index_arg: geo.SideIndexArg, geo_arg: geo.SideArg, def_arg: deformed_geo.SideArg, rotation: wp.vec3
-    ):
-        i = wp.tid()
-        side_index = deformed_geo.boundary_side_index(geo_index_arg, i)
+        @wp.kernel
+        def _test_deformed_geometry_normal(
+            geo_index_arg: geo.SideIndexArg, geo_arg: geo.SideArg, def_arg: deformed_geo.SideArg, rotation: wp.vec3
+        ):
+            i = wp.tid()
+            side_index = deformed_geo.boundary_side_index(geo_index_arg, i)
 
-        s = make_free_sample(side_index, Coords(0.5, 0.5, 0.0))
-        geo_n = geo.side_normal(geo_arg, s)
-        def_n = deformed_geo.side_normal(def_arg, s)
+            s = make_free_sample(side_index, Coords(0.5, 0.5, 0.0))
+            geo_n = geo.side_normal(geo_arg, s)
+            def_n = deformed_geo.side_normal(def_arg, s)
 
-        q = wp.quat_from_axis_angle(wp.normalize(rotation), wp.length(rotation))
-        wp.expect_near(wp.quat_rotate(q, geo_n), def_n, 0.001)
+            q = wp.quat_from_axis_angle(wp.normalize(rotation), wp.length(rotation))
+            wp.expect_near(wp.quat_rotate(q, geo_n), def_n, 0.001)
 
-    wp.launch(
-        _test_deformed_geometry_normal,
-        dim=geo.boundary_side_count(),
-        device=device,
-        inputs=[
-            geo.side_index_arg_value(device),
-            geo.side_arg_value(device),
-            deformed_geo.side_arg_value(device),
-            rotation,
-        ],
-    )
+        wp.launch(
+            _test_deformed_geometry_normal,
+            dim=geo.boundary_side_count(),
+            inputs=[
+                geo.side_index_arg_value(wp.get_device()),
+                geo.side_arg_value(wp.get_device()),
+                deformed_geo.side_arg_value(wp.get_device()),
+                rotation,
+            ],
+        )
 
     wp.synchronize()
 
