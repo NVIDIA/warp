@@ -269,11 +269,12 @@ CUDA_CALLABLE inline size_t byte_offset(const array_t<T>& arr, int i)
 template <typename T>
 CUDA_CALLABLE inline size_t byte_offset(const array_t<T>& arr, int i, int j)
 {
-    if (i < 0 || i >= arr.shape[0])
-        printf("i: %d > arr.shape[0]: %d\n", i, arr.shape[0]);
+    // if (i < 0 || i >= arr.shape[0])
+    //     printf("i: %d > arr.shape[0]: %d\n", i, arr.shape[0]);
 
-    if (j < 0 || j >= arr.shape[1])
-        printf("j: %d > arr.shape[1]: %d\n", j, arr.shape[1]);
+    // if (j < 0 || j >= arr.shape[1])
+    //     printf("j: %d > arr.shape[1]: %d\n", j, arr.shape[1]);
+
 
     assert(i >= 0 && i < arr.shape[0]);
     assert(j >= 0 && j < arr.shape[1]);

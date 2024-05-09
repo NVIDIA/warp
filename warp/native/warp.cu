@@ -2536,7 +2536,7 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
     std::vector<const char*> opts;
     opts.push_back(arch_opt);
     opts.push_back(include_opt);
-    opts.push_back("--std=c++11");
+    opts.push_back("--std=c++17");
     
     if (debug)
     {
@@ -2555,6 +2555,15 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
     
     if (fast_math)
         opts.push_back("--use_fast_math");
+
+    char include_cutlass[max_path];
+    sprintf(include_cutlass, "--include-path=%s/cutlass/include", include_dir);
+    opts.push_back(include_cutlass);
+
+    //opts.push_back("--include-path=_build/target-deps/cuda/include");
+    opts.push_back("--include-path=C:\\packman-repo\\chk\\cuda\\11.8.0_522.06-abe3d9d7-windows-x86_64\\include");
+
+    opts.push_back("--device-as-default-execution-space");
 
 
     nvrtcProgram prog;

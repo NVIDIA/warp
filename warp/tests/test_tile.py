@@ -1,6 +1,8 @@
 import numpy as np
 import warp as wp
 
+import torch
+
 #wp.config.mode = "debug"
 
 wp.init()
@@ -64,8 +66,8 @@ def gemm(A: wp.array2d(dtype=float),
 
 
 
-TILE_M = wp.constant(16)
-TILE_N = wp.constant(16)
+TILE_M = wp.constant(64)
+TILE_N = wp.constant(64)
 TILE_K = wp.constant(8)
 
 @wp.kernel
@@ -95,9 +97,9 @@ def gemm_tiled(A: wp.array2d(dtype=float),
     wp.tile_store(C, i, j, sum)
 
 
-M = TILE_M*21
-K = TILE_K*7
-N = TILE_M*12
+M = TILE_M*7
+K = TILE_K*4
+N = TILE_N*6
 
 rng = np.random.default_rng(42)
 A = rng.random((M, K), dtype=np.float32)
@@ -126,9 +128,27 @@ with wp.ScopedTimer("Warp", cuda_filter=wp.TIMING_KERNEL):
     print(np.allclose(C, C_wp.numpy(), rtol=1.e-4))
 
     for i in range(iters):
-        wp.launch(gemm_tiled, dim=(int(M/TILE_M), int(N/TILE_N)), inputs=[A_wp, B_wp, C_wp], tile_size=256)
+        wp.launch(gemm_tiled, dim=(int(M/TILE_M), int(N/TILE_N)), inputs=[A_wp, B_wp, C_wp], tile_size=128)
+        wp.synchronize()
 
 
     print(np.allclose(C, C_wp.numpy(), rtol=1.e-4))
+
+
+A_tc = torch.from_numpy(A).to("cuda:0")
+B_tc = torch.from_numpy(B).to("cuda:0")
+C_tc = torch.from_numpy(C).to("cuda:0")
+
+for i in range(10):
+    torch.matmul(A_tc, B_tc, out=C_tc)
+
+with wp.ScopedTimer("Torch"):
+
+    for i in range(iters):
+        torch.matmul(A_tc, B_tc, out=C_tc)
+
+    torch.cuda.synchronize()
+
+    
 
 

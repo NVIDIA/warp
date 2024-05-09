@@ -1558,4 +1558,8 @@ inline CUDA_CALLABLE void adj_expect_near(const vec3& actual, const vec3& expect
 #include "rand.h"
 #include "noise.h"
 #include "matnn.h"
+
+// only include in kernels for now
+#if defined(__CUDACC_RTC__)
 #include "tile.h"
+#endif
