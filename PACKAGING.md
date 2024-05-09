@@ -1,7 +1,8 @@
 # Release Instructions
 
 ## Versioning
--------------
+
+---
 
 Versions take the format X.Y.Z, similar to [Python itself](https://devguide.python.org/developer-workflow/development-cycle/#devcycle):
 
@@ -14,20 +15,20 @@ Like with Python, some breaking changes can be present between minor versions if
 
 Note that prior to 0.11.0 this schema was not strictly adhered to.
 
-
 ## Repositories
----------------
+
+---
 
 Development happens internally on a GitLab repository (part of the Omniverse group), while releases are made public on GitHub.
 
 This document uses the following Git remote names:
 
-* **omniverse**: `git remote add omniverse https://gitlab-master.nvidia.com/omniverse/warp.git`
-* **github**: `git remote add github https://github.com/NVIDIA/warp.git`
-
+- **omniverse**: `git remote add omniverse https://gitlab-master.nvidia.com/omniverse/warp.git`
+- **github**: `git remote add github https://github.com/NVIDIA/warp.git`
 
 ## GitLab Release Branch
-------------------------
+
+---
 
 1) Search & replace the current version string.
 
@@ -51,17 +52,17 @@ This document uses the following Git remote names:
 
 6) Check that the last revision on the release branch passes GitLab CI tests:
 
-   https://gitlab-master.nvidia.com/omniverse/warp/-/pipelines
+   <https://gitlab-master.nvidia.com/omniverse/warp/-/pipelines>
 
    Fix issues until all tests pass. Cherry-pick fixes for `master` where applicable.
 
-
 ## GitLab Public Branch
------------------------
+
+---
 
 1) Wait for the (latest) packages to appear in:
 
-   https://gitlab-master.nvidia.com/omniverse/warp/-/packages/
+   <https://gitlab-master.nvidia.com/omniverse/warp/-/packages/>
 
 2) Download the `.whl` files for each supported platform and move them into an empty folder.
 
@@ -76,8 +77,8 @@ This document uses the following Git remote names:
 
 5) If all tests passed:
 
-   * `git push github master:main`
-   * `git push github release-X.Y`
+   - `git push github master:main`
+   - `git push github release-X.Y`
 
 6) Tag the release with `vX.Y.Z` on `release-X.Y` and push to both `omniverse` and `github`:
 
@@ -86,38 +87,39 @@ This document uses the following Git remote names:
    In case of a mistake, tags can be moved using `git push <remote> vX.Y.Z -f`.
 
 ## Creating a GitHub Release Package
-------------------------------------
 
-Create a new release on [GitHub](https://github.com/NVIDIA/warp) with a tag and title of `vX.Y.Z` and upload the .whl artifacts as attachments. Use the changelog updates as the description.
+---
 
+Create a new release on [GitHub](https://github.com/NVIDIA/warp) with a tag and title of `vX.Y.Z` and upload the `.whl` artifacts as attachments. Use the changelog updates as the description.
 
 ## Upload a PyPI Release
-------------------------
+
+---
 
 First time:
 
-* Create a [PyPI](https://pypi.org/) account.
-* [Create a Token](https://pypi.org/manage/account/#api-tokens) for uploading to the `warp-lang` project (store it somewhere safe).
-* Get an admin (mmacklin@nvidia.com) to give you write access to the project.
+- Create a [PyPI](https://pypi.org/) account.
+- [Create a Token](https://pypi.org/manage/account/#api-tokens) for uploading to the `warp-lang` project (store it somewhere safe).
+- Get an admin (<mmacklin@nvidia.com>) to give you write access to the project.
 
 Per release:
 
-Run `python -m twine upload *` from the .whl packages folder (on Windows make sure to use `cmd` shell; Git Bash doesn't work).
+Run `python -m twine upload *` from the `.whl` packages folder (on Windows make sure to use `cmd` shell; Git Bash doesn't work).
 
-* username: `__token__`
-* password: `(your token string from PyPI)`
-
+- username: `__token__`
+- password: `(your token string from PyPI)`
 
 ## Publishing the Omniverse Extensions
---------------------------------------
+
+---
 
 1) Ensure that the version strings and `CHANGELOG.md` files in the `exts` folder are in sync with the ones from the library.
 
-2) Wait for the latest pipeline on the `release-X.Y` branch:
+2) Wait for the (latest) packages to appear in:
 
-   https://gitlab-master.nvidia.com/omniverse/warp/-/pipelines
+   <https://gitlab-master.nvidia.com/omniverse/warp/-/packages/>
 
-3) Download the artifacts .zip from the `create kit artifacts` Job (part of the `package` Stage).
+3) Download `kit-extensions.zip` to your computer.
 
 4) Extract it to a clean folder and check the extensions inside of Kit:
 
@@ -125,24 +127,24 @@ Run `python -m twine upload *` from the .whl packages folder (on Windows make su
     - Ensure that the example scenes are working as expected
     - Run test suites for both extensions
 
-4) If tests fail, make fixes on `release-X.Y` and where necessary cherry-pick to `master` before repeating from step (2).
+5) If tests fail, make fixes on `release-X.Y` and where necessary cherry-pick to `master` before repeating from step (2).
 
-5) If all tests passed:
+6) If all tests passed:
 
-   * `kit --ext-folder /path/to/artifacts/exts --publish omni-warp.core-X.Y.Z`
-   * `kit --ext-folder /path/to/artifacts/exts --publish omni-warp-X.Y.Z`
+   - `kit --ext-folder /path/to/artifacts/exts --publish omni-warp.core-X.Y.Z`
+   - `kit --ext-folder /path/to/artifacts/exts --publish omni-warp-X.Y.Z`
 
-6) Ensure that the release is tagged with `vX.Y.Z` on both `omniverse/release-X.Y` and `github/release-X.Y`.
-
+7) Ensure that the release is tagged with `vX.Y.Z` on both `omniverse/release-X.Y` and `github/release-X.Y`.
 
 ## Automated processes
-----------------------
+
+---
 
 The following is just for your information. These steps should run automatically by CI/CD pipelines, but can be replicated manually if needed:
 
 ### Building the documentation
 
-The contents of https://nvidia.github.io/warp/ is generated by a GitHub pipeline which runs `python build_docs.py` (prerequisites: `pip install sphinx sphinx_copybutton black furo`).
+The contents of <https://nvidia.github.io/warp/> is generated by a GitHub pipeline which runs `python build_docs.py` (prerequisites: `pip install docs/requirements.txt`).
 
 ### Building pip wheels
 

@@ -353,7 +353,7 @@ debug build and test:
 # ==============================================================================
 # Packaging Jobs
 #
-# Kit and PyPI jobs only run for tag pipelines
+# Kit and PyPI jobs produce deployment artifacts and are not run in MRs.
 # ==============================================================================
 
 # Creates wheel files for PyPI
@@ -404,6 +404,7 @@ create kit artifacts:
   extends:
     - .runner-utility-linux-x86_64
   rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
     - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
     - if: $CI_COMMIT_BRANCH =~ /release-.*/
@@ -413,18 +414,18 @@ create kit artifacts:
     - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
     - rm -r warp/bin/linux-x86_64/
     - rm -rf warp/native/cutlass
+    - apt-get update && apt-get install zip --no-install-recommends -y
   script:
     - python3 tools/ci/publishing/build_nodes_info.py
     - mv warp exts/omni.warp.core/
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +
+    - find exts/ -name .gitignore -delete
+    - zip -r kit-extensions.zip exts/
   artifacts:
     name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
     paths:
-      - exts
-    exclude:
-      - "**/.gitignore"
-      - "**/.gitattributes"
+      - kit-extensions.zip
 
 # ==============================================================================
 # Deployment Jobs
@@ -438,21 +439,20 @@ create kit artifacts:
 # See files at https://gitlab-master.nvidia.com/omniverse/warp/-/packages
 publish wheels to gitlab package registry:
   stage: deploy
-  dependencies: [create pypi wheels]
+  needs: ["create pypi wheels", "create kit artifacts"]
   extends:
     - .runner-utility-linux-x86_64
   rules:
-    - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH =~ /release-.*/
   before_script:
     - apt-get update && apt-get install curl --no-install-recommends -y
   script:
-    - VERSION=$(cat VERSION.md)
     - |
       for file in $(find . -name '*.whl'); do
           filename=$(basename -- "$file")
           curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "$file" "https://gitlab-master.nvidia.com/api/v4/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/${filename}"
       done
+    - 'curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file kit-extensions.zip "https://gitlab-master.nvidia.com/api/v4/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/kit-extensions.zip"'
 
 .build-docs-common:
   stage: deploy
