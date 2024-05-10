@@ -12,10 +12,6 @@ export PATH="$CUDA_BIN:$PATH"
 
 echo "Installing test dependencies"
 
-if [ -n "$TEAMCITY_VERSION" ]; then
-    echo "##teamcity[blockOpened name='Installing test dependencies']"
-fi
-
 $PYTHON -m pip install --upgrade pip
 $PYTHON -m pip install matplotlib
 $PYTHON -m pip install usd-core
@@ -23,10 +19,6 @@ $PYTHON -m pip install coverage[toml]
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
     $PYTHON -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
     $PYTHON -m pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-fi
-
-if [ -n "$TEAMCITY_VERSION" ]; then
-    echo "##teamcity[blockClosed name='Installing test dependencies']"
 fi
 
 echo "Installing Warp to Python"

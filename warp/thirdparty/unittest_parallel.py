@@ -29,7 +29,6 @@ from io import StringIO
 import warp.tests.unittest_suites  # NVIDIA Modification
 from warp.tests.unittest_utils import (  # NVIDIA modification
     ParallelJunitTestResult,
-    ParallelTeamCityTestResult,
     write_junit_results,
 )
 
@@ -42,8 +41,6 @@ except ImportError:
 
 
 # The following variables are NVIDIA Modifications
-RUNNING_IN_TEAMCITY = os.environ.get("TEAMCITY_VERSION") is not None
-TEST_SUITE_NAME = "WarpTests"
 START_DIRECTORY = os.path.dirname(__file__)  # The directory to start test discovery
 
 
@@ -201,9 +198,6 @@ def main(argv=None):
         # Don't use more processes than test suites
         process_count = max(1, min(len(test_suites), process_count))
 
-        if RUNNING_IN_TEAMCITY:
-            print(f"##teamcity[testSuiteStarted name='{TEST_SUITE_NAME}']")  # NVIDIA Modification for TC
-
         if not args.serial_fallback:
             # Report test suites and processes
             print(
@@ -267,9 +261,6 @@ def main(argv=None):
         stop_time = time.perf_counter()
         test_duration = stop_time - start_time
 
-        if RUNNING_IN_TEAMCITY:
-            print(f"##teamcity[testSuiteFinished name='{TEST_SUITE_NAME}']")  # NVIDIA Modification for TC
-
         # Aggregate parallel test run results
         tests_run = 0
         errors = []
@@ -331,8 +322,6 @@ def main(argv=None):
 
         # Return an error status on failure
         if not is_success:
-            if RUNNING_IN_TEAMCITY:
-                print("##teamcity[buildStatus status='FAILURE']")  # NVIDIA Modification for TC
             parser.exit(status=len(errors) + len(failures) + unexpected_successes)
 
         # Coverage?
@@ -437,16 +426,14 @@ class ParallelTestManager:
         if self.failfast.is_set():
             return [0, [], [], 0, 0, 0]
 
-        # NVIDIA Modification for TeamCity and GitLab
+        # NVIDIA Modification for GitLab
         import warp.tests.unittest_utils
 
         warp.tests.unittest_utils.coverage_enabled = self.args.coverage
         warp.tests.unittest_utils.coverage_temp_dir = self.temp_dir
         warp.tests.unittest_utils.coverage_branch = self.args.coverage_branch
 
-        if RUNNING_IN_TEAMCITY:
-            resultclass = ParallelTeamCityTestResult
-        elif self.args.junit_report_xml:
+        if self.args.junit_report_xml:
             resultclass = ParallelJunitTestResult
         else:
             resultclass = ParallelTextTestResult
@@ -455,7 +442,7 @@ class ParallelTestManager:
         with _coverage(self.args, self.temp_dir):
             runner = unittest.TextTestRunner(
                 stream=StringIO(),
-                resultclass=resultclass,  # NVIDIA Modification for TC
+                resultclass=resultclass,  # NVIDIA Modification
                 verbosity=self.args.verbose,
                 failfast=self.args.failfast,
                 buffer=self.args.buffer,

@@ -82,7 +82,7 @@ def compare_unittest_suites(
     return test_suite
 
 
-def default_suite(test_loader: unittest.TestLoader):
+def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     """Example of a manually constructed test suite.
 
     Intended to be modified to create additional test suites
@@ -271,7 +271,7 @@ def default_suite(test_loader: unittest.TestLoader):
     return _create_suite_from_test_classes(test_loader, test_classes)
 
 
-def kit_suite(test_loader: unittest.TestLoader):
+def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     """Tries to mimic the test suite used for testing omni.warp.core in Kit
 
     Requires manual updates with test_ext.py for now.
