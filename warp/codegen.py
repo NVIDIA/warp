@@ -16,7 +16,7 @@ import re
 import sys
 import textwrap
 import types
-from typing import Any, Callable, Dict, Mapping, Sequence
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence
 
 import warp.config
 from warp.types import *
@@ -82,6 +82,16 @@ comparison_chain_strings = [
     builtin_operators[ast.Eq],
     builtin_operators[ast.NotEq],
 ]
+
+
+def values_check_equal(a, b):
+    if isinstance(a, Sequence) and isinstance(b, Sequence):
+        if len(a) != len(b):
+            return False
+
+        return all(x == y for x, y in zip(a, b))
+
+    return a == b
 
 
 def op_str_is_chainable(op: str) -> builtins.bool:
@@ -547,6 +557,89 @@ class Block:
         self.vars = []
 
 
+def apply_defaults(
+    bound_args: inspect.BoundArguments,
+    values: Mapping[str, Any],
+):
+    # Similar to Python's `inspect.BoundArguments.apply_defaults()`
+    # but with the possibility to pass an augmented set of default values.
+    arguments = bound_args.arguments
+    new_arguments = []
+    for name in bound_args._signature.parameters.keys():
+        try:
+            new_arguments.append((name, arguments[name]))
+        except KeyError:
+            if name in values:
+                new_arguments.append((name, values[name]))
+
+    bound_args.arguments = dict(new_arguments)
+
+
+def func_match_args(func, arg_types, kwarg_types):
+    try:
+        # Try to bind the given arguments to the function's signature.
+        # This is not checking whether the argument types are matching,
+        # rather it's just assigning each argument to the corresponding
+        # function parameter.
+        bound_arg_types = func.signature.bind(*arg_types, **kwarg_types)
+    except TypeError:
+        return False
+
+    # Populate the bound arguments with any default values.
+    default_arg_types = {
+        k: get_arg_type(v) for k, v in func.defaults.items() if k not in bound_arg_types.arguments and v is not None
+    }
+    apply_defaults(bound_arg_types, default_arg_types)
+    bound_arg_types = tuple(bound_arg_types.arguments.values())
+
+    # Check the given argument types against the ones defined on the function.
+    for bound_arg_type, func_arg_type in zip(bound_arg_types, func.input_types.values()):
+        # Let the `value_func` callback infer the type.
+        if bound_arg_type is None:
+            continue
+
+        # if arg type registered as Any, treat as
+        # template allowing any type to match
+        if func_arg_type == Any:
+            continue
+
+        # handle function refs as a special case
+        if func_arg_type == Callable and isinstance(bound_arg_type, warp.context.Function):
+            continue
+
+        # check arg type matches input variable type
+        if not types_equal(func_arg_type, strip_reference(bound_arg_type), match_generic=True):
+            return False
+
+    return True
+
+
+def get_arg_type(arg: Union[Var, Any]):
+    if isinstance(arg, Sequence):
+        return tuple(get_arg_type(x) for x in arg)
+
+    if isinstance(arg, (type, warp.context.Function)):
+        return arg
+
+    if isinstance(arg, Var):
+        return arg.type
+
+    return type(arg)
+
+
+def get_arg_value(arg: Union[Var, Any]):
+    if isinstance(arg, Sequence):
+        return tuple(get_arg_value(x) for x in arg)
+
+    if isinstance(arg, (type, warp.context.Function)):
+        return arg
+
+    if isinstance(arg, Var):
+        return arg.constant
+
+    return arg
+
+
 class Adjoint:
     # Source code transformer, this class takes a Python function and
     # generates forward and backward SSA forms of the function instructions
@@ -804,6 +897,20 @@ class Adjoint:
 
         return v
 
+    def register_var(adj, var):
+        # We sometimes initialize `Var` instances that might be thrown away
+        # afterwards, so this method allows to defer their registration among
+        # the list of primal vars until later on, instead of registering them
+        # immediately if we were to use `adj.add_var()` or `adj.add_constant()`.
+
+        if isinstance(var, (Reference, warp.context.Function)):
+            return var
+
+        if var.label is None:
+            return adj.add_var(var.type, var.constant)
+
+        return var
+
     # append a statement to the forward pass
     def add_forward(adj, statement, replay=None, skip_replay=False):
         adj.blocks[-1].body_forward.append(adj.indentation + statement)
@@ -869,12 +976,10 @@ class Adjoint:
 
         return output
 
-    def resolve_func(adj, func, args, min_outputs):
-        arg_types = [strip_reference(a.type) for a in args if not isinstance(a, warp.context.Function)]
-
+    def resolve_func(adj, func, arg_types, kwarg_types, min_outputs):
         if not func.is_builtin():
             # user-defined function
-            overload = func.get_overload(arg_types)
+            overload = func.get_overload(arg_types, kwarg_types)
             if overload is not None:
                 return overload
         else:
@@ -884,36 +989,10 @@ class Adjoint:
                 # skip type checking for variadic functions
                 if not f.variadic:
                     # check argument counts match are compatible (may be some default args)
-                    if len(f.input_types) < len(args):
+                    if len(f.input_types) < len(arg_types) + len(kwarg_types):
                         continue
 
-                    def match_args(args, f):
-                        # check argument types equal
-                        for i, (arg_name, arg_type) in enumerate(f.input_types.items()):
-                            # if arg type registered as Any, treat as
-                            # template allowing any type to match
-                            if arg_type == Any:
-                                continue
-
-                            # handle function refs as a special case
-                            if arg_type == Callable and type(args[i]) is warp.context.Function:
-                                continue
-
-                            if arg_type == Reference and is_reference(args[i].type):
-                                continue
-
-                            # look for default values for missing args
-                            if i >= len(args):
-                                if arg_name not in f.defaults:
-                                    return False
-                            else:
-                                # otherwise check arg type matches input variable type
-                                if not types_equal(arg_type, strip_reference(args[i].type), match_generic=True):
-                                    return False
-
-                        return True
-
-                    if not match_args(args, f):
+                    if not func_match_args(f, arg_types, kwarg_types):
                         continue
 
                 # check output dimensions match expectations
@@ -927,39 +1006,72 @@ class Adjoint:
         # unresolved function, report error
         arg_types = []
 
-        for x in args:
-            if isinstance(x, Var):
-                # shorten Warp primitive type names
-                if isinstance(x.type, list):
-                    if len(x.type) != 1:
-                        raise WarpCodegenError("Argument must not be the result from a multi-valued function")
-                    arg_type = x.type[0]
-                else:
-                    arg_type = x.type
-
-                arg_types.append(type_repr(arg_type))
-
+        for x in arg_types:
             if isinstance(x, warp.context.Function):
                 arg_types.append("function")
+            else:
+                # shorten Warp primitive type names
+                if isinstance(x, Sequence):
+                    if len(x) != 1:
+                        raise WarpCodegenError("Argument must not be the result from a multi-valued function")
+                    arg_type = x[0]
+                else:
+                    arg_type = x
+
+                arg_types.append(type_repr(arg_type))
 
         raise WarpCodegenError(
             f"Couldn't find function overload for '{func.key}' that matched inputs with types: [{', '.join(arg_types)}]"
         )
 
-    def add_call(adj, func, args, min_outputs=None, templates=None, kwds=None):
-        if templates is None:
-            templates = []
+    def add_call(adj, func, args, kwargs, type_args, min_outputs=None):
+        # Extract the types and values passed as arguments to the function call.
+        arg_types = tuple(strip_reference(get_arg_type(x)) for x in args)
+        kwarg_types = {k: strip_reference(get_arg_type(v)) for k, v in kwargs.items()}
 
-        func = adj.resolve_func(func, args, min_outputs)
+        # Resolve the exact function signature among any existing overload.
+        func = adj.resolve_func(func, arg_types, kwarg_types, min_outputs)
 
-        # push any default values onto args
-        for i, (arg_name, _arg_type) in enumerate(func.input_types.items()):
-            if i >= len(args):
-                if arg_name in func.defaults:
-                    const = adj.add_constant(func.defaults[arg_name])
-                    args.append(const)
-                else:
-                    break
+        # Bind the positional and keyword arguments to the function's signature
+        # in order to process them as Python does it.
+        bound_args = func.signature.bind(*args, **kwargs)
+
+        # Type args are the “compile time” argument values we get from codegen.
+        # For example, when calling `wp.vec3f(...)` from within a kernel,
+        # this translates in fact to calling the `vector()` built-in augmented
+        # with the type args `length=3, dtype=float`.
+        # Eventually, these need to be passed to the underlying C++ function,
+        # so we update the arguments with the type args here.
+        if type_args:
+            for arg in type_args:
+                if arg in bound_args.arguments:
+                    # In case of conflict, ideally we'd throw an error since
+                    # what comes from codegen should be the source of truth
+                    # and users also passing the same value as an argument
+                    # is redundant (e.g.: `wp.mat22(shape=(2, 2))`).
+                    # However, for backward compatibility, we allow that form
+                    # as long as the values are equal.
+                    if values_check_equal(get_arg_value(bound_args.arguments[arg]), type_args[arg]):
+                        continue
+
+                    raise RuntimeError(
+                        f"Remove the extraneous `{arg}` parameter "
+                        f"when calling the templated version of "
+                        f"`wp.{func.native_func}()`"
+                    )
+
+            type_vars = {k: Var(None, type=type(v), constant=v) for k, v in type_args.items()}
+            apply_defaults(bound_args, type_vars)
+
+        if func.defaults:
+            default_vars = {
+                k: Var(None, type=type(v), constant=v)
+                for k, v in func.defaults.items()
+                if k not in bound_args.arguments and v is not None
+            }
+            apply_defaults(bound_args, default_vars)
+
+        bound_args = bound_args.arguments
 
         # if it is a user-function then build it recursively
         if not func.is_builtin() and func not in adj.builder.functions:
@@ -973,23 +1085,38 @@ class Adjoint:
             if func.custom_replay_func:
                 adj.builder.deferred_functions.append(func.custom_replay_func)
 
-        # evaluate the function type based on inputs
-        arg_types = [strip_reference(a.type) for a in args if not isinstance(a, warp.context.Function)]
-        return_type = func.value_func(arg_types, kwds, templates)
+        # Resolve the return value based on the types and values of the given arguments.
+        bound_arg_types = {k: get_arg_type(v) for k, v in bound_args.items()}
+        bound_arg_values = {k: get_arg_value(v) for k, v in bound_args.items()}
+        return_type = func.value_func(
+            {k: strip_reference(v) for k, v in bound_arg_types.items()},
+            bound_arg_values,
+        )
 
-        func_name = compute_type_str(func.native_func, templates)
-        param_types = list(func.input_types.values())
+        if func.dispatch_func is not None:
+            # If we have a built-in that requires special handling to dispatch
+            # the arguments to the underlying C++ function, then we can resolve
+            # these using the `dispatch_func`. Since this is only called from
+            # within codegen, we pass it directly `codegen.Var` objects,
+            # which allows for some more advanced resolution to be performed,
+            # for example by checking whether an argument corresponds to
+            # a literal value or references a variable.
 
-        use_initializer_list = func.initializer_list_func(args, templates)
+            func_args, template_args = func.dispatch_func(func.input_types, return_type, bound_args)
+        else:
+            func_args = tuple(bound_args.values())
+            template_args = ()
 
-        args_var = [
-            (
-                adj.load(a)
-                if not ((param_types[i] == Reference or param_types[i] == Callable) if i < len(param_types) else False)
-                else a
-            )
-            for i, a in enumerate(args)
-        ]
+        func_args = tuple(adj.register_var(x) for x in func_args)
+        func_name = compute_type_str(func.native_func, template_args)
+        use_initializer_list = func.initializer_list_func(bound_args, return_type)
+
+        fwd_args = []
+        for func_arg in func_args:
+            if not isinstance(func_arg, (Reference, warp.context.Function)):
+                func_arg = adj.load(func_arg)
+
+            fwd_args.append(strip_reference(func_arg))
 
         if return_type is None:
             # handles expression (zero output) functions, e.g.: void do_something();
@@ -998,24 +1125,24 @@ class Adjoint:
             output_list = []
 
             forward_call = (
-                f"{func.namespace}{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
+                f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
             )
             replay_call = forward_call
             if func.custom_replay_func is not None or func.replay_snippet is not None:
-                replay_call = f"{func.namespace}replay_{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
+                replay_call = f"{func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
 
-        elif not isinstance(return_type, list) or len(return_type) == 1:
+        elif not isinstance(return_type, Sequence) or len(return_type) == 1:
             # handle simple function (one output)
 
-            if isinstance(return_type, list):
+            if isinstance(return_type, Sequence):
                 return_type = return_type[0]
             output = adj.add_var(return_type)
             output_list = [output]
 
-            forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
+            forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
             replay_call = forward_call
             if func.custom_replay_func is not None:
-                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
+                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
 
         else:
             # handle multiple value functions
@@ -1024,7 +1151,7 @@ class Adjoint:
             output_list = output
 
             forward_call = (
-                f"{func.namespace}{func_name}({adj.format_forward_call_args(args_var + output, use_initializer_list)});"
+                f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + output, use_initializer_list)});"
             )
             replay_call = forward_call
 
@@ -1033,13 +1160,14 @@ class Adjoint:
         else:
             adj.add_forward(forward_call, replay=replay_call)
 
-        if not func.missing_grad and len(args):
+        if not func.missing_grad and len(func_args):
+            adj_args = tuple(strip_reference(x) for x in func_args)
             reverse_has_output_args = (
                 func.require_original_output_arg or len(output_list) > 1
             ) and func.custom_grad_func is None
             arg_str = adj.format_reverse_call_args(
-                args_var,
-                args,
+                fwd_args,
+                adj_args,
                 output_list,
                 use_initializer_list,
                 has_output_args=reverse_has_output_args,
@@ -1051,12 +1179,9 @@ class Adjoint:
 
         return output
 
-    def add_builtin_call(adj, func_name, args, min_outputs=None, templates=None, kwds=None):
-        if templates is None:
-            templates = []
-
+    def add_builtin_call(adj, func_name, args, min_outputs=None):
         func = warp.context.builtin_functions[func_name]
-        return adj.add_call(func, args, min_outputs, templates, kwds)
+        return adj.add_call(func, args, {}, {}, min_outputs=min_outputs)
 
     def add_return(adj, var):
         if var is None or len(var) == 0:
@@ -1559,6 +1684,9 @@ class Adjoint:
         # e.g.: wp.constant in the globals scope
         obj, _ = adj.resolve_static_expression(a)
 
+        if obj is None:
+            obj = adj.eval(a)
+
         if isinstance(obj, Var) and obj.constant is not None:
             obj = obj.constant
 
@@ -1718,13 +1846,40 @@ class Adjoint:
                     f"arguments to the function {adj.fun_name}, {adj.filename}:{lineno}:\n{line}\n"
                 )
 
+    def resolve_arg(adj, arg):
+        # Always try to start with evaluating the argument since it can help
+        # detecting some issues such as global variables being accessed.
+        try:
+            var = adj.eval(arg)
+        except (WarpCodegenError, WarpCodegenKeyError) as e:
+            error = e
+        else:
+            error = None
+
+        # Check if we can resolve the argument as a static expression.
+        # If not, return the variable resulting from evaluating the argument.
+        expr, _ = adj.resolve_static_expression(arg)
+        if expr is None:
+            if error is not None:
+                raise error
+
+            return var
+
+        if isinstance(expr, (type, Var, warp.context.Function)):
+            return expr
+
+        return adj.add_constant(expr)
+
     def emit_Call(adj, node):
         adj.check_tid_in_func_error(node)
 
         # try and lookup function in globals by
         # resolving path (e.g.: module.submodule.attr)
         func, path = adj.resolve_static_expression(node.func)
-        templates = []
+        if func is None:
+            func = adj.eval(node.func)
+
+        type_args = {}
 
         if not isinstance(func, warp.context.Function):
             attr = path[-1]
@@ -1737,7 +1892,6 @@ class Adjoint:
 
             # vector class type e.g.: wp.vec3f constructor
             if func is None and hasattr(caller, "_wp_generic_type_str_"):
-                templates = caller._wp_type_params_
                 func = warp.context.builtin_functions.get(caller._wp_constructor_)
 
             # scalar class type e.g.: wp.int8 constructor
@@ -1747,7 +1901,13 @@ class Adjoint:
             # struct constructor
             if func is None and isinstance(caller, Struct):
                 adj.builder.build_struct_recursive(caller)
-                func = caller.initializer()
+                if node.args or node.keywords:
+                    func = caller.value_constructor
+                else:
+                    func = caller.default_constructor
+
+            if hasattr(caller, "_wp_type_args_"):
+                type_args = caller._wp_type_args_
 
             if func is None:
                 raise WarpCodegenError(
@@ -1766,36 +1926,17 @@ class Adjoint:
                     "Tuple constructs are not supported in kernels. Use vectors like `wp.vec3()` instead."
                 )
 
-        args = []
-
-        # eval all arguments
-        for arg in node.args:
-            var = adj.eval(arg)
-            args.append(var)
-
-        # eval all keyword args
-        def kwval(kw):
-            if isinstance(kw.value, ast.Num):
-                return kw.value.n
-            elif isinstance(kw.value, ast.Tuple):
-                arg_is_numeric, arg_values = zip(*(adj.eval_num(e) for e in kw.value.elts))
-                if not all(arg_is_numeric):
-                    raise WarpCodegenError(
-                        f"All elements of the tuple keyword argument '{kw.name}' must be numeric constants, got '{arg_values}'"
-                    )
-                return arg_values
-            else:
-                return adj.resolve_static_expression(kw.value)[0]
-
-        kwds = {kw.arg: kwval(kw) for kw in node.keywords}
-
         # get expected return count, e.g.: for multi-assignment
         min_outputs = None
         if hasattr(node, "expects"):
             min_outputs = node.expects
 
+        # Evaluate all positional and keywords arguments.
+        args = tuple(adj.resolve_arg(x) for x in node.args)
+        kwargs = {x.arg: adj.resolve_arg(x.value) for x in node.keywords}
+
         # add var with value type from the function
-        out = adj.add_call(func=func, args=args, kwds=kwds, templates=templates, min_outputs=min_outputs)
+        out = adj.add_call(func, args, kwargs, type_args, min_outputs=min_outputs)
         return out
 
     def emit_Index(adj, node):
@@ -2067,8 +2208,7 @@ class Adjoint:
 
     def emit_Tuple(adj, node):
         # LHS for expressions, such as i, j, k = 1, 2, 3
-        for elem in node.elts:
-            adj.eval(elem)
+        return tuple(adj.eval(x) for x in node.elts)
 
     def emit_Pass(adj, node):
         pass
@@ -2142,18 +2282,18 @@ class Adjoint:
         vars_dict = {**adj.func.__globals__, **capturedvars}
 
         if path[0] in vars_dict:
-            func = vars_dict[path[0]]
+            expr = vars_dict[path[0]]
 
         # Support Warp types in kernels without the module suffix (e.g. v = vec3(0.0,0.2,0.4)):
         else:
-            func = getattr(warp, path[0], None)
+            expr = getattr(warp, path[0], None)
 
-        if func:
+        if expr:
             for i in range(1, len(path)):
-                if hasattr(func, path[i]):
-                    func = getattr(func, path[i])
+                if hasattr(expr, path[i]):
+                    expr = getattr(expr, path[i])
 
-        return func
+        return expr
 
     # Evaluates a static expression that does not depend on runtime values
     # if eval_types is True, try resolving the path using evaluated type information as well
@@ -2203,11 +2343,6 @@ class Adjoint:
         captured_obj = adj.resolve_path(path)
         if captured_obj is not None:
             return captured_obj, path
-
-        # Still nothing found, maybe this is a predefined type attribute like `dtype`
-        if eval_types:
-            val = adj.eval(root_node)
-            return [val, path]
 
         return None, path
 

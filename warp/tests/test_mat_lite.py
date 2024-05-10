@@ -24,6 +24,7 @@ def test_matrix_constructor_value_func():
         wp.vec3d(wp.float64(1.0), wp.float64(2.0), wp.float64(3.0)),
         wp.vec3d(wp.float64(1.0), wp.float64(2.0), wp.float64(3.0)),
     )
+    g = wp.matrix(1.0, shape=(3, 2))
 
 
 # Test matrix constructors using explicit type (float16)

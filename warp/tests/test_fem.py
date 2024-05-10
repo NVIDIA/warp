@@ -879,7 +879,7 @@ def test_shape_function_weight(test, shape: shape.ShapeFunction, coord_sampler, 
     def node_unity_test():
         n = wp.tid()
         node_w = weight_fn(node_coords_fn(n), n)
-        wp.expect_near(node_w, 1.0, places=5)
+        wp.expect_near(node_w, 1.0, 1e-5)
 
     wp.launch(node_unity_test, dim=NODE_COUNT, inputs=[])
 
