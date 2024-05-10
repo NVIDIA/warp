@@ -5,8 +5,10 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import unittest
+
 import warp as wp
-from warp.tests.unittest_utils import TeamCityTestRunner
+import warp.tests.unittest_suites
 
 wp.init()
 
@@ -14,19 +16,20 @@ wp.init()
 def run_suite() -> bool:
     """Run a test suite"""
 
-    import warp.tests.unittest_suites
-
     # force rebuild of all kernels
     wp.build.clear_kernel_cache()
     print("Cleared Warp kernel cache")
 
-    runner = TeamCityTestRunner(verbosity=2, failfast=False)
+    runner = unittest.TextTestRunner(verbosity=2, failfast=True)
 
-    # Can swap out warp.tests.unittest_suites.explicit_suite()
-    suite = warp.tests.unittest_suites.auto_discover_suite()
+    # Can swap out different suites
+    suite = warp.tests.unittest_suites.default_suite()
+    # suite = warp.tests.unittest_suites.auto_discover_suite()
+    # suite = warp.tests.unittest_suites.kit_suite()
+
     print(f"Test suite has {suite.countTestCases()} tests")
 
-    ret = not runner.run(suite, "WarpTests").wasSuccessful()
+    ret = not runner.run(suite).wasSuccessful()
     return ret
 
 

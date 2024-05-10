@@ -1,6 +1,6 @@
 # Contributing to NVIDIA Warp
 
-The following guidelines are for NVIDIA developers working on Warp using the internal GitLab repository and TeamCity CI/CD.
+The following guidelines are for NVIDIA developers working on Warp using the internal GitLab repository.
 
 ## Submitter Guidelines
 
@@ -45,7 +45,6 @@ If a reviewer has already approved the MR, you may self-resolve any of their out
 6. **Final Steps for Merging**: Before your MR can be merged, ensure that:
    - All reviewer comments are resolved.
    - All mandatory reviewers (in the **Assignees** field) have approved the MR.
-   - TeamCity builds are passing without issues.
 
 ## Reviewer Guidelines
 
