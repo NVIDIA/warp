@@ -149,6 +149,7 @@ These instances are treated as regular kernels, not generic.  This means that la
     wp.launch(scale_f32, dim=n, inputs=[x32, 3])
     wp.launch(scale_f64, dim=n, inputs=[x64, 3])
 
+.. _Generic Functions:
 
 Generic Functions
 -----------------
