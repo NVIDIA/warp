@@ -100,22 +100,31 @@ def benchmark_warp_tiled(A, B, C):
     timers = {}
     iters = 10
 
-    num_threads = 256#TILE_M*TILE_N
+    # must match with the tile_matmul() partition size
+    SUB_TILE_M = 4
+    SUB_TILE_N = 4
+
+    num_threads = int(TILE_M/SUB_TILE_M)*int(TILE_N/SUB_TILE_N);
     
     A_wp = wp.array(A)
     B_wp = wp.array(B)
     C_wp = wp.array(C)
 
     # warm up
+    wp.capture_begin()
+
     for i in range(10):
         wp.launch(gemm_tiled, dim=(int(M/TILE_M), int(N/TILE_N)), inputs=[A_wp, B_wp, C_wp], tile_size=num_threads)
 
+    graph = wp.capture_end()
+
+
     with wp.ScopedTimer("Warp (Tiled)", dict=timers, print=False, synchronize=True):
 
-        for i in range(iters):
-            wp.launch(gemm_tiled, dim=(int(M/TILE_M), int(N/TILE_N)), inputs=[A_wp, B_wp, C_wp], tile_size=num_threads)
+        #for i in range(iters):
+        #    wp.launch(gemm_tiled, dim=(int(M/TILE_M), int(N/TILE_N)), inputs=[A_wp, B_wp, C_wp], tile_size=num_threads)
+        wp.capture_launch(graph)
 
-        wp.synchronize()
 
     return min(timers["Warp (Tiled)"])
 
@@ -154,6 +163,8 @@ print("{:>8s} {:>8s} {:>8s} {:>8s} {:>8s} {:>8s}".format("M", "N", "K", "Torch",
 print("--------------------------------------------------------")
 
 for i in range(2, 33):
+
+#for i in range(8,9):
 
     M = i*128
     N = M
