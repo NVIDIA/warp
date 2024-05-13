@@ -161,20 +161,21 @@ inline CUDA_CALLABLE array_t<T> tile_load(const array_t<T>& src, int i, int j)
     //     data[t] = index(src, i*M + t/N, j*N + t%N);
     // }
 
-    // // async copies
+    // // async copies (assumes row-major i.e.: stride 1 on y axis)
+	const int s = 4;
+
     WP_PRAGMA_UNROLL
-    for (int t=threadIdx.x*4; t < length; t += blockDim.x*4)
+    for (int t=threadIdx.x*s; t < length; t += blockDim.x*s)
     {  
         //data[t] = index(src, i*M + t/N, j*N + t%N);
         __pipeline_memcpy_async(&data[t],
                                 &index(src, i*M + t/N, j*N + t%N),
-                                sizeof(T)*4);
+                                sizeof(T)*s);
     }
 
     __pipeline_commit();
-    __pipeline_wait_prior(0);
 
-        
+
     return array_t<T>(data, M, N, nullptr);
 }
 
@@ -187,7 +188,7 @@ inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int i, int j, const array
     
     const int length = M*N;
 
-    // cooperatively store the tile, using a block-stride iterator
+	// cooperatively store the tile, using a block-stride iterator
     // todo: use cub::BlockStore or cg::memcpy_async()?
     WP_PRAGMA_UNROLL
     for (int t=threadIdx.x; t < length; t += blockDim.x)
@@ -241,7 +242,7 @@ inline CUDA_CALLABLE T& index(T* __restrict__ p, int i, int j, int stride)
 template <unsigned M, unsigned N, typename T>
 struct partition_t
 {
-	partition_t(array_t<T> A)
+	inline partition_t(array_t<T> A)
 	{
 		data = A;
 		
@@ -258,21 +259,21 @@ struct partition_t
 };
 
 template <unsigned M, unsigned N, typename T>
-int partition_size(const partition_t<M, N, T>& tile)
+inline int partition_size(const partition_t<M, N, T>& tile)
 {
 	return tile.shape[0]*tile.shape[1];
 }
 
 // returns the x, y coordinates of a tile given a linear index
 template <unsigned M, unsigned N, typename T>
-void partition_coord(const partition_t<M, N, T>& tile, const int t, int& i, int& j)
+inline void partition_coord(const partition_t<M, N, T>& tile, const int t, int& i, int& j)
 {
 	i = t/tile.shape[1];
 	j = t%tile.shape[1];
 }
 
 template <unsigned M, unsigned N, typename T>
-mat_t<M, N, T> partition_load(const partition_t<M, N, T>& tile, int i, int j)
+inline mat_t<M, N, T> partition_load(const partition_t<M, N, T>& tile, int i, int j)
 {
 	mat_t<M, N, T> out;
 	
@@ -288,13 +289,28 @@ mat_t<M, N, T> partition_load(const partition_t<M, N, T>& tile, int i, int j)
 			out.data[i][j] = index(tile.data, tile_i + i, tile_j + j);
 		}
 	}
+
+	// Specialization for when N = 4 and assumes data was swizzled into 4x4 blocks
+	// during tile_load(), this results in zero bank conflicts + 128 bit loads
+		
+	// const int tile_index = i*N + j;
+	// const int tile_count = partition_size(tile);
+
+	// float4* out4 = (float4*)(&out.data[0][0]);
+
+	// WP_PRAGMA_UNROLL
+	// for (int t=0; t < M; t += 4)
+	// {
+	// 	out4[t] = ((float4*)(tile.data.data))[t*tile_count + tile_index];
+	// }
 	
+
 
 	return out;
 }
 
 template <unsigned M, unsigned N, typename T>
-void partition_store(const partition_t<M, N, T>& tile, int i, int j, const mat_t<M, N, T>& value)
+inline void partition_store(const partition_t<M, N, T>& tile, int i, int j, const mat_t<M, N, T>& value)
 {
 	mat_t<M, N, T> out;
 
@@ -326,9 +342,10 @@ inline CUDA_CALLABLE void tile_matmul(const array_t<T>& A, const array_t<T>& B, 
 
     const int length = partition_size(C_tile);
 
+    __pipeline_wait_prior(0);
+
     WP_TILE_SYNC();
 
-    WP_PRAGMA_UNROLL
     for (int t=threadIdx.x; t < length; t += blockDim.x)
     {  
 		int i, j;
@@ -338,10 +355,10 @@ inline CUDA_CALLABLE void tile_matmul(const array_t<T>& A, const array_t<T>& B, 
 		mat_t<TILE_M, TILE_N, T> sum = partition_load(C_tile, i, j);
 
         WP_PRAGMA_UNROLL
-        for (int k=0; k < A_tile.shape[1]; ++k)
+        for (int k=0; k < A_tile.shape[1]; k++)
         {
-			mat_t<TILE_M, TILE_K, T> a = partition_load(A_tile, i, k);
-			mat_t<TILE_K, TILE_M, T> b = partition_load(B_tile, k, j);
+			const mat_t<TILE_M, TILE_K, T> a = partition_load(A_tile, i, k);
+			const mat_t<TILE_K, TILE_N, T> b = partition_load(B_tile, k, j);
 
 			sum += mul(a, b);
         }

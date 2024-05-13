@@ -2564,6 +2564,8 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
     opts.push_back("--include-path=C:\\packman-repo\\chk\\cuda\\11.8.0_522.06-abe3d9d7-windows-x86_64\\include");
 
     opts.push_back("--device-as-default-execution-space");
+    opts.push_back("--extra-device-vectorization");
+    opts.push_back("--restrict");
 
 
     nvrtcProgram prog;
