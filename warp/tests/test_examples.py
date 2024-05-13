@@ -27,7 +27,7 @@ import os
 import subprocess
 import sys
 import unittest
-from typing import Any, Dict
+from typing import Any, Dict, Optional, Type
 
 import warp as wp
 import warp.tests.unittest_utils
@@ -42,6 +42,7 @@ wp.init()
 
 
 def _build_command_line_options(test_options: Dict[str, Any]) -> list:
+    """Helper function to build command-line options from the test options dictionary."""
     additional_options = []
 
     for key, value in test_options.items():
@@ -54,8 +55,25 @@ def _build_command_line_options(test_options: Dict[str, Any]) -> list:
     return additional_options
 
 
-# registers an example to run as a TestCase
-def add_example_test(cls, name, devices=None, test_options=None, test_options_cpu=None, test_options_cuda=None):
+def _merge_options(base_options: Dict[str, Any], device_options: Dict[str, Any]) -> Dict[str, Any]:
+    """Helper function to merge base test options with device-specific test options."""
+    merged_options = base_options.copy()
+
+    #  Update options with device-specific dictionary, overwriting existing keys with the more-specific values
+    merged_options.update(device_options)
+    return merged_options
+
+
+def add_example_test(
+    cls: Type,
+    name: str,
+    devices: Optional[list] = None,
+    test_options: Optional[Dict[str, Any]] = None,
+    test_options_cpu: Optional[Dict[str, Any]] = None,
+    test_options_cuda: Optional[Dict[str, Any]] = None,
+):
+    """Registers a Warp example to run on ``devices`` as a TestCase."""
+
     if test_options is None:
         test_options = {}
     if test_options_cpu is None:
@@ -64,7 +82,11 @@ def add_example_test(cls, name, devices=None, test_options=None, test_options_cp
         test_options_cuda = {}
 
     def run(test, device):
-        options = test_options.copy()
+        if wp.get_device(device).is_cuda:
+            options = _merge_options(test_options, test_options_cuda)
+        else:
+            options = _merge_options(test_options, test_options_cpu)
+
         # Mark the test as skipped if Torch is not installed but required
         torch_required = options.pop("torch_required", False)
         if torch_required:
@@ -99,11 +121,7 @@ def add_example_test(cls, name, devices=None, test_options=None, test_options_cp
             ) as coverage_file:
                 pass
 
-            command = [
-                "coverage",
-                "run",
-                f"--data-file={coverage_file.name}",
-            ]
+            command = ["coverage", "run", f"--data-file={coverage_file.name}"]
 
             if warp.tests.unittest_utils.coverage_branch:
                 command.append("--branch")
@@ -131,13 +149,6 @@ def add_example_test(cls, name, devices=None, test_options=None, test_options_cp
                 pass
 
         command.extend(_build_command_line_options(options))
-
-        if wp.get_device(device).is_cuda:
-            # Overrides when testing on a CUDA device
-            command.extend(_build_command_line_options(test_options_cuda))
-        else:
-            # Overrides when testing on a CPU device
-            command.extend(_build_command_line_options(test_options_cpu))
 
         # with wp.ScopedTimer(f"{name}_{sanitize_identifier(device)}"):
         # Run the script as a subprocess
@@ -176,12 +187,7 @@ class TestCoreExamples(unittest.TestCase):
 # Exclude unless we can run headless somehow
 # add_example_test(TestCoreExamples, name="example_render_opengl")
 
-add_example_test(
-    TestCoreExamples,
-    name="core.example_dem",
-    devices=test_devices,
-    test_options_cpu={"num_frames": 2},
-)
+add_example_test(TestCoreExamples, name="core.example_dem", devices=test_devices, test_options_cpu={"num_frames": 2})
 add_example_test(
     TestCoreExamples,
     name="core.example_fluid",
@@ -261,12 +267,16 @@ add_example_test(
     devices=test_devices,
     test_options={"headless": True, "train_iters": 50},
 )
+# NOTE: This example uses CUTLASS and will run orders of magnitude slower when Warp is built in debug mode
 add_example_test(
     TestOptimExamples,
     name="optim.example_walker",
     devices=test_devices,
     test_options={"usd_required": True},
-    test_options_cuda={"train_iters": 3, "num_frames": 60},
+    test_options_cuda={
+        "train_iters": 1 if warp.context.runtime.core.is_debug_enabled() else 3,
+        "num_frames": 1 if warp.context.runtime.core.is_debug_enabled() else 60,
+    },
     test_options_cpu={"train_iters": 1, "num_frames": 30},
 )
 
@@ -339,10 +349,7 @@ add_example_test(
     test_options={"resolution": 10, "mesh": "tri", "headless": True},
 )
 add_example_test(
-    TestFemDiffusionExamples,
-    name="fem.example_diffusion_3d",
-    devices=test_devices,
-    test_options={"headless": True},
+    TestFemDiffusionExamples, name="fem.example_diffusion_3d", devices=test_devices, test_options={"headless": True}
 )
 add_example_test(
     TestFemExamples,
