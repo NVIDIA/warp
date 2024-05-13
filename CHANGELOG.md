@@ -1,7 +1,7 @@
 # CHANGELOG
 
 
-## [1.1.0] - 2024-03-22
+## [1.1.0] - 2024-05-09
 
 - Support returning a value from `@wp.func_native` CUDA functions using type hints
 - Improved differentiability of the `wp.sim.FeatherstoneIntegrator`
