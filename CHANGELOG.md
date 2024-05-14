@@ -11,6 +11,7 @@
 - Add runtime checks for `wp.MarchingCubes` on field dimensions and size
 - Fix memory leak in mesh BVH ([GH-225](https://github.com/NVIDIA/warp/issues/225))
 - Use C++17 with NVCC when building the Warp library and user kernels
+- Increase PTX target architecture up to `sm_75` (from `sm_70`), enabling Turing ISA features
 
 ## [1.1.1] - 2024-05-24
 
