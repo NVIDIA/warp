@@ -18,6 +18,16 @@
 
 include: /.gitlab-ci/common.yml
 
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "parent_pipeline"
+
+stages:
+  - build
+  - test
+  - package
+  - deploy
+
 # ==============================================================================
 # Build Jobs (Debug)
 # ==============================================================================
@@ -145,3 +155,67 @@ mac-x86_64 test:
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - python -m warp.tests --junit-report-xml rspec.xml -s autodetect
+
+# ==============================================================================
+# Packaging Jobs
+#
+# ==============================================================================
+
+# Creates wheel files for PyPI
+# Note that compared to the job in .gitlab-ci.yml, there is no aarch64 job
+# due to problems building a debug binary
+create pypi wheels:
+  stage: package
+  needs:
+    - linux-x86_64 build
+    - windows-x86_64 build
+    - mac-x86_64 build
+  extends:
+    - .runner-utility-linux-x86_64
+  before_script:
+    # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
+    - mkdir -p warp/bin/windows-x86_64
+    - mv warp/bin/warp.dll warp/bin/windows-x86_64/
+    - mv warp/bin/warp-clang.dll warp/bin/windows-x86_64/
+    - mkdir -p warp/bin/macos-universal
+    - mv warp/bin/libwarp.dylib warp/bin/macos-universal/
+    - mv warp/bin/libwarp-clang.dylib warp/bin/macos-universal/
+    - python3 -m pip install --upgrade pip
+    - python3 -m pip install build
+  script:
+    - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
+    - python3 -m build --wheel -C--build-option=-Plinux-x86_64
+    - python3 -m build --wheel -C--build-option=-Pmacos-universal
+    - find . -type f -exec chmod 664 {} +
+    - find . -type d -exec chmod 775 {} +
+  artifacts:
+    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    expose_as: "Python Wheels"
+    paths:
+      - "dist/"
+    when: always
+
+# ==============================================================================
+# Deployment Jobs
+#
+# This section currently contains jobs that publish files to the internal
+# GitLab service.
+# ==============================================================================
+
+# Uploads the wheels to the internal GitLab package registry in the Warp project
+# See files at https://gitlab-master.nvidia.com/omniverse/warp/-/packages
+# Generated files will be in a branch/tag-specific folder
+publish wheels to gitlab package registry:
+  stage: deploy
+  needs: ["create pypi wheels"]
+  extends:
+    - .runner-utility-linux-x86_64
+  when: manual
+  before_script:
+    - apt-get update && apt-get install curl --no-install-recommends -y
+  script:
+    - |
+      for file in $(find . -name '*.whl'); do
+          filename=$(basename -- "$file")
+          curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "$file" "https://gitlab-master.nvidia.com/api/v4/projects/${CI_PROJECT_ID}/packages/generic/warp-debug/${CI_COMMIT_REF_SLUG}/${filename}"
+      done

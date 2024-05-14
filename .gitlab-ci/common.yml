@@ -98,10 +98,5 @@ include:
     PYTHON: '$PARENT_PROJECT_DIR/_build/target-deps/python/python'
     LINBUILD: '$PARENT_PROJECT_DIR/_build/host-deps/linbuild/linbuild.sh'
     WARP_CACHE_ROOT: '$PARENT_PROJECT_DIR/.cache/warp' # Used by the parallel test runner
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-    - if: $CI_COMMIT_TAG
-    - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
-    - if: $CI_COMMIT_BRANCH =~ /release-.*/
   trigger:
     strategy: depend

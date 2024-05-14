@@ -18,6 +18,10 @@
 
 include: /.gitlab-ci/common.yml
 
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "parent_pipeline"
+
 linux-x86_64 test:
   stage: test
   needs:
