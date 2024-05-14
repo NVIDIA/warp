@@ -38,7 +38,7 @@ linux-x86_64 build:
   image: urm.nvidia.com/ct-omniverse-docker/centos7-gcc10-builder:3.2.0
   extends:
     - .save_warp_bin_artifact
-    - .runner-build-linux-x86_64
+    - .runner-small-build-linux-x86_64
   script:
     - ./tools/ci/building/build-linux-x86_64/build.sh --debug --no-docker # We are already using the builder image
 
