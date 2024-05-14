@@ -51,7 +51,7 @@ variables:
 stages:
   - build
   - test
-  - debug
+  - child pipelines
   - package
   - deploy
 
@@ -320,9 +320,30 @@ windows-x64_64 docs:
 # jobs in this section.
 # ==============================================================================
 
-# Trigger test (no code coverage) pipelines for Python 3.7
-python 3.7 test:
+# Trigger additional (no code coverage) pipelines testing more Python versions
+# Workaround from https://gitlab.com/gitlab-org/gitlab/-/issues/284086
+trigger python 3.X test pipelines:
   stage: test
+  image: busybox
+  extends:
+    - .runner-utility-windows-x86_64
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
+    - if: $CI_COMMIT_BRANCH =~ /release-.*/
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event' # Can be manually triggered for MRs
+      when: manual
+      allow_failure: true
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - echo "Run this job to test additional Python versions."
+
+
+python 3.7 test:
+  stage: child pipelines
+  needs: [trigger python 3.X test pipelines]
   trigger:
     include: /.gitlab-ci/additional-tests.yml
   extends:
@@ -330,9 +351,9 @@ python 3.7 test:
   variables:
     DEFAULT_PYTHON: "3.7.17+nv1"
 
-# Trigger test (no code coverage) pipelines for Python 3.8
 python 3.8 test:
-  stage: test
+  stage: child pipelines
+  needs: [trigger python 3.X test pipelines]
   trigger:
     include: /.gitlab-ci/additional-tests.yml
   extends:
@@ -341,10 +362,30 @@ python 3.8 test:
     DEFAULT_PYTHON: "3.8.18+nv1"
 
 # Trigger debug build and test (no code coverage) pipelines
+# Workaround from https://gitlab.com/gitlab-org/gitlab/-/issues/284086
+trigger debug build and test pipeline:
+  stage: test
+  image: busybox
+  extends:
+    - .runner-utility-windows-x86_64
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
+    - if: $CI_COMMIT_BRANCH =~ /release-.*/
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event' # Can be manually triggered for MRs
+      when: manual
+      allow_failure: true
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - echo "Run this job to test Warp compiled in debug mode."
+
 # Uses the same Python version as the main pipeline.
 debug build and test:
-  stage: debug
-  needs: []
+  stage: child pipelines
+  needs: [trigger debug build and test pipeline]
   trigger:
     include: /.gitlab-ci/debug-build-and-test.yml
   extends:
@@ -353,7 +394,8 @@ debug build and test:
 # ==============================================================================
 # Packaging Jobs
 #
-# Kit and PyPI jobs produce deployment artifacts and are not run in MRs.
+# Kit and PyPI jobs produce deployment artifacts and are not run in MRs unless
+# manually started.
 # ==============================================================================
 
 # Creates wheel files for PyPI
@@ -371,6 +413,12 @@ create pypi wheels:
     - if: $CI_COMMIT_TAG
     - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
     - if: $CI_COMMIT_BRANCH =~ /release-.*/
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      changes:
+        - pyproject.toml
+        - setup.py
+    - when: manual # If not auto-triggered, allow any pipeline to run this job manually
+      allow_failure: true
   before_script:
     # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
     - mkdir -p warp/bin/windows-x86_64
@@ -388,11 +436,11 @@ create pypi wheels:
     - python3 -m build --wheel -C--build-option=-Pmacos-universal
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +
-    - mv dist/*.whl .
   artifacts:
     name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    expose_as: "Python Wheels"
     paths:
-      - "*.whl"
+      - "dist/"
     when: always
 
 # Creates an artifact suitable for publishing the Kit extensions
@@ -408,6 +456,9 @@ create kit artifacts:
     - if: $CI_COMMIT_TAG
     - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
     - if: $CI_COMMIT_BRANCH =~ /release-.*/
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event' # Can be manually triggered for MRs
+      when: manual
+      allow_failure: true
   before_script:
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/warp.so warp/bin/
@@ -424,6 +475,7 @@ create kit artifacts:
     - zip -r kit-extensions.zip exts/
   artifacts:
     name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    expose_as: "Kit Extensions"
     paths:
       - kit-extensions.zip
 
@@ -435,8 +487,8 @@ create kit artifacts:
 # ==============================================================================
 
 # Uploads the wheels to the internal GitLab package registry in the Warp project
-# This is only run if all previous stages have passed.
 # See files at https://gitlab-master.nvidia.com/omniverse/warp/-/packages
+# Generated files will be in a branch/tag-specific folder
 publish wheels to gitlab package registry:
   stage: deploy
   needs: ["create pypi wheels", "create kit artifacts"]
@@ -444,6 +496,9 @@ publish wheels to gitlab package registry:
     - .runner-utility-linux-x86_64
   rules:
     - if: $CI_COMMIT_BRANCH =~ /release-.*/
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event' # Can be manually triggered for MRs
+      when: manual
+      allow_failure: true
   before_script:
     - apt-get update && apt-get install curl --no-install-recommends -y
   script:
