@@ -62,7 +62,7 @@ as follows::
               inputs=[a, b, c],     # parameters
               device="cuda")        # execution device
 
-Inside the kernel, we retrieve the *thread index* of the each thread using the ``wp.tid()`` built-in function::
+Inside the kernel, we retrieve the *thread index* of the each thread using the :func:`wp.tid() <tid>` built-in function::
 
     # get thread index
     i = wp.tid()
@@ -127,7 +127,56 @@ Users can write their own functions using the ``@wp.func`` decorator, for exampl
     def square(x: float):
         return x*x
 
-User functions can be called freely from within kernels inside the same module and accept arrays as inputs. 
+Kernels can call user functions defined in the same module or defined in a different module.
+As the example shows, return type hints for user functions are **optional**.
+
+Anything that can be done in a Warp kernel can also be done in a user function **with the exception**
+of :func:`wp.tid() <tid>`. The thread index can be passed in through the arguments of a user function if it is required.
+
+Functions can accept arrays and structs as inputs:
+
+.. code-block:: python
+
+    @wp.func
+    def lookup(foos: wp.array(dtype=wp.uint32), index: int):
+        return foos[index]
+
+Functions may also return multiple values:
+
+.. code-block:: python
+
+    @wp.func
+    def multi_valued_func(a: wp.float32, b: wp.float32):
+        return a + b, a - b, a * b, a / b
+
+    @wp.kernel
+    def test_multi_valued_kernel(test_data1: wp.array(dtype=wp.float32), test_data2: wp.array(dtype=wp.float32)):
+        tid = wp.tid()
+        d1, d2 = test_data1[tid], test_data2[tid]
+        a, b, c, d = multi_valued_func(d1, d2)
+
+User functions may also be overloaded by defining multiple function signatures with the same function name:
+
+.. code-block:: python
+
+    @wp.func
+    def custom(x: int):
+        return x + 1
+
+
+    @wp.func
+    def custom(x: float):
+        return x + 1.0
+
+
+    @wp.func
+    def custom(x: wp.vec3):
+        return x + wp.vec3(1.0, 0.0, 0.0)
+
+See :ref:`Generic Functions` for details on using ``typing.Any`` in user function signatures.
+
+See :doc:`modules/differentiability` for details on how to define custom gradient functions,
+custom replay functions, and custom native functions.
 
 User Structs
 --------------
