@@ -18,13 +18,18 @@ To achieve good performance on GPUs some dynamic language features are not suppo
 * Runtime evaluation of expressions, e.g.: eval()
 * Dynamic structures such as lists, sets, dictionaries, etc.
 
-Kernels
--------
+Kernels and User Functions
+--------------------------
 
 * Strings cannot be passed into kernels.
 * Short-circuit evaluation is not supported
 * :func:`wp.atomic_add() <atomic_add>` does not support ``wp.int64``.
 * :func:`wp.tid() <tid>` cannot be called from user functions.
+* Modifying the value of a :class:`wp.constant() <constant>` during runtime will not trigger
+  recompilation of the affected kernels if the modules have already been loaded
+  (e.g. through a :func:`wp.launch() <launch>` or a ``wp.load_module()``).
+* A :class:`wp.constant() <constant>` can suffer precision loss if used with ``wp.float64``
+  as it is initially assigned to a ``wp.float32`` variable in the generated code.
 
 A limitation of Warp is that each dimension of the grid used to launch a kernel must be representable as a 32-bit
 signed integer. Therefore, no single dimension of a grid should exceed :math:`2^{31}-1`.

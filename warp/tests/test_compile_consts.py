@@ -27,7 +27,7 @@ class Foobar:
 
 
 @wp.kernel
-def test_constants_bool():
+def test_bool():
     if TEST_BOOL:
         expect_eq(1.0, 1.0)
     else:
@@ -35,7 +35,7 @@ def test_constants_bool():
 
 
 @wp.kernel
-def test_constants_int(a: int):
+def test_int(a: int):
     if Foobar.ONE > 0:
         a = 123 + Foobar.TWO + warp.tests.aux_test_compile_consts_dummy.MINUS_ONE
     else:
@@ -44,7 +44,7 @@ def test_constants_int(a: int):
 
 
 @wp.kernel
-def test_constants_float(x: float):
+def test_float(x: float):
     x = SQRT3_OVER_3
     for i in range(3):
         expect_eq(UNIT_VEC[i], x)
@@ -56,7 +56,7 @@ def test_constants_float(x: float):
     expect_near(wp.float32(ONE_FP16), 1.0, 1e-6)
 
 
-def test_constant_closure_capture(test, device):
+def test_closure_capture(test, device):
     def make_closure_kernel(cst):
         def closure_kernel_fn(expected: int):
             wp.expect_eq(cst, expected)
@@ -68,6 +68,124 @@ def test_constant_closure_capture(test, device):
 
     wp.launch(one_closure, dim=(1), inputs=[1], device=device)
     wp.launch(two_closure, dim=(1), inputs=[2], device=device)
+
+
+def test_hash_global_capture(test, device):
+    """Verifies that global variables are included in the module hash"""
+
+    a = 0
+    wp.launch(test_int, (1,), inputs=[a], device=device)
+
+    module_constants = wp.get_module(test_int.__module__).constants
+
+    # Ensure the expected constants and values are in the dictionary used in hashing
+    # Depending on what's been launched already, there might be additional constants present
+    test.assertEqual(module_constants["Foobar.ONE"], 1)
+    test.assertEqual(module_constants["Foobar.TWO"], 2)
+    test.assertEqual(module_constants["warp.tests.aux_test_compile_consts_dummy.MINUS_ONE"], -1)
+    test.assertEqual(module_constants["LOCAL_ONE"], 1)
+
+
+def test_hash_redefine_kernel(test, device):
+    """This test defines a second ``test_function`` so that the second launch returns the correct result."""
+
+    @wp.kernel
+    def test_function(data: wp.array(dtype=wp.float32)):
+        i = wp.tid()
+        data[i] = TEST_CONSTANT
+
+    TEST_CONSTANT = wp.constant(1.0)
+
+    test_array = wp.empty(1, dtype=wp.float32, device=device)
+    wp.launch(test_function, (1,), inputs=[test_array], device=device)
+    test.assertEqual(test_array.numpy()[0], 1.0)
+
+    module_hash_0 = wp.get_module(test_function.__module__).hash_module()
+    module_constants = wp.get_module(test_function.__module__).constants
+    test.assertEqual(module_constants["TEST_CONSTANT"], 1.0)
+
+    @wp.kernel
+    def test_function(data: wp.array(dtype=wp.float32)):
+        i = wp.tid()
+        data[i] = TEST_CONSTANT
+
+    TEST_CONSTANT = wp.constant(2.0)
+
+    wp.launch(test_function, (1,), inputs=[test_array], device=device)
+    test.assertEqual(test_array.numpy()[0], 2.0)
+
+    module_hash_1 = wp.get_module(test_function.__module__).hash_module()
+    module_constants = wp.get_module(test_function.__module__).constants
+
+    test.assertEqual(module_constants["TEST_CONSTANT"], 2.0)
+    test.assertNotEqual(module_hash_0, module_hash_1)
+
+
+def test_hash_redefine_constant_only(test, device):
+    """This test does not define a second ``test_function``, so the second launch does not invalidate the cache.
+
+    For now this is expected behavior, but we can verify that the content has is different.
+    """
+
+    @wp.kernel
+    def test_function(data: wp.array(dtype=wp.float32)):
+        i = wp.tid()
+        data[i] = TEST_CONSTANT
+
+    TEST_CONSTANT = wp.constant(1.0)
+
+    test_array = wp.empty(1, dtype=wp.float32, device=device)
+    wp.launch(test_function, (1,), inputs=[test_array], device=device)
+    test.assertEqual(test_array.numpy()[0], 1.0)
+
+    module_hash_0 = wp.get_module(test_function.__module__).hash_module()
+
+    module_constants = wp.get_module(test_function.__module__).constants
+    test.assertEqual(module_constants["TEST_CONSTANT"], 1.0)
+
+    TEST_CONSTANT = wp.constant(2.0)
+    module_hash_1 = wp.get_module(test_function.__module__).hash_module(recompute_content_hash=True)
+    module_constants = wp.get_module(test_function.__module__).constants
+    test.assertEqual(module_constants["TEST_CONSTANT"], 2.0)
+    test.assertNotEqual(module_hash_0, module_hash_1, "Module hashes should be different if TEST_CONSTANT is changed.")
+
+    TEST_CONSTANT = wp.constant(1.0)
+    module_hash_2 = wp.get_module(test_function.__module__).hash_module(recompute_content_hash=True)
+    module_constants = wp.get_module(test_function.__module__).constants
+    test.assertEqual(module_constants["TEST_CONSTANT"], 1.0)
+    test.assertEqual(module_hash_0, module_hash_2, "Module hashes should be the same if TEST_CONSTANT is the same.")
+
+
+def test_hash_shadowed_var(test, device):
+    """Tests to ensure shadowed variables are not mistakenly added to the module hash"""
+
+    TEST_CONSTANT_SHADOW_0 = wp.constant(1.0)
+    TEST_CONSTANT_SHADOW_1 = wp.constant(1.0)
+    TEST_CONSTANT_SHADOW_2 = wp.constant(1.0)
+
+    @wp.kernel
+    def test_function(data: wp.array(dtype=wp.float32)):
+        i = wp.tid()
+        TEST_CONSTANT_SHADOW_0 = 2.0
+        TEST_CONSTANT_SHADOW_1, TEST_CONSTANT_SHADOW_2 = 4.0, 8.0
+        data[i] = TEST_CONSTANT_SHADOW_0 + TEST_CONSTANT_SHADOW_1 + TEST_CONSTANT_SHADOW_2
+
+    test_array = wp.empty(1, dtype=wp.float32, device=device)
+    wp.launch(test_function, (1,), inputs=[test_array], device=device)
+    test.assertEqual(test_array.numpy()[0], 14.0)
+
+    module_hash_0 = wp.get_module(test_function.__module__).hash_module()
+    module_constants = wp.get_module(test_function.__module__).constants
+
+    test.assertFalse("TEST_CONSTANT_SHADOW_0" in module_constants, "Constant should not be in dictionary.")
+    test.assertFalse("TEST_CONSTANT_SHADOW_1" in module_constants, "Constant should not be in dictionary.")
+    test.assertFalse("TEST_CONSTANT_SHADOW_2" in module_constants, "Constant should not be in dictionary.")
+
+    TEST_CONSTANT_SHADOW_0 = wp.constant(0.0)
+    TEST_CONSTANT_SHADOW_1 = wp.constant(0.0)
+    TEST_CONSTANT_SHADOW_2 = wp.constant(0.0)
+    module_hash_1 = wp.get_module(test_function.__module__).hash_module(recompute_content_hash=True)
+    test.assertEqual(module_hash_0, module_hash_1, "Module hashes should be the same since all constants are shadowed.")
 
 
 class TestConstants(unittest.TestCase):
@@ -85,11 +203,15 @@ x = 0.0
 
 devices = get_test_devices()
 
-add_kernel_test(TestConstants, test_constants_bool, dim=1, inputs=[], devices=devices)
-add_kernel_test(TestConstants, test_constants_int, dim=1, inputs=[a], devices=devices)
-add_kernel_test(TestConstants, test_constants_float, dim=1, inputs=[x], devices=devices)
+add_kernel_test(TestConstants, test_bool, dim=1, inputs=[], devices=devices)
+add_kernel_test(TestConstants, test_int, dim=1, inputs=[a], devices=devices)
+add_kernel_test(TestConstants, test_float, dim=1, inputs=[x], devices=devices)
 
-add_function_test(TestConstants, "test_constant_closure_capture", test_constant_closure_capture, devices=devices)
+add_function_test(TestConstants, "test_closure_capture", test_closure_capture, devices=devices)
+add_function_test(TestConstants, "test_hash_global_capture", test_hash_global_capture, devices=devices)
+add_function_test(TestConstants, "test_hash_redefine_kernel", test_hash_redefine_kernel, devices=devices)
+add_function_test(TestConstants, "test_hash_redefine_constant_only", test_hash_redefine_constant_only, devices=devices)
+add_function_test(TestConstants, "test_hash_shadowed_var", test_hash_shadowed_var, devices=devices)
 
 
 if __name__ == "__main__":
