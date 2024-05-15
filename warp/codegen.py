@@ -16,8 +16,7 @@ import re
 import sys
 import textwrap
 import types
-from types import ModuleType
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Dict, Mapping
 
 import warp.config
 from warp.types import *
@@ -554,7 +553,7 @@ class Adjoint:
 
     def __init__(
         adj,
-        func,
+        func: Callable[..., Any],
         overload_annotations=None,
         is_user_function=False,
         skip_forward_codegen=False,
@@ -1370,7 +1369,7 @@ class Adjoint:
             return obj
         if isinstance(obj, type):
             return obj
-        if isinstance(obj, ModuleType):
+        if isinstance(obj, types.ModuleType):
             return obj
 
         raise RuntimeError("Cannot reference a global variable from a kernel unless `wp.constant()` is being used")
@@ -2202,6 +2201,51 @@ class Adjoint:
     def get_node_source(adj, node):
         # return the Python code corresponding to the given AST node
         return ast.get_source_segment(adj.source, node)
+
+    def get_constant_references(adj) -> Dict[str, Any]:
+        """Traverses ``adj.tree`` and returns a dictionary containing constant variable names and values.
+
+        This function is meant to be used to populate a module's constants dictionary, which then feeds
+        into the computation of the module's ``content_hash``.
+        """
+
+        local_variables = set()  # Track local variables appearing on the LHS so we know when variables are shadowed
+        constants_dict = {}
+
+        for node in ast.walk(adj.tree):
+            if isinstance(node, ast.Name) and node.id not in local_variables:
+                # This node could be a reference to a wp.constant defined or imported into the current namespace
+
+                # try and resolve the name using the function's globals context (used to lookup constants + functions)
+                obj = adj.func.__globals__.get(node.id)
+
+                if obj is None:
+                    # Lookup constant in captured contents
+                    capturedvars = dict(
+                        zip(adj.func.__code__.co_freevars, [c.cell_contents for c in (adj.func.__closure__ or [])])
+                    )
+                    obj = capturedvars.get(str(node.id), None)
+
+                if warp.types.is_value(obj):
+                    constants_dict[node.id] = obj
+
+            elif isinstance(node, ast.Attribute):
+                obj, path = adj.resolve_static_expression(node, eval_types=False)
+
+                if warp.types.is_value(obj):
+                    constants_dict[".".join(path)] = obj
+            elif isinstance(node, ast.Assign):
+                # Add the LHS names to the local_variables so we know any subsequent uses are shadowed
+                lhs = node.targets[0]
+
+                if isinstance(lhs, ast.Tuple):
+                    for v in lhs.elts:
+                        if isinstance(v, ast.Name):
+                            local_variables.add(v.id)
+                elif isinstance(lhs, ast.Name):
+                    local_variables.add(lhs.id)
+
+        return constants_dict
 
 
 # ----------------

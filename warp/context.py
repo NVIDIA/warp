@@ -6,6 +6,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import ast
+import builtins
 import ctypes
 import functools
 import hashlib
@@ -18,7 +19,7 @@ import platform
 import sys
 import types
 from copy import copy as shallowcopy
-from types import ModuleType
+from struct import pack as struct_pack
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
@@ -1168,7 +1169,7 @@ def get_module(name):
             # clear out old kernels, funcs, struct definitions
             old_module.kernels = {}
             old_module.functions = {}
-            old_module.constants = []
+            old_module.constants = {}
             old_module.structs = {}
             old_module.loader = parent_loader
 
@@ -1315,7 +1316,7 @@ class Module:
 
         self.kernels = {}
         self.functions = {}
-        self.constants = []
+        self.constants = {}  # Any constants referenced in this module including those defined in other modules
         self.structs = {}
 
         self.cpu_module = None
@@ -1442,7 +1443,13 @@ class Module:
             if isinstance(arg.type, warp.codegen.Struct) and arg.type.module is not None:
                 add_ref(arg.type.module)
 
-    def hash_module(self):
+    def hash_module(self, recompute_content_hash=False):
+        """Recursively compute and return a hash for the module.
+
+        If ``recompute_content_hash`` is False, each module's previously
+        computed ``content_hash`` will be used.
+        """
+
         def get_annotations(obj: Any) -> Mapping[str, Any]:
             """Alternative to `inspect.get_annotations()` for Python 3.9 and older."""
             # See https://docs.python.org/3/howto/annotations.html#accessing-the-annotations-dict-of-an-object-in-python-3-9-and-older
@@ -1461,9 +1468,12 @@ class Module:
             # The visited set tracks modules already visited to avoid circular references.
 
             # check if we need to update the content hash
-            if not module.content_hash:
+            if not module.content_hash or recompute_content_hash:
                 # recompute content hash
                 ch = hashlib.sha256()
+
+                # Start with an empty constants dictionary in case any have been removed
+                module.constants = {}
 
                 # struct source
                 for struct in module.structs.values():
@@ -1497,6 +1507,10 @@ class Module:
                         s = f"{arg}: {get_type_name(arg_type)}"
                         ch.update(bytes(s, "utf-8"))
 
+                    # Populate constants referenced in this function
+                    if func.adj:
+                        module.constants.update(func.adj.get_constant_references())
+
                 # kernel source
                 for kernel in module.kernels.values():
                     ch.update(bytes(kernel.key, "utf-8"))
@@ -1510,6 +1524,34 @@ class Module:
                     if kernel.is_generic:
                         for sig in sorted(kernel.overloads.keys()):
                             ch.update(bytes(sig, "utf-8"))
+
+                    # Populate constants referenced in this kernel
+                    module.constants.update(kernel.adj.get_constant_references())
+
+                # constants referenced in this module
+                for constant_name, constant_value in module.constants.items():
+                    ch.update(bytes(constant_name, "utf-8"))
+
+                    # hash the constant value
+                    if isinstance(constant_value, builtins.bool):
+                        # This needs to come before the check for `int` since all boolean
+                        # values are also instances of `int`.
+                        ch.update(struct_pack("?", constant_value))
+                    elif isinstance(constant_value, int):
+                        ch.update(struct_pack("<q", constant_value))
+                    elif isinstance(constant_value, float):
+                        ch.update(struct_pack("<d", constant_value))
+                    elif isinstance(constant_value, warp.types.float16):
+                        # float16 is a special case
+                        p = ctypes.pointer(ctypes.c_float(constant_value.value))
+                        ch.update(p.contents)
+                    elif isinstance(constant_value, tuple(warp.types.scalar_types)):
+                        p = ctypes.pointer(constant_value._type_(constant_value.value))
+                        ch.update(p.contents)
+                    elif isinstance(constant_value, ctypes.Array):
+                        ch.update(bytes(constant_value))
+                    else:
+                        raise RuntimeError(f"Invalid constant type: {type(constant_value)}")
 
                 module.content_hash = ch.digest()
 
@@ -1528,10 +1570,6 @@ class Module:
                 h.update(bytes("verify_fp", "utf-8"))
 
             h.update(bytes(warp.config.mode, "utf-8"))
-
-            # compile-time constants (global)
-            if warp.types._constant_hash:
-                h.update(warp.types._constant_hash.digest())
 
             # recurse on references
             visited.add(module)
@@ -1596,6 +1634,9 @@ class Module:
                         cache_hash = f.read()
 
                     if cache_hash == module_hash:
+                        if warp.config.verbose:
+                            print(f"Module {self.name} reusing cache on device '{device}'")
+
                         runtime.llvm.load_obj(obj_path.encode("utf-8"), module_name.encode("utf-8"))
                         self.cpu_module = module_name
                         return True
@@ -1663,6 +1704,9 @@ class Module:
                         cache_hash = f.read()
 
                     if cache_hash == module_hash:
+                        if warp.config.verbose:
+                            print(f"Module {self.name} reusing cache on device '{device}'")
+
                         cuda_module = warp.build.load_cuda(output_path, device)
                         if cuda_module is not None:
                             self.cuda_modules[device.context] = cuda_module
@@ -4496,7 +4540,7 @@ def force_load(device: Union[Device, str, List[Device], List[str]] = None, modul
 
 
 def load_module(
-    module: Union[Module, ModuleType, str] = None, device: Union[Device, str] = None, recursive: bool = False
+    module: Union[Module, types.ModuleType, str] = None, device: Union[Device, str] = None, recursive: bool = False
 ):
     """Force user-defined module to be compiled and loaded
 
@@ -4514,7 +4558,7 @@ def load_module(
         module_name = module.__name__
     elif isinstance(module, Module):
         module_name = module.name
-    elif isinstance(module, ModuleType):
+    elif isinstance(module, types.ModuleType):
         module_name = module.__name__
     elif isinstance(module, str):
         module_name = module

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import builtins
 import ctypes
-import hashlib
 import inspect
 import struct
 import zlib
@@ -51,10 +50,6 @@ class Array(Generic[DType]):
     pass
 
 
-# shared hash for all constants
-_constant_hash = hashlib.sha256()
-
-
 def constant(x):
     """Function to declare compile-time constants accessible from Warp kernels
 
@@ -62,27 +57,7 @@ def constant(x):
         x: Compile-time constant value, can be any of the built-in math types.
     """
 
-    global _constant_hash
-
-    # hash the constant value
-    if isinstance(x, builtins.bool):
-        # This needs to come before the check for `int` since all boolean
-        # values are also instances of `int`.
-        _constant_hash.update(struct.pack("?", x))
-    elif isinstance(x, int):
-        _constant_hash.update(struct.pack("<q", x))
-    elif isinstance(x, float):
-        _constant_hash.update(struct.pack("<d", x))
-    elif isinstance(x, float16):
-        # float16 is a special case
-        p = ctypes.pointer(ctypes.c_float(x.value))
-        _constant_hash.update(p.contents)
-    elif isinstance(x, tuple(scalar_types)):
-        p = ctypes.pointer(x._type_(x.value))
-        _constant_hash.update(p.contents)
-    elif isinstance(x, ctypes.Array):
-        _constant_hash.update(bytes(x))
-    else:
+    if not isinstance(x, (builtins.bool, int, float, tuple(scalar_and_bool_types), ctypes.Array)):
         raise RuntimeError(f"Invalid constant type: {type(x)}")
 
     return x
