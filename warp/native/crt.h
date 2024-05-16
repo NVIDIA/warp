@@ -38,6 +38,12 @@ extern "C" WP_API void _wp_assert(const char* message, const char* file, unsigne
 // Helper for implementing isfinite()
 extern "C" WP_API int _wp_isfinite(double);
 
+// Helper for implementing isnan()
+extern "C" WP_API int _wp_isnan(double);
+
+// Helper for implementing isinf()
+extern "C" WP_API int _wp_isinf(double);
+
 #endif  // !__CUDA_ARCH__
 
 #if !defined(WP_NO_CRT)
@@ -124,6 +130,7 @@ enum {
 #define INFINITY   ((float)(DBL_MAX * DBL_MAX))
 #define HUGE_VAL   ((double)INFINITY)
 #define HUGE_VALF  ((float)INFINITY)
+#define NAN        ((float)(0.0 / 0.0))
 
 /// stdint.h
 typedef signed char      int8_t;
@@ -318,6 +325,16 @@ void free(void*);
 inline bool isfinite(double x)
 {
     return _wp_isfinite(x);
+}
+
+inline bool isnan(double x)
+{
+    return _wp_isnan(x);
+}
+
+inline bool isinf(double x)
+{
+    return _wp_isinf(x);
 }
 
 // assert.h

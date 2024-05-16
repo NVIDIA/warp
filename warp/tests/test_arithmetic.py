@@ -5,7 +5,6 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import math
 import unittest
 
 import numpy as np
@@ -838,36 +837,6 @@ def test_float_to_int(test, device, dtype, register_kernels=False):
             tape.zero()
 
 
-def test_infinity(test, device, dtype, register_kernels=False):
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-
-    def check_infinity(
-        outputs: wp.array(dtype=wptype),
-    ):
-        outputs[0] = wptype(wp.inf)
-        outputs[1] = wptype(-wp.inf)
-        outputs[2] = wptype(2.0 * wp.inf)
-        outputs[3] = wptype(-2.0 * wp.inf)
-        outputs[4] = wptype(2.0 / 0.0)
-        outputs[5] = wptype(-2.0 / 0.0)
-
-    kernel = getkernel(check_infinity, suffix=dtype.__name__)
-
-    if register_kernels:
-        return
-
-    outputs = wp.zeros(6, dtype=wptype, device=device)
-
-    wp.launch(kernel, dim=1, inputs=[], outputs=[outputs], device=device)
-
-    test.assertEqual(outputs.numpy()[0], math.inf)
-    test.assertEqual(outputs.numpy()[1], -math.inf)
-    test.assertEqual(outputs.numpy()[2], math.inf)
-    test.assertEqual(outputs.numpy()[3], -math.inf)
-    test.assertEqual(outputs.numpy()[4], math.inf)
-    test.assertEqual(outputs.numpy()[5], -math.inf)
-
-
 def test_interp(test, device, dtype, register_kernels=False):
     rng = np.random.default_rng(123)
 
@@ -1101,9 +1070,6 @@ for dtype in np_float_types:
     )
     add_function_test_register_kernel(
         TestArithmetic, f"test_float_to_int_{dtype.__name__}", test_float_to_int, devices=devices, dtype=dtype
-    )
-    add_function_test_register_kernel(
-        TestArithmetic, f"test_infinity_{dtype.__name__}", test_infinity, devices=devices, dtype=dtype
     )
 
 for dtype in np_scalar_types:

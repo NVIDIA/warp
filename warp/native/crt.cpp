@@ -17,6 +17,16 @@ extern "C" WP_API int _wp_isfinite(double x)
     return std::isfinite(x);
 }
 
+extern "C" WP_API int _wp_isnan(double x)
+{
+    return std::isnan(x);
+}
+
+extern "C" WP_API int _wp_isinf(double x)
+{
+    return std::isinf(x);
+}
+
 extern "C" WP_API void _wp_assert(const char* expression, const char* file, unsigned int line)
 {
     fflush(stdout);

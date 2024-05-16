@@ -413,6 +413,8 @@ WP_API int load_obj(const char* object_file, const char* module_name)
             SYMBOL(memcpy), SYMBOL(memset), SYMBOL(memmove),
             SYMBOL(_wp_assert),
             SYMBOL(_wp_isfinite),
+            SYMBOL(_wp_isnan),
+            SYMBOL(_wp_isinf),
         #if defined(_WIN64)
             // For functions with large stack frames the compiler will emit a call to
             // __chkstk() to linearly touch each memory page. This grows the stack without
@@ -492,4 +494,3 @@ WP_API uint64_t lookup(const char* dll_name, const char* function_name)
 }  // extern "C"
 
 }  // namespace wp
-

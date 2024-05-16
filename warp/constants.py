@@ -22,6 +22,8 @@ __all__ = [
     "ln2",
     "LN10",
     "ln10",
+    "NAN",
+    "nan",
     "PHI",
     "phi",
     "PI",
@@ -43,3 +45,5 @@ HALF_PI = half_pi = constant(1.57079632679489661923)  # half pi
 TAU = tau = constant(6.28318530717958647692)  # 2 * pi
 
 INF = inf = constant(math.inf)
+
+NAN = nan = constant(float("nan"))

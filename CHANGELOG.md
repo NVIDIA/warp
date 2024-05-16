@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## [Upcoming Release] - 2024-??-??
+
+- Add a not-a-number floating-point constant that can be used as `wp.NAN` or `wp.nan`.
+- Add `wp.isnan()`, `wp.isinf()`, and `wp.isfinite()` for scalars, vectors, matrices, etc.
 
 ## [1.1.0] - 2024-05-09
 

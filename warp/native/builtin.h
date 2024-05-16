@@ -84,8 +84,17 @@ struct half
 
     unsigned short u;
 
-    CUDA_CALLABLE inline bool operator==(const half& h) const { return u == h.u; }
-    CUDA_CALLABLE inline bool operator!=(const half& h) const { return u != h.u; }
+    CUDA_CALLABLE inline bool operator==(const half& h) const
+    {
+        // Use float32 to get IEEE 754 behavior in case of a NaN
+        return float32(h) == float32(*this);
+    }
+
+    CUDA_CALLABLE inline bool operator!=(const half& h) const
+    {
+        // Use float32 to get IEEE 754 behavior in case of a NaN
+        return float32(h) != float32(*this);
+    }
     CUDA_CALLABLE inline bool operator>(const half& h) const { return half_to_float(*this) > half_to_float(h); }
     CUDA_CALLABLE inline bool operator>=(const half& h) const { return half_to_float(*this) >= half_to_float(h); }
     CUDA_CALLABLE inline bool operator<(const half& h) const { return half_to_float(*this) < half_to_float(h); }
@@ -293,7 +302,9 @@ inline CUDA_CALLABLE T bit_xor(T a, T b) { return a^b; } \
 inline CUDA_CALLABLE T lshift(T a, T b) { return a<<b; } \
 inline CUDA_CALLABLE T rshift(T a, T b) { return a>>b; } \
 inline CUDA_CALLABLE T invert(T x) { return ~x; } \
-inline CUDA_CALLABLE bool isfinite(T x) { return true; } \
+inline CUDA_CALLABLE bool isfinite(T x) { return ::isfinite(double(x)); } \
+inline CUDA_CALLABLE bool isnan(T x) { return ::isnan(double(x)); } \
+inline CUDA_CALLABLE bool isinf(T x) { return ::isinf(double(x)); } \
 inline CUDA_CALLABLE void adj_mul(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
 inline CUDA_CALLABLE void adj_div(T a, T b, T ret, T& adj_a, T& adj_b, T adj_ret) { } \
 inline CUDA_CALLABLE void adj_add(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
@@ -313,7 +324,10 @@ inline CUDA_CALLABLE void adj_bit_or(T a, T b, T& adj_a, T& adj_b, T adj_ret) { 
 inline CUDA_CALLABLE void adj_bit_xor(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
 inline CUDA_CALLABLE void adj_lshift(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
 inline CUDA_CALLABLE void adj_rshift(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
-inline CUDA_CALLABLE void adj_invert(T x, T adj_x, T& adj_ret) { }
+inline CUDA_CALLABLE void adj_invert(T x, T adj_x, T& adj_ret) { } \
+inline CUDA_CALLABLE void adj_isnan(const T&, T&, bool) { } \
+inline CUDA_CALLABLE void adj_isinf(const T&, T&, bool) { } \
+inline CUDA_CALLABLE void adj_isfinite(const T&, T&, bool) { }
 
 inline CUDA_CALLABLE int8 abs(int8 x) { return ::abs(x); }
 inline CUDA_CALLABLE int16 abs(int16 x) { return ::abs(x); }
@@ -354,7 +368,7 @@ inline CUDA_CALLABLE uint32 sign(uint32 x) { return 1; }
 inline CUDA_CALLABLE uint64 sign(uint64 x) { return 1; }
 
 
-// Catch-all for non-float types
+// Catch-all for non-float, non-integer types
 template<typename T>
 inline bool CUDA_CALLABLE isfinite(const T&)
 {
@@ -372,6 +386,32 @@ inline bool CUDA_CALLABLE isfinite(float x)
 inline bool CUDA_CALLABLE isfinite(double x)
 {
     return ::isfinite(x);
+}
+
+inline bool CUDA_CALLABLE isnan(half x)
+{
+    return ::isnan(float(x));
+}
+inline bool CUDA_CALLABLE isnan(float x)
+{
+    return ::isnan(x);
+}
+inline bool CUDA_CALLABLE isnan(double x)
+{
+    return ::isnan(x);
+}
+
+inline bool CUDA_CALLABLE isinf(half x)
+{
+    return ::isinf(float(x));
+}
+inline bool CUDA_CALLABLE isinf(float x)
+{
+    return ::isinf(x);
+}
+inline bool CUDA_CALLABLE isinf(double x)
+{
+    return ::isinf(x);
 }
 
 template<typename T>
@@ -466,6 +506,9 @@ inline CUDA_CALLABLE void adj_div(T a, T b, T ret, T& adj_a, T& adj_b, T adj_ret
         assert(0);\
     })\
 }\
+inline CUDA_CALLABLE void adj_isnan(const T&, T&, bool) { }\
+inline CUDA_CALLABLE void adj_isinf(const T&, T&, bool) { }\
+inline CUDA_CALLABLE void adj_isfinite(const T&, T&, bool) { }
 
 DECLARE_FLOAT_OPS(float16)
 DECLARE_FLOAT_OPS(float32)

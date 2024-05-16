@@ -284,6 +284,93 @@ add_builtin(
     In other words, it discards the integer part of x and is equivalent to ``x - trunc(x)``.""",
 )
 
+add_builtin(
+    "isfinite",
+    input_types={"x": Scalar},
+    value_type=builtins.bool,
+    group="Scalar Math",
+    doc="""Return ``True`` if x is a finite number, otherwise return ``False``.""",
+)
+add_builtin(
+    "isfinite",
+    input_types={"x": vector(length=Any, dtype=Scalar)},
+    value_type=builtins.bool,
+    group="Vector Math",
+    doc="Return ``True`` if all elements of the vector ``x`` are finite, otherwise return ``False``.",
+)
+add_builtin(
+    "isfinite",
+    input_types={"x": quaternion(dtype=Scalar)},
+    value_type=builtins.bool,
+    group="Vector Math",
+    doc="Return ``True`` if all elements of the quaternion ``x`` are finite, otherwise return ``False``.",
+)
+add_builtin(
+    "isfinite",
+    input_types={"m": matrix(shape=(Any, Any), dtype=Scalar)},
+    value_type=builtins.bool,
+    group="Vector Math",
+    doc="Return ``True`` if all elements of the matrix ``m`` are finite, otherwise return ``False``.",
+)
+
+add_builtin(
+    "isnan",
+    input_types={"x": Scalar},
+    value_type=builtins.bool,
+    doc="Return ``True`` if ``x`` is NaN, otherwise return ``False``.",
+    group="Scalar Math",
+)
+add_builtin(
+    "isnan",
+    input_types={"x": vector(length=Any, dtype=Scalar)},
+    value_type=builtins.bool,
+    group="Vector Math",
+    doc="Return ``True`` if any element of the vector ``x`` is NaN, otherwise return ``False``.",
+)
+add_builtin(
+    "isnan",
+    input_types={"x": quaternion(dtype=Scalar)},
+    value_type=builtins.bool,
+    group="Vector Math",
+    doc="Return ``True`` if any element of the quaternion ``x`` is NaN, otherwise return ``False``.",
+)
+add_builtin(
+    "isnan",
+    input_types={"m": matrix(shape=(Any, Any), dtype=Scalar)},
+    value_type=builtins.bool,
+    group="Vector Math",
+    doc="Return ``True`` if any element of the matrix ``m`` is NaN, otherwise return ``False``.",
+)
+
+add_builtin(
+    "isinf",
+    input_types={"x": Scalar},
+    value_type=builtins.bool,
+    group="Scalar Math",
+    doc="""Return ``True`` if x is positive or negative infinity, otherwise return ``False``.""",
+)
+add_builtin(
+    "isinf",
+    input_types={"x": vector(length=Any, dtype=Scalar)},
+    value_type=builtins.bool,
+    group="Vector Math",
+    doc="Return ``True`` if any element of the vector ``x`` is positive or negative infinity, otherwise return ``False``.",
+)
+add_builtin(
+    "isinf",
+    input_types={"x": quaternion(dtype=Scalar)},
+    value_type=builtins.bool,
+    group="Vector Math",
+    doc="Return ``True`` if any element of the quaternion ``x`` is positive or negative infinity, otherwise return ``False``.",
+)
+add_builtin(
+    "isinf",
+    input_types={"m": matrix(shape=(Any, Any), dtype=Scalar)},
+    value_type=builtins.bool,
+    group="Vector Math",
+    doc="Return ``True`` if any element of the matrix ``m`` is positive or negative infinity, otherwise return ``False``.",
+)
+
 
 def infer_scalar_type(arg_types):
     if arg_types is None:
@@ -3067,7 +3154,7 @@ add_builtin(
 # ---------------------------------
 # Operators
 
-add_builtin("add", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar))
+add_builtin("add", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar), group="Operators")
 add_builtin(
     "add",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
@@ -3099,7 +3186,7 @@ add_builtin(
     group="Operators",
 )
 
-add_builtin("sub", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar))
+add_builtin("sub", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar), group="Operators")
 add_builtin(
     "sub",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)},
@@ -3214,7 +3301,7 @@ def mul_matmat_value_func(arg_types, kwds, _):
     return matrix(shape=(arg_types[0]._shape_[0], arg_types[1]._shape_[1]), dtype=arg_types[0]._wp_scalar_type_)
 
 
-add_builtin("mul", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar))
+add_builtin("mul", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar), group="Operators")
 add_builtin(
     "mul",
     input_types={"x": vector(length=Any, dtype=Scalar), "y": Scalar},
@@ -3311,7 +3398,7 @@ add_builtin(
     group="Operators",
 )
 
-add_builtin("mod", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar))
+add_builtin("mod", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar), group="Operators")
 
 add_builtin(
     "div",
@@ -3372,7 +3459,7 @@ add_builtin(
     group="Operators",
 )
 
-add_builtin("pos", input_types={"x": Scalar}, value_func=sametype_value_func(Scalar))
+add_builtin("pos", input_types={"x": Scalar}, value_func=sametype_value_func(Scalar), group="Operators")
 add_builtin(
     "pos",
     input_types={"x": vector(length=Any, dtype=Scalar)},
@@ -3394,7 +3481,7 @@ add_builtin(
     doc="",
     group="Operators",
 )
-add_builtin("neg", input_types={"x": Scalar}, value_func=sametype_value_func(Scalar))
+add_builtin("neg", input_types={"x": Scalar}, value_func=sametype_value_func(Scalar), group="Operators")
 add_builtin(
     "neg",
     input_types={"x": vector(length=Any, dtype=Scalar)},

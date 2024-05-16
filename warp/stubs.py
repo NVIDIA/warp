@@ -349,6 +349,78 @@ def frac(x: Float) -> Float:
 
 
 @over
+def isfinite(x: Scalar) -> bool:
+    """Return ``True`` if x is a finite number, otherwise return ``False``."""
+    ...
+
+
+@over
+def isfinite(x: Vector[Any, Scalar]) -> bool:
+    """Return ``True`` if all elements of the vector ``x`` are finite, otherwise return ``False``."""
+    ...
+
+
+@over
+def isfinite(x: Quaternion[Scalar]) -> bool:
+    """Return ``True`` if all elements of the quaternion ``x`` are finite, otherwise return ``False``."""
+    ...
+
+
+@over
+def isfinite(m: Matrix[Any, Any, Scalar]) -> bool:
+    """Return ``True`` if all elements of the matrix ``m`` are finite, otherwise return ``False``."""
+    ...
+
+
+@over
+def isnan(x: Scalar) -> bool:
+    """Return ``True`` if ``x`` is NaN, otherwise return ``False``."""
+    ...
+
+
+@over
+def isnan(x: Vector[Any, Scalar]) -> bool:
+    """Return ``True`` if any element of the vector ``x`` is NaN, otherwise return ``False``."""
+    ...
+
+
+@over
+def isnan(x: Quaternion[Scalar]) -> bool:
+    """Return ``True`` if any element of the quaternion ``x`` is NaN, otherwise return ``False``."""
+    ...
+
+
+@over
+def isnan(m: Matrix[Any, Any, Scalar]) -> bool:
+    """Return ``True`` if any element of the matrix ``m`` is NaN, otherwise return ``False``."""
+    ...
+
+
+@over
+def isinf(x: Scalar) -> bool:
+    """Return ``True`` if x is positive or negative infinity, otherwise return ``False``."""
+    ...
+
+
+@over
+def isinf(x: Vector[Any, Scalar]) -> bool:
+    """Return ``True`` if any element of the vector ``x`` is positive or negative infinity, otherwise return ``False``."""
+    ...
+
+
+@over
+def isinf(x: Quaternion[Scalar]) -> bool:
+    """Return ``True`` if any element of the quaternion ``x`` is positive or negative infinity, otherwise return ``False``."""
+    ...
+
+
+@over
+def isinf(m: Matrix[Any, Any, Scalar]) -> bool:
+    """Return ``True`` if any element of the matrix ``m`` is positive or negative infinity, otherwise return ``False``."""
+    ...
+
+
+@over
 def dot(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Scalar:
     """Compute the dot product between two vectors."""
     ...

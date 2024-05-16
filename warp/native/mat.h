@@ -398,6 +398,41 @@ inline bool CUDA_CALLABLE isfinite(const mat_t<Rows,Cols,Type>& m)
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
+inline void CUDA_CALLABLE adj_isfinite(const mat_t<Rows,Cols,Type>& m, mat_t<Rows,Cols,Type>& adj_m, const bool &adj_ret)
+{
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline bool CUDA_CALLABLE isnan(const mat_t<Rows,Cols,Type>& m)
+{
+    for (unsigned i=0; i < Rows; ++i)
+        for (unsigned j=0; j < Cols; ++j)
+            if (isnan(m.data[i][j]))
+                return true;
+    return false;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline void CUDA_CALLABLE adj_isnan(const mat_t<Rows,Cols,Type>& m, mat_t<Rows,Cols,Type>& adj_m, const bool &adj_ret)
+{
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline bool CUDA_CALLABLE isinf(const mat_t<Rows,Cols,Type>& m)
+{
+    for (unsigned i=0; i < Rows; ++i)
+        for (unsigned j=0; j < Cols; ++j)
+            if (isinf(m.data[i][j]))
+                return true;
+    return false;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline void CUDA_CALLABLE adj_isinf(const mat_t<Rows,Cols,Type>& m, mat_t<Rows,Cols,Type>& adj_m, const bool &adj_ret)
+{
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE mat_t<Rows,Cols,Type> add(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b)
 {
     mat_t<Rows,Cols,Type> t;
