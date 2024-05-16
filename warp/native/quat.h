@@ -57,6 +57,33 @@ inline bool CUDA_CALLABLE isfinite(const quat_t<Type>& q)
 }
 
 template<typename Type>
+inline void CUDA_CALLABLE adj_isfinite(const quat_t<Type>& q, quat_t<Type>& adj_q, const bool &adj_ret)
+{
+}
+
+template<typename Type>
+inline bool CUDA_CALLABLE isnan(const quat_t<Type>& q)
+{
+    return isnan(q.x) || isnan(q.y) || isnan(q.z) || isnan(q.w);
+}
+
+template<typename Type>
+inline void CUDA_CALLABLE adj_isnan(const quat_t<Type>& q, quat_t<Type>& adj_q, const bool &adj_ret)
+{
+}
+
+template<typename Type>
+inline bool CUDA_CALLABLE isinf(const quat_t<Type>& q)
+{
+    return isinf(q.x) || isinf(q.y) || isinf(q.z) || isinf(q.w);
+}
+
+template<typename Type>
+inline void CUDA_CALLABLE adj_isinf(const quat_t<Type>& q, quat_t<Type>& adj_q, const bool &adj_ret)
+{
+}
+
+template<typename Type>
 inline CUDA_CALLABLE quat_t<Type> atomic_add(quat_t<Type> * addr, quat_t<Type> value) 
 {
     Type x = atomic_add(&(addr -> x), value.x);

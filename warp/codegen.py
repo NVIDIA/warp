@@ -2498,6 +2498,9 @@ def constant_str(value):
     elif value == math.inf:
         return "INFINITY"
 
+    elif math.isnan(value):
+        return "NAN"
+
     else:
         # otherwise just convert constant to string
         return str(value)

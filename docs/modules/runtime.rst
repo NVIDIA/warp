@@ -726,7 +726,14 @@ wp.PI            3.14159265358979323846
 wp.HALF_PI       1.57079632679489661923
 wp.TAU           6.28318530717958647692
 wp.INF           math.inf
+wp.NAN           float('nan')
 ================ =========================
+
+The ``wp.NAN`` constant may only be used with floating-point types.
+Comparisons involving ``wp.NAN`` follow the IEEE 754 standard,
+e.g. ``wp.float32(wp.NAN) == wp.float32(wp.NAN)`` returns ``False``.
+The :func:`wp.isnan() <isnan>` built-in function can be used to determine whether a
+value is a NaN (or if a vector, matrix, or quaternion contains a NaN entry).
 
 The following example shows how positive and negative infinity
 can be used with floating-point types in Warp using the ``wp.inf`` constant:

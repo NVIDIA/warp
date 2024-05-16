@@ -551,6 +551,32 @@ inline bool CUDA_CALLABLE isfinite(vec_t<Length, Type> x)
     return true;
 }
 
+template<unsigned Length, typename Type>
+inline bool CUDA_CALLABLE isnan(vec_t<Length, Type> x)
+{
+    for( unsigned i=0; i < Length; ++i )
+    {
+        if(isnan(x[i]))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+template<unsigned Length, typename Type>
+inline bool CUDA_CALLABLE isinf(vec_t<Length, Type> x)
+{
+    for( unsigned i=0; i < Length; ++i )
+    {
+        if(isinf(x[i]))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 // These two functions seem to compile very slowly
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE vec_t<Length,Type> min(vec_t<Length,Type> a, vec_t<Length,Type> b)
@@ -962,6 +988,24 @@ inline CUDA_CALLABLE void adj_cross(vec_t<3,Type> a, vec_t<3,Type> b, vec_t<3,Ty
     // todo: sign check
     adj_a += cross(b, adj_ret);
     adj_b -= cross(a, adj_ret);
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_isfinite(const vec_t<Length, Type> &x, vec_t<Length,Type>& adj_x, const bool &adj_ret)
+{
+
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_isnan(const vec_t<Length, Type> &x, vec_t<Length,Type>& adj_x, const bool &adj_ret)
+{
+
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_isinf(const vec_t<Length, Type> &x, vec_t<Length,Type>& adj_x, const bool &adj_ret)
+{
+
 }
 
 template<unsigned Length, typename Type>

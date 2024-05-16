@@ -301,6 +301,84 @@ Scalar Math
     In other words, it discards the integer part of x and is equivalent to ``x - trunc(x)``.
 
 
+.. py:function:: isfinite(x: Scalar) -> bool
+
+    Return ``True`` if x is a finite number, otherwise return ``False``.
+
+
+.. py:function:: isfinite(x: Vector[Any,Scalar]) -> bool
+    :noindex:
+    :nocontentsentry:
+
+    Return ``True`` if all elements of the vector ``x`` are finite, otherwise return ``False``.
+
+
+.. py:function:: isfinite(x: Quaternion[Scalar]) -> bool
+    :noindex:
+    :nocontentsentry:
+
+    Return ``True`` if all elements of the quaternion ``x`` are finite, otherwise return ``False``.
+
+
+.. py:function:: isfinite(m: Matrix[Any,Any,Scalar]) -> bool
+    :noindex:
+    :nocontentsentry:
+
+    Return ``True`` if all elements of the matrix ``m`` are finite, otherwise return ``False``.
+
+
+.. py:function:: isnan(x: Scalar) -> bool
+
+    Return ``True`` if ``x`` is NaN, otherwise return ``False``.
+
+
+.. py:function:: isnan(x: Vector[Any,Scalar]) -> bool
+    :noindex:
+    :nocontentsentry:
+
+    Return ``True`` if any element of the vector ``x`` is NaN, otherwise return ``False``.
+
+
+.. py:function:: isnan(x: Quaternion[Scalar]) -> bool
+    :noindex:
+    :nocontentsentry:
+
+    Return ``True`` if any element of the quaternion ``x`` is NaN, otherwise return ``False``.
+
+
+.. py:function:: isnan(m: Matrix[Any,Any,Scalar]) -> bool
+    :noindex:
+    :nocontentsentry:
+
+    Return ``True`` if any element of the matrix ``m`` is NaN, otherwise return ``False``.
+
+
+.. py:function:: isinf(x: Scalar) -> bool
+
+    Return ``True`` if x is positive or negative infinity, otherwise return ``False``.
+
+
+.. py:function:: isinf(x: Vector[Any,Scalar]) -> bool
+    :noindex:
+    :nocontentsentry:
+
+    Return ``True`` if any element of the vector ``x`` is positive or negative infinity, otherwise return ``False``.
+
+
+.. py:function:: isinf(x: Quaternion[Scalar]) -> bool
+    :noindex:
+    :nocontentsentry:
+
+    Return ``True`` if any element of the quaternion ``x`` is positive or negative infinity, otherwise return ``False``.
+
+
+.. py:function:: isinf(m: Matrix[Any,Any,Scalar]) -> bool
+    :noindex:
+    :nocontentsentry:
+
+    Return ``True`` if any element of the matrix ``m`` is positive or negative infinity, otherwise return ``False``.
+
+
 
 
 Vector Math
@@ -1760,6 +1838,28 @@ Other
     Search a sorted array ``arr`` in the range [arr_begin, arr_end) for the closest element greater than or equal to ``value``.
 
 
+.. py:function:: bit_and(x: Int, y: Int) -> Int
+
+
+.. py:function:: bit_or(x: Int, y: Int) -> Int
+
+
+.. py:function:: bit_xor(x: Int, y: Int) -> Int
+
+
+.. py:function:: lshift(x: Int, y: Int) -> Int
+
+
+.. py:function:: rshift(x: Int, y: Int) -> Int
+
+
+.. py:function:: invert(x: Int) -> Int
+
+
+
+
+Operators
+---------------
 .. py:function:: add(x: Scalar, y: Scalar) -> Scalar
 
 
@@ -1804,24 +1904,6 @@ Other
 .. py:function:: sub(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]
     :noindex:
     :nocontentsentry:
-
-
-.. py:function:: bit_and(x: Int, y: Int) -> Int
-
-
-.. py:function:: bit_or(x: Int, y: Int) -> Int
-
-
-.. py:function:: bit_xor(x: Int, y: Int) -> Int
-
-
-.. py:function:: lshift(x: Int, y: Int) -> Int
-
-
-.. py:function:: rshift(x: Int, y: Int) -> Int
-
-
-.. py:function:: invert(x: Int) -> Int
 
 
 .. py:function:: mul(x: Scalar, y: Scalar) -> Scalar
@@ -1895,46 +1977,6 @@ Other
 .. py:function:: mod(x: Scalar, y: Scalar) -> Scalar
 
 
-.. py:function:: pos(x: Scalar) -> Scalar
-
-
-.. py:function:: pos(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]
-    :noindex:
-    :nocontentsentry:
-
-
-.. py:function:: pos(x: Quaternion[Scalar]) -> Quaternion[Scalar]
-    :noindex:
-    :nocontentsentry:
-
-
-.. py:function:: pos(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
-    :noindex:
-    :nocontentsentry:
-
-
-.. py:function:: neg(x: Scalar) -> Scalar
-
-
-.. py:function:: neg(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]
-    :noindex:
-    :nocontentsentry:
-
-
-.. py:function:: neg(x: Quaternion[Scalar]) -> Quaternion[Scalar]
-    :noindex:
-    :nocontentsentry:
-
-
-.. py:function:: neg(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
-    :noindex:
-    :nocontentsentry:
-
-
-
-
-Operators
----------------
 .. py:function:: div(x: Scalar, y: Scalar) -> Scalar
 
 
@@ -1969,6 +2011,42 @@ Operators
 
 
 .. py:function:: floordiv(x: Scalar, y: Scalar) -> Scalar
+
+
+.. py:function:: pos(x: Scalar) -> Scalar
+
+
+.. py:function:: pos(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+    :noindex:
+    :nocontentsentry:
+
+
+.. py:function:: pos(x: Quaternion[Scalar]) -> Quaternion[Scalar]
+    :noindex:
+    :nocontentsentry:
+
+
+.. py:function:: pos(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+    :noindex:
+    :nocontentsentry:
+
+
+.. py:function:: neg(x: Scalar) -> Scalar
+
+
+.. py:function:: neg(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+    :noindex:
+    :nocontentsentry:
+
+
+.. py:function:: neg(x: Quaternion[Scalar]) -> Quaternion[Scalar]
+    :noindex:
+    :nocontentsentry:
+
+
+.. py:function:: neg(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+    :noindex:
+    :nocontentsentry:
 
 
 .. py:function:: unot(b: bool) -> bool

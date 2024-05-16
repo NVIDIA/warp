@@ -3244,6 +3244,8 @@ def assert_initialized():
 
 # global entry points
 def is_cpu_available():
+    assert_initialized()
+
     return runtime.llvm
 
 
