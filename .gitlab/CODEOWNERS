@@ -1,0 +1,96 @@
+# Copyright (c) 2024 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+# This CODEOWNERS file is only used on the internal GitLab
+# Ordering matters: https://docs.gitlab.com/ee/user/project/codeowners/#define-more-specific-owners-for-more-specifically-defined-files-or-directories
+
+# At present this is the only required approval. The rest are optional (^).
+[Public API] @mmacklin
+/warp/__init__.py
+/warp/builtins.py
+/warp/config.py
+/warp/constants.py
+/warp/stubs.py
+/warp/thirdparty/
+/docs/
+/licenses/
+/warp/examples/
+/CONTRIBUTING.md
+/CHANGELOG.md
+/README.md
+/SECURITY.md
+
+^[CI/CD] @ershi @ncapens
+/.github/
+/.gitlab/
+/warp/tests/
+/warp/thirdparty/unittest_parallel.py
+/.gitlab-ci.yml
+/.pre-commit-config.yaml
+.gitignore
+.gitattributes
+
+^[Code Generation] @ncapens @mmacklin
+/warp/codegen.py
+
+^[Build and Deployment] @ncapens
+/warp/build.py
+/warp/build_dll.py
+/build_docs.py
+/build_lib.py
+/build_llvm.py
+/PACKAGE-INFO.yaml
+/PACKAGING.md
+/pyproject.toml
+/repo.toml
+/setup.py
+/VERSION.md
+/tools/
+/deps/
+
+^[Simulation Module] @eheiden @mmacklin
+/warp/sim/
+/warp/examples/sim/
+/warp/optim/sgd.py
+/warp/render/render_opengl.py
+/warp/render/utils.py
+
+^[FEM Module] @gdaviet
+/warp/fem/
+/warp/examples/fem/
+/warp/tests/test_fem.py
+
+^[Linear Algebra] @gdaviet
+/warp/optim/linear.py
+/warp/sparse.py
+/warp/tests/test_linear_solvers.py
+/warp/tests/test_sparse.py
+
+^[Native C++/CUDA] @mmacklin @lwawrzyniak @ncapens
+/warp/native/
+
+^[Volumes] @gklar
+/warp/native/nanovdb/
+/warp/native/volume*
+/warp/tests/test_volume_write.py
+/warp/tests/test_volume.py
+
+^[Kit Extensions] @ccrouzet @zcorse
+/exts/
+/warp/render/render_usd.py
+
+^[Interoperability] @lwawrzyniak @zcorse
+/warp/dlpack.py
+/warp/jax_experimental.py
+/warp/jax.py
+/warp/fabric.py
+/warp/torch.py
+/warp/thirdparty/dlpack.py
+/warp/tests/test_dlpack.py
+/warp/tests/test_jax.py
+/warp/tests/test_torch.py
+/warp/tests/test_fabricarray.py
