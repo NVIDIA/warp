@@ -85,7 +85,7 @@
             "axisAmplitude": {
                 "type": "float[3]",
                 "uiName": "Axis Amplitude",
-                "description": "Amplitude of the deformation along the differnt axis.",
+                "description": "Amplitude of the deformation along the different axis.",
                 "default": [1.0, 1.0, 1.0]
             },
             "seed": {

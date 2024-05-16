@@ -33,16 +33,17 @@ Launches a 3D grid of threads with dimension 128 x 128 x 3. To retrieve the 3D i
 
 .. autofunction:: launch
 
+.. _Runtime Kernel Creation:
 
 Runtime Kernel Creation
-#############################
+#######################
 
 It is often desirable to specialize kernels for different types, constants, or functions at runtime.
 We can achieve this through the use of runtime kernel specialization using Python closures.
 
 For example, we might require a variety of kernels that execute particular functions for each item in an array.
 We might also want this function call to be valid for a variety of data types. Making use of closure and generics, we can generate
-these kernels using a single kernel definition: ::
+these kernels using a single kernel definition::
 
     def make_kernel(func, dtype):
         def closure_kernel_fn(data: wp.array(dtype=dtype), out: wp.array(dtype=dtype)):
@@ -51,7 +52,7 @@ these kernels using a single kernel definition: ::
 
         return wp.Kernel(closure_kernel_fn)
 
-In practice, we might use our kernel generator, ``make_kernel()`` as follows: ::
+In practice, we might use our kernel generator, ``make_kernel()`` as follows::
 
     @wp.func
     def sqr(x: Any) -> Any:
@@ -77,7 +78,7 @@ In practice, we might use our kernel generator, ``make_kernel()`` as follows: ::
     wp.launch(cube_double, dim=N, inputs=[data_double], outputs=[out_double], device=device)
 
 We can specialize kernel definitions over Warp constants similarly. The following generates kernels that add a specified constant
-to a generic-typed array value: ::
+to a generic-typed array value::
 
     def make_add_kernel(key, constant):
         def closure_kernel_fn(data: wp.array(dtype=Any), out: wp.array(dtype=Any)):

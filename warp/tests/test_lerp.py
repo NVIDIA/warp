@@ -179,71 +179,29 @@ def test_lerp(test, device):
 
     for data_type in TEST_DATA:
         kernel_fn = make_kernel_fn(data_type)
-        kernel = wp.Kernel(
-            func=kernel_fn,
-            key=f"test_lerp_{data_type.__name__}_kernel",
-        )
+        kernel = wp.Kernel(func=kernel_fn, key=f"test_lerp_{data_type.__name__}_kernel")
 
         with test.subTest(data_type=data_type):
             for test_data in TEST_DATA[data_type]:
-                a = wp.array(
-                    [test_data.a],
-                    dtype=data_type,
-                    device=device,
-                    requires_grad=True,
-                )
-                b = wp.array(
-                    [test_data.b],
-                    dtype=data_type,
-                    device=device,
-                    requires_grad=True,
-                )
-                t = wp.array(
-                    [test_data.t],
-                    dtype=float,
-                    device=device,
-                    requires_grad=True,
-                )
+                a = wp.array([test_data.a], dtype=data_type, device=device, requires_grad=True)
+                b = wp.array([test_data.b], dtype=data_type, device=device, requires_grad=True)
+                t = wp.array([test_data.t], dtype=float, device=device, requires_grad=True)
                 out = wp.array(
-                    [0] * wp.types.type_length(data_type),
-                    dtype=data_type,
-                    device=device,
-                    requires_grad=True,
+                    [0] * wp.types.type_length(data_type), dtype=data_type, device=device, requires_grad=True
                 )
 
                 tape = wp.Tape()
                 with tape:
-                    wp.launch(
-                        kernel,
-                        dim=1,
-                        inputs=[a, b, t, out],
-                        device=device,
-                    )
+                    wp.launch(kernel, dim=1, inputs=[a, b, t, out], device=device)
 
-                assert_np_equal(
-                    out.numpy(),
-                    np.array([test_data.expected]),
-                    tol=1e-6,
-                )
+                assert_np_equal(out.numpy(), np.array([test_data.expected]), tol=1e-6)
 
                 if test_data.check_backwards():
                     tape.backward(out)
 
-                    assert_np_equal(
-                        tape.gradients[a].numpy(),
-                        np.array([test_data.expected_adj_a]),
-                        tol=1e-6,
-                    )
-                    assert_np_equal(
-                        tape.gradients[b].numpy(),
-                        np.array([test_data.expected_adj_b]),
-                        tol=1e-6,
-                    )
-                    assert_np_equal(
-                        tape.gradients[t].numpy(),
-                        np.array([test_data.expected_adj_t]),
-                        tol=1e-6,
-                    )
+                    assert_np_equal(tape.gradients[a].numpy(), np.array([test_data.expected_adj_a]), tol=1e-6)
+                    assert_np_equal(tape.gradients[b].numpy(), np.array([test_data.expected_adj_b]), tol=1e-6)
+                    assert_np_equal(tape.gradients[t].numpy(), np.array([test_data.expected_adj_t]), tol=1e-6)
 
 
 devices = get_test_devices()

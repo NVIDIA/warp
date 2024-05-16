@@ -1,7 +1,9 @@
 Generics
 ========
 
-Warp supports writing generic kernels and functions, which act as templates that can be instantiated with different concrete types.  This allows you to write code once and reuse it with multiple data types.
+Warp supports writing generic kernels and functions, which act as templates that can be instantiated with different concrete types.
+This allows you to write code once and reuse it with multiple data types.
+The concepts discussed on this page also apply to :ref:`Runtime Kernel Creation`.
 
 Generic Kernels
 ---------------

@@ -545,17 +545,14 @@ This will generate a file `tape.dot` that can be visualized using the `GraphViz 
 
     dot -Tsvg tape.dot -o tape.svg
 
-The resulting SVG image can be rendererd in a web browser:
+The resulting SVG image can be rendered in a web browser:
 
 .. image:: ../img/tape.svg
 
 The graph visualization shows the kernel launches as grey boxes with the ports below them indicating the input and output arguments. Arrays 
 are shown as ellipses, where gray ellipses indicate arrays that do not require gradients, and green ellipses indicate arrays that do not have ``requires_grad=True``.
 
-In the example above we can see that the array ``c`` does not have its ``requires_grad`` flag set, which means gradients will not be propagated throug this path.
+In the example above we can see that the array ``c`` does not have its ``requires_grad`` flag set, which means gradients will not be propagated through this path.
 
 .. note::
     Arrays can be labeled with custom names using the ``array_labels`` argument to the ``tape.visualize()`` method.
-
-
-

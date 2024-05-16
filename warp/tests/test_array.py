@@ -2335,7 +2335,7 @@ devices = get_test_devices()
 
 class TestArray(unittest.TestCase):
     def test_array_new_del(self):
-        # test the scenario in which an array instance is created but not initalized before gc
+        # test the scenario in which an array instance is created but not initialized before gc
         instance = wp.array.__new__(wp.array)
         instance.__del__()
 
