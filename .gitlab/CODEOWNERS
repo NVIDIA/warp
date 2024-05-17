@@ -12,15 +12,9 @@
 [Public API] @mmacklin
 /warp/__init__.py
 /warp/builtins.py
-/warp/config.py
 /warp/constants.py
-/warp/stubs.py
-/warp/thirdparty/
-/docs/
 /licenses/
 /warp/examples/
-/CONTRIBUTING.md
-/CHANGELOG.md
 /README.md
 /SECURITY.md
 
@@ -34,12 +28,16 @@
 .gitignore
 .gitattributes
 
+^[Sphinx Documentation] @mmacklin @ershi
+/docs/
+
 ^[Code Generation] @ncapens @mmacklin
 /warp/codegen.py
 
-^[Build and Deployment] @ncapens
+^[Build and Deployment] @ncapens @lwawrzyniak
 /warp/build.py
 /warp/build_dll.py
+/CONTRIBUTING.md
 /build_docs.py
 /build_lib.py
 /build_llvm.py

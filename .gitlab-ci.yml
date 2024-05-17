@@ -9,7 +9,7 @@
 # CI/CD Pipeline Configuration
 # ==============================================================================
 
-include: /.gitlab/common.yml
+include: /.gitlab/ci/common.yml
 
 workflow:
   rules:
@@ -344,7 +344,7 @@ python 3.7 test:
   stage: child pipelines
   needs: [trigger python 3.X test pipelines]
   trigger:
-    include: /.gitlab/additional-tests.yml
+    include: /.gitlab/ci/additional-tests.yml
   extends:
     - .trigger_common
   variables:
@@ -354,7 +354,7 @@ python 3.8 test:
   stage: child pipelines
   needs: [trigger python 3.X test pipelines]
   trigger:
-    include: /.gitlab/additional-tests.yml
+    include: /.gitlab/ci/additional-tests.yml
   extends:
     - .trigger_common
   variables:
@@ -385,7 +385,7 @@ debug build and test:
   stage: child pipelines
   needs: [trigger debug build and test pipeline]
   trigger:
-    include: /.gitlab/debug-build-and-test.yml
+    include: /.gitlab/ci/debug-build-and-test.yml
   extends:
     - .trigger_common
 
