@@ -16,7 +16,7 @@
 # trigger conditions. It is not run in merge request pipelines.
 # ==============================================================================
 
-include: /.gitlab/common.yml
+include: /.gitlab/ci/common.yml
 
 workflow:
   rules:
