@@ -7,10 +7,11 @@
 
 name: Deploy Sphinx documentation to Pages
 
-# Runs on pushes targeting the default branch
+# Runs on every tag created beginning with the character v
 on:
   push:
-    branches: [main]
+    tags:
+      - v*
 
 jobs:
   build:
