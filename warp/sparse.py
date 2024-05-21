@@ -128,8 +128,8 @@ def bsr_zeros(
 
     bsr = bsr_matrix_t(block_type)()
 
-    bsr.nrow = rows_of_blocks
-    bsr.ncol = cols_of_blocks
+    bsr.nrow = int(rows_of_blocks)
+    bsr.ncol = int(cols_of_blocks)
     bsr.nnz = 0
     bsr.columns = wp.empty(shape=(0,), dtype=int, device=device)
     bsr.values = wp.empty(shape=(0,), dtype=block_type, device=device)
@@ -152,7 +152,11 @@ def _bsr_ensure_fits(bsr: BsrMatrix, nrow: int = None, nnz: int = None):
         bsr.values = wp.empty(shape=(nnz,), dtype=bsr.values.dtype, device=bsr.values.device)
 
 
-def bsr_set_zero(bsr: BsrMatrix, rows_of_blocks: Optional[int] = None, cols_of_blocks: Optional[int] = None):
+def bsr_set_zero(
+    bsr: BsrMatrix,
+    rows_of_blocks: Optional[int] = None,
+    cols_of_blocks: Optional[int] = None,
+):
     """
     Sets a BSR matrix to zero, possibly changing its size
 
@@ -163,9 +167,9 @@ def bsr_set_zero(bsr: BsrMatrix, rows_of_blocks: Optional[int] = None, cols_of_b
     """
 
     if rows_of_blocks is not None:
-        bsr.nrow = rows_of_blocks
+        bsr.nrow = int(rows_of_blocks)
     if cols_of_blocks is not None:
-        bsr.ncol = cols_of_blocks
+        bsr.ncol = int(cols_of_blocks)
     bsr.nnz = 0
     _bsr_ensure_fits(bsr)
     bsr.offsets.zero_()
@@ -254,7 +258,10 @@ def bsr_set_from_triplets(
     )
 
 
-def bsr_assign(dest: BsrMatrix[BlockType[Rows, Cols, Scalar]], src: BsrMatrix[BlockType[Rows, Cols, Any]]):
+def bsr_assign(
+    dest: BsrMatrix[BlockType[Rows, Cols, Scalar]],
+    src: BsrMatrix[BlockType[Rows, Cols, Any]],
+):
     """Copies the content of the `src` matrix to `dest`, casting the block values if the two matrices use distinct scalar types."""
 
     if dest.values.device != src.values.device:
@@ -288,12 +295,20 @@ def bsr_copy(A: BsrMatrix, scalar_type: Optional[Scalar] = None):
     else:
         block_type = wp.types.matrix(shape=A.block_shape, dtype=scalar_type)
 
-    copy = bsr_zeros(rows_of_blocks=A.nrow, cols_of_blocks=A.ncol, block_type=block_type, device=A.values.device)
+    copy = bsr_zeros(
+        rows_of_blocks=A.nrow,
+        cols_of_blocks=A.ncol,
+        block_type=block_type,
+        device=A.values.device,
+    )
     bsr_assign(dest=copy, src=A)
     return copy
 
 
-def bsr_set_transpose(dest: BsrMatrix[BlockType[Cols, Rows, Scalar]], src: BsrMatrix[BlockType[Rows, Cols, Scalar]]):
+def bsr_set_transpose(
+    dest: BsrMatrix[BlockType[Cols, Rows, Scalar]],
+    src: BsrMatrix[BlockType[Rows, Cols, Scalar]],
+):
     """Assigns the transposed matrix `src` to matrix `dest`"""
 
     if dest.values.device != src.values.device:
@@ -356,7 +371,12 @@ def bsr_transposed(A: BsrMatrix):
     else:
         block_type = wp.types.matrix(shape=A.block_shape[::-1], dtype=A.scalar_type)
 
-    transposed = bsr_zeros(rows_of_blocks=A.ncol, cols_of_blocks=A.nrow, block_type=block_type, device=A.values.device)
+    transposed = bsr_zeros(
+        rows_of_blocks=A.ncol,
+        cols_of_blocks=A.nrow,
+        block_type=block_type,
+        device=A.values.device,
+    )
     bsr_set_transpose(dest=transposed, src=A)
     return transposed
 
@@ -399,7 +419,10 @@ def bsr_get_diag(A: BsrMatrix[_BlockType], out: "Optional[Array[BlockType]]" = N
             raise ValueError(f"Output array must be of length at least {dim}")
 
     wp.launch(
-        kernel=_bsr_get_diag_kernel, dim=dim, device=A.values.device, inputs=[A.offsets, A.columns, A.values, out]
+        kernel=_bsr_get_diag_kernel,
+        dim=dim,
+        device=A.values.device,
+        inputs=[A.offsets, A.columns, A.values, out],
     )
 
     return out
@@ -567,7 +590,9 @@ def bsr_set_identity(A: BsrMatrix, rows_of_blocks: Optional[int] = None):
 
 
 def bsr_identity(
-    rows_of_blocks: int, block_type: BlockType[Rows, Rows, Scalar], device: wp.context.Devicelike = None
+    rows_of_blocks: int,
+    block_type: BlockType[Rows, Rows, Scalar],
+    device: wp.context.Devicelike = None,
 ) -> BsrMatrix[BlockType[Rows, Rows, Scalar]]:
     """Creates and returns a square identity matrix.
 
@@ -576,7 +601,12 @@ def bsr_identity(
         block_type: Block type for the newly created matrix -- must be square
         device: Device onto which to allocate the data arrays
     """
-    A = bsr_zeros(rows_of_blocks=rows_of_blocks, cols_of_blocks=rows_of_blocks, block_type=block_type, device=device)
+    A = bsr_zeros(
+        rows_of_blocks=rows_of_blocks,
+        cols_of_blocks=rows_of_blocks,
+        block_type=block_type,
+        device=device,
+    )
     bsr_set_identity(A)
     return A
 
@@ -601,7 +631,12 @@ def bsr_scale(x: BsrMatrix, alpha: Scalar) -> BsrMatrix:
             if not isinstance(alpha, x.scalar_type):
                 alpha = x.scalar_type(alpha)
 
-            wp.launch(kernel=_bsr_scale_kernel, dim=x.nnz, device=x.values.device, inputs=[alpha, x.values])
+            wp.launch(
+                kernel=_bsr_scale_kernel,
+                dim=x.nnz,
+                device=x.values.device,
+                inputs=[alpha, x.values],
+            )
 
     return x
 
@@ -723,10 +758,20 @@ def bsr_axpy(
     work_arrays._allocate(device, y, sum_nnz)
 
     wp.copy(work_arrays._sum_cols, y.columns, 0, 0, y.nnz)
-    wp.launch(kernel=_bsr_get_block_row, device=device, dim=y.nnz, inputs=[0, y.offsets, work_arrays._sum_rows])
+    wp.launch(
+        kernel=_bsr_get_block_row,
+        device=device,
+        dim=y.nnz,
+        inputs=[0, y.offsets, work_arrays._sum_rows],
+    )
 
     wp.copy(work_arrays._sum_cols, x.columns, y.nnz, 0, x.nnz)
-    wp.launch(kernel=_bsr_get_block_row, device=device, dim=x.nnz, inputs=[y.nnz, x.offsets, work_arrays._sum_rows])
+    wp.launch(
+        kernel=_bsr_get_block_row,
+        device=device,
+        dim=x.nnz,
+        inputs=[y.nnz, x.offsets, work_arrays._sum_rows],
+    )
 
     # Save old y values before overwriting matrix
     wp.copy(dest=work_arrays._old_y_values, src=y.values, count=y.nnz)
@@ -858,22 +903,25 @@ def _bsr_mm_compute_values(
     mm_cols: wp.array(dtype=int),
     mm_values: wp.array(dtype=Any),
 ):
-    row = wp.tid()
-    mm_beg = mm_offsets[row]
-    mm_end = mm_offsets[row + 1]
+    mm_block = wp.tid()
+
+    row = wp.lower_bound(mm_offsets, mm_block + 1) - 1
+    col = mm_cols[mm_block]
+
+    mm_val = mm_values.dtype(type(alpha)(0.0))
 
     x_beg = x_offsets[row]
     x_end = x_offsets[row + 1]
     for x_block in range(x_beg, x_end):
         x_col = x_columns[x_block]
-        ax_val = alpha * x_values[x_block]
-
         y_beg = y_offsets[x_col]
         y_end = y_offsets[x_col + 1]
 
-        for y_block in range(y_beg, y_end):
-            mm_block = wp.lower_bound(mm_cols, mm_beg, mm_end, y_columns[y_block])
-            mm_values[mm_block] = mm_values[mm_block] + ax_val * y_values[y_block]
+        y_block = wp.lower_bound(y_columns, y_beg, y_end, col)
+        if y_block < y_end and y_columns[y_block] == col:
+            mm_val += x_values[x_block] * y_values[y_block]
+
+    mm_values[mm_block] += alpha * mm_val
 
 
 class bsr_mm_work_arrays:
@@ -995,13 +1043,24 @@ def bsr_mm(
         kernel=_bsr_mm_count_coeffs,
         device=device,
         dim=z.nrow,
-        inputs=[copied_z_nnz, x.offsets, x.columns, y.offsets, work_arrays._mm_row_counts],
+        inputs=[
+            copied_z_nnz,
+            x.offsets,
+            x.columns,
+            y.offsets,
+            work_arrays._mm_row_counts,
+        ],
     )
     warp.utils.array_scan(work_arrays._mm_row_counts, work_arrays._mm_row_counts)
 
     # Get back total counts on host
     if device.is_cuda:
-        wp.copy(dest=work_arrays._pinned_count_buffer, src=work_arrays._mm_row_counts, src_offset=z.nrow, count=1)
+        wp.copy(
+            dest=work_arrays._pinned_count_buffer,
+            src=work_arrays._mm_row_counts,
+            src_offset=z.nrow,
+            count=1,
+        )
         wp.synchronize_stream(wp.get_stream(device))
         mm_nnz = int(work_arrays._pinned_count_buffer.numpy()[0])
     else:
@@ -1014,7 +1073,10 @@ def bsr_mm(
         # Copy z row and column indices
         wp.copy(dest=work_arrays._mm_cols, src=z.columns, count=copied_z_nnz)
         wp.launch(
-            kernel=_bsr_get_block_row, device=device, dim=copied_z_nnz, inputs=[0, z.offsets, work_arrays._mm_rows]
+            kernel=_bsr_get_block_row,
+            device=device,
+            dim=copied_z_nnz,
+            inputs=[0, z.offsets, work_arrays._mm_rows],
         )
         # Save current z values in temporary buffer
         wp.copy(src=z.values, dest=work_arrays._old_z_values, count=copied_z_nnz)
@@ -1097,7 +1159,7 @@ def bsr_mm(
     wp.launch(
         kernel=_bsr_mm_compute_values,
         device=device,
-        dim=z.nrow,
+        dim=z.nnz,
         inputs=[
             alpha,
             work_arrays._old_z_offsets if x == z else x.offsets,
