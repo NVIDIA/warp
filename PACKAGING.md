@@ -2,8 +2,6 @@
 
 ## Versioning
 
----
-
 Versions take the format X.Y.Z, similar to [Python itself](https://devguide.python.org/developer-workflow/development-cycle/#devcycle):
 
 - Increments in X are reserved for major reworks of the project causing disruptive incompatibility (or reaching the 1.0 milestone).
@@ -17,8 +15,6 @@ Note that prior to 0.11.0 this schema was not strictly adhered to.
 
 ## Repositories
 
----
-
 Development happens internally on a GitLab repository (part of the Omniverse group), while releases are made public on GitHub.
 
 This document uses the following Git remote names:
@@ -26,39 +22,61 @@ This document uses the following Git remote names:
 - **omniverse**: `git remote add omniverse https://gitlab-master.nvidia.com/omniverse/warp.git`
 - **github**: `git remote add github https://github.com/NVIDIA/warp.git`
 
+Currently, all feature branches get merged into the `main` branch of the **omniverse** repo and then GitLab push-mirrors
+the changes over to GitHub (nominally within five minutes). This mirroring process also pushes all tags
+(only tags beginning with `v` are allowed to be created) and branches beginning with `release-`.
+
+The status of push mirroring can be checked under **Settings** :arrow_right: **Repository** on GitLab.
+
 ## GitLab Release Branch
 
----
+1) Create a branch in your fork repository from which a merge-request will be opened to bump the version string
+   and create the public-facing changelogs for the release.
 
-1) Search & replace the current version string.
+2) Search & replace the current version string from `VERSION.md`.
 
-   We want to keep the Omniverse extensions's version in sync with the library so update the strings found in the `exts` folder as well.
+   We want to keep the Omniverse extensions' version in sync with the library so update the strings found in the `exts` folder as well.
+
+   The version string currently appears in the following two files, but there could be more in the future:
+
+   - `omni.warp/config/extension.toml`
+   - `omni.warp.core/config/extension.toml`
 
    Be sure *not* to update previous strings in `CHANGELOG.md`.
 
-2) Update `CHANGELOG.md` from Git history (since the last release branch). Only list user-facing changes.
+3) Update `CHANGELOG.md` from Git history (since the last release branch). Only list user-facing changes.
+
+   The entire development team should all be helping to keep this file up-to-date, so verify that all changes users
+   should know about are included.
 
    The changelogs from the Omniverse extensions found in `exts` are kept in sync with the one from the library, so update them all at the same time and list any change made to the extensions.
 
-3) Commit and push to `master`.
+4) Open a MR on GitLab to merge this branch into `main`. Send a message in `#omni-warp-dev` to the `@warp-team`
+   asking for a review of the merge request's changes.
 
-4) For new X.Y versions, create a release branch (note .Z maintenance versions remain on the same branch):
+5) Merge the branch into `main` after waiting a reasonable amount of time for the team to review and approve the MR.
+
+6) For new `X.Y` versions, create a release branch (note `.Z` maintenance versions remain on the same branch):
 
    `git checkout -b release-X.Y [<start-point>]`
 
    If branching from an older revision or reusing a branch, make sure to cherry-pick the version and changelog update.
 
-5) Make any release-specific changes (e.g. disable/remove features not ready yet).
+7) Make any release-specific changes (e.g. disable/remove features not ready yet).
 
-6) Check that the last revision on the release branch passes GitLab CI tests:
+8) :warning: Keep in mind that branches pushed to the **omniverse** repository beginning with `release-` are
+   automatically mirrored to GitLab. :warning:
+
+   Push the new release branch to **omniverse** when it is in a state ready for CI testing.
+
+9) Check that the last revision on the release branch passes GitLab CI tests. A pipeline should have been automatically
+   created after pushing the branch in the previous step:
 
    <https://gitlab-master.nvidia.com/omniverse/warp/-/pipelines>
 
-   Fix issues until all tests pass. Cherry-pick fixes for `master` where applicable.
+   Fix issues until all tests pass. Cherry-pick fixes for `main` where applicable.
 
-## GitLab Public Branch
-
----
+## Creating a GitHub Release Package
 
 1) Wait for the (latest) packages to appear in:
 
@@ -73,28 +91,20 @@ This document uses the following Git remote names:
 
     Check that the correct version number gets printed.
 
-4) If tests fail, make fixes on `release-X.Y` and where necessary cherry-pick to `master` before repeating from step (1).
+4) If tests fail, make fixes on `release-X.Y` and where necessary cherry-pick to `main` before repeating from step (1).
 
-5) If all tests passed:
+5) Tag the release with `vX.Y.Z` on `release-X.Y` and push to `omniverse`.
+   Both the tag and the release branch will be automatically mirrored to GitLab.
 
-   - `git push github master:main`
-   - `git push github release-X.Y`
+   It is safest to push *just* the new tag using `git push omniverse vX.Y.Z`.
 
-6) Tag the release with `vX.Y.Z` on `release-X.Y` and push to both `omniverse` and `github`:
+   In case of a mistake, a tag already pushed to `omniverse` can be deleted from the GitLab UI.
+   The bad tag must also be deleted from the GitHub UI if it was mirrored there.
 
-   It is safest to push *just* the new tag using `git push <remote> vX.Y.Z`.
-
-   In case of a mistake, tags can be moved using `git push <remote> vX.Y.Z -f`.
-
-## Creating a GitHub Release Package
-
----
-
-Create a new release on [GitHub](https://github.com/NVIDIA/warp) with a tag and title of `vX.Y.Z` and upload the `.whl` artifacts as attachments. Use the changelog updates as the description.
+6) Create a new release on [GitHub](https://github.com/NVIDIA/warp) with a tag and title of `vX.Y.Z` and
+   upload the `.whl` artifacts as attachments. Use the changelog updates as the description.
 
 ## Upload a PyPI Release
-
----
 
 First time:
 
@@ -111,8 +121,6 @@ Run `python -m twine upload *` from the `.whl` packages folder (on Windows make 
 
 ## Publishing the Omniverse Extensions
 
----
-
 1) Ensure that the version strings and `CHANGELOG.md` files in the `exts` folder are in sync with the ones from the library.
 
 2) Wait for the (latest) packages to appear in:
@@ -127,7 +135,7 @@ Run `python -m twine upload *` from the `.whl` packages folder (on Windows make 
     - Ensure that the example scenes are working as expected
     - Run test suites for both extensions
 
-5) If tests fail, make fixes on `release-X.Y` and where necessary cherry-pick to `master` before repeating from step (2).
+5) If tests fail, make fixes on `release-X.Y` and where necessary cherry-pick to `main` before repeating from step (2).
 
 6) If all tests passed:
 
@@ -137,8 +145,6 @@ Run `python -m twine upload *` from the `.whl` packages folder (on Windows make 
 7) Ensure that the release is tagged with `vX.Y.Z` on both `omniverse/release-X.Y` and `github/release-X.Y`.
 
 ## Automated processes
-
----
 
 The following is just for your information. These steps should run automatically by CI/CD pipelines, but can be replicated manually if needed:
 
