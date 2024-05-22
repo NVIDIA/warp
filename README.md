@@ -23,6 +23,8 @@ The easiest way to install Warp is from [PyPI](https://pypi.org/project/warp-lan
 
     pip install warp-lang
 
+You can also use `pip install warp-lang[extras]` to install additional dependencies for USD-related features. 
+
 Pre-built binary packages are also available on the [Releases](https://github.com/NVIDIA/warp/releases) page. To install in your local Python environment run the following command from the download directory:
 
     pip install warp_lang-<version and platform>.whl
@@ -65,6 +67,10 @@ print(lengths)
 ## Running Examples
 
 The `examples` directory contains a number of scripts that show how to implement different simulation methods using the Warp API. Most examples will generate USD files containing time-sampled animations (stored in the current working directory). Before running examples, users should ensure that the ``usd-core``, ``matplotlib``, and ``pyglet`` packages are installed using:
+
+    pip install warp-lang[examples]
+
+Or can be manually installed with:
 
     pip install usd-core matplotlib pyglet
 
