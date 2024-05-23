@@ -11,8 +11,6 @@ import warp as wp
 import warp.tests.aux_test_compile_consts_dummy
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 LOCAL_ONE = wp.constant(1)
 
 SQRT3_OVER_3 = wp.constant(0.57735026919)

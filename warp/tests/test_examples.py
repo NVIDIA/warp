@@ -38,8 +38,6 @@ from warp.tests.unittest_utils import (
     sanitize_identifier,
 )
 
-wp.init()
-
 
 def _build_command_line_options(test_options: Dict[str, Any]) -> list:
     additional_options = []

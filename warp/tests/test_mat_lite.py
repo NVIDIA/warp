@@ -10,8 +10,6 @@ import unittest
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 mat32d = wp.mat(shape=(3, 2), dtype=wp.float64)
 
 

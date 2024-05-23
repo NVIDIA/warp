@@ -13,8 +13,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 @wp.kernel
 def scalar_grad(x: wp.array(dtype=float), y: wp.array(dtype=float)):

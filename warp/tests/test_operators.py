@@ -10,8 +10,6 @@ import unittest
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 @wp.kernel
 def test_operators_scalar_float():

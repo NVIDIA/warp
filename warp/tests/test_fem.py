@@ -21,8 +21,6 @@ from warp.fem.types import make_free_sample
 from warp.fem.utils import grid_to_hexes, grid_to_quads, grid_to_tets, grid_to_tris
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 @integrand
 def linear_form(s: Sample, u: Field):

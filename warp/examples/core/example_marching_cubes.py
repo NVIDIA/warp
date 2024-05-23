@@ -17,8 +17,6 @@
 import warp as wp
 import warp.render
 
-wp.init()
-
 
 @wp.func
 def sdf_create_box(pos: wp.vec3, size: wp.vec3):

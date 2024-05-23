@@ -138,8 +138,6 @@ Warp arrays can also be constructed from objects that define the ``__cuda_array_
     import cupy
     import warp as wp
 
-    wp.init()
-
     device = wp.get_cuda_device()
 
     r = cupy.arange(10)
@@ -623,8 +621,6 @@ Example: Using a struct in gradient computation
 
     import numpy as np
     import warp as wp
-
-    wp.init()
 
     @wp.struct
     class TestStruct:

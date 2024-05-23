@@ -501,8 +501,6 @@ Example usage::
 
     import warp as wp
 
-    wp.init()
-
 
     @wp.kernel
     def add(a: wp.array(dtype=float), b: wp.array(dtype=float), c: wp.array(dtype=float)):

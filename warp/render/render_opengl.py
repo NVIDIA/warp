@@ -3213,5 +3213,4 @@ Instances: {len(self._instances)}"""
 
 
 if __name__ == "__main__":
-    wp.init()
     renderer = OpenGLRenderer()

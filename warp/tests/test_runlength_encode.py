@@ -14,8 +14,6 @@ import warp as wp
 from warp.tests.unittest_utils import *
 from warp.utils import runlength_encode
 
-wp.init()
-
 
 def test_runlength_encode_int(test, device, n):
     rng = np.random.default_rng(123)

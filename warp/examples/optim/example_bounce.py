@@ -23,8 +23,6 @@ import warp as wp
 import warp.sim
 import warp.sim.render
 
-wp.init()
-
 
 @wp.kernel
 def loss_kernel(pos: wp.array(dtype=wp.vec3), target: wp.vec3, loss: wp.array(dtype=float)):

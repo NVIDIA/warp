@@ -14,8 +14,6 @@ import warp.optim
 import warp.sim
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 @wp.kernel
 def objective(params: wp.array(dtype=float), score: wp.array(dtype=float)):

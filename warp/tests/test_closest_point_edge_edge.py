@@ -12,7 +12,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
 epsilon = 0.00001
 
 

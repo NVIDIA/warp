@@ -12,8 +12,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 dim_x = wp.constant(2)
 dim_y = wp.constant(2)
 dim_z = wp.constant(2)

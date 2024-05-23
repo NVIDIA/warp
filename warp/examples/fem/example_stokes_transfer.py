@@ -33,8 +33,6 @@ except ImportError:
     from bsr_utils import bsr_cg
     from plot_utils import Plot
 
-wp.init()
-
 
 @fem.integrand
 def vel_from_particles_form(s: fem.Sample, particle_vel: wp.array(dtype=wp.vec2), v: fem.Field):

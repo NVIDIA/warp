@@ -13,8 +13,6 @@ import warp as wp
 from warp.tests.unittest_utils import *
 from warp.utils import check_iommu
 
-wp.init()
-
 
 @wp.kernel
 def inc(a: wp.array(dtype=float)):

@@ -32,8 +32,6 @@ def inc_kernel(a: wp.array(dtype=float)):
     a[tid] = a[tid] + 1.0
 
 
-wp.init()
-
 # configure devices
 for target_device in wp.get_cuda_devices():
     try:

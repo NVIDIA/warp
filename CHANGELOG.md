@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## [1.1.1] - 2024-05-24
+
+- Implicitly initialize Warp when first required
 
 ## [1.1.0] - 2024-03-22
 

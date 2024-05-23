@@ -1,7 +1,7 @@
 # CHANGELOG
 
 
-## [1.1.0] - 2024-03-22
+## [1.1.0] - 2024-05-24
 
 - Support returning a value from native CUDA functions using type hints
 - Improved diff sim

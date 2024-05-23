@@ -26,8 +26,6 @@ import warp.examples
 import warp.sim
 import warp.sim.render
 
-wp.init()
-
 
 @wp.kernel
 def compute_endeffector_position(

@@ -8,8 +8,6 @@
 import warp as wp
 from warp.tests.unittest_utils import TeamCityTestRunner
 
-wp.init()
-
 
 def run_suite() -> bool:
     """Run a test suite"""

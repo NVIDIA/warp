@@ -13,8 +13,6 @@ import warp as wp
 import warp.sim
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 np_float_types = [np.float32, np.float64, np.float16]
 
 kernel_cache = {}

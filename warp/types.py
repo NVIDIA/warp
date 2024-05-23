@@ -1676,7 +1676,7 @@ class array(Array):
                 # Performance note: try first, ask questions later
                 device = warp.context.runtime.get_device(device)
             except:
-                warp.context.assert_initialized()
+                warp.context.init()
                 raise
 
             if device.is_cuda:
@@ -1805,7 +1805,7 @@ class array(Array):
             # Performance note: try first, ask questions later
             device = warp.context.runtime.get_device(device)
         except:
-            warp.context.assert_initialized()
+            warp.context.init()
             raise
 
         if device.is_cpu and not copy and not pinned:
@@ -1831,7 +1831,7 @@ class array(Array):
             # Performance note: try first, ask questions later
             device = warp.context.runtime.get_device(device)
         except:
-            warp.context.assert_initialized()
+            warp.context.init()
             raise
 
         check_array_shape(shape)
@@ -1878,7 +1878,7 @@ class array(Array):
             # Performance note: try first, ask questions later
             device = warp.context.runtime.get_device(device)
         except:
-            warp.context.assert_initialized()
+            warp.context.init()
             raise
 
         check_array_shape(shape)

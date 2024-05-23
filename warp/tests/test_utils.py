@@ -12,8 +12,6 @@ import unittest
 
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 def test_array_scan(test, device):
     rng = np.random.default_rng(123)

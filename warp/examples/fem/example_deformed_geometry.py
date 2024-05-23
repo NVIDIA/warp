@@ -32,8 +32,6 @@ except ImportError:
     from mesh_utils import gen_quadmesh, gen_trimesh
     from plot_utils import Plot
 
-wp.init()
-
 
 @fem.integrand
 def deformation_field_expr(

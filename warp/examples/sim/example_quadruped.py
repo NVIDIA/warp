@@ -24,8 +24,6 @@ import warp.examples
 import warp.sim
 import warp.sim.render
 
-wp.init()
-
 
 # Taken from env/environment.py
 def compute_env_offsets(num_envs, env_offset=(5.0, 0.0, 5.0), up_axis="Y"):

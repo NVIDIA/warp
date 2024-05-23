@@ -19,8 +19,6 @@ import numpy as np
 import warp as wp
 import warp.render
 
-wp.init()
-
 
 @wp.func
 def contact_force(n: wp.vec3, v: wp.vec3, c: float, k_n: float, k_d: float, k_f: float, k_mu: float):

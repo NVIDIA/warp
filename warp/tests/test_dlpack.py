@@ -16,8 +16,6 @@ from warp.tests.unittest_utils import *
 
 N = 1024 * 1024
 
-wp.init()
-
 
 def _jax_version():
     try:

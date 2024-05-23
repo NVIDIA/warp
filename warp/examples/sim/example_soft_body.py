@@ -18,8 +18,6 @@ import warp as wp
 import warp.sim
 import warp.sim.render
 
-wp.init()
-
 
 @wp.kernel
 def twist_points(

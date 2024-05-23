@@ -16,8 +16,6 @@
 
 import warp as wp
 
-wp.init()
-
 
 @wp.func
 def sdf_sphere(p: wp.vec3, r: float):

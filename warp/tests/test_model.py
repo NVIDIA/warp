@@ -13,8 +13,6 @@ import warp as wp
 from warp.sim import ModelBuilder
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 class TestModel(unittest.TestCase):
     def test_add_triangles(self):

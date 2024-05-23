@@ -19,8 +19,6 @@ import warp as wp
 import warp.sim
 import warp.sim.render
 
-wp.init()
-
 
 class Example:
     def __init__(self, stage_path="example_particle_chain.usd"):

@@ -12,8 +12,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 # triangulate a list of polygon face indices
 def triangulate(face_counts, face_indices):
