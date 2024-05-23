@@ -12,8 +12,6 @@ import numpy as np
 
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 def nps(dtype, value):
     """Creates a NumPy scalar value based on the given data type."""

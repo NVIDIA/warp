@@ -23,8 +23,6 @@ import warp as wp
 import warp.sim
 import warp.sim.render
 
-wp.init()
-
 
 @wp.kernel
 def com_kernel(positions: wp.array(dtype=wp.vec3), n: int, com: wp.array(dtype=wp.vec3)):

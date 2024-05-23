@@ -20,8 +20,6 @@ import warp as wp
 import warp.sim
 import warp.sim.render
 
-wp.init()
-
 
 @wp.kernel
 def compute_loss_kernel(

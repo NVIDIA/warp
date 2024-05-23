@@ -1,7 +1,5 @@
 import warp as wp
 
-wp.init()
-
 
 @wp.func
 def multiply(x: float):

@@ -9,8 +9,6 @@
 
 import warp as wp
 
-wp.init()
-
 
 @wp.func
 def aux_custom_fn(x: float, y: float):

@@ -24,8 +24,6 @@ import warp as wp
 import warp.examples
 import warp.render
 
-wp.init()
-
 
 @wp.kernel
 def deform(positions: wp.array(dtype=wp.vec3), t: float):

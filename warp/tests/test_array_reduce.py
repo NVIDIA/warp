@@ -13,8 +13,6 @@ import warp as wp
 from warp.tests.unittest_utils import *
 from warp.utils import array_inner, array_sum
 
-wp.init()
-
 
 def make_test_array_sum(dtype):
     N = 1000

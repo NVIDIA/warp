@@ -10,8 +10,6 @@
 import warp as wp
 import warp.tests.aux_test_reference as ref
 
-wp.init()
-
 
 @wp.kernel
 def kern(expect: float):

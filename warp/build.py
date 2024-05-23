@@ -95,6 +95,8 @@ def init_kernel_cache(path=None):
 def clear_kernel_cache():
     """Clear the kernel cache."""
 
+    warp.context.init()
+
     is_intialized = kernel_bin_dir is not None and kernel_gen_dir is not None
     assert is_intialized, "The kernel cache directory is not configured; wp.init() has not been called yet or failed."
 

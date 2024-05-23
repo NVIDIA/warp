@@ -18,8 +18,6 @@ import math
 import warp as wp
 import warp.render
 
-wp.init()
-
 
 @wp.func
 def sample(f: wp.array(dtype=float), x: int, y: int, width: int, height: int):

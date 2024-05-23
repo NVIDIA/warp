@@ -25,8 +25,6 @@ import warp.examples
 import warp.sim
 import warp.sim.render
 
-wp.init()
-
 
 class IntegratorType(Enum):
     EULER = "euler"

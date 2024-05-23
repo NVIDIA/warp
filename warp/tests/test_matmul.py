@@ -11,11 +11,8 @@ from typing import Any
 import numpy as np
 
 import warp as wp
-from warp.tests.unittest_utils import *
-
-wp.init()
-
 from warp.context import runtime  # noqa: E402
+from warp.tests.unittest_utils import *
 
 
 class gemm_test_bed_runner:

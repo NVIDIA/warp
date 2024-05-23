@@ -12,9 +12,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-# wp.config.cache_kernels = False
-
 
 # Volume write tests
 @wp.kernel

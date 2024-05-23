@@ -10,8 +10,6 @@ import unittest
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 def get_device_pair_with_peer_access_support():
     devices = wp.get_cuda_devices()

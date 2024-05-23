@@ -128,8 +128,6 @@ def ksz(s: Sz):
     tid = wp.tid()  # noqa: F841
 
 
-wp.init()
-
 wp.build.clear_kernel_cache()
 
 devices = wp.get_devices()

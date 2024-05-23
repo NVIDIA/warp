@@ -10,9 +10,6 @@ import unittest
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
-
 devices = get_test_devices()
 
 

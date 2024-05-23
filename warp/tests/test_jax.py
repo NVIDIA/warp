@@ -14,8 +14,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 # basic kernel with one input and output
 @wp.kernel

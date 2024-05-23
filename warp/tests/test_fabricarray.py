@@ -14,9 +14,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
-
 # types to test fabric arrays
 _fabric_types = [
     *wp.types.scalar_types,

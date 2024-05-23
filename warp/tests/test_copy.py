@@ -12,8 +12,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 @wp.kernel
 def mul_1d(a: wp.array1d(dtype=float), s: float):

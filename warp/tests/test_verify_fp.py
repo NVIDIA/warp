@@ -10,8 +10,6 @@ import unittest
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 def setUpModule():
     wp.config.verify_fp = True  # Enable checking floating-point values to be finite

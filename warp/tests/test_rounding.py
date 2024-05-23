@@ -15,8 +15,6 @@ from warp.tests.unittest_utils import *
 compare_to_numpy = False
 print_results = False
 
-wp.init()
-
 
 @wp.kernel
 def test_kernel(

@@ -12,8 +12,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 @wp.kernel
 def kernel_1d(a: wp.array(dtype=int, ndim=1)):

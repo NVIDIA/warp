@@ -12,10 +12,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-# import matplotlib.pyplot as plt
-
-wp.init()
-
 
 @wp.kernel
 def pnoise(

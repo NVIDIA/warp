@@ -30,8 +30,6 @@ except ImportError:
     from example_diffusion import diffusion_form, linear_form
     from plot_utils import Plot
 
-wp.init()
-
 
 @fem.integrand
 def mass_form(
