@@ -1,3 +1,13 @@
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto code formatting
+  autofix_prs: false
+  autoupdate_branch: ""
+  autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
+  autoupdate_schedule: quarterly
+  skip: []
+  submodules: false
+
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
