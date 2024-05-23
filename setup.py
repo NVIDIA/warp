@@ -198,14 +198,6 @@ setuptools.setup(
         ]
         + warp_binary_libraries,
     },
-        extras_require={
-            'examples': [
-                'usd-core', 'matplotlib', 'pyglet',  
-            ],
-            'extras': [
-                'usd-core'
-            ]
-        },
     distclass=BinaryDistribution,
     cmdclass={
         "bdist_wheel": WarpBDistWheel,
