@@ -3,6 +3,7 @@
 ## [1.1.1] - 2024-05-24
 
 - Implicitly initialize Warp when first required
+- Speed up `omni.warp.core`'s startup time
 
 ## [1.1.0] - 2024-03-22
 

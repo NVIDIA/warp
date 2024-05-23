@@ -188,7 +188,6 @@ class OmniWarpExtension(omni.ext.IExt):
         settings = carb.settings.get_settings()
 
         wp.config.enable_backward = settings.get(SETTING_ENABLE_BACKWARD)
-        wp.init()
 
         self._is_live = True
         self._ext_name = "omni.warp"
