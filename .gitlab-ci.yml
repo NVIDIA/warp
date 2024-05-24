@@ -199,10 +199,12 @@ linux-x86_64 test:
   script:
     - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
+# Note that for throughput reasons this runs on a single-GPU runner
 windows-x86_64 test:
   stage: test
   needs: [windows-x86_64 build]
   extends:
+    - .runner-test-windows-x86_64-gpu
     - .test_common_main
   before_script:
     - !reference [.snippets, define-powershell-GetTime]
@@ -219,9 +221,6 @@ windows-x86_64 test:
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
     - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
-  tags:
-    - os/windows
-    - gpu/2x-A5000
 
 mac-x86_64 test:
   stage: test
@@ -260,13 +259,18 @@ linux-x86_64 test minimal:
   script:
     - python -m warp.tests --junit-report-xml rspec.xml -s autodetect
 
-# Test the Windows release build in an environment with minimal Python dependencies installed
-windows-x86_64 test minimal:
+# Optional multi-GPU Windows job (likely longer queue time)
+windows-x86_64 test mgpu:
   stage: test
   needs: [windows-x86_64 build]
   extends:
-    #- .runner-test-windows-x86_64-gpu
     - .save_test_report_artifact
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH =~ /release-.*/
+    - when: manual # Can be triggered in all other scenarios
+      allow_failure: true
   before_script:
     - !reference [.snippets, define-powershell-GetTime]
     - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
@@ -276,6 +280,8 @@ windows-x86_64 test minimal:
     - '& $env:CI_PROJECT_DIR\_build\target-deps\python\python.exe -m venv _venv'
     - .\_venv\Scripts\Activate.ps1
     - python -m pip install --upgrade pip
+    - python -m pip install --upgrade usd-core
+    - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
     - python -m pip install -e .
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
@@ -330,7 +336,6 @@ trigger python 3.X test pipelines:
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
-    - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
     - if: $CI_COMMIT_BRANCH =~ /release-.*/
     - when: manual # Can be triggered in all other scenarios
       allow_failure: true
@@ -371,7 +376,6 @@ trigger debug build and test pipeline:
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
-    - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
     - if: $CI_COMMIT_BRANCH =~ /release-.*/
     - when: manual # Can be triggered in all other scenarios
       allow_failure: true
@@ -409,7 +413,6 @@ create pypi wheels:
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
-    - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
     - if: $CI_COMMIT_BRANCH =~ /release-.*/
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
       changes:
@@ -452,7 +455,6 @@ create kit artifacts:
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
-    - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
     - if: $CI_COMMIT_BRANCH =~ /release-.*/
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event' # Can be manually triggered for MRs
       when: manual
