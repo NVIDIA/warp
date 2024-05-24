@@ -346,6 +346,8 @@ class Function:
 def call_builtin(func: Function, *params) -> Tuple[bool, Any]:
     uses_non_warp_array_type = False
 
+    warp.context.init()
+
     # Retrieve the built-in function from Warp's dll.
     c_func = getattr(warp.context.runtime.core, func.mangled_name)
 
