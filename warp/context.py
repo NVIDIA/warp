@@ -3238,13 +3238,9 @@ class Runtime:
                 raise RuntimeError(f"CUDA error detected: {err}")
 
 
-def assert_initialized():
-    assert runtime is not None, "Warp not initialized, call wp.init() before use"
-
-
 # global entry points
 def is_cpu_available():
-    assert_initialized()
+    init()
 
     return runtime.llvm
 
@@ -3267,7 +3263,7 @@ def is_cuda_driver_initialized() -> bool:
 
     This can be helpful in cases in which ``cuInit()`` was called before a fork.
     """
-    assert_initialized()
+    init()
 
     return runtime.core.cuda_driver_is_initialized()
 
@@ -3275,7 +3271,7 @@ def is_cuda_driver_initialized() -> bool:
 def get_devices() -> List[Device]:
     """Returns a list of devices supported in this environment."""
 
-    assert_initialized()
+    init()
 
     devices = []
     if is_cpu_available():
@@ -3288,7 +3284,7 @@ def get_devices() -> List[Device]:
 def get_cuda_device_count() -> int:
     """Returns the number of CUDA devices supported in this environment."""
 
-    assert_initialized()
+    init()
 
     return len(runtime.cuda_devices)
 
@@ -3296,7 +3292,7 @@ def get_cuda_device_count() -> int:
 def get_cuda_device(ordinal: Union[int, None] = None) -> Device:
     """Returns the CUDA device with the given ordinal or the current CUDA device if ordinal is None."""
 
-    assert_initialized()
+    init()
 
     if ordinal is None:
         return runtime.get_current_cuda_device()
@@ -3307,7 +3303,7 @@ def get_cuda_device(ordinal: Union[int, None] = None) -> Device:
 def get_cuda_devices() -> List[Device]:
     """Returns a list of CUDA devices supported in this environment."""
 
-    assert_initialized()
+    init()
 
     return runtime.cuda_devices
 
@@ -3315,7 +3311,7 @@ def get_cuda_devices() -> List[Device]:
 def get_preferred_device() -> Device:
     """Returns the preferred compute device, CUDA if available and CPU otherwise."""
 
-    assert_initialized()
+    init()
 
     if is_cuda_available():
         return runtime.cuda_devices[0]
@@ -3328,7 +3324,7 @@ def get_preferred_device() -> Device:
 def get_device(ident: Devicelike = None) -> Device:
     """Returns the device identified by the argument."""
 
-    assert_initialized()
+    init()
 
     return runtime.get_device(ident)
 
@@ -3336,7 +3332,7 @@ def get_device(ident: Devicelike = None) -> Device:
 def set_device(ident: Devicelike):
     """Sets the target device identified by the argument."""
 
-    assert_initialized()
+    init()
 
     device = runtime.get_device(ident)
     runtime.set_default_device(device)
@@ -3357,7 +3353,7 @@ def map_cuda_device(alias: str, context: ctypes.c_void_p = None) -> Device:
         The associated wp.Device.
     """
 
-    assert_initialized()
+    init()
 
     return runtime.map_cuda_device(alias, context)
 
@@ -3365,7 +3361,7 @@ def map_cuda_device(alias: str, context: ctypes.c_void_p = None) -> Device:
 def unmap_cuda_device(alias: str):
     """Remove a CUDA device with the given alias."""
 
-    assert_initialized()
+    init()
 
     runtime.unmap_cuda_device(alias)
 
@@ -3373,7 +3369,7 @@ def unmap_cuda_device(alias: str):
 def is_mempool_supported(device: Devicelike):
     """Check if CUDA memory pool allocators are available on the device."""
 
-    assert_initialized()
+    init()
 
     device = runtime.get_device(device)
 
@@ -3383,7 +3379,7 @@ def is_mempool_supported(device: Devicelike):
 def is_mempool_enabled(device: Devicelike):
     """Check if CUDA memory pool allocators are enabled on the device."""
 
-    assert_initialized()
+    init()
 
     device = runtime.get_device(device)
 
@@ -3403,7 +3399,7 @@ def set_mempool_enabled(device: Devicelike, enable: bool):
     prior to graph capture.
     """
 
-    assert_initialized()
+    init()
 
     device = runtime.get_device(device)
 
@@ -3433,7 +3429,7 @@ def set_mempool_release_threshold(device: Devicelike, threshold: Union[int, floa
     For example, 1024**3 means one GiB of memory.
     """
 
-    assert_initialized()
+    init()
 
     device = runtime.get_device(device)
 
@@ -3455,7 +3451,7 @@ def set_mempool_release_threshold(device: Devicelike, threshold: Union[int, floa
 def get_mempool_release_threshold(device: Devicelike):
     """Get the CUDA memory pool release threshold on the device."""
 
-    assert_initialized()
+    init()
 
     device = runtime.get_device(device)
 
@@ -3478,7 +3474,7 @@ def is_peer_access_supported(target_device: Devicelike, peer_device: Devicelike)
         A Boolean value indicating if this peer access is supported by the system.
     """
 
-    assert_initialized()
+    init()
 
     target_device = runtime.get_device(target_device)
     peer_device = runtime.get_device(peer_device)
@@ -3499,7 +3495,7 @@ def is_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike):
         A Boolean value indicating if this peer access is currently enabled.
     """
 
-    assert_initialized()
+    init()
 
     target_device = runtime.get_device(target_device)
     peer_device = runtime.get_device(peer_device)
@@ -3520,7 +3516,7 @@ def set_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike, 
     CUDA pooled allocators, use `set_mempool_access_enabled()`.
     """
 
-    assert_initialized()
+    init()
 
     target_device = runtime.get_device(target_device)
     peer_device = runtime.get_device(peer_device)
@@ -3551,7 +3547,7 @@ def is_mempool_access_supported(target_device: Devicelike, peer_device: Deviceli
         A Boolean value indicating if this memory pool access is supported by the system.
     """
 
-    assert_initialized()
+    init()
 
     return target_device.is_mempool_supported and is_peer_access_supported(target_device, peer_device)
 
@@ -3566,7 +3562,7 @@ def is_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelike
         A Boolean value indicating if this peer access is currently enabled.
     """
 
-    assert_initialized()
+    init()
 
     target_device = runtime.get_device(target_device)
     peer_device = runtime.get_device(peer_device)
@@ -3584,7 +3580,7 @@ def set_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelik
     default CUDA allocators, use `set_peer_access_enabled()`.
     """
 
-    assert_initialized()
+    init()
 
     target_device = runtime.get_device(target_device)
     peer_device = runtime.get_device(peer_device)
@@ -4299,7 +4295,7 @@ def launch(
             If negative or zero, the maximum hardware value will be used.
     """
 
-    assert_initialized()
+    init()
 
     # if stream is specified, use the associated device
     if stream is not None:

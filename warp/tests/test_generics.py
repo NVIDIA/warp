@@ -13,8 +13,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 @wp.func
 def generic_adder(a: Any, b: Any):

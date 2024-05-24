@@ -13,8 +13,6 @@ import warp as wp
 from warp.tests.unittest_utils import *
 from warp.utils import check_iommu
 
-wp.init()
-
 
 class Capturable:
     def __init__(self, use_graph=True, stream=None):

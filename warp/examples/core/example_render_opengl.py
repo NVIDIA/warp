@@ -18,8 +18,6 @@ import numpy as np
 import warp as wp
 import warp.render
 
-wp.init()
-
 
 class Example:
     def __init__(self, num_tiles=4, custom_tile_arrangement=False):

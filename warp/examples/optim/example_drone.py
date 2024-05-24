@@ -28,8 +28,6 @@ from warp.sim.collide import box_sdf, capsule_sdf, cone_sdf, cylinder_sdf, mesh_
 
 DEFAULT_DRONE_PATH = os.path.join(warp.examples.get_asset_directory(), "crazyflie.usd")  # Path to input drone asset
 
-wp.init()
-
 
 @wp.struct
 class Propeller:

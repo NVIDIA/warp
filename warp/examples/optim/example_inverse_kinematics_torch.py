@@ -21,8 +21,6 @@ import warp as wp
 import warp.sim
 import warp.sim.render
 
-wp.init()
-
 
 class ForwardKinematics(torch.autograd.Function):
     @staticmethod

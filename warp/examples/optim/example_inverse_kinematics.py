@@ -19,8 +19,6 @@ import warp as wp
 import warp.sim
 import warp.sim.render
 
-wp.init()
-
 TARGET = wp.constant(wp.vec3(2.0, 1.0, 0.0))
 
 

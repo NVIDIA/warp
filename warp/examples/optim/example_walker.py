@@ -29,8 +29,6 @@ import warp.optim
 import warp.sim
 import warp.sim.render
 
-wp.init()
-
 
 @wp.kernel
 def loss_kernel(com: wp.array(dtype=wp.vec3), loss: wp.array(dtype=float)):

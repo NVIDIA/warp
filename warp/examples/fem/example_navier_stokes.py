@@ -31,8 +31,6 @@ except ImportError:
     from mesh_utils import gen_trimesh
     from plot_utils import Plot
 
-wp.init()
-
 
 @fem.integrand
 def u_boundary_value(s: fem.Sample, domain: fem.Domain, v: fem.Field, top_vel: float):

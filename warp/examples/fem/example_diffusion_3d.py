@@ -33,8 +33,6 @@ except ImportError:
     from mesh_utils import gen_hexmesh, gen_tetmesh
     from plot_utils import Plot
 
-wp.init()
-
 
 @fem.integrand
 def vert_boundary_projector_form(

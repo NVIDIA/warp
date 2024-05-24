@@ -38,8 +38,6 @@ An example first program that computes the lengths of random 3D vectors is given
     import warp as wp
     import numpy as np
 
-    wp.init()
-
     num_points = 1024
 
     @wp.kernel
@@ -48,7 +46,7 @@ An example first program that computes the lengths of random 3D vectors is given
 
         # thread index
         tid = wp.tid()
-        
+
         # compute distance of each point from origin
         lengths[tid] = wp.length(points[tid])
 

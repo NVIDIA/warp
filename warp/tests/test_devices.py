@@ -10,8 +10,6 @@ import unittest
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 def test_devices_get_cuda_device_functions(test, device):
     test.assertTrue(device.is_cuda)

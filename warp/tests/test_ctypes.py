@@ -12,8 +12,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 @wp.kernel
 def add_vec2(dest: wp.array(dtype=wp.vec2), c: wp.vec2):

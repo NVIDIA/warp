@@ -35,8 +35,6 @@ def compute(data: Data):
     data.x[0] = increment(data.x[0])
 """
 
-wp.init()
-
 
 def load_code_as_module(code, name):
     file, file_path = tempfile.mkstemp(suffix=".py")

@@ -5,8 +5,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 def test_basic(test, device):
     snippet = """

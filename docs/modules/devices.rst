@@ -102,8 +102,6 @@ The following example shows how to allocate arrays and launch kernels on all ava
 
     import warp as wp
 
-    wp.init()
-
 
     @wp.kernel
     def inc(a: wp.array(dtype=float)):

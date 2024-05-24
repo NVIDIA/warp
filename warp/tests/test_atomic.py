@@ -12,8 +12,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 # construct kernel + test function for atomic ops on each vec/matrix type
 def make_atomic_test(type):

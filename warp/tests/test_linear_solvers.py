@@ -3,12 +3,9 @@ import unittest
 import numpy as np
 
 import warp as wp
+from warp.context import runtime  # noqa: E402
 from warp.optim.linear import bicgstab, cg, cr, gmres, preconditioner
 from warp.tests.unittest_utils import *
-
-wp.init()
-
-from warp.context import runtime  # noqa: E402
 
 
 def _check_linear_solve(test, A, b, func, *args, **kwargs):

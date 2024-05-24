@@ -65,9 +65,6 @@ VERTEX_COUNT = 36
 FACE_COUNT = 12
 
 
-wp.init()
-
-
 @wp.kernel(enable_backward=False)
 def read_points_kernel(
     mesh_id: wp.uint64,

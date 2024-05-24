@@ -25,8 +25,6 @@ try:
 except ImportError:
     from bsr_utils import bsr_cg
 
-wp.init()
-
 
 @integrand
 def integrate_fraction(s: Sample, phi: Field):

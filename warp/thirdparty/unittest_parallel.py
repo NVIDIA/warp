@@ -245,8 +245,6 @@ def main(argv=None):
 
             import warp as wp
 
-            wp.init()
-
             # force rebuild of all kernels
             wp.build.clear_kernel_cache()
             print("Cleared Warp kernel cache")
@@ -545,7 +543,6 @@ def set_worker_cache(lock, shared_index, args, temp_dir):
             )
 
         wp.config.kernel_cache_dir = cache_root_dir
-        wp.init()
         wp.build.clear_kernel_cache()
 
 

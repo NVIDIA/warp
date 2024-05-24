@@ -23,8 +23,6 @@ import warp as wp
 import warp.examples
 from warp.optim import SGD
 
-wp.init()
-
 
 class RenderMode:
     """Rendering modes

@@ -70,8 +70,6 @@ TEST_DATA = {
     ),
 }
 
-wp.init()
-
 
 def test_smoothstep(test, device):
     def make_kernel_fn(data_type):

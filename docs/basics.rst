@@ -6,14 +6,10 @@ Basics
 Initialization
 --------------
 
-Before use Warp should be explicitly initialized with the ``wp.init()`` method as follows::
-
-    import warp as wp
-
-    wp.init()
-
-Warp will print some startup information about the compute devices available, driver versions, and the location
-for any generated kernel code, e.g.:
+When calling a Warp function like `wp.launch()` for the first time,
+Warp will initialize itself and, as a result, will print some startup information
+about the compute devices available, driver versions, and the location for any
+generated kernel code, e.g.:
 
 .. code:: bat
 
@@ -23,6 +19,13 @@ for any generated kernel code, e.g.:
         "cpu"    | AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD
         "cuda:0" | NVIDIA GeForce RTX 4080 (sm_89)
     Kernel cache: C:\Users\mmacklin\AppData\Local\NVIDIA\warp\Cache\1.0.0
+
+
+It's also possible to explicitly initialize Warp with the ``wp.init()`` method as such::
+
+    import warp as wp
+
+    wp.init()
 
 
 Kernels

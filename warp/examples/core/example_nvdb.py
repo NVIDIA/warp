@@ -23,8 +23,6 @@ import warp as wp
 import warp.examples
 import warp.render
 
-wp.init()
-
 
 @wp.func
 def volume_grad(volume: wp.uint64, p: wp.vec3):

@@ -76,7 +76,6 @@ using :func:`warp.from_torch` is as follows::
     import warp as wp
     import torch
 
-    wp.init()
 
     @wp.kernel()
     def loss(xs: wp.array(dtype=float, ndim=2), l: wp.array(dtype=float)):
@@ -118,7 +117,6 @@ Here, we revisit the same example from above where now only a single conversion 
     import numpy as np
     import torch
 
-    wp.init()
 
     @wp.kernel()
     def loss(xs: wp.array(dtype=float, ndim=2), l: wp.array(dtype=float)):
@@ -139,7 +137,7 @@ Here, we revisit the same example from above where now only a single conversion 
         tape.zero()
         tape.backward(loss=l)
         opt.step()
-        
+
         l.zero_()
         wp.launch(loss, dim=len(xs), inputs=[xs], outputs=[l], device=xs.device)
         print(f"{i}\tloss: {l.numpy()[0]}")
@@ -152,12 +150,10 @@ requires forward and backward functions to be defined. After mapping incoming to
 may be launched in the usual way. In the backward pass, the same kernel's adjoint may be launched by 
 setting ``adjoint = True`` in :func:`wp.launch() <launch>`. Alternatively, the user may choose to rely on Warp's tape.
 In the following example, we demonstrate how Warp may be used to evaluate the Rosenbrock function in an optimization context::
-    
+
     import warp as wp
     import numpy as np
     import torch
-
-    wp.init()
 
     pvec2 = wp.types.vector(length=2, dtype=wp.float32)
 
@@ -299,8 +295,6 @@ Warp kernels can be used as JAX primitives, which can be used to call Warp kerne
         tid = wp.tid()
         output[tid] = 3.0 * input[tid]
 
-    wp.init()
-
     # create a Jax primitive from a Warp kernel
     jax_triple = jax_kernel(triple_kernel)
 
@@ -345,8 +339,6 @@ Here is an example of an operation with three inputs and two outputs::
         tid = wp.tid()
         ab[tid] = a[tid] + b[tid]
         bc[tid] = b[tid] + c[tid]
-
-    wp.init()
 
     # create a Jax primitive from a Warp kernel
     jax_multiarg = jax_kernel(multiarg_kernel)

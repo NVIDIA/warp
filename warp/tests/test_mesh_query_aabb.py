@@ -12,8 +12,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 @wp.func
 def min_vec3(a: wp.vec3, b: wp.vec3):
