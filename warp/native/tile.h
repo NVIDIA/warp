@@ -5,6 +5,13 @@
 // todo: requires CTK, replace with inline ptx
 #include "cuda_pipeline_primitives.h"
 
+#define USE_CUTE 0
+
+#if USE_CUTE
+#include "cutlass/include/cute/tensor.hpp"
+#include "cutlass/include/cute/algorithm/cooperative_gemm.hpp"
+#endif // USE_CUTE
+
 #if !defined(__CUDA_ARCH__)
 #define WP_TILE_SHARED static
 #define WP_TILE_SYNC void
@@ -190,6 +197,8 @@ inline void partition_store(const partition_t<M, N, T>& tile, int i, int j, cons
 }
 
 
+#if !USE_CUTE
+
 template <typename T>
 inline CUDA_CALLABLE void tile_matmul(const array_t<T>& A, const array_t<T>& B, const array_t<T>& out)
 {   
@@ -268,6 +277,51 @@ inline CUDA_CALLABLE void tile_matmul_scalar(const array_t<T>& A, const array_t<
     WP_TILE_SYNC();
 }
 
+#else
 
+
+template <typename T>
+inline CUDA_CALLABLE void tile_matmul(const array_t<T>& A, const array_t<T>& B, const array_t<T>& out)
+{
+	using namespace cute;
+
+    __pipeline_wait_prior(0);
+
+    // ensure smem tile is ready
+ 	WP_TILE_SYNC();
+
+	// Define CTA matrix size (static)
+	auto bM = Int<64>{};
+	auto bN = Int<64>{};
+	auto bK = Int<8>{};
+
+	// Define the smem layouts (static)
+	auto sA = make_layout(make_shape(bM, bK), LayoutRight{});  
+	auto sB = make_layout(make_shape(bN, bK));   
+	auto sC = make_layout(make_shape(bM, bN), LayoutRight{});
+
+    Tensor s_a_tensor = make_tensor(make_smem_ptr<float>(A.data), sA);
+    Tensor s_b_tensor = make_tensor(make_smem_ptr<float>(B.data), sB);
+    Tensor s_c_tensor = make_tensor(make_smem_ptr<float>(out.data), sC);
+
+
+    TiledMMA tiled_mma = make_tiled_mma(UniversalFMA<float,float,float>{},
+                                 Layout<Shape<_16,_8,_1>>{});  // 16x8x1 UniversalFMA, assumes blockDim=128
+
+    
+    cooperative_gemm< AutoVectorizingCopyWithAssumedAlignment<sizeof_bits_v<float>>,
+                      AutoVectorizingCopyWithAssumedAlignment<sizeof_bits_v<float>>, 
+                      AutoVectorizingCopyWithAssumedAlignment<sizeof_bits_v<float>>
+                    >(
+      threadIdx.x, tiled_mma,
+      1.0f, s_a_tensor, s_b_tensor, 1.0f, s_c_tensor,
+      cute::identity(), cute::identity(), cute::identity(), cute::identity()
+    );
+
+    WP_TILE_SYNC();
+
+}
+
+#endif // USE_CUTE
 
 } // namespace wp
