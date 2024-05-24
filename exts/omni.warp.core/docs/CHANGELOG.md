@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## [1.1.1] - 2024-05-24
+
+- Implicitly initialize Warp when first required
+- Speed up `omni.warp.core`'s startup time
 
 ## [1.1.0] - 2024-05-24
 
@@ -135,6 +139,16 @@
 - Fix `wp.matmul()` to always use the correct CUDA context
 - Fix memory leak in BSR transpose
 - Fix stream synchronization issues when copying non-contiguous arrays
+- API change: `wp.matmul()` no longer accepts a device as a parameter; instead, it infers the correct device from the arrays being multiplied
+- Updated DLPack utilities to the latest published standard
+  - External arrays can be imported into Warp directly, e.g., `wp.from_dlpack(external_array)`
+  - Warp arrays can be exported to consumer frameworks directly, e.g., `jax.dlpack.from_dlpack(warp_array)`
+  - Added CUDA stream synchronization for CUDA arrays
+  - The original DLPack protocol can still be used for better performance when stream synchronization is not required, see interoperability docs for details
+  - `warp.to_dlpack()` is about 3-4x faster in common cases
+  - `warp.from_dlpack()` is about 2x faster when called with a DLPack capsule
+  - Fixed a small CPU memory leak related to DLPack interop
+- Improved performance of creating arrays
 
 ## [0.13.1] - 2024-02-22
 
