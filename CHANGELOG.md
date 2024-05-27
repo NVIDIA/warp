@@ -4,6 +4,9 @@
 
 - Add a not-a-number floating-point constant that can be used as `wp.NAN` or `wp.nan`.
 - Add `wp.isnan()`, `wp.isinf()`, and `wp.isfinite()` for scalars, vectors, matrices, etc.
+
+## [1.1.1] - 2024-05-24
+
 - Implicitly initialize Warp when first required
 - Speed up `omni.warp.core`'s startup time
 - Add runtime checks for `wp.MarchingCubes` on field dimensions and size
