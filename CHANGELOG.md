@@ -4,12 +4,16 @@
 
 - Add a not-a-number floating-point constant that can be used as `wp.NAN` or `wp.nan`.
 - Add `wp.isnan()`, `wp.isinf()`, and `wp.isfinite()` for scalars, vectors, matrices, etc.
+- Improve kernel cache reuse by hashing just the local module constants. Previously, a
+  module's hash was affected by all constants declared in a Warp program.
+- Revised module compilation process to allow multiple processes to use the same kernel cache directory.
+  Cached kernels will now be stored in hash-specific subdirectory.
+- Add runtime checks for `wp.MarchingCubes` on field dimensions and size
 
 ## [1.1.1] - 2024-05-24
 
 - Implicitly initialize Warp when first required
 - Speed up `omni.warp.core`'s startup time
-- Add runtime checks for `wp.MarchingCubes` on field dimensions and size
 
 ## [1.1.0] - 2024-05-09
 
