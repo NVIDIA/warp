@@ -66,9 +66,12 @@ Basic Global Settings
 |                                                |         |             | This setting does not affect error messages and warnings.                |
 +------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 |``kernel_cache_dir``                            | String  | ``None``    | The path to the directory used for the user kernel cache. Subdirectories |
-|                                                |         |             | named ``gen`` and ``bin`` will be created in this directory. If ``None``,|
-|                                                |         |             | a directory will be automatically determined using                       |
+|                                                |         |             | beginning with ``wp_`` will be created in this directory. If ``None``,   |
+|                                                |         |             | a directory will be automatically determined using the value of the      |
+|                                                |         |             | environment variable ``WARP_CACHE_PATH`` or the                          |
 |                                                |         |             | `appdirs.user_cache_directory <https://github.com/ActiveState/appdirs>`_ |
+|                                                |         |             | if ``WARP_CACHE_PATH`` is also not set. ``kernel_cache_dir`` will be     |
+|                                                |         |             | updated to reflect the location of the cache directory used.             |
 +------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 |``enable_backward``                             | Boolean | ``True``    | If ``True``, backward passes of kernels will be compiled by default.     |
 |                                                |         |             | Disabling this setting can reduce kernel compilation times.              |

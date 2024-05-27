@@ -47,6 +47,7 @@ Also see :github:`warp/tests/walkthrough_debug.py` for an example of how to debu
 Generated Code
 --------------
 
+Occasionally it can be useful to inspect the generated code for debugging or profiling.
 The generated code for kernels is stored in a central cache location in the user's home directory, the cache location
 is printed at startup when ``wp.init()`` is called, for example:
 
@@ -60,8 +61,10 @@ is printed at startup when ``wp.init()`` is called, for example:
         "cuda:1" | NVIDIA GeForce RTX 2080 Ti (sm_75)
         Kernel cache: C:\Users\LukasW\AppData\Local\NVIDIA Corporation\warp\Cache\0.8.1
 
-The kernel cache has ``gen`` and ``bin`` folders that contain the generated C++/CUDA code and the compiled binaries
-respectively. Occasionally it can be useful to inspect the generated code for debugging / profiling.
+The kernel cache has folders beginning with ``wp_`` that contain the generated C++/CUDA code and the compiled binaries
+for each module that was compiled at runtime.
+The name of each folder ends with a hexadecimal hash constructed from the module contents to avoid potential
+conflicts when using multiple processes and to support the caching of runtime-defined kernels.
 
 Bounds Checking
 ---------------

@@ -22,7 +22,7 @@ def _jax_version():
         import jax
 
         return jax.__version_info__
-    except ImportError:
+    except (ImportError, AttributeError):
         return (0, 0, 0)
 
 
