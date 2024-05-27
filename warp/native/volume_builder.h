@@ -10,8 +10,23 @@ struct BuildGridParams {
     char name[256] = "";
 };
 
+template<>
+struct BuildGridParams<nanovdb::ValueIndex> {
+    double voxel_size = 1.0;
+    nanovdb::ValueIndex background_value;
+    nanovdb::Vec3d translation{0.0, 0.0, 0.0};
+    char name[256] = "";
+};
+
+template<>
+struct BuildGridParams<nanovdb::ValueOnIndex> {
+    double voxel_size = 1.0;
+    nanovdb::Vec3d translation{0.0, 0.0, 0.0};
+    char name[256] = "";
+};
+
 template <typename BuildT>
-void build_grid_from_tiles(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
+void build_grid_from_points(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
                            size_t &out_grid_size,
                            const void *points,
                            size_t num_points,

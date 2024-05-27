@@ -2624,22 +2624,36 @@ class Runtime:
             ]
             self.core.cutlass_gemm.restype = ctypes.c_bool
 
-            self.core.volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64, ctypes.c_bool, ctypes.c_bool]
             self.core.volume_create_host.restype = ctypes.c_uint64
-            self.core.volume_get_buffer_info_host.argtypes = [
-                ctypes.c_uint64,
-                ctypes.POINTER(ctypes.c_void_p),
-                ctypes.POINTER(ctypes.c_uint64),
-            ]
             self.core.volume_get_tiles_host.argtypes = [
                 ctypes.c_uint64,
-                ctypes.POINTER(ctypes.c_void_p),
-                ctypes.POINTER(ctypes.c_uint64),
+                ctypes.c_void_p,
+            ]
+            self.core.volume_get_voxels_host.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_void_p,
             ]
             self.core.volume_destroy_host.argtypes = [ctypes.c_uint64]
 
-            self.core.volume_create_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64]
+            self.core.volume_create_device.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_uint64,
+                ctypes.c_bool,
+                ctypes.c_bool,
+            ]
             self.core.volume_create_device.restype = ctypes.c_uint64
+            self.core.volume_get_tiles_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_void_p,
+            ]
+            self.core.volume_get_voxels_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_void_p,
+            ]
+            self.core.volume_destroy_device.argtypes = [ctypes.c_uint64]
+
             self.core.volume_f_from_tiles_device.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
@@ -2678,24 +2692,68 @@ class Runtime:
                 ctypes.c_bool,
             ]
             self.core.volume_i_from_tiles_device.restype = ctypes.c_uint64
-            self.core.volume_get_buffer_info_device.argtypes = [
-                ctypes.c_uint64,
-                ctypes.POINTER(ctypes.c_void_p),
-                ctypes.POINTER(ctypes.c_uint64),
+            self.core.volume_index_from_tiles_device.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_bool,
             ]
-            self.core.volume_get_tiles_device.argtypes = [
-                ctypes.c_uint64,
-                ctypes.POINTER(ctypes.c_void_p),
-                ctypes.POINTER(ctypes.c_uint64),
+            self.core.volume_index_from_tiles_device.restype = ctypes.c_uint64
+            self.core.volume_from_active_voxels_device.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_bool,
             ]
-            self.core.volume_destroy_device.argtypes = [ctypes.c_uint64]
+            self.core.volume_from_active_voxels_device.restype = ctypes.c_uint64
 
+            self.core.volume_get_buffer_info.argtypes = [
+                ctypes.c_uint64,
+                ctypes.POINTER(ctypes.c_void_p),
+                ctypes.POINTER(ctypes.c_uint64),
+            ]
             self.core.volume_get_voxel_size.argtypes = [
                 ctypes.c_uint64,
                 ctypes.POINTER(ctypes.c_float),
                 ctypes.POINTER(ctypes.c_float),
                 ctypes.POINTER(ctypes.c_float),
             ]
+            self.core.volume_get_tile_and_voxel_count.argtypes = [
+                ctypes.c_uint64,
+                ctypes.POINTER(ctypes.c_uint32),
+                ctypes.POINTER(ctypes.c_uint64),
+            ]
+            self.core.volume_get_grid_info.argtypes = [
+                ctypes.c_uint64,
+                ctypes.POINTER(ctypes.c_uint64),
+                ctypes.POINTER(ctypes.c_uint32),
+                ctypes.POINTER(ctypes.c_uint32),
+                ctypes.c_float * 3,
+                ctypes.c_float * 9,
+                ctypes.c_char * 16,
+            ]
+            self.core.volume_get_grid_info.restype = ctypes.c_char_p
+            self.core.volume_get_blind_data_count.argtypes = [
+                ctypes.c_uint64,
+            ]
+            self.core.volume_get_blind_data_count.restype = ctypes.c_uint64
+            self.core.volume_get_blind_data_info.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint32,
+                ctypes.POINTER(ctypes.c_void_p),
+                ctypes.POINTER(ctypes.c_uint64),
+                ctypes.POINTER(ctypes.c_uint32),
+                ctypes.c_char * 16,
+            ]
+            self.core.volume_get_blind_data_info.restype = ctypes.c_char_p
 
             bsr_matrix_from_triplets_argtypes = [
                 ctypes.c_int,
