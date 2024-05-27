@@ -6,6 +6,7 @@
 - Add `wp.isnan()`, `wp.isinf()`, and `wp.isfinite()` for scalars, vectors, matrices, etc.
 - Implicitly initialize Warp when first required
 - Speed up `omni.warp.core`'s startup time
+- Add runtime checks for `wp.MarchingCubes` on field dimensions and size
 
 ## [1.1.0] - 2024-05-09
 
