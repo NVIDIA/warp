@@ -19,6 +19,7 @@ import platform
 import sys
 import types
 from copy import copy as shallowcopy
+from pathlib import Path
 from struct import pack as struct_pack
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
@@ -1584,7 +1585,7 @@ class Module:
 
         return hash_recursive(self, visited=set())
 
-    def load(self, device):
+    def load(self, device) -> bool:
         from warp.utils import ScopedTimer
 
         device = get_device(device)
@@ -1608,71 +1609,19 @@ class Module:
             if not warp.is_cuda_available():
                 raise RuntimeError("Failed to build CUDA module because CUDA is not available")
 
-        with ScopedTimer(f"Module {self.name} load on device '{device}'", active=not warp.config.quiet):
-            build_path = warp.build.kernel_bin_dir
-            gen_path = warp.build.kernel_gen_dir
+        module_name = "wp_" + self.name
+        module_hash = self.hash_module()
 
-            if not os.path.exists(build_path):
-                os.makedirs(build_path)
-            if not os.path.exists(gen_path):
-                os.makedirs(gen_path)
+        # use a unique module path using the module short hash
+        module_dir = os.path.join(warp.config.kernel_cache_dir, f"{module_name}_{module_hash.hex()[:7]}")
 
-            module_name = "wp_" + self.name
-            module_path = os.path.join(build_path, module_name)
-            module_hash = self.hash_module()
-
-            builder = ModuleBuilder(self, self.options)
-
+        with ScopedTimer(
+            f"Module {self.name} {module_hash.hex()[:7]} load on device '{device}'", active=not warp.config.quiet
+        ):
+            # -----------------------------------------------------------
+            # determine output paths
             if device.is_cpu:
-                obj_path = os.path.join(build_path, module_name)
-                obj_path = obj_path + ".o"
-                cpu_hash_path = module_path + ".cpu.hash"
-
-                # check cache
-                if warp.config.cache_kernels and os.path.isfile(cpu_hash_path) and os.path.isfile(obj_path):
-                    with open(cpu_hash_path, "rb") as f:
-                        cache_hash = f.read()
-
-                    if cache_hash == module_hash:
-                        if warp.config.verbose:
-                            print(f"Module {self.name} reusing cache on device '{device}'")
-
-                        runtime.llvm.load_obj(obj_path.encode("utf-8"), module_name.encode("utf-8"))
-                        self.cpu_module = module_name
-                        return True
-
-                # build
-                try:
-                    cpp_path = os.path.join(gen_path, module_name + ".cpp")
-
-                    # write cpp sources
-                    cpp_source = builder.codegen("cpu")
-
-                    cpp_file = open(cpp_path, "w")
-                    cpp_file.write(cpp_source)
-                    cpp_file.close()
-
-                    # build object code
-                    with ScopedTimer("Compile x86", active=warp.config.verbose):
-                        warp.build.build_cpu(
-                            obj_path,
-                            cpp_path,
-                            mode=self.options["mode"],
-                            fast_math=self.options["fast_math"],
-                            verify_fp=warp.config.verify_fp,
-                        )
-
-                    # update cpu hash
-                    with open(cpu_hash_path, "wb") as f:
-                        f.write(module_hash)
-
-                    # load the object code
-                    runtime.llvm.load_obj(obj_path.encode("utf-8"), module_name.encode("utf-8"))
-                    self.cpu_module = module_name
-
-                except Exception as e:
-                    self.cpu_build_failed = True
-                    raise (e)
+                output_name = "module_codegen.o"
 
             elif device.is_cuda:
                 # determine whether to use PTX or CUBIN
@@ -1691,65 +1640,126 @@ class Module:
 
                 if use_ptx:
                     output_arch = min(device.arch, warp.config.ptx_target_arch)
-                    output_path = module_path + f".sm{output_arch}.ptx"
+                    output_name = f"module_codegen.sm{output_arch}.ptx"
                 else:
                     output_arch = device.arch
-                    output_path = module_path + f".sm{output_arch}.cubin"
+                    output_name = f"module_codegen.sm{output_arch}.cubin"
 
-                cuda_hash_path = module_path + f".sm{output_arch}.hash"
+            # final object binary path
+            binary_path = os.path.join(module_dir, output_name)
 
-                # check cache
-                if warp.config.cache_kernels and os.path.isfile(cuda_hash_path) and os.path.isfile(output_path):
-                    with open(cuda_hash_path, "rb") as f:
-                        cache_hash = f.read()
+            # -----------------------------------------------------------
+            # check cache and build if necessary
 
-                    if cache_hash == module_hash:
-                        if warp.config.verbose:
-                            print(f"Module {self.name} reusing cache on device '{device}'")
+            build_dir = None
 
-                        cuda_module = warp.build.load_cuda(output_path, device)
-                        if cuda_module is not None:
-                            self.cuda_modules[device.context] = cuda_module
-                            return True
+            if not os.path.exists(binary_path) or not warp.config.cache_kernels:
+                builder = ModuleBuilder(self, self.options)
 
-                # build
+                # create a temporary (process unique) dir for build outputs before moving to the binary dir
+                build_dir = os.path.join(
+                    warp.config.kernel_cache_dir, f"{module_name}_{module_hash.hex()[:7]}_p{os.getpid()}"
+                )
+
+                # dir may exist from previous attempts / runs / archs
+                Path(build_dir).mkdir(parents=True, exist_ok=True)
+
+                # build CPU
+                if device.is_cpu:
+                    # build
+                    try:
+                        cpp_path = os.path.join(build_dir, "module_codegen.cpp")
+
+                        # write cpp sources
+                        cpp_source = builder.codegen("cpu")
+
+                        with open(cpp_path, "w") as cpp_file:
+                            cpp_file.write(cpp_source)
+
+                        output_path = os.path.join(build_dir, output_name)
+
+                        # build object code
+                        with ScopedTimer("Compile x86", active=warp.config.verbose):
+                            warp.build.build_cpu(
+                                output_path,
+                                cpp_path,
+                                mode=self.options["mode"],
+                                fast_math=self.options["fast_math"],
+                                verify_fp=warp.config.verify_fp,
+                            )
+
+                    except Exception as e:
+                        self.cpu_build_failed = True
+                        raise (e)
+
+                elif device.is_cuda:
+                    # build
+                    try:
+                        cu_path = os.path.join(build_dir, "module_codegen.cu")
+
+                        # write cuda sources
+                        cu_source = builder.codegen("cuda")
+
+                        with open(cu_path, "w") as cu_file:
+                            cu_file.write(cu_source)
+
+                        output_path = os.path.join(build_dir, output_name)
+
+                        # generate PTX or CUBIN
+                        with ScopedTimer("Compile CUDA", active=warp.config.verbose):
+                            warp.build.build_cuda(
+                                cu_path,
+                                output_arch,
+                                output_path,
+                                config=self.options["mode"],
+                                fast_math=self.options["fast_math"],
+                                verify_fp=warp.config.verify_fp,
+                            )
+
+                    except Exception as e:
+                        self.cuda_build_failed = True
+                        raise (e)
+
+                # -----------------------------------------------------------
+                # update cache
+
                 try:
-                    cu_path = os.path.join(gen_path, module_name + ".cu")
+                    # Copy process-specific build directory to a process-independent location
+                    os.rename(build_dir, module_dir)
+                except (OSError, FileExistsError):
+                    # another process likely updated the module dir first
+                    pass
 
-                    # write cuda sources
-                    cu_source = builder.codegen("cuda")
+                if os.path.exists(module_dir) and not os.path.exists(binary_path):
+                    # copy our output file to the destination module
+                    # this is necessary in case different processes
+                    # have different GPU architectures / devices
+                    try:
+                        os.rename(output_path, binary_path)
+                    except (OSError, FileExistsError):
+                        # another process likely updated the module dir first
+                        pass
 
-                    cu_file = open(cu_path, "w")
-                    cu_file.write(cu_source)
-                    cu_file.close()
+            # -----------------------------------------------------------
+            # Load CPU or CUDA binary
+            if device.is_cpu:
+                runtime.llvm.load_obj(binary_path.encode("utf-8"), module_name.encode("utf-8"))
+                self.cpu_module = module_name
 
-                    # generate PTX or CUBIN
-                    with ScopedTimer("Compile CUDA", active=warp.config.verbose):
-                        warp.build.build_cuda(
-                            cu_path,
-                            output_arch,
-                            output_path,
-                            config=self.options["mode"],
-                            fast_math=self.options["fast_math"],
-                            verify_fp=warp.config.verify_fp,
-                        )
+            elif device.is_cuda:
+                cuda_module = warp.build.load_cuda(binary_path, device)
+                if cuda_module is not None:
+                    self.cuda_modules[device.context] = cuda_module
+                else:
+                    raise Exception(f"Failed to load CUDA module '{self.name}'")
 
-                    # update cuda hash
-                    with open(cuda_hash_path, "wb") as f:
-                        f.write(module_hash)
+            if build_dir:
+                import shutil
 
-                    # load the module
-                    cuda_module = warp.build.load_cuda(output_path, device)
-                    if cuda_module is not None:
-                        self.cuda_modules[device.context] = cuda_module
-                    else:
-                        raise Exception(f"Failed to load CUDA module '{self.name}'")
+                # clean up build_dir used for this process regardless
+                shutil.rmtree(build_dir, ignore_errors=True)
 
-                except Exception as e:
-                    self.cuda_build_failed = True
-                    raise (e)
-
-            return True
+        return True
 
     def unload(self):
         if self.cpu_module:
