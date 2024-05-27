@@ -97,20 +97,28 @@ extern "C"
                              const void* a, const void* b, const void* c, void* d, float alpha, float beta,
                              bool row_major_a, bool row_major_b, bool allow_tf32x3_arith, int batch_count);
 
-    WP_API uint64_t volume_create_host(void* buf, uint64_t size);
-    WP_API void volume_get_buffer_info_host(uint64_t id, void** buf, uint64_t* size);
-    WP_API void volume_get_tiles_host(uint64_t id, void** buf, uint64_t* size);
+    WP_API uint64_t volume_create_host(void* buf, uint64_t size, bool copy, bool owner);
+    WP_API void volume_get_tiles_host(uint64_t id, void* buf);
+    WP_API void volume_get_voxels_host(uint64_t id, void* buf);
     WP_API void volume_destroy_host(uint64_t id);
 
-    WP_API uint64_t volume_create_device(void* context, void* buf, uint64_t size);
+    WP_API uint64_t volume_create_device(void* context, void* buf, uint64_t size, bool copy, bool owner);
+    WP_API void volume_get_tiles_device(uint64_t id, void* buf);
+    WP_API void volume_get_voxels_device(uint64_t id, void* buf);
+    WP_API void volume_destroy_device(uint64_t id);
+    
     WP_API uint64_t volume_f_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value, float tx, float ty, float tz, bool points_in_world_space);
     WP_API uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value_x, float bg_value_y, float bg_value_z, float tx, float ty, float tz, bool points_in_world_space);
     WP_API uint64_t volume_i_from_tiles_device(void* context, void* points, int num_points, float voxel_size, int bg_value, float tx, float ty, float tz, bool points_in_world_space);
-    WP_API void volume_get_buffer_info_device(uint64_t id, void** buf, uint64_t* size);
-    WP_API void volume_get_tiles_device(uint64_t id, void** buf, uint64_t* size);
-    WP_API void volume_destroy_device(uint64_t id);
+    WP_API uint64_t volume_index_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float tx, float ty, float tz, bool points_in_world_space);
+    WP_API uint64_t volume_from_active_voxels_device(void* context, void* points, int num_points, float voxel_size, float tx, float ty, float tz, bool points_in_world_space);
 
+    WP_API void volume_get_buffer_info(uint64_t id, void** buf, uint64_t* size);
     WP_API void volume_get_voxel_size(uint64_t id, float* dx, float* dy, float* dz);
+    WP_API void volume_get_tile_and_voxel_count(uint64_t id, uint32_t& tile_count, uint64_t& voxel_count);
+    WP_API const char* volume_get_grid_info(uint64_t id, uint64_t *grid_size, uint32_t *grid_index, uint32_t *grid_count, float translation[3], float transform[9], char type_str[16]);
+    WP_API uint32_t volume_get_blind_data_count(uint64_t id);
+    WP_API const char* volume_get_blind_data_info(uint64_t id, uint32_t data_index, void** buf, uint64_t* value_count, uint32_t* value_size, char type_str[16]);
     
     WP_API uint64_t marching_cubes_create_device(void* context);
     WP_API void marching_cubes_destroy_device(uint64_t id);

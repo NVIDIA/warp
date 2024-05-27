@@ -877,6 +877,18 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> outer(const vec_t<Rows,Type>& a, cons
     return ret;
 }
 
+template<unsigned Cols,typename Type>
+inline CUDA_CALLABLE vec_t<Cols,Type> outer(Type a, const vec_t<Cols,Type>& b)
+{
+    return mul(a, b);
+}
+
+template<unsigned Rows,typename Type>
+inline CUDA_CALLABLE vec_t<Rows,Type> outer(const vec_t<Rows,Type>& a, Type b)
+{
+    return mul(a, b);
+}
+
 template<typename Type>
 inline CUDA_CALLABLE mat_t<3,3,Type> skew(const vec_t<3,Type>& a)
 {

@@ -2103,6 +2103,112 @@ add_builtin("iter_next", input_types={"query": mesh_query_aabb_t}, value_type=in
 # ---------------------------------
 # Volumes
 
+_volume_supported_value_types = {
+    int32,
+    int64,
+    uint32,
+    float32,
+    float64,
+    vec3f,
+    vec3d,
+    vec4f,
+    vec4d,
+}
+
+
+def volume_value_func(arg_types, kwds, templates):
+    try:
+        dtype = kwds["dtype"]
+    except KeyError as err:
+        raise RuntimeError(
+            "'dtype' keyword argument must be specified when calling generic volume lookup or sampling functions"
+        ) from err
+
+    if dtype not in _volume_supported_value_types:
+        raise RuntimeError(f"Unsupported volume type '{type_repr(dtype)}'")
+
+    templates.append(dtype)
+
+    return dtype
+
+
+add_builtin(
+    "volume_sample",
+    input_types={"id": uint64, "uvw": vec3, "sampling_mode": int, "dtype": Any},
+    value_func=volume_value_func,
+    export=False,
+    group="Volumes",
+    doc="""Sample the volume of type `dtype` given by ``id`` at the volume local-space point ``uvw``.
+
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`""",
+)
+
+
+def check_volume_value_grad_compatibility(dtype, grad_dtype):
+    if type_is_vector(dtype):
+        expected = matrix(shape=(type_length(dtype), 3), dtype=type_scalar_type(dtype))
+    else:
+        expected = vector(length=3, dtype=dtype)
+
+    if not types_equal(grad_dtype, expected):
+        raise RuntimeError(f"Incompatible gradient type, expected {type_repr(expected)}, got {type_repr(grad_dtype)}")
+
+
+def volume_sample_grad_value_func(arg_types, kwds, templates):
+    dtype = volume_value_func(arg_types, kwds, templates)
+
+    if len(arg_types) < 4:
+        raise RuntimeError("'volume_sample_grad' requires 4 positional arguments")
+
+    grad_type = arg_types[3]
+    check_volume_value_grad_compatibility(dtype, grad_type)
+    return dtype
+
+
+add_builtin(
+    "volume_sample_grad",
+    input_types={"id": uint64, "uvw": vec3, "sampling_mode": int, "grad": Any, "dtype": Any},
+    value_func=volume_sample_grad_value_func,
+    export=False,
+    group="Volumes",
+    doc="""Sample the volume given by ``id`` and its gradient at the volume local-space point ``uvw``.
+
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`""",
+)
+
+add_builtin(
+    "volume_lookup",
+    input_types={"id": uint64, "i": int, "j": int, "k": int, "dtype": Any},
+    value_type=int,
+    value_func=volume_value_func,
+    export=False,
+    group="Volumes",
+    doc="""Returns the value of voxel with coordinates ``i``, ``j``, ``k`` for a volume of type type `dtype`.
+
+    If the voxel at this index does not exist, this function returns the background value.""",
+)
+
+
+def volume_store_value_func(arg_types, kwds, templates):
+    if len(arg_types) < 4:
+        raise RuntimeError("'volume_store' requires 5 positional arguments")
+
+    dtype = arg_types[4]
+    if dtype not in _volume_supported_value_types:
+        raise RuntimeError(f"Unsupported volume type '{type_repr(dtype)}'")
+
+    return None
+
+
+add_builtin(
+    "volume_store",
+    value_func=volume_store_value_func,
+    input_types={"id": uint64, "i": int, "j": int, "k": int, "value": Any},
+    export=False,
+    group="Volumes",
+    doc="""Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.""",
+)
+
 add_builtin(
     "volume_sample_f",
     input_types={"id": uint64, "uvw": vec3, "sampling_mode": int},
@@ -2190,6 +2296,81 @@ add_builtin(
     input_types={"id": uint64, "i": int, "j": int, "k": int, "value": int},
     group="Volumes",
     doc="""Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.""",
+)
+
+
+def volume_sample_index_value_func(arg_types, kwds, templates):
+    if len(arg_types) != 5:
+        raise RuntimeError("'volume_sample_index' requires 5 positional arguments")
+
+    dtype = arg_types[3].dtype
+
+    if not types_equal(dtype, arg_types[4]):
+        raise RuntimeError("The 'voxel_data' array and the 'background' value must have the same dtype")
+
+    return dtype
+
+
+add_builtin(
+    "volume_sample_index",
+    input_types={"id": uint64, "uvw": vec3, "sampling_mode": int, "voxel_data": array(dtype=Any), "background": Any},
+    value_func=volume_sample_index_value_func,
+    export=False,
+    group="Volumes",
+    doc="""Sample the volume given by ``id`` at the volume local-space point ``uvw``.
+
+    Values for allocated voxels are read from the ``voxel_data`` array, and `background` is used as the value of non-existing voxels.
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR`.
+    This function is available for both index grids and classical volumes.
+    """,
+)
+
+
+def volume_sample_grad_index_value_func(arg_types, kwds, templates):
+    if len(arg_types) != 6:
+        raise RuntimeError("'volume_sample_grad_index' requires 6 positional arguments")
+
+    dtype = arg_types[3].dtype
+
+    if not types_equal(dtype, arg_types[4]):
+        raise RuntimeError("The 'voxel_data' array and the 'background' value must have the same dtype")
+
+    grad_type = arg_types[5]
+    check_volume_value_grad_compatibility(dtype, grad_type)
+    return dtype
+
+
+add_builtin(
+    "volume_sample_grad_index",
+    input_types={
+        "id": uint64,
+        "uvw": vec3,
+        "sampling_mode": int,
+        "voxel_data": array(dtype=Any),
+        "background": Any,
+        "grad": Any,
+    },
+    value_func=volume_sample_grad_index_value_func,
+    export=False,
+    group="Volumes",
+    doc="""Sample the volume given by ``id`` and its gradient at the volume local-space point ``uvw``.
+
+    Values for allocated voxels are read from the ``voxel_data`` array, and `background` is used as the value of non-existing voxels.
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR`.
+    This function is available for both index grids and classical volumes.
+   """,
+)
+
+add_builtin(
+    "volume_lookup_index",
+    input_types={"id": uint64, "i": int, "j": int, "k": int},
+    value_type=int32,
+    group="Volumes",
+    doc="""Returns the index associated to the voxel with coordinates ``i``, ``j``, ``k``.
+
+    If the voxel at this index does not exist, this function returns -1.
+    This function is available for both index grids and classical volumes.
+    """,
 )
 
 add_builtin(

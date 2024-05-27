@@ -1113,6 +1113,17 @@ def volume_store_i(id: uint64, i: int32, j: int32, k: int32, value: int32):
 
 
 @over
+def volume_lookup_index(id: uint64, i: int32, j: int32, k: int32) -> int32:
+    """Returns the index associated to the voxel with coordinates ``i``, ``j``, ``k``.
+
+    If the voxel at this index does not exist, this function returns -1.
+    This function is available for both index grids and classical volumes.
+
+    """
+    ...
+
+
+@over
 def volume_index_to_world(id: uint64, uvw: vec3f) -> vec3f:
     """Transform a point ``uvw`` defined in volume index space to world space given the volume's intrinsic affine transformation."""
     ...

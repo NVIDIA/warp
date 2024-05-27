@@ -12,7 +12,7 @@ import ctypes
 import inspect
 import struct
 import zlib
-from typing import Any, Callable, Generic, List, Tuple, TypeVar, Union
+from typing import Any, Callable, Generic, List, NamedTuple, Optional, Tuple, TypeVar, Union
 
 import numpy as np
 
@@ -2997,11 +2997,12 @@ class Volume:
     #: Enum value to specify trilinear interpolation during sampling
     LINEAR = constant(1)
 
-    def __init__(self, data: array):
+    def __init__(self, data: array, copy: bool = True):
         """Class representing a sparse grid.
 
         Args:
             data (:class:`warp.array`): Array of bytes representing the volume in NanoVDB format
+            copy (bool): Whether the incoming data will be copied or aliased
         """
 
         self.id = 0
@@ -3011,16 +3012,16 @@ class Volume:
 
         if data is None:
             return
-
-        if data.device is None:
-            raise RuntimeError("Invalid device")
         self.device = data.device
 
+        owner = False
         if self.device.is_cpu:
-            self.id = self.runtime.core.volume_create_host(ctypes.cast(data.ptr, ctypes.c_void_p), data.size)
+            self.id = self.runtime.core.volume_create_host(
+                ctypes.cast(data.ptr, ctypes.c_void_p), data.size, copy, owner
+            )
         else:
             self.id = self.runtime.core.volume_create_device(
-                self.device.context, ctypes.cast(data.ptr, ctypes.c_void_p), data.size
+                self.device.context, ctypes.cast(data.ptr, ctypes.c_void_p), data.size, copy, owner
             )
 
         if self.id == 0:
@@ -3041,32 +3042,90 @@ class Volume:
         """Returns the raw memory buffer of the Volume as an array"""
         buf = ctypes.c_void_p(0)
         size = ctypes.c_uint64(0)
-        if self.device.is_cpu:
-            self.runtime.core.volume_get_buffer_info_host(self.id, ctypes.byref(buf), ctypes.byref(size))
-        else:
-            self.runtime.core.volume_get_buffer_info_device(self.id, ctypes.byref(buf), ctypes.byref(size))
-        return array(ptr=buf.value, dtype=uint8, shape=size.value, device=self.device)
+        self.runtime.core.volume_get_buffer_info(self.id, ctypes.byref(buf), ctypes.byref(size))
+        return array(ptr=buf.value, dtype=uint8, shape=size.value, device=self.device, owner=False)
 
-    def get_tiles(self) -> array:
+    def get_tile_count(self) -> int:
+        """Returns the number of tiles (NanoVDB leaf nodes) of the volume"""
+
+        voxel_count, tile_count = (
+            ctypes.c_uint64(0),
+            ctypes.c_uint32(0),
+        )
+        self.runtime.core.volume_get_tile_and_voxel_count(self.id, ctypes.byref(tile_count), ctypes.byref(voxel_count))
+        return tile_count.value
+
+    def get_tiles(self, out: Optional[array] = None) -> array:
+        """Returns the integer coordinates of all allocated tiles for this volume.
+
+        Args:
+            out (:class:`warp.array`, optional): If provided, use the `out` array to store the tile coordinates, otherwise
+                a new array will be allocated. `out` must be a contiguous array of ``tile_count`` ``vec3i`` or ``tile_count x 3`` ``int32``
+                on the same device as this volume.
+        """
+
         if self.id == 0:
             raise RuntimeError("Invalid Volume")
 
-        buf = ctypes.c_void_p(0)
-        size = ctypes.c_uint64(0)
-        if self.device.is_cpu:
-            self.runtime.core.volume_get_tiles_host(self.id, ctypes.byref(buf), ctypes.byref(size))
-            deleter = self.device.default_allocator.deleter
-        else:
-            self.runtime.core.volume_get_tiles_device(self.id, ctypes.byref(buf), ctypes.byref(size))
-            if self.device.is_mempool_supported:
-                deleter = self.device.mempool_allocator.deleter
-            else:
-                deleter = self.device.default_allocator.deleter
-        num_tiles = size.value // (3 * 4)
+        tile_count = self.get_tile_count()
+        if out is None:
+            out = warp.empty(dtype=int32, shape=(tile_count, 3), device=self.device)
+        elif out.device != self.device or out.shape[0] < tile_count:
+            raise RuntimeError(f"'out' array must an array with at least {tile_count} rows on device {self.device}")
+        elif not _is_contiguous_vec_like_array(out, vec_length=3, scalar_types=(int32,)):
+            raise RuntimeError(
+                "'out' must be a contiguous 1D array with type vec3i or a 2D array of type int32 with shape (N, 3) "
+            )
 
-        return array(ptr=buf.value, dtype=int32, shape=(num_tiles, 3), device=self.device, deleter=deleter)
+        if self.device.is_cpu:
+            self.runtime.core.volume_get_tiles_host(self.id, out.ptr)
+        else:
+            self.runtime.core.volume_get_tiles_device(self.id, out.ptr)
+
+        return out
+
+    def get_voxel_count(self) -> int:
+        """Returns the total number of allocated voxels for this volume"""
+
+        voxel_count, tile_count = (
+            ctypes.c_uint64(0),
+            ctypes.c_uint32(0),
+        )
+        self.runtime.core.volume_get_tile_and_voxel_count(self.id, ctypes.byref(tile_count), ctypes.byref(voxel_count))
+        return voxel_count.value
+
+    def get_voxels(self, out: Optional[array] = None) -> array:
+        """Returns the integer coordinates of all allocated voxels for this volume.
+
+        Args:
+            out (:class:`warp.array`, optional): If provided, use the `out` array to store the voxel coordinates, otherwise
+                a new array will be allocated. `out` must be a contiguous array of ``voxel_count`` ``vec3i`` or ``voxel_count x 3`` ``int32``
+                on the same device as this volume.
+        """
+
+        if self.id == 0:
+            raise RuntimeError("Invalid Volume")
+
+        voxel_count = self.get_voxel_count()
+        if out is None:
+            out = warp.empty(dtype=int32, shape=(voxel_count, 3), device=self.device)
+        elif out.device != self.device or out.shape[0] < voxel_count:
+            raise RuntimeError(f"'out' array must an array with at least {voxel_count} rows on device {self.device}")
+        elif not _is_contiguous_vec_like_array(out, vec_length=3, scalar_types=(int32,)):
+            raise RuntimeError(
+                "'out' must be a contiguous 1D array with type vec3i or a 2D array of type int32 with shape (N, 3) "
+            )
+
+        if self.device.is_cpu:
+            self.runtime.core.volume_get_voxels_host(self.id, out.ptr)
+        else:
+            self.runtime.core.volume_get_voxels_device(self.id, out.ptr)
+
+        return out
 
     def get_voxel_size(self) -> Tuple[float, float, float]:
+        """Voxel size, i.e, world coordinates of voxel's diagonal vector"""
+
         if self.id == 0:
             raise RuntimeError("Invalid Volume")
 
@@ -3074,9 +3133,181 @@ class Volume:
         self.runtime.core.volume_get_voxel_size(self.id, ctypes.byref(dx), ctypes.byref(dy), ctypes.byref(dz))
         return (dx.value, dy.value, dz.value)
 
+    class GridInfo(NamedTuple):
+        """Grid metadata"""
+
+        name: str
+        """Grid name"""
+        size_in_bytes: int
+        """Size of this grid's data, in bytes"""
+
+        grid_index: int
+        """Index of this grid in the data buffer"""
+        grid_count: int
+        """Total number of grids in the data buffer"""
+        type_str: str
+        """String describing the type of the grid values"""
+
+        translation: vec3f
+        """Index-to-world translation"""
+        transform_matrix: mat33f
+        """Linear part of the index-to-world transform"""
+
+    def get_grid_info(self) -> Volume.GridInfo:
+        """Returns the metadata associated with this Volume"""
+
+        grid_index = ctypes.c_uint32(0)
+        grid_count = ctypes.c_uint32(0)
+        grid_size = ctypes.c_uint64(0)
+        translation_buffer = (ctypes.c_float * 3)()
+        transform_buffer = (ctypes.c_float * 9)()
+        type_str_buffer = (ctypes.c_char * 16)()
+
+        name = self.runtime.core.volume_get_grid_info(
+            self.id,
+            ctypes.byref(grid_size),
+            ctypes.byref(grid_index),
+            ctypes.byref(grid_count),
+            translation_buffer,
+            transform_buffer,
+            type_str_buffer,
+        )
+
+        if name is None:
+            raise RuntimeError("Invalid volume")
+
+        return Volume.GridInfo(
+            name.decode("ascii"),
+            grid_size.value,
+            grid_index.value,
+            grid_count.value,
+            type_str_buffer.value.decode("ascii"),
+            vec3f.from_buffer_copy(translation_buffer),
+            mat33f.from_buffer_copy(transform_buffer),
+        )
+
+    _nvdb_type_to_dtype = {
+        "float": float32,
+        "double": float64,
+        "int16": int16,
+        "int32": int32,
+        "int64": int64,
+        "Vec3f": vec3f,
+        "Vec3d": vec3d,
+        "Half": float16,
+        "uint32": uint32,
+        "bool": bool,
+        "Vec4f": vec4f,
+        "Vec4d": vec4d,
+        "Vec3u8": vec3ub,
+        "Vec3u16": vec3us,
+        "uint8": uint8,
+    }
+
+    @property
+    def dtype(self) -> type:
+        """Type of the Volume's values as a Warp type.
+
+        If the grid does not contain values (e.g. index grids) or if the NanoVDB type is not
+        representable as a Warp type, returns ``None``.
+        """
+        return Volume._nvdb_type_to_dtype.get(self.get_grid_info().type_str, None)
+
+    _nvdb_index_types = ("Index", "OnIndex", "IndexMask", "OnIndexMask")
+
+    @property
+    def is_index(self) -> bool:
+        """Whether this Volume contains an index grid, that is, a type of grid that does
+        not explicitly store values but associates each voxel to linearized index.
+        """
+
+        return self.get_grid_info().type_str in Volume._nvdb_index_types
+
+    def get_feature_array_count(self) -> int:
+        """Returns the number of supplemental data arrays stored alongside the grid"""
+
+        return self.runtime.core.volume_get_blind_data_count(self.id)
+
+    class FeatureArrayInfo(NamedTuple):
+        """Metadata for a supplemental data array"""
+
+        name: str
+        """Name of the data array"""
+        ptr: int
+        """Memory address of the start of the array"""
+
+        value_size: int
+        """Size in bytes of the array values"""
+        value_count: int
+        """Number of values in the array"""
+        type_str: str
+        """String describing the type of the array values"""
+
+    def get_feature_array_info(self, feature_index: int) -> Volume.FeatureArrayInfo:
+        """Returns the metadata associated to the feature array at `feature_index`"""
+
+        buf = ctypes.c_void_p(0)
+        value_count = ctypes.c_uint64(0)
+        value_size = ctypes.c_uint32(0)
+        type_str_buffer = (ctypes.c_char * 16)()
+
+        name = self.runtime.core.volume_get_blind_data_info(
+            self.id,
+            feature_index,
+            ctypes.byref(buf),
+            ctypes.byref(value_count),
+            ctypes.byref(value_size),
+            type_str_buffer,
+        )
+
+        if buf.value is None:
+            raise RuntimeError("Invalid feature array")
+
+        return Volume.FeatureArrayInfo(
+            name.decode("ascii"),
+            buf.value,
+            value_size.value,
+            value_count.value,
+            type_str_buffer.value.decode("ascii"),
+        )
+
+    def feature_array(self, feature_index: int, dtype=None) -> array:
+        """Returns one the the grid's feature data arrays as a Warp array
+
+        Args:
+            feature_index: index of the supplemental dat aarray in the grid
+            dtype: type for the returned warp array. If not provided, will be deduced from the array metdata.
+        """
+
+        info = self.get_feature_array_info(feature_index)
+
+        if dtype is None:
+            try:
+                dtype = Volume._nvdb_type_to_dtype[info.type_str]
+            except KeyError:
+                # Unknown type, default to byte array
+                dtype = uint8
+
+        value_count = info.value_count
+        value_size = info.value_size
+
+        if type_size_in_bytes(dtype) == 1:
+            # allow requesting a byte array from any type
+            value_count *= value_size
+            value_size = 1
+        elif value_size == 1 and (value_count % type_size_in_bytes(dtype)) == 0:
+            # allow converting a byte array to any type
+            value_size = type_size_in_bytes(dtype)
+            value_count = value_count // value_size
+
+        if type_size_in_bytes(dtype) != value_size:
+            raise RuntimeError(f"Cannot cast feature data of size {value_size} to array dtype {type_repr(dtype)}")
+
+        return array(ptr=info.ptr, dtype=dtype, shape=value_count, device=self.device, owner=False)
+
     @classmethod
     def load_from_nvdb(cls, file_or_buffer, device=None) -> Volume:
-        """Creates a Volume object from a NanoVDB file or in-memory buffer.
+        """Creates a Volume object from a serialized NanoVDB file or in-memory buffer.
 
         Returns:
 
@@ -3088,27 +3319,116 @@ class Volume:
             data = file_or_buffer
 
         magic, version, grid_count, codec = struct.unpack("<QIHH", data[0:16])
-        if magic != 0x304244566F6E614E:
+        if magic not in (0x304244566F6E614E, 0x324244566F6E614E):  # NanoVDB0 or NanoVDB2 in hex, little-endian
             raise RuntimeError("NanoVDB signature not found")
         if version >> 21 != 32:  # checking major version
             raise RuntimeError("Unsupported NanoVDB version")
-        if grid_count != 1:
-            raise RuntimeError("Only NVDBs with exactly one grid are supported")
 
-        grid_data_offset = 192 + struct.unpack("<I", data[152:156])[0]
+        # Skip over segment metadata, store total payload size
+        grid_data_offset = 16  # sizeof(FileHeader)
+        tot_file_size = 0
+        for _ in range(grid_count):
+            grid_file_size = struct.unpack("<Q", data[grid_data_offset + 8 : grid_data_offset + 16])[0]
+            tot_file_size += grid_file_size
+
+            grid_name_size = struct.unpack("<I", data[grid_data_offset + 136 : grid_data_offset + 140])[0]
+            grid_data_offset += 176 + grid_name_size  # sizeof(FileMetadata) + grid name
+
+        file_end = grid_data_offset + tot_file_size
+
         if codec == 0:  # no compression
-            grid_data = data[grid_data_offset:]
+            grid_data = data[grid_data_offset:file_end]
         elif codec == 1:  # zip compression
-            grid_data = zlib.decompress(data[grid_data_offset + 8 :])
+            grid_data = bytearray()
+            while grid_data_offset < file_end:
+                chunk_size = struct.unpack("<Q", data[grid_data_offset : grid_data_offset + 8])[0]
+                grid_data += zlib.decompress(data[grid_data_offset + 8 :])
+                grid_data_offset += 8 + chunk_size
+
+        elif codec == 2:  # blosc compression
+            try:
+                import blosc
+            except ImportError as err:
+                raise RuntimeError(
+                    f"NanoVDB buffer is compressed using blosc, but Python module could not be imported: {err}"
+                ) from err
+
+            grid_data = bytearray()
+            while grid_data_offset < file_end:
+                chunk_size = struct.unpack("<Q", data[grid_data_offset : grid_data_offset + 8])[0]
+                grid_data += blosc.decompress(data[grid_data_offset + 8 :])
+                grid_data_offset += 8 + chunk_size
         else:
             raise RuntimeError(f"Unsupported codec code: {codec}")
 
         magic = struct.unpack("<Q", grid_data[0:8])[0]
-        if magic != 0x304244566F6E614E:
+        if magic not in (0x304244566F6E614E, 0x314244566F6E614E):  # NanoVDB0 or NanoVDB1 in hex, little-endian
             raise RuntimeError("NanoVDB signature not found on grid!")
 
         data_array = array(np.frombuffer(grid_data, dtype=np.byte), device=device)
         return cls(data_array)
+
+    @classmethod
+    def load_from_address(cls, grid_ptr: int, buffer_size: int = 0, device=None) -> Volume:
+        """
+        Creates a new :class:`Volume` aliasing an in-memory grid buffer.
+
+        In contrast to :meth:`load_from_nvdb` which should be used to load serialized NanoVDB grids,
+        here the buffer must be uncompressed and must not contain file header information.
+        If the passed address does not contain a NanoVDB grid, the behavior of this function is undefined.
+
+        Args:
+            grid_ptr: Integer address of the start of the grid buffer
+            buffer_size: Size of the buffer, in bytes. If not provided, the size will be assumed to be that of the single grid starting at `grid_ptr`.
+            device: Device of the buffer, and of the returned Volume. If not provided, the current Warp device is assumed.
+
+        Returns the newly created Volume.
+        """
+
+        if not grid_ptr:
+            raise (RuntimeError, "Invalid grid buffer pointer")
+
+        # Check that a Volume has not already been created for this address
+        # (to allow this we would need to ref-count the volume descriptor)
+        existing_buf = ctypes.c_void_p(0)
+        existing_size = ctypes.c_uint64(0)
+        warp.context.runtime.core.volume_get_buffer_info(
+            grid_ptr, ctypes.byref(existing_buf), ctypes.byref(existing_size)
+        )
+
+        if existing_buf.value is not None:
+            raise RuntimeError(
+                "A warp Volume has already been created for this grid, aliasing it more than once is not possible."
+            )
+
+        data_array = array(ptr=grid_ptr, dtype=uint8, shape=buffer_size, owner=False, device=device)
+
+        return cls(data_array, copy=False)
+
+    def load_next_grid(self) -> Volume:
+        """
+        Tries to create a new warp Volume for the next grid that is linked to by this Volume.
+
+        The existence of a next grid is deduced from the `grid_index` and `grid_count` metadata
+        as well as the size of this Volume's in-memory buffer.
+
+        Returns the newly created Volume, or None if there is no next grid.
+        """
+
+        grid = self.get_grid_info()
+
+        array = self.array()
+
+        if grid.grid_index + 1 >= grid.grid_count or array.capacity <= grid.size_in_bytes:
+            return None
+
+        next_volume = Volume.load_from_address(
+            array.ptr + grid.size_in_bytes, buffer_size=array.capacity - grid.size_in_bytes, device=self.device
+        )
+        # makes the new Volume keep a reference to the current grid, as we're aliasing its buffer
+        next_volume._previous_grid = self
+
+        return next_volume
 
     @classmethod
     def load_from_numpy(
@@ -3261,11 +3581,11 @@ class Volume:
 
         Args:
             tile_points (:class:`warp.array`): Array of positions that define the tiles to be allocated.
-                The array can be a 2D, N-by-3 array of :class:`warp.int32` values, indicating index space positions,
-                or can be a 1D array of :class:`warp.vec3` values, indicating world space positions.
+                The array may use an integer scalar type (2D N-by-3 array of :class:`warp.int32` or 1D array of `warp.vec3i` values), indicating index space positions,
+                or a floating point scalar type (2D N-by-3 array of :class:`warp.float32` or 1D array of `warp.vec3f` values), indicating world space positions.
                 Repeated points per tile are allowed and will be efficiently deduplicated.
             voxel_size (float): Voxel size of the new volume.
-            bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type, a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
+            bg_value (array-like, float, int or None): Value of unallocated voxels of the volume, also defines the volume's type. A :class:`warp.vec3` volume is created if this is `array-like`, an index volume will be created if `bg_value` is ``None``.
             translation (array-like): Translation between the index and world spaces.
             device (Devicelike): The CUDA device to create the volume on, e.g.: "cuda" or "cuda:0".
 
@@ -3276,19 +3596,28 @@ class Volume:
             raise RuntimeError(f"Voxel size must be positive! Got {voxel_size}")
         if not device.is_cuda:
             raise RuntimeError("Only CUDA devices are supported for allocate_by_tiles")
-        if not (
-            isinstance(tile_points, array)
-            and (tile_points.dtype == int32 and tile_points.ndim == 2)
-            or (tile_points.dtype == vec3 and tile_points.ndim == 1)
-        ):
-            raise RuntimeError("Expected an warp array of vec3s or of n-by-3 int32s as tile_points!")
+        if not _is_contiguous_vec_like_array(tile_points, vec_length=3, scalar_types=(float32, int32)):
+            raise RuntimeError(
+                "tile_points must be contiguous and either a 1D warp array of vec3f or vec3i or a 2D n-by-3 array of int32 or float32."
+            )
         if not tile_points.device.is_cuda:
-            tile_points = array(tile_points, dtype=tile_points.dtype, device=device)
+            tile_points = tile_points.to(device)
 
         volume = cls(data=None)
         volume.device = device
-        in_world_space = tile_points.dtype == vec3
-        if hasattr(bg_value, "__len__"):
+        in_world_space = type_scalar_type(tile_points.dtype) == float32
+        if bg_value is None:
+            volume.id = volume.runtime.core.volume_index_from_tiles_device(
+                volume.device.context,
+                ctypes.c_void_p(tile_points.ptr),
+                tile_points.shape[0],
+                voxel_size,
+                translation[0],
+                translation[1],
+                translation[2],
+                in_world_space,
+            )
+        elif hasattr(bg_value, "__len__"):
             volume.id = volume.runtime.core.volume_v_from_tiles_device(
                 volume.device.context,
                 ctypes.c_void_p(tile_points.ptr),
@@ -3331,6 +3660,73 @@ class Volume:
             raise RuntimeError("Failed to create volume")
 
         return volume
+
+    @classmethod
+    def allocate_by_voxels(
+        cls, voxel_points: array, voxel_size: float, translation=(0.0, 0.0, 0.0), device=None
+    ) -> Volume:
+        """Allocate a new Volume with active voxel for each point voxel_points.
+
+        This function creates an *index* Volume, a special kind of volume that does not any store any
+        explicit payload but encodes a linearized index for each active voxel, allowing to lookup and
+        sample data from arbitrary external arrays.
+
+        This function is only supported for CUDA devices.
+
+        Args:
+            voxel_points (:class:`warp.array`): Array of positions that define the voxels to be allocated.
+                The array may use an integer scalar type (2D N-by-3 array of :class:`warp.int32` or 1D array of `warp.vec3i` values), indicating index space positions,
+                or a floating point scalar type (2D N-by-3 array of :class:`warp.float32` or 1D array of `warp.vec3f` values), indicating world space positions.
+                Repeated points per tile are allowed and will be efficiently deduplicated.
+            voxel_size (float): Voxel size of the new volume.
+            translation (array-like): Translation between the index and world spaces.
+            device (Devicelike): The CUDA device to create the volume on, e.g.: "cuda" or "cuda:0".
+
+        """
+        device = warp.get_device(device)
+
+        if voxel_size <= 0.0:
+            raise RuntimeError(f"Voxel size must be positive! Got {voxel_size}")
+        if not device.is_cuda:
+            raise RuntimeError("Only CUDA devices are supported for allocate_by_tiles")
+        if not (is_array(voxel_points) and voxel_points.is_contiguous):
+            raise RuntimeError("tile_points must be a contiguous array")
+        if not _is_contiguous_vec_like_array(voxel_points, vec_length=3, scalar_types=(float32, int32)):
+            raise RuntimeError(
+                "voxel_points must be contiguous and either a 1D warp array of vec3f or vec3i or a 2D n-by-3 array of int32 or float32."
+            )
+        if not voxel_points.device.is_cuda:
+            voxel_points = voxel_points.to(device)
+
+        volume = cls(data=None)
+        volume.device = device
+        in_world_space = type_scalar_type(voxel_points.dtype) == float32
+
+        volume.id = volume.runtime.core.volume_from_active_voxels_device(
+            volume.device.context,
+            ctypes.c_void_p(voxel_points.ptr),
+            voxel_points.shape[0],
+            voxel_size,
+            translation[0],
+            translation[1],
+            translation[2],
+            in_world_space,
+        )
+
+        if volume.id == 0:
+            raise RuntimeError("Failed to create volume")
+
+        return volume
+
+
+def _is_contiguous_vec_like_array(array, vec_length: int, scalar_types: Tuple[type]) -> bool:
+    if not (is_array(array) and array.is_contiguous):
+        return False
+    if type_scalar_type(array.dtype) not in scalar_types:
+        return False
+    return (array.ndim == 1 and type_length(array.dtype) == vec_length) or (
+        array.ndim == 2 and array.shape[1] == vec_length and type_length(array.dtype) == 1
+    )
 
 
 # definition just for kernel type (cannot be a parameter), see mesh.h

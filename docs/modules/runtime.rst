@@ -979,12 +979,12 @@ or use built-in closest-point or trilinear interpolation to sample grid data fro
 
 Volume objects can be created directly from Warp arrays containing a NanoVDB grid, from the contents of a
 standard ``.nvdb`` file using :func:`load_from_nvdb() <warp.Volume.load_from_nvdb>`,
+from an uncompressed in-memory buffer using :func:`load_from_address() <warp.Volume.load_from_address>`,
 or from a dense 3D NumPy array using :func:`load_from_numpy() <warp.Volume.load_from_numpy>`.
 
-Volumes can also be created using :func:`allocate() <warp.Volume.allocate>` or
-:func:`allocate_by_tiles() <warp.Volume.allocate_by_tiles>`. The values for a Volume object can be modified in a Warp
-kernel using :func:`wp.volume_store_f() <warp.volume_store_f>`, :func:`wp.volume_store_v() <warp.volume_store_v>`, and
-:func:`wp.volume_store_i() <warp.volume_store_i>`.
+Volumes can also be created using :func:`allocate() <warp.Volume.allocate>`, 
+:func:`allocate_by_tiles() <warp.Volume.allocate_by_tiles>` or :func:`allocate_by_voxels() <warp.Volume.allocate_by_voxels>`. 
+The values for a Volume object can be modified in a Warp kernel using :func:`wp.volume_store() <warp.volume_store>`.
 
 .. note::
     Warp does not currently support modifying the topology of sparse volumes at runtime.
@@ -999,8 +999,11 @@ Below we give an example of creating a Volume object from an existing NanoVDB fi
 
 .. note::
     Files written by the NanoVDB library, commonly marked by the ``.nvdb`` extension, can contain multiple grids with
-    various compression methods, but a :class:`Volume` object represents a single NanoVDB grid therefore only files with
-    a single grid are supported. NanoVDB's uncompressed and zip-compressed file formats are supported.
+    various compression methods, but a :class:`Volume` object represents a single NanoVDB grid. 
+    The first grid is loaded by default, then  Warp volumes corresponding to the other grids in the file can be created
+    using repeated calls to :func:`load_next_grid() <warp.Volume.load_next_grid>`.
+    NanoVDB's uncompressed and zip-compressed file formats are supported out-of-the-box, blosc compressed files require
+    the `blosc` Python package to be installed.
 
 To sample the volume inside a kernel we pass a reference to it by ID, and use the built-in sampling modes::
 
@@ -1018,10 +1021,34 @@ To sample the volume inside a kernel we pass a reference to it by ID, and use th
         q = wp.volume_world_to_index(volume, p)
 
         # sample volume with trilinear interpolation
-        f = wp.volume_sample_f(volume, q, wp.Volume.LINEAR)
+        f = wp.volume_sample(volume, q, wp.Volume.LINEAR, dtype=float)
 
         # write result
         samples[tid] = f
+
+Warp also supports NanoVDB index grids, which provide a memory-efficient linearization of voxel indices that can refer 
+to values in arbitrarily shaped arrays::
+
+    @wp.kernel
+    def sample_index_grid(volume: wp.uint64,
+                         points: wp.array(dtype=wp.vec3),
+                         voxel_values: wp.array(dtype=Any)):
+
+        tid = wp.tid()
+
+        # load sample point in world-space
+        p = points[tid]
+
+        # transform position to the volume's local-space
+        q = wp.volume_world_to_index(volume, p)
+
+        # sample volume with trilinear interpolation
+        background_value = voxel_values.dtype(0.0)
+        f = wp.volume_sample_index(volume, q, wp.Volume.LINEAR, voxel_values, background_value)
+
+The coordinates of all indexable voxels can be recovered using :func:`get_voxels() <warp.Volume.get_voxels>`.
+NanoVDB grids may also contains embedded *blind* data arrays; those can be accessed with the 
+:func:`feature_array() <warp.Volume.feature_array>` function.
 
 .. autoclass:: Volume
     :members:

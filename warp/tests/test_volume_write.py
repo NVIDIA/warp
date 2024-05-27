@@ -166,6 +166,10 @@ def test_volume_allocation(test, device):
         points_in_world_space=True,
         device=device,
     )
+
+    assert wp.types.types_equal(volume_a.dtype, wp.float32)
+    assert wp.types.types_equal(volume_b.dtype, wp.float32)
+
     points = wp.array(points_ref, dtype=wp.vec3, device=device)
     values_a = wp.empty(num_points, dtype=wp.float32, device=device)
     values_b = wp.empty(num_points, dtype=wp.float32, device=device)
@@ -201,6 +205,10 @@ def test_volume_allocate_by_tiles_f(test, device):
     points_ws_d = wp.array(points_ws, dtype=wp.vec3, device=device)
     volume_a = wp.Volume.allocate_by_tiles(points_is_d, voxel_size, background_value, translation, device=device)
     volume_b = wp.Volume.allocate_by_tiles(points_ws_d, voxel_size, background_value, translation, device=device)
+
+    assert wp.types.types_equal(volume_a.dtype, wp.float32)
+    assert wp.types.types_equal(volume_b.dtype, wp.float32)
+
     values_a = wp.empty(num_tiles * 512, dtype=wp.float32, device=device)
     values_b = wp.empty(num_tiles * 512, dtype=wp.float32, device=device)
 
@@ -229,6 +237,9 @@ def test_volume_allocate_by_tiles_v(test, device):
 
     points_d = wp.array(points_is, dtype=wp.int32, device=device)
     volume = wp.Volume.allocate_by_tiles(points_d, 0.1, wp.vec3(1, 2, 3), device=device)
+
+    assert wp.types.types_equal(volume.dtype, wp.vec3)
+
     values = wp.empty(len(points_d) * 512, dtype=wp.vec3, device=device)
 
     wp.launch(test_volume_tile_store_v, dim=len(points_d), inputs=[volume.id, points_d], device=device)
@@ -236,6 +247,72 @@ def test_volume_allocate_by_tiles_v(test, device):
 
     values_res = values.numpy()
     np.testing.assert_equal(values_res, values_ref)
+
+
+def test_volume_allocate_by_tiles_index(test, device):
+    num_tiles = 10
+    rng = np.random.default_rng(101215)
+    tiles = rng.integers(-512, 512, size=(num_tiles, 3), dtype=np.int32)
+    points_is = tiles * 8
+
+    points_d = wp.array(points_is, dtype=wp.int32, device=device)
+    volume = wp.Volume.allocate_by_tiles(points_d, 0.1, bg_value=None, device=device)
+
+    assert volume.is_index
+
+    vol_tiles = volume.get_tiles().numpy() / 8
+    vol_tile_sorted = vol_tiles[np.lexsort(vol_tiles.T[::-1])]
+    vol_tile_unique = np.unique(vol_tile_sorted, axis=0)
+
+    tile_sorted = tiles[np.lexsort(tiles.T[::-1])]
+    tile_unique = np.unique(tile_sorted, axis=0)
+
+    np.testing.assert_equal(tile_unique, vol_tile_unique)
+
+
+def test_volume_allocation_from_voxels(test, device):
+    point_count = 387
+    rng = np.random.default_rng(101215)
+
+    # Create from world-space points
+    points = wp.array(rng.uniform(5.0, 10.0, size=(point_count, 3)), dtype=float, device=device)
+
+    volume = wp.Volume.allocate_by_voxels(
+        voxel_points=points, voxel_size=0.25, translation=(0.0, 5.0, 10.0), device=device
+    )
+
+    assert volume.is_index
+
+    test.assertNotEqual(volume.id, 0)
+
+    test.assertAlmostEqual(volume.get_voxel_size(), (0.25, 0.25, 0.25))
+    voxel_count = volume.get_voxel_count()
+    test.assertGreaterEqual(point_count, voxel_count)
+    test.assertGreaterEqual(voxel_count, 1)
+
+    voxels = volume.get_voxels()
+
+    # Check that world-to-index transform has been correctly applied
+    voxel_low = np.min(voxels.numpy(), axis=0)
+    voxel_up = np.max(voxels.numpy(), axis=0)
+    np.testing.assert_array_less([19, -1, -21], voxel_low)
+    np.testing.assert_array_less(voxel_up, [41, 21, 1])
+
+    # Recreate the volume from ijk coords
+    volume_from_ijk = wp.Volume.allocate_by_voxels(
+        voxel_points=voxels, voxel_size=0.25, translation=(0.0, 5.0, 10.0), device=device
+    )
+
+    assert volume_from_ijk.is_index
+
+    assert volume_from_ijk.get_voxel_count() == voxel_count
+    ijk_voxels = volume_from_ijk.get_voxels().numpy()
+
+    voxels = voxels.numpy()
+    voxel_sorted = voxels[np.lexsort(voxels.T[::-1])]
+    ijk_voxel_sorted = ijk_voxels[np.lexsort(ijk_voxels.T[::-1])]
+
+    np.testing.assert_equal(voxel_sorted, ijk_voxel_sorted)
 
 
 devices = get_selected_cuda_test_devices()
@@ -248,6 +325,15 @@ class TestVolumeWrite(unittest.TestCase):
 add_function_test(TestVolumeWrite, "test_volume_allocation", test_volume_allocation, devices=devices)
 add_function_test(TestVolumeWrite, "test_volume_allocate_by_tiles_f", test_volume_allocate_by_tiles_f, devices=devices)
 add_function_test(TestVolumeWrite, "test_volume_allocate_by_tiles_v", test_volume_allocate_by_tiles_v, devices=devices)
+add_function_test(
+    TestVolumeWrite, "test_volume_allocate_by_tiles_index", test_volume_allocate_by_tiles_index, devices=devices
+)
+add_function_test(
+    TestVolumeWrite,
+    "test_volume_allocation_from_voxels",
+    test_volume_allocation_from_voxels,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":
