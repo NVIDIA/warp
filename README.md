@@ -1,3 +1,10 @@
+[![PyPI version](https://badge.fury.io/py/warp-lang.svg)](https://badge.fury.io/py/warp-lang)
+[![Downloads](https://static.pepy.tech/badge/warp-lang/month)](https://pepy.tech/project/warp-lang)
+[![codecov](https://codecov.io/github/NVIDIA/warp/graph/badge.svg?token=7O1KSM79FG)](https://codecov.io/github/NVIDIA/warp)
+![GitHub - Build and Test](https://github.com/NVIDIA/warp/actions/workflows/build-and-test.yml/badge.svg)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/warp-lang?link=https%3A%2F%2Fpypi.org%2Fproject%2Fwarp-lang%2F)
+[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?logo=discord&logoColor=white)](https://discord.com/invite/nvidiaomniverse)
+
 # NVIDIA Warp
 
 Warp is a Python framework for writing high-performance simulation and graphics code. Warp takes
