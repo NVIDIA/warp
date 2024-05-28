@@ -21,8 +21,6 @@ from pxr import Usd, UsdGeom
 import warp as wp
 import warp.examples
 
-wp.init()
-
 
 @wp.kernel
 def draw(mesh: wp.uint64, cam_pos: wp.vec3, width: int, height: int, pixels: wp.array(dtype=wp.vec3)):

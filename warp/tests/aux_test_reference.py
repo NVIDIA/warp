@@ -3,8 +3,6 @@
 import warp as wp
 import warp.tests.aux_test_reference_reference as refref
 
-wp.init()
-
 
 @wp.func
 def magic():

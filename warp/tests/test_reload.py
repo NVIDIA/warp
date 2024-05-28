@@ -22,8 +22,6 @@ import warp.tests.aux_test_reference_reference as test_reference_reference
 import warp.tests.aux_test_square as test_square
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 def reload_module(module):
     # Clearing the .pyc file associated with a module is a necessary workaround
@@ -68,8 +66,6 @@ def test_redefine(test, device):
 
 square_two = """import warp as wp
 
-wp.init()
-
 
 @wp.func
 def sqr(x: float):
@@ -86,8 +82,6 @@ def run(expect, device):
 """
 
 square_four = """import warp as wp
-
-wp.init()
 
 
 @wp.func
@@ -148,8 +142,6 @@ template_ref = """# This file is used to test reloading module references.
 import warp as wp
 import warp.tests.aux_test_reference_reference as refref
 
-wp.init()
-
 
 @wp.func
 def magic():
@@ -159,8 +151,6 @@ def magic():
 template_refref = """# This file is used to test reloading module references.
 
 import warp as wp
-
-wp.init()
 
 
 @wp.func

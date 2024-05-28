@@ -151,6 +151,10 @@ def main(argv=None):
     group_coverage.add_argument(
         "--coverage-fail-under", metavar="MIN", type=float, help="Fail if coverage percentage under min"
     )
+    group_warp = parser.add_argument_group("NVIDIA Warp options")  # NVIDIA Modification
+    group_warp.add_argument(
+        "--no-shared-cache", action="store_true", help="Use a separate kernel cache per test process."
+    )
     args = parser.parse_args(args=argv)
 
     if args.coverage_branch:
@@ -165,6 +169,12 @@ def main(argv=None):
     if process_count == 0:
         process_count = multiprocessing.cpu_count()
     process_count = min(process_count, args.maxjobs)  # NVIDIA Modification
+
+    import warp as wp  # NVIDIA Modification
+
+    # Clear the Warp cache (NVIDIA Modification)
+    wp.build.clear_kernel_cache()
+    print("Cleared Warp kernel cache")
 
     # Create the temporary directory (for coverage files)
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -220,7 +230,7 @@ def main(argv=None):
                 with multiprocessing_context.Pool(
                     process_count,
                     maxtasksperchild=maxtasksperchild,
-                    initializer=set_worker_cache,
+                    initializer=initialize_test_process,
                     initargs=(manager.Lock(), shared_index, args, temp_dir),
                 ) as pool:
                     test_manager = ParallelTestManager(manager, args, temp_dir)
@@ -230,7 +240,7 @@ def main(argv=None):
                 with concurrent.futures.ProcessPoolExecutor(
                     max_workers=process_count,
                     mp_context=multiprocessing.get_context(method="spawn"),
-                    initializer=set_worker_cache,
+                    initializer=initialize_test_process,
                     initargs=(manager.Lock(), shared_index, args, temp_dir),
                 ) as executor:
                     test_manager = ParallelTestManager(manager, args, temp_dir)
@@ -242,14 +252,6 @@ def main(argv=None):
             print(f"Running {discover_suite.countTestCases()} total tests (serial fallback)", file=sys.stderr)
             if args.verbose > 1:
                 print(file=sys.stderr)
-
-            import warp as wp
-
-            wp.init()
-
-            # force rebuild of all kernels
-            wp.build.clear_kernel_cache()
-            print("Cleared Warp kernel cache")
 
             # Run the tests in serial
             start_time = time.perf_counter()
@@ -424,7 +426,7 @@ class ParallelTestManager:
     def run_tests(self, test_suite):
         # Fail fast?
         if self.failfast.is_set():
-            return [0, [], [], 0, 0, 0]
+            return [0, [], [], 0, 0, 0, []]  # NVIDIA Modification
 
         # NVIDIA Modification for GitLab
         import warp.tests.unittest_utils
@@ -523,10 +525,13 @@ class ParallelTextTestResult(unittest.TextTestResult):
         pass
 
 
-def set_worker_cache(lock, shared_index, args, temp_dir):
-    """Change the Warp cache to avoid conflicts.
-    This function is run at the start of every new process. (NVIDIA modification)
+def initialize_test_process(lock, shared_index, args, temp_dir):
+    """Necessary operations to be executed at the start of every test process.
+
+    Currently this function can be used to set a separate Warp cache. (NVIDIA modification)
     If the environment variable `WARP_CACHE_ROOT` is detected, the cache will be placed in the provided path.
+
+    It also ensures that Warp is initialized prior to running any tests.
     """
 
     with lock:
@@ -535,18 +540,23 @@ def set_worker_cache(lock, shared_index, args, temp_dir):
 
     with _coverage(args, temp_dir):
         import warp as wp
-        from warp.thirdparty import appdirs
 
-        if "WARP_CACHE_ROOT" in os.environ:
-            cache_root_dir = os.path.join(os.getenv("WARP_CACHE_ROOT"), f"{wp.config.version}-{worker_index:03d}")
+        if args.no_shared_cache:
+            from warp.thirdparty import appdirs
+
+            if "WARP_CACHE_ROOT" in os.environ:
+                cache_root_dir = os.path.join(os.getenv("WARP_CACHE_ROOT"), f"{wp.config.version}-{worker_index:03d}")
+            else:
+                cache_root_dir = appdirs.user_cache_dir(
+                    appname="warp", appauthor="NVIDIA", version=f"{wp.config.version}-{worker_index:03d}"
+                )
+
+            wp.config.kernel_cache_dir = cache_root_dir
+
+            wp.build.clear_kernel_cache()
         else:
-            cache_root_dir = appdirs.user_cache_dir(
-                appname="warp", appauthor="NVIDIA", version=f"{wp.config.version}-{worker_index:03d}"
-            )
-
-        wp.config.kernel_cache_dir = cache_root_dir
-        wp.init()
-        wp.build.clear_kernel_cache()
+            # Initialize Warp is if hasn't been initialized already
+            wp.init()
 
 
 if __name__ == "__main__":  # pragma: no cover

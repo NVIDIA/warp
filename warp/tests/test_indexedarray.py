@@ -14,8 +14,6 @@ import warp as wp
 from warp.tests.test_array import FillStruct
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 @wp.kernel
 def kernel_1d(a: wp.indexedarray(dtype=float), expected: wp.array(dtype=float)):

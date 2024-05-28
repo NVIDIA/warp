@@ -14,8 +14,6 @@ import warp as wp
 from warp.fem import Sample as StructFromAnotherModule
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 @wp.struct
 class Model:

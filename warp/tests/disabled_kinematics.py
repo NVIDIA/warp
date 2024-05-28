@@ -12,8 +12,6 @@ import warp as wp
 import warp.sim
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 def build_ant(num_envs):
     builder = wp.sim.ModelBuilder()

@@ -6,13 +6,12 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import unittest
+from typing import Any
 
 import numpy as np
 
 import warp as wp
 from warp.tests.unittest_utils import *
-
-wp.init()
 
 
 # float volume tests
@@ -30,6 +29,7 @@ def test_volume_lookup_f(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
     k = int(p[2])
 
     expect_eq(wp.volume_lookup_f(volume, i, j, k), expected)
+    expect_eq(wp.volume_lookup(volume, i, j, k, dtype=wp.float32), expected)
 
 
 @wp.kernel
@@ -45,6 +45,7 @@ def test_volume_sample_closest_f(volume: wp.uint64, points: wp.array(dtype=wp.ve
         expected = 10.0
 
     expect_eq(wp.volume_sample_f(volume, p, wp.Volume.CLOSEST), expected)
+    expect_eq(wp.volume_sample(volume, p, wp.Volume.CLOSEST, dtype=wp.float32), expected)
 
     q = wp.volume_index_to_world(volume, p)
     q_inv = wp.volume_world_to_index(volume, q)
@@ -62,6 +63,7 @@ def test_volume_sample_linear_f(volume: wp.uint64, points: wp.array(dtype=wp.vec
         return  # not testing against background values
 
     expect_near(wp.volume_sample_f(volume, p, wp.Volume.LINEAR), expected, 2.0e-4)
+    expect_near(wp.volume_sample(volume, p, wp.Volume.LINEAR, dtype=wp.float32), expected, 2.0e-4)
 
 
 @wp.kernel
@@ -80,6 +82,13 @@ def test_volume_sample_grad_linear_f(volume: wp.uint64, points: wp.array(dtype=w
 
     grad = wp.vec3(0.0, 0.0, 0.0)
     val = wp.volume_sample_grad_f(volume, p, wp.Volume.LINEAR, grad)
+
+    expect_near(val, expected_val, 2.0e-4)
+    expect_near(grad[0], expected_gx, 2.0e-4)
+    expect_near(grad[1], expected_gy, 2.0e-4)
+    expect_near(grad[2], expected_gz, 2.0e-4)
+
+    val = wp.volume_sample_grad(volume, p, wp.Volume.LINEAR, grad, dtype=wp.float32)
 
     expect_near(val, expected_val, 2.0e-4)
     expect_near(grad[0], expected_gx, 2.0e-4)
@@ -162,6 +171,7 @@ def test_volume_lookup_v(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
     k = int(p[2])
 
     expect_eq(wp.volume_lookup_v(volume, i, j, k), expected)
+    expect_eq(wp.volume_lookup(volume, i, j, k, dtype=wp.vec3), expected)
 
 
 @wp.kernel
@@ -177,6 +187,7 @@ def test_volume_sample_closest_v(volume: wp.uint64, points: wp.array(dtype=wp.ve
         expected = wp.vec3(10.8, -4.13, 10.26)
 
     expect_eq(wp.volume_sample_v(volume, p, wp.Volume.CLOSEST), expected)
+    expect_eq(wp.volume_sample(volume, p, wp.Volume.CLOSEST, dtype=wp.vec3), expected)
 
     q = wp.volume_index_to_world(volume, p)
     q_inv = wp.volume_world_to_index(volume, q)
@@ -196,6 +207,30 @@ def test_volume_sample_linear_v(volume: wp.uint64, points: wp.array(dtype=wp.vec
         return  # not testing against background values
 
     expect_near(wp.volume_sample_v(volume, p, wp.Volume.LINEAR), expected, 2.0e-4)
+    expect_near(wp.volume_sample(volume, p, wp.Volume.LINEAR, dtype=wp.vec3), expected, 2.0e-4)
+
+
+@wp.kernel
+def test_volume_sample_grad_linear_v(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
+    tid = wp.tid()
+
+    p = points[tid]
+
+    if abs(p[0]) > 10.0 or abs(p[1]) > 10.0 or abs(p[2]) > 10.0:
+        return  # not testing against background values
+
+    expected_val = wp.vec3(
+        p[0] + 2.0 * p[1] + 3.0 * p[2], 4.0 * p[0] + 5.0 * p[1] + 6.0 * p[2], 7.0 * p[0] + 8.0 * p[1] + 9.0 * p[2]
+    )
+    expected_grad = wp.mat33(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0)
+
+    grad = wp.mat33(0.0)
+    val = wp.volume_sample_grad(volume, p, wp.Volume.LINEAR, grad, dtype=wp.vec3)
+
+    expect_near(val, expected_val, 2.0e-4)
+    expect_near(grad[0], expected_grad[0], 2.0e-4)
+    expect_near(grad[1], expected_grad[1], 2.0e-4)
+    expect_near(grad[2], expected_grad[2], 2.0e-4)
 
 
 @wp.kernel
@@ -233,6 +268,7 @@ def test_volume_lookup_i(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
         expected = 10
 
     expect_eq(wp.volume_lookup_i(volume, i, j, k), expected)
+    expect_eq(wp.volume_lookup(volume, i, j, k, dtype=wp.int32), expected)
 
 
 @wp.kernel
@@ -248,6 +284,7 @@ def test_volume_sample_i(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
         expected = 10
 
     expect_eq(wp.volume_sample_i(volume, p), expected)
+    expect_eq(wp.volume_sample(volume, p, wp.Volume.CLOSEST, dtype=wp.int32), expected)
 
     q = wp.volume_index_to_world(volume, p)
     q_inv = wp.volume_world_to_index(volume, q)
@@ -293,9 +330,7 @@ def test_volume_store_f(volume: wp.uint64, points: wp.array(dtype=wp.vec3), valu
     j = int(p[1])
     k = int(p[2])
 
-    # NB: Writing outside the allocated domain overwrites the background value of the Volume
-    if abs(i) <= 11 and abs(j) <= 11 and abs(k) <= 11:
-        wp.volume_store_f(volume, i, j, k, float(i + 100 * j + 10000 * k))
+    wp.volume_store(volume, i, j, k, float(i + 100 * j + 10000 * k))
     values[tid] = wp.volume_lookup_f(volume, i, j, k)
 
 
@@ -308,9 +343,7 @@ def test_volume_store_v(volume: wp.uint64, points: wp.array(dtype=wp.vec3), valu
     j = int(p[1])
     k = int(p[2])
 
-    # NB: Writing outside the allocated domain overwrites the background value of the Volume
-    if abs(i) <= 11 and abs(j) <= 11 and abs(k) <= 11:
-        wp.volume_store_v(volume, i, j, k, p)
+    wp.volume_store(volume, i, j, k, p)
     values[tid] = wp.volume_lookup_v(volume, i, j, k)
 
 
@@ -323,9 +356,7 @@ def test_volume_store_i(volume: wp.uint64, points: wp.array(dtype=wp.vec3), valu
     j = int(p[1])
     k = int(p[2])
 
-    # NB: Writing outside the allocated domain overwrites the background value of the Volume
-    if abs(i) <= 11 and abs(j) <= 11 and abs(k) <= 11:
-        wp.volume_store_i(volume, i, j, k, i + 100 * j + 10000 * k)
+    wp.volume_store(volume, i, j, k, i + 100 * j + 10000 * k)
     values[tid] = wp.volume_lookup_i(volume, i, j, k)
 
 
@@ -355,6 +386,7 @@ volume_paths = {
     "float": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_grid.nvdb")),
     "int32": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_int32_grid.nvdb")),
     "vec3f": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_vec_grid.nvdb")),
+    "index": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_index_grid.nvdb")),
     "torus": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/torus.nvdb")),
     "float_write": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_grid.nvdb")),
 }
@@ -492,7 +524,7 @@ def test_volume_sample_linear_v_gradient(test, device):
             )
         tape.backward(values)
 
-        grad_expected = np.array([6.0, 15.0, 24.0])
+        grad_expected = np.array([12.0, 15.0, 18.0])
         grad_computed = tape.gradients[uvws].numpy()[0]
         np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
 
@@ -506,7 +538,7 @@ def test_volume_sample_linear_v_gradient(test, device):
             )
         tape.backward(values)
 
-        grad_expected = np.array([6.0, 15.0, 24.0]) / 0.25
+        grad_expected = np.array([12.0, 15.0, 18.0]) / 0.25
         grad_computed = tape.gradients[xyzs].numpy()[0]
         np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
 
@@ -604,6 +636,188 @@ def test_volume_introspection(test, device):
             np.testing.assert_equal(test_volume_tiles, tiles_sorted)
             np.testing.assert_equal([0.25] * 3, voxel_size)
 
+            voxel_count = volume.get_voxel_count()
+            voxels_actual = volume.get_voxels().numpy()
+            assert voxel_count == voxels_actual.shape[0]
+
+            # Voxel coordinates should be unique
+            voxels_unique = np.unique(voxels_actual, axis=0)
+            assert voxel_count == voxels_unique.shape[0]
+
+            # Get back tiles from voxels, shoud match get_tiles()
+            voxel_tiles = 8 * (voxels_unique // 8)
+            voxel_tiles_sorted = voxel_tiles[np.lexsort(voxel_tiles.T[::-1])]
+            voxel_tiles_unique = np.unique(voxel_tiles_sorted, axis=0)
+
+            np.testing.assert_equal(voxel_tiles_unique, tiles_sorted)
+
+
+def test_volume_multiple_grids(test, device):
+    volume = volumes["index"][device.alias]
+
+    volume_2 = volume.load_next_grid()
+
+    test.assertIsNotNone(volume_2)
+
+    test.assertNotEqual(volume.id, volume_2.id)
+    test.assertNotEqual(volume.get_voxel_count(), volume_2.get_voxel_count())
+
+    test.assertEqual(volume.get_grid_info().grid_count, volume_2.get_grid_info().grid_count)
+    test.assertEqual(volume.get_grid_info().grid_index + 1, volume_2.get_grid_info().grid_index)
+
+    volume_3 = volume_2.load_next_grid()
+    test.assertIsNone(volume_3)
+
+
+def test_volume_feature_array(test, device):
+    volume = volumes["index"][device.alias]
+
+    test.assertEqual(volume.get_feature_array_count(), 1)
+
+    array = volume.feature_array(0, dtype=wp.uint64)
+    test.assertEqual(array.device, device)
+    test.assertEqual(array.dtype, wp.uint64)
+
+    # fVDB convention, data starts with array ndim + shape
+    np.testing.assert_equal(array.numpy()[0:4], [3, volume.get_voxel_count(), 2, 3])
+
+
+@wp.kernel
+def fill_leaf_values_kernel(volume: wp.uint64, ijk: wp.array2d(dtype=wp.int32), values: wp.array(dtype=Any)):
+    tid = wp.tid()
+
+    i = ijk[tid, 0]
+    j = ijk[tid, 1]
+    k = ijk[tid, 2]
+
+    expect_eq(tid, wp.volume_lookup_index(volume, i, j, k))
+
+    values[tid] = wp.volume_lookup(volume, i, j, k, dtype=values.dtype)
+
+
+@wp.kernel
+def test_volume_sample_index_kernel(
+    volume: wp.uint64,
+    points: wp.array(dtype=wp.vec3),
+    values: wp.array(dtype=Any),
+    background: wp.array(dtype=Any),
+    sampled_values: wp.array(dtype=Any),
+):
+    tid = wp.tid()
+    p = points[tid]
+
+    ref = wp.volume_sample(volume, p, wp.Volume.LINEAR, dtype=values.dtype)
+    sampled_values[tid] = wp.volume_sample_index(volume, p, wp.Volume.LINEAR, values, background[0])
+    expect_eq(sampled_values[tid], ref)
+
+
+@wp.kernel
+def test_volume_sample_grad_index_kernel(
+    volume: wp.uint64,
+    points: wp.array(dtype=wp.vec3),
+    values: wp.array(dtype=Any),
+    background: wp.array(dtype=Any),
+    sampled_values: wp.array(dtype=Any),
+    sampled_grads: wp.array(dtype=Any),
+):
+    tid = wp.tid()
+    p = points[tid]
+
+    ref_grad = sampled_grads.dtype()
+    ref = wp.volume_sample_grad(volume, p, wp.Volume.LINEAR, ref_grad, dtype=values.dtype)
+
+    grad = type(ref_grad)()
+    sampled_values[tid] = wp.volume_sample_grad_index(volume, p, wp.Volume.LINEAR, values, background[0], grad)
+    expect_eq(sampled_values[tid], ref)
+
+    expect_eq(grad[0], ref_grad[0])
+    expect_eq(grad[1], ref_grad[1])
+    expect_eq(grad[2], ref_grad[2])
+    sampled_grads[tid] = grad
+
+
+def test_volume_sample_index(test, device):
+    points = rng.uniform(-10.0, 10.0, size=(100, 3))
+    points[0:10, 0] += 100.0  # ensure some points are over unallocated voxels
+    uvws = wp.array(points, dtype=wp.vec3, device=device)
+
+    bg_values = {
+        "float": 10.0,
+        "vec3f": wp.vec3(10.8, -4.13, 10.26),
+    }
+    grad_types = {
+        "float": wp.vec3,
+        "vec3f": wp.mat33,
+    }
+
+    for volume_names in ("float", "vec3f"):
+        with test.subTest(volume_names=volume_names):
+            volume = volumes[volume_names][device.alias]
+
+            ijk = volume.get_voxels()
+
+            values = wp.empty(shape=volume.get_voxel_count(), dtype=volume.dtype, device=device, requires_grad=True)
+
+            vid = wp.uint64(volume.id)
+            wp.launch(fill_leaf_values_kernel, dim=values.shape, inputs=[vid, ijk, values], device=device)
+
+            sampled_values = wp.empty(shape=points.shape[0], dtype=volume.dtype, device=device, requires_grad=True)
+            background = wp.array([bg_values[volume_names]], dtype=volume.dtype, device=device, requires_grad=True)
+
+            tape = wp.Tape()
+            with tape:
+                wp.launch(
+                    test_volume_sample_index_kernel,
+                    dim=points.shape[0],
+                    inputs=[vid, uvws, values, background, sampled_values],
+                    device=device,
+                )
+
+            sampled_values.grad.fill_(1.0)
+            tape.backward()
+
+            # test adjoint w.r.t voxel and background value arrays
+            # we should have sum(sampled_values) = sum(adj_values * values) + (adj_background * background)
+            sum_sampled_values = np.sum(sampled_values.numpy(), axis=0)
+            sum_values_adj = np.sum(values.numpy() * values.grad.numpy(), axis=0)
+            sum_background_adj = background.numpy()[0] * background.grad.numpy()[0]
+
+            np.testing.assert_allclose(sum_sampled_values, sum_values_adj + sum_background_adj, rtol=1.0e-3)
+
+            tape.reset()
+
+            sampled_grads = wp.empty(
+                shape=points.shape[0], dtype=grad_types[volume_names], device=device, requires_grad=True
+            )
+
+            with tape:
+                wp.launch(
+                    test_volume_sample_grad_index_kernel,
+                    dim=points.shape[0],
+                    inputs=[vid, uvws, values, background, sampled_values, sampled_grads],
+                    device=device,
+                )
+
+            sampled_values.grad.fill_(1.0)
+            tape.backward()
+
+            # we should have sum(sampled_values) = sum(adj_values * values) + (adj_background * background)
+            sum_sampled_values = np.sum(sampled_values.numpy(), axis=0)
+            sum_values_adj = np.sum(values.numpy() * values.grad.numpy(), axis=0)
+            sum_background_adj = background.numpy()[0] * background.grad.numpy()[0]
+            np.testing.assert_allclose(sum_sampled_values, sum_values_adj + sum_background_adj, rtol=1.0e-3)
+
+            tape.zero()
+            sampled_values.grad.fill_(0.0)
+            sampled_grads.grad.fill_(1.0)
+            tape.backward()
+
+            # we should have sum(sampled_grad, axes=(0, -1)) = sum(adj_values * values) + (adj_background * background)
+            sum_sampled_grads = np.sum(np.sum(sampled_grads.numpy(), axis=0), axis=-1)
+            sum_values_adj = np.sum(values.numpy() * values.grad.numpy(), axis=0)
+            sum_background_adj = background.numpy()[0] * background.grad.numpy()[0]
+            np.testing.assert_allclose(sum_sampled_grads, sum_values_adj + sum_background_adj, rtol=1.0e-3)
+
 
 def test_volume_from_numpy(test, device):
     # Volume.allocate_from_tiles() is only available with CUDA
@@ -657,6 +871,9 @@ add_function_test(TestVolume, "test_volume_introspection", test_volume_introspec
 add_function_test(
     TestVolume, "test_volume_from_numpy", test_volume_from_numpy, devices=get_selected_cuda_test_devices()
 )
+add_function_test(TestVolume, "test_volume_multiple_grids", test_volume_multiple_grids, devices=devices)
+add_function_test(TestVolume, "test_volume_feature_array", test_volume_feature_array, devices=devices)
+add_function_test(TestVolume, "test_volume_sample_index", test_volume_sample_index, devices=devices)
 
 points = {}
 points_jittered = {}
@@ -711,6 +928,13 @@ for device in devices:
     add_kernel_test(
         TestVolume,
         test_volume_sample_linear_v,
+        dim=len(point_grid),
+        inputs=[volumes["vec3f"][device.alias].id, points_jittered[device.alias]],
+        devices=[device.alias],
+    )
+    add_kernel_test(
+        TestVolume,
+        test_volume_sample_grad_linear_v,
         dim=len(point_grid),
         inputs=[volumes["vec3f"][device.alias].id, points_jittered[device.alias]],
         devices=[device.alias],

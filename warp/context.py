@@ -19,6 +19,7 @@ import platform
 import sys
 import types
 from copy import copy as shallowcopy
+from pathlib import Path
 from struct import pack as struct_pack
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
@@ -345,6 +346,8 @@ class Function:
 
 def call_builtin(func: Function, *params) -> Tuple[bool, Any]:
     uses_non_warp_array_type = False
+
+    warp.context.init()
 
     # Retrieve the built-in function from Warp's dll.
     c_func = getattr(warp.context.runtime.core, func.mangled_name)
@@ -1584,7 +1587,7 @@ class Module:
 
         return hash_recursive(self, visited=set())
 
-    def load(self, device):
+    def load(self, device) -> bool:
         from warp.utils import ScopedTimer
 
         device = get_device(device)
@@ -1608,71 +1611,19 @@ class Module:
             if not warp.is_cuda_available():
                 raise RuntimeError("Failed to build CUDA module because CUDA is not available")
 
-        with ScopedTimer(f"Module {self.name} load on device '{device}'", active=not warp.config.quiet):
-            build_path = warp.build.kernel_bin_dir
-            gen_path = warp.build.kernel_gen_dir
+        module_name = "wp_" + self.name
+        module_hash = self.hash_module()
 
-            if not os.path.exists(build_path):
-                os.makedirs(build_path)
-            if not os.path.exists(gen_path):
-                os.makedirs(gen_path)
+        # use a unique module path using the module short hash
+        module_dir = os.path.join(warp.config.kernel_cache_dir, f"{module_name}_{module_hash.hex()[:7]}")
 
-            module_name = "wp_" + self.name
-            module_path = os.path.join(build_path, module_name)
-            module_hash = self.hash_module()
-
-            builder = ModuleBuilder(self, self.options)
-
+        with ScopedTimer(
+            f"Module {self.name} {module_hash.hex()[:7]} load on device '{device}'", active=not warp.config.quiet
+        ):
+            # -----------------------------------------------------------
+            # determine output paths
             if device.is_cpu:
-                obj_path = os.path.join(build_path, module_name)
-                obj_path = obj_path + ".o"
-                cpu_hash_path = module_path + ".cpu.hash"
-
-                # check cache
-                if warp.config.cache_kernels and os.path.isfile(cpu_hash_path) and os.path.isfile(obj_path):
-                    with open(cpu_hash_path, "rb") as f:
-                        cache_hash = f.read()
-
-                    if cache_hash == module_hash:
-                        if warp.config.verbose:
-                            print(f"Module {self.name} reusing cache on device '{device}'")
-
-                        runtime.llvm.load_obj(obj_path.encode("utf-8"), module_name.encode("utf-8"))
-                        self.cpu_module = module_name
-                        return True
-
-                # build
-                try:
-                    cpp_path = os.path.join(gen_path, module_name + ".cpp")
-
-                    # write cpp sources
-                    cpp_source = builder.codegen("cpu")
-
-                    cpp_file = open(cpp_path, "w")
-                    cpp_file.write(cpp_source)
-                    cpp_file.close()
-
-                    # build object code
-                    with ScopedTimer("Compile x86", active=warp.config.verbose):
-                        warp.build.build_cpu(
-                            obj_path,
-                            cpp_path,
-                            mode=self.options["mode"],
-                            fast_math=self.options["fast_math"],
-                            verify_fp=warp.config.verify_fp,
-                        )
-
-                    # update cpu hash
-                    with open(cpu_hash_path, "wb") as f:
-                        f.write(module_hash)
-
-                    # load the object code
-                    runtime.llvm.load_obj(obj_path.encode("utf-8"), module_name.encode("utf-8"))
-                    self.cpu_module = module_name
-
-                except Exception as e:
-                    self.cpu_build_failed = True
-                    raise (e)
+                output_name = "module_codegen.o"
 
             elif device.is_cuda:
                 # determine whether to use PTX or CUBIN
@@ -1691,65 +1642,126 @@ class Module:
 
                 if use_ptx:
                     output_arch = min(device.arch, warp.config.ptx_target_arch)
-                    output_path = module_path + f".sm{output_arch}.ptx"
+                    output_name = f"module_codegen.sm{output_arch}.ptx"
                 else:
                     output_arch = device.arch
-                    output_path = module_path + f".sm{output_arch}.cubin"
+                    output_name = f"module_codegen.sm{output_arch}.cubin"
 
-                cuda_hash_path = module_path + f".sm{output_arch}.hash"
+            # final object binary path
+            binary_path = os.path.join(module_dir, output_name)
 
-                # check cache
-                if warp.config.cache_kernels and os.path.isfile(cuda_hash_path) and os.path.isfile(output_path):
-                    with open(cuda_hash_path, "rb") as f:
-                        cache_hash = f.read()
+            # -----------------------------------------------------------
+            # check cache and build if necessary
 
-                    if cache_hash == module_hash:
-                        if warp.config.verbose:
-                            print(f"Module {self.name} reusing cache on device '{device}'")
+            build_dir = None
 
-                        cuda_module = warp.build.load_cuda(output_path, device)
-                        if cuda_module is not None:
-                            self.cuda_modules[device.context] = cuda_module
-                            return True
+            if not os.path.exists(binary_path) or not warp.config.cache_kernels:
+                builder = ModuleBuilder(self, self.options)
 
-                # build
+                # create a temporary (process unique) dir for build outputs before moving to the binary dir
+                build_dir = os.path.join(
+                    warp.config.kernel_cache_dir, f"{module_name}_{module_hash.hex()[:7]}_p{os.getpid()}"
+                )
+
+                # dir may exist from previous attempts / runs / archs
+                Path(build_dir).mkdir(parents=True, exist_ok=True)
+
+                # build CPU
+                if device.is_cpu:
+                    # build
+                    try:
+                        cpp_path = os.path.join(build_dir, "module_codegen.cpp")
+
+                        # write cpp sources
+                        cpp_source = builder.codegen("cpu")
+
+                        with open(cpp_path, "w") as cpp_file:
+                            cpp_file.write(cpp_source)
+
+                        output_path = os.path.join(build_dir, output_name)
+
+                        # build object code
+                        with ScopedTimer("Compile x86", active=warp.config.verbose):
+                            warp.build.build_cpu(
+                                output_path,
+                                cpp_path,
+                                mode=self.options["mode"],
+                                fast_math=self.options["fast_math"],
+                                verify_fp=warp.config.verify_fp,
+                            )
+
+                    except Exception as e:
+                        self.cpu_build_failed = True
+                        raise (e)
+
+                elif device.is_cuda:
+                    # build
+                    try:
+                        cu_path = os.path.join(build_dir, "module_codegen.cu")
+
+                        # write cuda sources
+                        cu_source = builder.codegen("cuda")
+
+                        with open(cu_path, "w") as cu_file:
+                            cu_file.write(cu_source)
+
+                        output_path = os.path.join(build_dir, output_name)
+
+                        # generate PTX or CUBIN
+                        with ScopedTimer("Compile CUDA", active=warp.config.verbose):
+                            warp.build.build_cuda(
+                                cu_path,
+                                output_arch,
+                                output_path,
+                                config=self.options["mode"],
+                                fast_math=self.options["fast_math"],
+                                verify_fp=warp.config.verify_fp,
+                            )
+
+                    except Exception as e:
+                        self.cuda_build_failed = True
+                        raise (e)
+
+                # -----------------------------------------------------------
+                # update cache
+
                 try:
-                    cu_path = os.path.join(gen_path, module_name + ".cu")
+                    # Copy process-specific build directory to a process-independent location
+                    os.rename(build_dir, module_dir)
+                except (OSError, FileExistsError):
+                    # another process likely updated the module dir first
+                    pass
 
-                    # write cuda sources
-                    cu_source = builder.codegen("cuda")
+                if os.path.exists(module_dir) and not os.path.exists(binary_path):
+                    # copy our output file to the destination module
+                    # this is necessary in case different processes
+                    # have different GPU architectures / devices
+                    try:
+                        os.rename(output_path, binary_path)
+                    except (OSError, FileExistsError):
+                        # another process likely updated the module dir first
+                        pass
 
-                    cu_file = open(cu_path, "w")
-                    cu_file.write(cu_source)
-                    cu_file.close()
+            # -----------------------------------------------------------
+            # Load CPU or CUDA binary
+            if device.is_cpu:
+                runtime.llvm.load_obj(binary_path.encode("utf-8"), module_name.encode("utf-8"))
+                self.cpu_module = module_name
 
-                    # generate PTX or CUBIN
-                    with ScopedTimer("Compile CUDA", active=warp.config.verbose):
-                        warp.build.build_cuda(
-                            cu_path,
-                            output_arch,
-                            output_path,
-                            config=self.options["mode"],
-                            fast_math=self.options["fast_math"],
-                            verify_fp=warp.config.verify_fp,
-                        )
+            elif device.is_cuda:
+                cuda_module = warp.build.load_cuda(binary_path, device)
+                if cuda_module is not None:
+                    self.cuda_modules[device.context] = cuda_module
+                else:
+                    raise Exception(f"Failed to load CUDA module '{self.name}'")
 
-                    # update cuda hash
-                    with open(cuda_hash_path, "wb") as f:
-                        f.write(module_hash)
+            if build_dir:
+                import shutil
 
-                    # load the module
-                    cuda_module = warp.build.load_cuda(output_path, device)
-                    if cuda_module is not None:
-                        self.cuda_modules[device.context] = cuda_module
-                    else:
-                        raise Exception(f"Failed to load CUDA module '{self.name}'")
+                # clean up build_dir used for this process regardless
+                shutil.rmtree(build_dir, ignore_errors=True)
 
-                except Exception as e:
-                    self.cuda_build_failed = True
-                    raise (e)
-
-            return True
+        return True
 
     def unload(self):
         if self.cpu_module:
@@ -2622,22 +2634,36 @@ class Runtime:
             ]
             self.core.cutlass_gemm.restype = ctypes.c_bool
 
-            self.core.volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64, ctypes.c_bool, ctypes.c_bool]
             self.core.volume_create_host.restype = ctypes.c_uint64
-            self.core.volume_get_buffer_info_host.argtypes = [
-                ctypes.c_uint64,
-                ctypes.POINTER(ctypes.c_void_p),
-                ctypes.POINTER(ctypes.c_uint64),
-            ]
             self.core.volume_get_tiles_host.argtypes = [
                 ctypes.c_uint64,
-                ctypes.POINTER(ctypes.c_void_p),
-                ctypes.POINTER(ctypes.c_uint64),
+                ctypes.c_void_p,
+            ]
+            self.core.volume_get_voxels_host.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_void_p,
             ]
             self.core.volume_destroy_host.argtypes = [ctypes.c_uint64]
 
-            self.core.volume_create_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64]
+            self.core.volume_create_device.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_uint64,
+                ctypes.c_bool,
+                ctypes.c_bool,
+            ]
             self.core.volume_create_device.restype = ctypes.c_uint64
+            self.core.volume_get_tiles_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_void_p,
+            ]
+            self.core.volume_get_voxels_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_void_p,
+            ]
+            self.core.volume_destroy_device.argtypes = [ctypes.c_uint64]
+
             self.core.volume_f_from_tiles_device.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
@@ -2676,24 +2702,68 @@ class Runtime:
                 ctypes.c_bool,
             ]
             self.core.volume_i_from_tiles_device.restype = ctypes.c_uint64
-            self.core.volume_get_buffer_info_device.argtypes = [
-                ctypes.c_uint64,
-                ctypes.POINTER(ctypes.c_void_p),
-                ctypes.POINTER(ctypes.c_uint64),
+            self.core.volume_index_from_tiles_device.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_bool,
             ]
-            self.core.volume_get_tiles_device.argtypes = [
-                ctypes.c_uint64,
-                ctypes.POINTER(ctypes.c_void_p),
-                ctypes.POINTER(ctypes.c_uint64),
+            self.core.volume_index_from_tiles_device.restype = ctypes.c_uint64
+            self.core.volume_from_active_voxels_device.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_float,
+                ctypes.c_bool,
             ]
-            self.core.volume_destroy_device.argtypes = [ctypes.c_uint64]
+            self.core.volume_from_active_voxels_device.restype = ctypes.c_uint64
 
+            self.core.volume_get_buffer_info.argtypes = [
+                ctypes.c_uint64,
+                ctypes.POINTER(ctypes.c_void_p),
+                ctypes.POINTER(ctypes.c_uint64),
+            ]
             self.core.volume_get_voxel_size.argtypes = [
                 ctypes.c_uint64,
                 ctypes.POINTER(ctypes.c_float),
                 ctypes.POINTER(ctypes.c_float),
                 ctypes.POINTER(ctypes.c_float),
             ]
+            self.core.volume_get_tile_and_voxel_count.argtypes = [
+                ctypes.c_uint64,
+                ctypes.POINTER(ctypes.c_uint32),
+                ctypes.POINTER(ctypes.c_uint64),
+            ]
+            self.core.volume_get_grid_info.argtypes = [
+                ctypes.c_uint64,
+                ctypes.POINTER(ctypes.c_uint64),
+                ctypes.POINTER(ctypes.c_uint32),
+                ctypes.POINTER(ctypes.c_uint32),
+                ctypes.c_float * 3,
+                ctypes.c_float * 9,
+                ctypes.c_char * 16,
+            ]
+            self.core.volume_get_grid_info.restype = ctypes.c_char_p
+            self.core.volume_get_blind_data_count.argtypes = [
+                ctypes.c_uint64,
+            ]
+            self.core.volume_get_blind_data_count.restype = ctypes.c_uint64
+            self.core.volume_get_blind_data_info.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint32,
+                ctypes.POINTER(ctypes.c_void_p),
+                ctypes.POINTER(ctypes.c_uint64),
+                ctypes.POINTER(ctypes.c_uint32),
+                ctypes.c_char * 16,
+            ]
+            self.core.volume_get_blind_data_info.restype = ctypes.c_char_p
 
             bsr_matrix_from_triplets_argtypes = [
                 ctypes.c_int,
@@ -3238,13 +3308,9 @@ class Runtime:
                 raise RuntimeError(f"CUDA error detected: {err}")
 
 
-def assert_initialized():
-    assert runtime is not None, "Warp not initialized, call wp.init() before use"
-
-
 # global entry points
 def is_cpu_available():
-    assert_initialized()
+    init()
 
     return runtime.llvm
 
@@ -3267,7 +3333,7 @@ def is_cuda_driver_initialized() -> bool:
 
     This can be helpful in cases in which ``cuInit()`` was called before a fork.
     """
-    assert_initialized()
+    init()
 
     return runtime.core.cuda_driver_is_initialized()
 
@@ -3275,7 +3341,7 @@ def is_cuda_driver_initialized() -> bool:
 def get_devices() -> List[Device]:
     """Returns a list of devices supported in this environment."""
 
-    assert_initialized()
+    init()
 
     devices = []
     if is_cpu_available():
@@ -3288,7 +3354,7 @@ def get_devices() -> List[Device]:
 def get_cuda_device_count() -> int:
     """Returns the number of CUDA devices supported in this environment."""
 
-    assert_initialized()
+    init()
 
     return len(runtime.cuda_devices)
 
@@ -3296,7 +3362,7 @@ def get_cuda_device_count() -> int:
 def get_cuda_device(ordinal: Union[int, None] = None) -> Device:
     """Returns the CUDA device with the given ordinal or the current CUDA device if ordinal is None."""
 
-    assert_initialized()
+    init()
 
     if ordinal is None:
         return runtime.get_current_cuda_device()
@@ -3307,7 +3373,7 @@ def get_cuda_device(ordinal: Union[int, None] = None) -> Device:
 def get_cuda_devices() -> List[Device]:
     """Returns a list of CUDA devices supported in this environment."""
 
-    assert_initialized()
+    init()
 
     return runtime.cuda_devices
 
@@ -3315,7 +3381,7 @@ def get_cuda_devices() -> List[Device]:
 def get_preferred_device() -> Device:
     """Returns the preferred compute device, CUDA if available and CPU otherwise."""
 
-    assert_initialized()
+    init()
 
     if is_cuda_available():
         return runtime.cuda_devices[0]
@@ -3328,7 +3394,7 @@ def get_preferred_device() -> Device:
 def get_device(ident: Devicelike = None) -> Device:
     """Returns the device identified by the argument."""
 
-    assert_initialized()
+    init()
 
     return runtime.get_device(ident)
 
@@ -3336,7 +3402,7 @@ def get_device(ident: Devicelike = None) -> Device:
 def set_device(ident: Devicelike):
     """Sets the target device identified by the argument."""
 
-    assert_initialized()
+    init()
 
     device = runtime.get_device(ident)
     runtime.set_default_device(device)
@@ -3357,7 +3423,7 @@ def map_cuda_device(alias: str, context: ctypes.c_void_p = None) -> Device:
         The associated wp.Device.
     """
 
-    assert_initialized()
+    init()
 
     return runtime.map_cuda_device(alias, context)
 
@@ -3365,7 +3431,7 @@ def map_cuda_device(alias: str, context: ctypes.c_void_p = None) -> Device:
 def unmap_cuda_device(alias: str):
     """Remove a CUDA device with the given alias."""
 
-    assert_initialized()
+    init()
 
     runtime.unmap_cuda_device(alias)
 
@@ -3373,7 +3439,7 @@ def unmap_cuda_device(alias: str):
 def is_mempool_supported(device: Devicelike):
     """Check if CUDA memory pool allocators are available on the device."""
 
-    assert_initialized()
+    init()
 
     device = runtime.get_device(device)
 
@@ -3383,7 +3449,7 @@ def is_mempool_supported(device: Devicelike):
 def is_mempool_enabled(device: Devicelike):
     """Check if CUDA memory pool allocators are enabled on the device."""
 
-    assert_initialized()
+    init()
 
     device = runtime.get_device(device)
 
@@ -3403,7 +3469,7 @@ def set_mempool_enabled(device: Devicelike, enable: bool):
     prior to graph capture.
     """
 
-    assert_initialized()
+    init()
 
     device = runtime.get_device(device)
 
@@ -3433,7 +3499,7 @@ def set_mempool_release_threshold(device: Devicelike, threshold: Union[int, floa
     For example, 1024**3 means one GiB of memory.
     """
 
-    assert_initialized()
+    init()
 
     device = runtime.get_device(device)
 
@@ -3455,7 +3521,7 @@ def set_mempool_release_threshold(device: Devicelike, threshold: Union[int, floa
 def get_mempool_release_threshold(device: Devicelike):
     """Get the CUDA memory pool release threshold on the device."""
 
-    assert_initialized()
+    init()
 
     device = runtime.get_device(device)
 
@@ -3478,7 +3544,7 @@ def is_peer_access_supported(target_device: Devicelike, peer_device: Devicelike)
         A Boolean value indicating if this peer access is supported by the system.
     """
 
-    assert_initialized()
+    init()
 
     target_device = runtime.get_device(target_device)
     peer_device = runtime.get_device(peer_device)
@@ -3499,7 +3565,7 @@ def is_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike):
         A Boolean value indicating if this peer access is currently enabled.
     """
 
-    assert_initialized()
+    init()
 
     target_device = runtime.get_device(target_device)
     peer_device = runtime.get_device(peer_device)
@@ -3520,7 +3586,7 @@ def set_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike, 
     CUDA pooled allocators, use `set_mempool_access_enabled()`.
     """
 
-    assert_initialized()
+    init()
 
     target_device = runtime.get_device(target_device)
     peer_device = runtime.get_device(peer_device)
@@ -3551,7 +3617,7 @@ def is_mempool_access_supported(target_device: Devicelike, peer_device: Deviceli
         A Boolean value indicating if this memory pool access is supported by the system.
     """
 
-    assert_initialized()
+    init()
 
     return target_device.is_mempool_supported and is_peer_access_supported(target_device, peer_device)
 
@@ -3566,7 +3632,7 @@ def is_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelike
         A Boolean value indicating if this peer access is currently enabled.
     """
 
-    assert_initialized()
+    init()
 
     target_device = runtime.get_device(target_device)
     peer_device = runtime.get_device(peer_device)
@@ -3584,7 +3650,7 @@ def set_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelik
     default CUDA allocators, use `set_peer_access_enabled()`.
     """
 
-    assert_initialized()
+    init()
 
     target_device = runtime.get_device(target_device)
     peer_device = runtime.get_device(peer_device)
@@ -4299,7 +4365,7 @@ def launch(
             If negative or zero, the maximum hardware value will be used.
     """
 
-    assert_initialized()
+    init()
 
     # if stream is specified, use the associated device
     if stream is not None:

@@ -12,8 +12,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 # atomic add function that memorizes which thread incremented the counter
 # so that the correct counter value per thread can be used in the replay

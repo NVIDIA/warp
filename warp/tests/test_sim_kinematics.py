@@ -13,8 +13,6 @@ import warp as wp
 import warp.sim
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 def test_fk_ik(test, device):
     builder = wp.sim.ModelBuilder()

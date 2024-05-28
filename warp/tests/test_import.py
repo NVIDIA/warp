@@ -11,8 +11,6 @@ import warp as wp
 import warp.tests.test_func as test_func
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 @wp.kernel
 def test_import_func():

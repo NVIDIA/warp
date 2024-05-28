@@ -10,8 +10,6 @@ import unittest
 import warp as wp
 import warp.tests.unittest_suites
 
-wp.init()
-
 
 def run_suite() -> bool:
     """Run a test suite"""

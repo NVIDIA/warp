@@ -20,8 +20,6 @@ import warp.sim
 import warp.sim.render
 from warp.optim import Adam
 
-wp.init()
-
 
 @wp.kernel
 def loss_l2(

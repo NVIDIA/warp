@@ -13,8 +13,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import add_function_test, assert_np_equal, get_test_devices
 
-wp.init()
-
 
 class ScalarFloatValues(NamedTuple):
     degrees: wp.float32 = None

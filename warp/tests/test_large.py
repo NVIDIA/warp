@@ -12,8 +12,6 @@ from typing import Any
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 @wp.kernel
 def conditional_sum(result: wp.array(dtype=wp.uint64)):

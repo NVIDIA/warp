@@ -19,8 +19,6 @@ import warp as wp
 import warp.fem as fem
 from warp.sparse import bsr_axpy, bsr_mm, bsr_transposed
 
-wp.init()
-
 # Import example utilities
 # Make sure that works both when imported as module and run as standalone file
 try:

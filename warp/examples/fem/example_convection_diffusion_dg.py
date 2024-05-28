@@ -41,8 +41,6 @@ except ImportError:
     from mesh_utils import gen_quadmesh, gen_trimesh
     from plot_utils import Plot
 
-wp.init()
-
 
 # Standard transport term, on cells' interior
 @fem.integrand

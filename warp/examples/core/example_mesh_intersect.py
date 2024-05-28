@@ -21,8 +21,6 @@ import warp as wp
 import warp.examples
 import warp.render
 
-wp.init()
-
 
 @wp.func
 def cw_min(a: wp.vec3, b: wp.vec3):

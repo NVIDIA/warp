@@ -25,8 +25,6 @@ import numpy as np
 import warp as wp
 import warp.render
 
-wp.init()
-
 
 @wp.func
 def square(x: float):

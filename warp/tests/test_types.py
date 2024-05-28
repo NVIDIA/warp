@@ -9,8 +9,6 @@ import unittest
 
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 def test_integers(test, device, dtype):
     value = dtype(0)

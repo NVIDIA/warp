@@ -1563,6 +1563,32 @@ Geometry
 
 Volumes
 ---------------
+.. py:function:: volume_sample(id: uint64, uvw: vec3f, sampling_mode: int32, dtype: Any)
+
+    Sample the volume of type `dtype` given by ``id`` at the volume local-space point ``uvw``.
+
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`
+
+
+.. py:function:: volume_sample_grad(id: uint64, uvw: vec3f, sampling_mode: int32, grad: Any, dtype: Any)
+
+    Sample the volume given by ``id`` and its gradient at the volume local-space point ``uvw``.
+
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`
+
+
+.. py:function:: volume_lookup(id: uint64, i: int32, j: int32, k: int32, dtype: Any)
+
+    Returns the value of voxel with coordinates ``i``, ``j``, ``k`` for a volume of type type `dtype`.
+
+    If the voxel at this index does not exist, this function returns the background value.
+
+
+.. py:function:: volume_store(id: uint64, i: int32, j: int32, k: int32, value: Any)
+
+    Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.
+
+
 .. py:function:: volume_sample_f(id: uint64, uvw: vec3f, sampling_mode: int32) -> float
 
     Sample the volume given by ``id`` at the volume local-space point ``uvw``.
@@ -1623,6 +1649,35 @@ Volumes
 .. py:function:: volume_store_i(id: uint64, i: int32, j: int32, k: int32, value: int32) -> None
 
     Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.
+
+
+.. py:function:: volume_sample_index(id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data: Array[Any], background: Any)
+
+    Sample the volume given by ``id`` at the volume local-space point ``uvw``.
+
+    Values for allocated voxels are read from the ``voxel_data`` array, and `background` is used as the value of non-existing voxels.
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR`.
+    This function is available for both index grids and classical volumes.
+    
+
+
+.. py:function:: volume_sample_grad_index(id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data: Array[Any], background: Any, grad: Any)
+
+    Sample the volume given by ``id`` and its gradient at the volume local-space point ``uvw``.
+
+    Values for allocated voxels are read from the ``voxel_data`` array, and `background` is used as the value of non-existing voxels.
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR`.
+    This function is available for both index grids and classical volumes.
+   
+
+
+.. py:function:: volume_lookup_index(id: uint64, i: int32, j: int32, k: int32) -> int32
+
+    Returns the index associated to the voxel with coordinates ``i``, ``j``, ``k``.
+
+    If the voxel at this index does not exist, this function returns -1.
+    This function is available for both index grids and classical volumes.
+    
 
 
 .. py:function:: volume_index_to_world(id: uint64, uvw: vec3f) -> vec3f

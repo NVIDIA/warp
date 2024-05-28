@@ -12,8 +12,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 def test_pinned(test: unittest.TestCase, device):
     assert wp.get_device(device).is_cuda, "Test device must be a CUDA device"

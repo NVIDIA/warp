@@ -23,9 +23,6 @@ import torch
 
 import warp as wp
 
-wp.init()
-
-
 pvec2 = wp.types.vector(length=2, dtype=wp.float32)
 
 

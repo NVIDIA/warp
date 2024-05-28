@@ -12,8 +12,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 num_points = 4096
 dim_x = 128
 dim_y = 128

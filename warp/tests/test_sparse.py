@@ -28,8 +28,6 @@ from warp.sparse import (
 )
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 def _get_block(mat, row, col, block_shape):
     return mat[row * block_shape[0] : (row + 1) * block_shape[0], col * block_shape[1] : (col + 1) * block_shape[1]]

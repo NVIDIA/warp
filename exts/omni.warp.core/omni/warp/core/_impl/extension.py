@@ -102,8 +102,3 @@ class OmniWarpCoreExtension(omni.ext.IExt):
             # we need to update Python's standard `sys.path` for `import warp`
             # to work as expected.
             sys.path.insert(0, EXT_PATH)
-
-        # Initialize the library.
-        import warp as wp
-
-        wp.init()

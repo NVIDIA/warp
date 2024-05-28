@@ -9,8 +9,6 @@ import numpy as np
 
 import warp as wp
 
-wp.init()
-
 
 @wp.kernel
 def arange(out: wp.array(dtype=int)):

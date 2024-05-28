@@ -12,8 +12,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()
-
 
 @wp.kernel
 def make_field(field: wp.array3d(dtype=float), center: wp.vec3, radius: float):

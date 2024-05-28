@@ -16,15 +16,13 @@ from warp.tests.unittest_utils import *
 
 N = 1024 * 1024
 
-wp.init()
-
 
 def _jax_version():
     try:
         import jax
 
         return jax.__version_info__
-    except ImportError:
+    except (ImportError, AttributeError):
         return (0, 0, 0)
 
 
