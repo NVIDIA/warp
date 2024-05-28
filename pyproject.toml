@@ -27,8 +27,7 @@ Changelog = "https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = ["pre-commit", "ruff", "nvtx", "furo", "sphinx-copybutton", "coverage[toml]"]
-examples = ['usd-core', 'matplotlib', 'pyglet']
-extras = ['usd-core']
+extras = ['usd-core', 'matplotlib', 'pyglet']
 
 [tool.setuptools.packages.find]
 include = ["warp*"]
