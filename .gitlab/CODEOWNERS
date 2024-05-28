@@ -41,7 +41,6 @@
 /build_docs.py
 /build_lib.py
 /build_llvm.py
-/PACKAGE-INFO.yaml
 /PACKAGING.md
 /pyproject.toml
 /repo.toml
