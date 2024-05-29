@@ -55,7 +55,7 @@ def test_vec2_arg(test, device, n):
     wp.launch(add_vec2, dim=n, inputs=[dest, c], device=device)
 
     # ensure type can round-trip from Python->GPU->Python
-    test.assertTrue(np.array_equal(dest.numpy(), np.tile(c, (n, 1))))
+    assert_np_equal(dest.numpy(), np.tile(c, (n, 1)))
 
 
 def test_vec2_transform(test, device, n):
@@ -65,8 +65,8 @@ def test_vec2_transform(test, device, n):
     m = np.array(((3.0, -1.0), (2.5, 4.0)))
 
     wp.launch(transform_vec2, dim=n, inputs=[dest_right, dest_left, m, c], device=device)
-    test.assertTrue(np.array_equal(dest_right.numpy(), np.tile(m @ c, (n, 1))))
-    test.assertTrue(np.array_equal(dest_left.numpy(), np.tile(c @ m, (n, 1))))
+    assert_np_equal(dest_right.numpy(), np.tile(m @ c, (n, 1)))
+    assert_np_equal(dest_left.numpy(), np.tile(c @ m, (n, 1)))
 
 
 def test_vec3_arg(test, device, n):
@@ -74,7 +74,7 @@ def test_vec3_arg(test, device, n):
     c = np.array((1.0, 2.0, 3.0))
 
     wp.launch(add_vec3, dim=n, inputs=[dest, c], device=device)
-    test.assertTrue(np.array_equal(dest.numpy(), np.tile(c, (n, 1))))
+    assert_np_equal(dest.numpy(), np.tile(c, (n, 1)))
 
 
 def test_vec3_transform(test, device, n):
@@ -84,8 +84,8 @@ def test_vec3_transform(test, device, n):
     m = np.array(((1.0, 2.0, 3.0), (4.0, 5.0, 6.0), (7.0, 8.0, 9.0)))
 
     wp.launch(transform_vec3, dim=n, inputs=[dest_right, dest_left, m, c], device=device)
-    test.assertTrue(np.array_equal(dest_right.numpy(), np.tile(m @ c, (n, 1))))
-    test.assertTrue(np.array_equal(dest_left.numpy(), np.tile(c @ m, (n, 1))))
+    assert_np_equal(dest_right.numpy(), np.tile(m @ c, (n, 1)))
+    assert_np_equal(dest_left.numpy(), np.tile(c @ m, (n, 1)))
 
 
 def test_transform_multiply(test, device, n):

@@ -126,7 +126,7 @@ def test_hashgrid_query(test, device):
 
             print(f"Passed: {np.array_equal(counts, counts_ref)}")
 
-        test.assertTrue(np.array_equal(counts, counts_ref))
+        assert_np_equal(counts, counts_ref)
 
 
 def test_hashgrid_inputs(test, device):
