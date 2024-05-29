@@ -11,8 +11,9 @@ from typing import Any
 import numpy as np
 
 import warp as wp
-from warp.context import runtime  # noqa: E402
 from warp.tests.unittest_utils import *
+
+wp.init()  # For wp.context.runtime.core.is_cutlass_enabled()
 
 
 class gemm_test_bed_runner:
@@ -78,7 +79,7 @@ class gemm_test_bed_runner:
             tape.backward(grads={D: ones})
 
             D_np = alpha * (A.numpy() @ B.numpy()) + beta * C.numpy()
-            assert np.array_equal(D_np, D.numpy())
+            assert_np_equal(D.numpy(), D_np)
 
             adj_A_np = alpha * np.matmul(ones.numpy(), B.numpy().transpose())
             adj_B_np = alpha * (A.numpy().transpose() @ ones.numpy())
@@ -91,15 +92,15 @@ class gemm_test_bed_runner:
             tape.backward(grads={D: ones})
 
             D_np = alpha * np.matmul(A.numpy(), B.numpy()) + beta * C.numpy()
-            assert np.array_equal(D_np, D.numpy())
+            assert_np_equal(D.numpy(), D_np)
 
             adj_A_np = alpha * np.matmul(ones.numpy(), B.numpy().transpose((0, 2, 1)))
             adj_B_np = alpha * np.matmul(A.numpy().transpose((0, 2, 1)), ones.numpy())
             adj_C_np = beta * ones.numpy()
 
-        assert np.array_equal(adj_A_np, A.grad.numpy())
-        assert np.array_equal(adj_B_np, B.grad.numpy())
-        assert np.array_equal(adj_C_np, C.grad.numpy())
+        assert_np_equal(A.grad.numpy(), adj_A_np)
+        assert_np_equal(B.grad.numpy(), adj_B_np)
+        assert_np_equal(C.grad.numpy(), adj_C_np)
 
     def run(self):
         Ms = [64, 128, 512]
@@ -200,9 +201,9 @@ class gemm_test_bed_runner_transpose:
             tape.backward(grads={D1: ones1, D2: ones2, D3: ones3})
 
             D_np = alpha * (A.numpy() @ B.numpy()) + beta * C1.numpy()
-            assert np.array_equal(D_np, D1.numpy())
-            assert np.array_equal(D_np, D2.numpy())
-            assert np.array_equal(D_np, D3.numpy())
+            assert_np_equal(D1.numpy(), D_np)
+            assert_np_equal(D2.numpy(), D_np)
+            assert_np_equal(D3.numpy(), D_np)
 
             adj_A_np = alpha * (ones1.numpy() @ B.numpy().transpose())
             adj_B_np = alpha * (A.numpy().transpose() @ ones1.numpy())
@@ -221,23 +222,23 @@ class gemm_test_bed_runner_transpose:
             tape.backward(grads={D1: ones1, D2: ones2, D3: ones3})
 
             D_np = alpha * np.matmul(A.numpy(), B.numpy()) + beta * C1.numpy()
-            assert np.array_equal(D_np, D1.numpy())
-            assert np.array_equal(D_np, D2.numpy())
-            assert np.array_equal(D_np, D3.numpy())
+            assert_np_equal(D1.numpy(), D_np)
+            assert_np_equal(D2.numpy(), D_np)
+            assert_np_equal(D3.numpy(), D_np)
 
             adj_A_np = alpha * np.matmul(ones1.numpy(), B.numpy().transpose((0, 2, 1)))
             adj_B_np = alpha * np.matmul(A.numpy().transpose((0, 2, 1)), ones1.numpy())
             adj_C_np = beta * ones1.numpy()
 
-        assert np.array_equal(adj_A_np, A.grad.numpy())
-        assert np.array_equal(adj_A_np, ATT1.grad.numpy())
-        assert np.array_equal(adj_A_np, ATT2.grad.numpy())
-        assert np.array_equal(adj_B_np, B.grad.numpy())
-        assert np.array_equal(adj_B_np, BTT1.grad.numpy())
-        assert np.array_equal(adj_B_np, BTT2.grad.numpy())
-        assert np.array_equal(adj_C_np, C1.grad.numpy())
-        assert np.array_equal(adj_C_np, C2.grad.numpy())
-        assert np.array_equal(adj_C_np, C3.grad.numpy())
+        assert_np_equal(A.grad.numpy(), adj_A_np)
+        assert_np_equal(ATT1.grad.numpy(), adj_A_np)
+        assert_np_equal(ATT2.grad.numpy(), adj_A_np)
+        assert_np_equal(B.grad.numpy(), adj_B_np)
+        assert_np_equal(BTT1.grad.numpy(), adj_B_np)
+        assert_np_equal(BTT2.grad.numpy(), adj_B_np)
+        assert_np_equal(C1.grad.numpy(), adj_C_np)
+        assert_np_equal(C2.grad.numpy(), adj_C_np)
+        assert_np_equal(C3.grad.numpy(), adj_C_np)
 
     def run(self):
         m = 16
@@ -257,13 +258,13 @@ def test_f16(test, device):
     gemm_test_bed_runner_transpose(wp.float16, device).run()
 
 
-@unittest.skipUnless(runtime.core.is_cutlass_enabled(), "Warp was not built with CUTLASS support")
+@unittest.skipUnless(wp.context.runtime.core.is_cutlass_enabled(), "Warp was not built with CUTLASS support")
 def test_f32(test, device):
     gemm_test_bed_runner(wp.float32, device).run()
     gemm_test_bed_runner_transpose(wp.float32, device).run()
 
 
-@unittest.skipUnless(runtime.core.is_cutlass_enabled(), "Warp was not built with CUTLASS support")
+@unittest.skipUnless(wp.context.runtime.core.is_cutlass_enabled(), "Warp was not built with CUTLASS support")
 def test_f64(test, device):
     gemm_test_bed_runner(wp.float64, device).run()
     gemm_test_bed_runner_transpose(wp.float64, device).run()
@@ -275,7 +276,7 @@ def matrix_sum_kernel(arr: wp.array2d(dtype=float), loss: wp.array(dtype=float))
     wp.atomic_add(loss, 0, arr[i, j])
 
 
-@unittest.skipUnless(runtime.core.is_cutlass_enabled(), "Warp was not built with CUTLASS support")
+@unittest.skipUnless(wp.context.runtime.core.is_cutlass_enabled(), "Warp was not built with CUTLASS support")
 def test_tape(test, device):
     rng = np.random.default_rng(42)
     low = -4.5
@@ -315,7 +316,7 @@ def test_tape(test, device):
     assert_array_equal(A.grad, wp.zeros_like(A))
 
 
-@unittest.skipUnless(runtime.core.is_cutlass_enabled(), "Warp was not built with CUTLASS support")
+@unittest.skipUnless(wp.context.runtime.core.is_cutlass_enabled(), "Warp was not built with CUTLASS support")
 def test_operator(test, device):
     rng = np.random.default_rng(42)
     low = -4.5
@@ -351,7 +352,7 @@ def test_operator(test, device):
     assert_array_equal(A.grad, wp.zeros_like(A))
 
 
-@unittest.skipUnless(runtime.core.is_cutlass_enabled(), "Warp was not built with CUTLASS support")
+@unittest.skipUnless(wp.context.runtime.core.is_cutlass_enabled(), "Warp was not built with CUTLASS support")
 def test_large_batch_count(test, device):
     rng = np.random.default_rng(42)
     low = -4.5
@@ -391,18 +392,18 @@ def test_large_batch_count(test, device):
     tape.backward(grads={D: ones})
 
     D_np = alpha * np.matmul(A.numpy(), B.numpy()) + beta * C.numpy()
-    assert np.array_equal(D_np, D.numpy())
+    assert_np_equal(D.numpy(), D_np)
 
     adj_A_np = alpha * np.matmul(ones.numpy(), B.numpy().transpose((0, 2, 1)))
     adj_B_np = alpha * np.matmul(A.numpy().transpose((0, 2, 1)), ones.numpy())
     adj_C_np = beta * ones.numpy()
 
-    assert np.array_equal(adj_A_np, A.grad.numpy())
-    assert np.array_equal(adj_B_np, B.grad.numpy())
-    assert np.array_equal(adj_C_np, C.grad.numpy())
+    assert_np_equal(A.grad.numpy(), adj_A_np)
+    assert_np_equal(B.grad.numpy(), adj_B_np)
+    assert_np_equal(C.grad.numpy(), adj_C_np)
 
 
-@unittest.skipUnless(runtime.core.is_cutlass_enabled(), "Warp was not built with CUTLASS support")
+@unittest.skipUnless(wp.context.runtime.core.is_cutlass_enabled(), "Warp was not built with CUTLASS support")
 def test_adjoint_accumulation(test, device):
     a_np = np.ones(shape=(2, 3))
     b_np = np.ones(shape=(3, 2))
@@ -426,12 +427,12 @@ def test_adjoint_accumulation(test, device):
     grads = {d2_wp: d_grad}
     tape.backward(grads=grads)
 
-    assert np.array_equal(a_wp.grad.numpy(), 4.0 * np.ones(shape=(2, 3)))
-    assert np.array_equal(b_wp.grad.numpy(), 4.0 * np.ones(shape=(3, 2)))
-    assert np.array_equal(c_wp.grad.numpy(), np.ones(shape=(2, 2)))
+    assert_np_equal(a_wp.grad.numpy(), 4.0 * np.ones(shape=(2, 3)))
+    assert_np_equal(b_wp.grad.numpy(), 4.0 * np.ones(shape=(3, 2)))
+    assert_np_equal(c_wp.grad.numpy(), np.ones(shape=(2, 2)))
 
 
-@unittest.skipUnless(runtime.core.is_cutlass_enabled(), "Warp was not built with CUTLASS support")
+@unittest.skipUnless(wp.context.runtime.core.is_cutlass_enabled(), "Warp was not built with CUTLASS support")
 def test_cuda_graph_capture(test, device):
     @wp.kernel
     def mat_sum(mat: wp.array2d(dtype=Any), loss: wp.array(dtype=Any)):

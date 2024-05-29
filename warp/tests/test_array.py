@@ -420,10 +420,10 @@ def test_view(test, device):
     wp_arr_e = wp.array(np_arr_e, dtype=wp.vec4, device=device)
     wp_arr_f = wp.array(np_arr_e, dtype=wp.quat, device=device)
 
-    assert np.array_equal(np_arr_a.view(dtype=np.float32), wp_arr_a.view(dtype=wp.float32).numpy())
-    assert np.array_equal(np_arr_b.view(dtype=np.uint32), wp_arr_b.view(dtype=wp.uint32).numpy())
-    assert np.array_equal(np_arr_c.view(dtype=np.float16), wp_arr_c.view(dtype=wp.float16).numpy())
-    assert np.array_equal(np_arr_d.view(dtype=np.uint16), wp_arr_d.view(dtype=wp.uint16).numpy())
+    assert_np_equal(wp_arr_a.view(dtype=wp.float32).numpy(), np_arr_a.view(dtype=np.float32))
+    assert_np_equal(wp_arr_b.view(dtype=wp.uint32).numpy(), np_arr_b.view(dtype=np.uint32))
+    assert_np_equal(wp_arr_c.view(dtype=wp.float16).numpy(), np_arr_c.view(dtype=np.float16))
+    assert_np_equal(wp_arr_d.view(dtype=wp.uint16).numpy(), np_arr_d.view(dtype=np.uint16))
     assert_array_equal(wp_arr_e.view(dtype=wp.quat), wp_arr_f)
 
 
@@ -484,7 +484,7 @@ def test_transpose(test, device):
     check = wp.zeros(shape=(2, 3), dtype=int, device=device)
 
     wp.launch(compare_2darrays, dim=(2, 3), inputs=[arr_transpose, arr_compare, check], device=device)
-    assert np.array_equal(check.numpy(), np.ones((2, 3), dtype=int))
+    assert_np_equal(check.numpy(), np.ones((2, 3), dtype=int))
 
     # test transpose in square 3d case
     # wp does not support copying from/to non-contiguous arrays so check in kernel
@@ -495,7 +495,7 @@ def test_transpose(test, device):
     check = wp.zeros(shape=(3, 2, 2), dtype=int, device=device)
 
     wp.launch(compare_3darrays, dim=(3, 2, 2), inputs=[arr_transpose, arr_compare, check], device=device)
-    assert np.array_equal(check.numpy(), np.ones((3, 2, 2), dtype=int))
+    assert_np_equal(check.numpy(), np.ones((3, 2, 2), dtype=int))
 
     # test transpose in square 3d case without axes supplied
     arr_transpose = arr.transpose()
@@ -503,13 +503,13 @@ def test_transpose(test, device):
     check = wp.zeros(shape=(2, 2, 3), dtype=int, device=device)
 
     wp.launch(compare_3darrays, dim=(2, 2, 3), inputs=[arr_transpose, arr_compare, check], device=device)
-    assert np.array_equal(check.numpy(), np.ones((2, 2, 3), dtype=int))
+    assert_np_equal(check.numpy(), np.ones((2, 2, 3), dtype=int))
 
     # test transpose in 1d case (should be noop)
     np_arr = np.array([1, 2, 3], dtype=float)
     arr = wp.array(np_arr, dtype=float, device=device)
 
-    assert np.array_equal(np_arr.transpose(), arr.transpose().numpy())
+    assert_np_equal(arr.transpose().numpy(), np_arr.transpose())
 
 
 def test_fill_scalar(test, device):
