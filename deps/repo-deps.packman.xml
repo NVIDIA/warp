@@ -5,4 +5,10 @@
   <dependency name="repo_build" linkPath="../_repo/deps/repo_build">
     <package name="repo_build" version="0.62.7"/>
   </dependency>
+  <dependency name="repo_changelog" linkPath="../_repo/deps/repo_changelog">
+    <package name="repo_changelog" version="0.8.6" />
+  </dependency>
+  <dependency name="repo_kit_tools" linkPath="../_repo/deps/repo_kit_tools">
+    <package name="repo_kit_tools" version="0.18.3" />
+  </dependency>
 </project>
