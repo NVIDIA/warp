@@ -9,6 +9,7 @@
 - Revised module compilation process to allow multiple processes to use the same kernel cache directory.
   Cached kernels will now be stored in hash-specific subdirectory.
 - Add runtime checks for `wp.MarchingCubes` on field dimensions and size
+- Fix memory leak in mesh BVH ([GH-225](https://github.com/NVIDIA/warp/issues/225))
 
 ## [1.1.1] - 2024-05-24
 

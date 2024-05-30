@@ -339,6 +339,19 @@ void bvh_rem_descriptor(uint64_t id)
 }
 
 
+// create in-place given existing descriptor
+void bvh_create_host(vec3* lowers, vec3* uppers, int num_items, BVH& bvh)
+{
+    memset(&bvh, 0, sizeof(BVH));
+
+    bvh.item_lowers = lowers;
+    bvh.item_uppers = uppers;
+    bvh.num_items = num_items;
+
+    MedianBVHBuilder builder;
+    builder.build(bvh, lowers, uppers, num_items);
+}
+
 void bvh_destroy_host(BVH& bvh)
 {
     delete[] bvh.node_lowers;
@@ -360,16 +373,7 @@ void bvh_destroy_host(BVH& bvh)
 uint64_t bvh_create_host(vec3* lowers, vec3* uppers, int num_items)
 {
     BVH* bvh = new BVH();
-    memset(bvh, 0, sizeof(BVH));
-
-    bvh->context = NULL;
-
-    bvh->item_lowers = lowers;
-    bvh->item_uppers = uppers;
-    bvh->num_items = num_items;
-
-    MedianBVHBuilder builder;
-    builder.build(*bvh, lowers, uppers, num_items);
+    wp::bvh_create_host(lowers, uppers, num_items, *bvh);
 
     return (uint64_t)bvh;
 }
