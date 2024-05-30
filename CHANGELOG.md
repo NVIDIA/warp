@@ -10,6 +10,7 @@
   Cached kernels will now be stored in hash-specific subdirectory.
 - Add runtime checks for `wp.MarchingCubes` on field dimensions and size
 - Fix memory leak in mesh BVH ([GH-225](https://github.com/NVIDIA/warp/issues/225))
+- Use C++17 with NVCC when building the Warp library and user kernels
 
 ## [1.1.1] - 2024-05-24
 
