@@ -455,7 +455,28 @@ void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* i
 
 }
 
-void bvh_destroy_device(wp::BVH& bvh)
+// create in-place given existing descriptor
+void bvh_create_device(void* context, vec3* lowers, vec3* uppers, int num_items, BVH& bvh_host)
+{
+    ContextGuard guard(context);
+
+    bvh_host.num_items = num_items;
+    bvh_host.max_nodes = 2*num_items;
+    bvh_host.node_lowers = (BVHPackedNodeHalf*)alloc_device(WP_CURRENT_CONTEXT, sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
+    bvh_host.node_uppers = (BVHPackedNodeHalf*)alloc_device(WP_CURRENT_CONTEXT, sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
+    bvh_host.node_parents = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh_host.max_nodes);
+    bvh_host.node_counts = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh_host.max_nodes);
+    bvh_host.root = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int));
+    bvh_host.item_lowers = lowers;
+    bvh_host.item_uppers = uppers;
+
+    bvh_host.context = context ? context : cuda_context_get_current();
+
+    LinearBVHBuilderGPU builder;
+    builder.build(bvh_host, lowers, uppers, num_items, NULL);
+}
+
+void bvh_destroy_device(BVH& bvh)
 {
     ContextGuard guard(bvh.context);
 
@@ -485,20 +506,7 @@ uint64_t bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, in
     ContextGuard guard(context);
 
     wp::BVH bvh_host;
-    bvh_host.num_items = num_items;
-    bvh_host.max_nodes = 2*num_items;
-    bvh_host.node_lowers = (wp::BVHPackedNodeHalf*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::BVHPackedNodeHalf)*bvh_host.max_nodes);
-    bvh_host.node_uppers = (wp::BVHPackedNodeHalf*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::BVHPackedNodeHalf)*bvh_host.max_nodes);
-    bvh_host.node_parents = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh_host.max_nodes);
-    bvh_host.node_counts = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh_host.max_nodes);
-    bvh_host.root = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int));
-    bvh_host.item_lowers = lowers;
-    bvh_host.item_uppers = uppers;
-
-    bvh_host.context = context ? context : cuda_context_get_current();
-
-    wp::LinearBVHBuilderGPU builder;
-    builder.build(bvh_host, lowers, uppers, num_items, NULL);
+    bvh_create_device(WP_CURRENT_CONTEXT, lowers, uppers, num_items, bvh_host);
 
     // create device-side BVH descriptor
     wp::BVH* bvh_device = (wp::BVH*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::BVH));

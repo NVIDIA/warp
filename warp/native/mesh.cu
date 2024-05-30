@@ -208,8 +208,7 @@ uint64_t mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::arr
 
         wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_triangle_bounds, num_tris, (num_tris, points.data, indices.data, mesh.lowers, mesh.uppers));
 
-        uint64_t bvh_id = bvh_create_device(mesh.context, mesh.lowers, mesh.uppers, num_tris);
-        wp::bvh_get_descriptor(bvh_id, mesh.bvh);
+        wp::bvh_create_device(mesh.context, mesh.lowers, mesh.uppers, num_tris, mesh.bvh);
 
         if (support_winding_number)
         {

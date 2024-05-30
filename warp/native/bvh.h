@@ -417,6 +417,7 @@ CUDA_CALLABLE void bvh_rem_descriptor(uint64_t id);
 
 #if !__CUDA_ARCH__
 
+void bvh_create_host(vec3* lowers, vec3* uppers, int num_items, BVH& bvh);
 void bvh_destroy_host(wp::BVH& bvh);
 void bvh_refit_host(wp::BVH& bvh);
 

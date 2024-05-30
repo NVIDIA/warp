@@ -127,7 +127,7 @@ uint64_t mesh_create_host(array_t<wp::vec3> points, array_t<wp::vec3> velocities
     }
     m->average_edge_length = sum / (num_tris*3);
 
-    m->bvh = *(wp::BVH*)bvh_create_host(m->lowers, m->uppers, num_tris);
+    wp::bvh_create_host(m->lowers, m->uppers, num_tris, m->bvh);
     
     if (support_winding_number) 
     {
