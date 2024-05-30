@@ -644,7 +644,7 @@ def test_volume_introspection(test, device):
             voxels_unique = np.unique(voxels_actual, axis=0)
             assert voxel_count == voxels_unique.shape[0]
 
-            # Get back tiles from voxels, shoud match get_tiles()
+            # Get back tiles from voxels, should match get_tiles()
             voxel_tiles = 8 * (voxels_unique // 8)
             voxel_tiles_sorted = voxel_tiles[np.lexsort(voxel_tiles.T[::-1])]
             voxel_tiles_unique = np.unique(voxel_tiles_sorted, axis=0)
