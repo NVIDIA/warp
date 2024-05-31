@@ -147,14 +147,14 @@ class DeviceBuffer
         mManaged = true;
     }
 
-    /// @brief Retuns a raw pointer to the host/CPU buffer managed by this allocator.
+    /// @brief Returns a raw pointer to the host/CPU buffer managed by this allocator.
     /// @warning Note that the pointer can be NULL!
     void *data() const
     {
         return mCpuData;
     }
 
-    /// @brief Retuns a raw pointer to the device/GPU buffer managed by this allocator.
+    /// @brief Returns a raw pointer to the device/GPU buffer managed by this allocator.
     /// @warning Note that the pointer can be NULL!
     void *deviceData() const
     {

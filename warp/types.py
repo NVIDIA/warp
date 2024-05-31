@@ -3275,8 +3275,8 @@ class Volume:
         """Returns one the the grid's feature data arrays as a Warp array
 
         Args:
-            feature_index: index of the supplemental dat aarray in the grid
-            dtype: type for the returned warp array. If not provided, will be deduced from the array metdata.
+            feature_index: Index of the supplemental data array in the grid
+            dtype: Type for the returned Warp array. If not provided, will be deduced from the array metadata.
         """
 
         info = self.get_feature_array_info(feature_index)
