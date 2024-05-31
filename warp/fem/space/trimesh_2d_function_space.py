@@ -1,16 +1,13 @@
 import warp as wp
 from warp.fem import cache
 from warp.fem.geometry import Trimesh2D
-from warp.fem.types import Coords, ElementIndex
+from warp.fem.types import ElementIndex
 
-from .basis_space import ShapeBasisSpace, TraceBasisSpace
 from .shape import (
-    ConstantShapeFunction,
     ShapeFunction,
-    Triangle2DNonConformingPolynomialShapeFunctions,
     Triangle2DPolynomialShapeFunctions,
 )
-from .topology import DiscontinuousSpaceTopologyMixin, SpaceTopology, forward_base_topology
+from .topology import SpaceTopology, forward_base_topology
 
 
 @wp.struct
@@ -95,44 +92,6 @@ class Trimesh2DSpaceTopology(SpaceTopology):
             tri_edge_indices[t1, t1_edge] = e
 
 
-class Trimesh2DDiscontinuousSpaceTopology(
-    DiscontinuousSpaceTopologyMixin,
-    SpaceTopology,
-):
-    def __init__(self, mesh: Trimesh2D, shape: ShapeFunction):
-        super().__init__(mesh, shape.NODES_PER_ELEMENT)
-
-
-class Trimesh2DBasisSpace(ShapeBasisSpace):
-    def __init__(self, topology: Trimesh2DSpaceTopology, shape: ShapeFunction):
-        super().__init__(topology, shape)
-
-        self._mesh: Trimesh2D = topology.geometry
-
-
-class Trimesh2DPiecewiseConstantBasis(Trimesh2DBasisSpace):
-    def __init__(self, mesh: Trimesh2D):
-        shape = ConstantShapeFunction(mesh.reference_cell(), space_dimension=2)
-        topology = Trimesh2DDiscontinuousSpaceTopology(mesh, shape)
-        super().__init__(shape=shape, topology=topology)
-
-    class Trace(TraceBasisSpace):
-        @wp.func
-        def _node_coords_in_element(
-            side_arg: Trimesh2D.SideArg,
-            basis_arg: Trimesh2DBasisSpace.BasisArg,
-            element_index: ElementIndex,
-            node_index_in_element: int,
-        ):
-            return Coords(0.5, 0.0, 0.0)
-
-        def make_node_coords_in_element(self):
-            return self._node_coords_in_element
-
-    def trace(self):
-        return Trimesh2DPiecewiseConstantBasis.Trace(self)
-
-
 class Trimesh2DPolynomialSpaceTopology(Trimesh2DSpaceTopology):
     def __init__(self, mesh: Trimesh2D, shape: Triangle2DPolynomialShapeFunctions):
         super().__init__(mesh, shape)
@@ -187,37 +146,8 @@ class Trimesh2DPolynomialSpaceTopology(Trimesh2DSpaceTopology):
         return element_node_index
 
 
-class Trimesh2DPolynomialBasisSpace(Trimesh2DBasisSpace):
-    def __init__(
-        self,
-        mesh: Trimesh2D,
-        degree: int,
-    ):
-        shape = Triangle2DPolynomialShapeFunctions(degree)
-        topology = forward_base_topology(Trimesh2DPolynomialSpaceTopology, mesh, shape)
+def make_trimesh_2d_space_topology(mesh: Trimesh2D, shape: ShapeFunction):
+    if isinstance(shape, Triangle2DPolynomialShapeFunctions):
+        return forward_base_topology(Trimesh2DPolynomialSpaceTopology, mesh, shape)
 
-        super().__init__(topology, shape)
-
-
-class Trimesh2DDGPolynomialBasisSpace(Trimesh2DBasisSpace):
-    def __init__(
-        self,
-        mesh: Trimesh2D,
-        degree: int,
-    ):
-        shape = Triangle2DPolynomialShapeFunctions(degree)
-        topology = Trimesh2DDiscontinuousSpaceTopology(mesh, shape)
-
-        super().__init__(topology, shape)
-
-
-class Trimesh2DNonConformingPolynomialBasisSpace(Trimesh2DBasisSpace):
-    def __init__(
-        self,
-        mesh: Trimesh2D,
-        degree: int,
-    ):
-        shape = Triangle2DNonConformingPolynomialShapeFunctions(degree)
-        topology = Trimesh2DDiscontinuousSpaceTopology(mesh, shape)
-
-        super().__init__(topology, shape)
+    raise ValueError(f"Unsupported shape function {shape.name}")

@@ -62,7 +62,7 @@ Basic workflow
 
 The typical steps for solving a linear PDE are as follow:
 
- - Define a :class:`.Geometry` (grid, mesh, etc). At the moment, 2D and 3D regular grids, triangle, quadrilateral, tetrahedron and hexahedron meshes are supported.
+ - Define a :class:`.Geometry` (grid, mesh, etc). At the moment, 2D and 3D regular grids, NanoVDB volumes, and triangle, quadrilateral, tetrahedron and hexahedron unstructured meshes are supported.
  - Define one or more :class:`.FunctionSpace`, by equipping the geometry elements with shape functions. See :func:`.make_polynomial_space`. At the moment, continuous/discontinuous Lagrange (:math:`P_{k[d]}, Q_{k[d]}`) and Serendipity (:math:`S_k`) shape functions of order :math:`k \leq 3` are supported.
  - Define an integration :class:`.GeometryDomain`, for instance the geometry's cells (:class:`.Cells`) or boundary sides (:class:`.BoundarySides`).
  - Integrate linear forms to build the system's right-hand-side. Define a test function over the function space using :func:`.make_test`,
@@ -119,8 +119,8 @@ Introductory examples
  - ``example_diffusion.py``: 2D diffusion with homogeneous Neumann and Dirichlet boundary conditions
      * ``example_diffusion_3d.py``: 3D variant of the diffusion problem
  - ``example_convection_diffusion.py``: 2D convection-diffusion using semi-Lagrangian advection
-     * ``example_diffusion_dg0.py``: 2D convection-diffusion using finite-volume and upwind transport
-     * ``example_diffusion_dg.py``: 2D convection-diffusion using Discontinuous Galerkin with upwind transport and Symmetric Interior Penalty
+     * ``example_convection_diffusion_dg.py``: 2D convection-diffusion using Discontinuous Galerkin with upwind transport and Symmetric Interior Penalty
+ - ``example_burgers.py``: 2D inviscid Burgers using Discontinuous Galerkin with upwind transport and slope limiter
  - ``example_stokes.py``: 2D incompressible Stokes flow using mixed :math:`P_k/P_{k-1}` or :math:`Q_k/P_{(k-1)d}` elements
  - ``example_navier_stokes.py``: 2D Navier-Stokes flow using mixed :math:`P_k/P_{k-1}` elements
  - ``example_mixed_elasticity.py``: 2D linear elasticity using mixed continuous/discontinuous :math:`S_k/P_{(k-1)d}` elements
@@ -248,6 +248,9 @@ Geometry
    :show-inheritance:
 
 .. autoclass:: Hexmesh
+   :show-inheritance:
+
+.. autoclass:: Nanogrid
    :show-inheritance:
 
 .. autoclass:: LinearGeometryPartition

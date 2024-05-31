@@ -9,53 +9,24 @@ import warp.fem.polynomial as _polynomial
 
 from .function_space import FunctionSpace
 from .topology import SpaceTopology
-from .basis_space import BasisSpace, PointBasisSpace
+from .basis_space import BasisSpace, PointBasisSpace, ShapeBasisSpace, make_discontinuous_basis_space
 from .collocated_function_space import CollocatedFunctionSpace
+from .shape import ElementBasis, get_shape_function
 
-from .grid_2d_function_space import (
-    GridPiecewiseConstantBasis,
-    GridBipolynomialBasisSpace,
-    GridDGBipolynomialBasisSpace,
-    GridSerendipityBasisSpace,
-    GridDGSerendipityBasisSpace,
-    GridDGPolynomialBasisSpace,
-)
-from .grid_3d_function_space import (
-    GridTripolynomialBasisSpace,
-    GridDGTripolynomialBasisSpace,
-    Grid3DPiecewiseConstantBasis,
-    Grid3DSerendipityBasisSpace,
-    Grid3DDGSerendipityBasisSpace,
-    Grid3DDGPolynomialBasisSpace,
-)
-from .trimesh_2d_function_space import (
-    Trimesh2DPiecewiseConstantBasis,
-    Trimesh2DPolynomialBasisSpace,
-    Trimesh2DDGPolynomialBasisSpace,
-    Trimesh2DNonConformingPolynomialBasisSpace,
-)
-from .tetmesh_function_space import (
-    TetmeshPiecewiseConstantBasis,
-    TetmeshPolynomialBasisSpace,
-    TetmeshDGPolynomialBasisSpace,
-    TetmeshNonConformingPolynomialBasisSpace,
-)
-from .quadmesh_2d_function_space import (
-    Quadmesh2DPiecewiseConstantBasis,
-    Quadmesh2DBipolynomialBasisSpace,
-    Quadmesh2DDGBipolynomialBasisSpace,
-    Quadmesh2DSerendipityBasisSpace,
-    Quadmesh2DDGSerendipityBasisSpace,
-    Quadmesh2DPolynomialBasisSpace,
-)
-from .hexmesh_function_space import (
-    HexmeshPiecewiseConstantBasis,
-    HexmeshTripolynomialBasisSpace,
-    HexmeshDGTripolynomialBasisSpace,
-    HexmeshSerendipityBasisSpace,
-    HexmeshDGSerendipityBasisSpace,
-    HexmeshPolynomialBasisSpace,
-)
+from .grid_2d_function_space import make_grid_2d_space_topology
+
+from .grid_3d_function_space import make_grid_3d_space_topology
+
+from .trimesh_2d_function_space import make_trimesh_2d_space_topology
+
+from .tetmesh_function_space import make_tetmesh_space_topology
+
+from .quadmesh_2d_function_space import make_quadmesh_2d_space_topology
+
+from .hexmesh_function_space import make_hexmesh_space_topology
+
+from .nanogrid_function_space import make_nanogrid_space_topology
+
 
 from .partition import SpacePartition, make_space_partition
 from .restriction import SpaceRestriction
@@ -105,17 +76,6 @@ def make_space_restriction(
     )
 
 
-class ElementBasis(Enum):
-    """Choice of basis function to equip individual elements"""
-
-    LAGRANGE = 0
-    """Lagrange basis functions :math:`P_k` for simplices, tensor products :math:`Q_k` for squares and cubes"""
-    SERENDIPITY = 1
-    """Serendipity elements :math:`S_k`, corresponding to Lagrange nodes with interior points removed (for degree <= 3)"""
-    NONCONFORMING_POLYNOMIAL = 2
-    """Simplex Lagrange basis functions :math:`P_{kd}` embedded into non conforming reference elements (e.g. squares or cubes). Discontinuous only."""
-
-
 def make_polynomial_basis_space(
     geo: _geometry.Geometry,
     degree: int = 1,
@@ -141,110 +101,35 @@ def make_polynomial_basis_space(
 
     if element_basis is None:
         element_basis = ElementBasis.LAGRANGE
+    elif element_basis == ElementBasis.SERENDIPITY and degree == 1:
+        # Degree-1 serendipity is always equivalent to Lagrange
+        element_basis = ElementBasis.LAGRANGE
 
+    shape = get_shape_function(geo.reference_cell(), geo.dimension, degree, element_basis, family)
+
+    if discontinuous or degree == 0 or element_basis == ElementBasis.NONCONFORMING_POLYNOMIAL:
+        return make_discontinuous_basis_space(geo, shape)
+
+    topology = None
     if isinstance(base_geo, _geometry.Grid2D):
-        if degree == 0:
-            return GridPiecewiseConstantBasis(geo)
+        topology = make_grid_2d_space_topology(geo, shape)
+    elif isinstance(base_geo, _geometry.Grid3D):
+        topology = make_grid_3d_space_topology(geo, shape)
+    elif isinstance(base_geo, _geometry.Trimesh2D):
+        topology = make_trimesh_2d_space_topology(geo, shape)
+    elif isinstance(base_geo, _geometry.Tetmesh):
+        topology = make_tetmesh_space_topology(geo, shape)
+    elif isinstance(base_geo, _geometry.Quadmesh2D):
+        topology = make_quadmesh_2d_space_topology(geo, shape)
+    elif isinstance(base_geo, _geometry.Hexmesh):
+        topology = make_hexmesh_space_topology(geo, shape)
+    elif isinstance(base_geo, _geometry.Nanogrid):
+        topology = make_nanogrid_space_topology(geo, shape)
 
-        if element_basis == ElementBasis.SERENDIPITY and degree > 1:
-            if discontinuous:
-                return GridDGSerendipityBasisSpace(geo, degree=degree, family=family)
-            else:
-                return GridSerendipityBasisSpace(geo, degree=degree, family=family)
+    if topology is None:
+        raise NotImplementedError(f"Unsupported geometry type {geo.name}")
 
-        if element_basis == ElementBasis.NONCONFORMING_POLYNOMIAL:
-            return GridDGPolynomialBasisSpace(geo, degree=degree)
-
-        if discontinuous:
-            return GridDGBipolynomialBasisSpace(geo, degree=degree, family=family)
-        else:
-            return GridBipolynomialBasisSpace(geo, degree=degree, family=family)
-
-    if isinstance(base_geo, _geometry.Grid3D):
-        if degree == 0:
-            return Grid3DPiecewiseConstantBasis(geo)
-
-        if element_basis == ElementBasis.SERENDIPITY and degree > 1:
-            if discontinuous:
-                return Grid3DDGSerendipityBasisSpace(geo, degree=degree, family=family)
-            else:
-                return Grid3DSerendipityBasisSpace(geo, degree=degree, family=family)
-
-        if element_basis == ElementBasis.NONCONFORMING_POLYNOMIAL:
-            return Grid3DDGPolynomialBasisSpace(geo, degree=degree)
-
-        if discontinuous:
-            return GridDGTripolynomialBasisSpace(geo, degree=degree, family=family)
-        else:
-            return GridTripolynomialBasisSpace(geo, degree=degree, family=family)
-
-    if isinstance(base_geo, _geometry.Trimesh2D):
-        if degree == 0:
-            return Trimesh2DPiecewiseConstantBasis(geo)
-
-        if element_basis == ElementBasis.SERENDIPITY and degree > 2:
-            raise NotImplementedError("Serendipity variant not implemented yet")
-
-        if element_basis == ElementBasis.NONCONFORMING_POLYNOMIAL:
-            return Trimesh2DNonConformingPolynomialBasisSpace(geo, degree=degree)
-
-        if discontinuous:
-            return Trimesh2DDGPolynomialBasisSpace(geo, degree=degree)
-        else:
-            return Trimesh2DPolynomialBasisSpace(geo, degree=degree)
-
-    if isinstance(base_geo, _geometry.Tetmesh):
-        if degree == 0:
-            return TetmeshPiecewiseConstantBasis(geo)
-
-        if element_basis == ElementBasis.SERENDIPITY and degree > 2:
-            raise NotImplementedError("Serendipity variant not implemented yet")
-
-        if element_basis == ElementBasis.NONCONFORMING_POLYNOMIAL:
-            return TetmeshNonConformingPolynomialBasisSpace(geo, degree=degree)
-
-        if discontinuous:
-            return TetmeshDGPolynomialBasisSpace(geo, degree=degree)
-        else:
-            return TetmeshPolynomialBasisSpace(geo, degree=degree)
-
-    if isinstance(base_geo, _geometry.Quadmesh2D):
-        if degree == 0:
-            return Quadmesh2DPiecewiseConstantBasis(geo)
-
-        if element_basis == ElementBasis.SERENDIPITY and degree > 1:
-            if discontinuous:
-                return Quadmesh2DDGSerendipityBasisSpace(geo, degree=degree, family=family)
-            else:
-                return Quadmesh2DSerendipityBasisSpace(geo, degree=degree, family=family)
-
-        if element_basis == ElementBasis.NONCONFORMING_POLYNOMIAL:
-            return Quadmesh2DPolynomialBasisSpace(geo, degree=degree)
-
-        if discontinuous:
-            return Quadmesh2DDGBipolynomialBasisSpace(geo, degree=degree, family=family)
-        else:
-            return Quadmesh2DBipolynomialBasisSpace(geo, degree=degree, family=family)
-
-    if isinstance(base_geo, _geometry.Hexmesh):
-        if degree == 0:
-            return HexmeshPiecewiseConstantBasis(geo)
-
-        if element_basis == ElementBasis.SERENDIPITY and degree > 1:
-            if discontinuous:
-                return HexmeshDGSerendipityBasisSpace(geo, degree=degree, family=family)
-            else:
-                return HexmeshSerendipityBasisSpace(geo, degree=degree, family=family)
-
-        if element_basis == ElementBasis.NONCONFORMING_POLYNOMIAL:
-            return HexmeshPolynomialBasisSpace(geo, degree=degree)
-
-        if discontinuous:
-            return HexmeshDGTripolynomialBasisSpace(geo, degree=degree, family=family)
-        else:
-            return HexmeshTripolynomialBasisSpace(geo, degree=degree, family=family)
-
-    raise NotImplementedError()
+    return ShapeBasisSpace(topology, shape)
 
 
 def make_collocated_function_space(

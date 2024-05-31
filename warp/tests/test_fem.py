@@ -433,13 +433,13 @@ def _launch_test_geometry_kernel(geo: fem.Geometry, device):
         wp.expect_near(coords, inner_side_coords, 0.0001)
         wp.expect_near(coords, outer_side_coords, 0.0001)
 
-        vol = geo.side_measure(side_arg, s)
-        wp.atomic_add(side_measures, side_index, vol * qp_weights[q])
+        area = geo.side_measure(side_arg, s)
+        wp.atomic_add(side_measures, side_index, area * qp_weights[q])
 
         # test consistency of side normal, measure, and deformation gradient
         F = geo.side_deformation_gradient(side_arg, s)
         F_det = DeformedGeometry._side_measure(F)
-        wp.expect_near(F_det * REF_MEASURE, vol)
+        wp.expect_near(F_det * REF_MEASURE, area)
 
         nor = geo.side_normal(side_arg, s)
         F_cross = DeformedGeometry._side_normal(F)
@@ -574,6 +574,28 @@ def test_hex_mesh(test, device):
         positions, tet_vidx = _gen_hexmesh(N)
 
     geo = fem.Hexmesh(hex_vertex_indices=tet_vidx, positions=positions)
+
+    test.assertEqual(geo.cell_count(), (N) ** 3)
+    test.assertEqual(geo.vertex_count(), (N + 1) ** 3)
+    test.assertEqual(geo.side_count(), 3 * (N + 1) * N**2)
+    test.assertEqual(geo.boundary_side_count(), 6 * N * N)
+    test.assertEqual(geo.edge_count(), 3 * N * (N + 1) ** 2)
+
+    side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
+
+    assert_np_equal(side_measures.numpy(), np.full(side_measures.shape, 1.0 / (N**2)), tol=1.0e-4)
+    assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 1.0 / (N**3)), tol=1.0e-4)
+
+
+def test_nanogrid(test, device):
+    N = 8
+
+    points = wp.array([[0.5, 0.5, 0.5]], dtype=float, device=device)
+    volume = wp.Volume.allocate_by_tiles(
+        tile_points=points, voxel_size=1.0 / N, translation=(0.0, 0.0, 0.0), bg_value=None, device=device
+    )
+
+    geo = fem.Nanogrid(volume)
 
     test.assertEqual(geo.cell_count(), (N) ** 3)
     test.assertEqual(geo.vertex_count(), (N + 1) ** 3)
@@ -1234,6 +1256,7 @@ def test_particle_quadratures(test, device):
 
 
 devices = get_test_devices()
+cuda_devices = get_selected_cuda_test_devices()
 
 
 class TestFem(unittest.TestCase):
@@ -1253,6 +1276,7 @@ add_function_test(TestFem, "test_quad_mesh", test_quad_mesh, devices=devices)
 add_function_test(TestFem, "test_grid_3d", test_grid_3d, devices=devices)
 add_function_test(TestFem, "test_tet_mesh", test_tet_mesh, devices=devices)
 add_function_test(TestFem, "test_hex_mesh", test_hex_mesh, devices=devices)
+add_function_test(TestFem, "test_nanogrid", test_nanogrid, devices=cuda_devices)
 add_function_test(TestFem, "test_deformed_geometry", test_deformed_geometry, devices=devices)
 add_function_test(TestFem, "test_dof_mapper", test_dof_mapper)
 add_function_test(TestFem, "test_point_basis", test_point_basis)

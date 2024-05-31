@@ -263,10 +263,6 @@ class Grid3D(Geometry):
     def cell_normal(args: CellArg, s: Sample):
         return wp.vec3(0.0)
 
-    @wp.func
-    def cell_transform_reference_gradient(args: CellArg, cell_index: ElementIndex, coords: Coords, ref_grad: wp.vec3):
-        return wp.cw_div(ref_grad, args.cell_size)
-
     @cached_arg_value
     def side_arg_value(self, device) -> SideArg:
         args = self.SideArg()

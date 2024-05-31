@@ -228,7 +228,7 @@ class Temporary:
 
     def _view_as(self, shape, dtype) -> "Temporary":
         def _view_reshaped_truncated(array):
-            return wp.types.array(
+            view = wp.types.array(
                 ptr=array.ptr,
                 dtype=dtype,
                 shape=shape,
@@ -238,6 +238,8 @@ class Temporary:
                 copy=False,
                 grad=None if array.grad is None else _view_reshaped_truncated(array.grad),
             )
+            view._ref = array
+            return view
 
         self._array_view = _view_reshaped_truncated(self._raw_array)
         return self
