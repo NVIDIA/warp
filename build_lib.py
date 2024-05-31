@@ -124,8 +124,10 @@ else:
 
 # setup MSVC and WinSDK paths
 if os.name == "nt":
-    if args.sdk_path and args.msvc_path:
-        # user provided MSVC
+    if args.msvc_path or args.sdk_path:
+        # user provided MSVC and Windows SDK
+        assert args.msvc_path and args.sdk_path, "--msvc_path and --sdk_path must be used together."
+
         args.host_compiler = set_msvc_env(msvc_path=args.msvc_path, sdk_path=args.sdk_path)
     else:
         # attempt to find MSVC in environment (will set vcvars)
