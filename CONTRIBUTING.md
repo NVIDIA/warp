@@ -1,10 +1,14 @@
 # Contributing to NVIDIA Warp
 
-The following guidelines are for NVIDIA developers working on Warp using the internal GitLab repository.
+Contributions and PRs from the community are welcome and are taken under the
+terms described in the **9. Feedback** section of the [license](LICENSE.md).
 
-## Submitter Guidelines
+## Forking and Branch Naming
 
-The first step in developing for Warp is to create a fork of the Warp repo here: [NVIDIA Warp repository](https://gitlab-master.nvidia.com/omniverse/warp).
+The first step in developing for Warp is to create a fork of the Warp repository.
+
+- GitHub community developers can fork the [GitHub Warp repository](https://github.com/NVIDIA/warp).
+- NVIDIA developers can fork the [GitLab Warp repository](https://gitlab-master.nvidia.com/omniverse/warp).
 
 Features should be developed on a branch with the following naming scheme:
 
@@ -14,9 +18,17 @@ For example:
 
     mmacklin/cuda-bvh-optimizations
 
+## Opening a Merge Request
+
+The following guidelines were originally written for NVIDIA developers
+working on Warp using the internal GitLab repository. Developers working
+on GitHub should generally follow this process, replacing the GitLab-specific
+components with their GitHub counterparts.
+
 When you're ready to submit your changes, please follow these steps to create a Merge Request (MR):
 
-1. **Create MR**: Submit your MR against the Omniverse Warp repo. Ensure your MR has a descriptive title that clearly states the purpose of the changes.
+1. **Create MR**: Submit your MR against the Warp repo.
+Ensure your MR has a descriptive title that clearly states the purpose of the changes.
 
 2. **Add a Detailed Description**: Your MR should include a brief description covering:
    - Summary of changes.
