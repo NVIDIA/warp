@@ -25,7 +25,7 @@ from warp.sparse import bsr_axpy
 try:
     from .bsr_utils import bsr_cg
     from .example_diffusion import diffusion_form, linear_form
-    from .mesh_utils import gen_tetmesh
+    from .mesh_utils import gen_hexmesh, gen_tetmesh
     from .plot_utils import Plot
 except ImportError:
     from bsr_utils import bsr_cg
@@ -78,6 +78,9 @@ class Example:
                 bounds_hi=wp.vec3(1.0, 0.5, 2.0),
             )
             self._geo = fem.Hexmesh(hex_vtx_indices, pos)
+        elif mesh == "nano":
+            volume = wp.Volume.allocate(min=[0, 0, 0], max=[1.0, 0.5, 2.0], voxel_size=1.0 / res[0], bg_value=None)
+            self._geo = fem.Nanogrid(volume)
         else:
             self._geo = fem.Grid3D(
                 res=res,
@@ -147,7 +150,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--boundary_compliance", type=float, default=0.0, help="Dirichlet boundary condition compliance."
     )
-    parser.add_argument("--mesh", choices=("grid", "tet", "hex"), default="grid", help="Mesh type.")
+    parser.add_argument("--mesh", choices=("grid", "tet", "hex", "nano"), default="grid", help="Mesh type.")
     parser.add_argument(
         "--headless",
         action="store_true",

@@ -333,13 +333,14 @@ add_example_test(
     test_options={"headless": True},
 )
 
-# The following examples do not need CUDA
 add_example_test(
     TestFemExamples,
     name="fem.example_apic_fluid",
-    devices=test_devices,
-    test_options={"num_frames": 1, "res": "16,16,16"},
+    devices=get_selected_cuda_test_devices(),
+    test_options={"num_frames": 5, "voxel_size": 2.0},
 )
+
+# The following examples do not need CUDA
 add_example_test(
     TestFemDiffusionExamples,
     name="fem.example_diffusion",
@@ -363,9 +364,9 @@ add_example_test(
 )
 add_example_test(
     TestFemExamples,
-    name="fem.example_convection_diffusion_dg0",
+    name="fem.example_burgers",
     devices=test_devices,
-    test_options={"resolution": 20, "num_frames": 25, "mesh": "quad", "headless": True},
+    test_options={"resolution": 20, "num_frames": 25, "degree": 1, "headless": True},
 )
 add_example_test(
     TestFemExamples,

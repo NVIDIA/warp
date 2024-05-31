@@ -10,16 +10,6 @@ from warp.fem.types import Coords
 
 from .tet_shape_function import TetrahedronPolynomialShapeFunctions
 
-_CUBE_EDGE_INDICES = wp.constant(
-    wp.mat(shape=(3, 4), dtype=int)(
-        [
-            [0, 4, 2, 6],
-            [3, 1, 7, 5],
-            [8, 11, 9, 10],
-        ]
-    )
-)
-
 
 class CubeTripolynomialShapeFunctions:
     VERTEX = 0
@@ -96,13 +86,13 @@ class CubeTripolynomialShapeFunctions:
                         return CubeTripolynomialShapeFunctions.VERTEX, type_instance, 0
 
                     # z edge
-                    type_instance = _CUBE_EDGE_INDICES[2, mi * 2 + mj]
+                    type_instance = 8 + mi * 2 + mj
                     type_index = k - 1
                     return CubeTripolynomialShapeFunctions.EDGE, type_instance, type_index
 
                 if zk + mk == 1:
                     # y edge
-                    type_instance = _CUBE_EDGE_INDICES[1, mk * 2 + mi]
+                    type_instance = 4 + mk * 2 + mi
                     type_index = j - 1
                     return CubeTripolynomialShapeFunctions.EDGE, type_instance, type_index
 
@@ -114,7 +104,7 @@ class CubeTripolynomialShapeFunctions:
             if zj + mj == 1:
                 if zk + mk == 1:
                     # x edge
-                    type_instance = _CUBE_EDGE_INDICES[0, mj * 2 + mk]
+                    type_instance = mj * 2 + mk
                     type_index = i - 1
                     return CubeTripolynomialShapeFunctions.EDGE, type_instance, type_index
 
@@ -399,7 +389,7 @@ class CubeSerendipityShapeFunctions:
     def _edge_coords(type_index: int):
         index_in_side = type_index // 4
         side_offset = type_index - 4 * index_in_side
-        return (wp.vec3i(index_in_side + 1, side_offset // 2, side_offset % 2),)
+        return wp.vec3i(index_in_side + 1, side_offset // 2, side_offset & 1)
 
     @wp.func
     def _edge_axis(node_type: int):
@@ -410,7 +400,7 @@ class CubeSerendipityShapeFunctions:
         index_in_side = type_index // 4
         side_offset = type_index - 4 * index_in_side
 
-        return _CUBE_EDGE_INDICES[node_type - CubeSerendipityShapeFunctions.EDGE_X, side_offset], index_in_side
+        return 4 * (node_type - CubeSerendipityShapeFunctions.EDGE_X) + side_offset, index_in_side
 
     def _get_node_lobatto_indices(self):
         ORDER = self.ORDER

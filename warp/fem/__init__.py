@@ -10,6 +10,7 @@ from .geometry import (
     Grid3D,
     Hexmesh,
     LinearGeometryPartition,
+    Nanogrid,
     Quadmesh2D,
     Tetmesh,
     Trimesh2D,

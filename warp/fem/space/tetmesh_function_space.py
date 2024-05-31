@@ -1,16 +1,13 @@
 import warp as wp
 from warp.fem import cache
 from warp.fem.geometry import Tetmesh
-from warp.fem.types import Coords, ElementIndex
+from warp.fem.types import ElementIndex
 
-from .basis_space import ShapeBasisSpace, TraceBasisSpace
 from .shape import (
-    ConstantShapeFunction,
     ShapeFunction,
-    TetrahedronNonConformingPolynomialShapeFunctions,
     TetrahedronPolynomialShapeFunctions,
 )
-from .topology import DiscontinuousSpaceTopologyMixin, SpaceTopology, forward_base_topology
+from .topology import SpaceTopology, forward_base_topology
 
 
 @wp.struct
@@ -130,44 +127,6 @@ class TetmeshSpaceTopology(SpaceTopology):
             tet_face_indices[t1, t1_face] = e
 
 
-class TetmeshDiscontinuousSpaceTopology(
-    DiscontinuousSpaceTopologyMixin,
-    SpaceTopology,
-):
-    def __init__(self, mesh: Tetmesh, shape: ShapeFunction):
-        super().__init__(mesh, shape.NODES_PER_ELEMENT)
-
-
-class TetmeshBasisSpace(ShapeBasisSpace):
-    def __init__(self, topology: TetmeshSpaceTopology, shape: ShapeFunction):
-        super().__init__(topology, shape)
-
-        self._mesh: Tetmesh = topology.geometry
-
-
-class TetmeshPiecewiseConstantBasis(TetmeshBasisSpace):
-    def __init__(self, mesh: Tetmesh):
-        shape = ConstantShapeFunction(mesh.reference_cell(), space_dimension=3)
-        topology = TetmeshDiscontinuousSpaceTopology(mesh, shape)
-        super().__init__(shape=shape, topology=topology)
-
-    class Trace(TraceBasisSpace):
-        @wp.func
-        def _node_coords_in_element(
-            side_arg: Tetmesh.SideArg,
-            basis_arg: TetmeshBasisSpace.BasisArg,
-            element_index: ElementIndex,
-            node_index_in_element: int,
-        ):
-            return Coords(1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0)
-
-        def make_node_coords_in_element(self):
-            return self._node_coords_in_element
-
-    def trace(self):
-        return TetmeshPiecewiseConstantBasis.Trace(self)
-
-
 class TetmeshPolynomialSpaceTopology(TetmeshSpaceTopology):
     def __init__(self, mesh: Tetmesh, shape: TetrahedronPolynomialShapeFunctions):
         super().__init__(mesh, shape, need_tet_edge_indices=shape.ORDER >= 2, need_tet_face_indices=shape.ORDER >= 3)
@@ -258,37 +217,8 @@ class TetmeshPolynomialSpaceTopology(TetmeshSpaceTopology):
         return element_node_index
 
 
-class TetmeshPolynomialBasisSpace(TetmeshBasisSpace):
-    def __init__(
-        self,
-        mesh: Tetmesh,
-        degree: int,
-    ):
-        shape = TetrahedronPolynomialShapeFunctions(degree)
-        topology = forward_base_topology(TetmeshPolynomialSpaceTopology, mesh, shape)
+def make_tetmesh_space_topology(mesh: Tetmesh, shape: ShapeFunction):
+    if isinstance(shape, TetrahedronPolynomialShapeFunctions):
+        return forward_base_topology(TetmeshPolynomialSpaceTopology, mesh, shape)
 
-        super().__init__(topology, shape)
-
-
-class TetmeshDGPolynomialBasisSpace(TetmeshBasisSpace):
-    def __init__(
-        self,
-        mesh: Tetmesh,
-        degree: int,
-    ):
-        shape = TetrahedronPolynomialShapeFunctions(degree)
-        topology = TetmeshDiscontinuousSpaceTopology(mesh, shape)
-
-        super().__init__(topology, shape)
-
-
-class TetmeshNonConformingPolynomialBasisSpace(TetmeshBasisSpace):
-    def __init__(
-        self,
-        mesh: Tetmesh,
-        degree: int,
-    ):
-        shape = TetrahedronNonConformingPolynomialShapeFunctions(degree)
-        topology = TetmeshDiscontinuousSpaceTopology(mesh, shape)
-
-        super().__init__(topology, shape)
+    raise ValueError(f"Unsupported shape function {shape.name}")

@@ -9,6 +9,7 @@ from warp.fem.field import (
     DiscreteField,
     FieldLike,
     FieldRestriction,
+    SpaceField,
     TestField,
     TrialField,
     make_restriction,
@@ -195,7 +196,7 @@ def _get_integrand_field_arguments(
         arg_type = argspec.annotations[arg]
         if arg_type == Field:
             if arg not in fields:
-                raise ValueError(f"Missing field for argument '{arg}'")
+                raise ValueError(f"Missing field for argument '{arg}' of integrand '{integrand.name}'")
             field_args[arg] = fields[arg]
         elif arg_type == Domain:
             domain_name = arg
@@ -208,6 +209,52 @@ def _get_integrand_field_arguments(
     return field_args, value_args, domain_name, sample_name
 
 
+def _check_field_compat(
+    integrand: Integrand,
+    fields: Dict[str, FieldLike],
+    field_args: Dict[str, FieldLike],
+    domain: GeometryDomain = None,
+):
+    # Check field compatilibity
+    for name, field in fields.items():
+        if name not in field_args:
+            raise ValueError(
+                f"Passed field argument '{name}' does not match any parameter of integrand '{integrand.name}'"
+            )
+
+        if isinstance(field, SpaceField) and domain is not None:
+            space = field.space
+            if space.geometry != domain.geometry:
+                raise ValueError(f"Field '{name}' must be defined on the same geometry as the integration domain")
+            if space.dimension != domain.dimension:
+                raise ValueError(
+                    f"Field '{name}' dimension ({space.dimension}) does not match that of the integration domain ({domain.dimension}). Maybe a forgotten `.trace()`?"
+                )
+
+
+def _populate_value_struct(ValueStruct: wp.codegen.Struct, values: Dict[str, Any], integrand_name: str):
+    value_struct_values = ValueStruct()
+    for k, v in values.items():
+        try:
+            setattr(value_struct_values, k, v)
+        except Exception as err:
+            if k not in ValueStruct.vars:
+                raise ValueError(
+                    f"Passed value argument '{k}' does not match any of the integrand '{integrand_name}' parameters"
+                ) from err
+            raise ValueError(
+                f"Passed value argument '{k}' of type '{wp.types.type_repr(v)}' is incompatible with the integrand '{integrand_name}' parameter of type '{wp.types.type_repr(ValueStruct.vars[k].type)}'"
+            ) from err
+
+    missing_values = ValueStruct.vars.keys() - values.keys()
+    if missing_values:
+        wp.utils.warn(
+            f"Missing values for parameter(s) '{', '.join(missing_values)}' of the integrand '{integrand_name}', will be zero-initialized"
+        )
+
+    return value_struct_values
+
+
 def _get_test_and_trial_fields(
     fields: Dict[str, FieldLike],
 ):
@@ -217,14 +264,17 @@ def _get_test_and_trial_fields(
     trial_name = None
 
     for name, field in fields.items():
+        if not isinstance(field, FieldLike):
+            raise ValueError(f"Passed field argument '{name}' is not a proper Field")
+
         if isinstance(field, TestField):
             if test is not None:
-                raise ValueError("Duplicate test field argument")
+                raise ValueError(f"More than one test field argument: '{test_name}' and '{name}'")
             test = field
             test_name = name
         elif isinstance(field, TrialField):
             if trial is not None:
-                raise ValueError("Duplicate test field argument")
+                raise ValueError(f"More than one trial field argument: '{trial_name}' and '{name}'")
             trial = field
             trial_name = name
 
@@ -759,6 +809,8 @@ def _generate_integrate_kernel(
 
     # Not found in cache, transform integrand and generate  kernel
 
+    _check_field_compat(integrand, fields, field_args, domain)
+
     integrand_func = _translate_integrand(
         integrand,
         field_args,
@@ -843,6 +895,7 @@ def _generate_integrate_kernel(
 
 
 def _launch_integrate_kernel(
+    integrand: Integrand,
     kernel: wp.Kernel,
     FieldStruct: wp.codegen.Struct,
     ValueStruct: wp.codegen.Struct,
@@ -870,9 +923,7 @@ def _launch_integrate_kernel(
     for k, v in fields.items():
         setattr(field_arg_values, k, v.eval_arg_value(device=device))
 
-    value_struct_values = ValueStruct()
-    for k, v in values.items():
-        setattr(value_struct_values, k, v)
+    value_struct_values = _populate_value_struct(ValueStruct, values, integrand_name=integrand.name)
 
     # Constant form
     if test is None and trial is None:
@@ -1211,6 +1262,7 @@ def integrate(
     )
 
     return _launch_integrate_kernel(
+        integrand=integrand,
         kernel=kernel,
         FieldStruct=FieldStruct,
         ValueStruct=ValueStruct,
@@ -1428,6 +1480,8 @@ def _generate_interpolate_kernel(
     if kernel is not None:
         return kernel, FieldStruct, ValueStruct
 
+    _check_field_compat(integrand, fields, field_args, domain)
+
     # Generate interpolation kernel
     if isinstance(dest, FieldRestriction):
         # need to split into kernel + function for diffferentiability
@@ -1499,6 +1553,7 @@ def _generate_interpolate_kernel(
 
 
 def _launch_interpolate_kernel(
+    integrand: Integrand,
     kernel: wp.kernel,
     FieldStruct: wp.codegen.Struct,
     ValueStruct: wp.codegen.Struct,
@@ -1517,9 +1572,7 @@ def _launch_interpolate_kernel(
     for k, v in fields.items():
         setattr(field_arg_values, k, v.eval_arg_value(device=device))
 
-    value_struct_values = ValueStruct()
-    for k, v in values.items():
-        setattr(value_struct_values, k, v)
+    value_struct_values = _populate_value_struct(ValueStruct, values, integrand_name=integrand.name)
 
     if isinstance(dest, FieldRestriction):
         dest_node_arg = dest.space_restriction.node_arg(device=device)
@@ -1618,6 +1671,7 @@ def interpolate(
     )
 
     return _launch_interpolate_kernel(
+        integrand=integrand,
         kernel=kernel,
         FieldStruct=FieldStruct,
         ValueStruct=ValueStruct,

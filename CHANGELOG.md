@@ -12,6 +12,15 @@
 - Fix memory leak in mesh BVH ([GH-225](https://github.com/NVIDIA/warp/issues/225))
 - Use C++17 with NVCC when building the Warp library and user kernels
 - Increase PTX target architecture up to `sm_75` (from `sm_70`), enabling Turing ISA features
+- Extended NanoVDB support (see `warp.Volume`):
+  - Add support for data-agnostic index grids, allocation at voxel granularity
+  - New `volume_lookup_index`, `volume_sample_index` and generic `volume_sample`/`volume_lookup`/`volume_store` kernel-level functions
+  - Zero-copy aliasing of in-memory grids, support for multi-grid buffers
+  - Grid introspection and blind data access capabilities
+  - warp.fem can now work directly on NanoVDB grids using `warp.fem.Nanogrid`
+  - Fixed `volume_sample_v` and `volume_store_*` adjoints
+  - Prevent `volume_store` from overwriting grid background values
+- Improve validation of user-provided fields and values in warp.fem
 
 ## [1.1.1] - 2024-05-24
 

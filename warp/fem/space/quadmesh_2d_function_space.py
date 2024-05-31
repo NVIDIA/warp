@@ -1,18 +1,15 @@
 import warp as wp
 from warp.fem import cache
 from warp.fem.geometry import Quadmesh2D
-from warp.fem.polynomial import Polynomial, is_closed
-from warp.fem.types import Coords, ElementIndex
+from warp.fem.polynomial import is_closed
+from warp.fem.types import ElementIndex
 
-from .basis_space import ShapeBasisSpace, TraceBasisSpace
 from .shape import (
-    ConstantShapeFunction,
     ShapeFunction,
     SquareBipolynomialShapeFunctions,
-    SquareNonConformingPolynomialShapeFunctions,
     SquareSerendipityShapeFunctions,
 )
-from .topology import DiscontinuousSpaceTopologyMixin, SpaceTopology, forward_base_topology
+from .topology import SpaceTopology, forward_base_topology
 
 
 @wp.struct
@@ -28,6 +25,9 @@ class Quadmesh2DSpaceTopology(SpaceTopology):
     TopologyArg = Quadmesh2DTopologyArg
 
     def __init__(self, mesh: Quadmesh2D, shape: ShapeFunction):
+        if not is_closed(shape.family):
+            raise ValueError("A closed polynomial family is required to define a continuous function space")
+
         super().__init__(mesh, shape.NODES_PER_ELEMENT)
         self._mesh = mesh
         self._shape = shape
@@ -105,44 +105,6 @@ class Quadmesh2DSpaceTopology(SpaceTopology):
             )
             t1_edge = Quadmesh2DSpaceTopology._find_edge_index_in_quad(edge_vtx, t1_vtx)
             quad_edge_indices[q1, t1_edge] = e
-
-
-class Quadmesh2DDiscontinuousSpaceTopology(
-    DiscontinuousSpaceTopologyMixin,
-    SpaceTopology,
-):
-    def __init__(self, mesh: Quadmesh2D, shape: ShapeFunction):
-        super().__init__(mesh, shape.NODES_PER_ELEMENT)
-
-
-class Quadmesh2DBasisSpace(ShapeBasisSpace):
-    def __init__(self, topology: Quadmesh2DSpaceTopology, shape: ShapeFunction):
-        super().__init__(topology, shape)
-
-        self._mesh: Quadmesh2D = topology.geometry
-
-
-class Quadmesh2DPiecewiseConstantBasis(Quadmesh2DBasisSpace):
-    def __init__(self, mesh: Quadmesh2D):
-        shape = ConstantShapeFunction(mesh.reference_cell(), space_dimension=2)
-        topology = Quadmesh2DDiscontinuousSpaceTopology(mesh, shape)
-        super().__init__(shape=shape, topology=topology)
-
-    class Trace(TraceBasisSpace):
-        @wp.func
-        def _node_coords_in_element(
-            side_arg: Quadmesh2D.SideArg,
-            basis_arg: Quadmesh2DBasisSpace.BasisArg,
-            element_index: ElementIndex,
-            node_index_in_element: int,
-        ):
-            return Coords(0.5, 0.0, 0.0)
-
-        def make_node_coords_in_element(self):
-            return self._node_coords_in_element
-
-    def trace(self):
-        return Quadmesh2DPiecewiseConstantBasis.Trace(self)
 
 
 class Quadmesh2DBipolynomialSpaceTopology(Quadmesh2DSpaceTopology):
@@ -236,41 +198,6 @@ class Quadmesh2DBipolynomialSpaceTopology(Quadmesh2DSpaceTopology):
         return element_node_index
 
 
-class Quadmesh2DBipolynomialBasisSpace(Quadmesh2DBasisSpace):
-    def __init__(
-        self,
-        mesh: Quadmesh2D,
-        degree: int,
-        family: Polynomial,
-    ):
-        if family is None:
-            family = Polynomial.LOBATTO_GAUSS_LEGENDRE
-
-        if not is_closed(family):
-            raise ValueError("A closed polynomial family is required to define a continuous function space")
-
-        shape = SquareBipolynomialShapeFunctions(degree, family=family)
-        topology = forward_base_topology(Quadmesh2DBipolynomialSpaceTopology, mesh, shape)
-
-        super().__init__(topology, shape)
-
-
-class Quadmesh2DDGBipolynomialBasisSpace(Quadmesh2DBasisSpace):
-    def __init__(
-        self,
-        mesh: Quadmesh2D,
-        degree: int,
-        family: Polynomial,
-    ):
-        if family is None:
-            family = Polynomial.LOBATTO_GAUSS_LEGENDRE
-
-        shape = SquareBipolynomialShapeFunctions(degree, family=family)
-        topology = Quadmesh2DDiscontinuousSpaceTopology(mesh, shape)
-
-        super().__init__(topology, shape)
-
-
 class Quadmesh2DSerendipitySpaceTopology(Quadmesh2DSpaceTopology):
     def __init__(self, grid: Quadmesh2D, shape: SquareSerendipityShapeFunctions):
         super().__init__(grid, shape)
@@ -324,45 +251,11 @@ class Quadmesh2DSerendipitySpaceTopology(Quadmesh2DSpaceTopology):
         return element_node_index
 
 
-class Quadmesh2DSerendipityBasisSpace(Quadmesh2DBasisSpace):
-    def __init__(
-        self,
-        mesh: Quadmesh2D,
-        degree: int,
-        family: Polynomial,
-    ):
-        if family is None:
-            family = Polynomial.LOBATTO_GAUSS_LEGENDRE
+def make_quadmesh_2d_space_topology(mesh: Quadmesh2D, shape: ShapeFunction):
+    if isinstance(shape, SquareSerendipityShapeFunctions):
+        return forward_base_topology(Quadmesh2DSerendipitySpaceTopology, mesh, shape)
 
-        shape = SquareSerendipityShapeFunctions(degree, family=family)
-        topology = forward_base_topology(Quadmesh2DSerendipitySpaceTopology, mesh, shape=shape)
+    if isinstance(shape, SquareBipolynomialShapeFunctions):
+        return forward_base_topology(Quadmesh2DBipolynomialSpaceTopology, mesh, shape)
 
-        super().__init__(topology=topology, shape=shape)
-
-
-class Quadmesh2DDGSerendipityBasisSpace(Quadmesh2DBasisSpace):
-    def __init__(
-        self,
-        mesh: Quadmesh2D,
-        degree: int,
-        family: Polynomial,
-    ):
-        if family is None:
-            family = Polynomial.LOBATTO_GAUSS_LEGENDRE
-
-        shape = SquareSerendipityShapeFunctions(degree, family=family)
-        topology = Quadmesh2DDiscontinuousSpaceTopology(mesh, shape=shape)
-
-        super().__init__(topology=topology, shape=shape)
-
-
-class Quadmesh2DPolynomialBasisSpace(Quadmesh2DBasisSpace):
-    def __init__(
-        self,
-        mesh: Quadmesh2D,
-        degree: int,
-    ):
-        shape = SquareNonConformingPolynomialShapeFunctions(degree)
-        topology = Quadmesh2DDiscontinuousSpaceTopology(mesh, shape)
-
-        super().__init__(topology, shape)
+    raise ValueError(f"Unsupported shape function {shape.name}")

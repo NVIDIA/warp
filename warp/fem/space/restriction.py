@@ -38,7 +38,10 @@ class SpaceRestriction:
 
         NODES_PER_ELEMENT = self.space_topology.NODES_PER_ELEMENT
 
-        @cache.dynamic_kernel(suffix=f"{self.domain.name}_{self.space_topology.name}_{self.space_partition.name}")
+        @cache.dynamic_kernel(
+            suffix=f"{self.domain.name}_{self.space_topology.name}_{self.space_partition.name}",
+            kernel_options={"max_unroll": 8},
+        )
         def fill_element_node_indices(
             element_arg: self.domain.ElementArg,
             domain_index_arg: self.domain.ElementIndexArg,

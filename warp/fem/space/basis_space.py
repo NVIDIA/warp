@@ -394,6 +394,40 @@ class TraceBasisSpace(BasisSpace):
         return self._topo == other._topo
 
 
+class PiecewiseConstantBasisSpace(ShapeBasisSpace):
+    class Trace(TraceBasisSpace):
+        def make_node_coords_in_element(self):
+            # Makes the single node visible to all sides; useful for interpolating on boundaries
+            # For higher-order non-conforming elements direct interpolation on boundary is not possible,
+            # need to do proper integration then solve with mass matrix
+
+            CENTER_COORDS = Coords(self.geometry.reference_side().center())
+
+            @cache.dynamic_func(suffix=self._basis.name)
+            def trace_node_coords_in_element(
+                geo_side_arg: self.geometry.SideArg,
+                basis_arg: self.BasisArg,
+                element_index: ElementIndex,
+                node_index_in_elt: int,
+            ):
+                return CENTER_COORDS
+
+            return trace_node_coords_in_element
+
+    def trace(self):
+        return PiecewiseConstantBasisSpace.Trace(self)
+
+
+def make_discontinuous_basis_space(geometry: Geometry, shape: ShapeFunction):
+    topology = DiscontinuousSpaceTopology(geometry, shape.NODES_PER_ELEMENT)
+
+    if shape.NODES_PER_ELEMENT == 1:
+        # piecewise-constant space
+        return PiecewiseConstantBasisSpace(topology=topology, shape=shape)
+
+    return ShapeBasisSpace(topology=topology, shape=shape)
+
+
 class PointBasisSpace(BasisSpace):
     """An unstructured :class:`BasisSpace` that is non-zero at a finite set of points only.
 

@@ -3,23 +3,25 @@ import numpy as np
 import warp as wp
 from warp.fem import cache
 from warp.fem.geometry import Grid3D
-from warp.fem.polynomial import Polynomial, is_closed
-from warp.fem.types import Coords, ElementIndex
+from warp.fem.polynomial import is_closed
+from warp.fem.types import ElementIndex
 
-from .basis_space import ShapeBasisSpace, TraceBasisSpace
-from .shape import ConstantShapeFunction, ShapeFunction
-from .shape.cube_shape_function import (
-    CubeNonConformingPolynomialShapeFunctions,
+from .shape import (
     CubeSerendipityShapeFunctions,
     CubeTripolynomialShapeFunctions,
+    ShapeFunction,
 )
-from .topology import DiscontinuousSpaceTopologyMixin, SpaceTopology, forward_base_topology
+from .topology import SpaceTopology, forward_base_topology
 
 
 class Grid3DSpaceTopology(SpaceTopology):
     def __init__(self, grid: Grid3D, shape: ShapeFunction):
+        if not is_closed(shape.family):
+            raise ValueError("A closed polynomial family is required to define a continuous function space")
+
         super().__init__(grid, shape.NODES_PER_ELEMENT)
         self._shape = shape
+        self._grid = grid
 
     @wp.func
     def _vertex_coords(vidx_in_cell: int):
@@ -35,52 +37,6 @@ class Grid3DSpaceTopology(SpaceTopology):
 
         corner = Grid3D.get_cell(res, cell_index) + Grid3DSpaceTopology._vertex_coords(vidx_in_cell)
         return Grid3D._from_3d_index(strides, corner)
-
-
-class Grid3DDiscontinuousSpaceTopology(
-    DiscontinuousSpaceTopologyMixin,
-    Grid3DSpaceTopology,
-):
-    pass
-
-
-class Grid3DBasisSpace(ShapeBasisSpace):
-    def __init__(self, topology: Grid3DSpaceTopology, shape: ShapeFunction):
-        super().__init__(topology, shape)
-
-        self._grid: Grid3D = topology.geometry
-
-
-class Grid3DPiecewiseConstantBasis(Grid3DBasisSpace):
-    def __init__(self, grid: Grid3D):
-        shape = ConstantShapeFunction(grid.reference_cell(), space_dimension=3)
-        topology = Grid3DDiscontinuousSpaceTopology(grid, shape)
-        super().__init__(shape=shape, topology=topology)
-
-        if isinstance(grid, Grid3D):
-            self.node_grid = self._node_grid
-
-    def _node_grid(self):
-        X = (np.arange(0, self.geometry.res[0], dtype=float) + 0.5) * self._grid.cell_size[0] + self._grid.bounds_lo[0]
-        Y = (np.arange(0, self.geometry.res[1], dtype=float) + 0.5) * self._grid.cell_size[1] + self._grid.bounds_lo[1]
-        Z = (np.arange(0, self.geometry.res[2], dtype=float) + 0.5) * self._grid.cell_size[2] + self._grid.bounds_lo[2]
-        return np.meshgrid(X, Y, Z, indexing="ij")
-
-    class Trace(TraceBasisSpace):
-        @wp.func
-        def _node_coords_in_element(
-            side_arg: Grid3D.SideArg,
-            basis_arg: Grid3DBasisSpace.BasisArg,
-            element_index: ElementIndex,
-            node_index_in_element: int,
-        ):
-            return Coords(0.5, 0.5, 0.0)
-
-        def make_node_coords_in_element(self):
-            return self._node_coords_in_element
-
-    def trace(self):
-        return Grid3DPiecewiseConstantBasis.Trace(self)
 
 
 class GridTripolynomialSpaceTopology(Grid3DSpaceTopology):
@@ -123,30 +79,8 @@ class GridTripolynomialSpaceTopology(Grid3DSpaceTopology):
 
         return element_node_index
 
-
-class GridTripolynomialBasisSpace(Grid3DBasisSpace):
-    def __init__(
-        self,
-        grid: Grid3D,
-        degree: int,
-        family: Polynomial,
-    ):
-        if family is None:
-            family = Polynomial.LOBATTO_GAUSS_LEGENDRE
-
-        if not is_closed(family):
-            raise ValueError("A closed polynomial family is required to define a continuous function space")
-
-        shape = CubeTripolynomialShapeFunctions(degree, family=family)
-        topology = forward_base_topology(GridTripolynomialSpaceTopology, grid, shape)
-
-        super().__init__(topology, shape)
-
-        if isinstance(grid, Grid3D):
-            self.node_grid = self._node_grid
-
     def _node_grid(self):
-        res = self._grid.res
+        res = self.geometry.res
 
         cell_coords = np.array(self._shape.LOBATTO_COORDS)[:-1]
 
@@ -166,44 +100,6 @@ class GridTripolynomialBasisSpace(Grid3DBasisSpace):
             cell_coords, reps=res[2]
         )
         grid_coords_z = np.append(grid_coords_z, res[2])
-        Z = grid_coords_z * self._grid.cell_size[2] + self._grid.origin[2]
-
-        return np.meshgrid(X, Y, Z, indexing="ij")
-
-
-class GridDGTripolynomialBasisSpace(Grid3DBasisSpace):
-    def __init__(
-        self,
-        grid: Grid3D,
-        degree: int,
-        family: Polynomial,
-    ):
-        if family is None:
-            family = Polynomial.LOBATTO_GAUSS_LEGENDRE
-
-        shape = CubeTripolynomialShapeFunctions(degree, family=family)
-        topology = Grid3DDiscontinuousSpaceTopology(grid, shape)
-
-        super().__init__(shape=shape, topology=topology)
-
-    def node_grid(self):
-        res = self._grid.res
-
-        cell_coords = np.array(self._shape.LOBATTO_COORDS)
-
-        grid_coords_x = np.repeat(np.arange(0, res[0], dtype=float), len(cell_coords)) + np.tile(
-            cell_coords, reps=res[0]
-        )
-        X = grid_coords_x * self._grid.cell_size[0] + self._grid.origin[0]
-
-        grid_coords_y = np.repeat(np.arange(0, res[1], dtype=float), len(cell_coords)) + np.tile(
-            cell_coords, reps=res[1]
-        )
-        Y = grid_coords_y * self._grid.cell_size[1] + self._grid.origin[1]
-
-        grid_coords_z = np.repeat(np.arange(0, res[2], dtype=float), len(cell_coords)) + np.tile(
-            cell_coords, reps=res[2]
-        )
         Z = grid_coords_z * self._grid.cell_size[2] + self._grid.origin[2]
 
         return np.meshgrid(X, Y, Z, indexing="ij")
@@ -261,45 +157,11 @@ class Grid3DSerendipitySpaceTopology(Grid3DSpaceTopology):
         return element_node_index
 
 
-class Grid3DSerendipityBasisSpace(Grid3DBasisSpace):
-    def __init__(
-        self,
-        grid: Grid3D,
-        degree: int,
-        family: Polynomial,
-    ):
-        if family is None:
-            family = Polynomial.LOBATTO_GAUSS_LEGENDRE
+def make_grid_3d_space_topology(grid: Grid3D, shape: ShapeFunction):
+    if isinstance(shape, CubeSerendipityShapeFunctions):
+        return forward_base_topology(Grid3DSerendipitySpaceTopology, grid, shape)
 
-        shape = CubeSerendipityShapeFunctions(degree, family=family)
-        topology = forward_base_topology(Grid3DSerendipitySpaceTopology, grid, shape=shape)
+    if isinstance(shape, CubeTripolynomialShapeFunctions):
+        return forward_base_topology(GridTripolynomialSpaceTopology, grid, shape)
 
-        super().__init__(topology=topology, shape=shape)
-
-
-class Grid3DDGSerendipityBasisSpace(Grid3DBasisSpace):
-    def __init__(
-        self,
-        grid: Grid3D,
-        degree: int,
-        family: Polynomial,
-    ):
-        if family is None:
-            family = Polynomial.LOBATTO_GAUSS_LEGENDRE
-
-        shape = CubeSerendipityShapeFunctions(degree, family=family)
-        topology = Grid3DDiscontinuousSpaceTopology(grid, shape=shape)
-
-        super().__init__(topology=topology, shape=shape)
-
-
-class Grid3DDGPolynomialBasisSpace(Grid3DBasisSpace):
-    def __init__(
-        self,
-        grid: Grid3D,
-        degree: int,
-    ):
-        shape = CubeNonConformingPolynomialShapeFunctions(degree)
-        topology = Grid3DDiscontinuousSpaceTopology(grid, shape=shape)
-
-        super().__init__(topology=topology, shape=shape)
+    raise ValueError(f"Unsupported shape function {shape.name}")

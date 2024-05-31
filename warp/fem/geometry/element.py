@@ -14,6 +14,10 @@ class Element:
         """Returns a quadrature of a given order for a prototypical element"""
         raise NotImplementedError
 
+    def center(self) -> Tuple[float]:
+        coords, _ = self.instantiate_quadrature(order=0, family=None)
+        return coords[0]
+
 
 def _point_count_from_order(order: int, family: Polynomial):
     if family == Polynomial.GAUSS_LEGENDRE:
