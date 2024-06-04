@@ -239,11 +239,15 @@ examples/sim
 Omniverse
 ---------
 
-A Warp Omniverse extension is available in the extension registry inside
+Omniverse extensions for Warp are available in the extension registry inside
 Omniverse Kit or USD Composer.
+The ``omni.warp.core`` extension installs Warp into the Omniverse Application's
+Python environment, which allows users to import the module in their scripts and nodes. 
+The ``omni.warp`` extension provides a collection of OmniGraph nodes and sample
+scenes demonstrating uses of Warp in OmniGraph.
+Enabling the ``omni.warp`` extension automatically enables the ``omni.warp.core`` extension.
 
-Enabling the extension will automatically install and initialize the
-Warp Python module inside the Kit Python environment. Please see the
+Please see the
 `Omniverse Warp Documentation <https://docs.omniverse.nvidia.com/extensions/latest/ext_warp.html>`_
 for more details on how to use Warp in Omniverse.
 
@@ -253,6 +257,7 @@ Learn More
 
 Please see the following resources for additional background on Warp:
 
+- `Product Page <https://developer.nvidia.com/warp-python>`_
 -  `GTC 2022
    Presentation <https://www.nvidia.com/en-us/on-demand/session/gtcspring22-s41599>`_
 -  `GTC 2021
@@ -277,6 +282,43 @@ projects at NVIDIA including the following publications:
    Considine et
    al. `(2021) <https://gradsim.github.io>`__
 
+Support
+-------
+
+Problems, questions, and feature requests can be opened on
+`GitHub Issues <https://github.com/NVIDIA/warp/issues>`_.
+
+The Warp team also monitors the **#warp** channel on the public
+`Omniverse Discord <https://discord.com/invite/nvidiaomniverse>`_ server, come chat to us!
+
+Versioning
+----------
+
+Versions take the format X.Y.Z, similar to `Python itself <https://devguide.python.org/developer-workflow/development-cycle/#devcycle>`_:
+
+* Increments in X are reserved for major reworks of the project causing disruptive incompatibility (or reaching the 1.0 milestone).
+* Increments in Y are for regular releases with a new set of features.
+* Increments in Z are for bug fixes. In principle there are no new features. Can be omitted if 0 or not relevant.
+
+This is similar to `Semantic Versioning <https://semver.org/>`_ but less strict around backward compatibility.
+Like with Python, some breaking changes can be present between minor versions if well documented and gradually introduced.
+
+Note that prior to 0.11.0 this schema was not strictly adhered to.
+
+License
+-------
+
+Warp is provided under the NVIDIA Software License, please see
+`LICENSE.md <https://github.com/NVIDIA/warp/blob/main/LICENSE.md>`_ for the full license text.
+
+Contributing
+------------
+
+Contributions and pull requests from the community are welcome and are taken under the
+terms described in the **9. Feedback** section of the `license <https://github.com/NVIDIA/warp/blob/main/LICENSE.md>`_.
+`CONTRIBUTING.md <https://github.com/NVIDIA/warp/blob/main/CONTRIBUTING.md>`_. provides additional information on
+how to open a pull request for Warp.
+
 Citing
 ------
 
@@ -292,21 +334,6 @@ If you use Warp in your research please use the following citation:
         note= {NVIDIA GPU Technology Conference (GTC)},
         howpublished = {\url{https://github.com/nvidia/warp}}
     }
-
-Support
--------
-
-Problems, questions, and feature requests can be opened on
-`GitHub Issues <https://github.com/NVIDIA/warp/issues>`_.
-
-The Warp team also monitors the **#warp** channel on the public
-`Omniverse Discord <https://discord.com/invite/nvidiaomniverse>`_ server, come chat to us!
-
-License
--------
-
-Warp is provided under the NVIDIA Software License, please see
-`LICENSE.md <https://github.com/NVIDIA/warp/blob/main/LICENSE.md>`_ for the full license text.
 
 Full Table of Contents
 ----------------------
