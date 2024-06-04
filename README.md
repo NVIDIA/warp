@@ -267,19 +267,11 @@ This will generate the `warp.dll` / `warp.so` core library respectively. It will
 
 This ensures that subsequent modifications to the library will be reflected in the Python package.
 
-## Omniverse
-
-A Warp Omniverse extension is available in the extension registry inside Omniverse Kit or USD Composer:
-
-<img src="https://github.com/NVIDIA/warp/raw/main/docs/img/omniverse.png" width=550px/>
-
-Enabling the extension will automatically install and initialize the Warp Python module inside the Kit Python environment.
-Please see the [Omniverse Warp Documentation](https://docs.omniverse.nvidia.com/extensions/latest/ext_warp.html) for more details on how to use Warp in Omniverse.
-
 ## Learn More
 
 Please see the following resources for additional background on Warp:
 
+* [Product Page](https://developer.nvidia.com/warp-python)
 * [GTC 2022 Presentation](https://www.nvidia.com/en-us/on-demand/session/gtcspring22-s41599)
 * [GTC 2021 Presentation](https://www.nvidia.com/en-us/on-demand/session/gtcspring21-s31838)
 * [SIGGRAPH Asia 2021 Differentiable Simulation Course](https://dl.acm.org/doi/abs/10.1145/3476117.3483433)
@@ -290,6 +282,39 @@ The underlying technology in Warp has been used in a number of research projects
 * Accelerated Policy Learning with Parallel Differentiable Simulation - Xu, J., Makoviychuk, V., Narang, Y., Ramos, F., Matusik, W., Garg, A., & Macklin, M. [(2022)](https://short-horizon-actor-critic.github.io)
 * DiSECt: Differentiable Simulator for Robotic Cutting - Heiden, E., Macklin, M., Narang, Y., Fox, D., Garg, A., & Ramos, F [(2021)](https://github.com/NVlabs/DiSECt)
 * gradSim: Differentiable Simulation for System Identification and Visuomotor Control - Murthy, J. Krishna, Miles Macklin, Florian Golemo, Vikram Voleti, Linda Petrini, Martin Weiss, Breandan Considine et al. [(2021)](https://gradsim.github.io)
+
+## Frequently Asked Questions
+
+See the [FAQ](https://nvidia.github.io/warp/faq.html) in the Warp documentation.
+
+## Support
+
+Problems, questions, and feature requests can be opened on [GitHub Issues](https://github.com/NVIDIA/warp/issues).
+
+The Warp team also monitors the **#warp** channel on the public [Omniverse Discord](https://discord.com/invite/nvidiaomniverse) server, come chat to us!
+
+## Versioning
+
+Versions take the format X.Y.Z, similar to [Python itself](https://devguide.python.org/developer-workflow/development-cycle/#devcycle):
+
+* Increments in X are reserved for major reworks of the project causing disruptive incompatibility (or reaching the 1.0 milestone).
+* Increments in Y are for regular releases with a new set of features.
+* Increments in Z are for bug fixes. In principle there are no new features. Can be omitted if 0 or not relevant.
+
+This is similar to [Semantic Versioning](https://semver.org/) but less strict around backward compatibility.
+Like with Python, some breaking changes can be present between minor versions if well documented and gradually introduced.
+
+Note that prior to 0.11.0 this schema was not strictly adhered to.
+
+## License
+
+Warp is provided under the NVIDIA Software License, please see [LICENSE.md](./LICENSE.md) for full license text.
+
+## Contributing
+
+Contributions and pull requests from the community are welcome and are taken under the
+terms described in the **9. Feedback** section of the [license](LICENSE.md).
+[CONTRIBUTING.md](./CONTRIBUTING.md) provides additional information on how to open a pull request for Warp.
 
 ## Citing
 
@@ -305,17 +330,3 @@ note= {NVIDIA GPU Technology Conference (GTC)},
 howpublished = {\url{https://github.com/nvidia/warp}}
 }
 ```
-
-## Frequently Asked Questions
-
-See the [FAQ](https://nvidia.github.io/warp/faq.html) in the Warp documentation.
-
-## Support
-
-Problems, questions, and feature requests can be opened on [GitHub Issues](https://github.com/NVIDIA/warp/issues).
-
-The Warp team also monitors the **#warp** channel on the public [Omniverse Discord](https://discord.com/invite/nvidiaomniverse) server, come chat to us!
-
-## License
-
-Warp is provided under the NVIDIA Software License, please see [LICENSE.md](./LICENSE.md) for full license text.
