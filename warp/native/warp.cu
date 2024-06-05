@@ -2865,7 +2865,12 @@ void* cuda_graphics_register_gl_buffer(void* context, uint32_t gl_buffer, unsign
     ContextGuard guard(context);
 
     CUgraphicsResource *resource = new CUgraphicsResource;
-    check_cu(cuGraphicsGLRegisterBuffer_f(resource, gl_buffer, flags));
+    bool success = check_cu(cuGraphicsGLRegisterBuffer_f(resource, gl_buffer, flags));
+    if (!success)
+    {
+        delete resource;
+        return NULL;
+    }
 
     return resource;
 }
