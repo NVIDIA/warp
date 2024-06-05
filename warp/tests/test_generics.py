@@ -238,6 +238,32 @@ def test_generic_fill_overloads(test, device):
         assert_np_equal(a3b.numpy(), np.full((n, 3), True, dtype=np.bool_))
 
 
+# generic kernel used to test generic types mixed with specialized types
+@wp.func
+def generic_conditional_setter_func(a: wp.array(dtype=Any), i: int, value: Any, relative: bool):
+    if relative:
+        a[i] += value
+    else:
+        a[i] = value
+
+
+@wp.kernel
+def generic_conditional_setter(a: wp.array(dtype=Any), i: int, value: Any, relative: bool):
+    generic_conditional_setter_func(a, i, value, relative)
+
+
+def test_generic_conditional_setter(test, device):
+    with wp.ScopedDevice(device):
+        n = 10
+        ai = wp.zeros(n, dtype=int)
+
+        wp.launch(generic_conditional_setter, dim=1, inputs=[ai, 1, 42, False])
+        wp.launch(generic_conditional_setter, dim=1, inputs=[ai, 1, 5, True])
+        ai_true = np.zeros(n, dtype=np.int32)
+        ai_true[1] = 47
+        assert_np_equal(ai.numpy(), ai_true)
+
+
 # custom vector/matrix types
 my_vec5 = wp.vec(length=5, dtype=wp.float32)
 my_mat55 = wp.mat(shape=(5, 5), dtype=wp.float32)
@@ -509,6 +535,7 @@ add_function_test(TestGenerics, "test_generic_array_kernel", test_generic_array_
 add_function_test(TestGenerics, "test_generic_accumulator_kernel", test_generic_accumulator_kernel, devices=devices)
 add_function_test(TestGenerics, "test_generic_fill", test_generic_fill, devices=devices)
 add_function_test(TestGenerics, "test_generic_fill_overloads", test_generic_fill_overloads, devices=devices)
+add_function_test(TestGenerics, "test_generic_conditional_setter", test_generic_conditional_setter, devices=devices)
 add_function_test(TestGenerics, "test_generic_transform_kernel", test_generic_transform_kernel, devices=devices)
 add_function_test(
     TestGenerics, "test_generic_transform_array_kernel", test_generic_transform_array_kernel, devices=devices
