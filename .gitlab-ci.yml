@@ -9,7 +9,10 @@
 # CI/CD Pipeline Configuration
 # ==============================================================================
 
-include: /.gitlab/ci/common.yml
+include:
+  - /.gitlab/ci/common.yml
+  - project: "omniverse/sectools/vault"
+    file: ["templates/v2/omni-packman-s3-creds.yml", "templates/v3/linux/packman_s3.gitlab-ci.yml"]
 
 workflow:
   rules:
@@ -508,6 +511,22 @@ publish wheels to gitlab package registry:
           curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "$file" "https://gitlab-master.nvidia.com/api/v4/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/${filename}"
       done
     - 'curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file kit-extensions.zip "https://gitlab-master.nvidia.com/api/v4/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/kit-extensions.zip"'
+
+# Uploads the extensions to packman.
+publish extensions to packman:
+  stage: deploy
+  needs: ["create kit artifacts"]
+  extends:
+    - .runner-utility-linux-x86_64
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /release-.*/
+      when: manual
+      allow_failure: true
+  script:
+    - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
+    - rm -rf exts
+    - unzip kit-extensions.zip
+    - tools/repo.sh publish_exts
 
 .build-docs-common:
   stage: deploy

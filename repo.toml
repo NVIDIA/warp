@@ -3,8 +3,18 @@
 ########################################################################################################################
 
 [repo]
+
 # Repository Name
 name = "warp"
+
+extra_tool_paths = [
+    "${root}/_build/kit-deps/kit-kernel/dev",
+]
+
+import_configs = [
+    "${root}/_repo/deps/repo_kit_tools/kit-template/repo.toml",
+]
+
 
 ########################################################################################################################
 # Build tool setup
@@ -27,3 +37,20 @@ fetch.after_pull_commands = [
 
 [repo_build_number]
 enabled = true
+
+########################################################################################################################
+# Extensions publisher
+########################################################################################################################
+
+[repo_publish_exts]
+
+kit_path = "${root}/_build/kit-deps/kit-kernel/kit${exe_ext}"
+
+ext_folders = [
+    "${root}/exts"
+]
+
+exts.include = [
+    "omni.warp",
+    "omni.warp.core",
+]
