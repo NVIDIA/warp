@@ -21,6 +21,8 @@
   - Fixed `volume_sample_v` and `volume_store_*` adjoints
   - Prevent `volume_store` from overwriting grid background values
 - Improve validation of user-provided fields and values in warp.fem
+- Support headless rendering of `OpenGLRenderer` via `pyglet.options["headless"] = True`
+- `RegisteredGLBuffer` can fall back to CPU-bound copying if CUDA/OpenGL interop is not available
 
 ## [1.1.1] - 2024-05-24
 

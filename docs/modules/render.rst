@@ -36,3 +36,14 @@ Based on these renderers from ``warp.render``, the ``SimRendererUsd`` (which equ
 .. autoclass:: SimRendererOpenGL
     :members:
 
+CUDA graphics interface
+-----------------------
+
+Warp provides a CUDA graphics interface that allows you to access OpenGL buffers from CUDA kernels. This is useful for manipulating OpenGL array buffers without having to copy them back and forth between the CPU and GPU.
+
+See the `CUDA documentation on OpenGL Interoperability <https://docs.nvidia.com/cuda/cuda-driver-api/group__CUDA__GL.html>`_ for more information.
+
+.. currentmodule:: warp.context
+
+.. autoclass:: RegisteredGLBuffer
+    :members:

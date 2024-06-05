@@ -114,8 +114,8 @@ featured physics engine. Warp is also integrated with IsaacGym and is
 great for performing auxiliary tasks such as reward and observation
 computations for reinforcement learning.
 
-Why aren't assignments to Warp arrays aren'supported outside of kernels?
-------------------------------------------------------------------------
+Why aren't assignments to Warp arrays supported outside of kernels?
+-------------------------------------------------------------------
 
 For best performance, reading and writing data that is living on the GPU can 
 only be performed inside Warp CUDA kernels. Otherwise individual element accesses

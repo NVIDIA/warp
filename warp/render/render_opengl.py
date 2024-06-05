@@ -934,7 +934,7 @@ class OpenGLRenderer:
 
     def __init__(
         self,
-        title="Warp sim",
+        title="Warp",
         scaling=1.0,
         fps=60,
         up_axis="Y",
@@ -955,11 +955,57 @@ class OpenGLRenderer:
         render_depth=False,
         axis_scale=1.0,
         vsync=False,
-        headless=False,
+        headless=None,
         enable_backface_culling=True,
         enable_mouse_interaction=True,
         enable_keyboard_interaction=True,
     ):
+        """
+        Args:
+
+            title (str): The window title.
+            scaling (float): The scaling factor for the scene.
+            fps (int): The target frames per second.
+            up_axis (str): The up axis of the scene. Can be "X", "Y", or "Z".
+            screen_width (int): The width of the window.
+            screen_height (int): The height of the window.
+            near_plane (float): The near clipping plane.
+            far_plane (float): The far clipping plane.
+            camera_fov (float): The camera field of view in degrees.
+            camera_pos (tuple): The initial camera position.
+            camera_front (tuple): The initial camera front direction.
+            camera_up (tuple): The initial camera up direction.
+            background_color (tuple): The background color of the scene.
+            draw_grid (bool): Whether to draw a grid indicating the ground plane.
+            draw_sky (bool): Whether to draw a sky sphere.
+            draw_axis (bool): Whether to draw the coordinate system axes.
+            show_info (bool): Whether to overlay rendering information.
+            render_wireframe (bool): Whether to render scene shapes as wireframes.
+            render_depth (bool): Whether to show the depth buffer instead of the RGB image.
+            axis_scale (float): The scale of the coordinate system axes being rendered (only if ``draw_axis`` is True).
+            vsync (bool): Whether to enable vertical synchronization.
+            headless (bool): Whether to run in headless mode (no window is created). If None, the value is determined by the Pyglet configuration defined in ``pyglet.options["headless"]``.
+            enable_backface_culling (bool): Whether to enable backface culling.
+            enable_mouse_interaction (bool): Whether to enable mouse interaction.
+            enable_keyboard_interaction (bool): Whether to enable keyboard interaction.
+
+        Note:
+
+            :class:`OpenGLRenderer` requires Pyglet (version >= 2.0, known to work on 2.0.7) to be installed.
+
+            Headless rendering is supported via EGL on UNIX operating systems. To enable headless rendering, set the following pyglet options before importing ``warp.render``:
+
+            .. code-block:: python
+
+                import pyglet
+
+                pyglet.options["headless"] = True
+
+                import warp.render
+
+                # OpenGLRenderer is instantiated with headless=True by default
+                renderer = warp.render.OpenGLRenderer()
+        """
         try:
             import pyglet
 
@@ -991,10 +1037,15 @@ class OpenGLRenderer:
         self.window = pyglet.window.Window(
             width=screen_width, height=screen_height, caption=title, resizable=True, vsync=vsync, visible=not headless
         )
+        if headless is None:
+            self.headless = pyglet.options.get("headless", False)
+        else:
+            self.headless = headless
         self.app = pyglet.app
 
-        # making window current opengl rendering context
-        self.window.switch_to()
+        if not headless:
+            # making window current opengl rendering context
+            self.window.switch_to()
 
         self.screen_width, self.screen_height = self.window.get_framebuffer_size()
 
@@ -1085,15 +1136,16 @@ class OpenGLRenderer:
         self._frame_fbo = None
         self._frame_pbo = None
 
-        self.window.push_handlers(on_draw=self._draw)
-        self.window.push_handlers(on_resize=self._window_resize_callback)
-        self.window.push_handlers(on_key_press=self._key_press_callback)
+        if not headless:
+            self.window.push_handlers(on_draw=self._draw)
+            self.window.push_handlers(on_resize=self._window_resize_callback)
+            self.window.push_handlers(on_key_press=self._key_press_callback)
 
-        self._key_handler = pyglet.window.key.KeyStateHandler()
-        self.window.push_handlers(self._key_handler)
+            self._key_handler = pyglet.window.key.KeyStateHandler()
+            self.window.push_handlers(self._key_handler)
 
-        self.window.on_mouse_scroll = self._scroll_callback
-        self.window.on_mouse_drag = self._mouse_drag_callback
+            self.window.on_mouse_scroll = self._scroll_callback
+            self.window.on_mouse_drag = self._mouse_drag_callback
 
         gl.glClearColor(*self.background_color, 1)
         gl.glEnable(gl.GL_DEPTH_TEST)
@@ -1306,20 +1358,21 @@ class OpenGLRenderer:
             width=400,
         )
 
-        # set up our own event handling so we can synchronously render frames
-        # by calling update() in a loop
-        from pyglet.window import Window
+        if not headless:
+            # set up our own event handling so we can synchronously render frames
+            # by calling update() in a loop
+            from pyglet.window import Window
 
-        Window._enable_event_queue = False
+            Window._enable_event_queue = False
 
-        self.window.switch_to()
-        self.window.dispatch_pending_events()
+            self.window.switch_to()
+            self.window.dispatch_pending_events()
 
-        platform_event_loop = self.app.platform_event_loop
-        platform_event_loop.start()
+            platform_event_loop = self.app.platform_event_loop
+            platform_event_loop.start()
 
-        # start event loop
-        self.app.event_loop.dispatch_event("on_enter")
+            # start event loop
+            self.app.event_loop.dispatch_event("on_enter")
 
     @property
     def paused(self):
@@ -1340,8 +1393,9 @@ class OpenGLRenderer:
     def clear(self):
         from pyglet import gl
 
-        self.app.event_loop.dispatch_event("on_exit")
-        self.app.platform_event_loop.stop()
+        if not self.headless:
+            self.app.event_loop.dispatch_event("on_exit")
+            self.app.platform_event_loop.stop()
 
         if self._instance_transform_gl_buffer is not None:
             try:
@@ -1408,7 +1462,8 @@ class OpenGLRenderer:
         """
         Set up tiled rendering where the render buffer is split into multiple tiles that can visualize
         different shape instances of the scene with different view and projection matrices.
-        See `get_pixels` which allows to retrieve the pixels of for each tile.
+        See :meth:`get_pixels` which allows to retrieve the pixels of for each tile.
+        See :meth:`update_tile` which allows to update the shape instances, projection matrix, view matrix, tile size, or tile position for a given tile.
 
         :param instances: A list of lists of shape instance ids. Each list of shape instance ids
             will be rendered into a separate tile.
@@ -1590,7 +1645,7 @@ class OpenGLRenderer:
             )
 
             if gl.glCheckFramebufferStatus(gl.GL_FRAMEBUFFER) != gl.GL_FRAMEBUFFER_COMPLETE:
-                print("Framebuffer is not complete!")
+                print("Framebuffer is not complete!", flush=True)
                 gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
                 sys.exit(1)
 
@@ -1764,8 +1819,8 @@ class OpenGLRenderer:
         self._last_time = self.clock_time
         self._frame_speed = update_duration * 100.0
 
-        # self.app.event_loop.idle()
-        self.app.platform_event_loop.step(self._frame_dt * 1e-3)
+        if not self.headless:
+            self.app.platform_event_loop.step(self._frame_dt * 1e-3)
 
         if not self.skip_rendering:
             self._skip_frame_counter += 1
@@ -1785,13 +1840,17 @@ class OpenGLRenderer:
                     update = 1.0 / update_duration
                     self._fps_render = (1.0 - self._fps_alpha) * self._fps_render + self._fps_alpha * update
 
-            self.app.event_loop._redraw_windows(self._frame_dt * 1e-3)
+            if not self.headless:
+                self.app.event_loop._redraw_windows(self._frame_dt * 1e-3)
+            else:
+                self._draw()
 
     def _draw(self):
         from pyglet import gl
 
-        # catch key hold events
-        self._process_inputs()
+        if not self.headless:
+            # catch key hold events
+            self._process_inputs()
 
         if self.enable_backface_culling:
             gl.glEnable(gl.GL_CULL_FACE)
@@ -2438,9 +2497,7 @@ Instances: {len(self._instances)}"""
         gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
         gl.glBindBuffer(gl.GL_PIXEL_PACK_BUFFER, 0)
 
-        pbo_buffer = wp.RegisteredGLBuffer(
-            int(self._frame_pbo.value), self._device, wp.RegisteredGLBuffer.WRITE_DISCARD
-        )
+        pbo_buffer = wp.RegisteredGLBuffer(int(self._frame_pbo.value), self._device, wp.RegisteredGLBuffer.READ_ONLY)
         screen_size = self.screen_height * self.screen_width
         if mode == "rgb":
             img = pbo_buffer.map(dtype=wp.uint8, shape=(screen_size * channels))

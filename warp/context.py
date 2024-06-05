@@ -3752,34 +3752,87 @@ def wait_stream(stream: Stream, event: Event = None):
 
 class RegisteredGLBuffer:
     """
-    Helper object to register a GL buffer with CUDA so that it can be mapped to a Warp array.
+    Helper class to register a GL buffer with CUDA so that it can be mapped to a Warp array.
+
+    Example usage::
+
+        import warp as wp
+        import numpy as np
+        from pyglet.gl import *
+
+        wp.init()
+
+        # create a GL buffer
+        gl_buffer_id = GLuint()
+        glGenBuffers(1, gl_buffer_id)
+
+        # copy some data to the GL buffer
+        glBindBuffer(GL_ARRAY_BUFFER, gl_buffer_id)
+        gl_data = np.arange(1024, dtype=np.float32)
+        glBufferData(GL_ARRAY_BUFFER, gl_data.nbytes, gl_data.ctypes.data, GL_DYNAMIC_DRAW)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+
+        # register the GL buffer with CUDA
+        cuda_gl_buffer = wp.RegisteredGLBuffer(gl_buffer_id)
+
+        # map the GL buffer to a Warp array
+        arr = cuda_gl_buffer.map(dtype=wp.float32, shape=(1024,))
+        # launch a Warp kernel to manipulate or read the array
+        wp.launch(my_kernel, dim=1024, inputs=[arr])
+        # unmap the GL buffer
+        cuda_gl_buffer.unmap()
     """
 
-    # Specifies no hints about how this resource will be used.
-    # It is therefore assumed that this resource will be
-    # read from and written to by CUDA. This is the default value.
     NONE = 0x00
+    """
+    Flag that specifies no hints about how this resource will be used.
+    It is therefore assumed that this resource will be
+    read from and written to by CUDA. This is the default value.
+    """
 
-    # Specifies that CUDA will not write to this resource.
     READ_ONLY = 0x01
+    """
+    Flag that specifies that CUDA will not write to this resource.
+    """
 
-    # Specifies that CUDA will not read from this resource and will write over the
-    # entire contents of the resource, so none of the data previously
-    # stored in the resource will be preserved.
     WRITE_DISCARD = 0x02
+    """
+    Flag that specifies that CUDA will not read from this resource and will write over the
+    entire contents of the resource, so none of the data previously
+    stored in the resource will be preserved.
+    """
 
-    def __init__(self, gl_buffer_id: int, device: Devicelike = None, flags: int = NONE):
-        """Create a new RegisteredGLBuffer object.
+    __fallback_warning_shown = False
 
+    def __init__(self, gl_buffer_id: int, device: Devicelike = None, flags: int = NONE, fallback_to_copy: bool = True):
+        """
         Args:
             gl_buffer_id: The OpenGL buffer id (GLuint).
             device: The device to register the buffer with.  If None, the current device will be used.
-            flags: A combination of the flags constants.
+            flags: A combination of the flags constants :attr:`NONE`, :attr:`READ_ONLY`, and :attr:`WRITE_DISCARD`.
+            fallback_to_copy: If True and CUDA/OpenGL interop is not available, fall back to copy operations between the Warp array and the OpenGL buffer. Otherwise, a ``RuntimeError`` will be raised.
+
+        Note:
+
+            The ``fallback_to_copy`` option (to use copy operations if CUDA graphics interop functionality is not available) requires pyglet version 2.0 or later. Install via ``pip install pyglet==2.*``.
         """
         self.gl_buffer_id = gl_buffer_id
         self.device = get_device(device)
         self.context = self.device.context
+        self.flags = flags
+        self.fallback_to_copy = fallback_to_copy
         self.resource = runtime.core.cuda_graphics_register_gl_buffer(self.context, gl_buffer_id, flags)
+        if self.resource is None:
+            if self.fallback_to_copy:
+                self.warp_buffer = None
+                self.warp_buffer_cpu = None
+                if not RegisteredGLBuffer.__fallback_warning_shown:
+                    warp.utils.warn(
+                        "Could not register GL buffer since CUDA/OpenGL interoperability is not available. Falling back to copy operations between the Warp array and the OpenGL buffer.",
+                    )
+                    RegisteredGLBuffer.__fallback_warning_shown = True
+            else:
+                raise RuntimeError(f"Failed to register OpenGL buffer {gl_buffer_id} with CUDA")
 
     def __del__(self):
         if not self.resource:
@@ -3799,18 +3852,48 @@ class RegisteredGLBuffer:
         Returns:
             A Warp array object representing the mapped OpenGL buffer.
         """
-        runtime.core.cuda_graphics_map(self.context, self.resource)
-        ctypes.POINTER(ctypes.c_uint64), ctypes.POINTER(ctypes.c_size_t)
-        ptr = ctypes.c_uint64(0)
-        size = ctypes.c_size_t(0)
-        runtime.core.cuda_graphics_device_ptr_and_size(
-            self.context, self.resource, ctypes.byref(ptr), ctypes.byref(size)
-        )
-        return warp.array(ptr=ptr.value, dtype=dtype, shape=shape, device=self.device)
+        if self.resource is not None:
+            runtime.core.cuda_graphics_map(self.context, self.resource)
+            ptr = ctypes.c_uint64(0)
+            size = ctypes.c_size_t(0)
+            runtime.core.cuda_graphics_device_ptr_and_size(
+                self.context, self.resource, ctypes.byref(ptr), ctypes.byref(size)
+            )
+            return warp.array(ptr=ptr.value, dtype=dtype, shape=shape, device=self.device)
+        elif self.fallback_to_copy:
+            if self.warp_buffer is None or self.warp_buffer.dtype != dtype or self.warp_buffer.shape != shape:
+                self.warp_buffer = warp.empty(shape, dtype, device=self.device)
+                self.warp_buffer_cpu = warp.empty(shape, dtype, device="cpu", pinned=True)
+
+            if self.flags == self.READ_ONLY or self.flags == self.NONE:
+                # copy from OpenGL buffer to Warp array
+                from pyglet import gl
+
+                gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.gl_buffer_id)
+                nbytes = self.warp_buffer.size * warp.types.type_size_in_bytes(dtype)
+                gl.glGetBufferSubData(gl.GL_ARRAY_BUFFER, 0, nbytes, self.warp_buffer_cpu.ptr)
+                gl.glBindBuffer(gl.GL_ARRAY_BUFFER, 0)
+                warp.copy(self.warp_buffer, self.warp_buffer_cpu)
+            return self.warp_buffer
+
+        return None
 
     def unmap(self):
         """Unmap the OpenGL buffer."""
-        runtime.core.cuda_graphics_unmap(self.context, self.resource)
+        if self.resource is not None:
+            runtime.core.cuda_graphics_unmap(self.context, self.resource)
+        elif self.fallback_to_copy:
+            if self.warp_buffer is None:
+                raise RuntimeError("RegisteredGLBuffer first has to be mapped")
+
+            if self.flags == self.WRITE_DISCARD or self.flags == self.NONE:
+                # copy from Warp array to OpenGL buffer
+                from pyglet import gl
+
+                gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.gl_buffer_id)
+                buffer = self.warp_buffer.numpy()
+                gl.glBufferData(gl.GL_ARRAY_BUFFER, buffer.nbytes, buffer.ctypes.data, gl.GL_DYNAMIC_DRAW)
+                gl.glBindBuffer(gl.GL_ARRAY_BUFFER, 0)
 
 
 def zeros(
