@@ -15,20 +15,15 @@ Below are some examples of simulations implemented using Warp:
 Quickstart
 ----------
 
-Python version 3.9 or newer is recommended. Warp can run on x86-64 and ARMv8 CPUs on Windows, Linux, and macOS. GPU support requires a CUDA-capable NVIDIA GPU and driver (minimum GeForce GTX 9xx).
-
 The easiest way to install Warp is from `PyPI <https://pypi.org/project/warp-lang>`_:
 
 .. code-block:: sh
 
     $ pip install warp-lang
 
-Pre-built binary packages are also available on the `Releases <https://github.com/NVIDIA/warp/releases>`_ page.
-To install in your local Python environment extract the archive and run the following command from the root directory:
-
-.. code-block:: sh
-
-    $ pip install .
+The binaries hosted on PyPI are currently built with the CUDA 11.8 runtime.
+Users requiring a newer CUDA runtime in Warp can build Warp from source or
+install wheels hosted on GitHub as described in :ref:`GitHub Installation`.
 
 Basic Example
 -------------

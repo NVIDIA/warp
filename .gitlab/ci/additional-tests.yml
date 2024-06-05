@@ -13,7 +13,7 @@
 #
 # This pipeline can be triggered from the main GitLab pipeline under specific
 # circumstances. See the child pipelines defined in /.gitlab-ci.yml for the
-# trigger conditions. It is not run in merge request pipelines.
+# trigger conditions. It is not automatically run in merge request pipelines.
 # ==============================================================================
 
 include: /.gitlab/ci/common.yml

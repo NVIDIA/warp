@@ -33,7 +33,7 @@ extras = ['usd-core', 'matplotlib', 'pyglet']
 include = ["warp*"]
 
 [tool.setuptools.dynamic]
-version = { attr = "warp.config.version" }
+version = { file = ["VERSION.md"] }
 readme = { file = ["README.md"], content-type = "text/markdown" }
 
 [tool.ruff]

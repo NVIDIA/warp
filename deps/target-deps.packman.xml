@@ -1,39 +1,11 @@
 <project toolsVersion="5.0">
 
-  <!-- Import Kit SDk target-deps xml file to steal some deps from it: 
-  <import path="../_build/${platform}/${config}/kit/dev/deps/target-deps.packman.xml">
-    <filter include="pybind11" />
-    <filter include="fmt" />
-    <filter include="python" />
-  </import>  
-  -->
-
-
-  <!-- Import Rtx plugins deps 
-  <import path="../_build/target-deps/rtx_plugins/deps/target-deps.packman.xml">
-    <filter include="carb_sdk_plugins" />
-  </import>
-  -->
-
-  <!-- Pull those deps of the same version as in Kit SDK. Override linkPath to point correctly, other properties can also be override, including version.
-  <dependency name="carb_sdk_plugins" linkPath="../_build/target-deps/carb_sdk_plugins" tags="non-redist" />
-  <dependency name="pybind11" linkPath="../_build/target-deps/pybind11" />
-  <dependency name="fmt" linkPath="../_build/target-deps/fmt" />
-  <dependency name="python" linkPath="../_build/target-deps/python" />
-   -->
-
   <dependency name="python" linkPath="../_build/target-deps/python" tags="slim-package">
     <package name="python" version="3.9.18+nv1-windows-x86_64" platforms="windows-x86_64"/>
     <!-- https://teamcity.nvidia.com/project.html?projectId=Omniverse_Externals_Python -->
     <package name="python" version="3.9.18+nv1-linux-x86_64" platforms="linux-x86_64"/>
     <package name="python" version="3.9.16+nv1-linux-aarch64" platforms="linux-aarch64"/>
     <package name="python" version="3.9.16+nv1-macos-universal" platforms="macos-x86_64"/>
-  </dependency>
-
-  <dependency name="cuda" linkPath="../_build/target-deps/cuda">
-    <package name="cuda" version="11.5.2_496.13-46d75baa-windows-x86_64" platforms="windows-x86_64"/>
-    <package name="cuda" version="11.5.2_495.29-46d75baa-linux-x86_64" platforms="linux-x86_64"/>
-    <package name="cuda" version="11.8.0_520.61-abe3d9d7-linux-aarch64" platforms="linux-aarch64"/>
   </dependency>
 
 </project>

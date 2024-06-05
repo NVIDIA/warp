@@ -6,17 +6,20 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 # ==============================================================================
-# Debug Build and Testing Child Pipeline
+# Warp+CUDA 11 Build and Testing Child Pipeline
 #
 # This child pipeline is used to build and test Warp when the library is built
-# in debug mode.
+# with the CUDA 11 Toolkit (release mode).
 #
 # This pipeline can be triggered from the main GitLab pipeline under specific
 # circumstances. See the child pipelines defined in /.gitlab-ci.yml for the
 # trigger conditions. It is not automatically run in merge request pipelines.
 # ==============================================================================
 
-include: /.gitlab/ci/common.yml
+include:
+  - /.gitlab/ci/common.yml
+  - project: "omniverse/sectools/vault"
+    file: ["templates/v2/omni-packman-s3-creds.yml", "templates/v3/linux/packman_s3.gitlab-ci.yml"]
 
 workflow:
   rules:
@@ -32,8 +35,7 @@ stages:
 # Build Jobs (Debug)
 # ==============================================================================
 
-# Hide this job for now until debug aarch64 builds work
-.linux-aarch64 build:
+linux-aarch64 build:
   stage: build
   image: ubuntu:22.04
   extends:
@@ -43,7 +45,10 @@ stages:
     - apt-get update && apt-get install build-essential curl --no-install-recommends -y
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - ./tools/ci/building/build-linux-aarch64/build.sh --debug --no-docker # We are already using the builder image
+    - ./tools/ci/building/build-linux-x86_64/build.sh --cuda 11 --no-docker # We are already using the builder image
+    - mkdir -p warp/bin/linux-aarch64
+    - mv warp/bin/warp.so warp/bin/linux-aarch64
+    - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
   tags:
     - arch/arm
 
@@ -54,7 +59,10 @@ linux-x86_64 build:
     - .save_warp_bin_artifact
     - .runner-large-build-linux-x86_64
   script:
-    - ./tools/ci/building/build-linux-x86_64/build.sh --debug --no-docker # We are already using the builder image
+    - ./tools/ci/building/build-linux-x86_64/build.sh --cuda 11 --no-docker # We are already using the builder image
+    - mkdir -p warp/bin/linux-x86_64
+    - mv warp/bin/warp.so warp/bin/linux-x86_64
+    - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
 
 windows-x86_64 build:
   stage: build
@@ -64,7 +72,7 @@ windows-x86_64 build:
   before_script:
     - powershell -command "Get-Volume | Format-Table -AutoSize"
   script:
-    - ./tools/ci/building/build-windows-x86_64/build.bat --debug
+    - ./tools/ci/building/build-windows-x86_64/build.bat --cuda 11
 
 mac-x86_64 build:
   stage: build
@@ -73,17 +81,16 @@ mac-x86_64 build:
     - .runner-build-macos-universal
     - .macos_warp_tags
   script:
-    - ./tools/ci/building/build-linux-x86_64/build.sh --debug
+    - ./tools/ci/building/build-linux-x86_64/build.sh
 
 # ==============================================================================
-# Unit Testing Jobs (Debug)
+# Unit Testing Jobs
 #
-# Unlike the main testing jobs defined in /.gitlab-ci.yml, the debug jobs don't
+# Unlike the main testing jobs defined in /.gitlab-ci.yml, the CUDA 11 jobs don't
 # generate code coverage reports.
 # ==============================================================================
 
-# Hide this job for now until debug aarch64 builds work
-.linux-aarch64 test:
+linux-aarch64 test:
   stage: test
   image: ubuntu:22.04
   needs: [linux-aarch64 build]
@@ -107,6 +114,9 @@ linux-x86_64 test:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
     - tools/packman/packman install -l _build/target-deps/python python ${DEFAULT_PYTHON}-linux-x86_64
     - export PATH="$CUDA_BIN:$PATH"
     - $PYTHON -m venv _venv
@@ -171,6 +181,7 @@ mac-x86_64 test:
 create pypi wheels:
   stage: package
   needs:
+    - linux-aarch64 build
     - linux-x86_64 build
     - windows-x86_64 build
     - mac-x86_64 build
@@ -187,14 +198,164 @@ create pypi wheels:
     - python3 -m pip install --upgrade pip
     - python3 -m pip install build
   script:
+    - sed -i "s/^\(.*\)$/\1+cu11/" VERSION.md  # Modify VERSION.md with +cu11
     - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
     - python3 -m build --wheel -C--build-option=-Plinux-x86_64
+    - python3 -m build --wheel -C--build-option=-Plinux-aarch64
+    - sed -i "s/^\(.*\)+cu11$/\1+cpu/" VERSION.md  # Modify VERSION.md with +cu12 replaced by +cpu
+    - python3 -m build --wheel -C--build-option=-Pmacos-universal
+    - sed -i "s/^\(.*\)+cpu$/\1/" VERSION.md  # Revert VERSION.md changes
+    - mkdir -p dist-github
+    - mv dist/* dist-github/
+    # Now make the wheels meant for PyPI publishing
+    - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
+    - python3 -m build --wheel -C--build-option=-Plinux-x86_64
+    - python3 -m build --wheel -C--build-option=-Plinux-aarch64
     - python3 -m build --wheel -C--build-option=-Pmacos-universal
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +
   artifacts:
-    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    name: $PARENT_COMMIT_REF_SLUG-$PARENT_COMMIT_SHORT_SHA
     expose_as: "Python Wheels"
     paths:
       - "dist/"
+      - "dist-github/"
     when: always
+
+# Creates an artifact suitable for publishing the Kit extensions
+create kit artifacts:
+  stage: package
+  needs:
+    - linux-x86_64 build
+    - windows-x86_64 build
+  extends:
+    - .runner-utility-linux-x86_64
+  before_script:
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    - rm -r warp/bin/linux-x86_64/
+    - rm -rf warp/native/cutlass
+    - apt-get update && apt-get install zip --no-install-recommends -y
+  script:
+    - python3 tools/ci/publishing/build_nodes_info.py
+    - mv warp exts/omni.warp.core/
+    - find . -type f -exec chmod 664 {} +
+    - find . -type d -exec chmod 775 {} +
+    - find exts/ -name .gitignore -delete
+    - zip -r kit-extensions.zip exts/
+  artifacts:
+    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    expose_as: "Kit Extensions"
+    paths:
+      - kit-extensions.zip
+
+# ==============================================================================
+# Deployment Jobs
+#
+# This section currently contains jobs that publish files to the internal
+# GitLab service.
+# ==============================================================================
+
+publish wheels to testpypi registry:
+  stage: deploy
+  image: python:3.11-slim
+  needs: ["create pypi wheels"]
+  extends:
+    - .runner-utility-linux-x86_64
+  rules:
+    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
+      when: manual
+      allow_failure: true
+  environment:
+    name: staging
+    url: https://test.pypi.org/project/warp-lang/
+  before_script:
+    - python3 -m pip install --upgrade pip
+    - python3 -m pip install --upgrade build twine
+  script:
+    - python3 -m twine upload --verbose --skip-existing --non-interactive --repository testpypi dist/* -u __token__ -p $TESTPYPI_DEPLOY_KEY
+
+publish wheels to pypi registry:
+  stage: deploy
+  image: python:3.11-slim
+  needs: ["create pypi wheels"]
+  extends:
+    - .runner-utility-linux-x86_64
+  rules:
+    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
+      when: manual
+      allow_failure: true
+  environment:
+    name: production
+    url: https://pypi.org/project/warp-lang/
+  before_script:
+    - python3 -m pip install --upgrade pip
+    - python3 -m pip install --upgrade build twine
+  script:
+    - python3 -m twine upload --verbose --skip-existing --non-interactive dist/* -u __token__ -p $PYPI_DEPLOY_KEY
+
+publish wheels to gitlab pypi registry:
+  stage: deploy
+  image: python:3.11-slim
+  needs: ["create pypi wheels"]
+  extends:
+    - .runner-utility-linux-x86_64
+  rules:
+    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
+      when: manual
+      allow_failure: true
+  before_script:
+    - python3 -m pip install --upgrade pip
+    - python3 -m pip install --upgrade build twine
+  script:
+    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python3 -m twine upload --verbose --skip-existing --non-interactive --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist-github/*
+
+# Uploads the wheels to the internal GitLab package registry in the Warp project
+# See files at https://gitlab-master.nvidia.com/omniverse/warp/-/packages
+# Generated files will be in a branch/tag-specific folder
+publish wheels to gitlab package registry:
+  stage: deploy
+  needs: ["create pypi wheels", "create kit artifacts"]
+  extends:
+    - .runner-utility-linux-x86_64
+  rules:
+    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
+    - when: manual # Can be triggered in all other scenarios
+      allow_failure: true
+  before_script:
+    - apt-get update && apt-get install curl --no-install-recommends -y
+  script:
+    - |
+      for file in $(find . -name '*.whl'); do
+          filename=$(basename -- "$file")
+          curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "$file" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/${filename}"
+      done
+    - |
+      if [ -f kit-extension.zip ]; then
+        curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file kit-extensions.zip "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/kit-extensions.zip"
+      else
+        echo "kit-extensions.zip not found, skipping upload."
+      fi
+
+
+# Uploads the extensions to packman.
+publish extensions to packman:
+  stage: deploy
+  needs: ["create kit artifacts"]
+  extends:
+    - .runner-utility-linux-x86_64
+  rules:
+    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
+      when: manual
+      allow_failure: true
+  environment:
+    name: Kit Extension Registry
+    url: http://omniexts.nvidia.com/omni.warp
+    deployment_tier: production
+  before_script:
+    - rm -rf exts/
+    - unzip kit-extensions.zip
+    - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
+  script:
+    - tools/repo.sh publish_exts

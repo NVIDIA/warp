@@ -1,26 +1,45 @@
-REM @echo off
+@echo off
+setlocal
 
-REM pull packman dependencies
-call "%~dp0..\..\..\repo.bat" build --fetch-only --config release %*
+:: Enable delayed expansion
+SETLOCAL ENABLEDELAYEDEXPANSION
 
-REM Use Packman python
+SET "BUILD_MODE=release"
+SET "CUDA_MAJOR_VER=12"
+
+:: Loop through arguments
+SET "PREV_ARG="
+for %%i in (%*) do (
+    if "%%i"=="--debug" (
+        SET "BUILD_MODE=debug"
+    ) else if "!PREV_ARG!"=="--cuda" (
+        SET "CUDA_MAJOR_VER=%%i"
+    )
+    SET "PREV_ARG=%%i"
+)
+
+:: pull packman dependencies
+SET "PLATFORM=windows-x86_64"
+call "%~dp0..\..\..\packman\packman" pull --platform %PLATFORM% "%~dp0..\..\..\..\deps/host-deps.packman.xml" --verbose
+call "%~dp0..\..\..\packman\packman" pull --platform %PLATFORM% "%~dp0..\..\..\..\deps/host-deps.packman.xml" --verbose
+call "%~dp0..\..\..\packman\packman" pull --platform %PLATFORM% "%~dp0..\..\..\..\deps/target-deps.packman.xml" --verbose
+call "%~dp0..\..\..\packman\packman" pull --platform %PLATFORM% "%~dp0..\..\..\..\deps/cuda-toolkit-deps.packman.xml" --verbose --include-tag "cuda-%CUDA_MAJOR_VER%"
+
+:: Use Packman python
 SET PYTHON="%~dp0..\..\..\..\_build\target-deps\python\python.exe"
 
-REM Python dependencies
+:: Python dependencies
 call %PYTHON% -m pip install --upgrade pip
 call %PYTHON% -m pip install numpy
 call %PYTHON% -m pip install gitpython
 call %PYTHON% -m pip install cmake
 call %PYTHON% -m pip install ninja
 
-SET BUILD_MODE="release"
-for %%i in (%*) do (
-    if "%%i"=="--debug" set BUILD_MODE="debug"
-)
-
-REM Build
+:: Build
 call %PYTHON% "%~dp0..\..\..\..\build_lib.py" ^
     --msvc_path="%~dp0..\..\..\..\_build\host-deps\msvc\VC\Tools\MSVC\14.29.30133" ^
     --sdk_path="%~dp0..\..\..\..\_build\host-deps\winsdk" ^
     --cuda_path="%~dp0..\..\..\..\_build\target-deps\cuda" ^
     --mode=%BUILD_MODE%
+
+endlocal
