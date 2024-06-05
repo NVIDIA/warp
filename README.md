@@ -21,20 +21,25 @@ Please refer to the project [Documentation](https://nvidia.github.io/warp/) for 
     <p><i>A selection of physical simulations computed with Warp</i></p>
 </div>
 
-
 ## Installing
 
-Python version 3.9 or newer is recommended. Warp can run on x86-64 and ARMv8 CPUs on Windows, Linux, and macOS. GPU support requires a CUDA capable NVIDIA GPU and driver (minimum GeForce GTX 9xx).
+Python version 3.9 or newer is recommended. Warp can run on x86-64 and ARMv8 CPUs on Windows, Linux, and macOS.
+GPU support requires a CUDA-capable NVIDIA GPU and driver (minimum GeForce GTX 9xx).
 
 The easiest way to install Warp is from [PyPI](https://pypi.org/project/warp-lang/):
 
     pip install warp-lang
 
-You can also use `pip install warp-lang[extras]` to install additional dependencies for running examples and USD-related features. 
+You can also use `pip install warp-lang[extras]` to install additional dependencies for running examples and USD-related features.
 
-Pre-built binary packages are also available on the [Releases](https://github.com/NVIDIA/warp/releases) page. To install in your local Python environment run the following command from the download directory:
+The binaries hosted on PyPI are currently built with the CUDA 11.8 runtime.
+We provide binaries built with the CUDA 12.5 runtime on the [GitHub Releases](https://github.com/NVIDIA/warp/releases) page.
+Copy the URL of the appropriate wheel file (`warp-lang-{ver}+cu12-py3-none-{platform}.whl`) and pass it to
+the `pip install` command, e.g.
 
-    pip install warp_lang-<version and platform>.whl
+    pip install https://github.com/NVIDIA/warp/releases/download/v1.2.0/warp_lang-1.2.0+cu12-py3-none-manylinux2014_x86_64.whl
+
+The `--force-reinstall` option may need to be used to overwrite a previous installation.
 
 ## Getting Started
 
@@ -72,10 +77,6 @@ print(lengths)
 ## Running Examples
 
 The `examples` directory contains a number of scripts that show how to implement different simulation methods using the Warp API. Most examples will generate USD files containing time-sampled animations (stored in the current working directory). Before running examples, users should ensure that the ``usd-core``, ``matplotlib``, and ``pyglet`` packages are installed using:
-
-    pip install warp-lang[extras]
-
-Or can be manually installed with:
 
     pip install usd-core matplotlib pyglet
 

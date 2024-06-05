@@ -114,6 +114,8 @@ First time:
 
 Per release:
 
+Remove any `.whl` files from the upload folder that contain a `+cpu` or `+cu` (local) tag.
+
 Run `python -m twine upload *` from the `.whl` packages folder (on Windows make sure to use `cmd` shell; Git Bash doesn't work).
 
 - username: `__token__`

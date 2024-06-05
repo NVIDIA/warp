@@ -9,10 +9,7 @@
 # CI/CD Pipeline Configuration
 # ==============================================================================
 
-include:
-  - /.gitlab/ci/common.yml
-  - project: "omniverse/sectools/vault"
-    file: ["templates/v2/omni-packman-s3-creds.yml", "templates/v3/linux/packman_s3.gitlab-ci.yml"]
+include: /.gitlab/ci/common.yml
 
 workflow:
   rules:
@@ -64,9 +61,13 @@ stages:
 
 linux-aarch64 build:
   stage: build
-  image: urm.nvidia.com/ct-omniverse-docker-local/u18-aarch64-builder:3.2.0
+  image: ubuntu:22.04
   extends:
     - .save_warp_bin_artifact
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - apt-get update && apt-get install build-essential curl --no-install-recommends -y
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - ./tools/ci/building/build-linux-x86_64/build.sh --no-docker # We are already using the builder image
     - mkdir -p warp/bin/linux-aarch64
@@ -335,7 +336,7 @@ trigger python 3.X test pipelines:
   stage: test
   image: busybox
   extends:
-    - .runner-utility-windows-x86_64
+    - .runner-utility-linux-x86_64
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
@@ -374,7 +375,7 @@ trigger debug build and test pipeline:
   stage: test
   image: busybox
   extends:
-    - .runner-utility-windows-x86_64
+    - .runner-utility-linux-x86_64
   needs: []
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
@@ -393,6 +394,34 @@ debug build and test:
   needs: [trigger debug build and test pipeline]
   trigger:
     include: /.gitlab/ci/debug-build-and-test.yml
+  extends:
+    - .trigger_common
+
+# Trigger CUDA 11 pipelines
+# Workaround from https://gitlab.com/gitlab-org/gitlab/-/issues/284086
+trigger cuda 11 pipeline:
+  stage: test
+  image: busybox
+  extends:
+    - .runner-utility-linux-x86_64
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH =~ /release-.*/
+    - when: manual # Can be triggered in all other scenarios
+      allow_failure: true
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - echo "Run this job to test Warp compiled with CUDA 11."
+
+# Uses the same Python version as the main pipeline.
+cuda 11 build and test:
+  stage: child pipelines
+  needs: [trigger cuda 11 pipeline]
+  trigger:
+    include: /.gitlab/ci/cuda-11-build-and-test.yml
   extends:
     - .trigger_common
 
@@ -434,10 +463,13 @@ create pypi wheels:
     - python3 -m pip install --upgrade pip
     - python3 -m pip install build
   script:
+    - sed -i "s/^\(.*\)$/\1+cu12/" VERSION.md  # Modify VERSION.md with +cu12
     - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
     - python3 -m build --wheel -C--build-option=-Plinux-x86_64
     - python3 -m build --wheel -C--build-option=-Plinux-aarch64
+    - sed -i "s/^\(.*\)+cu12$/\1+cpu/" VERSION.md  # Modify VERSION.md with +cu12 replaced by +cpu
     - python3 -m build --wheel -C--build-option=-Pmacos-universal
+    - sed -i "s/^\(.*\)+cpu$/\1/" VERSION.md  # Revert VERSION.md changes
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +
   artifacts:
@@ -447,41 +479,6 @@ create pypi wheels:
       - "dist/"
     when: always
 
-# Creates an artifact suitable for publishing the Kit extensions
-create kit artifacts:
-  stage: package
-  needs:
-    - linux-x86_64 build
-    - windows-x86_64 build
-  extends:
-    - .runner-utility-linux-x86_64
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-    - if: $CI_COMMIT_TAG
-    - if: $CI_COMMIT_BRANCH =~ /release-.*/
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event' # Can be manually triggered for MRs
-      when: manual
-      allow_failure: true
-  before_script:
-    # Move compiled binaries out of platform-specific directory
-    - mv warp/bin/linux-x86_64/warp.so warp/bin/
-    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
-    - rm -r warp/bin/linux-x86_64/
-    - rm -rf warp/native/cutlass
-    - apt-get update && apt-get install zip --no-install-recommends -y
-  script:
-    - python3 tools/ci/publishing/build_nodes_info.py
-    - mv warp exts/omni.warp.core/
-    - find . -type f -exec chmod 664 {} +
-    - find . -type d -exec chmod 775 {} +
-    - find exts/ -name .gitignore -delete
-    - zip -r kit-extensions.zip exts/
-  artifacts:
-    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
-    expose_as: "Kit Extensions"
-    paths:
-      - kit-extensions.zip
-
 # ==============================================================================
 # Deployment Jobs
 #
@@ -489,18 +486,33 @@ create kit artifacts:
 # GitLab service.
 # ==============================================================================
 
+publish wheels to gitlab pypi registry:
+  stage: deploy
+  image: python:3.11-slim
+  needs: ["create pypi wheels"]
+  extends:
+    - .runner-utility-linux-x86_64
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /release-.*/
+      when: manual
+      allow_failure: true
+  before_script:
+    - python3 -m pip install --upgrade pip
+    - python3 -m pip install --upgrade build twine
+  script:
+    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python3 -m twine upload --verbose --skip-existing --non-interactive --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist/*
+
 # Uploads the wheels to the internal GitLab package registry in the Warp project
 # See files at https://gitlab-master.nvidia.com/omniverse/warp/-/packages
 # Generated files will be in a branch/tag-specific folder
 publish wheels to gitlab package registry:
   stage: deploy
-  needs: ["create pypi wheels", "create kit artifacts"]
+  needs: ["create pypi wheels"]
   extends:
     - .runner-utility-linux-x86_64
   rules:
     - if: $CI_COMMIT_BRANCH =~ /release-.*/
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event' # Can be manually triggered for MRs
-      when: manual
+    - when: manual # If not auto-triggered, allow any pipeline to run this job manually
       allow_failure: true
   before_script:
     - apt-get update && apt-get install curl --no-install-recommends -y
@@ -508,25 +520,8 @@ publish wheels to gitlab package registry:
     - |
       for file in $(find . -name '*.whl'); do
           filename=$(basename -- "$file")
-          curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "$file" "https://gitlab-master.nvidia.com/api/v4/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/${filename}"
+          curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "$file" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/${filename}"
       done
-    - 'curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file kit-extensions.zip "https://gitlab-master.nvidia.com/api/v4/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/kit-extensions.zip"'
-
-# Uploads the extensions to packman.
-publish extensions to packman:
-  stage: deploy
-  needs: ["create kit artifacts"]
-  extends:
-    - .runner-utility-linux-x86_64
-  rules:
-    - if: $CI_COMMIT_BRANCH =~ /release-.*/
-      when: manual
-      allow_failure: true
-  script:
-    - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
-    - rm -rf exts
-    - unzip kit-extensions.zip
-    - tools/repo.sh publish_exts
 
 .build-docs-common:
   stage: deploy
@@ -601,5 +596,6 @@ pages:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   environment:
-    name: staging
+    name: GitLab Pages
+    deployment_tier: staging
     url: https://omniverse.gitlab-master-pages.nvidia.com/warp/
