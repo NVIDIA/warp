@@ -478,7 +478,7 @@ class bool:
     def __init__(self, x=False):
         self.value = x
 
-    def __bool__(self) -> bool:
+    def __bool__(self) -> builtins.bool:
         return self.value != 0
 
     def __float__(self) -> float:
@@ -4799,7 +4799,7 @@ def infer_argument_types(args, template_types, arg_names=None):
             arg_types.append(arg_type(dtype=arg.dtype, ndim=arg.ndim))
         elif arg_type in warp.types.scalar_and_bool_types:
             arg_types.append(arg_type)
-        elif arg_type in (int, float):
+        elif arg_type in (int, float, builtins.bool):
             # canonicalize type
             arg_types.append(warp.types.type_to_warp(arg_type))
         elif hasattr(arg_type, "_wp_scalar_type_"):
