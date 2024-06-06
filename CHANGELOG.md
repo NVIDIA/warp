@@ -9,24 +9,25 @@
 - Revised module compilation process to allow multiple processes to use the same kernel cache directory.
   Cached kernels will now be stored in hash-specific subdirectory.
 - Add runtime checks for `wp.MarchingCubes` on field dimensions and size
-- Fix memory leak in mesh BVH ([GH-225](https://github.com/NVIDIA/warp/issues/225))
+- Fix memory leak in `wp.Mesh` BVH ([GH-225](https://github.com/NVIDIA/warp/issues/225))
 - Use C++17 with NVCC when building the Warp library and user kernels
 - Increase PTX target architecture up to `sm_75` (from `sm_70`), enabling Turing ISA features
 - Extended NanoVDB support (see `warp.Volume`):
   - Add support for data-agnostic index grids, allocation at voxel granularity
-  - New `volume_lookup_index`, `volume_sample_index` and generic `volume_sample`/`volume_lookup`/`volume_store` kernel-level functions
+  - New `wp.volume_lookup_index()`, `wp.volume_sample_index()` and generic `wp.volume_sample()`/`wp.volume_lookup()`/`wp.volume_store()` kernel-level functions
   - Zero-copy aliasing of in-memory grids, support for multi-grid buffers
   - Grid introspection and blind data access capabilities
-  - warp.fem can now work directly on NanoVDB grids using `warp.fem.Nanogrid`
-  - Fixed `volume_sample_v` and `volume_store_*` adjoints
-  - Prevent `volume_store` from overwriting grid background values
-- Improve validation of user-provided fields and values in warp.fem
-- Support headless rendering of `OpenGLRenderer` via `pyglet.options["headless"] = True`
-- `RegisteredGLBuffer` can fall back to CPU-bound copying if CUDA/OpenGL interop is not available
+  - `warp.fem` can now work directly on NanoVDB grids using `warp.fem.Nanogrid`
+  - Fixed `wp.volume_sample_v()` and `wp.volume_store_*()` adjoints
+  - Prevent `wp.volume_store()` from overwriting grid background values
+- Improve validation of user-provided fields and values in `warp.fem`
+- Support headless rendering of `wp.render.OpenGLRenderer` via `pyglet.options["headless"] = True`
+- `wp.render.RegisteredGLBuffer` can fall back to CPU-bound copying if CUDA/OpenGL interop is not available
 - Fix to forward `wp.copy()` params to gradient and adjoint copy function calls.
 - Fix so that `wp.randn()` doesn't return inf
 - Fix slicing of arrays with gradients in kernels
-- Fix function overload caching: ensure module is rebuilt if any function overloads are modified.
+- Fix function overload caching: ensure module is rebuilt if any function overloads are modified
+- Publish CUDA 12.5 binaries for Hopper support, see https://github.com/nvidia/warp?tab=readme-ov-file#installing for details
 
 ## [1.1.1] - 2024-05-24
 
