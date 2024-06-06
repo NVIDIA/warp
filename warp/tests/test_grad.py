@@ -742,7 +742,7 @@ def test_gradient_slice_2d(test, device):
         wp.launch(square_slice_2d_kernel, dim=a.shape[1], inputs=[a, b, 1])
 
         # use internal gradients (.grad), adj_inputs are None
-        wp.launch(square_slice_2d_kernel, dim=a.shape[1], inputs=[a, b, 1], adjoint=True, adj_inputs=[None, None])
+        wp.launch(square_slice_2d_kernel, dim=a.shape[1], inputs=[a, b, 1], adjoint=True, adj_inputs=[None, None, 1])
 
         assert_np_equal(a.grad.numpy(), np.array([[0.0, 0.0], [6.0, 8.0], [0.0, 0.0]]))
 
