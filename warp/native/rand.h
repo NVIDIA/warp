@@ -13,6 +13,10 @@
 #define M_PI_F 3.14159265358979323846f
 #endif
 
+#ifndef LOG_EPSILON
+#define LOG_EPSILON 5.96e-8f
+#endif
+
 namespace wp
 {
 
@@ -33,7 +37,7 @@ inline CUDA_CALLABLE float randf(uint32& state) { state = rand_pcg(state); retur
 inline CUDA_CALLABLE float randf(uint32& state, float min, float max) { return (max - min) * randf(state) + min; }
 
 // Box-Muller method
-inline CUDA_CALLABLE float randn(uint32& state) { return sqrt(-2.f * log(randf(state))) * cos(2.f * M_PI_F * randf(state)); }
+inline CUDA_CALLABLE float randn(uint32& state) { return sqrt(-2.f * log(randf(state) + LOG_EPSILON)) * cos(2.f * M_PI_F * randf(state)); }
 
 inline CUDA_CALLABLE void adj_rand_init(int seed, int& adj_seed, float adj_ret) {}
 inline CUDA_CALLABLE void adj_rand_init(int seed, int offset, int& adj_seed, int& adj_offset, float adj_ret) {}
