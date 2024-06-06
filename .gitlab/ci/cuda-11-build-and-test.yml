@@ -312,7 +312,6 @@ publish wheels to gitlab pypi registry:
     - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python3 -m twine upload --verbose --skip-existing --non-interactive --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist-github/*
 
 # Uploads the wheels to the internal GitLab package registry in the Warp project
-# See files at https://gitlab-master.nvidia.com/omniverse/warp/-/packages
 # Generated files will be in a branch/tag-specific folder
 publish wheels to gitlab package registry:
   stage: deploy
@@ -337,6 +336,7 @@ publish wheels to gitlab package registry:
       else
         echo "kit-extensions.zip not found, skipping upload."
       fi
+    - echo "See the published files at $CI_PROJECT_URL/-/packages"
 
 
 # Uploads the extensions to packman.
