@@ -17,16 +17,17 @@
   - New `wp.volume_lookup_index()`, `wp.volume_sample_index()` and generic `wp.volume_sample()`/`wp.volume_lookup()`/`wp.volume_store()` kernel-level functions
   - Zero-copy aliasing of in-memory grids, support for multi-grid buffers
   - Grid introspection and blind data access capabilities
-  - warp.fem can now work directly on NanoVDB grids using `warp.fem.Nanogrid`
+  - `warp.fem` can now work directly on NanoVDB grids using `warp.fem.Nanogrid`
   - Fixed `wp.volume_sample_v()` and `wp.volume_store_*()` adjoints
   - Prevent `wp.volume_store()` from overwriting grid background values
-- Improve validation of user-provided fields and values in warp.fem
+- Improve validation of user-provided fields and values in `warp.fem`
 - Support headless rendering of `wp.render.OpenGLRenderer` via `pyglet.options["headless"] = True`
 - `wp.render.RegisteredGLBuffer` can fall back to CPU-bound copying if CUDA/OpenGL interop is not available
 - Fix to forward `wp.copy()` params to gradient and adjoint copy function calls.
 - Fix so that `wp.randn()` doesn't return inf
 - Fix slicing of arrays with gradients in kernels
-- Fix function overload caching: ensure module is rebuilt if any function overloads are modified.
+- Fix function overload caching: ensure module is rebuilt if any function overloads are modified
+- Publish CUDA 12.5 binaries for Hopper support, see https://github.com/nvidia/warp?tab=readme-ov-file#installing for details
 
 ## [1.1.1] - 2024-05-24
 
