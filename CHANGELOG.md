@@ -24,6 +24,7 @@
 - Support headless rendering of `OpenGLRenderer` via `pyglet.options["headless"] = True`
 - `RegisteredGLBuffer` can fall back to CPU-bound copying if CUDA/OpenGL interop is not available
 - Fix to forward `wp.copy()` params to gradient and adjoint copy function calls.
+- Fix slicing of arrays with gradients in kernels
 
 ## [1.1.1] - 2024-05-24
 
