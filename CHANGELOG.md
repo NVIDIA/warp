@@ -5,12 +5,12 @@
 - Add a not-a-number floating-point constant that can be used as `wp.NAN` or `wp.nan`.
 - Add `wp.isnan()`, `wp.isinf()`, and `wp.isfinite()` for scalars, vectors, matrices, etc.
 - Improve kernel cache reuse by hashing just the local module constants. Previously, a
-  module's hash was affected by all constants declared in a Warp program.
+  module's hash was affected by all `wp.constant()` variables declared in a Warp program.
 - Revised module compilation process to allow multiple processes to use the same kernel cache directory.
   Cached kernels will now be stored in hash-specific subdirectory.
 - Add runtime checks for `wp.MarchingCubes` on field dimensions and size
 - Fix memory leak in `wp.Mesh` BVH ([GH-225](https://github.com/NVIDIA/warp/issues/225))
-- Use C++17 with NVCC when building the Warp library and user kernels
+- Use C++17 when building the Warp library and user kernels
 - Increase PTX target architecture up to `sm_75` (from `sm_70`), enabling Turing ISA features
 - Extended NanoVDB support (see `warp.Volume`):
   - Add support for data-agnostic index grids, allocation at voxel granularity
@@ -23,15 +23,21 @@
 - Improve validation of user-provided fields and values in `warp.fem`
 - Support headless rendering of `wp.render.OpenGLRenderer` via `pyglet.options["headless"] = True`
 - `wp.render.RegisteredGLBuffer` can fall back to CPU-bound copying if CUDA/OpenGL interop is not available
-- Fix to forward `wp.copy()` params to gradient and adjoint copy function calls.
-- Fix so that `wp.randn()` doesn't return inf
-- Fix slicing of arrays with gradients in kernels
-- Fix function overload caching: ensure module is rebuilt if any function overloads are modified
+- Clarify terms for external contributions, please see CONTRIBUTING.md for details
+- Improve performance of `wp.sparse.bsr_mm()` by ~5x on benchmark problems
+- Fix for XPBD incorrectly indexing into of joint actuations `joint_act` arrays
+- Fix for mass matrix gradients computation in `wp.sim.FeatherstoneIntegrator()`
+- Fix for handling of `--msvc_path` in build scripts
+- Fix for `wp.copy()` params to record dest and src offset parameters on `wp.Tape()`
+- Fix for `wp.randn()` to ensure return values are finite
+- Fix for slicing of arrays with gradients in kernels
+- Fix for function overload caching, ensure module is rebuilt if any function overloads are modified
+- Fix for handling of `bool` types in generic kernels
 - Publish CUDA 12.5 binaries for Hopper support, see https://github.com/nvidia/warp?tab=readme-ov-file#installing for details
 
 ## [1.1.1] - 2024-05-24
 
-- Implicitly initialize Warp when first required
+- `wp.init()` is no longer required to be called explicitly and will be performed on first call to the API
 - Speed up `omni.warp.core`'s startup time
 
 ## [1.1.0] - 2024-05-09
