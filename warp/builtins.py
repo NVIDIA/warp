@@ -1395,7 +1395,6 @@ def tile_zeros_value_func(arg_types, kwds, templates):
     return array(dtype=dtype)
 
 
-
 add_builtin(
     "tile_zeros",
     input_types={"m": int, "n": int, "dtype": Scalar},
@@ -1431,17 +1430,18 @@ def tile_load_value_func(arg_types, kwds, templates):
         raise RuntimeError("'n' keyword argument must be specified when calling tile_zeros() function")
 
     m, n = kwds["m"], kwds["n"]
+    dtype = arg_types[0].dtype
 
-    templates.append(arg_types[0].dtype)
+    templates.append(dtype)
     templates.append(m)
     templates.append(n)
 
     global shared_memory_id
-    templates.append(shared_memory_id)
+    #templates.append(shared_memory_id)
 
     shared_memory_id += 1
 
-    return array(dtype=arg_types[0].dtype)
+    return Tile(dtype, m, n, "load")#array(dtype=arg_types[0].dtype)
 
 
 
@@ -1473,8 +1473,8 @@ def tile_store_value_func(arg_types, kwds, templates):
     if not type_is_int(arg_types[2]):
         raise RuntimeError("tile_store() argument 2 must be an integer")
 
-    if not is_array(arg_types[3]):
-        raise RuntimeError("tile_store() argument 3 must be an array")
+    if not is_tile(arg_types[3]):
+        raise RuntimeError("tile_store() argument 3 must be a tile")
 
     return None
 

@@ -6,7 +6,7 @@ import torch
 #wp.config.mode = "debug"
 
 wp.init()
-wp.set_module_options({"enable_backward": False})
+wp.set_module_options({"enable_backward": True})
 wp.set_device("cuda:0")
 
 
@@ -36,118 +36,136 @@ def test_copy_tiled():
     A = rng.random((M, N), dtype=np.float32)
     B = rng.random((M, N), dtype=np.float32)
 
-    A_wp = wp.array(A)
-    B_wp = wp.array(B)
+    A_wp = wp.array(A, requires_grad=True)
+    B_wp = wp.array(B, requires_grad=True)
 
-    wp.launch(copy_tiled, dim=[int(M/TILE_M), int(N/TILE_N)], inputs=[A_wp, B_wp], tile_size=8)
+    with wp.Tape() as tape:
+        wp.launch(copy_tiled, dim=[int(M/TILE_M), int(N/TILE_N)], inputs=[A_wp, B_wp], tile_size=8)
 
+    # verify forward pass
     assert(np.allclose(A, B_wp.numpy(), rtol=1.e-4))
-    
-    print("Copy passed")
+    print("Copy forward passed")
+
+    # verify backward pass
+    B_wp.grad = wp.ones_like(B_wp)
+    tape.backward()
+
+    assert(np.allclose(A_wp.grad.numpy(), B_wp.grad.numpy()))
+    print("Copy backward passed")
 
 
-#test_copy_tiled()
+test_copy_tiled()
 
 
-@wp.kernel
-def gemm(A: wp.array2d(dtype=float),
-         B: wp.array2d(dtype=float),
-         C: wp.array2d(dtype=float)):
+# @wp.kernel
+# def gemm(A: wp.array2d(dtype=float),
+#          B: wp.array2d(dtype=float),
+#          C: wp.array2d(dtype=float)):
 
-    # output index
-    i, j = wp.tid()
+#     # output index
+#     i, j = wp.tid()
 
-    sum = float(0.0)
+#     sum = float(0.0)
 
-    for k in range(0, A.shape[1]):
-        sum += A[i, k]*B[k, j]
+#     for k in range(0, A.shape[1]):
+#         sum += A[i, k]*B[k, j]
 
-    C[i, j] = sum
-
-
-
-TILE_M = wp.constant(64)
-TILE_N = wp.constant(64)
-TILE_K = wp.constant(8)
-
-@wp.kernel
-def gemm_tiled(A: wp.array2d(dtype=float),
-               B: wp.array2d(dtype=float),
-               C: wp.array2d(dtype=float)):
-
-    # output tile index
-    i, j = wp.tid()
-
-    sum = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32)
-
-    M = A.shape[0]
-    N = B.shape[1]
-    K = A.shape[1]
-
-    count = int(K / 8) # todo: must be the same as TILE_K
-
-    for k in range(count):
-
-        a = wp.tile_load(A, i, k, m=TILE_M, n=TILE_K)
-        b = wp.tile_load(B, k, j, m=TILE_K, n=TILE_N)
-
-        # sum += a*b
-        wp.tile_matmul(a, b, sum)
-
-    wp.tile_store(C, i, j, sum)
+#     C[i, j] = sum
 
 
-M = TILE_M*7
-K = TILE_K*4
-N = TILE_N*6
 
-rng = np.random.default_rng(42)
-A = rng.random((M, K), dtype=np.float32)
-B = rng.random((K, N), dtype=np.float32)
-C = np.zeros((M, N), dtype=np.float32)
+# TILE_M = wp.constant(64)
+# TILE_N = wp.constant(64)
+# TILE_K = wp.constant(8)
 
-A_wp = wp.array(A)
-B_wp = wp.array(B)
-C_wp = wp.array(C)
+# @wp.kernel
+# def gemm_tiled(A: wp.array2d(dtype=float),
+#                B: wp.array2d(dtype=float),
+#                C: wp.array2d(dtype=float)):
 
-iters = 10
+#     # output tile index
+#     i, j = wp.tid()
 
-with wp.ScopedTimer("NumPy"):
+#     sum = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32)
 
-    for i in range(iters):
-        C = A@B
+#     M = A.shape[0]
+#     N = B.shape[1]
+#     K = A.shape[1]
 
-wp.force_load(device="cuda:0")
+#     count = int(K / TILE_K) # todo: must be the same as TILE_K
 
-with wp.ScopedTimer("Warp", cuda_filter=wp.TIMING_KERNEL):
+#     for k in range(count):
 
-    for i in range(iters):
-        wp.launch(gemm, dim=(M, N), inputs=[A_wp, B_wp, C_wp])
+#         a = wp.tile_load(A, i, k, m=TILE_M, n=TILE_K)
+#         b = wp.tile_load(B, k, j, m=TILE_K, n=TILE_N)
 
+#         # sum += a*b
+#         wp.tile_matmul(a, b, sum)
 
-    print(np.allclose(C, C_wp.numpy(), rtol=1.e-4))
-
-    for i in range(iters):
-        wp.launch(gemm_tiled, dim=(int(M/TILE_M), int(N/TILE_N)), inputs=[A_wp, B_wp, C_wp], tile_size=128)
-        wp.synchronize()
+#     wp.tile_store(C, i, j, sum)
 
 
-    print(np.allclose(C, C_wp.numpy(), rtol=1.e-4))
+# s = 0.0
+
+# for i, j in tile.shape:
+
+#     s += tile[i-1, i-1]
+#     s += tile[i, i-1]
+#     s += tile[i,]
 
 
-A_tc = torch.from_numpy(A).to("cuda:0")
-B_tc = torch.from_numpy(B).to("cuda:0")
-C_tc = torch.from_numpy(C).to("cuda:0")
 
-for i in range(10):
-    torch.matmul(A_tc, B_tc, out=C_tc)
+# M = TILE_M*7
+# K = TILE_K*4
+# N = TILE_N*6
 
-with wp.ScopedTimer("Torch"):
+# rng = np.random.default_rng(42)
+# A = rng.random((M, K), dtype=np.float32)
+# B = rng.random((K, N), dtype=np.float32)
+# C = np.zeros((M, N), dtype=np.float32)
 
-    for i in range(iters):
-        torch.matmul(A_tc, B_tc, out=C_tc)
+# A_wp = wp.array(A)
+# B_wp = wp.array(B)
+# C_wp = wp.array(C)
 
-    torch.cuda.synchronize()
+# iters = 10
+
+# with wp.ScopedTimer("NumPy"):
+
+#     for i in range(iters):
+#         C = A@B
+
+# wp.force_load(device="cuda:0")
+
+# with wp.ScopedTimer("Warp", cuda_filter=wp.TIMING_KERNEL):
+
+#     for i in range(iters):
+#         wp.launch(gemm, dim=(M, N), inputs=[A_wp, B_wp, C_wp])
+
+
+#     print(np.allclose(C, C_wp.numpy(), rtol=1.e-4))
+
+#     for i in range(iters):
+#         wp.launch(gemm_tiled, dim=(int(M/TILE_M), int(N/TILE_N)), inputs=[A_wp, B_wp, C_wp], tile_size=128)
+#         wp.synchronize()
+
+
+#     print(np.allclose(C, C_wp.numpy(), rtol=1.e-4))
+
+
+# A_tc = torch.from_numpy(A).to("cuda:0")
+# B_tc = torch.from_numpy(B).to("cuda:0")
+# C_tc = torch.from_numpy(C).to("cuda:0")
+
+# for i in range(10):
+#     torch.matmul(A_tc, B_tc, out=C_tc)
+
+# with wp.ScopedTimer("Torch"):
+
+#     for i in range(iters):
+#         torch.matmul(A_tc, B_tc, out=C_tc)
+
+#     torch.cuda.synchronize()
 
     
 
