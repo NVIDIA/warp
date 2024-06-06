@@ -1,0 +1,24 @@
+name: Bug Report
+description: Create a report to help us improve Warp.
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: textarea
+    attributes:
+      label: Bug Description
+      description: >-
+        Describe the bug and how to reproduce it. Self-contained code samples are welcome!
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: System Information
+      description: >-
+        Provide some details about your environment, such as the Warp version, Python version, and OS.
+      placeholder: (Optional)
+    validations:
+      required: false
