@@ -1487,32 +1487,33 @@ class Module:
                     ch.update(bytes(s, "utf-8"))
 
                 # functions source
-                for func in module.functions.values():
-                    s = func.adj.source
-                    ch.update(bytes(s, "utf-8"))
+                for function in module.functions.values():
+                    # include all overloads
+                    for sig, func in function.user_overloads.items():
+                        # signature
+                        ch.update(bytes(sig, "utf-8"))
 
-                    if func.custom_grad_func:
-                        s = func.custom_grad_func.adj.source
-                        ch.update(bytes(s, "utf-8"))
-                    if func.custom_replay_func:
-                        s = func.custom_replay_func.adj.source
-                    if func.replay_snippet:
-                        s = func.replay_snippet
-                    if func.native_snippet:
-                        s = func.native_snippet
-                        ch.update(bytes(s, "utf-8"))
-                    if func.adj_native_snippet:
-                        s = func.adj_native_snippet
+                        # source
+                        s = func.adj.source
                         ch.update(bytes(s, "utf-8"))
 
-                    # cache func arg types
-                    for arg, arg_type in func.adj.arg_types.items():
-                        s = f"{arg}: {get_type_name(arg_type)}"
-                        ch.update(bytes(s, "utf-8"))
+                        if func.custom_grad_func:
+                            s = func.custom_grad_func.adj.source
+                            ch.update(bytes(s, "utf-8"))
+                        if func.custom_replay_func:
+                            s = func.custom_replay_func.adj.source
+                        if func.replay_snippet:
+                            s = func.replay_snippet
+                        if func.native_snippet:
+                            s = func.native_snippet
+                            ch.update(bytes(s, "utf-8"))
+                        if func.adj_native_snippet:
+                            s = func.adj_native_snippet
+                            ch.update(bytes(s, "utf-8"))
 
-                    # Populate constants referenced in this function
-                    if func.adj:
-                        module.constants.update(func.adj.get_constant_references())
+                        # Populate constants referenced in this function
+                        if func.adj:
+                            module.constants.update(func.adj.get_constant_references())
 
                 # kernel source
                 for kernel in module.kernels.values():
