@@ -5058,13 +5058,20 @@ def copy(
 
     # copy gradient, if needed
     if hasattr(src, "grad") and src.grad is not None and hasattr(dest, "grad") and dest.grad is not None:
-        copy(dest.grad, src.grad, stream=stream)
+        copy(dest.grad, src.grad, dest_offset=dest_offset, src_offset=src_offset, count=count, stream=stream)
 
         if runtime.tape:
-            runtime.tape.record_func(backward=lambda: adj_copy(dest.grad, src.grad, stream=stream), arrays=[dest, src])
+            runtime.tape.record_func(
+                backward=lambda: adj_copy(
+                    dest.grad, src.grad, dest_offset=dest_offset, src_offset=src_offset, count=count, stream=stream
+                ),
+                arrays=[dest, src],
+            )
 
 
-def adj_copy(adj_dest: warp.array, adj_src: warp.array, stream: Stream = None):
+def adj_copy(
+    adj_dest: warp.array, adj_src: warp.array, dest_offset: int, src_offset: int, count: int, stream: Stream = None
+):
     """Copy adjoint operation for wp.copy() calls on the tape.
 
     Args:
@@ -5072,7 +5079,7 @@ def adj_copy(adj_dest: warp.array, adj_src: warp.array, stream: Stream = None):
         adj_src: Source array adjoint
         stream: The stream on which the copy was performed in the forward pass
     """
-    copy(adj_src, adj_dest, stream=stream)
+    copy(adj_src, adj_dest, dest_offset=dest_offset, src_offset=src_offset, count=count, stream=stream)
 
 
 def type_str(t):

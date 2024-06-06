@@ -23,6 +23,7 @@
 - Improve validation of user-provided fields and values in warp.fem
 - Support headless rendering of `OpenGLRenderer` via `pyglet.options["headless"] = True`
 - `RegisteredGLBuffer` can fall back to CPU-bound copying if CUDA/OpenGL interop is not available
+- Fix to forward `wp.copy()` params to gradient and adjoint copy function calls.
 
 ## [1.1.1] - 2024-05-24
 
