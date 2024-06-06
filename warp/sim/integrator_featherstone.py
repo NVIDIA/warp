@@ -1288,6 +1288,7 @@ def dense_solve(
     n: int,
     L_start: int,
     b_start: int,
+    A: wp.array(dtype=float),
     L: wp.array(dtype=float),
     b: wp.array(dtype=float),
     # outputs
@@ -1303,13 +1304,14 @@ def adj_dense_solve(
     n: int,
     L_start: int,
     b_start: int,
+    A: wp.array(dtype=float),
     L: wp.array(dtype=float),
     b: wp.array(dtype=float),
     # outputs
     x: wp.array(dtype=float),
     tmp: wp.array(dtype=float),
 ):
-    if not tmp or not wp.adjoint[x] or not wp.adjoint[L]:
+    if not tmp or not wp.adjoint[x] or not wp.adjoint[A] or not wp.adjoint[L]:
         return
     for i in range(n):
         tmp[b_start + i] = 0.0
@@ -1324,12 +1326,17 @@ def adj_dense_solve(
         for j in range(n):
             wp.adjoint[L][L_start + dense_index(n, i, j)] += -tmp[b_start + i] * x[b_start + j]
 
+    for i in range(n):
+        for j in range(n):
+            wp.adjoint[A][L_start + dense_index(n, i, j)] += -tmp[b_start + i] * x[b_start + j]
+
 
 @wp.kernel
 def eval_dense_solve_batched(
     L_start: wp.array(dtype=int),
     L_dim: wp.array(dtype=int),
     b_start: wp.array(dtype=int),
+    A: wp.array(dtype=float),
     L: wp.array(dtype=float),
     b: wp.array(dtype=float),
     # outputs
@@ -1338,7 +1345,7 @@ def eval_dense_solve_batched(
 ):
     batch = wp.tid()
 
-    dense_solve(L_dim[batch], L_start[batch], b_start[batch], L, b, x, tmp)
+    dense_solve(L_dim[batch], L_start[batch], b_start[batch], A, L, b, x, tmp)
 
 
 @wp.kernel
@@ -1509,7 +1516,6 @@ class FeatherstoneIntegrator(Integrator):
             self.L = wp.zeros_like(self.H)
 
         if model.body_count:
-            # TODO use requires_grad here?
             self.body_I_m = wp.empty(
                 (model.body_count,), dtype=wp.spatial_matrix, device=model.device, requires_grad=model.requires_grad
             )
@@ -1859,6 +1865,7 @@ class FeatherstoneIntegrator(Integrator):
                             self.articulation_H_start,
                             self.articulation_H_rows,
                             self.articulation_dof_start,
+                            self.H,
                             self.L,
                             state_aug.joint_tau,
                         ],

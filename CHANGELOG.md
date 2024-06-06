@@ -26,6 +26,7 @@
 - Fix to forward `wp.copy()` params to gradient and adjoint copy function calls.
 - Fix so that `wp.randn()` doesn't return inf
 - Fix slicing of arrays with gradients in kernels
+- Fix function overload caching: ensure module is rebuilt if any function overloads are modified.
 
 ## [1.1.1] - 2024-05-24
 

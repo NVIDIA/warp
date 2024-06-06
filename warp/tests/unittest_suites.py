@@ -144,6 +144,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_mesh_query_ray import TestMeshQueryRay
     from warp.tests.test_mlp import TestMLP
     from warp.tests.test_model import TestModel
+    from warp.tests.test_module_hashing import TestModuleHashing
     from warp.tests.test_modules_lite import TestModuleLite
     from warp.tests.test_multigpu import TestMultiGPU
     from warp.tests.test_noise import TestNoise
@@ -234,6 +235,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestMeshQueryRay,
         TestMLP,
         TestModel,
+        TestModuleHashing,
         TestModuleLite,
         TestMultiGPU,
         TestNoise,
@@ -300,6 +302,7 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_mesh_query_aabb import TestMeshQueryAABBMethods
     from warp.tests.test_mesh_query_point import TestMeshQueryPoint
     from warp.tests.test_mesh_query_ray import TestMeshQueryRay
+    from warp.tests.test_module_hashing import TestModuleHashing
     from warp.tests.test_modules_lite import TestModuleLite
     from warp.tests.test_noise import TestNoise
     from warp.tests.test_operators import TestOperators
@@ -342,6 +345,7 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestMeshQueryAABBMethods,
         TestMeshQueryPoint,
         TestMeshQueryRay,
+        TestModuleHashing,
         TestModuleLite,
         TestNoise,
         TestOperators,
