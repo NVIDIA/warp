@@ -489,7 +489,10 @@ CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, int i)
     assert(i >= 0 && i < src.shape[0]);
 
     array_t<T> a;
-    a.data = data_at_byte_offset(src, byte_offset(src, i));
+    size_t offset = byte_offset(src, i);
+    a.data = data_at_byte_offset(src, offset);
+    if (src.grad)
+        a.grad = grad_at_byte_offset(src, offset);
     a.shape[0] = src.shape[1];
     a.shape[1] = src.shape[2];
     a.shape[2] = src.shape[3];
@@ -509,7 +512,10 @@ CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, int i, int j)
     assert(j >= 0 && j < src.shape[1]);
 
     array_t<T> a;
-    a.data = data_at_byte_offset(src, byte_offset(src, i, j));
+    size_t offset = byte_offset(src, i, j);
+    a.data = data_at_byte_offset(src, offset);
+    if (src.grad)
+        a.grad = grad_at_byte_offset(src, offset);
     a.shape[0] = src.shape[2];
     a.shape[1] = src.shape[3];
     a.strides[0] = src.strides[2];
@@ -528,7 +534,10 @@ CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, int i, int j, int k)
     assert(k >= 0 && k < src.shape[2]);
 
     array_t<T> a;
-    a.data = data_at_byte_offset(src, byte_offset(src, i, j, k));
+    size_t offset = byte_offset(src, i, j, k);
+    a.data = data_at_byte_offset(src, offset);
+    if (src.grad)
+        a.grad = grad_at_byte_offset(src, offset);
     a.shape[0] = src.shape[3];
     a.strides[0] = src.strides[3];
     a.ndim = src.ndim-3;
