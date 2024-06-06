@@ -109,6 +109,46 @@ def test_rand(test, device):
 
 
 @wp.kernel
+def randn_kernel(
+    x: wp.array(dtype=float),
+):
+    tid = wp.tid()
+    r = wp.rand_init(tid)
+    x[tid] = wp.randn(r)
+
+
+def test_randn(test, device):
+    N = 100000000
+
+    samples = wp.zeros(N, dtype=float, device=device)
+
+    wp.launch(randn_kernel, inputs=[samples], dim=N, device=device)
+
+    randn_samples = samples.numpy()
+
+    test.assertFalse(np.any(np.isinf(randn_samples)))
+    test.assertFalse(np.any(np.isnan(randn_samples)))
+
+    randn_true = np.array(
+        [
+            -1.8213255,
+            0.27881497,
+            -1.1122388,
+            0.5936895,
+            0.04976363,
+            0.69087356,
+            0.2935363,
+            0.8405019,
+            -0.8436684,
+            0.53108305,
+        ]
+    )
+
+    err = np.max(np.abs(randn_samples[0:10] - randn_true))
+    test.assertTrue(err < 1e-04)
+
+
+@wp.kernel
 def sample_cdf_kernel(kernel_seed: int, cdf: wp.array(dtype=float), samples: wp.array(dtype=int)):
     tid = wp.tid()
     state = wp.rand_init(kernel_seed, tid)
@@ -273,6 +313,7 @@ class TestRand(unittest.TestCase):
 
 
 add_function_test(TestRand, "test_rand", test_rand, devices=devices)
+add_function_test(TestRand, "test_randn", test_randn, devices=devices)
 add_function_test(TestRand, "test_sample_cdf", test_sample_cdf, devices=devices)
 add_function_test(TestRand, "test_sampling_methods", test_sampling_methods, devices=devices)
 add_function_test(TestRand, "test_poisson", test_poisson, devices=devices)
