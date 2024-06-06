@@ -1671,12 +1671,12 @@ class Module:
                 if device.is_cpu:
                     # build
                     try:
-                        cpp_path = os.path.join(build_dir, "module_codegen.cpp")
+                        source_code_path = os.path.join(build_dir, "module_codegen.cpp")
 
                         # write cpp sources
                         cpp_source = builder.codegen("cpu")
 
-                        with open(cpp_path, "w") as cpp_file:
+                        with open(source_code_path, "w") as cpp_file:
                             cpp_file.write(cpp_source)
 
                         output_path = os.path.join(build_dir, output_name)
@@ -1685,7 +1685,7 @@ class Module:
                         with ScopedTimer("Compile x86", active=warp.config.verbose):
                             warp.build.build_cpu(
                                 output_path,
-                                cpp_path,
+                                source_code_path,
                                 mode=self.options["mode"],
                                 fast_math=self.options["fast_math"],
                                 verify_fp=warp.config.verify_fp,
@@ -1698,12 +1698,12 @@ class Module:
                 elif device.is_cuda:
                     # build
                     try:
-                        cu_path = os.path.join(build_dir, "module_codegen.cu")
+                        source_code_path = os.path.join(build_dir, "module_codegen.cu")
 
                         # write cuda sources
                         cu_source = builder.codegen("cuda")
 
-                        with open(cu_path, "w") as cu_file:
+                        with open(source_code_path, "w") as cu_file:
                             cu_file.write(cu_source)
 
                         output_path = os.path.join(build_dir, output_name)
@@ -1711,7 +1711,7 @@ class Module:
                         # generate PTX or CUBIN
                         with ScopedTimer("Compile CUDA", active=warp.config.verbose):
                             warp.build.build_cuda(
-                                cu_path,
+                                source_code_path,
                                 output_arch,
                                 output_path,
                                 config=self.options["mode"],
@@ -1733,15 +1733,27 @@ class Module:
                     # another process likely updated the module dir first
                     pass
 
-                if os.path.exists(module_dir) and not os.path.exists(binary_path):
-                    # copy our output file to the destination module
-                    # this is necessary in case different processes
-                    # have different GPU architectures / devices
+                if os.path.exists(module_dir):
+                    if not os.path.exists(binary_path):
+                        # copy our output file to the destination module
+                        # this is necessary in case different processes
+                        # have different GPU architectures / devices
+                        try:
+                            os.rename(output_path, binary_path)
+                        except (OSError, FileExistsError):
+                            # another process likely updated the module dir first
+                            pass
+
                     try:
-                        os.rename(output_path, binary_path)
+                        final_source_path = os.path.join(module_dir, os.path.basename(source_code_path))
+                        if not os.path.exists(final_source_path):
+                            os.rename(source_code_path, final_source_path)
                     except (OSError, FileExistsError):
                         # another process likely updated the module dir first
                         pass
+                    except Exception as e:
+                        # We don't need source_code_path to be copied successfully to proceed, so warn and keep running
+                        warp.utils.warn(f"Exception when renaming {source_code_path}: {e}")
 
             # -----------------------------------------------------------
             # Load CPU or CUDA binary
