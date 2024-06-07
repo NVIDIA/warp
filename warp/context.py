@@ -18,6 +18,7 @@ import os
 import platform
 import sys
 import types
+import typing
 from copy import copy as shallowcopy
 from pathlib import Path
 from struct import pack as struct_pack
@@ -5214,6 +5215,9 @@ def type_str(t):
             return f"Transformation[{type_str(t._wp_scalar_type_)}]"
 
         raise TypeError("Invalid vector or matrix dimensions")
+    elif typing.get_origin(t) in (List, Mapping, Sequence, Union, Tuple):
+        args_repr = ", ".join(type_str(x) for x in typing.get_args(t))
+        return f"{t.__name__}[{args_repr}]"
 
     return t.__name__
 
