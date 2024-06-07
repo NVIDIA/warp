@@ -320,7 +320,7 @@ windows-x64_64 docs:
     - python build_docs.py
     - mv docs/_build/html/ ./public/
   after_script:
-    - echo "You can view the website at https://omniverse.gitlab-master-pages.nvidia.com/-/warp/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
+    - echo "View the website at https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
 
 # ==============================================================================
 # Child pipelines
@@ -503,7 +503,6 @@ publish wheels to gitlab pypi registry:
     - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python3 -m twine upload --verbose --skip-existing --non-interactive --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist/*
 
 # Uploads the wheels to the internal GitLab package registry in the Warp project
-# See files at https://gitlab-master.nvidia.com/omniverse/warp/-/packages
 # Generated files will be in a branch/tag-specific folder
 publish wheels to gitlab package registry:
   stage: deploy
@@ -522,6 +521,7 @@ publish wheels to gitlab package registry:
           filename=$(basename -- "$file")
           curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "$file" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/${filename}"
       done
+    - echo "See the published files at $CI_PROJECT_URL/-/packages"
 
 .build-docs-common:
   stage: deploy
@@ -556,9 +556,10 @@ merge request docs:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   environment:
     name: review/$CI_MERGE_REQUEST_IID
-    url: https://omniverse.gitlab-master-pages.nvidia.com/-/warp/-/jobs/$CI_JOB_ID/artifacts/public/index.html
+    url: https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html
   after_script:
-    - echo "You can view the website at https://omniverse.gitlab-master-pages.nvidia.com/-/warp/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
+    - echo "View the website at https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
+
 
 # Merge requests: Ensure that exports.h, stubs.py, functions.rst have been
 # manually added to the MR if they are changed
@@ -582,14 +583,13 @@ check generated files:
   script:
     - >
       git diff --exit-code warp/stubs.py docs/modules/functions.rst ||
-      (echo "Please run build_docs.py (or download from https://gitlab-master.nvidia.com/omniverse/warp/-/jobs/$CI_JOB_ID/artifacts/browse) and add modified files to your merge request." && false)
+      (echo "Please run build_docs.py (or download from $CI_JOB_URL/artifacts/browse) and add modified files to your merge request." && false)
     - >
       git diff --exit-code warp/native/exports.h ||
-      (echo "Please run build_lib.py  (or download from https://gitlab-master.nvidia.com/omniverse/warp/-/jobs/$CI_JOB_ID/artifacts/browse) and add warp/native/exports.h to your merge request." && false)
+      (echo "Please run build_lib.py  (or download from $CI_JOB_URL/artifacts/browse) and add warp/native/exports.h to your merge request." && false)
 
 # Build documentation and publish on gitlab-master
 # This only runs in the default branch pipeline. The "pages" name is special for GitLab.
-# Documentation is available at https://omniverse.gitlab-master-pages.nvidia.com/warp/
 pages:
   extends:
     - .build-docs-common
@@ -598,4 +598,4 @@ pages:
   environment:
     name: GitLab Pages
     deployment_tier: staging
-    url: https://omniverse.gitlab-master-pages.nvidia.com/warp/
+    url: $CI_PAGES_URL
