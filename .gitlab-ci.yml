@@ -13,7 +13,7 @@ include: /.gitlab/ci/common.yml
 
 workflow:
   rules:
-    - if: $CI_PROJECT_PATH != "omniverse/warp" # Prevent fork pipelines
+    - if: $CI_PROJECT_ROOT_NAMESPACE != "omniverse" # Prevent pipelines that can't access the runners
       when: never
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     - if: $CI_COMMIT_TAG # Run for tagged releases
@@ -26,7 +26,7 @@ workflow:
       auto_cancel:
         on_new_commit: none
         on_job_failure: none
-    - if: $CI_COMMIT_BRANCH =~ /release-.*/
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
     - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
 
 variables:
@@ -272,7 +272,7 @@ windows-x86_64 test mgpu:
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
-    - if: $CI_COMMIT_BRANCH =~ /release-.*/
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
     - when: manual # Can be triggered in all other scenarios
       allow_failure: true
   before_script:
@@ -340,7 +340,7 @@ trigger python 3.X test pipelines:
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
-    - if: $CI_COMMIT_BRANCH =~ /release-.*/
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
     - when: manual # Can be triggered in all other scenarios
       allow_failure: true
   variables:
@@ -380,7 +380,7 @@ trigger debug build and test pipeline:
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
-    - if: $CI_COMMIT_BRANCH =~ /release-.*/
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
     - when: manual # Can be triggered in all other scenarios
       allow_failure: true
   variables:
@@ -408,7 +408,7 @@ trigger cuda 11 pipeline:
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
-    - if: $CI_COMMIT_BRANCH =~ /release-.*/
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
     - when: manual # Can be triggered in all other scenarios
       allow_failure: true
   variables:
@@ -445,7 +445,7 @@ create pypi wheels:
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
-    - if: $CI_COMMIT_BRANCH =~ /release-.*/
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
       changes:
         - pyproject.toml
@@ -470,6 +470,12 @@ create pypi wheels:
     - sed -i "s/^\(.*\)+cu12$/\1+cpu/" VERSION.md  # Modify VERSION.md with +cu12 replaced by +cpu
     - python3 -m build --wheel -C--build-option=-Pmacos-universal
     - sed -i "s/^\(.*\)+cpu$/\1/" VERSION.md  # Revert VERSION.md changes
+    - mv dist dist-github
+    # Now make the wheels meant for PyPI publishing
+    - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
+    - python3 -m build --wheel -C--build-option=-Plinux-x86_64
+    - python3 -m build --wheel -C--build-option=-Plinux-aarch64
+    - python3 -m build --wheel -C--build-option=-Pmacos-universal
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +
   artifacts:
@@ -477,6 +483,7 @@ create pypi wheels:
     expose_as: "Python Wheels"
     paths:
       - "dist/"
+      - "dist-github/"
     when: always
 
 # ==============================================================================
@@ -486,6 +493,44 @@ create pypi wheels:
 # GitLab service.
 # ==============================================================================
 
+publish wheels to testpypi registry:
+  stage: deploy
+  image: python:3.11-slim
+  needs: ["create pypi wheels"]
+  extends:
+    - .runner-utility-linux-x86_64
+  rules:
+    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
+      when: manual
+      allow_failure: true
+  environment:
+    name: staging
+    url: https://test.pypi.org/project/warp-lang/
+  before_script:
+    - python3 -m pip install --upgrade pip
+    - python3 -m pip install --upgrade build twine
+  script:
+    - python3 -m twine upload --verbose --skip-existing --non-interactive --repository testpypi dist/* -u __token__ -p $TESTPYPI_DEPLOY_KEY
+
+publish wheels to pypi registry:
+  stage: deploy
+  image: python:3.11-slim
+  needs: ["create pypi wheels"]
+  extends:
+    - .runner-utility-linux-x86_64
+  rules:
+    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
+      when: manual
+      allow_failure: true
+  environment:
+    name: production
+    url: https://pypi.org/project/warp-lang/
+  before_script:
+    - python3 -m pip install --upgrade pip
+    - python3 -m pip install --upgrade build twine
+  script:
+    - python3 -m twine upload --verbose --skip-existing --non-interactive dist/* -u __token__ -p $PYPI_DEPLOY_KEY
+
 publish wheels to gitlab pypi registry:
   stage: deploy
   image: python:3.11-slim
@@ -493,14 +538,14 @@ publish wheels to gitlab pypi registry:
   extends:
     - .runner-utility-linux-x86_64
   rules:
-    - if: $CI_COMMIT_BRANCH =~ /release-.*/
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
       when: manual
       allow_failure: true
   before_script:
     - python3 -m pip install --upgrade pip
     - python3 -m pip install --upgrade build twine
   script:
-    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python3 -m twine upload --verbose --skip-existing --non-interactive --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist/*
+    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python3 -m twine upload --verbose --skip-existing --non-interactive --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist-github/*
 
 # Uploads the wheels to the internal GitLab package registry in the Warp project
 # Generated files will be in a branch/tag-specific folder
@@ -510,7 +555,7 @@ publish wheels to gitlab package registry:
   extends:
     - .runner-utility-linux-x86_64
   rules:
-    - if: $CI_COMMIT_BRANCH =~ /release-.*/
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
     - when: manual # If not auto-triggered, allow any pipeline to run this job manually
       allow_failure: true
   before_script:

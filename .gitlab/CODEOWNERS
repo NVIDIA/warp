@@ -70,7 +70,7 @@
 ^[Native C++/CUDA] @mmacklin @lwawrzyniak @ncapens
 /warp/native/
 
-^[Volumes] @gklar
+^[Volumes] @gdaviet @gklar
 /warp/native/nanovdb/
 /warp/native/volume*
 /warp/tests/test_volume_write.py
