@@ -205,13 +205,6 @@ create pypi wheels:
     - sed -i "s/^\(.*\)+cu11$/\1+cpu/" VERSION.md  # Modify VERSION.md with +cu12 replaced by +cpu
     - python3 -m build --wheel -C--build-option=-Pmacos-universal
     - sed -i "s/^\(.*\)+cpu$/\1/" VERSION.md  # Revert VERSION.md changes
-    - mkdir -p dist-github
-    - mv dist/* dist-github/
-    # Now make the wheels meant for PyPI publishing
-    - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
-    - python3 -m build --wheel -C--build-option=-Plinux-x86_64
-    - python3 -m build --wheel -C--build-option=-Plinux-aarch64
-    - python3 -m build --wheel -C--build-option=-Pmacos-universal
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +
   artifacts:
@@ -219,7 +212,6 @@ create pypi wheels:
     expose_as: "Python Wheels"
     paths:
       - "dist/"
-      - "dist-github/"
     when: always
 
 # Creates an artifact suitable for publishing the Kit extensions
@@ -257,44 +249,6 @@ create kit artifacts:
 # GitLab service.
 # ==============================================================================
 
-publish wheels to testpypi registry:
-  stage: deploy
-  image: python:3.11-slim
-  needs: ["create pypi wheels"]
-  extends:
-    - .runner-utility-linux-x86_64
-  rules:
-    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
-      when: manual
-      allow_failure: true
-  environment:
-    name: staging
-    url: https://test.pypi.org/project/warp-lang/
-  before_script:
-    - python3 -m pip install --upgrade pip
-    - python3 -m pip install --upgrade build twine
-  script:
-    - python3 -m twine upload --verbose --skip-existing --non-interactive --repository testpypi dist/* -u __token__ -p $TESTPYPI_DEPLOY_KEY
-
-publish wheels to pypi registry:
-  stage: deploy
-  image: python:3.11-slim
-  needs: ["create pypi wheels"]
-  extends:
-    - .runner-utility-linux-x86_64
-  rules:
-    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
-      when: manual
-      allow_failure: true
-  environment:
-    name: production
-    url: https://pypi.org/project/warp-lang/
-  before_script:
-    - python3 -m pip install --upgrade pip
-    - python3 -m pip install --upgrade build twine
-  script:
-    - python3 -m twine upload --verbose --skip-existing --non-interactive dist/* -u __token__ -p $PYPI_DEPLOY_KEY
-
 publish wheels to gitlab pypi registry:
   stage: deploy
   image: python:3.11-slim
@@ -309,7 +263,7 @@ publish wheels to gitlab pypi registry:
     - python3 -m pip install --upgrade pip
     - python3 -m pip install --upgrade build twine
   script:
-    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python3 -m twine upload --verbose --skip-existing --non-interactive --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist-github/*
+    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python3 -m twine upload --verbose --skip-existing --non-interactive --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist/*
 
 # Uploads the wheels to the internal GitLab package registry in the Warp project
 # Generated files will be in a branch/tag-specific folder
@@ -331,7 +285,7 @@ publish wheels to gitlab package registry:
           curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "$file" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/${filename}"
       done
     - |
-      if [ -f kit-extension.zip ]; then
+      if [ -f kit-extensions.zip ]; then
         curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file kit-extensions.zip "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/kit-extensions.zip"
       else
         echo "kit-extensions.zip not found, skipping upload."
@@ -346,6 +300,8 @@ publish extensions to packman:
   extends:
     - .runner-utility-linux-x86_64
   rules:
+    - if: $CI_PROJECT_PATH != "omniverse/warp" # Prevent fork pipelines from running this job
+      when: never
     - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
       when: manual
       allow_failure: true

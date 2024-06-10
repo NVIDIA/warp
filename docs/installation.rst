@@ -14,14 +14,14 @@ The easiest way to install Warp is from `PyPI <https://pypi.org/project/warp-lan
 Installing from GitHub Releases
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The binaries hosted on PyPI are currently built with the CUDA 11.8 runtime.
-We provide binaries built with the CUDA 12.5 runtime on the `GitHub Releases <https://github.com/NVIDIA/warp/releases>`_ page.
-Copy the URL of the appropriate wheel file (``warp-lang-{ver}+cu12-py3-none-{platform}.whl``) and pass it to
+The binaries hosted on PyPI are currently built with the CUDA 12.5 runtime.
+We also provide binaries built with the CUDA 11.8 runtime on the `GitHub Releases <https://github.com/NVIDIA/warp/releases>`_ page.
+Copy the URL of the appropriate wheel file (``warp-lang-{ver}+cu11-py3-none-{platform}.whl``) and pass it to
 the ``pip install`` command, e.g.
 
 .. code-block:: sh
 
-    pip install https://github.com/NVIDIA/warp/releases/download/v1.2.0/warp_lang-1.2.0+cu12-py3-none-manylinux2014_x86_64.whl
+    pip install https://github.com/NVIDIA/warp/releases/download/v1.3.0/warp_lang-1.3.0+cu11-py3-none-manylinux2014_x86_64.whl
 
 The ``--force-reinstall`` option may need to be used to overwrite a previous installation.
 
