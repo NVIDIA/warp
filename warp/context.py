@@ -3632,6 +3632,9 @@ def is_mempool_access_supported(target_device: Devicelike, peer_device: Deviceli
 
     init()
 
+    target_device = runtime.get_device(target_device)
+    peer_device = runtime.get_device(peer_device)
+
     return target_device.is_mempool_supported and is_peer_access_supported(target_device, peer_device)
 
 
