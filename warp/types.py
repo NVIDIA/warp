@@ -1650,9 +1650,10 @@ class array(Array):
             try:
                 # Performance note: try first, ask questions later
                 device = warp.context.runtime.get_device(device)
-            except:
-                warp.context.init()
-                raise
+            except Exception:
+                # Fallback to using the public API for retrieving the device,
+                # which takes take of initializing Warp if needed.
+                device = warp.context.get_device(device)
 
             if device.is_cuda:
                 desc = data.__cuda_array_interface__
@@ -1779,9 +1780,10 @@ class array(Array):
         try:
             # Performance note: try first, ask questions later
             device = warp.context.runtime.get_device(device)
-        except:
-            warp.context.init()
-            raise
+        except Exception:
+            # Fallback to using the public API for retrieving the device,
+            # which takes take of initializing Warp if needed.
+            device = warp.context.get_device(device)
 
         if device.is_cpu and not copy and not pinned:
             # reference numpy memory directly
@@ -1805,9 +1807,10 @@ class array(Array):
         try:
             # Performance note: try first, ask questions later
             device = warp.context.runtime.get_device(device)
-        except:
-            warp.context.init()
-            raise
+        except Exception:
+            # Fallback to using the public API for retrieving the device,
+            # which takes take of initializing Warp if needed.
+            device = warp.context.get_device(device)
 
         check_array_shape(shape)
         ndim = len(shape)
@@ -1852,9 +1855,10 @@ class array(Array):
         try:
             # Performance note: try first, ask questions later
             device = warp.context.runtime.get_device(device)
-        except:
-            warp.context.init()
-            raise
+        except Exception:
+            # Fallback to using the public API for retrieving the device,
+            # which takes take of initializing Warp if needed.
+            device = warp.context.get_device(device)
 
         check_array_shape(shape)
         ndim = len(shape)
