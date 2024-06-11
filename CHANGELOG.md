@@ -36,6 +36,7 @@
 
 - Support for NumPy >= 2.0
 - Conform to Python's syntax for function arguments when calling built-ins inside of kernels, thus extending support for keyword arguments
+- Implement the assignment operator for `wp.quat`
 
 ## [1.2.1] - 2024-06-14
 

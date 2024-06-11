@@ -3522,10 +3522,30 @@ add_builtin(
     group="Utility",
     skip_replay=True,
 )
+# implements &quaternion[index]
+add_builtin(
+    "index",
+    input_types={"a": quaternion(dtype=Float), "i": int},
+    value_func=vector_index_value_func,
+    dispatch_func=vector_index_dispatch_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+)
 # implements &(*vector)[index]
 add_builtin(
     "indexref",
-    input_types={"a": Any, "i": int},
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": int},
+    value_func=vector_index_value_func,
+    dispatch_func=vector_index_dispatch_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+)
+# implements &(*quaternion)[index]
+add_builtin(
+    "indexref",
+    input_types={"a": quaternion(dtype=Float), "i": int},
     value_func=vector_index_value_func,
     dispatch_func=vector_index_dispatch_func,
     hidden=True,

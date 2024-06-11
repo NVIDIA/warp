@@ -2102,7 +2102,7 @@ class Adjoint:
             if is_array(target_type):
                 adj.add_builtin_call("array_store", [target, *indices, rhs])
 
-            elif type_is_vector(target_type) or type_is_matrix(target_type):
+            elif type_is_vector(target_type) or type_is_quaternion(target_type) or type_is_matrix(target_type):
                 if is_reference(target.type):
                     attr = adj.add_builtin_call("indexref", [target, *indices])
                 else:
@@ -2119,7 +2119,7 @@ class Adjoint:
                     )
 
             else:
-                raise WarpCodegenError("Can only subscript assign array, vector, and matrix types")
+                raise WarpCodegenError("Can only subscript assign array, vector, quaternion, and matrix types")
 
         elif isinstance(lhs, ast.Name):
             # symbol name
