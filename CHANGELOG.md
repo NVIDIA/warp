@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## [Upcoming Release] - 2024-??-??
+
+- Improve memory usage and performance for rigid body contact handling when `self.rigid_mesh_contact_max` is zero (default behavior)
+
 ## [1.2.0] - 2024-06-06
 
 - Add a not-a-number floating-point constant that can be used as `wp.NAN` or `wp.nan`.
