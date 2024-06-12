@@ -554,9 +554,6 @@ def initialize_test_process(lock, shared_index, args, temp_dir):
             wp.config.kernel_cache_dir = cache_root_dir
 
             wp.build.clear_kernel_cache()
-        else:
-            # Initialize Warp is if hasn't been initialized already
-            wp.init()
 
 
 if __name__ == "__main__":  # pragma: no cover
