@@ -1014,11 +1014,23 @@ class Model:
             target.rigid_contact_broad_shape0 = wp.zeros(self.rigid_contact_max, dtype=wp.int32)
             target.rigid_contact_broad_shape1 = wp.zeros(self.rigid_contact_max, dtype=wp.int32)
 
-            max_pair_count = self.shape_count * self.shape_count
-            # maximum number of contact points per contact pair
-            target.rigid_contact_point_limit = wp.zeros(max_pair_count, dtype=wp.int32)
-            # currently found contacts per contact pair
-            target.rigid_contact_pairwise_counter = wp.zeros(max_pair_count, dtype=wp.int32)
+            if self.rigid_mesh_contact_max > 0:
+                # add additional buffers to track how many contact points are generated per contact pair
+                # (significantly increases memory usage, only enable if mesh contacts need to be pruned)
+                if self.shape_count >= 46340:
+                    # clip the number of potential contacts to avoid signed 32-bit integer overflow
+                    # i.e. when the number of shapes exceeds sqrt(2**31 - 1)
+                    max_pair_count = 2**31 - 1
+                else:
+                    max_pair_count = self.shape_count * self.shape_count
+                # maximum number of contact points per contact pair
+                target.rigid_contact_point_limit = wp.zeros(max_pair_count, dtype=wp.int32)
+                # currently found contacts per contact pair
+                target.rigid_contact_pairwise_counter = wp.zeros(max_pair_count, dtype=wp.int32)
+            else:
+                target.rigid_contact_point_limit = None
+                target.rigid_contact_pairwise_counter = None
+
             # ID of thread that found the current contact point
             target.rigid_contact_tids = wp.zeros(self.rigid_contact_max, dtype=wp.int32)
 
