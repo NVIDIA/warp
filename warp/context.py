@@ -347,7 +347,7 @@ class Function:
 def call_builtin(func: Function, *params) -> Tuple[bool, Any]:
     uses_non_warp_array_type = False
 
-    warp.context.init()
+    init()
 
     # Retrieve the built-in function from Warp's dll.
     c_func = getattr(warp.context.runtime.core, func.mangled_name)
@@ -3631,6 +3631,9 @@ def is_mempool_access_supported(target_device: Devicelike, peer_device: Deviceli
     """
 
     init()
+
+    target_device = runtime.get_device(target_device)
+    peer_device = runtime.get_device(peer_device)
 
     return target_device.is_mempool_supported and is_peer_access_supported(target_device, peer_device)
 
