@@ -98,56 +98,64 @@ __global__ void bsr_fill_triplet_key_values(const int nnz, const int nrow,
 }
 
 template <typename T>
+__global__ void bsr_find_row_offsets(uint32_t row_count,
+                                     const T* d_nnz,
+                                     const BsrRowCol* unique_row_col,
+                                     int* row_offsets)
+{
+    const uint32_t row = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (row > row_count)
+        return;
+
+    const uint32_t nnz = *d_nnz;
+    if (row == 0 || nnz == 0)
+    {
+        row_offsets[row] = 0;
+        return;
+    }
+
+    if (bsr_get_row(unique_row_col[nnz - 1]) < row)
+    {
+        row_offsets[row] = nnz;
+        return;
+    }
+
+    // binary search for row start
+    uint32_t lower = 0;
+    uint32_t upper = nnz - 1;
+    while (lower < upper)
+    {
+        uint32_t mid = lower + (upper - lower) / 2;
+
+        if (bsr_get_row(unique_row_col[mid]) < row)
+        {
+            lower = mid + 1;
+        }
+        else
+        {
+            upper = mid;
+        }
+    }
+
+    row_offsets[row] = lower;
+}
+
+template <typename T>
 __global__ void bsr_merge_blocks(const uint32_t* d_nnz, int block_size,
                                  const uint32_t* block_offsets, const uint32_t* sorted_block_indices,
-                                 const BsrRowCol* unique_row_cols, const T* tpl_values, int* bsr_row_counts,
-                                 int* bsr_cols, T* bsr_values)
+                                 const BsrRowCol* unique_row_cols, const T* tpl_values, int* bsr_cols, T* bsr_values)
 
 {
     const uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
-    constexpr int MAX_ROWS_FOR_COALESCED_ADDS = 128; // blockDim / 2
 
-    __shared__ int block_counts[256];
-    int& block_start_row = block_counts[MAX_ROWS_FOR_COALESCED_ADDS];
-    int& block_end_row = block_counts[MAX_ROWS_FOR_COALESCED_ADDS + 1];
+    if (i >= *d_nnz)
+        return;
 
-    block_counts[threadIdx.x] = 0;
-    __syncthreads();
+    const BsrRowCol row_col = unique_row_cols[i];
+    bsr_cols[i] = bsr_get_col(row_col);
 
-    // Write column index and compute row range for this thread block
-    const uint32_t nnz = *d_nnz;
-    const BsrRowCol row_col = (i >= nnz) ? PRUNED_ROWCOL : unique_row_cols[i];
-
-    const int row = bsr_get_row(row_col);
-    if (row_col != PRUNED_ROWCOL)
-    {
-        bsr_cols[i] = bsr_get_col(row_col);
-        atomicMin(&block_start_row, row);
-        atomicMax(&block_end_row, row);
-    }
-    __syncthreads();
-
-    // If we have less rows than nnz (usual case), accumulate locally, then globally
-    if (block_end_row + 1 - block_start_row < MAX_ROWS_FOR_COALESCED_ADDS)
-    {
-        if (row_col != PRUNED_ROWCOL)
-        {
-            atomicAdd(block_counts + row - block_start_row, 1);
-        }
-
-        __syncthreads();
-        if (threadIdx.x + block_start_row <= block_end_row)
-        {
-            atomicAdd(bsr_row_counts + threadIdx.x + block_start_row + 1, block_counts[threadIdx.x]);
-        }
-    }
-    else if (row_col != PRUNED_ROWCOL)
-    {
-        atomicAdd(bsr_row_counts + row + 1, 1);
-    }
-
-    // Now accumulate merged block values
-
+    // Accumulate merged block values
     if (row_col == PRUNED_ROWCOL || bsr_values == nullptr)
         return;
 
@@ -193,47 +201,12 @@ int bsr_matrix_from_triplets_device(const int rows_per_block, const int cols_per
     cub::DoubleBuffer<uint32_t> d_keys(block_indices.buffer(), block_indices.buffer() + nnz);
     cub::DoubleBuffer<BsrRowCol> d_values(combined_row_col.buffer(), combined_row_col.buffer() + nnz);
 
-    uint32_t* p_nz_triplet_count = block_indices.buffer() + 2 * nnz;
-
-    // int* p_nz_triplet_count = bsr_temp.count_buffer;
-
-    // wp_launch_device(WP_CURRENT_CONTEXT, bsr_fill_block_indices, nnz, (nnz, d_keys.Current()));
-
-    // if (tpl_values)
-    // {
-
-    //     // Remove zero blocks
-    //     {
-    //         size_t buff_size = 0;
-    //         BsrBlockIsNotZero<T> isNotZero{block_size, tpl_values};
-    //         check_cuda(cub::DeviceSelect::If(nullptr, buff_size, d_keys.Current(), d_keys.Alternate(),
-    //                                          p_nz_triplet_count, nnz, isNotZero, stream));
-    //         ScopedTemporary<> temp(context, buff_size);
-    //         check_cuda(cub::DeviceSelect::If(temp.buffer(), buff_size, d_keys.Current(), d_keys.Alternate(),
-    //                                          p_nz_triplet_count, nnz, isNotZero, stream));
-    //     }
-    //     cudaEventRecord(bsr_temp.host_sync_event, stream);
-
-    //     // switch current/alternate in double buffer
-    //     d_keys.selector ^= 1;
-    // }
-    // else
-    // {
-    //     *p_nz_triplet_count = nnz;
-    // }
+    uint32_t* unique_triplet_count = block_indices.buffer() + 2 * nnz;
 
     // Combine rows and columns so we can sort on them both
     BsrBlockIsNotZero<T> isNotZero{block_size, tpl_values};
     wp_launch_device(WP_CURRENT_CONTEXT, bsr_fill_triplet_key_values, nnz,
                      (nnz, row_count, tpl_rows, tpl_columns, isNotZero, d_keys.Current(), d_values.Current()));
-
-    // if (tpl_values)
-    // {
-    //     // Make sure count is available on host
-    //     cudaEventSynchronize(bsr_temp.host_sync_event);
-    // }
-
-    // const int nz_triplet_count = *p_nz_triplet_count;
 
     // Sort
     {
@@ -249,19 +222,21 @@ int bsr_matrix_from_triplets_device(const int rows_per_block, const int cols_per
     {
         size_t buff_size = 0;
         check_cuda(cub::DeviceRunLengthEncode::Encode(nullptr, buff_size, d_values.Current(), d_values.Alternate(),
-                                                      d_keys.Alternate(), p_nz_triplet_count, nnz,
+                                                      d_keys.Alternate(), unique_triplet_count, nnz,
                                                       stream));
         ScopedTemporary<> temp(context, buff_size);
         check_cuda(cub::DeviceRunLengthEncode::Encode(temp.buffer(), buff_size, d_values.Current(),
-                                                      d_values.Alternate(), d_keys.Alternate(), p_nz_triplet_count,
+                                                      d_values.Alternate(), d_keys.Alternate(), unique_triplet_count,
                                                       nnz, stream));
     }
 
-    // Now we have the following:
-    // d_values.Current(): sorted block row-col
-    // d_values.Alternate(): sorted unique row-col
-    // d_keys.Current(): sorted block indices
-    // d_keys.Alternate(): repeated block-row count
+    // Compute row offsets from sorted unique blocks
+    wp_launch_device(WP_CURRENT_CONTEXT, bsr_find_row_offsets, row_count + 1,
+                     (row_count, unique_triplet_count, d_values.Alternate(),
+                      bsr_offsets));
+
+    int compressed_nnz;
+    memcpy_d2h(WP_CURRENT_CONTEXT, &compressed_nnz, bsr_offsets + row_count, sizeof(int));
 
     // Scan repeated block counts
     {
@@ -273,30 +248,16 @@ int bsr_matrix_from_triplets_device(const int rows_per_block, const int cols_per
                                                  nnz, stream));
     }
 
-    // We have all we need to accumulate our repeated blocks
-    memset_device(WP_CURRENT_CONTEXT, bsr_offsets, 0, (row_count + 1) * sizeof(int));
+    // Accumulate repeated blocks and set column indices
     wp_launch_device(WP_CURRENT_CONTEXT, bsr_merge_blocks, nnz,
-                     (p_nz_triplet_count, block_size, d_keys.Alternate(), d_keys.Current(), d_values.Alternate(),
-                      tpl_values, bsr_offsets, bsr_columns, bsr_values));
-
-    // Last, prefix sum the row block counts
-    {
-        size_t buff_size = 0;
-        check_cuda(cub::DeviceScan::InclusiveSum(nullptr, buff_size, bsr_offsets, bsr_offsets, row_count + 1, stream));
-        ScopedTemporary<> temp(context, buff_size);
-        check_cuda(
-            cub::DeviceScan::InclusiveSum(temp.buffer(), buff_size, bsr_offsets, bsr_offsets, row_count + 1, stream));
-    }
-
+                     (unique_triplet_count, block_size, d_keys.Alternate(), d_keys.Current(), d_values.Alternate(),
+                      tpl_values, bsr_columns, bsr_values));
     // The final nnz is the end offset of the last row
-    int compressed_nnz;
-    memcpy_d2h(WP_CURRENT_CONTEXT, &compressed_nnz, bsr_offsets + row_count, sizeof(int));
     return compressed_nnz;
 }
 
 __global__ void bsr_transpose_fill_row_col(const int nnz, const int row_count, const int* bsr_offsets,
-                                           const int* bsr_columns, int* block_indices, BsrRowCol* transposed_row_col,
-                                           int* transposed_bsr_offsets)
+                                           const int* bsr_columns, int* block_indices, BsrRowCol* transposed_row_col)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= nnz)
@@ -326,8 +287,6 @@ __global__ void bsr_transpose_fill_row_col(const int nnz, const int row_count, c
     const int col = bsr_columns[i];
     BsrRowCol row_col = bsr_combine_row_col(col, row);
     transposed_row_col[i] = row_col;
-
-    atomicAdd(transposed_bsr_offsets + col + 1, 1);
 }
 
 template <int Rows, int Cols, typename T>
@@ -466,9 +425,6 @@ void bsr_transpose_device(int rows_per_block, int cols_per_block, int row_count,
 
     cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_get_current());
 
-    // Zero the transposed offsets
-    memset_device(WP_CURRENT_CONTEXT, transposed_bsr_offsets, 0, (col_count + 1) * sizeof(int));
-
     ScopedTemporary<int> block_indices(context, 2 * nnz);
     ScopedTemporary<BsrRowCol> combined_row_col(context, 2 * nnz);
 
@@ -477,7 +433,7 @@ void bsr_transpose_device(int rows_per_block, int cols_per_block, int row_count,
 
     wp_launch_device(
         WP_CURRENT_CONTEXT, bsr_transpose_fill_row_col, nnz,
-        (nnz, row_count, bsr_offsets, bsr_columns, d_keys.Current(), d_values.Current(), transposed_bsr_offsets));
+        (nnz, row_count, bsr_offsets, bsr_columns, d_keys.Current(), d_values.Current()));
 
     // Sort blocks
     {
@@ -487,15 +443,10 @@ void bsr_transpose_device(int rows_per_block, int cols_per_block, int row_count,
         check_cuda(cub::DeviceRadixSort::SortPairs(temp.buffer(), buff_size, d_values, d_keys, nnz, 0, 64, stream));
     }
 
-    // Prefix sum the transposed row block counts
-    {
-        size_t buff_size = 0;
-        check_cuda(cub::DeviceScan::InclusiveSum(nullptr, buff_size, transposed_bsr_offsets, transposed_bsr_offsets,
-                                                 col_count + 1, stream));
-        ScopedTemporary<> temp(context, buff_size);
-        check_cuda(cub::DeviceScan::InclusiveSum(temp.buffer(), buff_size, transposed_bsr_offsets,
-                                                 transposed_bsr_offsets, col_count + 1, stream));
-    }
+    // Compute row offsets from sorted unique blocks
+    wp_launch_device(WP_CURRENT_CONTEXT, bsr_find_row_offsets, col_count + 1,
+                     (col_count, bsr_offsets + row_count, d_values.Current(),
+                      transposed_bsr_offsets));
 
     // Move and transpose individual blocks
     if (transposed_bsr_values != nullptr)
