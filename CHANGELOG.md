@@ -3,7 +3,12 @@
 ## [Upcoming Release] - 2024-??-??
 
 - Improve memory usage and performance for rigid body contact handling when `self.rigid_mesh_contact_max` is zero (default behavior)
+
+## [1.2.1] - 2024-06-14
+
 - Fix generic function caching
+- Fix Warp not being initialized when constructing arrays with `wp.array()`
+- Fix `wp.is_mempool_access_supported()` not resolving the provided device arguments to `wp.context.Device`
 
 ## [1.2.0] - 2024-06-06
 
