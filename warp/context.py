@@ -1023,6 +1023,54 @@ def add_builtin(
     defaults=None,
     require_original_output_arg=False,
 ):
+    """Main entry point to register a new built-in function.
+
+    Args:
+        key (str): Function name. Multiple overloaded functions can be registered
+            under the same name as long as their signature differ.
+        input_types (Mapping[str, Any]): Signature of the user-facing function.
+            Variadic arguments are supported by prefixing the parameter names
+            with asterisks as in `*args` and `**kwargs`. Generic arguments are
+            supported with types such as `Any`, `Float`, `Scalar`, etc.
+        constraint (Callable): For functions that define generic arguments and
+            are to be exported, this callback is used to specify whether some
+            combination of inferred arguments are valid or not.
+        value_type (Any): Type returned by the function.
+        value_func (Callable): Callback used to specify the return type when
+            `value_type` isn't enough.
+        export_func (Callable): Callback used during the context stage to specify
+            the signature of the underlying C++ function, not accounting for
+            the template parameters.
+            If not provided, `input_types` is used.
+        dispatch_func (Callable): Callback used during the codegen stage to specify
+            the runtime and template arguments to be passed to the underlying C++
+            function. In other words, this allows defining a mapping between
+            the signatures of the user-facing and the C++ functions, and even to
+            dynamically create new arguments on the fly.
+            The arguments returned must be of type `codegen.Var`.
+            If not provided, all arguments passed by the users when calling
+            the built-in are passed as-is as runtime arguments to the C++ function.
+        doc (str): Used to generate the Python's docstring and the HTML documentation.
+        namespace: Namespace for the underlying C++ function.
+        variadic (bool): Whether the function declares variadic arguments.
+        initializer_list_func (bool): Whether to use the initializer list syntax
+            when passing the arguments to the underlying C++ function.
+        export (bool): Whether the function is to be exposed to the Python
+            interpreter so that it becomes available from within the `warp`
+            module.
+        group (str): Classification used for the documentation.
+        hidden (bool): Whether to add that function into the documentation.
+        skip_replay (bool): Whether operation will be performed during
+            the forward replay in the backward pass.
+        missing_grad (bool): Whether the function is missing a corresponding
+            adjoint.
+        native_func (str): Name of the underlying C++ function.
+        defaults (Mapping[str, Any]): Default values for the parameters defined
+            in `input_types`.
+        require_original_output_arg (bool): Used during the codegen stage to
+            specify whether an adjoint parameter corresponding to the return
+            value should be included in the signature of the backward function.
+    """
     if input_types is None:
         input_types = {}
 
