@@ -251,9 +251,12 @@ void bsr_transpose_host(int rows_per_block, int cols_per_block, int row_count, i
         ++transposed_bsr_offsets[col + 1];
         transposed_bsr_columns[i] = row;
 
-        const T *src_block = bsr_values + idx * block_size;
-        T *dst_block = transposed_bsr_values + i * block_size;
-        block_transpose_func(src_block, dst_block, rows_per_block, cols_per_block);
+        if (transposed_bsr_values != nullptr)
+        {
+            const T *src_block = bsr_values + idx * block_size;
+            T *dst_block = transposed_bsr_values + i * block_size;
+            block_transpose_func(src_block, dst_block, rows_per_block, cols_per_block);
+        }
     }
 
     // build postfix sum of column counts
