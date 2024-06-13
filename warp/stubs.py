@@ -112,9 +112,9 @@ from warp.constants import *
 
 from . import builtins
 
-import warp.config
+import warp.config as config
 
-__version__ = warp.config.version
+__version__ = config.version
 
 
 @over
