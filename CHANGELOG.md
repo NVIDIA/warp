@@ -3,6 +3,7 @@
 ## [Upcoming Release] - 2024-??-??
 
 - Improve memory usage and performance for rigid body contact handling when `self.rigid_mesh_contact_max` is zero (default behavior)
+- Fix generic function caching
 
 ## [1.2.0] - 2024-06-06
 
