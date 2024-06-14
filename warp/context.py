@@ -1488,8 +1488,9 @@ class Module:
 
                 # functions source
                 for function in module.functions.values():
-                    # include all overloads
-                    for sig, func in function.user_overloads.items():
+                    # include all concrete and generic overloads
+                    overloads = itertools.chain(function.user_overloads.items(), function.user_templates.items())
+                    for sig, func in overloads:
                         # signature
                         ch.update(bytes(sig, "utf-8"))
 
