@@ -6,7 +6,6 @@
 #include <cub/device/device_radix_sort.cuh>
 #include <cub/device/device_run_length_encode.cuh>
 #include <cub/device/device_scan.cuh>
-#include <cub/device/device_select.cuh>
 
 namespace
 {
@@ -21,43 +20,11 @@ CUDA_CALLABLE BsrRowCol bsr_combine_row_col(uint32_t row, uint32_t col)
     return (static_cast<uint64_t>(row) << 32) | col;
 }
 
-CUDA_CALLABLE uint32_t bsr_get_row(const BsrRowCol& row_col)
-{
-    return row_col >> 32;
-}
+CUDA_CALLABLE uint32_t bsr_get_row(const BsrRowCol& row_col) { return row_col >> 32; }
 
-CUDA_CALLABLE uint32_t bsr_get_col(const BsrRowCol& row_col)
-{
-    return row_col & INT_MAX;
-}
+CUDA_CALLABLE uint32_t bsr_get_col(const BsrRowCol& row_col) { return row_col & INT_MAX; }
 
-// // Cached temporary storage
-// struct BsrFromTripletsTemp
-// {
-
-//     int* count_buffer = NULL;
-//     cudaEvent_t host_sync_event = NULL;
-
-//     BsrFromTripletsTemp() : count_buffer(static_cast<int*>(alloc_pinned(sizeof(int))))
-//     {
-//         cudaEventCreateWithFlags(&host_sync_event, cudaEventDisableTiming);
-//     }
-
-//     ~BsrFromTripletsTemp()
-//     {
-//         cudaEventDestroy(host_sync_event);
-//         free_pinned(count_buffer);
-//     }
-
-//     BsrFromTripletsTemp(const BsrFromTripletsTemp&) = delete;
-//     BsrFromTripletsTemp& operator=(const BsrFromTripletsTemp&) = delete;
-// };
-
-// map temp buffers to CUDA contexts
-// static std::unordered_map<void*, BsrFromTripletsTemp> g_bsr_from_triplets_temp_map;
-
-template <typename T>
-struct BsrBlockIsNotZero
+template <typename T> struct BsrBlockIsNotZero
 {
     int block_size;
     const T* values;
@@ -78,10 +45,8 @@ struct BsrBlockIsNotZero
 };
 
 template <typename T>
-__global__ void bsr_fill_triplet_key_values(const int nnz, const int nrow,
-                                            const int* tpl_rows, const int* tpl_columns,
-                                            const BsrBlockIsNotZero<T> nonZero,
-                                            uint32_t* block_indices,
+__global__ void bsr_fill_triplet_key_values(const int nnz, const int nrow, const int* tpl_rows, const int* tpl_columns,
+                                            const BsrBlockIsNotZero<T> nonZero, uint32_t* block_indices,
                                             BsrRowCol* tpl_row_col)
 {
     int block = blockIdx.x * blockDim.x + threadIdx.x;
@@ -98,9 +63,7 @@ __global__ void bsr_fill_triplet_key_values(const int nnz, const int nrow,
 }
 
 template <typename T>
-__global__ void bsr_find_row_offsets(uint32_t row_count,
-                                     const T* d_nnz,
-                                     const BsrRowCol* unique_row_col,
+__global__ void bsr_find_row_offsets(uint32_t row_count, const T* d_nnz, const BsrRowCol* unique_row_col,
                                      int* row_offsets)
 {
     const uint32_t row = blockIdx.x * blockDim.x + threadIdx.x;
@@ -142,9 +105,9 @@ __global__ void bsr_find_row_offsets(uint32_t row_count,
 }
 
 template <typename T>
-__global__ void bsr_merge_blocks(const uint32_t* d_nnz, int block_size,
-                                 const uint32_t* block_offsets, const uint32_t* sorted_block_indices,
-                                 const BsrRowCol* unique_row_cols, const T* tpl_values, int* bsr_cols, T* bsr_values)
+__global__ void bsr_merge_blocks(const uint32_t* d_nnz, int block_size, const uint32_t* block_offsets,
+                                 const uint32_t* sorted_block_indices, const BsrRowCol* unique_row_cols,
+                                 const T* tpl_values, int* bsr_cols, T* bsr_values)
 
 {
     const uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -181,9 +144,10 @@ __global__ void bsr_merge_blocks(const uint32_t* d_nnz, int block_size,
 }
 
 template <typename T>
-int bsr_matrix_from_triplets_device(const int rows_per_block, const int cols_per_block, const int row_count,
-                                    const int nnz, const int* tpl_rows, const int* tpl_columns, const T* tpl_values,
-                                    int* bsr_offsets, int* bsr_columns, T* bsr_values)
+void bsr_matrix_from_triplets_device(const int rows_per_block, const int cols_per_block, const int row_count,
+                                     const int nnz, const int* tpl_rows, const int* tpl_columns, const T* tpl_values,
+                                     const bool prune_numerical_zeros, int* bsr_offsets, int* bsr_columns,
+                                     T* bsr_values, int* bsr_nnz, void* bsr_nnz_event)
 {
     const int block_size = rows_per_block * cols_per_block;
 
@@ -204,26 +168,23 @@ int bsr_matrix_from_triplets_device(const int rows_per_block, const int cols_per
     uint32_t* unique_triplet_count = block_indices.buffer() + 2 * nnz;
 
     // Combine rows and columns so we can sort on them both
-    BsrBlockIsNotZero<T> isNotZero{block_size, tpl_values};
+    BsrBlockIsNotZero<T> isNotZero{block_size, prune_numerical_zeros ? tpl_values : nullptr};
     wp_launch_device(WP_CURRENT_CONTEXT, bsr_fill_triplet_key_values, nnz,
                      (nnz, row_count, tpl_rows, tpl_columns, isNotZero, d_keys.Current(), d_values.Current()));
 
     // Sort
     {
         size_t buff_size = 0;
-        check_cuda(
-            cub::DeviceRadixSort::SortPairs(nullptr, buff_size, d_values, d_keys, nnz, 0, 64, stream));
+        check_cuda(cub::DeviceRadixSort::SortPairs(nullptr, buff_size, d_values, d_keys, nnz, 0, 64, stream));
         ScopedTemporary<> temp(context, buff_size);
-        check_cuda(cub::DeviceRadixSort::SortPairs(temp.buffer(), buff_size, d_values, d_keys, nnz, 0, 64,
-                                                   stream));
+        check_cuda(cub::DeviceRadixSort::SortPairs(temp.buffer(), buff_size, d_values, d_keys, nnz, 0, 64, stream));
     }
 
     // Runlength encode row-col sequences
     {
         size_t buff_size = 0;
         check_cuda(cub::DeviceRunLengthEncode::Encode(nullptr, buff_size, d_values.Current(), d_values.Alternate(),
-                                                      d_keys.Alternate(), unique_triplet_count, nnz,
-                                                      stream));
+                                                      d_keys.Alternate(), unique_triplet_count, nnz, stream));
         ScopedTemporary<> temp(context, buff_size);
         check_cuda(cub::DeviceRunLengthEncode::Encode(temp.buffer(), buff_size, d_values.Current(),
                                                       d_values.Alternate(), d_keys.Alternate(), unique_triplet_count,
@@ -232,36 +193,44 @@ int bsr_matrix_from_triplets_device(const int rows_per_block, const int cols_per
 
     // Compute row offsets from sorted unique blocks
     wp_launch_device(WP_CURRENT_CONTEXT, bsr_find_row_offsets, row_count + 1,
-                     (row_count, unique_triplet_count, d_values.Alternate(),
-                      bsr_offsets));
+                     (row_count, unique_triplet_count, d_values.Alternate(), bsr_offsets));
 
-    int compressed_nnz;
-    memcpy_d2h(WP_CURRENT_CONTEXT, &compressed_nnz, bsr_offsets + row_count, sizeof(int));
+    if (bsr_nnz)
+    {
+        // Copy nnz to host, and record an event for the competed transfer if desired
+
+        memcpy_d2h(WP_CURRENT_CONTEXT, bsr_nnz, bsr_offsets + row_count, sizeof(int), stream);
+
+        if (bsr_nnz_event)
+        {
+            cuda_event_record(bsr_nnz_event, stream);
+        }
+    }
 
     // Scan repeated block counts
     {
         size_t buff_size = 0;
-        check_cuda(cub::DeviceScan::InclusiveSum(nullptr, buff_size, d_keys.Alternate(), d_keys.Alternate(),
-                                                 nnz, stream));
+        check_cuda(
+            cub::DeviceScan::InclusiveSum(nullptr, buff_size, d_keys.Alternate(), d_keys.Alternate(), nnz, stream));
         ScopedTemporary<> temp(context, buff_size);
-        check_cuda(cub::DeviceScan::InclusiveSum(temp.buffer(), buff_size, d_keys.Alternate(), d_keys.Alternate(),
-                                                 nnz, stream));
+        check_cuda(cub::DeviceScan::InclusiveSum(temp.buffer(), buff_size, d_keys.Alternate(), d_keys.Alternate(), nnz,
+                                                 stream));
     }
 
     // Accumulate repeated blocks and set column indices
     wp_launch_device(WP_CURRENT_CONTEXT, bsr_merge_blocks, nnz,
                      (unique_triplet_count, block_size, d_keys.Alternate(), d_keys.Current(), d_values.Alternate(),
                       tpl_values, bsr_columns, bsr_values));
-    // The final nnz is the end offset of the last row
-    return compressed_nnz;
 }
 
-__global__ void bsr_transpose_fill_row_col(const int nnz, const int row_count, const int* bsr_offsets,
+__global__ void bsr_transpose_fill_row_col(const int row_count, const int* bsr_offsets,
                                            const int* bsr_columns, int* block_indices, BsrRowCol* transposed_row_col)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= nnz)
+    if (i >= bsr_offsets[row_count]) {
+        transposed_row_col[i] = PRUNED_ROWCOL;
         return;
+    }
 
     block_indices[i] = i;
 
@@ -289,8 +258,7 @@ __global__ void bsr_transpose_fill_row_col(const int nnz, const int row_count, c
     transposed_row_col[i] = row_col;
 }
 
-template <int Rows, int Cols, typename T>
-struct BsrBlockTransposer
+template <int Rows, int Cols, typename T> struct BsrBlockTransposer
 {
     void CUDA_CALLABLE_DEVICE operator()(const T* src, T* dest) const
     {
@@ -304,8 +272,7 @@ struct BsrBlockTransposer
     }
 };
 
-template <typename T>
-struct BsrBlockTransposer<-1, -1, T>
+template <typename T> struct BsrBlockTransposer<-1, -1, T>
 {
 
     int row_count;
@@ -324,12 +291,12 @@ struct BsrBlockTransposer<-1, -1, T>
 };
 
 template <int Rows, int Cols, typename T>
-__global__ void bsr_transpose_blocks(const int nnz, const int block_size, BsrBlockTransposer<Rows, Cols, T> transposer,
+__global__ void bsr_transpose_blocks( const int* nnz, const int block_size, BsrBlockTransposer<Rows, Cols, T> transposer,
                                      const int* block_indices, const BsrRowCol* transposed_indices, const T* bsr_values,
                                      int* transposed_bsr_columns, T* transposed_bsr_values)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= nnz)
+    if (i >= *nnz)
         return;
 
     const int src_idx = block_indices[i];
@@ -340,7 +307,7 @@ __global__ void bsr_transpose_blocks(const int nnz, const int block_size, BsrBlo
 }
 
 template <typename T>
-void launch_bsr_transpose_blocks(const int nnz, const int block_size, const int rows_per_block,
+void launch_bsr_transpose_blocks(int nnz, const int* d_nnz, const int block_size, const int rows_per_block,
                                  const int cols_per_block, const int* block_indices,
                                  const BsrRowCol* transposed_indices, const T* bsr_values, int* transposed_bsr_columns,
                                  T* transposed_bsr_values)
@@ -353,17 +320,17 @@ void launch_bsr_transpose_blocks(const int nnz, const int block_size, const int 
         {
         case 1:
             wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
-                             (nnz, block_size, BsrBlockTransposer<1, 1, T>{}, block_indices, transposed_indices,
+                             (d_nnz, block_size, BsrBlockTransposer<1, 1, T>{}, block_indices, transposed_indices,
                               bsr_values, transposed_bsr_columns, transposed_bsr_values));
             return;
         case 2:
             wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
-                             (nnz, block_size, BsrBlockTransposer<1, 2, T>{}, block_indices, transposed_indices,
+                             (d_nnz, block_size, BsrBlockTransposer<1, 2, T>{}, block_indices, transposed_indices,
                               bsr_values, transposed_bsr_columns, transposed_bsr_values));
             return;
         case 3:
             wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
-                             (nnz, block_size, BsrBlockTransposer<1, 3, T>{}, block_indices, transposed_indices,
+                             (d_nnz, block_size, BsrBlockTransposer<1, 3, T>{}, block_indices, transposed_indices,
                               bsr_values, transposed_bsr_columns, transposed_bsr_values));
             return;
         }
@@ -372,17 +339,17 @@ void launch_bsr_transpose_blocks(const int nnz, const int block_size, const int 
         {
         case 1:
             wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
-                             (nnz, block_size, BsrBlockTransposer<2, 1, T>{}, block_indices, transposed_indices,
+                             (d_nnz, block_size, BsrBlockTransposer<2, 1, T>{}, block_indices, transposed_indices,
                               bsr_values, transposed_bsr_columns, transposed_bsr_values));
             return;
         case 2:
             wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
-                             (nnz, block_size, BsrBlockTransposer<2, 2, T>{}, block_indices, transposed_indices,
+                             (d_nnz, block_size, BsrBlockTransposer<2, 2, T>{}, block_indices, transposed_indices,
                               bsr_values, transposed_bsr_columns, transposed_bsr_values));
             return;
         case 3:
             wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
-                             (nnz, block_size, BsrBlockTransposer<2, 3, T>{}, block_indices, transposed_indices,
+                             (d_nnz, block_size, BsrBlockTransposer<2, 3, T>{}, block_indices, transposed_indices,
                               bsr_values, transposed_bsr_columns, transposed_bsr_values));
             return;
         }
@@ -391,24 +358,24 @@ void launch_bsr_transpose_blocks(const int nnz, const int block_size, const int 
         {
         case 1:
             wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
-                             (nnz, block_size, BsrBlockTransposer<3, 1, T>{}, block_indices, transposed_indices,
+                             (d_nnz, block_size, BsrBlockTransposer<3, 1, T>{}, block_indices, transposed_indices,
                               bsr_values, transposed_bsr_columns, transposed_bsr_values));
             return;
         case 2:
             wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
-                             (nnz, block_size, BsrBlockTransposer<3, 2, T>{}, block_indices, transposed_indices,
+                             (d_nnz, block_size, BsrBlockTransposer<3, 2, T>{}, block_indices, transposed_indices,
                               bsr_values, transposed_bsr_columns, transposed_bsr_values));
             return;
         case 3:
             wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
-                             (nnz, block_size, BsrBlockTransposer<3, 3, T>{}, block_indices, transposed_indices,
+                             (d_nnz, block_size, BsrBlockTransposer<3, 3, T>{}, block_indices, transposed_indices,
                               bsr_values, transposed_bsr_columns, transposed_bsr_values));
             return;
         }
     }
 
     wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_blocks, nnz,
-                     (nnz, block_size, BsrBlockTransposer<-1, -1, T>{rows_per_block, cols_per_block}, block_indices,
+                     (d_nnz, block_size, BsrBlockTransposer<-1, -1, T>{rows_per_block, cols_per_block}, block_indices,
                       transposed_indices, bsr_values, transposed_bsr_columns, transposed_bsr_values));
 }
 
@@ -431,9 +398,8 @@ void bsr_transpose_device(int rows_per_block, int cols_per_block, int row_count,
     cub::DoubleBuffer<int> d_keys(block_indices.buffer(), block_indices.buffer() + nnz);
     cub::DoubleBuffer<BsrRowCol> d_values(combined_row_col.buffer(), combined_row_col.buffer() + nnz);
 
-    wp_launch_device(
-        WP_CURRENT_CONTEXT, bsr_transpose_fill_row_col, nnz,
-        (nnz, row_count, bsr_offsets, bsr_columns, d_keys.Current(), d_values.Current()));
+    wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_fill_row_col, nnz,
+                     (row_count, bsr_offsets, bsr_columns, d_keys.Current(), d_values.Current()));
 
     // Sort blocks
     {
@@ -445,61 +411,52 @@ void bsr_transpose_device(int rows_per_block, int cols_per_block, int row_count,
 
     // Compute row offsets from sorted unique blocks
     wp_launch_device(WP_CURRENT_CONTEXT, bsr_find_row_offsets, col_count + 1,
-                     (col_count, bsr_offsets + row_count, d_values.Current(),
-                      transposed_bsr_offsets));
+                     (col_count, bsr_offsets + row_count, d_values.Current(), transposed_bsr_offsets));
 
     // Move and transpose individual blocks
     if (transposed_bsr_values != nullptr)
     {
-        launch_bsr_transpose_blocks(nnz, block_size, rows_per_block, cols_per_block, d_keys.Current(),
+        launch_bsr_transpose_blocks(nnz, bsr_offsets + row_count, block_size, rows_per_block, cols_per_block, d_keys.Current(),
                                     d_values.Current(), bsr_values, transposed_bsr_columns, transposed_bsr_values);
     }
 }
 
 } // namespace
 
-int bsr_matrix_from_triplets_float_device(int rows_per_block, int cols_per_block, int row_count, int nnz,
-                                          uint64_t tpl_rows, uint64_t tpl_columns, uint64_t tpl_values,
-                                          uint64_t bsr_offsets, uint64_t bsr_columns, uint64_t bsr_values)
+void bsr_matrix_from_triplets_float_device(int rows_per_block, int cols_per_block, int row_count, int nnz,
+                                           int* tpl_rows, int* tpl_columns, void* tpl_values,
+                                           bool prune_numerical_zeros, int* bsr_offsets, int* bsr_columns,
+                                           void* bsr_values, int* bsr_nnz, void* bsr_nnz_event)
 {
     return bsr_matrix_from_triplets_device<float>(
-        rows_per_block, cols_per_block, row_count, nnz, reinterpret_cast<const int*>(tpl_rows),
-        reinterpret_cast<const int*>(tpl_columns), reinterpret_cast<const float*>(tpl_values),
-        reinterpret_cast<int*>(bsr_offsets), reinterpret_cast<int*>(bsr_columns),
-        reinterpret_cast<float*>(bsr_values));
+        rows_per_block, cols_per_block, row_count, nnz, tpl_rows, tpl_columns, static_cast<const float*>(tpl_values),
+        prune_numerical_zeros, bsr_offsets, bsr_columns, static_cast<float*>(bsr_values), bsr_nnz, bsr_nnz_event);
 }
 
-int bsr_matrix_from_triplets_double_device(int rows_per_block, int cols_per_block, int row_count, int nnz,
-                                           uint64_t tpl_rows, uint64_t tpl_columns, uint64_t tpl_values,
-                                           uint64_t bsr_offsets, uint64_t bsr_columns, uint64_t bsr_values)
+void bsr_matrix_from_triplets_double_device(int rows_per_block, int cols_per_block, int row_count, int nnz,
+                                            int* tpl_rows, int* tpl_columns, void* tpl_values,
+                                            bool prune_numerical_zeros, int* bsr_offsets, int* bsr_columns,
+                                            void* bsr_values, int* bsr_nnz, void* bsr_nnz_event)
 {
     return bsr_matrix_from_triplets_device<double>(
-        rows_per_block, cols_per_block, row_count, nnz, reinterpret_cast<const int*>(tpl_rows),
-        reinterpret_cast<const int*>(tpl_columns), reinterpret_cast<const double*>(tpl_values),
-        reinterpret_cast<int*>(bsr_offsets), reinterpret_cast<int*>(bsr_columns),
-        reinterpret_cast<double*>(bsr_values));
+        rows_per_block, cols_per_block, row_count, nnz, tpl_rows, tpl_columns, static_cast<const double*>(tpl_values),
+        prune_numerical_zeros, bsr_offsets, bsr_columns, static_cast<double*>(bsr_values), bsr_nnz, bsr_nnz_event);
 }
 
 void bsr_transpose_float_device(int rows_per_block, int cols_per_block, int row_count, int col_count, int nnz,
-                                uint64_t bsr_offsets, uint64_t bsr_columns, uint64_t bsr_values,
-                                uint64_t transposed_bsr_offsets, uint64_t transposed_bsr_columns,
-                                uint64_t transposed_bsr_values)
+                                int* bsr_offsets, int* bsr_columns, void* bsr_values, int* transposed_bsr_offsets,
+                                int* transposed_bsr_columns, void* transposed_bsr_values)
 {
-    bsr_transpose_device(rows_per_block, cols_per_block, row_count, col_count, nnz,
-                         reinterpret_cast<const int*>(bsr_offsets), reinterpret_cast<const int*>(bsr_columns),
-                         reinterpret_cast<const float*>(bsr_values), reinterpret_cast<int*>(transposed_bsr_offsets),
-                         reinterpret_cast<int*>(transposed_bsr_columns),
-                         reinterpret_cast<float*>(transposed_bsr_values));
+    bsr_transpose_device(rows_per_block, cols_per_block, row_count, col_count, nnz, bsr_offsets, bsr_columns,
+                         static_cast<const float*>(bsr_values), transposed_bsr_offsets, transposed_bsr_columns,
+                         static_cast<float*>(transposed_bsr_values));
 }
 
 void bsr_transpose_double_device(int rows_per_block, int cols_per_block, int row_count, int col_count, int nnz,
-                                 uint64_t bsr_offsets, uint64_t bsr_columns, uint64_t bsr_values,
-                                 uint64_t transposed_bsr_offsets, uint64_t transposed_bsr_columns,
-                                 uint64_t transposed_bsr_values)
+                                 int* bsr_offsets, int* bsr_columns, void* bsr_values, int* transposed_bsr_offsets,
+                                 int* transposed_bsr_columns, void* transposed_bsr_values)
 {
-    bsr_transpose_device(rows_per_block, cols_per_block, row_count, col_count, nnz,
-                         reinterpret_cast<const int*>(bsr_offsets), reinterpret_cast<const int*>(bsr_columns),
-                         reinterpret_cast<const double*>(bsr_values), reinterpret_cast<int*>(transposed_bsr_offsets),
-                         reinterpret_cast<int*>(transposed_bsr_columns),
-                         reinterpret_cast<double*>(transposed_bsr_values));
+    bsr_transpose_device(rows_per_block, cols_per_block, row_count, col_count, nnz, bsr_offsets, bsr_columns,
+                         static_cast<const double*>(bsr_values), transposed_bsr_offsets, transposed_bsr_columns,
+                         static_cast<double*>(transposed_bsr_values));
 }

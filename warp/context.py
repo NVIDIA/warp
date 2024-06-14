@@ -2776,39 +2776,38 @@ class Runtime:
             self.core.volume_get_blind_data_info.restype = ctypes.c_char_p
 
             bsr_matrix_from_triplets_argtypes = [
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
+                ctypes.c_int,  # rows_per_bock
+                ctypes.c_int,  # cols_per_blocks
+                ctypes.c_int,  # row_count
+                ctypes.c_int,  # tpl_nnz
+                ctypes.POINTER(ctypes.c_int),  # tpl_rows
+                ctypes.POINTER(ctypes.c_int),  # tpl_cols
+                ctypes.c_void_p,  # tpl_values
+                ctypes.c_bool,  # prune_numerical_zeros
+                ctypes.POINTER(ctypes.c_int),  # bsr_offsets
+                ctypes.POINTER(ctypes.c_int),  # bsr_columns
+                ctypes.c_void_p,  # bsr_values
+                ctypes.POINTER(ctypes.c_int),  # bsr_nnz
+                ctypes.c_void_p,  # bsr_nnz_event
             ]
+
             self.core.bsr_matrix_from_triplets_float_host.argtypes = bsr_matrix_from_triplets_argtypes
             self.core.bsr_matrix_from_triplets_double_host.argtypes = bsr_matrix_from_triplets_argtypes
             self.core.bsr_matrix_from_triplets_float_device.argtypes = bsr_matrix_from_triplets_argtypes
             self.core.bsr_matrix_from_triplets_double_device.argtypes = bsr_matrix_from_triplets_argtypes
 
-            self.core.bsr_matrix_from_triplets_float_host.restype = ctypes.c_int
-            self.core.bsr_matrix_from_triplets_double_host.restype = ctypes.c_int
-            self.core.bsr_matrix_from_triplets_float_device.restype = ctypes.c_int
-            self.core.bsr_matrix_from_triplets_double_device.restype = ctypes.c_int
-
             bsr_transpose_argtypes = [
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
+                ctypes.c_int,  # rows_per_bock
+                ctypes.c_int,  # cols_per_blocks
+                ctypes.c_int,  # row_count
+                ctypes.c_int,  # col count
+                ctypes.c_int,  # nnz
+                ctypes.POINTER(ctypes.c_int),  # transposed_bsr_offsets
+                ctypes.POINTER(ctypes.c_int),  # transposed_bsr_columns
+                ctypes.c_void_p,  # bsr_values
+                ctypes.POINTER(ctypes.c_int),  # transposed_bsr_offsets
+                ctypes.POINTER(ctypes.c_int),  # transposed_bsr_columns
+                ctypes.c_void_p,  # transposed_bsr_values
             ]
             self.core.bsr_transpose_float_host.argtypes = bsr_transpose_argtypes
             self.core.bsr_transpose_double_host.argtypes = bsr_transpose_argtypes
