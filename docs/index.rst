@@ -60,14 +60,14 @@ An example first program that computes the lengths of random 3D vectors is given
 Additional Examples
 -------------------
 
-The `examples <https://github.com/NVIDIA/warp/tree/main/warp/examples>`_ directory in
-the Github repository contains a number of scripts that show how to
-implement different simulation methods using the Warp API. Most examples
+The `warp/examples <https://github.com/NVIDIA/warp/tree/main/warp/examples>`_ directory in
+the Github repository contains a number of scripts categorized under different subdirectories
+that show how to implement different simulation methods using the Warp API. Most examples
 will generate USD files containing time-sampled animations in the 
-same directory as the example. Before running examples users should
-ensure that the ``usd-core`` package is installed using::
+same directory as the example.
+Before running examples, users should ensure that the ``usd-core``, ``matplotlib``, and ``pyglet`` packages are installed using::
 
-    pip install usd-core
+    pip install usd-core matplotlib pyglet
 
 Examples can be run from the command-line as follows::
 
