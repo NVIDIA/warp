@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## [1.2.1] - 2024-06-14
+
+- Fix generic function caching
+
 ## [1.2.0] - 2024-06-06
 
 - Add a not-a-number floating-point constant that can be used as `wp.NAN` or `wp.nan`.
