@@ -181,6 +181,58 @@ def test_bsr_get_set_diag(test, device):
     assert np.all(diag_csr.values.numpy() == np.ones(nrow, dtype=float))
 
 
+def test_bsr_split_merge(test, device):
+    rng = np.random.default_rng(123)
+
+    block_shape = (4, 2)
+    nrow = 4
+    ncol = 8
+    shape = (block_shape[0] * nrow, block_shape[1] * ncol)
+    n = 20
+
+    rows = wp.array(rng.integers(0, high=nrow, size=n, dtype=int), dtype=int, device=device)
+    cols = wp.array(rng.integers(0, high=ncol, size=n, dtype=int), dtype=int, device=device)
+    vals = wp.array(rng.random(size=(n, block_shape[0], block_shape[1])), dtype=float, device=device)
+
+    bsr = bsr_zeros(nrow, ncol, wp.types.matrix(shape=block_shape, dtype=float), device=device)
+    bsr_set_from_triplets(bsr, rows, cols, vals)
+    ref = _bsr_to_dense(bsr)
+
+    bsr_split = bsr_copy(bsr, block_shape=(2, 2))
+    test.assertEqual(bsr_split.block_size, 4)
+    res = _bsr_to_dense(bsr_split)
+    assert_np_equal(res, ref, 0.0001)
+
+    bsr_split = bsr_copy(bsr, block_shape=(1, 1))
+    test.assertEqual(bsr_split.block_size, 1)
+    res = _bsr_to_dense(bsr_split)
+    assert_np_equal(res, ref, 0.0001)
+
+    bsr_merge = bsr_copy(bsr, block_shape=(4, 4))
+    test.assertEqual(bsr_merge.block_size, 16)
+    res = _bsr_to_dense(bsr_merge)
+    assert_np_equal(res, ref, 0.0001)
+
+    bsr_merge = bsr_copy(bsr, block_shape=(8, 8))
+    test.assertEqual(bsr_merge.block_size, 64)
+    res = _bsr_to_dense(bsr_merge)
+    assert_np_equal(res, ref, 0.0001)
+
+    with test.assertRaisesRegex(ValueError, "Incompatible dest and src block shapes"):
+        bsr_copy(bsr, block_shape=(3, 3))
+
+    with test.assertRaisesRegex(
+        ValueError, r"Dest block shape \(5, 5\) is not an exact multiple of src block shape \(4, 2\)"
+    ):
+        bsr_copy(bsr, block_shape=(5, 5))
+
+    with test.assertRaisesRegex(
+        ValueError,
+        "The total rows and columns of the src matrix cannot be evenly divided using the requested block shape",
+    ):
+        bsr_copy(bsr, block_shape=(32, 32))
+
+
 def make_test_bsr_transpose(block_shape, scalar_type):
     def test_bsr_transpose(test, device):
         rng = np.random.default_rng(123)
@@ -321,6 +373,11 @@ def make_test_bsr_mm(block_shape, scalar_type):
             res = _bsr_to_dense(z)
             assert_np_equal(res, ref, 0.0001)
 
+        # test reusing topology from work arrays
+        # (assumes betas[-1] = 0)
+        bsr_mm(x, y, z, alpha, beta, work_arrays=work_arrays, reuse_topology=True)
+        assert_np_equal(res, ref, 0.0001)
+
         # test aliasing of matrix arguments
         # x = alpha * z * x + beta * x
         alpha, beta = alphas[0], betas[0]
@@ -443,6 +500,7 @@ class TestSparse(unittest.TestCase):
 add_function_test(TestSparse, "test_csr_from_triplets", test_csr_from_triplets, devices=devices)
 add_function_test(TestSparse, "test_bsr_from_triplets", test_bsr_from_triplets, devices=devices)
 add_function_test(TestSparse, "test_bsr_get_diag", test_bsr_get_set_diag, devices=devices)
+add_function_test(TestSparse, "test_bsr_split_merge", test_bsr_split_merge, devices=devices)
 
 add_function_test(TestSparse, "test_csr_transpose", make_test_bsr_transpose((1, 1), wp.float32), devices=devices)
 add_function_test(TestSparse, "test_bsr_transpose_1_3", make_test_bsr_transpose((1, 3), wp.float32), devices=devices)
