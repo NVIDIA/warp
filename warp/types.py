@@ -2164,6 +2164,9 @@ class array(Array):
         """
         Enables A @ B syntax for matrix multiplication
         """
+        if not is_array(other):
+            return NotImplemented
+
         if self.ndim != 2 or other.ndim != 2:
             raise RuntimeError(
                 "A has dim = {}, B has dim = {}. If multiplying with @, A and B must have dim = 2.".format(

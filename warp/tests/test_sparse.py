@@ -158,6 +158,9 @@ def test_bsr_get_set_diag(test, device):
     diag = bsr_get_diag(diag_bsr)
     assert_np_equal(diag_scalar_np, diag.numpy(), tol=0.000001)
 
+    diag = bsr_get_diag(2.0 * diag_bsr)
+    assert_np_equal(2.0 * diag_scalar_np, diag.numpy(), tol=0.000001)
+
     # Uniform block diagonal
 
     with test.assertRaisesRegex(ValueError, "BsrMatrix block type must be either warp matrix or scalar"):
@@ -249,14 +252,11 @@ def make_test_bsr_transpose(block_shape, scalar_type):
 
         bsr = bsr_zeros(nrow, ncol, wp.types.matrix(shape=block_shape, dtype=scalar_type), device=device)
         bsr_set_from_triplets(bsr, rows, cols, vals)
-        ref = np.transpose(_bsr_to_dense(bsr))
+        ref = 2.0 * np.transpose(_bsr_to_dense(bsr))
 
-        bsr_transposed = bsr_zeros(
-            ncol, nrow, wp.types.matrix(shape=block_shape[::-1], dtype=scalar_type), device=device
-        )
-        bsr_set_transpose(dest=bsr_transposed, src=bsr)
+        bsr_transposed = (2.0 * bsr).transpose()
 
-        res = _bsr_to_dense(bsr_transposed)
+        res = _bsr_to_dense(bsr_transposed.eval())
         assert_np_equal(res, ref, 0.0001)
 
         if block_shape[0] != block_shape[-1]:
@@ -297,17 +297,14 @@ def make_test_bsr_axpy(block_shape, scalar_type):
         work_arrays = bsr_axpy_work_arrays()
         for alpha, beta in zip(alphas, betas):
             ref = alpha * _bsr_to_dense(x) + beta * _bsr_to_dense(y)
-            if beta == 0.0:
-                y = bsr_axpy(x, alpha=alpha, beta=beta, work_arrays=work_arrays)
-            else:
-                bsr_axpy(x, y, alpha, beta, work_arrays=work_arrays)
+            bsr_axpy(x, y, alpha, beta, work_arrays=work_arrays)
 
             res = _bsr_to_dense(y)
             assert_np_equal(res, ref, 0.0001)
 
         # test aliasing
         ref = 3.0 * _bsr_to_dense(y)
-        bsr_axpy(y, y, alpha=1.0, beta=2.0)
+        y += y * 2.0
         res = _bsr_to_dense(y)
         assert_np_equal(res, ref, 0.0001)
 
@@ -337,7 +334,7 @@ def make_test_bsr_mm(block_shape, scalar_type):
 
         nnz = 6
 
-        alphas = [-1.0, 0.0, 1.0]
+        alphas = [-1.0, 0.0, 2.0]
         betas = [2.0, -1.0, 0.0]
 
         x_rows = wp.array(rng.integers(0, high=x_nrow, size=nnz, dtype=int), dtype=int, device=device)
@@ -376,6 +373,10 @@ def make_test_bsr_mm(block_shape, scalar_type):
         # test reusing topology from work arrays
         # (assumes betas[-1] = 0)
         bsr_mm(x, y, z, alpha, beta, work_arrays=work_arrays, reuse_topology=True)
+        assert_np_equal(res, ref, 0.0001)
+
+        # using overloaded operators
+        x = (alpha * x) @ y
         assert_np_equal(res, ref, 0.0001)
 
         # test aliasing of matrix arguments
@@ -446,12 +447,18 @@ def make_test_bsr_mv(block_shape, scalar_type):
         for alpha, beta in zip(alphas, betas):
             ref = alpha * _bsr_to_dense(A) @ x.numpy().flatten() + beta * y.numpy().flatten()
             if beta == 0.0:
-                y = bsr_mv(A, x, alpha=alpha, beta=beta, work_buffer=work_buffer)
+                y = A @ x
             else:
                 bsr_mv(A, x, y, alpha, beta, work_buffer=work_buffer)
 
             res = y.numpy().flatten()
             assert_np_equal(res, ref, 0.0001)
+
+        # test tranposed product
+        ref = alpha * y.numpy().flatten() @ _bsr_to_dense(A)
+        x = y @ (A * alpha)
+        res = x.numpy().flatten()
+        assert_np_equal(res, ref, 0.0001)
 
         # test aliasing
         alpha, beta = alphas[0], betas[0]
