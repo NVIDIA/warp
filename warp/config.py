@@ -7,7 +7,7 @@
 
 from typing import Optional
 
-version: str = "1.2.1"
+version: str = "1.2.2"
 
 verify_fp: bool = False  # verify inputs and outputs are finite after each launch
 verify_cuda: bool = False  # if true will check CUDA errors after each kernel launch / memory operation
