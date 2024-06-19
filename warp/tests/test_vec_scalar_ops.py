@@ -687,10 +687,22 @@ def test_equality(test, device, dtype, register_kernels=False):
     vec4 = wp.types.vector(length=4, dtype=wptype)
     vec5 = wp.types.vector(length=5, dtype=wptype)
 
-    def check_equality(
+    def check_unsigned_equality(
         v20: wp.array(dtype=vec2),
         v21: wp.array(dtype=vec2),
         v22: wp.array(dtype=vec2),
+        v30: wp.array(dtype=vec3),
+        v40: wp.array(dtype=vec4),
+        v50: wp.array(dtype=vec5),
+    ):
+        wp.expect_eq(v20[0], v20[0])
+        wp.expect_neq(v21[0], v20[0])
+        wp.expect_neq(v22[0], v20[0])
+        wp.expect_eq(v30[0], v30[0])
+        wp.expect_eq(v40[0], v40[0])
+        wp.expect_eq(v50[0], v50[0])
+
+    def check_signed_equality(
         v30: wp.array(dtype=vec3),
         v31: wp.array(dtype=vec3),
         v32: wp.array(dtype=vec3),
@@ -707,29 +719,21 @@ def test_equality(test, device, dtype, register_kernels=False):
         v54: wp.array(dtype=vec5),
         v55: wp.array(dtype=vec5),
     ):
-        wp.expect_eq(v20[0], v20[0])
-        wp.expect_neq(v21[0], v20[0])
-        wp.expect_neq(v22[0], v20[0])
-
-        wp.expect_eq(v30[0], v30[0])
         wp.expect_neq(v31[0], v30[0])
         wp.expect_neq(v32[0], v30[0])
         wp.expect_neq(v33[0], v30[0])
-
-        wp.expect_eq(v40[0], v40[0])
         wp.expect_neq(v41[0], v40[0])
         wp.expect_neq(v42[0], v40[0])
         wp.expect_neq(v43[0], v40[0])
         wp.expect_neq(v44[0], v40[0])
-
-        wp.expect_eq(v50[0], v50[0])
         wp.expect_neq(v51[0], v50[0])
         wp.expect_neq(v52[0], v50[0])
         wp.expect_neq(v53[0], v50[0])
         wp.expect_neq(v54[0], v50[0])
         wp.expect_neq(v55[0], v50[0])
 
-    kernel = getkernel(check_equality, suffix=dtype.__name__)
+    unsigned_kernel = getkernel(check_unsigned_equality, suffix=dtype.__name__)
+    signed_kernel = getkernel(check_signed_equality, suffix=dtype.__name__)
 
     if register_kernels:
         return
@@ -739,48 +743,63 @@ def test_equality(test, device, dtype, register_kernels=False):
     v22 = wp.array([3.0, 2.0], dtype=vec2, requires_grad=True, device=device)
 
     v30 = wp.array([1.0, 2.0, 3.0], dtype=vec3, requires_grad=True, device=device)
-    v31 = wp.array([-1.0, 2.0, 3.0], dtype=vec3, requires_grad=True, device=device)
-    v32 = wp.array([1.0, -2.0, 3.0], dtype=vec3, requires_grad=True, device=device)
-    v33 = wp.array([1.0, 2.0, -3.0], dtype=vec3, requires_grad=True, device=device)
-
     v40 = wp.array([1.0, 2.0, 3.0, 4.0], dtype=vec4, requires_grad=True, device=device)
-    v41 = wp.array([-1.0, 2.0, 3.0, 4.0], dtype=vec4, requires_grad=True, device=device)
-    v42 = wp.array([1.0, -2.0, 3.0, 4.0], dtype=vec4, requires_grad=True, device=device)
-    v43 = wp.array([1.0, 2.0, -3.0, 4.0], dtype=vec4, requires_grad=True, device=device)
-    v44 = wp.array([1.0, 2.0, 3.0, -4.0], dtype=vec4, requires_grad=True, device=device)
-
     v50 = wp.array([1.0, 2.0, 3.0, 4.0, 5.0], dtype=vec5, requires_grad=True, device=device)
-    v51 = wp.array([-1.0, 2.0, 3.0, 4.0, 5.0], dtype=vec5, requires_grad=True, device=device)
-    v52 = wp.array([1.0, -2.0, 3.0, 4.0, 5.0], dtype=vec5, requires_grad=True, device=device)
-    v53 = wp.array([1.0, 2.0, -3.0, 4.0, 5.0], dtype=vec5, requires_grad=True, device=device)
-    v54 = wp.array([1.0, 2.0, 3.0, -4.0, 5.0], dtype=vec5, requires_grad=True, device=device)
-    v55 = wp.array([1.0, 2.0, 3.0, 4.0, -5.0], dtype=vec5, requires_grad=True, device=device)
+
     wp.launch(
-        kernel,
+        unsigned_kernel,
         dim=1,
         inputs=[
             v20,
             v21,
             v22,
             v30,
-            v31,
-            v32,
-            v33,
             v40,
-            v41,
-            v42,
-            v43,
-            v44,
             v50,
-            v51,
-            v52,
-            v53,
-            v54,
-            v55,
         ],
         outputs=[],
         device=device,
     )
+
+    if dtype not in np_unsigned_int_types:
+        v31 = wp.array([-1.0, 2.0, 3.0], dtype=vec3, requires_grad=True, device=device)
+        v32 = wp.array([1.0, -2.0, 3.0], dtype=vec3, requires_grad=True, device=device)
+        v33 = wp.array([1.0, 2.0, -3.0], dtype=vec3, requires_grad=True, device=device)
+
+        v41 = wp.array([-1.0, 2.0, 3.0, 4.0], dtype=vec4, requires_grad=True, device=device)
+        v42 = wp.array([1.0, -2.0, 3.0, 4.0], dtype=vec4, requires_grad=True, device=device)
+        v43 = wp.array([1.0, 2.0, -3.0, 4.0], dtype=vec4, requires_grad=True, device=device)
+        v44 = wp.array([1.0, 2.0, 3.0, -4.0], dtype=vec4, requires_grad=True, device=device)
+
+        v51 = wp.array([-1.0, 2.0, 3.0, 4.0, 5.0], dtype=vec5, requires_grad=True, device=device)
+        v52 = wp.array([1.0, -2.0, 3.0, 4.0, 5.0], dtype=vec5, requires_grad=True, device=device)
+        v53 = wp.array([1.0, 2.0, -3.0, 4.0, 5.0], dtype=vec5, requires_grad=True, device=device)
+        v54 = wp.array([1.0, 2.0, 3.0, -4.0, 5.0], dtype=vec5, requires_grad=True, device=device)
+        v55 = wp.array([1.0, 2.0, 3.0, 4.0, -5.0], dtype=vec5, requires_grad=True, device=device)
+
+        wp.launch(
+            signed_kernel,
+            dim=1,
+            inputs=[
+                v30,
+                v31,
+                v32,
+                v33,
+                v40,
+                v41,
+                v42,
+                v43,
+                v44,
+                v50,
+                v51,
+                v52,
+                v53,
+                v54,
+                v55,
+            ],
+            outputs=[],
+            device=device,
+        )
 
 
 def test_scalar_multiplication(test, device, dtype, register_kernels=False):
