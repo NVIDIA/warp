@@ -3,6 +3,7 @@
 ## [Upcoming Release] - 2024-??-??
 
 - Improve memory usage and performance for rigid body contact handling when `self.rigid_mesh_contact_max` is zero (default behavior)
+- Support for NumPy >= 2.0
 
 ## [1.2.1] - 2024-06-14
 
