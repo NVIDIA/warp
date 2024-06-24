@@ -2366,6 +2366,22 @@ def test_direct_from_numpy(test, device):
     assert_np_equal(m.reshape(n), expected)
 
 
+@wp.kernel
+def kernel_array_from_ptr(
+    ptr: wp.uint64,
+):
+    arr = wp.array(ptr=ptr, shape=(2, 3), dtype=wp.float32)
+    arr[0, 0] = 1.0
+    arr[0, 1] = 2.0
+    arr[0, 2] = 3.0
+
+
+def test_kernel_array_from_ptr(test, device):
+    arr = wp.zeros(shape=(2, 3), dtype=wp.float32, device=device)
+    wp.launch(kernel_array_from_ptr, dim=(1,), inputs=(arr.ptr,), device=device)
+    assert_np_equal(arr.numpy(), np.array(((1.0, 2.0, 3.0), (0.0, 0.0, 0.0))))
+
+
 devices = get_test_devices()
 
 
@@ -2425,6 +2441,7 @@ add_function_test(TestArray, "test_array_of_structs_roundtrip", test_array_of_st
 add_function_test(TestArray, "test_array_from_numpy", test_array_from_numpy, devices=devices)
 
 add_function_test(TestArray, "test_direct_from_numpy", test_direct_from_numpy, devices=["cpu"])
+add_function_test(TestArray, "test_kernel_array_from_ptr", test_kernel_array_from_ptr, devices=devices)
 
 try:
     import torch

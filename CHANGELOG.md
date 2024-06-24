@@ -58,6 +58,7 @@
   anticipate when a class instance is created but not instantiated before garbage collection.
 - Add documentation for dynamic loop autograd limitations
 - Conform to Python's syntax for function arguments when calling built-ins inside of kernels, thus extending support for keyword arguments
+- Add `wp.array(ptr=...)` to allow initializing arrays from pointer addresses inside of kernels
 - Implement the assignment operator for `wp.quat`
 
 ## [1.2.2] - 2024-07-04
