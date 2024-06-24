@@ -548,7 +548,7 @@ The resulting SVG image can be rendered in a web browser:
 .. image:: ../img/tape.svg
 
 The graph visualization shows the kernel launches as grey boxes with the ports below them indicating the input and output arguments. Arrays 
-are shown as ellipses, where gray ellipses indicate arrays that do not require gradients, and green ellipses indicate arrays that do not have ``requires_grad=True``.
+are shown as ellipses, where gray ellipses indicate arrays that do not require gradients, and green ellipses indicate arrays that have ``requires_grad=True``.
 
 In the example above we can see that the array ``c`` does not have its ``requires_grad`` flag set, which means gradients will not be propagated through this path.
 
