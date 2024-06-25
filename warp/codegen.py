@@ -682,15 +682,11 @@ class Adjoint:
         # recursively evaluate function body
         try:
             adj.eval(adj.tree.body[0])
-        except Exception as e:
+        except Exception:
             try:
-                if isinstance(e, KeyError) and getattr(e.args[0], "__module__", None) == "ast":
-                    msg = f'Syntax error: unsupported construct "ast.{e.args[0].__name__}"'
-                else:
-                    msg = "Error"
                 lineno = adj.lineno + adj.fun_lineno
                 line = adj.source_lines[adj.lineno]
-                msg += f' while parsing function "{adj.fun_name}" at {adj.filename}:{lineno}:\n{line}\n'
+                msg = f'Error while parsing function "{adj.fun_name}" at {adj.filename}:{lineno}:\n{line}\n'
                 ex, data, traceback = sys.exc_info()
                 e = ex(";".join([msg] + [str(a) for a in data.args])).with_traceback(traceback)
             finally:
@@ -1764,6 +1760,18 @@ class Adjoint:
                     f"Could not find function {'.'.join(path)} as a built-in or user-defined function. Note that user functions must be annotated with a @wp.func decorator to be called from a kernel."
                 )
 
+        # Check if any argument correspond to an unsupported construct.
+        # Tuples are supported in the context of assigning multiple variables
+        # at once, but not in place of vectors when calling built-ins like
+        # `wp.length((1, 2, 3))`.
+        # Therefore, we need to catch this specific case here instead of
+        # more generally in `adj.eval()`.
+        for arg in node.args:
+            if isinstance(arg, ast.Tuple):
+                raise WarpCodegenError(
+                    "Tuple constructs are not supported in kernels. Use vectors like `wp.vec3()` instead."
+                )
+
         args = []
 
         # eval all arguments
@@ -1887,6 +1895,21 @@ class Adjoint:
             raise WarpCodegenError("Assigning the same value to multiple variables is not supported")
 
         lhs = node.targets[0]
+
+        if not isinstance(lhs, ast.Tuple):
+            # Check if the rhs corresponds to an unsupported construct.
+            # Tuples are supported in the context of assigning multiple variables
+            # at once, but not for simple assignments like `x = (1, 2, 3)`.
+            # Therefore, we need to catch this specific case here instead of
+            # more generally in `adj.eval()`.
+            if isinstance(node.value, ast.List):
+                raise WarpCodegenError(
+                    "List constructs are not supported in kernels. Use vectors like `wp.vec3()` for small collections instead."
+                )
+            elif isinstance(node.value, ast.Tuple):
+                raise WarpCodegenError(
+                    "Tuple constructs are not supported in kernels. Use vectors like `wp.vec3()` for small collections instead."
+                )
 
         # handle the case where we are assigning multiple output variables
         if isinstance(lhs, ast.Tuple):
@@ -2089,7 +2112,12 @@ class Adjoint:
         if hasattr(node, "lineno"):
             adj.set_lineno(node.lineno - 1)
 
-        emit_node = adj.node_visitors[type(node)]
+        try:
+            emit_node = adj.node_visitors[type(node)]
+        except KeyError as e:
+            type_name = type(node).__name__
+            namespace = "ast." if getattr(type(node), "__module__", None) == "ast" else ""
+            raise WarpCodegenError(f"Construct `{namespace}{type_name}` not supported in kernels.") from e
 
         return emit_node(adj, node)
 

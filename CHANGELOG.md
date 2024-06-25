@@ -11,6 +11,7 @@
   compiled `(compiled)`, loaded from the cache `(cached)`, or was unable to be
   loaded `(error)`.
 - `wp.config.verbose = True` now also prints out a message upon the entry to a `wp.ScopedTimer`.
+- Improve error messages for unsupported constructs
 
 ## [1.2.1] - 2024-06-14
 
