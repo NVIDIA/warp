@@ -162,14 +162,32 @@ def clamp(x: Scalar, a: Scalar, b: Scalar) -> Scalar:
 
 
 @over
+def clamp(a: Vector[Any, Scalar], low: Vector[Any, Scalar], high: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """Clamp the elements of ``a`` to the elements from the range [low, high]."""
+    ...
+
+
+@over
 def abs(x: Scalar) -> Scalar:
     """Return the absolute value of ``x``."""
     ...
 
 
 @over
+def abs(a: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """Return the absolute values of the elements of ``a``."""
+    ...
+
+
+@over
 def sign(x: Scalar) -> Scalar:
     """Return -1 if ``x`` < 0, return 1 otherwise."""
+    ...
+
+
+@over
+def sign(a: Vector[Any, Scalar]) -> Scalar:
+    """Return -1 for the negative elements of ``a``, and 1 otherwise."""
     ...
 
 
