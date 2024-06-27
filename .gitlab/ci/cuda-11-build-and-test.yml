@@ -19,7 +19,8 @@
 include:
   - /.gitlab/ci/common.yml
   - project: "omniverse/sectools/vault"
-    file: ["templates/v2/omni-packman-s3-creds.yml", "templates/v3/linux/packman_s3.gitlab-ci.yml"]
+    file: ["templates/v3/linux/packman_s3.gitlab-ci.yml"]
+    ref: v1_latest
 
 workflow:
   rules:
@@ -299,6 +300,7 @@ publish extensions to packman:
   needs: ["create kit artifacts"]
   extends:
     - .runner-utility-linux-x86_64
+    - .osec:vault:v3:prod_token_job
   rules:
     - if: $CI_PROJECT_PATH != "omniverse/warp" # Prevent fork pipelines from running this job
       when: never
@@ -314,4 +316,5 @@ publish extensions to packman:
     - unzip kit-extensions.zip
     - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
   script:
+    - !reference [.osec:vault:v3:linux, packman_s3:perform_vault_requests]
     - tools/repo.sh publish_exts
