@@ -5,6 +5,7 @@
 - Improve memory usage and performance for rigid body contact handling when `self.rigid_mesh_contact_max` is zero (default behavior)
 - The `mask` argument to `wp.sim.eval_fk` now accepts both integer and bool arrays
 - Support for NumPy >= 2.0
+- Fix hashing of replay functions and snippets
 
 ## [1.2.1] - 2024-06-14
 
