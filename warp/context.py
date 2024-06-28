@@ -1495,22 +1495,18 @@ class Module:
                         ch.update(bytes(sig, "utf-8"))
 
                         # source
-                        s = func.adj.source
-                        ch.update(bytes(s, "utf-8"))
+                        ch.update(bytes(func.adj.source, "utf-8"))
 
                         if func.custom_grad_func:
-                            s = func.custom_grad_func.adj.source
-                            ch.update(bytes(s, "utf-8"))
+                            ch.update(bytes(func.custom_grad_func.adj.source, "utf-8"))
                         if func.custom_replay_func:
-                            s = func.custom_replay_func.adj.source
+                            ch.update(bytes(func.custom_replay_func.adj.source, "utf-8"))
                         if func.replay_snippet:
-                            s = func.replay_snippet
+                            ch.update(bytes(func.replay_snippet, "utf-8"))
                         if func.native_snippet:
-                            s = func.native_snippet
-                            ch.update(bytes(s, "utf-8"))
+                            ch.update(bytes(func.native_snippet, "utf-8"))
                         if func.adj_native_snippet:
-                            s = func.adj_native_snippet
-                            ch.update(bytes(s, "utf-8"))
+                            ch.update(bytes(func.adj_native_snippet, "utf-8"))
 
                         # Populate constants referenced in this function
                         if func.adj:
