@@ -19,5 +19,5 @@ concurrency:
 
 jobs:
   build-and-test:
-    uses: ./.github/workflows/build-and-test.yml
+    uses: ./.github/workflows/ci.yml
     secrets: inherit
