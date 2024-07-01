@@ -300,7 +300,7 @@ def bsr_set_from_triplets(
         columns: Columns index for each non-zero
         values: Block values for each non-zero. Must be either a one-dimensional array with data type identical
           to the `dest` matrix's block type, or a 3d array with data type equal to the `dest` matrix's scalar type.
-        prune_numerical_zeros: If True, will ignore the zero
+        prune_numerical_zeros: If True, will ignore the zero-valued blocks
     """
 
     if values.device != columns.device or values.device != rows.device or values.device != dest.values.device:
@@ -631,9 +631,12 @@ def bsr_assign(
 ):
     """Copies the content of the `src` BSR matrix to `dest`.
 
-    If `structure_only` is ``True``, only the non-zeros indices are copied, and unitialized value storage is allocated
-    to accomodate at least `src.nnz` blocks. If `structure_only` is ``False``, values are also copied with implicit
-    casting if the two matrices use distinct scalar types.
+    Args:
+      src: Matrix to be copied
+      dest: Destination matrix. May have a different block shape of scalar type than `src`, in which case the required casting will be performed.
+      structure_only: If ``True``, only the non-zeros indices are copied, and unitialized value storage is allocated
+        to accomodate at least `src.nnz` blocks. If `structure_only` is ``False``, values are also copied with implicit
+        casting if the two matrices use distinct scalar types.
     """
 
     src, src_scale = _extract_matrix_and_scale(src)
@@ -798,12 +801,13 @@ def bsr_copy(
     """Returns a copy of matrix ``A``, possibly changing its scalar type.
 
     Args:
+       A: Matrix to be copied
        scalar_type: If provided, the returned matrix will use this scalar type instead of the one from `A`.
        block_shape: If provided, the returned matrix will use blocks of this shape instead of the one from `A`.
          Both dimensions of `block_shape` must be either a multiple or an exact divider of the ones from `A`.
        structure_only: If ``True``, only the non-zeros indices are copied, and unitialized value storage is allocated
-    to accomodate at least `src.nnz` blocks. If `structure_only` is ``False``, values are also copied with implicit
-    casting if the two matrices use distinct scalar types.
+         to accomodate at least `src.nnz` blocks. If `structure_only` is ``False``, values are also copied with implicit
+         casting if the two matrices use distinct scalar types.
     """
     if scalar_type is None:
         scalar_type = A.scalar_type
