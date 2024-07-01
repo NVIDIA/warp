@@ -164,6 +164,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_snippet import TestSnippets
     from warp.tests.test_sparse import TestSparse
     from warp.tests.test_spatial import TestSpatial
+    from warp.tests.test_special_values import TestSpecialValues
     from warp.tests.test_streams import TestStreams
     from warp.tests.test_struct import TestStruct
     from warp.tests.test_tape import TestTape
@@ -252,9 +253,10 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestSimGradients,
         TestSimKinematics,
         TestSmoothstep,
-        TestSparse,
         TestSnippets,
+        TestSparse,
         TestSpatial,
+        TestSpecialValues,
         TestStreams,
         TestStruct,
         TestTape,
