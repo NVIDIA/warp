@@ -461,8 +461,10 @@ def make_test_bsr_mv(block_shape, scalar_type):
         assert_np_equal(res, ref, 0.0001)
 
         # test aliasing
-        alpha, beta = alphas[0], betas[0]
         AAt = bsr_mm(A, bsr_transposed(A))
+        assert_np_equal(_bsr_to_dense(AAt), _bsr_to_dense(A) @ _bsr_to_dense(A).T, 0.0001)
+
+        alpha, beta = alphas[0], betas[0]
         ref = alpha * _bsr_to_dense(AAt) @ y.numpy().flatten() + beta * y.numpy().flatten()
         bsr_mv(AAt, y, y, alpha, beta)
         res = y.numpy().flatten()
