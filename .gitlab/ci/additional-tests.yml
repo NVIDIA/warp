@@ -67,6 +67,9 @@ windows-x86_64 test:
     - .\_venv\Scripts\Activate.ps1
     - python -m pip install --upgrade pip
     - python -m pip install --upgrade usd-core
+    # Temporary HACK: use NumPy < 2.0 on Windows due to issues with Torch wheels that are not compatible
+    # https://github.com/pytorch/pytorch/issues/128860
+    - python -m pip install "numpy<2"
     - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
     - python -m pip install -e .
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
