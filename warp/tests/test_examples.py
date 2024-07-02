@@ -150,7 +150,7 @@ def add_example_test(
 
         # with wp.ScopedTimer(f"{name}_{sanitize_identifier(device)}"):
         # Run the script as a subprocess
-        result = subprocess.run(command, capture_output=True, text=True, env=env_vars)
+        result = subprocess.run(command, capture_output=True, text=True, env=env_vars, timeout=300)
 
         # Check the return code (0 is standard for success)
         test.assertEqual(

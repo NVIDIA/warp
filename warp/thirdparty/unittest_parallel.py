@@ -244,7 +244,7 @@ def main(argv=None):
                     initargs=(manager.Lock(), shared_index, args, temp_dir),
                 ) as executor:
                     test_manager = ParallelTestManager(manager, args, temp_dir)
-                    results = list(executor.map(test_manager.run_tests, test_suites, timeout=7200))
+                    results = list(executor.map(test_manager.run_tests, test_suites, timeout=2400))
         else:
             # This entire path is an NVIDIA Modification
 
