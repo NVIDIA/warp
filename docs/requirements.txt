@@ -2,4 +2,4 @@ furo==2024.1.29
 sphinx==7.2.6
 sphinx_copybutton==0.5.2
 numpy==1.26.4
-ruff==0.3.7
+ruff==0.5.0
