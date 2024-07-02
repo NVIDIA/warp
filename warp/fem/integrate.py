@@ -58,24 +58,11 @@ def _resolve_path(func, node):
     return None, path
 
 
-def _path_to_ast_attribute(name: str) -> ast.Attribute:
-    path = name.split(".")
-    path.reverse()
-
-    node = ast.Name(id=path.pop(), ctx=ast.Load())
-    while len(path):
-        node = ast.Attribute(
-            value=node,
-            attr=path.pop(),
-            ctx=ast.Load(),
-        )
-    return node
-
-
 class IntegrandTransformer(ast.NodeTransformer):
-    def __init__(self, integrand: Integrand, field_args: Dict[str, FieldLike]):
+    def __init__(self, integrand: Integrand, field_args: Dict[str, FieldLike], annotations: Dict[str, Any]):
         self._integrand = integrand
         self._field_args = field_args
+        self._annotations = annotations
 
     def visit_Call(self, call: ast.Call):
         call = self.generic_visit(call)
@@ -85,17 +72,14 @@ class IntegrandTransformer(ast.NodeTransformer):
             # Shortcut for evaluating fields as f(x...)
             field = self._field_args[callee]
 
-            arg_type = self._integrand.argspec.annotations[callee]
-            operator = arg_type.call_operator
+            # Replace with default call operator
+            abstract_arg_type = self._integrand.argspec.annotations[callee]
+            default_operator = abstract_arg_type.call_operator
+            concrete_arg_type = self._annotations[callee]
+            self._replace_call_func(call, concrete_arg_type, default_operator, field)
 
-            call.func = ast.Attribute(
-                value=_path_to_ast_attribute(f"{arg_type.__module__}.{arg_type.__qualname__}"),
-                attr="call_operator",
-                ctx=ast.Load(),
-            )
+            # insert callee as first argument
             call.args = [ast.Name(id=callee, ctx=ast.Load())] + call.args
-
-            self._replace_call_func(call, operator, field)
 
             return call
 
@@ -106,7 +90,7 @@ class IntegrandTransformer(ast.NodeTransformer):
             callee = getattr(call.args[0], "id", None)
             if callee in self._field_args:
                 field = self._field_args[callee]
-                self._replace_call_func(call, func, field)
+                self._replace_call_func(call, func, func, field)
 
         if isinstance(func, Integrand):
             key = self._translate_callee(func, call.args)
@@ -120,12 +104,15 @@ class IntegrandTransformer(ast.NodeTransformer):
 
         return call
 
-    def _replace_call_func(self, call: ast.Call, operator: Operator, field: FieldLike):
+    def _replace_call_func(self, call: ast.Call, callee: Union[type, Operator], operator: Operator, field: FieldLike):
         try:
+            # Retrieve the function pointer corresponding to the operator implementation for the field type
             pointer = operator.resolver(field)
-            setattr(operator, pointer.key, pointer)
         except AttributeError as e:
             raise ValueError(f"Operator {operator.func.__name__} is not defined for field {field.name}") from e
+        # Save the pointer as an attribute than can be accessed from the callee scope
+        setattr(callee, pointer.key, pointer)
+        # Update the ast Call node to use the new function pointer
         call.func = ast.Attribute(value=call.func, attr=pointer.key, ctx=ast.Load())
 
     def _translate_callee(self, callee: Integrand, args: List[ast.AST]):
@@ -162,7 +149,7 @@ def _translate_integrand(integrand: Integrand, field_args: Dict[str, FieldLike])
             annotations[arg] = arg_type
 
     # Transform field evaluation calls
-    transformer = IntegrandTransformer(integrand, field_args)
+    transformer = IntegrandTransformer(integrand, field_args, annotations)
 
     suffix = "_".join([f.name for f in field_args.values()])
 
