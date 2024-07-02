@@ -19,7 +19,7 @@ verbose_warnings: bool = False  # whether file and line info gets included in Wa
 quiet: bool = False  # suppress all output except errors and warnings
 
 cache_kernels: bool = True
-kernel_cache_dir: bool = None  # path to kernel cache directory, if None a default path will be used
+kernel_cache_dir: Optional[str] = None  # path to kernel cache directory, if None a default path will be used
 
 cuda_output: Optional[str] = (
     None  # preferred CUDA output format for kernels ("ptx" or "cubin"), determined automatically if unspecified

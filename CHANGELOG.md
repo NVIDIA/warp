@@ -6,6 +6,10 @@
 - The `mask` argument to `wp.sim.eval_fk` now accepts both integer and bool arrays
 - Support for NumPy >= 2.0
 - Fix hashing of replay functions and snippets
+- Add information to the module load printouts to indicate whether a module was
+  compiled `(compiled)`, loaded from the cache `(cached)`, or was unable to be
+  loaded `(error)`.
+- `wp.config.verbose = True` now also prints out a message upon the entry to a `wp.ScopedTimer`.
 
 ## [1.2.1] - 2024-06-14
 
