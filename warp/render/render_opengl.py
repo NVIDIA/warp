@@ -666,12 +666,15 @@ class ShapeInstancer:
         [3D point, 3D normal, UV texture coordinates]
     """
 
+    def __new__(cls):
+        instance = super(ShapeInstancer, cls).__new__(cls)
+        instance.instance_transform_gl_buffer = None
+        instance.vao = None
+
     def __init__(self, shape_shader, device):
         self.shape_shader = shape_shader
         self.device = device
         self.face_count = 0
-        self.vao = None
-        self.instance_transform_gl_buffer = None
         self.instance_color1_buffer = None
         self.instance_color2_buffer = None
         self.color1 = (1.0, 1.0, 1.0)

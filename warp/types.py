@@ -2841,6 +2841,11 @@ def array_type_id(a):
 
 
 class Bvh:
+    def __new__(cls, *args, **kwargs):
+        instance = super(Bvh, cls).__new__(cls)
+        instance.id = None
+        return instance
+
     def __init__(self, lowers, uppers):
         """Class representing a bounding volume hierarchy.
 
@@ -2852,8 +2857,6 @@ class Bvh:
             lowers (:class:`warp.array`): Array of lower bounds :class:`warp.vec3`
             uppers (:class:`warp.array`): Array of upper bounds :class:`warp.vec3`
         """
-
-        self.id = 0
 
         if len(lowers) != len(uppers):
             raise RuntimeError("Bvh the same number of lower and upper bounds must be provided")
@@ -2916,6 +2919,11 @@ class Mesh:
         "indices": Var("indices", array(dtype=int32)),
     }
 
+    def __new__(cls, *args, **kwargs):
+        instance = super(Mesh, cls).__new__(cls)
+        instance.id = None
+        return instance
+
     def __init__(self, points=None, indices=None, velocities=None, support_winding_number=False):
         """Class representing a triangle mesh.
 
@@ -2929,8 +2937,6 @@ class Mesh:
             velocities (:class:`warp.array`): Array of vertex velocities of type :class:`warp.vec3` (optional)
             support_winding_number (bool): If true the mesh will build additional datastructures to support `wp.mesh_query_point_sign_winding_number()` queries
         """
-
-        self.id = 0
 
         if points.device != indices.device:
             raise RuntimeError("Mesh points and indices must live on the same device")
@@ -3001,6 +3007,11 @@ class Volume:
     #: Enum value to specify trilinear interpolation during sampling
     LINEAR = constant(1)
 
+    def __new__(cls, *args, **kwargs):
+        instance = super(Volume, cls).__new__(cls)
+        instance.id = None
+        return instance
+
     def __init__(self, data: array, copy: bool = True):
         """Class representing a sparse grid.
 
@@ -3008,8 +3019,6 @@ class Volume:
             data (:class:`warp.array`): Array of bytes representing the volume in NanoVDB format
             copy (bool): Whether the incoming data will be copied or aliased
         """
-
-        self.id = 0
 
         # keep a runtime reference for orderly destruction
         self.runtime = warp.context.runtime
@@ -4487,6 +4496,11 @@ def adj_batched_matmul(
 
 
 class HashGrid:
+    def __new__(cls, *args, **kwargs):
+        instance = super(HashGrid, cls).__new__(cls)
+        instance.id = None
+        return instance
+
     def __init__(self, dim_x, dim_y, dim_z, device=None):
         """Class representing a hash grid object for accelerated point queries.
 
@@ -4499,8 +4513,6 @@ class HashGrid:
             dim_y (int): Number of cells in y-axis
             dim_z (int): Number of cells in z-axis
         """
-
-        self.id = 0
 
         self.runtime = warp.context.runtime
 
@@ -4559,6 +4571,11 @@ class HashGrid:
 
 
 class MarchingCubes:
+    def __new__(cls, *args, **kwargs):
+        instance = super(MarchingCubes, cls).__new__(cls)
+        instance.id = None
+        return instance
+
     def __init__(self, nx: int, ny: int, nz: int, max_verts: int, max_tris: int, device=None):
         """CUDA-based Marching Cubes algorithm to extract a 2D surface mesh from a 3D volume.
 

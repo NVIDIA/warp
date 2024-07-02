@@ -198,6 +198,11 @@ class TestHashGrid(unittest.TestCase):
 
         wp.Kernel(func=kernel_fn)
 
+    def test_hashgrid_new_del(self):
+        # test the scenario in which a hashgrid is created but not initialized before gc
+        instance = wp.HashGrid.__new__(wp.HashGrid)
+        instance.__del__()
+
 
 add_function_test(TestHashGrid, "test_hashgrid_query", test_hashgrid_query, devices=devices)
 add_function_test(TestHashGrid, "test_hashgrid_inputs", test_hashgrid_inputs, devices=devices)
