@@ -1617,7 +1617,7 @@ class Module:
 
         with ScopedTimer(
             f"Module {self.name} {module_hash.hex()[:7]} load on device '{device}'", active=not warp.config.quiet
-        ):
+        ) as module_load_timer:
             # -----------------------------------------------------------
             # determine output paths
             if device.is_cpu:
@@ -1664,6 +1664,8 @@ class Module:
                 # dir may exist from previous attempts / runs / archs
                 Path(build_dir).mkdir(parents=True, exist_ok=True)
 
+                module_load_timer.extra_msg = " (compiled)"  # For wp.ScopedTimer informational purposes
+
                 # build CPU
                 if device.is_cpu:
                     # build
@@ -1690,6 +1692,7 @@ class Module:
 
                     except Exception as e:
                         self.cpu_build_failed = True
+                        module_load_timer.extra_msg = " (error)"
                         raise (e)
 
                 elif device.is_cuda:
@@ -1718,6 +1721,7 @@ class Module:
 
                     except Exception as e:
                         self.cuda_build_failed = True
+                        module_load_timer.extra_msg = " (error)"
                         raise (e)
 
                 # -----------------------------------------------------------
@@ -1751,6 +1755,8 @@ class Module:
                     except Exception as e:
                         # We don't need source_code_path to be copied successfully to proceed, so warn and keep running
                         warp.utils.warn(f"Exception when renaming {source_code_path}: {e}")
+            else:
+                module_load_timer.extra_msg = " (cached)"  # For wp.ScopedTimer informational purposes
 
             # -----------------------------------------------------------
             # Load CPU or CUDA binary
@@ -1763,6 +1769,7 @@ class Module:
                 if cuda_module is not None:
                     self.cuda_modules[device.context] = cuda_module
                 else:
+                    module_load_timer.extra_msg = " (error)"
                     raise Exception(f"Failed to load CUDA module '{self.name}'")
 
             if build_dir:

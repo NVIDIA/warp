@@ -644,6 +644,7 @@ class ScopedTimer:
             skip_tape (bool): If true, the timer will not be recorded in the tape
 
         Attributes:
+            extra_msg (str): Can be set to a string that will be added to the printout at context exit.
             elapsed (float): The duration of the ``with`` block used with this object
             timing_results (list[TimingResult]): The list of activity timing results, if collection was requested using ``cuda_filter``
         """
@@ -659,6 +660,7 @@ class ScopedTimer:
         self.elapsed = 0.0
         self.cuda_filter = cuda_filter
         self.report_func = report_func or wp.timing_print
+        self.extra_msg = ""  # Can be used to add to the message printed at manager exit
 
         if self.dict is not None:
             if name not in self.dict:
@@ -687,6 +689,10 @@ class ScopedTimer:
 
             if self.print:
                 ScopedTimer.indent += 1
+
+                if warp.config.verbose:
+                    indent = "    " * ScopedTimer.indent
+                    print(f"{indent}{self.name} ...", flush=True)
 
             self.start = time.perf_counter_ns()
 
@@ -720,13 +726,16 @@ class ScopedTimer:
                 self.dict[self.name].append(self.elapsed)
 
             if self.print:
-                indent = "\t" * ScopedTimer.indent
+                indent = "    " * ScopedTimer.indent
 
                 if self.timing_results:
                     self.report_func(self.timing_results, indent=indent)
                     print()
 
-                print(f"{indent}{self.name} took {self.elapsed :.2f} ms")
+                if self.extra_msg:
+                    print(f"{indent}{self.name} took {self.elapsed :.2f} ms {self.extra_msg}")
+                else:
+                    print(f"{indent}{self.name} took {self.elapsed :.2f} ms")
 
                 ScopedTimer.indent -= 1
 
