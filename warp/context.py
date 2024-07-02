@@ -1940,10 +1940,13 @@ class ContextGuard:
 
 
 class Stream:
-    def __init__(self, device=None, **kwargs):
-        self.cuda_stream = None
-        self.owner = False
+    def __new__(cls, *args, **kwargs):
+        instance = super(Stream, cls).__new__(cls)
+        instance.cuda_stream = None
+        instance.owner = False
+        return instance
 
+    def __init__(self, device=None, **kwargs):
         # event used internally for synchronization (cached to avoid creating temporary events)
         self._cached_event = None
 
@@ -2019,9 +2022,12 @@ class Event:
         BLOCKING_SYNC = 0x1
         DISABLE_TIMING = 0x2
 
-    def __init__(self, device=None, cuda_event=None, enable_timing=False):
-        self.owner = False
+    def __new__(cls, *args, **kwargs):
+        instance = super(Event, cls).__new__(cls)
+        instance.owner = False
+        return instance
 
+    def __init__(self, device=None, cuda_event=None, enable_timing=False):
         device = get_device(device)
         if not device.is_cuda:
             raise RuntimeError(f"Device {device} is not a CUDA device")
@@ -2323,6 +2329,11 @@ Devicelike = Union[Device, str, None]
 
 
 class Graph:
+    def __new__(cls, *args, **kwargs):
+        instance = super(Graph, cls).__new__(cls)
+        instance.exec = None
+        return instance
+
     def __init__(self, device: Device, exec: ctypes.c_void_p):
         self.device = device
         self.exec = exec
@@ -3823,6 +3834,11 @@ class RegisteredGLBuffer:
     """
 
     __fallback_warning_shown = False
+
+    def __new__(cls, *args, **kwargs):
+        instance = super(RegisteredGLBuffer, cls).__new__(cls)
+        instance.resource = None
+        return instance
 
     def __init__(self, gl_buffer_id: int, device: Devicelike = None, flags: int = NONE, fallback_to_copy: bool = True):
         """

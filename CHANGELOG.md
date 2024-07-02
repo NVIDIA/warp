@@ -12,6 +12,7 @@
   loaded `(error)`.
 - `wp.config.verbose = True` now also prints out a message upon the entry to a `wp.ScopedTimer`.
 - Add additional documentation and examples demonstrating wp.copy(), wp.clone(), and array.assign() differentiability
+- Fix adding `__new__()` methods for all class `__del__()` methods to anticipate when a class instance is created but not instantiated before garbage collection
 
 ## [1.2.1] - 2024-06-14
 

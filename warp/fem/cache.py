@@ -198,6 +198,11 @@ class Temporary:
     The temporary may also be explicitly returned to the pool before destruction using :meth:`release`.
     """
 
+    def __new__(cls, *args, **kwargs):
+        instance = super(Temporary, cls).__new__(cls)
+        instance._pool = None
+        return instance
+
     def __init__(self, array: wp.array, pool: Optional["TemporaryStore.Pool"] = None, shape=None, dtype=None):
         self._raw_array = array
         self._array_view = array

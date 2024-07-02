@@ -105,10 +105,13 @@ class fabricarray(noncontiguous_array_base[T]):
     # (initialized when needed)
     _vars = None
 
+    def __new__(cls, *args, **kwargs):
+        instance = super(fabricarray, cls).__new__(cls)
+        instance.deleter = None
+        return instance
+
     def __init__(self, data=None, attrib=None, dtype=Any, ndim=None):
         super().__init__(ARRAY_TYPE_FABRIC)
-
-        self.deleter = None
 
         if data is not None:
             from .context import runtime

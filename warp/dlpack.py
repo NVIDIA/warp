@@ -60,10 +60,18 @@ PyCapsule_SetName.restype = ctypes.c_int
 class _DLPackTensorHolder:
     """Class responsible for deleting DLManagedTensor memory after ownership is transferred from a capsule."""
 
+    def __new__(cls, *args, **kwargs):
+        instance = super(_DLPackTensorHolder, cls).__new__(cls)
+        instance.mem_ptr = None
+        return instance
+
     def __init__(self, mem_ptr):
         self.mem_ptr = mem_ptr
 
     def __del__(self):
+        if not self.mem_ptr:
+            return
+
         managed_tensor = DLManagedTensor.from_address(self.mem_ptr)
         if managed_tensor.deleter:
             managed_tensor.deleter(self.mem_ptr)
