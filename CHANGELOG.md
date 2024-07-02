@@ -3,16 +3,18 @@
 ## [Upcoming Release] - 2024-??-??
 
 - Improve memory usage and performance for rigid body contact handling when `self.rigid_mesh_contact_max` is zero (default behavior)
-- The `mask` argument to `wp.sim.eval_fk` now accepts both integer and bool arrays
-- Support for NumPy >= 2.0
-- Fix hashing of replay functions and snippets
+- The `mask` argument to `wp.sim.eval_fk` now accepts both integer and boolean arrays.
+- Support for NumPy >= 2.0.
+- Fix hashing of replay functions and snippets.
 - Add additional code comments for random number sampling functions in `rand.h`
 - Add information to the module load printouts to indicate whether a module was
   compiled `(compiled)`, loaded from the cache `(cached)`, or was unable to be
   loaded `(error)`.
 - `wp.config.verbose = True` now also prints out a message upon the entry to a `wp.ScopedTimer`.
-- Add additional documentation and examples demonstrating wp.copy(), wp.clone(), and array.assign() differentiability
-- Fix adding `__new__()` methods for all class `__del__()` methods to anticipate when a class instance is created but not instantiated before garbage collection
+- Add additional documentation and examples demonstrating `wp.copy()`, `wp.clone()`, and `array.assign()` differentiability.
+- Fix adding `__new__()` methods for all class `__del__()` methods to
+  anticipate when a class instance is created but not instantiated before garbage collection.
+- Add code-completion support for wp.config variables.
 
 ## [1.2.1] - 2024-06-14
 
