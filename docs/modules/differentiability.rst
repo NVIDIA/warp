@@ -47,6 +47,90 @@ Note that gradients are accumulated on the participating buffers, so if you wish
 .. autoclass:: Tape
     :members:
 
+Copying is Differentiable
+#########################
+
+``wp.copy()``, ``wp.clone()``, and ``array.assign()`` are differentiable functions and can participate in the computation graph recorded on the tape. Consider the following examples and their
+PyTorch equivalents (for comparison):
+
+``wp.copy()``::
+
+    @wp.kernel
+    def double(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+        tid = wp.tid()
+        y[tid] = x[tid] * 2.0
+
+    x = wp.array(np.arange(3), dtype=float, requires_grad=True)
+    y = wp.zeros_like(x)
+    z = wp.zeros_like(x)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(double, dim=3, inputs=[x, y])
+        wp.copy(z, y)
+
+    tape.backward(grads={z: wp.ones_like(x)})
+
+    print(x.grad)
+    # [2. 2. 2.]
+
+Equivalently, in PyTorch::
+
+    x = torch.tensor(np.arange(3), dtype=torch.float32, requires_grad=True)
+    y = x * 2
+    z = torch.zeros_like(y).copy_(y)
+
+    z.sum().backward()
+
+    print(x.grad)
+    # tensor([2., 2., 2.])
+
+``wp.clone()``::
+
+    x = wp.array(np.arange(3), dtype=float, requires_grad=True)
+    y = wp.zeros_like(x)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(double, dim=3, inputs=[x, y])
+        z = wp.clone(y, requires_grad=True)
+
+    tape.backward(grads={z: wp.ones_like(x)})
+
+    print(x.grad)
+    # [2. 2. 2.]
+
+In PyTorch::
+    
+    x = torch.tensor(np.arange(3), dtype=torch.float32, requires_grad=True)
+    y = x * 2
+    z = torch.clone(y)
+
+    z.sum().backward()
+    print(x.grad)
+    # tensor([2., 2., 2.])
+
+.. note:: In PyTorch, one may clone a tensor x and detach it from the current computation graph by calling
+    ``x.clone().detach()``. The equivalent in Warp is ``wp.clone(x, requires_grad=False)``.
+
+``array.assign()``::
+
+    x = wp.array(np.arange(3), dtype=float, requires_grad=True)
+    y = wp.zeros_like(x)
+    z = wp.zeros_like(y)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(double, dim=3, inputs=[x], outputs=[y])
+        z.assign(y)
+
+    tape.backward(grads={z: wp.ones_like(x)})
+
+    print(x.grad)
+    # [2. 2. 2.]
+
+.. note:: ``array.assign()`` is equivalent to ``wp.copy()`` with an additional step that wraps the source array in a Warp array if it is not already a Warp array.
+
 Jacobians
 #########
 
