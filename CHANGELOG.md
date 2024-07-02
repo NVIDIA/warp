@@ -6,6 +6,7 @@
 - The `mask` argument to `wp.sim.eval_fk` now accepts both integer and bool arrays
 - Support for NumPy >= 2.0
 - Fix hashing of replay functions and snippets
+- Add additional code comments for random number sampling functions in `rand.h`
 - Add information to the module load printouts to indicate whether a module was
   compiled `(compiled)`, loaded from the cache `(cached)`, or was unable to be
   loaded `(error)`.
