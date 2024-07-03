@@ -1234,7 +1234,7 @@ def test_point_basis(test, device):
     mat = fem.integrate(vector_divergence_form, fields={"u": linear_test, "q": point_trial}, quadrature=pic)
     test.assertEqual(mat.nrow, 9)
     test.assertEqual(mat.ncol, 3)
-    test.assertEqual(mat.nnz, 12)
+    test.assertEqual(mat.nnz_sync(), 12)
 
 
 @fem.integrand
@@ -1399,4 +1399,4 @@ add_function_test(TestFemShapeFunctions, "test_tet_shape_functions", test_tet_sh
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
-    unittest.main(verbosity=2)
+    unittest.main(verbosity=2, failfast=True)
