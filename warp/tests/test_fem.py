@@ -18,7 +18,14 @@ from warp.fem.geometry import DeformedGeometry
 from warp.fem.geometry.closest_point import project_on_tet_at_origin, project_on_tri_at_origin
 from warp.fem.space import shape
 from warp.fem.types import make_free_sample
-from warp.fem.utils import grid_to_hexes, grid_to_quads, grid_to_tets, grid_to_tris
+from warp.fem.utils import (
+    grid_to_hexes,
+    grid_to_quads,
+    grid_to_tets,
+    grid_to_tris,
+    inverse_qr,
+    symmetric_eigenvalues_qr,
+)
 from warp.tests.unittest_utils import *
 
 
@@ -1201,6 +1208,34 @@ def test_point_basis(test, device):
 
     test.assertAlmostEqual(np.sum(zeros.numpy()), 0.0, places=5)
 
+    # test point basis with variable points per cell
+    points = wp.array([[0.25, 0.33], [0.33, 0.25], [0.8, 0.8]], dtype=wp.vec2)
+    pic = fem.PicQuadrature(domain, positions=points)
+
+    test.assertEqual(pic.active_cell_count(), 2)
+    test.assertEqual(pic.total_point_count(), 3)
+    test.assertEqual(pic.max_points_per_element(), 2)
+
+    point_basis = fem.PointBasisSpace(pic)
+    point_space = fem.make_collocated_function_space(point_basis)
+    point_test = fem.make_test(point_space, domain=domain)
+    test.assertEqual(point_test.space_restriction.node_count(), 3)
+
+    ones = fem.integrate(linear_form, fields={"u": point_test}, quadrature=pic)
+    test.assertAlmostEqual(np.sum(ones.numpy()), pic.active_cell_count() / geo.cell_count(), places=5)
+
+    zeros = fem.integrate(linear_form, quadrature=other_quadrature, fields={"u": point_test})
+    test.assertAlmostEqual(np.sum(zeros.numpy()), 0.0, places=5)
+
+    linear_vec = fem.make_polynomial_space(geo, dtype=wp.vec2)
+    linear_test = fem.make_test(linear_vec)
+    point_trial = fem.make_trial(point_space)
+
+    mat = fem.integrate(vector_divergence_form, fields={"u": linear_test, "q": point_trial}, quadrature=pic)
+    test.assertEqual(mat.nrow, 9)
+    test.assertEqual(mat.ncol, 3)
+    test.assertEqual(mat.nnz, 12)
+
 
 @fem.integrand
 def _bicubic(s: Sample, domain: Domain):
@@ -1228,7 +1263,7 @@ def test_particle_quadratures(test, device):
 
     explicit_quadrature = fem.ExplicitQuadrature(domain, points, weights)
 
-    test.assertEqual(explicit_quadrature.points_per_element(), points_per_cell)
+    test.assertEqual(explicit_quadrature.max_points_per_element(), points_per_cell)
     test.assertEqual(explicit_quadrature.total_point_count(), points_per_cell * geo.cell_count())
 
     val = fem.integrate(_bicubic, quadrature=explicit_quadrature)
@@ -1247,12 +1282,79 @@ def test_particle_quadratures(test, device):
 
     pic_quadrature = fem.PicQuadrature(domain, positions=(element_indices, element_coords))
 
-    test.assertIsNone(pic_quadrature.points_per_element())
+    test.assertEqual(pic_quadrature.max_points_per_element(), 2)
     test.assertEqual(pic_quadrature.total_point_count(), 3)
     test.assertEqual(pic_quadrature.active_cell_count(), 2)
 
     val = fem.integrate(_piecewise_constant, quadrature=pic_quadrature)
     test.assertAlmostEqual(val, 1.25, places=5)
+
+
+@wp.kernel
+def test_qr_eigenvalues():
+    tol = 1.0e-6
+
+    # zero
+    Zero = wp.mat33(0.0)
+    Id = wp.identity(n=3, dtype=float)
+    D3, P3 = symmetric_eigenvalues_qr(Zero, tol * tol)
+    wp.expect_eq(D3, wp.vec3(0.0))
+    wp.expect_eq(P3, Id)
+
+    # Identity
+    D3, P3 = symmetric_eigenvalues_qr(Id, tol * tol)
+    wp.expect_eq(D3, wp.vec3(1.0))
+    wp.expect_eq(wp.transpose(P3) * P3, Id)
+
+    # rank 1
+    v = wp.vec4(0.0, 1.0, 1.0, 0.0)
+    Rank1 = wp.outer(v, v)
+    D4, P4 = symmetric_eigenvalues_qr(Rank1, tol * tol)
+    wp.expect_near(wp.max(D4), wp.length_sq(v), tol)
+    Err4 = wp.transpose(P4) * wp.diag(D4) * P4 - Rank1
+    wp.expect_near(wp.ddot(Err4, Err4), 0.0, tol)
+
+    # rank 2
+    v2 = wp.vec4(0.0, 0.5, -0.5, 0.0)
+    Rank2 = Rank1 + wp.outer(v2, v2)
+    D4, P4 = symmetric_eigenvalues_qr(Rank2, tol * tol)
+    wp.expect_near(wp.max(D4), wp.length_sq(v), tol)
+    wp.expect_near(D4[0] + D4[1] + D4[2] + D4[3], wp.length_sq(v) + wp.length_sq(v2), tol)
+    Err4 = wp.transpose(P4) * wp.diag(D4) * P4 - Rank2
+    wp.expect_near(wp.ddot(Err4, Err4), 0.0, tol)
+
+    # rank 4
+    v3 = wp.vec4(1.0, 2.0, 3.0, 4.0)
+    v4 = wp.vec4(2.0, 1.0, 0.0, -1.0)
+    Rank4 = Rank2 + wp.outer(v3, v3) + wp.outer(v4, v4)
+    D4, P4 = symmetric_eigenvalues_qr(Rank4, tol * tol)
+    Err4 = wp.transpose(P4) * wp.diag(D4) * P4 - Rank4
+    wp.expect_near(wp.ddot(Err4, Err4), 0.0, tol)
+
+
+@wp.kernel
+def test_qr_inverse():
+    rng = wp.rand_init(4356, wp.tid())
+    M = wp.mat33(
+        wp.randf(rng, 0.0, 10.0),
+        wp.randf(rng, 0.0, 10.0),
+        wp.randf(rng, 0.0, 10.0),
+        wp.randf(rng, 0.0, 10.0),
+        wp.randf(rng, 0.0, 10.0),
+        wp.randf(rng, 0.0, 10.0),
+        wp.randf(rng, 0.0, 10.0),
+        wp.randf(rng, 0.0, 10.0),
+        wp.randf(rng, 0.0, 10.0),
+    )
+
+    if wp.determinant(M) != 0.0:
+        tol = 1.0e-8
+        Mi = inverse_qr(M)
+        Id = wp.identity(n=3, dtype=float)
+        Err = M * Mi - Id
+        wp.expect_near(wp.ddot(Err, Err), 0.0, tol)
+        Err = Mi * M - Id
+        wp.expect_near(wp.ddot(Err, Err), 0.0, tol)
 
 
 devices = get_test_devices()
@@ -1281,6 +1383,8 @@ add_function_test(TestFem, "test_deformed_geometry", test_deformed_geometry, dev
 add_function_test(TestFem, "test_dof_mapper", test_dof_mapper)
 add_function_test(TestFem, "test_point_basis", test_point_basis)
 add_function_test(TestFem, "test_particle_quadratures", test_particle_quadratures)
+add_kernel_test(TestFem, test_qr_eigenvalues, dim=1, devices=devices)
+add_kernel_test(TestFem, test_qr_inverse, dim=100, devices=devices)
 
 
 class TestFemShapeFunctions(unittest.TestCase):

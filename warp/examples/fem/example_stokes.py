@@ -17,18 +17,10 @@
 ###########################################################################
 
 import warp as wp
+import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
 import warp.sparse as sparse
 from warp.fem.utils import array_axpy
-
-try:
-    from .bsr_utils import SaddleSystem, bsr_solve_saddle
-    from .mesh_utils import gen_quadmesh, gen_trimesh
-    from .plot_utils import Plot
-except ImportError:
-    from bsr_utils import SaddleSystem, bsr_solve_saddle
-    from mesh_utils import gen_quadmesh, gen_trimesh
-    from plot_utils import Plot
 
 
 @fem.integrand
@@ -90,10 +82,10 @@ class Example:
 
         # Grid or triangle mesh geometry
         if mesh == "tri":
-            positions, tri_vidx = gen_trimesh(res=wp.vec2i(resolution))
+            positions, tri_vidx = fem_example_utils.gen_trimesh(res=wp.vec2i(resolution))
             geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
         elif mesh == "quad":
-            positions, quad_vidx = gen_quadmesh(res=wp.vec2i(resolution))
+            positions, quad_vidx = fem_example_utils.gen_quadmesh(res=wp.vec2i(resolution))
             geo = fem.Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions)
         else:
             geo = fem.Grid2D(res=wp.vec2i(resolution))
@@ -117,7 +109,7 @@ class Example:
         top_velocity = wp.vec2(top_velocity, 0.0)
         fem.interpolate(constant_form, dest=f_boundary, values={"val": top_velocity})
 
-        self.renderer = Plot()
+        self.renderer = fem_example_utils.Plot()
 
     def step(self):
         u_space = self._u_field.space
@@ -158,8 +150,13 @@ class Example:
         x_u = wp.zeros_like(u_rhs)
         x_p = wp.zeros_like(p_rhs)
 
-        bsr_solve_saddle(
-            SaddleSystem(A=u_matrix, B=div_matrix), x_u=x_u, x_p=x_p, b_u=u_rhs, b_p=p_rhs, quiet=self._quiet
+        fem_example_utils.bsr_solve_saddle(
+            fem_example_utils.SaddleSystem(A=u_matrix, B=div_matrix),
+            x_u=x_u,
+            x_p=x_p,
+            b_u=u_rhs,
+            b_p=p_rhs,
+            quiet=self._quiet,
         )
 
         wp.utils.array_cast(in_array=x_u, out_array=self._u_field.dof_values)

@@ -1,7 +1,7 @@
 import warp as wp
 from warp.fem.cache import TemporaryStore, borrow_temporary, borrow_temporary_like, cached_arg_value
 from warp.fem.domain import GeometryDomain
-from warp.fem.types import NodeElementIndex
+from warp.fem.types import NULL_NODE_INDEX, NodeElementIndex
 from warp.fem.utils import compress_node_indices
 
 from .partition import SpacePartition
@@ -36,7 +36,7 @@ class SpaceRestriction:
     def _compute_node_element_indices(self, device, temporary_store: TemporaryStore):
         from warp.fem import cache
 
-        NODES_PER_ELEMENT = self.space_topology.NODES_PER_ELEMENT
+        MAX_NODES_PER_ELEMENT = self.space_topology.MAX_NODES_PER_ELEMENT
 
         @cache.dynamic_kernel(
             suffix=f"{self.domain.name}_{self.space_topology.name}_{self.space_partition.name}",
@@ -51,14 +51,17 @@ class SpaceRestriction:
         ):
             domain_element_index = wp.tid()
             element_index = self.domain.element_index(domain_index_arg, domain_element_index)
-            for n in range(NODES_PER_ELEMENT):
+            element_node_count = self.space_topology.element_node_count(element_arg, topo_arg, element_index)
+            for n in range(element_node_count):
                 space_nidx = self.space_topology.element_node_index(element_arg, topo_arg, element_index, n)
                 partition_nidx = self.space_partition.partition_node_index(partition_arg, space_nidx)
                 element_node_indices[domain_element_index, n] = partition_nidx
+            for n in range(element_node_count, MAX_NODES_PER_ELEMENT):
+                element_node_indices[domain_element_index, n] = NULL_NODE_INDEX
 
         element_node_indices = borrow_temporary(
             temporary_store,
-            shape=(self.domain.element_count(), NODES_PER_ELEMENT),
+            shape=(self.domain.element_count(), MAX_NODES_PER_ELEMENT),
             dtype=int,
             device=device,
         )
@@ -83,7 +86,10 @@ class SpaceRestriction:
             self._node_count,
             self._dof_partition_indices,
         ) = compress_node_indices(
-            self.space_partition.node_count(), flattened_node_indices, temporary_store=temporary_store
+            self.space_partition.node_count(),
+            flattened_node_indices,
+            return_unique_nodes=True,
+            temporary_store=temporary_store,
         )
 
         # Extract element index and index in element
@@ -93,7 +99,7 @@ class SpaceRestriction:
             kernel=SpaceRestriction._split_vertex_element_index,
             dim=flattened_node_indices.shape,
             inputs=[
-                NODES_PER_ELEMENT,
+                MAX_NODES_PER_ELEMENT,
                 node_array_indices.array,
                 self._dof_element_indices.array,
                 self._dof_indices_in_element.array,
@@ -132,20 +138,17 @@ class SpaceRestriction:
         return arg
 
     @wp.func
-    def node_partition_index(args: NodeArg, node_index: int):
-        return args.dof_partition_indices[node_index]
+    def node_partition_index(args: NodeArg, restriction_node_index: int):
+        return args.dof_partition_indices[restriction_node_index]
 
     @wp.func
-    def node_element_count(args: NodeArg, node_index: int):
-        partition_node_index = SpaceRestriction.node_partition_index(args, node_index)
-        return args.dof_element_offsets[partition_node_index + 1] - args.dof_element_offsets[partition_node_index]
+    def node_element_range(args: NodeArg, partition_node_index: int):
+        return args.dof_element_offsets[partition_node_index], args.dof_element_offsets[partition_node_index + 1]
 
     @wp.func
-    def node_element_index(args: NodeArg, node_index: int, element_index: int):
-        partition_node_index = SpaceRestriction.node_partition_index(args, node_index)
-        offset = args.dof_element_offsets[partition_node_index] + element_index
-        domain_element_index = args.dof_element_indices[offset]
-        index_in_element = args.dof_indices_in_element[offset]
+    def node_element_index(args: NodeArg, node_element_offset: int):
+        domain_element_index = args.dof_element_indices[node_element_offset]
+        index_in_element = args.dof_indices_in_element[node_element_offset]
         return NodeElementIndex(domain_element_index, index_in_element)
 
     @wp.kernel

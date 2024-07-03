@@ -1,10 +1,9 @@
 from typing import Any, Optional
 
 import warp as wp
+from warp.fem.utils import array_axpy, symmetric_eigenvalues_qr
 from warp.sparse import BsrMatrix, bsr_assign, bsr_axpy, bsr_copy, bsr_mm, bsr_mv
 from warp.types import type_is_matrix, type_length
-
-from .utils import array_axpy
 
 
 def normalize_dirichlet_projector(projector_matrix: BsrMatrix, fixed_value: Optional[wp.array] = None):
@@ -115,34 +114,26 @@ def project_linear_system(
     project_system_matrix(system_matrix, projector_matrix)
 
 
-@wp.kernel
-def _normalize_dirichlet_projector_kernel(
-    offsets: wp.array(dtype=int),
-    columns: wp.array(dtype=int),
-    block_values: wp.array(dtype=Any),
-):
-    row = wp.tid()
+@wp.func
+def _normalize_projector_and_value(A: Any, b: Any):
+    # Do a modal decomposition of the left and right hand side,
+    # Make lhs an orthogonal projection and apply corresponding scaling to righ-hand-side
 
-    beg = offsets[row]
-    end = offsets[row + 1]
+    eps = wp.trace(A) * A.dtype(1.0e-6)
 
-    if beg == end:
-        return
+    diag, ev = symmetric_eigenvalues_qr(A, eps * eps)
 
-    diag = wp.lower_bound(columns, beg, end, row)
+    zero = A.dtype(0)
+    A_unitary = type(A)(zero)
+    b_normalized = type(b)(zero)
 
-    if diag < end and columns[diag] == row:
-        P = block_values[diag]
+    for k in range(b.length):
+        if diag[k] > eps:  # ignore small eigenmodes
+            v = ev[k]
+            A_unitary += wp.outer(v, v)
+            b_normalized += wp.dot(v, b) / diag[k] * v
 
-        P_sq = P * P
-        trace_P = wp.trace(P)
-        trace_P_sq = wp.trace(P_sq)
-
-        if wp.nonzero(trace_P_sq):
-            scale = trace_P / trace_P_sq
-            block_values[diag] = scale * P
-        else:
-            block_values[diag] = P - P
+    return A_unitary, b_normalized
 
 
 @wp.kernel
@@ -165,14 +156,30 @@ def _normalize_dirichlet_projector_and_values_kernel(
     if diag < end and columns[diag] == row:
         P = block_values[diag]
 
-        P_sq = P * P
-        trace_P = wp.trace(P)
-        trace_P_sq = wp.trace(P_sq)
+        P_norm, v_norm = _normalize_projector_and_value(P, fixed_values[row])
 
-        if wp.nonzero(trace_P_sq):
-            scale = trace_P / trace_P_sq
-            block_values[diag] = scale * P
-            fixed_values[row] = scale * fixed_values[row]
-        else:
-            block_values[diag] = P - P
-            fixed_values[row] = fixed_values[row] - fixed_values[row]
+        block_values[diag] = P_norm
+        fixed_values[row] = v_norm
+
+
+@wp.kernel
+def _normalize_dirichlet_projector_kernel(
+    offsets: wp.array(dtype=int),
+    columns: wp.array(dtype=int),
+    block_values: wp.array(dtype=Any),
+):
+    row = wp.tid()
+
+    beg = offsets[row]
+    end = offsets[row + 1]
+
+    if beg == end:
+        return
+
+    diag = wp.lower_bound(columns, beg, end, row)
+
+    if diag < end and columns[diag] == row:
+        P = block_values[diag]
+
+        P_norm, v_norm = _normalize_projector_and_value(P, type(P[0])())
+        block_values[diag] = P_norm

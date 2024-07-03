@@ -65,7 +65,7 @@ EDGE_VERTEX_INDICES = wp.constant(
     )
 )
 
-# orthogal transform for face coordinates given first vertex + winding
+# orthogonal transform for face coordinates given first vertex + winding
 # (two rows per entry)
 
 FACE_ORIENTATION = [
@@ -439,12 +439,12 @@ class Hexmesh(Geometry):
         return side_arg.cell_arg
 
     def _build_topology(self, temporary_store: TemporaryStore):
-        from warp.fem.utils import compress_node_indices, masked_indices
+        from warp.fem.utils import compress_node_indices, host_read_at_index, masked_indices
         from warp.utils import array_scan
 
         device = self.hex_vertex_indices.device
 
-        vertex_hex_offsets, vertex_hex_indices, _, __ = compress_node_indices(
+        vertex_hex_offsets, vertex_hex_indices = compress_node_indices(
             self.vertex_count(), self.hex_vertex_indices, temporary_store=temporary_store
         )
         self._vertex_hex_offsets = vertex_hex_offsets.detach()
@@ -492,16 +492,11 @@ class Hexmesh(Geometry):
         array_scan(in_array=vertex_start_face_count.array, out_array=vertex_unique_face_offsets.array, inclusive=False)
 
         # Get back edge count to host
-        if device.is_cuda:
-            face_count = borrow_temporary(temporary_store, shape=(1,), dtype=int, device="cpu", pinned=True)
-            # Last vertex will not own any edge, so its count will be zero; just fetching last prefix count is ok
-            wp.copy(
-                dest=face_count.array, src=vertex_unique_face_offsets.array, src_offset=self.vertex_count() - 1, count=1
+        face_count = int(
+            host_read_at_index(
+                vertex_unique_face_offsets.array, self.vertex_count() - 1, temporary_store=temporary_store
             )
-            wp.synchronize_stream(wp.get_stream(device))
-            face_count = int(face_count.array.numpy()[0])
-        else:
-            face_count = int(vertex_unique_face_offsets.array.numpy()[self.vertex_count() - 1])
+        )
 
         self._face_vertex_indices = wp.empty(shape=(face_count,), dtype=wp.vec4i, device=device)
         self._face_hex_indices = wp.empty(shape=(face_count,), dtype=wp.vec2i, device=device)
@@ -557,6 +552,7 @@ class Hexmesh(Geometry):
         self._boundary_face_indices = boundary_face_indices.detach()
 
     def _compute_hex_edges(self, temporary_store: Optional[TemporaryStore] = None):
+        from warp.fem.utils import host_read_at_index
         from warp.utils import array_scan
 
         device = self.hex_vertex_indices.device
@@ -599,19 +595,11 @@ class Hexmesh(Geometry):
         array_scan(in_array=vertex_start_edge_count.array, out_array=vertex_unique_edge_offsets.array, inclusive=False)
 
         # Get back edge count to host
-        if device.is_cuda:
-            edge_count = borrow_temporary(temporary_store, shape=(1,), dtype=int, device="cpu", pinned=True)
-            # Last vertex will not own any edge, so its count will be zero; just fetching last prefix count is ok
-            wp.copy(
-                dest=edge_count.array,
-                src=vertex_unique_edge_offsets.array,
-                src_offset=self.vertex_count() - 1,
-                count=1,
+        self._edge_count = int(
+            host_read_at_index(
+                vertex_unique_edge_offsets.array, self.vertex_count() - 1, temporary_store=temporary_store
             )
-            wp.synchronize_stream(wp.get_stream(device))
-            self._edge_count = int(edge_count.array.numpy()[0])
-        else:
-            self._edge_count = int(vertex_unique_edge_offsets.array.numpy()[self.vertex_count() - 1])
+        )
 
         self._hex_edge_indices = wp.empty(
             dtype=int, device=self.hex_vertex_indices.device, shape=(self.cell_count(), 12)

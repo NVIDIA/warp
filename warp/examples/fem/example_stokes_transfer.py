@@ -19,19 +19,11 @@ import math
 import numpy as np
 
 import warp as wp
+import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
 from warp.fem.utils import array_axpy
 from warp.sparse import bsr_axpy, bsr_mm, bsr_mv, bsr_transposed
 from warp.utils import array_cast
-
-# Import example utilities
-# Make sure that works both when imported as module and run as standalone file
-try:
-    from .bsr_utils import bsr_cg
-    from .plot_utils import Plot
-except ImportError:
-    from bsr_utils import bsr_cg
-    from plot_utils import Plot
 
 
 @fem.integrand
@@ -141,7 +133,7 @@ class Example:
         self._pic_quadrature = fem.PicQuadrature(domain, particles, particle_areas)
         self._particle_velocities = particle_velocities
 
-        self.renderer = Plot()
+        self.renderer = fem_example_utils.Plot()
 
     def step(self):
         u_space = self._u_field.space
@@ -192,7 +184,7 @@ class Example:
 
         # Solve for displacement
         u_res = wp.zeros_like(u_rhs)
-        bsr_cg(u_matrix, x=u_res, b=u_rhs, quiet=self._quiet)
+        fem_example_utils.bsr_cg(u_matrix, x=u_res, b=u_rhs, quiet=self._quiet)
 
         # Compute pressure from displacement
         div_u = bsr_mv(A=div_matrix, x=u_res)

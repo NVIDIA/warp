@@ -395,6 +395,12 @@ add_example_test(
     devices=test_devices,
     test_options={"num_frames": 101, "resolution": 10, "tri_mesh": True, "headless": True},
 )
+add_example_test(
+    TestFemExamples,
+    name="fem.example_streamlines",
+    devices=test_devices,
+    test_options={"headless": True},
+)
 
 if __name__ == "__main__":
     # force rebuild of all kernels

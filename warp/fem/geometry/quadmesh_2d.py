@@ -299,12 +299,12 @@ class Quadmesh2D(Geometry):
         return side_arg.cell_arg
 
     def _build_topology(self, temporary_store: TemporaryStore):
-        from warp.fem.utils import compress_node_indices, masked_indices
+        from warp.fem.utils import compress_node_indices, host_read_at_index, masked_indices
         from warp.utils import array_scan
 
         device = self.quad_vertex_indices.device
 
-        vertex_quad_offsets, vertex_quad_indices, _, __ = compress_node_indices(
+        vertex_quad_offsets, vertex_quad_indices = compress_node_indices(
             self.vertex_count(), self.quad_vertex_indices, temporary_store=temporary_store
         )
         self._vertex_quad_offsets = vertex_quad_offsets.detach()
@@ -350,16 +350,11 @@ class Quadmesh2D(Geometry):
         array_scan(in_array=vertex_start_edge_count.array, out_array=vertex_unique_edge_offsets.array, inclusive=False)
 
         # Get back edge count to host
-        if device.is_cuda:
-            edge_count = borrow_temporary(temporary_store, shape=(1,), dtype=int, device="cpu", pinned=True)
-            # Last vertex will not own any edge, so its count will be zero; just fetching last prefix count is ok
-            wp.copy(
-                dest=edge_count.array, src=vertex_unique_edge_offsets.array, src_offset=self.vertex_count() - 1, count=1
+        edge_count = int(
+            host_read_at_index(
+                vertex_unique_edge_offsets.array, self.vertex_count() - 1, temporary_store=temporary_store
             )
-            wp.synchronize_stream(wp.get_stream(device))
-            edge_count = int(edge_count.array.numpy()[0])
-        else:
-            edge_count = int(vertex_unique_edge_offsets.array.numpy()[self.vertex_count() - 1])
+        )
 
         self._edge_vertex_indices = wp.empty(shape=(edge_count,), dtype=wp.vec2i, device=device)
         self._edge_quad_indices = wp.empty(shape=(edge_count,), dtype=wp.vec2i, device=device)

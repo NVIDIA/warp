@@ -142,8 +142,9 @@ class HexmeshTripolynomialSpaceTopology(HexmeshSpaceTopology):
 
         fv = ori // 2
 
-        rot_i = wp.dot(_FACE_ORIENTATION_I[2 * ori], coords) + _FACE_TRANSLATION_I[fv, 0]
-        rot_j = wp.dot(_FACE_ORIENTATION_I[2 * ori + 1], coords) + _FACE_TRANSLATION_I[fv, 1]
+        # face indices from shape function always have positive orientation, drop `ori % 2`
+        rot_i = wp.dot(_FACE_ORIENTATION_I[4 * fv], coords) + _FACE_TRANSLATION_I[fv, 0]
+        rot_j = wp.dot(_FACE_ORIENTATION_I[4 * fv + 1], coords) + _FACE_TRANSLATION_I[fv, 1]
 
         return rot_i * size + rot_j
 
