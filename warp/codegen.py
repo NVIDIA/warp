@@ -2116,7 +2116,7 @@ class Adjoint:
             emit_node = adj.node_visitors[type(node)]
         except KeyError as e:
             type_name = type(node).__name__
-            namespace = "ast." if getattr(type(node), "__module__", None) == "ast" else ""
+            namespace = "ast." if isinstance(node, ast.AST) else ""
             raise WarpCodegenError(f"Construct `{namespace}{type_name}` not supported in kernels.") from e
 
         return emit_node(adj, node)
