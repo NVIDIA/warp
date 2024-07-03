@@ -490,5 +490,5 @@ add_function_test(TestStreams, "test_event_synchronize", test_event_synchronize,
 add_function_test(TestStreams, "test_event_elapsed_time", test_event_elapsed_time, devices=devices)
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

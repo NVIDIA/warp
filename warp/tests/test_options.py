@@ -117,5 +117,5 @@ add_function_test(TestOptions, "test_options_4", test_options_4, devices=devices
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

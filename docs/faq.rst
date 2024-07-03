@@ -35,7 +35,7 @@ Does Warp support all of the Python language?
 No, Warp supports a subset of Python that maps well to the GPU. Our goal
 is to not have any performance cliffs so that users can expect
 consistently good behavior from kernels that is close to native code.
-Examples of unsupported concepts that don’t map well to the GPU are
+Examples of unsupported concepts that don't map well to the GPU are
 dynamic types, list comprehensions, exceptions, garbage collection, etc.
 
 When should I call ``wp.synchronize()``?
@@ -43,7 +43,7 @@ When should I call ``wp.synchronize()``?
 
 One of the common sources of confusion for new users is when calls to
 ``wp.synchronize()`` are necessary. The answer is “almost never”!
-Synchronization is quite expensive, and should generally be avoided
+Synchronization is quite expensive and should generally be avoided
 unless necessary. Warp naturally takes care of synchronization between
 operations (e.g.: kernel launches, device memory copies).
 
@@ -83,14 +83,15 @@ and :ref:`synchronization guidance <synchronization_guidance>`.
 What happens when you differentiate a function like ``wp.abs(x)``?
 ------------------------------------------------------------------
 
-Non-smooth functions such as ``y=|x|`` do not have a single unique
-gradient at ``x=0``, rather they have what is known as a
-``subgradient``, which is formally the convex hull of directional
+Non-smooth functions such as :math:`y=|x|` do not have a single unique
+gradient at :math:`x=0`, rather they have what is known as a
+*subgradient*, which is formally the convex hull of directional
 derivatives at that point. The way that Warp (and most
 auto-differentiation frameworks) handles these points is to pick an
 arbitrary gradient from this set, e.g.: for ``wp.abs()``, it will
 arbitrarily choose the gradient to be 1.0 at the origin. You can find
-the implementation for these functions in ``warp/native/builtin.h``.
+the implementation for these functions in
+`warp/native/builtin.h <https://github.com/NVIDIA/warp/blob/main/warp/native/builtin.h>`_.
 
 Most optimizers (particularly ones that exploit stochasticity), are not
 sensitive to the choice of which gradient to use from the subgradient,
@@ -107,15 +108,15 @@ conventions of PyTorch and use aliases such as ``cuda:0``, ``cuda:1``,
 Should I switch to Warp over IsaacGym/PhysX?
 ----------------------------------------------
 
-Warp is not a replacement for IsaacGym, IsaacSim, or PhysX - while Warp
-does offer some physical simulation capabilities this is primarily aimed
+Warp is not a replacement for IsaacGym, IsaacSim, or PhysX—while Warp
+does offer some physical simulation capabilities, this is primarily aimed
 at developers who need differentiable physics, rather than a fully
 featured physics engine. Warp is also integrated with IsaacGym and is
 great for performing auxiliary tasks such as reward and observation
 computations for reinforcement learning.
 
 Why aren't assignments to Warp arrays supported outside of kernels?
--------------------------------------------------------------------
+------------------------------------------------------------------------
 
 For best performance, reading and writing data that is living on the GPU can 
 only be performed inside Warp CUDA kernels. Otherwise individual element accesses
@@ -123,9 +124,9 @@ such as ``array[i] = 1.0`` in Python scope would require prohibitively slow devi
 synchronization and copies.
 
 We recommend to either initialize Warp arrays from other native arrays
-(e.g.: Python list, NumPy array, ...) or by launching a kernel to set its values.
+(Python lists, NumPy arrays, etc.) or by launching a kernel to set its values.
 
-For the common use case of wanting to fill an array with a given value, we
+For the common use case of filling an array with a given value, we
 also support the following forms:
 
 - ``wp.full(8, 1.23, dtype=float)``: initializes a new array of 8 float values set

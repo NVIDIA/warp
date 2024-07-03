@@ -128,7 +128,7 @@ def ksz(s: Sz):
     tid = wp.tid()  # noqa: F841
 
 
-wp.build.clear_kernel_cache()
+wp.clear_kernel_cache()
 
 devices = wp.get_devices()
 num_launches = 100000

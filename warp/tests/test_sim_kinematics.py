@@ -85,5 +85,5 @@ add_function_test(TestSimKinematics, "test_fk_ik", test_fk_ik, devices=devices)
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2, failfast=True)

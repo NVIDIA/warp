@@ -15,7 +15,7 @@ def run_suite() -> bool:
     """Run a test suite"""
 
     # force rebuild of all kernels
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     print("Cleared Warp kernel cache")
 
     runner = unittest.TextTestRunner(verbosity=2, failfast=True)

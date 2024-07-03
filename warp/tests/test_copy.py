@@ -226,5 +226,5 @@ add_function_test(TestCopy, "test_copy_adjoint", test_copy_adjoint, devices=devi
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

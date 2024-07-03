@@ -124,5 +124,5 @@ add_function_test(TestFp16, "test_fp16_kernel_parameter", test_fp16_kernel_param
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

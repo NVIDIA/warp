@@ -81,5 +81,5 @@ class TestTransientModule(unittest.TestCase):
 add_function_test(TestTransientModule, "test_transient_module", test_transient_module, devices=devices)
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

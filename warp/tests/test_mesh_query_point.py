@@ -686,5 +686,5 @@ add_function_test(TestMeshQueryPoint, "test_mesh_query_furthest_point", test_mes
 add_function_test(TestMeshQueryPoint, "test_adj_mesh_query_point", test_adj_mesh_query_point, devices=devices)
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

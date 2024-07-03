@@ -1294,5 +1294,5 @@ add_function_test(TestFemShapeFunctions, "test_tet_shape_functions", test_tet_sh
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

@@ -173,5 +173,5 @@ add_function_test(TestRounding, "test_rounding", test_rounding, devices=devices)
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

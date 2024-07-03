@@ -71,8 +71,12 @@ def init_kernel_cache(path=None):
     os.makedirs(warp.config.kernel_cache_dir, exist_ok=True)
 
 
-def clear_kernel_cache():
-    """Clear the kernel cache."""
+def clear_kernel_cache() -> None:
+    """Clear the kernel cache directory of previously generated source code and compiler artifacts.
+
+    Only directories beginning with ``wp_`` will be deleted.
+    This function only clears the cache for the current Warp version.
+    """
 
     warp.context.init()
 
