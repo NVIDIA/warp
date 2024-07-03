@@ -17,3 +17,5 @@
 # Exclude vendored code from project language stats
 warp/native/cutlass/** linguist-vendored
 tools/** linguist-vendored
+
+CHANGELOG.md merge=union
