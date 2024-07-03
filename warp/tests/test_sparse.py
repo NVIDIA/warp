@@ -454,7 +454,7 @@ def make_test_bsr_mv(block_shape, scalar_type):
             res = y.numpy().flatten()
             assert_np_equal(res, ref, 0.0001)
 
-        # test tranposed product
+        # test transposed product
         ref = alpha * y.numpy().flatten() @ _bsr_to_dense(A)
         x = y @ (A * alpha)
         res = x.numpy().flatten()

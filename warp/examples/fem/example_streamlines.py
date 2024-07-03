@@ -149,7 +149,7 @@ class Example:
                 res=res,
             )
 
-        # Mark sides with boundary conditions that shpuld apply
+        # Mark sides with boundary conditions that should apply
         boundary = fem.BoundarySides(self._geo)
         inflow_mask = wp.zeros(shape=boundary.element_count(), dtype=int)
         freeslip_mask = wp.zeros(shape=boundary.element_count(), dtype=int)
@@ -245,7 +245,7 @@ class Example:
             self.renderer.end_frame()
 
     def _generate_incompressible_flow(self):
-        # Funtion spaces for velocity, scalars and pressure (Pk / Pk / Pk-1)
+        # Function spaces for velocity, scalars and pressure (Pk / Pk / Pk-1)
         u_space = fem.make_polynomial_space(geo=self._geo, degree=self._degree, dtype=wp.vec3)
         s_space = fem.make_polynomial_space(geo=self._geo, degree=self._degree, dtype=float)
         p_space = fem.make_polynomial_space(geo=self._geo, degree=self._degree - 1, dtype=float)
