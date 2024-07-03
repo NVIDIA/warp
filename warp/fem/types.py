@@ -14,7 +14,7 @@ NodeIndex = int
 
 NULL_ELEMENT_INDEX = wp.constant(-1)
 NULL_QP_INDEX = wp.constant(-1)
-NULL_NODE_INDEX = wp.constant(-1)
+NULL_NODE_INDEX = wp.constant((1 << 31) - 1)  # this should be larger than normal nodes when sorting
 
 DofIndex = wp.vec2i
 """Opaque descriptor for indexing degrees of freedom within elements"""

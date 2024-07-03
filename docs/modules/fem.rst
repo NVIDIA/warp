@@ -19,9 +19,11 @@ The main mechanism is the :py:func:`.integrand` decorator, for instance: ::
     @integrand
     def linear_form(
         s: Sample,
+        domain: Domain,
         v: Field,
     ):
-        return v(s)
+        x = domain(s)
+        return v(s) * wp.max(0.0, 1.0 - wp.length(x))
 
 
     @integrand
@@ -31,7 +33,7 @@ The main mechanism is the :py:func:`.integrand` decorator, for instance: ::
             grad(v, s),
         )
 
-Integrands are normal Warp kernels, meaning any usual Warp function can be used. 
+Integrands are normal Warp kernels, meaning that they may contain arbitrary Warp functions. 
 However, they accept a few special parameters:
 
   - :class:`.Sample` contains information about the current integration sample point, such as the element index and coordinates in element.
@@ -123,7 +125,8 @@ Introductory examples
  - ``example_burgers.py``: 2D inviscid Burgers using Discontinuous Galerkin with upwind transport and slope limiter
  - ``example_stokes.py``: 2D incompressible Stokes flow using mixed :math:`P_k/P_{k-1}` or :math:`Q_k/P_{(k-1)d}` elements
  - ``example_navier_stokes.py``: 2D Navier-Stokes flow using mixed :math:`P_k/P_{k-1}` elements
- - ``example_mixed_elasticity.py``: 2D linear elasticity using mixed continuous/discontinuous :math:`S_k/P_{(k-1)d}` elements
+ - ``example_mixed_elasticity.py``: 2D nonlinear elasticity using mixed continuous/discontinuous :math:`S_k/P_{(k-1)d}` elements
+ - ``example_streamlines.py``: Using the :func:`lookup` operator to trace through a velocity field
 
 
 Advanced usages
@@ -267,6 +270,9 @@ Geometry
    :show-inheritance:
 
 .. autoclass:: FrontierSides
+   :show-inheritance:
+
+.. autoclass:: Subdomain
    :show-inheritance:
 
 .. autoclass:: Polynomial

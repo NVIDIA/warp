@@ -401,3 +401,47 @@ def borrow_temporary_like(
         device=array.device,
         requires_grad=array.requires_grad,
     )
+
+
+_device_events = {}
+
+
+def capture_event(device=None):
+    """
+    Records a CUDA event on the current stream and returns it,
+    reusing previously created events if possible.
+
+    If the current device is not a CUDA device, returns ``None``.
+
+    The event can be returned to the shared per-device pool for future reuse by
+    calling :func:`synchronize_event`
+    """
+
+    device = wp.get_device(device)
+    if not device.is_cuda:
+        return None
+
+    try:
+        device_events = _device_events[device.ordinal]
+    except KeyError:
+        device_events = []
+        _device_events[device.ordinal] = device_events
+
+    with wp.ScopedDevice(device):
+        if not device_events:
+            return wp.record_event()
+
+        return wp.record_event(device_events.pop())
+
+
+def synchronize_event(event: Union[wp.Event, None]):
+    """
+    Synchronize an event created with :func:`capture_event` and returns it to the
+    per-device event pool.
+
+    If `event` is ``None``, do nothing.
+    """
+
+    if event is not None:
+        wp.synchronize_event(event)
+        _device_events[event.device.ordinal].append(event)

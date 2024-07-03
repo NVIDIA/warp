@@ -8,7 +8,7 @@
 ###########################################################################
 # Example Deformed Geometry
 #
-# This example solves a 2d diffusion problem:
+# This example solves a 2d diffusion problem on a deformed (curved) mesh:
 #
 # nu Div u = 1
 #
@@ -17,20 +17,9 @@
 ###########################################################################
 
 import warp as wp
+import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
-
-# Import example utilities
-# Make sure that works both when imported as module and run as standalone file
-try:
-    from .bsr_utils import bsr_cg
-    from .example_diffusion import diffusion_form, linear_form
-    from .mesh_utils import gen_quadmesh, gen_trimesh
-    from .plot_utils import Plot
-except ImportError:
-    from bsr_utils import bsr_cg
-    from example_diffusion import diffusion_form, linear_form
-    from mesh_utils import gen_quadmesh, gen_trimesh
-    from plot_utils import Plot
+from warp.examples.fem.example_diffusion import diffusion_form, linear_form
 
 
 @fem.integrand
@@ -80,10 +69,10 @@ class Example:
 
         # Grid or triangle mesh geometry
         if mesh == "tri":
-            positions, tri_vidx = gen_trimesh(res=wp.vec2i(resolution))
+            positions, tri_vidx = fem_example_utils.gen_trimesh(res=wp.vec2i(resolution))
             base_geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
         elif mesh == "quad":
-            positions, quad_vidx = gen_quadmesh(res=wp.vec2i(resolution))
+            positions, quad_vidx = fem_example_utils.gen_quadmesh(res=wp.vec2i(resolution))
             base_geo = fem.Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions)
         else:
             base_geo = fem.Grid2D(res=wp.vec2i(resolution))
@@ -102,7 +91,7 @@ class Example:
         # Scalar field over our function space
         self._scalar_field = self._scalar_space.make_field()
 
-        self.renderer = Plot()
+        self.renderer = fem_example_utils.Plot()
 
     def step(self):
         geo = self._geo
@@ -128,7 +117,7 @@ class Example:
 
         # Solve linear system using Conjugate Gradient
         x = wp.zeros_like(rhs)
-        bsr_cg(matrix, b=rhs, x=x, quiet=self._quiet, tol=1.0e-6)
+        fem_example_utils.bsr_cg(matrix, b=rhs, x=x, quiet=self._quiet, tol=1.0e-6)
 
         # Assign system result to our discrete field
         self._scalar_field.dof_values = x
@@ -148,7 +137,7 @@ if __name__ == "__main__":
     parser.add_argument("--degree", type=int, default=2, help="Polynomial degree of shape functions.")
     parser.add_argument("--serendipity", action="store_true", default=False, help="Use Serendipity basis functions.")
     parser.add_argument("--viscosity", type=float, default=2.0, help="Fluid viscosity parameter.")
-    parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type")
+    parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="tri", help="Mesh type")
     parser.add_argument(
         "--headless",
         action="store_true",

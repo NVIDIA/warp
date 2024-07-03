@@ -8,77 +8,102 @@
 ###########################################################################
 # Example Mixed Elasticity
 #
-# This example illustrates using Mixed FEM to solve a
-# 2D linear elasticity problem:
+# This example illustrates using Mixed FEM to solve a nonlinear static elasticity equilibrium problem:
 #
-# Div[ E: D(u) ] = 0
+# Div[ d/dF Psi(F(u)) ] = 0
 #
-# with Dirichlet boundary conditions on horizontal sides,
-# and E the elasticity rank-4 tensor
+# with Dirichlet boundary conditions on vertical sides,
+# and Psi an elastic potential function of the deformation gradient (here Neo-Hookean)
+#
+# which we write as a sequence of Newton iterations:
+# int {sigma : grad v}  = 0   for all displacement test functions v
+# int {sigma : tau} = int{dPsi/dF : tau} + int{grad du : d2 Psi/dF2  : tau} for all stress test functions tau
 ###########################################################################
 
 import numpy as np
 
 import warp as wp
+import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
-from warp.sparse import bsr_mm, bsr_transposed
-
-try:
-    from .bsr_utils import bsr_cg, invert_diagonal_bsr_mass_matrix
-    from .mesh_utils import gen_quadmesh, gen_trimesh
-    from .plot_utils import Plot
-except ImportError:
-    from bsr_utils import bsr_cg, invert_diagonal_bsr_mass_matrix
-    from mesh_utils import gen_quadmesh, gen_trimesh
-    from plot_utils import Plot
-
-
-@wp.func
-def compute_stress(tau: wp.mat22, E: wp.mat33):
-    """Strain to stress computation"""
-    tau_sym = wp.vec3(tau[0, 0], tau[1, 1], tau[0, 1] + tau[1, 0])
-    sig_sym = E * tau_sym
-    return wp.mat22(sig_sym[0], 0.5 * sig_sym[2], 0.5 * sig_sym[2], sig_sym[1])
+from warp.sparse import bsr_mm, bsr_mv, bsr_transposed
 
 
 @fem.integrand
-def symmetric_grad_form(
+def displacement_gradient_form(
     s: fem.Sample,
     u: fem.Field,
     tau: fem.Field,
 ):
-    """D(u) : tau"""
-    return wp.ddot(tau(s), fem.D(u, s))
+    """grad(u) : tau"""
+    return wp.ddot(tau(s), fem.grad(u, s))
 
 
 @fem.integrand
-def stress_form(s: fem.Sample, u: fem.Field, tau: fem.Field, E: wp.mat33):
-    """(E : D(u)) : tau"""
-    return wp.ddot(tau(s), compute_stress(fem.D(u, s), E))
+def nh_stress_form(s: fem.Sample, tau: fem.Field, u_cur: fem.Field, lame: wp.vec2):
+    """d Psi/dF : tau"""
+
+    F = wp.identity(n=2, dtype=float) + fem.grad(u_cur, s)
+
+    J = wp.determinant(F)
+    mu_nh = 2.0 * lame[1]
+    lambda_nh = lame[0] + lame[1]
+    gamma = 1.0 + mu_nh / lambda_nh
+
+    dJ_dS = wp.mat22(F[1, 1], -F[1, 0], -F[0, 1], F[0, 0])
+    nh_stress = mu_nh * F + lambda_nh * (J - gamma) * dJ_dS
+
+    return wp.ddot(tau(s), nh_stress)
 
 
 @fem.integrand
-def horizontal_boundary_projector_form(
+def nh_stress_delta_form(s: fem.Sample, tau: fem.Field, u: fem.Field, u_cur: fem.Field, lame: wp.vec2):
+    """grad(u) : d2 Psi/dF2 : tau"""
+
+    tau_s = tau(s)
+    sigma_s = fem.grad(u, s)
+
+    F = wp.identity(n=2, dtype=float) + fem.grad(u_cur, s)
+
+    dJ_dF = wp.mat22(F[1, 1], -F[1, 0], -F[0, 1], F[0, 0])
+
+    mu_nh = 2.0 * lame[1]
+    lambda_nh = lame[0] + lame[1]
+
+    dpsi_dpsi = mu_nh * wp.ddot(tau_s, sigma_s) + lambda_nh * wp.ddot(dJ_dF * tau_s, dJ_dF * sigma_s)
+
+    # positive part of d2J_dS2
+    gamma = 1.0 + mu_nh / lambda_nh
+    J = wp.determinant(F)
+    if J >= gamma:
+        d2J_dF_sig = wp.mat22(sigma_s[1, 1], 0.0, 0.0, sigma_s[0, 0])
+    else:
+        d2J_dF_sig = wp.mat22(0.0, -sigma_s[1, 0], -sigma_s[0, 1], 0.0)
+
+    return dpsi_dpsi + lambda_nh * (J - gamma) * wp.ddot(d2J_dF_sig, tau_s)
+
+
+@fem.integrand
+def vertical_boundary_projector_form(
     s: fem.Sample,
     domain: fem.Domain,
     u: fem.Field,
     v: fem.Field,
 ):
-    # non zero on horizontal boundary of domain only
+    # non zero on vertical boundary of domain only
     nor = fem.normal(domain, s)
-    return wp.dot(u(s), v(s)) * wp.abs(nor[1])
+    return wp.dot(u(s), v(s)) * wp.abs(nor[0])
 
 
 @fem.integrand
-def horizontal_displacement_form(
+def vertical_displacement_form(
     s: fem.Sample,
     domain: fem.Domain,
     v: fem.Field,
     displacement: float,
 ):
-    # opposed to normal on horizontal boundary of domain only
+    # opposed to normal on vertical boundary of domain only
     nor = fem.normal(domain, s)
-    return -wp.abs(nor[1]) * displacement * wp.dot(nor, v(s))
+    return -wp.abs(nor[0]) * displacement * wp.dot(nor, v(s))
 
 
 @fem.integrand
@@ -98,7 +123,6 @@ class Example:
         resolution=25,
         mesh="grid",
         displacement=0.1,
-        young_modulus=1.0,
         poisson_ratio=0.5,
         nonconforming_stresses=False,
     ):
@@ -106,49 +130,45 @@ class Example:
 
         self._displacement = displacement
 
-        # Grid or triangle mesh geometry
+        # Grid or mesh geometry
         if mesh == "tri":
-            positions, tri_vidx = gen_trimesh(res=wp.vec2i(resolution))
+            positions, tri_vidx = fem_example_utils.gen_trimesh(res=wp.vec2i(resolution))
             self._geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
         elif mesh == "quad":
-            positions, quad_vidx = gen_quadmesh(res=wp.vec2i(resolution))
+            positions, quad_vidx = fem_example_utils.gen_quadmesh(res=wp.vec2i(resolution))
             self._geo = fem.Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions)
         else:
             self._geo = fem.Grid2D(res=wp.vec2i(resolution))
 
-        # Strain-stress matrix
-        young = young_modulus
-        poisson = poisson_ratio
-        self._elasticity_mat = wp.mat33(
-            young
-            / (1.0 - poisson * poisson)
-            * np.array(
-                [
-                    [1.0, poisson, 0.0],
-                    [poisson, 1.0, 0.0],
-                    [0.0, 0.0, (2.0 * (1.0 + poisson)) * (1.0 - poisson * poisson)],
-                ]
-            )
-        )
+        # Lame coefficients from Young modulus and Poisson ratio
+        self._lame = wp.vec2(1.0 / (1.0 + poisson_ratio) * np.array([poisson_ratio / (1.0 - poisson_ratio), 0.5]))
 
-        # Function spaces -- S_k for displacement, Q_{k-1}d for stress
+        # Function spaces -- S_k for displacement, Q_k or P_{k-1}d for stress
         self._u_space = fem.make_polynomial_space(
             self._geo, degree=degree, dtype=wp.vec2, element_basis=fem.ElementBasis.SERENDIPITY
         )
 
-        # Store stress degrees of freedom as symmetric tensors (3 dof) rather than full 2x2 matrices
-        tau_basis = fem.ElementBasis.NONCONFORMING_POLYNOMIAL if nonconforming_stresses else fem.ElementBasis.LAGRANGE
+        if isinstance(self._geo.reference_cell(), fem.geometry.element.Triangle):
+            # triangle elements
+            tau_basis = fem.ElementBasis.NONCONFORMING_POLYNOMIAL
+            tau_degree = degree - 1
+        else:
+            # square elements
+            tau_basis = fem.ElementBasis.LAGRANGE
+            tau_degree = degree
+
         self._tau_space = fem.make_polynomial_space(
             self._geo,
-            degree=degree - 1,
+            degree=tau_degree,
             discontinuous=True,
             element_basis=tau_basis,
-            dof_mapper=fem.SymmetricTensorMapper(wp.mat22),
+            family=fem.Polynomial.GAUSS_LEGENDRE,
+            dtype=wp.mat22,
         )
 
         self._u_field = self._u_space.make_field()
 
-        self.renderer = Plot()
+        self.renderer = fem_example_utils.Plot()
 
     def step(self):
         boundary = fem.BoundarySides(self._geo)
@@ -158,14 +178,14 @@ class Example:
         u_bd_test = fem.make_test(space=self._u_space, domain=boundary)
         u_bd_trial = fem.make_trial(space=self._u_space, domain=boundary)
         u_bd_rhs = fem.integrate(
-            horizontal_displacement_form,
+            vertical_displacement_form,
             fields={"v": u_bd_test},
             values={"displacement": self._displacement},
             nodal=True,
             output_dtype=wp.vec2d,
         )
         u_bd_matrix = fem.integrate(
-            horizontal_boundary_projector_form, fields={"u": u_bd_trial, "v": u_bd_test}, nodal=True
+            vertical_boundary_projector_form, fields={"u": u_bd_trial, "v": u_bd_test}, nodal=True
         )
 
         # Stress/velocity coupling
@@ -173,27 +193,43 @@ class Example:
         tau_test = fem.make_test(space=self._tau_space, domain=domain)
         tau_trial = fem.make_trial(space=self._tau_space, domain=domain)
 
-        sym_grad_matrix = fem.integrate(symmetric_grad_form, fields={"u": u_trial, "tau": tau_test})
-        stress_matrix = fem.integrate(
-            stress_form, fields={"u": u_trial, "tau": tau_test}, values={"E": self._elasticity_mat}
+        gradient_matrix = bsr_transposed(
+            fem.integrate(displacement_gradient_form, fields={"u": u_trial, "tau": tau_test})
         )
 
         # Compute inverse of the (block-diagonal) tau mass matrix
         tau_inv_mass_matrix = fem.integrate(tensor_mass_form, fields={"sig": tau_trial, "tau": tau_test}, nodal=True)
-        invert_diagonal_bsr_mass_matrix(tau_inv_mass_matrix)
+        fem_example_utils.invert_diagonal_bsr_matrix(tau_inv_mass_matrix)
 
-        # Assemble system matrix
-        u_matrix = bsr_mm(bsr_transposed(sym_grad_matrix), bsr_mm(tau_inv_mass_matrix, stress_matrix))
+        # Newton iterations (without line-search for simplicity)
+        for newton_iteration in range(5):
+            stress_matrix = fem.integrate(
+                nh_stress_delta_form,
+                fields={"u_cur": self._u_field, "u": u_trial, "tau": tau_test},
+                values={"lame": self._lame},
+            )
 
-        # Enforce boundary conditions
-        u_rhs = wp.zeros_like(u_bd_rhs)
-        fem.project_linear_system(u_matrix, u_rhs, u_bd_matrix, u_bd_rhs)
+            stress_rhs = fem.integrate(
+                nh_stress_form,
+                fields={"u_cur": self._u_field, "tau": tau_test},
+                values={"lame": self._lame},
+                output_dtype=wp.vec(length=stress_matrix.block_shape[0], dtype=wp.float64),
+            )
 
-        x = wp.zeros_like(u_rhs)
-        bsr_cg(u_matrix, b=u_rhs, x=x, tol=1.0e-16, quiet=self._quiet)
+            # Assemble system matrix
+            u_matrix = bsr_mm(gradient_matrix, bsr_mm(tau_inv_mass_matrix, stress_matrix))
 
-        # Extract result
-        self._u_field.dof_values = x
+            # Enforce boundary conditions (apply displacement only at first iteration)
+            u_rhs = bsr_mv(gradient_matrix, bsr_mv(tau_inv_mass_matrix, stress_rhs, alpha=-1.0))
+            fem.project_linear_system(u_matrix, u_rhs, u_bd_matrix, u_bd_rhs if newton_iteration == 0 else None)
+
+            x = wp.zeros_like(u_rhs)
+            fem_example_utils.bsr_cg(u_matrix, b=u_rhs, x=x, quiet=self._quiet)
+
+            # Extract result -- cast to float32 and accumulate to displacement field
+            delta_u = wp.empty_like(self._u_field.dof_values)
+            wp.utils.array_cast(in_array=x, out_array=delta_u)
+            fem.utils.array_axpy(x=delta_u, y=self._u_field.dof_values)
 
     def render(self):
         self.renderer.add_surface_vector("solution", self._u_field)
@@ -208,8 +244,7 @@ if __name__ == "__main__":
     parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
     parser.add_argument("--resolution", type=int, default=25, help="Grid resolution.")
     parser.add_argument("--degree", type=int, default=2, help="Polynomial degree of shape functions.")
-    parser.add_argument("--displacement", type=float, default=0.1)
-    parser.add_argument("--young_modulus", type=float, default=1.0)
+    parser.add_argument("--displacement", type=float, default=-0.5)
     parser.add_argument("--poisson_ratio", type=float, default=0.5)
     parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type")
     parser.add_argument(
@@ -231,7 +266,6 @@ if __name__ == "__main__":
             resolution=args.resolution,
             mesh=args.mesh,
             displacement=args.displacement,
-            young_modulus=args.young_modulus,
             poisson_ratio=args.poisson_ratio,
             nonconforming_stresses=args.nonconforming_stresses,
         )
@@ -239,4 +273,4 @@ if __name__ == "__main__":
         example.render()
 
         if not args.headless:
-            example.renderer.plot()
+            example.renderer.plot(displacement="solution")

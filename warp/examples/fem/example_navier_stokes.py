@@ -18,18 +18,10 @@
 ###########################################################################
 
 import warp as wp
+import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
 from warp.fem.utils import array_axpy
 from warp.sparse import bsr_copy, bsr_mm, bsr_mv
-
-try:
-    from .bsr_utils import SaddleSystem, bsr_solve_saddle
-    from .mesh_utils import gen_trimesh
-    from .plot_utils import Plot
-except ImportError:
-    from bsr_utils import SaddleSystem, bsr_solve_saddle
-    from mesh_utils import gen_trimesh
-    from plot_utils import Plot
 
 
 @fem.integrand
@@ -100,8 +92,8 @@ class Example:
         viscosity = top_velocity / Re
 
         if tri_mesh:
-            positions, tri_vidx = gen_trimesh(res=wp.vec2i(res))
-            geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
+            positions, tri_vidx = fem_example_utils.gen_trimesh(res=wp.vec2i(res))
+            geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions, build_bvh=True)
         else:
             geo = fem.Grid2D(res=wp.vec2i(res))
 
@@ -153,7 +145,7 @@ class Example:
         bsr_mm(x=bsr_copy(div_matrix), y=u_bd_projector, z=div_matrix, alpha=-1.0, beta=1.0)
 
         # Assemble saddle system
-        self._saddle_system = SaddleSystem(u_matrix, div_matrix)
+        self._saddle_system = fem_example_utils.SaddleSystem(u_matrix, div_matrix)
 
         # Save data for computing time steps rhs
         self._u_bd_projector = u_bd_projector
@@ -165,7 +157,7 @@ class Example:
         self._u_field = u_space.make_field()
         self._p_field = p_space.make_field()
 
-        self.renderer = Plot()
+        self.renderer = fem_example_utils.Plot()
         self.renderer.add_surface_vector("velocity", self._u_field)
 
     def step(self):
@@ -190,7 +182,7 @@ class Example:
         wp.utils.array_cast(out_array=x_u, in_array=self._u_field.dof_values)
         wp.utils.array_cast(out_array=x_p, in_array=self._p_field.dof_values)
 
-        bsr_solve_saddle(
+        fem_example_utils.bsr_solve_saddle(
             saddle_system=self._saddle_system,
             tol=1.0e-6,
             x_u=x_u,

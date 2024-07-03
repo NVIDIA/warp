@@ -15,16 +15,12 @@
 import numpy as np
 
 import warp as wp
+import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
 import warp.sim.render
 from warp.fem import Domain, Field, Sample, at_node, div, grad, integrand
 from warp.sim import Model, State
 from warp.sparse import BsrMatrix, bsr_mm, bsr_mv, bsr_transposed
-
-try:
-    from .bsr_utils import bsr_cg
-except ImportError:
-    from bsr_utils import bsr_cg
 
 
 @wp.func
@@ -130,7 +126,7 @@ def scale_transposed_divergence_mat(
     tr_divergence_mat_values: wp.array(dtype=wp.mat(shape=(3, 1), dtype=float)),
     inv_fraction_int: wp.array(dtype=float),
 ):
-    # In-place scaling of gradient operator rows wiht inverse mass
+    # In-place scaling of gradient operator rows with inverse mass
 
     u_i = wp.tid()
     block_beg = tr_divergence_mat_offsets[u_i]
@@ -149,12 +145,23 @@ def compute_particle_ijk(positions: wp.array(dtype=wp.vec3), voxel_size: float, 
     ijks[p] = wp.vec3i(int(wp.floor(pos[0])), int(wp.floor(pos[1])), int(wp.floor(pos[2])))
 
 
-def solve_incompressibility(divergence_mat: BsrMatrix, inv_volume, pressure, velocity, quiet: bool = False):
+def solve_incompressibility(
+    divergence_mat: BsrMatrix, dirichlet_projector: BsrMatrix, inv_volume, pressure, velocity, quiet: bool = False
+):
     """Solve for divergence-free velocity delta:
 
     delta_velocity = inv_volume * transpose(divergence_mat) * pressure
     divergence_mat * (velocity + delta_velocity) = 0
+    dirichlet_projector * delta_velocity = 0
     """
+
+    # Constraint-free divergence -- computed *before* projection of divergence_mat
+    rhs = wp.empty_like(pressure)
+    bsr_mv(A=divergence_mat, x=velocity, y=rhs, alpha=-1.0)
+
+    # Project matrix to enforce boundary conditions
+    # divergence_matrix -= divergence_matrix * vel_projector
+    bsr_mm(alpha=-1.0, x=divergence_mat, y=dirichlet_projector, z=divergence_mat, beta=1.0)
 
     # Build transposed gradient matrix, scale with inverse fraction
     transposed_divergence_mat = bsr_transposed(divergence_mat)
@@ -171,9 +178,7 @@ def solve_incompressibility(divergence_mat: BsrMatrix, inv_volume, pressure, vel
     # For simplicity, assemble Schur complement and solve with CG
     schur = bsr_mm(divergence_mat, transposed_divergence_mat)
 
-    rhs = wp.zeros_like(pressure)
-    bsr_mv(A=divergence_mat, x=velocity, y=rhs, alpha=-1.0, beta=0.0)
-    bsr_cg(schur, b=rhs, x=pressure, quiet=quiet, tol=1.0e-6)
+    fem_example_utils.bsr_cg(schur, b=rhs, x=pressure, quiet=quiet, tol=1.0e-6)
 
     # Apply pressure to velocity
     bsr_mv(A=transposed_divergence_mat, x=pressure, y=velocity, alpha=1.0, beta=1.0)
@@ -354,13 +359,10 @@ class Example:
                     output_dtype=float,
                 )
 
-                # Project matrix to enforce boundary conditions
-                # divergence_matrix -= divergence_matrix * vel_projector
-                bsr_mm(alpha=-1.0, x=divergence_matrix, y=vel_projector, z=divergence_matrix, beta=1.0)
-
                 # Solve unilateral incompressibility
                 solve_incompressibility(
                     divergence_matrix,
+                    vel_projector,
                     inv_volume,
                     pressure_field.dof_values,
                     velocity_field.dof_values,

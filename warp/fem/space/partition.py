@@ -1,12 +1,7 @@
 from typing import Any, Optional
 
 import warp as wp
-from warp.fem.cache import (
-    TemporaryStore,
-    borrow_temporary,
-    borrow_temporary_like,
-    cached_arg_value,
-)
+import warp.fem.cache as cache
 from warp.fem.geometry import GeometryPartition, WholeGeometryPartition
 from warp.fem.types import NULL_NODE_INDEX
 from warp.fem.utils import _iota_kernel, compress_node_indices
@@ -42,7 +37,7 @@ class SpacePartition:
 
     @staticmethod
     def partition_node_index(args: "PartitionArg", space_node_index: int):
-        """Returns the index in the partition of a function space node, or -1 if it does not exist"""
+        """Returns the index in the partition of a function space node, or ``NULL_NODE_INDEX`` if it does not exist"""
 
     def __str__(self) -> str:
         return self.name
@@ -76,7 +71,7 @@ class WholeSpacePartition(SpacePartition):
     def space_node_indices(self):
         """Return the global function space indices for nodes in this partition"""
         if self._node_indices is None:
-            self._node_indices = borrow_temporary(temporary_store=None, shape=(self.node_count(),), dtype=int)
+            self._node_indices = cache.borrow_temporary(temporary_store=None, shape=(self.node_count(),), dtype=int)
             wp.launch(kernel=_iota_kernel, dim=self.node_count(), inputs=[self._node_indices.array, 1])
         return self._node_indices.array
 
@@ -121,7 +116,7 @@ class NodePartition(SpacePartition):
         geo_partition: GeometryPartition,
         with_halo: bool = True,
         device=None,
-        temporary_store: TemporaryStore = None,
+        temporary_store: cache.TemporaryStore = None,
     ):
         super().__init__(space_topology=space_topology, geo_partition=geo_partition)
 
@@ -143,7 +138,7 @@ class NodePartition(SpacePartition):
         """Return the global function space indices for nodes in this partition"""
         return self._node_indices.array
 
-    @cached_arg_value
+    @cache.cached_arg_value
     def partition_arg_value(self, device):
         arg = NodePartition.PartitionArg()
         arg.space_to_partition = self._space_to_partition.array.to(device)
@@ -153,12 +148,10 @@ class NodePartition(SpacePartition):
     def partition_node_index(args: PartitionArg, space_node_index: int):
         return args.space_to_partition[space_node_index]
 
-    def _compute_node_indices_from_sides(self, device, with_halo: bool, temporary_store: TemporaryStore):
+    def _compute_node_indices_from_sides(self, device, with_halo: bool, temporary_store: cache.TemporaryStore):
         from warp.fem import cache
 
         trace_topology = self.space_topology.trace()
-        NODES_PER_CELL = self.space_topology.NODES_PER_ELEMENT
-        NODES_PER_SIDE = trace_topology.NODES_PER_ELEMENT
 
         @cache.dynamic_kernel(suffix=f"{self.geo_partition.name}_{self.space_topology.name}")
         def node_category_from_cells_kernel(
@@ -171,7 +164,8 @@ class NodePartition(SpacePartition):
 
             cell_index = self.geo_partition.cell_index(geo_partition_arg, partition_cell_index)
 
-            for n in range(NODES_PER_CELL):
+            cell_node_count = self.space_topology.element_node_count(geo_arg, space_arg, cell_index)
+            for n in range(cell_node_count):
                 space_nidx = self.space_topology.element_node_index(geo_arg, space_arg, cell_index, n)
                 node_mask[space_nidx] = NodeCategory.OWNED_INTERIOR
 
@@ -186,7 +180,8 @@ class NodePartition(SpacePartition):
 
             side_index = self.geo_partition.side_index(geo_partition_arg, partition_side_index)
 
-            for n in range(NODES_PER_SIDE):
+            side_node_count = trace_topology.element_node_count(geo_arg, space_arg, side_index)
+            for n in range(side_node_count):
                 space_nidx = trace_topology.element_node_index(geo_arg, space_arg, side_index, n)
 
                 if node_mask[space_nidx] == NodeCategory.EXTERIOR:
@@ -203,14 +198,15 @@ class NodePartition(SpacePartition):
 
             side_index = self.geo_partition.frontier_side_index(geo_partition_arg, frontier_side_index)
 
-            for n in range(NODES_PER_SIDE):
+            side_node_count = trace_topology.element_node_count(geo_arg, space_arg, side_index)
+            for n in range(side_node_count):
                 space_nidx = trace_topology.element_node_index(geo_arg, space_arg, side_index, n)
                 if node_mask[space_nidx] == NodeCategory.EXTERIOR:
                     node_mask[space_nidx] = NodeCategory.HALO_OTHER_SIDE
                 elif node_mask[space_nidx] == NodeCategory.OWNED_INTERIOR:
                     node_mask[space_nidx] = NodeCategory.OWNED_FRONTIER
 
-        node_category = borrow_temporary(
+        node_category = cache.borrow_temporary(
             temporary_store,
             shape=(self.space_topology.node_count(),),
             dtype=int,
@@ -259,50 +255,52 @@ class NodePartition(SpacePartition):
 
         node_category.release()
 
-    def _finalize_node_indices(self, node_category: wp.array(dtype=int), temporary_store: TemporaryStore):
-        category_offsets, node_indices, _, __ = compress_node_indices(NodeCategory.COUNT, node_category)
+    def _finalize_node_indices(self, node_category: wp.array(dtype=int), temporary_store: cache.TemporaryStore):
+        category_offsets, node_indices = compress_node_indices(
+            NodeCategory.COUNT, node_category, temporary_store=temporary_store
+        )
 
         # Copy offsets to cpu
         device = node_category.device
-        self._category_offsets = borrow_temporary(
-            temporary_store,
-            shape=category_offsets.array.shape,
-            dtype=category_offsets.array.dtype,
-            pinned=device.is_cuda,
-            device="cpu",
-        )
-        wp.copy(src=category_offsets.array, dest=self._category_offsets.array)
+        with wp.ScopedDevice(device):
+            self._category_offsets = cache.borrow_temporary(
+                temporary_store,
+                shape=category_offsets.array.shape,
+                dtype=category_offsets.array.dtype,
+                pinned=device.is_cuda,
+                device="cpu",
+            )
+            wp.copy(src=category_offsets.array, dest=self._category_offsets.array)
+            copy_event = cache.capture_event()
 
-        if device.is_cuda:
-            # TODO switch to synchronize_event once available
-            wp.synchronize_stream(wp.get_stream(device))
+            # Compute global to local indices
+            self._space_to_partition = cache.borrow_temporary_like(node_indices, temporary_store)
+            wp.launch(
+                kernel=NodePartition._scatter_partition_indices,
+                dim=self.space_topology.node_count(),
+                device=device,
+                inputs=[category_offsets.array, node_indices.array, self._space_to_partition.array],
+            )
 
-        category_offsets.release()
+            # Copy to shrinked-to-fit array
+            cache.synchronize_event(copy_event)  # Transfer to host must be finished to access node_count()
+            self._node_indices = cache.borrow_temporary(
+                temporary_store, shape=(self.node_count()), dtype=int, device=device
+            )
+            wp.copy(dest=self._node_indices.array, src=node_indices.array, count=self.node_count())
 
-        # Compute global to local indices
-        self._space_to_partition = borrow_temporary_like(node_indices, temporary_store)
-        wp.launch(
-            kernel=NodePartition._scatter_partition_indices,
-            dim=self.space_topology.node_count(),
-            device=device,
-            inputs=[self.node_count(), node_indices.array, self._space_to_partition.array],
-        )
-
-        # Copy to shrinked-to-fit array
-        self._node_indices = borrow_temporary(temporary_store, shape=(self.node_count()), dtype=int, device=device)
-        wp.copy(dest=self._node_indices.array, src=node_indices.array, count=self.node_count())
-
-        node_indices.release()
+            node_indices.release()
 
     @wp.kernel
     def _scatter_partition_indices(
-        local_node_count: int,
+        category_offsets: wp.array(dtype=int),
         node_indices: wp.array(dtype=int),
         space_to_partition_indices: wp.array(dtype=int),
     ):
         local_idx = wp.tid()
         space_idx = node_indices[local_idx]
 
+        local_node_count = category_offsets[NodeCategory.EXTERIOR]  # all but exterior nodes
         if local_idx < local_node_count:
             space_to_partition_indices[space_idx] = local_idx
         else:
@@ -315,7 +313,7 @@ def make_space_partition(
     space_topology: Optional[SpaceTopology] = None,
     with_halo: bool = True,
     device=None,
-    temporary_store: TemporaryStore = None,
+    temporary_store: cache.TemporaryStore = None,
 ) -> SpacePartition:
     """Computes the subset of nodes from a function space topology that touch a geometry partition
 

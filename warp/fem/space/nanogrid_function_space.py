@@ -41,25 +41,23 @@ class NanogridSpaceTopology(SpaceTopology):
         self._grid = grid
         self._shape = shape
 
-        if need_edge_indices:
-            self._edge_count = self._grid.edge_count()
-        else:
-            self._edge_count = 0
+        self._vertex_grid = grid.vertex_grid.id
 
-        self._vertex_grid = grid._node_grid
-        self._face_grid = grid._face_grid
-        self._edge_grid = grid._edge_grid
+        self._edge_grid = grid.edge_grid.id if need_edge_indices else -1
+        self._face_grid = grid.face_grid.id if need_face_indices else -1
+        self._edge_count = grid.edge_count() if need_edge_indices else 0
+        self._face_count = grid.side_count() if need_face_indices else 0
 
     @cache.cached_arg_value
     def topo_arg_value(self, device):
         arg = NanogridTopologyArg()
 
-        arg.vertex_grid = self._vertex_grid.id
-        arg.face_grid = self._face_grid.id
-        arg.edge_grid = -1 if self._edge_grid is None else self._edge_grid.id
+        arg.vertex_grid = self._vertex_grid
+        arg.face_grid = self._face_grid
+        arg.edge_grid = self._edge_grid
 
         arg.vertex_count = self._grid.vertex_count()
-        arg.face_count = self._grid.side_count()
+        arg.face_count = self._face_count
         arg.edge_count = self._edge_count
         return arg
 
@@ -98,8 +96,8 @@ class NanogridTripolynomialSpaceTopology(NanogridSpaceTopology):
 
         return (
             self._grid.vertex_count()
-            + self._grid.edge_count() * INTERIOR_NODES_PER_EDGE
-            + self._grid.side_count() * INTERIOR_NODES_PER_FACE
+            + self._edge_count * INTERIOR_NODES_PER_EDGE
+            + self._face_count * INTERIOR_NODES_PER_FACE
             + self._grid.cell_count() * INTERIOR_NODES_PER_CELL
         )
 
@@ -160,7 +158,7 @@ class NanogridSerendipitySpaceTopology(NanogridSpaceTopology):
         self.element_node_index = self._make_element_node_index()
 
     def node_count(self) -> int:
-        return self.geometry.vertex_count() + (self._shape.ORDER - 1) * self.geometry.edge_count()
+        return self.geometry.vertex_count() + (self._shape.ORDER - 1) * self._edge_count
 
     def _make_element_node_index(self):
         ORDER = self._shape.ORDER

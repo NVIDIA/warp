@@ -6,6 +6,12 @@
 - The `mask` argument to `wp.sim.eval_fk` now accepts both integer and bool arrays
 - Support for NumPy >= 2.0
 - Fix hashing of replay functions and snippets
+- `warp.fem` new features and fixes:
+  - Support for variable number of nodes per element
+  - Global `wp.fem.lookup()` operator now supports `wp.fem.Tetmesh` and `wp.fem.Trimesh2D` geometries
+  - Simplified defining custom subdomains (`wp.fem.Subdomain`), free-slip boundary conditions
+  - New `streamlines` example, updated `mixed_elasticity` to use a nonlinear model
+  - Fixed edge cases with Nanovdb function spaces
 
 ## [1.2.1] - 2024-06-14
 

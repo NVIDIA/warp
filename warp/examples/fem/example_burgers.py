@@ -16,17 +16,9 @@
 ###########################################################################
 
 import warp as wp
+import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
 import warp.sparse as sp
-
-# Import example utilities
-# Make sure that works both when imported as module and run as standalone file
-try:
-    from .bsr_utils import invert_diagonal_bsr_mass_matrix
-    from .plot_utils import Plot
-except ImportError:
-    from bsr_utils import invert_diagonal_bsr_mass_matrix
-    from plot_utils import Plot
 
 
 @fem.integrand
@@ -97,7 +89,7 @@ def slope_limiter(domain: fem.Domain, s: fem.Sample, u: fem.Field, dx: wp.vec2):
     # Assumes regular grid topology
 
     center_coords = fem.Coords(0.5, 0.5, 0.0)
-    cell_center = fem.types.make_free_sample(s.element_index, center_coords)
+    cell_center = fem.make_free_sample(s.element_index, center_coords)
     center_pos = domain(cell_center)
 
     u_center = u(cell_center)
@@ -150,7 +142,7 @@ class Example:
             vel_mass_form, fields={"u": trial, "v": self._test}, output_dtype=wp.float32, nodal=True
         )
         self._inv_mass_matrix = sp.bsr_copy(matrix_inertia)
-        invert_diagonal_bsr_mass_matrix(self._inv_mass_matrix)
+        fem_example_utils.invert_diagonal_bsr_matrix(self._inv_mass_matrix)
 
         # Initial condition
         self.velocity_field = vector_space.make_field()
@@ -160,7 +152,7 @@ class Example:
         self.velocity_norm_field = scalar_space.make_field()
         fem.interpolate(velocity_norm, dest=self.velocity_norm_field, fields={"u": self.velocity_field})
 
-        self.renderer = Plot()
+        self.renderer = fem_example_utils.Plot()
         self.renderer.add_surface("u_norm", self.velocity_norm_field)
 
     def _velocity_delta(self, trial_velocity):

@@ -60,9 +60,21 @@ class NanogridSideArg:
 
 
 class Nanogrid(Geometry):
+    """Sparse grid geometry"""
+
     dimension = 3
 
     def __init__(self, grid: wp.Volume, temporary_store: Optional[cache.TemporaryStore] = None):
+        """
+        Constructs a sparse grid geometry from an in-memory NanoVDB volume.
+
+        Args:
+            grid: The NanoVDB volume. Any type is accepted, but for indexing efficiency an index grid is recommended.
+                If `grid` is an 'on' index grid, cells will be created for active voxels only, otherwise cells will
+                be created for all leaf voxels.
+            temporary_store: shared pool from which to allocate temporary arrays
+        """
+
         self._cell_grid = grid
         self._cell_grid_info = grid.get_grid_info()
 
@@ -77,31 +89,29 @@ class Nanogrid(Geometry):
         self._node_ijk = wp.array(shape=(node_count,), dtype=wp.vec3i, device=device)
         self._node_grid.get_voxels(out=self._node_ijk)
 
-        self._face_grid = _build_face_grid(self._cell_ijk, grid, temporary_store)
-        face_count = self._face_grid.get_voxel_count()
-        self._face_ijk = wp.array(shape=(face_count,), dtype=wp.vec3i, device=device)
-        self._face_grid.get_voxels(out=self._face_ijk)
-
-        self._face_flags = wp.array(shape=(face_count,), dtype=wp.uint8, device=device)
-        boundary_face_mask = cache.borrow_temporary(temporary_store, shape=(face_count,), dtype=wp.int32, device=device)
-
-        wp.launch(
-            _build_face_flags,
-            dim=face_count,
-            device=device,
-            inputs=[grid.id, self._face_ijk, self._face_flags, boundary_face_mask.array],
-        )
-        boundary_face_indices, _ = utils.masked_indices(boundary_face_mask.array)
-        self._boundary_face_indices = boundary_face_indices.detach()
+        self._face_grid = None
+        self._face_ijk = None
 
         self._edge_grid = None
         self._edge_ijk = None
 
-    def _build_edge_grid(self, temporary_store: Optional[cache.TemporaryStore] = None):
-        self._edge_grid = _build_edge_grid(self._cell_ijk, self._cell_grid, temporary_store)
-        edge_count = self._edge_grid.get_voxel_count()
-        self._edge_ijk = wp.array(shape=(edge_count,), dtype=wp.vec3i, device=self._edge_grid.device)
-        self._edge_grid.get_voxels(out=self._edge_ijk)
+    @property
+    def cell_grid(self) -> wp.Volume:
+        return self._cell_grid
+
+    @property
+    def vertex_grid(self) -> wp.Volume:
+        return self._node_grid
+
+    @property
+    def face_grid(self) -> wp.Volume:
+        self._ensure_face_grid()
+        return self._face_grid
+
+    @property
+    def edge_grid(self) -> wp.Volume:
+        self._ensure_edge_grid()
+        return self._edge_grid
 
     def cell_count(self):
         return self._cell_ijk.shape[0]
@@ -110,16 +120,16 @@ class Nanogrid(Geometry):
         return self._node_ijk.shape[0]
 
     def side_count(self):
+        self._ensure_face_grid()
         return self._face_ijk.shape[0]
 
-    def edge_count(self):
-        if self._edge_ijk is None:
-            self._build_edge_grid()
-
-        return self._edge_ijk.shape[0]
-
     def boundary_side_count(self):
+        self._ensure_face_grid()
         return self._boundary_face_indices.shape[0]
+
+    def edge_count(self):
+        self._ensure_edge_grid()
+        return self._edge_ijk.shape[0]
 
     def reference_cell(self) -> Cube:
         return Cube()
@@ -167,8 +177,37 @@ class Nanogrid(Geometry):
         )
 
     @wp.func
+    def _project_on_voxel(uvw: wp.vec3, ijk: wp.vec3i):
+        coords = uvw - wp.vec3(ijk)
+        proj_coords = wp.min(wp.max(coords, wp.vec3(0.0)), wp.vec3(1.0))
+        return wp.length_sq(coords - proj_coords), proj_coords
+
+    @wp.func
     def cell_lookup(args: CellArg, pos: wp.vec3, guess: Sample):
-        return Nanogrid.cell_lookup(args, pos)
+        s_global = Nanogrid.cell_lookup(args, pos)
+
+        if s_global.element_index != NULL_ELEMENT_INDEX:
+            return s_global
+
+        closest_voxel = int(NULL_ELEMENT_INDEX)
+        closest_coords = Coords(OUTSIDE)
+        closest_dist = float(1.0e8)
+
+        # project to closest in stencil
+        uvw = wp.volume_world_to_index(args.cell_grid, pos)
+        cell_ijk = args.cell_ijk[guess.element_index]
+        for ni in range(-1, 2):
+            for nj in range(-1, 2):
+                for nk in range(-1, 2):
+                    nijk = cell_ijk + wp.vec3i(ni, nj, nk)
+                    cell_idx = wp.volume_lookup_index(args.cell_grid, nijk[0], nijk[1], nijk[2])
+                    dist, coords = Nanogrid._project_on_voxel(uvw, nijk)
+                    if cell_idx != -1 and dist <= closest_dist:
+                        closest_dist = dist
+                        closest_voxel = cell_idx
+                        closest_coords = coords
+
+        return make_free_sample(closest_voxel, closest_coords)
 
     @wp.func
     def cell_measure(args: CellArg, s: Sample):
@@ -182,6 +221,8 @@ class Nanogrid(Geometry):
 
     @cache.cached_arg_value
     def side_arg_value(self, device) -> SideArg:
+        self._ensure_face_grid()
+
         args = self.SideArg()
         args.cell_arg = self.cell_arg_value(device)
         args.face_ijk = self._face_ijk.to(device)
@@ -199,6 +240,8 @@ class Nanogrid(Geometry):
 
     @cache.cached_arg_value
     def side_index_arg_value(self, device) -> SideIndexArg:
+        self._ensure_face_grid()
+
         args = self.SideIndexArg()
         args.boundary_face_indices = self._boundary_face_indices.to(device)
         return args
@@ -341,6 +384,39 @@ class Nanogrid(Geometry):
     @wp.func
     def side_to_cell_arg(side_arg: SideArg):
         return side_arg.cell_arg
+
+    def _build_face_grid(self, temporary_store: Optional[cache.TemporaryStore] = None):
+        device = self._cell_grid.device
+        self._face_grid = _build_face_grid(self._cell_ijk, self._cell_grid, temporary_store)
+        face_count = self._face_grid.get_voxel_count()
+        self._face_ijk = wp.array(shape=(face_count,), dtype=wp.vec3i, device=device)
+        self._face_grid.get_voxels(out=self._face_ijk)
+
+        self._face_flags = wp.array(shape=(face_count,), dtype=wp.uint8, device=device)
+        boundary_face_mask = cache.borrow_temporary(temporary_store, shape=(face_count,), dtype=wp.int32, device=device)
+
+        wp.launch(
+            _build_face_flags,
+            dim=face_count,
+            device=device,
+            inputs=[self._cell_grid.id, self._face_ijk, self._face_flags, boundary_face_mask.array],
+        )
+        boundary_face_indices, _ = utils.masked_indices(boundary_face_mask.array)
+        self._boundary_face_indices = boundary_face_indices.detach()
+
+    def _build_edge_grid(self, temporary_store: Optional[cache.TemporaryStore] = None):
+        self._edge_grid = _build_edge_grid(self._cell_ijk, self._cell_grid, temporary_store)
+        edge_count = self._edge_grid.get_voxel_count()
+        self._edge_ijk = wp.array(shape=(edge_count,), dtype=wp.vec3i, device=self._edge_grid.device)
+        self._edge_grid.get_voxels(out=self._edge_ijk)
+
+    def _ensure_face_grid(self):
+        if self._face_ijk is None:
+            self._build_face_grid()
+
+    def _ensure_edge_grid(self):
+        if self._edge_ijk is None:
+            self._build_edge_grid()
 
 
 @wp.kernel

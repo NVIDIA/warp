@@ -98,7 +98,7 @@ class CubeTripolynomialShapeFunctions:
 
                 # x face
                 type_instance = mi
-                type_index = wp.select(mi == 1, (j - 1) * (ORDER - 1) + k - 1, (k - 1) * (ORDER - 1) + j - 1)
+                type_index = (j - 1) * (ORDER - 1) + k - 1
                 return CubeTripolynomialShapeFunctions.FACE, type_instance, type_index
 
             if zj + mj == 1:
@@ -110,13 +110,13 @@ class CubeTripolynomialShapeFunctions:
 
                 # y face
                 type_instance = 2 + mj
-                type_index = wp.select(mj == 1, (i - 1) * (ORDER - 1) + k - 1, (k - 1) * (ORDER - 1) + i - 1)
+                type_index = (k - 1) * (ORDER - 1) + i - 1
                 return CubeTripolynomialShapeFunctions.FACE, type_instance, type_index
 
             if zk + mk == 1:
                 # z face
                 type_instance = 4 + mk
-                type_index = wp.select(mk == 1, (j - 1) * (ORDER - 1) + i - 1, (i - 1) * (ORDER - 1) + j - 1)
+                type_index = (i - 1) * (ORDER - 1) + j - 1
                 return CubeTripolynomialShapeFunctions.FACE, type_instance, type_index
 
             type_index = ((i - 1) * (ORDER - 1) + (j - 1)) * (ORDER - 1) + k - 1

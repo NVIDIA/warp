@@ -36,7 +36,7 @@ class CollocatedFunctionSpace(FunctionSpace):
         self.element_outer_weight_gradient = self._basis.make_element_outer_weight_gradient()
 
         # For backward compatibility
-        if hasattr(basis.topology, "node_grid"):
+        if hasattr(basis, "node_grid"):
             self.node_grid = basis.node_grid
         if hasattr(basis, "node_triangulation"):
             self.node_triangulation = basis.node_triangulation

@@ -15,20 +15,11 @@
 from typing import Tuple
 
 import warp as wp
+import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
+from warp.examples.fem.example_diffusion import diffusion_form, linear_form
 from warp.sparse import bsr_axpy, bsr_mv
 from warp.utils import array_cast
-
-# Import example utilities
-# Make sure that works both when imported as module and run as standalone file
-try:
-    from .bsr_utils import bsr_cg
-    from .example_diffusion import diffusion_form, linear_form
-    from .plot_utils import Plot
-except ImportError:
-    from bsr_utils import bsr_cg
-    from example_diffusion import diffusion_form, linear_form
-    from plot_utils import Plot
 
 
 @fem.integrand
@@ -115,7 +106,7 @@ class Example:
             self._scalar_space = fem.make_polynomial_space(self._geo, degree=3)
             self._scalar_field = self._scalar_space.make_field()
 
-        self.renderer = Plot()
+        self.renderer = fem_example_utils.Plot()
 
     def step(self):
         devices = wp.get_cuda_devices()
@@ -161,7 +152,9 @@ class Example:
         A.rank_data = (matrices, rhs_vecs, res_vecs, indices)
 
         with wp.ScopedDevice(main_device):
-            bsr_cg(A, x=global_res, b=glob_rhs, use_diag_precond=False, quiet=self._quiet, mv_routine=A.mv_routine)
+            fem_example_utils.bsr_cg(
+                A, x=global_res, b=glob_rhs, use_diag_precond=False, quiet=self._quiet, mv_routine=A.mv_routine
+            )
 
         array_cast(in_array=global_res, out_array=self._scalar_field.dof_values)
 
