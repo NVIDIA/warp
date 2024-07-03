@@ -4045,7 +4045,7 @@ def full(
             # a sequence, assume it's a vector or matrix value
             try:
                 # try to convert to a numpy array first
-                na = np.array(value, copy=False)
+                na = np.asarray(value)
             except Exception as e:
                 raise ValueError(f"Failed to interpret the value as a vector or matrix: {e}") from e
 

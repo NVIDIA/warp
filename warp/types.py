@@ -1685,7 +1685,7 @@ class array(Array):
         if dtype == Any:
             # infer dtype from data
             try:
-                arr = np.array(data, copy=False, ndmin=1)
+                arr = np.asarray(data)
             except Exception as e:
                 raise RuntimeError(f"Failed to convert input data to an array: {e}") from e
             dtype = np_dtype_to_warp_type.get(arr.dtype)
@@ -1724,7 +1724,7 @@ class array(Array):
                     f"Failed to convert input data to an array with Warp type {warp.context.type_str(dtype)}"
                 )
             try:
-                arr = np.array(data, dtype=npdtype, copy=False, ndmin=1)
+                arr = np.asarray(data, dtype=npdtype)
             except Exception as e:
                 raise RuntimeError(f"Failed to convert input data to an array with type {npdtype}: {e}") from e
 
@@ -2333,7 +2333,7 @@ class array(Array):
                 a = self.to("cpu", requires_grad=False)
             # convert through __array_interface__
             # Note: this handles arrays of structs using `descr`, so the result will be a structured NumPy array
-            return np.array(a, copy=False)
+            return np.asarray(a)
         else:
             # return an empty numpy array with the correct dtype and shape
             if isinstance(self.dtype, warp.codegen.Struct):
