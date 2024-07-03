@@ -1145,21 +1145,6 @@ struct launch_bounds_t
     size_t size;                // total number of threads
 };
 
-#ifndef __CUDACC__
-static size_t s_threadIdx;
-#endif
-
-inline CUDA_CALLABLE size_t grid_index()
-{
-#ifdef __CUDACC__
-    // Need to cast at least one of the variables being multiplied so that type promotion happens before the multiplication
-    size_t grid_index = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
-    return grid_index;
-#else
-    return s_threadIdx;
-#endif
-}
-
 inline CUDA_CALLABLE int tid(size_t index)
 {
     // For the 1-D tid() we need to warn the user if we're about to provide a truncated index

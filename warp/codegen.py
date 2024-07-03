@@ -2262,10 +2262,10 @@ cpu_module_header = """
 #define int(x) cast_int(x)
 #define adj_int(x, adj_x, adj_ret) adj_cast_int(x, adj_x, adj_ret)
 
-#define builtin_tid1d() wp::tid(wp::s_threadIdx)
-#define builtin_tid2d(x, y) wp::tid(x, y, wp::s_threadIdx, dim)
-#define builtin_tid3d(x, y, z) wp::tid(x, y, z, wp::s_threadIdx, dim)
-#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, wp::s_threadIdx, dim)
+#define builtin_tid1d() wp::tid(task_index)
+#define builtin_tid2d(x, y) wp::tid(x, y, task_index, dim)
+#define builtin_tid3d(x, y, z) wp::tid(x, y, z, task_index, dim)
+#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, task_index, dim)
 
 """
 
@@ -2280,10 +2280,10 @@ cuda_module_header = """
 #define int(x) cast_int(x)
 #define adj_int(x, adj_x, adj_ret) adj_cast_int(x, adj_x, adj_ret)
 
-#define builtin_tid1d() wp::tid(_idx)
-#define builtin_tid2d(x, y) wp::tid(x, y, _idx, dim)
-#define builtin_tid3d(x, y, z) wp::tid(x, y, z, _idx, dim)
-#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, _idx, dim)
+#define builtin_tid1d() wp::tid(task_index)
+#define builtin_tid2d(x, y) wp::tid(x, y, task_index, dim)
+#define builtin_tid3d(x, y, z) wp::tid(x, y, z, task_index, dim)
+#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, task_index, dim)
 
 """
 
@@ -2355,9 +2355,9 @@ cuda_kernel_template = """
 extern "C" __global__ void {name}_cuda_kernel_forward(
     {forward_args})
 {{
-    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
-         _idx < dim.size;
-         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
+    for (size_t task_index = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
+         task_index < dim.size;
+         task_index += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
 {forward_body}    }}
 }}
@@ -2365,9 +2365,9 @@ extern "C" __global__ void {name}_cuda_kernel_forward(
 extern "C" __global__ void {name}_cuda_kernel_backward(
     {reverse_args})
 {{
-    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
-         _idx < dim.size;
-         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
+    for (size_t task_index = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
+         task_index < dim.size;
+         task_index += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
 {reverse_body}    }}
 }}
@@ -2396,10 +2396,8 @@ extern "C" {{
 WP_API void {name}_cpu_forward(
     {forward_args})
 {{
-    for (size_t i=0; i < dim.size; ++i)
+    for (size_t task_index = 0; task_index < dim.size; ++task_index)
     {{
-        wp::s_threadIdx = i;
-
         {name}_cpu_kernel_forward(
             {forward_params});
     }}
@@ -2408,10 +2406,8 @@ WP_API void {name}_cpu_forward(
 WP_API void {name}_cpu_backward(
     {reverse_args})
 {{
-    for (size_t i=0; i < dim.size; ++i)
+    for (size_t task_index = 0; task_index < dim.size; ++task_index)
     {{
-        wp::s_threadIdx = i;
-
         {name}_cpu_kernel_backward(
             {reverse_params});
     }}
@@ -2838,6 +2834,10 @@ def codegen_kernel(kernel, device, options):
     forward_args = ["wp::launch_bounds_t dim"]
     reverse_args = ["wp::launch_bounds_t dim"]
 
+    if device == "cpu":
+        forward_args.append("size_t task_index")
+        reverse_args.append("size_t task_index")
+
     # forward args
     for arg in adj.args:
         forward_args.append(arg.ctype() + " var_" + arg.label)
@@ -2886,7 +2886,7 @@ def codegen_module(kernel, device="cpu"):
 
     # build forward signature
     forward_args = ["wp::launch_bounds_t dim"]
-    forward_params = ["dim"]
+    forward_params = ["dim", "task_index"]
 
     for arg in adj.args:
         if hasattr(arg.type, "_wp_generic_type_str_"):

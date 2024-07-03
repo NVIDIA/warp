@@ -14,7 +14,8 @@
 - Add additional documentation and examples demonstrating `wp.copy()`, `wp.clone()`, and `array.assign()` differentiability.
 - Fix adding `__new__()` methods for all class `__del__()` methods to
   anticipate when a class instance is created but not instantiated before garbage collection.
-- Add code-completion support for wp.config variables.
+- Add code-completion support for `wp.config` variables.
+- Remove usage of a static task (thread) index for CPU kernels to address multithreading concerns.
 
 ## [1.2.1] - 2024-06-14
 
