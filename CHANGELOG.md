@@ -16,6 +16,13 @@
   anticipate when a class instance is created but not instantiated before garbage collection.
 - Add code-completion support for `wp.config` variables.
 - Remove usage of a static task (thread) index for CPU kernels to address multithreading concerns.
+- The `mask` argument to `wp.sim.eval_fk` now accepts both integer and bool arrays
+- Support for NumPy >= 2.0
+- Fix hashing of replay functions and snippets
+- New `warp.sparse` features:
+  - Sparse matrix allocations (from `bsr_from_triplets`, `bsr_axpy`, etc) can now be captured in CUDA graphs; exact number of non-zeros can be optionally requested asynchronously.
+  - `bsr_assign` now supports changing block shape (including CSR/BSR conversions)
+  - Add Python operator overloads for common sparse matrix operations, e.g `A += 0.5 * B`, `y = x @ C`
 
 ## [1.2.1] - 2024-06-14
 

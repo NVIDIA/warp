@@ -154,81 +154,91 @@ extern "C"
     WP_API void runlength_encode_int_host(uint64_t values, uint64_t run_values, uint64_t run_lengths, uint64_t run_count, int n);
     WP_API void runlength_encode_int_device(uint64_t values, uint64_t run_values, uint64_t run_lengths, uint64_t run_count, int n);
 
-    WP_API int bsr_matrix_from_triplets_float_host(
+    WP_API void bsr_matrix_from_triplets_float_host(
         int rows_per_block,
         int cols_per_block,
         int row_count,
-        int nnz,
-        uint64_t tpl_rows,
-        uint64_t tpl_columns,
-        uint64_t tpl_values,
-        uint64_t bsr_offsets,
-        uint64_t bsr_columns,
-        uint64_t bsr_values);
-    WP_API int bsr_matrix_from_triplets_double_host(
+        int tpl_nnz,
+        int* tpl_rows,
+        int* tpl_columns,
+        void* tpl_values,
+        bool prune_numerical_zeros,
+        int* bsr_offsets,
+        int* bsr_columns,
+        void* bsr_values,
+        int* bsr_nnz,
+        void* bsr_nnz_event);
+    WP_API void bsr_matrix_from_triplets_double_host(
         int rows_per_block,
         int cols_per_block,
         int row_count,
-        int nnz,
-        uint64_t tpl_rows,
-        uint64_t tpl_columns,
-        uint64_t tpl_values,
-        uint64_t bsr_offsets,
-        uint64_t bsr_columns,
-        uint64_t bsr_values);
-
-    WP_API int bsr_matrix_from_triplets_float_device(
+        int tpl_nnz,
+        int* tpl_rows,
+        int* tpl_columns,
+        void* tpl_values,
+        bool prune_numerical_zeros,
+        int* bsr_offsets,
+        int* bsr_columns,
+        void* bsr_values,
+        int* bsr_nnz,
+        void* bsr_nnz_event);
+    WP_API void bsr_matrix_from_triplets_float_device(
         int rows_per_block,
         int cols_per_block,
         int row_count,
-        int nnz,
-        uint64_t tpl_rows,
-        uint64_t tpl_columns,
-        uint64_t tpl_values,
-        uint64_t bsr_offsets,
-        uint64_t bsr_columns,
-        uint64_t bsr_values);
-    WP_API int bsr_matrix_from_triplets_double_device(
+        int tpl_nnz,
+        int* tpl_rows,
+        int* tpl_columns,
+        void* tpl_values,
+        bool prune_numerical_zeros,
+        int* bsr_offsets,
+        int* bsr_columns,
+        void* bsr_values,
+        int* bsr_nnz,
+        void* bsr_nnz_event);
+    WP_API void bsr_matrix_from_triplets_double_device(
         int rows_per_block,
         int cols_per_block,
         int row_count,
-        int nnz,
-        uint64_t tpl_rows,
-        uint64_t tpl_columns,
-        uint64_t tpl_values,
-        uint64_t bsr_offsets,
-        uint64_t bsr_columns,
-        uint64_t bsr_values);
+        int tpl_nnz,
+        int* tpl_rows,
+        int* tpl_columns,
+        void* tpl_values,
+        bool prune_numerical_zeros,
+        int* bsr_offsets,
+        int* bsr_columns,
+        void* bsr_values,
+        int* bsr_nnz,
+        void* bsr_nnz_event);
 
     WP_API void bsr_transpose_float_host(int rows_per_block, int cols_per_block,
         int row_count, int col_count, int nnz,
-        uint64_t bsr_offsets, uint64_t bsr_columns,
-        uint64_t bsr_values,
-        uint64_t transposed_bsr_offsets,
-        uint64_t transposed_bsr_columns,
-        uint64_t transposed_bsr_values);
+        int* bsr_offsets, int* bsr_columns,
+        void* bsr_values,
+        int* transposed_bsr_offsets,
+        int* transposed_bsr_columns,
+        void* transposed_bsr_values);
     WP_API void bsr_transpose_double_host(int rows_per_block, int cols_per_block,
         int row_count, int col_count, int nnz,
-        uint64_t bsr_offsets, uint64_t bsr_columns,
-        uint64_t bsr_values,
-        uint64_t transposed_bsr_offsets,
-        uint64_t transposed_bsr_columns,
-        uint64_t transposed_bsr_values);
-
+        int* bsr_offsets, int* bsr_columns,
+        void* bsr_values,
+        int* transposed_bsr_offsets,
+        int* transposed_bsr_columns,
+        void* transposed_bsr_values);
     WP_API void bsr_transpose_float_device(int rows_per_block, int cols_per_block,
         int row_count, int col_count, int nnz,
-        uint64_t bsr_offsets, uint64_t bsr_columns,
-        uint64_t bsr_values,
-        uint64_t transposed_bsr_offsets,
-        uint64_t transposed_bsr_columns,
-        uint64_t transposed_bsr_values);
+        int* bsr_offsets, int* bsr_columns,
+        void* bsr_values,
+        int* transposed_bsr_offsets,
+        int* transposed_bsr_columns,
+        void* transposed_bsr_values);
     WP_API void bsr_transpose_double_device(int rows_per_block, int cols_per_block,
         int row_count, int col_count, int nnz,
-        uint64_t bsr_offsets, uint64_t bsr_columns,
-        uint64_t bsr_values,
-        uint64_t transposed_bsr_offsets,
-        uint64_t transposed_bsr_columns,
-        uint64_t transposed_bsr_values);
+        int* bsr_offsets, int* bsr_columns,
+        void* bsr_values,
+        int* transposed_bsr_offsets,
+        int* transposed_bsr_columns,
+        void* transposed_bsr_values);
 
 
     WP_API int cuda_driver_version();   // CUDA driver version

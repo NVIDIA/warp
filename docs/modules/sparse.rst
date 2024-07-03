@@ -14,6 +14,9 @@ Sparse Matrices
 
 Currently `warp.sparse` supports Block Sparse Row (BSR) matrices, the BSR format can also be used to represent Compressed Sparse Row (CSR) matrices as a special case with a 1x1 block size.
 
+Overloaded Python mathematical operators are supported for sparse matrix addition (`+`), subtraction (`-`), multiplication by a scalar (`*`) and matrix-matrix or matrix-vector multiplication (`@`),
+including in-place variants where possible.
+
 .. automodule:: warp.sparse
     :members:
 
