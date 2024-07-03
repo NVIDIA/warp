@@ -163,5 +163,5 @@ add_function_test(TestBvh, "test_bvh_aabb", test_bvh_query_aabb, devices=devices
 add_function_test(TestBvh, "test_bvh_ray", test_bvh_query_ray, devices=devices)
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

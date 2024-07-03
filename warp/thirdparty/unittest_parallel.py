@@ -173,7 +173,7 @@ def main(argv=None):
     import warp as wp  # NVIDIA Modification
 
     # Clear the Warp cache (NVIDIA Modification)
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     print("Cleared Warp kernel cache")
 
     # Create the temporary directory (for coverage files)

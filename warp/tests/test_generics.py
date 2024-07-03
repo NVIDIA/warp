@@ -592,5 +592,5 @@ add_function_test(TestGenerics, "test_type_operator_misspell", test_type_operato
 add_function_test(TestGenerics, "test_type_attribute_error", test_type_attribute_error, devices=devices)
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

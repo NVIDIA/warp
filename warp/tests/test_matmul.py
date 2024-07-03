@@ -494,5 +494,5 @@ add_function_test(TestMatmul, "test_cuda_graph_capture", test_cuda_graph_capture
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2, failfast=False)

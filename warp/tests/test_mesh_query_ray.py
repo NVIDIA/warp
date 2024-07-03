@@ -286,5 +286,5 @@ add_function_test(TestMeshQueryRay, "test_mesh_query_ray_grad", test_mesh_query_
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

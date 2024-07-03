@@ -205,6 +205,7 @@ please see :ref:`Structs Reference <Structs>` for more details.
 
     As with kernel parameters, all attributes of a struct must have valid type hints at class definition time.
 
+.. _Compilation Model:
 
 Compilation Model
 -----------------

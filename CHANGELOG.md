@@ -11,9 +11,11 @@
   compiled `(compiled)`, loaded from the cache `(cached)`, or was unable to be
   loaded `(error)`.
 - `wp.config.verbose = True` now also prints out a message upon the entry to a `wp.ScopedTimer`.
-- Add additional documentation and examples demonstrating `wp.copy()`, `wp.clone()`, and `array.assign()` differentiability.
+- Add additional documentation and examples demonstrating `wp.copy()`, `wp.clone()`, and `array.assign()` differentiability
 - Fix adding `__new__()` methods for all class `__del__()` methods to
   anticipate when a class instance is created but not instantiated before garbage collection.
+- Add code-completion support for wp.config variables.
+- Add `wp.clear_kernel_cache()` to the public API. This is equivalent to `wp.build.clear_kernel_cache()`.
 - Add code-completion support for `wp.config` variables.
 - Remove usage of a static task (thread) index for CPU kernels to address multithreading concerns.
 

@@ -167,5 +167,5 @@ add_function_test(TestTape, "test_tape_visualize", test_tape_visualize, devices=
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

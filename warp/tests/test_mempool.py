@@ -182,5 +182,5 @@ add_function_test(TestMempool, "test_mempool_access_exceptions_cpu", test_mempoo
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

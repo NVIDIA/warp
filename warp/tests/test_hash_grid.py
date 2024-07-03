@@ -209,5 +209,5 @@ add_function_test(TestHashGrid, "test_hashgrid_inputs", test_hashgrid_inputs, de
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2, failfast=False)

@@ -81,5 +81,5 @@ def example_breakpoint(n: int):
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     wp.launch(example_breakpoint, dim=1, inputs=[10], device="cpu")

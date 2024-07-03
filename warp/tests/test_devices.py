@@ -85,5 +85,5 @@ add_function_test(TestDevices, "test_devices_can_access_self", test_devices_can_
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

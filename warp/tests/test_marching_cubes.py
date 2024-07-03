@@ -62,5 +62,5 @@ add_function_test(TestMarchingCubes, "test_marching_cubes", test_marching_cubes,
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

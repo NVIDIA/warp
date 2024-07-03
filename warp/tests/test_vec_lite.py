@@ -67,5 +67,5 @@ add_kernel_test(TestVecLite, test_constructors_default_precision, dim=1, devices
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2, failfast=True)

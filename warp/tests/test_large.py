@@ -165,5 +165,5 @@ add_function_test(TestLarge, "test_large_array_excessive_numpy", test_large_arra
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)
