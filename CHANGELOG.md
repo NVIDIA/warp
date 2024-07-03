@@ -31,6 +31,7 @@
   - Simplified defining custom subdomains (`wp.fem.Subdomain`), free-slip boundary conditions
   - New `streamlines` example, updated `mixed_elasticity` to use a nonlinear model
   - Fixed edge cases with Nanovdb function spaces
+- Improve error messages for unsupported constructs
 
 ## [1.2.1] - 2024-06-14
 
