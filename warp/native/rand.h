@@ -46,7 +46,7 @@ inline CUDA_CALLABLE int randi(uint32& state, int min, int max) { state = rand_p
 
 /*
  * We want to ensure randf adheres to a uniform distribution over [0,1). The set of all possible float32 (IEEE 754 standard) values is not uniformly distributed however.
- * On the other hand, for a given sign and exponent, the mantissa of the float32 represenation is uniformly distributed.
+ * On the other hand, for a given sign and exponent, the mantissa of the float32 representation is uniformly distributed.
  * Fixing an exponent of -1, we can craft a uniform distribution using the sign bit and 23-bit mantissa that spans the domain [0, 1) in 2^24 equal intervals.
  * We can map 2^24 unique unsigned integers to these 2^24 intervals, so if our random number generator returns values in the range [0, 2^24) without bias,
  * we can ensure that our float distribution in the range [0, 1) is also without bias.

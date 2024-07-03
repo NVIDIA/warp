@@ -106,7 +106,7 @@ int bsr_matrix_from_triplets_host(const int rows_per_block, const int cols_per_b
     std::vector<int> block_indices(nnz);
     std::iota(block_indices.begin(), block_indices.end(), 0);
 
-    // remove zero blocks  and invaid row indices
+    // remove zero blocks  and invalid row indices
     block_indices.erase(std::remove_if(block_indices.begin(), block_indices.end(),
                                        [&](int i)
                                        {

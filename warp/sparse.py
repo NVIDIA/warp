@@ -94,7 +94,7 @@ class BsrMatrix(Generic[_BlockType]):
         else:
             self._setup_nnz_transfer()
 
-        # If a transfer is already ongoing, or if the actual nnz is unkown, schedule a new transfer
+        # If a transfer is already ongoing, or if the actual nnz is unknown, schedule a new transfer
         if self._is_nnz_transfer_setup():
             wp.copy(src=self.offsets, dest=self._nnz_buf, src_offset=self.nrow, count=1)
             if self.device.is_cuda:
@@ -634,8 +634,8 @@ def bsr_assign(
     Args:
       src: Matrix to be copied
       dest: Destination matrix. May have a different block shape of scalar type than `src`, in which case the required casting will be performed.
-      structure_only: If ``True``, only the non-zeros indices are copied, and unitialized value storage is allocated
-        to accomodate at least `src.nnz` blocks. If `structure_only` is ``False``, values are also copied with implicit
+      structure_only: If ``True``, only the non-zeros indices are copied, and uninitialized value storage is allocated
+        to accommodate at least `src.nnz` blocks. If `structure_only` is ``False``, values are also copied with implicit
         casting if the two matrices use distinct scalar types.
     """
 
@@ -805,8 +805,8 @@ def bsr_copy(
        scalar_type: If provided, the returned matrix will use this scalar type instead of the one from `A`.
        block_shape: If provided, the returned matrix will use blocks of this shape instead of the one from `A`.
          Both dimensions of `block_shape` must be either a multiple or an exact divider of the ones from `A`.
-       structure_only: If ``True``, only the non-zeros indices are copied, and unitialized value storage is allocated
-         to accomodate at least `src.nnz` blocks. If `structure_only` is ``False``, values are also copied with implicit
+       structure_only: If ``True``, only the non-zeros indices are copied, and uninitialized value storage is allocated
+         to accommodate at least `src.nnz` blocks. If `structure_only` is ``False``, values are also copied with implicit
          casting if the two matrices use distinct scalar types.
     """
     if scalar_type is None:
@@ -1553,7 +1553,7 @@ def bsr_mm(
         work_arrays: In most cases this function will require the use of temporary storage; this storage can be reused across calls by passing an instance of :class:`bsr_mm_work_arrays` in `work_arrays`.
         reuse_topology: If True, reuse the product topology information stored in `work_arrays` rather than recompute it from scratch.
             The matrices x, y and z must be structurally similar to the previous call in which `work_arrays` were populated.
-            This is neccessary for `bsr_mm` to be captured in a CUDA graph.
+            This is necessary for `bsr_mm` to be captured in a CUDA graph.
     """
 
     x, x_scale = _extract_matrix_and_scale(x)
@@ -1865,7 +1865,7 @@ def bsr_mv(
         y: Mutable left-hand-side. If `y` is not provided, it will be allocated and treated as zero.
         alpha: Uniform scaling factor for `x`. If zero, `x` will not be read and may be left uninitialized.
         beta: Uniform scaling factor for `y`. If zero, `y` will not be read and may be left uninitialized.
-        transpose: If ``True``, use the tranpose of the matrix `A`. In this case the result is **non-deterministic**.
+        transpose: If ``True``, use the transpose of the matrix `A`. In this case the result is **non-deterministic**.
         work_buffer: Temporary storage is required if and only if `x` and `y` are the same vector. If provided the `work_buffer` array
             will be used for this purpose, otherwise a temporary allocation will be performed.
     """

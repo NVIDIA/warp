@@ -371,7 +371,7 @@ def compress_node_indices(
         node_offsets.zero_()
         wp.launch(
             kernel=_scatter_node_counts,
-            dim=node_count + 1,  # +1 to accomodate possible NULL node,
+            dim=node_count + 1,  # +1 to accommodate possible NULL node,
             inputs=[node_element_counts, unique_node_indices, node_offsets, unique_node_count_dev.array],
         )
 
@@ -685,7 +685,7 @@ def grid_to_hexes(Nx: int, Ny: int, Nz: int):
         Nz: Resolution of the grid along `z` dimension
 
     Returns:
-        Array of shape (Nx * Ny * Nz, 8) containing vertex indices for each hexaedron
+        Array of shape (Nx * Ny * Nz, 8) containing vertex indices for each hexahedron
     """
 
     hex_vtx = np.array(
