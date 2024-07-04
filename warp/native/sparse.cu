@@ -223,11 +223,20 @@ void bsr_matrix_from_triplets_device(const int rows_per_block, const int cols_pe
                       tpl_values, bsr_columns, bsr_values));
 }
 
-__global__ void bsr_transpose_fill_row_col(const int row_count, const int* bsr_offsets,
+__global__ void bsr_transpose_fill_row_col(const int nnz_upper_bound, const int row_count, const int* bsr_offsets,
                                            const int* bsr_columns, int* block_indices, BsrRowCol* transposed_row_col)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= bsr_offsets[row_count]) {
+
+    if (i >= nnz_upper_bound)
+    {
+        // Outside of allocated bounds, do nothing
+        return;
+    }
+
+    if (i >= bsr_offsets[row_count])
+    {
+        // Below upper bound but above actual nnz count, mark as invalid
         transposed_row_col[i] = PRUNED_ROWCOL;
         return;
     }
@@ -291,7 +300,7 @@ template <typename T> struct BsrBlockTransposer<-1, -1, T>
 };
 
 template <int Rows, int Cols, typename T>
-__global__ void bsr_transpose_blocks( const int* nnz, const int block_size, BsrBlockTransposer<Rows, Cols, T> transposer,
+__global__ void bsr_transpose_blocks(const int* nnz, const int block_size, BsrBlockTransposer<Rows, Cols, T> transposer,
                                      const int* block_indices, const BsrRowCol* transposed_indices, const T* bsr_values,
                                      int* transposed_bsr_columns, T* transposed_bsr_values)
 {
@@ -399,7 +408,7 @@ void bsr_transpose_device(int rows_per_block, int cols_per_block, int row_count,
     cub::DoubleBuffer<BsrRowCol> d_values(combined_row_col.buffer(), combined_row_col.buffer() + nnz);
 
     wp_launch_device(WP_CURRENT_CONTEXT, bsr_transpose_fill_row_col, nnz,
-                     (row_count, bsr_offsets, bsr_columns, d_keys.Current(), d_values.Current()));
+                     (nnz, row_count, bsr_offsets, bsr_columns, d_keys.Current(), d_values.Current()));
 
     // Sort blocks
     {
@@ -416,8 +425,9 @@ void bsr_transpose_device(int rows_per_block, int cols_per_block, int row_count,
     // Move and transpose individual blocks
     if (transposed_bsr_values != nullptr)
     {
-        launch_bsr_transpose_blocks(nnz, bsr_offsets + row_count, block_size, rows_per_block, cols_per_block, d_keys.Current(),
-                                    d_values.Current(), bsr_values, transposed_bsr_columns, transposed_bsr_values);
+        launch_bsr_transpose_blocks(nnz, bsr_offsets + row_count, block_size, rows_per_block, cols_per_block,
+                                    d_keys.Current(), d_values.Current(), bsr_values, transposed_bsr_columns,
+                                    transposed_bsr_values);
     }
 }
 
