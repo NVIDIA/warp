@@ -166,6 +166,7 @@ ruff format:
     - if: $CI_PIPELINE_SOURCE == "web"
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
       changes:
+        - .gitlab/ci/*
         - warp/**/*
         - pyproject.toml
         - tools/**/*
@@ -269,6 +270,7 @@ linux-x86_64 test minimal:
     - if: $CI_PIPELINE_SOURCE == "web"
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
       changes:
+        - .gitlab/ci/*
         - warp/**/*
         - pyproject.toml
         - tools/**/*
@@ -340,6 +342,7 @@ linux-x86_64 test warp-init:
     - if: $CI_PIPELINE_SOURCE == "web"
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
       changes:
+        - .gitlab/ci/*
         - warp/**/*
         - pyproject.toml
         - tools/**/*
@@ -624,6 +627,7 @@ publish wheels to gitlab package registry:
   extends:
     - .runner-utility-linux-x86_64
   rules:
+    - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH =~ /^release-.*/
     - when: manual # If not auto-triggered, allow any pipeline to run this job manually
       allow_failure: true
