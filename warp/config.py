@@ -7,9 +7,8 @@
 
 from typing import Optional
 
-version: str = "1.2.1"
+version: str = "1.2.2"
 """Warp version string"""
-
 
 verify_fp: bool = False
 """If `True`, Warp will check that inputs and outputs are finite before and/or after various operations.
