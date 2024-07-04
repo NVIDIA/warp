@@ -5,7 +5,7 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-name: Build and Test Warp
+name: CI
 
 on:
   workflow_call:

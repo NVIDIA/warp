@@ -14,22 +14,21 @@
 /warp/builtins.py
 /warp/constants.py
 /licenses/
-/warp/examples/
 /README.md
 /SECURITY.md
 
 ^[CI/CD] @ershi @ncapens
 /.github/
 /.gitlab/
-/warp/tests/
 /warp/thirdparty/unittest_parallel.py
 /.gitlab-ci.yml
 /.pre-commit-config.yaml
 .gitignore
 .gitattributes
 
-^[Sphinx Documentation] @mmacklin @ershi
+^[Docs and Examples] @mmacklin @ershi
 /docs/
+/warp/examples/
 
 ^[Code Generation] @ncapens @mmacklin
 /warp/codegen.py
