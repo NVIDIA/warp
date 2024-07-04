@@ -96,13 +96,17 @@ class BsrMatrix(Generic[_BlockType]):
 
         # If a transfer is already ongoing, or if the actual nnz is unknown, schedule a new transfer
         if self._is_nnz_transfer_setup():
-            wp.copy(src=self.offsets, dest=self._nnz_buf, src_offset=self.nrow, count=1)
+            stream = wp.get_stream(self.device) if self.device.is_cuda else None
+            wp.copy(src=self.offsets, dest=self._nnz_buf, src_offset=self.nrow, count=1, stream=stream)
             if self.device.is_cuda:
-                BsrMatrix.__setattr__(self, "_nnz_event", wp.get_stream(self.device).record_event(self._nnz_event))
+                stream.record_event(self._nnz_event)
 
     def _setup_nnz_transfer(self):
+        if self._is_nnz_transfer_setup():
+            return
+
         BsrMatrix.__setattr__(
-            self, "_nnz_buf", wp.zeros(dtype=int, shape=(1,), device="cpu", pinned=wp.is_cuda_available())
+            self, "_nnz_buf", wp.zeros(dtype=int, shape=(1,), device="cpu", pinned=self.device.is_cuda)
         )
         if self.device.is_cuda:
             BsrMatrix.__setattr__(self, "_nnz_event", wp.Event(self.device))
@@ -111,8 +115,7 @@ class BsrMatrix(Generic[_BlockType]):
         return hasattr(self, "_nnz_buf")
 
     def _nnz_transfer_buf_and_event(self):
-        if not self._is_nnz_transfer_setup():
-            self._setup_nnz_transfer()
+        self._setup_nnz_transfer()
 
         if not self.device.is_cuda:
             return self._nnz_buf, ctypes.c_void_p(None)
@@ -1632,16 +1635,13 @@ def bsr_mm(
         warp.utils.array_scan(work_arrays._mm_row_counts, work_arrays._mm_row_counts)
 
         # Get back total counts on host -- we need a synchronization here
+        # Use pinned buffer from z, we are going to need it later anyway
         nnz_buf, _ = z._nnz_transfer_buf_and_event()
-        wp.copy(
-            dest=nnz_buf,
-            src=work_arrays._mm_row_counts,
-            src_offset=z.nrow,
-            count=1,
-        )
+        stream = wp.get_stream(device) if device.is_cuda else None
+        wp.copy(dest=nnz_buf, src=work_arrays._mm_row_counts, src_offset=z.nrow, count=1, stream=stream)
         if device.is_cuda:
-            wp.synchronize_stream(wp.get_stream(device))
-        mm_nnz = int(z._nnz_buf.numpy()[0])
+            wp.synchronize_stream(stream)
+        mm_nnz = int(nnz_buf.numpy()[0])
 
         work_arrays._allocate_stage_2(mm_nnz)
 
@@ -1711,16 +1711,11 @@ def bsr_mm(
         )
 
     # Resize z to fit mm result if necessary
+    # If we are not reusing the product topology, this needs another synchronization
+    if not reuse_topology:
+        work_arrays.result_nnz = z.nnz_sync()
+    _bsr_ensure_fits(z, nnz=work_arrays.result_nnz)
 
-    if reuse_topology:
-        res_nnz = work_arrays.result_nnz
-    else:
-        res_nnz = z.nnz_sync()
-
-    work_arrays.result_nnz = res_nnz
-    z.nnz = res_nnz
-
-    _bsr_ensure_fits(z, nnz=res_nnz)
     z.values.zero_()
 
     if copied_z_nnz > 0:
@@ -1754,7 +1749,7 @@ def bsr_mm(
     wp.launch(
         kernel=_bsr_mm_compute_values,
         device=device,
-        dim=res_nnz,
+        dim=z.nnz,
         inputs=[
             alpha,
             work_arrays._old_z_offsets if x == z else x.offsets,
