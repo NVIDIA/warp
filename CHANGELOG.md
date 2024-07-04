@@ -4,7 +4,6 @@
 
 - Improve memory usage and performance for rigid body contact handling when `self.rigid_mesh_contact_max` is zero (default behavior)
 - The `mask` argument to `wp.sim.eval_fk` now accepts both integer and boolean arrays.
-- Support for NumPy >= 2.0.
 - Fix hashing of replay functions and snippets.
 - Add additional code comments for random number sampling functions in `rand.h`
 - Add information to the module load printouts to indicate whether a module was
@@ -19,7 +18,6 @@
 - Add code-completion support for `wp.config` variables.
 - Remove usage of a static task (thread) index for CPU kernels to address multithreading concerns.
 - The `mask` argument to `wp.sim.eval_fk` now accepts both integer and bool arrays
-- Support for NumPy >= 2.0
 - Fix hashing of replay functions and snippets
 - New `warp.sparse` features:
   - Sparse matrix allocations (from `bsr_from_triplets`, `bsr_axpy`, etc) can now be captured in CUDA graphs; exact number of non-zeros can be optionally requested asynchronously.
@@ -32,6 +30,10 @@
   - New `streamlines` example, updated `mixed_elasticity` to use a nonlinear model
   - Fixed edge cases with Nanovdb function spaces
 - Improve error messages for unsupported constructs
+
+## [1.2.2] - 2024-07-04
+
+- Support for NumPy >= 2.0
 
 ## [1.2.1] - 2024-06-14
 

@@ -1,6 +1,6 @@
 [package]
 # Semantic Versioning is used: https://semver.org/
-version = "1.2.1"
+version = "1.2.2"
 authors = ["NVIDIA"]
 title = "Warp"
 description="Warp OmniGraph Nodes and Sample Scenes"
@@ -35,7 +35,7 @@ exclude = ["Ogn*Database.py", "*/ogn*"]
 "omni.timeline" = {}
 "omni.ui" = {optional = true}
 "omni.usd" = {}
-"omni.warp.core" = {version = "1.2.1", exact = true}
+"omni.warp.core" = {version = "1.2.2", exact = true}
 
 [[python.module]]
 name = "omni.warp._extension"
