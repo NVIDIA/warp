@@ -75,15 +75,6 @@ windows-x86_64 build:
   script:
     - ./tools/ci/building/build-windows-x86_64/build.bat --cuda 11
 
-mac-x86_64 build:
-  stage: build
-  extends:
-    - .save_warp_bin_artifact
-    - .runner-build-macos-universal
-    - .macos_warp_tags
-  script:
-    - ./tools/ci/building/build-linux-x86_64/build.sh
-
 # ==============================================================================
 # Unit Testing Jobs
 #
@@ -159,21 +150,6 @@ windows-x86_64 test:
     - os/windows
     - gpu/2x-A5000
 
-mac-x86_64 test:
-  stage: test
-  needs: [mac-x86_64 build]
-  extends:
-    - .runner-test-macos-universal
-    - .macos_warp_tags
-    - .save_test_report_artifact
-  before_script:
-    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - !reference [.snippets, install-python+warp-macos]
-    - python -m pip install --upgrade usd-core
-    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
-  script:
-    - python -m warp.tests --junit-report-xml rspec.xml -s autodetect
-
 # ==============================================================================
 # Packaging Jobs
 #
@@ -188,7 +164,6 @@ create pypi wheels:
     - linux-aarch64 build
     - linux-x86_64 build
     - windows-x86_64 build
-    - mac-x86_64 build
   extends:
     - .runner-utility-linux-x86_64
   before_script:
@@ -196,9 +171,6 @@ create pypi wheels:
     - mkdir -p warp/bin/windows-x86_64
     - mv warp/bin/warp.dll warp/bin/windows-x86_64/
     - mv warp/bin/warp-clang.dll warp/bin/windows-x86_64/
-    - mkdir -p warp/bin/macos-universal
-    - mv warp/bin/libwarp.dylib warp/bin/macos-universal/
-    - mv warp/bin/libwarp-clang.dylib warp/bin/macos-universal/
     - python3 -m pip install --upgrade pip
     - python3 -m pip install build
   script:
@@ -206,9 +178,6 @@ create pypi wheels:
     - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
     - python3 -m build --wheel -C--build-option=-Plinux-x86_64
     - python3 -m build --wheel -C--build-option=-Plinux-aarch64
-    - sed -i "s/^\(.*\)+cu11$/\1+cpu/" VERSION.md  # Modify VERSION.md with +cu12 replaced by +cpu
-    - python3 -m build --wheel -C--build-option=-Pmacos-universal
-    - sed -i "s/^\(.*\)+cpu$/\1/" VERSION.md  # Revert VERSION.md changes
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +
   artifacts:
@@ -277,6 +246,7 @@ publish wheels to gitlab package registry:
   extends:
     - .runner-utility-linux-x86_64
   rules:
+    - if: $PARENT_COMMIT_TAG
     - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
     - when: manual # Can be triggered in all other scenarios
       allow_failure: true
