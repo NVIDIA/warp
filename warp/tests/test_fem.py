@@ -1289,6 +1289,21 @@ def test_particle_quadratures(test, device):
     val = fem.integrate(_piecewise_constant, quadrature=pic_quadrature)
     test.assertAlmostEqual(val, 1.25, places=5)
 
+    # Test differentiability of PicQuadrature w.r.t positions and measures
+    points = wp.array([[0.25, 0.33], [0.33, 0.25], [0.8, 0.8]], dtype=wp.vec2, device=device, requires_grad=True)
+    measures = wp.ones(3, dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        pic = fem.PicQuadrature(domain, positions=points, measures=measures, requires_grad=True)
+
+    pic.arg_value(device).particle_coords.grad.fill_(1.0)
+    pic.arg_value(device).particle_fraction.grad.fill_(1.0)
+    tape.backward()
+
+    assert_np_equal(points.grad.numpy(), np.full((3, 2), 2.0))  # == 1.0 / cell_size
+    assert_np_equal(measures.grad.numpy(), np.full(3, 4.0))  # == 1.0 / cell_area
+
 
 @wp.kernel
 def test_qr_eigenvalues():

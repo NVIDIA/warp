@@ -1,5 +1,6 @@
 import bisect
 import re
+import weakref
 from copy import copy
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
@@ -208,6 +209,12 @@ class Temporary:
         self._array_view = array
         self._pool = pool
 
+        if pool is not None and wp.context.runtime.tape is not None:
+            # Extend lifetime to that of Tape (or Pool if shorter)
+            # This is to prevent temporary arrays held in tape launch parameters to be redeemed
+            pool.hold(self)
+            weakref.finalize(wp.context.runtime.tape, TemporaryStore.Pool.stop_holding, pool, self)
+
         if shape is not None or dtype is not None:
             self._view_as(shape=shape, dtype=dtype)
 
@@ -275,6 +282,8 @@ class TemporaryStore:
             self._pool_sizes = []  # Sizes of available arrays for borrowing, ascending
             self._allocs = {}  # All allocated arrays, including borrowed ones
 
+            self._held_temporaries = set()  # Temporaries that are prevented from going out of scope
+
         def borrow(self, shape, dtype, requires_grad: bool):
             size = 1
             if isinstance(shape, int):
@@ -290,8 +299,12 @@ class TemporaryStore:
                 # Big enough array found, remove from pool
                 array = self._pool.pop(index)
                 self._pool_sizes.pop(index)
-                if requires_grad and array.grad is None:
-                    array.requires_grad = True
+                if requires_grad:
+                    if array.grad is None:
+                        array.requires_grad = True
+                    else:
+                        # Zero-out existing gradient to mimic semantics of wp.empty()
+                        array.grad.zero_()
                 return Temporary(pool=self, array=array, shape=shape, dtype=dtype)
 
             # No big enough array found, allocate new one
@@ -316,6 +329,12 @@ class TemporaryStore:
 
         def detach(self, array):
             del self._allocs[array.ptr]
+
+        def hold(self, temp: Temporary):
+            self._held_temporaries.add(temp)
+
+        def stop_holding(self, temp: Temporary):
+            self._held_temporaries.remove(temp)
 
     def __init__(self):
         self.clear()
