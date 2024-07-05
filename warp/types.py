@@ -1288,7 +1288,8 @@ def type_repr(t):
     if t in scalar_types:
         return t.__name__
 
-    return t.__module__ + "." + t.__qualname__
+    name = getattr(t, "__qualname__", t.__name__)
+    return t.__module__ + "." + name
 
 
 def type_is_int(t):
