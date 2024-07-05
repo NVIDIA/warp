@@ -3867,7 +3867,8 @@ def matmul(
 
     # cpu fallback if no cuda devices found
     if device == "cpu":
-        d.assign(alpha * (a.numpy() @ b.numpy()) + beta * c.numpy())
+        np_dtype = warp_type_to_np_dtype[a.dtype]
+        d.assign(alpha * np.matmul(a.numpy(), b.numpy(), dtype=np_dtype) + beta * c.numpy())
         return
 
     cc = device.arch
@@ -3983,8 +3984,9 @@ def adj_matmul(
 
     # cpu fallback if no cuda devices found
     if device == "cpu":
-        adj_a.assign(alpha * np.matmul(adj_d.numpy(), b.numpy().transpose()) + adj_a.numpy())
-        adj_b.assign(alpha * (a.numpy().transpose() @ adj_d.numpy()) + adj_b.numpy())
+        np_dtype = warp_type_to_np_dtype[a.dtype]
+        adj_a.assign(alpha * np.matmul(adj_d.numpy(), b.numpy().transpose(), dtype=np_dtype) + adj_a.numpy())
+        adj_b.assign(alpha * np.matmul(a.numpy().transpose(), adj_d.numpy(), dtype=np_dtype) + adj_b.numpy())
         adj_c.assign(beta * adj_d.numpy() + adj_c.numpy())
         return
 
@@ -4150,7 +4152,8 @@ def batched_matmul(
 
     # cpu fallback if no cuda devices found
     if device == "cpu":
-        d.assign(alpha * np.matmul(a.numpy(), b.numpy()) + beta * c.numpy())
+        np_dtype = warp_type_to_np_dtype[a.dtype]
+        d.assign(alpha * np.matmul(a.numpy(), b.numpy(), dtype=np_dtype) + beta * c.numpy())
         return
 
     # handle case in which batch_count exceeds max_batch_count, which is a CUDA array size maximum
@@ -4294,8 +4297,9 @@ def adj_batched_matmul(
 
     # cpu fallback if no cuda devices found
     if device == "cpu":
-        adj_a.assign(alpha * np.matmul(adj_d.numpy(), b.numpy().transpose((0, 2, 1))) + adj_a.numpy())
-        adj_b.assign(alpha * np.matmul(a.numpy().transpose((0, 2, 1)), adj_d.numpy()) + adj_b.numpy())
+        np_dtype = warp_type_to_np_dtype[a.dtype]
+        adj_a.assign(alpha * np.matmul(adj_d.numpy(), b.numpy().transpose((0, 2, 1)), dtype=np_dtype) + adj_a.numpy())
+        adj_b.assign(alpha * np.matmul(a.numpy().transpose((0, 2, 1)), adj_d.numpy(), dtype=np_dtype) + adj_b.numpy())
         adj_c.assign(beta * adj_d.numpy() + adj_c.numpy())
         return
 

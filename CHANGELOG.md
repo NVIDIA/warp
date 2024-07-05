@@ -30,6 +30,7 @@
   - New `streamlines` example, updated `mixed_elasticity` to use a nonlinear model
   - Fixed edge cases with Nanovdb function spaces
 - Improve error messages for unsupported constructs
+- Update `wp.matmul()` CPU fallback to use dtype explicitly in `np.matmul()` call
 
 ## [1.2.2] - 2024-07-04
 
