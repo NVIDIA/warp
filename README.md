@@ -28,7 +28,9 @@ GPU support requires a CUDA-capable NVIDIA GPU and driver (minimum GeForce GTX 9
 
 The easiest way to install Warp is from [PyPI](https://pypi.org/project/warp-lang/):
 
-    pip install warp-lang
+```text
+pip install warp-lang
+```
 
 You can also use `pip install warp-lang[extras]` to install additional dependencies for running examples and USD-related features.
 
@@ -37,7 +39,9 @@ We provide binaries built with the CUDA 12.5 runtime on the [GitHub Releases](ht
 Copy the URL of the appropriate wheel file (`warp-lang-{ver}+cu12-py3-none-{platform}.whl`) and pass it to
 the `pip install` command, e.g.
 
-    pip install https://github.com/NVIDIA/warp/releases/download/v1.2.0/warp_lang-1.2.0+cu12-py3-none-manylinux2014_x86_64.whl
+```text
+pip install https://github.com/NVIDIA/warp/releases/download/v1.2.0/warp_lang-1.2.0+cu12-py3-none-manylinux2014_x86_64.whl
+```
 
 The `--force-reinstall` option may need to be used to overwrite a previous installation.
 
@@ -99,8 +103,7 @@ Built-in unit tests can be run from the command-line as follows:
 
     python -m warp.tests
 
-
-### examples/core
+### warp/examples/core
 
 <table>
     <tbody>
@@ -143,8 +146,7 @@ Built-in unit tests can be run from the command-line as follows:
     </tbody>
 </table>
 
-
-### examples/fem
+### warp/examples/fem
 
 <table>
     <tbody>
@@ -175,8 +177,7 @@ Built-in unit tests can be run from the command-line as follows:
     </tbody>
 </table>
 
-
-### examples/optim
+### warp/examples/optim
 
 <table>
     <tbody>
@@ -207,8 +208,7 @@ Built-in unit tests can be run from the command-line as follows:
     </tbody>
 </table>
 
-
-### examples/sim
+### warp/examples/sim
 
 <table>
     <tbody>
@@ -250,7 +250,6 @@ Built-in unit tests can be run from the command-line as follows:
         </tr>
     </tbody>
 </table>
-
 
 ## Building
 

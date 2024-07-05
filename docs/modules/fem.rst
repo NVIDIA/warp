@@ -1,11 +1,11 @@
 warp.fem
-=====================
+========
 
 .. currentmodule:: warp.fem
 
 The ``warp.fem`` module is designed to facilitate solving physical systems described as differential 
 equations. For example, it can solve PDEs for diffusion, convection, fluid flow, and elasticity problems 
-using finite-element-based (FEM) Galerkin methods, and allows users to quickly experiment with various FEM
+using finite-element-based (FEM) Galerkin methods and allows users to quickly experiment with various FEM
 formulations and discretization schemes.
 
 Integrands
@@ -59,7 +59,7 @@ passed as a dictionary in the `values` argument of the launcher function, for in
     integrate(diffusion_form, fields={"u": trial, "v": test}, values={"nu": viscosity})
 
 
-Basic workflow
+Basic Workflow
 --------------
 
 The typical steps for solving a linear PDE are as follow:
@@ -113,7 +113,7 @@ The following excerpt from the introductory example ``warp/examples/fem/example_
     To solve non-linear PDEs, one can use an iterative procedure and pass the current value of the studied function :class:`.DiscreteField` argument to the integrand, on which
     arbitrary operations are permitted. However, the result of the form must remain linear in the test and trial fields.
 
-Introductory examples
+Introductory Examples
 ---------------------
 
 ``warp.fem`` ships with a list of examples in the ``warp/examples/fem`` directory illustrating common model problems.
@@ -129,7 +129,7 @@ Introductory examples
  - ``example_streamlines.py``: Using the :func:`lookup` operator to trace through a velocity field
 
 
-Advanced usages
+Advanced Usages
 ---------------
 
 High-order (curved) geometries
@@ -137,7 +137,7 @@ High-order (curved) geometries
 
 It is possible to convert any :class:`.Geometry` (grids and explicit meshes) into a curved, high-order variant by deforming them 
 with an arbitrary-order displacement field using the :meth:`~.DiscreteField.make_deformed_geometry` method. 
-The process looks as follow: ::
+The process looks as follows::
 
    # Define a base geometry
    base_geo = fem.Grid3D(res=resolution)
@@ -331,7 +331,7 @@ Boundary Conditions
 
 .. autofunction:: project_linear_system
 
-Memory management
+Memory Management
 -----------------
 
 .. autofunction:: set_default_temporary_store
