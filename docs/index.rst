@@ -84,8 +84,8 @@ Built-in unit tests can be run from the command-line as follows::
 
     python -m warp.tests
 
-examples/core
-^^^^^^^^^^^^^
+warp/examples/core
+^^^^^^^^^^^^^^^^^^
 
 .. list-table::
     :class: gallery
@@ -126,8 +126,8 @@ examples/core
       - wave
       -
 
-examples/fem
-^^^^^^^^^^^^
+warp/examples/fem
+^^^^^^^^^^^^^^^^^
 
 .. list-table::
     :class: gallery
@@ -157,8 +157,8 @@ examples/fem
       - stokes transfer
       - stokes
 
-examples/optim
-^^^^^^^^^^^^^^
+warp/examples/optim
+^^^^^^^^^^^^^^^^^^^
 
 .. list-table::
     :class: gallery
@@ -188,8 +188,8 @@ examples/optim
       - trajectory
       - walker
 
-examples/sim
-^^^^^^^^^^^^
+warp/examples/sim
+^^^^^^^^^^^^^^^^^
 
 .. list-table::
     :class: gallery
