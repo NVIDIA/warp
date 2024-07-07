@@ -8,8 +8,6 @@ from warp.fem.utils import compress_node_indices
 
 from .quadrature import Quadrature
 
-wp.set_module_options({"enable_backward": False})
-
 
 class PicQuadrature(Quadrature):
     """Particle-based quadrature formula, using a global set of points unevenly spread out over geometry elements.
@@ -23,6 +21,7 @@ class PicQuadrature(Quadrature):
          define a global :meth:`Geometry.cell_lookup` method; currently this is only available for :class:`Grid2D` and :class:`Grid3D`.
         measures: Array containing the measure (area/volume) of each particle, used to defined the integration weights.
          If ``None``, defaults to the cell measure divided by the number of particles in the cell.
+        requires_grad: Whether gradients should be allocated for the computed quantities
         temporary_store: shared pool from which to allocate temporary arrays
     """
 
@@ -37,10 +36,12 @@ class PicQuadrature(Quadrature):
             ],
         ],
         measures: Optional["wp.array(dtype=float)"] = None,
+        requires_grad: bool = False,
         temporary_store: TemporaryStore = None,
     ):
         super().__init__(domain)
 
+        self._requires_grad = requires_grad
         self._bin_particles(positions, measures, temporary_store)
         self._max_particles_per_cell: int = None
 
@@ -177,7 +178,7 @@ class PicQuadrature(Quadrature):
             cell_index = cell_index_temp.array
 
             self._particle_coords_temp = borrow_temporary(
-                temporary_store, shape=positions.shape, dtype=Coords, device=device
+                temporary_store, shape=positions.shape, dtype=Coords, device=device, requires_grad=self._requires_grad
             )
             self._particle_coords = self._particle_coords_temp.array
 
@@ -211,7 +212,7 @@ class PicQuadrature(Quadrature):
         device = cell_index.device
 
         self._particle_fraction_temp = borrow_temporary(
-            temporary_store, shape=cell_index.shape, dtype=float, device=device
+            temporary_store, shape=cell_index.shape, dtype=float, device=device, requires_grad=self._requires_grad
         )
         self._particle_fraction = self._particle_fraction_temp.array
 
