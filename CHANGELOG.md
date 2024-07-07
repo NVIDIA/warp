@@ -4,6 +4,9 @@
 
 - Improve memory usage and performance for rigid body contact handling when `self.rigid_mesh_contact_max` is zero (default behavior)
 - The `mask` argument to `wp.sim.eval_fk` now accepts both integer and boolean arrays.
+- The `mask` argument to `wp.sim.eval_fk` now accepts both integer and bool arrays
+- Support for NumPy >= 2.0
+- Add `warp.autograd` module with utility functions `gradcheck`, `jacobian`, and `jacobian_fd` for debugging kernel Jacobians
 - Fix hashing of replay functions and snippets.
 - Add additional code comments for random number sampling functions in `rand.h`
 - Add information to the module load printouts to indicate whether a module was

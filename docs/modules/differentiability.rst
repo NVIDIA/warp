@@ -560,13 +560,158 @@ Debugging Gradients
 ###################
 
 .. note::
-    We are expanding the debugging section to provide tools to help users debug gradient computations in the next Warp release.
+    We are continuously expanding the debugging section to provide tools to help users debug gradient computations in upcoming Warp releases.
+
+Measuring Gradient Accuracy
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. currentmodule:: warp.autograd
+    
+Warp provides utility functions to evaluate the partial Jacobian matrices for input/output argument pairs given to kernel launches.
+:func:`jacobian` computes the Jacobian matrix of a kernel using Warp's automatic differentiation engine.
+:func:`jacobian_fd` computes the Jacobian matrix of a kernel using finite differences.
+:func:`gradcheck` compares the Jacobian matrices computed by the autodiff engine and finite differences to measure the accuracy of the gradients.
+:func:`plot_kernel_jacobians` visualizes the Jacobian matrices returned by the :func:`jacobian` and :func:`jacobian_fd` functions.
+
+.. autofunction:: gradcheck
+
+.. autofunction:: gradcheck_tape
+
+.. autofunction:: jacobian
+
+.. autofunction:: jacobian_fd
+
+.. autofunction:: plot_kernel_jacobians
+
+
+Example usage
+"""""""""""""
+
+.. code-block:: python
+
+    import warp as wp
+    import warp.autograd
+
+    @wp.kernel
+    def my_kernel(
+        a: wp.array(dtype=float), b: wp.array(dtype=wp.vec3),
+        out1: wp.array(dtype=wp.vec2), out2: wp.array(dtype=wp.quat),
+    ):
+        tid = wp.tid()
+        ai, bi = a[tid], b[tid]
+        out1[tid] = wp.vec2(ai * wp.length(bi), -ai * wp.dot(bi, wp.vec3(0.1, 1.0, -0.1)))
+        out2[tid] = wp.normalize(wp.quat(ai, bi[0], bi[1], bi[2]))
+
+    a = wp.array([2.0, -1.0], dtype=wp.float32, requires_grad=True)
+    b = wp.array([wp.vec3(3.0, 1.0, 2.0), wp.vec3(-4.0, -1.0, 0.0)], dtype=wp.vec3, requires_grad=True)
+    out1 = wp.zeros(2, dtype=wp.vec2, requires_grad=True)
+    out2 = wp.zeros(2, dtype=wp.quat, requires_grad=True)
+
+    # compute the Jacobian matrices for all input/output pairs of the kernel using the autodiff engine
+    jacs = wp.autograd.jacobian(
+        my_kernel, dim=len(a), inputs=[a, b], outputs=[out1, out2],
+        plot_jacobians=True)
+
+.. image:: ../img/kernel_jacobian_ad.svg
+
+The ``jacs`` dictionary contains the Jacobian matrices as Warp arrays for all input/output pairs of the kernel.
+The ``plot_jacobians`` argument visualizes the Jacobian matrices using the :func:`plot_kernel_jacobians` function.
+The subplots show the Jacobian matrices for each input (column) and output (row) pair.
+The major (thick) gridlines in these image plots separate the array elements of the respective Warp arrays. Since the kernel arguments ``b``, ``out1``, and ``out2`` are Warp arrays with vector-type elements,
+the minor (thin, dashed) gridlines for the corresponding subplots indicate the vector elements.
+
+
+Checking the gradient accuracy using the :func:`gradcheck` function:
+
+.. code-block:: python
+
+    passed = wp.autograd.gradcheck(
+        my_kernel, dim=len(a), inputs=[a, b], outputs=[out1, out2],
+        plot_relative_error=False, plot_absolute_error=False,
+        raise_exception=False, show_summary=True)
+
+    assert passed
+
+Output:
+
+.. list-table:: 
+   :header-rows: 1
+
+   * - Input
+     - Output
+     - Max Abs Error
+     - Max Rel Error
+     - Pass
+   * - a
+     - out1
+     - 1.5134811e-03
+     - 4.0449476e-04
+     - .. raw:: html
+
+         <span style="color: green;">PASS</span>
+   * - a
+     - out2
+     - 1.1073798e-04
+     - 1.4098687e-03
+     - .. raw:: html
+
+         <span style="color: green;">PASS</span>
+   * - b
+     - out1
+     - 9.8955631e-04
+     - 4.6023726e-03
+     - .. raw:: html
+
+         <span style="color: green;">PASS</span>
+   * - b
+     - out2
+     - 3.3494830e-04
+     - 1.2789593e-02
+     - .. raw:: html
+
+         <span style="color: green;">PASS</span>
+
+.. raw:: html
+
+    <span style="color: green;">Gradient check for kernel my_kernel passed</span>
+
+
+Instead of evaluating Jacobians for all inputs and outputs of a kernel, we can also limit the computation to a specific subset of input/output pairs::
+
+    jacs = wp.autograd.jacobian(
+        my_kernel, dim=len(a), inputs=[a, b], outputs=[out1, out2],
+        plot_jacobians=True,
+        # select which input/output pairs to compute the Jacobian for
+        input_output_mask=[("a", "out1"), ("b", "out2")],
+        # limit the number of dimensions to query per output array
+        max_outputs_per_var=5,
+    )
+
+.. image:: ../img/kernel_jacobian_ad_subset.svg
+
+The returned Jacobian matrices are now limited to the input/output pairs specified in the ``input_output_mask`` argument.
+Furthermore, we limited the number of dimensions to evaluate the gradient for to 5 per output array using the ``max_outputs_per_var`` argument.
+The corresponding non-evaluated Jacobian elements are set to ``NaN``.
+
+Furthermore, it is possible to check the gradients of multiple kernels recorded on a :class:`Tape` via the :func:`gradcheck_tape` function. Here, the inputs and outputs of the kernel launches are used to compute the Jacobian matrices for each kernel launch and compare them with finite differences::
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(my_kernel_1, dim=len(a), inputs=[a, b], outputs=[out1, c])
+        wp.launch(my_kernel_2, dim=len(c), inputs=[c], outputs=[out2])
+
+    passed = wp.autograd.gradcheck_tape(tape, raise_exception=False, show_summary=True)
+
+    assert passed
+
 
 Visualizing Computation Graphs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. currentmodule:: warp
+
 Computing gradients via automatic differentiation can be error-prone, where arrays sometimes miss the ``requires_grad`` setting, or the wrong arrays are passed between kernels. To help debug gradient computations, Warp provides a
-``tape.visualize()`` method that generates a graph visualization of the kernel launches recorded on the tape in the `GraphViz <https://graphviz.org/>`_ dot format.
+:meth:`Tape.visualize` method that generates a graph visualization of the kernel launches recorded on the tape in the `GraphViz <https://graphviz.org/>`_ dot format.
 The visualization shows how the Warp arrays are used as inputs and outputs of the kernel launches.
 
 Example usage::
