@@ -36,6 +36,9 @@
 ## [1.2.2] - 2024-07-04
 
 - Support for NumPy >= 2.0
+- Add additional documentation and examples demonstrating wp.copy(), wp.clone(), and array.assign() differentiability
+- Fix adding `__new__()` methods for all class `__del__()` methods to anticipate when a class instance is created but not instantiated before garbage collection
+- Add documentation for dynamic loop autograd limitations
 
 ## [1.2.1] - 2024-06-14
 

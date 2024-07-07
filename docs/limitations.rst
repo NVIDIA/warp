@@ -47,6 +47,10 @@ When this happens, some CUDA threads may process more than one element from the 
 Users can also set the ``max_blocks`` parameter to fine-tune the grid-striding behavior of kernels, even for kernels that are otherwise
 able to process one Warp-grid element per CUDA thread. 
 
+Differentiability
+-----------------
+Please see the :ref:`Limitations and Workarounds <limitations_and_workarounds>` section in the Differentiability page for auto-differentiation limitations.
+
 Arrays
 ------
 
