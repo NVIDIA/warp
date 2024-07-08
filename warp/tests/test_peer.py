@@ -127,5 +127,5 @@ add_function_test(TestPeer, "test_peer_access_exceptions_cpu", test_peer_access_
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

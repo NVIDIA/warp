@@ -1,14 +1,10 @@
-from typing import Any, Tuple
+from typing import Any, Tuple, Union
 
 import numpy as np
 
 import warp as wp
-from warp.fem.cache import (
-    Temporary,
-    TemporaryStore,
-    borrow_temporary,
-    borrow_temporary_like,
-)
+import warp.fem.cache as cache
+from warp.fem.types import NULL_NODE_INDEX
 from warp.utils import array_scan, radix_sort_pairs, runlength_encode
 
 
@@ -115,121 +111,331 @@ def skew_part(x: wp.mat33):
     return wp.vec3(a, b, c)
 
 
+@wp.func
+def householder_qr_decomposition(A: Any):
+    """
+    QR decomposition of a square matrix using Householder reflections
+
+    Returns Q and R such that Q R = A, Q orthonormal (such that QQ^T = Id), R upper triangular
+    """
+
+    x = type(A[0])()
+    Q = wp.identity(n=type(x).length, dtype=A.dtype)
+
+    zero = x.dtype(0.0)
+    two = x.dtype(2.0)
+
+    for i in range(type(x).length):
+        for k in range(type(x).length):
+            x[k] = wp.select(k < i, A[k, i], zero)
+
+        alpha = wp.length(x) * wp.sign(x[i])
+        x[i] += alpha
+        two_over_x_sq = wp.select(alpha == zero, two / wp.length_sq(x), zero)
+
+        A -= wp.outer(two_over_x_sq * x, x * A)
+        Q -= wp.outer(Q * x, two_over_x_sq * x)
+
+    return Q, A
+
+
+@wp.func
+def householder_make_hessenberg(A: Any):
+    """Transforms a square matrix to Hessenberg form (single lower diagonal) using Householder reflections
+
+    Returns:
+        Q and H such that Q H Q^T = A, Q orthonormal, H under Hessenberg form
+        If A is symmetric, H will be tridiagonal
+    """
+
+    x = type(A[0])()
+    Q = wp.identity(n=type(x).length, dtype=A.dtype)
+
+    zero = x.dtype(0.0)
+    two = x.dtype(2.0)
+
+    for i in range(1, type(x).length):
+        for k in range(type(x).length):
+            x[k] = wp.select(k < i, A[k, i - 1], zero)
+
+        alpha = wp.length(x) * wp.sign(x[i])
+        x[i] += alpha
+        two_over_x_sq = wp.select(alpha == zero, two / wp.length_sq(x), zero)
+
+        # apply on both sides
+        A -= wp.outer(two_over_x_sq * x, x * A)
+        A -= wp.outer(A * x, two_over_x_sq * x)
+        Q -= wp.outer(Q * x, two_over_x_sq * x)
+
+    return Q, A
+
+
+@wp.func
+def solve_triangular(R: Any, b: Any):
+    """Solves for R x = b where R is an upper triangular matrix
+
+    Returns x
+    """
+    zero = b.dtype(0)
+    x = type(b)(b.dtype(0))
+    for i in range(b.length, 0, -1):
+        j = i - 1
+        r = b[j] - wp.dot(R[j], x)
+        x[j] = wp.select(R[j, j] == zero, r / R[j, j], zero)
+
+    return x
+
+
+@wp.func
+def inverse_qr(A: Any):
+    # Computes a square matrix inverse using QR factorization
+
+    Q, R = householder_qr_decomposition(A)
+
+    A_inv = type(A)()
+    for i in range(type(A[0]).length):
+        A_inv[i] = solve_triangular(R, Q[i])  # ith column of Q^T
+
+    return wp.transpose(A_inv)
+
+
+@wp.func
+def symmetric_eigenvalues_qr(A: Any, tol: Any):
+    """
+    Computes the eigenvalues and eigen vectors of a square symmetric matrix A using the QR algorithm
+
+    Args:
+        A: square symmetric matrix
+        tol: Tolerance for the diagonalization residual (squared L2 norm of off-diagonal terms)
+
+    Returns a tuple (D: vector of eigenvalues, P: matrix with one eigenvector per row) such that A = P^T D P
+    """
+
+    two = A.dtype(2.0)
+    zero = A.dtype(0.0)
+
+    # temp storage for matrix rows
+    ri = type(A[0])()
+    rn = type(ri)()
+
+    # tridiagonal storage for R
+    R_L = type(ri)()
+    R_L = type(ri)(zero)
+    R_U = type(ri)(zero)
+
+    # so that we can use the type length in expression
+    # this will prevent unrolling by warp, but should be ok for native code
+    m = int(0)
+    for _ in range(type(ri).length):
+        m += 1
+
+    # Put A under Hessenberg form (tridiagonal)
+    Q, H = householder_make_hessenberg(A)
+    Q = wp.transpose(Q)  # algorithm below works and transposed Q as rows are easier to index
+
+    for _ in range(16 * m):  # failsafe, usually converges faster than that
+        # Initialize R with current H
+        R_D = wp.get_diag(H)
+        for i in range(1, type(ri).length):
+            R_L[i - 1] = H[i, i - 1]
+            R_U[i - 1] = H[i - 1, i]
+
+        # compute QR decomposition, directly transform H and eigenvectors
+        for n in range(1, m):
+            i = n - 1
+
+            # compute reflection
+            xi = R_D[i]
+            xn = R_L[i]
+
+            xii = xi * xi
+            xnn = xn * xn
+            alpha = wp.sqrt(xii + xnn) * wp.sign(xi)
+
+            xi += alpha
+            xii = xi * xi
+            xin = xi * xn
+
+            two_over_x_sq = wp.select(alpha == zero, two / (xii + xnn), zero)
+            xii *= two_over_x_sq
+            xin *= two_over_x_sq
+            xnn *= two_over_x_sq
+
+            # Left-multiply R and Q, multiply H on both sides
+            # Note that R should get non-zero coefficients on the second upper diagonal,
+            # but those won't get read afterwards, so we can ignore them
+
+            R_D[n] -= R_U[i] * xin + R_D[n] * xnn
+            R_U[n] -= R_U[n] * xnn
+
+            ri = Q[i]
+            rn = Q[n]
+            Q[i] -= ri * xii + rn * xin
+            Q[n] -= ri * xin + rn * xnn
+
+            # H is multiplied on both sides, but stays tridiagonal except for moving buldge
+            # Note: we could reduce the stencil to for 4 columns qui we do below,
+            # but unlikely to be worth it for our small matrix sizes
+            ri = H[i]
+            rn = H[n]
+            H[i] -= ri * xii + rn * xin
+            H[n] -= ri * xin + rn * xnn
+
+            # multiply on right, manually. We just need to consider 4 rows
+            if i > 0:
+                ci = H[i - 1, i]
+                cn = H[i - 1, n]
+                H[i - 1, i] -= ci * xii + cn * xin
+                H[i - 1, n] -= ci * xin + cn * xnn
+
+            for k in range(2):
+                ci = H[i + k, i]
+                cn = H[i + k, n]
+                H[i + k, i] -= ci * xii + cn * xin
+                H[i + k, n] -= ci * xin + cn * xnn
+
+            if n + 1 < m:
+                ci = H[n + 1, i]
+                cn = H[n + 1, n]
+                H[n + 1, i] -= ci * xii + cn * xin
+                H[n + 1, n] -= ci * xin + cn * xnn
+
+        # Terminate if the upper diagonal of R is near zero
+        if wp.length_sq(R_U) < tol:
+            break
+
+    return wp.get_diag(H), Q
+
+
 def compress_node_indices(
-    node_count: int, node_indices: wp.array(dtype=int), temporary_store: TemporaryStore = None
-) -> Tuple[Temporary, Temporary, int, Temporary]:
+    node_count: int,
+    node_indices: wp.array(dtype=int),
+    return_unique_nodes=False,
+    temporary_store: cache.TemporaryStore = None,
+) -> Union[Tuple[cache.Temporary, cache.Temporary], Tuple[cache.Temporary, cache.Temporary, int, cache.Temporary]]:
     """
     Compress an unsorted list of node indices into:
      - a node_offsets array, giving for each node the start offset of corresponding indices in sorted_array_indices
      - a sorted_array_indices array, listing the indices in the input array corresponding to each node
+
+    Plus if `return_unique_nodes` is ``True``,
      - the number of unique node indices
      - a unique_node_indices array containing the sorted list of unique node indices (i.e. the list of indices i for which node_offsets[i] < node_offsets[i+1])
+
+    Node indices equal to NULL_NODE_INDEX will be ignored
     """
 
     index_count = node_indices.size
+    device = node_indices.device
 
-    sorted_node_indices_temp = borrow_temporary(
-        temporary_store, shape=2 * index_count, dtype=int, device=node_indices.device
-    )
-    sorted_array_indices_temp = borrow_temporary_like(sorted_node_indices_temp, temporary_store)
+    with wp.ScopedDevice(device):
+        sorted_node_indices_temp = cache.borrow_temporary(temporary_store, shape=2 * index_count, dtype=int)
+        sorted_array_indices_temp = cache.borrow_temporary_like(sorted_node_indices_temp, temporary_store)
 
-    sorted_node_indices = sorted_node_indices_temp.array
-    sorted_array_indices = sorted_array_indices_temp.array
+        sorted_node_indices = sorted_node_indices_temp.array
+        sorted_array_indices = sorted_array_indices_temp.array
 
-    wp.copy(dest=sorted_node_indices, src=node_indices, count=index_count)
+        wp.copy(dest=sorted_node_indices, src=node_indices, count=index_count)
 
-    indices_per_element = 1 if node_indices.ndim == 1 else node_indices.shape[-1]
-    wp.launch(
-        kernel=_iota_kernel,
-        dim=index_count,
-        inputs=[sorted_array_indices, indices_per_element],
-        device=sorted_array_indices.device,
-    )
+        indices_per_element = 1 if node_indices.ndim == 1 else node_indices.shape[-1]
+        wp.launch(
+            kernel=_iota_kernel,
+            dim=index_count,
+            inputs=[sorted_array_indices, indices_per_element],
+        )
 
-    # Sort indices
-    radix_sort_pairs(sorted_node_indices, sorted_array_indices, count=index_count)
+        # Sort indices
+        radix_sort_pairs(sorted_node_indices, sorted_array_indices, count=index_count)
 
-    # Build prefix sum of number of elements per node
-    unique_node_indices_temp = borrow_temporary(
-        temporary_store, shape=index_count, dtype=int, device=node_indices.device
-    )
-    node_element_counts_temp = borrow_temporary(
-        temporary_store, shape=index_count, dtype=int, device=node_indices.device
-    )
+        # Build prefix sum of number of elements per node
+        unique_node_indices_temp = cache.borrow_temporary(temporary_store, shape=index_count, dtype=int)
+        node_element_counts_temp = cache.borrow_temporary(temporary_store, shape=index_count, dtype=int)
 
-    unique_node_indices = unique_node_indices_temp.array
-    node_element_counts = node_element_counts_temp.array
+        unique_node_indices = unique_node_indices_temp.array
+        node_element_counts = node_element_counts_temp.array
 
-    unique_node_count_dev = borrow_temporary(temporary_store, shape=(1,), dtype=int, device=sorted_node_indices.device)
-    runlength_encode(
-        sorted_node_indices,
-        unique_node_indices,
-        node_element_counts,
-        value_count=index_count,
-        run_count=unique_node_count_dev.array,
-    )
+        unique_node_count_dev = cache.borrow_temporary(temporary_store, shape=(1,), dtype=int)
 
-    # Transfer unique node count to host
-    if node_indices.device.is_cuda:
-        unique_node_count_host = borrow_temporary(temporary_store, shape=(1,), dtype=int, pinned=True, device="cpu")
-        wp.copy(src=unique_node_count_dev.array, dest=unique_node_count_host.array, count=1)
-        wp.synchronize_stream(wp.get_stream(node_indices.device))
-        unique_node_count_dev.release()
+        runlength_encode(
+            sorted_node_indices,
+            unique_node_indices,
+            node_element_counts,
+            value_count=index_count,
+            run_count=unique_node_count_dev.array,
+        )
+
+        # Scatter seen run counts to global array of element count per node
+        node_offsets_temp = cache.borrow_temporary(temporary_store, shape=(node_count + 1), dtype=int)
+        node_offsets = node_offsets_temp.array
+
+        node_offsets.zero_()
+        wp.launch(
+            kernel=_scatter_node_counts,
+            dim=node_count + 1,  # +1 to accommodate possible NULL node,
+            inputs=[node_element_counts, unique_node_indices, node_offsets, unique_node_count_dev.array],
+        )
+
+        if device.is_cuda and return_unique_nodes:
+            unique_node_count_host = cache.borrow_temporary(
+                temporary_store, shape=(1,), dtype=int, pinned=True, device="cpu"
+            )
+            wp.copy(src=unique_node_count_dev.array, dest=unique_node_count_host.array, count=1)
+            copy_event = cache.capture_event(device)
+
+        # Prefix sum of number of elements per node
+        array_scan(node_offsets, node_offsets, inclusive=True)
+
+        sorted_node_indices_temp.release()
+        node_element_counts_temp.release()
+
+        if not return_unique_nodes:
+            unique_node_count_dev.release()
+            return node_offsets_temp, sorted_array_indices_temp
+
+        if device.is_cuda:
+            cache.synchronize_event(copy_event)
+            unique_node_count_dev.release()
+        else:
+            unique_node_count_host = unique_node_count_dev
         unique_node_count = int(unique_node_count_host.array.numpy()[0])
         unique_node_count_host.release()
-    else:
-        unique_node_count = int(unique_node_count_dev.array.numpy()[0])
-        unique_node_count_dev.release()
+        return node_offsets_temp, sorted_array_indices_temp, unique_node_count, unique_node_indices_temp
 
-    # Scatter seen run counts to global array of element count per node
-    node_offsets_temp = borrow_temporary(
-        temporary_store, shape=(node_count + 1), device=node_element_counts.device, dtype=int
-    )
-    node_offsets = node_offsets_temp.array
 
-    node_offsets.zero_()
-    wp.launch(
-        kernel=_scatter_node_counts,
-        dim=unique_node_count,
-        inputs=[node_element_counts, unique_node_indices, node_offsets],
-        device=node_offsets.device,
-    )
+def host_read_at_index(array: wp.array, index: int = -1, temporary_store: cache.TemporaryStore = None) -> int:
+    """Returns the value of the array element at the given index on host"""
 
-    # Prefix sum of number of elements per node
-    array_scan(node_offsets, node_offsets, inclusive=True)
+    if index < 0:
+        index += array.shape[0]
 
-    sorted_node_indices_temp.release()
-    node_element_counts_temp.release()
+    if array.device.is_cuda:
+        temp = cache.borrow_temporary(temporary_store, shape=1, dtype=int, pinned=True, device="cpu")
+        wp.copy(dest=temp.array, src=array, src_offset=index, count=1)
+        wp.synchronize_stream(wp.get_stream(array.device))
+        return temp.array.numpy()[0]
 
-    return node_offsets_temp, sorted_array_indices_temp, unique_node_count, unique_node_indices_temp
+    return array.numpy()[index]
 
 
 def masked_indices(
-    mask: wp.array, missing_index=-1, temporary_store: TemporaryStore = None
-) -> Tuple[Temporary, Temporary]:
+    mask: wp.array, missing_index=-1, temporary_store: cache.TemporaryStore = None
+) -> Tuple[cache.Temporary, cache.Temporary]:
     """
     From an array of boolean masks (must be either 0 or 1), returns:
       - The list of indices for which the mask is 1
       - A map associating to each element of the input mask array its local index if non-zero, or missing_index if zero.
     """
 
-    offsets_temp = borrow_temporary_like(mask, temporary_store)
+    offsets_temp = cache.borrow_temporary_like(mask, temporary_store)
     offsets = offsets_temp.array
 
     wp.utils.array_scan(mask, offsets, inclusive=True)
 
     # Get back total counts on host
-    if offsets.device.is_cuda:
-        masked_count_temp = borrow_temporary(temporary_store, shape=1, dtype=int, pinned=True, device="cpu")
-        wp.copy(dest=masked_count_temp.array, src=offsets, src_offset=offsets.shape[0] - 1, count=1)
-        wp.synchronize_stream(wp.get_stream(offsets.device))
-        masked_count = int(masked_count_temp.array.numpy()[0])
-        masked_count_temp.release()
-    else:
-        masked_count = int(offsets.numpy()[-1])
+    masked_count = int(host_read_at_index(offsets, temporary_store=temporary_store))
 
     # Convert counts to indices
-    indices_temp = borrow_temporary(temporary_store, shape=masked_count, device=mask.device, dtype=int)
+    indices_temp = cache.borrow_temporary(temporary_store, shape=masked_count, device=mask.device, dtype=int)
 
     wp.launch(
         kernel=_masked_indices_kernel,
@@ -262,10 +468,22 @@ def _iota_kernel(indices: wp.array(dtype=int), divisor: int):
 
 @wp.kernel
 def _scatter_node_counts(
-    unique_counts: wp.array(dtype=int), unique_node_indices: wp.array(dtype=int), node_counts: wp.array(dtype=int)
+    unique_counts: wp.array(dtype=int),
+    unique_node_indices: wp.array(dtype=int),
+    node_counts: wp.array(dtype=int),
+    unique_node_count: wp.array(dtype=int),
 ):
     i = wp.tid()
-    node_counts[1 + unique_node_indices[i]] = unique_counts[i]
+
+    if i >= unique_node_count[0]:
+        return
+
+    node_index = unique_node_indices[i]
+    if node_index == NULL_NODE_INDEX:
+        wp.atomic_sub(unique_node_count, 0, 1)
+        return
+
+    node_counts[1 + node_index] = unique_counts[i]
 
 
 @wp.kernel
@@ -467,7 +685,7 @@ def grid_to_hexes(Nx: int, Ny: int, Nz: int):
         Nz: Resolution of the grid along `z` dimension
 
     Returns:
-        Array of shape (Nx * Ny * Nz, 8) containing vertex indices for each hexaedron
+        Array of shape (Nx * Ny * Nz, 8) containing vertex indices for each hexahedron
     """
 
     hex_vtx = np.array(

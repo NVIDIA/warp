@@ -173,7 +173,7 @@ def main(argv=None):
     import warp as wp  # NVIDIA Modification
 
     # Clear the Warp cache (NVIDIA Modification)
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     print("Cleared Warp kernel cache")
 
     # Create the temporary directory (for coverage files)
@@ -244,7 +244,7 @@ def main(argv=None):
                     initargs=(manager.Lock(), shared_index, args, temp_dir),
                 ) as executor:
                     test_manager = ParallelTestManager(manager, args, temp_dir)
-                    results = list(executor.map(test_manager.run_tests, test_suites, timeout=7200))
+                    results = list(executor.map(test_manager.run_tests, test_suites, timeout=2400))
         else:
             # This entire path is an NVIDIA Modification
 
@@ -554,9 +554,6 @@ def initialize_test_process(lock, shared_index, args, temp_dir):
             wp.config.kernel_cache_dir = cache_root_dir
 
             wp.build.clear_kernel_cache()
-        else:
-            # Initialize Warp is if hasn't been initialized already
-            wp.init()
 
 
 if __name__ == "__main__":  # pragma: no cover

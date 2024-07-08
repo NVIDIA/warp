@@ -240,5 +240,5 @@ add_function_test(TestConditional, "test_conditional_unequal_types", test_condit
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

@@ -425,6 +425,48 @@ def test_error_global_var(test, device):
         wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,))
 
 
+def test_error_collection_construct(test, device):
+    def kernel_1_fn():
+        x = [1.0, 2.0, 3.0]
+
+    def kernel_2_fn():
+        x = (1.0, 2.0, 3.0)
+
+    def kernel_3_fn():
+        x = {"a": 1.0, "b": 2.0, "c": 3.0}
+
+    def kernel_4_fn():
+        wp.length((1.0, 2.0, 3.0))
+
+    kernel = wp.Kernel(func=kernel_1_fn)
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"List constructs are not supported in kernels. Use vectors like `wp.vec3\(\)` for small collections instead.",
+    ):
+        wp.launch(kernel, dim=1)
+
+    kernel = wp.Kernel(func=kernel_2_fn)
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Tuple constructs are not supported in kernels. Use vectors like `wp.vec3\(\)` for small collections instead.",
+    ):
+        wp.launch(kernel, dim=1)
+
+    kernel = wp.Kernel(func=kernel_3_fn)
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Construct `ast.Dict` not supported in kernels.",
+    ):
+        wp.launch(kernel, dim=1)
+
+    kernel = wp.Kernel(func=kernel_4_fn)
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Tuple constructs are not supported in kernels. Use vectors like `wp.vec3\(\)` instead.",
+    ):
+        wp.launch(kernel, dim=1)
+
+
 class TestCodeGen(unittest.TestCase):
     pass
 
@@ -555,8 +597,11 @@ add_kernel_test(TestCodeGen, name="test_continue_unroll", kernel=test_continue_u
 add_function_test(TestCodeGen, func=test_unresolved_func, name="test_unresolved_func", devices=devices)
 add_function_test(TestCodeGen, func=test_unresolved_symbol, name="test_unresolved_symbol", devices=devices)
 add_function_test(TestCodeGen, func=test_error_global_var, name="test_error_global_var", devices=devices)
+add_function_test(
+    TestCodeGen, func=test_error_collection_construct, name="test_error_collection_construct", devices=devices
+)
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2, failfast=True)

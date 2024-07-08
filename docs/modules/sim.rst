@@ -1,16 +1,9 @@
 warp.sim
-====================
+========
 
 .. currentmodule:: warp.sim
 
-..
-    .. toctree::
-    :maxdepth: 2
-
-Warp includes a simulation module ``warp.sim`` that includes many common physical simulation models, and integrators for explicit and implicit time-stepping.
-
-.. note:: The simulation model is under construction and should be expected to change rapidly, please treat this section as work in progress.
-
+Warp includes a simulation module ``warp.sim`` that includes many common physical simulation models and integrators for explicit and implicit time-stepping.
 
 Model
 -----
@@ -156,7 +149,7 @@ Given the parent body's world transform :math:`x_{wp}` and the joint transform :
 .. autofunction:: eval_ik
 
 Integrators
---------------
+-----------
 
 .. autoclass:: Integrator
     :members:
@@ -171,7 +164,7 @@ Integrators
     :members:
 
 Importers
---------------
+---------
 
 Warp sim supports the loading of simulation models from URDF, MuJoCo (MJCF), and USD Physics files.
 
@@ -183,8 +176,8 @@ Warp sim supports the loading of simulation models from URDF, MuJoCo (MJCF), and
 
 .. autofunction:: resolve_usd_from_url
 
-Utility functions
-------------------
+Utility Functions
+-----------------
 
 Common utility functions used in simulators.
 

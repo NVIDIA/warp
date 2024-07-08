@@ -79,7 +79,7 @@ class GridTripolynomialSpaceTopology(Grid3DSpaceTopology):
 
         return element_node_index
 
-    def _node_grid(self):
+    def node_grid(self):
         res = self.geometry.res
 
         cell_coords = np.array(self._shape.LOBATTO_COORDS)[:-1]
@@ -88,19 +88,19 @@ class GridTripolynomialSpaceTopology(Grid3DSpaceTopology):
             cell_coords, reps=res[0]
         )
         grid_coords_x = np.append(grid_coords_x, res[0])
-        X = grid_coords_x * self._grid.cell_size[0] + self._grid.origin[0]
+        X = grid_coords_x * self.geometry.cell_size[0] + self.geometry.origin[0]
 
         grid_coords_y = np.repeat(np.arange(0, res[1], dtype=float), len(cell_coords)) + np.tile(
             cell_coords, reps=res[1]
         )
         grid_coords_y = np.append(grid_coords_y, res[1])
-        Y = grid_coords_y * self._grid.cell_size[1] + self._grid.origin[1]
+        Y = grid_coords_y * self.geometry.cell_size[1] + self.geometry.origin[1]
 
         grid_coords_z = np.repeat(np.arange(0, res[2], dtype=float), len(cell_coords)) + np.tile(
             cell_coords, reps=res[2]
         )
         grid_coords_z = np.append(grid_coords_z, res[2])
-        Z = grid_coords_z * self._grid.cell_size[2] + self._grid.origin[2]
+        Z = grid_coords_z * self.geometry.cell_size[2] + self.geometry.origin[2]
 
         return np.meshgrid(X, Y, Z, indexing="ij")
 

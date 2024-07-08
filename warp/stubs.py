@@ -23,7 +23,7 @@ FabricArray = Generic[DType]
 IndexedFabricArray = Generic[DType]
 
 
-from warp.types import array, array1d, array2d, array3d, array4d, constant
+from warp.types import array, array1d, array2d, array3d, array4d, constant, from_ptr
 from warp.types import indexedarray, indexedarray1d, indexedarray2d, indexedarray3d, indexedarray4d
 from warp.fabric import fabricarray, fabricarrayarray, indexedfabricarray, indexedfabricarrayarray
 
@@ -42,7 +42,7 @@ from warp.types import spatial_matrix, spatial_matrixh, spatial_matrixf, spatial
 from warp.types import Bvh, Mesh, HashGrid, Volume, MarchingCubes
 from warp.types import bvh_query_t, hash_grid_query_t, mesh_query_aabb_t, mesh_query_point_t, mesh_query_ray_t
 
-from warp.types import matmul, adj_matmul, batched_matmul, adj_batched_matmul, from_ptr
+from warp.types import matmul, adj_matmul, batched_matmul, adj_batched_matmul
 
 from warp.types import vector as vec
 from warp.types import matrix as mat
@@ -108,13 +108,15 @@ from warp.jax import device_from_jax, device_to_jax
 
 from warp.dlpack import from_dlpack, to_dlpack
 
+from warp.build import clear_kernel_cache
+
 from warp.constants import *
 
 from . import builtins
 
-import warp.config
+import warp.config as config
 
-__version__ = warp.config.version
+__version__ = config.version
 
 
 @over

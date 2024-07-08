@@ -1,9 +1,11 @@
 from enum import Enum
-from typing import Union
+from typing import Optional, Union
 
 import warp as wp
 import warp.codegen
 import warp.context
+import warp.fem.cache as cache
+import warp.fem.utils as utils
 from warp.fem.geometry import (
     Element,
     Geometry,
@@ -157,7 +159,7 @@ class Cells(GeometryDomain):
         return self.geometry.cell_measure_ratio
 
     @property
-    def eval_normal(self) -> wp.Function:
+    def element_normal(self) -> wp.Function:
         return self.geometry.cell_normal
 
     @property
@@ -171,6 +173,8 @@ class Sides(GeometryDomain):
     def __init__(self, geometry: GeometryOrPartition):
         self.geometry = geometry
         super().__init__(geometry)
+
+        self.element_lookup = None
 
     @property
     def element_kind(self) -> GeometryDomain.ElementKind:
@@ -224,7 +228,7 @@ class Sides(GeometryDomain):
         return self.geometry.side_measure_ratio
 
     @property
-    def eval_normal(self) -> wp.Function:
+    def element_normal(self) -> wp.Function:
         return self.geometry.side_normal
 
 
@@ -260,3 +264,96 @@ class FrontierSides(Sides):
     @property
     def element_index(self) -> wp.Function:
         return self.geometry_partition.frontier_side_index
+
+
+class Subdomain(GeometryDomain):
+    """Subdomain -- restriction of domain to a subset of its elements"""
+
+    def __init__(
+        self,
+        domain: GeometryDomain,
+        element_mask: Optional[wp.array] = None,
+        element_indices: Optional[wp.array] = None,
+        temporary_store: Optional[cache.TemporaryStore] = None,
+    ):
+        """
+        Create a subdomain from a subset of elements.
+
+        Exactly one of `element_mask` and `element_indices` should be provided.
+
+        Args:
+            domain: the containing domain
+            element_mask: Array of length ``domain.element_count()`` indicating which elements should be included. Array values must be either ``1`` (selected) or ``0`` (not selected).
+            element_indices: Explicit array of element indices to include
+        """
+
+        super().__init__(domain.geometry_partition)
+
+        if element_indices is None:
+            if element_mask is None:
+                raise ValueError("Either 'element_mask' or 'element_indices' should be provided")
+            element_indices, _ = utils.masked_indices(mask=element_mask, temporary_store=temporary_store)
+            element_indices = element_indices.detach()
+        elif element_mask is not None:
+            raise ValueError("Only one of 'element_mask' and 'element_indices' should be provided")
+
+        self._domain = domain
+        self._element_indices = element_indices
+        self.ElementIndexArg = self._make_element_index_arg()
+        self.element_index = self._make_element_index()
+
+        # forward
+        self.ElementArg = self._domain.ElementArg
+        self.geometry_element_count = self._domain.geometry_element_count
+        self.reference_element = self._domain.reference_element
+        self.element_arg_value = self._domain.element_arg_value
+        self.element_measure = self._domain.element_measure
+        self.element_measure_ratio = self._domain.element_measure_ratio
+        self.element_position = self._domain.element_position
+        self.element_deformation_gradient = self._domain.element_deformation_gradient
+        self.element_lookup = self._domain.element_lookup
+        self.element_normal = self._domain.element_normal
+
+    @property
+    def name(self) -> str:
+        return f"{self._domain.name}_Subdomain"
+
+    def __eq__(self, other) -> bool:
+        return (
+            self.__class__ == other.__class__
+            and self.geometry_partition == other.geometry_partition
+            and self._element_indices == other._element_indices
+        )
+
+    @property
+    def element_kind(self) -> GeometryDomain.ElementKind:
+        return self._domain.element_kind
+
+    @property
+    def dimension(self) -> int:
+        return self._domain.dimension
+
+    def element_count(self) -> int:
+        return self._element_indices.shape[0]
+
+    def _make_element_index_arg(self):
+        @cache.dynamic_struct(suffix=self.name)
+        class ElementIndexArg:
+            domain_arg: self._domain.ElementIndexArg
+            element_indices: wp.array(dtype=int)
+
+        return ElementIndexArg
+
+    @cache.cached_arg_value
+    def element_index_arg_value(self, device: warp.context.Devicelike):
+        arg = self.ElementIndexArg()
+        arg.domain_arg = self._domain.element_index_arg_value(device)
+        arg.element_indices = self._element_indices.to(device)
+        return arg
+
+    def _make_element_index(self) -> wp.Function:
+        @cache.dynamic_func(suffix=self.name)
+        def element_index(arg: self.ElementIndexArg, index: int):
+            return self._domain.element_index(arg.domain_arg, arg.element_indices[index])
+
+        return element_index

@@ -244,5 +244,5 @@ add_kernel_test(TestOperators, test_operators_mat44, dim=1, devices=devices)
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

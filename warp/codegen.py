@@ -682,15 +682,11 @@ class Adjoint:
         # recursively evaluate function body
         try:
             adj.eval(adj.tree.body[0])
-        except Exception as e:
+        except Exception:
             try:
-                if isinstance(e, KeyError) and getattr(e.args[0], "__module__", None) == "ast":
-                    msg = f'Syntax error: unsupported construct "ast.{e.args[0].__name__}"'
-                else:
-                    msg = "Error"
                 lineno = adj.lineno + adj.fun_lineno
                 line = adj.source_lines[adj.lineno]
-                msg += f' while parsing function "{adj.fun_name}" at {adj.filename}:{lineno}:\n{line}\n'
+                msg = f'Error while parsing function "{adj.fun_name}" at {adj.filename}:{lineno}:\n{line}\n'
                 ex, data, traceback = sys.exc_info()
                 e = ex(";".join([msg] + [str(a) for a in data.args])).with_traceback(traceback)
             finally:
@@ -1764,6 +1760,18 @@ class Adjoint:
                     f"Could not find function {'.'.join(path)} as a built-in or user-defined function. Note that user functions must be annotated with a @wp.func decorator to be called from a kernel."
                 )
 
+        # Check if any argument correspond to an unsupported construct.
+        # Tuples are supported in the context of assigning multiple variables
+        # at once, but not in place of vectors when calling built-ins like
+        # `wp.length((1, 2, 3))`.
+        # Therefore, we need to catch this specific case here instead of
+        # more generally in `adj.eval()`.
+        for arg in node.args:
+            if isinstance(arg, ast.Tuple):
+                raise WarpCodegenError(
+                    "Tuple constructs are not supported in kernels. Use vectors like `wp.vec3()` instead."
+                )
+
         args = []
 
         # eval all arguments
@@ -1887,6 +1895,21 @@ class Adjoint:
             raise WarpCodegenError("Assigning the same value to multiple variables is not supported")
 
         lhs = node.targets[0]
+
+        if not isinstance(lhs, ast.Tuple):
+            # Check if the rhs corresponds to an unsupported construct.
+            # Tuples are supported in the context of assigning multiple variables
+            # at once, but not for simple assignments like `x = (1, 2, 3)`.
+            # Therefore, we need to catch this specific case here instead of
+            # more generally in `adj.eval()`.
+            if isinstance(node.value, ast.List):
+                raise WarpCodegenError(
+                    "List constructs are not supported in kernels. Use vectors like `wp.vec3()` for small collections instead."
+                )
+            elif isinstance(node.value, ast.Tuple):
+                raise WarpCodegenError(
+                    "Tuple constructs are not supported in kernels. Use vectors like `wp.vec3()` for small collections instead."
+                )
 
         # handle the case where we are assigning multiple output variables
         if isinstance(lhs, ast.Tuple):
@@ -2089,7 +2112,12 @@ class Adjoint:
         if hasattr(node, "lineno"):
             adj.set_lineno(node.lineno - 1)
 
-        emit_node = adj.node_visitors[type(node)]
+        try:
+            emit_node = adj.node_visitors[type(node)]
+        except KeyError as e:
+            type_name = type(node).__name__
+            namespace = "ast." if isinstance(node, ast.AST) else ""
+            raise WarpCodegenError(f"Construct `{namespace}{type_name}` not supported in kernels.") from e
 
         return emit_node(adj, node)
 
@@ -2262,10 +2290,10 @@ cpu_module_header = """
 #define int(x) cast_int(x)
 #define adj_int(x, adj_x, adj_ret) adj_cast_int(x, adj_x, adj_ret)
 
-#define builtin_tid1d() wp::tid(wp::s_threadIdx)
-#define builtin_tid2d(x, y) wp::tid(x, y, wp::s_threadIdx, dim)
-#define builtin_tid3d(x, y, z) wp::tid(x, y, z, wp::s_threadIdx, dim)
-#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, wp::s_threadIdx, dim)
+#define builtin_tid1d() wp::tid(task_index)
+#define builtin_tid2d(x, y) wp::tid(x, y, task_index, dim)
+#define builtin_tid3d(x, y, z) wp::tid(x, y, z, task_index, dim)
+#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, task_index, dim)
 
 """
 
@@ -2280,10 +2308,10 @@ cuda_module_header = """
 #define int(x) cast_int(x)
 #define adj_int(x, adj_x, adj_ret) adj_cast_int(x, adj_x, adj_ret)
 
-#define builtin_tid1d() wp::tid(_idx)
-#define builtin_tid2d(x, y) wp::tid(x, y, _idx, dim)
-#define builtin_tid3d(x, y, z) wp::tid(x, y, z, _idx, dim)
-#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, _idx, dim)
+#define builtin_tid1d() wp::tid(task_index)
+#define builtin_tid2d(x, y) wp::tid(x, y, task_index, dim)
+#define builtin_tid3d(x, y, z) wp::tid(x, y, z, task_index, dim)
+#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, task_index, dim)
 
 """
 
@@ -2355,9 +2383,9 @@ cuda_kernel_template = """
 extern "C" __global__ void {name}_cuda_kernel_forward(
     {forward_args})
 {{
-    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
-         _idx < dim.size;
-         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
+    for (size_t task_index = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
+         task_index < dim.size;
+         task_index += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
 {forward_body}    }}
 }}
@@ -2365,9 +2393,9 @@ extern "C" __global__ void {name}_cuda_kernel_forward(
 extern "C" __global__ void {name}_cuda_kernel_backward(
     {reverse_args})
 {{
-    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
-         _idx < dim.size;
-         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
+    for (size_t task_index = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
+         task_index < dim.size;
+         task_index += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
 {reverse_body}    }}
 }}
@@ -2396,10 +2424,8 @@ extern "C" {{
 WP_API void {name}_cpu_forward(
     {forward_args})
 {{
-    for (size_t i=0; i < dim.size; ++i)
+    for (size_t task_index = 0; task_index < dim.size; ++task_index)
     {{
-        wp::s_threadIdx = i;
-
         {name}_cpu_kernel_forward(
             {forward_params});
     }}
@@ -2408,10 +2434,8 @@ WP_API void {name}_cpu_forward(
 WP_API void {name}_cpu_backward(
     {reverse_args})
 {{
-    for (size_t i=0; i < dim.size; ++i)
+    for (size_t task_index = 0; task_index < dim.size; ++task_index)
     {{
-        wp::s_threadIdx = i;
-
         {name}_cpu_kernel_backward(
             {reverse_params});
     }}
@@ -2838,6 +2862,10 @@ def codegen_kernel(kernel, device, options):
     forward_args = ["wp::launch_bounds_t dim"]
     reverse_args = ["wp::launch_bounds_t dim"]
 
+    if device == "cpu":
+        forward_args.append("size_t task_index")
+        reverse_args.append("size_t task_index")
+
     # forward args
     for arg in adj.args:
         forward_args.append(arg.ctype() + " var_" + arg.label)
@@ -2886,7 +2914,7 @@ def codegen_module(kernel, device="cpu"):
 
     # build forward signature
     forward_args = ["wp::launch_bounds_t dim"]
-    forward_params = ["dim"]
+    forward_params = ["dim", "task_index"]
 
     for arg in adj.args:
         if hasattr(arg.type, "_wp_generic_type_str_"):

@@ -153,10 +153,15 @@ class TestBvh(unittest.TestCase):
 
         wp.Kernel(func=kernel_fn)
 
+    def test_bvh_new_del(self):
+        # test the scenario in which a bvh is created but not initialized before gc
+        instance = wp.Bvh.__new__(wp.Bvh)
+        instance.__del__()
+
 
 add_function_test(TestBvh, "test_bvh_aabb", test_bvh_query_aabb, devices=devices)
 add_function_test(TestBvh, "test_bvh_ray", test_bvh_query_ray, devices=devices)
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

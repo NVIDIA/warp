@@ -6,22 +6,26 @@ Basics
 Initialization
 --------------
 
-When calling a Warp function like `wp.launch()` for the first time,
-Warp will initialize itself and, as a result, will print some startup information
+When calling a Warp function like :func:`wp.launch() <launch>` for the first time,
+Warp will initialize itself and will print some startup information
 about the compute devices available, driver versions, and the location for any
 generated kernel code, e.g.:
 
 .. code:: bat
 
-    Warp 1.0.0 initialized:
-    CUDA Toolkit: 11.8, Driver: 12.1
+    Warp 1.2.0 initialized:
+    CUDA Toolkit 12.5, Driver 12.5
     Devices:
-        "cpu"    | AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD
-        "cuda:0" | NVIDIA GeForce RTX 4080 (sm_89)
-    Kernel cache: C:\Users\mmacklin\AppData\Local\NVIDIA\warp\Cache\1.0.0
+        "cpu"      : "x86_64"
+        "cuda:0"   : "NVIDIA GeForce RTX 3090" (24 GiB, sm_86, mempool enabled)
+        "cuda:1"   : "NVIDIA GeForce RTX 3090" (24 GiB, sm_86, mempool enabled)
+    CUDA peer access:
+        Supported fully (all-directional)
+    Kernel cache:
+        /home/nvidia/.cache/warp/1.2.0
 
 
-It's also possible to explicitly initialize Warp with the ``wp.init()`` method as such::
+It's also possible to explicitly initialize Warp with the ``wp.init()`` method::
 
     import warp as wp
 
@@ -31,7 +35,7 @@ It's also possible to explicitly initialize Warp with the ``wp.init()`` method a
 Kernels
 -------
 
-In Warp, compute kernels are defined as Python functions and annotated with the ``@wp.kernel`` decorator, as follows::
+In Warp, compute kernels are defined as Python functions and annotated with the ``@wp.kernel`` decorator::
 
     @wp.kernel
     def simple_kernel(a: wp.array(dtype=wp.vec3),
@@ -57,8 +61,7 @@ or GPU, they cannot access arbitrary global state from the Python environment. I
 through their input parameters such as arrays.
 
 Warp kernels functions have a one-to-one correspondence with CUDA kernels. 
-To launch a kernel with 1024 threads, we use :func:`wp.launch() <warp.launch>`
-as follows::
+To launch a kernel with 1024 threads, we use :func:`wp.launch() <warp.launch>`::
 
     wp.launch(kernel=simple_kernel, # kernel to launch
               dim=1024,             # number of threads
@@ -75,7 +78,7 @@ To launch a 2D grid of threads to process a 1024x1024 image, we could write::
 
     wp.launch(kernel=compute_image, dim=(1024, 1024), inputs=[img], device="cuda")
 
-We retrieve a 2D thread index inside the kernel as follows:
+We retrieve a 2D thread index inside the kernel by using multiple assignment when calling ``wp.tid()``:
 
 .. code-block:: python
 
@@ -202,6 +205,7 @@ please see :ref:`Structs Reference <Structs>` for more details.
 
     As with kernel parameters, all attributes of a struct must have valid type hints at class definition time.
 
+.. _Compilation Model:
 
 Compilation Model
 -----------------
@@ -215,6 +219,59 @@ Any kernels registered in the module with ``@wp.kernel`` will be included in the
 
 .. image:: ./img/compiler_pipeline.svg
 
+By default, status messages will be printed out after each module has been loaded indicating basic information:
+
+* The name of the module that was just loaded
+* The first seven characters of the module hash
+* The device on which the module is being loaded for
+* How long it took to load the module in milliseconds
+* Whether the module was compiled ``(compiled)``, loaded from the cache ``(cached)``, or was unable to be loaded ``(error)``.
+
+For debugging purposes, ``wp.config.verbose = True`` can be set to also get a printout when each module load begins.
+
+Here is an example illustrating the functionality of the kernel cache by running ``python3 -m warp.examples.sim.example_cartpole``
+twice. The first time, we see:
+
+.. code:: bat
+
+    Warp 1.2.0 initialized:
+        CUDA Toolkit 12.5, Driver 12.5
+        Devices:
+          "cpu"      : "x86_64"
+          "cuda:0"   : "NVIDIA GeForce RTX 3090" (24 GiB, sm_86, mempool enabled)
+          "cuda:1"   : "NVIDIA GeForce RTX 3090" (24 GiB, sm_86, mempool enabled)
+        CUDA peer access:
+          Supported fully (all-directional)
+        Kernel cache:
+          /home/nvidia/.cache/warp/1.2.0
+    Module warp.sim.collide 296dfb5 load on device 'cuda:0' took 17982.83 ms (compiled)
+    Module warp.sim.articulation b2cf0c2 load on device 'cuda:0' took 5686.67 ms (compiled)
+    Module warp.sim.integrator_euler b87aa18 load on device 'cuda:0' took 7753.78 ms (compiled)
+    Module warp.sim.integrator 036f39a load on device 'cuda:0' took 456.53 ms (compiled)
+    step took 0.06 ms
+    render took 4.63 ms
+
+The second time we run this example, we see that the module-loading messages now say ``(cached)`` and take much
+less time to load since code compilation is skipped:
+
+.. code:: bat
+
+    Warp 1.2.0 initialized:
+        CUDA Toolkit 12.5, Driver 12.5
+        Devices:
+          "cpu"      : "x86_64"
+          "cuda:0"   : "NVIDIA GeForce RTX 3090" (24 GiB, sm_86, mempool enabled)
+          "cuda:1"   : "NVIDIA GeForce RTX 3090" (24 GiB, sm_86, mempool enabled)
+        CUDA peer access:
+          Supported fully (all-directional)
+        Kernel cache:
+          /home/nvidia/.cache/warp/1.2.0
+    Module warp.sim.collide 296dfb5 load on device 'cuda:0' took 9.07 ms (cached)
+    Module warp.sim.articulation b2cf0c2 load on device 'cuda:0' took 4.96 ms (cached)
+    Module warp.sim.integrator_euler b87aa18 load on device 'cuda:0' took 3.69 ms (cached)
+    Module warp.sim.integrator 036f39a load on device 'cuda:0' took 0.39 ms (cached)
+    step took 0.04 ms
+    render took 5.05 ms
 
 Language Details
 ----------------

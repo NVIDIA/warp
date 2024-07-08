@@ -17,21 +17,10 @@
 ###########################################################################
 
 import warp as wp
+import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
+from warp.examples.fem.example_diffusion import diffusion_form, linear_form
 from warp.sparse import bsr_axpy
-
-# Import example utilities
-# Make sure that works both when imported as module and run as standalone file
-try:
-    from .bsr_utils import bsr_cg
-    from .example_diffusion import diffusion_form, linear_form
-    from .mesh_utils import gen_hexmesh, gen_tetmesh
-    from .plot_utils import Plot
-except ImportError:
-    from bsr_utils import bsr_cg
-    from example_diffusion import diffusion_form, linear_form
-    from mesh_utils import gen_hexmesh, gen_tetmesh
-    from plot_utils import Plot
 
 
 @fem.integrand
@@ -65,14 +54,14 @@ class Example:
         res = wp.vec3i(resolution, resolution // 2, resolution * 2)
 
         if mesh == "tet":
-            pos, tet_vtx_indices = gen_tetmesh(
+            pos, tet_vtx_indices = fem_example_utils.gen_tetmesh(
                 res=res,
                 bounds_lo=wp.vec3(0.0, 0.0, 0.0),
                 bounds_hi=wp.vec3(1.0, 0.5, 2.0),
             )
             self._geo = fem.Tetmesh(tet_vtx_indices, pos)
         elif mesh == "hex":
-            pos, hex_vtx_indices = gen_hexmesh(
+            pos, hex_vtx_indices = fem_example_utils.gen_hexmesh(
                 res=res,
                 bounds_lo=wp.vec3(0.0, 0.0, 0.0),
                 bounds_hi=wp.vec3(1.0, 0.5, 2.0),
@@ -95,7 +84,7 @@ class Example:
         # Scalar field over our function space
         self._scalar_field: fem.DiscreteField = self._scalar_space.make_field()
 
-        self.renderer = Plot()
+        self.renderer = fem_example_utils.Plot()
 
     def step(self):
         geo = self._geo
@@ -129,7 +118,7 @@ class Example:
 
         with wp.ScopedTimer("CG solve"):
             x = wp.zeros_like(rhs)
-            bsr_cg(matrix, b=rhs, x=x, quiet=self._quiet)
+            fem_example_utils.bsr_cg(matrix, b=rhs, x=x, quiet=self._quiet)
             self._scalar_field.dof_values = x
 
     def render(self):

@@ -15,31 +15,15 @@
 ###########################################################################
 
 import warp as wp
+import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
+from warp.examples.fem.example_convection_diffusion import (
+    diffusion_form,
+    inertia_form,
+    initial_condition,
+    velocity,
+)
 from warp.sparse import bsr_axpy
-
-# Import example utilities
-# Make sure that works both when imported as module and run as standalone file
-try:
-    from .bsr_utils import bsr_cg
-    from .example_convection_diffusion import (
-        diffusion_form,
-        inertia_form,
-        initial_condition,
-        velocity,
-    )
-    from .mesh_utils import gen_quadmesh, gen_trimesh
-    from .plot_utils import Plot
-except ImportError:
-    from bsr_utils import bsr_cg
-    from example_convection_diffusion import (
-        diffusion_form,
-        inertia_form,
-        initial_condition,
-        velocity,
-    )
-    from mesh_utils import gen_quadmesh, gen_trimesh
-    from plot_utils import Plot
 
 
 # Standard transport term, on cells' interior
@@ -87,10 +71,10 @@ class Example:
         self.current_frame = 0
 
         if mesh == "tri":
-            positions, tri_vidx = gen_trimesh(res=wp.vec2i(resolution))
+            positions, tri_vidx = fem_example_utils.gen_trimesh(res=wp.vec2i(resolution))
             geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
         elif mesh == "quad":
-            positions, quad_vidx = gen_quadmesh(res=wp.vec2i(resolution))
+            positions, quad_vidx = fem_example_utils.gen_quadmesh(res=wp.vec2i(resolution))
             geo = fem.Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions)
         else:
             geo = fem.Grid2D(res=wp.vec2i(resolution))
@@ -153,7 +137,7 @@ class Example:
         self._phi_field = scalar_space.make_field()
         fem.interpolate(initial_condition, dest=self._phi_field)
 
-        self.renderer = Plot()
+        self.renderer = fem_example_utils.Plot()
         self.renderer.add_surface("phi", self._phi_field)
 
     def step(self):
@@ -166,7 +150,7 @@ class Example:
         )
 
         phi = wp.zeros_like(rhs)
-        bsr_cg(self._matrix, b=rhs, x=phi, method="bicgstab", quiet=self._quiet)
+        fem_example_utils.bsr_cg(self._matrix, b=rhs, x=phi, method="bicgstab", quiet=self._quiet)
 
         wp.utils.array_cast(in_array=phi, out_array=self._phi_field.dof_values)
 

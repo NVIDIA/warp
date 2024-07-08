@@ -844,7 +844,10 @@ def test_volume_from_numpy(test, device):
 
 
 class TestVolume(unittest.TestCase):
-    pass
+    def test_volume_new_del(self):
+        # test the scenario in which a volume is created but not initialized before gc
+        instance = wp.Volume.__new__(wp.Volume)
+        instance.__del__()
 
 
 add_function_test(
@@ -957,5 +960,5 @@ for device in devices:
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

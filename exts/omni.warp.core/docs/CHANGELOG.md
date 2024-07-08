@@ -1,8 +1,53 @@
 # CHANGELOG
 
+## [1.2.2] - 2024-07-04
+
+- Support for NumPy >= 2.0
+
+## [1.2.1] - 2024-06-14
+
+- Fix generic function caching
+- Fix Warp not being initialized when constructing arrays with `wp.array()`
+- Fix `wp.is_mempool_access_supported()` not resolving the provided device arguments to `wp.context.Device`
+
+## [1.2.0] - 2024-06-06
+
+- Add a not-a-number floating-point constant that can be used as `wp.NAN` or `wp.nan`.
+- Add `wp.isnan()`, `wp.isinf()`, and `wp.isfinite()` for scalars, vectors, matrices, etc.
+- Improve kernel cache reuse by hashing just the local module constants. Previously, a
+  module's hash was affected by all `wp.constant()` variables declared in a Warp program.
+- Revised module compilation process to allow multiple processes to use the same kernel cache directory.
+  Cached kernels will now be stored in hash-specific subdirectory.
+- Add runtime checks for `wp.MarchingCubes` on field dimensions and size
+- Fix memory leak in `wp.Mesh` BVH ([GH-225](https://github.com/NVIDIA/warp/issues/225))
+- Use C++17 when building the Warp library and user kernels
+- Increase PTX target architecture up to `sm_75` (from `sm_70`), enabling Turing ISA features
+- Extended NanoVDB support (see `warp.Volume`):
+  - Add support for data-agnostic index grids, allocation at voxel granularity
+  - New `wp.volume_lookup_index()`, `wp.volume_sample_index()` and generic `wp.volume_sample()`/`wp.volume_lookup()`/`wp.volume_store()` kernel-level functions
+  - Zero-copy aliasing of in-memory grids, support for multi-grid buffers
+  - Grid introspection and blind data access capabilities
+  - `warp.fem` can now work directly on NanoVDB grids using `warp.fem.Nanogrid`
+  - Fixed `wp.volume_sample_v()` and `wp.volume_store_*()` adjoints
+  - Prevent `wp.volume_store()` from overwriting grid background values
+- Improve validation of user-provided fields and values in `warp.fem`
+- Support headless rendering of `wp.render.OpenGLRenderer` via `pyglet.options["headless"] = True`
+- `wp.render.RegisteredGLBuffer` can fall back to CPU-bound copying if CUDA/OpenGL interop is not available
+- Clarify terms for external contributions, please see CONTRIBUTING.md for details
+- Improve performance of `wp.sparse.bsr_mm()` by ~5x on benchmark problems
+- Fix for XPBD incorrectly indexing into of joint actuations `joint_act` arrays
+- Fix for mass matrix gradients computation in `wp.sim.FeatherstoneIntegrator()`
+- Fix for handling of `--msvc_path` in build scripts
+- Fix for `wp.copy()` params to record dest and src offset parameters on `wp.Tape()`
+- Fix for `wp.randn()` to ensure return values are finite
+- Fix for slicing of arrays with gradients in kernels
+- Fix for function overload caching, ensure module is rebuilt if any function overloads are modified
+- Fix for handling of `bool` types in generic kernels
+- Publish CUDA 12.5 binaries for Hopper support, see https://github.com/nvidia/warp?tab=readme-ov-file#installing for details
+
 ## [1.1.1] - 2024-05-24
 
-- Implicitly initialize Warp when first required
+- `wp.init()` is no longer required to be called explicitly and will be performed on first call to the API
 - Speed up `omni.warp.core`'s startup time
 
 ## [1.1.0] - 2024-05-09

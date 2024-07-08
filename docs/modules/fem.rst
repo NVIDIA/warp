@@ -1,11 +1,11 @@
 warp.fem
-=====================
+========
 
 .. currentmodule:: warp.fem
 
 The ``warp.fem`` module is designed to facilitate solving physical systems described as differential 
 equations. For example, it can solve PDEs for diffusion, convection, fluid flow, and elasticity problems 
-using finite-element-based (FEM) Galerkin methods, and allows users to quickly experiment with various FEM
+using finite-element-based (FEM) Galerkin methods and allows users to quickly experiment with various FEM
 formulations and discretization schemes.
 
 Integrands
@@ -19,9 +19,11 @@ The main mechanism is the :py:func:`.integrand` decorator, for instance: ::
     @integrand
     def linear_form(
         s: Sample,
+        domain: Domain,
         v: Field,
     ):
-        return v(s)
+        x = domain(s)
+        return v(s) * wp.max(0.0, 1.0 - wp.length(x))
 
 
     @integrand
@@ -31,7 +33,7 @@ The main mechanism is the :py:func:`.integrand` decorator, for instance: ::
             grad(v, s),
         )
 
-Integrands are normal Warp kernels, meaning any usual Warp function can be used. 
+Integrands are normal Warp kernels, meaning that they may contain arbitrary Warp functions. 
 However, they accept a few special parameters:
 
   - :class:`.Sample` contains information about the current integration sample point, such as the element index and coordinates in element.
@@ -57,7 +59,7 @@ passed as a dictionary in the `values` argument of the launcher function, for in
     integrate(diffusion_form, fields={"u": trial, "v": test}, values={"nu": viscosity})
 
 
-Basic workflow
+Basic Workflow
 --------------
 
 The typical steps for solving a linear PDE are as follow:
@@ -111,7 +113,7 @@ The following excerpt from the introductory example ``warp/examples/fem/example_
     To solve non-linear PDEs, one can use an iterative procedure and pass the current value of the studied function :class:`.DiscreteField` argument to the integrand, on which
     arbitrary operations are permitted. However, the result of the form must remain linear in the test and trial fields.
 
-Introductory examples
+Introductory Examples
 ---------------------
 
 ``warp.fem`` ships with a list of examples in the ``warp/examples/fem`` directory illustrating common model problems.
@@ -123,10 +125,11 @@ Introductory examples
  - ``example_burgers.py``: 2D inviscid Burgers using Discontinuous Galerkin with upwind transport and slope limiter
  - ``example_stokes.py``: 2D incompressible Stokes flow using mixed :math:`P_k/P_{k-1}` or :math:`Q_k/P_{(k-1)d}` elements
  - ``example_navier_stokes.py``: 2D Navier-Stokes flow using mixed :math:`P_k/P_{k-1}` elements
- - ``example_mixed_elasticity.py``: 2D linear elasticity using mixed continuous/discontinuous :math:`S_k/P_{(k-1)d}` elements
+ - ``example_mixed_elasticity.py``: 2D nonlinear elasticity using mixed continuous/discontinuous :math:`S_k/P_{(k-1)d}` elements
+ - ``example_streamlines.py``: Using the :func:`lookup` operator to trace through a velocity field
 
 
-Advanced usages
+Advanced Usages
 ---------------
 
 High-order (curved) geometries
@@ -134,7 +137,7 @@ High-order (curved) geometries
 
 It is possible to convert any :class:`.Geometry` (grids and explicit meshes) into a curved, high-order variant by deforming them 
 with an arbitrary-order displacement field using the :meth:`~.DiscreteField.make_deformed_geometry` method. 
-The process looks as follow: ::
+The process looks as follows::
 
    # Define a base geometry
    base_geo = fem.Grid3D(res=resolution)
@@ -269,6 +272,9 @@ Geometry
 .. autoclass:: FrontierSides
    :show-inheritance:
 
+.. autoclass:: Subdomain
+   :show-inheritance:
+
 .. autoclass:: Polynomial
    :members:
 
@@ -325,7 +331,7 @@ Boundary Conditions
 
 .. autofunction:: project_linear_system
 
-Memory management
+Memory Management
 -----------------
 
 .. autofunction:: set_default_temporary_store

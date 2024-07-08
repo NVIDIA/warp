@@ -2,15 +2,64 @@
 
 ## [Upcoming Release] - 2024-??-??
 
+- Improve memory usage and performance for rigid body contact handling when `self.rigid_mesh_contact_max` is zero (default behavior)
+- The `mask` argument to `wp.sim.eval_fk` now accepts both integer and boolean arrays.
+- The `mask` argument to `wp.sim.eval_fk` now accepts both integer and bool arrays
+- Support for NumPy >= 2.0
+- Add `warp.autograd` module with utility functions `gradcheck`, `jacobian`, and `jacobian_fd` for debugging kernel Jacobians
+- Fix hashing of replay functions and snippets.
+- Add additional code comments for random number sampling functions in `rand.h`
+- Add information to the module load printouts to indicate whether a module was
+  compiled `(compiled)`, loaded from the cache `(cached)`, or was unable to be
+  loaded `(error)`.
+- `wp.config.verbose = True` now also prints out a message upon the entry to a `wp.ScopedTimer`.
+- Add additional documentation and examples demonstrating `wp.copy()`, `wp.clone()`, and `array.assign()` differentiability
+- Fix adding `__new__()` methods for all class `__del__()` methods to
+  anticipate when a class instance is created but not instantiated before garbage collection.
+- Add code-completion support for wp.config variables.
+- Add `wp.clear_kernel_cache()` to the public API. This is equivalent to `wp.build.clear_kernel_cache()`.
+- Add code-completion support for `wp.config` variables.
+- Remove usage of a static task (thread) index for CPU kernels to address multithreading concerns.
+- The `mask` argument to `wp.sim.eval_fk` now accepts both integer and bool arrays
+- Fix hashing of replay functions and snippets
+- New `warp.sparse` features:
+  - Sparse matrix allocations (from `bsr_from_triplets`, `bsr_axpy`, etc) can now be captured in CUDA graphs; exact number of non-zeros can be optionally requested asynchronously.
+  - `bsr_assign` now supports changing block shape (including CSR/BSR conversions)
+  - Add Python operator overloads for common sparse matrix operations, e.g `A += 0.5 * B`, `y = x @ C`
+- `warp.fem` new features and fixes:
+  - Support for variable number of nodes per element
+  - Global `wp.fem.lookup()` operator now supports `wp.fem.Tetmesh` and `wp.fem.Trimesh2D` geometries
+  - Simplified defining custom subdomains (`wp.fem.Subdomain`), free-slip boundary conditions
+  - New `streamlines` example, updated `mixed_elasticity` to use a nonlinear model
+  - Fixed edge cases with Nanovdb function spaces
+  - Fixed differentiability of `wp.fem.PicQuadrature` w.r.t. positions and measures
+- Improve error messages for unsupported constructs
+- Update `wp.matmul()` CPU fallback to use dtype explicitly in `np.matmul()` call
+
+## [1.2.2] - 2024-07-04
+
+- Support for NumPy >= 2.0
+- Add additional documentation and examples demonstrating wp.copy(), wp.clone(), and array.assign() differentiability
+- Fix adding `__new__()` methods for all class `__del__()` methods to anticipate when a class instance is created but not instantiated before garbage collection
+- Add documentation for dynamic loop autograd limitations
+
+## [1.2.1] - 2024-06-14
+
+- Fix generic function caching
+- Fix Warp not being initialized when constructing arrays with `wp.array()`
+- Fix `wp.is_mempool_access_supported()` not resolving the provided device arguments to `wp.context.Device`
+
+## [1.2.0] - 2024-06-06
+
 - Add a not-a-number floating-point constant that can be used as `wp.NAN` or `wp.nan`.
 - Add `wp.isnan()`, `wp.isinf()`, and `wp.isfinite()` for scalars, vectors, matrices, etc.
 - Improve kernel cache reuse by hashing just the local module constants. Previously, a
-  module's hash was affected by all constants declared in a Warp program.
+  module's hash was affected by all `wp.constant()` variables declared in a Warp program.
 - Revised module compilation process to allow multiple processes to use the same kernel cache directory.
   Cached kernels will now be stored in hash-specific subdirectory.
 - Add runtime checks for `wp.MarchingCubes` on field dimensions and size
 - Fix memory leak in `wp.Mesh` BVH ([GH-225](https://github.com/NVIDIA/warp/issues/225))
-- Use C++17 with NVCC when building the Warp library and user kernels
+- Use C++17 when building the Warp library and user kernels
 - Increase PTX target architecture up to `sm_75` (from `sm_70`), enabling Turing ISA features
 - Extended NanoVDB support (see `warp.Volume`):
   - Add support for data-agnostic index grids, allocation at voxel granularity
@@ -23,15 +72,21 @@
 - Improve validation of user-provided fields and values in `warp.fem`
 - Support headless rendering of `wp.render.OpenGLRenderer` via `pyglet.options["headless"] = True`
 - `wp.render.RegisteredGLBuffer` can fall back to CPU-bound copying if CUDA/OpenGL interop is not available
-- Fix to forward `wp.copy()` params to gradient and adjoint copy function calls.
-- Fix so that `wp.randn()` doesn't return inf
-- Fix slicing of arrays with gradients in kernels
-- Fix function overload caching: ensure module is rebuilt if any function overloads are modified
+- Clarify terms for external contributions, please see CONTRIBUTING.md for details
+- Improve performance of `wp.sparse.bsr_mm()` by ~5x on benchmark problems
+- Fix for XPBD incorrectly indexing into of joint actuations `joint_act` arrays
+- Fix for mass matrix gradients computation in `wp.sim.FeatherstoneIntegrator()`
+- Fix for handling of `--msvc_path` in build scripts
+- Fix for `wp.copy()` params to record dest and src offset parameters on `wp.Tape()`
+- Fix for `wp.randn()` to ensure return values are finite
+- Fix for slicing of arrays with gradients in kernels
+- Fix for function overload caching, ensure module is rebuilt if any function overloads are modified
+- Fix for handling of `bool` types in generic kernels
 - Publish CUDA 12.5 binaries for Hopper support, see https://github.com/nvidia/warp?tab=readme-ov-file#installing for details
 
 ## [1.1.1] - 2024-05-24
 
-- Implicitly initialize Warp when first required
+- `wp.init()` is no longer required to be called explicitly and will be performed on first call to the API
 - Speed up `omni.warp.core`'s startup time
 
 ## [1.1.0] - 2024-05-09

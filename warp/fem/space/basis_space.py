@@ -4,10 +4,10 @@ import warp as wp
 from warp.fem import cache
 from warp.fem.geometry import Geometry
 from warp.fem.quadrature import Quadrature
-from warp.fem.types import Coords, ElementIndex, make_free_sample
+from warp.fem.types import NULL_ELEMENT_INDEX, Coords, ElementIndex, make_free_sample
 
 from .shape import ShapeFunction
-from .topology import DiscontinuousSpaceTopology, SpaceTopology
+from .topology import RegularDiscontinuousSpaceTopology, SpaceTopology
 
 
 class BasisSpace:
@@ -28,8 +28,6 @@ class BasisSpace:
     def __init__(self, topology: SpaceTopology):
         self._topology = topology
 
-        self.NODES_PER_ELEMENT = self._topology.NODES_PER_ELEMENT
-
     @property
     def topology(self) -> SpaceTopology:
         """Underlying topology of the basis space"""
@@ -49,8 +47,6 @@ class BasisSpace:
     def node_positions(self, out: Optional[wp.array] = None) -> wp.array:
         """Returns a temporary array containing the world position for each node"""
 
-        NODES_PER_ELEMENT = self.NODES_PER_ELEMENT
-
         pos_type = cache.cached_vec_type(length=self.geometry.dimension, dtype=float)
 
         node_coords_in_element = self.make_node_coords_in_element()
@@ -64,7 +60,8 @@ class BasisSpace:
         ):
             element_index = wp.tid()
 
-            for n in range(NODES_PER_ELEMENT):
+            element_node_count = self.topology.element_node_count(geo_cell_arg, topo_arg, element_index)
+            for n in range(element_node_count):
                 node_index = self.topology.element_node_index(geo_cell_arg, topo_arg, element_index, n)
                 coords = node_coords_in_element(geo_cell_arg, basis_arg, element_index, n)
 
@@ -139,6 +136,8 @@ class ShapeBasisSpace(BasisSpace):
             self.node_tets = self._node_tets
         if hasattr(shape, "element_node_hexes"):
             self.node_hexes = self._node_hexes
+        if hasattr(topology, "node_grid"):
+            self.node_grid = topology.node_grid
 
     @property
     def shape(self) -> ShapeFunction:
@@ -302,7 +301,7 @@ class TraceBasisSpace(BasisSpace):
             node_index_in_elt: int,
         ):
             cell_index, index_in_cell = self.topology.inner_cell_index(geo_side_arg, element_index, node_index_in_elt)
-            if index_in_cell < 0:
+            if cell_index == NULL_ELEMENT_INDEX:
                 return 0.0
 
             cell_coords = self.geometry.side_inner_cell_coords(geo_side_arg, element_index, coords)
@@ -330,7 +329,7 @@ class TraceBasisSpace(BasisSpace):
             node_index_in_elt: int,
         ):
             cell_index, index_in_cell = self.topology.outer_cell_index(geo_side_arg, element_index, node_index_in_elt)
-            if index_in_cell < 0:
+            if cell_index == NULL_ELEMENT_INDEX:
                 return 0.0
 
             cell_coords = self.geometry.side_outer_cell_coords(geo_side_arg, element_index, coords)
@@ -359,7 +358,7 @@ class TraceBasisSpace(BasisSpace):
             node_index_in_elt: int,
         ):
             cell_index, index_in_cell = self.topology.inner_cell_index(geo_side_arg, element_index, node_index_in_elt)
-            if index_in_cell < 0:
+            if cell_index == NULL_ELEMENT_INDEX:
                 return grad_vec_type(0.0)
 
             cell_coords = self.geometry.side_inner_cell_coords(geo_side_arg, element_index, coords)
@@ -381,7 +380,7 @@ class TraceBasisSpace(BasisSpace):
             node_index_in_elt: int,
         ):
             cell_index, index_in_cell = self.topology.outer_cell_index(geo_side_arg, element_index, node_index_in_elt)
-            if index_in_cell < 0:
+            if cell_index == NULL_ELEMENT_INDEX:
                 return grad_vec_type(0.0)
 
             cell_coords = self.geometry.side_outer_cell_coords(geo_side_arg, element_index, coords)
@@ -419,13 +418,77 @@ class PiecewiseConstantBasisSpace(ShapeBasisSpace):
 
 
 def make_discontinuous_basis_space(geometry: Geometry, shape: ShapeFunction):
-    topology = DiscontinuousSpaceTopology(geometry, shape.NODES_PER_ELEMENT)
+    topology = RegularDiscontinuousSpaceTopology(geometry, shape.NODES_PER_ELEMENT)
 
     if shape.NODES_PER_ELEMENT == 1:
         # piecewise-constant space
         return PiecewiseConstantBasisSpace(topology=topology, shape=shape)
 
     return ShapeBasisSpace(topology=topology, shape=shape)
+
+
+class UnstructuredPointTopology(SpaceTopology):
+    """Topology for unstructured points defined from quadrature formula. See :class:`PointBasisSpace`"""
+
+    def __init__(self, quadrature: Quadrature):
+        if quadrature.max_points_per_element() is None:
+            raise ValueError("Quadrature must define a maximum number of points per element")
+
+        if quadrature.domain.element_count() != quadrature.domain.geometry_element_count():
+            raise ValueError("Point topology may only be defined on quadrature domains than span the whole geometry")
+
+        self._quadrature = quadrature
+        self.TopologyArg = quadrature.Arg
+
+        super().__init__(quadrature.domain.geometry, max_nodes_per_element=quadrature.max_points_per_element())
+
+        self.element_node_index = self._make_element_node_index()
+        self.element_node_count = self._make_element_node_count()
+        self.side_neighbor_node_counts = self._make_side_neighbor_node_counts()
+
+    def node_count(self):
+        return self._quadrature.total_point_count()
+
+    @property
+    def name(self):
+        return f"PointTopology_{self._quadrature}"
+
+    def topo_arg_value(self, device) -> SpaceTopology.TopologyArg:
+        """Value of the topology argument structure to be passed to device functions"""
+        return self._quadrature.arg_value(device)
+
+    def _make_element_node_index(self):
+        @cache.dynamic_func(suffix=self.name)
+        def element_node_index(
+            elt_arg: self.geometry.CellArg,
+            topo_arg: self.TopologyArg,
+            element_index: ElementIndex,
+            node_index_in_elt: int,
+        ):
+            return self._quadrature.point_index(elt_arg, topo_arg, element_index, element_index, node_index_in_elt)
+
+        return element_node_index
+
+    def _make_element_node_count(self):
+        @cache.dynamic_func(suffix=self.name)
+        def element_node_count(
+            elt_arg: self.geometry.CellArg,
+            topo_arg: self.TopologyArg,
+            element_index: ElementIndex,
+        ):
+            return self._quadrature.point_count(elt_arg, topo_arg, element_index, element_index)
+
+        return element_node_count
+
+    def _make_side_neighbor_node_counts(self):
+        @cache.dynamic_func(suffix=self.name)
+        def side_neighbor_node_counts(
+            side_arg: self.geometry.SideArg,
+            element_index: ElementIndex,
+        ):
+            return 0, 0
+
+        return side_neighbor_node_counts
 
 
 class PointBasisSpace(BasisSpace):
@@ -437,12 +500,7 @@ class PointBasisSpace(BasisSpace):
     def __init__(self, quadrature: Quadrature):
         self._quadrature = quadrature
 
-        if quadrature.points_per_element() is None:
-            raise NotImplementedError("Varying number of points per element is not supported yet")
-
-        topology = DiscontinuousSpaceTopology(
-            geometry=quadrature.domain.geometry, nodes_per_element=quadrature.points_per_element()
-        )
+        topology = UnstructuredPointTopology(quadrature)
         super().__init__(topology)
 
         self.BasisArg = quadrature.Arg
@@ -464,7 +522,7 @@ class PointBasisSpace(BasisSpace):
             element_index: ElementIndex,
             node_index_in_elt: int,
         ):
-            return self._quadrature.point_coords(elt_arg, basis_arg, element_index, node_index_in_elt)
+            return self._quadrature.point_coords(elt_arg, basis_arg, element_index, element_index, node_index_in_elt)
 
         return node_coords_in_element
 
@@ -476,11 +534,13 @@ class PointBasisSpace(BasisSpace):
             element_index: ElementIndex,
             node_index_in_elt: int,
         ):
-            return self._quadrature.point_weight(elt_arg, basis_arg, element_index, node_index_in_elt)
+            return self._quadrature.point_weight(elt_arg, basis_arg, element_index, element_index, node_index_in_elt)
 
         return node_quadrature_weight
 
     def make_element_inner_weight(self):
+        _DIRAC_INTEGRATION_RADIUS = wp.constant(1.0e-6)
+
         @cache.dynamic_func(suffix=self.name)
         def element_inner_weight(
             elt_arg: self._quadrature.domain.ElementArg,
@@ -489,8 +549,10 @@ class PointBasisSpace(BasisSpace):
             coords: Coords,
             node_index_in_elt: int,
         ):
-            qp_coord = self._quadrature.point_coords(elt_arg, basis_arg, element_index, node_index_in_elt)
-            return wp.select(wp.length_sq(coords - qp_coord) < 0.001, 0.0, 1.0)
+            qp_coord = self._quadrature.point_coords(
+                elt_arg, basis_arg, element_index, element_index, node_index_in_elt
+            )
+            return wp.select(wp.length_sq(coords - qp_coord) < _DIRAC_INTEGRATION_RADIUS, 0.0, 1.0)
 
         return element_inner_weight
 

@@ -150,7 +150,7 @@ def add_example_test(
 
         # with wp.ScopedTimer(f"{name}_{sanitize_identifier(device)}"):
         # Run the script as a subprocess
-        result = subprocess.run(command, capture_output=True, text=True, env=env_vars)
+        result = subprocess.run(command, capture_output=True, text=True, env=env_vars, timeout=300)
 
         # Check the return code (0 is standard for success)
         test.assertEqual(
@@ -395,9 +395,15 @@ add_example_test(
     devices=test_devices,
     test_options={"num_frames": 101, "resolution": 10, "tri_mesh": True, "headless": True},
 )
+add_example_test(
+    TestFemExamples,
+    name="fem.example_streamlines",
+    devices=test_devices,
+    test_options={"headless": True},
+)
 
 if __name__ == "__main__":
     # force rebuild of all kernels
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
 
     unittest.main(verbosity=2, failfast=True)

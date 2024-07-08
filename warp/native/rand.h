@@ -13,13 +13,24 @@
 #define M_PI_F 3.14159265358979323846f
 #endif
 
-#ifndef LOG_EPSILON
-#define LOG_EPSILON 5.96e-8f
+/*
+ * Please first read the randf comment. randf returns values uniformly distributed in the range [0.f, 1.f - 2.^-24] in equal intervals of size 2.^-24.
+ * randn computes sqrt(-2.f * log(x)). For this to return a real value, log(x) < 0.f (we exclude 0.f as a precaution) and therefore x < 1.f. 
+ * For it to be finite, x > 0.f. So x must be in (0.f, 1.f). We define RANDN_EPSILON to be 2^-24 truncated to 5.96e-8f and add it to the range of randf,
+ * giving the domain [RANDN_EPSILON, 1.f - 2.^-24 + RAND_EPSILON] which satisfies the requirement that x is in (0.f, 1.f).
+ */
+
+#ifndef RANDN_EPSILON
+#define RANDN_EPSILON 5.96e-8f
 #endif
 
 namespace wp
 {
 
+/*
+ * Mark Jarzynski and Marc Olano, Hash Functions for GPU Rendering, Journal of Computer
+ * Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020
+ */
 inline CUDA_CALLABLE uint32 rand_pcg(uint32 state)
 {
     uint32 b = state * 747796405u + 2891336453u;
@@ -33,11 +44,20 @@ inline CUDA_CALLABLE uint32 rand_init(int seed, int offset) { return rand_pcg(ui
 inline CUDA_CALLABLE int randi(uint32& state) { state = rand_pcg(state); return int(state); }
 inline CUDA_CALLABLE int randi(uint32& state, int min, int max) { state = rand_pcg(state); return state % (max - min) + min; }
 
+/*
+ * We want to ensure randf adheres to a uniform distribution over [0,1). The set of all possible float32 (IEEE 754 standard) values is not uniformly distributed however.
+ * On the other hand, for a given sign and exponent, the mantissa of the float32 representation is uniformly distributed.
+ * Fixing an exponent of -1, we can craft a uniform distribution using the sign bit and 23-bit mantissa that spans the domain [0, 1) in 2^24 equal intervals.
+ * We can map 2^24 unique unsigned integers to these 2^24 intervals, so if our random number generator returns values in the range [0, 2^24) without bias,
+ * we can ensure that our float distribution in the range [0, 1) is also without bias.
+ * Our random number generator returns values in the range [0, 2^32), so we bit shift a random unsigned int 8 places, and then make the assumption that the remaining bit strings
+ * are uniformly distributed. After dividing by 2.^24, randf returns values uniformly distributed in the range [0.f, 1.f - 2.^-24].
+ */
 inline CUDA_CALLABLE float randf(uint32& state) { state = rand_pcg(state); return (state >> 8) * (1.0f / 16777216.0f); }
 inline CUDA_CALLABLE float randf(uint32& state, float min, float max) { return (max - min) * randf(state) + min; }
 
 // Box-Muller method
-inline CUDA_CALLABLE float randn(uint32& state) { return sqrt(-2.f * log(randf(state) + LOG_EPSILON)) * cos(2.f * M_PI_F * randf(state)); }
+inline CUDA_CALLABLE float randn(uint32& state) { return sqrt(-2.f * log(randf(state) + RANDN_EPSILON)) * cos(2.f * M_PI_F * randf(state)); }
 
 inline CUDA_CALLABLE void adj_rand_init(int seed, int& adj_seed, float adj_ret) {}
 inline CUDA_CALLABLE void adj_rand_init(int seed, int offset, int& adj_seed, int& adj_offset, float adj_ret) {}
@@ -56,6 +76,9 @@ inline CUDA_CALLABLE int sample_cdf(uint32& state, const array_t<float>& cdf)
     return lower_bound<float>(cdf, u);
 }
 
+/*
+ * uniform sampling methods for various geometries
+ */
 inline CUDA_CALLABLE vec2 sample_triangle(uint32& state)
 {
     float r = sqrt(randf(state));

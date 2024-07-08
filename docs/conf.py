@@ -20,8 +20,8 @@ import warp as wp  # noqa: E402
 # -- Project information -----------------------------------------------------
 
 project = "Warp"
-copyright = f"2022-{date.today().year}, NVIDIA"
-author = "NVIDIA"
+copyright = f"2022-{date.today().year}, NVIDIA Corporation"
+author = "NVIDIA Corporation"
 
 version = wp.__version__
 release = version

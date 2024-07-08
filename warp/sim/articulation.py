@@ -164,12 +164,10 @@ def invert_3d_rotational_dofs(
     return angles, velocities
 
 
-@wp.kernel
-def eval_articulation_fk(
-    articulation_start: wp.array(dtype=int),
-    articulation_mask: wp.array(
-        dtype=int
-    ),  # used to enable / disable FK for an articulation, if None then treat all as enabled
+@wp.func
+def eval_single_articulation_fk(
+    joint_start: int,
+    joint_end: int,
     joint_q: wp.array(dtype=float),
     joint_qd: wp.array(dtype=float),
     joint_q_start: wp.array(dtype=int),
@@ -187,16 +185,6 @@ def eval_articulation_fk(
     body_q: wp.array(dtype=wp.transform),
     body_qd: wp.array(dtype=wp.spatial_vector),
 ):
-    tid = wp.tid()
-
-    # early out if disabling FK for this articulation
-    if articulation_mask:
-        if articulation_mask[tid] == 0:
-            return
-
-    joint_start = articulation_start[tid]
-    joint_end = articulation_start[tid + 1]
-
     for i in range(joint_start, joint_end):
         parent = joint_parent[i]
         child = joint_child[i]
@@ -374,6 +362,118 @@ def eval_articulation_fk(
         body_qd[child] = v_wc
 
 
+# implementation where mask is an integer array
+@wp.kernel
+def eval_articulation_fk(
+    articulation_start: wp.array(dtype=int),
+    articulation_mask: wp.array(
+        dtype=int
+    ),  # used to enable / disable FK for an articulation, if None then treat all as enabled
+    joint_q: wp.array(dtype=float),
+    joint_qd: wp.array(dtype=float),
+    joint_q_start: wp.array(dtype=int),
+    joint_qd_start: wp.array(dtype=int),
+    joint_type: wp.array(dtype=int),
+    joint_parent: wp.array(dtype=int),
+    joint_child: wp.array(dtype=int),
+    joint_X_p: wp.array(dtype=wp.transform),
+    joint_X_c: wp.array(dtype=wp.transform),
+    joint_axis: wp.array(dtype=wp.vec3),
+    joint_axis_start: wp.array(dtype=int),
+    joint_axis_dim: wp.array(dtype=int, ndim=2),
+    body_com: wp.array(dtype=wp.vec3),
+    # outputs
+    body_q: wp.array(dtype=wp.transform),
+    body_qd: wp.array(dtype=wp.spatial_vector),
+):
+    tid = wp.tid()
+
+    # early out if disabling FK for this articulation
+    if articulation_mask:
+        if articulation_mask[tid] == 0:
+            return
+
+    joint_start = articulation_start[tid]
+    joint_end = articulation_start[tid + 1]
+
+    eval_single_articulation_fk(
+        joint_start,
+        joint_end,
+        joint_q,
+        joint_qd,
+        joint_q_start,
+        joint_qd_start,
+        joint_type,
+        joint_parent,
+        joint_child,
+        joint_X_p,
+        joint_X_c,
+        joint_axis,
+        joint_axis_start,
+        joint_axis_dim,
+        body_com,
+        # outputs
+        body_q,
+        body_qd,
+    )
+
+
+# overload where mask is a bool array
+@wp.kernel
+def eval_articulation_fk(
+    articulation_start: wp.array(dtype=int),
+    articulation_mask: wp.array(
+        dtype=bool
+    ),  # used to enable / disable FK for an articulation, if None then treat all as enabled
+    joint_q: wp.array(dtype=float),
+    joint_qd: wp.array(dtype=float),
+    joint_q_start: wp.array(dtype=int),
+    joint_qd_start: wp.array(dtype=int),
+    joint_type: wp.array(dtype=int),
+    joint_parent: wp.array(dtype=int),
+    joint_child: wp.array(dtype=int),
+    joint_X_p: wp.array(dtype=wp.transform),
+    joint_X_c: wp.array(dtype=wp.transform),
+    joint_axis: wp.array(dtype=wp.vec3),
+    joint_axis_start: wp.array(dtype=int),
+    joint_axis_dim: wp.array(dtype=int, ndim=2),
+    body_com: wp.array(dtype=wp.vec3),
+    # outputs
+    body_q: wp.array(dtype=wp.transform),
+    body_qd: wp.array(dtype=wp.spatial_vector),
+):
+    tid = wp.tid()
+
+    # early out if disabling FK for this articulation
+    if articulation_mask:
+        if not articulation_mask[tid]:
+            return
+
+    joint_start = articulation_start[tid]
+    joint_end = articulation_start[tid + 1]
+
+    eval_single_articulation_fk(
+        joint_start,
+        joint_end,
+        joint_q,
+        joint_qd,
+        joint_q_start,
+        joint_qd_start,
+        joint_type,
+        joint_parent,
+        joint_child,
+        joint_X_p,
+        joint_X_c,
+        joint_axis,
+        joint_axis_start,
+        joint_axis_dim,
+        body_com,
+        # outputs
+        body_q,
+        body_qd,
+    )
+
+
 # updates state body information based on joint coordinates
 def eval_fk(model, joint_q, joint_qd, mask, state):
     """
@@ -383,7 +483,7 @@ def eval_fk(model, joint_q, joint_qd, mask, state):
         model (Model): The model to evaluate.
         joint_q (array): Generalized joint position coordinates, shape [joint_coord_count], float
         joint_qd (array): Generalized joint velocity coordinates, shape [joint_dof_count], float
-        mask (array): The mask to use to enable / disable FK for an articulation. If None then treat all as enabled, shape [articulation_count], int
+        mask (array): The mask to use to enable / disable FK for an articulation. If None then treat all as enabled, shape [articulation_count], int/bool
         state (State): The state to update.
     """
     wp.launch(

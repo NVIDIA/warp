@@ -72,7 +72,7 @@ class GridBipolynomialSpaceTopology(Grid2DSpaceTopology):
 
         return element_node_index
 
-    def _node_grid(self):
+    def node_grid(self):
         res = self.geometry.res
 
         cell_coords = np.array(self._shape.LOBATTO_COORDS)[:-1]
@@ -81,13 +81,13 @@ class GridBipolynomialSpaceTopology(Grid2DSpaceTopology):
             cell_coords, reps=res[0]
         )
         grid_coords_x = np.append(grid_coords_x, res[0])
-        X = grid_coords_x * self._grid.cell_size[0] + self._grid.origin[0]
+        X = grid_coords_x * self.geometry.cell_size[0] + self.geometry.origin[0]
 
         grid_coords_y = np.repeat(np.arange(0, res[1], dtype=float), len(cell_coords)) + np.tile(
             cell_coords, reps=res[1]
         )
         grid_coords_y = np.append(grid_coords_y, res[1])
-        Y = grid_coords_y * self._grid.cell_size[1] + self._grid.origin[1]
+        Y = grid_coords_y * self.geometry.cell_size[1] + self.geometry.origin[1]
 
         return np.meshgrid(X, Y, indexing="ij")
 

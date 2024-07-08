@@ -327,5 +327,5 @@ add_function_test(TestGradCustoms, "test_custom_grad_no_return", test_custom_gra
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2, failfast=False)

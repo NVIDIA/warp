@@ -1650,9 +1650,10 @@ class array(Array):
             try:
                 # Performance note: try first, ask questions later
                 device = warp.context.runtime.get_device(device)
-            except:
-                warp.context.init()
-                raise
+            except Exception:
+                # Fallback to using the public API for retrieving the device,
+                # which takes take of initializing Warp if needed.
+                device = warp.context.get_device(device)
 
             if device.is_cuda:
                 desc = data.__cuda_array_interface__
@@ -1684,7 +1685,7 @@ class array(Array):
         if dtype == Any:
             # infer dtype from data
             try:
-                arr = np.array(data, copy=False, ndmin=1)
+                arr = np.asarray(data)
             except Exception as e:
                 raise RuntimeError(f"Failed to convert input data to an array: {e}") from e
             dtype = np_dtype_to_warp_type.get(arr.dtype)
@@ -1723,7 +1724,7 @@ class array(Array):
                     f"Failed to convert input data to an array with Warp type {warp.context.type_str(dtype)}"
                 )
             try:
-                arr = np.array(data, dtype=npdtype, copy=False, ndmin=1)
+                arr = np.asarray(data, dtype=npdtype)
             except Exception as e:
                 raise RuntimeError(f"Failed to convert input data to an array with type {npdtype}: {e}") from e
 
@@ -1779,9 +1780,10 @@ class array(Array):
         try:
             # Performance note: try first, ask questions later
             device = warp.context.runtime.get_device(device)
-        except:
-            warp.context.init()
-            raise
+        except Exception:
+            # Fallback to using the public API for retrieving the device,
+            # which takes take of initializing Warp if needed.
+            device = warp.context.get_device(device)
 
         if device.is_cpu and not copy and not pinned:
             # reference numpy memory directly
@@ -1805,9 +1807,10 @@ class array(Array):
         try:
             # Performance note: try first, ask questions later
             device = warp.context.runtime.get_device(device)
-        except:
-            warp.context.init()
-            raise
+        except Exception:
+            # Fallback to using the public API for retrieving the device,
+            # which takes take of initializing Warp if needed.
+            device = warp.context.get_device(device)
 
         check_array_shape(shape)
         ndim = len(shape)
@@ -1852,9 +1855,10 @@ class array(Array):
         try:
             # Performance note: try first, ask questions later
             device = warp.context.runtime.get_device(device)
-        except:
-            warp.context.init()
-            raise
+        except Exception:
+            # Fallback to using the public API for retrieving the device,
+            # which takes take of initializing Warp if needed.
+            device = warp.context.get_device(device)
 
         check_array_shape(shape)
         ndim = len(shape)
@@ -2160,6 +2164,9 @@ class array(Array):
         """
         Enables A @ B syntax for matrix multiplication
         """
+        if not is_array(other):
+            return NotImplemented
+
         if self.ndim != 2 or other.ndim != 2:
             raise RuntimeError(
                 "A has dim = {}, B has dim = {}. If multiplying with @, A and B must have dim = 2.".format(
@@ -2329,7 +2336,7 @@ class array(Array):
                 a = self.to("cpu", requires_grad=False)
             # convert through __array_interface__
             # Note: this handles arrays of structs using `descr`, so the result will be a structured NumPy array
-            return np.array(a, copy=False)
+            return np.asarray(a)
         else:
             # return an empty numpy array with the correct dtype and shape
             if isinstance(self.dtype, warp.codegen.Struct):
@@ -2837,6 +2844,11 @@ def array_type_id(a):
 
 
 class Bvh:
+    def __new__(cls, *args, **kwargs):
+        instance = super(Bvh, cls).__new__(cls)
+        instance.id = None
+        return instance
+
     def __init__(self, lowers, uppers):
         """Class representing a bounding volume hierarchy.
 
@@ -2848,8 +2860,6 @@ class Bvh:
             lowers (:class:`warp.array`): Array of lower bounds :class:`warp.vec3`
             uppers (:class:`warp.array`): Array of upper bounds :class:`warp.vec3`
         """
-
-        self.id = 0
 
         if len(lowers) != len(uppers):
             raise RuntimeError("Bvh the same number of lower and upper bounds must be provided")
@@ -2912,6 +2922,11 @@ class Mesh:
         "indices": Var("indices", array(dtype=int32)),
     }
 
+    def __new__(cls, *args, **kwargs):
+        instance = super(Mesh, cls).__new__(cls)
+        instance.id = None
+        return instance
+
     def __init__(self, points=None, indices=None, velocities=None, support_winding_number=False):
         """Class representing a triangle mesh.
 
@@ -2925,8 +2940,6 @@ class Mesh:
             velocities (:class:`warp.array`): Array of vertex velocities of type :class:`warp.vec3` (optional)
             support_winding_number (bool): If true the mesh will build additional datastructures to support `wp.mesh_query_point_sign_winding_number()` queries
         """
-
-        self.id = 0
 
         if points.device != indices.device:
             raise RuntimeError("Mesh points and indices must live on the same device")
@@ -2997,6 +3010,11 @@ class Volume:
     #: Enum value to specify trilinear interpolation during sampling
     LINEAR = constant(1)
 
+    def __new__(cls, *args, **kwargs):
+        instance = super(Volume, cls).__new__(cls)
+        instance.id = None
+        return instance
+
     def __init__(self, data: array, copy: bool = True):
         """Class representing a sparse grid.
 
@@ -3004,8 +3022,6 @@ class Volume:
             data (:class:`warp.array`): Array of bytes representing the volume in NanoVDB format
             copy (bool): Whether the incoming data will be copied or aliased
         """
-
-        self.id = 0
 
         # keep a runtime reference for orderly destruction
         self.runtime = warp.context.runtime
@@ -3851,7 +3867,8 @@ def matmul(
 
     # cpu fallback if no cuda devices found
     if device == "cpu":
-        d.assign(alpha * (a.numpy() @ b.numpy()) + beta * c.numpy())
+        np_dtype = warp_type_to_np_dtype[a.dtype]
+        d.assign(alpha * np.matmul(a.numpy(), b.numpy(), dtype=np_dtype) + beta * c.numpy())
         return
 
     cc = device.arch
@@ -3967,8 +3984,9 @@ def adj_matmul(
 
     # cpu fallback if no cuda devices found
     if device == "cpu":
-        adj_a.assign(alpha * np.matmul(adj_d.numpy(), b.numpy().transpose()) + adj_a.numpy())
-        adj_b.assign(alpha * (a.numpy().transpose() @ adj_d.numpy()) + adj_b.numpy())
+        np_dtype = warp_type_to_np_dtype[a.dtype]
+        adj_a.assign(alpha * np.matmul(adj_d.numpy(), b.numpy().transpose(), dtype=np_dtype) + adj_a.numpy())
+        adj_b.assign(alpha * np.matmul(a.numpy().transpose(), adj_d.numpy(), dtype=np_dtype) + adj_b.numpy())
         adj_c.assign(beta * adj_d.numpy() + adj_c.numpy())
         return
 
@@ -4134,7 +4152,8 @@ def batched_matmul(
 
     # cpu fallback if no cuda devices found
     if device == "cpu":
-        d.assign(alpha * np.matmul(a.numpy(), b.numpy()) + beta * c.numpy())
+        np_dtype = warp_type_to_np_dtype[a.dtype]
+        d.assign(alpha * np.matmul(a.numpy(), b.numpy(), dtype=np_dtype) + beta * c.numpy())
         return
 
     # handle case in which batch_count exceeds max_batch_count, which is a CUDA array size maximum
@@ -4278,8 +4297,9 @@ def adj_batched_matmul(
 
     # cpu fallback if no cuda devices found
     if device == "cpu":
-        adj_a.assign(alpha * np.matmul(adj_d.numpy(), b.numpy().transpose((0, 2, 1))) + adj_a.numpy())
-        adj_b.assign(alpha * np.matmul(a.numpy().transpose((0, 2, 1)), adj_d.numpy()) + adj_b.numpy())
+        np_dtype = warp_type_to_np_dtype[a.dtype]
+        adj_a.assign(alpha * np.matmul(adj_d.numpy(), b.numpy().transpose((0, 2, 1)), dtype=np_dtype) + adj_a.numpy())
+        adj_b.assign(alpha * np.matmul(a.numpy().transpose((0, 2, 1)), adj_d.numpy(), dtype=np_dtype) + adj_b.numpy())
         adj_c.assign(beta * adj_d.numpy() + adj_c.numpy())
         return
 
@@ -4483,6 +4503,11 @@ def adj_batched_matmul(
 
 
 class HashGrid:
+    def __new__(cls, *args, **kwargs):
+        instance = super(HashGrid, cls).__new__(cls)
+        instance.id = None
+        return instance
+
     def __init__(self, dim_x, dim_y, dim_z, device=None):
         """Class representing a hash grid object for accelerated point queries.
 
@@ -4495,8 +4520,6 @@ class HashGrid:
             dim_y (int): Number of cells in y-axis
             dim_z (int): Number of cells in z-axis
         """
-
-        self.id = 0
 
         self.runtime = warp.context.runtime
 
@@ -4555,6 +4578,11 @@ class HashGrid:
 
 
 class MarchingCubes:
+    def __new__(cls, *args, **kwargs):
+        instance = super(MarchingCubes, cls).__new__(cls)
+        instance.id = None
+        return instance
+
     def __init__(self, nx: int, ny: int, nz: int, max_verts: int, max_tris: int, device=None):
         """CUDA-based Marching Cubes algorithm to extract a 2D surface mesh from a 3D volume.
 

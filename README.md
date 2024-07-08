@@ -2,7 +2,7 @@
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/NVIDIA/warp?link=https%3A%2F%2Fgithub.com%2FNVIDIA%2Fwarp%2Fcommits%2Fmain)
 [![Downloads](https://static.pepy.tech/badge/warp-lang/month)](https://pepy.tech/project/warp-lang)
 [![codecov](https://codecov.io/github/NVIDIA/warp/graph/badge.svg?token=7O1KSM79FG)](https://codecov.io/github/NVIDIA/warp)
-![GitHub - Build and Test](https://github.com/NVIDIA/warp/actions/workflows/build-and-test.yml/badge.svg)
+![GitHub - CI](https://github.com/NVIDIA/warp/actions/workflows/ci.yml/badge.svg)
 [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?logo=discord&logoColor=white)](https://discord.com/invite/nvidiaomniverse)
 
 # NVIDIA Warp
@@ -28,7 +28,9 @@ GPU support requires a CUDA-capable NVIDIA GPU and driver (minimum GeForce GTX 9
 
 The easiest way to install Warp is from [PyPI](https://pypi.org/project/warp-lang/):
 
-    pip install warp-lang
+```text
+pip install warp-lang
+```
 
 You can also use `pip install warp-lang[extras]` to install additional dependencies for running examples and USD-related features.
 
@@ -37,7 +39,9 @@ We provide binaries built with the CUDA 12.5 runtime on the [GitHub Releases](ht
 Copy the URL of the appropriate wheel file (`warp-lang-{ver}+cu12-py3-none-{platform}.whl`) and pass it to
 the `pip install` command, e.g.
 
-    pip install https://github.com/NVIDIA/warp/releases/download/v1.2.0/warp_lang-1.2.0+cu12-py3-none-manylinux2014_x86_64.whl
+```text
+pip install https://github.com/NVIDIA/warp/releases/download/v1.2.0/warp_lang-1.2.0+cu12-py3-none-manylinux2014_x86_64.whl
+```
 
 The `--force-reinstall` option may need to be used to overwrite a previous installation.
 
@@ -76,7 +80,10 @@ print(lengths)
 
 ## Running Examples
 
-The `examples` directory contains a number of scripts that show how to implement different simulation methods using the Warp API. Most examples will generate USD files containing time-sampled animations (stored in the current working directory). Before running examples, users should ensure that the ``usd-core``, ``matplotlib``, and ``pyglet`` packages are installed using:
+The [warp/examples](./warp/examples/) directory contains a number of scripts categorized under different subdirectories
+that show how to implement different simulation methods using the Warp API.
+Most examples will generate USD files containing time-sampled animations (stored in the current working directory).
+Before running examples, users should ensure that the ``usd-core``, ``matplotlib``, and ``pyglet`` packages are installed using:
 
     pip install usd-core matplotlib pyglet
 
@@ -96,8 +103,7 @@ Built-in unit tests can be run from the command-line as follows:
 
     python -m warp.tests
 
-
-### examples/core
+### warp/examples/core
 
 <table>
     <tbody>
@@ -140,40 +146,38 @@ Built-in unit tests can be run from the command-line as follows:
     </tbody>
 </table>
 
-
-### examples/fem
+### warp/examples/fem
 
 <table>
     <tbody>
         <tr>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_apic_fluid.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_apic_fluid.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_convection_diffusion.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_convection_diffusion.png"></a></td>
             <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_diffusion_3d.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_diffusion_3d.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_diffusion.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_diffusion.png"></a></td>
-        </tr>
-        <tr>
-            <td align="center">apic fluid</td>
-            <td align="center">convection diffusion</td>
-            <td align="center">diffusion 3d</td>
-            <td align="center">diffusion</td>
-        </tr>
-        <tr>
             <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_mixed_elasticity.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_mixed_elasticity.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_navier_stokes.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_navier_stokes.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_stokes_transfer.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_stokes_transfer.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_stokes.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_stokes.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_apic_fluid.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_apic_fluid.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_streamlines.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_streamlines.png"></a></td>
         </tr>
         <tr>
+            <td align="center">diffusion 3d</td>
             <td align="center">mixed elasticity</td>
+            <td align="center">apic fluid</td>
+            <td align="center">streamlines</td>
+        </tr>
+        <tr>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_convection_diffusion.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_convection_diffusion.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_navier_stokes.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_navier_stokes.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_burgers.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_burgers.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_deformed_geometry.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_deformed_geometry.png"></a></td>
+        </tr>
+        <tr>
+            <td align="center">convection diffusion</td>
             <td align="center">navier stokes</td>
-            <td align="center">stokes transfer</td>
-            <td align="center">stokes</td>
+            <td align="center">burgers</td>
+            <td align="center">deformed geometry</td>
         </tr>
     </tbody>
 </table>
 
-
-### examples/optim
+### warp/examples/optim
 
 <table>
     <tbody>
@@ -204,8 +208,7 @@ Built-in unit tests can be run from the command-line as follows:
     </tbody>
 </table>
 
-
-### examples/sim
+### warp/examples/sim
 
 <table>
     <tbody>
@@ -247,7 +250,6 @@ Built-in unit tests can be run from the command-line as follows:
         </tr>
     </tbody>
 </table>
-
 
 ## Building
 

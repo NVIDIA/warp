@@ -266,7 +266,10 @@ devices = get_test_devices()
 
 
 class TestMesh(unittest.TestCase):
-    pass
+    def test_mesh_new_del(self):
+        # test the scenario in which a mesh is created but not initialized before gc
+        instance = wp.Mesh.__new__(wp.Mesh)
+        instance.__del__()
 
 
 add_function_test(TestMesh, "test_mesh_read_properties", test_mesh_read_properties, devices=devices)
@@ -277,5 +280,5 @@ add_function_test(TestMesh, "test_mesh_exceptions", test_mesh_exceptions, device
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

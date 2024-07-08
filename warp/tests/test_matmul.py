@@ -72,17 +72,19 @@ class gemm_test_bed_runner:
         ones = wp.zeros_like(D)
         ones.fill_(1.0)
 
+        np_dtype = wp.types.warp_type_to_np_dtype[self.dtype]
+
         if batch_count == 1:
             tape = wp.Tape()
             with tape:
                 wp.matmul(A, B, C, D, alpha, beta, False)
             tape.backward(grads={D: ones})
 
-            D_np = alpha * (A.numpy() @ B.numpy()) + beta * C.numpy()
+            D_np = alpha * np.matmul(A.numpy(), B.numpy(), dtype=np_dtype) + beta * C.numpy()
             assert_np_equal(D.numpy(), D_np)
 
-            adj_A_np = alpha * np.matmul(ones.numpy(), B.numpy().transpose())
-            adj_B_np = alpha * (A.numpy().transpose() @ ones.numpy())
+            adj_A_np = alpha * np.matmul(ones.numpy(), B.numpy().transpose(), dtype=np_dtype)
+            adj_B_np = alpha * np.matmul(A.numpy().transpose(), ones.numpy(), dtype=np_dtype)
             adj_C_np = beta * ones.numpy()
 
         else:
@@ -91,11 +93,11 @@ class gemm_test_bed_runner:
                 wp.batched_matmul(A, B, C, D, alpha, beta, False)
             tape.backward(grads={D: ones})
 
-            D_np = alpha * np.matmul(A.numpy(), B.numpy()) + beta * C.numpy()
+            D_np = alpha * np.matmul(A.numpy(), B.numpy(), dtype=np_dtype) + beta * C.numpy()
             assert_np_equal(D.numpy(), D_np)
 
-            adj_A_np = alpha * np.matmul(ones.numpy(), B.numpy().transpose((0, 2, 1)))
-            adj_B_np = alpha * np.matmul(A.numpy().transpose((0, 2, 1)), ones.numpy())
+            adj_A_np = alpha * np.matmul(ones.numpy(), B.numpy().transpose((0, 2, 1)), dtype=np_dtype)
+            adj_B_np = alpha * np.matmul(A.numpy().transpose((0, 2, 1)), ones.numpy(), dtype=np_dtype)
             adj_C_np = beta * ones.numpy()
 
         assert_np_equal(A.grad.numpy(), adj_A_np)
@@ -103,9 +105,9 @@ class gemm_test_bed_runner:
         assert_np_equal(C.grad.numpy(), adj_C_np)
 
     def run(self):
-        Ms = [64, 128, 512]
-        Ns = [64, 128, 512]
-        Ks = [64, 128, 512]
+        Ms = [64, 128, 256]
+        Ns = [64, 128, 256]
+        Ks = [64, 128, 256]
         batch_counts = [1, 4]
         betas = [0.0, 1.0]
         alpha = 1.0
@@ -188,6 +190,8 @@ class gemm_test_bed_runner_transpose:
         ones3 = wp.zeros_like(D3)
         ones3.fill_(1.0)
 
+        np_dtype = wp.types.warp_type_to_np_dtype[self.dtype]
+
         if batch_count == 1:
             ATT1 = AT1.transpose([1, 0])
             BTT1 = BT1.transpose([1, 0])
@@ -200,13 +204,13 @@ class gemm_test_bed_runner_transpose:
                 wp.matmul(ATT2, BTT2, C3, D3, alpha, beta, False)
             tape.backward(grads={D1: ones1, D2: ones2, D3: ones3})
 
-            D_np = alpha * (A.numpy() @ B.numpy()) + beta * C1.numpy()
+            D_np = alpha * np.matmul(A.numpy(), B.numpy(), dtype=np_dtype) + beta * C1.numpy()
             assert_np_equal(D1.numpy(), D_np)
             assert_np_equal(D2.numpy(), D_np)
             assert_np_equal(D3.numpy(), D_np)
 
-            adj_A_np = alpha * (ones1.numpy() @ B.numpy().transpose())
-            adj_B_np = alpha * (A.numpy().transpose() @ ones1.numpy())
+            adj_A_np = alpha * np.matmul(ones1.numpy(), B.numpy().transpose(), dtype=np_dtype)
+            adj_B_np = alpha * np.matmul(A.numpy().transpose(), ones1.numpy(), dtype=np_dtype)
             adj_C_np = beta * ones1.numpy()
 
         else:
@@ -221,13 +225,13 @@ class gemm_test_bed_runner_transpose:
                 wp.batched_matmul(ATT2, BTT2, C3, D3, alpha, beta, False)
             tape.backward(grads={D1: ones1, D2: ones2, D3: ones3})
 
-            D_np = alpha * np.matmul(A.numpy(), B.numpy()) + beta * C1.numpy()
+            D_np = alpha * np.matmul(A.numpy(), B.numpy(), dtype=np_dtype) + beta * C1.numpy()
             assert_np_equal(D1.numpy(), D_np)
             assert_np_equal(D2.numpy(), D_np)
             assert_np_equal(D3.numpy(), D_np)
 
-            adj_A_np = alpha * np.matmul(ones1.numpy(), B.numpy().transpose((0, 2, 1)))
-            adj_B_np = alpha * np.matmul(A.numpy().transpose((0, 2, 1)), ones1.numpy())
+            adj_A_np = alpha * np.matmul(ones1.numpy(), B.numpy().transpose((0, 2, 1)), dtype=np_dtype)
+            adj_B_np = alpha * np.matmul(A.numpy().transpose((0, 2, 1)), ones1.numpy(), dtype=np_dtype)
             adj_C_np = beta * ones1.numpy()
 
         assert_np_equal(A.grad.numpy(), adj_A_np)
@@ -494,5 +498,5 @@ add_function_test(TestMatmul, "test_cuda_graph_capture", test_cuda_graph_capture
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2, failfast=False)

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "warp-lang"
 requires-python = ">=3.7" # 3.9 recommended
-authors = [{ name = "NVIDIA", email = "mmacklin@nvidia.com" }]
+authors = [{ name = "NVIDIA Corporation", email = "mmacklin@nvidia.com" }]
 description = "A Python framework for high-performance simulation and graphics programming"
 license = { text = "NVIDIA Software License" }
 classifiers = [
@@ -63,6 +63,7 @@ ignore = [
     "F403", # Allow wildcard imports
     "F405", # Related to use of wildcard imports
     "F811", # Warp often uses overloads
+    "E721", # Warp often uses == in float and int type comparisons
 ]
 
 [tool.ruff.lint.per-file-ignores]

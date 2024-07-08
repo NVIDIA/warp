@@ -120,5 +120,5 @@ add_function_test(TestMath, "test_scalar_math", test_scalar_math, devices=device
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

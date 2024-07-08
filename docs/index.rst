@@ -21,8 +21,8 @@ The easiest way to install Warp is from `PyPI <https://pypi.org/project/warp-lan
 
     $ pip install warp-lang
 
-The binaries hosted on PyPI are currently built with the CUDA 11.8 runtime.
-Users requiring a newer CUDA runtime in Warp can build Warp from source or
+The binaries hosted on PyPI are currently built with the CUDA 12.5 runtime.
+Users requiring an older CUDA runtime in Warp can build Warp from source or
 install wheels hosted on GitHub as described in :ref:`GitHub Installation`.
 
 Basic Example
@@ -60,14 +60,14 @@ An example first program that computes the lengths of random 3D vectors is given
 Additional Examples
 -------------------
 
-The `examples <https://github.com/NVIDIA/warp/tree/main/warp/examples>`_ directory in
-the Github repository contains a number of scripts that show how to
-implement different simulation methods using the Warp API. Most examples
+The `warp/examples <https://github.com/NVIDIA/warp/tree/main/warp/examples>`_ directory in
+the Github repository contains a number of scripts categorized under different subdirectories
+that show how to implement different simulation methods using the Warp API. Most examples
 will generate USD files containing time-sampled animations in the 
-same directory as the example. Before running examples users should
-ensure that the ``usd-core`` package is installed using::
+same directory as the example.
+Before running examples, users should ensure that the ``usd-core``, ``matplotlib``, and ``pyglet`` packages are installed using::
 
-    pip install usd-core
+    pip install usd-core matplotlib pyglet
 
 Examples can be run from the command-line as follows::
 
@@ -84,8 +84,8 @@ Built-in unit tests can be run from the command-line as follows::
 
     python -m warp.tests
 
-examples/core
-^^^^^^^^^^^^^
+warp/examples/core
+^^^^^^^^^^^^^^^^^^
 
 .. list-table::
     :class: gallery
@@ -126,8 +126,8 @@ examples/core
       - wave
       -
 
-examples/fem
-^^^^^^^^^^^^
+warp/examples/fem
+^^^^^^^^^^^^^^^^^
 
 .. list-table::
     :class: gallery
@@ -157,8 +157,8 @@ examples/fem
       - stokes transfer
       - stokes
 
-examples/optim
-^^^^^^^^^^^^^^
+warp/examples/optim
+^^^^^^^^^^^^^^^^^^^
 
 .. list-table::
     :class: gallery
@@ -188,8 +188,8 @@ examples/optim
       - trajectory
       - walker
 
-examples/sim
-^^^^^^^^^^^^
+warp/examples/sim
+^^^^^^^^^^^^^^^^^
 
 .. list-table::
     :class: gallery

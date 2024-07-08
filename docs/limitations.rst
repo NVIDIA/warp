@@ -40,12 +40,16 @@ This is not always possible for kernels launched with multi-dimensional grid bou
 `hardware limitations <https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications-technical-specifications-per-compute-capability>`_
 on CUDA block dimensions.
 
-Warp will automatically fallback to using
+Warp will automatically fall back to using
 `grid-stride loops <https://developer.nvidia.com/blog/cuda-pro-tip-write-flexible-kernels-grid-stride-loops/>`_ when
-it is not possible for a CUDA thread to process only one element from the Warp grid
+it is not possible for a CUDA thread to process only one element from the Warp grid.
 When this happens, some CUDA threads may process more than one element from the Warp grid.
 Users can also set the ``max_blocks`` parameter to fine-tune the grid-striding behavior of kernels, even for kernels that are otherwise
 able to process one Warp-grid element per CUDA thread. 
+
+Differentiability
+-----------------
+Please see the :ref:`Limitations and Workarounds <limitations_and_workarounds>` section in the Differentiability page for auto-differentiation limitations.
 
 Arrays
 ------
@@ -104,7 +108,7 @@ The behavior of the modulus operator in a Warp kernel follows that of C++11: The
 Power Operator
 """"""""""""""
 
-The power operator (``**``) in Warp kernels only works on floating-point numbers (also see :func:`wp.pow <pow>`).
+The power operator (``**``) in Warp kernels only works on floating-point numbers (also see :func:`wp.pow() <pow>`).
 In Python, the power operator can also be used on integers.
 
 Inverse Sine and Cosine

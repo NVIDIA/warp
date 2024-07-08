@@ -464,6 +464,16 @@ class TestStreams(unittest.TestCase):
             # check results
             assert_np_equal(c0.numpy(), np.full(N, fill_value=2 * num_iters))
 
+    def test_stream_new_del(self):
+        # test the scenario in which a Stream is created but not initialized before gc
+        instance = wp.Stream.__new__(wp.Stream)
+        instance.__del__()
+
+    def test_event_new_del(self):
+        # test the scenario in which an Event is created but not initialized before gc
+        instance = wp.Event.__new__(wp.Event)
+        instance.__del__()
+
 
 add_function_test(TestStreams, "test_stream_set", test_stream_set, devices=devices)
 add_function_test(TestStreams, "test_stream_arg_explicit_sync", test_stream_arg_explicit_sync, devices=devices)
@@ -480,5 +490,5 @@ add_function_test(TestStreams, "test_event_synchronize", test_event_synchronize,
 add_function_test(TestStreams, "test_event_elapsed_time", test_event_elapsed_time, devices=devices)
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

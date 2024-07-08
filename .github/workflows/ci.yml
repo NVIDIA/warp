@@ -5,7 +5,7 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-name: Build and Test Warp
+name: CI
 
 on:
   workflow_call:
@@ -120,6 +120,7 @@ jobs:
           path: ./warp/bin/
       - name: Install Dependencies
         run: |
+          python -m pip cache purge
           python -m pip install --upgrade pip
           pip install --no-cache-dir --upgrade numpy coverage[toml] usd-core
           pip install --no-cache-dir .
@@ -160,6 +161,7 @@ jobs:
           path: ./warp/bin/
       - name: Install Dependencies
         run: |
+          python -m pip cache purge
           python -m pip install --upgrade pip
           pip install --no-cache-dir --upgrade numpy coverage[toml] usd-core
           pip install --no-cache-dir .
@@ -200,6 +202,7 @@ jobs:
           path: ./warp/bin/
       - name: Install Dependencies
         run: |
+          python -m pip cache purge
           python -m pip install --upgrade pip
           pip install --no-cache-dir --upgrade numpy coverage[toml] usd-core
           pip install --no-cache-dir .

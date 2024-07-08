@@ -72,5 +72,5 @@ add_function_test(TestPinned, "test_pinned", test_pinned, devices=devices)
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

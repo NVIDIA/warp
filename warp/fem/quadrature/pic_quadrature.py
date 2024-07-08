@@ -8,8 +8,6 @@ from warp.fem.utils import compress_node_indices
 
 from .quadrature import Quadrature
 
-wp.set_module_options({"enable_backward": False})
-
 
 class PicQuadrature(Quadrature):
     """Particle-based quadrature formula, using a global set of points unevenly spread out over geometry elements.
@@ -23,6 +21,7 @@ class PicQuadrature(Quadrature):
          define a global :meth:`Geometry.cell_lookup` method; currently this is only available for :class:`Grid2D` and :class:`Grid3D`.
         measures: Array containing the measure (area/volume) of each particle, used to defined the integration weights.
          If ``None``, defaults to the cell measure divided by the number of particles in the cell.
+        requires_grad: Whether gradients should be allocated for the computed quantities
         temporary_store: shared pool from which to allocate temporary arrays
     """
 
@@ -37,11 +36,14 @@ class PicQuadrature(Quadrature):
             ],
         ],
         measures: Optional["wp.array(dtype=float)"] = None,
+        requires_grad: bool = False,
         temporary_store: TemporaryStore = None,
     ):
         super().__init__(domain)
 
+        self._requires_grad = requires_grad
         self._bin_particles(positions, measures, temporary_store)
+        self._max_particles_per_cell: int = None
 
     @property
     def name(self):
@@ -82,22 +84,40 @@ class PicQuadrature(Quadrature):
         """Number of cells containing at least one particle"""
         return self._cell_count
 
+    def max_points_per_element(self):
+        if self._max_particles_per_cell is None:
+            max_ppc = wp.zeros(shape=(1,), dtype=int, device=self._cell_particle_offsets.array.device)
+            wp.launch(
+                PicQuadrature._max_particles_per_cell_kernel,
+                self._cell_particle_offsets.array.shape[0] - 1,
+                device=max_ppc.device,
+                inputs=[self._cell_particle_offsets.array, max_ppc],
+            )
+            self._max_particles_per_cell = int(max_ppc.numpy()[0])
+        return self._max_particles_per_cell
+
     @wp.func
-    def point_count(elt_arg: Any, qp_arg: Arg, element_index: ElementIndex):
+    def point_count(elt_arg: Any, qp_arg: Arg, domain_element_index: ElementIndex, element_index: ElementIndex):
         return qp_arg.cell_particle_offsets[element_index + 1] - qp_arg.cell_particle_offsets[element_index]
 
     @wp.func
-    def point_coords(elt_arg: Any, qp_arg: Arg, element_index: ElementIndex, index: int):
+    def point_coords(
+        elt_arg: Any, qp_arg: Arg, domain_element_index: ElementIndex, element_index: ElementIndex, index: int
+    ):
         particle_index = qp_arg.cell_particle_indices[qp_arg.cell_particle_offsets[element_index] + index]
         return qp_arg.particle_coords[particle_index]
 
     @wp.func
-    def point_weight(elt_arg: Any, qp_arg: Arg, element_index: ElementIndex, index: int):
+    def point_weight(
+        elt_arg: Any, qp_arg: Arg, domain_element_index: ElementIndex, element_index: ElementIndex, index: int
+    ):
         particle_index = qp_arg.cell_particle_indices[qp_arg.cell_particle_offsets[element_index] + index]
         return qp_arg.particle_fraction[particle_index]
 
     @wp.func
-    def point_index(elt_arg: Any, qp_arg: Arg, element_index: ElementIndex, index: int):
+    def point_index(
+        elt_arg: Any, qp_arg: Arg, domain_element_index: ElementIndex, element_index: ElementIndex, index: int
+    ):
         particle_index = qp_arg.cell_particle_indices[qp_arg.cell_particle_offsets[element_index] + index]
         return particle_index
 
@@ -158,7 +178,7 @@ class PicQuadrature(Quadrature):
             cell_index = cell_index_temp.array
 
             self._particle_coords_temp = borrow_temporary(
-                temporary_store, shape=positions.shape, dtype=Coords, device=device
+                temporary_store, shape=positions.shape, dtype=Coords, device=device, requires_grad=self._requires_grad
             )
             self._particle_coords = self._particle_coords_temp.array
 
@@ -183,7 +203,7 @@ class PicQuadrature(Quadrature):
             self._particle_coords_temp = None
 
         self._cell_particle_offsets, self._cell_particle_indices, self._cell_count, _ = compress_node_indices(
-            self.domain.geometry_element_count(), cell_index
+            self.domain.geometry_element_count(), cell_index, return_unique_nodes=True, temporary_store=temporary_store
         )
 
         self._compute_fraction(cell_index, measures, temporary_store)
@@ -192,7 +212,7 @@ class PicQuadrature(Quadrature):
         device = cell_index.device
 
         self._particle_fraction_temp = borrow_temporary(
-            temporary_store, shape=cell_index.shape, dtype=float, device=device
+            temporary_store, shape=cell_index.shape, dtype=float, device=device, requires_grad=self._requires_grad
         )
         self._particle_fraction = self._particle_fraction_temp.array
 
@@ -241,3 +261,9 @@ class PicQuadrature(Quadrature):
                 ],
                 device=device,
             )
+
+    @wp.kernel
+    def _max_particles_per_cell_kernel(offsets: wp.array(dtype=int), max_count: wp.array(dtype=int)):
+        cell = wp.tid()
+        particle_count = offsets[cell + 1] - offsets[cell]
+        wp.atomic_max(max_count, 0, particle_count)

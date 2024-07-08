@@ -15,23 +15,30 @@ Kernels are launched with the :func:`wp.launch() <launch>` function on a specifi
 
     wp.launch(simple_kernel, dim=1024, inputs=[a, b, c], device="cuda")
 
-Kernels may be launched with multi-dimensional grid bounds. In this case threads are not assigned a single index,
+Note that all the kernel inputs must live on the target device or a runtime exception will be raised.
+Kernels may be launched with multi-dimensional grid bounds. In this case, threads are not assigned a single index,
 but a coordinate in an n-dimensional grid, e.g.::
 
     wp.launch(complex_kernel, dim=(128, 128, 3), ...)
 
-Launches a 3D grid of threads with dimension 128 x 128 x 3. To retrieve the 3D index for each thread use the following syntax::
+Launches a 3D grid of threads with dimension 128 x 128 x 3. To retrieve the 3D index for each thread, use the following syntax::
 
     i,j,k = wp.tid()
 
 .. note::
-    Currently kernels launched on CPU devices will be executed in serial.
+    Currently, kernels launched on CPU devices will be executed in serial.
     Kernels launched on CUDA devices will be launched in parallel with a fixed block-size.
 
-.. note::
-    Note that all the kernel inputs must live on the target device, or a runtime exception will be raised.
+In the Warp :ref:`Compilation Model`, kernels are just-in-time compiled into dynamic libraries and PTX using
+C++/CUDA as an intermediate representation.
+To avoid excessive runtime recompilation of kernel code, these files are stored in a cache directory
+named with a module-dependent hash to allow for the reuse of previously compiled modules.
+The location of the kernel cache is printed when Warp is initialized.
+:func:`wp.clear_kernel_cache() <clear_kernel_cache>` can be used to clear the kernel cache of previously
+generated compilation artifacts as Warp does not automatically try to keep the cache below a certain size.
 
 .. autofunction:: launch
+.. autofunction:: clear_kernel_cache
 
 .. _Runtime Kernel Creation:
 

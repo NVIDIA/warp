@@ -931,7 +931,10 @@ devices = get_test_devices()
 
 
 class TestFabricArray(unittest.TestCase):
-    pass
+    def test_fabricarray_new_del(self):
+        # test the scenario in which a fabricarray is created but not initialized before gc
+        instance = wp.fabricarray.__new__(wp.fabricarray)
+        instance.__del__()
 
 
 # fabric arrays
@@ -948,5 +951,5 @@ add_function_test(TestFabricArray, "test_fabricarrayarray", test_fabricarrayarra
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

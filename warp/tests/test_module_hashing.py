@@ -66,6 +66,65 @@ def fn(value: int):
     wp.print(value + 1)
 """
 
+FUNC_GENERIC_1 = """# -*- coding: utf-8 -*-
+import warp as wp
+
+from typing import Any
+
+@wp.func
+def generic_fn(x: Any):
+    return x * x
+
+@wp.func
+def generic_fn(x: Any, y: Any):
+    return x * y
+"""
+
+# should be same hash as FUNC_GENERIC_1
+FUNC_GENERIC_2 = """# -*- coding: utf-8 -*-
+import warp as wp
+
+from typing import Any
+
+@wp.func
+def generic_fn(x: Any):
+    return x * x
+
+@wp.func
+def generic_fn(x: Any, y: Any):
+    return x * y
+"""
+
+# should be different hash than FUNC_GENERIC_1 (first overload is different)
+FUNC_GENERIC_3 = """# -*- coding: utf-8 -*-
+import warp as wp
+
+from typing import Any
+
+@wp.func
+def generic_fn(x: Any):
+    return x + x
+
+@wp.func
+def generic_fn(x: Any, y: Any):
+    return x * y
+"""
+
+# should be different hash than FUNC_GENERIC_1 (second overload is different)
+FUNC_GENERIC_4 = """# -*- coding: utf-8 -*-
+import warp as wp
+
+from typing import Any
+
+@wp.func
+def generic_fn(x: Any):
+    return x * x
+
+@wp.func
+def generic_fn(x: Any, y: Any):
+    return x + y
+"""
+
 
 def load_code_as_module(code, name):
     file, file_path = tempfile.mkstemp(suffix=".py")
@@ -99,13 +158,30 @@ def test_function_overload_hashing(test, device):
     test.assertNotEqual(hash4, hash1)
 
 
+def test_function_generic_overload_hashing(test, device):
+    m1 = load_code_as_module(FUNC_GENERIC_1, "func_generic_1")
+    m2 = load_code_as_module(FUNC_GENERIC_2, "func_generic_2")
+    m3 = load_code_as_module(FUNC_GENERIC_3, "func_generic_3")
+    m4 = load_code_as_module(FUNC_GENERIC_4, "func_generic_4")
+
+    hash1 = m1.hash_module()
+    hash2 = m2.hash_module()
+    hash3 = m3.hash_module()
+    hash4 = m4.hash_module()
+
+    test.assertEqual(hash2, hash1)
+    test.assertNotEqual(hash3, hash1)
+    test.assertNotEqual(hash4, hash1)
+
+
 class TestModuleHashing(unittest.TestCase):
     pass
 
 
 add_function_test(TestModuleHashing, "test_function_overload_hashing", test_function_overload_hashing)
+add_function_test(TestModuleHashing, "test_function_generic_overload_hashing", test_function_generic_overload_hashing)
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

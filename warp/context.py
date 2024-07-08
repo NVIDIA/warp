@@ -347,7 +347,7 @@ class Function:
 def call_builtin(func: Function, *params) -> Tuple[bool, Any]:
     uses_non_warp_array_type = False
 
-    warp.context.init()
+    init()
 
     # Retrieve the built-in function from Warp's dll.
     c_func = getattr(warp.context.runtime.core, func.mangled_name)
@@ -1488,28 +1488,25 @@ class Module:
 
                 # functions source
                 for function in module.functions.values():
-                    # include all overloads
-                    for sig, func in function.user_overloads.items():
+                    # include all concrete and generic overloads
+                    overloads = itertools.chain(function.user_overloads.items(), function.user_templates.items())
+                    for sig, func in overloads:
                         # signature
                         ch.update(bytes(sig, "utf-8"))
 
                         # source
-                        s = func.adj.source
-                        ch.update(bytes(s, "utf-8"))
+                        ch.update(bytes(func.adj.source, "utf-8"))
 
                         if func.custom_grad_func:
-                            s = func.custom_grad_func.adj.source
-                            ch.update(bytes(s, "utf-8"))
+                            ch.update(bytes(func.custom_grad_func.adj.source, "utf-8"))
                         if func.custom_replay_func:
-                            s = func.custom_replay_func.adj.source
+                            ch.update(bytes(func.custom_replay_func.adj.source, "utf-8"))
                         if func.replay_snippet:
-                            s = func.replay_snippet
+                            ch.update(bytes(func.replay_snippet, "utf-8"))
                         if func.native_snippet:
-                            s = func.native_snippet
-                            ch.update(bytes(s, "utf-8"))
+                            ch.update(bytes(func.native_snippet, "utf-8"))
                         if func.adj_native_snippet:
-                            s = func.adj_native_snippet
-                            ch.update(bytes(s, "utf-8"))
+                            ch.update(bytes(func.adj_native_snippet, "utf-8"))
 
                         # Populate constants referenced in this function
                         if func.adj:
@@ -1620,7 +1617,7 @@ class Module:
 
         with ScopedTimer(
             f"Module {self.name} {module_hash.hex()[:7]} load on device '{device}'", active=not warp.config.quiet
-        ):
+        ) as module_load_timer:
             # -----------------------------------------------------------
             # determine output paths
             if device.is_cpu:
@@ -1667,6 +1664,8 @@ class Module:
                 # dir may exist from previous attempts / runs / archs
                 Path(build_dir).mkdir(parents=True, exist_ok=True)
 
+                module_load_timer.extra_msg = " (compiled)"  # For wp.ScopedTimer informational purposes
+
                 # build CPU
                 if device.is_cpu:
                     # build
@@ -1693,6 +1692,7 @@ class Module:
 
                     except Exception as e:
                         self.cpu_build_failed = True
+                        module_load_timer.extra_msg = " (error)"
                         raise (e)
 
                 elif device.is_cuda:
@@ -1721,6 +1721,7 @@ class Module:
 
                     except Exception as e:
                         self.cuda_build_failed = True
+                        module_load_timer.extra_msg = " (error)"
                         raise (e)
 
                 # -----------------------------------------------------------
@@ -1754,6 +1755,8 @@ class Module:
                     except Exception as e:
                         # We don't need source_code_path to be copied successfully to proceed, so warn and keep running
                         warp.utils.warn(f"Exception when renaming {source_code_path}: {e}")
+            else:
+                module_load_timer.extra_msg = " (cached)"  # For wp.ScopedTimer informational purposes
 
             # -----------------------------------------------------------
             # Load CPU or CUDA binary
@@ -1766,6 +1769,7 @@ class Module:
                 if cuda_module is not None:
                     self.cuda_modules[device.context] = cuda_module
                 else:
+                    module_load_timer.extra_msg = " (error)"
                     raise Exception(f"Failed to load CUDA module '{self.name}'")
 
             if build_dir:
@@ -1936,10 +1940,13 @@ class ContextGuard:
 
 
 class Stream:
-    def __init__(self, device=None, **kwargs):
-        self.cuda_stream = None
-        self.owner = False
+    def __new__(cls, *args, **kwargs):
+        instance = super(Stream, cls).__new__(cls)
+        instance.cuda_stream = None
+        instance.owner = False
+        return instance
 
+    def __init__(self, device=None, **kwargs):
         # event used internally for synchronization (cached to avoid creating temporary events)
         self._cached_event = None
 
@@ -2015,9 +2022,12 @@ class Event:
         BLOCKING_SYNC = 0x1
         DISABLE_TIMING = 0x2
 
-    def __init__(self, device=None, cuda_event=None, enable_timing=False):
-        self.owner = False
+    def __new__(cls, *args, **kwargs):
+        instance = super(Event, cls).__new__(cls)
+        instance.owner = False
+        return instance
 
+    def __init__(self, device=None, cuda_event=None, enable_timing=False):
         device = get_device(device)
         if not device.is_cuda:
             raise RuntimeError(f"Device {device} is not a CUDA device")
@@ -2319,6 +2329,11 @@ Devicelike = Union[Device, str, None]
 
 
 class Graph:
+    def __new__(cls, *args, **kwargs):
+        instance = super(Graph, cls).__new__(cls)
+        instance.exec = None
+        return instance
+
     def __init__(self, device: Device, exec: ctypes.c_void_p):
         self.device = device
         self.exec = exec
@@ -2779,39 +2794,38 @@ class Runtime:
             self.core.volume_get_blind_data_info.restype = ctypes.c_char_p
 
             bsr_matrix_from_triplets_argtypes = [
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
+                ctypes.c_int,  # rows_per_bock
+                ctypes.c_int,  # cols_per_blocks
+                ctypes.c_int,  # row_count
+                ctypes.c_int,  # tpl_nnz
+                ctypes.POINTER(ctypes.c_int),  # tpl_rows
+                ctypes.POINTER(ctypes.c_int),  # tpl_cols
+                ctypes.c_void_p,  # tpl_values
+                ctypes.c_bool,  # prune_numerical_zeros
+                ctypes.POINTER(ctypes.c_int),  # bsr_offsets
+                ctypes.POINTER(ctypes.c_int),  # bsr_columns
+                ctypes.c_void_p,  # bsr_values
+                ctypes.POINTER(ctypes.c_int),  # bsr_nnz
+                ctypes.c_void_p,  # bsr_nnz_event
             ]
+
             self.core.bsr_matrix_from_triplets_float_host.argtypes = bsr_matrix_from_triplets_argtypes
             self.core.bsr_matrix_from_triplets_double_host.argtypes = bsr_matrix_from_triplets_argtypes
             self.core.bsr_matrix_from_triplets_float_device.argtypes = bsr_matrix_from_triplets_argtypes
             self.core.bsr_matrix_from_triplets_double_device.argtypes = bsr_matrix_from_triplets_argtypes
 
-            self.core.bsr_matrix_from_triplets_float_host.restype = ctypes.c_int
-            self.core.bsr_matrix_from_triplets_double_host.restype = ctypes.c_int
-            self.core.bsr_matrix_from_triplets_float_device.restype = ctypes.c_int
-            self.core.bsr_matrix_from_triplets_double_device.restype = ctypes.c_int
-
             bsr_transpose_argtypes = [
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
+                ctypes.c_int,  # rows_per_bock
+                ctypes.c_int,  # cols_per_blocks
+                ctypes.c_int,  # row_count
+                ctypes.c_int,  # col count
+                ctypes.c_int,  # nnz
+                ctypes.POINTER(ctypes.c_int),  # transposed_bsr_offsets
+                ctypes.POINTER(ctypes.c_int),  # transposed_bsr_columns
+                ctypes.c_void_p,  # bsr_values
+                ctypes.POINTER(ctypes.c_int),  # transposed_bsr_offsets
+                ctypes.POINTER(ctypes.c_int),  # transposed_bsr_columns
+                ctypes.c_void_p,  # transposed_bsr_values
             ]
             self.core.bsr_transpose_float_host.argtypes = bsr_transpose_argtypes
             self.core.bsr_transpose_double_host.argtypes = bsr_transpose_argtypes
@@ -3632,6 +3646,9 @@ def is_mempool_access_supported(target_device: Devicelike, peer_device: Deviceli
 
     init()
 
+    target_device = runtime.get_device(target_device)
+    peer_device = runtime.get_device(peer_device)
+
     return target_device.is_mempool_supported and is_peer_access_supported(target_device, peer_device)
 
 
@@ -3816,6 +3833,11 @@ class RegisteredGLBuffer:
     """
 
     __fallback_warning_shown = False
+
+    def __new__(cls, *args, **kwargs):
+        instance = super(RegisteredGLBuffer, cls).__new__(cls)
+        instance.resource = None
+        return instance
 
     def __init__(self, gl_buffer_id: int, device: Devicelike = None, flags: int = NONE, fallback_to_copy: bool = True):
         """
@@ -4041,7 +4063,7 @@ def full(
             # a sequence, assume it's a vector or matrix value
             try:
                 # try to convert to a numpy array first
-                na = np.array(value, copy=False)
+                na = np.asarray(value)
             except Exception as e:
                 raise ValueError(f"Failed to interpret the value as a vector or matrix: {e}") from e
 

@@ -7,34 +7,61 @@
 
 from typing import Optional
 
-version: str = "1.1.1"
+version: str = "1.2.2"
+"""Warp version string"""
 
-verify_fp: bool = False  # verify inputs and outputs are finite after each launch
-verify_cuda: bool = False  # if true will check CUDA errors after each kernel launch / memory operation
-print_launches: bool = False  # if true will print out launch information
+verify_fp: bool = False
+"""If `True`, Warp will check that inputs and outputs are finite before and/or after various operations.
+Has performance implications.
+"""
+
+verify_cuda: bool = False
+"""If `True`, Warp will check for CUDA errors after every launch and memory operation.
+CUDA error verification cannot be used during graph capture. Has performance implications.
+"""
+
+print_launches: bool = False
+"""If `True`, Warp will print details of every kernel launch to standard out
+(e.g. launch dimensions, inputs, outputs, device, etc.). Has performance implications
+"""
 
 mode: str = "release"
-verbose: bool = False  # print extra informative messages
-verbose_warnings: bool = False  # whether file and line info gets included in Warp warnings
-quiet: bool = False  # suppress all output except errors and warnings
+"""Controls whether to compile Warp kernels in debug or release mode.
+Valid choices are `"release"` or `"debug"`. Has performance implications.
+"""
+
+verbose: bool = False
+"""If `True`, additional information will be printed to standard out during code generation, compilation, etc."""
+
+verbose_warnings: bool = False
+"""If `True`, Warp warnings will include extra information such as the source file and line number."""
+
+quiet: bool = False
+"""Suppress all output except errors and warnings."""
 
 cache_kernels: bool = True
-kernel_cache_dir: bool = None  # path to kernel cache directory, if None a default path will be used
+"""If `True`, kernels that have already been compiled from previous application launches will not be recompiled."""
 
-cuda_output: Optional[str] = (
-    None  # preferred CUDA output format for kernels ("ptx" or "cubin"), determined automatically if unspecified
-)
+kernel_cache_dir: Optional[str] = None
+"""Path to kernel cache directory, if `None`, a default path will be used."""
 
-ptx_target_arch: int = 75  # target architecture for PTX generation, defaults to the lowest architecture that supports all of Warp's features
+cuda_output: Optional[str] = None
+"""Preferred CUDA output format for kernels (`"ptx"` or `"cubin"`), determined automatically if unspecified"""
 
-enable_backward: bool = True  # whether to compiler the backward passes of the kernels
+ptx_target_arch: int = 75
+"""Target architecture for PTX generation, defaults to the lowest architecture that supports all of Warp's features."""
 
-llvm_cuda: bool = False  # use Clang/LLVM instead of NVRTC to compile CUDA
+enable_backward: bool = True
+"""Whether to compiler the backward passes of the kernels."""
 
-enable_graph_capture_module_load_by_default: bool = (
-    True  # Default value of force_module_load for capture_begin() if CUDA driver does not support at least CUDA 12.3
-)
+llvm_cuda: bool = False
+"""Use Clang/LLVM instead of NVRTC to compile CUDA."""
 
-enable_mempools_at_init: bool = True  # Whether CUDA devices will be initialized with mempools enabled (if supported)
+enable_graph_capture_module_load_by_default: bool = True
+"""Default value of `force_module_load` for `capture_begin()` if CUDA driver does not support at least CUDA 12.3."""
+
+enable_mempools_at_init: bool = True
+"""Whether CUDA devices will be initialized with mempools enabled (if supported)."""
 
 max_unroll: int = 16
+"""Maximum unroll factor for loops."""

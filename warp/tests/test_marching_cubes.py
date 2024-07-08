@@ -52,12 +52,15 @@ devices = get_selected_cuda_test_devices()
 
 
 class TestMarchingCubes(unittest.TestCase):
-    pass
+    def test_marching_cubes_new_del(self):
+        # test the scenario in which a MarchingCubes instance is created but not initialized before gc
+        instance = wp.MarchingCubes.__new__(wp.MarchingCubes)
+        instance.__del__()
 
 
 add_function_test(TestMarchingCubes, "test_marching_cubes", test_marching_cubes, devices=devices)
 
 
 if __name__ == "__main__":
-    wp.build.clear_kernel_cache()
+    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

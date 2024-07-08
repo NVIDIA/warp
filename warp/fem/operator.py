@@ -3,7 +3,7 @@ from typing import Any, Callable
 
 import warp as wp
 from warp.fem import utils
-from warp.fem.types import Domain, Field, Sample
+from warp.fem.types import Domain, Field, NodeIndex, Sample
 
 
 class Integrand:
@@ -55,7 +55,7 @@ def position(domain: Domain, s: Sample):
     pass
 
 
-@operator(resolver=lambda dmn: dmn.eval_normal)
+@operator(resolver=lambda dmn: dmn.element_normal)
 def normal(domain: Domain, s: Sample):
     """Evaluates the element normal at the sample point `s`. Null for interior points."""
     pass
@@ -71,13 +71,12 @@ def deformation_gradient(domain: Domain, s: Sample):
 def lookup(domain: Domain, x: Any) -> Sample:
     """Looks-up the sample point corresponding to a world position `x`, projecting to the closest point on the domain.
 
-    Arg:
+    Args:
         x: world position of the point to look-up in the geometry
         guess: (optional) :class:`Sample` initial guess, may help perform the query
 
-    Notes:
-        Currently this operator is only fully supported for :class:`Grid2D` and :class:`Grid3D` geometries.
-        For :class:`TriangleMesh2D` and :class:`Tetmesh` geometries, the operator requires providing `guess`.
+    Note:
+        Currently this operator is unsupported for :class:`Hexmesh`, :class:`Quadmesh2D` and deformed geometries.
     """
     pass
 
@@ -142,7 +141,14 @@ def degree(f: Field):
 
 @operator(resolver=lambda f: f.at_node)
 def at_node(f: Field, s: Sample):
-    """For a Test or Trial field, returns a copy of the Sample `s` moved to the coordinates of the node being evaluated"""
+    """For a Test or Trial field `f`, returns a copy of the Sample `s` moved to the coordinates of the node being evaluated"""
+    pass
+
+
+@operator(resolver=lambda f: f.node_partition_index)
+def node_partition_index(f: Field, node_index: NodeIndex):
+    """For a NodalField `f`, returns the index of a given node in the fields's space partition,
+    or ``NULL_NODE_INDEX`` if it does not exists"""
     pass
 
 
