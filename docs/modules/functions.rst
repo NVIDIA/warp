@@ -91,14 +91,6 @@ Generic Types
 .. class:: Transformation
 .. class:: Array
 
-Query Types
--------------
-.. autoclass:: bvh_query_t
-.. autoclass:: hash_grid_query_t
-.. autoclass:: mesh_query_aabb_t
-.. autoclass:: mesh_query_point_t
-.. autoclass:: mesh_query_ray_t
-
 
 Scalar Math
 ---------------
@@ -1383,6 +1375,7 @@ Utility
 
 Geometry
 ---------------
+.. autoclass:: bvh_query_t
 .. py:function:: bvh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> bvh_query_t
 
     Construct an axis-aligned bounding box query against a BVH object.
@@ -1411,6 +1404,7 @@ Geometry
     The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.
 
 
+.. autoclass:: mesh_query_point_t
 .. py:function:: mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> mesh_query_point_t
 
     Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
@@ -1478,6 +1472,7 @@ Geometry
     :param threshold: The threshold of the winding number to be considered inside, default 0.5
 
 
+.. autoclass:: mesh_query_ray_t
 .. py:function:: mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32) -> mesh_query_ray_t
 
     Computes the closest ray hit on the :class:`Mesh` with identifier ``id``.
@@ -1488,6 +1483,7 @@ Geometry
     :param max_t: The maximum distance along the ray to check for intersections
 
 
+.. autoclass:: mesh_query_aabb_t
 .. py:function:: mesh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> mesh_query_aabb_t
 
     Construct an axis-aligned bounding box query against a :class:`Mesh`.
@@ -1516,6 +1512,7 @@ Geometry
     Evaluates the velocity on the :class:`Mesh` given a face index and barycentric coordinates.
 
 
+.. autoclass:: hash_grid_query_t
 .. py:function:: hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> hash_grid_query_t
 
     Construct a point query against a :class:`HashGrid`.
