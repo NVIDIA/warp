@@ -1523,6 +1523,36 @@ add_builtin(
     export=False,
 )
 
+# does type propagation for load()
+def tile_map_value_func(arg_types, kwds, _):
+
+    if arg_types is None:
+        return None
+
+    dtype = arg_types[0]
+    for i in arg_types:
+        if arg_types[i].dtype != dtype:
+            raise RuntimeError("tile_map() arguments must all have the same type")
+
+    input = arg_types[0]
+    
+    return Tile(dtype=input.dtype,
+                M=input.M,
+                N=input.N,
+                op="map")
+
+
+
+add_builtin(
+    "tile_map",
+    input_types={"op": Callable},
+    value_func=tile_map_value_func,
+    variadic=True,
+    doc="Map the operation onto each element of the tile", 
+    group="Tile Primitives",
+    export=False,
+)
+
 # ---------------------------------
 # Linear Algebra
 

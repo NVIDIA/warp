@@ -16,8 +16,8 @@ TILE_M = 8
 TILE_N = 4
 
 @wp.kernel
-def copy_tiled(A: wp.array2d(dtype=float),
-               B: wp.array2d(dtype=float)):
+def tile_copy(A: wp.array2d(dtype=float),
+              B: wp.array2d(dtype=float)):
     
     # tile index
     i, j = wp.tid() 
@@ -26,7 +26,7 @@ def copy_tiled(A: wp.array2d(dtype=float),
     wp.tile_store(B, i, j, a)
 
 
-def test_copy_tiled():
+def test_tile_copy():
 
     rng = np.random.default_rng(42)
 
@@ -40,7 +40,7 @@ def test_copy_tiled():
     B_wp = wp.array(B, requires_grad=True)
 
     with wp.Tape() as tape:
-        wp.launch(copy_tiled, dim=[int(M/TILE_M), int(N/TILE_N)], inputs=[A_wp, B_wp], tile_size=8)
+        wp.launch(tile_copy, dim=[int(M/TILE_M), int(N/TILE_N)], inputs=[A_wp, B_wp], tile_size=8)
 
     # verify forward pass
     assert(np.allclose(A, B_wp.numpy(), rtol=1.e-4))
@@ -53,8 +53,111 @@ def test_copy_tiled():
     assert(np.allclose(A_wp.grad.numpy(), B_wp.grad.numpy()))
     print("Copy backward passed")
 
+@wp.func
+def unary_func(x: float):
+    return wp.sin(x)
 
-test_copy_tiled()
+@wp.kernel
+def tile_unary_map(input: wp.array2d(dtype=float),
+                   output: wp.array2d(dtype=float)):
+    
+    # tile index
+    i, j = wp.tid() 
+    
+    a = wp.tile_load(input, i, j, m=TILE_M, n=TILE_N)
+    
+    sa = wp.tile_map(unary_func, a)
+    
+    wp.tile_store(output, i, j, sa)
+
+
+def test_tile_unary_map():
+
+    rng = np.random.default_rng(42)
+
+    M = TILE_M*7
+    N = TILE_N*5
+
+    A = rng.random((M, N), dtype=np.float32)
+    B = np.sin(A)
+
+    A_grad = np.cos(A)
+
+    A_wp = wp.array(A, requires_grad=True)
+    B_wp = wp.zeros_like(A_wp, requires_grad=True)
+
+    with wp.Tape() as tape:
+        wp.launch(tile_unary_map, dim=[int(M/TILE_M), int(N/TILE_N)], inputs=[A_wp, B_wp], tile_size=8)
+
+    # verify forward pass
+    assert(np.allclose(B, B_wp.numpy(), rtol=1.e-4))
+    print("Unary map forward passed")
+
+    # verify backward pass
+    B_wp.grad = wp.ones_like(B_wp)
+    tape.backward()
+
+    assert(np.allclose(A_wp.grad.numpy(), A_grad))
+    print("Unary map backward passed")
+
+
+@wp.func
+def binary_func(x: float, y: float):
+    return wp.sin(x) + y
+
+@wp.kernel
+def tile_binary_map(input_a: wp.array2d(dtype=float),
+                   input_b: wp.array2d(dtype=float),
+                   output: wp.array2d(dtype=float)):
+    
+    # tile index
+    i, j = wp.tid() 
+    
+    a = wp.tile_load(input_a, i, j, m=TILE_M, n=TILE_N)
+    b = wp.tile_load(input_b, i, j, m=TILE_M, n=TILE_N)
+    
+    sa = wp.tile_map(binary_func, a, b)
+    
+    wp.tile_store(output, i, j, sa)
+
+
+def test_tile_binary_map():
+
+    rng = np.random.default_rng(42)
+
+    M = TILE_M*7
+    N = TILE_N*5
+
+    A = rng.random((M, N), dtype=np.float32)
+    B = rng.random((M, N), dtype=np.float32)
+    C = np.sin(A) + B
+
+    A_grad = np.cos(A)
+    B_grad = np.ones_like(B)
+
+    A_wp = wp.array(A, requires_grad=True)
+    B_wp = wp.array(B, requires_grad=True)
+    C_wp = wp.zeros_like(A_wp, requires_grad=True)
+
+    with wp.Tape() as tape:
+        wp.launch(tile_binary_map, dim=[int(M/TILE_M), int(N/TILE_N)], inputs=[A_wp, B_wp, C_wp], tile_size=8)
+
+    # verify forward pass
+    assert(np.allclose(C, C_wp.numpy(), rtol=1.e-4))
+    print("Binary map forward passed")
+
+    # verify backward pass
+    C_wp.grad = wp.ones_like(C_wp)
+    tape.backward()
+
+    assert(np.allclose(A_wp.grad.numpy(), A_grad))
+    assert(np.allclose(B_wp.grad.numpy(), B_grad))
+    
+    print("Binary map backward passed")
+
+test_tile_copy()
+test_tile_unary_map()
+test_tile_binary_map()
 
 
 # @wp.kernel

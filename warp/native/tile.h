@@ -31,6 +31,18 @@
 namespace wp
 {
 
+// Primary template
+template <typename T, typename U>
+struct is_same {
+    static constexpr bool value = false;
+};
+
+// Specialization for the case when T and U are the same type
+template <typename T>
+struct is_same<T, T> {
+    static constexpr bool value = true;
+};
+
 template <typename T>
 void print_tile(T& t)
 {
@@ -87,7 +99,7 @@ struct tile_load_t
         slice.ndim = 2;
     }
 
-    Type fwd(int e)
+    Type fwd(int e) const
     {
         int i = e/N;
         int j = e%N;
@@ -95,7 +107,7 @@ struct tile_load_t
         return index(slice, i, j);
     }
 
-    void bwd(int e, const T& adj_ret)
+    void bwd(int e, const T& adj_ret) const
     {
         int i = e/N;
         int j = e%N;
@@ -144,7 +156,7 @@ struct tile_store_t
         slice.ndim = 2;
     }
 
-    void fwd(int e)
+    void fwd(int e) const
     {
         int i = e/N;
         int j = e%N;
@@ -152,7 +164,7 @@ struct tile_store_t
         index(slice, i, j) = tile.fwd(e);
     }
 
-    void bwd(int e)
+    void bwd(int e) const
     {
         int i = e/N;
         int j = e%N;
@@ -216,17 +228,17 @@ struct tile_unary_map_t
 
     tile_unary_map_t(Tile& t, FwdOp f, AdjOp a)  : tile(t), fwd_fn(f), adj_fn(a) {}
 
-    Type fwd(int e)
+    Type fwd(int e) const
     {
         return fwd_fn(tile.fwd(e));
     }
 
-    void bwd(int e, Type adj_ret)
+    void bwd(int e, Type adj_ret) const
     {
         Type adj_a = 0.0;
 
         adj_fn(tile.fwd(e), adj_a, adj_ret);
-        
+
         tile.bwd(e, adj_a);
     }
 
@@ -240,7 +252,7 @@ struct tile_unary_map_t
 template <typename TileA, typename TileB, typename FwdOp, typename AdjOp>
 struct tile_binary_map_t
 {
-    static_assert(TileA::Type == TileB::Type, "Error");
+    static_assert(wp::is_same<typename TileA::Type, typename TileB::Type>::value, "Error");
     static_assert(TileA::M == TileB::M, "Error");
     static_assert(TileA::N == TileB::N, "Error");
 
@@ -257,7 +269,7 @@ struct tile_binary_map_t
 
     tile_binary_map_t(const TileA& a, TileB& b, FwdOp fwd_fn, AdjOp adj_fn) : tile_a(a), tile_b(b), fwd_fn(fwd_fn), adj_fn(adj_fn) {}
 
-    Type fwd(int e)
+    Type fwd(int e) const
     {
         Type a = tile_a.fwd(e);
         Type b = tile_b.fwd(e);
@@ -265,7 +277,7 @@ struct tile_binary_map_t
         return fwd_fn(a, b);
     }
 
-    void bwd(int e, Type adj_ret)
+    void bwd(int e, Type adj_ret) const
     {
         Type a = tile_a.fwd(e);
         Type b = tile_b.fwd(e);
@@ -287,7 +299,6 @@ struct tile_binary_map_t
         tile_a.print();
         printf("\n   -+");
         tile_b.print();
-
     }
 
 };
@@ -333,20 +344,26 @@ void adj_tile_store(array_t<T>& dest, int x, int y, Tile& t, array_t<T>& adj_des
 
 // unary map
 template <typename Tile, typename FwdOp, typename AdjOp>
-tile_unary_map_t<Tile, FwdOp, AdjOp> tile_map_impl(FwdOp fwd, AdjOp adj, Tile& t)
+tile_unary_map_t<Tile, FwdOp, AdjOp> tile_map_impl(FwdOp fwd, AdjOp adj, Tile& a)
 {
-    return tile_unary_map_t<Tile, FwdOp, AdjOp>(t, fwd, adj);
+    return tile_unary_map_t<Tile, FwdOp, AdjOp>(a, fwd, adj);
 }
 
 // binary map
 template <typename TileA, typename TileB, typename FwdOp, typename AdjOp>
-tile_binary_map_t<TileA, TileB, FwdOp, AdjOp> tile_map_impl(FwdOp op, AdjOp adj, TileA& a, TileB& b)
+tile_binary_map_t<TileA, TileB, FwdOp, AdjOp> tile_map_impl(FwdOp fwd, AdjOp adj, TileA& a, TileB& b)
 {
-    return tile_binary_map_t<TileA, TileB, FwdOp, AdjOp>(a, b);
+    return tile_binary_map_t<TileA, TileB, FwdOp, AdjOp>(a, b, fwd, adj);
 }
 
 // use macro to capture adjoint operator
 #define tile_map(op, ...) tile_map_impl(op, adj_##op, __VA_ARGS__)
+//#define tile_map(op, a) tile_map_impl(wp::##op, wp::##op, a)
+
+
+// nop
+void adj_tile_map_impl(void) {}
+#define adj_tile_map(...) adj_tile_map_impl()
 
 // use a macro to capture the adjoint var in the expression
 #define tile_constant(T, M, N, var) tile_constant_t<T, M, N>(var, adj_##var)
