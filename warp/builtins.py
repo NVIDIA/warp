@@ -1844,6 +1844,7 @@ add_builtin(
     :param id: The BVH identifier
     :param lower: The lower bound of the bounding box in BVH space
     :param upper: The upper bound of the bounding box in BVH space""",
+    export=False,
 )
 
 add_builtin(
@@ -1858,6 +1859,7 @@ add_builtin(
     :param id: The BVH identifier
     :param start: The start of the ray in BVH space
     :param dir: The direction of the ray in BVH space""",
+    export=False,
 )
 
 add_builtin(
@@ -1867,6 +1869,7 @@ add_builtin(
     group="Geometry",
     doc="""Move to the next bound returned by the query.
     The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.""",
+    export=False,
 )
 
 add_builtin(
@@ -1896,6 +1899,7 @@ add_builtin(
     :param face: Returns the index of the closest face
     :param bary_u: Returns the barycentric u coordinate of the closest point
     :param bary_v: Returns the barycentric v coordinate of the closest point""",
+    export=False,
     hidden=True,
 )
 
@@ -1918,6 +1922,7 @@ add_builtin(
     :param point: The point in space to query
     :param max_dist: Mesh faces above this distance will not be considered by the query""",
     require_original_output_arg=True,
+    export=False,
 )
 
 add_builtin(
@@ -1942,6 +1947,7 @@ add_builtin(
     :param face: Returns the index of the closest face
     :param bary_u: Returns the barycentric u coordinate of the closest point
     :param bary_v: Returns the barycentric v coordinate of the closest point""",
+    export=False,
     hidden=True,
 )
 
@@ -1962,6 +1968,7 @@ add_builtin(
     :param point: The point in space to query
     :param max_dist: Mesh faces above this distance will not be considered by the query""",
     require_original_output_arg=True,
+    export=False,
 )
 
 add_builtin(
@@ -1986,6 +1993,7 @@ add_builtin(
     :param face: Returns the index of the furthest face
     :param bary_u: Returns the barycentric u coordinate of the furthest point
     :param bary_v: Returns the barycentric v coordinate of the furthest point""",
+    export=False,
     hidden=True,
 )
 
@@ -2006,6 +2014,7 @@ add_builtin(
     :param point: The point in space to query
     :param min_dist: Mesh faces below this distance will not be considered by the query""",
     require_original_output_arg=True,
+    export=False,
 )
 
 add_builtin(
@@ -2039,6 +2048,7 @@ add_builtin(
     :param bary_v: Returns the barycentric v coordinate of the closest point
     :param epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a
                     fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3""",
+    export=False,
     hidden=True,
 )
 
@@ -2065,6 +2075,7 @@ add_builtin(
     :param epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a
                     fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3""",
     require_original_output_arg=True,
+    export=False,
 )
 
 add_builtin(
@@ -2101,6 +2112,7 @@ add_builtin(
     :param bary_v: Returns the barycentric v coordinate of the closest point
     :param accuracy: Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation, default 2.0
     :param threshold: The threshold of the winding number to be considered inside, default 0.5""",
+    export=False,
     hidden=True,
 )
 
@@ -2130,6 +2142,7 @@ add_builtin(
     :param accuracy: Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation, default 2.0
     :param threshold: The threshold of the winding number to be considered inside, default 0.5""",
     require_original_output_arg=True,
+    export=False,
 )
 
 add_builtin(
@@ -2160,6 +2173,7 @@ add_builtin(
     :param sign: Returns a value > 0 if the ray hit in front of the face, returns < 0 otherwise
     :param normal: Returns the face normal
     :param face: Returns the index of the hit face""",
+    export=False,
     hidden=True,
 )
 
@@ -2180,6 +2194,7 @@ add_builtin(
     :param dir: The ray direction (should be normalized)
     :param max_t: The maximum distance along the ray to check for intersections""",
     require_original_output_arg=True,
+    export=False,
 )
 
 add_builtin(
@@ -2194,6 +2209,7 @@ add_builtin(
     :param id: The mesh identifier
     :param lower: The lower bound of the bounding box in mesh space
     :param upper: The upper bound of the bounding box in mesh space""",
+    export=False,
 )
 
 add_builtin(
@@ -2204,6 +2220,7 @@ add_builtin(
     doc="""Move to the next triangle overlapping the query bounding box.
 
     The index of the current face is stored in ``index``, returns ``False`` if there are no more overlapping triangles.""",
+    export=False,
 )
 
 add_builtin(
@@ -2212,6 +2229,7 @@ add_builtin(
     value_type=vec3,
     group="Geometry",
     doc="""Evaluates the position on the :class:`Mesh` given a face index and barycentric coordinates.""",
+    export=False,
 )
 
 add_builtin(
@@ -2220,6 +2238,7 @@ add_builtin(
     value_type=vec3,
     group="Geometry",
     doc="""Evaluates the velocity on the :class:`Mesh` given a face index and barycentric coordinates.""",
+    export=False,
 )
 
 add_builtin(
@@ -2230,6 +2249,7 @@ add_builtin(
     doc="""Construct a point query against a :class:`HashGrid`.
 
     This query can be used to iterate over all neighboring point within a fixed radius from the query point.""",
+    export=False,
 )
 
 add_builtin(
@@ -2240,6 +2260,7 @@ add_builtin(
     doc="""Move to the next point in the hash grid query.
 
     The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.""",
+    export=False,
 )
 
 add_builtin(
@@ -2252,6 +2273,7 @@ add_builtin(
     This can be used to reorder threads such that grid traversal occurs in a spatially coherent order.
 
     Returns -1 if the :class:`HashGrid` has not been reserved.""",
+    export=False,
 )
 
 add_builtin(
@@ -2262,6 +2284,7 @@ add_builtin(
     doc="""Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method.
 
     Returns > 0 if triangles intersect.""",
+    export=False,
 )
 
 add_builtin(
@@ -2271,6 +2294,7 @@ add_builtin(
     missing_grad=True,
     group="Geometry",
     doc="""Retrieves the mesh given its index.""",
+    export=False,
 )
 
 add_builtin(
@@ -2279,6 +2303,7 @@ add_builtin(
     value_type=vec3,
     group="Geometry",
     doc="""Evaluates the face normal the mesh given a face index.""",
+    export=False,
 )
 
 add_builtin(
@@ -2287,6 +2312,7 @@ add_builtin(
     value_type=vec3,
     group="Geometry",
     doc="""Returns the point of the mesh given a index.""",
+    export=False,
 )
 
 add_builtin(
@@ -2295,6 +2321,7 @@ add_builtin(
     value_type=vec3,
     group="Geometry",
     doc="""Returns the velocity of the mesh given a index.""",
+    export=False,
 )
 
 add_builtin(
@@ -2303,6 +2330,7 @@ add_builtin(
     value_type=int,
     group="Geometry",
     doc="""Returns the point-index of the mesh given a face-vertex index.""",
+    export=False,
 )
 
 
@@ -2321,6 +2349,7 @@ add_builtin(
     :param q2: Second point of second edge
     :param epsilon: Zero tolerance for determining if points in an edge are degenerate.
     :param out: vec3 output containing (s,t,d), where `s` in [0,1] is the barycentric weight for the first edge, `t` is the barycentric weight for the second edge, and `d` is the distance between the two edges at these two closest points.""",
+    export=False,
 )
 
 # ---------------------------------
@@ -2342,9 +2371,13 @@ add_builtin(
 # ---------------------------------
 # Iterators
 
-add_builtin("iter_next", input_types={"range": range_t}, value_type=int, group="Utility", hidden=True)
-add_builtin("iter_next", input_types={"query": hash_grid_query_t}, value_type=int, group="Utility", hidden=True)
-add_builtin("iter_next", input_types={"query": mesh_query_aabb_t}, value_type=int, group="Utility", hidden=True)
+add_builtin("iter_next", input_types={"range": range_t}, value_type=int, group="Utility", export=False, hidden=True)
+add_builtin(
+    "iter_next", input_types={"query": hash_grid_query_t}, value_type=int, group="Utility", export=False, hidden=True
+)
+add_builtin(
+    "iter_next", input_types={"query": mesh_query_aabb_t}, value_type=int, group="Utility", export=False, hidden=True
+)
 
 # ---------------------------------
 # Volumes

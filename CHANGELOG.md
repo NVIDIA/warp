@@ -59,6 +59,7 @@
 - Add documentation for dynamic loop autograd limitations
 - Allow users to pass function arguments by keyword in a kernel using standard Python calling semantics
 - Implement the assignment operator for `wp.quat`
+- Make the geometry-related built-ins available only from within kernels
 
 ## [1.2.1] - 2024-06-14
 
