@@ -20,7 +20,6 @@
   - Add `wp.abs()` and `wp.sign()` for vector types
   - Expose scalar arithmetic operators to Python's runtime (e.g.: `wp.float16(1.23) * wp.float16(2.34)`)
   - Add support for creating volumes with anisotropic transforms
-  - Add `wp.array(ptr=...)` to allow initializing arrays from pointer addresses inside of kernels ([GH-206](https://github.com/NVIDIA/warp/issues/206))
 
 - `warp.autograd` improvements:
   - New `warp.autograd` module with utility functions `gradcheck()`, `jacobian()`, and `jacobian_fd()` for debugging kernel Jacobians ([docs](https://nvidia.github.io/warp/modules/differentiability.html#measuring-gradient-accuracy))
@@ -60,6 +59,7 @@
 - Allow users to pass function arguments by keyword in a kernel using standard Python calling semantics
 - Implement the assignment operator for `wp.quat`
 - Make the geometry-related built-ins available only from within kernels
+- Rename the API-facing query types to remove their `_t` suffix: `wp.BVHQuery`, `wp.HashGridQuery`, `wp.MeshQueryAABB`, `wp.MeshQueryPoint`, and `wp.MeshQueryRay`
 
 ## [1.2.1] - 2024-06-14
 

@@ -1060,6 +1060,9 @@ class bvh_query_t:
         pass
 
 
+BvhQuery = bvh_query_t
+
+
 # definition just for kernel type (cannot be a parameter), see mesh.h
 class mesh_query_aabb_t:
     """Object used to track state during mesh traversal."""
@@ -1068,12 +1071,18 @@ class mesh_query_aabb_t:
         pass
 
 
+MeshQueryAABB = mesh_query_aabb_t
+
+
 # definition just for kernel type (cannot be a parameter), see hash_grid.h
 class hash_grid_query_t:
     """Object used to track state during neighbor traversal."""
 
     def __init__(self):
         pass
+
+
+HashGridQuery = hash_grid_query_t
 
 
 # maximum number of dimensions, must match array.h
@@ -3845,6 +3854,9 @@ class mesh_query_point_t:
     }
 
 
+MeshQueryPoint = mesh_query_point_t
+
+
 # definition just for kernel type (cannot be a parameter), see mesh.h
 # NOTE: its layout must match the corresponding struct defined in C.
 class mesh_query_ray_t:
@@ -3874,6 +3886,9 @@ class mesh_query_ray_t:
         "v": Var("v", float32),
         "normal": Var("normal", vec3),
     }
+
+
+MeshQueryRay = mesh_query_ray_t
 
 
 def matmul(

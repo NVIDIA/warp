@@ -5439,7 +5439,13 @@ def export_functions_rst(file):  # pragma: no cover
     written_functions = set()
     written_query_types = set()
 
-    query_types = ("bvh_query", "mesh_query_aabb", "mesh_query_point", "mesh_query_ray", "hash_grid_query")
+    query_types = (
+        ("bvh_query", "BvhQuery"),
+        ("mesh_query_aabb", "MeshQueryAABB"),
+        ("mesh_query_point", "MeshQueryPoint"),
+        ("mesh_query_ray", "MeshQueryRay"),
+        ("hash_grid_query", "HashGridQuery"),
+    )
 
     for k, g in groups.items():
         print("\n", file=file)
@@ -5447,10 +5453,10 @@ def export_functions_rst(file):  # pragma: no cover
         print("---------------", file=file)
 
         for f in g:
-            for query_type in query_types:
-                if f.key.startswith(query_type) and f"{query_type}_t" not in written_query_types:
-                    print(f".. autoclass:: {query_type}_t", file=file)
-                    written_query_types.add(f"{query_type}_t")
+            for f_prefix, query_type in query_types:
+                if f.key.startswith(f_prefix) and query_type not in written_query_types:
+                    print(f".. autoclass:: {query_type}", file=file)
+                    written_query_types.add(query_type)
                     break
 
             if f.key in written_functions:

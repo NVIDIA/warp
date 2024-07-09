@@ -471,9 +471,9 @@ def test_error_collection_construct(test, device):
 def test_call_syntax():
     expected_pow = 16.0
     wp.expect_eq(wp.pow(2.0, 4.0), expected_pow)
-    wp.expect_eq(wp.pow(base=2.0, exp=4.0), expected_pow)
-    wp.expect_eq(wp.pow(2.0, exp=4.0), expected_pow)
-    wp.expect_eq(wp.pow(exp=4.0, base=2.0), expected_pow)
+    wp.expect_eq(wp.pow(x=2.0, y=4.0), expected_pow)
+    wp.expect_eq(wp.pow(2.0, y=4.0), expected_pow)
+    wp.expect_eq(wp.pow(y=4.0, x=2.0), expected_pow)
 
     expected_matrix = wp.mat44(2.0, 0.0, 0.0, 1.0, 0.0, 3.0, 0.0, 2.0, 0.0, 0.0, 4.0, 3.0, 0.0, 0.0, 0.0, 1.0)
     pos = wp.vec3(1.0, 2.0, 3.0)
