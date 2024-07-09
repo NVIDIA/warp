@@ -633,47 +633,47 @@ Checking the gradient accuracy using the :func:`gradcheck` function:
     assert passed
 
 Output:
-
-.. list-table:: 
-   :header-rows: 1
-
-   * - Input
-     - Output
-     - Max Abs Error
-     - Max Rel Error
-     - Pass
-   * - a
-     - out1
-     - 1.5134811e-03
-     - 4.0449476e-04
-     - .. raw:: html
-
-         <span style="color: green;">PASS</span>
-   * - a
-     - out2
-     - 1.1073798e-04
-     - 1.4098687e-03
-     - .. raw:: html
-
-         <span style="color: green;">PASS</span>
-   * - b
-     - out1
-     - 9.8955631e-04
-     - 4.6023726e-03
-     - .. raw:: html
-
-         <span style="color: green;">PASS</span>
-   * - b
-     - out2
-     - 3.3494830e-04
-     - 1.2789593e-02
-     - .. raw:: html
-
-         <span style="color: green;">PASS</span>
-
-.. raw:: html
-
-    <span style="color: green;">Gradient check for kernel my_kernel passed</span>
+   
+   .. list-table:: 
+      :header-rows: 1
+   
+      * - Input
+        - Output
+        - Max Abs Error
+        - Max Rel Error
+        - Pass
+      * - a
+        - out1
+        - 1.5134811e-03
+        - 4.0449476e-04
+        - .. raw:: html
+   
+            <span style="color: green;">PASS</span>
+      * - a
+        - out2
+        - 1.1073798e-04
+        - 1.4098687e-03
+        - .. raw:: html
+   
+            <span style="color: green;">PASS</span>
+      * - b
+        - out1
+        - 9.8955631e-04
+        - 4.6023726e-03
+        - .. raw:: html
+   
+            <span style="color: green;">PASS</span>
+      * - b
+        - out2
+        - 3.3494830e-04
+        - 1.2789593e-02
+        - .. raw:: html
+   
+            <span style="color: green;">PASS</span>
+   
+   .. raw:: html
+   
+       <span style="color: green;">Gradient check for kernel my_kernel passed</span>
 
 
 Instead of evaluating Jacobians for all inputs and outputs of a kernel, we can also limit the computation to a specific subset of input/output pairs::

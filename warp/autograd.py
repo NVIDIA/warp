@@ -1,4 +1,4 @@
-# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2024 NVIDIA CORPORATION.  All rights reserved.
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
 # and any modifications thereto.  Any use, reproduction, disclosure or
@@ -44,7 +44,7 @@ def gradcheck(
     Checks whether the autodiff gradient of a Warp kernel matches finite differences.
     Fails if the relative or absolute errors between the autodiff and finite difference gradients exceed the specified tolerance, or if the autodiff gradients contain NaN values.
 
-    The kernel function and its adjoint version is launched with the given inputs and outputs, as well as the provided ``dim`` and ``max_blocks`` arguments (see :func:`warp.launch` for more details).
+    The kernel function and its adjoint version are launched with the given inputs and outputs, as well as the provided ``dim`` and ``max_blocks`` arguments (see :func:`warp.launch` for more details).
 
     Note:
         This function only supports Warp kernels whose input arguments precede the output arguments.
@@ -336,7 +336,7 @@ def plot_kernel_jacobians(
         log_scale: If True, uses a logarithmic scale for the matrix values shown in the image plot.
 
     Returns:
-        The created matplotlib figure.
+        The created Matplotlib figure.
     """
     import matplotlib.pyplot as plt
     from matplotlib.ticker import FuncFormatter, MaxNLocator, MultipleLocator

@@ -203,7 +203,7 @@ class TetrahedronPolynomialShapeFunctions:
 
     def make_trace_node_quadrature_weight(self):
         if self.ORDER == 3:
-            # P3 intrisic quadrature
+            # P3 intrinsic quadrature
             vertex_weight = 1.0 / 30
             edge_weight = 0.075
             interior_weight = 0.45
@@ -484,7 +484,7 @@ class TetrahedronNonConformingPolynomialShapeFunctions:
 
     def make_node_quadrature_weight(self):
         # Intrinsic quadrature -- precomputed integral of node shape functions
-        # over element. Order euqla to self.ORDER
+        # over element. Order equal to self.ORDER
 
         if self.ORDER == 2:
             vertex_weight = 0.07499641
