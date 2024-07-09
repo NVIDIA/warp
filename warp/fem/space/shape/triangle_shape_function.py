@@ -103,7 +103,7 @@ class Triangle2DPolynomialShapeFunctions:
 
     def make_node_quadrature_weight(self):
         if self.ORDER == 3:
-            # P3 intrisic quadrature
+            # P3 intrinsic quadrature
             vertex_weight = 1.0 / 30
             edge_weight = 0.075
             interior_weight = 0.45
