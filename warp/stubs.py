@@ -40,7 +40,7 @@ from warp.types import spatial_vector, spatial_vectorh, spatial_vectorf, spatial
 from warp.types import spatial_matrix, spatial_matrixh, spatial_matrixf, spatial_matrixd
 
 from warp.types import Bvh, Mesh, HashGrid, Volume, MarchingCubes
-from warp.types import bvh_query_t, hash_grid_query_t, mesh_query_aabb_t, mesh_query_point_t, mesh_query_ray_t
+from warp.types import BvhQuery, HashGridQuery, MeshQueryAABB, MeshQueryPoint, MeshQueryRay
 
 from warp.types import matmul, adj_matmul, batched_matmul, adj_batched_matmul
 
@@ -156,44 +156,44 @@ def max(a: Vector[Any, Scalar]) -> Scalar:
 
 
 @over
-def clamp(a: Scalar, low: Scalar, high: Scalar) -> Scalar:
-    """Clamp the value of ``a`` to the range [low, high]."""
+def clamp(x: Scalar, low: Scalar, high: Scalar) -> Scalar:
+    """Clamp the value of ``x`` to the range [low, high]."""
     ...
 
 
 @over
-def abs(a: Scalar) -> Scalar:
-    """Return the absolute value of ``a``."""
+def abs(x: Scalar) -> Scalar:
+    """Return the absolute value of ``x``."""
     ...
 
 
 @over
-def abs(a: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
-    """Return the absolute values of the elements of ``a``."""
+def abs(x: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """Return the absolute values of the elements of ``x``."""
     ...
 
 
 @over
-def sign(a: Scalar) -> Scalar:
-    """Return -1 if ``a`` < 0, return 1 otherwise."""
+def sign(x: Scalar) -> Scalar:
+    """Return -1 if ``x`` < 0, return 1 otherwise."""
     ...
 
 
 @over
-def sign(a: Vector[Any, Scalar]) -> Scalar:
-    """Return -1 for the negative elements of ``a``, and 1 otherwise."""
+def sign(x: Vector[Any, Scalar]) -> Scalar:
+    """Return -1 for the negative elements of ``x``, and 1 otherwise."""
     ...
 
 
 @over
-def step(a: Scalar) -> Scalar:
-    """Return 1.0 if ``a`` < 0.0, return 0.0 otherwise."""
+def step(x: Scalar) -> Scalar:
+    """Return 1.0 if ``x`` < 0.0, return 0.0 otherwise."""
     ...
 
 
 @over
-def nonzero(a: Scalar) -> Scalar:
-    """Return 1.0 if ``a`` is not equal to zero, return 0.0 otherwise."""
+def nonzero(x: Scalar) -> Scalar:
+    """Return 1.0 if ``x`` is not equal to zero, return 0.0 otherwise."""
     ...
 
 
@@ -306,14 +306,14 @@ def exp(x: Float) -> Float:
 
 
 @over
-def pow(base: Float, exp: Float) -> Float:
-    """Return the result of ``base`` raised to power of ``exp``."""
+def pow(x: Float, y: Float) -> Float:
+    """Return the result of ``x`` raised to power of ``y``."""
     ...
 
 
 @over
-def round(a: Float) -> Float:
-    """Return the nearest integer value to ``a``, rounding halfway cases away from zero.
+def round(x: Float) -> Float:
+    """Return the nearest integer value to ``x``, rounding halfway cases away from zero.
 
     This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like :func:`warp.rint()`.
     Differs from :func:`numpy.round()`, which behaves the same way as :func:`numpy.rint()`.
@@ -322,8 +322,8 @@ def round(a: Float) -> Float:
 
 
 @over
-def rint(a: Float) -> Float:
-    """Return the nearest integer value to ``a``, rounding halfway cases to nearest even integer.
+def rint(x: Float) -> Float:
+    """Return the nearest integer value to ``x``, rounding halfway cases to nearest even integer.
 
     It is generally faster than :func:`warp.round()`. Equivalent to :func:`numpy.rint()`.
     """
@@ -331,33 +331,33 @@ def rint(a: Float) -> Float:
 
 
 @over
-def trunc(a: Float) -> Float:
-    """Return the nearest integer that is closer to zero than ``a``.
+def trunc(x: Float) -> Float:
+    """Return the nearest integer that is closer to zero than ``x``.
 
-    In other words, it discards the fractional part of ``a``.
-    It is similar to casting ``float(int(a))``, but preserves the negative sign when ``a`` is in the range [-0.0, -1.0).
+    In other words, it discards the fractional part of ``x``.
+    It is similar to casting ``float(int(a))``, but preserves the negative sign when ``x`` is in the range [-0.0, -1.0).
     Equivalent to :func:`numpy.trunc()` and :func:`numpy.fix()`.
     """
     ...
 
 
 @over
-def floor(a: Float) -> Float:
-    """Return the largest integer that is less than or equal to ``a``."""
+def floor(x: Float) -> Float:
+    """Return the largest integer that is less than or equal to ``x``."""
     ...
 
 
 @over
-def ceil(a: Float) -> Float:
-    """Return the smallest integer that is greater than or equal to ``a``."""
+def ceil(x: Float) -> Float:
+    """Return the smallest integer that is greater than or equal to ``x``."""
     ...
 
 
 @over
-def frac(a: Float) -> Float:
-    """Retrieve the fractional part of ``a``.
+def frac(x: Float) -> Float:
+    """Retrieve the fractional part of ``x``.
 
-    In other words, it discards the integer part of ``a`` and is equivalent to ``a - trunc(a)``.
+    In other words, it discards the integer part of ``x`` and is equivalent to ``x - trunc(x)``.
     """
     ...
 
@@ -477,8 +477,8 @@ def cross(a: Vector[3, Scalar], b: Vector[3, Scalar]) -> Vector[3, Scalar]:
 
 
 @over
-def skew(a: Vector[3, Scalar]):
-    """Compute the skew-symmetric 3x3 matrix for a 3D vector ``a``."""
+def skew(vec: Vector[3, Scalar]):
+    """Compute the skew-symmetric 3x3 matrix for a 3D vector ``vec``."""
     ...
 
 
@@ -567,14 +567,14 @@ def trace(a: Matrix[Any, Any, Scalar]) -> Scalar:
 
 
 @over
-def diag(a: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
-    """Returns a matrix with the components of the vector ``a`` on the diagonal."""
+def diag(vec: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """Returns a matrix with the components of the vector ``vec`` on the diagonal."""
     ...
 
 
 @over
-def get_diag(a: Matrix[Any, Any, Scalar]) -> Vector[Any, Scalar]:
-    """Returns a vector containing the diagonal elements of the square matrix ``a``."""
+def get_diag(mat: Matrix[Any, Any, Scalar]) -> Vector[Any, Scalar]:
+    """Returns a vector containing the diagonal elements of the square matrix ``mat``."""
     ...
 
 
@@ -651,7 +651,7 @@ def quat_rotate_inv(quat: Quaternion[Float], vec: Vector[3, Float]) -> Vector[3,
 
 
 @over
-def quat_slerp(a: Quaternion[Float], b: Quaternion[Float], alpha: Float) -> Quaternion[Float]:
+def quat_slerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaternion[Float]:
     """Linearly interpolate between two quaternions."""
     ...
 
@@ -941,8 +941,8 @@ def randi(state: uint32) -> int:
 
 
 @over
-def randi(state: uint32, min: int32, max: int32) -> int:
-    """Return a random integer between [min, max)."""
+def randi(state: uint32, low: int32, high: int32) -> int:
+    """Return a random integer between [low, high)."""
     ...
 
 
@@ -953,8 +953,8 @@ def randf(state: uint32) -> float:
 
 
 @over
-def randf(state: uint32, min: float32, max: float32) -> float:
-    """Return a random float between [min, max)."""
+def randf(state: uint32, low: float32, high: float32) -> float:
+    """Return a random float between [low, high)."""
     ...
 
 
@@ -1140,62 +1140,62 @@ def tid() -> Tuple[int, int, int, int]:
 
 
 @over
-def select(cond: bool, expr1: Any, expr2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``expr1``, otherwise return ``expr2``"""
+def select(cond: bool, value_if_false: Any, value_if_true: Any):
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: int8, expr1: Any, expr2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``expr1``, otherwise return ``expr2``"""
+def select(cond: int8, value_if_false: Any, value_if_true: Any):
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: uint8, expr1: Any, expr2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``expr1``, otherwise return ``expr2``"""
+def select(cond: uint8, value_if_false: Any, value_if_true: Any):
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: int16, expr1: Any, expr2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``expr1``, otherwise return ``expr2``"""
+def select(cond: int16, value_if_false: Any, value_if_true: Any):
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: uint16, expr1: Any, expr2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``expr1``, otherwise return ``expr2``"""
+def select(cond: uint16, value_if_false: Any, value_if_true: Any):
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: int32, expr1: Any, expr2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``expr1``, otherwise return ``expr2``"""
+def select(cond: int32, value_if_false: Any, value_if_true: Any):
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: uint32, expr1: Any, expr2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``expr1``, otherwise return ``expr2``"""
+def select(cond: uint32, value_if_false: Any, value_if_true: Any):
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: int64, expr1: Any, expr2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``expr1``, otherwise return ``expr2``"""
+def select(cond: int64, value_if_false: Any, value_if_true: Any):
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: uint64, expr1: Any, expr2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``expr1``, otherwise return ``expr2``"""
+def select(cond: uint64, value_if_false: Any, value_if_true: Any):
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(arr: Array[Any], expr1: Any, expr2: Any):
-    """Select between two arguments, if ``arr`` is null then return ``expr1``, otherwise return ``expr2``"""
+def select(arr: Array[Any], value_if_false: Any, value_if_true: Any):
+    """Select between two arguments, if ``arr`` is null then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
@@ -1560,8 +1560,8 @@ def atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: in
 
 
 @over
-def lerp(a: Float, b: Float, alpha: Float) -> Float:
-    """Linearly interpolate two values ``a`` and ``b`` using factor ``alpha``, computed as ``a*(1-alpha) + b*alpha``"""
+def lerp(a: Float, b: Float, t: Float) -> Float:
+    """Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``"""
     ...
 
 
@@ -1590,8 +1590,8 @@ def lerp(a: Transformation[Float], b: Transformation[Float], t: Float) -> Transf
 
 
 @over
-def smoothstep(a: Float, b: Float, alpha: Float) -> Float:
-    """Smoothly interpolate between two values ``a`` and ``b`` using a factor ``alpha``,
+def smoothstep(a: Float, b: Float, x: Float) -> Float:
+    """Smoothly interpolate between two values ``a`` and ``b`` using a factor ``x``,
     and return a result between 0 and 1 using a cubic Hermite interpolation after clamping.
     """
     ...
@@ -1856,49 +1856,49 @@ def floordiv(a: Scalar, b: Scalar) -> Scalar:
 
 
 @over
-def pos(a: Scalar) -> Scalar:
+def pos(x: Scalar) -> Scalar:
     """ """
     ...
 
 
 @over
-def pos(a: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+def pos(x: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """ """
     ...
 
 
 @over
-def pos(a: Quaternion[Scalar]) -> Quaternion[Scalar]:
+def pos(x: Quaternion[Scalar]) -> Quaternion[Scalar]:
     """ """
     ...
 
 
 @over
-def pos(a: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+def pos(x: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """ """
     ...
 
 
 @over
-def neg(a: Scalar) -> Scalar:
+def neg(x: Scalar) -> Scalar:
     """ """
     ...
 
 
 @over
-def neg(a: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+def neg(x: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """ """
     ...
 
 
 @over
-def neg(a: Quaternion[Scalar]) -> Quaternion[Scalar]:
+def neg(x: Quaternion[Scalar]) -> Quaternion[Scalar]:
     """ """
     ...
 
 
 @over
-def neg(a: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+def neg(x: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """ """
     ...
 

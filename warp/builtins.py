@@ -64,39 +64,39 @@ add_builtin(
 
 add_builtin(
     "clamp",
-    input_types={"a": Scalar, "low": Scalar, "high": Scalar},
+    input_types={"x": Scalar, "low": Scalar, "high": Scalar},
     value_func=sametypes_create_value_func(Scalar),
-    doc="Clamp the value of ``a`` to the range [low, high].",
+    doc="Clamp the value of ``x`` to the range [low, high].",
     group="Scalar Math",
 )
 
 add_builtin(
     "abs",
-    input_types={"a": Scalar},
+    input_types={"x": Scalar},
     value_func=sametypes_create_value_func(Scalar),
-    doc="Return the absolute value of ``a``.",
+    doc="Return the absolute value of ``x``.",
     group="Scalar Math",
 )
 add_builtin(
     "sign",
-    input_types={"a": Scalar},
+    input_types={"x": Scalar},
     value_func=sametypes_create_value_func(Scalar),
-    doc="Return -1 if ``a`` < 0, return 1 otherwise.",
+    doc="Return -1 if ``x`` < 0, return 1 otherwise.",
     group="Scalar Math",
 )
 
 add_builtin(
     "step",
-    input_types={"a": Scalar},
+    input_types={"x": Scalar},
     value_func=sametypes_create_value_func(Scalar),
-    doc="Return 1.0 if ``a`` < 0.0, return 0.0 otherwise.",
+    doc="Return 1.0 if ``x`` < 0.0, return 0.0 otherwise.",
     group="Scalar Math",
 )
 add_builtin(
     "nonzero",
-    input_types={"a": Scalar},
+    input_types={"x": Scalar},
     value_func=sametypes_create_value_func(Scalar),
-    doc="Return 1.0 if ``a`` is not equal to zero, return 0.0 otherwise.",
+    doc="Return 1.0 if ``x`` is not equal to zero, return 0.0 otherwise.",
     group="Scalar Math",
 )
 
@@ -233,19 +233,19 @@ add_builtin(
 )
 add_builtin(
     "pow",
-    input_types={"base": Float, "exp": Float},
+    input_types={"x": Float, "y": Float},
     value_func=sametypes_create_value_func(Float),
-    doc="Return the result of ``base`` raised to power of ``exp``.",
+    doc="Return the result of ``x`` raised to power of ``y``.",
     group="Scalar Math",
     require_original_output_arg=True,
 )
 
 add_builtin(
     "round",
-    input_types={"a": Float},
+    input_types={"x": Float},
     value_func=sametypes_create_value_func(Float),
     group="Scalar Math",
-    doc="""Return the nearest integer value to ``a``, rounding halfway cases away from zero.
+    doc="""Return the nearest integer value to ``x``, rounding halfway cases away from zero.
 
     This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like :func:`warp.rint()`.
     Differs from :func:`numpy.round()`, which behaves the same way as :func:`numpy.rint()`.""",
@@ -253,50 +253,50 @@ add_builtin(
 
 add_builtin(
     "rint",
-    input_types={"a": Float},
+    input_types={"x": Float},
     value_func=sametypes_create_value_func(Float),
     group="Scalar Math",
-    doc="""Return the nearest integer value to ``a``, rounding halfway cases to nearest even integer.
+    doc="""Return the nearest integer value to ``x``, rounding halfway cases to nearest even integer.
 
     It is generally faster than :func:`warp.round()`. Equivalent to :func:`numpy.rint()`.""",
 )
 
 add_builtin(
     "trunc",
-    input_types={"a": Float},
+    input_types={"x": Float},
     value_func=sametypes_create_value_func(Float),
     group="Scalar Math",
-    doc="""Return the nearest integer that is closer to zero than ``a``.
+    doc="""Return the nearest integer that is closer to zero than ``x``.
 
-    In other words, it discards the fractional part of ``a``.
-    It is similar to casting ``float(int(a))``, but preserves the negative sign when ``a`` is in the range [-0.0, -1.0).
+    In other words, it discards the fractional part of ``x``.
+    It is similar to casting ``float(int(a))``, but preserves the negative sign when ``x`` is in the range [-0.0, -1.0).
     Equivalent to :func:`numpy.trunc()` and :func:`numpy.fix()`.""",
 )
 
 add_builtin(
     "floor",
-    input_types={"a": Float},
+    input_types={"x": Float},
     value_func=sametypes_create_value_func(Float),
     group="Scalar Math",
-    doc="""Return the largest integer that is less than or equal to ``a``.""",
+    doc="""Return the largest integer that is less than or equal to ``x``.""",
 )
 
 add_builtin(
     "ceil",
-    input_types={"a": Float},
+    input_types={"x": Float},
     value_func=sametypes_create_value_func(Float),
     group="Scalar Math",
-    doc="""Return the smallest integer that is greater than or equal to ``a``.""",
+    doc="""Return the smallest integer that is greater than or equal to ``x``.""",
 )
 
 add_builtin(
     "frac",
-    input_types={"a": Float},
+    input_types={"x": Float},
     value_func=sametypes_create_value_func(Float),
     group="Scalar Math",
-    doc="""Retrieve the fractional part of ``a``.
+    doc="""Retrieve the fractional part of ``x``.
 
-    In other words, it discards the integer part of ``a`` and is equivalent to ``a - trunc(a)``.""",
+    In other words, it discards the integer part of ``x`` and is equivalent to ``x - trunc(x)``.""",
 )
 
 add_builtin(
@@ -504,19 +504,19 @@ add_builtin(
 
 add_builtin(
     "abs",
-    input_types={"a": vector(length=Any, dtype=Scalar)},
+    input_types={"x": vector(length=Any, dtype=Scalar)},
     constraint=sametypes,
     value_func=sametypes_create_value_func(vector(length=Any, dtype=Scalar)),
-    doc="Return the absolute values of the elements of ``a``.",
+    doc="Return the absolute values of the elements of ``x``.",
     group="Vector Math",
 )
 
 add_builtin(
     "sign",
-    input_types={"a": vector(length=Any, dtype=Scalar)},
+    input_types={"x": vector(length=Any, dtype=Scalar)},
     constraint=sametypes,
     value_func=sametypes_create_value_func(Scalar),
-    doc="Return -1 for the negative elements of ``a``, and 1 otherwise.",
+    doc="Return -1 for the negative elements of ``x``, and 1 otherwise.",
     group="Vector Math",
 )
 
@@ -548,10 +548,10 @@ add_builtin(
 )
 add_builtin(
     "skew",
-    input_types={"a": vector(length=3, dtype=Scalar)},
-    value_func=lambda arg_types, arg_values: matrix(shape=(3, 3), dtype=arg_types["a"]._wp_scalar_type_),
+    input_types={"vec": vector(length=3, dtype=Scalar)},
+    value_func=lambda arg_types, arg_values: matrix(shape=(3, 3), dtype=arg_types["vec"]._wp_scalar_type_),
     group="Vector Math",
-    doc="Compute the skew-symmetric 3x3 matrix for a 3D vector ``a``.",
+    doc="Compute the skew-symmetric 3x3 matrix for a 3D vector ``vec``.",
 )
 
 add_builtin(
@@ -700,15 +700,15 @@ def diag_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]
     if arg_types is None:
         return matrix(shape=(Any, Any), dtype=Scalar)
 
-    return matrix(shape=(arg_types["a"]._length_, arg_types["a"]._length_), dtype=arg_types["a"]._wp_scalar_type_)
+    return matrix(shape=(arg_types["vec"]._length_, arg_types["vec"]._length_), dtype=arg_types["vec"]._wp_scalar_type_)
 
 
 add_builtin(
     "diag",
-    input_types={"a": vector(length=Any, dtype=Scalar)},
+    input_types={"vec": vector(length=Any, dtype=Scalar)},
     value_func=diag_value_func,
     group="Vector Math",
-    doc="Returns a matrix with the components of the vector ``a`` on the diagonal.",
+    doc="Returns a matrix with the components of the vector ``vec`` on the diagonal.",
 )
 
 
@@ -716,17 +716,19 @@ def get_diag_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, 
     if arg_types is None:
         return vector(length=(Any), dtype=Scalar)
 
-    if arg_types["a"]._shape_[0] != arg_types["a"]._shape_[1]:
-        raise RuntimeError(f"Matrix shape is {arg_types['a']._shape_}; get_diag is only available for square matrices.")
-    return vector(length=arg_types["a"]._shape_[0], dtype=arg_types["a"]._wp_scalar_type_)
+    if arg_types["mat"]._shape_[0] != arg_types["mat"]._shape_[1]:
+        raise RuntimeError(
+            f"Matrix shape is {arg_types['mat']._shape_}; get_diag is only available for square matrices."
+        )
+    return vector(length=arg_types["mat"]._shape_[0], dtype=arg_types["mat"]._wp_scalar_type_)
 
 
 add_builtin(
     "get_diag",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar)},
+    input_types={"mat": matrix(shape=(Any, Any), dtype=Scalar)},
     value_func=get_diag_value_func,
     group="Vector Math",
-    doc="Returns a vector containing the diagonal elements of the square matrix ``a``.",
+    doc="Returns a vector containing the diagonal elements of the square matrix ``mat``.",
 )
 
 add_builtin(
@@ -1239,7 +1241,7 @@ add_builtin(
 )
 add_builtin(
     "quaternion",
-    input_types={"vec": vector(length=3, dtype=Float), "value": Float, "dtype": Float},
+    input_types={"ijk": vector(length=3, dtype=Float), "real": Float, "dtype": Float},
     defaults={"dtype": None},
     value_func=quaternion_value_func,
     export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
@@ -1348,7 +1350,7 @@ add_builtin(
 )
 add_builtin(
     "quat_slerp",
-    input_types={"a": quaternion(dtype=Float), "b": quaternion(dtype=Float), "alpha": Float},
+    input_types={"a": quaternion(dtype=Float), "b": quaternion(dtype=Float), "t": Float},
     value_func=lambda arg_types, arg_values: quaternion(dtype=float_infer_type(arg_types)),
     group="Quaternion Math",
     doc="Linearly interpolate between two quaternions.",
@@ -1411,14 +1413,14 @@ def transformation_dispatch_func(input_types: Mapping[str, type], return_type: A
 
 add_builtin(
     "transformation",
-    input_types={"p": vector(length=3, dtype=Float), "q": quaternion(dtype=Float), "dtype": Float},
+    input_types={"pos": vector(length=3, dtype=Float), "rot": quaternion(dtype=Float), "dtype": Float},
     defaults={"dtype": None},
     value_func=transformation_value_func,
     export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
     dispatch_func=transformation_dispatch_func,
     native_func="transform_t",
     group="Transformations",
-    doc="Construct a rigid-body transformation with translation part ``p`` and rotation ``q``.",
+    doc="Construct a rigid-body transformation with translation part ``pos`` and rotation ``rot``.",
     export=False,
 )
 
@@ -1834,23 +1836,23 @@ add_builtin(
 
 add_builtin(
     "bvh_query_aabb",
-    input_types={"id": uint64, "lower": vec3, "upper": vec3},
-    value_type=bvh_query_t,
+    input_types={"id": uint64, "low": vec3, "high": vec3},
+    value_func=lambda arg_types, _: BvhQuery if arg_types is None else bvh_query_t,
     group="Geometry",
     doc="""Construct an axis-aligned bounding box query against a BVH object.
 
     This query can be used to iterate over all bounds inside a BVH.
 
     :param id: The BVH identifier
-    :param lower: The lower bound of the bounding box in BVH space
-    :param upper: The upper bound of the bounding box in BVH space""",
+    :param low: The lower bound of the bounding box in BVH space
+    :param high: The upper bound of the bounding box in BVH space""",
     export=False,
 )
 
 add_builtin(
     "bvh_query_ray",
     input_types={"id": uint64, "start": vec3, "dir": vec3},
-    value_type=bvh_query_t,
+    value_func=lambda arg_types, _: BvhQuery if arg_types is None else bvh_query_t,
     group="Geometry",
     doc="""Construct a ray query against a BVH object.
 
@@ -1864,7 +1866,7 @@ add_builtin(
 
 add_builtin(
     "bvh_query_next",
-    input_types={"query": bvh_query_t, "index": int},
+    input_types={"query": BvhQuery, "index": int},
     value_type=builtins.bool,
     group="Geometry",
     doc="""Move to the next bound returned by the query.
@@ -1910,7 +1912,7 @@ add_builtin(
         "point": vec3,
         "max_dist": float,
     },
-    value_type=mesh_query_point_t,
+    value_func=lambda arg_types, _: MeshQueryPoint if arg_types is None else mesh_query_point_t,
     group="Geometry",
     doc="""Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
 
@@ -1958,7 +1960,7 @@ add_builtin(
         "point": vec3,
         "max_dist": float,
     },
-    value_type=mesh_query_point_t,
+    value_func=lambda arg_types, _: MeshQueryPoint if arg_types is None else mesh_query_point_t,
     group="Geometry",
     doc="""Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
 
@@ -2004,7 +2006,7 @@ add_builtin(
         "point": vec3,
         "min_dist": float,
     },
-    value_type=mesh_query_point_t,
+    value_func=lambda arg_types, _: MeshQueryPoint if arg_types is None else mesh_query_point_t,
     group="Geometry",
     doc="""Computes the furthest point on the mesh with identifier `id` to the given point in space.
 
@@ -2061,7 +2063,7 @@ add_builtin(
         "epsilon": float,
     },
     defaults={"epsilon": 1.0e-3},
-    value_type=mesh_query_point_t,
+    value_func=lambda arg_types, _: MeshQueryPoint if arg_types is None else mesh_query_point_t,
     group="Geometry",
     doc="""Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
 
@@ -2126,7 +2128,7 @@ add_builtin(
         "threshold": float,
     },
     defaults={"accuracy": 2.0, "threshold": 0.5},
-    value_type=mesh_query_point_t,
+    value_func=lambda arg_types, _: MeshQueryPoint if arg_types is None else mesh_query_point_t,
     group="Geometry",
     doc="""Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given point in space.
 
@@ -2185,7 +2187,7 @@ add_builtin(
         "dir": vec3,
         "max_t": float,
     },
-    value_type=mesh_query_ray_t,
+    value_func=lambda arg_types, _: MeshQueryRay if arg_types is None else mesh_query_ray_t,
     group="Geometry",
     doc="""Computes the closest ray hit on the :class:`Mesh` with identifier ``id``.
 
@@ -2199,22 +2201,22 @@ add_builtin(
 
 add_builtin(
     "mesh_query_aabb",
-    input_types={"id": uint64, "lower": vec3, "upper": vec3},
-    value_type=mesh_query_aabb_t,
+    input_types={"id": uint64, "low": vec3, "high": vec3},
+    value_func=lambda arg_types, _: MeshQueryAABB if arg_types is None else mesh_query_aabb_t,
     group="Geometry",
     doc="""Construct an axis-aligned bounding box query against a :class:`Mesh`.
 
     This query can be used to iterate over all triangles inside a volume.
 
     :param id: The mesh identifier
-    :param lower: The lower bound of the bounding box in mesh space
-    :param upper: The upper bound of the bounding box in mesh space""",
+    :param low: The lower bound of the bounding box in mesh space
+    :param high: The upper bound of the bounding box in mesh space""",
     export=False,
 )
 
 add_builtin(
     "mesh_query_aabb_next",
-    input_types={"query": mesh_query_aabb_t, "index": int},
+    input_types={"query": MeshQueryAABB, "index": int},
     value_type=builtins.bool,
     group="Geometry",
     doc="""Move to the next triangle overlapping the query bounding box.
@@ -2244,7 +2246,7 @@ add_builtin(
 add_builtin(
     "hash_grid_query",
     input_types={"id": uint64, "point": vec3, "max_dist": float},
-    value_type=hash_grid_query_t,
+    value_func=lambda arg_types, _: HashGridQuery if arg_types is None else hash_grid_query_t,
     group="Geometry",
     doc="""Construct a point query against a :class:`HashGrid`.
 
@@ -2254,7 +2256,7 @@ add_builtin(
 
 add_builtin(
     "hash_grid_query_next",
-    input_types={"query": hash_grid_query_t, "index": int},
+    input_types={"query": HashGridQuery, "index": int},
     value_type=builtins.bool,
     group="Geometry",
     doc="""Move to the next point in the hash grid query.
@@ -2774,10 +2776,10 @@ add_builtin(
 )
 add_builtin(
     "randi",
-    input_types={"state": uint32, "min": int, "max": int},
+    input_types={"state": uint32, "low": int, "high": int},
     value_type=int,
     group="Random",
-    doc="Return a random integer between [min, max).",
+    doc="Return a random integer between [low, high).",
 )
 add_builtin(
     "randf",
@@ -2788,10 +2790,10 @@ add_builtin(
 )
 add_builtin(
     "randf",
-    input_types={"state": uint32, "min": float, "max": float},
+    input_types={"state": uint32, "low": float, "high": float},
     value_type=float,
     group="Random",
-    doc="Return a random float between [min, max).",
+    doc="Return a random float between [low, high).",
 )
 add_builtin(
     "randn", input_types={"state": uint32}, value_type=float, group="Random", doc="Sample a normal distribution."
@@ -3069,31 +3071,31 @@ add_builtin(
 )
 add_builtin(
     "assign",
-    input_types={"dst": Any, "src": Any},
+    input_types={"dest": Any, "src": Any},
     hidden=True,
     export=False,
     group="Utility",
 )
 add_builtin(
     "select",
-    input_types={"cond": builtins.bool, "expr1": Any, "expr2": Any},
-    value_func=lambda arg_types, arg_values: arg_types["expr1"],
-    doc="Select between two arguments, if ``cond`` is ``False`` then return ``expr1``, otherwise return ``expr2``",
+    input_types={"cond": builtins.bool, "value_if_false": Any, "value_if_true": Any},
+    value_func=lambda arg_types, arg_values: arg_types["value_if_false"],
+    doc="Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``",
     group="Utility",
 )
 for t in int_types:
     add_builtin(
         "select",
-        input_types={"cond": t, "expr1": Any, "expr2": Any},
-        value_func=lambda arg_types, arg_values: arg_types["expr1"],
-        doc="Select between two arguments, if ``cond`` is ``False`` then return ``expr1``, otherwise return ``expr2``",
+        input_types={"cond": t, "value_if_false": Any, "value_if_true": Any},
+        value_func=lambda arg_types, arg_values: arg_types["value_if_false"],
+        doc="Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``",
         group="Utility",
     )
 add_builtin(
     "select",
-    input_types={"arr": array(dtype=Any), "expr1": Any, "expr2": Any},
-    value_func=lambda arg_types, arg_values: arg_types["expr1"],
-    doc="Select between two arguments, if ``arr`` is null then return ``expr1``, otherwise return ``expr2``",
+    input_types={"arr": array(dtype=Any), "value_if_false": Any, "value_if_true": Any},
+    value_func=lambda arg_types, arg_values: arg_types["value_if_false"],
+    doc="Select between two arguments, if ``arr`` is null then return ``value_if_false``, otherwise return ``value_if_true``",
     group="Utility",
 )
 
@@ -3734,16 +3736,16 @@ add_builtin(
 
 add_builtin(
     "lerp",
-    input_types={"a": Float, "b": Float, "alpha": Float},
+    input_types={"a": Float, "b": Float, "t": Float},
     value_func=sametypes_create_value_func(Float),
-    doc="Linearly interpolate two values ``a`` and ``b`` using factor ``alpha``, computed as ``a*(1-alpha) + b*alpha``",
+    doc="Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``",
     group="Utility",
 )
 add_builtin(
     "smoothstep",
-    input_types={"a": Float, "b": Float, "alpha": Float},
+    input_types={"a": Float, "b": Float, "x": Float},
     value_func=sametypes_create_value_func(Float),
-    doc="""Smoothly interpolate between two values ``a`` and ``b`` using a factor ``alpha``,
+    doc="""Smoothly interpolate between two values ``a`` and ``b`` using a factor ``x``,
     and return a result between 0 and 1 using a cubic Hermite interpolation after clamping.""",
     group="Utility",
 )
@@ -4162,46 +4164,46 @@ add_builtin(
     group="Operators",
 )
 
-add_builtin("pos", input_types={"a": Scalar}, value_func=sametypes_create_value_func(Scalar), group="Operators")
+add_builtin("pos", input_types={"x": Scalar}, value_func=sametypes_create_value_func(Scalar), group="Operators")
 add_builtin(
     "pos",
-    input_types={"a": vector(length=Any, dtype=Scalar)},
+    input_types={"x": vector(length=Any, dtype=Scalar)},
     value_func=sametypes_create_value_func(vector(length=Any, dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "pos",
-    input_types={"a": quaternion(dtype=Scalar)},
+    input_types={"x": quaternion(dtype=Scalar)},
     value_func=sametypes_create_value_func(quaternion(dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "pos",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar)},
+    input_types={"x": matrix(shape=(Any, Any), dtype=Scalar)},
     value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
     doc="",
     group="Operators",
 )
-add_builtin("neg", input_types={"a": Scalar}, value_func=sametypes_create_value_func(Scalar), group="Operators")
+add_builtin("neg", input_types={"x": Scalar}, value_func=sametypes_create_value_func(Scalar), group="Operators")
 add_builtin(
     "neg",
-    input_types={"a": vector(length=Any, dtype=Scalar)},
+    input_types={"x": vector(length=Any, dtype=Scalar)},
     value_func=sametypes_create_value_func(vector(length=Any, dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "neg",
-    input_types={"a": quaternion(dtype=Scalar)},
+    input_types={"x": quaternion(dtype=Scalar)},
     value_func=sametypes_create_value_func(quaternion(dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "neg",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar)},
+    input_types={"x": matrix(shape=(Any, Any), dtype=Scalar)},
     value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
     doc="",
     group="Operators",

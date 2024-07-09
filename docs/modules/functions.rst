@@ -132,43 +132,43 @@ Scalar Math
     Return the maximum element of a vector ``a``.
 
 
-.. py:function:: clamp(a: Scalar, low: Scalar, high: Scalar) -> Scalar
+.. py:function:: clamp(x: Scalar, low: Scalar, high: Scalar) -> Scalar
 
-    Clamp the value of ``a`` to the range [low, high].
-
-
-.. py:function:: abs(a: Scalar) -> Scalar
-
-    Return the absolute value of ``a``.
+    Clamp the value of ``x`` to the range [low, high].
 
 
-.. py:function:: abs(a: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+.. py:function:: abs(x: Scalar) -> Scalar
+
+    Return the absolute value of ``x``.
+
+
+.. py:function:: abs(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]
     :noindex:
     :nocontentsentry:
 
-    Return the absolute values of the elements of ``a``.
+    Return the absolute values of the elements of ``x``.
 
 
-.. py:function:: sign(a: Scalar) -> Scalar
+.. py:function:: sign(x: Scalar) -> Scalar
 
-    Return -1 if ``a`` < 0, return 1 otherwise.
+    Return -1 if ``x`` < 0, return 1 otherwise.
 
 
-.. py:function:: sign(a: Vector[Any,Scalar]) -> Scalar
+.. py:function:: sign(x: Vector[Any,Scalar]) -> Scalar
     :noindex:
     :nocontentsentry:
 
-    Return -1 for the negative elements of ``a``, and 1 otherwise.
+    Return -1 for the negative elements of ``x``, and 1 otherwise.
 
 
-.. py:function:: step(a: Scalar) -> Scalar
+.. py:function:: step(x: Scalar) -> Scalar
 
-    Return 1.0 if ``a`` < 0.0, return 0.0 otherwise.
+    Return 1.0 if ``x`` < 0.0, return 0.0 otherwise.
 
 
-.. py:function:: nonzero(a: Scalar) -> Scalar
+.. py:function:: nonzero(x: Scalar) -> Scalar
 
-    Return 1.0 if ``a`` is not equal to zero, return 0.0 otherwise.
+    Return 1.0 if ``x`` is not equal to zero, return 0.0 otherwise.
 
 
 .. py:function:: sin(x: Float) -> Float
@@ -261,50 +261,50 @@ Scalar Math
     Return the value of the exponential function :math:`e^x`.
 
 
-.. py:function:: pow(base: Float, exp: Float) -> Float
+.. py:function:: pow(x: Float, y: Float) -> Float
 
-    Return the result of ``base`` raised to power of ``exp``.
+    Return the result of ``x`` raised to power of ``y``.
 
 
-.. py:function:: round(a: Float) -> Float
+.. py:function:: round(x: Float) -> Float
 
-    Return the nearest integer value to ``a``, rounding halfway cases away from zero.
+    Return the nearest integer value to ``x``, rounding halfway cases away from zero.
 
     This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like :func:`warp.rint()`.
     Differs from :func:`numpy.round()`, which behaves the same way as :func:`numpy.rint()`.
 
 
-.. py:function:: rint(a: Float) -> Float
+.. py:function:: rint(x: Float) -> Float
 
-    Return the nearest integer value to ``a``, rounding halfway cases to nearest even integer.
+    Return the nearest integer value to ``x``, rounding halfway cases to nearest even integer.
 
     It is generally faster than :func:`warp.round()`. Equivalent to :func:`numpy.rint()`.
 
 
-.. py:function:: trunc(a: Float) -> Float
+.. py:function:: trunc(x: Float) -> Float
 
-    Return the nearest integer that is closer to zero than ``a``.
+    Return the nearest integer that is closer to zero than ``x``.
 
-    In other words, it discards the fractional part of ``a``.
-    It is similar to casting ``float(int(a))``, but preserves the negative sign when ``a`` is in the range [-0.0, -1.0).
+    In other words, it discards the fractional part of ``x``.
+    It is similar to casting ``float(int(a))``, but preserves the negative sign when ``x`` is in the range [-0.0, -1.0).
     Equivalent to :func:`numpy.trunc()` and :func:`numpy.fix()`.
 
 
-.. py:function:: floor(a: Float) -> Float
+.. py:function:: floor(x: Float) -> Float
 
-    Return the largest integer that is less than or equal to ``a``.
-
-
-.. py:function:: ceil(a: Float) -> Float
-
-    Return the smallest integer that is greater than or equal to ``a``.
+    Return the largest integer that is less than or equal to ``x``.
 
 
-.. py:function:: frac(a: Float) -> Float
+.. py:function:: ceil(x: Float) -> Float
 
-    Retrieve the fractional part of ``a``.
+    Return the smallest integer that is greater than or equal to ``x``.
 
-    In other words, it discards the integer part of ``a`` and is equivalent to ``a - trunc(a)``.
+
+.. py:function:: frac(x: Float) -> Float
+
+    Retrieve the fractional part of ``x``.
+
+    In other words, it discards the integer part of ``x`` and is equivalent to ``x - trunc(x)``.
 
 
 .. py:function:: isfinite(a: Scalar) -> bool
@@ -426,9 +426,9 @@ Vector Math
     Compute the cross product of two 3D vectors.
 
 
-.. py:function:: skew(a: Vector[3,Scalar])
+.. py:function:: skew(vec: Vector[3,Scalar])
 
-    Compute the skew-symmetric 3x3 matrix for a 3D vector ``a``.
+    Compute the skew-symmetric 3x3 matrix for a 3D vector ``vec``.
 
 
 .. py:function:: length(a: Vector[Any,Float]) -> Float
@@ -515,14 +515,14 @@ Vector Math
     Return the trace of the matrix ``a``.
 
 
-.. py:function:: diag(a: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]
+.. py:function:: diag(vec: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]
 
-    Returns a matrix with the components of the vector ``a`` on the diagonal.
+    Returns a matrix with the components of the vector ``vec`` on the diagonal.
 
 
-.. py:function:: get_diag(a: Matrix[Any,Any,Scalar]) -> Vector[Any,Scalar]
+.. py:function:: get_diag(mat: Matrix[Any,Any,Scalar]) -> Vector[Any,Scalar]
 
-    Returns a vector containing the diagonal elements of the square matrix ``a``.
+    Returns a vector containing the diagonal elements of the square matrix ``mat``.
 
 
 .. py:function:: cw_mul(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
@@ -607,7 +607,7 @@ Quaternion Math
     Create a quaternion using the supplied components (type inferred from component type).
 
 
-.. py:function:: quaternion(vec: Vector[3,Float], value: Float, dtype: Float) -> Quaternion[Float]
+.. py:function:: quaternion(ijk: Vector[3,Float], real: Float, dtype: Float) -> Quaternion[Float]
     :noindex:
     :nocontentsentry:
 
@@ -661,7 +661,7 @@ Quaternion Math
     Rotate a vector by the inverse of a quaternion.
 
 
-.. py:function:: quat_slerp(a: Quaternion[Float], b: Quaternion[Float], alpha: Float) -> Quaternion[Float]
+.. py:function:: quat_slerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaternion[Float]
 
     Linearly interpolate between two quaternions.
 
@@ -675,9 +675,9 @@ Quaternion Math
 
 Transformations
 ---------------
-.. py:function:: transformation(p: Vector[3,Float], q: Quaternion[Float], dtype: Float) -> Transformation[Float]
+.. py:function:: transformation(pos: Vector[3,Float], rot: Quaternion[Float], dtype: Float) -> Transformation[Float]
 
-    Construct a rigid-body transformation with translation part ``p`` and rotation ``q``.
+    Construct a rigid-body transformation with translation part ``pos`` and rotation ``rot``.
 
 
 .. py:function:: transform_identity(dtype: Float) -> transformf
@@ -876,72 +876,72 @@ Utility
     This function may not be called from user-defined Warp functions.
 
 
-.. py:function:: select(cond: bool, expr1: Any, expr2: Any)
+.. py:function:: select(cond: bool, value_if_false: Any, value_if_true: Any)
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``expr1``, otherwise return ``expr2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: int8, expr1: Any, expr2: Any)
+.. py:function:: select(cond: int8, value_if_false: Any, value_if_true: Any)
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``expr1``, otherwise return ``expr2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: uint8, expr1: Any, expr2: Any)
+.. py:function:: select(cond: uint8, value_if_false: Any, value_if_true: Any)
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``expr1``, otherwise return ``expr2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: int16, expr1: Any, expr2: Any)
+.. py:function:: select(cond: int16, value_if_false: Any, value_if_true: Any)
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``expr1``, otherwise return ``expr2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: uint16, expr1: Any, expr2: Any)
+.. py:function:: select(cond: uint16, value_if_false: Any, value_if_true: Any)
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``expr1``, otherwise return ``expr2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: int32, expr1: Any, expr2: Any)
+.. py:function:: select(cond: int32, value_if_false: Any, value_if_true: Any)
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``expr1``, otherwise return ``expr2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: uint32, expr1: Any, expr2: Any)
+.. py:function:: select(cond: uint32, value_if_false: Any, value_if_true: Any)
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``expr1``, otherwise return ``expr2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: int64, expr1: Any, expr2: Any)
+.. py:function:: select(cond: int64, value_if_false: Any, value_if_true: Any)
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``expr1``, otherwise return ``expr2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: uint64, expr1: Any, expr2: Any)
+.. py:function:: select(cond: uint64, value_if_false: Any, value_if_true: Any)
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``expr1``, otherwise return ``expr2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(arr: Array[Any], expr1: Any, expr2: Any)
+.. py:function:: select(arr: Array[Any], value_if_false: Any, value_if_true: Any)
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``arr`` is null then return ``expr1``, otherwise return ``expr2``
+    Select between two arguments, if ``arr`` is null then return ``value_if_false``, otherwise return ``value_if_true``
 
 
 .. py:function:: atomic_add(arr: Array[Any], i: int32, value: Any)
@@ -1320,9 +1320,9 @@ Utility
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: lerp(a: Float, b: Float, alpha: Float) -> Float
+.. py:function:: lerp(a: Float, b: Float, t: Float) -> Float
 
-    Linearly interpolate two values ``a`` and ``b`` using factor ``alpha``, computed as ``a*(1-alpha) + b*alpha``
+    Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``
 
 
 .. py:function:: lerp(a: Vector[Any,Float], b: Vector[Any,Float], t: Float) -> Vector[Any,Float]
@@ -1353,9 +1353,9 @@ Utility
     Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``
 
 
-.. py:function:: smoothstep(a: Float, b: Float, alpha: Float) -> Float
+.. py:function:: smoothstep(a: Float, b: Float, x: Float) -> Float
 
-    Smoothly interpolate between two values ``a`` and ``b`` using a factor ``alpha``,
+    Smoothly interpolate between two values ``a`` and ``b`` using a factor ``x``,
     and return a result between 0 and 1 using a cubic Hermite interpolation after clamping.
 
 
@@ -1375,16 +1375,16 @@ Utility
 
 Geometry
 ---------------
-.. autoclass:: bvh_query_t
-.. py:function:: bvh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> bvh_query_t
+.. autoclass:: BvhQuery
+.. py:function:: bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> bvh_query_t
 
     Construct an axis-aligned bounding box query against a BVH object.
 
     This query can be used to iterate over all bounds inside a BVH.
 
     :param id: The BVH identifier
-    :param lower: The lower bound of the bounding box in BVH space
-    :param upper: The upper bound of the bounding box in BVH space
+    :param low: The lower bound of the bounding box in BVH space
+    :param high: The upper bound of the bounding box in BVH space
 
 
 .. py:function:: bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> bvh_query_t
@@ -1404,7 +1404,7 @@ Geometry
     The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.
 
 
-.. autoclass:: mesh_query_point_t
+.. autoclass:: MeshQueryPoint
 .. py:function:: mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> mesh_query_point_t
 
     Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
@@ -1472,7 +1472,7 @@ Geometry
     :param threshold: The threshold of the winding number to be considered inside, default 0.5
 
 
-.. autoclass:: mesh_query_ray_t
+.. autoclass:: MeshQueryRay
 .. py:function:: mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32) -> mesh_query_ray_t
 
     Computes the closest ray hit on the :class:`Mesh` with identifier ``id``.
@@ -1483,16 +1483,16 @@ Geometry
     :param max_t: The maximum distance along the ray to check for intersections
 
 
-.. autoclass:: mesh_query_aabb_t
-.. py:function:: mesh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> mesh_query_aabb_t
+.. autoclass:: MeshQueryAABB
+.. py:function:: mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> mesh_query_aabb_t
 
     Construct an axis-aligned bounding box query against a :class:`Mesh`.
 
     This query can be used to iterate over all triangles inside a volume.
 
     :param id: The mesh identifier
-    :param lower: The lower bound of the bounding box in mesh space
-    :param upper: The upper bound of the bounding box in mesh space
+    :param low: The lower bound of the bounding box in mesh space
+    :param high: The upper bound of the bounding box in mesh space
 
 
 .. py:function:: mesh_query_aabb_next(query: mesh_query_aabb_t, index: int32) -> bool
@@ -1512,7 +1512,7 @@ Geometry
     Evaluates the velocity on the :class:`Mesh` given a face index and barycentric coordinates.
 
 
-.. autoclass:: hash_grid_query_t
+.. autoclass:: HashGridQuery
 .. py:function:: hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> hash_grid_query_t
 
     Construct a point query against a :class:`HashGrid`.
@@ -1747,11 +1747,11 @@ Random
     Return a random integer in the range [0, 2^32).
 
 
-.. py:function:: randi(state: uint32, min: int32, max: int32) -> int
+.. py:function:: randi(state: uint32, low: int32, high: int32) -> int
     :noindex:
     :nocontentsentry:
 
-    Return a random integer between [min, max).
+    Return a random integer between [low, high).
 
 
 .. py:function:: randf(state: uint32) -> float
@@ -1759,11 +1759,11 @@ Random
     Return a random float between [0.0, 1.0).
 
 
-.. py:function:: randf(state: uint32, min: float32, max: float32) -> float
+.. py:function:: randf(state: uint32, low: float32, high: float32) -> float
     :noindex:
     :nocontentsentry:
 
-    Return a random float between [min, max).
+    Return a random float between [low, high).
 
 
 .. py:function:: randn(state: uint32) -> float
@@ -2091,38 +2091,38 @@ Operators
 .. py:function:: floordiv(a: Scalar, b: Scalar) -> Scalar
 
 
-.. py:function:: pos(a: Scalar) -> Scalar
+.. py:function:: pos(x: Scalar) -> Scalar
 
 
-.. py:function:: pos(a: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+.. py:function:: pos(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: pos(a: Quaternion[Scalar]) -> Quaternion[Scalar]
+.. py:function:: pos(x: Quaternion[Scalar]) -> Quaternion[Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: pos(a: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+.. py:function:: pos(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: neg(a: Scalar) -> Scalar
+.. py:function:: neg(x: Scalar) -> Scalar
 
 
-.. py:function:: neg(a: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+.. py:function:: neg(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: neg(a: Quaternion[Scalar]) -> Quaternion[Scalar]
+.. py:function:: neg(x: Quaternion[Scalar]) -> Quaternion[Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: neg(a: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+.. py:function:: neg(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
     :noindex:
     :nocontentsentry:
 
