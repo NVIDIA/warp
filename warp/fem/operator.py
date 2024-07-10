@@ -1,4 +1,3 @@
-import inspect
 from typing import Any, Callable
 
 import warp as wp
@@ -15,7 +14,7 @@ class Integrand:
         self.func = func
         self.name = wp.codegen.make_full_qualified_name(self.func)
         self.module = wp.get_module(self.func.__module__)
-        self.argspec = inspect.getfullargspec(self.func)
+        self.argspec = wp.codegen.get_full_arg_spec(self.func)
 
 
 class Operator:
