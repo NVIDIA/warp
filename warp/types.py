@@ -99,6 +99,7 @@ def vector(length, dtype):
         # warp scalar type:
         _wp_scalar_type_ = dtype
         _wp_type_params_ = [length, dtype]
+        _wp_type_args_ = {"length": length, "dtype": dtype}
         _wp_generic_type_str_ = "vec_t"
         _wp_generic_type_hint_ = Vector
         _wp_constructor_ = "vector"
@@ -282,6 +283,7 @@ def matrix(shape, dtype):
         # used in type checking and when writing out c++ code for constructors:
         _wp_scalar_type_ = dtype
         _wp_type_params_ = [shape[0], shape[1], dtype]
+        _wp_type_args_ = {"shape": (shape[0], shape[1]), "dtype": dtype}
         _wp_generic_type_str_ = "mat_t"
         _wp_generic_type_hint_ = Matrix
         _wp_constructor_ = "matrix"
@@ -707,6 +709,7 @@ def quaternion(dtype=Any):
 
     ret = quat_t
     ret._wp_type_params_ = [dtype]
+    ret._wp_type_args_ = {"dtype": dtype}
     ret._wp_generic_type_str_ = "quat_t"
     ret._wp_generic_type_hint_ = Quaternion
     ret._wp_constructor_ = "quaternion"
@@ -743,6 +746,7 @@ def transformation(dtype=Any):
             ),
         )
         _wp_type_params_ = [dtype]
+        _wp_type_args_ = {"dtype": dtype}
         _wp_generic_type_str_ = "transform_t"
         _wp_generic_type_hint_ = Transformation
         _wp_constructor_ = "transformation"
@@ -1400,6 +1404,11 @@ def type_is_vector(t):
     return getattr(t, "_wp_generic_type_hint_", None) is Vector
 
 
+# returns True if the passed *type* is a quaternion
+def type_is_quaternion(t):
+    return getattr(t, "_wp_generic_type_hint_", None) is Quaternion
+
+
 # returns True if the passed *type* is a matrix
 def type_is_matrix(t):
     return getattr(t, "_wp_generic_type_hint_", None) is Matrix
@@ -1432,22 +1441,6 @@ def is_array(a):
 
 
 def scalars_equal(a, b, match_generic):
-    if match_generic:
-        if a == Any or b == Any:
-            return True
-        if a == Scalar and b in scalar_and_bool_types:
-            return True
-        if b == Scalar and a in scalar_and_bool_types:
-            return True
-        if a == Scalar and b == Scalar:
-            return True
-        if a == Float and b in float_types:
-            return True
-        if b == Float and a in float_types:
-            return True
-        if a == Float and b == Float:
-            return True
-
     # convert to canonical types
     if a == float:
         a = float32
@@ -1462,6 +1455,28 @@ def scalars_equal(a, b, match_generic):
         b = int32
     elif b == builtins.bool:
         b = bool
+
+    if match_generic:
+        if a == Any or b == Any:
+            return True
+        if a == Int and b in int_types:
+            return True
+        if b == Int and a in int_types:
+            return True
+        if a == Int and b == Int:
+            return True
+        if a == Scalar and b in scalar_and_bool_types:
+            return True
+        if b == Scalar and a in scalar_and_bool_types:
+            return True
+        if a == Scalar and b == Scalar:
+            return True
+        if a == Float and b in float_types:
+            return True
+        if b == Float and a in float_types:
+            return True
+        if a == Float and b == Float:
+            return True
 
     return a == b
 

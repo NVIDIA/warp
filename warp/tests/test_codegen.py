@@ -467,6 +467,24 @@ def test_error_collection_construct(test, device):
         wp.launch(kernel, dim=1)
 
 
+@wp.kernel
+def test_call_syntax():
+    expected_pow = 16.0
+    wp.expect_eq(wp.pow(2.0, 4.0), expected_pow)
+    wp.expect_eq(wp.pow(x=2.0, y=4.0), expected_pow)
+    wp.expect_eq(wp.pow(2.0, y=4.0), expected_pow)
+    wp.expect_eq(wp.pow(y=4.0, x=2.0), expected_pow)
+
+    expected_matrix = wp.mat44(2.0, 0.0, 0.0, 1.0, 0.0, 3.0, 0.0, 2.0, 0.0, 0.0, 4.0, 3.0, 0.0, 0.0, 0.0, 1.0)
+    pos = wp.vec3(1.0, 2.0, 3.0)
+    rot = wp.quat(0.0, 0.0, 0.0, 1.0)
+    scale = wp.vec3(2.0, 3.0, 4.0)
+    wp.expect_eq(wp.matrix(pos, rot, scale, wp.float32), expected_matrix)
+    wp.expect_eq(wp.matrix(pos=pos, rot=rot, scale=scale, dtype=wp.float32), expected_matrix)
+    wp.expect_eq(wp.matrix(pos, rot, scale, dtype=wp.float32), expected_matrix)
+    wp.expect_eq(wp.matrix(rot=rot, pos=pos, dtype=wp.float32, scale=scale), expected_matrix)
+
+
 class TestCodeGen(unittest.TestCase):
     pass
 
@@ -600,6 +618,8 @@ add_function_test(TestCodeGen, func=test_error_global_var, name="test_error_glob
 add_function_test(
     TestCodeGen, func=test_error_collection_construct, name="test_error_collection_construct", devices=devices
 )
+
+add_kernel_test(TestCodeGen, name="test_call_syntax", kernel=test_call_syntax, dim=1, devices=devices)
 
 
 if __name__ == "__main__":

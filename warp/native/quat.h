@@ -36,6 +36,42 @@ struct quat_t
     
     // real part
     Type w;
+
+    inline CUDA_CALLABLE Type operator[](int index) const
+    {
+        switch (index)
+        {
+            case 0:
+                return x;
+            case 1:
+                return y;
+            case 2:
+                return z;
+            case 3:
+                return w;
+            default:
+                assert(0);
+                return x;
+        }
+    }
+
+    inline CUDA_CALLABLE Type& operator[](int index)
+    {
+        switch (index)
+        {
+            case 0:
+                return x;
+            case 1:
+                return y;
+            case 2:
+                return z;
+            case 3:
+                return w;
+            default:
+                assert(0);
+                return x;
+        }
+    }
 };
 
 using quat = quat_t<float>;
@@ -398,6 +434,49 @@ inline CUDA_CALLABLE Type extract(const quat_t<Type>& a, int idx)
     else if (idx == 1)  {return a.y;}
     else if (idx == 2)  {return a.z;}
     else                {return a.w;}
+}
+
+template<typename Type>
+inline CUDA_CALLABLE Type* index(quat_t<Type>& q, int idx)
+{
+#ifndef NDEBUG
+    if (idx < 0 || idx > 3)
+    {
+        printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    return &q[idx];
+}
+
+template<typename Type>
+inline CUDA_CALLABLE Type* indexref(quat_t<Type>* q, int idx)
+{
+#ifndef NDEBUG
+    if (idx < 0 || idx > 3)
+    {
+        printf("quat store %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    return &((*q)[idx]);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_index(quat_t<Type>& q, int idx,
+                                    quat_t<Type>& adj_q, int adj_idx, const Type& adj_value)
+{
+    // nop
+}
+
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_indexref(quat_t<Type>* q, int idx,
+                                       quat_t<Type>& adj_q, int adj_idx, const Type& adj_value)
+{
+    // nop
 }
 
 template<typename Type>
