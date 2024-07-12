@@ -776,7 +776,7 @@ def vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
     if variadic_arg_count == 0:
         # Zero-initialization, e.g.: `wp.vecXX()`, `wp.vector(length=2, dtype=wp.float16)`.
         if length is None:
-            raise RuntimeError("the `length` argument must be specified when zero-initializating a vector")
+            raise RuntimeError("the `length` argument must be specified when zero-initializing a vector")
 
         if dtype is None:
             dtype = float32
@@ -880,7 +880,7 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
     if variadic_arg_count == 0:
         # Zero-initialization, e.g.: `wp.matXX()`, `wp.matrix(shape=(2, 2), dtype=wp.float16)`.
         if shape is None:
-            raise RuntimeError("the `shape` argument must be specified when zero-initializating a matrix")
+            raise RuntimeError("the `shape` argument must be specified when zero-initializing a matrix")
 
         if dtype is None:
             dtype = float32
@@ -913,7 +913,7 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
     else:
         # Initializing by value, e.g.: `wp.mat22(1, 2, 3, 4)`, `wp.matrix(1, 2, 3, 4, shape=(2, 2))`.
         if shape is None:
-            raise RuntimeError("the `shape` argument must be specified when initializating a matrix by value")
+            raise RuntimeError("the `shape` argument must be specified when initializing a matrix by value")
 
         if all(type_is_vector(x) for x in variadic_arg_types):
             if shape[1] != variadic_arg_count:

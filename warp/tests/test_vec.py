@@ -94,7 +94,7 @@ def test_anon_constructor_error_length_arg_missing(test, device):
 
     with test.assertRaisesRegex(
         RuntimeError,
-        r"the `length` argument must be specified when zero-initializating a vector$",
+        r"the `length` argument must be specified when zero-initializing a vector$",
     ):
         wp.launch(
             kernel,

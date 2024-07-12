@@ -59,7 +59,7 @@ def test_anon_constructor_error_shape_arg_missing(test, device):
 
     with test.assertRaisesRegex(
         RuntimeError,
-        r"the `shape` argument must be specified when initializating a matrix by value$",
+        r"the `shape` argument must be specified when initializing a matrix by value$",
     ):
         wp.launch(
             kernel,
