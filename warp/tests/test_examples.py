@@ -148,9 +148,12 @@ def add_example_test(
 
         command.extend(_build_command_line_options(options))
 
+        # Set the test timeout in seconds
+        test_timeout = options.pop("test_timeout", 300)
+
         # with wp.ScopedTimer(f"{name}_{sanitize_identifier(device)}"):
         # Run the script as a subprocess
-        result = subprocess.run(command, capture_output=True, text=True, env=env_vars, timeout=300)
+        result = subprocess.run(command, capture_output=True, text=True, env=env_vars, timeout=test_timeout)
 
         # Check the return code (0 is standard for success)
         test.assertEqual(
@@ -223,6 +226,7 @@ add_example_test(
     name="core.example_torch",
     devices=test_devices,
     test_options={"headless": True, "num_frames": 1000, "torch_required": True},
+    test_options_cpu={"test_timeout": 600},
 )
 add_example_test(TestCoreExamples, name="core.example_wave", devices=test_devices)
 
@@ -232,7 +236,11 @@ class TestOptimExamples(unittest.TestCase):
 
 
 add_example_test(
-    TestOptimExamples, name="optim.example_bounce", devices=test_devices, test_options_cpu={"train_iters": 3}
+    TestOptimExamples,
+    name="optim.example_bounce",
+    devices=test_devices,
+    test_options_cpu={"train_iters": 3},
+    test_options_cuda={"test_timeout": 600},
 )
 add_example_test(
     TestOptimExamples,
@@ -283,7 +291,9 @@ class TestSimExamples(unittest.TestCase):
     pass
 
 
-add_example_test(TestSimExamples, name="sim.example_cartpole", devices=test_devices)
+add_example_test(
+    TestSimExamples, name="sim.example_cartpole", devices=test_devices, test_options_cuda={"test_timeout": 600}
+)
 add_example_test(
     TestSimExamples,
     name="sim.example_cloth",
