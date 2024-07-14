@@ -28,6 +28,7 @@
 - Improve error messages for unsupported constructs
 - Update `wp.matmul()` CPU fallback to use dtype explicitly in `np.matmul()` call
 - Fix ShapeInstancer `__new__()` method (missing instance return and `*args` parameter)
+- Add support for PEP 563's `from __future__ import annotations`.
 
 ## [1.2.2] - 2024-07-04
 

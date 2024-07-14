@@ -10,6 +10,7 @@ from __future__ import annotations
 import ast
 import builtins
 import ctypes
+import functools
 import inspect
 import math
 import re
@@ -98,13 +99,94 @@ def op_str_is_chainable(op: str) -> builtins.bool:
     return op in comparison_chain_strings
 
 
+def get_closure_cell_contents(obj):
+    """Retrieve a closure's cell contents or `None` if it's empty."""
+    try:
+        return obj.cell_contents
+    except ValueError:
+        pass
+
+    return None
+
+
+def eval_annotations(annotations: Mapping[str, Any], obj: Any) -> Mapping[str, Any]:
+    """Un-stringize annotations caused by `from __future__ import annotations` of PEP 563."""
+    # Implementation backported from `inspect.get_annotations()` for Python 3.9 and older.
+    if not annotations:
+        return {}
+
+    if not any(isinstance(x, str) for x in annotations.values()):
+        # No annotation to un-stringize.
+        return annotations
+
+    if isinstance(obj, type):
+        # class
+        globals = {}
+        module_name = getattr(obj, "__module__", None)
+        if module_name:
+            module = sys.modules.get(module_name, None)
+            if module:
+                globals = getattr(module, "__dict__", {})
+        locals = dict(vars(obj))
+        unwrap = obj
+    elif isinstance(obj, types.ModuleType):
+        # module
+        globals = obj.__dict__
+        locals = {}
+        unwrap = None
+    elif callable(obj):
+        # function
+        globals = getattr(obj, "__globals__", {})
+        # Capture the variables from the surrounding scope.
+        closure_vars = zip(
+            obj.__code__.co_freevars, tuple(get_closure_cell_contents(x) for x in (obj.__closure__ or ()))
+        )
+        locals = {k: v for k, v in closure_vars if v is not None}
+        unwrap = obj
+    else:
+        raise TypeError(f"{obj!r} is not a module, class, or callable.")
+
+    if unwrap is not None:
+        while True:
+            if hasattr(unwrap, "__wrapped__"):
+                unwrap = unwrap.__wrapped__
+                continue
+            if isinstance(unwrap, functools.partial):
+                unwrap = unwrap.func
+                continue
+            break
+        if hasattr(unwrap, "__globals__"):
+            globals = unwrap.__globals__
+
+    # "Inject" type parameters into the local namespace
+    # (unless they are shadowed by assignments *in* the local namespace),
+    # as a way of emulating annotation scopes when calling `eval()`
+    type_params = getattr(obj, "__type_params__", ())
+    if type_params:
+        locals = {param.__name__: param for param in type_params} | locals
+
+    return {k: v if not isinstance(v, str) else eval(v, globals, locals) for k, v in annotations.items()}
+
+
 def get_annotations(obj: Any) -> Mapping[str, Any]:
-    """Alternative to `inspect.get_annotations()` for Python 3.9 and older."""
+    """Same as `inspect.get_annotations()` but always returning un-stringized annotations."""
+    # This backports `inspect.get_annotations()` for Python 3.9 and older.
     # See https://docs.python.org/3/howto/annotations.html#accessing-the-annotations-dict-of-an-object-in-python-3-9-and-older
     if isinstance(obj, type):
-        return obj.__dict__.get("__annotations__", {})
+        annotations = obj.__dict__.get("__annotations__", {})
+    else:
+        annotations = getattr(obj, "__annotations__", {})
 
-    return getattr(obj, "__annotations__", {})
+    # Evaluating annotations can be done using the `eval_str` parameter with
+    # the official function from the `inspect` module.
+    return eval_annotations(annotations, obj)
+
+
+def get_full_arg_spec(func: Callable) -> inspect.FullArgSpec:
+    """Same as `inspect.getfullargspec()` but always returning un-stringized annotations."""
+    # See https://docs.python.org/3/howto/annotations.html#manually-un-stringizing-stringized-annotations
+    spec = inspect.getfullargspec(func)
+    return spec._replace(annotations=eval_annotations(spec.annotations, func))
 
 
 def struct_instance_repr_recursive(inst: StructInstance, depth: int) -> str:
@@ -698,7 +780,7 @@ class Adjoint:
         adj.custom_reverse_num_input_args = custom_reverse_num_input_args
 
         # parse argument types
-        argspec = inspect.getfullargspec(func)
+        argspec = get_full_arg_spec(func)
 
         # ensure all arguments are annotated
         if overload_annotations is None:

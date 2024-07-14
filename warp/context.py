@@ -43,7 +43,7 @@ def create_value_func(type):
 
 def get_function_args(func):
     """Ensures that all function arguments are annotated and returns a dictionary mapping from argument name to its type."""
-    argspec = inspect.getfullargspec(func)
+    argspec = warp.codegen.get_full_arg_spec(func)
 
     # use source-level argument annotations
     if len(argspec.annotations) < len(argspec.args):
@@ -963,7 +963,7 @@ def overload(kernel, arg_types=None):
             )
 
         # ensure all arguments are annotated
-        argspec = inspect.getfullargspec(fn)
+        argspec = warp.codegen.get_full_arg_spec(fn)
         if len(argspec.annotations) < len(argspec.args):
             raise RuntimeError(f"Incomplete argument annotations on kernel overload {fn.__name__}")
 
@@ -1556,14 +1556,6 @@ class Module:
         computed ``content_hash`` will be used.
         """
 
-        def get_annotations(obj: Any) -> Mapping[str, Any]:
-            """Alternative to `inspect.get_annotations()` for Python 3.9 and older."""
-            # See https://docs.python.org/3/howto/annotations.html#accessing-the-annotations-dict-of-an-object-in-python-3-9-and-older
-            if isinstance(obj, type):
-                return obj.__dict__.get("__annotations__", {})
-
-            return getattr(obj, "__annotations__", {})
-
         def get_type_name(type_hint):
             if isinstance(type_hint, warp.codegen.Struct):
                 return get_type_name(type_hint.cls)
@@ -1585,7 +1577,7 @@ class Module:
                 for struct in module.structs.values():
                     s = ",".join(
                         "{}: {}".format(name, get_type_name(type_hint))
-                        for name, type_hint in get_annotations(struct.cls).items()
+                        for name, type_hint in warp.codegen.get_annotations(struct.cls).items()
                     )
                     ch.update(bytes(s, "utf-8"))
 
