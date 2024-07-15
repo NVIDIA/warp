@@ -383,6 +383,7 @@ add_example_test(
     name="fem.example_convection_diffusion_dg",
     devices=test_devices,
     test_options={"resolution": 20, "num_frames": 25, "mesh": "quad", "headless": True},
+    test_options_cpu={"test_timeout": 600},
 )
 add_example_test(
     TestFemExamples,
