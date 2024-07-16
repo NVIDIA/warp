@@ -713,7 +713,9 @@ def func_match_args(func, arg_types, kwarg_types):
 
     # Populate the bound arguments with any default values.
     default_arg_types = {
-        k: get_arg_type(v) for k, v in func.defaults.items() if k not in bound_arg_types.arguments and v is not None
+        k: None if v is None else get_arg_type(v)
+        for k, v in func.defaults.items()
+        if k not in bound_arg_types.arguments
     }
     apply_defaults(bound_arg_types, default_arg_types)
     bound_arg_types = tuple(bound_arg_types.arguments.values())
