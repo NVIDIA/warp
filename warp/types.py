@@ -1537,6 +1537,61 @@ def check_array_shape(shape: Tuple):
             )
 
 
+def array_ctype_from_interface(interface: dict, dtype=None, owner=None):
+    """Get native array descriptor (array_t) from __array_interface__ or __cuda_array_interface__ dictionary"""
+
+    ptr = interface.get("data")[0]
+    shape = interface.get("shape")
+    strides = interface.get("strides")
+    typestr = interface.get("typestr")
+
+    element_dtype = dtype_from_numpy(np.dtype(typestr))
+
+    if strides is None:
+        strides = strides_from_shape(shape, element_dtype)
+
+    if dtype is None:
+        # accept verbatum
+        pass
+    elif hasattr(dtype, "_shape_"):
+        # vector/matrix types, ensure element dtype matches
+        if element_dtype != dtype._wp_scalar_type_:
+            raise RuntimeError(
+                f"Could not convert array interface with typestr='{typestr}' to Warp array with dtype={dtype}"
+            )
+        dtype_shape = dtype._shape_
+        dtype_dims = len(dtype._shape_)
+        ctype_size = ctypes.sizeof(dtype._type_)
+        # ensure inner shape matches
+        if dtype_dims > len(shape) or dtype_shape != shape[-dtype_dims:]:
+            raise RuntimeError(
+                f"Could not convert array interface with shape {shape} to Warp array with dtype={dtype}, ensure that source inner shape is {dtype_shape}"
+            )
+        # ensure inner strides are contiguous
+        if strides[-1] != ctype_size or (dtype_dims > 1 and strides[-2] != ctype_size * dtype_shape[-1]):
+            raise RuntimeError(
+                f"Could not convert array interface with shape {shape} to Warp array with dtype={dtype}, because the source inner strides are not contiguous"
+            )
+        # trim shape and strides
+        shape = tuple(shape[:-dtype_dims]) or (1,)
+        strides = tuple(strides[:-dtype_dims]) or (ctype_size,)
+    else:
+        # scalar types, ensure dtype matches
+        if element_dtype != dtype:
+            raise RuntimeError(
+                f"Could not convert array interface with typestr='{typestr}' to Warp array with dtype={dtype}"
+            )
+
+    # create array descriptor
+    array_ctype = array_t(ptr, 0, len(shape), shape, strides)
+
+    # keep owner alive
+    if owner is not None:
+        array_ctype._ref = owner
+
+    return array_ctype
+
+
 class array(Array):
     # member attributes available during code-gen (e.g.: d = array.shape[0])
     # (initialized when needed)
