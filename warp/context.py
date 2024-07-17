@@ -3316,17 +3316,20 @@ class Runtime:
         return dll
 
     def get_device(self, ident: Devicelike = None) -> Device:
-        if isinstance(ident, Device):
+        # special cases
+        if type(ident) is Device:
             return ident
         elif ident is None:
             return self.default_device
-        elif isinstance(ident, str):
-            if ident == "cuda":
-                return self.get_current_cuda_device()
-            else:
-                return self.device_map[ident]
-        else:
-            raise RuntimeError(f"Unable to resolve device from argument of type {type(ident)}")
+
+        # string lookup
+        device = self.device_map.get(ident)
+        if device is not None:
+            return device
+        elif ident == "cuda":
+            return self.get_current_cuda_device()
+
+        raise ValueError(f"Invalid device identifier: {ident}")
 
     def set_default_device(self, ident: Devicelike):
         self.default_device = self.get_device(ident)
@@ -4343,6 +4346,10 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             # allow for NULL arrays
             return arg_type.__ctype__()
 
+        elif isinstance(value, warp.types.array_t):
+            # accept array descriptors verbatum
+            return value
+
         else:
             # check for array type
             # - in forward passes, array types have to match
@@ -4353,6 +4360,32 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
                 array_matches = type(value) is type(arg_type)
 
             if not array_matches:
+                # if a regular Warp array is required, try converting from __cuda_array_interface__ or __array_interface__
+                if isinstance(arg_type, warp.array):
+                    if device.is_cuda:
+                        # check for __cuda_array_interface__
+                        try:
+                            interface = value.__cuda_array_interface__
+                        except AttributeError:
+                            pass
+                        else:
+                            return warp.types.array_ctype_from_interface(interface, dtype=arg_type.dtype, owner=value)
+                    else:
+                        # check for __array_interface__
+                        try:
+                            interface = value.__array_interface__
+                        except AttributeError:
+                            pass
+                        else:
+                            return warp.types.array_ctype_from_interface(interface, dtype=arg_type.dtype, owner=value)
+                        # check for __array__() method, e.g. Torch CPU tensors
+                        try:
+                            interface = value.__array__().__array_interface__
+                        except AttributeError:
+                            pass
+                        else:
+                            return warp.types.array_ctype_from_interface(interface, dtype=arg_type.dtype, owner=value)
+
                 adj = "adjoint " if adjoint else ""
                 raise RuntimeError(
                     f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array of type {type(arg_type)}, but passed value has type {type(value)}."

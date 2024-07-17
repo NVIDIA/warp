@@ -26,6 +26,18 @@ def inc(a: wp.array(dtype=float)):
 
 
 @wp.kernel
+def inc_vector(a: wp.array(dtype=wp.vec3f)):
+    tid = wp.tid()
+    a[tid] = a[tid] + wp.vec3f(1.0)
+
+
+@wp.kernel
+def inc_matrix(a: wp.array(dtype=wp.mat22f)):
+    tid = wp.tid()
+    a[tid] = a[tid] + wp.mat22f(1.0)
+
+
+@wp.kernel
 def arange(start: int, step: int, a: wp.array(dtype=int)):
     tid = wp.tid()
     a[tid] = start + step * tid
@@ -214,6 +226,160 @@ def test_from_torch(test, device):
     wrap_mat_tensor_with_grad(3, 3, wp.mat33)
     wrap_mat_tensor_with_grad(4, 4, wp.mat44)
     wrap_mat_tensor_with_grad(6, 6, wp.spatial_matrix)
+
+
+def test_array_ctype_from_torch(test, device):
+    import torch
+
+    torch_device = wp.device_to_torch(device)
+
+    # automatically determine warp dtype
+    def wrap_scalar_tensor_implicit(torch_dtype):
+        t = torch.zeros(10, dtype=torch_dtype, device=torch_device)
+        a = wp.from_torch(t, return_ctype=True)
+        warp_dtype = wp.dtype_from_torch(torch_dtype)
+        ctype_size = ctypes.sizeof(warp_dtype._type_)
+        assert a.data == t.data_ptr()
+        assert a.grad == 0
+        assert a.ndim == 1
+        assert a.shape[0] == t.shape[0]
+        assert a.strides[0] == t.stride()[0] * ctype_size
+
+    wrap_scalar_tensor_implicit(torch.float64)
+    wrap_scalar_tensor_implicit(torch.float32)
+    wrap_scalar_tensor_implicit(torch.float16)
+    wrap_scalar_tensor_implicit(torch.int64)
+    wrap_scalar_tensor_implicit(torch.int32)
+    wrap_scalar_tensor_implicit(torch.int16)
+    wrap_scalar_tensor_implicit(torch.int8)
+    wrap_scalar_tensor_implicit(torch.uint8)
+    wrap_scalar_tensor_implicit(torch.bool)
+
+    # explicitly specify warp dtype
+    def wrap_scalar_tensor_explicit(torch_dtype, warp_dtype):
+        t = torch.zeros(10, dtype=torch_dtype, device=torch_device)
+        a = wp.from_torch(t, dtype=warp_dtype, return_ctype=True)
+        ctype_size = ctypes.sizeof(warp_dtype._type_)
+        assert a.data == t.data_ptr()
+        assert a.grad == 0
+        assert a.ndim == 1
+        assert a.shape[0] == t.shape[0]
+        assert a.strides[0] == t.stride()[0] * ctype_size
+
+    wrap_scalar_tensor_explicit(torch.float64, wp.float64)
+    wrap_scalar_tensor_explicit(torch.float32, wp.float32)
+    wrap_scalar_tensor_explicit(torch.float16, wp.float16)
+    wrap_scalar_tensor_explicit(torch.int64, wp.int64)
+    wrap_scalar_tensor_explicit(torch.int64, wp.uint64)
+    wrap_scalar_tensor_explicit(torch.int32, wp.int32)
+    wrap_scalar_tensor_explicit(torch.int32, wp.uint32)
+    wrap_scalar_tensor_explicit(torch.int16, wp.int16)
+    wrap_scalar_tensor_explicit(torch.int16, wp.uint16)
+    wrap_scalar_tensor_explicit(torch.int8, wp.int8)
+    wrap_scalar_tensor_explicit(torch.int8, wp.uint8)
+    wrap_scalar_tensor_explicit(torch.uint8, wp.uint8)
+    wrap_scalar_tensor_explicit(torch.uint8, wp.int8)
+    wrap_scalar_tensor_explicit(torch.bool, wp.uint8)
+    wrap_scalar_tensor_explicit(torch.bool, wp.int8)
+    wrap_scalar_tensor_explicit(torch.bool, wp.bool)
+
+    def wrap_vec_tensor(vec_dtype):
+        t = torch.zeros((10, vec_dtype._length_), dtype=torch.float32, device=torch_device)
+        a = wp.from_torch(t, dtype=vec_dtype, return_ctype=True)
+        ctype_size = ctypes.sizeof(vec_dtype._type_)
+        assert a.data == t.data_ptr()
+        assert a.grad == 0
+        assert a.ndim == 1
+        assert a.shape[0] == t.shape[0]
+        assert a.strides[0] == t.stride()[0] * ctype_size
+
+    wrap_vec_tensor(wp.vec2)
+    wrap_vec_tensor(wp.vec3)
+    wrap_vec_tensor(wp.vec4)
+    wrap_vec_tensor(wp.spatial_vector)
+    wrap_vec_tensor(wp.transform)
+
+    def wrap_mat_tensor(mat_dtype):
+        t = torch.zeros((10, *mat_dtype._shape_), dtype=torch.float32, device=torch_device)
+        a = wp.from_torch(t, dtype=mat_dtype, return_ctype=True)
+        ctype_size = ctypes.sizeof(mat_dtype._type_)
+        assert a.data == t.data_ptr()
+        assert a.grad == 0
+        assert a.ndim == 1
+        assert a.shape[0] == t.shape[0]
+        assert a.strides[0] == t.stride()[0] * ctype_size
+
+    wrap_mat_tensor(wp.mat22)
+    wrap_mat_tensor(wp.mat33)
+    wrap_mat_tensor(wp.mat44)
+    wrap_mat_tensor(wp.spatial_matrix)
+
+    def wrap_vec_tensor_with_existing_grad(vec_dtype):
+        t = torch.zeros((10, vec_dtype._length_), dtype=torch.float32, device=torch_device, requires_grad=True)
+        t.grad = torch.zeros((10, vec_dtype._length_), dtype=torch.float32, device=torch_device)
+        a = wp.from_torch(t, dtype=vec_dtype, return_ctype=True)
+        ctype_size = ctypes.sizeof(vec_dtype._type_)
+        assert a.data == t.data_ptr()
+        assert a.grad == t.grad.data_ptr()
+        assert a.ndim == 1
+        assert a.shape[0] == t.shape[0]
+        assert a.strides[0] == t.stride()[0] * ctype_size
+
+    wrap_vec_tensor_with_existing_grad(wp.vec2)
+    wrap_vec_tensor_with_existing_grad(wp.vec3)
+    wrap_vec_tensor_with_existing_grad(wp.vec4)
+    wrap_vec_tensor_with_existing_grad(wp.spatial_vector)
+    wrap_vec_tensor_with_existing_grad(wp.transform)
+
+    def wrap_vec_tensor_with_new_grad(vec_dtype):
+        t = torch.zeros((10, vec_dtype._length_), dtype=torch.float32, device=torch_device)
+        a = wp.from_torch(t, dtype=vec_dtype, requires_grad=True, return_ctype=True)
+        ctype_size = ctypes.sizeof(vec_dtype._type_)
+        assert a.data == t.data_ptr()
+        assert a.grad == t.grad.data_ptr()
+        assert a.ndim == 1
+        assert a.shape[0] == t.shape[0]
+        assert a.strides[0] == t.stride()[0] * ctype_size
+
+    wrap_vec_tensor_with_new_grad(wp.vec2)
+    wrap_vec_tensor_with_new_grad(wp.vec3)
+    wrap_vec_tensor_with_new_grad(wp.vec4)
+    wrap_vec_tensor_with_new_grad(wp.spatial_vector)
+    wrap_vec_tensor_with_new_grad(wp.transform)
+
+    def wrap_vec_tensor_with_torch_grad(vec_dtype):
+        t = torch.zeros((10, vec_dtype._length_), dtype=torch.float32, device=torch_device)
+        grad = torch.zeros((10, vec_dtype._length_), dtype=torch.float32, device=torch_device)
+        a = wp.from_torch(t, dtype=vec_dtype, grad=grad, return_ctype=True)
+        ctype_size = ctypes.sizeof(vec_dtype._type_)
+        assert a.data == t.data_ptr()
+        assert a.grad == grad.data_ptr()
+        assert a.ndim == 1
+        assert a.shape[0] == t.shape[0]
+        assert a.strides[0] == t.stride()[0] * ctype_size
+
+    wrap_vec_tensor_with_torch_grad(wp.vec2)
+    wrap_vec_tensor_with_torch_grad(wp.vec3)
+    wrap_vec_tensor_with_torch_grad(wp.vec4)
+    wrap_vec_tensor_with_torch_grad(wp.spatial_vector)
+    wrap_vec_tensor_with_torch_grad(wp.transform)
+
+    def wrap_vec_tensor_with_warp_grad(vec_dtype):
+        t = torch.zeros((10, vec_dtype._length_), dtype=torch.float32, device=torch_device)
+        grad = wp.zeros(10, dtype=vec_dtype, device=device)
+        a = wp.from_torch(t, dtype=vec_dtype, grad=grad, return_ctype=True)
+        ctype_size = ctypes.sizeof(vec_dtype._type_)
+        assert a.data == t.data_ptr()
+        assert a.grad == grad.ptr
+        assert a.ndim == 1
+        assert a.shape[0] == t.shape[0]
+        assert a.strides[0] == t.stride()[0] * ctype_size
+
+    wrap_vec_tensor_with_warp_grad(wp.vec2)
+    wrap_vec_tensor_with_warp_grad(wp.vec3)
+    wrap_vec_tensor_with_warp_grad(wp.vec4)
+    wrap_vec_tensor_with_warp_grad(wp.spatial_vector)
+    wrap_vec_tensor_with_warp_grad(wp.transform)
 
 
 def test_to_torch(test, device):
@@ -659,6 +825,29 @@ def test_warp_graph_torch_stream(test, device):
     assert passed.item()
 
 
+def test_direct(test, device):
+    """Pass Torch tensors to Warp kernels directly"""
+
+    import torch
+
+    torch_device = wp.device_to_torch(device)
+    n = 12
+
+    s = torch.arange(n, dtype=torch.float32, device=torch_device)
+    v = torch.arange(n, dtype=torch.float32, device=torch_device).reshape((n // 3, 3))
+    m = torch.arange(n, dtype=torch.float32, device=torch_device).reshape((n // 4, 2, 2))
+
+    wp.launch(inc, dim=n, inputs=[s], device=device)
+    wp.launch(inc_vector, dim=n // 3, inputs=[v], device=device)
+    wp.launch(inc_matrix, dim=n // 4, inputs=[m], device=device)
+
+    expected = torch.arange(1, n + 1, dtype=torch.float32, device=torch_device)
+
+    assert torch.equal(s, expected)
+    assert torch.equal(v.reshape(n), expected)
+    assert torch.equal(m.reshape(n), expected)
+
+
 class TestTorch(unittest.TestCase):
     pass
 
@@ -691,6 +880,9 @@ try:
         add_function_test(TestTorch, "test_from_torch", test_from_torch, devices=torch_compatible_devices)
         add_function_test(TestTorch, "test_from_torch_slices", test_from_torch_slices, devices=torch_compatible_devices)
         add_function_test(
+            TestTorch, "test_array_ctype_from_torch", test_array_ctype_from_torch, devices=torch_compatible_devices
+        )
+        add_function_test(
             TestTorch,
             "test_from_torch_zero_strides",
             test_from_torch_zero_strides,
@@ -699,6 +891,7 @@ try:
         add_function_test(TestTorch, "test_to_torch", test_to_torch, devices=torch_compatible_devices)
         add_function_test(TestTorch, "test_torch_zerocopy", test_torch_zerocopy, devices=torch_compatible_devices)
         add_function_test(TestTorch, "test_torch_autograd", test_torch_autograd, devices=torch_compatible_devices)
+        add_function_test(TestTorch, "test_direct", test_direct, devices=torch_compatible_devices)
 
     if torch_compatible_cuda_devices:
         add_function_test(

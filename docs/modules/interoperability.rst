@@ -1,7 +1,57 @@
 Interoperability
 ================
 
-Warp can interop with other Python-based frameworks such as NumPy through standard interface protocols.
+Warp can interoperate with other Python-based frameworks such as NumPy through standard interface protocols.
+
+Warp supports passing external arrays to kernels directly, as long as they implement the ``__array__``, ``__array_interface__``, or ``__cuda_array_interface__`` protocols.  This works with many common frameworks like NumPy, CuPy, or PyTorch.
+
+For example, we can use NumPy arrays directly when launching Warp kernels on the CPU:
+
+.. code:: python
+
+    import numpy as np
+    import warp as wp
+
+    @wp.kernel
+    def saxpy(x: wp.array(dtype=float), y: wp.array(dtype=float), a: float):
+        i = wp.tid()
+        y[i] = a * x[i] + y[i]
+
+    x = np.arange(n, dtype=np.float32)
+    y = np.ones(n, dtype=np.float32)
+
+    wp.launch(saxpy, dim=n, inputs=[x, y, 1.0], device="cpu")
+
+Likewise, we can use CuPy arrays on a CUDA device:
+
+.. code:: python
+
+    import cupy as cp
+
+    with cp.cuda.Device(0):
+        x = cp.arange(n, dtype=cp.float32)
+        y = cp.ones(n, dtype=cp.float32)
+
+    wp.launch(saxpy, dim=n, inputs=[x, y, 1.0], device="cuda:0")
+
+Note that with CUDA arrays, it's important to ensure that the device on which the arrays reside is the same as the device on which the kernel is launched.
+
+PyTorch supports both CPU and GPU tensors and both kinds can be passed to Warp kernels on the appropriate device.
+
+.. code:: python
+
+    import random
+    import torch
+
+    if random.choice([False, True]):
+        device = "cpu"
+    else:
+        device = "cuda:0"
+
+    x = torch.arange(n, dtype=torch.float32, device=device)
+    y = torch.ones(n, dtype=torch.float32, device=device)
+
+    wp.launch(saxpy, dim=n, inputs=[x, y, 1.0], device=device)
 
 NumPy
 -----
@@ -247,12 +297,80 @@ Note that if Warp code is wrapped in a torch.autograd.function that gets called 
 exclude that function from compiler optimizations. If your script uses ``torch.compile()``, we recommend using Pytorch version 2.3.0+,
 which has improvements that address this scenario.
 
+Performance Notes
+^^^^^^^^^^^^^^^^^
+
+The ``wp.from_torch()`` function creates a Warp array object that shares data with a PyTorch tensor.  Although this function does not copy the data, there is always some CPU overhead during the conversion.  If these conversions happen frequently, the overall program performance may suffer.  As a general rule, it's good to avoid repeated conversions of the same tensor.  Instead of:
+
+.. code:: python
+
+    x_t = torch.arange(n, dtype=torch.float32, device=device)
+    y_t = torch.ones(n, dtype=torch.float32, device=device)
+
+    for i in range(10):
+        x_w = wp.from_torch(x_t)
+        y_w = wp.from_torch(y_t)
+        wp.launch(saxpy, dim=n, inputs=[x_w, y_w, 1.0], device=device)
+
+Try converting the arrays only once and reuse them:
+
+.. code:: python
+
+    x_t = torch.arange(n, dtype=torch.float32, device=device)
+    y_t = torch.ones(n, dtype=torch.float32, device=device)
+
+    x_w = wp.from_torch(x_t)
+    y_w = wp.from_torch(y_t)
+
+    for i in range(10):
+        wp.launch(saxpy, dim=n, inputs=[x_w, y_w, 1.0], device=device)
+
+If reusing arrays is not possible (e.g., a new PyTorch tensor is constructed on every iteration), passing ``return_ctype=True`` to ``wp.from_torch()`` should yield faster performance.  Setting this argument to True avoids constructing a ``wp.array`` object and instead returns a low-level array descriptor.  This descriptor is a simple C structure that can be passed to Warp kernels instead of a ``wp.array``, but cannot be used in other places that require a ``wp.array``.
+
+.. code:: python
+
+    for n in range(1, 10):
+        # get Torch tensors for this iteration
+        x_t = torch.arange(n, dtype=torch.float32, device=device)
+        y_t = torch.ones(n, dtype=torch.float32, device=device)
+
+        # get Warp array descriptors
+        x_ctype = wp.from_torch(x_t, return_ctype=True)
+        y_ctype = wp.from_torch(y_t, return_ctype=True)
+
+        wp.launch(saxpy, dim=n, inputs=[x_ctype, y_ctype, 1.0], device=device)
+
+An alternative approach is to pass the PyTorch tensors to Warp kernels directly.  This avoids constructing temporary Warp arrays by leveraging standard array interfaces (like ``__cuda_array_interface__``) supported by both PyTorch and Warp.  The main advantage of this approach is convenience, since there is no need to call any conversion functions.  The main limitation is that it does not handle gradients, because gradient information is not included in the standard array interfaces.  This technique is therefore most suitable for algorithms that do not involve differentiation.
+
+.. code:: python
+
+    x = torch.arange(n, dtype=torch.float32, device=device)
+    y = torch.ones(n, dtype=torch.float32, device=device)
+
+    for i in range(10):
+        wp.launch(saxpy, dim=n, inputs=[x, y, 1.0], device=device)
+
+.. code:: shell
+
+    python -m warp.examples.benchmarks.benchmark_interop_torch
+
+Sample output:
+
+.. code::
+
+    5095 ms  from_torch(...)
+    2113 ms  from_torch(..., return_ctype=True)
+    2950 ms  direct from torch
+
+The default ``wp.from_torch()`` conversion is the slowest.  Passing ``return_ctype=True`` is the fastest, because it skips creating temporary Warp array objects.  Passing PyTorch tensors to Warp kernels directly falls somewhere in between.  It skips creating temporary Warp arrays, but accessing the ``__cuda_array_interface__`` attributes of PyTorch tensors adds overhead because they are initialized on-demand.
+
+
 CuPy/Numba
 ----------
 
-Warp GPU arrays support the ``__cuda_array_interface__`` protocol for sharing data with other Python GPU frameworks.
-Currently this is one-directional, so that Warp arrays can be used as input to any framework that also supports the
-``__cuda_array_interface__`` protocol, but not the other way around.
+Warp GPU arrays support the ``__cuda_array_interface__`` protocol for sharing data with other Python GPU frameworks.  This allows frameworks like CuPy to use Warp GPU arrays directly.
+
+Likewise, Warp arrays can be created from any object that exposes the ``__cuda_array_interface__``.  Such objects can also be passed to Warp kernels directly without creating a Warp array object.
 
 .. _jax-interop:
 
