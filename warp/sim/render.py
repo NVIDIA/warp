@@ -67,13 +67,15 @@ def CreateSimRenderer(renderer):
             path,
             scaling=1.0,
             fps=60,
-            up_axis="Y",
+            up_axis=None,
             show_rigid_contact_points=False,
             contact_points_radius=1e-3,
             show_joints=False,
             **render_kwargs,
         ):
             # create USD stage
+            if up_axis is None:
+                up_axis = "XYZ"[model.up_axis]
             super().__init__(path, scaling=scaling, fps=fps, up_axis=up_axis, **render_kwargs)
             self.scaling = scaling
             self.cam_axis = "XYZ".index(up_axis.upper())

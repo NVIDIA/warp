@@ -32,6 +32,7 @@
 - Allow passing external arrays/tensors to Warp kernels directly via `__cuda_array_interface__` and `__array_interface__`
 - Add faster Torch interop path using `return_ctype` argument to `wp.from_torch()`
 - Handle incompatible CUDA driver versions gracefully
+- Fix handling of `upaxis` variable in `ModelBuilder` and the rendering thereof in `OpenGLRenderer`
 
 ## [1.2.2] - 2024-07-04
 
