@@ -31,6 +31,7 @@
 - Add support for PEP 563's `from __future__ import annotations`.
 - Allow passing external arrays/tensors to Warp kernels directly via `__cuda_array_interface__` and `__array_interface__`
 - Add faster Torch interop path using `return_ctype` argument to `wp.from_torch()`
+- Handle incompatible CUDA driver versions gracefully
 
 ## [1.2.2] - 2024-07-04
 
