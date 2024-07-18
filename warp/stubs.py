@@ -162,12 +162,6 @@ def clamp(x: Scalar, a: Scalar, b: Scalar) -> Scalar:
 
 
 @over
-def clamp(a: Vector[Any, Scalar], low: Vector[Any, Scalar], high: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
-    """Clamp the elements of ``a`` to the elements from the range [low, high]."""
-    ...
-
-
-@over
 def abs(x: Scalar) -> Scalar:
     """Return the absolute value of ``x``."""
     ...

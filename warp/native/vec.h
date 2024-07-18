@@ -649,18 +649,6 @@ inline CUDA_CALLABLE unsigned argmax(vec_t<Length,Type> v)
 }
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length,Type> clamp(vec_t<Length,Type> v, vec_t<Length,Type> a, vec_t<Length,Type> b)
-{
-    vec_t<Length,Type> ret;
-    for (unsigned i=0; i < Length; ++i)
-    {
-        ret[i] = v[i] < a[i] ? a[i] : v[i] > b[i] ? b[i] : v[i];
-    }
-
-    return ret;
-}
-
-template<unsigned Length, typename Type>
 inline CUDA_CALLABLE vec_t<Length,Type> abs(vec_t<Length,Type> v)
 {
     vec_t<Length,Type> ret;
@@ -1080,30 +1068,6 @@ inline CUDA_CALLABLE void adj_max(const vec_t<Length,Type> &v, vec_t<Length,Type
 {
     unsigned i = argmax(v);
     adj_v[i] += adj_ret;
-}
-
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_clamp(
-    const vec_t<Length,Type>& v, const vec_t<Length,Type>& a, const vec_t<Length,Type>& b,
-    vec_t<Length,Type>& adj_v, vec_t<Length,Type>& adj_a, vec_t<Length,Type>& adj_b,
-    const vec_t<Length,Type>& adj_ret
-)
-{
-    for (unsigned i=0; i < Length; ++i)
-    {
-        if (v[i] < a[i])
-        {
-            adj_a[i] += adj_ret[i];
-        }
-        else if (v[i] > b[i])
-        {
-            adj_b[i] += adj_ret[i];
-        }
-        else
-        {
-            adj_v[i] += adj_ret[i];
-        }
-    }
 }
 
 template<unsigned Length, typename Type>

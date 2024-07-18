@@ -503,19 +503,6 @@ add_builtin(
 )
 
 add_builtin(
-    "clamp",
-    input_types={
-        "a": vector(length=Any, dtype=Scalar),
-        "low": vector(length=Any, dtype=Scalar),
-        "high": vector(length=Any, dtype=Scalar),
-    },
-    constraint=sametypes,
-    value_func=sametypes_create_value_func(vector(length=Any, dtype=Scalar)),
-    doc="Clamp the elements of ``a`` to the elements from the range [low, high].",
-    group="Vector Math",
-)
-
-add_builtin(
     "abs",
     input_types={"a": vector(length=Any, dtype=Scalar)},
     constraint=sametypes,
