@@ -150,7 +150,7 @@ layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec2 aTexCoord;
 
 uniform mat4 view;
-uniform mat4 model;
+uniform mat4 inv_model;
 uniform mat4 projection;
 uniform vec3 viewPos;
 
@@ -160,7 +160,8 @@ out vec2 TexCoord;
 void main()
 {
     vec4 worldPos = vec4(aPos + viewPos, 1.0);
-    gl_Position = projection * view * worldPos;
+    gl_Position = projection * view * inv_model * worldPos;
+
     FragPos = vec3(worldPos);
     TexCoord = aTexCoord;
 }
@@ -1078,6 +1079,7 @@ class OpenGLRenderer:
         self._scaling = scaling
 
         self._model_matrix = self.compute_model_matrix(self._camera_axis, scaling)
+        self._inv_model_matrix = np.linalg.inv(self._model_matrix.reshape(4, 4)).flatten()
         self.update_view_matrix(cam_pos=camera_pos, cam_front=camera_front, cam_up=camera_up)
         self.update_projection_matrix()
 
@@ -1216,7 +1218,7 @@ class OpenGLRenderer:
 
         with self._sky_shader:
             self._loc_sky_view = gl.glGetUniformLocation(self._sky_shader.id, str_buffer("view"))
-            self._loc_sky_model = gl.glGetUniformLocation(self._sky_shader.id, str_buffer("model"))
+            self._loc_sky_inv_model = gl.glGetUniformLocation(self._sky_shader.id, str_buffer("inv_model"))
             self._loc_sky_projection = gl.glGetUniformLocation(self._sky_shader.id, str_buffer("projection"))
 
             self._loc_sky_color1 = gl.glGetUniformLocation(self._sky_shader.id, str_buffer("color1"))
@@ -1752,26 +1754,28 @@ class OpenGLRenderer:
         if camera_axis == 0:
             return np.array((0, 0, scaling, 0, scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, 0, 1), dtype=np.float32)
         elif camera_axis == 2:
-            return np.array((-scaling, 0, 0, 0, 0, 0, scaling, 0, 0, scaling, 0, 0, 0, 0, 0, 1), dtype=np.float32)
+            return np.array((0, scaling, 0, 0, 0, 0, scaling, 0, scaling, 0, 0, 0, 0, 0, 0, 1), dtype=np.float32)
 
         return np.array((scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, 1), dtype=np.float32)
 
     def update_model_matrix(self, model_matrix: Optional[Mat44] = None):
         from pyglet import gl
 
-        # fmt: off
         if model_matrix is None:
             self._model_matrix = self.compute_model_matrix(self._camera_axis, self._scaling)
         else:
             self._model_matrix = np.array(model_matrix).flatten()
-        # fmt: on
+        self._inv_model_matrix = np.linalg.inv(self._model_matrix.reshape((4, 4))).flatten()
+        # update model view matrix in shaders
         ptr = arr_pointer(self._model_matrix)
         gl.glUseProgram(self._shape_shader.id)
         gl.glUniformMatrix4fv(self._loc_shape_model, 1, gl.GL_FALSE, ptr)
         gl.glUseProgram(self._grid_shader.id)
         gl.glUniformMatrix4fv(self._loc_grid_model, 1, gl.GL_FALSE, ptr)
+        # sky shader needs inverted model view matrix
         gl.glUseProgram(self._sky_shader.id)
-        gl.glUniformMatrix4fv(self._loc_sky_model, 1, gl.GL_FALSE, ptr)
+        inv_ptr = arr_pointer(self._inv_model_matrix)
+        gl.glUniformMatrix4fv(self._loc_sky_inv_model, 1, gl.GL_FALSE, inv_ptr)
 
     @property
     def num_tiles(self):
