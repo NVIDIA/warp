@@ -3127,35 +3127,63 @@ class Runtime:
         self.device_map["cpu"] = self.cpu_device
         self.context_map[None] = self.cpu_device
 
-        cuda_device_count = self.core.cuda_device_get_count()
+        self.is_cuda_enabled = bool(self.core.is_cuda_enabled())
+        self.is_cuda_compatibility_enabled = bool(self.core.is_cuda_compatibility_enabled())
 
-        if cuda_device_count > 0:
-            # get CUDA Toolkit and driver versions
-            self.toolkit_version = self.core.cuda_toolkit_version()
-            self.driver_version = self.core.cuda_driver_version()
+        self.toolkit_version = None  # CTK version used to build the core lib
+        self.driver_version = None  # installed driver version
+        self.min_driver_version = None  # minimum required driver version
 
-            # get all architectures supported by NVRTC
-            num_archs = self.core.nvrtc_supported_arch_count()
-            if num_archs > 0:
-                archs = (ctypes.c_int * num_archs)()
-                self.core.nvrtc_supported_archs(archs)
-                self.nvrtc_supported_archs = list(archs)
-            else:
-                self.nvrtc_supported_archs = []
-
-        # this is so we can give non-primary contexts a reasonable alias
-        # associated with the physical device (e.g., "cuda:0.0", "cuda:0.1")
-        self.cuda_custom_context_count = [0] * cuda_device_count
-
-        # register primary CUDA devices
         self.cuda_devices = []
         self.cuda_primary_devices = []
-        for i in range(cuda_device_count):
-            alias = f"cuda:{i}"
-            device = Device(self, alias, ordinal=i, is_primary=True)
-            self.cuda_devices.append(device)
-            self.cuda_primary_devices.append(device)
-            self.device_map[alias] = device
+
+        cuda_device_count = 0
+
+        if self.is_cuda_enabled:
+            # get CUDA Toolkit and driver versions
+            toolkit_version = self.core.cuda_toolkit_version()
+            driver_version = self.core.cuda_driver_version()
+
+            # save versions as tuples, e.g., (12, 4)
+            self.toolkit_version = (toolkit_version // 1000, (toolkit_version % 1000) // 10)
+            self.driver_version = (driver_version // 1000, (driver_version % 1000) // 10)
+
+            # determine minimum required driver version
+            if self.is_cuda_compatibility_enabled:
+                # we can rely on minor version compatibility, but 11.4 is the absolute minimum required from the driver
+                if self.toolkit_version[0] > 11:
+                    self.min_driver_version = (self.toolkit_version[0], 0)
+                else:
+                    self.min_driver_version = (11, 4)
+            else:
+                # we can't rely on minor version compatibility, so the driver can't be older than the toolkit
+                self.min_driver_version = self.toolkit_version
+
+            # determine if the installed driver is sufficient
+            if self.driver_version >= self.min_driver_version:
+                # get all architectures supported by NVRTC
+                num_archs = self.core.nvrtc_supported_arch_count()
+                if num_archs > 0:
+                    archs = (ctypes.c_int * num_archs)()
+                    self.core.nvrtc_supported_archs(archs)
+                    self.nvrtc_supported_archs = set(archs)
+                else:
+                    self.nvrtc_supported_archs = set()
+
+                # get CUDA device count
+                cuda_device_count = self.core.cuda_device_get_count()
+
+                # register primary CUDA devices
+                for i in range(cuda_device_count):
+                    alias = f"cuda:{i}"
+                    device = Device(self, alias, ordinal=i, is_primary=True)
+                    self.cuda_devices.append(device)
+                    self.cuda_primary_devices.append(device)
+                    self.device_map[alias] = device
+
+                # count known non-primary contexts on each physical device so we can
+                # give them reasonable aliases (e.g., "cuda:0.0", "cuda:0.1")
+                self.cuda_custom_context_count = [0] * cuda_device_count
 
         # set default device
         if cuda_device_count > 0:
@@ -3174,14 +3202,8 @@ class Runtime:
         # initialize kernel cache
         warp.build.init_kernel_cache(warp.config.kernel_cache_dir)
 
-        devices_without_uva = []
-        devices_without_mempool = []
-        for cuda_device in self.cuda_devices:
-            if cuda_device.is_primary:
-                if not cuda_device.is_uva:
-                    devices_without_uva.append(cuda_device)
-                if not cuda_device.is_mempool_supported:
-                    devices_without_mempool.append(cuda_device)
+        # global tape
+        self.tape = None
 
         # print device and version information
         if not warp.config.quiet:
@@ -3189,18 +3211,24 @@ class Runtime:
 
             greeting.append(f"Warp {warp.config.version} initialized:")
             if cuda_device_count > 0:
-                toolkit_version = (self.toolkit_version // 1000, (self.toolkit_version % 1000) // 10)
-                driver_version = (self.driver_version // 1000, (self.driver_version % 1000) // 10)
+                # print CUDA version info
                 greeting.append(
-                    f"   CUDA Toolkit {toolkit_version[0]}.{toolkit_version[1]}, Driver {driver_version[0]}.{driver_version[1]}"
+                    f"   CUDA Toolkit {self.toolkit_version[0]}.{self.toolkit_version[1]}, Driver {self.driver_version[0]}.{self.driver_version[1]}"
                 )
             else:
-                if self.core.is_cuda_enabled():
-                    # Warp was compiled with CUDA support, but no devices are available
-                    greeting.append("   CUDA devices not available")
-                else:
+                # briefly explain lack of CUDA devices
+                if not self.is_cuda_enabled:
                     # Warp was compiled without CUDA support
-                    greeting.append("   CUDA support not enabled in this build")
+                    greeting.append("   CUDA not enabled in this build")
+                elif self.driver_version < self.min_driver_version:
+                    # insufficient CUDA driver version
+                    greeting.append(
+                        f"   CUDA Toolkit {self.toolkit_version[0]}.{self.toolkit_version[1]}, Driver {self.driver_version[0]}.{self.driver_version[1]}"
+                        " (insufficient CUDA driver version!)"
+                    )
+                else:
+                    # CUDA is supported, but no devices are available
+                    greeting.append("   CUDA devices not available")
             greeting.append("   Devices:")
             alias_str = f'"{self.cpu_device.alias}"'
             name_str = f'"{self.cpu_device.name}"'
@@ -3259,41 +3287,44 @@ class Runtime:
             print("\n".join(greeting))
 
         if cuda_device_count > 0:
-            # warn about possible misconfiguration of the system
+            # ensure initialization did not change the initial context (e.g. querying available memory)
+            self.core.cuda_context_set_current(initial_context)
+
+            # detect possible misconfiguration of the system
+            devices_without_uva = []
+            devices_without_mempool = []
+            for cuda_device in self.cuda_primary_devices:
+                if not cuda_device.is_uva:
+                    devices_without_uva.append(cuda_device)
+                if not cuda_device.is_mempool_supported:
+                    devices_without_mempool.append(cuda_device)
+
             if devices_without_uva:
                 # This should not happen on any system officially supported by Warp.  UVA is not available
                 # on 32-bit Windows, which we don't support.  Nonetheless, we should check and report a
                 # warning out of abundance of caution.  It may help with debugging a broken VM setup etc.
                 warp.utils.warn(
-                    f"Support for Unified Virtual Addressing (UVA) was not detected on devices {devices_without_uva}."
+                    f"\n   Support for Unified Virtual Addressing (UVA) was not detected on devices {devices_without_uva}."
                 )
             if devices_without_mempool:
                 warp.utils.warn(
-                    f"Support for CUDA memory pools was not detected on devices {devices_without_mempool}. "
-                    "This prevents memory allocations in CUDA graphs and may result in poor performance. "
-                    "Is the UVM driver enabled?"
+                    f"\n   Support for CUDA memory pools was not detected on devices {devices_without_mempool}."
+                    "\n   This prevents memory allocations in CUDA graphs and may result in poor performance."
+                    "\n   Is the UVM driver enabled?"
                 )
 
-            # CUDA compatibility check.  This should only affect developer builds done with the
-            # --quick flag.  The consequences of running with an older driver can be obscure and severe,
-            # so make sure we print a very visible warning.
-            if self.driver_version < self.toolkit_version and not self.core.is_cuda_compatibility_enabled():
-                print(
-                    "******************************************************************\n"
-                    "* WARNING:                                                       *\n"
-                    "*   Warp was compiled without CUDA compatibility support         *\n"
-                    "*   (quick build).  The CUDA Toolkit version used to build       *\n"
-                    "*   Warp is not fully supported by the current driver.           *\n"
-                    "*   Some CUDA functionality may not work correctly!              *\n"
-                    "*   Update the driver or rebuild Warp without the --quick flag.  *\n"
-                    "******************************************************************\n"
+        elif self.is_cuda_enabled:
+            # Report a warning about insufficient driver version.  The warning should appear even in quiet mode
+            # when the greeting message is suppressed.  Also try to provide guidance for resolving the situation.
+            if self.driver_version < self.min_driver_version:
+                msg = []
+                msg.append("\n   Insufficient CUDA driver version.")
+                msg.append(
+                    f"The minimum required CUDA driver version is {self.min_driver_version[0]}.{self.min_driver_version[1]}, "
+                    f"but the installed CUDA driver version is {self.driver_version[0]}.{self.driver_version[1]}."
                 )
-
-            # ensure initialization did not change the initial context (e.g. querying available memory)
-            self.core.cuda_context_set_current(initial_context)
-
-        # global tape
-        self.tape = None
+                msg.append("Visit https://github.com/NVIDIA/warp/blob/main/README.md#installing for guidance.")
+                warp.utils.warn("\n   ".join(msg))
 
     def get_error_string(self):
         return self.core.get_error_string().decode("utf-8")
@@ -3359,7 +3390,7 @@ class Runtime:
             return self.cuda_devices[0]
         else:
             # CUDA is not available
-            if not self.core.is_cuda_enabled():
+            if not self.is_cuda_enabled:
                 raise RuntimeError('"cuda" device requested but this build of Warp does not support CUDA')
             else:
                 raise RuntimeError('"cuda" device requested but CUDA is not supported by the hardware or driver')
@@ -4954,7 +4985,7 @@ def capture_begin(device: Devicelike = None, stream=None, force_module_load=None
     """
 
     if force_module_load is None:
-        if runtime.driver_version >= 12030:
+        if runtime.driver_version >= (12, 3):
             # Driver versions 12.3 and can compile modules during graph capture
             force_module_load = False
         else:

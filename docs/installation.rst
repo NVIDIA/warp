@@ -25,6 +25,33 @@ the ``pip install`` command, e.g.
 
 The ``--force-reinstall`` option may need to be used to overwrite a previous installation.
 
+CUDA Requirements
+-----------------
+
+* Warp packages built with CUDA Toolkit 11.x require NVIDIA driver 470 or newer.
+* Warp packages built with CUDA Toolkit 12.x require NVIDIA driver 525 or newer.
+
+This applies to pre-built packages distributed on PyPI and GitHub and also when building Warp from source.
+
+Note that building Warp with the ``--quick`` flag changes the driver requirements.  The quick build skips CUDA backward compatibility, so the minimum required driver is determined by the CUDA Toolkit version.  Refer to the `latest CUDA Toolkit release notes <https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html>`_ to find the minimum required driver for different CUDA Toolkit versions (e.g., `this table from CUDA Toolkit 12.5 <https://docs.nvidia.com/cuda/archive/12.5.0/cuda-toolkit-release-notes/index.html#id4>`_).
+
+Warp checks the installed driver during initialization and will report a warning if the driver is not suitable, e.g.:
+
+.. code-block:: text
+
+    Warp UserWarning:
+       Insufficient CUDA driver version.
+       The minimum required CUDA driver version is 12.0, but the installed CUDA driver version is 11.8.
+       Visit https://github.com/NVIDIA/warp/blob/main/README.md#installing for guidance.
+
+This will make CUDA devices unavailable, but the CPU can still be used.
+
+To remedy the situation there are a few options:
+
+* Update the driver.
+* Install a compatible pre-built Warp package.
+* Build Warp from source using a CUDA Toolkit that's compatible with the installed driver.
+
 Dependencies
 ------------
 
