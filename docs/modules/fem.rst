@@ -37,10 +37,12 @@ Integrands are normal Warp kernels, meaning that they may contain arbitrary Warp
 However, they accept a few special parameters:
 
   - :class:`.Sample` contains information about the current integration sample point, such as the element index and coordinates in element.
-  - :class:`.Field` designates an abstract field, which will be replaced at call time by the actual field type: for instance a :class:`.DiscreteField`, :class:`.field.TestField` or :class:`.field.TrialField` defined over an arbitrary :class:`.FunctionSpace`.
-    A field `u` can be evaluated at a given sample `s` using the :func:`.inner` operator, i.e, ``inner(u, s)``, or as a shortcut using the usual call operator, ``u(s)``.
-    Several other operators are available, such as :func:`.grad`; see the :ref:`Operators` section.
-  - :class:`.Domain` designates an abstract integration domain. Several operators are also provided for domains, for example in the example below evaluating the normal at the current sample position: ::
+  - :class:`.Field` designates an abstract field, which will be replaced at call time by the actual field type such as a discrete field, :class:`.field.TestField` or :class:`.field.TrialField` defined over some :class:`.FunctionSpace`,
+    an :class:`.ImplicitField` wrapping an arbitrary function, or any other of the available :ref:`Fields`.
+    A field `u` can then be evaluated at a given sample `s` using the usual call operator as ``u(s)``.
+    Several other operators are available, such as the gradient :func:`.grad`; see the :ref:`Operators` section.
+  - :class:`.Domain` designates an abstract integration domain. Evaluating a domain at a sample `s` as ``domain(s)`` yields the corresponding world position, 
+    and several operators are also provided domains, for example evaluating the normal at a given sample: ::
     
             @integrand
             def boundary_form(
@@ -52,9 +54,9 @@ However, they accept a few special parameters:
                 return wp.dot(u(s), nor)
 
 Integrands cannot be used directly with :func:`warp.launch`, but must be called through :func:`.integrate` or :func:`.interpolate` instead.
-The root integrand (`integrand` argument passed to :func:`integrate` or :func:`interpolate` call) will automatically get passed :class:`.Sample` and :class:`.Domain` parameters.
-:class:`.Field` parameters must be passed as a dictionary in the `fields` argument of the launcher function, and all other standard Warp types arguments must be
-passed as a dictionary in the `values` argument of the launcher function, for instance: ::
+The :class:`.Sample` and :class:`.Domain` arguments of the root integrand (`integrand` parameter passed to :func:`integrate` or :func:`interpolate` call) will get automatically populated.
+:class:`.Field` arguments must be passed as a dictionary in the `fields` parameter of the launcher function, and all other standard Warp types arguments must be
+passed as a dictionary in the `values` parameter of the launcher function, for instance: ::
     
     integrate(diffusion_form, fields={"u": trial, "v": test}, values={"nu": viscosity})
 
@@ -62,11 +64,11 @@ passed as a dictionary in the `values` argument of the launcher function, for in
 Basic Workflow
 --------------
 
-The typical steps for solving a linear PDE are as follow:
+The typical steps for solving a linearized PDE with ``warp.fem`` are as follow:
 
  - Define a :class:`.Geometry` (grid, mesh, etc). At the moment, 2D and 3D regular grids, NanoVDB volumes, and triangle, quadrilateral, tetrahedron and hexahedron unstructured meshes are supported.
  - Define one or more :class:`.FunctionSpace`, by equipping the geometry elements with shape functions. See :func:`.make_polynomial_space`. At the moment, continuous/discontinuous Lagrange (:math:`P_{k[d]}, Q_{k[d]}`) and Serendipity (:math:`S_k`) shape functions of order :math:`k \leq 3` are supported.
- - Define an integration :class:`.GeometryDomain`, for instance the geometry's cells (:class:`.Cells`) or boundary sides (:class:`.BoundarySides`).
+ - Define an integration domain, for instance the geometry's cells (:class:`.Cells`) or boundary sides (:class:`.BoundarySides`).
  - Integrate linear forms to build the system's right-hand-side. Define a test function over the function space using :func:`.make_test`,
    a :class:`.Quadrature` formula (or let the module choose one based on the function space degree), and call :func:`.integrate` with the linear form integrand.
    The result is a :class:`warp.array` containing the integration result for each of the function space degrees of freedom.
@@ -74,7 +76,7 @@ The typical steps for solving a linear PDE are as follow:
    then call :func:`.integrate` with the bilinear form integrand.
    The result is a :class:`warp.sparse.BsrMatrix` containing the integration result for each pair of test and trial function space degrees of freedom.
    Note that the trial and test functions do not have to be defined over the same function space, so that Mixed FEM is supported.
- - Solve the resulting linear system using the solver of your choice
+ - Solve the resulting linear system using the solver of your choice, for instance one of the built-in :ref:`iterative-linear-solvers`.
 
 
 The following excerpt from the introductory example ``warp/examples/fem/example_diffusion.py`` outlines this procedure: ::
@@ -101,7 +103,7 @@ The following excerpt from the introductory example ``warp/examples/fem/example_
     matrix = integrate(diffusion_form, fields={"u": trial, "v": test}, values={"nu": viscosity})
 
     # Assemble linear system (add diffusion and boundary condition matrices)
-    bsr_axpy(x=bd_matrix, y=matrix, alpha=boundary_strength, beta=1)
+    matrix += bd_matrix * boundary_strength
 
     # Solve linear system using Conjugate Gradient
     x = wp.zeros_like(rhs)
@@ -110,13 +112,14 @@ The following excerpt from the introductory example ``warp/examples/fem/example_
 
 .. note::
     The :func:`.integrate` function does not check that the passed integrands are actually linear or bilinear forms; it is up to the user to ensure that they are.
-    To solve non-linear PDEs, one can use an iterative procedure and pass the current value of the studied function :class:`.DiscreteField` argument to the integrand, on which
-    arbitrary operations are permitted. However, the result of the form must remain linear in the test and trial fields.
+    To solve non-linear PDEs, one can use an iterative procedure and pass the current value of the studied function :class:`.DiscreteField` argument to the integrand, in which
+    arbitrary operations are permitted. However, the result of the form must remain linear in the test and trial fields. 
+    This strategy is demonstrated in the ``example_mixed_elasticity.py`` example.
 
 Introductory Examples
 ---------------------
 
-``warp.fem`` ships with a list of examples in the ``warp/examples/fem`` directory illustrating common model problems.
+``warp.fem`` ships with a list of examples in the ``warp/examples/fem`` directory demonstrating how to solve classical model problems.
 
  - ``example_diffusion.py``: 2D diffusion with homogeneous Neumann and Dirichlet boundary conditions
      * ``example_diffusion_3d.py``: 3D variant of the diffusion problem
@@ -126,8 +129,7 @@ Introductory Examples
  - ``example_stokes.py``: 2D incompressible Stokes flow using mixed :math:`P_k/P_{k-1}` or :math:`Q_k/P_{(k-1)d}` elements
  - ``example_navier_stokes.py``: 2D Navier-Stokes flow using mixed :math:`P_k/P_{k-1}` elements
  - ``example_mixed_elasticity.py``: 2D nonlinear elasticity using mixed continuous/discontinuous :math:`S_k/P_{(k-1)d}` elements
- - ``example_streamlines.py``: Using the :func:`lookup` operator to trace through a velocity field
-
+ - ``example_magnetostatics.py``: 2D magnetostatics using a curl-curl formulation
 
 Advanced Usages
 ---------------
@@ -136,7 +138,7 @@ High-order (curved) geometries
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 It is possible to convert any :class:`.Geometry` (grids and explicit meshes) into a curved, high-order variant by deforming them 
-with an arbitrary-order displacement field using the :meth:`~.DiscreteField.make_deformed_geometry` method. 
+with an arbitrary-order displacement field using the :meth:`~.field.GeometryField.make_deformed_geometry` method. 
 The process looks as follows::
 
    # Define a base geometry
@@ -155,15 +157,37 @@ The process looks as follows::
    # Define new function spaces on the deformed geometry
    scalar_space = fem.make_polynomial_space(deformed_geo, degree=scalar_space_degree)
 
-See also ``example_deformed_geometry.py`` for a complete example.
+See ``example_deformed_geometry.py`` for a complete example.
+It is also possible to define the deformation field from an :class:`ImplicitField`, as done in ``example_magnetostatics.py``.
 
-Particle-based quadrature
-^^^^^^^^^^^^^^^^^^^^^^^^^
+Particle-based quadrature and position lookups
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The :class:`.PicQuadrature` provides a way to define Particle-In-Cell quadratures from a set or arbitrary particles,
-which can be helpful to develop MPM-like methods.
+The global :func:`.lookup` operator allows generating a :class:`.Sample` from an arbitraty position; this is illustrated in 
+the ``example_streamlines.py`` example for generating 3D streamlines by tracing through a velocity field.
+
+This operator is also leveraged by the :class:`.PicQuadrature` to provide a way to define Particle-In-Cell quadratures from a set or arbitrary particles,
+making it possible to implement MPM-type methods.
 The particles are automatically bucketed to the geometry cells when the quadrature is initialized.
 This is illustrated by the ``example_stokes_transfer.py`` and ``example_apic_fluid.py`` examples.
+
+.. note::
+   The global :func:`.lookup` operator is not currently supported for :class:`Quadmesh2D`, :class:`Hexmesh` and deformed geometries.
+
+Nonconforming fields
+^^^^^^^^^^^^^^^^^^^^
+
+Fields defined on a given :class:`.Geometry` cannot be directly used for integrating over a distinct geometry; 
+however, they may be wrapped in a :class:`.NonconformingField` for this purpose. 
+This is leveraged by the ``example_nonconforming_contact.py`` to simulate contacting bodies that are discretized separately.
+
+.. note::
+   Currently :class:`.NonconformingField` does not support wrapping a trial field, so it is not yet possible to define
+   bilinear forms over different geometries.
+
+.. note::
+   The mapping between the different geometries is position based, so a :class:`.NonconformingField` is not able to accurately capture discontinuous function spaces.
+   Moreover, the integration domain must support the :func:`.lookup` operator.
 
 Partitioning
 ^^^^^^^^^^^^
@@ -179,13 +203,62 @@ Function spaces can then be partitioned according to the geometry partition usin
 The resulting :class:`.SpacePartition` object allows translating between space-wide and partition-wide node indices, 
 and differentiating interior, frontier and exterior nodes.
 
+The :class:`.Subdomain` class can be used to integrate over a subset of elements while keeping the full set of degrees of freedom,
+i.e, without reindexing; this is illustrated in the ``example_streamlines.py`` example to define inflow and outflow boundaries.
+
 Memory management
 ^^^^^^^^^^^^^^^^^
 
 Several ``warp.fem`` functions require allocating temporary buffers to perform their computations. 
-If such functions are called many times in a tight loop, those many allocations and de-allocations may degrade performance.
+If such functions are called many times in a tight loop, those many allocations and de-allocations may degrade performance,
+though this is a lot less signifiant when :ref:`mempool_allocators` are in use.
 To overcome this issue, a :class:`.cache.TemporaryStore` object may be created to persist and reuse temporary allocations across calls,
 either globally using :func:`set_default_temporary_store` or at a per-function granularity using the corresponding argument.
+
+Visualization
+-------------
+
+Most functions spaces define a :meth:`.FunctionSpace.cells_to_vtk` method that returns a list of VTK-compatible cell types and node indices.
+This can be used to visualize discrete fields in VTK-aware viewers such as ``pyvista``, for instance::
+
+   import numpy as np
+   import pyvista
+
+   import warp as wp
+   import warp.fem as fem
+
+
+   @fem.integrand
+   def ackley(s: fem.Sample, domain: fem.Domain):
+      x = domain(s)
+      return (
+         -20.0 * wp.exp(-0.2 * wp.sqrt(0.5 * wp.length_sq(x)))
+         - wp.exp(0.5 * (wp.cos(2.0 * wp.pi * x[0]) + wp.cos(2.0 * wp.pi * x[1])))
+         + wp.e
+         + 20.0
+      )
+
+
+   # Define field
+   geo = fem.Grid2D(res=wp.vec2i(64, 64), bounds_lo=wp.vec2(-4.0, -4.0), bounds_hi=wp.vec2(4.0, 4.0))
+   space = fem.make_polynomial_space(geo, degree=3)
+   field = space.make_field()
+   fem.interpolate(ackley, dest=field)
+
+   # Extract cells, nodes and values
+   cells, types = field.space.vtk_cells()
+   nodes = field.space.node_positions().numpy()
+   values = field.dof_values.numpy()
+   positions = np.hstack((nodes, values[:, np.newaxis]))
+
+   # Visualize with pyvista
+   grid = pyvista.UnstructuredGrid(cells, types, positions)
+   grid.point_data["scalars"] = values
+   plotter = pyvista.Plotter()
+   plotter.add_mesh(grid)
+   plotter.show()
+
+
 
 .. _Operators:
 
@@ -315,12 +388,27 @@ Function Spaces
 .. autoclass:: PointBasisSpace
    :show-inheritance:
 
+.. _Fields:
+
 Fields
 ------
 
 .. autofunction:: make_test
 
 .. autofunction:: make_trial
+
+.. autofunction:: make_discrete_field
+
+.. autoclass:: ImplicitField
+   :show-inheritance:
+   :members: values
+
+.. autoclass:: UniformField
+   :show-inheritance:
+   :members: value
+
+.. autoclass:: NonconformingField
+   :show-inheritance:
 
 .. autofunction:: make_restriction
 
@@ -353,7 +441,7 @@ Interface classes are not meant to be constructed directly, but can be derived f
    :members: cell_count, side_count, boundary_side_count, frontier_side_count
 
 .. autoclass:: GeometryDomain
-   :members: ElementKind, element_kind, dimension, element_count
+   :members: element_kind, dimension, element_count
 
 .. autoclass:: Quadrature
    :members: domain, total_point_count
@@ -381,9 +469,13 @@ Interface classes are not meant to be constructed directly, but can be derived f
 
 .. autoclass:: DiscreteField
    :show-inheritance:
-   :members: dof_values, trace, make_deformed_geometry
+   :members: dof_values
 
 .. autoclass:: warp.fem.field.FieldRestriction
+
+.. autoclass:: warp.fem.field.GeometryField
+   :show-inheritance:
+   :members: trace, make_deformed_geometry
 
 .. autoclass:: warp.fem.field.SpaceField
    :show-inheritance:

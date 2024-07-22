@@ -22,7 +22,9 @@
   - Support for variable number of nodes per element
   - Global `wp.fem.lookup()` operator now supports `wp.fem.Tetmesh` and `wp.fem.Trimesh2D` geometries
   - Simplified defining custom subdomains (`wp.fem.Subdomain`), free-slip boundary conditions
-  - New `streamlines` example, updated `mixed_elasticity` to use a nonlinear model
+  - New field types: `wp.fem.UniformField`, `wp.fem.ImplicitField` and `wp.fem.NonconformingField`
+  - New `streamlines`, `magnetostatics` and `nonconforming_contact` examples, updated `mixed_elasticity` to use a nonlinear model
+  - Function spaces can now export VTK-compatible cells for visualization
   - Fixed edge cases with Nanovdb function spaces
   - Fixed differentiability of `wp.fem.PicQuadrature` w.r.t. positions and measures
 - Improve error messages for unsupported constructs

@@ -309,6 +309,14 @@ class Triangle2DPolynomialShapeFunctions:
 
         return np.array(element_triangles)
 
+    def element_vtk_cells(self):
+        cells = np.arange(self.NODES_PER_ELEMENT)
+        if self.ORDER == 1:
+            cell_type = 5  # VTK_TRIANGLE
+        else:
+            cell_type = 69  # VTK_LAGRANGE_TRIANGLE
+        return cells[np.newaxis, :], np.array([cell_type], dtype=np.int8)
+
 
 class Triangle2DNonConformingPolynomialShapeFunctions:
     def __init__(self, degree: int):
@@ -317,6 +325,7 @@ class Triangle2DNonConformingPolynomialShapeFunctions:
         self.NODES_PER_ELEMENT = self._tri_shape.NODES_PER_ELEMENT
 
         self.element_node_triangulation = self._tri_shape.element_node_triangulation
+        self.element_vtk_cells = self._tri_shape.element_vtk_cells
 
         # Coordinates (a, b, b) of embedded triangle
         if self.ORDER == 1:

@@ -1,3 +1,5 @@
+from enum import Enum
+
 import warp as wp
 
 # kept to avoid breaking existing example code, no longer used internally
@@ -29,6 +31,11 @@ def get_node_index_in_element(dof_idx: DofIndex):
 @wp.func
 def get_node_coord(dof_idx: DofIndex):
     return dof_idx[1]
+
+
+class ElementKind(Enum):
+    CELL = 0
+    SIDE = 1
 
 
 @wp.struct

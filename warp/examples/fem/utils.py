@@ -1,4 +1,4 @@
-from typing import Any, Optional, Set, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 
@@ -465,195 +465,11 @@ def _block_diagonal_invert(values: wp.array(dtype=Any)):
 #
 
 
-def _plot_grid_surface(field, axes=None):
-    import matplotlib.pyplot as plt
-    from matplotlib import cm
-
-    if axes is None:
-        fig, axes = plt.subplots(subplot_kw={"projection": "3d"})
-
-    node_positions = field.space.node_grid()
-
-    # Make data.
-    X = node_positions[0]
-    Y = node_positions[1]
-    Z = field.dof_values.numpy().reshape(X.shape)
-
-    # Plot the surface.
-    return axes.plot_surface(X, Y, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-
-
-def _plot_tri_surface(field, axes=None):
-    import matplotlib.pyplot as plt
-    from matplotlib import cm
-    from matplotlib.tri.triangulation import Triangulation
-
-    if axes is None:
-        fig, axes = plt.subplots(subplot_kw={"projection": "3d"})
-
-    node_positions = field.space.node_positions().numpy()
-
-    triangulation = Triangulation(
-        x=node_positions[:, 0], y=node_positions[:, 1], triangles=field.space.node_triangulation()
-    )
-
-    Z = field.dof_values.numpy()
-
-    # Plot the surface.
-    return axes.plot_trisurf(triangulation, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-
-
-def _plot_tri_mesh(field, axes=None, **kwargs):
-    import matplotlib.pyplot as plt
-    from matplotlib.tri.triangulation import Triangulation
-
-    if axes is None:
-        fig, axes = plt.subplots()
-
-    vtx_positions = field.space.node_positions().numpy()
-    displacement = field.dof_values.numpy()
-
-    X = vtx_positions[:, 0] + displacement[:, 0]
-    Y = vtx_positions[:, 1] + displacement[:, 1]
-
-    triangulation = Triangulation(x=X, y=Y, triangles=field.space.node_triangulation())
-
-    # Plot the surface.
-    return axes.triplot(triangulation, **kwargs)[0]
-
-
-def _plot_scatter_surface(field, axes=None):
-    import matplotlib.pyplot as plt
-    from matplotlib import cm
-
-    if axes is None:
-        fig, axes = plt.subplots(subplot_kw={"projection": "3d"})
-
-    X, Y = field.space.node_positions().numpy().T
-
-    # Make data.
-    Z = field.dof_values.numpy().reshape(X.shape)
-
-    # Plot the surface.
-    return axes.scatter(X, Y, Z, c=Z, cmap=cm.coolwarm)
-
-
-def _plot_surface(field, axes=None):
-    if hasattr(field.space, "node_grid"):
-        return _plot_grid_surface(field, axes)
-    elif hasattr(field.space, "node_triangulation"):
-        return _plot_tri_surface(field, axes)
-    else:
-        return _plot_scatter_surface(field, axes)
-
-
-def _plot_grid_color(field, axes=None):
-    import matplotlib.pyplot as plt
-    from matplotlib import cm
-
-    if axes is None:
-        fig, axes = plt.subplots()
-
-    node_positions = field.space.node_grid()
-
-    # Make data.
-    X = node_positions[0]
-    Y = node_positions[1]
-    Z = field.dof_values.numpy().reshape(X.shape)
-
-    # Plot the surface.
-    return axes.pcolormesh(X, Y, Z, cmap=cm.coolwarm)
-
-
-def _plot_velocities(field, axes=None):
-    import matplotlib.pyplot as plt
-
-    if axes is None:
-        fig, axes = plt.subplots()
-
-    node_positions = field.space.node_positions().numpy()
-
-    # Make data.
-    X = node_positions[:, 0]
-    Y = node_positions[:, 1]
-
-    vel = field.dof_values.numpy()
-    u = np.ascontiguousarray(vel[:, 0])
-    v = np.ascontiguousarray(vel[:, 1])
-
-    u = u.reshape(X.shape)
-    v = v.reshape(X.shape)
-
-    return axes.quiver(X, Y, u, v)
-
-
-def plot_grid_streamlines(field, axes=None):
-    import matplotlib.pyplot as plt
-
-    if axes is None:
-        fig, axes = plt.subplots()
-
-    node_positions = field.space.node_grid()
-
-    # Make data.
-    X = node_positions[0][:, 0]
-    Y = node_positions[1][0, :]
-
-    vel = field.dof_values.numpy()
-    u = np.ascontiguousarray(vel[:, 0])
-    v = np.ascontiguousarray(vel[:, 1])
-
-    u = np.transpose(u.reshape(node_positions[0].shape))
-    v = np.transpose(v.reshape(node_positions[0].shape))
-
-    splot = axes.streamplot(X, Y, u, v, density=2)
-    splot.axes = axes
-    return splot
-
-
-def plot_3d_scatter(field, axes=None):
-    import matplotlib.pyplot as plt
-    from matplotlib import cm
-
-    if axes is None:
-        fig, axes = plt.subplots(subplot_kw={"projection": "3d"})
-
-    X, Y, Z = field.space.node_positions().numpy().T
-
-    # Make data.
-    f = field.dof_values.numpy().reshape(X.shape)
-
-    # Plot the surface.
-    return axes.scatter(X, Y, Z, c=f, cmap=cm.coolwarm)
-
-
-def plot_3d_velocities(field, axes=None):
-    import matplotlib.pyplot as plt
-
-    if axes is None:
-        fig, axes = plt.subplots(subplot_kw={"projection": "3d"})
-
-    X, Y, Z = field.space.node_positions().numpy().T
-
-    vel = field.dof_values.numpy()
-    u = np.ascontiguousarray(vel[:, 0])
-    v = np.ascontiguousarray(vel[:, 1])
-    w = np.ascontiguousarray(vel[:, 2])
-
-    u = u.reshape(X.shape)
-    v = v.reshape(X.shape)
-    w = w.reshape(X.shape)
-
-    return axes.quiver(X, Y, Z, u, v, w, length=1.0 / X.shape[0], normalize=False)
-
-
 class Plot:
     def __init__(self, stage=None, default_point_radius=0.01):
         self.default_point_radius = default_point_radius
 
-        self._surfaces = {}
-        self._surface_vectors = {}
-        self._volumes = {}
+        self._fields = {}
 
         self._usd_renderer = None
         if stage is not None:
@@ -672,72 +488,216 @@ class Plot:
         if self._usd_renderer is not None:
             self._usd_renderer.end_frame()
 
-    def add_surface(self, name: str, field: fem.DiscreteField):
+    def add_field(self, name: str, field: fem.DiscreteField):
         if self._usd_renderer is not None:
-            points_2d = field.space.node_positions().numpy()
-            values = field.dof_values.numpy()
-            points_3d = np.hstack((points_2d, values.reshape(-1, 1)))
+            self._render_to_usd(field)
+
+        if name not in self._fields:
+            field_clone = field.space.make_field(space_partition=field.space_partition)
+            self._fields[name] = (field_clone, [])
+
+        self._fields[name][1].append(field.dof_values.numpy())
+
+    def _render_to_usd(self, name: str, field: fem.DiscreteField):
+        points = field.space.node_positions().numpy()
+        values = field.dof_values.numpy()
+
+        if values.ndim == 2:
+            if values.shape[1] == field.space.dimension:
+                # use values as displacement
+                points += values
+            else:
+                # use magnitude
+                values = np.linalg.norm(values, axis=1)
+
+        if field.space.dimension == 2:
+            z = values if values.ndim == 1 else np.zeros((points.shape[0], 1))
+            points = np.hstack((points, z))
 
             if hasattr(field.space, "node_triangulation"):
                 indices = field.space.node_triangulation()
-                self._usd_renderer.render_mesh(name, points=points_3d, indices=indices)
+                self._usd_renderer.render_mesh(name, points=points, indices=indices)
             else:
-                self._usd_renderer.render_points(name, points=points_3d, radius=self.default_point_radius)
+                self._usd_renderer.render_points(name, points=points, radius=self.default_point_radius)
+        elif values.ndim == 1:
+            self._usd_renderer.render_points(name, points, radius=values)
+        else:
+            self._usd_renderer.render_points(name, points, radius=self.default_point_radius)
 
-        if name not in self._surfaces:
-            field_clone = field.space.make_field(space_partition=field.space_partition)
-            self._surfaces[name] = (field_clone, [])
+    def plot(self, options: Dict[str, Any] = None, backend: str = "auto"):
+        if options is None:
+            options = {}
 
-        self._surfaces[name][1].append(field.dof_values.numpy())
+        if backend == "pyvista":
+            return self._plot_pyvista(options)
+        if backend == "matplotlib":
+            return self._plot_matplotlib(options)
 
-    def add_surface_vector(self, name: str, field: fem.DiscreteField):
-        if self._usd_renderer is not None:
-            points_2d = field.space.node_positions().numpy()
-            values = field.dof_values.numpy()
-            points_3d = np.hstack((points_2d + values, np.zeros_like(points_2d[:, 0]).reshape(-1, 1)))
+        # try both
+        try:
+            return self._plot_pyvista(options)
+        except ModuleNotFoundError:
+            try:
+                return self._plot_matplotlib(options)
+            except ModuleNotFoundError:
+                wp.utils.warn("pyvista or matplotlib must be installed to visualize solution results")
 
-            if hasattr(field.space, "node_triangulation"):
-                indices = field.space.node_triangulation()
-                self._usd_renderer.render_mesh(name, points=points_3d, indices=indices)
+    def _plot_pyvista(self, options: Dict[str, Any]):
+        import pyvista
+
+        grids = {}
+        scales = {}
+        markers = {}
+
+        animate = False
+
+        for name, (field, values) in self._fields.items():
+            cells, types = field.space.vtk_cells()
+            node_pos = field.space.node_positions().numpy()
+
+            args = options.get(name, {})
+
+            grid_scale = np.max(np.max(node_pos, axis=0) - np.min(node_pos, axis=0))
+            value_range = self._get_field_value_range(values, args)
+            scales[name] = (grid_scale, value_range)
+
+            if node_pos.shape[1] == 2:
+                node_pos = np.hstack((node_pos, np.zeros((node_pos.shape[0], 1))))
+
+            grid = pyvista.UnstructuredGrid(cells, types, node_pos)
+            grids[name] = grid
+
+            if len(values) > 1:
+                animate = True
+
+        def set_frame_data(frame):
+            for name, (field, values) in self._fields.items():
+                if frame > 0 and len(values) == 1:
+                    continue
+
+                v = values[frame % len(values)]
+                grid = grids[name]
+                grid_scale, value_range = scales[name]
+                field_args = options.get(name, {})
+
+                marker = None
+
+                if field.space.dimension == 2 and v.ndim == 2 and v.shape[1] == 2:
+                    grid.point_data[name] = np.hstack((v, np.zeros((v.shape[0], 1))))
+                else:
+                    grid.point_data[name] = v
+
+                if v.ndim == 2:
+                    grid.point_data[name + "_mag"] = np.linalg.norm(v, axis=1)
+
+                if "arrows" in field_args:
+                    glyph_scale = field_args["arrows"].get("glyph_scale", 1.0)
+                    glyph_scale *= grid_scale / max(1.0e-8, value_range[1] - value_range[0])
+                    marker = grid.glyph(scale=name, orient=name, factor=glyph_scale)
+                elif "contours" in field_args:
+                    levels = field_args["contours"].get("levels", 10)
+                    if type(levels) == int:
+                        levels = np.linspace(*value_range, levels)
+                    marker = grid.contour(isosurfaces=levels, scalars=name + "_mag" if v.ndim == 2 else name)
+                elif field.space.dimension == 2:
+                    z_scale = grid_scale / max(1.0e-8, value_range[1] - value_range[0])
+
+                    if "streamlines" in field_args:
+                        center = np.mean(grid.points, axis=0)
+                        density = field_args["streamlines"].get("density", 1.0)
+                        cell_size = 1.0 / np.sqrt(field.space.geometry.cell_count())
+
+                        separating_distance = 0.5 / (30.0 * density * cell_size)
+                        # Try with various sep distance until we get at least one line
+                        while separating_distance * cell_size < 1.0:
+                            lines = grid.streamlines_evenly_spaced_2D(
+                                vectors=name,
+                                start_position=center,
+                                separating_distance=separating_distance,
+                                separating_distance_ratio=0.5,
+                                step_length=0.25,
+                                compute_vorticity=False,
+                            )
+                            if lines.n_lines > 0:
+                                break
+                            separating_distance *= 1.25
+                        marker = lines.tube(radius=0.0025 * grid_scale / density)
+                    elif "arrows" in field_args:
+                        glyph_scale = field_args["arrows"].get("glyph_scale", 1.0)
+                        glyph_scale *= grid_scale / max(1.0e-8, value_range[1] - value_range[0])
+                        marker = grid.glyph(scale=name, orient=name, factor=glyph_scale)
+                    elif "displacement" in field_args:
+                        grid.points[:, 0:2] = field.space.node_positions().numpy() + v
+                    else:
+                        # Extrude surface
+                        z = v if v.ndim == 1 else grid.point_data[name + "_mag"]
+                        grid.points[:, 2] = z * z_scale
+
+                elif field.space.dimension == 3:
+                    if "streamlines" in field_args:
+                        center = np.mean(grid.points, axis=0)
+                        density = field_args["streamlines"].get("density", 1.0)
+                        cell_size = 1.0 / np.sqrt(field.space.geometry.cell_count())
+                        lines = grid.streamlines(vectors=name, n_points=int(100 * density))
+                        marker = lines.tube(radius=0.0025 * grid_scale / density)
+                    elif "displacement" in field_args:
+                        grid.points = field.space.node_positions().numpy() + v
+
+                if frame == 0:
+                    if v.ndim == 1:
+                        grid.set_active_scalars(name)
+                    else:
+                        grid.set_active_vectors(name)
+                        grid.set_active_scalars(name + "_mag")
+                    markers[name] = marker
+                elif marker:
+                    markers[name].copy_from(marker)
+
+        set_frame_data(0)
+
+        subplot_rows = options.get("rows", 1)
+        subplot_shape = (subplot_rows, (len(grids) + subplot_rows - 1) // subplot_rows)
+
+        plotter = pyvista.Plotter(shape=subplot_shape)
+        plotter.link_views()
+        plotter.add_camera_orientation_widget()
+        for index, (name, grid) in enumerate(grids.items()):
+            plotter.subplot(index // subplot_shape[1], index % subplot_shape[1])
+            grid_scale, value_range = scales[name]
+            field = self._fields[name][0]
+            marker = markers[name]
+            if marker:
+                if field.space.dimension == 2:
+                    plotter.add_mesh(marker, show_scalar_bar=False)
+                    plotter.add_mesh(grid, opacity=0.25, clim=value_range)
+                    plotter.view_xy()
+                else:
+                    plotter.add_mesh(marker, opacity=0.25)
+            elif field.space.dimension == 3:
+                plotter.add_mesh_clip_plane(grid, show_edges=True, clim=value_range)
             else:
-                self._usd_renderer.render_points(name, points=points_3d, radius=self.default_point_radius)
+                plotter.add_mesh(grid, show_edges=True, clim=value_range)
+        plotter.show(interactive_update=animate)
 
-        if name not in self._surface_vectors:
-            field_clone = field.space.make_field(space_partition=field.space_partition)
-            self._surface_vectors[name] = (field_clone, [])
+        frame = 0
+        while animate and not plotter.iren.interactor.GetDone():
+            frame += 1
+            set_frame_data(frame)
+            plotter.update()
 
-        self._surface_vectors[name][1].append(field.dof_values.numpy())
-
-    def add_volume(self, name: str, field: fem.DiscreteField):
-        if self._usd_renderer is not None:
-            points_3d = field.space.node_positions().numpy()
-            values = field.dof_values.numpy()
-
-            self._usd_renderer.render_points(name, points_3d, radius=values)
-
-        if name not in self._volumes:
-            field_clone = field.space.make_field(space_partition=field.space_partition)
-            self._volumes[name] = (field_clone, [])
-
-        self._volumes[name][1].append(field.dof_values.numpy())
-
-    def plot(self, streamlines: Set[str] = None, displacement: str = None):
-        if streamlines is None:
-            streamlines = set()
-        return self._plot_matplotlib(streamlines, displacement)
-
-    def _plot_matplotlib(self, streamlines: Set[str], displacement: str):
+    def _plot_matplotlib(self, options: Dict[str, Any]):
         import matplotlib.animation as animation
         import matplotlib.pyplot as plt
+        from matplotlib import cm
 
-        if streamlines is None:
-            streamlines = []
-
-        def make_animation(ax, field, values, plot_func, num_frames: int):
+        def make_animation(fig, ax, cax, values, draw_func):
             def animate(i):
-                ax.clear()
-                field.dof_values = values[i]
-                return plot_func(field, axes=ax)
+                cs = draw_func(ax, values[i])
+
+                cax.cla()
+                fig.colorbar(cs, cax)
+
+                return cs
 
             return animation.FuncAnimation(
                 ax.figure,
@@ -747,31 +707,202 @@ class Plot:
                 frames=len(values),
             )
 
-        for _name, (field, values) in self._surfaces.items():
-            field.dof_values = values[0]
-            ax = _plot_surface(field).axes
+        def make_draw_func(field, args, plot_func, plot_opts):
+            def draw_fn(axes, values):
+                axes.clear()
+
+                field.dof_values = values
+                cs = plot_func(field, axes=axes, **plot_opts)
+
+                if "xlim" in args:
+                    axes.set_xlim(*args["xlim"])
+                if "ylim" in args:
+                    axes.set_ylim(*args["ylim"])
+
+                return cs
+
+            return draw_fn
+
+        anims = []
+
+        field_count = len(self._fields)
+        subplot_rows = options.get("rows", 1)
+        subplot_shape = (subplot_rows, (field_count + subplot_rows - 1) // subplot_rows)
+
+        for index, (name, (field, values)) in enumerate(self._fields.items()):
+            args = options.get(name, {})
+            v = values[0]
+
+            plot_fn = None
+            plot_3d = False
+            plot_opts = {"cmap": cm.viridis}
+
+            plot_opts["clim"] = self._get_field_value_range(values, args)
+
+            if field.space.dimension == 2:
+                if "contours" in args:
+                    plot_opts["levels"] = args["contours"].get("levels", None)
+                    plot_fn = _plot_contours
+                elif v.ndim == 2 and v.shape[1] == 2:
+                    if "displacement" in args:
+                        plot_fn = _plot_displaced_tri_mesh
+                    elif "streamlines" in args:
+                        plot_opts["density"] = args["streamlines"].get("density", 1.0)
+                        plot_fn = _plot_streamlines
+                    elif "arrows" in args:
+                        plot_opts["glyph_scale"] = args["arrows"].get("glyph_scale", 1.0)
+                        plot_fn = _plot_quivers
+
+                if plot_fn is None:
+                    plot_fn = _plot_surface
+                    plot_3d = True
+
+            elif field.space.dimension == 3:
+                if "arrows" in args or "streamlines" in args:
+                    plot_opts["glyph_scale"] = args.get("arrows", {}).get("glyph_scale", 1.0)
+                    plot_fn = _plot_quivers_3d
+                else:
+                    plot_fn = _plot_3d_scatter
+                plot_3d = True
+
+            subplot_kw = {"projection": "3d"} if plot_3d else {}
+            axes = plt.subplot(*subplot_shape, index + 1, **subplot_kw)
+
+            if not plot_3d:
+                axes.set_aspect("equal")
+
+            draw_fn = make_draw_func(field, args, plot_func=plot_fn, plot_opts=plot_opts)
+            cs = draw_fn(axes, values[0])
+
+            fig = plt.gcf()
+            cax = fig.colorbar(cs).ax
 
             if len(values) > 1:
-                _anim = make_animation(ax, field, values, plot_func=_plot_surface, num_frames=len(values))
-
-        for name, (field, values) in self._surface_vectors.items():
-            field.dof_values = values[0]
-            if name == displacement:
-                ax = _plot_tri_mesh(field).axes
-
-                if len(values) > 1:
-                    _anim = make_animation(ax, field, values, plot_func=_plot_tri_mesh, num_frames=len(values))
-            elif name in streamlines and hasattr(field.space, "node_grid"):
-                ax = plot_grid_streamlines(field).axes
-                ax.set_axis_off()
-            else:
-                ax = _plot_velocities(field).axes
-
-                if len(values) > 1:
-                    _anim = make_animation(ax, field, values, plot_func=_plot_velocities, num_frames=len(values))
-
-        for _name, (field, values) in self._volumes.items():
-            field.dof_values = values[0]
-            ax = plot_3d_scatter(field).axes
+                anims.append(make_animation(fig, axes, cax, values, draw_func=draw_fn))
 
         plt.show()
+
+    @staticmethod
+    def _get_field_value_range(values, field_options: Dict[str, Any]):
+        value_range = field_options.get("clim", None)
+        if value_range is None:
+            value_range = (
+                min((np.min(_value_or_magnitude(v)) for v in values)),
+                max((np.max(_value_or_magnitude(v)) for v in values)),
+            )
+
+        return value_range
+
+
+def _value_or_magnitude(values: np.ndarray):
+    if values.ndim == 1:
+        return values
+    return np.linalg.norm(values, axis=-1)
+
+
+def _field_triangulation(field):
+    from matplotlib.tri import Triangulation
+
+    node_positions = field.space.node_positions().numpy()
+    return Triangulation(x=node_positions[:, 0], y=node_positions[:, 1], triangles=field.space.node_triangulation())
+
+
+def _plot_surface(field, axes, **kwargs):
+    Z = _value_or_magnitude(field.dof_values.numpy())
+
+    if "clim" in kwargs:
+        axes.set_zlim(*kwargs["clim"])
+
+    if hasattr(field.space, "node_grid"):
+        X, Y = field.space.node_grid()
+        Z = Z.reshape(X.shape)
+        return axes.plot_surface(X, Y, Z, linewidth=0.1, antialiased=False, **kwargs)
+
+    if hasattr(field.space, "node_triangulation"):
+        triangulation = _field_triangulation(field)
+        return axes.plot_trisurf(triangulation, Z, linewidth=0.1, antialiased=False, **kwargs)
+
+    # scatter
+    X, Y = field.space.node_positions().numpy().T
+    return axes.scatter(X, Y, Z, c=Z, **kwargs)
+
+
+def _plot_displaced_tri_mesh(field, axes, **kwargs):
+    triangulation = _field_triangulation(field)
+
+    displacement = field.dof_values.numpy()
+    triangulation.x += displacement[:, 0]
+    triangulation.y += displacement[:, 1]
+
+    Z = _value_or_magnitude(displacement)
+
+    # Plot the surface.
+    cs = axes.tripcolor(triangulation, Z, **kwargs)
+    axes.triplot(triangulation, lw=0.1)
+
+    return cs
+
+
+def _plot_quivers(field, axes, clim=None, glyph_scale=1.0, **kwargs):
+    X, Y = field.space.node_positions().numpy().T
+
+    vel = field.dof_values.numpy()
+    u = vel[:, 0].reshape(X.shape)
+    v = vel[:, 1].reshape(X.shape)
+
+    return axes.quiver(X, Y, u, v, _value_or_magnitude(vel), scale=1.0 / glyph_scale, **kwargs)
+
+
+def _plot_quivers_3d(field, axes, clim=None, cmap=None, glyph_scale=1.0, **kwargs):
+    X, Y, Z = field.space.node_positions().numpy().T
+
+    vel = field.dof_values.numpy()
+
+    colors = cmap((_value_or_magnitude(vel) - clim[0]) / (clim[1] - clim[0]))
+
+    u = vel[:, 0].reshape(X.shape) / (clim[1] - clim[0])
+    v = vel[:, 1].reshape(X.shape) / (clim[1] - clim[0])
+    w = vel[:, 2].reshape(X.shape) / (clim[1] - clim[0])
+
+    return axes.quiver(X, Y, Z, u, v, w, colors=colors, length=glyph_scale, clim=clim, cmap=cmap, **kwargs)
+
+
+def _plot_streamlines(field, axes, clim=None, **kwargs):
+    import matplotlib.tri as tr
+
+    triangulation = _field_triangulation(field)
+
+    vel = field.dof_values.numpy()
+
+    itp_vx = tr.CubicTriInterpolator(triangulation, vel[:, 0])
+    itp_vy = tr.CubicTriInterpolator(triangulation, vel[:, 1])
+
+    X, Y = np.meshgrid(
+        np.linspace(np.min(triangulation.x), np.max(triangulation.x), 100),
+        np.linspace(np.min(triangulation.y), np.max(triangulation.y), 100),
+    )
+
+    u = itp_vx(X, Y)
+    v = itp_vy(X, Y)
+    C = np.sqrt(u * u + v * v)
+
+    plot = axes.streamplot(X, Y, u, v, color=C, **kwargs)
+    return plot.lines
+
+
+def _plot_contours(field, axes, clim=None, **kwargs):
+    triangulation = _field_triangulation(field)
+
+    Z = _value_or_magnitude(field.dof_values.numpy())
+
+    tc = axes.tricontourf(triangulation, Z, **kwargs)
+    axes.tricontour(triangulation, Z, **kwargs)
+    return tc
+
+
+def _plot_3d_scatter(field, axes, **kwargs):
+    X, Y, Z = field.space.node_positions().numpy().T
+
+    f = _value_or_magnitude(field.dof_values.numpy()).reshape(X.shape)
+
+    return axes.scatter(X, Y, Z, c=f, **kwargs)

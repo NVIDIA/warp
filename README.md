@@ -199,13 +199,13 @@ Built-in unit tests can be run from the command-line as follows:
             <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_convection_diffusion.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_convection_diffusion.png"></a></td>
             <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_navier_stokes.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_navier_stokes.png"></a></td>
             <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_burgers.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_burgers.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_deformed_geometry.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_deformed_geometry.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_magnetostatics.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/fem_magnetostatics.png"></a></td>
         </tr>
         <tr>
             <td align="center">convection diffusion</td>
             <td align="center">navier stokes</td>
             <td align="center">burgers</td>
-            <td align="center">deformed geometry</td>
+            <td align="center">magnetostatics</td>
         </tr>
     </tbody>
 </table>

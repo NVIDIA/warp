@@ -442,6 +442,14 @@ class TetrahedronPolynomialShapeFunctions:
 
         return np.array(element_tets)
 
+    def element_vtk_cells(self):
+        cells = np.arange(self.NODES_PER_ELEMENT)
+        if self.ORDER == 1:
+            cell_type = 10  # VTK_TETRA
+        else:
+            cell_type = 71  # VTK_LAGRANGE_TETRAHEDRON
+        return cells[np.newaxis, :], np.array([cell_type], dtype=np.int8)
+
 
 class TetrahedronNonConformingPolynomialShapeFunctions:
     def __init__(self, degree: int):
@@ -450,6 +458,7 @@ class TetrahedronNonConformingPolynomialShapeFunctions:
         self.NODES_PER_ELEMENT = self._tet_shape.NODES_PER_ELEMENT
 
         self.element_node_tets = self._tet_shape.element_node_tets
+        self.element_vtk_cells = self._tet_shape.element_vtk_cells
 
         if self.ORDER == 1:
             self._TET_SCALE = 0.4472135955  # so v at 0.5854101966249680 (order 2)

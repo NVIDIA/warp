@@ -1305,6 +1305,93 @@ def test_particle_quadratures(test, device):
     assert_np_equal(measures.grad.numpy(), np.full(3, 4.0))  # == 1.0 / cell_area
 
 
+@wp.func
+def aniso_bicubic_fn(x: wp.vec2, scale: wp.vec2):
+    return wp.pow(x[0] * scale[0], 3.0) * wp.pow(x[1] * scale[1], 3.0)
+
+
+@wp.func
+def aniso_bicubic_grad(x: wp.vec2, scale: wp.vec2):
+    return wp.vec2(
+        3.0 * scale[0] * wp.pow(x[0] * scale[0], 2.0) * wp.pow(x[1] * scale[1], 3.0),
+        3.0 * scale[1] * wp.pow(x[0] * scale[0], 3.0) * wp.pow(x[1] * scale[1], 2.0),
+    )
+
+
+def test_implicit_fields(test, device):
+    geo = fem.Grid2D(res=wp.vec2i(2))
+    domain = fem.Cells(geo)
+    boundary = fem.BoundarySides(geo)
+
+    space = fem.make_polynomial_space(geo)
+    vec_space = fem.make_polynomial_space(geo, dtype=wp.vec2)
+    discrete_field = fem.make_discrete_field(space)
+    discrete_vec_field = fem.make_discrete_field(vec_space)
+
+    # Uniform
+
+    uniform = fem.UniformField(domain, 5.0)
+    fem.interpolate(uniform, dest=discrete_field)
+    assert_np_equal(discrete_field.dof_values.numpy(), np.full(9, 5.0))
+
+    fem.interpolate(grad_field, fields={"p": uniform}, dest=discrete_vec_field)
+    assert_np_equal(discrete_vec_field.dof_values.numpy(), np.zeros((9, 2)))
+
+    uniform.value = 2.0
+    fem.interpolate(uniform.trace(), dest=fem.make_restriction(discrete_field, domain=boundary))
+    assert_np_equal(discrete_field.dof_values.numpy(), np.array([2.0] * 4 + [5.0] + [2.0] * 4))
+
+    # Implicit
+
+    implicit = fem.ImplicitField(
+        domain, func=aniso_bicubic_fn, values={"scale": wp.vec2(2.0, 4.0)}, grad_func=aniso_bicubic_grad
+    )
+    fem.interpolate(implicit, dest=discrete_field)
+    assert_np_equal(
+        discrete_field.dof_values.numpy(),
+        np.array([0.0, 0.0, 0.0, 0.0, 2.0**3, 4.0**3, 0.0, 2.0**3 * 2.0**3, 4.0**3 * 2.0**3]),
+    )
+
+    fem.interpolate(grad_field, fields={"p": implicit}, dest=discrete_vec_field)
+    assert_np_equal(discrete_vec_field.dof_values.numpy()[0], np.zeros(2))
+    assert_np_equal(discrete_vec_field.dof_values.numpy()[-1], np.full(2, (2.0**9.0 * 3.0)))
+
+    implicit.values.scale = wp.vec2(-2.0, -2.0)
+    fem.interpolate(implicit.trace(), dest=fem.make_restriction(discrete_field, domain=boundary))
+    assert_np_equal(
+        discrete_field.dof_values.numpy(),
+        np.array([0.0, 0.0, 0.0, 0.0, 2.0**3, 2.0**3, 0.0, 2.0**3, 4.0**3]),
+    )
+
+    # Nonconforming
+
+    geo2 = fem.Grid2D(res=wp.vec2i(1), bounds_lo=wp.vec2(0.25, 0.25), bounds_hi=wp.vec2(2.0, 2.0))
+    domain2 = fem.Cells(geo2)
+    boundary2 = fem.BoundarySides(geo2)
+    space2 = fem.make_polynomial_space(geo2)
+    vec_space2 = fem.make_polynomial_space(geo2, dtype=wp.vec2)
+    discrete_field2 = fem.make_discrete_field(space2)
+    discrete_vec_field2 = fem.make_discrete_field(vec_space2)
+
+    nonconforming = fem.NonconformingField(domain2, discrete_field, background=5.0)
+    fem.interpolate(
+        nonconforming,
+        dest=discrete_field2,
+    )
+    assert_np_equal(discrete_field2.dof_values.numpy(), np.array([2.0] + [5.0] * 3))
+
+    fem.interpolate(grad_field, fields={"p": nonconforming}, dest=discrete_vec_field2)
+    assert_np_equal(discrete_vec_field2.dof_values.numpy()[0], np.full(2, 8.0))
+    assert_np_equal(discrete_vec_field2.dof_values.numpy()[-1], np.zeros(2))
+
+    discrete_field2.dof_values.zero_()
+    fem.interpolate(
+        nonconforming.trace(),
+        dest=fem.make_restriction(discrete_field2, domain=boundary2),
+    )
+    assert_np_equal(discrete_field2.dof_values.numpy(), np.array([2.0] + [5.0] * 3))
+
+
 @wp.kernel
 def test_qr_eigenvalues():
     tol = 1.0e-6
@@ -1398,6 +1485,7 @@ add_function_test(TestFem, "test_deformed_geometry", test_deformed_geometry, dev
 add_function_test(TestFem, "test_dof_mapper", test_dof_mapper)
 add_function_test(TestFem, "test_point_basis", test_point_basis)
 add_function_test(TestFem, "test_particle_quadratures", test_particle_quadratures)
+add_function_test(TestFem, "test_implicit_fields", test_implicit_fields)
 add_kernel_test(TestFem, test_qr_eigenvalues, dim=1, devices=devices)
 add_kernel_test(TestFem, test_qr_inverse, dim=100, devices=devices)
 
