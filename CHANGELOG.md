@@ -36,6 +36,7 @@
 - Handle incompatible CUDA driver versions gracefully
 - Fix handling of `upaxis` variable in `ModelBuilder` and the rendering thereof in `OpenGLRenderer`
 - Add `wp.abs()` and `wp.sign()` for vectors
+- Expose scalar arithmetic operators to Python's runtime (e.g.: `wp.float16(1.23) * wp.float16(2.34)`)
 
 ## [1.2.2] - 2024-07-04
 
