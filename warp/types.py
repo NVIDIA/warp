@@ -473,6 +473,59 @@ class void:
         pass
 
 
+class scalar_base:
+    def __init__(self, x=0):
+        self.value = x
+
+    def __bool__(self) -> builtins.bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __add__(self, y):
+        return warp.add(self, y)
+
+    def __radd__(self, y):
+        return warp.add(y, self)
+
+    def __sub__(self, y):
+        return warp.sub(self, y)
+
+    def __rsub__(self, y):
+        return warp.sub(y, self)
+
+    def __mul__(self, y):
+        return warp.mul(self, y)
+
+    def __rmul__(self, x):
+        return warp.mul(x, self)
+
+    def __truediv__(self, y):
+        return warp.div(self, y)
+
+    def __rtruediv__(self, x):
+        return warp.div(x, self)
+
+    def __pos__(self):
+        return warp.pos(self)
+
+    def __neg__(self):
+        return warp.neg(self)
+
+
+class float_base(scalar_base):
+    pass
+
+
+class int_base(scalar_base):
+    def __index__(self) -> int:
+        return int(self.value)
+
+
 class bool:
     _length_ = 1
     _type_ = ctypes.c_bool
@@ -490,215 +543,59 @@ class bool:
         return int(self.value != 0)
 
 
-class float16:
+class float16(float_base):
     _length_ = 1
     _type_ = ctypes.c_uint16
 
-    def __init__(self, x=0.0):
-        self.value = x
 
-    def __bool__(self) -> bool:
-        return self.value != 0.0
-
-    def __float__(self) -> float:
-        return float(self.value)
-
-    def __int__(self) -> int:
-        return int(self.value)
-
-
-class float32:
+class float32(float_base):
     _length_ = 1
     _type_ = ctypes.c_float
 
-    def __init__(self, x=0.0):
-        self.value = x
 
-    def __bool__(self) -> bool:
-        return self.value != 0.0
-
-    def __float__(self) -> float:
-        return float(self.value)
-
-    def __int__(self) -> int:
-        return int(self.value)
-
-
-class float64:
+class float64(float_base):
     _length_ = 1
     _type_ = ctypes.c_double
 
-    def __init__(self, x=0.0):
-        self.value = x
 
-    def __bool__(self) -> bool:
-        return self.value != 0.0
-
-    def __float__(self) -> float:
-        return float(self.value)
-
-    def __int__(self) -> int:
-        return int(self.value)
-
-
-class int8:
+class int8(int_base):
     _length_ = 1
     _type_ = ctypes.c_int8
 
-    def __init__(self, x=0):
-        self.value = x
 
-    def __bool__(self) -> bool:
-        return self.value != 0
-
-    def __float__(self) -> float:
-        return float(self.value)
-
-    def __int__(self) -> int:
-        return int(self.value)
-
-    def __index__(self) -> int:
-        return int(self.value)
-
-
-class uint8:
+class uint8(int_base):
     _length_ = 1
     _type_ = ctypes.c_uint8
 
-    def __init__(self, x=0):
-        self.value = x
 
-    def __bool__(self) -> bool:
-        return self.value != 0
-
-    def __float__(self) -> float:
-        return float(self.value)
-
-    def __int__(self) -> int:
-        return int(self.value)
-
-    def __index__(self) -> int:
-        return int(self.value)
-
-
-class int16:
+class int16(int_base):
     _length_ = 1
     _type_ = ctypes.c_int16
 
-    def __init__(self, x=0):
-        self.value = x
 
-    def __bool__(self) -> bool:
-        return self.value != 0
-
-    def __float__(self) -> float:
-        return float(self.value)
-
-    def __int__(self) -> int:
-        return int(self.value)
-
-    def __index__(self) -> int:
-        return int(self.value)
-
-
-class uint16:
+class uint16(int_base):
     _length_ = 1
     _type_ = ctypes.c_uint16
 
-    def __init__(self, x=0):
-        self.value = x
 
-    def __bool__(self) -> bool:
-        return self.value != 0
-
-    def __float__(self) -> float:
-        return float(self.value)
-
-    def __int__(self) -> int:
-        return int(self.value)
-
-    def __index__(self) -> int:
-        return int(self.value)
-
-
-class int32:
+class int32(int_base):
     _length_ = 1
     _type_ = ctypes.c_int32
 
-    def __init__(self, x=0):
-        self.value = x
 
-    def __bool__(self) -> bool:
-        return self.value != 0
-
-    def __float__(self) -> float:
-        return float(self.value)
-
-    def __int__(self) -> int:
-        return int(self.value)
-
-    def __index__(self) -> int:
-        return int(self.value)
-
-
-class uint32:
+class uint32(int_base):
     _length_ = 1
     _type_ = ctypes.c_uint32
 
-    def __init__(self, x=0):
-        self.value = x
 
-    def __bool__(self) -> bool:
-        return self.value != 0
-
-    def __float__(self) -> float:
-        return float(self.value)
-
-    def __int__(self) -> int:
-        return int(self.value)
-
-    def __index__(self) -> int:
-        return int(self.value)
-
-
-class int64:
+class int64(int_base):
     _length_ = 1
     _type_ = ctypes.c_int64
 
-    def __init__(self, x=0):
-        self.value = x
 
-    def __bool__(self) -> bool:
-        return self.value != 0
-
-    def __float__(self) -> float:
-        return float(self.value)
-
-    def __int__(self) -> int:
-        return int(self.value)
-
-    def __index__(self) -> int:
-        return int(self.value)
-
-
-class uint64:
+class uint64(int_base):
     _length_ = 1
     _type_ = ctypes.c_uint64
-
-    def __init__(self, x=0):
-        self.value = x
-
-    def __bool__(self) -> bool:
-        return self.value != 0
-
-    def __float__(self) -> float:
-        return float(self.value)
-
-    def __int__(self) -> int:
-        return int(self.value)
-
-    def __index__(self) -> int:
-        return int(self.value)
 
 
 def quaternion(dtype=Any):
