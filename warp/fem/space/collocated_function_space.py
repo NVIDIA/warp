@@ -44,6 +44,8 @@ class CollocatedFunctionSpace(FunctionSpace):
             self.node_tets = basis.node_tets
         if hasattr(basis, "node_hexes"):
             self.node_hexes = basis.node_hexes
+        if hasattr(basis, "vtk_cells"):
+            self.vtk_cells = basis.vtk_cells
 
     def space_arg_value(self, device):
         return self._basis.basis_arg_value(device)

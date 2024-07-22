@@ -19,13 +19,7 @@
 import warp as wp
 import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
-import warp.sparse as sparse
 from warp.fem.utils import array_axpy
-
-
-@fem.integrand
-def constant_form(val: wp.vec2):
-    return val
 
 
 @fem.integrand
@@ -103,11 +97,7 @@ class Example:
         self._u_field = u_space.make_field()
         self._p_field = p_space.make_field()
 
-        # Interpolate initial condition on boundary (for example purposes)
-        self._bd_field = u_space.make_field()
-        f_boundary = fem.make_restriction(self._bd_field, domain=fem.BoundarySides(geo))
-        top_velocity = wp.vec2(top_velocity, 0.0)
-        fem.interpolate(constant_form, dest=f_boundary, values={"val": top_velocity})
+        self._bd_field = fem.UniformField(domain=fem.BoundarySides(geo), value=wp.vec2(top_velocity, 0.0))
 
         self.renderer = fem_example_utils.Plot()
 
@@ -132,9 +122,7 @@ class Example:
         # Weak velocity boundary conditions
         u_bd_test = fem.make_test(space=u_space, domain=boundary)
         u_bd_trial = fem.make_trial(space=u_space, domain=boundary)
-        u_rhs = fem.integrate(
-            top_mass_form, fields={"u": self._bd_field.trace(), "v": u_bd_test}, output_dtype=wp.vec2d
-        )
+        u_rhs = fem.integrate(top_mass_form, fields={"u": self._bd_field, "v": u_bd_test}, output_dtype=wp.vec2d)
         u_bd_matrix = fem.integrate(mass_form, fields={"u": u_bd_trial, "v": u_bd_test})
 
         # Pressure-velocity coupling
@@ -143,7 +131,7 @@ class Example:
 
         # Define and solve the saddle-point system
         u_matrix = u_visc_matrix
-        sparse.bsr_axpy(x=u_bd_matrix, y=u_matrix, alpha=self.boundary_strength, beta=1.0)
+        u_matrix += self.boundary_strength * u_bd_matrix
         array_axpy(x=u_rhs, y=u_rhs, alpha=0.0, beta=self.boundary_strength)
 
         p_rhs = wp.zeros(p_space.node_count(), dtype=wp.float64)
@@ -163,8 +151,8 @@ class Example:
         wp.utils.array_cast(in_array=x_p, out_array=self._p_field.dof_values)
 
     def render(self):
-        self.renderer.add_surface("pressure", self._p_field)
-        self.renderer.add_surface_vector("velocity", self._u_field)
+        self.renderer.add_field("pressure", self._p_field)
+        self.renderer.add_field("velocity", self._u_field)
 
 
 if __name__ == "__main__":
@@ -212,4 +200,4 @@ if __name__ == "__main__":
         example.render()
 
         if not args.headless:
-            example.renderer.plot()
+            example.renderer.plot(options={"velocity": {"streamlines": {}}, "pressure": {"contours": {}}})

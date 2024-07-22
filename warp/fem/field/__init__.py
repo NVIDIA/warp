@@ -3,7 +3,7 @@ from typing import Optional, Union
 from warp.fem.domain import Cells, GeometryDomain
 from warp.fem.space import FunctionSpace, SpacePartition, SpaceRestriction, make_space_partition, make_space_restriction
 
-from .field import DiscreteField, FieldLike, SpaceField
+from .field import DiscreteField, FieldLike, GeometryField, ImplicitField, NonconformingField, SpaceField, UniformField
 from .nodal_field import NodalField
 from .restriction import FieldRestriction
 from .test import TestField
@@ -85,8 +85,8 @@ def make_trial(
     """
 
     if space_restriction is not None:
-        domain = space.domain
-        space_partition = space.space_partition
+        domain = space_restriction.domain
+        space_partition = space_restriction.space_partition
 
     if space_partition is None:
         if domain is None:
@@ -98,3 +98,14 @@ def make_trial(
         domain = Cells(geometry=space_partition.geo_partition)
 
     return TrialField(space, space_partition, domain)
+
+
+def make_discrete_field(
+    space: FunctionSpace,
+    space_partition: Optional[SpacePartition] = None,
+) -> DiscreteField:
+    """Constructs  a zero-initialized discrete field over a function space or partition
+
+    See also: :meth:`warp.fem.FunctionSpace.make_field`
+    """
+    return space.make_field(space_partition=space_partition)

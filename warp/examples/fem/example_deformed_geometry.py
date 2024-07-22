@@ -35,7 +35,7 @@ def deformation_field_expr(
     r = x[1] + 0.5
     t = 0.5 * 3.1416 * x[0]
 
-    return r * wp.vec2(wp.sin(t), wp.cos(t)) - x
+    return r * wp.vec2(wp.sin(t), wp.cos(t))
 
 
 @fem.integrand
@@ -82,7 +82,7 @@ class Example:
         deformation_field = deformation_space.make_field()
         fem.interpolate(deformation_field_expr, dest=deformation_field)
 
-        self._geo = deformation_field.make_deformed_geometry()
+        self._geo = deformation_field.make_deformed_geometry(relative=False)
 
         # Scalar function space on deformed geometry
         element_basis = fem.ElementBasis.SERENDIPITY if serendipity else None
@@ -123,7 +123,7 @@ class Example:
         self._scalar_field.dof_values = x
 
     def render(self):
-        self.renderer.add_surface("solution", self._scalar_field)
+        self.renderer.add_field("solution", self._scalar_field)
 
 
 if __name__ == "__main__":

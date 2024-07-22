@@ -1,6 +1,6 @@
 import warp as wp
 from warp.fem.geometry import Geometry
-from warp.fem.types import Coords, DofIndex, ElementIndex
+from warp.fem.types import Coords, DofIndex, ElementIndex, ElementKind
 
 from .topology import SpaceTopology
 
@@ -48,6 +48,11 @@ class FunctionSpace:
         return self.topology.geometry
 
     @property
+    def element_kind(self) -> ElementKind:
+        """Kind of element the function space is expressed over"""
+        return ElementKind.CELL if self.dimension == self.geometry.dimension else ElementKind.SIDE
+
+    @property
     def dimension(self) -> int:
         """Function space embedding dimension"""
         return self.topology.dimension
@@ -71,7 +76,7 @@ class FunctionSpace:
     def make_field(self, space_partition=None):
         """Creates a zero-initialized discrete field over the function space holding values for all degrees of freedom of nodes in a space partition
 
-        space_arg:
+        Args:
             space_partition: If provided, the subset of nodes to consider
 
         See also: :func:`make_space_partition`

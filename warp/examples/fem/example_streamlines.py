@@ -1,9 +1,24 @@
+# Copyright (c) 2024 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+###########################################################################
+# Example Streamlines
+#
+# Shows how to generate 3D streamlines by tracing through a velocity field
+# using the `warp.fem.lookup` operator.
+# Also illustrates using `warp.fem.Subdomain` to define subsets of elements.
+#
+###########################################################################
+
 import numpy as np
 
 import warp as wp
 import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
-import warp.sparse as sp
 from warp.examples.fem.example_apic_fluid import divergence_form, solve_incompressibility
 
 
@@ -71,14 +86,6 @@ def mass_form(
 
 
 @fem.integrand
-def velocity_norm(
-    s: fem.Sample,
-    u: fem.Field,
-):
-    return u(s)[0]  # wp.length(u(s))
-
-
-@fem.integrand
 def spawn_streamlines(s: fem.Sample, domain: fem.Domain, jitter: float):
     rng = wp.rand_init(s.qp_index)
     random_offset = wp.vec3(wp.randf(rng), wp.randf(rng), wp.randf(rng)) - wp.vec3(0.5)
@@ -95,6 +102,7 @@ def gen_streamlines(
     s: fem.Sample,
     domain: fem.Domain,
     u: fem.Field,
+    spawn_points: wp.array(dtype=wp.vec3),
     point_count: int,
     dx: float,
     pos: wp.array2d(dtype=wp.vec3),
@@ -102,7 +110,8 @@ def gen_streamlines(
 ):
     idx = s.qp_index
 
-    p = domain(s)
+    p = spawn_points[idx]
+    s = fem.lookup(domain, p)
     for k in range(point_count):
         v = u(s)
         pos[idx, k] = p
@@ -175,7 +184,8 @@ class Example:
                     camera_front=(-0.66, 0.0, -1.0),
                     draw_axis=False,
                 )
-            except Exception:
+            except Exception as err:
+                wp.utils.warn(f"Could not initialize OpenGL renderer: {err}")
                 pass
 
     def step(self):
@@ -198,7 +208,6 @@ class Example:
         # here we use a fixed number of points per streamline, otherwise we would need to
         # do a first pass to count points, then array_scan the offsets, then a second pass
         # to populate the per-point data
-        spawn_qp = fem.PicQuadrature(fem.Cells(self._geo), positions=spawn_points)
 
         point_count = self._streamline_point_count
         points = wp.array(dtype=wp.vec3, shape=(n_streamlines, point_count))
@@ -206,9 +215,11 @@ class Example:
 
         fem.interpolate(
             gen_streamlines,
-            quadrature=spawn_qp,
+            domain=fem.Cells(self._geo),
+            dim=n_streamlines,
             fields={"u": self.velocity_field},
             values={
+                "spawn_points": spawn_points,
                 "point_count": self._streamline_point_count,
                 "dx": self._streamline_dx,
                 "pos": points,
@@ -220,9 +231,9 @@ class Example:
         self._speed = speed
 
     def render(self):
-        # self.renderer.add_volume("solution", self.pressure_field)
-        self.plot.add_volume("pressure", self.pressure_field)
-        self.plot.add_volume("vel_norm", self.velocity_norm_field)
+        # self.renderer.add_field("solution", self.pressure_field)
+        self.plot.add_field("pressure", self.pressure_field)
+        self.plot.add_field("velocity", self.velocity_field)
 
         if self.renderer is not None:
             streamline_count = self._points.shape[0]
@@ -252,7 +263,6 @@ class Example:
 
         self.pressure_field = p_space.make_field()
         self.velocity_field = u_space.make_field()
-        self.velocity_norm_field = s_space.make_field()
 
         # Boundary condition projector and matrices
         inflow_test = fem.make_test(u_space, domain=self._inflow)
@@ -263,14 +273,11 @@ class Example:
 
         freeslip_test = fem.make_test(u_space, domain=self._freeslip)
         freeslip_trial = fem.make_trial(u_space, domain=self._freeslip)
-        sp.bsr_axpy(
-            y=dirichlet_projector,
-            x=fem.integrate(
-                freeslip_projector_form,
-                fields={"u": freeslip_test, "v": freeslip_trial},
-                nodal=True,
-                output_dtype=float,
-            ),
+        dirichlet_projector += fem.integrate(
+            freeslip_projector_form,
+            fields={"u": freeslip_test, "v": freeslip_trial},
+            nodal=True,
+            output_dtype=float,
         )
         fem.normalize_dirichlet_projector(dirichlet_projector)
 
@@ -294,7 +301,7 @@ class Example:
             output_dtype=float,
         )
 
-        # Solve unilateral incompressibility
+        # Solve incompressibility
         solve_incompressibility(
             divergence_matrix,
             dirichlet_projector,
@@ -303,8 +310,6 @@ class Example:
             self.velocity_field.dof_values,
             quiet=self._quiet,
         )
-
-        fem.interpolate(velocity_norm, dest=self.velocity_norm_field, fields={"u": self.velocity_field})
 
 
 if __name__ == "__main__":
@@ -335,4 +340,9 @@ if __name__ == "__main__":
         example.render()
 
         if not args.headless:
-            example.plot.plot()
+            example.plot.plot(
+                {
+                    "velocity": {"streamlines": {"density": 2}},
+                    "pressure": {"contours": {}},
+                }
+            )

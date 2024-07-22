@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import Optional, Union
 
 import warp as wp
@@ -12,18 +11,13 @@ from warp.fem.geometry import (
     GeometryPartition,
     WholeGeometryPartition,
 )
+from warp.fem.types import ElementKind
 
 GeometryOrPartition = Union[Geometry, GeometryPartition]
 
 
 class GeometryDomain:
     """Interface class for domains, i.e. (partial) views of elements in a Geometry"""
-
-    class ElementKind(Enum):
-        """Possible kinds of elements contained in a domain"""
-
-        CELL = 0
-        SIDE = 1
 
     def __init__(self, geometry: GeometryOrPartition):
         if isinstance(geometry, GeometryPartition):
@@ -108,8 +102,8 @@ class Cells(GeometryDomain):
         super().__init__(geometry)
 
     @property
-    def element_kind(self) -> GeometryDomain.ElementKind:
-        return GeometryDomain.ElementKind.CELL
+    def element_kind(self) -> ElementKind:
+        return ElementKind.CELL
 
     @property
     def dimension(self) -> int:
@@ -177,8 +171,8 @@ class Sides(GeometryDomain):
         self.element_lookup = None
 
     @property
-    def element_kind(self) -> GeometryDomain.ElementKind:
-        return GeometryDomain.ElementKind.SIDE
+    def element_kind(self) -> ElementKind:
+        return ElementKind.SIDE
 
     @property
     def dimension(self) -> int:
@@ -326,7 +320,7 @@ class Subdomain(GeometryDomain):
         )
 
     @property
-    def element_kind(self) -> GeometryDomain.ElementKind:
+    def element_kind(self) -> ElementKind:
         return self._domain.element_kind
 
     @property

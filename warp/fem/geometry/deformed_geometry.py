@@ -10,17 +10,31 @@ _mat32 = wp.mat(shape=(3, 2), dtype=float)
 
 
 class DeformedGeometry(Geometry):
-    def __init__(self, field):
-        """Constructs a Deformed Geometry from a displacement field defined over a base geometry"""
+    def __init__(self, field: "wp.fem.field.GeometryField", relative: bool = True):
+        """Constructs a Deformed Geometry from a displacement or absolute position field defined over a base geometry.
+        The deformation field does not need to be isoparameteric.
 
-        from warp.fem.field import DiscreteField
+        See also: :meth:`warp.fem.DiscreteField.make_deformed_geometry`
+        """
 
-        self.field: DiscreteField = field
-        self.base = self.field.space.geometry
+        from warp.fem.field import DiscreteField, GeometryField
+
+        if isinstance(field, DiscreteField):
+            if (
+                not wp.types.type_is_vector(field.dtype)
+                or wp.types.type_length(field.dtype) != field.geometry.dimension
+            ):
+                raise ValueError(
+                    "Invalid value type for position field, must be vector-valued with same dimension as underlying geometry"
+                )
+        if field.eval_grad_inner is None:
+            raise ValueError("Gradient evaluation is not supported on the passed field")
+
+        self._relative = relative
+
+        self.field: GeometryField = field
+        self.base = self.field.geometry
         self.dimension = self.base.dimension
-
-        if not wp.types.type_is_vector(field.dtype) or wp.types.type_length(field.dtype) != self.dimension:
-            raise ValueError("Invalid value type for position field")
 
         self.CellArg = self.field.ElementEvalArg
 
@@ -60,7 +74,7 @@ class DeformedGeometry(Geometry):
 
     @property
     def name(self):
-        return f"DefGeo_{self.field.name}"
+        return f"DefGeo_{self.field.name}_{'rel' if self._relative else 'abs'}"
 
     # Geometry device interface
 
@@ -75,19 +89,27 @@ class DeformedGeometry(Geometry):
 
     def _make_cell_position(self):
         @cache.dynamic_func(suffix=self.name)
+        def cell_position_absolute(cell_arg: self.CellArg, s: Sample):
+            return self.field.eval_inner(cell_arg, s)
+
+        @cache.dynamic_func(suffix=self.name)
         def cell_position(cell_arg: self.CellArg, s: Sample):
             return self.field.eval_inner(cell_arg, s) + self.base.cell_position(cell_arg.elt_arg, s)
 
-        return cell_position
+        return cell_position if self._relative else cell_position_absolute
 
     def _make_cell_deformation_gradient(self):
+        @cache.dynamic_func(suffix=self.name)
+        def cell_deformation_gradient_absolute(cell_arg: self.CellArg, s: Sample):
+            return self.field.eval_reference_grad_inner(cell_arg, s)
+
         @cache.dynamic_func(suffix=self.name)
         def cell_deformation_gradient(cell_arg: self.CellArg, s: Sample):
             return self.field.eval_reference_grad_inner(cell_arg, s) + self.base.cell_deformation_gradient(
                 cell_arg.elt_arg, s
             )
 
-        return cell_deformation_gradient
+        return cell_deformation_gradient if self._relative else cell_deformation_gradient_absolute
 
     def _make_cell_inverse_deformation_gradient(self):
         @cache.dynamic_func(suffix=self.name)
@@ -130,13 +152,26 @@ class DeformedGeometry(Geometry):
 
     def _make_side_position(self):
         @cache.dynamic_func(suffix=self.name)
+        def side_position_absolute(args: self.SideArg, s: Sample):
+            trace_arg = self.field_trace.ElementEvalArg(args.base_arg, args.trace_arg)
+            return self.field_trace.eval_inner(trace_arg, s)
+
+        @cache.dynamic_func(suffix=self.name)
         def side_position(args: self.SideArg, s: Sample):
             trace_arg = self.field_trace.ElementEvalArg(args.base_arg, args.trace_arg)
             return self.field_trace.eval_inner(trace_arg, s) + self.base.side_position(args.base_arg, s)
 
-        return side_position
+        return side_position if self._relative else side_position_absolute
 
     def _make_side_deformation_gradient(self):
+        @cache.dynamic_func(suffix=self.name)
+        def side_deformation_gradient_absolute(args: self.SideArg, s: Sample):
+            base_def_grad = self.base.side_deformation_gradient(args.base_arg, s)
+            trace_arg = self.field_trace.ElementEvalArg(args.base_arg, args.trace_arg)
+
+            Du = self.field_trace.eval_grad_inner(trace_arg, s)
+            return Du * base_def_grad
+
         @cache.dynamic_func(suffix=self.name)
         def side_deformation_gradient(args: self.SideArg, s: Sample):
             base_def_grad = self.base.side_deformation_gradient(args.base_arg, s)
@@ -145,7 +180,7 @@ class DeformedGeometry(Geometry):
             Du = self.field_trace.eval_grad_inner(trace_arg, s)
             return base_def_grad + Du * base_def_grad
 
-        return side_deformation_gradient
+        return side_deformation_gradient if self._relative else side_deformation_gradient_absolute
 
     def _make_side_inner_inverse_deformation_gradient(self):
         @cache.dynamic_func(suffix=self.name)

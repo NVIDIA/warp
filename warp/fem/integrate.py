@@ -9,14 +9,25 @@ from warp.fem.field import (
     DiscreteField,
     FieldLike,
     FieldRestriction,
-    SpaceField,
+    GeometryField,
     TestField,
     TrialField,
     make_restriction,
 )
-from warp.fem.operator import Integrand, Operator
+from warp.fem.operator import Integrand, Operator, integrand
 from warp.fem.quadrature import Quadrature, RegularQuadrature
-from warp.fem.types import NULL_DOF_INDEX, NULL_NODE_INDEX, OUTSIDE, DofIndex, Domain, Field, Sample, make_free_sample
+from warp.fem.types import (
+    NULL_DOF_INDEX,
+    NULL_ELEMENT_INDEX,
+    NULL_NODE_INDEX,
+    OUTSIDE,
+    Coords,
+    DofIndex,
+    Domain,
+    Field,
+    Sample,
+    make_free_sample,
+)
 from warp.sparse import BsrMatrix, bsr_set_from_triplets, bsr_zeros
 from warp.types import type_length
 from warp.utils import array_cast
@@ -108,7 +119,10 @@ class IntegrandTransformer(ast.NodeTransformer):
         try:
             # Retrieve the function pointer corresponding to the operator implementation for the field type
             pointer = operator.resolver(field)
-        except AttributeError as e:
+            if pointer is None:
+                raise NotImplementedError(operator.resolver.__name__)
+
+        except (AttributeError, NotImplementedError) as e:
             raise ValueError(f"Operator {operator.func.__name__} is not defined for field {field.name}") from e
         # Save the pointer as an attribute than can be accessed from the callee scope
         setattr(callee, pointer.key, pointer)
@@ -209,37 +223,13 @@ def _check_field_compat(
                 f"Passed field argument '{name}' does not match any parameter of integrand '{integrand.name}'"
             )
 
-        if isinstance(field, SpaceField) and domain is not None:
-            space = field.space
-            if space.geometry != domain.geometry:
+        if isinstance(field, GeometryField) and domain is not None:
+            if field.geometry != domain.geometry:
                 raise ValueError(f"Field '{name}' must be defined on the same geometry as the integration domain")
-            if space.dimension != domain.dimension:
+            if field.element_kind != domain.element_kind:
                 raise ValueError(
-                    f"Field '{name}' dimension ({space.dimension}) does not match that of the integration domain ({domain.dimension}). Maybe a forgotten `.trace()`?"
+                    f"Field '{name}' is not defined on the same kind of elements (cells or sides) as the integration domain. Maybe a forgotten `.trace()`?"
                 )
-
-
-def _populate_value_struct(ValueStruct: wp.codegen.Struct, values: Dict[str, Any], integrand_name: str):
-    value_struct_values = ValueStruct()
-    for k, v in values.items():
-        try:
-            setattr(value_struct_values, k, v)
-        except Exception as err:
-            if k not in ValueStruct.vars:
-                raise ValueError(
-                    f"Passed value argument '{k}' does not match any of the integrand '{integrand_name}' parameters"
-                ) from err
-            raise ValueError(
-                f"Passed value argument '{k}' of type '{wp.types.type_repr(v)}' is incompatible with the integrand '{integrand_name}' parameter of type '{wp.types.type_repr(ValueStruct.vars[k].type)}'"
-            ) from err
-
-    missing_values = ValueStruct.vars.keys() - values.keys()
-    if missing_values:
-        wp.utils.warn(
-            f"Missing values for parameter(s) '{', '.join(missing_values)}' of the integrand '{integrand_name}', will be zero-initialized"
-        )
-
-    return value_struct_values
 
 
 def _get_test_and_trial_fields(
@@ -295,36 +285,6 @@ def _gen_field_struct(field_args: Dict[str, FieldLike]):
     suffix = "_".join([f"{name}_{arg_struct.cls.__qualname__}" for name, arg_struct in annotations.items()])
 
     return cache.get_struct(Fields, suffix=suffix)
-
-
-def _gen_value_struct(value_args: Dict[str, type]):
-    class Values:
-        pass
-
-    annotations = get_annotations(Values)
-
-    for name, arg_type in value_args.items():
-        setattr(Values, name, None)
-        annotations[name] = arg_type
-
-    def arg_type_name(arg_type):
-        if isinstance(arg_type, wp.codegen.Struct):
-            return arg_type_name(arg_type.cls)
-        return getattr(arg_type, "__name__", str(arg_type))
-
-    def arg_type_name(arg_type):
-        if isinstance(arg_type, wp.codegen.Struct):
-            return arg_type_name(arg_type.cls)
-        return getattr(arg_type, "__name__", str(arg_type))
-
-    try:
-        Values.__annotations__ = annotations
-    except AttributeError:
-        Values.__dict__.__annotations__ = annotations
-
-    suffix = "_".join([f"{name}_{arg_type_name(arg_type)}" for name, arg_type in annotations.items()])
-
-    return cache.get_struct(Values, suffix=suffix)
 
 
 def _get_trial_arg():
@@ -812,7 +772,7 @@ def _generate_integrate_kernel(
     )
 
     FieldStruct = _gen_field_struct(field_args)
-    ValueStruct = _gen_value_struct(value_args)
+    ValueStruct = cache.get_argument_struct(value_args)
 
     # Check if kernel exist in cache
     kernel_suffix = f"_itg_{wp.types.type_typestr(output_dtype)}{wp.types.type_typestr(accumulate_dtype)}_{domain.name}_{FieldStruct.key}"
@@ -949,7 +909,7 @@ def _launch_integrate_kernel(
     for k, v in fields.items():
         setattr(field_arg_values, k, v.eval_arg_value(device=device))
 
-    value_struct_values = _populate_value_struct(ValueStruct, values, integrand_name=integrand.name)
+    value_struct_values = cache.populate_argument_struct(ValueStruct, values, func_name=integrand.name)
 
     # Constant form
     if test is None and trial is None:
@@ -1401,7 +1361,7 @@ def get_interpolate_to_field_kernel(
     return interpolate_to_field_kernel_fn
 
 
-def get_interpolate_to_array_kernel(
+def get_interpolate_at_quadrature_kernel(
     integrand_func: wp.Function,
     domain: GeometryDomain,
     quadrature: Quadrature,
@@ -1409,7 +1369,30 @@ def get_interpolate_to_array_kernel(
     ValueStruct: wp.codegen.Struct,
     value_type: type,
 ):
-    def interpolate_to_array_kernel_fn(
+    def interpolate_at_quadrature_nonvalued_kernel_fn(
+        qp_arg: quadrature.Arg,
+        domain_arg: quadrature.domain.ElementArg,
+        domain_index_arg: quadrature.domain.ElementIndexArg,
+        fields: FieldStruct,
+        values: ValueStruct,
+        result: wp.array(dtype=float),
+    ):
+        domain_element_index = wp.tid()
+        element_index = domain.element_index(domain_index_arg, domain_element_index)
+
+        test_dof_index = NULL_DOF_INDEX
+        trial_dof_index = NULL_DOF_INDEX
+
+        qp_point_count = quadrature.point_count(domain_arg, qp_arg, domain_element_index, element_index)
+        for k in range(qp_point_count):
+            qp_index = quadrature.point_index(domain_arg, qp_arg, domain_element_index, element_index, k)
+            coords = quadrature.point_coords(domain_arg, qp_arg, domain_element_index, element_index, k)
+            qp_weight = quadrature.point_weight(domain_arg, qp_arg, domain_element_index, element_index, k)
+
+            sample = Sample(element_index, coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
+            integrand_func(sample, fields, values)
+
+    def interpolate_at_quadrature_kernel_fn(
         qp_arg: quadrature.Arg,
         domain_arg: quadrature.domain.ElementArg,
         domain_index_arg: quadrature.domain.ElementIndexArg,
@@ -1430,42 +1413,56 @@ def get_interpolate_to_array_kernel(
             qp_weight = quadrature.point_weight(domain_arg, qp_arg, domain_element_index, element_index, k)
 
             sample = Sample(element_index, coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
-
             result[qp_index] = integrand_func(sample, fields, values)
 
-    return interpolate_to_array_kernel_fn
+    return interpolate_at_quadrature_nonvalued_kernel_fn if value_type is None else interpolate_at_quadrature_kernel_fn
 
 
-def get_interpolate_nonvalued_kernel(
+def get_interpolate_free_kernel(
     integrand_func: wp.Function,
     domain: GeometryDomain,
-    quadrature: Quadrature,
     FieldStruct: wp.codegen.Struct,
     ValueStruct: wp.codegen.Struct,
+    value_type: type,
 ):
-    def interpolate_nonvalued_kernel_fn(
-        qp_arg: quadrature.Arg,
-        domain_arg: quadrature.domain.ElementArg,
-        domain_index_arg: quadrature.domain.ElementIndexArg,
+    def interpolate_free_nonvalued_kernel_fn(
+        dim: int,
+        domain_arg: domain.ElementArg,
         fields: FieldStruct,
         values: ValueStruct,
+        result: wp.array(dtype=float),
     ):
-        domain_element_index = wp.tid()
-        element_index = domain.element_index(domain_index_arg, domain_element_index)
+        qp_index = wp.tid()
+        qp_weight = 1.0 / float(dim)
+        element_index = NULL_ELEMENT_INDEX
+        coords = Coords(OUTSIDE)
 
         test_dof_index = NULL_DOF_INDEX
         trial_dof_index = NULL_DOF_INDEX
 
-        qp_point_count = quadrature.point_count(domain_arg, qp_arg, domain_element_index, element_index)
-        for k in range(qp_point_count):
-            qp_index = quadrature.point_index(domain_arg, qp_arg, domain_element_index, element_index, k)
-            coords = quadrature.point_coords(domain_arg, qp_arg, domain_element_index, element_index, k)
-            qp_weight = quadrature.point_weight(domain_arg, qp_arg, domain_element_index, element_index, k)
+        sample = Sample(element_index, coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
+        integrand_func(sample, fields, values)
 
-            sample = Sample(element_index, coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
-            integrand_func(sample, fields, values)
+    def interpolate_free_kernel_fn(
+        dim: int,
+        domain_arg: domain.ElementArg,
+        fields: FieldStruct,
+        values: ValueStruct,
+        result: wp.array(dtype=value_type),
+    ):
+        qp_index = wp.tid()
+        qp_weight = 1.0 / float(dim)
+        element_index = NULL_ELEMENT_INDEX
+        coords = Coords(OUTSIDE)
 
-    return interpolate_nonvalued_kernel_fn
+        test_dof_index = NULL_DOF_INDEX
+        trial_dof_index = NULL_DOF_INDEX
+
+        sample = Sample(element_index, coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
+
+        result[qp_index] = integrand_func(sample, fields, values)
+
+    return interpolate_free_nonvalued_kernel_fn if value_type is None else interpolate_free_kernel_fn
 
 
 def _generate_interpolate_kernel(
@@ -1493,17 +1490,20 @@ def _generate_interpolate_kernel(
     _register_integrand_field_wrappers(integrand_func, fields)
 
     FieldStruct = _gen_field_struct(field_args)
-    ValueStruct = _gen_value_struct(value_args)
+    ValueStruct = cache.get_argument_struct(value_args)
 
     # Check if kernel exist in cache
     if isinstance(dest, FieldRestriction):
         kernel_suffix = (
             f"_itp_{FieldStruct.key}_{dest.domain.name}_{dest.space_restriction.space_partition.name}_{dest.space.name}"
         )
-    elif wp.types.is_array(dest):
-        kernel_suffix = f"_itp_{FieldStruct.key}_{quadrature.name}_{wp.types.type_repr(dest.dtype)}"
     else:
-        kernel_suffix = f"_itp_{FieldStruct.key}_{quadrature.name}"
+        dest_dtype = dest.dtype if dest else None
+        type_str = wp.types.get_type_code(dest_dtype) if dest_dtype else ""
+        if quadrature is None:
+            kernel_suffix = f"_itp_{FieldStruct.key}_{type_str}"
+        else:
+            kernel_suffix = f"_itp_{FieldStruct.key}_{quadrature.name}_{type_str}"
 
     kernel = cache.get_integrand_kernel(
         integrand=integrand,
@@ -1547,20 +1547,20 @@ def _generate_interpolate_kernel(
             FieldStruct=FieldStruct,
             ValueStruct=ValueStruct,
         )
-    elif wp.types.is_array(dest):
-        interpolate_kernel_fn = get_interpolate_to_array_kernel(
+    elif quadrature is not None:
+        interpolate_kernel_fn = get_interpolate_at_quadrature_kernel(
             integrand_func,
             domain=domain,
             quadrature=quadrature,
-            value_type=dest.dtype,
+            value_type=dest_dtype,
             FieldStruct=FieldStruct,
             ValueStruct=ValueStruct,
         )
     else:
-        interpolate_kernel_fn = get_interpolate_nonvalued_kernel(
+        interpolate_kernel_fn = get_interpolate_free_kernel(
             integrand_func,
             domain=domain,
-            quadrature=quadrature,
+            value_type=dest_dtype,
             FieldStruct=FieldStruct,
             ValueStruct=ValueStruct,
         )
@@ -1592,6 +1592,7 @@ def _launch_interpolate_kernel(
     domain: GeometryDomain,
     dest: Optional[Union[FieldRestriction, wp.array]],
     quadrature: Optional[Quadrature],
+    dim: int,
     fields: Dict[str, FieldLike],
     values: Dict[str, Any],
     device,
@@ -1604,7 +1605,7 @@ def _launch_interpolate_kernel(
     for k, v in fields.items():
         setattr(field_arg_values, k, v.eval_arg_value(device=device))
 
-    value_struct_values = _populate_value_struct(ValueStruct, values, integrand_name=integrand.name)
+    value_struct_values = cache.populate_argument_struct(ValueStruct, values, func_name=integrand.name)
 
     if isinstance(dest, FieldRestriction):
         dest_node_arg = dest.space_restriction.node_arg(device=device)
@@ -1623,7 +1624,7 @@ def _launch_interpolate_kernel(
             ],
             device=device,
         )
-    elif wp.types.is_array(dest):
+    elif quadrature is not None:
         qp_arg = quadrature.arg_value(device)
         wp.launch(
             kernel=kernel,
@@ -1632,19 +1633,25 @@ def _launch_interpolate_kernel(
             device=device,
         )
     else:
-        qp_arg = quadrature.arg_value(device)
         wp.launch(
             kernel=kernel,
-            dim=domain.element_count(),
-            inputs=[qp_arg, elt_arg, elt_index_arg, field_arg_values, value_struct_values],
+            dim=dim,
+            inputs=[dim, elt_arg, field_arg_values, value_struct_values, dest],
             device=device,
         )
 
 
+@integrand
+def _identity_field(field: Field, s: Sample):
+    return field(s)
+
+
 def interpolate(
-    integrand: Integrand,
+    integrand: Union[Integrand, FieldLike],
     dest: Optional[Union[DiscreteField, FieldRestriction, wp.array]] = None,
     quadrature: Optional[Quadrature] = None,
+    dim: int = 0,
+    domain: Optional[Domain] = None,
     fields: Optional[Dict[str, FieldLike]] = None,
     values: Optional[Dict[str, Any]] = None,
     device=None,
@@ -1654,18 +1661,26 @@ def interpolate(
     Interpolates a function at a finite set of sample points and optionally assigns the result to a discrete field or a raw warp array.
 
     Args:
-        integrand: Function to be interpolated, must have :func:`integrand` decorator
+        integrand: Function to be interpolated: either a function with :func:`warp.fem.integrand` decorator or a field
         dest: Where to store the interpolation result. Can be either
 
          - a :class:`DiscreteField`, or restriction of a discrete field to a domain (from :func:`make_restriction`). In this case, interpolation will be performed at each node.
-         - a normal warp array. In this case, the `quadrature` argument defining the interpolation locations must be provided and the result of the `integrand` at each quadrature point will be assigned to the array.
-         - ``None``. In this case, the `quadrature` argument must also be provided and the `integrand` function is responsible for dealing with the interpolation result.
+         - a normal warp ``array``, or ``None``. In this case, the interpolation samples will determined by the `quadrature` or `dim` arguments, in that order.
         quadrature: Quadrature formula defining the interpolation samples if `dest` is not a discrete field or field restriction.
+        dim: Number of interpolation samples if `dest` is not a discrete field or restriction and `quadrature` is ``None``.
+          In this case, the ``Sample`` passed to the `integrand` will be invalid, but the sample point index ``s.qp_index`` can be used to define custom interpolation logic.
+        domain: Interpolation domain, only used if `dest` is not a field restriction and `quadrature` is ``None``
         fields: Discrete fields to be passed to the integrand. Keys in the dictionary must match integrand parameters names.
         values: Additional variable values to be passed to the integrand, can be of any type accepted by warp kernel launches. Keys in the dictionary must match integrand parameter names.
         device: Device on which to perform the interpolation
         kernel_options: Overloaded options to be passed to the kernel builder (e.g, ``{"enable_backward": True}``)
     """
+
+    if isinstance(integrand, FieldLike):
+        fields = {"field": integrand}
+        values = {}
+        integrand = _identity_field
+
     if fields is None:
         fields = {}
 
@@ -1683,14 +1698,11 @@ def interpolate(
         raise ValueError("Test or Trial fields should not be used for interpolation")
 
     if isinstance(dest, DiscreteField):
-        dest = make_restriction(dest)
+        dest = make_restriction(dest, domain=domain)
 
     if isinstance(dest, FieldRestriction):
         domain = dest.domain
-    else:
-        if quadrature is None:
-            raise ValueError("When not interpolating to a field, a quadrature formula must be provided")
-
+    elif quadrature is not None:
         domain = quadrature.domain
 
     kernel, FieldStruct, ValueStruct = _generate_interpolate_kernel(
@@ -1710,6 +1722,7 @@ def interpolate(
         domain=domain,
         dest=dest,
         quadrature=quadrature,
+        dim=dim,
         fields=fields,
         values=values,
         device=device,

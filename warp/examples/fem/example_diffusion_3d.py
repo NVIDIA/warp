@@ -31,7 +31,8 @@ def vert_boundary_projector_form(
     v: fem.Field,
 ):
     # Non-zero mass on vertical sides only
-    w = 1.0 - wp.abs(fem.normal(domain, s)[1])
+    nor = fem.normal(domain, s)
+    w = wp.abs(nor[0])
     return w * u(s) * v(s)
 
 
@@ -51,7 +52,7 @@ class Example:
         self._viscosity = viscosity
         self._boundary_compliance = boundary_compliance
 
-        res = wp.vec3i(resolution, resolution // 2, resolution * 2)
+        res = wp.vec3i(resolution, max(1, resolution // 2), resolution * 2)
 
         if mesh == "tet":
             pos, tet_vtx_indices = fem_example_utils.gen_tetmesh(
@@ -122,7 +123,7 @@ class Example:
             self._scalar_field.dof_values = x
 
     def render(self):
-        self.renderer.add_volume("solution", self._scalar_field)
+        self.renderer.add_field("solution", self._scalar_field)
 
 
 if __name__ == "__main__":

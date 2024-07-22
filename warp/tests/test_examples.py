@@ -412,6 +412,18 @@ add_example_test(
     devices=test_devices,
     test_options={"headless": True},
 )
+add_example_test(
+    TestFemExamples,
+    name="fem.example_magnetostatics",
+    devices=test_devices,
+    test_options={"headless": True, "resolution": 16},
+)
+add_example_test(
+    TestFemExamples,
+    name="fem.example_nonconforming_contact",
+    devices=test_devices,
+    test_options={"headless": True, "resolution": 16, "num_steps": 2},
+)
 
 if __name__ == "__main__":
     # force rebuild of all kernels

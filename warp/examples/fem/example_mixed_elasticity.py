@@ -25,7 +25,6 @@ import numpy as np
 import warp as wp
 import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
-from warp.sparse import bsr_mm, bsr_mv, bsr_transposed
 
 
 @fem.integrand
@@ -193,9 +192,7 @@ class Example:
         tau_test = fem.make_test(space=self._tau_space, domain=domain)
         tau_trial = fem.make_trial(space=self._tau_space, domain=domain)
 
-        gradient_matrix = bsr_transposed(
-            fem.integrate(displacement_gradient_form, fields={"u": u_trial, "tau": tau_test})
-        )
+        gradient_matrix = fem.integrate(displacement_gradient_form, fields={"u": u_trial, "tau": tau_test}).transpose()
 
         # Compute inverse of the (block-diagonal) tau mass matrix
         tau_inv_mass_matrix = fem.integrate(tensor_mass_form, fields={"sig": tau_trial, "tau": tau_test}, nodal=True)
@@ -217,10 +214,10 @@ class Example:
             )
 
             # Assemble system matrix
-            u_matrix = bsr_mm(gradient_matrix, bsr_mm(tau_inv_mass_matrix, stress_matrix))
+            u_matrix = gradient_matrix @ tau_inv_mass_matrix @ stress_matrix
 
             # Enforce boundary conditions (apply displacement only at first iteration)
-            u_rhs = bsr_mv(gradient_matrix, bsr_mv(tau_inv_mass_matrix, stress_rhs, alpha=-1.0))
+            u_rhs = -gradient_matrix @ (tau_inv_mass_matrix @ stress_rhs)
             fem.project_linear_system(u_matrix, u_rhs, u_bd_matrix, u_bd_rhs if newton_iteration == 0 else None)
 
             x = wp.zeros_like(u_rhs)
@@ -232,7 +229,7 @@ class Example:
             fem.utils.array_axpy(x=delta_u, y=self._u_field.dof_values)
 
     def render(self):
-        self.renderer.add_surface_vector("solution", self._u_field)
+        self.renderer.add_field("solution", self._u_field)
 
 
 if __name__ == "__main__":
@@ -273,4 +270,4 @@ if __name__ == "__main__":
         example.render()
 
         if not args.headless:
-            example.renderer.plot(displacement="solution")
+            example.renderer.plot(options={"solution": {"displacement": {}}})

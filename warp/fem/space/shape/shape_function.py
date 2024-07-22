@@ -1,3 +1,5 @@
+import numpy as np
+
 import warp as wp
 from warp.fem import cache
 from warp.fem.geometry import Element
@@ -100,3 +102,8 @@ class ConstantShapeFunction:
             return grad_type(0.0)
 
         return element_inner_weight_gradient
+
+    def element_vtk_cells(self):
+        cell_type = 1  # VTK_VERTEX
+
+        return np.zeros((1, 1), dtype=int), np.full(1, cell_type, dtype=np.int8)
