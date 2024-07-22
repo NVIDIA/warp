@@ -145,13 +145,6 @@ Scalar Math
     Clamp the value of ``x`` to the range [a, b].
 
 
-.. py:function:: clamp(a: Vector[Any,Scalar], low: Vector[Any,Scalar], high: Vector[Any,Scalar]) -> Vector[Any,Scalar]
-    :noindex:
-    :nocontentsentry:
-
-    Clamp the elements of ``a`` to the elements from the range [low, high].
-
-
 .. py:function:: abs(x: Scalar) -> Scalar
 
     Return the absolute value of ``x``.
