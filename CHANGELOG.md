@@ -45,6 +45,10 @@
 - Conform to Python's syntax for function arguments when calling built-ins inside of kernels, thus extending support for keyword arguments
 - Implement the assignment operator for `wp.quat`
 
+## [1.2.2] - 2024-07-04
+
+- Support for NumPy >= 2.0
+
 ## [1.2.1] - 2024-06-14
 
 - Fix generic function caching
