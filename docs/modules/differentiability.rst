@@ -772,6 +772,113 @@ In the example above we can see that the array ``c`` does not have its ``require
 .. note::
     Arrays can be labeled with custom names using the ``array_labels`` argument to the ``tape.visualize()`` method.
 
+Array Overwrite Tracking
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It is a common mistake to inadvertently overwrite an array that participates in the computation graph. For example::
+
+    with tape as wp.Tape():
+
+        # step 1
+        wp.launch(compute_forces, dim=n, inputs=[pos0, vel0], outputs=[force])
+        wp.launch(simulate, dim=n, inputs=[pos0, vel0, force], outputs=[pos1, vel1])
+
+        # step 2 (error, we are overwriting previous forces)
+        wp.launch(compute_forces, dim=n, inputs=[pos1, vel1],  outputs=[force]) 
+        wp.launch(simulate, dim=n, inputs=[pos1, vel1, force], outputs=[pos2, vel2])
+
+        # compute loss
+        wp.launch(loss, dim=n, inputs=[pos2])
+
+    tape.backward(loss)
+
+Running the tape backwards will incorrectly compute the gradient of the loss with respect to ``pos0`` and ``vel0``, because ``force`` is overwritten in the second simulation step.
+The adjoint of ``force`` with respect to ``pos1`` and ``vel1`` will be correct, because the stored value of ``force`` from the forward pass is still correct, but the adjoint of
+``force`` with respect to ``pos0`` and ``vel0`` will be incorrect, because the ``force`` value used in this calculation was calculated in step 2, not step 1. The solution is to allocate
+two force arrays, ``force0`` and ``force1``, so that we are not overwriting data that participates in the computation graph.
+
+This sort of problem boils down to a single pattern to be avoided: writing to an array after reading from it. This typically happens over consecutive kernel launches (A), but it might also happen within a single kernel (B).
+
+A: Inter-Kernel Overwrite::
+
+    import warp as wp
+
+    @wp.kernel
+    def square_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+        tid = wp.tid()
+        y[tid] = x[tid] * x[tid]
+
+    @wp.kernel
+    def overwrite_kernel(z: wp.array(dtype=float), x: wp.array(dtype=float)):
+        tid = wp.tid()
+        x[tid] = z[tid]
+
+    @wp.kernel
+    def loss_kernel(x: wp.array(dtype=float), loss: wp.array(dtype=float)):
+        tid = wp.tid()
+        wp.atomic_add(loss, 0, x[tid])
+
+    a = wp.array(np.array([1.0, 2.0, 3.0]), dtype=float, requires_grad=True)
+    b = wp.zeros_like(a)
+    c = wp.array(np.array([-1.0, -2.0, -3.0]), dtype=float, requires_grad=True)
+    loss = wp.zeros(1, dtype=float, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(square_kernel, a.shape, inputs=[a], outputs=[b])
+        wp.launch(overwrite_kernel, c.shape, inputs=[c], outputs=[a])
+        wp.launch(loss_kernel, a.shape, inputs=[a, loss])
+
+    tape.backward(loss)
+
+    print(a.grad)
+    # prints [-2. -4. -6.] instead of [2. 4. 6.]
+
+B: Intra-Kernel Overwrite::
+
+    import warp as wp
+
+    @wp.kernel
+    def readwrite_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+        tid = wp.tid()
+        b[tid] = a[tid] * a[tid]
+        a[tid] = 1.0
+
+    @wp.kernel
+    def loss_kernel(x: wp.array(dtype=float), loss: wp.array(dtype=float)):
+        tid = wp.tid()
+        wp.atomic_add(loss, 0, x[tid])
+
+    a = wp.array(np.array([1.0, 2.0, 3.0]), dtype=float, requires_grad=True)
+    b = wp.zeros_like(a)
+    loss = wp.zeros(1, dtype=float, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(readwrite_kernel, dim=a.shape, inputs=[a, b])
+        wp.launch(loss_kernel, a.shape, inputs=[b, loss])
+
+    tape.backward(loss)
+
+    print(a.grad)
+    # prints [2. 2. 2.] instead of [2. 4. 6.]
+
+If ``wp.config.verify_autograd_array_access = True`` is set, Warp will automatically detect and report array overwrites, covering the above two cases as well as other problematic configurations.
+It does so by flagging which kernel array arguments are read from and/or written to in each kernel function during compilation. At runtime, if an array is passed to a kernel argument marked with a read flag,
+it is marked as having been read from. Later, if the same array is passed to a kernel argument marked with a write flag, a warning is printed
+(recall the pattern we wish to avoid: *write* after *read*).
+
+.. note::
+    Setting ``wp.config.verify_autograd_array_access = True`` will disable kernel caching and force the current module to rebuild.
+
+.. note::
+    Though in-place operations such as ``x[tid] += 1.0`` are technically ``read -> write``, the Warp graph specifically accomodates adjoint accumulation in these cases, so we mark them as write operations.
+
+.. note::
+    This feature does not yet support arrays packed in Warp structs.
+
+If you make use of :py:meth:`Tape.record_func` in your graph (and so provide your own adjoint callback), be sure to also call :py:meth:`array.mark_write()` and :py:meth:`array.mark_read()`, which will manually mark your arrays as having been written to or read from.
+
 .. _limitations_and_workarounds:
 
 Limitations and Workarounds

@@ -151,6 +151,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_noise import TestNoise
     from warp.tests.test_operators import TestOperators
     from warp.tests.test_options import TestOptions
+    from warp.tests.test_overwrite import TestOverwrite
     from warp.tests.test_peer import TestPeer
     from warp.tests.test_pinned import TestPinned
     from warp.tests.test_print import TestPrint
@@ -244,6 +245,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestNoise,
         TestOperators,
         TestOptions,
+        TestOverwrite,
         TestPeer,
         TestPinned,
         TestPrint,

@@ -1701,6 +1701,9 @@ class array(Array):
         else:
             self._init_annotation(dtype, ndim or 1)
 
+        # initialize read flag
+        self.mark_init()
+
         # initialize gradient, if needed
         if self.device is not None:
             if grad is not None:
@@ -1711,6 +1714,9 @@ class array(Array):
                 self._requires_grad = requires_grad
                 if requires_grad:
                     self._alloc_grad()
+
+        # reference to other array
+        self._ref = None
 
     def _init_from_data(self, data, dtype, shape, device, copy, pinned):
         if not hasattr(data, "__len__"):
@@ -2307,6 +2313,33 @@ class array(Array):
             array._vars = {"shape": warp.codegen.Var("shape", shape_t)}
         return array._vars
 
+    def mark_init(self):
+        """Resets this array's read flag"""
+        self._is_read = False
+
+    def mark_read(self):
+        """Marks this array as having been read from in a kernel or recorded function on the tape."""
+        # no additional checks required: it is always safe to set an array to READ
+        self._is_read = True
+
+        # recursively update all parent arrays
+        parent = self._ref
+        while parent is not None:
+            parent._is_read = True
+            parent = parent._ref
+
+    def mark_write(self, **kwargs):
+        """Detect if we are writing to an array that has already been read from"""
+        if self._is_read:
+            if "arg_name" and "kernel_name" and "filename" and "lineno" in kwargs:
+                print(
+                    f"Warning: Array {self} passed to argument {kwargs['arg_name']} in kernel {kwargs['kernel_name']} at {kwargs['filename']}:{kwargs['lineno']} is being written to but has already been read from in a previous launch. This may corrupt gradient computation in the backward pass."
+                )
+            else:
+                print(
+                    f"Warning: Array {self} is being written to but has already been read from in a previous launch. This may corrupt gradient computation in the backward pass."
+                )
+
     def zero_(self):
         """Zeroes-out the array entries."""
         if self.is_contiguous:
@@ -2314,6 +2347,7 @@ class array(Array):
             self.device.memset(self.ptr, 0, self.size * type_size_in_bytes(self.dtype))
         else:
             self.fill_(0)
+        self.mark_init()
 
     def fill_(self, value):
         """Set all array entries to `value`
@@ -2387,6 +2421,8 @@ class array(Array):
                 )
             else:
                 warp.context.runtime.core.array_fill_host(carr_ptr, ARRAY_TYPE_REGULAR, cvalue_ptr, cvalue_size)
+
+        self.mark_init()
 
     def assign(self, src):
         """Wraps ``src`` in an :class:`warp.array` if it is not already one and copies the contents to ``self``."""
@@ -2494,6 +2530,9 @@ class array(Array):
             grad=None if self.grad is None else self.grad.flatten(),
         )
 
+        # transfer read flag
+        a._is_read = self._is_read
+
         # store back-ref to stop data being destroyed
         a._ref = self
         return a
@@ -2555,6 +2594,9 @@ class array(Array):
             grad=None if self.grad is None else self.grad.reshape(shape),
         )
 
+        # transfer read flag
+        a._is_read = self._is_read
+
         # store back-ref to stop data being destroyed
         a._ref = self
         return a
@@ -2577,6 +2619,9 @@ class array(Array):
             copy=False,
             grad=None if self.grad is None else self.grad.view(dtype),
         )
+
+        # transfer read flag
+        a._is_read = self._is_read
 
         a._ref = self
         return a
@@ -2630,6 +2675,9 @@ class array(Array):
         )
 
         a.is_transposed = not self.is_transposed
+
+        # transfer read flag
+        a._is_read = self._is_read
 
         a._ref = self
         return a
@@ -3934,6 +3982,11 @@ def matmul(
             backward=lambda: adj_matmul(a, b, c, a.grad, b.grad, c.grad, d.grad, alpha, beta, allow_tf32x3_arith),
             arrays=[a, b, c, d],
         )
+        if warp.config.verify_autograd_array_access:
+            d.mark_write()
+            a.mark_read()
+            b.mark_read()
+            c.mark_read()
 
     # cpu fallback if no cuda devices found
     if device == "cpu":
@@ -4219,6 +4272,11 @@ def batched_matmul(
             ),
             arrays=[a, b, c, d],
         )
+        if warp.config.verify_autograd_array_access:
+            d.mark_write()
+            a.mark_read()
+            b.mark_read()
+            c.mark_read()
 
     # cpu fallback if no cuda devices found
     if device == "cpu":
