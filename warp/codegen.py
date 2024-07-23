@@ -1135,11 +1135,11 @@ class Adjoint:
                 return f
 
         # unresolved function, report error
-        arg_types = []
+        arg_type_reprs = []
 
         for x in arg_types:
             if isinstance(x, warp.context.Function):
-                arg_types.append("function")
+                arg_type_reprs.append("function")
             else:
                 # shorten Warp primitive type names
                 if isinstance(x, Sequence):
@@ -1149,10 +1149,10 @@ class Adjoint:
                 else:
                     arg_type = x
 
-                arg_types.append(type_repr(arg_type))
+                arg_type_reprs.append(type_repr(arg_type))
 
         raise WarpCodegenError(
-            f"Couldn't find function overload for '{func.key}' that matched inputs with types: [{', '.join(arg_types)}]"
+            f"Couldn't find function overload for '{func.key}' that matched inputs with types: [{', '.join(arg_type_reprs)}]"
         )
 
     def add_call(adj, func, args, kwargs, type_args, min_outputs=None):
