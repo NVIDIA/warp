@@ -582,6 +582,14 @@ class Var:
         self.constant = constant
         self.prefix = prefix
 
+        # records whether this Var has been read from in a kernel function (array only)
+        self.is_read = False
+        # records whether this Var has been written to in a kernel function (array only)
+        self.is_write = False
+
+        # used to associate a view array Var with its parent array Var
+        self.parent = None
+
     def __str__(self):
         return self.label
 
@@ -623,6 +631,42 @@ class Var:
 
     def emit_adj(self):
         return self.emit("adj")
+
+    def mark_read(self):
+        """Marks this Var as having been read from in a kernel (array only)."""
+        if not is_array(self.type):
+            return
+
+        self.is_read = True
+
+        # recursively update all parent states
+        parent = self.parent
+        while parent is not None:
+            parent.is_read = True
+            parent = parent.parent
+
+    def mark_write(self, **kwargs):
+        """Marks this Var has having been written to in a kernel (array only)."""
+        if not is_array(self.type):
+            return
+
+        # detect if we are writing to an array after reading from it within the same kernel
+        if self.is_read and warp.config.verify_autograd_array_access:
+            if "kernel_name" and "filename" and "lineno" in kwargs:
+                print(
+                    f"Warning: Array passed to argument {self.label} in kernel {kwargs['kernel_name']} at {kwargs['filename']}:{kwargs['lineno']} is being written to after it has been read from within the same kernel. This may corrupt gradient computation in the backward pass."
+                )
+            else:
+                print(
+                    f"Warning: Array {self} is being written to after it has been read from within the same kernel. This may corrupt gradient computation in the backward pass."
+                )
+        self.is_write = True
+
+        # recursively update all parent states
+        parent = self.parent
+        while parent is not None:
+            parent.is_write = True
+            parent = parent.parent
 
 
 class Block:
@@ -821,6 +865,11 @@ class Adjoint:
 
     # generate function ssa form and adjoint
     def build(adj, builder, default_builder_options=None):
+        # arg Var read/write flags are held during module rebuilds, so we reset here even when skipping a build
+        for arg in adj.args:
+            arg.is_read = False
+            arg.is_write = False
+
         if adj.skip_build:
             return
 
@@ -1702,7 +1751,24 @@ class Adjoint:
 
     def emit_BinOp(adj, node):
         # evaluate binary operator arguments
+
+        if warp.config.verify_autograd_array_access:
+            # array overwrite tracking: in-place operators are a special case
+            # x[tid] = x[tid] + 1 is a read followed by a write, but we only want to record the write
+            # so we save the current arg read flags and restore them after lhs eval
+            is_read_states = []
+            for arg in adj.args:
+                is_read_states.append(arg.is_read)
+
+        # evaluate lhs binary operator argument
         left = adj.eval(node.left)
+
+        if warp.config.verify_autograd_array_access:
+            # restore arg read flags
+            for i, arg in enumerate(adj.args):
+                arg.is_read = is_read_states[i]
+
+        # evaluate rhs binary operator argument
         right = adj.eval(node.right)
 
         name = builtin_operators[type(node.op)]
@@ -2017,7 +2083,18 @@ class Adjoint:
         args = tuple(adj.resolve_arg(x) for x in node.args)
         kwargs = {x.arg: adj.resolve_arg(x.value) for x in node.keywords}
 
-        # add var with value type from the function
+        if warp.config.verify_autograd_array_access:
+            # update arg read/write states according to what happens to that arg in the called function
+            if hasattr(func, "adj"):
+                for i, arg in enumerate(args):
+                    if func.adj.args[i].is_write:
+                        kernel_name = adj.fun_name
+                        filename = adj.filename
+                        lineno = adj.lineno + adj.fun_lineno
+                        arg.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                    if func.adj.args[i].is_read:
+                        arg.mark_read()
+
         out = adj.add_call(func, args, kwargs, type_args, min_outputs=min_outputs)
         return out
 
@@ -2097,9 +2174,21 @@ class Adjoint:
             if len(indices) == target_type.ndim:
                 # handles array loads (where each dimension has an index specified)
                 out = adj.add_builtin_call("address", [target, *indices])
+
+                if warp.config.verify_autograd_array_access:
+                    target.mark_read()
+
             else:
                 # handles array views (fewer indices than dimensions)
                 out = adj.add_builtin_call("view", [target, *indices])
+
+                if warp.config.verify_autograd_array_access:
+                    # store reference to target Var to propagate downstream read/write state back to root arg Var
+                    out.parent = target
+
+                    # view arg inherits target Var's read/write states
+                    out.is_read = target.is_read
+                    out.is_write = target.is_write
 
         else:
             # handles non-array type indexing, e.g: vec3, mat33, etc
@@ -2183,6 +2272,13 @@ class Adjoint:
 
             if is_array(target_type):
                 adj.add_builtin_call("array_store", [target, *indices, rhs])
+
+                if warp.config.verify_autograd_array_access:
+                    kernel_name = adj.fun_name
+                    filename = adj.filename
+                    lineno = adj.lineno + adj.fun_lineno
+
+                    target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
             elif type_is_vector(target_type) or type_is_quaternion(target_type) or type_is_matrix(target_type):
                 if is_reference(target.type):

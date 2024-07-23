@@ -1748,7 +1748,13 @@ class Module:
 
             build_dir = None
 
-            if not os.path.exists(binary_path) or not warp.config.cache_kernels:
+            # we always want to build if binary doesn't exist yet
+            # and we want to rebuild if we are not caching kernels or if we are tracking array access
+            if (
+                not os.path.exists(binary_path)
+                or not warp.config.cache_kernels
+                or warp.config.verify_autograd_array_access
+            ):
                 builder = ModuleBuilder(self, self.options)
 
                 # create a temporary (process unique) dir for build outputs before moving to the binary dir
@@ -4780,6 +4786,10 @@ def launch(
         caller = {"file": frame.f_code.co_filename, "lineno": frame.f_lineno, "func": frame.f_code.co_name}
         runtime.tape.record_launch(kernel, dim, max_blocks, inputs, outputs, device, metadata={"caller": caller})
 
+        # detect illegal inter-kernel read/write access patterns if verification flag is set
+        if warp.config.verify_autograd_array_access:
+            runtime.tape.check_kernel_array_access(kernel, fwd_args)
+
 
 def synchronize():
     """Manually synchronize the calling CPU thread with any outstanding CUDA work on all devices
@@ -5261,6 +5271,9 @@ def copy(
                 ),
                 arrays=[dest, src],
             )
+            if warp.config.verify_autograd_array_access:
+                dest.mark_write()
+                src.mark_read()
 
 
 def adj_copy(

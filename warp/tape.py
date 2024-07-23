@@ -165,7 +165,7 @@ class Tape:
 
         Args:
             backward (Callable): A callable Python object (can be any function) that will be executed in the backward pass.
-            arrays (list): A list of arrays that are used by the function for gradient tracking.
+            arrays (list): A list of arrays that are used by the backward function. The tape keeps track of these to be able to zero their gradients in Tape.zero()
         """
         self.launches.append(backward)
 
@@ -196,6 +196,24 @@ class Tape:
             self.scopes = self.scopes[:-1]
         else:
             self.scopes.append((len(self.launches), None, None))
+
+    def check_kernel_array_access(self, kernel, args):
+        """Detect illegal inter-kernel write after read access patterns during launch capture"""
+        adj = kernel.adj
+        kernel_name = adj.fun_name
+        filename = adj.filename
+        lineno = adj.fun_lineno
+
+        for i, arg in enumerate(args):
+            if isinstance(arg, wp.array):
+                arg_name = adj.args[i].label
+
+                # we check write condition first because we allow (write --> read) within the same kernel
+                if adj.args[i].is_write:
+                    arg.mark_write(arg_name=arg_name, kernel_name=kernel_name, filename=filename, lineno=lineno)
+
+                if adj.args[i].is_read:
+                    arg.mark_read()
 
     # returns the adjoint of a kernel parameter
     def get_adjoint(self, a):
@@ -237,6 +255,8 @@ class Tape:
         self.launches = []
         self.scopes = []
         self.zero()
+        if wp.config.verify_autograd_array_access:
+            self.reset_array_read_flags()
 
     def zero(self):
         """
@@ -250,6 +270,14 @@ class Tape:
                             getattr(g, name).zero_()
                 else:
                     g.zero_()
+
+    def reset_array_read_flags(self):
+        """
+        Reset all recorded array read flags to False
+        """
+        for a in self.gradients:
+            if isinstance(a, wp.array):
+                a.mark_init()
 
     def visualize(
         self,

@@ -29,6 +29,15 @@
   - Fixed differentiability of `wp.fem.PicQuadrature` w.r.t. positions and measures
 - Improve error messages for unsupported constructs
 - Update `wp.matmul()` CPU fallback to use dtype explicitly in `np.matmul()` call
+- Add array overwrite detection if `wp.config.verify_autograd_array_access` is True. Array overwrites on the tape may corrupt gradient computation in the backward pass
+  - Adds `is_read` and `is_write` flags to kernel array args, which are set to `True` if an array arg is determined to be read from and/or written to during compilation
+  - If a kernel array arg is read from then written to within the same kernel during compilation, a warning is printed
+  - Adds the `is_read` flag to warp arrays, which is used to track whether an array has been read from in a kernel or recorded func at runtime
+  - If a warp array is passed to a kernel arg with attribute `is_read = True`, the warp array's `is_read` flag is set to `True`
+  - If a warp array with attribute `is_read = True` is subsequently passed to a kernel arg with attribute `is_write = True` (write after read overwrite condition), a warning is printed, indicating gradient corruption is possible in the backward pass
+  - Adds `wp.array.mark_write()` and `wp.array.mark_read()`, which are used to manually mark arrays that are written to or read from in functions recorded with `wp.Tape.record_func()`
+  - Adds `wp.Tape.reset_array_read_flags()` method, which resets all tape array `is_read` flags to `False`.
+  - Configures all view-like array methods to inherit `is_read` flag from parent arrays at creation.
 - Fix ShapeInstancer `__new__()` method (missing instance return and `*args` parameter)
 - Add support for PEP 563's `from __future__ import annotations`.
 - Allow passing external arrays/tensors to Warp kernels directly via `__cuda_array_interface__` and `__array_interface__`
@@ -40,6 +49,7 @@
 ## [1.2.2] - 2024-07-04
 
 - Support for NumPy >= 2.0
+- Fix hashing of replay functions and snippets
 - Add additional documentation and examples demonstrating `wp.copy()`, `wp.clone()`, and `array.assign()` differentiability
 - Fix adding `__new__()` methods for all class `__del__()` methods to
   anticipate when a class instance is created but not instantiated before garbage collection.
