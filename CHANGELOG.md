@@ -45,6 +45,8 @@
 - Handle incompatible CUDA driver versions gracefully
 - Fix handling of `upaxis` variable in `ModelBuilder` and the rendering thereof in `OpenGLRenderer`
 - Add `wp.abs()` and `wp.sign()` for vectors
+- Fix handling of `ModelBuilder.joint_act` in `ModelBuilder.collapse_fixed_joints()` (affected floating-base systems)
+- Fix and improve implementation of `ModelBuilder.plot_articulation()` to visualize the articulation tree of a rigid-body mechanism
 
 ## [1.2.2] - 2024-07-04
 
