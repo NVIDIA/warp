@@ -2,22 +2,42 @@
 
 ## [Upcoming Release] - 2024-??-??
 
-- Improve memory usage and performance for rigid body contact handling when `self.rigid_mesh_contact_max` is zero (default behavior).
-- The `mask` argument to `wp.sim.eval_fk` now accepts both integer and boolean arrays.
-- Add `warp.autograd` module with utility functions `gradcheck`, `jacobian`, and `jacobian_fd` for debugging kernel Jacobians.
-- Fix hashing of replay functions and snippets.
-- Add additional code comments for random number sampling functions in `rand.h`.
-- Add information to the module load printouts to indicate whether a module was
+- Warp Core improvements
+  - Update to CUDA 12.x by default (requires NVIDIA driver 525 or newer), please see [README.md](https://github.com/nvidia/warp?tab=readme-ov-file#installing) for commands to install CUDA 11.x binaries for older drivers
+  - Add information to the module load print outs to indicate whether a module was
   compiled `(compiled)`, loaded from the cache `(cached)`, or was unable to be
   loaded `(error)`.
-- `wp.config.verbose = True` now also prints out a message upon the entry to a `wp.ScopedTimer`.
-- Add `wp.clear_kernel_cache()` to the public API. This is equivalent to `wp.build.clear_kernel_cache()`.
-- Add code-completion support for `wp.config` variables.
-- Remove usage of a static task (thread) index for CPU kernels to address multithreading concerns.
-- New `warp.sparse` features:
-  - Sparse matrix allocations (from `bsr_from_triplets`, `bsr_axpy`, etc.) can now be captured in CUDA graphs; exact number of non-zeros can be optionally requested asynchronously.
-  - `bsr_assign` now supports changing block shape (including CSR/BSR conversions)
+  - `wp.config.verbose = True` now also prints out a message upon the entry to a `wp.ScopedTimer`.
+  - Add `wp.clear_kernel_cache()` to the public API. This is equivalent to `wp.build.clear_kernel_cache()`.
+  - Add code-completion support for `wp.config` variables.
+  - Remove usage of a static task (thread) index for CPU kernels to address multithreading concerns ([GH-224](https://github.com/NVIDIA/warp/issues/224))
+  - Improve error messages for unsupported Python operations such as sequence construction in kernels
+  - Update `wp.matmul()` CPU fallback to use dtype explicitly in `np.matmul()` call
+  - Add support for PEP 563's `from __future__ import annotations` ([GH-256](https://github.com/NVIDIA/warp/issues/256)).
+  - Allow passing external arrays/tensors to `wp.launch()` directly via `__cuda_array_interface__` and `__array_interface__`, up to 2.5x faster conversion from PyTorch
+  - Add faster Torch interop path using `return_ctype` argument to `wp.from_torch()`
+  - Handle incompatible CUDA driver versions gracefully
+  - Add `wp.abs()` and `wp.sign()` for vector types
+  - Expose scalar arithmetic operators to Python's runtime (e.g.: `wp.float16(1.23) * wp.float16(2.34)`)
+
+- `warp.autograd` improvements:
+  - New `warp.autograd` module with utility functions `gradcheck()`, `jacobian()`, and `jacobian_fd()` for debugging kernel Jacobians ([docs](https://nvidia.github.io/warp/modules/differentiability.html#measuring-gradient-accuracy))
+  - Add array overwrite detection, if `wp.config.verify_autograd_array_access` is true in-place operations on arrays on the Tape that could break gradient computation will be detected ([docs](https://nvidia.github.io/warp/modules/differentiability.html#array-overwrite-tracking))
+  - Fix bug where modification of `@wp.func_replay` functions and native snippets would not trigger module recompilation
+
+- `warp.sim` improvements:
+  - Improve memory usage and performance for rigid body contact handling when `self.rigid_mesh_contact_max` is zero (default behavior).
+  - The `mask` argument to `wp.sim.eval_fk()` now accepts both integer and boolean arrays to mask articulations.
+  - Fix handling of `ModelBuilder.joint_act` in `ModelBuilder.collapse_fixed_joints()` (affected floating-base systems)
+  - Fix and improve implementation of `ModelBuilder.plot_articulation()` to visualize the articulation tree of a rigid-body mechanism
+  - Fix ShapeInstancer `__new__()` method (missing instance return and `*args` parameter)
+  - Fix handling of `upaxis` variable in `ModelBuilder` and the rendering thereof in `OpenGLRenderer`
+
+- `warp.sparse` improvements:
+  - Sparse matrix allocations (from `bsr_from_triplets()`, `bsr_axpy()`, etc.) can now be captured in CUDA graphs; exact number of non-zeros can be optionally requested asynchronously.
+  - `bsr_assign()` now supports changing block shape (including CSR/BSR conversions)
   - Add Python operator overloads for common sparse matrix operations, e.g `A += 0.5 * B`, `y = x @ C`
+
 - `warp.fem` new features and fixes:
   - Support for variable number of nodes per element
   - Global `wp.fem.lookup()` operator now supports `wp.fem.Tetmesh` and `wp.fem.Trimesh2D` geometries
@@ -25,29 +45,8 @@
   - New field types: `wp.fem.UniformField`, `wp.fem.ImplicitField` and `wp.fem.NonconformingField`
   - New `streamlines`, `magnetostatics` and `nonconforming_contact` examples, updated `mixed_elasticity` to use a nonlinear model
   - Function spaces can now export VTK-compatible cells for visualization
-  - Fixed edge cases with Nanovdb function spaces
+  - Fixed edge cases with NanoVDB function spaces
   - Fixed differentiability of `wp.fem.PicQuadrature` w.r.t. positions and measures
-- Improve error messages for unsupported constructs
-- Update `wp.matmul()` CPU fallback to use dtype explicitly in `np.matmul()` call
-- Add array overwrite detection if `wp.config.verify_autograd_array_access` is True. Array overwrites on the tape may corrupt gradient computation in the backward pass
-  - Adds `is_read` and `is_write` flags to kernel array args, which are set to `True` if an array arg is determined to be read from and/or written to during compilation
-  - If a kernel array arg is read from then written to within the same kernel during compilation, a warning is printed
-  - Adds the `is_read` flag to warp arrays, which is used to track whether an array has been read from in a kernel or recorded func at runtime
-  - If a warp array is passed to a kernel arg with attribute `is_read = True`, the warp array's `is_read` flag is set to `True`
-  - If a warp array with attribute `is_read = True` is subsequently passed to a kernel arg with attribute `is_write = True` (write after read overwrite condition), a warning is printed, indicating gradient corruption is possible in the backward pass
-  - Adds `wp.array.mark_write()` and `wp.array.mark_read()`, which are used to manually mark arrays that are written to or read from in functions recorded with `wp.Tape.record_func()`
-  - Adds `wp.Tape.reset_array_read_flags()` method, which resets all tape array `is_read` flags to `False`.
-  - Configures all view-like array methods to inherit `is_read` flag from parent arrays at creation.
-- Fix ShapeInstancer `__new__()` method (missing instance return and `*args` parameter)
-- Add support for PEP 563's `from __future__ import annotations`.
-- Allow passing external arrays/tensors to Warp kernels directly via `__cuda_array_interface__` and `__array_interface__`
-- Add faster Torch interop path using `return_ctype` argument to `wp.from_torch()`
-- Handle incompatible CUDA driver versions gracefully
-- Fix handling of `upaxis` variable in `ModelBuilder` and the rendering thereof in `OpenGLRenderer`
-- Add `wp.abs()` and `wp.sign()` for vectors
-- Fix handling of `ModelBuilder.joint_act` in `ModelBuilder.collapse_fixed_joints()` (affected floating-base systems)
-- Fix and improve implementation of `ModelBuilder.plot_articulation()` to visualize the articulation tree of a rigid-body mechanism
-- Expose scalar arithmetic operators to Python's runtime (e.g.: `wp.float16(1.23) * wp.float16(2.34)`)
 
 ## [1.2.2] - 2024-07-04
 
