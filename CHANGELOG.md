@@ -47,6 +47,7 @@
 - Add `wp.abs()` and `wp.sign()` for vectors
 - Fix handling of `ModelBuilder.joint_act` in `ModelBuilder.collapse_fixed_joints()` (affected floating-base systems)
 - Fix and improve implementation of `ModelBuilder.plot_articulation()` to visualize the articulation tree of a rigid-body mechanism
+- Expose scalar arithmetic operators to Python's runtime (e.g.: `wp.float16(1.23) * wp.float16(2.34)`)
 
 ## [1.2.2] - 2024-07-04
 

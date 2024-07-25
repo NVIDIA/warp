@@ -564,10 +564,12 @@ def call_builtin(func: Function, *params) -> Tuple[bool, Any]:
         return (True, ret)
 
     if value_type == warp.types.float16:
-        return (True, warp.types.half_bits_to_float(ret.value))
+        value = warp.types.half_bits_to_float(ret.value)
+    else:
+        value = ret.value
 
     # return scalar types as int/float
-    return (True, ret.value)
+    return (True, value)
 
 
 class KernelHooks:
