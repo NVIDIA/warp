@@ -12,7 +12,7 @@ import ctypes
 import inspect
 import struct
 import zlib
-from typing import Any, Callable, Generic, List, NamedTuple, Optional, Tuple, TypeVar, Union
+from typing import Any, Callable, Generic, List, NamedTuple, Optional, Sequence, Tuple, TypeVar, Union
 
 import numpy as np
 
@@ -48,6 +48,15 @@ class Transformation(Generic[Float]):
 
 class Array(Generic[DType]):
     pass
+
+
+int_tuple_type_hints = {
+    Tuple[int]: 1,
+    Tuple[int, int]: 2,
+    Tuple[int, int, int]: 3,
+    Tuple[int, int, int, int]: 4,
+    Tuple[int, ...]: -1,
+}
 
 
 def constant(x):
@@ -1379,6 +1388,25 @@ def scalars_equal(a, b, match_generic):
 
 
 def types_equal(a, b, match_generic=False):
+    if match_generic:
+        if a in int_tuple_type_hints and isinstance(b, Sequence):
+            a_length = int_tuple_type_hints[a]
+            if (a_length == -1 or a_length == len(b)) and all(
+                scalars_equal(x, Int, match_generic=match_generic) for x in b
+            ):
+                return True
+        if b in int_tuple_type_hints and isinstance(a, Sequence):
+            b_length = int_tuple_type_hints[b]
+            if (b_length == -1 or b_length == len(a)) and all(
+                scalars_equal(x, Int, match_generic=match_generic) for x in a
+            ):
+                return True
+        if a in int_tuple_type_hints and b in int_tuple_type_hints:
+            a_length = int_tuple_type_hints[a]
+            b_length = int_tuple_type_hints[b]
+            if a_length is None or b_length is None or a_length == b_length:
+                return True
+
     # convert to canonical types
     if a == float:
         a = float32

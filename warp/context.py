@@ -5286,8 +5286,16 @@ def type_str(t):
         return "Any"
     elif t == Callable:
         return "Callable"
+    elif t == Tuple[int]:
+        return "Tuple[int]"
     elif t == Tuple[int, int]:
         return "Tuple[int, int]"
+    elif t == Tuple[int, int, int]:
+        return "Tuple[int, int, int]"
+    elif t == Tuple[int, int, int, int]:
+        return "Tuple[int, int, int, int]"
+    elif t == Tuple[int, ...]:
+        return "Tuple[int, ...]"
     elif isinstance(t, int):
         return str(t)
     elif isinstance(t, List):

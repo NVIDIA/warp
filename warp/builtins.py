@@ -3067,6 +3067,41 @@ add_builtin(
 )
 
 
+def array_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    if arg_types is None:
+        return array(dtype=Scalar)
+
+    dtype = arg_values["dtype"]
+    shape = arg_values["shape"]
+    return array(dtype=dtype, ndim=len(shape))
+
+
+def array_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    # We're in the codegen stage where we emit the code calling the built-in.
+    # Further validate the given argument values if needed and map them
+    # to the underlying C++ function's runtime and template params.
+
+    dtype = return_type.dtype
+
+    func_args = (args["ptr"], *args["shape"])
+    template_args = (dtype,)
+    return (func_args, template_args)
+
+
+add_builtin(
+    "array",
+    input_types={"ptr": warp.uint64, "shape": Tuple[int, ...], "dtype": Scalar},
+    value_func=array_value_func,
+    export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
+    dispatch_func=array_dispatch_func,
+    native_func="array_t",
+    group="Utility",
+    hidden=True,
+    export=False,
+    missing_grad=True,
+)
+
+
 # does argument checking and type propagation for address()
 def address_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     arr_type = arg_types["arr"]
