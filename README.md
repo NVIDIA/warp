@@ -35,14 +35,19 @@ pip install warp-lang
 
 You can also use `pip install warp-lang[extras]` to install additional dependencies for running examples and USD-related features.
 
-The binaries hosted on PyPI are currently built with the CUDA 11.8 runtime.
-We provide binaries built with the CUDA 12.5 runtime on the [GitHub Releases](https://github.com/NVIDIA/warp/releases) page.
+The binaries hosted on PyPI are currently built with the CUDA 12 runtime and therefore
+require a minimum version of the CUDA driver of 525.60.13 (Linux x86-64) or 528.33 (Windows x86-64).
+
+If you require GPU support on a system with an older CUDA driver, you can build Warp from source or
+install wheels built with the CUDA 11.8 runtime from the [GitHub Releases](https://github.com/NVIDIA/warp/releases) page.
 Copy the URL of the appropriate wheel file (`warp-lang-{ver}+cu12-py3-none-{platform}.whl`) and pass it to
 the `pip install` command, e.g.
 
-```text
-pip install https://github.com/NVIDIA/warp/releases/download/v1.2.0/warp_lang-1.2.0+cu12-py3-none-manylinux2014_x86_64.whl
-```
+| Platform        | Install Command                                                                                                               |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Linux aarch64   | `pip install https://github.com/NVIDIA/warp/releases/download/v1.3.0/warp_lang-1.3.0+cu11-py3-none-manylinux2014_aarch64.whl` |
+| Linux x86-64    | `pip install https://github.com/NVIDIA/warp/releases/download/v1.3.0/warp_lang-1.3.0+cu11-py3-none-manylinux2014_x86_64.whl`  |
+| Windows x86-64  | `pip install https://github.com/NVIDIA/warp/releases/download/v1.3.0/warp_lang-1.3.0+cu11-py3-none-win_amd64.whl`             |
 
 The `--force-reinstall` option may need to be used to overwrite a previous installation.
 
@@ -53,10 +58,11 @@ The `--force-reinstall` option may need to be used to overwrite a previous insta
 
 This applies to pre-built packages distributed on PyPI and GitHub and also when building Warp from source.
 
-Note that building Warp with the `--quick` flag changes the driver requirements.  The quick build skips CUDA backward compatibility, so the minimum required driver is determined by the CUDA Toolkit version.  Refer to the [latest CUDA Toolkit release notes](https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html) to find the minimum required driver for different CUDA Toolkit versions (e.g., [this table from CUDA Toolkit 12.5](https://docs.nvidia.com/cuda/archive/12.5.0/cuda-toolkit-release-notes/index.html#id4)).
+Note that building Warp with the `--quick` flag changes the driver requirements.  The quick build skips CUDA backward compatibility, so the minimum required driver is determined by the CUDA Toolkit version.  Refer to the [latest CUDA Toolkit release notes](https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html) to find the minimum required driver for different CUDA Toolkit versions (e.g., [this table from CUDA Toolkit 12.5](https://docs.nvidia.com/cuda/archive/12.5.0/cuda-toolkit-release-notes/index.html#id3)).
 
 Warp checks the installed driver during initialization and will report a warning if the driver is not suitable, e.g.:
-```
+
+```text
 Warp UserWarning:
    Insufficient CUDA driver version.
    The minimum required CUDA driver version is 12.0, but the installed CUDA driver version is 11.8.
@@ -66,6 +72,7 @@ Warp UserWarning:
 This will make CUDA devices unavailable, but the CPU can still be used.
 
 To remedy the situation there are a few options:
+
 * Update the driver.
 * Install a compatible pre-built Warp package.
 * Build Warp from source using a CUDA Toolkit that's compatible with the installed driver.
@@ -122,11 +129,15 @@ pip install usd-core matplotlib pyglet
 
 Examples can be run from the command-line as follows:
 
-    python -m warp.examples.<example_subdir>.<example>
+```text
+python -m warp.examples.<example_subdir>.<example>
+```
 
 To browse the example source code, you can open the directory where the files are located like this:
 
-    python -m warp.examples.browse
+```text
+python -m warp.examples.browse
+```
 
 Most examples can be run on either the CPU or a CUDA-capable device, but a handful require a CUDA-capable device. These are marked at the top of the example script.
 
@@ -134,7 +145,9 @@ USD files can be viewed or rendered inside [NVIDIA Omniverse](https://developer.
 
 Built-in unit tests can be run from the command-line as follows:
 
-    python -m warp.tests
+```text
+python -m warp.tests
+```
 
 ### warp/examples/core
 
