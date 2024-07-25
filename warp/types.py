@@ -3595,9 +3595,39 @@ class Volume:
 
         return cls.allocate_by_tiles(tile_points, voxel_size, bg_value, translation, device)
 
+    @staticmethod
+    def _fill_transform_buffers(
+        voxel_size: Union[float, List[float]],
+        translation,
+        transform,
+    ):
+        if transform is None:
+            if voxel_size is None:
+                raise ValueError("Either 'voxel_size' or 'transform' must be provided")
+
+            if isinstance(voxel_size, float):
+                voxel_size = (voxel_size, voxel_size, voxel_size)
+            transform = mat33f(voxel_size[0], 0.0, 0.0, 0.0, voxel_size[1], 0.0, 0.0, 0.0, voxel_size[2])
+        else:
+            if voxel_size is not None:
+                raise ValueError("Only one of 'voxel_size' or 'transform' must be provided")
+
+            if not isinstance(transform, mat33f):
+                transform = mat33f(transform)
+
+        transform_buf = (ctypes.c_float * 9).from_buffer_copy(transform)
+        translation_buf = (ctypes.c_float * 3)(translation[0], translation[1], translation[2])
+        return transform_buf, translation_buf
+
     @classmethod
     def allocate_by_tiles(
-        cls, tile_points: array, voxel_size: float, bg_value=0.0, translation=(0.0, 0.0, 0.0), device=None
+        cls,
+        tile_points: array,
+        voxel_size: Union[float, List[float]] = None,
+        bg_value=0.0,
+        translation=(0.0, 0.0, 0.0),
+        device=None,
+        transform=None,
     ) -> Volume:
         """Allocate a new Volume with active tiles for each point tile_points.
 
@@ -3615,16 +3645,15 @@ class Volume:
                 The array may use an integer scalar type (2D N-by-3 array of :class:`warp.int32` or 1D array of `warp.vec3i` values), indicating index space positions,
                 or a floating point scalar type (2D N-by-3 array of :class:`warp.float32` or 1D array of `warp.vec3f` values), indicating world space positions.
                 Repeated points per tile are allowed and will be efficiently deduplicated.
-            voxel_size (float): Voxel size of the new volume.
+            voxel_size (float or array-like): Voxel size(s) of the new volume. Ignored if `transform` is given.
             bg_value (array-like, float, int or None): Value of unallocated voxels of the volume, also defines the volume's type. A :class:`warp.vec3` volume is created if this is `array-like`, an index volume will be created if `bg_value` is ``None``.
             translation (array-like): Translation between the index and world spaces.
+            transform (array-like): Linear transform between the index and world spaces. If ``None``, deduced from `voxel_size`.
             device (Devicelike): The CUDA device to create the volume on, e.g.: "cuda" or "cuda:0".
 
         """
         device = warp.get_device(device)
 
-        if voxel_size <= 0.0:
-            raise RuntimeError(f"Voxel size must be positive! Got {voxel_size}")
         if not device.is_cuda:
             raise RuntimeError("Only CUDA devices are supported for allocate_by_tiles")
         if not _is_contiguous_vec_like_array(tile_points, vec_length=3, scalar_types=(float32, int32)):
@@ -3637,15 +3666,16 @@ class Volume:
         volume = cls(data=None)
         volume.device = device
         in_world_space = type_scalar_type(tile_points.dtype) == float32
+
+        transform_buf, translation_buf = Volume._fill_transform_buffers(voxel_size, translation, transform)
+
         if bg_value is None:
             volume.id = volume.runtime.core.volume_index_from_tiles_device(
                 volume.device.context,
                 ctypes.c_void_p(tile_points.ptr),
                 tile_points.shape[0],
-                voxel_size,
-                translation[0],
-                translation[1],
-                translation[2],
+                transform_buf,
+                translation_buf,
                 in_world_space,
             )
         elif hasattr(bg_value, "__len__"):
@@ -3653,38 +3683,30 @@ class Volume:
                 volume.device.context,
                 ctypes.c_void_p(tile_points.ptr),
                 tile_points.shape[0],
-                voxel_size,
-                bg_value[0],
-                bg_value[1],
-                bg_value[2],
-                translation[0],
-                translation[1],
-                translation[2],
+                transform_buf,
+                translation_buf,
                 in_world_space,
+                (ctypes.c_float * 3)(bg_value[0], bg_value[1], bg_value[2]),
             )
         elif isinstance(bg_value, int):
             volume.id = volume.runtime.core.volume_i_from_tiles_device(
                 volume.device.context,
                 ctypes.c_void_p(tile_points.ptr),
                 tile_points.shape[0],
-                voxel_size,
-                bg_value,
-                translation[0],
-                translation[1],
-                translation[2],
+                transform_buf,
+                translation_buf,
                 in_world_space,
+                bg_value,
             )
         else:
             volume.id = volume.runtime.core.volume_f_from_tiles_device(
                 volume.device.context,
                 ctypes.c_void_p(tile_points.ptr),
                 tile_points.shape[0],
-                voxel_size,
-                float(bg_value),
-                translation[0],
-                translation[1],
-                translation[2],
+                transform_buf,
+                translation_buf,
                 in_world_space,
+                float(bg_value),
             )
 
         if volume.id == 0:
@@ -3694,7 +3716,12 @@ class Volume:
 
     @classmethod
     def allocate_by_voxels(
-        cls, voxel_points: array, voxel_size: float, translation=(0.0, 0.0, 0.0), device=None
+        cls,
+        voxel_points: array,
+        voxel_size: Union[float, List[float]] = None,
+        translation=(0.0, 0.0, 0.0),
+        device=None,
+        transform=None,
     ) -> Volume:
         """Allocate a new Volume with active voxel for each point voxel_points.
 
@@ -3709,19 +3736,16 @@ class Volume:
                 The array may use an integer scalar type (2D N-by-3 array of :class:`warp.int32` or 1D array of `warp.vec3i` values), indicating index space positions,
                 or a floating point scalar type (2D N-by-3 array of :class:`warp.float32` or 1D array of `warp.vec3f` values), indicating world space positions.
                 Repeated points per tile are allowed and will be efficiently deduplicated.
-            voxel_size (float): Voxel size of the new volume.
+            voxel_size (float or array-like): Voxel size(s) of the new volume. Ignored if `transform` is given.
             translation (array-like): Translation between the index and world spaces.
+            transform (array-like): Linear transform between the index and world spaces. If ``None``, deduced from `voxel_size`.
             device (Devicelike): The CUDA device to create the volume on, e.g.: "cuda" or "cuda:0".
 
         """
         device = warp.get_device(device)
 
-        if voxel_size <= 0.0:
-            raise RuntimeError(f"Voxel size must be positive! Got {voxel_size}")
         if not device.is_cuda:
             raise RuntimeError("Only CUDA devices are supported for allocate_by_tiles")
-        if not (is_array(voxel_points) and voxel_points.is_contiguous):
-            raise RuntimeError("tile_points must be a contiguous array")
         if not _is_contiguous_vec_like_array(voxel_points, vec_length=3, scalar_types=(float32, int32)):
             raise RuntimeError(
                 "voxel_points must be contiguous and either a 1D warp array of vec3f or vec3i or a 2D n-by-3 array of int32 or float32."
@@ -3733,14 +3757,14 @@ class Volume:
         volume.device = device
         in_world_space = type_scalar_type(voxel_points.dtype) == float32
 
+        transform_buf, translation_buf = Volume._fill_transform_buffers(voxel_size, translation, transform)
+
         volume.id = volume.runtime.core.volume_from_active_voxels_device(
             volume.device.context,
             ctypes.c_void_p(voxel_points.ptr),
             voxel_points.shape[0],
-            voxel_size,
-            translation[0],
-            translation[1],
-            translation[2],
+            transform_buf,
+            translation_buf,
             in_world_space,
         )
 

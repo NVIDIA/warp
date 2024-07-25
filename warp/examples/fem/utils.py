@@ -152,6 +152,34 @@ def gen_hexmesh(res, bounds_lo: Optional[wp.vec3] = None, bounds_hi: Optional[wp
     return wp.array(positions, dtype=wp.vec3), wp.array(vidx, dtype=int)
 
 
+def gen_volume(res, bounds_lo: Optional[wp.vec3] = None, bounds_hi: Optional[wp.vec3] = None, device=None) -> wp.Volume:
+    """Constructs a wp.Volume from a dense 3D grid
+
+    Args:
+        res: Resolution of the grid along each dimension
+        bounds_lo: Position of the lower bound of the axis-aligned grid
+        bounds_up: Position of the upper bound of the axis-aligned grid
+        device: Cuda device on which to allocate the grid
+    """
+
+    if bounds_lo is None:
+        bounds_lo = wp.vec3(0.0)
+
+    if bounds_hi is None:
+        bounds_hi = wp.vec3(1.0)
+
+    extents = bounds_hi - bounds_lo
+    voxel_size = wp.cw_div(extents, wp.vec3(res))
+
+    x = np.arange(res[0], dtype=int)
+    y = np.arange(res[1], dtype=int)
+    z = np.arange(res[2], dtype=int)
+
+    ijk = np.transpose(np.meshgrid(x, y, z), axes=(1, 2, 3, 0)).reshape(-1, 3)
+    ijk = wp.array(ijk, dtype=wp.vec3i, device=device)
+    return wp.Volume.allocate_by_voxels(ijk, voxel_size=voxel_size, translation=0.5 * voxel_size, device=device)
+
+
 #
 # Bsr matrix utilities
 #

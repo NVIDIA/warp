@@ -403,8 +403,7 @@ void build_grid_from_points(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
     out_grid_size = 0;
 
     cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_get_current());
-    nanovdb::Map map(params.voxel_size, params.translation);
-    nanovdb::tools::cuda::PointsToGrid<BuildT, Allocator> p2g(map, stream);
+    nanovdb::tools::cuda::PointsToGrid<BuildT, Allocator> p2g(params.map, stream);
 
     // p2g.setVerbose(2);
     p2g.setGridName(params.name);
@@ -417,7 +416,7 @@ void build_grid_from_points(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
 
     if (points_in_world_space)
     {
-        grid_handle = p2g.getHandle(WorldSpacePointsPtr{static_cast<const nanovdb::Vec3f *>(points), map}, num_points,
+        grid_handle = p2g.getHandle(WorldSpacePointsPtr{static_cast<const nanovdb::Vec3f *>(points), params.map}, num_points,
                                     DeviceBuffer());
     }
     else

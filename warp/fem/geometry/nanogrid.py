@@ -154,7 +154,7 @@ class Nanogrid(Geometry):
     @wp.func
     def cell_position(args: CellArg, s: Sample):
         uvw = wp.vec3(args.cell_ijk[s.element_index]) + s.element_coords
-        return wp.volume_index_to_world(args.cell_grid, uvw)
+        return wp.volume_index_to_world(args.cell_grid, uvw - wp.vec3(0.5))
 
     @wp.func
     def cell_deformation_gradient(args: CellArg, s: Sample):
@@ -166,7 +166,7 @@ class Nanogrid(Geometry):
 
     @wp.func
     def cell_lookup(args: CellArg, pos: wp.vec3):
-        uvw = wp.volume_world_to_index(args.cell_grid, pos)
+        uvw = wp.volume_world_to_index(args.cell_grid, pos) + wp.vec3(0.5)
         ijk = wp.vec3i(int(wp.floor(uvw[0])), int(wp.floor(uvw[1])), int(wp.floor(uvw[2])))
         element_index = wp.volume_lookup_index(args.cell_grid, ijk[0], ijk[1], ijk[2])
 
@@ -177,8 +177,7 @@ class Nanogrid(Geometry):
         )
 
     @wp.func
-    def _project_on_voxel(uvw: wp.vec3, ijk: wp.vec3i):
-        coords = uvw - wp.vec3(ijk)
+    def _project_on_voxel_at_origin(coords: wp.vec3):
         proj_coords = wp.min(wp.max(coords, wp.vec3(0.0)), wp.vec3(1.0))
         return wp.length_sq(coords - proj_coords), proj_coords
 
@@ -194,14 +193,14 @@ class Nanogrid(Geometry):
         closest_dist = float(1.0e8)
 
         # project to closest in stencil
-        uvw = wp.volume_world_to_index(args.cell_grid, pos)
+        uvw = wp.volume_world_to_index(args.cell_grid, pos) + wp.vec3(0.5)
         cell_ijk = args.cell_ijk[guess.element_index]
         for ni in range(-1, 2):
             for nj in range(-1, 2):
                 for nk in range(-1, 2):
                     nijk = cell_ijk + wp.vec3i(ni, nj, nk)
                     cell_idx = wp.volume_lookup_index(args.cell_grid, nijk[0], nijk[1], nijk[2])
-                    dist, coords = Nanogrid._project_on_voxel(uvw, nijk)
+                    dist, coords = Nanogrid._project_on_voxel_at_origin(uvw - wp.vec3(nijk))
                     if cell_idx != -1 and dist <= closest_dist:
                         closest_dist = dist
                         closest_voxel = cell_idx
@@ -278,7 +277,7 @@ class Nanogrid(Geometry):
         uvw = wp.vec3(ijk) + Nanogrid._side_to_cell_coords(axis, 0.0, s.element_coords)
 
         cell_grid = args.cell_arg.cell_grid
-        return wp.volume_index_to_world(cell_grid, uvw)
+        return wp.volume_index_to_world(cell_grid, uvw - wp.vec3(0.5))
 
     @wp.func
     def _face_tangent_vecs(args: SideArg, axis: int, flip: int):
