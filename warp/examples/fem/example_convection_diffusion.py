@@ -107,7 +107,7 @@ class Example:
         )
 
         self.renderer = fem_example_utils.Plot()
-        self.renderer.add_surface("phi", self._phi_field)
+        self.renderer.add_field("phi", self._phi_field)
 
     def step(self):
         self.current_frame += 1
@@ -125,7 +125,7 @@ class Example:
 
     def render(self):
         self.renderer.begin_frame(time=self.current_frame * self.sim_dt)
-        self.renderer.add_surface("phi", self._phi_field)
+        self.renderer.add_field("phi", self._phi_field)
         self.renderer.end_frame()
 
 

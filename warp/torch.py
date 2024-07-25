@@ -10,12 +10,41 @@ import ctypes
 import numpy
 
 import warp
+import warp.context
 
 
 # return the warp device corresponding to a torch device
 def device_from_torch(torch_device) -> warp.context.Device:
-    """Return the Warp device corresponding to a Torch device."""
-    return warp.get_device(str(torch_device))
+    """Return the Warp device corresponding to a Torch device.
+
+    Args:
+        torch_device (`torch.device` or `str`): Torch device identifier
+
+    Raises:
+        RuntimeError: Torch device does not have a corresponding Warp device
+    """
+    if type(torch_device) is str:
+        warp_device = warp.context.runtime.device_map.get(torch_device)
+        if warp_device is not None:
+            return warp_device
+        elif torch_device == "cuda":
+            return warp.context.runtime.get_current_cuda_device()
+        else:
+            raise RuntimeError(f"Unsupported Torch device {torch_device}")
+    else:
+        try:
+            if torch_device.type == "cuda":
+                return warp.context.runtime.cuda_devices[torch_device.index]
+            elif torch_device.type == "cpu":
+                return warp.context.runtime.cpu_device
+            else:
+                raise RuntimeError(f"Unsupported Torch device type {torch_device.type}")
+        except Exception as e:
+            import torch
+
+            if not isinstance(torch_device, torch.device):
+                raise ValueError("Argument must be a torch.device object or a string") from e
+            raise
 
 
 def device_to_torch(warp_device: warp.context.Devicelike) -> str:
@@ -154,16 +183,17 @@ dtype_is_compatible.compatible_sets = None
 
 
 # wrap a torch tensor to a wp array, data is not copied
-def from_torch(t, dtype=None, requires_grad=None, grad=None):
+def from_torch(t, dtype=None, requires_grad=None, grad=None, return_ctype=False):
     """Convert a Torch tensor to a Warp array without copying the data.
 
     Args:
         t (torch.Tensor): The torch tensor to wrap.
         dtype (warp.dtype, optional): The target data type of the resulting Warp array. Defaults to the tensor value type mapped to a Warp array value type.
         requires_grad (bool, optional): Whether the resulting array should wrap the tensor's gradient, if it exists (the grad tensor will be allocated otherwise). Defaults to the tensor's `requires_grad` value.
+        return_ctype (bool, optional): Whether to return a low-level array descriptor instead of a ``wp.array`` object (faster).  The descriptor can be passed to Warp kernels.
 
     Returns:
-        warp.array: The wrapped array.
+        warp.array: The wrapped array or array descriptor.
     """
     if dtype is None:
         dtype = dtype_from_torch(t.dtype)
@@ -175,7 +205,6 @@ def from_torch(t, dtype=None, requires_grad=None, grad=None):
 
     shape = tuple(t.shape)
     strides = tuple(s * ctype_size for s in t.stride())
-    device = device_from_torch(t.device)
 
     # if target is a vector or matrix type
     # then check if trailing dimensions match
@@ -183,57 +212,90 @@ def from_torch(t, dtype=None, requires_grad=None, grad=None):
     if hasattr(dtype, "_shape_"):
         dtype_shape = dtype._shape_
         dtype_dims = len(dtype._shape_)
+        # ensure inner shape matches
         if dtype_dims > len(shape) or dtype_shape != shape[-dtype_dims:]:
             raise RuntimeError(
                 f"Could not convert Torch tensor with shape {shape} to Warp array with dtype={dtype}, ensure that source inner shape is {dtype_shape}"
             )
-
-        # ensure the inner strides are contiguous
-        stride = ctype_size
-        for i in range(dtype_dims):
-            if strides[-i - 1] != stride:
-                raise RuntimeError(
-                    f"Could not convert Torch tensor with shape {shape} to Warp array with dtype={dtype}, because the source inner strides are not contiguous"
-                )
-            stride *= dtype_shape[-i - 1]
-
+        # ensure inner strides are contiguous
+        if strides[-1] != ctype_size or (dtype_dims > 1 and strides[-2] != ctype_size * dtype_shape[-1]):
+            raise RuntimeError(
+                f"Could not convert Torch tensor with shape {shape} to Warp array with dtype={dtype}, because the source inner strides are not contiguous"
+            )
+        # trim shape and strides
         shape = tuple(shape[:-dtype_dims]) or (1,)
         strides = tuple(strides[:-dtype_dims]) or (ctype_size,)
 
+    # gradient
+    # - if return_ctype is False, we set `grad` to a wp.array or None
+    # - if return_ctype is True, we set `grad_ptr` and set `grad` as the owner (wp.array or torch.Tensor)
     requires_grad = t.requires_grad if requires_grad is None else requires_grad
+    grad_ptr = 0
     if grad is not None:
-        if not isinstance(grad, warp.array):
-            import torch
-
-            if isinstance(grad, torch.Tensor):
-                grad = from_torch(grad, dtype=dtype)
+        if isinstance(grad, warp.array):
+            if return_ctype:
+                if grad.strides != strides:
+                    raise RuntimeError(
+                        f"Gradient strides must match array strides, expected {strides} but got {grad.strides}"
+                    )
+                grad_ptr = grad.ptr
+        else:
+            # assume grad is a torch.Tensor
+            if return_ctype:
+                if t.stride() != grad.stride():
+                    raise RuntimeError(
+                        f"Gradient strides must match array strides, expected {t.stride()} but got {grad.stride()}"
+                    )
+                grad_ptr = grad.data_ptr()
             else:
-                raise ValueError(f"Invalid gradient type: {type(grad)}")
+                grad = from_torch(grad, dtype=dtype, requires_grad=False)
     elif requires_grad:
         # wrap the tensor gradient, allocate if necessary
-        if t.grad is None:
+        if t.grad is not None:
+            if return_ctype:
+                grad = t.grad
+                if t.stride() != grad.stride():
+                    raise RuntimeError(
+                        f"Gradient strides must match array strides, expected {t.stride()} but got {grad.stride()}"
+                    )
+                grad_ptr = grad.data_ptr()
+            else:
+                grad = from_torch(t.grad, dtype=dtype, requires_grad=False)
+        else:
             # allocate a zero-filled gradient if it doesn't exist
             # Note: we use Warp to allocate the shared gradient with compatible strides
-            grad = warp.zeros(dtype=dtype, shape=shape, strides=strides, device=device)
+            grad = warp.zeros(dtype=dtype, shape=shape, strides=strides, device=device_from_torch(t.device))
             t.grad = to_torch(grad, requires_grad=False)
-        else:
-            # TODO: this will fail if the strides are incompatible
-            grad = from_torch(t.grad, dtype=dtype)
+            grad_ptr = grad.ptr
 
-    a = warp.array(
-        ptr=t.data_ptr(),
-        dtype=dtype,
-        shape=shape,
-        strides=strides,
-        device=device,
-        copy=False,
-        grad=grad,
-        requires_grad=requires_grad,
-    )
+    if return_ctype:
+        ptr = t.data_ptr()
 
-    # save a reference to the source tensor, otherwise it will be deallocated
-    a._tensor = t
-    return a
+        # create array descriptor
+        array_ctype = warp.types.array_t(ptr, grad_ptr, len(shape), shape, strides)
+
+        # keep data and gradient alive
+        array_ctype._ref = t
+        array_ctype._gradref = grad
+
+        return array_ctype
+
+    else:
+        a = warp.array(
+            ptr=t.data_ptr(),
+            dtype=dtype,
+            shape=shape,
+            strides=strides,
+            device=device_from_torch(t.device),
+            copy=False,
+            grad=grad,
+            requires_grad=requires_grad,
+        )
+
+        # save a reference to the source tensor, otherwise it may get deallocated
+        a._tensor = t
+
+        return a
 
 
 def to_torch(a, requires_grad=None):

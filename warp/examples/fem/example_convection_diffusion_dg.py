@@ -23,7 +23,6 @@ from warp.examples.fem.example_convection_diffusion import (
     initial_condition,
     velocity,
 )
-from warp.sparse import bsr_axpy
 
 
 # Standard transport term, on cells' interior
@@ -42,6 +41,10 @@ def upwind_transport_form(s: fem.Sample, domain: fem.Domain, phi: fem.Field, psi
     vel = velocity(pos, ang_vel)
     vel_n = wp.dot(vel, fem.normal(domain, s))
 
+    if wp.min(pos) <= 0.0 or wp.max(pos) >= 1.0:  # boundary side
+        return phi(s) * (-psi(s) * vel_n + 0.5 * psi(s) * wp.abs(vel_n))
+
+    # interior side
     return fem.jump(phi, s) * (-fem.average(psi, s) * vel_n + 0.5 * fem.jump(psi, s) * wp.abs(vel_n))
 
 
@@ -63,7 +66,7 @@ def sip_diffusion_form(
 
 
 class Example:
-    def __init__(self, quiet=False, degree=2, resolution=50, mesh="grid", viscosity=0.001, ang_vel=1.0):
+    def __init__(self, quiet=False, degree=2, resolution=50, mesh="grid", viscosity=0.0001, ang_vel=1.0):
         self._quiet = quiet
 
         res = resolution
@@ -108,37 +111,30 @@ class Example:
         side_test = fem.make_test(space=scalar_space, domain=sides)
         side_trial = fem.make_trial(space=scalar_space, domain=sides)
 
-        bsr_axpy(
-            fem.integrate(
-                upwind_transport_form,
-                fields={"phi": side_trial, "psi": side_test},
-                values={"ang_vel": ang_vel},
-            ),
-            y=matrix_transport,
+        matrix_transport += fem.integrate(
+            upwind_transport_form,
+            fields={"phi": side_trial, "psi": side_test},
+            values={"ang_vel": ang_vel},
         )
 
         matrix_diffusion = fem.integrate(
             diffusion_form,
             fields={"u": trial, "v": self._test},
         )
-        bsr_axpy(
-            fem.integrate(
-                sip_diffusion_form,
-                fields={"phi": side_trial, "psi": side_test},
-            ),
-            y=matrix_diffusion,
+
+        matrix_diffusion += fem.integrate(
+            sip_diffusion_form,
+            fields={"phi": side_trial, "psi": side_test},
         )
 
-        self._matrix = matrix_inertia
-        bsr_axpy(x=matrix_transport, y=self._matrix)
-        bsr_axpy(x=matrix_diffusion, y=self._matrix, alpha=viscosity)
+        self._matrix = matrix_inertia + matrix_transport + viscosity * matrix_diffusion
 
         # Initial condition
         self._phi_field = scalar_space.make_field()
         fem.interpolate(initial_condition, dest=self._phi_field)
 
         self.renderer = fem_example_utils.Plot()
-        self.renderer.add_surface("phi", self._phi_field)
+        self.renderer.add_field("phi", self._phi_field)
 
     def step(self):
         self.current_frame += 1
@@ -156,7 +152,7 @@ class Example:
 
     def render(self):
         self.renderer.begin_frame(time=self.current_frame * self.sim_dt)
-        self.renderer.add_surface("phi", self._phi_field)
+        self.renderer.add_field("phi", self._phi_field)
         self.renderer.end_frame()
 
 

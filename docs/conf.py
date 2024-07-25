@@ -10,6 +10,8 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+import inspect
+import operator
 import os
 import sys
 from datetime import date
@@ -38,6 +40,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.extlinks",  # Markup to shorten external links
     "sphinx.ext.githubpages",
+    "sphinx.ext.linkcode",  # Add GitHub source code links
     # Third-party extensions:
     "sphinx_copybutton",
     # 'sphinx_tabs.tabs',
@@ -64,6 +67,40 @@ intersphinx_mapping = {
 extlinks = {
     "github": ("https://github.com/NVIDIA/warp/blob/main/%s", "%s"),
 }
+
+
+def linkcode_resolve(domain, info):
+    """Tries to generate external links to code hosted on the Warp GitHub
+
+    This is used for the sphinx.ext.linkcode extension.
+
+    References:
+        https://github.com/google/jax/blob/main/docs/conf.py
+        https://www.sphinx-doc.org/en/master/usage/extensions/linkcode.html
+    """
+
+    if domain != "py":
+        return None
+    if not info["module"]:
+        return None
+    if not info["fullname"]:
+        return None
+
+    try:
+        mod = sys.modules.get(info["module"])
+        obj = operator.attrgetter(info["fullname"])(mod)
+        if isinstance(obj, property):
+            obj = obj.fget
+        filename = inspect.getsourcefile(obj)
+        source, linenum = inspect.getsourcelines(obj)
+    except Exception:
+        return None
+
+    filename = os.path.relpath(filename, start=os.path.dirname(wp.__file__))
+    lines = f"#L{linenum}-L{linenum + len(source)}" if linenum else ""
+
+    return f"https://github.com/NVIDIA/warp/blob/v{version}/warp/{filename}{lines}"
+
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.

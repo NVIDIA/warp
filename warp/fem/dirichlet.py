@@ -153,13 +153,14 @@ def _normalize_dirichlet_projector_and_values_kernel(
 
     diag = wp.lower_bound(columns, beg, end, row)
 
-    if diag < end and columns[diag] == row:
-        P = block_values[diag]
+    if diag < end:
+        if columns[diag] == row:
+            P = block_values[diag]
 
-        P_norm, v_norm = _normalize_projector_and_value(P, fixed_values[row])
+            P_norm, v_norm = _normalize_projector_and_value(P, fixed_values[row])
 
-        block_values[diag] = P_norm
-        fixed_values[row] = v_norm
+            block_values[diag] = P_norm
+            fixed_values[row] = v_norm
 
 
 @wp.kernel
@@ -178,8 +179,9 @@ def _normalize_dirichlet_projector_kernel(
 
     diag = wp.lower_bound(columns, beg, end, row)
 
-    if diag < end and columns[diag] == row:
-        P = block_values[diag]
+    if diag < end:
+        if columns[diag] == row:
+            P = block_values[diag]
 
-        P_norm, v_norm = _normalize_projector_and_value(P, type(P[0])())
-        block_values[diag] = P_norm
+            P_norm, v_norm = _normalize_projector_and_value(P, type(P[0])())
+            block_values[diag] = P_norm

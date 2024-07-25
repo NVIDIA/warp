@@ -279,7 +279,6 @@ def test_is_special_quat(test, device, dtype, register_kernels=False):
 def test_is_special_int(test, device, dtype, register_kernels=False):
     vector_type = wp.types.vector(5, dtype)
     matrix_type = wp.types.matrix((5, 5), dtype)
-    quat_type = wp.types.quaternion(dtype)
 
     def check_is_special_int(bool_outputs: wp.array(dtype=wp.bool)):
         bool_outputs[0] = wp.isfinite(dtype(0))
@@ -294,16 +293,12 @@ def test_is_special_int(test, device, dtype, register_kernels=False):
         bool_outputs[7] = wp.isnan(matrix_type())
         bool_outputs[8] = wp.isinf(matrix_type())
 
-        bool_outputs[9] = wp.isfinite(quat_type())
-        bool_outputs[10] = wp.isnan(quat_type())
-        bool_outputs[11] = wp.isinf(quat_type())
-
     kernel = getkernel(check_is_special_int, suffix=dtype.__name__)
 
     if register_kernels:
         return
 
-    outputs_bool = wp.empty(12, dtype=wp.bool, device=device)
+    outputs_bool = wp.empty(9, dtype=wp.bool, device=device)
 
     wp.launch(kernel, dim=1, inputs=[outputs_bool], device=device)
 
@@ -320,10 +315,6 @@ def test_is_special_int(test, device, dtype, register_kernels=False):
     test.assertTrue(outputs_bool_cpu[6], "wp.isfinite(matrix) is not True")
     test.assertFalse(outputs_bool_cpu[7], "wp.isinf(matrix) is not False")
     test.assertFalse(outputs_bool_cpu[8], "wp.isnan(matrix) is not False")
-
-    test.assertTrue(outputs_bool_cpu[9], "wp.isfinite(quat) is not True")
-    test.assertFalse(outputs_bool_cpu[10], "wp.isinf(quat) is not False")
-    test.assertFalse(outputs_bool_cpu[11], "wp.isnan(quat) is not False")
 
 
 devices = get_test_devices()

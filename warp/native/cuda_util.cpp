@@ -24,13 +24,10 @@
 #include <stack>
 
 // the minimum CUDA version required from the driver
-#define WP_CUDA_DRIVER_VERSION 11030
+#define WP_CUDA_DRIVER_VERSION 11040
 
 // the minimum CUDA Toolkit version required to build Warp
 #define WP_CUDA_TOOLKIT_VERSION 11050
-
-#define WP_CUDA_VERSION_MAJOR(version) (version / 1000)
-#define WP_CUDA_VERSION_MINOR(version) ((version % 1000) / 10)
 
 // check if the CUDA Toolkit is too old
 #if CUDA_VERSION < WP_CUDA_TOOLKIT_VERSION
@@ -108,6 +105,17 @@ bool ContextGuard::always_restore = false;
 
 CudaTimingState* g_cuda_timing_state = NULL;
 
+
+static inline int get_major(int version)
+{
+    return version / 1000;
+}
+
+static inline int get_minor(int version)
+{
+    return (version % 1000) / 10;
+}
+
 static bool get_driver_entry_point(const char* name, void** pfn)
 {
     if (!pfn_cuGetProcAddress || !name || !pfn)
@@ -163,8 +171,8 @@ bool init_cuda_driver()
         if (driver_version < WP_CUDA_DRIVER_VERSION)
         {
             fprintf(stderr, "Warp CUDA error: Warp requires CUDA driver %d.%d or higher, but the current driver only supports CUDA %d.%d\n",
-                WP_CUDA_VERSION_MAJOR(WP_CUDA_DRIVER_VERSION), WP_CUDA_VERSION_MINOR(WP_CUDA_DRIVER_VERSION),
-                WP_CUDA_VERSION_MAJOR(driver_version), WP_CUDA_VERSION_MINOR(driver_version));
+                get_major(WP_CUDA_DRIVER_VERSION), get_minor(WP_CUDA_DRIVER_VERSION),
+                get_major(driver_version), get_minor(driver_version));
             return false;
         }
     }

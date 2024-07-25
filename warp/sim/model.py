@@ -561,7 +561,7 @@ class Model:
         joint_X_p (array): Joint transform in parent frame, shape [joint_count, 7], float
         joint_X_c (array): Joint mass frame in child frame, shape [joint_count, 7], float
         joint_axis (array): Joint axis in child frame, shape [joint_axis_count, 3], float
-        joint_armature (array): Armature for each joint axis (only used by :class:`FeatherstoneIntegrator`), shape [joint_count], float
+        joint_armature (array): Armature for each joint axis (only used by :class:`FeatherstoneIntegrator`), shape [joint_dof_count], float
         joint_target_ke (array): Joint stiffness, shape [joint_axis_count], float
         joint_target_kd (array): Joint damping, shape [joint_axis_count], float
         joint_axis_start (array): Start index of the first axis per joint, shape [joint_count], int
@@ -1205,7 +1205,6 @@ class ModelBuilder:
         self.body_shapes = {}  # mapping from body to shapes
 
         # rigid joints
-        self.joint = {}
         self.joint_parent = []  # index of the parent body                      (constant)
         self.joint_parents = {}  # mapping from joint to parent bodies
         self.joint_child = []  # index of the child body                       (constant)
@@ -1245,7 +1244,7 @@ class ModelBuilder:
         self.joint_axis_total_count = 0
 
         self.up_vector = wp.vec3(up_vector)
-        self.up_axis = wp.vec3(np.argmax(np.abs(up_vector)))
+        self.up_axis = int(np.argmax(np.abs(up_vector)))
         self.gravity = gravity
         # indicates whether a ground plane has been created
         self._ground_created = False
@@ -2274,8 +2273,30 @@ class ModelBuilder:
             enabled=enabled,
         )
 
-    def plot_articulation(self, plot_shapes=True):
-        """Plots the model's articulation."""
+    def plot_articulation(
+        self,
+        show_body_names=True,
+        show_joint_names=True,
+        show_joint_types=True,
+        plot_shapes=True,
+        show_shape_types=True,
+        show_legend=True,
+    ):
+        """
+        Visualizes the model's articulation graph using matplotlib and networkx.
+        Uses the spring layout algorithm from networkx to arrange the nodes.
+        Bodies are shown as orange squares, shapes are shown as blue circles.
+
+        Args:
+            show_body_names (bool): Whether to show the body names or indices
+            show_joint_names (bool): Whether to show the joint names or indices
+            show_joint_types (bool): Whether to show the joint types
+            plot_shapes (bool): Whether to render the shapes connected to the rigid bodies
+            show_shape_types (bool): Whether to show the shape geometry types
+            show_legend (bool): Whether to show a legend
+        """
+        import matplotlib.pyplot as plt
+        import networkx as nx
 
         def joint_type_str(type):
             if type == JOINT_FREE:
@@ -2298,18 +2319,88 @@ class ModelBuilder:
                 return "distance"
             return "unknown"
 
-        vertices = ["world"] + self.body_name
+        def shape_type_str(type):
+            if type == GEO_SPHERE:
+                return "sphere"
+            if type == GEO_BOX:
+                return "box"
+            if type == GEO_CAPSULE:
+                return "capsule"
+            if type == GEO_CYLINDER:
+                return "cylinder"
+            if type == GEO_CONE:
+                return "cone"
+            if type == GEO_MESH:
+                return "mesh"
+            if type == GEO_SDF:
+                return "sdf"
+            if type == GEO_PLANE:
+                return "plane"
+            if type == GEO_NONE:
+                return "none"
+            return "unknown"
+
+        if show_body_names:
+            vertices = ["world"] + self.body_name
+        else:
+            vertices = ["-1"] + [str(i) for i in range(self.body_count)]
         if plot_shapes:
-            vertices += [f"shape_{i}" for i in range(self.shape_count)]
+            for i in range(self.shape_count):
+                shape_label = f"shape_{i}"
+                if show_shape_types:
+                    shape_label += f"\n({shape_type_str(self.shape_geo_type[i])})"
+                vertices.append(shape_label)
         edges = []
         edge_labels = []
         for i in range(self.joint_count):
-            edges.append((self.joint_child[i] + 1, self.joint_parent[i] + 1))
-            edge_labels.append(f"{self.joint_name[i]}\n({joint_type_str(self.joint_type[i])})")
+            edge = (self.joint_child[i] + 1, self.joint_parent[i] + 1)
+            edges.append(edge)
+            if show_joint_names:
+                joint_label = self.joint_name[i]
+            else:
+                joint_label = str(i)
+            if show_joint_types:
+                joint_label += f"\n({joint_type_str(self.joint_type[i])})"
+            edge_labels.append(joint_label)
+
         if plot_shapes:
             for i in range(self.shape_count):
                 edges.append((len(self.body_name) + i + 1, self.shape_body[i] + 1))
-        wp.plot_graph(vertices, edges, edge_labels=edge_labels)
+
+        # plot graph
+        G = nx.Graph()
+        for i in range(len(vertices)):
+            G.add_node(i, label=vertices[i])
+        for i in range(len(edges)):
+            label = edge_labels[i] if i < len(edge_labels) else ""
+            G.add_edge(edges[i][0], edges[i][1], label=label)
+        pos = nx.spring_layout(G)
+        nx.draw_networkx_edges(G, pos, node_size=0, edgelist=edges[: self.joint_count])
+        # render body vertices
+        draw_args = {"node_size": 100}
+        bodies = nx.subgraph(G, list(range(self.body_count + 1)))
+        nx.draw_networkx_nodes(bodies, pos, node_color="orange", node_shape="s", **draw_args)
+        if plot_shapes:
+            # render shape vertices
+            shapes = nx.subgraph(G, list(range(self.body_count + 1, len(vertices))))
+            nx.draw_networkx_nodes(shapes, pos, node_color="skyblue", **draw_args)
+            nx.draw_networkx_edges(
+                G, pos, node_size=0, edgelist=edges[self.joint_count :], edge_color="gray", style="dashed"
+            )
+        edge_labels = nx.get_edge_attributes(G, "label")
+        nx.draw_networkx_edge_labels(
+            G, pos, edge_labels=edge_labels, font_size=6, bbox={"alpha": 0.6, "color": "w", "lw": 0}
+        )
+        # add node labels
+        nx.draw_networkx_labels(G, pos, dict(enumerate(vertices)), font_size=6)
+        if show_legend:
+            plt.plot([], [], "s", color="orange", label="body")
+            plt.plot([], [], "k-", label="joint")
+            if plot_shapes:
+                plt.plot([], [], "o", color="skyblue", label="shape")
+                plt.plot([], [], "k--", label="shape-body connection")
+            plt.legend(loc="upper left", fontsize=6)
+        plt.show()
 
     def collapse_fixed_joints(self, verbose=wp.config.verbose):
         """Removes fixed joints from the model and merges the bodies they connect. This is useful for simplifying the model for faster and more stable simulation."""
@@ -2354,7 +2445,6 @@ class ModelBuilder:
                 "type": self.joint_type[i],
                 "q": self.joint_q[q_start : q_start + q_dim],
                 "qd": self.joint_qd[qd_start : qd_start + qd_dim],
-                "act": self.joint_act[qd_start : qd_start + qd_dim],
                 "armature": self.joint_armature[qd_start : qd_start + qd_dim],
                 "q_start": q_start,
                 "qd_start": qd_start,
@@ -2383,6 +2473,7 @@ class ModelBuilder:
                         "limit_kd": self.joint_limit_kd[j],
                         "limit_lower": self.joint_limit_lower[j],
                         "limit_upper": self.joint_limit_upper[j],
+                        "act": self.joint_act[j],
                     }
                 )
 
@@ -2537,7 +2628,6 @@ class ModelBuilder:
             self.joint_qd_start.append(len(self.joint_qd))
             self.joint_q.extend(joint["q"])
             self.joint_qd.extend(joint["qd"])
-            self.joint_act.extend(joint["act"])
             self.joint_armature.extend(joint["armature"])
             self.joint_enabled.append(joint["enabled"])
             self.joint_linear_compliance.append(joint["linear_compliance"])
@@ -2555,6 +2645,7 @@ class ModelBuilder:
                 self.joint_limit_upper.append(axis["limit_upper"])
                 self.joint_limit_ke.append(axis["limit_ke"])
                 self.joint_limit_kd.append(axis["limit_kd"])
+                self.joint_act.append(axis["act"])
 
     # muscles
     def add_muscle(
@@ -4478,7 +4569,9 @@ class ModelBuilder:
 
             # enable ground plane
             m.ground_plane = wp.array(self._ground_params["plane"], dtype=wp.float32, requires_grad=requires_grad)
-            m.gravity = np.array(self.up_vector) * self.gravity
+            m.gravity = np.array(self.up_vector, dtype=wp.float32) * self.gravity
+            m.up_axis = self.up_axis
+            m.up_vector = np.array(self.up_vector, dtype=wp.float32)
 
             m.enable_tri_collisions = False
 

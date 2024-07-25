@@ -20,6 +20,7 @@ including in-place variants where possible.
 .. automodule:: warp.sparse
     :members:
 
+.. _iterative-linear-solvers:
 
 Iterative Linear Solvers
 ------------------------

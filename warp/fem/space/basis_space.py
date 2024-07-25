@@ -1,5 +1,7 @@
 from typing import Optional
 
+import numpy as np
+
 import warp as wp
 from warp.fem import cache
 from warp.fem.geometry import Geometry
@@ -136,6 +138,8 @@ class ShapeBasisSpace(BasisSpace):
             self.node_tets = self._node_tets
         if hasattr(shape, "element_node_hexes"):
             self.node_hexes = self._node_hexes
+        if hasattr(shape, "element_vtk_cells"):
+            self.vtk_cells = self._vtk_cells
         if hasattr(topology, "node_grid"):
             self.node_grid = topology.node_grid
 
@@ -243,6 +247,16 @@ class ShapeBasisSpace(BasisSpace):
 
         hex_indices = element_node_indices[:, element_hexes].reshape(-1, 8)
         return hex_indices
+
+    def _vtk_cells(self):
+        element_node_indices = self._topology.element_node_indices().numpy()
+        element_vtk_cells, element_vtk_cell_types = self._shape.element_vtk_cells()
+
+        idx_per_cell = element_vtk_cells.shape[1]
+        cell_indices = element_node_indices[:, element_vtk_cells].reshape(-1, idx_per_cell)
+        cells = np.hstack((np.full((cell_indices.shape[0], 1), idx_per_cell), cell_indices))
+
+        return cells.flatten(), np.tile(element_vtk_cell_types, element_node_indices.shape[0])
 
 
 class TraceBasisSpace(BasisSpace):

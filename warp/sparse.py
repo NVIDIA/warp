@@ -1480,8 +1480,9 @@ def _bsr_mm_compute_values(
         y_end = y_offsets[x_col + 1]
 
         y_block = wp.lower_bound(y_columns, y_beg, y_end, col)
-        if y_block < y_end and y_columns[y_block] == col:
-            mm_val += x_values[x_block] * y_values[y_block]
+        if y_block < y_end:
+            if y_columns[y_block] == col:
+                mm_val += x_values[x_block] * y_values[y_block]
 
     mm_values[mm_block] += alpha * mm_val
 

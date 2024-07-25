@@ -649,6 +649,30 @@ inline CUDA_CALLABLE unsigned argmax(vec_t<Length,Type> v)
 }
 
 template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length,Type> abs(vec_t<Length,Type> v)
+{
+    vec_t<Length,Type> ret;
+    for (unsigned i=0; i < Length; ++i)
+    {
+        ret[i] = abs(v[i]);
+    }
+
+    return ret;
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length,Type> sign(vec_t<Length,Type> v)
+{
+    vec_t<Length,Type> ret;
+    for (unsigned i=0; i < Length; ++i)
+    {
+        ret[i] = v[i] < Type(0) ? Type(-1) : Type(1);
+    }
+
+    return ret;
+}
+
+template<unsigned Length, typename Type>
 inline CUDA_CALLABLE void expect_near(const vec_t<Length, Type>& actual, const vec_t<Length, Type>& expected, const Type& tolerance)
 {
     const Type diff(0);
@@ -1044,6 +1068,46 @@ inline CUDA_CALLABLE void adj_max(const vec_t<Length,Type> &v, vec_t<Length,Type
 {
     unsigned i = argmax(v);
     adj_v[i] += adj_ret;
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_abs(
+    const vec_t<Length,Type>& v,
+    vec_t<Length,Type>& adj_v,
+    const vec_t<Length,Type>& adj_ret
+)
+{
+    for (unsigned i=0; i < Length; ++i)
+    {
+        if (v[i] < Type(0))
+        {
+            adj_v[i] -= adj_ret[i];
+        }
+        else
+        {
+            adj_v[i] += adj_ret[i];
+        }
+    }
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_sign(
+    const vec_t<Length,Type>& v,
+    vec_t<Length,Type>& adj_v,
+    const vec_t<Length,Type>& adj_ret
+)
+{
+    for (unsigned i=0; i < Length; ++i)
+    {
+        if (v[i] < Type(0))
+        {
+            adj_v[i] -= adj_ret[i];
+        }
+        else
+        {
+            adj_v[i] += adj_ret[i];
+        }
+    }
 }
 
 // Do I need to specialize these for different lengths?

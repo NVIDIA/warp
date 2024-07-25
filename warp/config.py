@@ -39,6 +39,9 @@ verbose_warnings: bool = False
 quiet: bool = False
 """Suppress all output except errors and warnings."""
 
+verify_autograd_array_access: bool = False
+"""print warnings related to array overwrites that may result in incorrect gradients"""
+
 cache_kernels: bool = True
 """If `True`, kernels that have already been compiled from previous application launches will not be recompiled."""
 

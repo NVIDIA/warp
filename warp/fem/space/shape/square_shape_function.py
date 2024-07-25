@@ -206,6 +206,31 @@ class SquareBipolynomialShapeFunctions:
 
         return grid_to_tris(self.ORDER, self.ORDER)
 
+    def element_vtk_cells(self):
+        n = self.ORDER + 1
+
+        # vertices
+        cells = [[0, (n - 1) * n, n * n - 1, n - 1]]
+
+        if self.ORDER == 1:
+            cell_type = 9  # VTK_QUAD
+        else:
+            middle = np.arange(1, n - 1)
+
+            # edges
+            cells.append(middle * n)
+            cells.append(middle + (n - 1) * n)
+            cells.append(middle * n + n - 1)
+            cells.append(middle)
+
+            # faces
+            interior = np.broadcast_to(middle, (n - 2, n - 2))
+            cells.append((interior * n + interior.transpose()).flatten())
+
+            cell_type = 70  # VTK_LAGRANGE_QUADRILATERAL
+
+        return np.concatenate(cells)[np.newaxis, :], np.array([cell_type], dtype=np.int8)
+
 
 class SquareSerendipityShapeFunctions:
     """
@@ -501,6 +526,12 @@ class SquareSerendipityShapeFunctions:
 
         return element_triangles
 
+    def element_vtk_cells(self):
+        tris = np.array(self.element_node_triangulation())
+        cell_type = 5  # VTK_TRIANGLE
+
+        return tris, np.full(tris.shape[0], cell_type, dtype=np.int8)
+
 
 class SquareNonConformingPolynomialShapeFunctions:
     # embeds the largest equilateral triangle centered at (0.5, 0.5) into the reference square
@@ -516,6 +547,7 @@ class SquareNonConformingPolynomialShapeFunctions:
         self.NODES_PER_ELEMENT = self._tri_shape.NODES_PER_ELEMENT
 
         self.element_node_triangulation = self._tri_shape.element_node_triangulation
+        self.element_vtk_cells = self._tri_shape.element_vtk_cells
 
     @property
     def name(self) -> str:

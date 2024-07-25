@@ -1902,6 +1902,62 @@ def test_constants(test, device, dtype, register_kernels=False):
     wp.launch(kernel, dim=1, inputs=[], device=device)
 
 
+def test_abs(test, device, dtype, register_kernels=False):
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp.types.vector(length=2, dtype=wptype)
+    vec3 = wp.types.vector(length=3, dtype=wptype)
+    vec4 = wp.types.vector(length=4, dtype=wptype)
+    vec5 = wp.types.vector(length=5, dtype=wptype)
+
+    def check_vector_abs():
+        res2 = wp.abs(vec2(wptype(-1), wptype(2)))
+        wp.expect_eq(res2, vec2(wptype(1), wptype(2)))
+
+        res3 = wp.abs(vec3(wptype(1), wptype(-2), wptype(3)))
+        wp.expect_eq(res3, vec3(wptype(1), wptype(2), wptype(3)))
+
+        res4 = wp.abs(vec4(wptype(-1), wptype(2), wptype(3), wptype(-4)))
+        wp.expect_eq(res4, vec4(wptype(1), wptype(2), wptype(3), wptype(4)))
+
+        res5 = wp.abs(vec5(wptype(-1), wptype(2), wptype(-3), wptype(4), wptype(-5)))
+        wp.expect_eq(res5, vec5(wptype(1), wptype(2), wptype(3), wptype(4), wptype(5)))
+
+    kernel = getkernel(check_vector_abs, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    wp.launch(kernel, dim=1, inputs=[], device=device)
+
+
+def test_sign(test, device, dtype, register_kernels=False):
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp.types.vector(length=2, dtype=wptype)
+    vec3 = wp.types.vector(length=3, dtype=wptype)
+    vec4 = wp.types.vector(length=4, dtype=wptype)
+    vec5 = wp.types.vector(length=5, dtype=wptype)
+
+    def check_vector_sign():
+        res2 = wp.sign(vec2(wptype(-1), wptype(2)))
+        wp.expect_eq(res2, vec2(wptype(-1), wptype(1)))
+
+        res3 = wp.sign(vec3(wptype(1), wptype(-2), wptype(3)))
+        wp.expect_eq(res3, vec3(wptype(1), wptype(-1), wptype(1)))
+
+        res4 = wp.sign(vec4(wptype(-1), wptype(2), wptype(3), wptype(-4)))
+        wp.expect_eq(res4, vec4(wptype(-1), wptype(1), wptype(1), wptype(-1)))
+
+        res5 = wp.sign(vec5(wptype(-1), wptype(2), wptype(-3), wptype(4), wptype(-5)))
+        wp.expect_eq(res5, vec5(wptype(-1), wptype(1), wptype(-1), wptype(1), wptype(-1)))
+
+    kernel = getkernel(check_vector_sign, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    wp.launch(kernel, dim=1, inputs=[], device=device)
+
+
 def test_minmax(test, device, dtype, register_kernels=False):
     rng = np.random.default_rng(123)
 
@@ -2106,6 +2162,14 @@ for dtype in np_scalar_types:
     add_function_test_register_kernel(
         TestVecScalarOps, f"test_constants_{dtype.__name__}", test_constants, devices=devices, dtype=dtype
     )
+
+    if dtype not in np_unsigned_int_types:
+        add_function_test_register_kernel(
+            TestVecScalarOps, f"test_abs_{dtype.__name__}", test_abs, devices=devices, dtype=dtype
+        )
+        add_function_test_register_kernel(
+            TestVecScalarOps, f"test_sign_{dtype.__name__}", test_sign, devices=devices, dtype=dtype
+        )
 
     # the kernels in this test compile incredibly slowly...
     # add_function_test_register_kernel(TestVecScalarOps, f"test_minmax_{dtype.__name__}", test_minmax, devices=devices, dtype=dtype)

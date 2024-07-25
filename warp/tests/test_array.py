@@ -2328,6 +2328,44 @@ def test_array_from_cai(test, device):
     assert_np_equal(arr_warp.numpy(), np.array([[2, 1, 1], [1, 0, 0], [1, 0, 0]]))
 
 
+@wp.kernel
+def inc_scalar(a: wp.array(dtype=float)):
+    tid = wp.tid()
+    a[tid] = a[tid] + 1.0
+
+
+@wp.kernel
+def inc_vector(a: wp.array(dtype=wp.vec3f)):
+    tid = wp.tid()
+    a[tid] = a[tid] + wp.vec3f(1.0)
+
+
+@wp.kernel
+def inc_matrix(a: wp.array(dtype=wp.mat22f)):
+    tid = wp.tid()
+    a[tid] = a[tid] + wp.mat22f(1.0)
+
+
+def test_direct_from_numpy(test, device):
+    """Pass NumPy arrays to Warp kernels directly"""
+
+    n = 12
+
+    s = np.arange(n, dtype=np.float32)
+    v = np.arange(n, dtype=np.float32).reshape((n // 3, 3))
+    m = np.arange(n, dtype=np.float32).reshape((n // 4, 2, 2))
+
+    wp.launch(inc_scalar, dim=n, inputs=[s], device=device)
+    wp.launch(inc_vector, dim=n // 3, inputs=[v], device=device)
+    wp.launch(inc_matrix, dim=n // 4, inputs=[m], device=device)
+
+    expected = np.arange(1, n + 1, dtype=np.float32)
+
+    assert_np_equal(s, expected)
+    assert_np_equal(v.reshape(n), expected)
+    assert_np_equal(m.reshape(n), expected)
+
+
 devices = get_test_devices()
 
 
@@ -2385,6 +2423,8 @@ add_function_test(TestArray, "test_array_of_structs_grad", test_array_of_structs
 add_function_test(TestArray, "test_array_of_structs_from_numpy", test_array_of_structs_from_numpy, devices=devices)
 add_function_test(TestArray, "test_array_of_structs_roundtrip", test_array_of_structs_roundtrip, devices=devices)
 add_function_test(TestArray, "test_array_from_numpy", test_array_from_numpy, devices=devices)
+
+add_function_test(TestArray, "test_direct_from_numpy", test_direct_from_numpy, devices=["cpu"])
 
 try:
     import torch

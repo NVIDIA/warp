@@ -4,7 +4,8 @@ NVIDIA Warp Documentation
 Warp is a Python framework for writing high-performance simulation and graphics code. Warp takes
 regular Python functions and JIT compiles them to efficient kernel code that can run on the CPU or GPU.
 
-Warp is designed for spatial computing and comes with a rich set of primitives that make it easy to write 
+Warp is designed for `spatial computing <https://en.wikipedia.org/wiki/Spatial_computing>`_
+and comes with a rich set of primitives that make it easy to write 
 programs for physics simulation, perception, robotics, and geometry processing. In addition, Warp kernels 
 are differentiable and can be used as part of machine-learning pipelines with frameworks such as PyTorch and JAX.
 
@@ -21,9 +22,14 @@ The easiest way to install Warp is from `PyPI <https://pypi.org/project/warp-lan
 
     $ pip install warp-lang
 
-The binaries hosted on PyPI are currently built with the CUDA 12.5 runtime.
-Users requiring an older CUDA runtime in Warp can build Warp from source or
-install wheels hosted on GitHub as described in :ref:`GitHub Installation`.
+You can also use ```pip install warp-lang[extras]``` to install additional dependencies for running examples
+and USD-related features.
+
+The binaries hosted on PyPI are currently built with the CUDA 12 runtime and therefore
+require a minimum version of the CUDA driver of 525.60.13 (Linux x86-64) or 528.33 (Windows x86-64).
+
+If you require GPU support on a system with an older CUDA driver, you can build Warp from source or
+install wheels built with the CUDA 11.8 runtime as described in :ref:`GitHub Installation`.
 
 Basic Example
 -------------
@@ -61,11 +67,14 @@ Additional Examples
 -------------------
 
 The `warp/examples <https://github.com/NVIDIA/warp/tree/main/warp/examples>`_ directory in
-the Github repository contains a number of scripts categorized under different subdirectories
-that show how to implement different simulation methods using the Warp API. Most examples
-will generate USD files containing time-sampled animations in the 
-same directory as the example.
+the Github repository contains a number of scripts categorized under subdirectories
+that show how to implement various simulation methods using the Warp API. Most examples
+will generate USD files containing time-sampled animations in the current working directory.
 Before running examples, users should ensure that the ``usd-core``, ``matplotlib``, and ``pyglet`` packages are installed using::
+
+    pip install warp-lang[extras]
+
+These dependencies can also be manually installed using::
 
     pip install usd-core matplotlib pyglet
 
@@ -284,40 +293,39 @@ Problems, questions, and feature requests can be opened on
 `GitHub Issues <https://github.com/NVIDIA/warp/issues>`_.
 
 The Warp team also monitors the **#warp** channel on the public
-`Omniverse Discord <https://discord.com/invite/nvidiaomniverse>`_ server, come chat to us!
+`Omniverse Discord <https://discord.com/invite/nvidiaomniverse>`_ server, come chat with us!
 
 Versioning
 ----------
 
-Versions take the format X.Y.Z, similar to `Python itself <https://devguide.python.org/developer-workflow/development-cycle/#devcycle>`_:
+Versions take the format X.Y.Z, similar to `Python itself <https://devguide.python.org/developer-workflow/development-cycle/#devcycle>`__:
 
 * Increments in X are reserved for major reworks of the project causing disruptive incompatibility (or reaching the 1.0 milestone).
 * Increments in Y are for regular releases with a new set of features.
-* Increments in Z are for bug fixes. In principle there are no new features. Can be omitted if 0 or not relevant.
+* Increments in Z are for bug fixes. In principle, there are no new features. Can be omitted if 0 or not relevant.
 
-This is similar to `Semantic Versioning <https://semver.org/>`_ but less strict around backward compatibility.
-Like with Python, some breaking changes can be present between minor versions if well documented and gradually introduced.
+This is similar to `Semantic Versioning <https://semver.org/>`_ minor versions if well-documented and gradually introduced.
 
-Note that prior to 0.11.0 this schema was not strictly adhered to.
+Note that prior to 0.11.0, this schema was not strictly adhered to.
 
 License
 -------
 
 Warp is provided under the NVIDIA Software License, please see
-`LICENSE.md <https://github.com/NVIDIA/warp/blob/main/LICENSE.md>`_ for the full license text.
+`LICENSE.md <https://github.com/NVIDIA/warp/blob/main/LICENSE.md>`__ for the full license text.
 
 Contributing
 ------------
 
 Contributions and pull requests from the community are welcome and are taken under the
-terms described in the **9. Feedback** section of the `license <https://github.com/NVIDIA/warp/blob/main/LICENSE.md>`_.
-`CONTRIBUTING.md <https://github.com/NVIDIA/warp/blob/main/CONTRIBUTING.md>`_. provides additional information on
+terms described in the **Feedback** section of `LICENSE.md <https://github.com/NVIDIA/warp/blob/main/LICENSE.md#9-feedback>`__.
+`CONTRIBUTING.md <https://github.com/NVIDIA/warp/blob/main/CONTRIBUTING.md>`_ provides additional information on
 how to open a pull request for Warp.
 
 Citing
 ------
 
-If you use Warp in your research please use the following citation:
+If you use Warp in your research, please use the following citation:
 
 .. code:: bibtex
 

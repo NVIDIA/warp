@@ -159,7 +159,7 @@ class Example:
         array_cast(in_array=global_res, out_array=self._scalar_field.dof_values)
 
     def render(self):
-        self.renderer.add_surface("solution", self._scalar_field)
+        self.renderer.add_field("solution", self._scalar_field)
 
     def _assemble_local_system(self, geo_partition: fem.GeometryPartition):
         scalar_space = self._scalar_space

@@ -966,6 +966,19 @@ def test_indexing(test, device, dtype, register_kernels=False):
     assert_np_equal(r3.numpy()[0], 2.0 * q.numpy()[0, 3], tol=tol)
 
 
+@wp.kernel
+def test_assignment():
+    q = wp.quat(1.0, 2.0, 3.0, 4.0)
+    q[0] = 1.23
+    q[1] = 2.34
+    q[2] = 3.45
+    q[3] = 4.56
+    wp.expect_eq(q[0], 1.23)
+    wp.expect_eq(q[1], 2.34)
+    wp.expect_eq(q[2], 3.45)
+    wp.expect_eq(q[3], 4.56)
+
+
 def test_quat_lerp(test, device, dtype, register_kernels=False):
     rng = np.random.default_rng(123)
 
@@ -1986,6 +1999,7 @@ class TestQuat(unittest.TestCase):
 
 
 add_kernel_test(TestQuat, test_constructor_default, dim=1, devices=devices)
+add_kernel_test(TestQuat, test_assignment, dim=1, devices=devices)
 
 for dtype in np_float_types:
     add_function_test_register_kernel(

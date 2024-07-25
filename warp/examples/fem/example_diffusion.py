@@ -20,7 +20,6 @@ import warp as wp
 import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
 from warp.fem.utils import array_axpy
-from warp.sparse import bsr_axpy
 
 
 @fem.integrand
@@ -130,7 +129,7 @@ class Example:
         else:
             # Weak BC: add together diffusion and boundary condition matrices
             boundary_strength = 1.0 / self._boundary_compliance
-            bsr_axpy(x=bd_matrix, y=matrix, alpha=boundary_strength, beta=1)
+            matrix += bd_matrix * boundary_strength
             array_axpy(x=bd_rhs, y=rhs, alpha=boundary_strength, beta=1)
 
         # Solve linear system using Conjugate Gradient
@@ -141,7 +140,7 @@ class Example:
         self._scalar_field.dof_values = x
 
     def render(self):
-        self.renderer.add_surface("solution", self._scalar_field)
+        self.renderer.add_field("solution", self._scalar_field)
 
 
 if __name__ == "__main__":

@@ -157,7 +157,7 @@ def compute(db: OgnNoiseDeformDatabase) -> None:
             child_idx=i,
         )
 
-        # Compute a unique seed for the given primitive by hashin its path.
+        # Compute a unique seed for the given primitive by hashing its path.
         # We cannot directly use the child index since bundle child ordering
         # is currently not guaranteed and can change between sessions, which makes
         # the result non-deterministic.
