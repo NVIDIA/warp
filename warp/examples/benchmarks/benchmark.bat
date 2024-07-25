@@ -11,3 +11,5 @@ python benchmark_cloth.py numpy
 @REM python benchmark_cloth.py numba
 @REM python benchmark_cloth.py jax_cpu
 @REM python benchmark_cloth.py jax_gpu
+@REM python benchmark_cloth.py paddle_cpu
+@REM python benchmark_cloth.py paddle_gpu

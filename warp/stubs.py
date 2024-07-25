@@ -102,6 +102,11 @@ from warp.torch import dtype_from_torch, dtype_to_torch
 from warp.torch import device_from_torch, device_to_torch
 from warp.torch import stream_from_torch, stream_to_torch
 
+from warp.paddle import from_paddle, to_paddle
+from warp.paddle import dtype_from_paddle, dtype_to_paddle
+from warp.paddle import device_from_paddle, device_to_paddle
+from warp.paddle import stream_from_paddle
+
 from warp.jax import from_jax, to_jax
 from warp.jax import dtype_from_jax, dtype_to_jax
 from warp.jax import device_from_jax, device_to_jax
