@@ -2799,48 +2799,38 @@ class Runtime:
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_int,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
+                ctypes.c_float * 9,
+                ctypes.c_float * 3,
                 ctypes.c_bool,
+                ctypes.c_float,
             ]
             self.core.volume_f_from_tiles_device.restype = ctypes.c_uint64
             self.core.volume_v_from_tiles_device.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_int,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
+                ctypes.c_float * 9,
+                ctypes.c_float * 3,
                 ctypes.c_bool,
+                ctypes.c_float * 3,
             ]
             self.core.volume_v_from_tiles_device.restype = ctypes.c_uint64
             self.core.volume_i_from_tiles_device.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_int,
-                ctypes.c_float,
-                ctypes.c_int,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
+                ctypes.c_float * 9,
+                ctypes.c_float * 3,
                 ctypes.c_bool,
+                ctypes.c_int,
             ]
             self.core.volume_i_from_tiles_device.restype = ctypes.c_uint64
             self.core.volume_index_from_tiles_device.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_int,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
+                ctypes.c_float * 9,
+                ctypes.c_float * 3,
                 ctypes.c_bool,
             ]
             self.core.volume_index_from_tiles_device.restype = ctypes.c_uint64
@@ -2848,10 +2838,8 @@ class Runtime:
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_int,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
+                ctypes.c_float * 9,
+                ctypes.c_float * 3,
                 ctypes.c_bool,
             ]
             self.core.volume_from_active_voxels_device.restype = ctypes.c_uint64

@@ -843,6 +843,26 @@ def test_volume_from_numpy(test, device):
     test.assertIsNone(sphere_vdb_array.deleter)
 
 
+def test_volume_aniso_transform(test, device):
+    # XY-rotation + z scale
+    transform = [
+        [0, -1, 0],
+        [1, 0, 0],
+        [0, 0, 2],
+    ]
+
+    points = wp.array([[-1, 1, 4]], dtype=float, device=device)
+    volume = wp.Volume.allocate_by_voxels(voxel_points=points, transform=transform, device=device)
+
+    # Check that world points are correctly converted to local space
+    voxels = volume.get_voxels().numpy()
+    assert_np_equal(voxels, [[1, 1, 2]])
+
+    # Check that we retrieve the correct transform from the grid metadata
+    assert_np_equal(volume.get_voxel_size(), [-1, 1, 2])
+    assert_np_equal(transform, np.array(volume.get_grid_info().transform_matrix).reshape(3, 3))
+
+
 class TestVolume(unittest.TestCase):
     def test_volume_new_del(self):
         # test the scenario in which a volume is created but not initialized before gc
@@ -873,6 +893,9 @@ add_function_test(
 add_function_test(TestVolume, "test_volume_introspection", test_volume_introspection, devices=devices)
 add_function_test(
     TestVolume, "test_volume_from_numpy", test_volume_from_numpy, devices=get_selected_cuda_test_devices()
+)
+add_function_test(
+    TestVolume, "test_volume_aniso_transform", test_volume_aniso_transform, devices=get_selected_cuda_test_devices()
 )
 add_function_test(TestVolume, "test_volume_multiple_grids", test_volume_multiple_grids, devices=devices)
 add_function_test(TestVolume, "test_volume_feature_array", test_volume_feature_array, devices=devices)

@@ -19,6 +19,7 @@
   - Handle incompatible CUDA driver versions gracefully
   - Add `wp.abs()` and `wp.sign()` for vector types
   - Expose scalar arithmetic operators to Python's runtime (e.g.: `wp.float16(1.23) * wp.float16(2.34)`)
+  - Add support for creating volumes with anisotropic transforms
 
 - `warp.autograd` improvements:
   - New `warp.autograd` module with utility functions `gradcheck()`, `jacobian()`, and `jacobian_fd()` for debugging kernel Jacobians ([docs](https://nvidia.github.io/warp/modules/differentiability.html#measuring-gradient-accuracy))
