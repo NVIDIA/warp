@@ -45,11 +45,6 @@
 - Handle incompatible CUDA driver versions gracefully
 - Fix handling of `upaxis` variable in `ModelBuilder` and the rendering thereof in `OpenGLRenderer`
 - Add `wp.abs()` and `wp.sign()` for vectors
-
-## [1.2.2] - 2024-07-04
-
-- Support for NumPy >= 2.0
-- Fix hashing of replay functions and snippets
 - Add additional documentation and examples demonstrating `wp.copy()`, `wp.clone()`, and `array.assign()` differentiability
 - Fix adding `__new__()` methods for all class `__del__()` methods to
   anticipate when a class instance is created but not instantiated before garbage collection.

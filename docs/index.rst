@@ -22,11 +22,14 @@ The easiest way to install Warp is from `PyPI <https://pypi.org/project/warp-lan
 
     $ pip install warp-lang
 
-You can also use `pip install warp-lang[extras]` to install additional dependencies for USD-related features.
+You can also use ```pip install warp-lang[extras]``` to install additional dependencies for running examples
+and USD-related features.
 
-The binaries hosted on PyPI are currently built with the CUDA 12.5 runtime.
-Users requiring an older CUDA runtime in Warp can build Warp from source or
-install wheels hosted on GitHub as described in :ref:`GitHub Installation`.
+The binaries hosted on PyPI are currently built with the CUDA 12 runtime and therefore
+require a minimum version of the CUDA driver of 525.60.13 (Linux x86-64) or 528.33 (Windows x86-64).
+
+If you require GPU support on a system with an older CUDA driver, you can build Warp from source or
+install wheels built with the CUDA 11.8 runtime as described in :ref:`GitHub Installation`.
 
 Basic Example
 -------------
