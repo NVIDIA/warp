@@ -20,6 +20,7 @@
   - Add `wp.abs()` and `wp.sign()` for vector types
   - Expose scalar arithmetic operators to Python's runtime (e.g.: `wp.float16(1.23) * wp.float16(2.34)`)
   - Add support for creating volumes with anisotropic transforms
+  - Add `wp.array(ptr=...)` to allow initializing arrays from pointer addresses inside of kernels ([GH-206](https://github.com/NVIDIA/warp/issues/206))
 
 - `warp.autograd` improvements:
   - New `warp.autograd` module with utility functions `gradcheck()`, `jacobian()`, and `jacobian_fd()` for debugging kernel Jacobians ([docs](https://nvidia.github.io/warp/modules/differentiability.html#measuring-gradient-accuracy))
@@ -52,18 +53,12 @@
 ## [1.2.2] - 2024-07-04
 
 - Support for NumPy >= 2.0
-- Fix hashing of replay functions and snippets
 - Add additional documentation and examples demonstrating `wp.copy()`, `wp.clone()`, and `array.assign()` differentiability
-- Fix adding `__new__()` methods for all class `__del__()` methods to
-  anticipate when a class instance is created but not instantiated before garbage collection.
+- Add `__new__()` methods for all class `__del__()` methods to
+  handle when a class instance is created but not instantiated before garbage collection.
 - Add documentation for dynamic loop autograd limitations
-- Conform to Python's syntax for function arguments when calling built-ins inside of kernels, thus extending support for keyword arguments
-- Add `wp.array(ptr=...)` to allow initializing arrays from pointer addresses inside of kernels
+- Allow users to pass function arguments by keyword in a kernel using standard Python calling semantics
 - Implement the assignment operator for `wp.quat`
-
-## [1.2.2] - 2024-07-04
-
-- Support for NumPy >= 2.0
 
 ## [1.2.1] - 2024-06-14
 
