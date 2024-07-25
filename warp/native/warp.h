@@ -107,11 +107,11 @@ extern "C"
     WP_API void volume_get_voxels_device(uint64_t id, void* buf);
     WP_API void volume_destroy_device(uint64_t id);
     
-    WP_API uint64_t volume_f_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value, float tx, float ty, float tz, bool points_in_world_space);
-    WP_API uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value_x, float bg_value_y, float bg_value_z, float tx, float ty, float tz, bool points_in_world_space);
-    WP_API uint64_t volume_i_from_tiles_device(void* context, void* points, int num_points, float voxel_size, int bg_value, float tx, float ty, float tz, bool points_in_world_space);
-    WP_API uint64_t volume_index_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float tx, float ty, float tz, bool points_in_world_space);
-    WP_API uint64_t volume_from_active_voxels_device(void* context, void* points, int num_points, float voxel_size, float tx, float ty, float tz, bool points_in_world_space);
+    WP_API uint64_t volume_f_from_tiles_device(void* context, void* points, int num_points, float transform[9], float translation[3], bool points_in_world_space, float bg_value);
+    WP_API uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points, float transform[9], float translation[3], bool points_in_world_space, float bg_value[3]);
+    WP_API uint64_t volume_i_from_tiles_device(void* context, void* points, int num_points, float transform[9], float translation[3], bool points_in_world_space, int bg_value);
+    WP_API uint64_t volume_index_from_tiles_device(void* context, void* points, int num_points, float transform[9], float translation[3], bool points_in_world_space);
+    WP_API uint64_t volume_from_active_voxels_device(void* context, void* points, int num_points, float transform[9], float translation[3], bool points_in_world_space);
 
     WP_API void volume_get_buffer_info(uint64_t id, void** buf, uint64_t* size);
     WP_API void volume_get_voxel_size(uint64_t id, float* dx, float* dy, float* dz);
