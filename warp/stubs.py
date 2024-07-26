@@ -40,7 +40,7 @@ from warp.types import spatial_vector, spatial_vectorh, spatial_vectorf, spatial
 from warp.types import spatial_matrix, spatial_matrixh, spatial_matrixf, spatial_matrixd
 
 from warp.types import Bvh, Mesh, HashGrid, Volume, MarchingCubes
-from warp.types import bvh_query_t, hash_grid_query_t, mesh_query_aabb_t, mesh_query_point_t, mesh_query_ray_t
+from warp.types import BvhQuery, HashGridQuery, MeshQueryAABB, MeshQueryPoint, MeshQueryRay
 
 from warp.types import matmul, adj_matmul, batched_matmul, adj_batched_matmul
 
@@ -120,44 +120,44 @@ __version__ = config.version
 
 
 @over
-def min(x: Scalar, y: Scalar) -> Scalar:
+def min(a: Scalar, b: Scalar) -> Scalar:
     """Return the minimum of two scalars."""
     ...
 
 
 @over
-def min(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+def min(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """Return the element-wise minimum of two vectors."""
     ...
 
 
 @over
-def min(v: Vector[Any, Scalar]) -> Scalar:
-    """Return the minimum element of a vector ``v``."""
+def min(a: Vector[Any, Scalar]) -> Scalar:
+    """Return the minimum element of a vector ``a``."""
     ...
 
 
 @over
-def max(x: Scalar, y: Scalar) -> Scalar:
+def max(a: Scalar, b: Scalar) -> Scalar:
     """Return the maximum of two scalars."""
     ...
 
 
 @over
-def max(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+def max(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """Return the element-wise maximum of two vectors."""
     ...
 
 
 @over
-def max(v: Vector[Any, Scalar]) -> Scalar:
-    """Return the maximum element of a vector ``v``."""
+def max(a: Vector[Any, Scalar]) -> Scalar:
+    """Return the maximum element of a vector ``a``."""
     ...
 
 
 @over
-def clamp(x: Scalar, a: Scalar, b: Scalar) -> Scalar:
-    """Clamp the value of ``x`` to the range [a, b]."""
+def clamp(x: Scalar, low: Scalar, high: Scalar) -> Scalar:
+    """Clamp the value of ``x`` to the range [low, high]."""
     ...
 
 
@@ -168,8 +168,8 @@ def abs(x: Scalar) -> Scalar:
 
 
 @over
-def abs(a: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
-    """Return the absolute values of the elements of ``a``."""
+def abs(x: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """Return the absolute values of the elements of ``x``."""
     ...
 
 
@@ -180,8 +180,8 @@ def sign(x: Scalar) -> Scalar:
 
 
 @over
-def sign(a: Vector[Any, Scalar]) -> Scalar:
-    """Return -1 for the negative elements of ``a``, and 1 otherwise."""
+def sign(x: Vector[Any, Scalar]) -> Scalar:
+    """Return -1 for the negative elements of ``x``, and 1 otherwise."""
     ...
 
 
@@ -335,7 +335,7 @@ def trunc(x: Float) -> Float:
     """Return the nearest integer that is closer to zero than ``x``.
 
     In other words, it discards the fractional part of ``x``.
-    It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
+    It is similar to casting ``float(int(a))``, but preserves the negative sign when ``x`` is in the range [-0.0, -1.0).
     Equivalent to :func:`numpy.trunc()` and :func:`numpy.fix()`.
     """
     ...
@@ -355,249 +355,249 @@ def ceil(x: Float) -> Float:
 
 @over
 def frac(x: Float) -> Float:
-    """Retrieve the fractional part of x.
+    """Retrieve the fractional part of ``x``.
 
-    In other words, it discards the integer part of x and is equivalent to ``x - trunc(x)``.
+    In other words, it discards the integer part of ``x`` and is equivalent to ``x - trunc(x)``.
     """
     ...
 
 
 @over
-def isfinite(x: Scalar) -> bool:
-    """Return ``True`` if x is a finite number, otherwise return ``False``."""
+def isfinite(a: Scalar) -> bool:
+    """Return ``True`` if ``a`` is a finite number, otherwise return ``False``."""
     ...
 
 
 @over
-def isfinite(x: Vector[Any, Scalar]) -> bool:
-    """Return ``True`` if all elements of the vector ``x`` are finite, otherwise return ``False``."""
+def isfinite(a: Vector[Any, Scalar]) -> bool:
+    """Return ``True`` if all elements of the vector ``a`` are finite, otherwise return ``False``."""
     ...
 
 
 @over
-def isfinite(x: Quaternion[Scalar]) -> bool:
-    """Return ``True`` if all elements of the quaternion ``x`` are finite, otherwise return ``False``."""
+def isfinite(a: Quaternion[Scalar]) -> bool:
+    """Return ``True`` if all elements of the quaternion ``a`` are finite, otherwise return ``False``."""
     ...
 
 
 @over
-def isfinite(m: Matrix[Any, Any, Scalar]) -> bool:
-    """Return ``True`` if all elements of the matrix ``m`` are finite, otherwise return ``False``."""
+def isfinite(a: Matrix[Any, Any, Scalar]) -> bool:
+    """Return ``True`` if all elements of the matrix ``a`` are finite, otherwise return ``False``."""
     ...
 
 
 @over
-def isnan(x: Scalar) -> bool:
-    """Return ``True`` if ``x`` is NaN, otherwise return ``False``."""
+def isnan(a: Scalar) -> bool:
+    """Return ``True`` if ``a`` is NaN, otherwise return ``False``."""
     ...
 
 
 @over
-def isnan(x: Vector[Any, Scalar]) -> bool:
-    """Return ``True`` if any element of the vector ``x`` is NaN, otherwise return ``False``."""
+def isnan(a: Vector[Any, Scalar]) -> bool:
+    """Return ``True`` if any element of the vector ``a`` is NaN, otherwise return ``False``."""
     ...
 
 
 @over
-def isnan(x: Quaternion[Scalar]) -> bool:
-    """Return ``True`` if any element of the quaternion ``x`` is NaN, otherwise return ``False``."""
+def isnan(a: Quaternion[Scalar]) -> bool:
+    """Return ``True`` if any element of the quaternion ``a`` is NaN, otherwise return ``False``."""
     ...
 
 
 @over
-def isnan(m: Matrix[Any, Any, Scalar]) -> bool:
-    """Return ``True`` if any element of the matrix ``m`` is NaN, otherwise return ``False``."""
+def isnan(a: Matrix[Any, Any, Scalar]) -> bool:
+    """Return ``True`` if any element of the matrix ``a`` is NaN, otherwise return ``False``."""
     ...
 
 
 @over
-def isinf(x: Scalar) -> bool:
-    """Return ``True`` if x is positive or negative infinity, otherwise return ``False``."""
+def isinf(a: Scalar) -> bool:
+    """Return ``True`` if ``a`` is positive or negative infinity, otherwise return ``False``."""
     ...
 
 
 @over
-def isinf(x: Vector[Any, Scalar]) -> bool:
-    """Return ``True`` if any element of the vector ``x`` is positive or negative infinity, otherwise return ``False``."""
+def isinf(a: Vector[Any, Scalar]) -> bool:
+    """Return ``True`` if any element of the vector ``a`` is positive or negative infinity, otherwise return ``False``."""
     ...
 
 
 @over
-def isinf(x: Quaternion[Scalar]) -> bool:
-    """Return ``True`` if any element of the quaternion ``x`` is positive or negative infinity, otherwise return ``False``."""
+def isinf(a: Quaternion[Scalar]) -> bool:
+    """Return ``True`` if any element of the quaternion ``a`` is positive or negative infinity, otherwise return ``False``."""
     ...
 
 
 @over
-def isinf(m: Matrix[Any, Any, Scalar]) -> bool:
-    """Return ``True`` if any element of the matrix ``m`` is positive or negative infinity, otherwise return ``False``."""
+def isinf(a: Matrix[Any, Any, Scalar]) -> bool:
+    """Return ``True`` if any element of the matrix ``a`` is positive or negative infinity, otherwise return ``False``."""
     ...
 
 
 @over
-def dot(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Scalar:
+def dot(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Scalar:
     """Compute the dot product between two vectors."""
     ...
 
 
 @over
-def dot(x: Quaternion[Float], y: Quaternion[Float]) -> Float:
+def dot(a: Quaternion[Float], b: Quaternion[Float]) -> Float:
     """Compute the dot product between two quaternions."""
     ...
 
 
 @over
-def ddot(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Scalar:
+def ddot(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Scalar:
     """Compute the double dot product between two matrices."""
     ...
 
 
 @over
-def argmin(v: Vector[Any, Scalar]) -> uint32:
-    """Return the index of the minimum element of a vector ``v``."""
+def argmin(a: Vector[Any, Scalar]) -> uint32:
+    """Return the index of the minimum element of a vector ``a``."""
     ...
 
 
 @over
-def argmax(v: Vector[Any, Scalar]) -> uint32:
-    """Return the index of the maximum element of a vector ``v``."""
+def argmax(a: Vector[Any, Scalar]) -> uint32:
+    """Return the index of the maximum element of a vector ``a``."""
     ...
 
 
 @over
-def outer(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
-    """Compute the outer product ``x*y^T`` for two vectors."""
+def outer(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """Compute the outer product ``a*b^T`` for two vectors."""
     ...
 
 
 @over
-def cross(x: Vector[3, Scalar], y: Vector[3, Scalar]) -> Vector[3, Scalar]:
+def cross(a: Vector[3, Scalar], b: Vector[3, Scalar]) -> Vector[3, Scalar]:
     """Compute the cross product of two 3D vectors."""
     ...
 
 
 @over
-def skew(x: Vector[3, Scalar]):
-    """Compute the skew-symmetric 3x3 matrix for a 3D vector ``x``."""
+def skew(vec: Vector[3, Scalar]):
+    """Compute the skew-symmetric 3x3 matrix for a 3D vector ``vec``."""
     ...
 
 
 @over
-def length(x: Vector[Any, Float]) -> Float:
-    """Compute the length of a floating-point vector ``x``."""
+def length(a: Vector[Any, Float]) -> Float:
+    """Compute the length of a floating-point vector ``a``."""
     ...
 
 
 @over
-def length(x: Quaternion[Float]) -> Float:
-    """Compute the length of a quaternion ``x``."""
+def length(a: Quaternion[Float]) -> Float:
+    """Compute the length of a quaternion ``a``."""
     ...
 
 
 @over
-def length_sq(x: Vector[Any, Scalar]) -> Scalar:
-    """Compute the squared length of a vector ``x``."""
+def length_sq(a: Vector[Any, Scalar]) -> Scalar:
+    """Compute the squared length of a vector ``a``."""
     ...
 
 
 @over
-def length_sq(x: Quaternion[Scalar]) -> Scalar:
-    """Compute the squared length of a quaternion ``x``."""
+def length_sq(a: Quaternion[Scalar]) -> Scalar:
+    """Compute the squared length of a quaternion ``a``."""
     ...
 
 
 @over
-def normalize(x: Vector[Any, Float]) -> Vector[Any, Float]:
-    """Compute the normalized value of ``x``. If ``length(x)`` is 0 then the zero vector is returned."""
+def normalize(a: Vector[Any, Float]) -> Vector[Any, Float]:
+    """Compute the normalized value of ``a``. If ``length(a)`` is 0 then the zero vector is returned."""
     ...
 
 
 @over
-def normalize(x: Quaternion[Float]) -> Quaternion[Float]:
-    """Compute the normalized value of ``x``. If ``length(x)`` is 0, then the zero quaternion is returned."""
+def normalize(a: Quaternion[Float]) -> Quaternion[Float]:
+    """Compute the normalized value of ``a``. If ``length(a)`` is 0, then the zero quaternion is returned."""
     ...
 
 
 @over
-def transpose(m: Matrix[Any, Any, Scalar]):
-    """Return the transpose of the matrix ``m``."""
+def transpose(a: Matrix[Any, Any, Scalar]):
+    """Return the transpose of the matrix ``a``."""
     ...
 
 
 @over
-def inverse(m: Matrix[2, 2, Float]) -> Matrix[Any, Any, Float]:
-    """Return the inverse of a 2x2 matrix ``m``."""
+def inverse(a: Matrix[2, 2, Float]) -> Matrix[Any, Any, Float]:
+    """Return the inverse of a 2x2 matrix ``a``."""
     ...
 
 
 @over
-def inverse(m: Matrix[3, 3, Float]) -> Matrix[Any, Any, Float]:
-    """Return the inverse of a 3x3 matrix ``m``."""
+def inverse(a: Matrix[3, 3, Float]) -> Matrix[Any, Any, Float]:
+    """Return the inverse of a 3x3 matrix ``a``."""
     ...
 
 
 @over
-def inverse(m: Matrix[4, 4, Float]) -> Matrix[Any, Any, Float]:
-    """Return the inverse of a 4x4 matrix ``m``."""
+def inverse(a: Matrix[4, 4, Float]) -> Matrix[Any, Any, Float]:
+    """Return the inverse of a 4x4 matrix ``a``."""
     ...
 
 
 @over
-def determinant(m: Matrix[2, 2, Float]) -> Float:
-    """Return the determinant of a 2x2 matrix ``m``."""
+def determinant(a: Matrix[2, 2, Float]) -> Float:
+    """Return the determinant of a 2x2 matrix ``a``."""
     ...
 
 
 @over
-def determinant(m: Matrix[3, 3, Float]) -> Float:
-    """Return the determinant of a 3x3 matrix ``m``."""
+def determinant(a: Matrix[3, 3, Float]) -> Float:
+    """Return the determinant of a 3x3 matrix ``a``."""
     ...
 
 
 @over
-def determinant(m: Matrix[4, 4, Float]) -> Float:
-    """Return the determinant of a 4x4 matrix ``m``."""
+def determinant(a: Matrix[4, 4, Float]) -> Float:
+    """Return the determinant of a 4x4 matrix ``a``."""
     ...
 
 
 @over
-def trace(m: Matrix[Any, Any, Scalar]) -> Scalar:
-    """Return the trace of the matrix ``m``."""
+def trace(a: Matrix[Any, Any, Scalar]) -> Scalar:
+    """Return the trace of the matrix ``a``."""
     ...
 
 
 @over
-def diag(d: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
-    """Returns a matrix with the components of the vector ``d`` on the diagonal."""
+def diag(vec: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """Returns a matrix with the components of the vector ``vec`` on the diagonal."""
     ...
 
 
 @over
-def get_diag(m: Matrix[Any, Any, Scalar]) -> Vector[Any, Scalar]:
-    """Returns a vector containing the diagonal elements of the square matrix ``m``."""
+def get_diag(mat: Matrix[Any, Any, Scalar]) -> Vector[Any, Scalar]:
+    """Returns a vector containing the diagonal elements of the square matrix ``mat``."""
     ...
 
 
 @over
-def cw_mul(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+def cw_mul(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """Component-wise multiplication of two vectors."""
     ...
 
 
 @over
-def cw_mul(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+def cw_mul(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """Component-wise multiplication of two matrices."""
     ...
 
 
 @over
-def cw_div(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+def cw_div(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """Component-wise division of two vectors."""
     ...
 
 
 @over
-def cw_div(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+def cw_div(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """Component-wise division of two matrices."""
     ...
 
@@ -615,13 +615,13 @@ def quat_from_axis_angle(axis: Vector[3, Float], angle: Float) -> Quaternion[Flo
 
 
 @over
-def quat_to_axis_angle(q: Quaternion[Float], axis: Vector[3, Float], angle: Float):
+def quat_to_axis_angle(quat: Quaternion[Float], axis: Vector[3, Float], angle: Float):
     """Extract the rotation axis and angle radians a quaternion represents."""
     ...
 
 
 @over
-def quat_from_matrix(m: Matrix[3, 3, Float]) -> Quaternion[Float]:
+def quat_from_matrix(mat: Matrix[3, 3, Float]) -> Quaternion[Float]:
     """Construct a quaternion from a 3x3 matrix."""
     ...
 
@@ -633,31 +633,31 @@ def quat_rpy(roll: Float, pitch: Float, yaw: Float) -> Quaternion[Float]:
 
 
 @over
-def quat_inverse(q: Quaternion[Float]) -> Quaternion[Float]:
+def quat_inverse(quat: Quaternion[Float]) -> Quaternion[Float]:
     """Compute quaternion conjugate."""
     ...
 
 
 @over
-def quat_rotate(q: Quaternion[Float], p: Vector[3, Float]) -> Vector[3, Float]:
+def quat_rotate(quat: Quaternion[Float], vec: Vector[3, Float]) -> Vector[3, Float]:
     """Rotate a vector by a quaternion."""
     ...
 
 
 @over
-def quat_rotate_inv(q: Quaternion[Float], p: Vector[3, Float]) -> Vector[3, Float]:
+def quat_rotate_inv(quat: Quaternion[Float], vec: Vector[3, Float]) -> Vector[3, Float]:
     """Rotate a vector by the inverse of a quaternion."""
     ...
 
 
 @over
-def quat_slerp(q0: Quaternion[Float], q1: Quaternion[Float], t: Float) -> Quaternion[Float]:
+def quat_slerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaternion[Float]:
     """Linearly interpolate between two quaternions."""
     ...
 
 
 @over
-def quat_to_matrix(q: Quaternion[Float]) -> Matrix[3, 3, Float]:
+def quat_to_matrix(quat: Quaternion[Float]) -> Matrix[3, 3, Float]:
     """Convert a quaternion to a 3x3 rotation matrix."""
     ...
 
@@ -669,14 +669,14 @@ def transform_identity(dtype: Float) -> transformf:
 
 
 @over
-def transform_get_translation(t: Transformation[Float]) -> Vector[3, Float]:
-    """Return the translational part of a transform ``t``."""
+def transform_get_translation(xform: Transformation[Float]) -> Vector[3, Float]:
+    """Return the translational part of a transform ``xform``."""
     ...
 
 
 @over
-def transform_get_rotation(t: Transformation[Float]) -> Quaternion[Float]:
-    """Return the rotational part of a transform ``t``."""
+def transform_get_rotation(xform: Transformation[Float]) -> Quaternion[Float]:
+    """Return the rotational part of a transform ``xform``."""
     ...
 
 
@@ -687,17 +687,17 @@ def transform_multiply(a: Transformation[Float], b: Transformation[Float]) -> Tr
 
 
 @over
-def transform_point(t: Transformation[Float], p: Vector[3, Float]) -> Vector[3, Float]:
-    """Apply the transform to a point ``p`` treating the homogeneous coordinate as w=1 (translation and rotation)."""
+def transform_point(xform: Transformation[Float], point: Vector[3, Float]) -> Vector[3, Float]:
+    """Apply the transform to a point ``point`` treating the homogeneous coordinate as w=1 (translation and rotation)."""
     ...
 
 
 @over
-def transform_point(m: Matrix[4, 4, Float], p: Vector[3, Float]) -> Vector[3, Float]:
-    """Apply the transform to a point ``p`` treating the homogeneous coordinate as w=1.
+def transform_point(mat: Matrix[4, 4, Float], point: Vector[3, Float]) -> Vector[3, Float]:
+    """Apply the transform to a point ``point`` treating the homogeneous coordinate as w=1.
 
-    The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``.
-    Note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``.
+    The transformation is applied treating ``point`` as a column vector, e.g.: ``y = mat*point``.
+    Note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = point^T*mat^T``.
     If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
     matrix before calling this method.
     """
@@ -705,17 +705,17 @@ def transform_point(m: Matrix[4, 4, Float], p: Vector[3, Float]) -> Vector[3, Fl
 
 
 @over
-def transform_vector(t: Transformation[Float], v: Vector[3, Float]) -> Vector[3, Float]:
-    """Apply the transform to a vector ``v`` treating the homogeneous coordinate as w=0 (rotation only)."""
+def transform_vector(xform: Transformation[Float], vec: Vector[3, Float]) -> Vector[3, Float]:
+    """Apply the transform to a vector ``vec`` treating the homogeneous coordinate as w=0 (rotation only)."""
     ...
 
 
 @over
-def transform_vector(m: Matrix[4, 4, Float], v: Vector[3, Float]) -> Vector[3, Float]:
-    """Apply the transform to a vector ``v`` treating the homogeneous coordinate as w=0.
+def transform_vector(mat: Matrix[4, 4, Float], vec: Vector[3, Float]) -> Vector[3, Float]:
+    """Apply the transform to a vector ``vec`` treating the homogeneous coordinate as w=0.
 
-    The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
-    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``.
+    The transformation is applied treating ``vec`` as a column vector, e.g.: ``y = mat*vec``
+    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = vec^T*mat^T``.
     If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
     matrix before calling this method.
     """
@@ -723,8 +723,8 @@ def transform_vector(m: Matrix[4, 4, Float], v: Vector[3, Float]) -> Vector[3, F
 
 
 @over
-def transform_inverse(t: Transformation[Float]) -> Transformation[Float]:
-    """Compute the inverse of the transformation ``t``."""
+def transform_inverse(xform: Transformation[Float]) -> Transformation[Float]:
+    """Compute the inverse of the transformation ``xform``."""
     ...
 
 
@@ -747,13 +747,13 @@ def spatial_cross_dual(a: Vector[6, Float], b: Vector[6, Float]) -> Vector[6, Fl
 
 
 @over
-def spatial_top(a: Vector[6, Float]):
+def spatial_top(svec: Vector[6, Float]):
     """Return the top (first) part of a 6D screw vector."""
     ...
 
 
 @over
-def spatial_bottom(a: Vector[6, Float]):
+def spatial_bottom(svec: Vector[6, Float]):
     """Return the bottom (second) part of a 6D screw vector."""
     ...
 
@@ -801,249 +801,6 @@ def mlp(
 
     :note: Feature and output matrices are transposed compared to some other frameworks such as PyTorch.
            All matrices are assumed to be stored in flattened row-major memory layout (NumPy default).
-    """
-    ...
-
-
-@over
-def bvh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> bvh_query_t:
-    """Construct an axis-aligned bounding box query against a BVH object.
-
-    This query can be used to iterate over all bounds inside a BVH.
-
-    :param id: The BVH identifier
-    :param lower: The lower bound of the bounding box in BVH space
-    :param upper: The upper bound of the bounding box in BVH space
-    """
-    ...
-
-
-@over
-def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> bvh_query_t:
-    """Construct a ray query against a BVH object.
-
-    This query can be used to iterate over all bounds that intersect the ray.
-
-    :param id: The BVH identifier
-    :param start: The start of the ray in BVH space
-    :param dir: The direction of the ray in BVH space
-    """
-    ...
-
-
-@over
-def bvh_query_next(query: bvh_query_t, index: int32) -> bool:
-    """Move to the next bound returned by the query.
-    The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.
-    """
-    ...
-
-
-@over
-def mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> mesh_query_point_t:
-    """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
-
-    Identifies the sign of the distance using additional ray-casts to determine if the point is inside or outside.
-    This method is relatively robust, but does increase computational cost.
-    See below for additional sign determination methods.
-
-    :param id: The mesh identifier
-    :param point: The point in space to query
-    :param max_dist: Mesh faces above this distance will not be considered by the query
-    """
-    ...
-
-
-@over
-def mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32) -> mesh_query_point_t:
-    """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
-
-    This method does not compute the sign of the point (inside/outside) which makes it faster than other point query methods.
-
-    :param id: The mesh identifier
-    :param point: The point in space to query
-    :param max_dist: Mesh faces above this distance will not be considered by the query
-    """
-    ...
-
-
-@over
-def mesh_query_furthest_point_no_sign(id: uint64, point: vec3f, min_dist: float32) -> mesh_query_point_t:
-    """Computes the furthest point on the mesh with identifier `id` to the given point in space.
-
-    This method does not compute the sign of the point (inside/outside).
-
-    :param id: The mesh identifier
-    :param point: The point in space to query
-    :param min_dist: Mesh faces below this distance will not be considered by the query
-    """
-    ...
-
-
-@over
-def mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, epsilon: float32) -> mesh_query_point_t:
-    """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
-
-    Identifies the sign of the distance (inside/outside) using the angle-weighted pseudo normal.
-    This approach to sign determination is robust for well conditioned meshes that are watertight and non-self intersecting.
-    It is also comparatively fast to compute.
-
-    :param id: The mesh identifier
-    :param point: The point in space to query
-    :param max_dist: Mesh faces above this distance will not be considered by the query
-    :param epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a
-                    fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3
-    """
-    ...
-
-
-@over
-def mesh_query_point_sign_winding_number(
-    id: uint64, point: vec3f, max_dist: float32, accuracy: float32, threshold: float32
-) -> mesh_query_point_t:
-    """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given point in space.
-
-    Identifies the sign using the winding number of the mesh relative to the query point. This method of sign determination is robust for poorly conditioned meshes
-    and provides a smooth approximation to sign even when the mesh is not watertight. This method is the most robust and accurate of the sign determination meshes
-    but also the most expensive.
-
-    .. note:: The :class:`Mesh` object must be constructed with ``support_winding_number=True`` for this method to return correct results.
-
-    :param id: The mesh identifier
-    :param point: The point in space to query
-    :param max_dist: Mesh faces above this distance will not be considered by the query
-    :param accuracy: Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation, default 2.0
-    :param threshold: The threshold of the winding number to be considered inside, default 0.5
-    """
-    ...
-
-
-@over
-def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32) -> mesh_query_ray_t:
-    """Computes the closest ray hit on the :class:`Mesh` with identifier ``id``.
-
-    :param id: The mesh identifier
-    :param start: The start point of the ray
-    :param dir: The ray direction (should be normalized)
-    :param max_t: The maximum distance along the ray to check for intersections
-    """
-    ...
-
-
-@over
-def mesh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> mesh_query_aabb_t:
-    """Construct an axis-aligned bounding box query against a :class:`Mesh`.
-
-    This query can be used to iterate over all triangles inside a volume.
-
-    :param id: The mesh identifier
-    :param lower: The lower bound of the bounding box in mesh space
-    :param upper: The upper bound of the bounding box in mesh space
-    """
-    ...
-
-
-@over
-def mesh_query_aabb_next(query: mesh_query_aabb_t, index: int32) -> bool:
-    """Move to the next triangle overlapping the query bounding box.
-
-    The index of the current face is stored in ``index``, returns ``False`` if there are no more overlapping triangles.
-    """
-    ...
-
-
-@over
-def mesh_eval_position(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f:
-    """Evaluates the position on the :class:`Mesh` given a face index and barycentric coordinates."""
-    ...
-
-
-@over
-def mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f:
-    """Evaluates the velocity on the :class:`Mesh` given a face index and barycentric coordinates."""
-    ...
-
-
-@over
-def hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> hash_grid_query_t:
-    """Construct a point query against a :class:`HashGrid`.
-
-    This query can be used to iterate over all neighboring point within a fixed radius from the query point.
-    """
-    ...
-
-
-@over
-def hash_grid_query_next(query: hash_grid_query_t, index: int32) -> bool:
-    """Move to the next point in the hash grid query.
-
-    The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.
-    """
-    ...
-
-
-@over
-def hash_grid_point_id(id: uint64, index: int32) -> int:
-    """Return the index of a point in the :class:`HashGrid`.
-
-    This can be used to reorder threads such that grid traversal occurs in a spatially coherent order.
-
-    Returns -1 if the :class:`HashGrid` has not been reserved.
-    """
-    ...
-
-
-@over
-def intersect_tri_tri(v0: vec3f, v1: vec3f, v2: vec3f, u0: vec3f, u1: vec3f, u2: vec3f) -> int:
-    """Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method.
-
-    Returns > 0 if triangles intersect.
-    """
-    ...
-
-
-@over
-def mesh_get(id: uint64) -> Mesh:
-    """Retrieves the mesh given its index."""
-    ...
-
-
-@over
-def mesh_eval_face_normal(id: uint64, face: int32) -> vec3f:
-    """Evaluates the face normal the mesh given a face index."""
-    ...
-
-
-@over
-def mesh_get_point(id: uint64, index: int32) -> vec3f:
-    """Returns the point of the mesh given a index."""
-    ...
-
-
-@over
-def mesh_get_velocity(id: uint64, index: int32) -> vec3f:
-    """Returns the velocity of the mesh given a index."""
-    ...
-
-
-@over
-def mesh_get_index(id: uint64, index: int32) -> int:
-    """Returns the point-index of the mesh given a face-vertex index."""
-    ...
-
-
-@over
-def closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon: float32) -> vec3f:
-    """Finds the closest points between two edges.
-
-    Returns barycentric weights to the points on each edge, as well as the closest distance between the edges.
-
-    :param p1: First point of first edge
-    :param q1: Second point of first edge
-    :param p2: First point of second edge
-    :param q2: Second point of second edge
-    :param epsilon: Zero tolerance for determining if points in an edge are degenerate.
-    :param out: vec3 output containing (s,t,d), where `s` in [0,1] is the barycentric weight for the first edge, `t` is the barycentric weight for the second edge, and `d` is the distance between the two edges at these two closest points.
     """
     ...
 
@@ -1184,8 +941,8 @@ def randi(state: uint32) -> int:
 
 
 @over
-def randi(state: uint32, min: int32, max: int32) -> int:
-    """Return a random integer between [min, max)."""
+def randi(state: uint32, low: int32, high: int32) -> int:
+    """Return a random integer between [low, high)."""
     ...
 
 
@@ -1196,8 +953,8 @@ def randf(state: uint32) -> float:
 
 
 @over
-def randf(state: uint32, min: float32, max: float32) -> float:
-    """Return a random float between [min, max)."""
+def randf(state: uint32, low: float32, high: float32) -> float:
+    """Return a random float between [low, high)."""
     ...
 
 
@@ -1383,62 +1140,62 @@ def tid() -> Tuple[int, int, int, int]:
 
 
 @over
-def select(cond: bool, arg1: Any, arg2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``"""
+def select(cond: bool, value_if_false: Any, value_if_true: Any):
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: int8, arg1: Any, arg2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``"""
+def select(cond: int8, value_if_false: Any, value_if_true: Any):
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: uint8, arg1: Any, arg2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``"""
+def select(cond: uint8, value_if_false: Any, value_if_true: Any):
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: int16, arg1: Any, arg2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``"""
+def select(cond: int16, value_if_false: Any, value_if_true: Any):
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: uint16, arg1: Any, arg2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``"""
+def select(cond: uint16, value_if_false: Any, value_if_true: Any):
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: int32, arg1: Any, arg2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``"""
+def select(cond: int32, value_if_false: Any, value_if_true: Any):
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: uint32, arg1: Any, arg2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``"""
+def select(cond: uint32, value_if_false: Any, value_if_true: Any):
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: int64, arg1: Any, arg2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``"""
+def select(cond: int64, value_if_false: Any, value_if_true: Any):
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: uint64, arg1: Any, arg2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``"""
+def select(cond: uint64, value_if_false: Any, value_if_true: Any):
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(arr: Array[Any], arg1: Any, arg2: Any):
-    """Select between two arguments, if ``arr`` is null then return ``arg1``, otherwise return ``arg2``"""
+def select(arr: Array[Any], value_if_false: Any, value_if_true: Any):
+    """Select between two arguments, if ``arr`` is null then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
@@ -1833,22 +1590,22 @@ def lerp(a: Transformation[Float], b: Transformation[Float], t: Float) -> Transf
 
 
 @over
-def smoothstep(edge0: Float, edge1: Float, x: Float) -> Float:
-    """Smoothly interpolate between two values ``edge0`` and ``edge1`` using a factor ``x``,
+def smoothstep(a: Float, b: Float, x: Float) -> Float:
+    """Smoothly interpolate between two values ``a`` and ``b`` using a factor ``x``,
     and return a result between 0 and 1 using a cubic Hermite interpolation after clamping.
     """
     ...
 
 
 @over
-def expect_near(arg1: Float, arg2: Float, tolerance: Float):
-    """Prints an error to stdout if ``arg1`` and ``arg2`` are not closer than tolerance in magnitude"""
+def expect_near(a: Float, b: Float, tolerance: Float):
+    """Prints an error to stdout if ``a`` and ``b`` are not closer than tolerance in magnitude"""
     ...
 
 
 @over
-def expect_near(arg1: vec3f, arg2: vec3f, tolerance: float32):
-    """Prints an error to stdout if any element of ``arg1`` and ``arg2`` are not closer than tolerance in magnitude"""
+def expect_near(a: vec3f, b: vec3f, tolerance: float32):
+    """Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude"""
     ...
 
 
@@ -1865,235 +1622,235 @@ def lower_bound(arr: Array[Scalar], arr_begin: int32, arr_end: int32, value: Sca
 
 
 @over
-def add(x: Scalar, y: Scalar) -> Scalar:
+def add(a: Scalar, b: Scalar) -> Scalar:
     """ """
     ...
 
 
 @over
-def add(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+def add(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """ """
     ...
 
 
 @over
-def add(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]:
+def add(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]:
     """ """
     ...
 
 
 @over
-def add(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+def add(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """ """
     ...
 
 
 @over
-def add(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]:
+def add(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[Scalar]:
     """ """
     ...
 
 
 @over
-def sub(x: Scalar, y: Scalar) -> Scalar:
+def sub(a: Scalar, b: Scalar) -> Scalar:
     """ """
     ...
 
 
 @over
-def sub(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+def sub(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """ """
     ...
 
 
 @over
-def sub(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+def sub(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """ """
     ...
 
 
 @over
-def sub(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]:
+def sub(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]:
     """ """
     ...
 
 
 @over
-def sub(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]:
+def sub(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[Scalar]:
     """ """
     ...
 
 
 @over
-def bit_and(x: Int, y: Int) -> Int:
+def bit_and(a: Int, b: Int) -> Int:
     """ """
     ...
 
 
 @over
-def bit_or(x: Int, y: Int) -> Int:
+def bit_or(a: Int, b: Int) -> Int:
     """ """
     ...
 
 
 @over
-def bit_xor(x: Int, y: Int) -> Int:
+def bit_xor(a: Int, b: Int) -> Int:
     """ """
     ...
 
 
 @over
-def lshift(x: Int, y: Int) -> Int:
+def lshift(a: Int, b: Int) -> Int:
     """ """
     ...
 
 
 @over
-def rshift(x: Int, y: Int) -> Int:
+def rshift(a: Int, b: Int) -> Int:
     """ """
     ...
 
 
 @over
-def invert(x: Int) -> Int:
+def invert(a: Int) -> Int:
     """ """
     ...
 
 
 @over
-def mul(x: Scalar, y: Scalar) -> Scalar:
+def mul(a: Scalar, b: Scalar) -> Scalar:
     """ """
     ...
 
 
 @over
-def mul(x: Vector[Any, Scalar], y: Scalar) -> Vector[Any, Scalar]:
+def mul(a: Vector[Any, Scalar], b: Scalar) -> Vector[Any, Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Scalar, y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+def mul(a: Scalar, b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Quaternion[Scalar], y: Scalar) -> Quaternion[Scalar]:
+def mul(a: Quaternion[Scalar], b: Scalar) -> Quaternion[Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Scalar, y: Quaternion[Scalar]) -> Quaternion[Scalar]:
+def mul(a: Scalar, b: Quaternion[Scalar]) -> Quaternion[Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]:
+def mul(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Scalar, y: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+def mul(a: Scalar, b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Matrix[Any, Any, Scalar], y: Scalar) -> Matrix[Any, Any, Scalar]:
+def mul(a: Matrix[Any, Any, Scalar], b: Scalar) -> Matrix[Any, Any, Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Matrix[Any, Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+def mul(a: Matrix[Any, Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Vector[Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Vector[Any, Scalar]:
+def mul(a: Vector[Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Vector[Any, Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]):
+def mul(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]):
     """ """
     ...
 
 
 @over
-def mul(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]:
+def mul(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Scalar, y: Transformation[Scalar]) -> Transformation[Scalar]:
+def mul(a: Scalar, b: Transformation[Scalar]) -> Transformation[Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Transformation[Scalar], y: Scalar) -> Transformation[Scalar]:
+def mul(a: Transformation[Scalar], b: Scalar) -> Transformation[Scalar]:
     """ """
     ...
 
 
 @over
-def mod(x: Scalar, y: Scalar) -> Scalar:
+def mod(a: Scalar, b: Scalar) -> Scalar:
     """ """
     ...
 
 
 @over
-def div(x: Scalar, y: Scalar) -> Scalar:
+def div(a: Scalar, b: Scalar) -> Scalar:
     """ """
     ...
 
 
 @over
-def div(x: Vector[Any, Scalar], y: Scalar) -> Vector[Any, Scalar]:
+def div(a: Vector[Any, Scalar], b: Scalar) -> Vector[Any, Scalar]:
     """ """
     ...
 
 
 @over
-def div(x: Scalar, y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+def div(a: Scalar, b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """ """
     ...
 
 
 @over
-def div(x: Matrix[Any, Any, Scalar], y: Scalar) -> Matrix[Any, Any, Scalar]:
+def div(a: Matrix[Any, Any, Scalar], b: Scalar) -> Matrix[Any, Any, Scalar]:
     """ """
     ...
 
 
 @over
-def div(x: Scalar, y: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+def div(a: Scalar, b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """ """
     ...
 
 
 @over
-def div(x: Quaternion[Scalar], y: Scalar) -> Quaternion[Scalar]:
+def div(a: Quaternion[Scalar], b: Scalar) -> Quaternion[Scalar]:
     """ """
     ...
 
 
 @over
-def div(x: Scalar, y: Quaternion[Scalar]) -> Quaternion[Scalar]:
+def div(a: Scalar, b: Quaternion[Scalar]) -> Quaternion[Scalar]:
     """ """
     ...
 
 
 @over
-def floordiv(x: Scalar, y: Scalar) -> Scalar:
+def floordiv(a: Scalar, b: Scalar) -> Scalar:
     """ """
     ...
 
@@ -2147,55 +1904,55 @@ def neg(x: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
 
 
 @over
-def unot(b: bool) -> bool:
+def unot(a: bool) -> bool:
     """ """
     ...
 
 
 @over
-def unot(b: int8) -> bool:
+def unot(a: int8) -> bool:
     """ """
     ...
 
 
 @over
-def unot(b: uint8) -> bool:
+def unot(a: uint8) -> bool:
     """ """
     ...
 
 
 @over
-def unot(b: int16) -> bool:
+def unot(a: int16) -> bool:
     """ """
     ...
 
 
 @over
-def unot(b: uint16) -> bool:
+def unot(a: uint16) -> bool:
     """ """
     ...
 
 
 @over
-def unot(b: int32) -> bool:
+def unot(a: int32) -> bool:
     """ """
     ...
 
 
 @over
-def unot(b: uint32) -> bool:
+def unot(a: uint32) -> bool:
     """ """
     ...
 
 
 @over
-def unot(b: int64) -> bool:
+def unot(a: int64) -> bool:
     """ """
     ...
 
 
 @over
-def unot(b: uint64) -> bool:
+def unot(a: uint64) -> bool:
     """ """
     ...
 

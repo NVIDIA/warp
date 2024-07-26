@@ -5423,14 +5423,6 @@ def export_functions_rst(file):  # pragma: no cover
     print(".. class:: Transformation", file=file)
     print(".. class:: Array", file=file)
 
-    print("\nQuery Types", file=file)
-    print("-------------", file=file)
-    print(".. autoclass:: bvh_query_t", file=file)
-    print(".. autoclass:: hash_grid_query_t", file=file)
-    print(".. autoclass:: mesh_query_aabb_t", file=file)
-    print(".. autoclass:: mesh_query_point_t", file=file)
-    print(".. autoclass:: mesh_query_ray_t", file=file)
-
     # build dictionary of all functions by group
     groups = {}
 
@@ -5443,8 +5435,17 @@ def export_functions_rst(file):  # pragma: no cover
         for o in f.overloads:
             groups[f.group].append(o)
 
-    # Keep track of what function names have been written
-    written_functions = {}
+    # Keep track of what function and query types have been written
+    written_functions = set()
+    written_query_types = set()
+
+    query_types = (
+        ("bvh_query", "BvhQuery"),
+        ("mesh_query_aabb", "MeshQueryAABB"),
+        ("mesh_query_point", "MeshQueryPoint"),
+        ("mesh_query_ray", "MeshQueryRay"),
+        ("hash_grid_query", "HashGridQuery"),
+    )
 
     for k, g in groups.items():
         print("\n", file=file)
@@ -5452,12 +5453,18 @@ def export_functions_rst(file):  # pragma: no cover
         print("---------------", file=file)
 
         for f in g:
+            for f_prefix, query_type in query_types:
+                if f.key.startswith(f_prefix) and query_type not in written_query_types:
+                    print(f".. autoclass:: {query_type}", file=file)
+                    written_query_types.add(query_type)
+                    break
+
             if f.key in written_functions:
                 # Add :noindex: + :nocontentsentry: since Sphinx gets confused
                 print_function(f, file=file, noentry=True)
             else:
                 if print_function(f, file=file):
-                    written_functions[f.key] = []
+                    written_functions.add(f.key)
 
     # footnotes
     print(".. rubric:: Footnotes", file=file)
