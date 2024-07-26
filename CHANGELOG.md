@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## [Upcoming Release] - 2024-??-??
+## [1.3.0] - 2024-07-25
 
 - Warp Core improvements
   - Update to CUDA 12.x by default (requires NVIDIA driver 525 or newer), please see [README.md](https://github.com/nvidia/warp?tab=readme-ov-file#installing) for commands to install CUDA 11.x binaries for older drivers
