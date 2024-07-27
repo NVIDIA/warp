@@ -5,6 +5,7 @@
 - Remove ``wp.synchronize()`` from PyTorch autograd function example
 - ``Tape.check_kernel_array_access()`` and ``Tape.reset_array_read_flags()`` are now private methods.
 ## [1.3.1] - 2024-07-26
+## [1.3.1] - 2024-07-27
 
 - Fix reporting unmatched argument types
 
