@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## [1.3.1] - 2024-07-26
+## [1.3.1] - 2024-07-27
 
 - Fix reporting unmatched argument types
 
