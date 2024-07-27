@@ -35,7 +35,7 @@ def sametypes_create_value_func(default):
             return default
 
         if not sametypes(arg_types):
-            raise RuntimeError(f"Input types must be the same, found: {[type_repr(t) for t in arg_types]}")
+            raise RuntimeError(f"Input types must be the same, found: {[type_repr(t) for t in arg_types.values()]}")
 
         arg_type_0 = next(iter(arg_types.values()))
         return arg_type_0
