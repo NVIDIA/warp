@@ -35,7 +35,7 @@ def sametypes_create_value_func(default):
             return default
 
         if not sametypes(arg_types):
-            raise RuntimeError(f"Input types must be the same, found: {[type_repr(t) for t in arg_types.values()]}")
+            raise RuntimeError(f"Input types must be the same, got {[type_repr(t) for t in arg_types.values()]}")
 
         arg_type_0 = next(iter(arg_types.values()))
         return arg_type_0
@@ -414,7 +414,7 @@ def scalar_sametypes_value_func(arg_types: Mapping[str, type], arg_values: Mappi
         return Scalar
 
     if not sametypes(arg_types):
-        raise RuntimeError(f"Input types must be exactly the same, {list(arg_types)}")
+        raise RuntimeError(f"Input types must be exactly the same, got {[type_repr(t) for t in arg_types.values()]}")
 
     return scalar_infer_type(arg_types)
 
