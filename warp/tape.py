@@ -197,7 +197,7 @@ class Tape:
         else:
             self.scopes.append((len(self.launches), None, None))
 
-    def check_kernel_array_access(self, kernel, args):
+    def _check_kernel_array_access(self, kernel, args):
         """Detect illegal inter-kernel write after read access patterns during launch capture"""
         adj = kernel.adj
         kernel_name = adj.fun_name
@@ -256,7 +256,7 @@ class Tape:
         self.scopes = []
         self.zero()
         if wp.config.verify_autograd_array_access:
-            self.reset_array_read_flags()
+            self._reset_array_read_flags()
 
     def zero(self):
         """
@@ -271,7 +271,7 @@ class Tape:
                 else:
                     g.zero_()
 
-    def reset_array_read_flags(self):
+    def _reset_array_read_flags(self):
         """
         Reset all recorded array read flags to False
         """

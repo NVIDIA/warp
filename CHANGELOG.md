@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## [1.3.1] - 2024-??
+
+- Remove ``wp.synchronize()`` from PyTorch autograd function example
+- ``Tape.check_kernel_array_access()`` and ``Tape.reset_array_read_flags()`` are now private methods.
+
 ## [1.3.0] - 2024-07-25
 
 - Warp Core improvements
