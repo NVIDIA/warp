@@ -226,9 +226,6 @@ In the following example, we demonstrate how Warp may be used to evaluate the Ro
     class Rosenbrock(torch.autograd.Function):
         @staticmethod
         def forward(ctx, xy, num_points):
-            # ensure Torch operations complete before running Warp
-            wp.synchronize_device()
-
             ctx.xy = wp.from_torch(xy, dtype=pvec2, requires_grad=True)
             ctx.num_points = num_points
 
@@ -242,16 +239,10 @@ In the following example, we demonstrate how Warp may be used to evaluate the Ro
                 outputs=[ctx.z]
             )
 
-            # ensure Warp operations complete before returning data to Torch
-            wp.synchronize_device()
-
             return wp.to_torch(ctx.z)
 
         @staticmethod
         def backward(ctx, adj_z):
-            # ensure Torch operations complete before running Warp
-            wp.synchronize_device()
-
             # map incoming Torch grads to our output variables
             ctx.z.grad = wp.from_torch(adj_z)
 
@@ -264,9 +255,6 @@ In the following example, we demonstrate how Warp may be used to evaluate the Ro
                 adj_outputs=[ctx.z.grad],
                 adjoint=True
             )
-
-            # ensure Warp operations complete before returning data to Torch
-            wp.synchronize_device()
 
             # return adjoint w.r.t. inputs
             return (wp.to_torch(ctx.xy.grad), None)
