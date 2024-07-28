@@ -4778,7 +4778,7 @@ def launch(
 
         # detect illegal inter-kernel read/write access patterns if verification flag is set
         if warp.config.verify_autograd_array_access:
-            runtime.tape.check_kernel_array_access(kernel, fwd_args)
+            runtime.tape._check_kernel_array_access(kernel, fwd_args)
 
 
 def synchronize():
