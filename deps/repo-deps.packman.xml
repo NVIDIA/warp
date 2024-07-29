@@ -8,6 +8,9 @@
   <dependency name="repo_changelog" linkPath="../_repo/deps/repo_changelog">
     <package name="repo_changelog" version="0.8.6" />
   </dependency>
+  <dependency name="repo_codesign" linkPath="../_repo/deps/repo_codesign">
+    <package name="repo_codesign" version="7.1.0" />
+  </dependency>
   <dependency name="repo_kit_tools" linkPath="../_repo/deps/repo_kit_tools">
     <package name="repo_kit_tools" version="0.18.3" />
   </dependency>
