@@ -63,6 +63,13 @@ include:
     - source _venv/bin/activate
     - python -m pip install --upgrade pip
     - python -m pip install -e .
+  prepare-kit-artifacts:
+    - python3 tools/ci/publishing/build_nodes_info.py
+    - rm -rf warp/native/cutlass
+    - mv warp exts/omni.warp.core/
+    - find . -type f -exec chmod 664 {} +
+    - find . -type d -exec chmod 775 {} +
+    - find exts/ -name .gitignore -delete
 
 # Used to log the output of jobs that run only run unit tests (no coverage report)
 .save_test_report_artifact:

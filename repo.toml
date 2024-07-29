@@ -47,10 +47,13 @@ enabled = true
 kit_path = "${root}/_build/kit-deps/kit-kernel/kit${exe_ext}"
 
 ext_folders = [
-    "${root}/exts"
+    "${root}/_build/${platform_target}/${config}/exts"
 ]
 
 exts.include = [
     "omni.warp",
     "omni.warp.core",
 ]
+
+configs = ["release"]
+platforms = ["windows-x86_64", "linux-x86_64"]
