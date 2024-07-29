@@ -51,6 +51,8 @@ extensions = [
 autodoc_typehints = "description"
 # document class *and* __init__ methods
 autoclass_content = "both"
+# default argument values of functions will be not evaluated on generating document
+autodoc_preserve_defaults = True
 
 autodoc_member_order = "bysource"
 
