@@ -38,10 +38,20 @@
 namespace wp
 {
 
-#define _gamma 5.828427124 // FOUR_GAMMA_SQUARED = sqrt(8)+3;
-#define _cstar 0.923879532 // cos(pi/8)
-#define _sstar 0.3826834323 // sin(p/8)
-#define _EPSILON 1e-6
+
+template<typename Type>
+struct _svd_config {
+    static constexpr float QR_GIVENS_EPSILON = 1.e-6f;
+    static constexpr int JACOBI_ITERATIONS = 4;
+};
+
+template<>
+struct _svd_config<double> {
+    static constexpr double QR_GIVENS_EPSILON = 1.e-12;
+    static constexpr int JACOBI_ITERATIONS = 8;
+};
+
+
 
 // TODO: replace sqrt with rsqrt
 
@@ -149,9 +159,13 @@ void approximateGivensQuaternion(Type a11, Type a12, Type a22, Type &ch, Type &s
      * Given givens angle computed by approximateGivensAngles,
      * compute the corresponding rotation quaternion.
      */
+    constexpr double _gamma = 5.82842712474619; // FOUR_GAMMA_SQUARED = sqrt(8)+3;
+    constexpr double _cstar = 0.9238795325112867; // cos(pi/8)
+    constexpr double _sstar = 0.3826834323650898;  // sin(p/8)
+
     ch = Type(2)*(a11-a22);
     sh = a12;
-    bool b = _gamma*sh*sh < ch*ch;
+    bool b = Type(_gamma)*sh*sh < ch*ch;
     Type w = Type(1) / sqrt(ch*ch+sh*sh);
     ch=b?w*ch:Type(_cstar);
     sh=b?w*sh:Type(_sstar);
@@ -230,7 +244,8 @@ void jacobiEigenanlysis( // symmetric matrix
                                 Type * qV)
 {
     qV[3]=1; qV[0]=0;qV[1]=0;qV[2]=0; // follow same indexing convention as GLM
-    for (int i=0;i<4;i++)
+    constexpr int ITERS = _svd_config<Type>::JACOBI_ITERATIONS;
+    for (int i=0;i<ITERS;i++)
     {
         // we wish to eliminate the maximum off-diagonal element
         // on every iteration, but cycling over all 3 possible rotations
@@ -279,7 +294,7 @@ void QRGivensQuaternion(Type a1, Type a2, Type &ch, Type &sh)
 {
     // a1 = pivot point on diagonal
     // a2 = lower triangular entry we want to annihilate
-    Type epsilon = _EPSILON;
+    const Type epsilon = _svd_config<Type>::QR_GIVENS_EPSILON;
     Type rho = accurateSqrt(a1*a1 + a2*a2);
 
     sh = rho > epsilon ? a2 : Type(0);
