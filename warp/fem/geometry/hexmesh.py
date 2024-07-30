@@ -31,8 +31,6 @@ class HexmeshSideArg:
     face_hex_face_orientation: wp.array(dtype=wp.vec4i)
 
 
-_mat32 = wp.mat(shape=(3, 2), dtype=float)
-
 FACE_VERTEX_INDICES = wp.constant(
     wp.mat(shape=(6, 4), dtype=int)(
         [
@@ -307,7 +305,7 @@ class Hexmesh(Geometry):
     def side_deformation_gradient(args: SideArg, s: Sample):
         """Transposed side deformation gradient at `coords`"""
         v1, v2 = Hexmesh._side_deformation_vecs(args, s.element_index, s.element_coords)
-        return _mat32(v1, v2)
+        return wp.matrix_from_cols(v1, v2)
 
     @wp.func
     def side_inner_cell_index(arg: SideArg, side_index: ElementIndex):

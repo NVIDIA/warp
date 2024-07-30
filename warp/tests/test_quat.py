@@ -1197,7 +1197,6 @@ def test_quat_to_matrix(test, device, dtype, register_kernels=False):
 
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
     quat = wp.types.quaternion(dtype=wptype)
-    mat3 = wp.types.matrix(shape=(3, 3), dtype=wptype)
     vec3 = wp.types.vector(length=3, dtype=wptype)
 
     def check_quat_to_matrix(
@@ -1231,7 +1230,7 @@ def test_quat_to_matrix(test, device, dtype, register_kernels=False):
                 wptype(1),
             ),
         )
-        result_manual = mat3(xaxis, yaxis, zaxis)
+        result_manual = wp.matrix_from_cols(xaxis, yaxis, zaxis)
 
         idx = 0
         for i in range(3):

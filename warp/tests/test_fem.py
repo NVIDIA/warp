@@ -1879,7 +1879,7 @@ def test_qr_eigenvalues():
     wp.expect_near(wp.ddot(Err4, Err4), 0.0, tol)
 
     # test robustness to low requested tolerance
-    Rank6 = mat66f(
+    Rank6 = wp.matrix_from_cols(
         vec6f(0.00171076, 0.0, 0.0, 0.0, 0.0, 0.0),
         vec6f(0.0, 0.00169935, 6.14367e-06, -3.52589e-05, 3.02397e-05, -1.53458e-11),
         vec6f(0.0, 6.14368e-06, 0.00172217, 2.03568e-05, 1.74589e-05, -2.92627e-05),

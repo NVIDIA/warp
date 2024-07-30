@@ -41,7 +41,6 @@ class TetmeshSideArg:
     face_tet_indices: wp.array(dtype=wp.vec2i)
 
 
-_mat32 = wp.mat(shape=(3, 2), dtype=float)
 _NULL_BVH = wp.constant(wp.uint64(-1))
 
 
@@ -188,7 +187,7 @@ class Tetmesh(Geometry):
         p1 = args.positions[args.tet_vertex_indices[s.element_index, 1]]
         p2 = args.positions[args.tet_vertex_indices[s.element_index, 2]]
         p3 = args.positions[args.tet_vertex_indices[s.element_index, 3]]
-        return wp.mat33(p1 - p0, p2 - p0, p3 - p0)
+        return wp.matrix_from_cols(p1 - p0, p2 - p0, p3 - p0)
 
     @wp.func
     def cell_inverse_deformation_gradient(args: CellArg, s: Sample):
@@ -297,7 +296,7 @@ class Tetmesh(Geometry):
     @wp.func
     def side_deformation_gradient(args: SideArg, s: Sample):
         e1, e2 = Tetmesh._side_vecs(args, s.element_index)
-        return _mat32(e1, e2)
+        return wp.matrix_from_cols(e1, e2)
 
     @wp.func
     def side_inner_cell_index(arg: SideArg, side_index: ElementIndex):

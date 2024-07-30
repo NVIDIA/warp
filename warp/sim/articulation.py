@@ -22,7 +22,7 @@ def compute_2d_rotational_dofs(
     """
     Computes the rotation quaternion and 3D angular velocity given the joint axes, coordinates and velocities.
     """
-    q_off = wp.quat_from_matrix(wp.mat33(axis_0, axis_1, wp.cross(axis_0, axis_1)))
+    q_off = wp.quat_from_matrix(wp.matrix_from_cols(axis_0, axis_1, wp.cross(axis_0, axis_1)))
 
     # body local axes
     local_0 = wp.quat_rotate(q_off, wp.vec3(1.0, 0.0, 0.0))
@@ -52,7 +52,7 @@ def invert_2d_rotational_dofs(
     """
     Computes generalized joint position and velocity coordinates for a 2D rotational joint given the joint axes, relative orientations and angular velocity differences between the two bodies the joint connects.
     """
-    q_off = wp.quat_from_matrix(wp.mat33(axis_0, axis_1, wp.cross(axis_0, axis_1)))
+    q_off = wp.quat_from_matrix(wp.matrix_from_cols(axis_0, axis_1, wp.cross(axis_0, axis_1)))
     q_pc = wp.quat_inverse(q_off) * wp.quat_inverse(q_p) * q_c * q_off
 
     # decompose to a compound rotation each axis
@@ -98,7 +98,7 @@ def compute_3d_rotational_dofs(
     """
     Computes the rotation quaternion and 3D angular velocity given the joint axes, coordinates and velocities.
     """
-    q_off = wp.quat_from_matrix(wp.mat33(axis_0, axis_1, axis_2))
+    q_off = wp.quat_from_matrix(wp.matrix_from_cols(axis_0, axis_1, axis_2))
 
     # body local axes
     local_0 = wp.quat_rotate(q_off, wp.vec3(1.0, 0.0, 0.0))
@@ -128,7 +128,7 @@ def invert_3d_rotational_dofs(
     """
     Computes generalized joint position and velocity coordinates for a 3D rotational joint given the joint axes, relative orientations and angular velocity differences between the two bodies the joint connects.
     """
-    q_off = wp.quat_from_matrix(wp.mat33(axis_0, axis_1, axis_2))
+    q_off = wp.quat_from_matrix(wp.matrix_from_cols(axis_0, axis_1, axis_2))
     q_pc = wp.quat_inverse(q_off) * wp.quat_inverse(q_p) * q_c * q_off
 
     # decompose to a compound rotation each axis

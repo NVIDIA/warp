@@ -941,6 +941,12 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
             raise RuntimeError("the `shape` argument must be specified when initializing a matrix by value")
 
         if all(type_is_vector(x) for x in variadic_arg_types):
+            warp.utils.warn(
+                "the built-in `wp.matrix()` won't support taking column vectors as input "
+                "in the future. Use `wp.matrix_from_rows()` or `wp.matrix_from_cols()` instead.",
+                DeprecationWarning,
+            )
+
             if shape[1] != variadic_arg_count:
                 raise RuntimeError(
                     f"incompatible number of column vectors given ({variadic_arg_count}) "

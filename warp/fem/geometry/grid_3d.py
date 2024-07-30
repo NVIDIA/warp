@@ -15,9 +15,6 @@ class Grid3DCellArg:
     origin: wp.vec3
 
 
-_mat32 = wp.mat(shape=(3, 2), dtype=float)
-
-
 class Grid3D(Geometry):
     """Three-dimensional regular grid geometry"""
 
@@ -334,7 +331,7 @@ class Grid3D(Geometry):
 
         sign = wp.select(side.origin[0] == 0, 1.0, -1.0)
 
-        return _mat32(
+        return wp.matrix_from_cols(
             wp.cw_mul(Grid3D._local_to_world(side.axis, wp.vec3(0.0, sign, 0.0)), args.cell_arg.cell_size),
             wp.cw_mul(Grid3D._local_to_world(side.axis, wp.vec3(0.0, 0.0, 1.0)), args.cell_arg.cell_size),
         )
