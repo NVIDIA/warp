@@ -1808,7 +1808,7 @@ def mul(a: Transformation[Scalar], b: Scalar) -> Transformation[Scalar]:
 
 @over
 def mod(a: Scalar, b: Scalar) -> Scalar:
-    """ """
+    """Modulo operation using truncated division."""
     ...
 
 

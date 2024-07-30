@@ -2054,6 +2054,8 @@ Operators
 
 .. py:function:: mod(a: Scalar, b: Scalar) -> Scalar
 
+    Modulo operation using truncated division.
+
 
 .. py:function:: div(a: Scalar, b: Scalar) -> Scalar
 
