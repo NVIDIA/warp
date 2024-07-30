@@ -639,6 +639,18 @@ def matrix(*args: Scalar, shape: Tuple[int, int], dtype: Scalar) -> Matrix[Any, 
 
 
 @over
+def matrix_from_cols(*args: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """Construct a matrix from column vectors."""
+    ...
+
+
+@over
+def matrix_from_rows(*args: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """Construct a matrix from row vectors."""
+    ...
+
+
+@over
 def identity(n: int32, dtype: Scalar) -> Matrix[Any, Any, Scalar]:
     """Create an identity matrix with shape=(n,n) with the type given by ``dtype``."""
     ...

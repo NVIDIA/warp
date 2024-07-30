@@ -198,6 +198,159 @@ struct mat_t
     Type data[Rows][Cols];
 };
 
+template<typename Type>
+inline CUDA_CALLABLE mat_t<2, 2, Type> matrix_from_cols(vec_t<2, Type> c0, vec_t<2, Type> c1)
+{
+    mat_t<2, 2, Type> m;
+
+    m.data[0][0] = c0[0];
+    m.data[1][0] = c0[1];
+
+    m.data[0][1] = c1[0];
+    m.data[1][1] = c1[1];
+
+    return m;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE mat_t<3, 3, Type> matrix_from_cols(vec_t<3, Type> c0, vec_t<3, Type> c1, vec_t<3, Type> c2)
+{
+    mat_t<3, 3, Type> m;
+
+    m.data[0][0] = c0[0];
+    m.data[1][0] = c0[1];
+    m.data[2][0] = c0[2];
+
+    m.data[0][1] = c1[0];
+    m.data[1][1] = c1[1];
+    m.data[2][1] = c1[2];
+
+    m.data[0][2] = c2[0];
+    m.data[1][2] = c2[1];
+    m.data[2][2] = c2[2];
+
+    return m;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE mat_t<4, 4, Type> matrix_from_cols(vec_t<4, Type> c0, vec_t<4, Type> c1, vec_t<4, Type> c2, vec_t<4, Type> c3)
+{
+    mat_t<4, 4, Type> m;
+
+    m.data[0][0] = c0[0];
+    m.data[1][0] = c0[1];
+    m.data[2][0] = c0[2];
+    m.data[3][0] = c0[3];
+
+    m.data[0][1] = c1[0];
+    m.data[1][1] = c1[1];
+    m.data[2][1] = c1[2];
+    m.data[3][1] = c1[3];
+
+    m.data[0][2] = c2[0];
+    m.data[1][2] = c2[1];
+    m.data[2][2] = c2[2];
+    m.data[3][2] = c2[3];
+
+    m.data[0][3] = c3[0];
+    m.data[1][3] = c3[1];
+    m.data[2][3] = c3[2];
+    m.data[3][3] = c3[3];
+
+    return m;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows, Cols, Type> matrix_from_cols(const initializer_array<Cols, vec_t<Rows, Type> >& l)
+{
+    mat_t<Rows, Cols, Type> m;
+    for (unsigned j=0; j < Cols; ++j)
+    {
+        for (unsigned i=0; i < Rows; ++i)
+        {
+            m.data[i][j] = l[j][i];
+        }
+    }
+
+    return m;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE mat_t<2, 2, Type> matrix_from_rows(vec_t<2, Type> r0, vec_t<2, Type> r1)
+{
+    mat_t<2, 2, Type> m;
+
+    m.data[0][0] = r0[0];
+    m.data[0][1] = r0[1];
+
+    m.data[1][0] = r1[0];
+    m.data[1][1] = r1[1];
+
+    return m;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE mat_t<3, 3, Type> matrix_from_rows(vec_t<3, Type> r0, vec_t<3, Type> r1, vec_t<3, Type> r2)
+{
+    mat_t<3, 3, Type> m;
+
+    m.data[0][0] = r0[0];
+    m.data[0][1] = r0[1];
+    m.data[0][2] = r0[2];
+
+    m.data[1][0] = r1[0];
+    m.data[1][1] = r1[1];
+    m.data[1][2] = r1[2];
+
+    m.data[2][0] = r2[0];
+    m.data[2][1] = r2[1];
+    m.data[2][2] = r2[2];
+
+    return m;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE mat_t<4, 4, Type> matrix_from_rows(vec_t<4, Type> r0, vec_t<4, Type> r1, vec_t<4, Type> r2, vec_t<4, Type> r3)
+{
+    mat_t<4, 4, Type> m;
+
+    m.data[0][0] = r0[0];
+    m.data[0][1] = r0[1];
+    m.data[0][2] = r0[2];
+    m.data[0][3] = r0[3];
+
+    m.data[1][0] = r1[0];
+    m.data[1][1] = r1[1];
+    m.data[1][2] = r1[2];
+    m.data[1][3] = r1[3];
+
+    m.data[2][0] = r2[0];
+    m.data[2][1] = r2[1];
+    m.data[2][2] = r2[2];
+    m.data[2][3] = r2[3];
+
+    m.data[3][0] = r3[0];
+    m.data[3][1] = r3[1];
+    m.data[3][2] = r3[2];
+    m.data[3][3] = r3[3];
+
+    return m;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows, Cols, Type> matrix_from_rows(const initializer_array<Rows, vec_t<Cols, Type> >& l)
+{
+    mat_t<Rows, Cols, Type> m;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            m.data[i][j] = l[i][j];
+        }
+    }
+
+    return m;
+}
 
 template<unsigned Rows, typename Type>
 inline CUDA_CALLABLE mat_t<Rows, Rows, Type> identity()
@@ -1765,6 +1918,128 @@ inline CUDA_CALLABLE void adj_mat_t(const vec_t<4,Type> &cmps0, const vec_t<4,Ty
         adj_cmps1[i] += adj_ret.data[i][1];
         adj_cmps2[i] += adj_ret.data[i][2];
         adj_cmps3[i] += adj_ret.data[i][3];
+    }
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_matrix_from_cols(
+    const vec_t<2, Type>& c0, const vec_t<2, Type>& c1,
+    vec_t<2, Type>& adj_c0, vec_t<2, Type>& adj_c1,
+    const mat_t<2, 2, Type>& adj_ret
+)
+{
+    for (unsigned i=0; i < 2; ++i)
+    {
+        adj_c0[i] += adj_ret.data[i][0];
+        adj_c1[i] += adj_ret.data[i][1];
+    }
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_matrix_from_cols(
+    const vec_t<3, Type>& c0, const vec_t<3, Type>& c1, const vec_t<3, Type>& c2,
+    vec_t<3, Type>& adj_c0, vec_t<3, Type>& adj_c1, vec_t<3, Type>& adj_c2,
+    const mat_t<3, 3, Type>& adj_ret
+)
+{
+    for (unsigned i=0; i < 3; ++i)
+    {
+        adj_c0[i] += adj_ret.data[i][0];
+        adj_c1[i] += adj_ret.data[i][1];
+        adj_c2[i] += adj_ret.data[i][2];
+    }
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_matrix_from_cols(
+    const vec_t<4, Type>& c0, const vec_t<4, Type>& c1, const vec_t<4, Type>& c2, const vec_t<4, Type>& c3,
+    vec_t<4, Type>& adj_c0, vec_t<4, Type>& adj_c1, vec_t<4, Type>& adj_c2, vec_t<4, Type>& adj_c3,
+    const mat_t<4, 4, Type>& adj_ret
+)
+{
+    for (unsigned i=0; i < 4; ++i)
+    {
+        adj_c0[i] += adj_ret.data[i][0];
+        adj_c1[i] += adj_ret.data[i][1];
+        adj_c2[i] += adj_ret.data[i][2];
+        adj_c3[i] += adj_ret.data[i][3];
+    }
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_matrix_from_cols(
+    const initializer_array<Cols, vec_t<Rows, Type> >& l,
+    const initializer_array<Cols, vec_t<Rows, Type>* >& adj_l,
+    const mat_t<Rows, Cols, Type>& adj_ret
+)
+{
+    for (unsigned j=0; j < Cols; ++j)
+    {
+        for (unsigned i=0; i < Rows; ++i)
+        {
+            (*adj_l[j])[i] += adj_ret.data[i][j];
+        }
+    }
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_matrix_from_rows(
+    const vec_t<2, Type>& r0, const vec_t<2, Type>& r1,
+    vec_t<2, Type>& adj_r0, vec_t<2, Type>& adj_r1,
+    const mat_t<2, 2, Type>& adj_ret
+)
+{
+    for (unsigned j=0; j < 2; ++j)
+    {
+        adj_r0[j] += adj_ret.data[0][j];
+        adj_r1[j] += adj_ret.data[1][j];
+    }
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_matrix_from_rows(
+    const vec_t<3, Type>& c0, const vec_t<3, Type>& c1, const vec_t<3, Type>& c2,
+    vec_t<3, Type>& adj_c0, vec_t<3, Type>& adj_c1, vec_t<3, Type>& adj_c2,
+    const mat_t<3, 3, Type>& adj_ret
+)
+{
+    for (unsigned j=0; j < 3; ++j)
+    {
+        adj_c0[j] += adj_ret.data[0][j];
+        adj_c1[j] += adj_ret.data[1][j];
+        adj_c2[j] += adj_ret.data[2][j];
+    }
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_matrix_from_rows(
+    const vec_t<4, Type>& c0, const vec_t<4, Type>& c1, const vec_t<4, Type>& c2, const vec_t<4, Type>& c3,
+    vec_t<4, Type>& adj_c0, vec_t<4, Type>& adj_c1, vec_t<4, Type>& adj_c2, vec_t<4, Type>& adj_c3,
+    const mat_t<4, 4, Type>& adj_ret
+)
+{
+    for (unsigned j=0; j < 4; ++j)
+    {
+        adj_c0[j] += adj_ret.data[0][j];
+        adj_c1[j] += adj_ret.data[1][j];
+        adj_c2[j] += adj_ret.data[2][j];
+        adj_c3[j] += adj_ret.data[3][j];
+    }
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_matrix_from_rows(
+    const initializer_array<Rows, vec_t<Cols, Type> >& l,
+    const initializer_array<Rows, vec_t<Cols, Type>* >& adj_l,
+    const mat_t<Rows, Cols, Type>& adj_ret
+)
+{
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            (*adj_l[i])[j] += adj_ret.data[i][j];
+        }
     }
 }
 

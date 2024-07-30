@@ -1021,6 +1021,86 @@ add_builtin(
 )
 
 
+def matrix_from_vecs_create_value_func(cols: bool):
+    def fn(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+        if arg_types is None:
+            return matrix(shape=(Any, Any), dtype=Scalar)
+
+        variadic_arg_types = arg_types.get("args", ())
+        variadic_arg_count = len(variadic_arg_types)
+
+        if not all(type_is_vector(x) for x in variadic_arg_types):
+            raise RuntimeError("all arguments are expected to be vectors")
+
+        length = variadic_arg_types[0]._length_
+        if any(x._length_ != length for x in variadic_arg_types):
+            raise RuntimeError("all vectors are expected to have the same length")
+
+        dtype = variadic_arg_types[0]._wp_scalar_type_
+        if any(x._wp_scalar_type_ != dtype for x in variadic_arg_types):
+            raise RuntimeError("all vectors are expected to have the same dtype")
+
+        shape = (length, variadic_arg_count) if cols else (variadic_arg_count, length)
+        return matrix(shape=shape, dtype=dtype)
+
+    return fn
+
+
+def matrix_from_vecs_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    # We're in the codegen stage where we emit the code calling the built-in.
+    # Further validate the given argument values if needed and map them
+    # to the underlying C++ function's runtime and template params.
+
+    shape = return_type._shape_
+    dtype = return_type._wp_scalar_type_
+
+    variadic_args = args.get("args", ())
+
+    func_args = variadic_args
+
+    if shape in ((2, 2), (3, 3), (4, 4)):
+        # Template specializations exist for these shapes, don't pass them
+        # as template parameters.
+        template_args = (dtype,)
+    else:
+        template_args = (*shape, dtype)
+
+    return (func_args, template_args)
+
+
+def matrix_from_vecs_initializer_list_func(args, return_type):
+    shape = return_type._shape_
+
+    return shape[0] != shape[1] or shape[0] > 4
+
+
+add_builtin(
+    "matrix_from_cols",
+    input_types={"*args": vector(length=Any, dtype=Scalar)},
+    variadic=True,
+    value_func=matrix_from_vecs_create_value_func(cols=True),
+    dispatch_func=matrix_from_vecs_dispatch_func,
+    initializer_list_func=matrix_from_vecs_initializer_list_func,
+    native_func="matrix_from_cols",
+    doc="Construct a matrix from column vectors.",
+    group="Vector Math",
+    export=False,
+)
+
+add_builtin(
+    "matrix_from_rows",
+    input_types={"*args": vector(length=Any, dtype=Scalar)},
+    variadic=True,
+    value_func=matrix_from_vecs_create_value_func(cols=False),
+    dispatch_func=matrix_from_vecs_dispatch_func,
+    initializer_list_func=matrix_from_vecs_initializer_list_func,
+    native_func="matrix_from_rows",
+    doc="Construct a matrix from row vectors.",
+    group="Vector Math",
+    export=False,
+)
+
+
 def identity_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     if arg_types is None:
         return matrix(shape=(Any, Any), dtype=Scalar)
