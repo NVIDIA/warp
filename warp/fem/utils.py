@@ -200,111 +200,135 @@ def inverse_qr(A: Any):
 
 
 @wp.func
+def _wilkinson_shift(a: Any, b: Any, c: Any, tol: Any):
+    # Wilkinson shift: estimate eigenvalue of 2x2 symmetric matrix [a, c, c, b]
+    d = (a - b) * type(tol)(0.5)
+    return b + d - wp.sign(d) * wp.sqrt(d * d + c * c)
+
+
+@wp.func
+def _givens_rotation(a: Any, b: Any):
+    # Givens rotation [[c -s], [s c]] such that sa+cb =0
+    zero = type(a)(0.0)
+    one = type(a)(1.0)
+    abn_sq = a * a + b * b
+    abn = wp.select(abn_sq == zero, one / wp.sqrt(abn_sq), zero)
+    return a * abn, -b * abn
+
+
+@wp.func
+def tridiagonal_symmetric_eigenvalues_qr(D: Any, L: Any, Q: Any, tol: Any):
+    """
+    Computes the eigenvalues and eigen vectors of a symmetric tridiagonal matrix using the
+    Symmetric tridiagonal QR algorithm with implicit Wilkinson shift
+
+    Args:
+        D: Main diagonal of the matrix
+        L: Lower diagonal of the matrix, indexed such that L[i] = A[i+1, i]
+        Q: Initialization for the eigenvectors, useful if a pre-transformation has been apllied, otherwise may be identity
+        tol: Tolerance for the diagonalization residual (Linf norm of off-diagonal over diagonal terms)
+
+    Returns a tuple (D: vector of eigenvalues, P: matrix with one eigenvector per row) such that A = P^T D P
+
+
+    Ref: Arbenz P, Numerical Methods for Solving Large Scale Eigenvalue Problems, Chapter 4 (QR algorithm, Mar 13, 2018)
+    """
+
+    two = D.dtype(2.0)
+
+    # so that we can use the type length in expressions
+    # this will prevent unrolling by warp, but should be ok for native code
+    m = int(0)
+    for _ in range(type(D).length):
+        m += 1
+
+    start = int(0)
+    y = D.dtype(0.0)  # moving buldge
+    x = D.dtype(0.0)  # coeff atop buldge
+
+    for _ in range(32 * m):  # failsafe, usually converges faster than that
+        # Iterate over all idependant (deflated) blocks
+        end = int(-1)
+
+        for k in range(m - 1):
+            if k >= end:
+                # Check if new block is starting
+                if k == end or wp.abs(L[k]) <= tol * (wp.abs(D[k]) + wp.abs(D[k + 1])):
+                    continue
+
+                # Find end of block
+                start = k
+                end = start + 1
+                while end + 1 < m:
+                    if wp.abs(L[end]) <= tol * (wp.abs(D[end + 1]) + wp.abs(D[end])):
+                        break
+                    end += 1
+
+                # Wilkinson shift (an eigenvalue of the last 2x2 block)
+                shift = _wilkinson_shift(D[end - 1], D[end], L[end - 1], tol)
+
+                # start with eliminating lower diag of first column of shifted matrix
+                # (i.e. first step of excplit QR factorization)
+                # Then all further steps eliminate the buldge (second diag) of the non-shifted matrix
+                x = D[start] - shift
+                y = L[start]
+
+            c, s = _givens_rotation(x, y)
+
+            # Apply Givens rotation on both sides of tridiagonal matrix
+
+            # middle block
+            d = D[k] - D[k + 1]
+            z = (two * c * L[k] + d * s) * s
+            D[k] -= z
+            D[k + 1] += z
+            L[k] = d * c * s + (c * c - s * s) * L[k]
+
+            if k > start:
+                L[k - 1] = c * x - s * y
+
+            x = L[k]
+            y = -s * L[k + 1]  # new buldge
+            L[k + 1] *= c
+
+            # apply givens rotation on left of Q
+            # note: Q is transposed compared to usual impls, as Warp makes it easier to index rows
+            Qk0 = Q[k]
+            Qk1 = Q[k + 1]
+            Q[k] = c * Qk0 - s * Qk1
+            Q[k + 1] = c * Qk1 + s * Qk0
+
+        if end <= 0:
+            # We did nothing, so diagonalization must have been achieved
+            break
+
+    return D, Q
+
+
+@wp.func
 def symmetric_eigenvalues_qr(A: Any, tol: Any):
     """
     Computes the eigenvalues and eigen vectors of a square symmetric matrix A using the QR algorithm
 
     Args:
         A: square symmetric matrix
-        tol: Tolerance for the diagonalization residual (squared L2 norm of off-diagonal terms)
+        tol: Tolerance for the diagonalization residual (Linf norm of off-diagonal over diagonal terms)
 
     Returns a tuple (D: vector of eigenvalues, P: matrix with one eigenvector per row) such that A = P^T D P
     """
 
-    two = A.dtype(2.0)
-    zero = A.dtype(0.0)
-
-    # temp storage for matrix rows
-    ri = type(A[0])()
-    rn = type(ri)()
-
-    # tridiagonal storage for R
-    R_L = type(ri)()
-    R_L = type(ri)(zero)
-    R_U = type(ri)(zero)
-
-    # so that we can use the type length in expression
-    # this will prevent unrolling by warp, but should be ok for native code
-    m = int(0)
-    for _ in range(type(ri).length):
-        m += 1
-
     # Put A under Hessenberg form (tridiagonal)
     Q, H = householder_make_hessenberg(A)
-    Q = wp.transpose(Q)  # algorithm below works and transposed Q as rows are easier to index
 
-    for _ in range(16 * m):  # failsafe, usually converges faster than that
-        # Initialize R with current H
-        R_D = wp.get_diag(H)
-        for i in range(1, type(ri).length):
-            R_L[i - 1] = H[i, i - 1]
-            R_U[i - 1] = H[i - 1, i]
+    # tridiagonal storage for H
+    D = wp.get_diag(H)
+    L = type(D)(A.dtype(0.0))
+    for i in range(1, type(D).length):
+        L[i - 1] = H[i, i - 1]
 
-        # compute QR decomposition, directly transform H and eigenvectors
-        for n in range(1, m):
-            i = n - 1
-
-            # compute reflection
-            xi = R_D[i]
-            xn = R_L[i]
-
-            xii = xi * xi
-            xnn = xn * xn
-            alpha = wp.sqrt(xii + xnn) * wp.sign(xi)
-
-            xi += alpha
-            xii = xi * xi
-            xin = xi * xn
-
-            two_over_x_sq = wp.select(alpha == zero, two / (xii + xnn), zero)
-            xii *= two_over_x_sq
-            xin *= two_over_x_sq
-            xnn *= two_over_x_sq
-
-            # Left-multiply R and Q, multiply H on both sides
-            # Note that R should get non-zero coefficients on the second upper diagonal,
-            # but those won't get read afterwards, so we can ignore them
-
-            R_D[n] -= R_U[i] * xin + R_D[n] * xnn
-            R_U[n] -= R_U[n] * xnn
-
-            ri = Q[i]
-            rn = Q[n]
-            Q[i] -= ri * xii + rn * xin
-            Q[n] -= ri * xin + rn * xnn
-
-            # H is multiplied on both sides, but stays tridiagonal except for moving buldge
-            # Note: we could reduce the stencil to for 4 columns qui we do below,
-            # but unlikely to be worth it for our small matrix sizes
-            ri = H[i]
-            rn = H[n]
-            H[i] -= ri * xii + rn * xin
-            H[n] -= ri * xin + rn * xnn
-
-            # multiply on right, manually. We just need to consider 4 rows
-            if i > 0:
-                ci = H[i - 1, i]
-                cn = H[i - 1, n]
-                H[i - 1, i] -= ci * xii + cn * xin
-                H[i - 1, n] -= ci * xin + cn * xnn
-
-            for k in range(2):
-                ci = H[i + k, i]
-                cn = H[i + k, n]
-                H[i + k, i] -= ci * xii + cn * xin
-                H[i + k, n] -= ci * xin + cn * xnn
-
-            if n + 1 < m:
-                ci = H[n + 1, i]
-                cn = H[n + 1, n]
-                H[n + 1, i] -= ci * xii + cn * xin
-                H[n + 1, n] -= ci * xin + cn * xnn
-
-        # Terminate if the upper diagonal of R is near zero
-        if wp.length_sq(R_U) < tol:
-            break
-
-    return wp.get_diag(H), Q
+    Qt = wp.transpose(Q)
+    ev, P = tridiagonal_symmetric_eigenvalues_qr(D, L, Qt, tol)
+    return ev, P
 
 
 def compress_node_indices(
