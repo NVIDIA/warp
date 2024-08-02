@@ -118,7 +118,7 @@ ruff lint:
     - .runner-utility-linux-x86_64
   before_script:
     - python -m pip install --upgrade pip
-    - pip install --upgrade ruff==0.5.0
+    - pip install --upgrade ruff==0.5.5
   script:
     - ruff check --output-format full  --exit-zero # Just to get something in the log
     - ruff check --output-format gitlab > gl-code-quality-report.json
@@ -134,7 +134,7 @@ ruff format:
     - .runner-utility-linux-x86_64
   before_script:
     - python -m pip install --upgrade pip
-    - pip install --upgrade ruff==0.5.0
+    - pip install --upgrade ruff==0.5.5
   script:
     - ruff format --diff
 
