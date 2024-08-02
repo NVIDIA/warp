@@ -253,7 +253,8 @@ add_example_test(
     TestOptimExamples,
     name="optim.example_cloth_throw",
     devices=test_devices,
-    test_options_cpu={"train_iters": 3, "test_timeout": 600},
+    test_options={"test_timeout": 600},
+    test_options_cpu={"train_iters": 3},
 )
 add_example_test(
     TestOptimExamples,
