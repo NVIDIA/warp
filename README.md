@@ -329,10 +329,10 @@ This ensures that subsequent modifications to the library will be reflected in t
 Please see the following resources for additional background on Warp:
 
 * [Product Page](https://developer.nvidia.com/warp-python)
+* [GTC 2024 Presentation](https://www.nvidia.com/en-us/on-demand/session/gtc24-s63345/)
 * [GTC 2022 Presentation](https://www.nvidia.com/en-us/on-demand/session/gtcspring22-s41599)
 * [GTC 2021 Presentation](https://www.nvidia.com/en-us/on-demand/session/gtcspring21-s31838)
 * [SIGGRAPH Asia 2021 Differentiable Simulation Course](https://dl.acm.org/doi/abs/10.1145/3476117.3483433)
-* [GTC 2024 Presentation](https://www.nvidia.com/en-us/on-demand/session/gtc24-s63345/)
 
 The underlying technology in Warp has been used in a number of research projects at NVIDIA including the following publications:
 
