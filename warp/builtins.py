@@ -3145,14 +3145,9 @@ def address_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, A
 
     idx_count = len(idx_types)
 
-    if idx_count < arr_type.ndim:
+    if idx_count != arr_type.ndim:
         raise RuntimeError(
-            "Num indices < num dimensions for array load, this is a codegen error, should have generated a view instead"
-        )
-
-    if idx_count > arr_type.ndim:
-        raise RuntimeError(
-            f"Num indices > num dimensions for array load, received {idx_count}, but array only has {arr_type.ndim}"
+            f"The number of indices provided ({idx_count}) does not match the array dimensions ({arr_type.ndim}) for array load"
         )
 
     # check index types
@@ -3229,14 +3224,9 @@ def array_store_value_func(arg_types: Mapping[str, type], arg_values: Mapping[st
 
     idx_count = len(idx_types)
 
-    if idx_count < arr_type.ndim:
+    if idx_count != arr_type.ndim:
         raise RuntimeError(
-            "Num indices < num dimensions for array store, this is a codegen error, should have generated a view instead"
-        )
-
-    if idx_count > arr_type.ndim:
-        raise RuntimeError(
-            f"Num indices > num dimensions for array store, received {idx_count}, but array only has {arr_type.ndim}"
+            f"The number of indices provided ({idx_count}) does not match the array dimensions ({arr_type.ndim}) for array store"
         )
 
     # check index types

@@ -2299,7 +2299,9 @@ class Adjoint:
                     )
 
             else:
-                raise WarpCodegenError("Can only subscript assign array, vector, quaternion, and matrix types")
+                raise WarpCodegenError(
+                    f"Can only subscript assign array, vector, quaternion, and matrix types, got {target_type}"
+                )
 
         elif isinstance(lhs, ast.Name):
             # symbol name
