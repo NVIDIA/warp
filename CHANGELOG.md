@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## [1.3.2] - 2024-??
+
+- Rename function `plot_kernel_jacobians` to `jacobian_plot` in `autograd` module.
+
 ## [1.3.1] - 2024-07-27
 
 - Remove ``wp.synchronize()`` from PyTorch autograd function example
