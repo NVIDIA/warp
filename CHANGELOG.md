@@ -3,6 +3,9 @@
 ## [Upcoming Release] - 2024-??-??
 
 - Fix accuracy of 3x3 svd with fp64 numbers ([GH-281](https://github.com/NVIDIA/warp/issues/281))
+## [1.3.2] - 2024-??
+
+- Rename function `plot_kernel_jacobians` to `jacobian_plot` in `autograd` module.
 
 ## [1.3.1] - 2024-07-27
 
