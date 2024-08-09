@@ -1270,6 +1270,8 @@ def type_typestr(dtype):
 def type_repr(t):
     if is_array(t):
         return str(f"array(ndim={t.ndim}, dtype={t.dtype})")
+    if is_tile(t):
+        return str(f"tile(dtype={t.dtype}, m={t.M}, n={t.N})")
     if type_is_vector(t):
         return str(f"vector(length={t._shape_[0]}, dtype={t._wp_scalar_type_})")
     if type_is_matrix(t):

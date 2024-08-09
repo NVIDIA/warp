@@ -1275,7 +1275,7 @@ class Adjoint:
             output = adj.add_var(return_type)
             output_list = [output]
 
-            forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
+            forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
 
             # prepend auto if it is an anonymously typed var (e.g.: a tile op)
             if output.ctype() == "auto":
@@ -1284,7 +1284,7 @@ class Adjoint:
 
             replay_call = forward_call
             if func.custom_replay_func is not None:
-                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
+                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
                
         else:
             # handle multiple value functions
@@ -1307,6 +1307,7 @@ class Adjoint:
             adj.add_forward(alias_call)
 
         if not func.missing_grad and len(args):
+            adj_args = tuple(strip_reference(x) for x in func_args)
             reverse_has_output_args = (
                 func.require_original_output_arg or len(output_list) > 1
             ) and func.custom_grad_func is None            
@@ -2611,10 +2612,10 @@ cpu_module_header = """
 #define int(x) cast_int(x)
 #define adj_int(x, adj_x, adj_ret) adj_cast_int(x, adj_x, adj_ret)
 
-#define builtin_tid1d() wp::tid(task_index)
-#define builtin_tid2d(x, y) wp::tid(x, y, task_index, dim)
-#define builtin_tid3d(x, y, z) wp::tid(x, y, z, task_index, dim)
-#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, task_index, dim)
+#define builtin_tid1d() wp::tid(_idx)
+#define builtin_tid2d(x, y) wp::tid(x, y, _idx, dim)
+#define builtin_tid3d(x, y, z) wp::tid(x, y, z, _idx, dim)
+#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, _idx, dim)
 
 """
 
@@ -2629,10 +2630,10 @@ cuda_module_header = """
 #define int(x) cast_int(x)
 #define adj_int(x, adj_x, adj_ret) adj_cast_int(x, adj_x, adj_ret)
 
-#define builtin_tid1d() wp::tid(task_index)
-#define builtin_tid2d(x, y) wp::tid(x, y, task_index, dim)
-#define builtin_tid3d(x, y, z) wp::tid(x, y, z, task_index, dim)
-#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, task_index, dim)
+#define builtin_tid1d() wp::tid(_idx)
+#define builtin_tid2d(x, y) wp::tid(x, y, _idx, dim)
+#define builtin_tid3d(x, y, z) wp::tid(x, y, z, _idx, dim)
+#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, _idx, dim)
 
 """
 
@@ -2770,7 +2771,7 @@ extern "C" {{
 WP_API void {name}_cpu_forward(
     {forward_args})
 {{
-    for (size_t task_index = 0; task_index < dim.size; ++task_index)
+    for (size_t _idx = 0; _idx < dim.size; ++_idx)
     {{
         {name}_cpu_kernel_forward(
             {forward_params});
@@ -2780,7 +2781,7 @@ WP_API void {name}_cpu_forward(
 WP_API void {name}_cpu_backward(
     {reverse_args})
 {{
-    for (size_t task_index = 0; task_index < dim.size; ++task_index)
+    for (size_t _idx = 0; _idx < dim.size; ++_idx)
     {{
         {name}_cpu_kernel_backward(
             {reverse_params});

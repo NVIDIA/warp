@@ -1697,7 +1697,7 @@ add_builtin(
 # Tile-based primitives
 shared_memory_id = 0
 
-def tile_zeros_value_func(arg_types, kwds, templates):
+def tile_zeros_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     
     # return generic type (for doc builds)
     if arg_types is None:
@@ -1706,90 +1706,110 @@ def tile_zeros_value_func(arg_types, kwds, templates):
     if len(arg_types) > 0:
         raise RuntimeError("tile_zero() args must be passed by keyword")
 
-    if "m" not in kwds:
+    if "m" not in arg_values:
         raise RuntimeError("'m' keyword argument must be specified when calling tile_zeros() function")
 
-    if "n" not in kwds:
+    if "n" not in arg_values:
         raise RuntimeError("'n' keyword argument must be specified when calling tile_zeros() function")
 
-    if "dtype" not in kwds:
+    if "dtype" not in arg_values:
         raise RuntimeError("'dtype' keyword argument must be specified when calling tile_zeros() function")
 
-    m, n, dtype = kwds["m"], kwds["n"], kwds["dtype"]
+    dtype = arg_values["dtype"]
 
-    templates.append(dtype)
-    templates.append(m)
-    templates.append(n)
+    return array(dtype=dtype)
+
+def tile_zeros_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+
+    m, n, dtype = arg_values["m"], arg_values["n"], arg_values["dtype"]
+
+    template_args = []
+    template_args.append(dtype)
+    template_args.append(m)
+    template_args.append(n)
 
     global shared_memory_id
-    templates.append(shared_memory_id)
+    template_args.append(shared_memory_id)
 
     shared_memory_id += 1
 
-    return array(dtype=dtype)
+    return ([], template_args)
+
 
 
 add_builtin(
     "tile_zeros",
     input_types={"m": int, "n": int, "dtype": Scalar},
     value_func=tile_zeros_value_func,
+    dispatch_func=tile_zeros_dispatch_func,
     variadic=True,
     doc="Allocate a tile local block of zero'd memory",
     group="Tile Primitives",
     export=False,
 )
 
-def tile_load_value_func(arg_types, kwds, templates):
+def tile_load_value_func(arg_types, arg_values):
     
     # return generic type (for doc builds)
     if arg_types is None:
         return array_t(shape=(Any, Any), dtype=Scalar)
 
-    if len(arg_types) != 3: 
-        raise RuntimeError("tile_load() requires 3 positional args")
+    # if len(arg_types) != 3: 
+    #     raise RuntimeError("tile_load() requires 3 positional args")
 
-    if not is_array(arg_types[0]):
+    if not is_array(arg_types["a"]):
         raise RuntimeError("tile_load() argument 0 must be an array")
 
-    if not type_is_int(arg_types[1]):
+    if not type_is_int(arg_types["x"]):
         raise RuntimeError("tile_load() argument 1 must be an integer")
 
-    if not type_is_int(arg_types[2]):
+    if not type_is_int(arg_types["y"]):
         raise RuntimeError("tile_load() argument 1 must be an integer")
 
-    if "m" not in kwds:
+    if "m" not in arg_values:
         raise RuntimeError("'m' keyword argument must be specified when calling tile_zeros() function")
 
-    if "n" not in kwds:
+    if "n" not in arg_values:
         raise RuntimeError("'n' keyword argument must be specified when calling tile_zeros() function")
 
-    m, n = kwds["m"], kwds["n"]
-    dtype = arg_types[0].dtype
+    m, n = arg_values["m"], arg_values["n"]
+    dtype = arg_types["a"].dtype
 
-    templates.append(dtype)
-    templates.append(m)
-    templates.append(n)
+    return Tile(dtype, m, n, "load")
+
+
+def tile_load_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    
+    array = arg_values["a"]
+    x, y = arg_values["x"], arg_values["y"]
+    m, n = arg_values["m"].constant, arg_values["n"].constant
+    dtype = arg_values["a"].type.dtype
+
+    template_args = []
+    template_args.append(dtype)
+    template_args.append(m)
+    template_args.append(n)
 
     global shared_memory_id
     #templates.append(shared_memory_id)
 
     shared_memory_id += 1
 
-    return Tile(dtype, m, n, "load")#array(dtype=arg_types[0].dtype)
-
+    return ((array, x, y), template_args)
 
 
 add_builtin(
     "tile_load",
     input_types={"a": array(dtype=Any), "x": int, "y": int, "m": int, "n": int},
     value_func=tile_load_value_func,
+    dispatch_func=tile_load_dispatch_func,
     variadic=True,
     doc="Load a tile of size (m, n) worth of data from array a from offset (i=x*m, j=y*n)",
     group="Tile Primitives",
     export=False,
 )
 
-def tile_store_value_func(arg_types, kwds, templates):
+def tile_store_value_func(arg_types, arg_values):
     
     # return generic type (for doc builds)
     if arg_types is None:
@@ -1798,16 +1818,16 @@ def tile_store_value_func(arg_types, kwds, templates):
     if len(arg_types) != 4: 
         raise RuntimeError("tile_store() requires 4 positional args")
 
-    if not is_array(arg_types[0]):
+    if not is_array(arg_types["a"]):
         raise RuntimeError("tile_store() argument 0 must be an array")
 
-    if not type_is_int(arg_types[1]):
+    if not type_is_int(arg_types["x"]):
         raise RuntimeError("tile_store() argument 1 must be an integer")
 
-    if not type_is_int(arg_types[2]):
+    if not type_is_int(arg_types["y"]):
         raise RuntimeError("tile_store() argument 2 must be an integer")
 
-    if not is_tile(arg_types[3]):
+    if not is_tile(arg_types["t"]):
         raise RuntimeError("tile_store() argument 3 must be a tile")
 
     return None
@@ -1816,7 +1836,7 @@ def tile_store_value_func(arg_types, kwds, templates):
 
 add_builtin(
     "tile_store",
-    input_types={"a": array(dtype=Any), "x": int, "y": int, "m": int, "n": int},
+    input_types={"a": array(dtype=Any), "x": int, "y": int, "t": Any},
     value_func=tile_store_value_func,
     variadic=True,
     doc="Load a tile of size (m, n) worth of data from array a from offset (i=x*m, j=y*n)",
@@ -1826,7 +1846,7 @@ add_builtin(
 
 
 
-def tile_matmul_value_func(arg_types, kwds, templates):
+def tile_matmul_value_func(arg_types, arg_values):
     
     # return generic type (for doc builds)
     if arg_types is None:
@@ -1858,29 +1878,48 @@ add_builtin(
 )
 
 # does type propagation for load()
-def tile_map_value_func(arg_types, kwds, _):
+def tile_map_value_func(arg_types, arg_values):
 
     if arg_types is None:
         return None
 
-    dtype = arg_types[0]
-    for i in arg_types:
-        if arg_types[i].dtype != dtype:
-            raise RuntimeError("tile_map() arguments must all have the same type")
+    # check all args are tiles
+    for a in arg_types["args"]:
+        if not is_tile(a):
+            raise RuntimeError(f"tile_map() arguments must be tiles, got type {a}")
 
-    input = arg_types[0]
+    # use first argument to define output type
+    first = arg_types["args"][0]
+
+    # check all args have the same type and dimension
+    for a in arg_types["args"]:
+        if a.dtype != first.dtype:
+            raise RuntimeError(f"tile_map() arguments must all have the same type {first.dtype} != {a.dtype}")
+
+        if a.M != first.M:
+            raise RuntimeError(f"tile_map() arguments must all have the same m dimension {first.M} != {a.M}")
+
+        if a.N != first.N:
+            raise RuntimeError(f"tile_map() arguments must all have the same n dimension {first.N} != {a.N}")
+
     
-    return Tile(dtype=input.dtype,
-                M=input.M,
-                N=input.N,
+    return Tile(dtype=first.dtype,
+                M=first.M,
+                N=first.N,
                 op="map")
 
+
+def tile_map_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    func_args = (args["op"], *args["args"])
+    template_args = ()
+    return (func_args, template_args)
 
 
 add_builtin(
     "tile_map",
-    input_types={"op": Callable},
+    input_types={"op": Callable, "*args": Any},
     value_func=tile_map_value_func,
+    dispatch_func=tile_map_dispatch_func,
     variadic=True,
     doc="Map the operation onto each element of the tile", 
     group="Tile Primitives",
