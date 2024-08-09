@@ -19,7 +19,13 @@
 include:
   - /.gitlab/ci/common.yml
   - project: "omniverse/sectools/vault"
-    file: ["templates/v3/linux/packman_s3.gitlab-ci.yml"]
+    file:
+      - "templates/v3/common/token_job.gitlab-ci.yml"
+      - "templates/v3/linux/codesign.gitlab-ci.yml"
+      - "templates/v3/windows/codesign.gitlab-ci.yml"
+      - "templates/v3/linux/packman_s3.gitlab-ci.yml"
+      - "templates/v3/windows/packman_s3.gitlab-ci.yml"
+
     ref: v1_latest
 
 workflow:
