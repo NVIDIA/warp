@@ -365,13 +365,14 @@ Note that prior to 0.11.0, this schema was not strictly adhered to.
 
 ## License
 
-Warp is provided under the NVIDIA Software License, please see [LICENSE.md](./LICENSE.md) for full license text.
+Warp is provided under the Apache-2.0 OR MIT Licenses, at your option. 
+
+Please see [LICENSE.md](./LICENSE.md) [LICENSE-APACHE](./LICENSE-APACHE) [LICENSE-MIT](./LICENSE-MIT) for full license text.
 
 ## Contributing
 
 Contributions and pull requests from the community are welcome and are taken under the
-terms described in the **Feedback** section of [LICENSE.md](LICENSE.md#9-feedback).
-[CONTRIBUTING.md](./CONTRIBUTING.md) provides additional information on how to open a pull request for Warp.
+terms described in the **Feedback** section of [CONTRIBUTING.md](./CONTRIBUTING.md), which also provides additional information on how to open a pull request for Warp.
 
 ## Citing
 
