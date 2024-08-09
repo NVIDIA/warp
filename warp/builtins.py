@@ -1693,6 +1693,200 @@ add_builtin(
     group="Spatial Math",
 )
 
+# ------------------
+# Tile-based primitives
+shared_memory_id = 0
+
+def tile_zeros_value_func(arg_types, kwds, templates):
+    
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return array_t(shape=(Any, Any), dtype=Scalar)
+
+    if len(arg_types) > 0:
+        raise RuntimeError("tile_zero() args must be passed by keyword")
+
+    if "m" not in kwds:
+        raise RuntimeError("'m' keyword argument must be specified when calling tile_zeros() function")
+
+    if "n" not in kwds:
+        raise RuntimeError("'n' keyword argument must be specified when calling tile_zeros() function")
+
+    if "dtype" not in kwds:
+        raise RuntimeError("'dtype' keyword argument must be specified when calling tile_zeros() function")
+
+    m, n, dtype = kwds["m"], kwds["n"], kwds["dtype"]
+
+    templates.append(dtype)
+    templates.append(m)
+    templates.append(n)
+
+    global shared_memory_id
+    templates.append(shared_memory_id)
+
+    shared_memory_id += 1
+
+    return array(dtype=dtype)
+
+
+add_builtin(
+    "tile_zeros",
+    input_types={"m": int, "n": int, "dtype": Scalar},
+    value_func=tile_zeros_value_func,
+    variadic=True,
+    doc="Allocate a tile local block of zero'd memory",
+    group="Tile Primitives",
+    export=False,
+)
+
+def tile_load_value_func(arg_types, kwds, templates):
+    
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return array_t(shape=(Any, Any), dtype=Scalar)
+
+    if len(arg_types) != 3: 
+        raise RuntimeError("tile_load() requires 3 positional args")
+
+    if not is_array(arg_types[0]):
+        raise RuntimeError("tile_load() argument 0 must be an array")
+
+    if not type_is_int(arg_types[1]):
+        raise RuntimeError("tile_load() argument 1 must be an integer")
+
+    if not type_is_int(arg_types[2]):
+        raise RuntimeError("tile_load() argument 1 must be an integer")
+
+    if "m" not in kwds:
+        raise RuntimeError("'m' keyword argument must be specified when calling tile_zeros() function")
+
+    if "n" not in kwds:
+        raise RuntimeError("'n' keyword argument must be specified when calling tile_zeros() function")
+
+    m, n = kwds["m"], kwds["n"]
+    dtype = arg_types[0].dtype
+
+    templates.append(dtype)
+    templates.append(m)
+    templates.append(n)
+
+    global shared_memory_id
+    #templates.append(shared_memory_id)
+
+    shared_memory_id += 1
+
+    return Tile(dtype, m, n, "load")#array(dtype=arg_types[0].dtype)
+
+
+
+add_builtin(
+    "tile_load",
+    input_types={"a": array(dtype=Any), "x": int, "y": int, "m": int, "n": int},
+    value_func=tile_load_value_func,
+    variadic=True,
+    doc="Load a tile of size (m, n) worth of data from array a from offset (i=x*m, j=y*n)",
+    group="Tile Primitives",
+    export=False,
+)
+
+def tile_store_value_func(arg_types, kwds, templates):
+    
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return None
+
+    if len(arg_types) != 4: 
+        raise RuntimeError("tile_store() requires 4 positional args")
+
+    if not is_array(arg_types[0]):
+        raise RuntimeError("tile_store() argument 0 must be an array")
+
+    if not type_is_int(arg_types[1]):
+        raise RuntimeError("tile_store() argument 1 must be an integer")
+
+    if not type_is_int(arg_types[2]):
+        raise RuntimeError("tile_store() argument 2 must be an integer")
+
+    if not is_tile(arg_types[3]):
+        raise RuntimeError("tile_store() argument 3 must be a tile")
+
+    return None
+
+
+
+add_builtin(
+    "tile_store",
+    input_types={"a": array(dtype=Any), "x": int, "y": int, "m": int, "n": int},
+    value_func=tile_store_value_func,
+    variadic=True,
+    doc="Load a tile of size (m, n) worth of data from array a from offset (i=x*m, j=y*n)",
+    group="Tile Primitives",
+    export=False,
+)
+
+
+
+def tile_matmul_value_func(arg_types, kwds, templates):
+    
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return None
+
+    if len(arg_types) != 3: 
+        raise RuntimeError("tile_matmul() requires 4 positional args")
+
+    if not is_array(arg_types[0]):
+        raise RuntimeError("tile_matmul() argument 0 must be an array")
+
+    if not is_array(arg_types[1]):
+        raise RuntimeError("tile_matmul() argument 1 must be an array")
+
+    if not is_array(arg_types[2]):
+        raise RuntimeError("tile_matmul() argument 2 must be an array")
+
+    return None
+
+
+add_builtin(
+    "tile_matmul",
+    input_types={"a": array(dtype=Any), "b": array(dtype=Any), "out": array(dtype=Any)},
+    value_func=tile_matmul_value_func,
+    variadic=True,
+    doc="Compute matrix product and accumulate out += a*b", 
+    group="Tile Primitives",
+    export=False,
+)
+
+# does type propagation for load()
+def tile_map_value_func(arg_types, kwds, _):
+
+    if arg_types is None:
+        return None
+
+    dtype = arg_types[0]
+    for i in arg_types:
+        if arg_types[i].dtype != dtype:
+            raise RuntimeError("tile_map() arguments must all have the same type")
+
+    input = arg_types[0]
+    
+    return Tile(dtype=input.dtype,
+                M=input.M,
+                N=input.N,
+                op="map")
+
+
+
+add_builtin(
+    "tile_map",
+    input_types={"op": Callable},
+    value_func=tile_map_value_func,
+    variadic=True,
+    doc="Map the operation onto each element of the tile", 
+    group="Tile Primitives",
+    export=False,
+)
+
 # ---------------------------------
 # Linear Algebra
 

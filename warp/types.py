@@ -2858,6 +2858,19 @@ def array_type_id(a):
         raise ValueError("Invalid array type")
 
 
+# tile expression objects
+class Tile:
+    
+    def __init__(self, dtype, M, N, op):
+        self.dtype = dtype
+        self.M = M
+        self.N = N
+        self.op = op
+
+def is_tile(t):
+    return isinstance(t, Tile)
+
+
 class Bvh:
     def __new__(cls, *args, **kwargs):
         instance = super(Bvh, cls).__new__(cls)

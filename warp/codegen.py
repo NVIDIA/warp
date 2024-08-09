@@ -606,6 +606,8 @@ class Var:
                 dtypestr = f"wp::{t.dtype.__name__}"
             classstr = f"wp::{type(t).__name__}"
             return f"{classstr}_t<{dtypestr}>"
+        elif is_tile(t):
+            return "auto"
         elif isinstance(t, Struct):
             return make_full_qualified_name(t.cls)
         elif is_reference(t):
@@ -1249,6 +1251,9 @@ class Adjoint:
 
             fwd_args.append(strip_reference(func_arg))
 
+        # used to create an alias of the adjoint var to the primal var for tile ops
+        alias_call = None
+
         if return_type is None:
             # handles expression (zero output) functions, e.g.: void do_something();
 
@@ -1270,11 +1275,17 @@ class Adjoint:
             output = adj.add_var(return_type)
             output_list = [output]
 
-            forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
+            forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
+
+            # prepend auto if it is an anonymously typed var (e.g.: a tile op)
+            if output.ctype() == "auto":
+                forward_call = "auto " + forward_call
+                alias_call = f"auto& adj_{output} = var_{output};"
+
             replay_call = forward_call
             if func.custom_replay_func is not None:
-                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
-
+                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(args_var, use_initializer_list)});"
+               
         else:
             # handle multiple value functions
 
@@ -1286,16 +1297,19 @@ class Adjoint:
             )
             replay_call = forward_call
 
+
         if func.skip_replay:
             adj.add_forward(forward_call, replay="// " + replay_call)
         else:
             adj.add_forward(forward_call, replay=replay_call)
 
-        if not func.missing_grad and len(func_args):
-            adj_args = tuple(strip_reference(x) for x in func_args)
+        if alias_call:
+            adj.add_forward(alias_call)
+
+        if not func.missing_grad and len(args):
             reverse_has_output_args = (
                 func.require_original_output_arg or len(output_list) > 1
-            ) and func.custom_grad_func is None
+            ) and func.custom_grad_func is None            
             arg_str = adj.format_reverse_call_args(
                 fwd_args,
                 adj_args,
@@ -2685,14 +2699,38 @@ static CUDA_CALLABLE void adj_{name}(
 
 """
 
+# cuda_kernel_template = """
+
+# extern "C" __global__ void {name}_cuda_kernel_forward(
+#     {forward_args})
+# {{
+#     for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
+#          _idx < dim.size;
+#          _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
+#     {{
+# {forward_body}    }}
+# }}
+
+# extern "C" __global__ void {name}_cuda_kernel_backward(
+#     {reverse_args})
+# {{
+#     for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
+#          _idx < dim.size;
+#          _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
+#     {{
+# {reverse_body}    }}
+# }}
+
+# """
+
 cuda_kernel_template = """
 
 extern "C" __global__ void {name}_cuda_kernel_forward(
     {forward_args})
 {{
-    for (size_t task_index = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
-         task_index < dim.size;
-         task_index += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
+    for (size_t _idx = static_cast<size_t>(blockIdx.x);
+         _idx < dim.size;
+         _idx += static_cast<size_t>(gridDim.x))
     {{
 {forward_body}    }}
 }}
@@ -2700,14 +2738,15 @@ extern "C" __global__ void {name}_cuda_kernel_forward(
 extern "C" __global__ void {name}_cuda_kernel_backward(
     {reverse_args})
 {{
-    for (size_t task_index = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
-         task_index < dim.size;
-         task_index += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
+    for (size_t _idx = static_cast<size_t>(blockIdx.x);
+         _idx < dim.size;
+         _idx += static_cast<size_t>(gridDim.x))
     {{
 {reverse_body}    }}
 }}
 
 """
+
 
 cpu_kernel_template = """
 
@@ -2932,6 +2971,11 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu"):
     lines += ["// primal vars\n"]
 
     for var in adj.variables:
+        
+        # do not predeclare vars with auto type
+        if var.ctype() == "auto":
+            continue
+
         if var.constant is None:
             lines += [f"{var.ctype()} {var.emit()};\n"]
         else:
@@ -2967,6 +3011,11 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
     lines += ["// primal vars\n"]
 
     for var in adj.variables:
+
+        # do not predeclare vars with auto type
+        if var.ctype() == "auto":
+            continue
+
         if var.constant is None:
             lines += [f"{var.ctype()} {var.emit()};\n"]
         else:
@@ -2977,7 +3026,11 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
     lines += ["// dual vars\n"]
 
     for var in adj.variables:
-        lines += [f"{var.ctype(value_type=True)} {var.emit_adj()} = {{}};\n"]
+        name = var.emit_adj()
+        ctype = var.ctype(value_type=True)
+        
+        if ctype != "auto":
+            lines += [f"{ctype} {name} = {{}};\n"]
 
     # forward pass
     lines += ["//---------\n"]

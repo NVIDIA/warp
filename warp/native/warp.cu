@@ -2557,6 +2557,17 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
     if (fast_math)
         opts.push_back("--use_fast_math");
 
+    char include_cutlass[max_path];
+    sprintf(include_cutlass, "--include-path=%s/cutlass/include", include_dir);
+    opts.push_back(include_cutlass);
+
+    //opts.push_back("--include-path=_build/target-deps/cuda/include");
+    opts.push_back("--include-path=C:\\packman-repo\\chk\\cuda\\11.8.0_522.06-abe3d9d7-windows-x86_64\\include");
+
+    opts.push_back("--device-as-default-execution-space");
+    opts.push_back("--extra-device-vectorization");
+    opts.push_back("--restrict");
+
 
     nvrtcProgram prog;
     nvrtcResult res;
@@ -2788,14 +2799,14 @@ void* cuda_get_kernel(void* context, void* module, const char* name)
     return kernel;
 }
 
-size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, int max_blocks, void** args, void* stream)
+size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, int max_blocks, int tile_size, void** args, void* stream)
 {
     ContextGuard guard(context);
 
-    const int block_dim = 256;
+    const int block_dim = tile_size;
     // CUDA specs up to compute capability 9.0 says the max x-dim grid is 2**31-1, so
     // grid_dim is fine as an int for the near future
-    int grid_dim = (dim + block_dim - 1)/block_dim;
+    int grid_dim = dim;
 
     if (max_blocks <= 0) {
         max_blocks = 2147483647;

@@ -3086,6 +3086,7 @@ class Runtime:
                 ctypes.c_void_p,
                 ctypes.c_size_t,
                 ctypes.c_int,
+                ctypes.c_int,
                 ctypes.POINTER(ctypes.c_void_p),
                 ctypes.c_void_p,
             ]
@@ -4629,6 +4630,7 @@ def launch(
     record_tape=True,
     record_cmd=False,
     max_blocks=0,
+    tile_size=1,
 ):
     """Launch a Warp kernel on the target device
 
@@ -4749,7 +4751,7 @@ def launch(
                     )
 
                 runtime.core.cuda_launch_kernel(
-                    device.context, hooks.backward, bounds.size, max_blocks, kernel_params, stream.cuda_stream
+                    device.context, hooks.backward, bounds.size, max_blocks, tile_size, kernel_params, stream.cuda_stream
                 )
 
             else:
@@ -4772,7 +4774,7 @@ def launch(
                 else:
                     # launch
                     runtime.core.cuda_launch_kernel(
-                        device.context, hooks.forward, bounds.size, max_blocks, kernel_params, stream.cuda_stream
+                        device.context, hooks.forward, bounds.size, max_blocks, tile_size, kernel_params, stream.cuda_stream
                     )
 
             try:
