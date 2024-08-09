@@ -1558,10 +1558,13 @@ class Module:
         computed ``content_hash`` will be used.
         """
 
-        def get_type_name(type_hint):
+        def get_type_name(type_hint) -> str:
             if isinstance(type_hint, warp.codegen.Struct):
                 return get_type_name(type_hint.cls)
-            return type_hint
+            elif isinstance(type_hint, warp.array) and isinstance(type_hint.dtype, warp.codegen.Struct):
+                return f"array{get_type_name(type_hint.dtype)}"
+
+            return str(type_hint)
 
         def hash_recursive(module, visited):
             # Hash this module, including all referenced modules recursively.
