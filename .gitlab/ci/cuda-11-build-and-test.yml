@@ -19,7 +19,13 @@
 include:
   - /.gitlab/ci/common.yml
   - project: "omniverse/sectools/vault"
-    file: ["templates/v3/linux/packman_s3.gitlab-ci.yml"]
+    file:
+      - "templates/v3/common/token_job.gitlab-ci.yml"
+      - "templates/v3/linux/codesign.gitlab-ci.yml"
+      - "templates/v3/windows/codesign.gitlab-ci.yml"
+      - "templates/v3/linux/packman_s3.gitlab-ci.yml"
+      - "templates/v3/windows/packman_s3.gitlab-ci.yml"
+
     ref: v1_latest
 
 workflow:
@@ -307,5 +313,6 @@ publish extensions to packman:
     - unzip kit-extensions-windows-x86_64.zip -d _build/windows-x86_64/release
     - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
   script:
+    - !reference [.osec:vault:v3:linux, codesign:perform_vault_requests]
     - !reference [.osec:vault:v3:linux, packman_s3:perform_vault_requests]
     - tools/repo.sh publish_exts --publish-all
