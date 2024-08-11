@@ -795,7 +795,13 @@ class Adjoint:
         # extract name of source file
         adj.filename = inspect.getsourcefile(func) or "unknown source file"
         # get source file line number where function starts
-        _, adj.fun_lineno = inspect.getsourcelines(func)
+        try:
+            _, adj.fun_lineno = inspect.getsourcelines(func)
+        except OSError as e:
+            raise RuntimeError(
+                "Directly evaluating Warp code defined as a string using `exec()` is not supported, "
+                "please save it on a file and use `importlib` if needed."
+            ) from e
 
         # get function source code
         adj.source = inspect.getsource(func)
