@@ -1019,6 +1019,7 @@ WP_API void cuda_stream_synchronize(void* stream) {}
 WP_API void cuda_stream_wait_event(void* stream, void* event) {}
 WP_API void cuda_stream_wait_stream(void* stream, void* other_stream, void* event) {}
 WP_API int cuda_stream_is_capturing(void* stream) { return 0; }
+WP_API uint64_t cuda_stream_get_capture_id(void* stream) { return 0; }
 
 WP_API void* cuda_event_create(void* context, unsigned flags) { return NULL; }
 WP_API void cuda_event_destroy(void* event) {}
