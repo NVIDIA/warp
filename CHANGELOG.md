@@ -7,6 +7,7 @@
 - Fix module hashing when a kernel argument contained a struct array ([GH-287](https://github.com/NVIDIA/warp/issues/287)).
 - Add support for fp64 `atomic_add`, `atomic_max`, and `atomic_min` ([GH-284](https://github.com/NVIDIA/warp/issues/284)).
 - Add `wp.mod()` for vector types ([GH-282](https://github.com/NVIDIA/warp/issues/282)).
+- Expose the modulo operator `%` to Python's runtime scalar and vector types.
 
 ## [1.3.1] - 2024-07-27
 
