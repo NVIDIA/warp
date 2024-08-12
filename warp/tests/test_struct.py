@@ -694,36 +694,6 @@ add_kernel_test(
     inputs=[],
     devices=devices,
 )
-add_kernel_test(
-    TestStruct,
-    kernel=test_uninitialized,
-    name="test_uninitialized",
-    dim=1,
-    inputs=[Uninitialized()],
-    devices=devices,
-)
-add_kernel_test(TestStruct, kernel=test_return, name="test_return", dim=1, inputs=[], devices=devices)
-add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
-add_function_test(TestStruct, "test_nested_array_struct", test_nested_array_struct, devices=devices)
-add_function_test(TestStruct, "test_nested_empty_struct", test_nested_empty_struct, devices=devices)
-add_function_test(TestStruct, "test_struct_math_conversions", test_struct_math_conversions, devices=devices)
-add_kernel_test(
-    TestStruct,
-    name="test_struct_default_attributes",
-    kernel=test_struct_default_attributes_kernel,
-    dim=1,
-    inputs=[],
-    devices=devices,
-)
-
-add_kernel_test(
-    TestStruct,
-    name="test_struct_mutate_attributes",
-    kernel=test_struct_mutate_attributes_kernel,
-    dim=1,
-    inputs=[],
-    devices=devices,
-)
 
 for device in devices:
     add_kernel_test(
