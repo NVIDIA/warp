@@ -2263,6 +2263,11 @@ int cuda_stream_is_capturing(void* stream)
     return int(status != cudaStreamCaptureStatusNone);
 }
 
+uint64_t cuda_stream_get_capture_id(void* stream)
+{
+    return get_capture_id(static_cast<CUstream>(stream));
+}
+
 void* cuda_event_create(void* context, unsigned flags)
 {
     ContextGuard guard(context, true);
