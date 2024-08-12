@@ -10,6 +10,7 @@
   in high-priority streams over pending work in low-priority streams when possible
   ([docs](https://nvidia.github.io/warp/modules/concurrency.html#stream-priorities)).
 - Add `wp.mod()` for vector types ([GH-282](https://github.com/NVIDIA/warp/issues/282)).
+- Expose the modulo operator `%` to Python's runtime scalar and vector types.
 
 ## [1.3.1] - 2024-07-27
 

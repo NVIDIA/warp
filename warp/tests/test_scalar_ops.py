@@ -50,12 +50,14 @@ def test_py_arithmetic_ops(test, device, dtype):
     test.assertAlmostEqual(-a, make_scalar(-1))
     test.assertAlmostEqual(a + wptype(5), make_scalar(6))
     test.assertAlmostEqual(a - wptype(5), make_scalar(-4))
+    test.assertAlmostEqual(a % wptype(2), make_scalar(1))
 
     a = wptype(2)
     test.assertAlmostEqual(a * wptype(2), make_scalar(4))
     test.assertAlmostEqual(wptype(2) * a, make_scalar(4))
     test.assertAlmostEqual(a / wptype(2), make_scalar(1))
     test.assertAlmostEqual(wptype(24) / a, make_scalar(12))
+    test.assertAlmostEqual(a % wptype(2), make_scalar(0))
 
 
 def test_py_math_ops(test, device, dtype):
