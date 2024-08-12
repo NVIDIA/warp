@@ -14,6 +14,8 @@
 ## [1.3.1] - 2024-07-27
 
 - Fix reporting unmatched argument types
+- Fix errors when launching a CUDA graph after a module is reloaded
+- Minor improvements to kernel launch performance
 
 ## [1.3.0] - 2024-07-25
 
