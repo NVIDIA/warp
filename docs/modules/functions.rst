@@ -2057,6 +2057,13 @@ Operators
     Modulo operation using truncated division.
 
 
+.. py:function:: mod(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Scalar
+    :noindex:
+    :nocontentsentry:
+
+    Modulo operation using truncated division.
+
+
 .. py:function:: div(a: Scalar, b: Scalar) -> Scalar
 
 
