@@ -748,7 +748,7 @@ inline CUDA_CALLABLE half floordiv(half a, half b)
 #if FP_CHECK
     if (!isfinite(a) || !isfinite(b) || float(b) == 0.0f)
     {
-        printf("%s:%d mod(%f, %f)\n", __FILE__, __LINE__, float(a), float(b));
+        printf("%s:%d floordiv(%f, %f)\n", __FILE__, __LINE__, float(a), float(b));
         assert(0);
     }
 #endif
@@ -759,7 +759,7 @@ inline CUDA_CALLABLE float floordiv(float a, float b)
 #if FP_CHECK
     if (!isfinite(a) || !isfinite(b) || b == 0.0f)
     {
-        printf("%s:%d mod(%f, %f)\n", __FILE__, __LINE__, a, b);
+        printf("%s:%d floordiv(%f, %f)\n", __FILE__, __LINE__, a, b);
         assert(0);
     }
 #endif
@@ -770,7 +770,7 @@ inline CUDA_CALLABLE double floordiv(double a, double b)
 #if FP_CHECK
     if (!isfinite(a) || !isfinite(b) || b == 0.0)
     {
-        printf("%s:%d mod(%f, %f)\n", __FILE__, __LINE__, a, b);
+        printf("%s:%d floordiv(%f, %f)\n", __FILE__, __LINE__, a, b);
         assert(0);
     }
 #endif
