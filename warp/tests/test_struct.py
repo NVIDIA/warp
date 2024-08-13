@@ -600,10 +600,6 @@ def test_struct_array_content_hash(test, device):
     def dummy_kernel(a: wp.array(dtype=ContentHashStruct)):
         i = wp.tid()
 
-    struct_array = wp.array([ContentHashStruct()], dtype=ContentHashStruct)
-
-    wp.launch(dummy_kernel, (1,), inputs=[struct_array])
-
     module_hash_0 = wp.get_module(dummy_kernel.__module__).hash_module()
 
     # Redefine ContentHashStruct to have the same members as before but a new memory address
@@ -722,7 +718,7 @@ add_kernel_test(
     devices=devices,
 )
 
-add_function_test(TestStruct, "test_struct_array_content_hash", test_struct_array_content_hash, devices=devices)
+add_function_test(TestStruct, "test_struct_array_content_hash", test_struct_array_content_hash, devices=None)
 
 
 if __name__ == "__main__":
