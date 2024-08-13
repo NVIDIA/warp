@@ -1614,7 +1614,9 @@ class array(Array):
             if isinstance(shape, int):
                 shape = (shape,)
             else:
-                shape = tuple(shape)
+                # The type of shape's elements are eventually passed onto capacity which is used to allocate memory. We
+                # explicitly enforce that shape is a tuple of (64-bit) ints to ensure that capacity is 64-bit.
+                shape = tuple(int(x) for x in shape)
                 if len(shape) > ARRAY_MAX_DIMS:
                     raise RuntimeError(
                         f"Failed to create array with shape {shape}, the maximum number of dimensions is {ARRAY_MAX_DIMS}"
