@@ -197,8 +197,11 @@ def test_graph_launch_after_module_reload(test, device):
     with wp.ScopedDevice(device):
         a = wp.zeros(1, dtype=int)
 
+        # preload module before graph capture
+        wp.load_module(device=device)
+
         # capture a launch
-        with wp.ScopedCapture() as capture:
+        with wp.ScopedCapture(force_module_load=False) as capture:
             wp.launch(foo, dim=1, inputs=[a])
 
         # unload the module
