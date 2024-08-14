@@ -81,6 +81,8 @@ CUresult cuStreamWaitEvent_f(CUstream stream, CUevent event, unsigned int flags)
 CUresult cuStreamGetCtx_f(CUstream stream, CUcontext* pctx);
 CUresult cuStreamGetCaptureInfo_f(CUstream stream, CUstreamCaptureStatus *captureStatus_out, cuuint64_t *id_out, CUgraph *graph_out, const CUgraphNode **dependencies_out, size_t *numDependencies_out);
 CUresult cuStreamUpdateCaptureDependencies_f(CUstream stream, CUgraphNode *dependencies, size_t numDependencies, unsigned int flags);
+CUresult cuStreamCreateWithPriority_f(CUstream* phStream, unsigned int flags, int priority);
+CUresult cuStreamGetPriority_f(CUstream hStream, int* priority);
 CUresult cuEventCreate_f(CUevent* event, unsigned int flags);
 CUresult cuEventDestroy_f(CUevent event);
 CUresult cuEventRecord_f(CUevent event, CUstream stream);

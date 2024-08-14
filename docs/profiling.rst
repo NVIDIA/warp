@@ -226,9 +226,10 @@ Currently, detailed activity timing is only available for CUDA devices, but supp
 
 The activity profiling only records activities initiated using the Warp API.  It does not capture CUDA activity initiated by other frameworks.  A profiling tool like Nsight Systems can be used to examine whole program activities.
 
+.. _cuda_events_profiling:
 
-Using CUDA Events
------------------
+CUDA Events Timing
+------------------
 
 CUDA events can be used for timing purposes outside of the ``ScopedTimer``.  Here is an example:
 
@@ -258,17 +259,22 @@ CUDA events can be used for timing purposes outside of the ``ScopedTimer``.  Her
         elapsed = wp.get_event_elapsed_time(e1, e2)
         print(elapsed)
 
-The events must be created with the flag ``enable_timing=True``.  The first event is recorded at the start of the timed code and the second event is recorded at the end.  The function :func:`warp.get_event_elapsed_time()` is used to compute the time difference between the two events.  We must ensure that both events have completed on the device before calling :func:`warp.get_event_elapsed_time()`.  By default, this function will synchronize on the second event using :func:`warp.synchronize_event()`.  If that is not desired, the user may pass the ``synchronize=False`` flag and must use some other means of ensuring that both events have completed prior to calling the function.
+The events must be created with the flag ``enable_timing=True``.
+The first event is recorded at the start of the timed code and the second event is recorded at the end.
+The function :func:`warp.get_event_elapsed_time()` is used to compute the time difference between the two events.
+We must ensure that both events have completed on the device before calling :func:`warp.get_event_elapsed_time()`.
+By default, this function will synchronize on the second event using :func:`warp.synchronize_event()`.
+If that is not desired, the user may pass the ``synchronize=False`` flag and must use some other means of ensuring that both events have completed prior to calling the function.
 
-Note that timing very short operations may yield inflated results, due to the timing resolution of CUDA events and the overhead of the profiling code.  In most cases, CUDA activity profiling with ``ScopedTimer`` will have less overhead and better precision.  For the most accurate results, a profiling tool such as Nsight Systems should be used.  The main benefit of using the manual event timing API is that it allows timing arbitrary sections of code rather than individual activities.
+Note that timing very short operations may yield inflated results, due to the timing resolution of CUDA events and the overhead of the profiling code.
+In most cases, CUDA activity profiling with ``ScopedTimer`` will have less overhead and better precision.
+For the most accurate results, a profiling tool such as NVIDIA Nsight Systems should be used.
+The main benefit of using the manual event timing API is that it allows timing arbitrary sections of code rather than individual activities.
 
 Profiling API Reference
 -----------------------
 
 .. autoclass:: warp.ScopedTimer
-
-.. autofunction:: warp.get_event_elapsed_time
-.. autofunction:: warp.synchronize_event
 
 .. autoclass:: warp.TimingResult
 

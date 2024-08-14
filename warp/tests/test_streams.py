@@ -334,6 +334,65 @@ def test_event_elapsed_time(test, device):
     test.assertGreater(elapsed, 0)
 
 
+def test_stream_priority_basics(test, device):
+    standard_stream = wp.Stream(device)
+    test.assertEqual(standard_stream.priority, 0, "Default priority of streams must be 0.")
+
+    # Create a high-priority stream with a priority value that is smaller than -1 (clamping expected)
+    stream_hi = wp.Stream(device, priority=-100)
+
+    # Create a low-priority stream with a priority value that is greter than 0 (clamping expected)
+    stream_lo = wp.Stream(device, priority=100)
+
+    if stream_lo.priority == stream_hi.priority:
+        test.skipTest("Device must support stream priorities.")
+
+    test.assertEqual(stream_hi.priority, -1)
+
+    test.assertEqual(stream_lo.priority, 0)
+
+    with test.assertRaises(TypeError):
+        stream_invalid_priority = wp.Stream(device, priority=0.5)
+
+
+def test_stream_priority_timings(test, device):
+    total_size = 256 * 1024 * 1024
+    each_size = 128 * 1024 * 1024
+
+    array_lo = wp.zeros(total_size, dtype=wp.float32, device=device)
+    array_hi = wp.zeros(total_size, dtype=wp.float32, device=device)
+
+    stream_lo = wp.Stream(device, 0)
+    stream_hi = wp.Stream(device, -1)
+
+    if stream_lo.priority == stream_hi.priority:
+        test.skipTest("Device must support stream priorities.")
+
+    # Create some events
+    start_lo_event = wp.Event(device, enable_timing=True)
+    start_hi_event = wp.Event(device, enable_timing=True)
+    end_lo_event = wp.Event(device, enable_timing=True)
+    end_hi_event = wp.Event(device, enable_timing=True)
+
+    wp.synchronize_device(device)
+
+    stream_lo.record_event(start_lo_event)
+    stream_hi.record_event(start_hi_event)
+
+    for copy_offset in range(0, total_size, each_size):
+        wp.copy(array_lo, array_lo, copy_offset, copy_offset, each_size, stream_lo)
+        wp.copy(array_hi, array_hi, copy_offset, copy_offset, each_size, stream_hi)
+
+    stream_lo.record_event(end_lo_event)
+    stream_hi.record_event(end_hi_event)
+
+    # get elapsed time between the two events
+    elapsed_lo = wp.get_event_elapsed_time(start_lo_event, end_lo_event)
+    elapsed_hi = wp.get_event_elapsed_time(start_hi_event, end_hi_event)
+
+    test.assertLess(elapsed_hi, elapsed_lo, "Copies on higher-priority stream should be faster.")
+
+
 devices = get_selected_cuda_test_devices()
 
 
@@ -485,6 +544,8 @@ add_function_test(TestStreams, "test_stream_arg_wait_stream", test_stream_arg_wa
 add_function_test(TestStreams, "test_stream_scope_synchronize", test_stream_scope_synchronize, devices=devices)
 add_function_test(TestStreams, "test_stream_scope_wait_event", test_stream_scope_wait_event, devices=devices)
 add_function_test(TestStreams, "test_stream_scope_wait_stream", test_stream_scope_wait_stream, devices=devices)
+add_function_test(TestStreams, "test_stream_priority_basics", test_stream_priority_basics, devices=devices)
+add_function_test(TestStreams, "test_stream_priority_timings", test_stream_priority_timings, devices=devices)
 
 add_function_test(TestStreams, "test_event_synchronize", test_event_synchronize, devices=devices)
 add_function_test(TestStreams, "test_event_elapsed_time", test_event_elapsed_time, devices=devices)

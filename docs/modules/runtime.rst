@@ -814,6 +814,42 @@ Arithmetic Operators
     to the correct type. Also note that the multiplication expression ``a * b`` is used to represent scalar
     multiplication and matrix multiplication. The ``@`` operator is not currently supported.
 
+Streams
+-------
+
+A CUDA stream is a sequence of operations that execute in order on the GPU.
+Operations from different streams may run concurrently and may be interleaved by the device scheduler.
+See the :ref:`Streams documentation <streams>` for more information on using streams.
+
+.. autoclass:: Stream
+    :members:
+    :exclude-members: cached_event
+
+.. autofunction:: get_stream
+.. autofunction:: set_stream
+.. autofunction:: wait_stream
+.. autofunction:: synchronize_stream
+
+.. autoclass:: ScopedStream
+
+Events
+------
+
+Events can be inserted into streams and used to synchronize a stream
+with a different one. See the :ref:`Events documentation <cuda_events>` for
+information on how to use events for cross-stream synchronization
+or the :ref:`CUDA Events Timing documentation <cuda_events_profiling>` for
+information on how to use events for measuring GPU performance.
+
+.. autoclass:: Event
+    :members:
+    :exclude-members: Flags
+
+.. autofunction:: record_event
+.. autofunction:: wait_event
+.. autofunction:: synchronize_event
+.. autofunction:: get_event_elapsed_time
+
 Graphs
 -----------
 
@@ -866,7 +902,6 @@ Typically it is only beneficial to use CUDA graphs when the graph will be reused
 
 .. autoclass:: ScopedCapture
     :members:
-
 
 Meshes
 ------

@@ -286,7 +286,7 @@ extern "C"
     WP_API int cuda_is_mempool_access_enabled(int target_ordinal, int peer_ordinal);
     WP_API int cuda_set_mempool_access_enabled(int target_ordinal, int peer_ordinal, int enable);
 
-    WP_API void* cuda_stream_create(void* context);
+    WP_API void* cuda_stream_create(void* context, int priority);
     WP_API void cuda_stream_destroy(void* context, void* stream);
     WP_API void cuda_stream_register(void* context, void* stream);
     WP_API void cuda_stream_unregister(void* context, void* stream);
@@ -296,6 +296,7 @@ extern "C"
     WP_API void cuda_stream_wait_stream(void* stream, void* other_stream, void* event);
     WP_API int cuda_stream_is_capturing(void* stream);
     WP_API uint64_t cuda_stream_get_capture_id(void* stream);
+    WP_API int cuda_stream_get_priority(void* stream);
 
     WP_API void* cuda_event_create(void* context, unsigned flags);
     WP_API void cuda_event_destroy(void* event);

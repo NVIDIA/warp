@@ -1,6 +1,8 @@
 Devices
 =======
 
+.. currentmodule:: warp
+
 Warp assigns unique string aliases to all supported compute devices in the system.  There is currently a single CPU device exposed as ``"cpu"``.  Each CUDA-capable GPU gets an alias of the form ``"cuda:i"``, where ``i`` is the CUDA device ordinal.  This convention should be familiar to users of other popular frameworks like PyTorch.
 
 It is possible to explicitly target a specific device with each Warp API call using the ``device`` argument::
@@ -22,16 +24,20 @@ It is possible to explicitly target a specific device with each Warp API call us
 
 .. autoclass:: warp.context.Device
     :members:
-    :exclude-members: init_streams
+.. autofunction:: set_device
+.. autofunction:: get_device
 
 Default Device
 --------------
 
 To simplify writing code, Warp has the concept of **default device**.  When the ``device`` argument is omitted from a Warp API call, the default device will be used.
 
-During Warp initialization, the default device is set to be ``"cuda:0"`` if CUDA is available.  Otherwise, the default device is ``"cpu"``.
+Calling :func:`wp.get_device() <warp.get_device>` without an argument
+will return an instance of :class:`warp.context.Device` for the default device.
 
-The function ``wp.set_device()`` can be used to change the default device::
+During Warp initialization, the default device is set to ``"cuda:0"`` if CUDA is available.  Otherwise, the default device is ``"cpu"``.
+
+:func:`wp.set_device() <warp.set_device>` can be used to change the default device::
 
     wp.set_device("cpu")
     a = wp.zeros(n)
