@@ -11,7 +11,7 @@ import os
 import sys
 import time
 import warnings
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 
@@ -578,7 +578,32 @@ class ScopedDevice:
 
 
 class ScopedStream:
-    def __init__(self, stream, sync_enter=True, sync_exit=False):
+    """A context manager to temporarily change the current stream on a device.
+
+    Attributes:
+        stream (Stream or None): The stream that will temporarily become the device's
+          default stream within the context.
+        saved_stream (Stream): The device's previous current stream. This is
+          restored as the device's current stream on exiting the context.
+        sync_enter (bool): Whether to synchronize this context's stream with
+          the device's previous current stream on entering the context.
+        sync_exit (bool): Whether to synchronize the device's previous current
+          with this context's stream on exiting the context.
+        device (Device): The device associated with the stream.
+    """
+
+    def __init__(self, stream: Optional[wp.Stream], sync_enter: bool = True, sync_exit: bool = False):
+        """Initializes the context manager with a stream and synchronization options.
+
+        Args:
+            stream: The stream that will temporarily become the device's
+              default stream within the context.
+            sync_enter (bool): Whether to synchronize this context's stream with
+              the device's previous current stream on entering the context.
+            sync_exit (bool): Whether to synchronize the device's previous current
+              with this context's stream on exiting the context.
+        """
+
         self.stream = stream
         self.sync_enter = sync_enter
         self.sync_exit = sync_exit

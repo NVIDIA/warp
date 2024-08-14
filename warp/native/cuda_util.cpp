@@ -82,6 +82,8 @@ static PFN_cuStreamWaitEvent_v3020 pfn_cuStreamWaitEvent;
 static PFN_cuStreamGetCtx_v9020 pfn_cuStreamGetCtx;
 static PFN_cuStreamGetCaptureInfo_v11030 pfn_cuStreamGetCaptureInfo;
 static PFN_cuStreamUpdateCaptureDependencies_v11030 pfn_cuStreamUpdateCaptureDependencies;
+static PFN_cuStreamCreateWithPriority_v5050 pfn_cuStreamCreateWithPriority;
+static PFN_cuStreamGetPriority_v5050 pfn_cuStreamGetPriority;
 static PFN_cuEventCreate_v2000 pfn_cuEventCreate;
 static PFN_cuEventDestroy_v4000 pfn_cuEventDestroy;
 static PFN_cuEventRecord_v2000 pfn_cuEventRecord;
@@ -211,6 +213,8 @@ bool init_cuda_driver()
     get_driver_entry_point("cuStreamGetCtx", &(void*&)pfn_cuStreamGetCtx);
     get_driver_entry_point("cuStreamGetCaptureInfo", &(void*&)pfn_cuStreamGetCaptureInfo);
     get_driver_entry_point("cuStreamUpdateCaptureDependencies", &(void*&)pfn_cuStreamUpdateCaptureDependencies);
+    get_driver_entry_point("cuStreamCreateWithPriority", &(void*&)pfn_cuStreamCreateWithPriority);
+    get_driver_entry_point("cuStreamGetPriority", &(void*&)pfn_cuStreamGetPriority);
     get_driver_entry_point("cuEventCreate", &(void*&)pfn_cuEventCreate);
     get_driver_entry_point("cuEventDestroy", &(void*&)pfn_cuEventDestroy);
     get_driver_entry_point("cuEventRecord", &(void*&)pfn_cuEventRecord);
@@ -472,6 +476,16 @@ CUresult cuStreamGetCaptureInfo_f(CUstream stream, CUstreamCaptureStatus *captur
 CUresult cuStreamUpdateCaptureDependencies_f(CUstream stream, CUgraphNode *dependencies, size_t numDependencies, unsigned int flags)
 {
     return pfn_cuStreamUpdateCaptureDependencies ? pfn_cuStreamUpdateCaptureDependencies(stream, dependencies, numDependencies, flags) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuStreamCreateWithPriority_f(CUstream* phStream, unsigned int flags, int priority)
+{
+    return pfn_cuStreamCreateWithPriority ? pfn_cuStreamCreateWithPriority(phStream, flags, priority) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuStreamGetPriority_f(CUstream hStream, int* priority)
+{
+    return pfn_cuStreamGetPriority ? pfn_cuStreamGetPriority(hStream, priority) : DRIVER_ENTRY_POINT_ERROR;
 }
 
 CUresult cuEventCreate_f(CUevent* event, unsigned int flags)
