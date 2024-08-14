@@ -124,9 +124,9 @@ class Function:
             )
         self.hidden = hidden  # function will not be listed in docs
         self.skip_replay = (
-            skip_replay  # whether or not operation will be performed during the forward replay in the backward pass
+            skip_replay  # whether operation will be performed during the forward replay in the backward pass
         )
-        self.missing_grad = missing_grad  # whether or not builtin is missing a corresponding adjoint
+        self.missing_grad = missing_grad  # whether builtin is missing a corresponding adjoint
         self.generic = generic
 
         # allow registering builtin functions with a different name in Python from the native code
@@ -2056,83 +2056,13 @@ class ContextGuard:
             runtime.core.cuda_context_set_current(self.saved_context)
 
 
-class Stream:
-    def __new__(cls, *args, **kwargs):
-        instance = super(Stream, cls).__new__(cls)
-        instance.cuda_stream = None
-        instance.owner = False
-        return instance
-
-    def __init__(self, device=None, **kwargs):
-        # event used internally for synchronization (cached to avoid creating temporary events)
-        self._cached_event = None
-
-        # we can't use get_device() if called during init, but we can use an explicit Device arg
-        if runtime is not None:
-            device = runtime.get_device(device)
-        elif not isinstance(device, Device):
-            raise RuntimeError(
-                "A device object is required when creating a stream before or during Warp initialization"
-            )
-
-        if not device.is_cuda:
-            raise RuntimeError(f"Device {device} is not a CUDA device")
-
-        self.device = device
-
-        # we pass cuda_stream through kwargs because cuda_stream=None is actually a valid value (CUDA default stream)
-        if "cuda_stream" in kwargs:
-            self.cuda_stream = kwargs["cuda_stream"]
-            device.runtime.core.cuda_stream_register(device.context, self.cuda_stream)
-        else:
-            self.cuda_stream = device.runtime.core.cuda_stream_create(device.context)
-            if not self.cuda_stream:
-                raise RuntimeError(f"Failed to create stream on device {device}")
-            self.owner = True
-
-    def __del__(self):
-        if not self.cuda_stream:
-            return
-
-        if self.owner:
-            runtime.core.cuda_stream_destroy(self.device.context, self.cuda_stream)
-        else:
-            runtime.core.cuda_stream_unregister(self.device.context, self.cuda_stream)
-
-    @property
-    def cached_event(self):
-        if self._cached_event is None:
-            self._cached_event = Event(self.device)
-        return self._cached_event
-
-    def record_event(self, event=None):
-        if event is None:
-            event = Event(self.device)
-        elif event.device != self.device:
-            raise RuntimeError(
-                f"Event from device {event.device} cannot be recorded on stream from device {self.device}"
-            )
-
-        runtime.core.cuda_event_record(event.cuda_event, self.cuda_stream)
-
-        return event
-
-    def wait_event(self, event):
-        runtime.core.cuda_stream_wait_event(self.cuda_stream, event.cuda_event)
-
-    def wait_stream(self, other_stream, event=None):
-        if event is None:
-            event = other_stream.cached_event
-
-        runtime.core.cuda_stream_wait_stream(self.cuda_stream, other_stream.cuda_stream, event.cuda_event)
-
-    # whether a graph capture is currently ongoing on this stream
-    @property
-    def is_capturing(self):
-        return bool(runtime.core.cuda_stream_is_capturing(self.cuda_stream))
-
-
 class Event:
+    """A CUDA event that can be recorded onto a stream.
+
+    Events can be used for device-side synchronization, which do not block
+    the host thread.
+    """
+
     # event creation flags
     class Flags:
         DEFAULT = 0x0
@@ -2140,11 +2070,25 @@ class Event:
         DISABLE_TIMING = 0x2
 
     def __new__(cls, *args, **kwargs):
+        """Creates a new event instance."""
         instance = super(Event, cls).__new__(cls)
         instance.owner = False
         return instance
 
-    def __init__(self, device=None, cuda_event=None, enable_timing=False):
+    def __init__(self, device: "Devicelike" = None, cuda_event=None, enable_timing: bool = False):
+        """Initializes the event on a CUDA device.
+
+        Args:
+            device: The CUDA device whose streams this event may be recorded onto.
+              If ``None``, then the current default device will be used.
+            cuda_event: A pointer to a previously allocated CUDA event. If
+              `None`, then a new event will be allocated on the associated device.
+            enable_timing: If ``True`` this event will record timing data.
+              :func:`~warp.get_event_elapsed_time` can be used to measure the
+              time between two events created with ``enable_timing=True`` and
+              recorded onto streams.
+        """
+
         device = get_device(device)
         if not device.is_cuda:
             raise RuntimeError(f"Device {device} is not a CUDA device")
@@ -2169,6 +2113,142 @@ class Event:
         runtime.core.cuda_event_destroy(self.cuda_event)
 
 
+class Stream:
+    def __new__(cls, *args, **kwargs):
+        instance = super(Stream, cls).__new__(cls)
+        instance.cuda_stream = None
+        instance.owner = False
+        return instance
+
+    def __init__(self, device: Optional[Union["Device", str]] = None, priority: int = 0, **kwargs):
+        """Initialize the stream on a device with an optional specified priority.
+
+        Args:
+            device: The CUDA device on which this stream will be created.
+            priority: An optional integer specifying the requested stream priority.
+              Can be -1 (high priority) or 0 (low/default priority).
+              Values outside this range will be clamped.
+            cuda_stream (int): A optional external stream handle passed as an
+              integer. The caller is responsible for ensuring that the external
+              stream does not get destroyed while it is referenced by this
+              object.
+
+        Raises:
+            RuntimeError: If function is called before Warp has completed
+              initialization with a ``device`` that is not an instance of
+              :class:`Device``.
+            RuntimeError: ``device`` is not a CUDA Device.
+            RuntimeError: The stream could not be created on the device.
+            TypeError: The requested stream priority is not an integer.
+        """
+        # event used internally for synchronization (cached to avoid creating temporary events)
+        self._cached_event = None
+
+        # we can't use get_device() if called during init, but we can use an explicit Device arg
+        if runtime is not None:
+            device = runtime.get_device(device)
+        elif not isinstance(device, Device):
+            raise RuntimeError(
+                "A Device object is required when creating a stream before or during Warp initialization"
+            )
+
+        if not device.is_cuda:
+            raise RuntimeError(f"Device {device} is not a CUDA device")
+
+        self.device = device
+
+        # we pass cuda_stream through kwargs because cuda_stream=None is actually a valid value (CUDA default stream)
+        if "cuda_stream" in kwargs:
+            self.cuda_stream = kwargs["cuda_stream"]
+            device.runtime.core.cuda_stream_register(device.context, self.cuda_stream)
+        else:
+            if not isinstance(priority, int):
+                raise TypeError("Stream priority must be an integer.")
+            clamped_priority = max(-1, min(priority, 0))  # Only support two priority levels
+            self.cuda_stream = device.runtime.core.cuda_stream_create(device.context, clamped_priority)
+
+            if not self.cuda_stream:
+                raise RuntimeError(f"Failed to create stream on device {device}")
+            self.owner = True
+
+    def __del__(self):
+        if not self.cuda_stream:
+            return
+
+        if self.owner:
+            runtime.core.cuda_stream_destroy(self.device.context, self.cuda_stream)
+        else:
+            runtime.core.cuda_stream_unregister(self.device.context, self.cuda_stream)
+
+    @property
+    def cached_event(self) -> Event:
+        if self._cached_event is None:
+            self._cached_event = Event(self.device)
+        return self._cached_event
+
+    def record_event(self, event: Optional[Event] = None) -> Event:
+        """Record an event onto the stream.
+
+        Args:
+            event: A warp.Event instance to be recorded onto the stream. If not
+              provided, an :class:`~warp.Event` on the same device will be created.
+
+        Raises:
+            RuntimeError: The provided :class:`~warp.Event` is from a different device than
+                the recording stream.
+        """
+        if event is None:
+            event = Event(self.device)
+        elif event.device != self.device:
+            raise RuntimeError(
+                f"Event from device {event.device} cannot be recorded on stream from device {self.device}"
+            )
+
+        runtime.core.cuda_event_record(event.cuda_event, self.cuda_stream)
+
+        return event
+
+    def wait_event(self, event: Event):
+        """Makes all future work in this stream wait until `event` has completed.
+
+        This function does not block the host thread.
+        """
+        runtime.core.cuda_stream_wait_event(self.cuda_stream, event.cuda_event)
+
+    def wait_stream(self, other_stream: "Stream", event: Optional[Event] = None):
+        """Records an event on `other_stream` and makes this stream wait on it.
+
+        All work added to this stream after this function has been called will
+        delay their execution until all preceding commands in `other_stream`
+        have completed.
+
+        This function does not block the host thread.
+
+        Args:
+            other_stream: The stream on which the calling stream will wait for
+              previously issued commands to complete before executing subsequent
+              commands.
+            event: An optional :class:`Event` instance that will be used to
+              record an event onto ``other_stream``. If ``None``, an internally
+              managed :class:`Event` instance will be used.
+        """
+
+        if event is None:
+            event = other_stream.cached_event
+
+        runtime.core.cuda_stream_wait_stream(self.cuda_stream, other_stream.cuda_stream, event.cuda_event)
+
+    @property
+    def is_capturing(self) -> bool:
+        """A boolean indicating whether a graph capture is currently ongoing on this stream."""
+        return bool(runtime.core.cuda_stream_is_capturing(self.cuda_stream))
+
+    @property
+    def priority(self) -> int:
+        """An integer representing the priority of the stream."""
+        return runtime.core.cuda_stream_get_priority(self.cuda_stream)
+
+
 class Device:
     """A device to allocate Warp arrays and to launch kernels on.
 
@@ -2178,14 +2258,14 @@ class Device:
             or ``"CPU"`` if the processor name cannot be determined.
         arch: An integer representing the compute capability version number calculated as
             ``10 * major + minor``. ``0`` for CPU devices.
-        is_uva: A boolean indicating whether or not the device supports unified addressing.
+        is_uva: A boolean indicating whether the device supports unified addressing.
             ``False`` for CPU devices.
-        is_cubin_supported: A boolean indicating whether or not Warp's version of NVRTC can directly
+        is_cubin_supported: A boolean indicating whether Warp's version of NVRTC can directly
             generate CUDA binary files (cubin) for this device's architecture. ``False`` for CPU devices.
-        is_mempool_supported: A boolean indicating whether or not the device supports using the
+        is_mempool_supported: A boolean indicating whether the device supports using the
             ``cuMemAllocAsync`` and ``cuMemPool`` family of APIs for stream-ordered memory allocations. ``False`` for
             CPU devices.
-        is_primary: A boolean indicating whether or not this device's CUDA context is also the
+        is_primary: A boolean indicating whether this device's CUDA context is also the
             device's primary context.
         uuid: A string representing the UUID of the CUDA device. The UUID is in the same format used by
             ``nvidia-smi -L``. ``None`` for CPU devices.
@@ -2274,7 +2354,7 @@ class Device:
 
             # initialize streams unless context acquisition is postponed
             if self._context is not None:
-                self.init_streams()
+                self._init_streams()
 
             # TODO: add more device-specific dispatch functions
             self.memset = lambda ptr, value, size: runtime.core.memset_device(self.context, ptr, value, size)
@@ -2285,7 +2365,13 @@ class Device:
         else:
             raise RuntimeError(f"Invalid device ordinal ({ordinal})'")
 
-    def get_allocator(self, pinned=False):
+    def get_allocator(self, pinned: bool = False):
+        """Get the memory allocator for this device.
+
+        Args:
+            pinned: If ``True``, an allocator for pinned memory will be
+              returned. Only applicable when this device is a CPU device.
+        """
         if self.is_cuda:
             return self.current_allocator
         else:
@@ -2294,7 +2380,8 @@ class Device:
             else:
                 return self.default_allocator
 
-    def init_streams(self):
+    def _init_streams(self):
+        """Initializes the device's current stream and the device's null stream."""
         # create a stream for asynchronous work
         self.set_stream(Stream(self))
 
@@ -2302,17 +2389,18 @@ class Device:
         self.null_stream = Stream(self, cuda_stream=None)
 
     @property
-    def is_cpu(self):
-        """A boolean indicating whether or not the device is a CPU device."""
+    def is_cpu(self) -> bool:
+        """A boolean indicating whether the device is a CPU device."""
         return self.ordinal < 0
 
     @property
-    def is_cuda(self):
-        """A boolean indicating whether or not the device is a CUDA device."""
+    def is_cuda(self) -> bool:
+        """A boolean indicating whether the device is a CUDA device."""
         return self.ordinal >= 0
 
     @property
-    def is_capturing(self):
+    def is_capturing(self) -> bool:
+        """A boolean indicating whether this device's default stream is currently capturing a graph."""
         if self.is_cuda and self.stream is not None:
             # There is no CUDA API to check if graph capture was started on a device, so we
             # can't tell if a capture was started by external code on a different stream.
@@ -2336,17 +2424,17 @@ class Device:
                 raise RuntimeError(f"Failed to acquire primary context for device {self}")
             self.runtime.context_map[self._context] = self
             # initialize streams
-            self.init_streams()
+            self._init_streams()
             runtime.core.cuda_context_set_current(prev_context)
         return self._context
 
     @property
-    def has_context(self):
-        """A boolean indicating whether or not the device has a CUDA context associated with it."""
+    def has_context(self) -> bool:
+        """A boolean indicating whether the device has a CUDA context associated with it."""
         return self._context is not None
 
     @property
-    def stream(self):
+    def stream(self) -> Stream:
         """The stream associated with a CUDA device.
 
         Raises:
@@ -2361,7 +2449,22 @@ class Device:
     def stream(self, stream):
         self.set_stream(stream)
 
-    def set_stream(self, stream, sync=True):
+    def set_stream(self, stream: Stream, sync: bool = True) -> None:
+        """Set the current stream for this CUDA device.
+
+        The current stream will be used by default for all kernel launches and
+        memory operations on this device.
+
+        If this is an external stream, the caller is responsible for
+        guaranteeing the lifetime of the stream.
+
+        Consider using :class:`warp.ScopedStream` instead.
+
+        Args:
+            stream: The stream to set as this device's current stream.
+            sync: If ``True``, then ``stream`` will perform a device-side
+              synchronization with the device's previous current stream.
+        """
         if self.is_cuda:
             if stream.device != self:
                 raise RuntimeError(f"Stream from device {stream.device} cannot be used on device {self}")
@@ -2372,12 +2475,12 @@ class Device:
             raise RuntimeError(f"Device {self} is not a CUDA device")
 
     @property
-    def has_stream(self):
-        """A boolean indicating whether or not the device has a stream associated with it."""
+    def has_stream(self) -> bool:
+        """A boolean indicating whether the device has a stream associated with it."""
         return self._stream is not None
 
     @property
-    def total_memory(self):
+    def total_memory(self) -> int:
         """The total amount of device memory available in bytes.
 
         This function is currently only implemented for CUDA devices. 0 will be returned if called on a CPU device.
@@ -2391,7 +2494,7 @@ class Device:
             return 0
 
     @property
-    def free_memory(self):
+    def free_memory(self) -> int:
         """The amount of memory on the device that is free according to the OS in bytes.
 
         This function is currently only implemented for CUDA devices. 0 will be returned if called on a CPU device.
@@ -3029,7 +3132,7 @@ class Runtime:
             self.core.cuda_set_mempool_access_enabled.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
             self.core.cuda_set_mempool_access_enabled.restype = ctypes.c_int
 
-            self.core.cuda_stream_create.argtypes = [ctypes.c_void_p]
+            self.core.cuda_stream_create.argtypes = [ctypes.c_void_p, ctypes.c_int]
             self.core.cuda_stream_create.restype = ctypes.c_void_p
             self.core.cuda_stream_destroy.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.cuda_stream_destroy.restype = None
@@ -3047,6 +3150,8 @@ class Runtime:
             self.core.cuda_stream_is_capturing.restype = ctypes.c_int
             self.core.cuda_stream_get_capture_id.argtypes = [ctypes.c_void_p]
             self.core.cuda_stream_get_capture_id.restype = ctypes.c_uint64
+            self.core.cuda_stream_get_priority.argtypes = [ctypes.c_void_p]
+            self.core.cuda_stream_get_priority.restype = ctypes.c_int
 
             self.core.cuda_event_create.argtypes = [ctypes.c_void_p, ctypes.c_uint]
             self.core.cuda_event_create.restype = ctypes.c_void_p
@@ -3382,10 +3487,10 @@ class Runtime:
 
         raise ValueError(f"Invalid device identifier: {ident}")
 
-    def set_default_device(self, ident: Devicelike):
+    def set_default_device(self, ident: Devicelike) -> None:
         self.default_device = self.get_device(ident)
 
-    def get_current_cuda_device(self):
+    def get_current_cuda_device(self) -> Device:
         current_context = self.core.cuda_context_get_current()
         if current_context is not None:
             current_device = self.context_map.get(current_context)
@@ -3415,7 +3520,7 @@ class Runtime:
             else:
                 raise RuntimeError('"cuda" device requested but CUDA is not supported by the hardware or driver')
 
-    def rename_device(self, device, alias):
+    def rename_device(self, device, alias) -> Device:
         del self.device_map[device.alias]
         device.alias = alias
         self.device_map[alias] = device
@@ -3462,7 +3567,7 @@ class Runtime:
 
                 return device
 
-    def unmap_cuda_device(self, alias):
+    def unmap_cuda_device(self, alias) -> None:
         device = self.device_map.get(alias)
 
         # make sure the alias refers to a CUDA device
@@ -3473,7 +3578,7 @@ class Runtime:
         del self.context_map[device.context]
         self.cuda_devices.remove(device)
 
-    def verify_cuda_device(self, device: Devicelike = None):
+    def verify_cuda_device(self, device: Devicelike = None) -> None:
         if warp.config.verify_cuda:
             device = runtime.get_device(device)
             if not device.is_cuda:
@@ -3485,13 +3590,13 @@ class Runtime:
 
 
 # global entry points
-def is_cpu_available():
+def is_cpu_available() -> bool:
     init()
 
-    return runtime.llvm
+    return runtime.llvm is not None
 
 
-def is_cuda_available():
+def is_cuda_available() -> bool:
     return get_cuda_device_count() > 0
 
 
@@ -3575,8 +3680,8 @@ def get_device(ident: Devicelike = None) -> Device:
     return runtime.get_device(ident)
 
 
-def set_device(ident: Devicelike):
-    """Sets the target device identified by the argument."""
+def set_device(ident: Devicelike) -> None:
+    """Sets the default device identified by the argument."""
 
     init()
 
@@ -3604,7 +3709,7 @@ def map_cuda_device(alias: str, context: ctypes.c_void_p = None) -> Device:
     return runtime.map_cuda_device(alias, context)
 
 
-def unmap_cuda_device(alias: str):
+def unmap_cuda_device(alias: str) -> None:
     """Remove a CUDA device with the given alias."""
 
     init()
@@ -3612,7 +3717,7 @@ def unmap_cuda_device(alias: str):
     runtime.unmap_cuda_device(alias)
 
 
-def is_mempool_supported(device: Devicelike):
+def is_mempool_supported(device: Devicelike) -> bool:
     """Check if CUDA memory pool allocators are available on the device."""
 
     init()
@@ -3622,7 +3727,7 @@ def is_mempool_supported(device: Devicelike):
     return device.is_mempool_supported
 
 
-def is_mempool_enabled(device: Devicelike):
+def is_mempool_enabled(device: Devicelike) -> bool:
     """Check if CUDA memory pool allocators are enabled on the device."""
 
     init()
@@ -3632,7 +3737,7 @@ def is_mempool_enabled(device: Devicelike):
     return device.is_mempool_enabled
 
 
-def set_mempool_enabled(device: Devicelike, enable: bool):
+def set_mempool_enabled(device: Devicelike, enable: bool) -> None:
     """Enable or disable CUDA memory pool allocators on the device.
 
     Pooled allocators are typically faster and allow allocating memory during graph capture.
@@ -3663,7 +3768,7 @@ def set_mempool_enabled(device: Devicelike, enable: bool):
             raise ValueError("Memory pools are only supported on CUDA devices")
 
 
-def set_mempool_release_threshold(device: Devicelike, threshold: Union[int, float]):
+def set_mempool_release_threshold(device: Devicelike, threshold: Union[int, float]) -> None:
     """Set the CUDA memory pool release threshold on the device.
 
     This is the amount of reserved memory to hold onto before trying to release memory back to the OS.
@@ -3694,7 +3799,7 @@ def set_mempool_release_threshold(device: Devicelike, threshold: Union[int, floa
         raise RuntimeError(f"Failed to set memory pool release threshold for device {device}")
 
 
-def get_mempool_release_threshold(device: Devicelike):
+def get_mempool_release_threshold(device: Devicelike) -> int:
     """Get the CUDA memory pool release threshold on the device."""
 
     init()
@@ -3710,7 +3815,7 @@ def get_mempool_release_threshold(device: Devicelike):
     return runtime.core.cuda_device_get_mempool_release_threshold(device.ordinal)
 
 
-def is_peer_access_supported(target_device: Devicelike, peer_device: Devicelike):
+def is_peer_access_supported(target_device: Devicelike, peer_device: Devicelike) -> bool:
     """Check if `peer_device` can directly access the memory of `target_device` on this system.
 
     This applies to memory allocated using default CUDA allocators.  For memory allocated using
@@ -3731,7 +3836,7 @@ def is_peer_access_supported(target_device: Devicelike, peer_device: Devicelike)
     return bool(runtime.core.cuda_is_peer_access_supported(target_device.ordinal, peer_device.ordinal))
 
 
-def is_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike):
+def is_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike) -> bool:
     """Check if `peer_device` can currently access the memory of `target_device`.
 
     This applies to memory allocated using default CUDA allocators.  For memory allocated using
@@ -3752,7 +3857,7 @@ def is_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike):
     return bool(runtime.core.cuda_is_peer_access_enabled(target_device.context, peer_device.context))
 
 
-def set_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike, enable: bool):
+def set_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike, enable: bool) -> None:
     """Enable or disable direct access from `peer_device` to the memory of `target_device`.
 
     Enabling peer access can improve the speed of peer-to-peer memory transfers, but can have
@@ -3784,7 +3889,7 @@ def set_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike, 
         raise RuntimeError(f"Failed to {action} peer access from device {peer_device} to device {target_device}")
 
 
-def is_mempool_access_supported(target_device: Devicelike, peer_device: Devicelike):
+def is_mempool_access_supported(target_device: Devicelike, peer_device: Devicelike) -> bool:
     """Check if `peer_device` can directly access the memory pool of `target_device`.
 
     If mempool access is possible, it can be managed using `set_mempool_access_enabled()` and `is_mempool_access_enabled()`.
@@ -3801,7 +3906,7 @@ def is_mempool_access_supported(target_device: Devicelike, peer_device: Deviceli
     return target_device.is_mempool_supported and is_peer_access_supported(target_device, peer_device)
 
 
-def is_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelike):
+def is_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelike) -> bool:
     """Check if `peer_device` can currently access the memory pool of `target_device`.
 
     This applies to memory allocated using CUDA pooled allocators.  For memory allocated using
@@ -3822,7 +3927,7 @@ def is_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelike
     return bool(runtime.core.cuda_is_mempool_access_enabled(target_device.ordinal, peer_device.ordinal))
 
 
-def set_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelike, enable: bool):
+def set_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelike, enable: bool) -> None:
     """Enable or disable access from `peer_device` to the memory pool of `target_device`.
 
     This applies to memory allocated using CUDA pooled allocators.  For memory allocated using
@@ -3858,26 +3963,41 @@ def set_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelik
 
 
 def get_stream(device: Devicelike = None) -> Stream:
-    """Return the stream currently used by the given device"""
+    """Return the stream currently used by the given device.
+
+    Args:
+        device: An optional :class:`Device` instance or device alias
+          (e.g. "cuda:0") for which the current stream will be returned.
+          If ``None``, the default device will be used.
+
+    Raises:
+        RuntimeError: The device is not a CUDA device.
+    """
 
     return get_device(device).stream
 
 
-def set_stream(stream, device: Devicelike = None, sync: bool = False):
-    """Set the stream to be used by the given device.
+def set_stream(stream: Stream, device: Devicelike = None, sync: bool = False) -> None:
+    """Convenience function for calling :meth:`Device.set_stream` on the given ``device``.
 
-    If this is an external stream, caller is responsible for guaranteeing the lifetime of the stream.
-    Consider using wp.ScopedStream instead.
+    Args:
+        device: An optional :class:`Device` instance or device alias
+          (e.g. "cuda:0") for which the current stream is to be replaced with
+          ``stream``. If ``None``, the default device will be used.
+        stream: The stream to set as this device's current stream.
+        sync: If ``True``, then ``stream`` will perform a device-side
+          synchronization with the device's previous current stream.
     """
 
     get_device(device).set_stream(stream, sync=sync)
 
 
-def record_event(event: Event = None):
-    """Record a CUDA event on the current stream.
+def record_event(event: Optional[Event] = None):
+    """Convenience function for calling :meth:`Stream.record_event` on the current stream.
 
     Args:
-        event: Event to record. If None, a new Event will be created.
+        event: :class:`Event` instance to record. If ``None``, a new :class:`Event`
+          instance will be created.
 
     Returns:
         The recorded event.
@@ -3887,29 +4007,31 @@ def record_event(event: Event = None):
 
 
 def wait_event(event: Event):
-    """Make the current stream wait for a CUDA event.
+    """Convenience function for calling :meth:`Stream.wait_event` on the current stream.
 
     Args:
-        event: Event to wait for.
+        event: :class:`Event` instance to wait for.
     """
 
     get_stream().wait_event(event)
 
 
-def get_event_elapsed_time(start_event: Event, end_event: Event, synchronize: bool = True):
+def get_event_elapsed_time(start_event: Event, end_event: Event, synchronize: Optional[bool] = True):
     """Get the elapsed time between two recorded events.
 
-    The result is in milliseconds with a resolution of about 0.5 microsecond.
-
-    Both events must have been previously recorded with ``wp.record_event()`` or ``wp.Stream.record_event()``.
+    Both events must have been previously recorded with
+    :func:`~warp.record_event()` or :meth:`warp.Stream.record_event()`.
 
     If ``synchronize`` is False, the caller must ensure that device execution has reached ``end_event``
     prior to calling ``get_event_elapsed_time()``.
 
     Args:
-        start_event (Event): The start event.
-        end_event (Event): The end event.
-        synchronize (bool, optional): Whether Warp should synchronize on the ``end_event``.
+        start_event: The start event.
+        end_event: The end event.
+        synchronize: Whether Warp should synchronize on the ``end_event``.
+
+    Returns:
+        The elapsed time in milliseconds with a resolution about 0.5 ms.
     """
 
     # ensure the end_event is reached
@@ -3919,14 +4041,19 @@ def get_event_elapsed_time(start_event: Event, end_event: Event, synchronize: bo
     return runtime.core.cuda_event_elapsed_time(start_event.cuda_event, end_event.cuda_event)
 
 
-def wait_stream(stream: Stream, event: Event = None):
-    """Make the current stream wait for another CUDA stream to complete its work.
+def wait_stream(other_stream: Stream, event: Event = None):
+    """Convenience function for calling :meth:`Stream.wait_stream` on the current stream.
 
     Args:
-        event: Event to be used.  If None, a new Event will be created.
+        other_stream: The stream on which the calling stream will wait for
+          previously issued commands to complete before executing subsequent
+          commands.
+        event: An optional :class:`Event` instance that will be used to
+          record an event onto ``other_stream``. If ``None``, an internally
+          managed :class:`Event` instance will be used.
     """
 
-    get_stream().wait_stream(stream, event=event)
+    get_stream().wait_stream(other_stream, event=event)
 
 
 class RegisteredGLBuffer:
@@ -4362,7 +4489,7 @@ def from_numpy(
         dtype: The data type of the new Warp array. If this is not provided, the data type will be inferred.
         shape: The shape of the Warp array.
         device: The device on which the Warp array will be constructed.
-        requires_grad: Whether or not gradients will be tracked for this array.
+        requires_grad: Whether gradients will be tracked for this array.
 
     Raises:
         RuntimeError: The data type of the NumPy array is not supported.
@@ -4865,7 +4992,7 @@ def synchronize_device(device: Devicelike = None):
         runtime.core.cuda_context_synchronize(device.context)
 
 
-def synchronize_stream(stream_or_device=None):
+def synchronize_stream(stream_or_device: Union[Stream, Devicelike, None] = None):
     """Synchronize the calling CPU thread with any outstanding CUDA work on the specified stream.
 
     This function allows the host application code to ensure that all kernel launches
@@ -5016,7 +5143,7 @@ def capture_begin(device: Devicelike = None, stream=None, force_module_load=None
     Args:
         device: The CUDA device to capture on
         stream: The CUDA stream to capture on
-        force_module_load: Whether or not to force loading of all kernels before capture.
+        force_module_load: Whether to force loading of all kernels before capture.
           In general it is better to use :func:`~warp.load_module()` to selectively load kernels.
           When running with CUDA drivers that support CUDA 12.3 or newer, this option is not recommended to be set to
           ``True`` because kernels can be loaded during graph capture on more recent drivers. If this argument is

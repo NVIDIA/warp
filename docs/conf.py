@@ -49,12 +49,16 @@ extensions = [
 
 # put type hints inside the description instead of the signature (easier to read)
 autodoc_typehints = "description"
-# document class *and* __init__ methods
-autoclass_content = "both"
 # default argument values of functions will be not evaluated on generating document
 autodoc_preserve_defaults = True
 
-autodoc_member_order = "bysource"
+autodoc_default_options = {
+    "members": True,
+    "member-order": "bysource",
+    "special-members": "__init__",
+    "undoc-members": False,
+    "exclude-members": "__weakref__",
+}
 
 # autodoc_typehints_format
 # add_module_names = False
