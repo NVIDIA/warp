@@ -8,6 +8,11 @@
 - Fix accuracy of 3x3 svd with fp64 numbers ([GH-281](https://github.com/NVIDIA/warp/issues/281))
 - Rename function `plot_kernel_jacobians` to `jacobian_plot` in `autograd` module.
 - Fix module hashing when a kernel argument contained a struct array ([GH-287](https://github.com/NVIDIA/warp/issues/287)).
+- Add support for fp64 `atomic_add`, `atomic_max`, and `atomic_min` ([GH-284](https://github.com/NVIDIA/warp/issues/284)).
+- Add support for stream priorities to hint to the device that it should process pending work
+  in high-priority streams over pending work in low-priority streams when possible
+  ([docs](https://nvidia.github.io/warp/modules/concurrency.html#stream-priorities)).
+- Fix a bug in `wp.bvh_query_aabb()` ([GH-288](https://github.com/NVIDIA/warp/issues/288)).
 
 ## [1.3.1] - 2024-07-27
 
