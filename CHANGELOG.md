@@ -9,6 +9,7 @@
 - Add support for stream priorities to hint to the device that it should process pending work
   in high-priority streams over pending work in low-priority streams when possible
   ([docs](https://nvidia.github.io/warp/modules/concurrency.html#stream-priorities)).
+- Fix a bug in `wp.bvh_query_aabb()` ([GH-288](https://github.com/NVIDIA/warp/issues/288)).
 
 ## [1.3.1] - 2024-07-27
 
