@@ -311,7 +311,7 @@ def load_mesh(filename: str, method: str = None):
     import os
 
     if not os.path.exists(filename):
-        raise ValueError(f"File not found: {filename}")
+        raise FileNotFoundError(f"File not found: {filename}")
 
     def load_mesh_with_method(method):
         if method == "meshio":
