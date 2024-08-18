@@ -237,6 +237,12 @@ def vector(length, dtype):
         def __rtruediv__(self, x):
             return warp.div(x, self)
 
+        def __mod__(self, x):
+            return warp.mod(self, x)
+
+        def __rmod__(self, x):
+            return warp.mod(x, self)
+
         def __pos__(self):
             return warp.pos(self)
 
@@ -518,6 +524,12 @@ class scalar_base:
 
     def __rtruediv__(self, x):
         return warp.div(x, self)
+
+    def __mod__(self, x):
+        return warp.mod(self, x)
+
+    def __rmod__(self, x):
+        return warp.mod(x, self)
 
     def __pos__(self):
         return warp.pos(self)

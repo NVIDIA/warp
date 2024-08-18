@@ -1803,7 +1803,13 @@ def mul(a: Transformation[Scalar], b: Scalar) -> Transformation[Scalar]:
 
 @over
 def mod(a: Scalar, b: Scalar) -> Scalar:
-    """ """
+    """Modulo operation using truncated division."""
+    ...
+
+
+@over
+def mod(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Scalar:
+    """Modulo operation using truncated division."""
     ...
 
 

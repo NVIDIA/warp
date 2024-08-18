@@ -4092,7 +4092,19 @@ add_builtin(
 )
 
 add_builtin(
-    "mod", input_types={"a": Scalar, "b": Scalar}, value_func=sametypes_create_value_func(Scalar), group="Operators"
+    "mod",
+    input_types={"a": Scalar, "b": Scalar},
+    value_func=sametypes_create_value_func(Scalar),
+    doc="Modulo operation using truncated division.",
+    group="Operators",
+)
+add_builtin(
+    "mod",
+    input_types={"a": vector(length=Any, dtype=Scalar), "b": vector(length=Any, dtype=Scalar)},
+    constraint=sametypes,
+    value_func=sametypes_create_value_func(Scalar),
+    doc="Modulo operation using truncated division.",
+    group="Operators",
 )
 
 add_builtin(
