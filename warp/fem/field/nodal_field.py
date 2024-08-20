@@ -247,7 +247,7 @@ class NodalFieldBase(DiscreteField):
 
     def _make_node_partition_index(self):
         @cache.dynamic_func(suffix=self.name)
-        def node_partition_index(args: self.EvalArg, node_index: int):
+        def node_partition_index(args: self.ElementEvalArg, node_index: int):
             return self.space_partition.partition_node_index(args.eval_arg.partition_arg, node_index)
 
         return node_partition_index
