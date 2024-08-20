@@ -1305,6 +1305,46 @@ def test_particle_quadratures(test, device):
     assert_np_equal(measures.grad.numpy(), np.full(3, 4.0))  # == 1.0 / cell_area
 
 
+@fem.integrand
+def _value_at_node(s: fem.Sample, f: fem.Field, values: wp.array(dtype=float)):
+    node_index = fem.operator.node_partition_index(f, s.qp_index)
+    return values[node_index]
+
+
+def test_nodal_quadrature(test, device):
+    geo = fem.Grid2D(res=wp.vec2i(2))
+
+    domain = fem.Cells(geo)
+
+    space = fem.make_polynomial_space(geo, degree=2, discontinuous=True, family=fem.Polynomial.GAUSS_LEGENDRE)
+    nodal_quadrature = fem.NodalQuadrature(domain, space)
+
+    test.assertEqual(nodal_quadrature.max_points_per_element(), 9)
+    test.assertEqual(nodal_quadrature.total_point_count(), 9 * geo.cell_count())
+
+    val = fem.integrate(_bicubic, quadrature=nodal_quadrature)
+    test.assertAlmostEqual(val, 1.0 / 16, places=5)
+
+    # test accessing data associated to a given node
+
+    piecewise_constant_space = fem.make_polynomial_space(geo, degree=0)
+    geo_partition = fem.LinearGeometryPartition(geo, 3, 4)
+    space_partition = fem.make_space_partition(piecewise_constant_space, geo_partition)
+    field = fem.make_discrete_field(piecewise_constant_space, space_partition=space_partition)
+
+    partition_domain = fem.Cells(geo_partition)
+    partition_nodal_quadrature = fem.NodalQuadrature(partition_domain, piecewise_constant_space)
+
+    partition_node_values = wp.array([5.0], dtype=float)
+    val = fem.integrate(
+        _value_at_node,
+        quadrature=partition_nodal_quadrature,
+        fields={"f": field},
+        values={"values": partition_node_values},
+    )
+    test.assertAlmostEqual(val, 5.0 / geo.cell_count(), places=5)
+
+
 @wp.func
 def aniso_bicubic_fn(x: wp.vec2, scale: wp.vec2):
     return wp.pow(x[0] * scale[0], 3.0) * wp.pow(x[1] * scale[1], 3.0)
@@ -1485,6 +1525,7 @@ add_function_test(TestFem, "test_deformed_geometry", test_deformed_geometry, dev
 add_function_test(TestFem, "test_dof_mapper", test_dof_mapper)
 add_function_test(TestFem, "test_point_basis", test_point_basis)
 add_function_test(TestFem, "test_particle_quadratures", test_particle_quadratures)
+add_function_test(TestFem, "test_nodal_quadrature", test_nodal_quadrature)
 add_function_test(TestFem, "test_implicit_fields", test_implicit_fields)
 add_kernel_test(TestFem, test_qr_eigenvalues, dim=1, devices=devices)
 add_kernel_test(TestFem, test_qr_inverse, dim=100, devices=devices)
