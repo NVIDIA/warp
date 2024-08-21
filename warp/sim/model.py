@@ -527,6 +527,7 @@ class Model:
         tri_poses (array): Triangle element rest pose, shape [tri_count, 2, 2], float
         tri_activations (array): Triangle element activations, shape [tri_count], float
         tri_materials (array): Triangle element materials, shape [tri_count, 5], float
+        tri_areas (array): Triangle element rest areas, shape [tri_count], float
 
         edge_indices (array): Bending edge indices, shape [edge_count*4], int
         edge_rest_angle (array): Bending edge rest angle, shape [edge_count], float
@@ -695,6 +696,7 @@ class Model:
         self.tri_poses = None
         self.tri_activations = None
         self.tri_materials = None
+        self.tri_areas = None
 
         self.edge_indices = None
         self.edge_rest_angle = None
@@ -1174,6 +1176,7 @@ class ModelBuilder:
         self.tri_poses = []
         self.tri_activations = []
         self.tri_materials = []
+        self.tri_areas = []
 
         # edges (bending)
         self.edge_indices = []
@@ -1493,6 +1496,7 @@ class ModelBuilder:
             "tri_poses",
             "tri_activations",
             "tri_materials",
+            "tri_areas",
             "tet_poses",
             "tet_activations",
             "tet_materials",
@@ -3516,6 +3520,7 @@ class ModelBuilder:
             self.tri_poses.append(inv_D.tolist())
             self.tri_activations.append(0.0)
             self.tri_materials.append((tri_ke, tri_ka, tri_kd, tri_drag, tri_lift))
+            self.tri_areas.append(area)
             return area
 
     def add_triangles(
@@ -3604,7 +3609,9 @@ class ModelBuilder:
                 np.array(tri_lift)[valid_inds],
             )
         )
-        return areas.tolist()
+        areas = areas.tolist()
+        self.tri_areas.extend(areas)
+        return areas
 
     def add_tetrahedron(
         self, i: int, j: int, k: int, l: int, k_mu: float = 1.0e3, k_lambda: float = 1.0e3, k_damp: float = 0.0
@@ -4446,6 +4453,7 @@ class ModelBuilder:
             m.tri_poses = wp.array(self.tri_poses, dtype=wp.mat22, requires_grad=requires_grad)
             m.tri_activations = wp.array(self.tri_activations, dtype=wp.float32, requires_grad=requires_grad)
             m.tri_materials = wp.array(self.tri_materials, dtype=wp.float32, requires_grad=requires_grad)
+            m.tri_areas = wp.array(self.tri_areas, dtype=wp.float32, requires_grad=requires_grad)
 
             # ---------------------
             # edges
