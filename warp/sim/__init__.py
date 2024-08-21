@@ -16,6 +16,7 @@ from .inertia import transform_inertia
 from .integrator import Integrator, integrate_bodies, integrate_particles
 from .integrator_euler import SemiImplicitIntegrator
 from .integrator_featherstone import FeatherstoneIntegrator
+from .integrator_vbd import VBDIntegrator
 from .integrator_xpbd import XPBDIntegrator
 from .model import (
     GEO_BOX,
