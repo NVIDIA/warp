@@ -43,3 +43,7 @@ call %PYTHON% "%~dp0..\..\..\..\build_lib.py" ^
     --mode=%BUILD_MODE%
 
 endlocal
+
+if %ERRORLEVEL% neq 0 (
+    exit /b %ERRORLEVEL%
+)
