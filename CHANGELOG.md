@@ -23,6 +23,17 @@
   - Add missing return types for built-in functions.
   - Clarify that atomic operations also return the previous value.
   - Clarify that `wp.bvh_query_aabb()` returns parts that overlap the bounding volume.
+- Fix accuracy of `wp.svd3` with fp64 numbers ([GH-281](https://github.com/NVIDIA/warp/issues/281)).
+- Rename function `plot_kernel_jacobians` to `jacobian_plot` in `autograd` module.
+- Fix module hashing when a kernel argument contained a struct array ([GH-287](https://github.com/NVIDIA/warp/issues/287)).
+- Add support for fp64 `atomic_add`, `atomic_max`, and `atomic_min` ([GH-284](https://github.com/NVIDIA/warp/issues/284)).
+- Add support for stream priorities to hint to the device that it should process pending work
+  in high-priority streams over pending work in low-priority streams when possible
+  ([docs](https://nvidia.github.io/warp/modules/concurrency.html#stream-priorities)).
+- Add `wp.mod()` for vector types ([GH-282](https://github.com/NVIDIA/warp/issues/282)).
+- Expose the modulo operator `%` to Python's runtime scalar and vector types.
+- Fix a bug in `wp.bvh_query_aabb()` ([GH-288](https://github.com/NVIDIA/warp/issues/288)).
+- Fix an aliasing issue with zero-copy array initialization from numpy introduced in 1.3.0
 
 ## [1.3.1] - 2024-07-27
 
