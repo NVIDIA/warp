@@ -90,7 +90,7 @@ class TrialField(SpaceField):
             grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
             return utils.generalized_outer(
                 self.space.unit_dof_value(args.elt_arg, args.eval_arg, s.trial_dof),
-                utils.apply_right(nabla_weight, grad_transform),
+                nabla_weight * grad_transform,
             )
 
         return eval_nabla_trial_inner
@@ -111,7 +111,7 @@ class TrialField(SpaceField):
             grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
             return utils.generalized_inner(
                 self.space.unit_dof_value(args.elt_arg, args.eval_arg, s.trial_dof),
-                utils.apply_right(nabla_weight, grad_transform),
+                nabla_weight * grad_transform,
             )
 
         return eval_div_trial_inner
@@ -146,7 +146,7 @@ class TrialField(SpaceField):
             grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
             return utils.generalized_outer(
                 self.space.unit_dof_value(args.elt_arg, args.eval_arg, s.trial_dof),
-                utils.apply_right(nabla_weight, grad_transform),
+                nabla_weight * grad_transform,
             )
 
         return eval_nabla_trial_outer
@@ -167,7 +167,7 @@ class TrialField(SpaceField):
             grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
             return utils.generalized_inner(
                 self.space.unit_dof_value(args.elt_arg, args.eval_arg, s.trial_dof),
-                utils.apply_right(nabla_weight, grad_transform),
+                nabla_weight * grad_transform,
             )
 
         return eval_div_trial_outer

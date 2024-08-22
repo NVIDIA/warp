@@ -41,24 +41,6 @@ def generalized_inner(x: wp.mat33, y: wp.vec3):
 
 
 @wp.func
-def apply_right(x: Any, y: Any):
-    """Performs x y multiplication with y a square matrix and x either a row-vector or a matrix.
-    Will be removed once native @ operator is implemented.
-    """
-    return x * y
-
-
-@wp.func
-def apply_right(x: wp.vec2, y: wp.mat22):
-    return x[0] * y[0] + x[1] * y[1]
-
-
-@wp.func
-def apply_right(x: wp.vec3, y: wp.mat33):
-    return x[0] * y[0] + x[1] * y[1] + x[2] * y[2]
-
-
-@wp.func
 def unit_element(template_type: Any, coord: int):
     """Returns a instance of `template_type` with a single coordinate set to 1 in the canonical basis"""
 
