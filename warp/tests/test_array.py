@@ -2295,6 +2295,39 @@ def test_array_from_numpy(test, device):
     assert_np_equal(result.numpy(), expected.numpy())
 
 
+def test_array_aliasing_from_numpy(test, device):
+    device = wp.get_device(device)
+    assert device.is_cpu
+
+    a_np = np.ones(8, dtype=np.int32)
+    a_wp = wp.array(a_np, dtype=int, copy=False, device=device)
+    test.assertIs(a_wp._ref, a_np)  # check that some ref is kept to original array
+    test.assertEqual(a_wp.ptr, a_np.ctypes.data)
+
+    a_np_2 = a_wp.numpy()
+    test.assertTrue((a_np_2 == 1).all())
+
+    # updating source array should update aliased array
+    a_np.fill(2)
+    test.assertTrue((a_np_2 == 2).all())
+
+    # trying to alias from a different type should do a copy
+    # do it twice to check that the copy buffer is not being reused for different arrays
+
+    b_np = np.ones(8, dtype=np.int64)
+    c_np = np.zeros(8, dtype=np.int64)
+    b_wp = wp.array(b_np, dtype=int, copy=False, device=device)
+    c_wp = wp.array(c_np, dtype=int, copy=False, device=device)
+
+    test.assertNotEqual(b_wp.ptr, b_np.ctypes.data)
+    test.assertNotEqual(b_wp.ptr, c_wp.ptr)
+
+    b_np_2 = b_wp.numpy()
+    c_np_2 = c_wp.numpy()
+    test.assertTrue((b_np_2 == 1).all())
+    test.assertTrue((c_np_2 == 0).all())
+
+
 def test_array_from_cai(test, device):
     import torch
 
@@ -2447,6 +2480,7 @@ add_function_test(TestArray, "test_array_of_structs_grad", test_array_of_structs
 add_function_test(TestArray, "test_array_of_structs_from_numpy", test_array_of_structs_from_numpy, devices=devices)
 add_function_test(TestArray, "test_array_of_structs_roundtrip", test_array_of_structs_roundtrip, devices=devices)
 add_function_test(TestArray, "test_array_from_numpy", test_array_from_numpy, devices=devices)
+add_function_test(TestArray, "test_array_aliasing_from_numpy", test_array_aliasing_from_numpy, devices=["cpu"])
 
 add_function_test(TestArray, "test_direct_from_numpy", test_direct_from_numpy, devices=["cpu"])
 add_function_test(TestArray, "test_kernel_array_from_ptr", test_kernel_array_from_ptr, devices=devices)
