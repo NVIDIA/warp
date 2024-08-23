@@ -12,6 +12,7 @@
 - Add `wp.mod()` for vector types ([GH-282](https://github.com/NVIDIA/warp/issues/282)).
 - Expose the modulo operator `%` to Python's runtime scalar and vector types.
 - Fix a bug in `wp.bvh_query_aabb()` ([GH-288](https://github.com/NVIDIA/warp/issues/288)).
+- Fix an aliasing issue with zero-copy array initialization from numpy introduced in 1.3.0
 
 ## [1.3.1] - 2024-07-27
 
