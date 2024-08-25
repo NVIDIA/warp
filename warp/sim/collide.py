@@ -53,7 +53,7 @@ def triangle_closest_point_barycentric(a: wp.vec3, b: wp.vec3, c: wp.vec3, p: wp
     va = d3 * d6 - d5 * d4
     w = (d4 - d3) / ((d4 - d3) + (d5 - d6))
     if va <= 0.0 and (d4 - d3) >= 0.0 and (d5 - d6) >= 0.0:
-        return wp.vec3(0.0, w, 1.0 - w)
+        return wp.vec3(0.0, 1.0 - w, w)
 
     denom = 1.0 / (va + vb + vc)
     v = vb * denom
