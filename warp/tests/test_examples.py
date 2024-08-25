@@ -20,7 +20,12 @@ override example defaults so the example can run in less than ten seconds.
 Use {"usd_required": True} and {"torch_required": True} to skip running the test
 if usd-core or torch are not found in the Python environment.
 
+Use "cutlass_required": True} to skip the test if Warp needs to be built with
+CUTLASS.
+
 Use the "num_frames" and "train_iters" keys to control the number of steps.
+
+Use "test_timeout" to override the default test timeout threshold of 300 seconds.
 """
 
 import os
@@ -37,6 +42,8 @@ from warp.tests.unittest_utils import (
     get_test_devices,
     sanitize_identifier,
 )
+
+wp.init()  # For wp.context.runtime.core.is_cutlass_enabled()
 
 
 def _build_command_line_options(test_options: Dict[str, Any]) -> list:
@@ -102,6 +109,10 @@ def add_example_test(
         usd_required = options.pop("usd_required", False)
         if usd_required and not USD_AVAILABLE:
             test.skipTest("Requires usd-core")
+
+        cutlass_required = options.pop("cutlass_required", False)
+        if cutlass_required and not wp.context.runtime.core.is_cutlass_enabled():
+            test.skipTest("Warp was not built with CUTLASS support")
 
         # Find the current Warp cache
         warp_cache_path = wp.config.kernel_cache_dir
@@ -286,6 +297,7 @@ add_example_test(
     test_options_cuda={
         "train_iters": 1 if warp.context.runtime.core.is_debug_enabled() else 3,
         "num_frames": 1 if warp.context.runtime.core.is_debug_enabled() else 60,
+        "cutlass_required": True,
     },
     test_options_cpu={"train_iters": 1, "num_frames": 30},
 )
