@@ -7,6 +7,8 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
+wp.init()  # For wp.context.runtime.core.is_cutlass_enabled()
+
 # kernels are defined in the global scope, to ensure wp.Kernel objects are not GC'ed in the MGPU case
 # kernel args are assigned array modes during codegen, so wp.Kernel objects generated during codegen
 # must be preserved for overwrite tracking to function
@@ -362,6 +364,9 @@ def test_copy(test, device):
 
 # wp.matmul uses wp.record_func. Ensure array modes are propagated correctly.
 def test_matmul(test, device):
+    if device.is_cuda and not wp.context.runtime.core.is_cutlass_enabled():
+        test.skipTest("Warp was not built with CUTLASS support")
+
     saved_verify_autograd_array_access_setting = wp.config.verify_autograd_array_access
     try:
         wp.config.verify_autograd_array_access = True
@@ -387,6 +392,9 @@ def test_matmul(test, device):
 
 # wp.batched_matmul uses wp.record_func. Ensure array modes are propagated correctly.
 def test_batched_matmul(test, device):
+    if device.is_cuda and not wp.context.runtime.core.is_cutlass_enabled():
+        test.skipTest("Warp was not built with CUTLASS support")
+
     saved_verify_autograd_array_access_setting = wp.config.verify_autograd_array_access
     try:
         wp.config.verify_autograd_array_access = True
