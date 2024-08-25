@@ -3376,7 +3376,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Atomically add ``value`` onto ``arr[i]``.",
+        doc="Atomically add ``value`` onto ``arr[i]`` and return the old value.",
         group="Utility",
         skip_replay=True,
     )
@@ -3385,7 +3385,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Atomically add ``value`` onto ``arr[i,j]``.",
+        doc="Atomically add ``value`` onto ``arr[i,j]`` and return the old value.",
         group="Utility",
         skip_replay=True,
     )
@@ -3394,7 +3394,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Atomically add ``value`` onto ``arr[i,j,k]``.",
+        doc="Atomically add ``value`` onto ``arr[i,j,k]`` and return the old value.",
         group="Utility",
         skip_replay=True,
     )
@@ -3403,7 +3403,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Atomically add ``value`` onto ``arr[i,j,k,l]``.",
+        doc="Atomically add ``value`` onto ``arr[i,j,k,l]`` and return the old value.",
         group="Utility",
         skip_replay=True,
     )
@@ -3413,7 +3413,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Atomically subtract ``value`` onto ``arr[i]``.",
+        doc="Atomically subtract ``value`` onto ``arr[i]`` and return the old value.",
         group="Utility",
         skip_replay=True,
     )
@@ -3422,7 +3422,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Atomically subtract ``value`` onto ``arr[i,j]``.",
+        doc="Atomically subtract ``value`` onto ``arr[i,j]`` and return the old value.",
         group="Utility",
         skip_replay=True,
     )
@@ -3431,7 +3431,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Atomically subtract ``value`` onto ``arr[i,j,k]``.",
+        doc="Atomically subtract ``value`` onto ``arr[i,j,k]`` and return the old value.",
         group="Utility",
         skip_replay=True,
     )
@@ -3440,7 +3440,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="Atomically subtract ``value`` onto ``arr[i,j,k,l]``.",
+        doc="Atomically subtract ``value`` onto ``arr[i,j,k,l]`` and return the old value.",
         group="Utility",
         skip_replay=True,
     )
@@ -3450,7 +3450,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="""Compute the minimum of ``value`` and ``arr[i]`` and atomically update the array.
+        doc="""Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
@@ -3461,7 +3461,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="""Compute the minimum of ``value`` and ``arr[i,j]`` and atomically update the array.
+        doc="""Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
@@ -3472,7 +3472,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="""Compute the minimum of ``value`` and ``arr[i,j,k]`` and atomically update the array.
+        doc="""Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
@@ -3483,7 +3483,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="""Compute the minimum of ``value`` and ``arr[i,j,k,l]`` and atomically update the array.
+        doc="""Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
@@ -3495,7 +3495,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="""Compute the maximum of ``value`` and ``arr[i]`` and atomically update the array.
+        doc="""Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
@@ -3506,7 +3506,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="""Compute the maximum of ``value`` and ``arr[i,j]`` and atomically update the array.
+        doc="""Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
@@ -3517,7 +3517,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="""Compute the maximum of ``value`` and ``arr[i,j,k]`` and atomically update the array.
+        doc="""Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
@@ -3528,7 +3528,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="""Compute the maximum of ``value`` and ``arr[i,j,k,l]`` and atomically update the array.
+        doc="""Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
