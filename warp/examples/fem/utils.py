@@ -177,7 +177,9 @@ def gen_volume(res, bounds_lo: Optional[wp.vec3] = None, bounds_hi: Optional[wp.
 
     ijk = np.transpose(np.meshgrid(x, y, z), axes=(1, 2, 3, 0)).reshape(-1, 3)
     ijk = wp.array(ijk, dtype=wp.vec3i, device=device)
-    return wp.Volume.allocate_by_voxels(ijk, voxel_size=voxel_size, translation=0.5 * voxel_size, device=device)
+    return wp.Volume.allocate_by_voxels(
+        ijk, voxel_size=voxel_size, translation=bounds_lo + 0.5 * voxel_size, device=device
+    )
 
 
 #
@@ -579,6 +581,19 @@ class Plot:
 
         animate = False
 
+        ref_geom = options.get("ref_geom", None)
+        if ref_geom is not None:
+            if isinstance(ref_geom, tuple):
+                vertices, counts, indices = ref_geom
+                offsets = np.cumsum(counts)
+                ranges = np.array([offsets - counts, offsets]).T
+                faces = np.concatenate(
+                    [[count] + list(indices[beg:end]) for (count, (beg, end)) in zip(counts, ranges)]
+                )
+                ref_geom = pyvista.PolyData(vertices, faces)
+            else:
+                ref_geom = pyvista.PolyData(ref_geom)
+
         for name, (field, values) in self._fields.items():
             cells, types = field.space.vtk_cells()
             node_pos = field.space.node_positions().numpy()
@@ -667,7 +682,7 @@ class Plot:
                         density = field_args["streamlines"].get("density", 1.0)
                         cell_size = 1.0 / np.sqrt(field.space.geometry.cell_count())
                         lines = grid.streamlines(vectors=name, n_points=int(100 * density))
-                        marker = lines.tube(radius=0.0025 * grid_scale / density)
+                        marker = lines.tube(radius=0.0025 * grid_scale / np.sqrt(density))
                     elif "displacement" in field_args:
                         grid.points = field.space.node_positions().numpy() + v
 
@@ -700,11 +715,15 @@ class Plot:
                     plotter.add_mesh(grid, opacity=0.25, clim=value_range)
                     plotter.view_xy()
                 else:
-                    plotter.add_mesh(marker, opacity=0.25)
+                    plotter.add_mesh(marker)
             elif field.space.dimension == 3:
-                plotter.add_mesh_clip_plane(grid, show_edges=True, clim=value_range)
+                plotter.add_mesh_clip_plane(grid, show_edges=True, clim=value_range, assign_to_axis="z")
             else:
                 plotter.add_mesh(grid, show_edges=True, clim=value_range)
+
+            if ref_geom:
+                plotter.add_mesh(ref_geom)
+
         plotter.show(interactive_update=animate)
 
         frame = 0

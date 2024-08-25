@@ -1,3 +1,4 @@
+from .adaptive_nanogrid import AdaptiveNanogrid
 from .deformed_geometry import DeformedGeometry
 from .element import Element
 from .geometry import Geometry

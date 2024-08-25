@@ -430,6 +430,9 @@ def _launch_test_geometry_kernel(geo: fem.Geometry, device):
         pos_inner = geo.cell_position(cell_arg, inner_s)
         pos_outer = geo.cell_position(cell_arg, outer_s)
 
+        # if wp.length(pos_outer - pos_side) > 0.1:
+        #    wp.print(side_index)
+
         for k in range(type(pos_side).length):
             wp.expect_near(pos_side[k], pos_inner[k], 0.0001)
             wp.expect_near(pos_side[k], pos_outer[k], 0.0001)
@@ -614,6 +617,66 @@ def test_nanogrid(test, device):
 
     assert_np_equal(side_measures.numpy(), np.full(side_measures.shape, 1.0 / (N**2)), tol=1.0e-4)
     assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 1.0 / (N**3)), tol=1.0e-4)
+
+
+@wp.func
+def _refinement_field(x: wp.vec3):
+    return 4.0 * (wp.length(x) - 0.5)
+
+
+def test_adaptive_nanogrid(test, device):
+    # 3 res-1 voxels, 8 res-0 voxels
+
+    res0 = wp.array(
+        [
+            [2, 2, 0],
+            [2, 3, 0],
+            [3, 2, 0],
+            [3, 3, 0],
+            [2, 2, 1],
+            [2, 3, 1],
+            [3, 2, 1],
+            [3, 3, 1],
+        ],
+        dtype=int,
+        device=device,
+    )
+    res1 = wp.array(
+        [
+            [0, 0, 0],
+            [0, 1, 0],
+            [1, 0, 0],
+            [1, 1, 0],
+        ],
+        dtype=int,
+        device=device,
+    )
+
+    grid0 = wp.Volume.allocate_by_voxels(res0, 0.5, device=device)
+    grid1 = wp.Volume.allocate_by_voxels(res1, 1.0, device=device)
+    geo = fem.adaptive_nanogrid_from_hierarchy([grid0, grid1])
+
+    test.assertEqual(geo.cell_count(), 3 + 8)
+    test.assertEqual(geo.vertex_count(), 2 * 9 + 27 - 8)
+    test.assertEqual(geo.side_count(), 2 * 4 + 6 * 2 + (3 * (2 + 1) * 2**2 - 6))
+    test.assertEqual(geo.boundary_side_count(), 2 * 4 + 4 * 2 + (4 * 4 - 4))
+    # test.assertEqual(geo.edge_count(), 6 * 4 + 9 + (3 * 2 * (2 + 1) ** 2 - 12))
+    test.assertEqual(geo.stacked_face_count(), geo.side_count() + 2)
+    test.assertEqual(geo.stacked_edge_count(), 6 * 4 + 9 + (3 * 2 * (2 + 1) ** 2 - 12) + 7)
+
+    side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
+
+    test.assertAlmostEqual(np.sum(cell_measures.numpy()), 4.0, places=4)
+    test.assertAlmostEqual(np.sum(side_measures.numpy()), 20 + 3.0, places=4)
+
+    # Test with non-graded geometry
+    ref_field = fem.ImplicitField(fem.Cells(geo), func=_refinement_field)
+    non_graded_geo = fem.adaptive_nanogrid_from_field(grid1, level_count=3, refinement_field=ref_field)
+    _launch_test_geometry_kernel(geo, device)
+
+    # Test automatic grading
+    graded_geo = fem.adaptive_nanogrid_from_field(grid1, level_count=3, refinement_field=ref_field, grading="face")
+    test.assertEqual(non_graded_geo.cell_count() + 7, graded_geo.cell_count())
 
 
 @integrand
@@ -1521,6 +1584,7 @@ add_function_test(TestFem, "test_grid_3d", test_grid_3d, devices=devices)
 add_function_test(TestFem, "test_tet_mesh", test_tet_mesh, devices=devices)
 add_function_test(TestFem, "test_hex_mesh", test_hex_mesh, devices=devices)
 add_function_test(TestFem, "test_nanogrid", test_nanogrid, devices=cuda_devices)
+add_function_test(TestFem, "test_adaptive_nanogrid", test_adaptive_nanogrid, devices=cuda_devices)
 add_function_test(TestFem, "test_deformed_geometry", test_deformed_geometry, devices=devices)
 add_function_test(TestFem, "test_dof_mapper", test_dof_mapper)
 add_function_test(TestFem, "test_point_basis", test_point_basis)

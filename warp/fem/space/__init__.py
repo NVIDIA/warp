@@ -123,7 +123,7 @@ def make_polynomial_basis_space(
         topology = make_quadmesh_2d_space_topology(geo, shape)
     elif isinstance(base_geo, _geometry.Hexmesh):
         topology = make_hexmesh_space_topology(geo, shape)
-    elif isinstance(base_geo, _geometry.Nanogrid):
+    elif isinstance(base_geo, _geometry.Nanogrid) or isinstance(base_geo, _geometry.AdaptiveNanogrid):
         topology = make_nanogrid_space_topology(geo, shape)
 
     if topology is None:
