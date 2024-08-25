@@ -5704,15 +5704,9 @@ def export_stubs(file):  # pragma: no cover
             if not f.export or f.hidden:  # or f.generic:
                 continue
 
-            try:
-                # todo: construct a default value for each of the functions args
-                # so we can generate the return type for overloaded functions
-                return_type = f.value_func(None, None)
-                if return_type:
-                    return_str = " -> " + type_str(return_type)
-
-            except Exception:
-                pass
+            return_type = f.value_func(None, None)
+            if return_type:
+                return_str = " -> " + type_str(return_type)
 
             print("@over", file=file)
             print(f"def {f.key}({args}){return_str}:", file=file)
