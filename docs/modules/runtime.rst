@@ -1064,8 +1064,8 @@ Bounding Value Hierarchies (BVH)
 --------------------------------
 
 The :class:`wp.Bvh <Bvh>` class can be used to create a BVH for a group of bounding volumes. This object can then be traversed
-to determine which parts are intersected by a ray using :func:`bvh_query_ray` and which parts are fully contained
-within a certain bounding volume using :func:`bvh_query_aabb`.
+to determine which parts are intersected by a ray using :func:`bvh_query_ray` and which parts overlap
+with a certain bounding volume using :func:`bvh_query_aabb`.
 
 The following snippet demonstrates how to create a :class:`wp.Bvh <Bvh>` object from 100 random bounding volumes:
 
