@@ -255,6 +255,7 @@ class Example:
             self.renderer.render_line_list("streamlines", vertices, indices)
             self.renderer.render_line_list("streamlines", vertices, indices, colors)
 
+            self.renderer.paused = True
             self.renderer.end_frame()
 
     def _generate_incompressible_flow(self):

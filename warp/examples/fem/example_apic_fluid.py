@@ -169,7 +169,7 @@ def solve_incompressibility(
     # For simplicity, assemble Schur complement and solve with CG
     schur = bsr_mm(divergence_mat, transposed_divergence_mat)
 
-    fem_example_utils.bsr_cg(schur, b=rhs, x=pressure, quiet=quiet, tol=1.0e-6)
+    fem_example_utils.bsr_cg(schur, b=rhs, x=pressure, quiet=quiet, tol=1.0e-6, method="cr", max_iters=1000)
 
     # Apply pressure to velocity
     bsr_mv(A=transposed_divergence_mat, x=pressure, y=velocity, alpha=1.0, beta=1.0)
