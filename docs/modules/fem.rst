@@ -206,6 +206,18 @@ and differentiating interior, frontier and exterior nodes.
 The :class:`.Subdomain` class can be used to integrate over a subset of elements while keeping the full set of degrees of freedom,
 i.e, without reindexing; this is illustrated in the ``example_streamlines.py`` example to define inflow and outflow boundaries.
 
+Adaptivity
+^^^^^^^^^^
+
+While unstructured mesh refinement is currently out of scope, ``warp.fem`` provides an adaptive version of the sparse grid geometry, :class:`.AdaptiveNanogrid`,
+with power-of-two voxel scales. Helpers for building such geometries from hierarchy of grids or a refinement oracle are also provided, see 
+:func:`.adaptive_nanogrid_from_field` and :func:`.adaptive_nanogrid_from_hierarchy`.
+An example is provided in ``warp/examples/fem/example_adaptive_grid.py``.
+
+.. note::
+   The existence of "T-junctions" at resolution boundaries mean that usual tri-polynomial shape functions will no longer be globally
+   continuous. Discontinuous--Galerkin or similar techniques may be used to take into account the "jump" at multi-resolution faces.
+
 Memory management
 ^^^^^^^^^^^^^^^^^
 
@@ -310,58 +322,80 @@ Geometry
 
 .. autoclass:: Grid2D
    :show-inheritance:
+   :no-members:
 
 .. autoclass:: Trimesh2D
    :show-inheritance:
+   :no-members:
 
 .. autoclass:: Quadmesh2D
    :show-inheritance:
+   :no-members:
 
 .. autoclass:: Grid3D
    :show-inheritance:
+   :no-members:
 
 .. autoclass:: Tetmesh
    :show-inheritance:
+   :no-members:
 
 .. autoclass:: Hexmesh
    :show-inheritance:
+   :no-members:
 
 .. autoclass:: Nanogrid
    :show-inheritance:
+   :no-members:
+
+.. autoclass:: AdaptiveNanogrid
+   :show-inheritance:
+   :no-members:
 
 .. autoclass:: LinearGeometryPartition
+   :no-members:
 
 .. autoclass:: ExplicitGeometryPartition
+   :no-members:
 
 .. autoclass:: Cells
    :show-inheritance:
+   :no-members:
 
 .. autoclass:: Sides
    :show-inheritance:
+   :no-members:
 
 .. autoclass:: BoundarySides
    :show-inheritance:
+   :no-members:
 
 .. autoclass:: FrontierSides
    :show-inheritance:
+   :no-members:
 
 .. autoclass:: Subdomain
    :show-inheritance:
+   :no-members:
 
 .. autoclass:: Polynomial
    :members:
 
 .. autoclass:: RegularQuadrature
    :show-inheritance:
+   :no-members:
 
 .. autoclass:: NodalQuadrature
    :show-inheritance:
+   :no-members:
 
 .. autoclass:: ExplicitQuadrature
    :show-inheritance:
+   :no-members:
 
 .. autoclass:: PicQuadrature
    :show-inheritance:
+   :no-members:
 
 Function Spaces
 ---------------
@@ -381,12 +415,15 @@ Function Spaces
 
 .. autoclass:: SymmetricTensorMapper
    :show-inheritance:
+   :no-members:
 
 .. autoclass:: SkewSymmetricTensorMapper
    :show-inheritance:
+   :no-members:
 
 .. autoclass:: PointBasisSpace
    :show-inheritance:
+   :no-members:
 
 .. _Fields:
 
@@ -401,14 +438,17 @@ Fields
 
 .. autoclass:: ImplicitField
    :show-inheritance:
+   :no-members:
    :members: values
 
 .. autoclass:: UniformField
    :show-inheritance:
+   :no-members:
    :members: value
 
 .. autoclass:: NonconformingField
    :show-inheritance:
+   :no-members:
 
 .. autofunction:: make_restriction
 
@@ -418,6 +458,13 @@ Boundary Conditions
 .. autofunction:: normalize_dirichlet_projector
 
 .. autofunction:: project_linear_system
+
+Adaptivity
+----------
+
+.. autofunction:: adaptive_nanogrid_from_hierarchy
+
+.. autofunction:: adaptive_nanogrid_from_field
 
 Memory Management
 -----------------
@@ -435,59 +482,79 @@ Interfaces
 Interface classes are not meant to be constructed directly, but can be derived from extend the built-in functionality.
 
 .. autoclass:: Geometry
+   :no-members:
    :members: cell_count, side_count, boundary_side_count
 
 .. autoclass:: GeometryPartition
+   :no-members:
    :members: cell_count, side_count, boundary_side_count, frontier_side_count
 
 .. autoclass:: GeometryDomain
+   :no-members:
    :members: element_kind, dimension, element_count
 
 .. autoclass:: Quadrature
+   :no-members:
    :members: domain, total_point_count
 
 .. autoclass:: FunctionSpace
+   :no-members:
    :members: dtype, topology, geometry, dimension, degree, trace, make_field
 
 .. autoclass:: SpaceTopology
+   :no-members:
    :members: dimension, geometry, node_count, element_node_indices, trace
 
 .. autoclass:: BasisSpace
+   :no-members:
    :members: topology, geometry, node_positions
 
 .. autoclass:: warp.fem.space.shape.ShapeFunction
+   :no-members:
 
 .. autoclass:: SpacePartition
+   :no-members:
    :members: node_count, owned_node_count, interior_node_count, space_node_indices
 
 .. autoclass:: SpaceRestriction
+   :no-members:
    :members: node_count
 
 .. autoclass:: DofMapper
+   :no-members:
 
 .. autoclass:: FieldLike
+   :no-members:
 
 .. autoclass:: DiscreteField
    :show-inheritance:
+   :no-members:
    :members: dof_values
 
 .. autoclass:: warp.fem.field.FieldRestriction
+   :no-members:
 
 .. autoclass:: warp.fem.field.GeometryField
    :show-inheritance:
+   :no-members:
    :members: trace, make_deformed_geometry
 
 .. autoclass:: warp.fem.field.SpaceField
    :show-inheritance:
+   :no-members:
 
 .. autoclass:: warp.fem.field.TestField
    :show-inheritance:
+   :no-members:
 
 .. autoclass:: warp.fem.field.TrialField
    :show-inheritance:
+   :no-members:
 
 .. autoclass:: TemporaryStore
+   :no-members:
    :members: clear
 
 .. autoclass:: warp.fem.cache.Temporary
+   :no-members:
    :members: array, detach, release

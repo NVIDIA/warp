@@ -1,3 +1,4 @@
+from .adaptivity import adaptive_nanogrid_from_field, adaptive_nanogrid_from_hierarchy
 from .cache import TemporaryStore, borrow_temporary, borrow_temporary_like, set_default_temporary_store
 from .dirichlet import normalize_dirichlet_projector, project_linear_system
 from .domain import BoundarySides, Cells, FrontierSides, GeometryDomain, Sides, Subdomain
@@ -13,6 +14,7 @@ from .field import (
     make_trial,
 )
 from .geometry import (
+    AdaptiveNanogrid,
     ExplicitGeometryPartition,
     Geometry,
     GeometryPartition,

@@ -146,7 +146,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--boundary_compliance", type=float, default=0.0, help="Dirichlet boundary condition compliance."
     )
-    parser.add_argument("--mesh", choices=("grid", "tet", "hex", "nano"), default="grid", help="Mesh type.")
+    parser.add_argument("--mesh", choices=("grid", "tet", "hex", "nano", "anano"), default="grid", help="Mesh type.")
     parser.add_argument(
         "--headless",
         action="store_true",
@@ -171,4 +171,4 @@ if __name__ == "__main__":
         example.render()
 
         if not args.headless:
-            example.renderer.plot()
+            example.renderer.plot(backend="matplotlib")
