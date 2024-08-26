@@ -322,9 +322,8 @@ windows-x86_64 test mgpu:
   extends:
     - .save_test_report_artifact
   rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH 
     - if: $CI_COMMIT_TAG
-    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
     - when: manual # Can be triggered in all other scenarios
       allow_failure: true
   before_script:
