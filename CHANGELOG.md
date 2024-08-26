@@ -14,6 +14,7 @@
 - Fix a bug in `wp.bvh_query_aabb()` ([GH-288](https://github.com/NVIDIA/warp/issues/288)).
 - Fix an aliasing issue with zero-copy array initialization from numpy introduced in 1.3.0
 - Fix a bug in `wp.sim.collide.triangle_closest_point_barycentric()` where the returned barycentric coordinates may be incorrect when the closest point lies on an edge.
+- Unexposed `wp.rand*()`, `wp.sample*()`, and `wp.poisson()` from Python's runtime.
 
 ## [1.3.1] - 2024-07-27
 
