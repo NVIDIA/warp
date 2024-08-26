@@ -607,7 +607,7 @@ class Var:
             classstr = f"wp::{type(t).__name__}"
             return f"{classstr}_t<{dtypestr}>"
         elif is_tile(t):
-            return "auto"
+            return t.ctype()
         elif isinstance(t, Struct):
             return make_full_qualified_name(t.cls)
         elif is_reference(t):

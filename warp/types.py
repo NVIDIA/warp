@@ -2869,6 +2869,48 @@ class Tile:
         self.N = N
         self.op = op
 
+class TileZeros(Tile):
+
+    def __init__(self, dtype, M, N):
+        Tile.__init__(self, dtype, M, N, "zeros")
+        
+    def ctype(self):
+        from warp.codegen import Var
+        return f"wp::tile_zeros_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
+
+class TileLoad(Tile):
+
+    def __init__(self, array, M, N):
+        Tile.__init__(self, array.dtype, M, N, "load")
+        
+    def ctype(self):
+        from warp.codegen import Var
+        return f"wp::tile_load_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
+
+class TileUnaryMap(Tile):
+
+    def __init__(self, t):
+        Tile.__init__(self, t.dtype, t.M, t.N, "unary_map")
+
+        self.t = t
+        
+    def ctype(self):
+        from warp.codegen import Var
+        return f"wp::tile_unary_map_t<{self.t.ctype()}>"
+
+class TileBinaryMap(Tile):
+
+    def __init__(self, a, b):
+        Tile.__init__(self, a.dtype, a.M, a.N, "binary_map")
+
+        self.a = a
+        self.b = b
+        
+    def ctype(self):
+        from warp.codegen import Var
+        return f"wp::tile_binary_map_t<{self.a.ctype()}, {self.b.ctype()}>"
+
+
 def is_tile(t):
     return isinstance(t, Tile)
 

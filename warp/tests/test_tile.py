@@ -155,36 +155,31 @@ def test_tile_binary_map():
     
     print("Binary map backward passed")
 
-test_tile_copy()
-test_tile_unary_map()
-test_tile_binary_map()
 
 
-# @wp.kernel
-# def gemm(A: wp.array2d(dtype=float),
-#          B: wp.array2d(dtype=float),
-#          C: wp.array2d(dtype=float)):
+TILE_M = wp.constant(64)
+TILE_N = wp.constant(64)
+TILE_K = wp.constant(8)
 
-#     # output index
-#     i, j = wp.tid()
+# sum = wp.tile_zeros(M,N)
 
-#     sum = float(0.0)
+# for i in range(5):
 
-#     for k in range(0, A.shape[1]):
-#         sum += A[i, k]*B[k, j]
+#     a = wp.tile_load(A)
+#     b = wp.tile_load(B)
 
-#     C[i, j] = sum
+#     a2 = a*2.0
+    
+#     wp.tile_matmul(a2, b, sum)
+
+# wp.tile_store(sum)
 
 
-
-# TILE_M = wp.constant(64)
-# TILE_N = wp.constant(64)
-# TILE_K = wp.constant(8)
 
 # @wp.kernel
-# def gemm_tiled(A: wp.array2d(dtype=float),
-#                B: wp.array2d(dtype=float),
-#                C: wp.array2d(dtype=float)):
+# def tile_gemm(A: wp.array2d(dtype=float),
+#               B: wp.array2d(dtype=float),
+#               C: wp.array2d(dtype=float)):
 
 #     # output tile index
 #     i, j = wp.tid()
@@ -197,7 +192,7 @@ test_tile_binary_map()
 
 #     count = int(K / TILE_K) # todo: must be the same as TILE_K
 
-#     for k in range(count):
+#     for k in range(0, K, TILE_K):
 
 #         a = wp.tile_load(A, i, k, m=TILE_M, n=TILE_K)
 #         b = wp.tile_load(B, k, j, m=TILE_K, n=TILE_N)
@@ -208,68 +203,30 @@ test_tile_binary_map()
 #     wp.tile_store(C, i, j, sum)
 
 
-# s = 0.0
+# def test_tile_gemm():
 
-# for i, j in tile.shape:
+#     M = TILE_M*7
+#     K = TILE_K*4
+#     N = TILE_N*6
 
-#     s += tile[i-1, i-1]
-#     s += tile[i, i-1]
-#     s += tile[i,]
+#     rng = np.random.default_rng(42)
+#     A = rng.random((M, K), dtype=np.float32)
+#     B = rng.random((K, N), dtype=np.float32)
+#     C = np.zeros((M, N), dtype=np.float32)
 
+#     A_wp = wp.array(A)
+#     B_wp = wp.array(B)
+#     C_wp = wp.array(C)
 
+#     iters = 10
 
-# M = TILE_M*7
-# K = TILE_K*4
-# N = TILE_N*6
+#     wp.launch(tile_gemm, dim=(M, N), inputs=[A_wp, B_wp, C_wp])
 
-# rng = np.random.default_rng(42)
-# A = rng.random((M, K), dtype=np.float32)
-# B = rng.random((K, N), dtype=np.float32)
-# C = np.zeros((M, N), dtype=np.float32)
-
-# A_wp = wp.array(A)
-# B_wp = wp.array(B)
-# C_wp = wp.array(C)
-
-# iters = 10
-
-# with wp.ScopedTimer("NumPy"):
-
-#     for i in range(iters):
-#         C = A@B
-
-# wp.force_load(device="cuda:0")
-
-# with wp.ScopedTimer("Warp", cuda_filter=wp.TIMING_KERNEL):
-
-#     for i in range(iters):
-#         wp.launch(gemm, dim=(M, N), inputs=[A_wp, B_wp, C_wp])
+#     assert(np.allclose(A@B, C_wp.numpy(), rtol=1.e-4))
 
 
-#     print(np.allclose(C, C_wp.numpy(), rtol=1.e-4))
 
-#     for i in range(iters):
-#         wp.launch(gemm_tiled, dim=(int(M/TILE_M), int(N/TILE_N)), inputs=[A_wp, B_wp, C_wp], tile_size=128)
-#         wp.synchronize()
-
-
-#     print(np.allclose(C, C_wp.numpy(), rtol=1.e-4))
-
-
-# A_tc = torch.from_numpy(A).to("cuda:0")
-# B_tc = torch.from_numpy(B).to("cuda:0")
-# C_tc = torch.from_numpy(C).to("cuda:0")
-
-# for i in range(10):
-#     torch.matmul(A_tc, B_tc, out=C_tc)
-
-# with wp.ScopedTimer("Torch"):
-
-#     for i in range(iters):
-#         torch.matmul(A_tc, B_tc, out=C_tc)
-
-#     torch.cuda.synchronize()
-
-    
-
-
+test_tile_copy()
+test_tile_unary_map()
+test_tile_binary_map()
+#test_tile_gemm()

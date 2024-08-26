@@ -5,7 +5,7 @@
 // todo: requires CTK, replace with inline ptx
 #include "cuda_pipeline_primitives.h"
 
-#define USE_CUTE 1
+#define USE_CUTE 0
 
 #if USE_CUTE
 #include "cutlass/include/cute/tensor.hpp"
@@ -15,7 +15,7 @@
 namespace wp
 {
 
-
+/*
 // 2D tile zero
 template <typename T, int M, int N, int Index>
 inline CUDA_CALLABLE array_t<T> tile_zeros()
@@ -84,6 +84,7 @@ inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int i, int j, const array
         index(dest, i*M + t/N, j*N + t%N) = src.data[t];
     }
 }
+*/
 
 template <typename T>
 inline CUDA_CALLABLE const T& index(const T* __restrict__ p, int i, int j, int stride)
@@ -174,7 +175,7 @@ inline void partition_store(const partition_t<M, N, T>& tile, int i, int j, cons
 #if !USE_CUTE
 
 template <typename T>
-inline CUDA_CALLABLE void tile_matmul(const array_t<T>& A, const array_t<T>& B, const array_t<T>& out)
+inline CUDA_CALLABLE void gemm(const array_t<T>& A, const array_t<T>& B, const array_t<T>& out)
 {   
     const int TILE_M = 4;
     const int TILE_N = 4;
@@ -306,5 +307,73 @@ inline CUDA_CALLABLE void tile_matmul(const array_t<T>& A, const array_t<T>& B, 
 }
 
 #endif // USE_CUTE
+
+template <typename TileA, typename TileB, typename TileC>
+struct tile_matmul_t
+{
+    static_assert(wp::is_same<typename TileA::Type, typename TileB::Type>::value, "Error");
+    static_assert(TileA::N == TileB::M, "Error, inner dimensions must match");
+    static_assert(TileC::M == TileA::M, "Error, first output dimension must match");
+    static_assert(TileC::N == TileB::N, "Error, second output dimension must match");
+
+    using Type = typename TileA::Type;
+    static constexpr int M = TileC::M;
+    static constexpr int N = TileC::N;
+
+    const TileA& tile_a;
+    const TileB& tile_b;
+
+    tile_matmul_t(const TileA &a, TileB &b, TileC &b) : tile_a(a),
+                                                        tile_b(b),
+                                                        tile_c(c) {}
+
+    Type fwd(int e) const
+    {
+        // load 
+        
+
+    }
+
+    void bwd(int e, Type adj_ret) const
+    {
+        Type a = tile_a.fwd(e);
+        Type b = tile_b.fwd(e);
+ 
+        Type adj_a = 0.0;
+        Type adj_b = 0.0;
+
+        adj_fn(a, b, adj_a, adj_b, adj_ret);
+
+        // recurse
+        tile_a.bwd(e, adj_a);
+        tile_b.bwd(e, adj_b);
+    }
+
+    void print()
+    {
+        printf("tile_binary_map_t<%d, %d>", M, N);
+        printf("\n   -+");
+        tile_a.print();
+        printf("\n   -+");
+        tile_b.print();
+    }
+};
+
+template <typename TileA, typename TileB, typename TileC>
+void tile_matmul(TileA& a, TileB& b, TileC& c)
+{
+    // load a to shared
+    // load b to shared
+
+}
+
+
+template <typename TileA, typename TileB, typename TileC>
+void adj_tile_matmul(TileA& a, TileB& b, TileC& c,
+                     TileA& adj_a, TileB& adj_b, TileC& adj_c)
+{
+}
+
+
 
 } // namespace wp

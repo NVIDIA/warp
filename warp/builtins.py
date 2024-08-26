@@ -1703,8 +1703,8 @@ def tile_zeros_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str
     if arg_types is None:
         return array_t(shape=(Any, Any), dtype=Scalar)
 
-    if len(arg_types) > 0:
-        raise RuntimeError("tile_zero() args must be passed by keyword")
+    # if len(arg_types) > 0:
+    #     raise RuntimeError("tile_zero() args must be passed by keyword")
 
     if "m" not in arg_values:
         raise RuntimeError("'m' keyword argument must be specified when calling tile_zeros() function")
@@ -1715,9 +1715,10 @@ def tile_zeros_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str
     if "dtype" not in arg_values:
         raise RuntimeError("'dtype' keyword argument must be specified when calling tile_zeros() function")
 
+    m, n = arg_values["m"], arg_values["n"]
     dtype = arg_values["dtype"]
 
-    return array(dtype=dtype)
+    return TileZeros(dtype=dtype, M=m, N=n)
 
 def tile_zeros_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
 
@@ -1725,13 +1726,13 @@ def tile_zeros_dispatch_func(arg_types: Mapping[str, type], return_type: Any, ar
 
     template_args = []
     template_args.append(dtype)
-    template_args.append(m)
-    template_args.append(n)
+    template_args.append(m.constant)
+    template_args.append(n.constant)
 
-    global shared_memory_id
-    template_args.append(shared_memory_id)
+    # global shared_memory_id
+    # template_args.append(shared_memory_id)
 
-    shared_memory_id += 1
+    # shared_memory_id += 1
 
     return ([], template_args)
 
@@ -1772,10 +1773,10 @@ def tile_load_value_func(arg_types, arg_values):
     if "n" not in arg_values:
         raise RuntimeError("'n' keyword argument must be specified when calling tile_zeros() function")
 
+    a = arg_types["a"]
     m, n = arg_values["m"], arg_values["n"]
-    dtype = arg_types["a"].dtype
 
-    return Tile(dtype, m, n, "load")
+    return TileLoad(a, m, n)
 
 
 def tile_load_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
@@ -1790,10 +1791,9 @@ def tile_load_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg
     template_args.append(m)
     template_args.append(n)
 
-    global shared_memory_id
+    #global shared_memory_id
     #templates.append(shared_memory_id)
-
-    shared_memory_id += 1
+    #shared_memory_id += 1
 
     return ((array, x, y), template_args)
 
@@ -1845,6 +1845,31 @@ add_builtin(
 )
 
 
+def tile_realize_value_func(arg_types, arg_values):
+    
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return None
+
+    m, n = arg_values["t"].m, arg_values["n"].n
+    dtype = arg_values["t"].dtype
+    
+    return Tile(dtype, m, n, "realize")
+
+
+
+add_builtin(
+    "tile_realize",
+    input_types={"t": Tile},
+    value_func=tile_realize_value_func,
+    variadic=True,
+    doc="Force evaluation of a tile expression tree into local memory",
+    group="Tile Primitives",
+    export=False,
+)
+
+
+
 
 def tile_matmul_value_func(arg_types, arg_values):
     
@@ -1855,24 +1880,24 @@ def tile_matmul_value_func(arg_types, arg_values):
     if len(arg_types) != 3: 
         raise RuntimeError("tile_matmul() requires 4 positional args")
 
-    if not is_array(arg_types[0]):
-        raise RuntimeError("tile_matmul() argument 0 must be an array")
+    if not is_tile(arg_types["a"]):
+        raise RuntimeError("tile_matmul() argument 0 must be a tile")
 
-    if not is_array(arg_types[1]):
-        raise RuntimeError("tile_matmul() argument 1 must be an array")
+    if not is_tile(arg_types["b"]):
+        raise RuntimeError("tile_matmul() argument 1 must be an tile")
 
-    if not is_array(arg_types[2]):
-        raise RuntimeError("tile_matmul() argument 2 must be an array")
+    if not is_tile(arg_types["out"]):
+        raise RuntimeError("tile_matmul() argument 2 must be an tile")
 
     return None
 
 
 add_builtin(
     "tile_matmul",
-    input_types={"a": array(dtype=Any), "b": array(dtype=Any), "out": array(dtype=Any)},
+    input_types={"a": Tile, "b": Tile, "out": Tile},
     value_func=tile_matmul_value_func,
     variadic=True,
-    doc="Compute matrix product and accumulate out += a*b", 
+    doc="Compute matrix product and accumulate out += a*b, a and b will be realized before evaluation, and output must already be realized.", 
     group="Tile Primitives",
     export=False,
 )
@@ -1883,16 +1908,18 @@ def tile_map_value_func(arg_types, arg_values):
     if arg_types is None:
         return None
 
+    tiles = arg_types["args"]
+
     # check all args are tiles
-    for a in arg_types["args"]:
+    for a in tiles:
         if not is_tile(a):
             raise RuntimeError(f"tile_map() arguments must be tiles, got type {a}")
 
     # use first argument to define output type
-    first = arg_types["args"][0]
+    first = tiles[0]
 
     # check all args have the same type and dimension
-    for a in arg_types["args"]:
+    for a in tiles:
         if a.dtype != first.dtype:
             raise RuntimeError(f"tile_map() arguments must all have the same type {first.dtype} != {a.dtype}")
 
@@ -1902,11 +1929,12 @@ def tile_map_value_func(arg_types, arg_values):
         if a.N != first.N:
             raise RuntimeError(f"tile_map() arguments must all have the same n dimension {first.N} != {a.N}")
 
-    
-    return Tile(dtype=first.dtype,
-                M=first.M,
-                N=first.N,
-                op="map")
+    if len(tiles) == 1:
+        return TileUnaryMap(tiles[0])
+    elif len(tiles) == 2:
+        return TileBinaryMap(tiles[0], tiles[1])
+    else:
+        raise RuntimeError(f"tile_map() must have or two tile arguments")
 
 
 def tile_map_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):

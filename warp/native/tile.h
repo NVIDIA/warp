@@ -27,6 +27,37 @@
 
 #endif
 
+/* Tile Expressions
+
+[x] Forward / Backward code-gen
+[ ] wp.tile_map()
+    [ ] Support user functions
+    [ ] Support built-in functions
+    [ ] Support for lambda functions
+[ ] wp.tile_matmul()
+    [ ] Forward
+    [ ] Reverse
+[ ] Support for n-d shape tiles / broadcasting / slicing?
+[ ] Compile-time block dimensions
+[ ] Support for CUB reductions
+[ ] Support for CUB sorts
+[ ] Examples
+    [ ] GEMM
+    [ ] Batched MLP
+    [ ] Point cloud alignment
+    [ ] Layer norm
+
+*/
+
+// wp.tile_load(A, offset, shape)
+// wp.tile_load(A, (x, y), (16, 16))
+// wp.tile_load(A, (x, y, z), (3, 3, 3))
+
+// wp.tile_load(A, index, shape)
+// wp.tile_load(A, x, m)
+// wp.tile_load(A, x, y, m, n)
+// wp.tile_load(A, x, y, z, m, n, o)
+// wp.tile_load(A, x, y, z, m, n, o, p)
 
 namespace wp
 {
@@ -78,6 +109,7 @@ struct tile_load_t
 
     array_t<T> slice;
 
+    tile_load_t() {}
     tile_load_t(array_t<T>& src, int x, int y)
     {
         assert(src.ndim == 2);
@@ -132,9 +164,9 @@ struct tile_store_t
     static constexpr int N = Tile_::N;
 
     array_t<Type> slice;
+    Tile tile;
 
-    Tile& tile;
-
+    tile_store_t() {}
     tile_store_t(array_t<Type>& dest, int x, int y, Tile& t) : tile(t)
     {
         assert(dest.ndim == 2);
@@ -190,9 +222,10 @@ struct tile_constant_t
     static constexpr int N = N_;
 
     T c;
-    T& adj_c;
+    T* adj_c;
 
-    tile_constant_t(const T& c, T& adj_c) : c(c), adj_c(adj_c) {}
+    tile_constant_t() {}
+    tile_constant_t(const T& c, T& adj_c) : c(c), adj_c(&adj_c) {}
 
     Type fwd(int e)
     {
@@ -201,7 +234,7 @@ struct tile_constant_t
 
     void bwd(int e, const T& adj_ret)
     {
-        adj_c += adj_ret;
+        *adj_c += adj_ret;
     }
 
     void print()
@@ -212,21 +245,71 @@ struct tile_constant_t
     }
 };
 
+template <typename T, int M_, int N_>
+struct tile_zeros_t
+{
+    using Type = T;
+    static constexpr int M = M_;
+    static constexpr int N = N_;
 
+    tile_zeros_t() {}
 
-template <typename Tile, typename FwdOp, typename AdjOp>
+    Type fwd(int e)
+    {
+        return Type(0.0);
+    }
+
+    void bwd(int e, const T& adj_ret) {}
+
+    void print()
+    {
+        printf("tile_zeros_t<%d, %d>-+", M, N);
+        print(c);
+        printf("\n");
+    }
+};
+
+template <typename T, int M_, int N_>
+struct tile_ones_t
+{
+    using Type = T;
+    static constexpr int M = M_;
+    static constexpr int N = N_;
+
+    tile_ones_t() {}
+
+    Type fwd(int e)
+    {
+        return Type(1.0);
+    }
+
+    void bwd(int e, const T& adj_ret) {}
+
+    void print()
+    {
+        printf("tile_ones_t<%d, %d>-+", M, N);
+        print(c);
+        printf("\n");
+    }
+};
+
+template <typename Tile>
 struct tile_unary_map_t
 {
     using Type = typename Tile::Type;
     static constexpr int M = Tile::M;
     static constexpr int N = Tile::N;
 
-    Tile& tile;
+    using FwdOp = Type(*)(Type);
+    using AdjOp = void(*)(Type, Type&, Type&);
+
+    Tile tile;
     
     FwdOp fwd_fn;
     AdjOp adj_fn;
 
-    tile_unary_map_t(Tile& t, FwdOp f, AdjOp a)  : tile(t), fwd_fn(f), adj_fn(a) {}
+    tile_unary_map_t() {}
+    tile_unary_map_t(Tile& t, FwdOp fwd, AdjOp adj)  : tile(t), fwd_fn(fwd), adj_fn(adj) {}
 
     Type fwd(int e) const
     {
@@ -249,7 +332,7 @@ struct tile_unary_map_t
     }
 };
 
-template <typename TileA, typename TileB, typename FwdOp, typename AdjOp>
+template <typename TileA, typename TileB>
 struct tile_binary_map_t
 {
     static_assert(wp::is_same<typename TileA::Type, typename TileB::Type>::value, "Error");
@@ -260,14 +343,17 @@ struct tile_binary_map_t
     static constexpr int M = TileA::M;
     static constexpr int N = TileA::N;
 
-    const TileA& tile_a;
-    const TileB& tile_b;
+    using FwdOp = Type(*)(Type, Type);
+    using AdjOp = void(*)(Type, Type, Type&, Type&, Type&);
+
+    TileA tile_a;
+    TileB tile_b;
 
     FwdOp fwd_fn;
     AdjOp adj_fn;
 
-
-    tile_binary_map_t(const TileA& a, TileB& b, FwdOp fwd_fn, AdjOp adj_fn) : tile_a(a), tile_b(b), fwd_fn(fwd_fn), adj_fn(adj_fn) {}
+    tile_binary_map_t() {}
+    tile_binary_map_t(const TileA& a, TileB& b, FwdOp fwd, AdjOp adj) : tile_a(a), tile_b(b), fwd_fn(fwd), adj_fn(adj) {}
 
     Type fwd(int e) const
     {
@@ -300,10 +386,19 @@ struct tile_binary_map_t
         printf("\n   -+");
         tile_b.print();
     }
-
 };
 
 
+
+
+//-----------------------------------------------------------------------------------------------------
+// High level entry points for each op (correspond to one Warp builtin)
+
+template <typename T, int M, int N>
+tile_zeros_t<T, M, N> tile_zeros() { return tile_zeros_t<T, M, N>(); }
+
+template <typename T, int M, int N>
+tile_ones_t<T, M, N> tile_ones() { return tile_ones_t<T, M, N>(); }
 
 // entry point for load
 template <typename T, int M, int N>
@@ -341,19 +436,18 @@ void adj_tile_store(array_t<T>& dest, int x, int y, Tile& t, array_t<T>& adj_des
 }
 
 
-
 // unary map
-template <typename Tile, typename FwdOp, typename AdjOp>
-tile_unary_map_t<Tile, FwdOp, AdjOp> tile_map_impl(FwdOp fwd, AdjOp adj, Tile& a)
+template <typename Tile>
+tile_unary_map_t<Tile> tile_map_impl(typename tile_unary_map_t<Tile>::FwdOp fwd, typename tile_unary_map_t<Tile>::AdjOp adj, Tile& a)
 {
-    return tile_unary_map_t<Tile, FwdOp, AdjOp>(a, fwd, adj);
+    return tile_unary_map_t<Tile>(a, fwd, adj);
 }
 
 // binary map
-template <typename TileA, typename TileB, typename FwdOp, typename AdjOp>
-tile_binary_map_t<TileA, TileB, FwdOp, AdjOp> tile_map_impl(FwdOp fwd, AdjOp adj, TileA& a, TileB& b)
+template <typename TileA, typename TileB>
+tile_binary_map_t<TileA, TileB> tile_map_impl(typename tile_binary_map_t<TileA, TileB>::FwdOp fwd, typename tile_binary_map_t<TileA, TileB>::AdjOp adj, TileA& a, TileB& b)
 {
-    return tile_binary_map_t<TileA, TileB, FwdOp, AdjOp>(a, b, fwd, adj);
+    return tile_binary_map_t<TileA, TileB>(a, b, fwd, adj);
 }
 
 // use macro to capture adjoint operator
@@ -370,3 +464,90 @@ void adj_tile_map_impl(void) {}
 
 } // namespace wp
 
+#if 0
+
+//-----------------------------------------------------
+// c = a + b
+
+// forward
+auto var_0 = wp::tile_load<wp::float32,8,4>(var_A, x, y);
+auto var_1 = wp::tile_load<wp::float32,8,4>(var_B, x, y);
+auto var_2 = wp::tile_add(var_0, var_1);
+wp::tile_store(var_C, x, y, var_2)
+
+// reverse
+wp::adj_store(var_C, x, y, var_2, adj_C, _, _, adj_2)
+wp::adj_tile_add(var_0, var_1, adj_0, adj_1, adj_2)
+wp::adj_tile_load(var_B, x, y, adj_B, _, _, adj_1);
+wp::adj_tile_load(var_B, x, y, adj_B, _, _, adj_0);
+
+
+//-----------------------------------------------------
+// x = a[0]
+// c = x*2.0 + x
+
+// forward
+auto var_0 = wp::tile_load<wp::float32,8,4>(var_A, x, y);
+auto var_1 = wp::tile_mul(var_0, 2.0);
+auto var_2 = wp::tile_add(var_0, var_1);
+wp::tile_store(var_C, x, y, var_2)
+
+struct adj_store_t
+{
+    adj_store_t()
+    {
+
+    }
+
+    float bwd(int i, float adj_ret)
+    {
+        return array.grad[i];
+    }
+};
+
+template <typename P>
+struct adj_add_t
+{
+    adj_add_t(P& parent)
+    {
+        
+    }
+
+    float bwd(int i, float& adj_a, float& adj_b)
+    {
+        // evaluate parent
+        float adj_ret = parent.bwd(i);
+
+        adj_a += adj_ret;
+        adj_b += adj_ret;
+    }
+};
+
+template <typename T>
+struct adj_tile
+{
+    adj_tile(T& parent)
+    {
+
+    }
+
+
+
+};
+
+void adj_tile_load(A, x, y, adj_A, adj_x, adj_y, adj_ret)
+{
+    for i in A(x,y):
+        adj_A[i] += adj_ret(i);
+}
+
+
+
+// reverse
+wp::adj_store(var_C, x, y, var_2, adj_C, _, _, adj_2)   // adj_2->adj_C
+wp::adj_tile_add(var_0, var_1, adj_0, adj_1, adj_2)     // adj_0->adj_2->adj_C, adj_1->adj_2->adj_C
+wp::adj_tile_mul(var_0, 2.0, adj_0, _, adj_1);          // adj_0->adj_1->adj_2->adj_C
+wp::adj_tile_load(var_A, x, y, adj_A, _, _, adj_0);     // adj_A->adj_0->adj_1->adj_2->adj_C
+
+
+#endif
