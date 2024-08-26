@@ -75,9 +75,6 @@ windows-x86_64 test:
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
     - python -m warp.tests --junit-report-xml rspec.xml -s autodetect
-  tags:
-    - os/windows
-    - gpu/2x-A5000
 
 linux-aarch64 test:
   stage: test
