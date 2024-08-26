@@ -1,57 +1,33 @@
 # CHANGELOG
 
-## [Upcoming Release] - 2024-??-??
+## [1.3.2] - 2024-08-30
 
-- Fix accuracy of 3x3 svd with fp64 numbers ([GH-281](https://github.com/NVIDIA/warp/issues/281))
-## [1.3.2] - 2024-??
-
-- Fix accuracy of 3x3 svd with fp64 numbers ([GH-281](https://github.com/NVIDIA/warp/issues/281))
-- Rename function `plot_kernel_jacobians` to `jacobian_plot` in `autograd` module.
-- Fix module hashing when a kernel argument contained a struct array ([GH-287](https://github.com/NVIDIA/warp/issues/287)).
-- Fix a bug in `wp.bvh_query_aabb()` where the direction instead of the reciprocal direction was used
+- Bug fixes
+  - Fix accuracy of 3x3 SVD ``wp.svd3`` with fp64 numbers ([GH-281](https://github.com/NVIDIA/warp/issues/281)).
+  - Fix module hashing when a kernel argument contained a struct array ([GH-287](https://github.com/NVIDIA/warp/issues/287)).
+  - Fix a bug in `wp.bvh_query_aabb()` where the direction instead of the reciprocal direction was used
   ([GH-288](https://github.com/NVIDIA/warp/issues/288)).
-- Fix errors when launching a CUDA graph after a module is reloaded. Modules that were used during graph capture
-  will no longer be unloaded before the graph is released.
-- Minor improvements to kernel launch performance.
-- Fix a bug in `wp.sim.collide.triangle_closest_point_barycentric()` where the returned barycentric coordinates may be
-  incorrect when the closest point lies on an edge.
-- Fix an aliasing issue with zero-copy array initialization from NumPy introduced in Warp 1.3.0.
-- Fix 32-bit overflow when array shape is specified using `np.int32`.
-
+  - Fix errors when launching a CUDA graph after a module is reloaded. Modules that were used during graph capture
+    will no longer be unloaded before the graph is released.
+  - Fix a bug in `wp.sim.collide.triangle_closest_point_barycentric()` where the returned barycentric coordinates may be
+    incorrect when the closest point lies on an edge.
+  - Fix an aliasing issue with zero-copy array initialization from NumPy introduced in Warp 1.3.0.
+  - Fix 32-bit overflow when array shape is specified using `np.int32`.
+  - Fix handling of integer indices in the `input_output_mask` argument to `autograd.jacobian` and
+    `autograd.jacobian_fd` ([GH-289](https://github.com/NVIDIA/warp/issues/289)).
+  - Fix `ModelBuilder.collapse_fixed_joints()` to correctly update the body centers of mass and the
+    `ModelBuilder.articulation_start` array.
+  - Fix precedence of closure constants over global constants.
 - Documentation improvements
   - Add missing return types for built-in functions.
   - Clarify that atomic operations also return the previous value.
   - Clarify that `wp.bvh_query_aabb` returns parts that overlap the bounding volume.
-- Fix accuracy of `wp.svd3` with fp64 numbers ([GH-281](https://github.com/NVIDIA/warp/issues/281)).
-- Rename function `plot_kernel_jacobians` to `jacobian_plot` in `autograd` module.
-- Fix module hashing when a kernel argument contained a struct array ([GH-287](https://github.com/NVIDIA/warp/issues/287)).
-- Add support for fp64 `atomic_add`, `atomic_max`, and `atomic_min` ([GH-284](https://github.com/NVIDIA/warp/issues/284)).
-- Add support for stream priorities to hint to the device that it should process pending work
-  in high-priority streams over pending work in low-priority streams when possible
-  ([docs](https://nvidia.github.io/warp/modules/concurrency.html#stream-priorities)).
-- Fix a bug in `wp.bvh_query_aabb()` ([GH-288](https://github.com/NVIDIA/warp/issues/288)).
-- Fix an aliasing issue with zero-copy array initialization from numpy introduced in 1.3.0
-- Fix a bug in `wp.sim.collide.triangle_closest_point_barycentric()` where the returned barycentric coordinates may be incorrect when the closest point lies on an edge.
-- Add `wp.mod()` for vector types ([GH-282](https://github.com/NVIDIA/warp/issues/282)).
-- Expose the modulo operator `%` to Python's runtime scalar and vector types.
-- Fix a bug in `wp.bvh_query_aabb()` ([GH-288](https://github.com/NVIDIA/warp/issues/288)).
-- Fix handling of integer indices in the `input_output_mask` argument to `autograd.jacobian` and `autograd.jacobian_fd` ([GH-289](https://github.com/NVIDIA/warp/issues/289)).
-- Add `wp.mod()` for vector types ([GH-282](https://github.com/NVIDIA/warp/issues/282)).
-- Expose the modulo operator `%` to Python's runtime scalar and vector types.
-- Fix a bug in `wp.bvh_query_aabb()` ([GH-288](https://github.com/NVIDIA/warp/issues/288)).
-- Fix an aliasing issue with zero-copy array initialization from numpy introduced in 1.3.0
-- Fix a bug in `wp.sim.collide.triangle_closest_point_barycentric()` where the returned barycentric coordinates may be incorrect when the closest point lies on an edge.
-- Fix handling of integer indices in the `input_output_mask` argument to `autograd.jacobian` and `autograd.jacobian_fd` ([GH-289](https://github.com/NVIDIA/warp/issues/289)).
-- Fix `ModelBuilder.collapse_fixed_joints()` to correctly update the body centers of mass and the `ModelBuilder.articulation_start` array.
-- Fix precedence of closure constants over global constants
 
 ## [1.3.1] - 2024-07-27
 
-- Remove ``wp.synchronize()`` from PyTorch autograd function example
-- ``Tape.check_kernel_array_access()`` and ``Tape.reset_array_read_flags()`` are now private methods.
+- Remove `wp.synchronize()` from PyTorch autograd function example
+- `Tape.check_kernel_array_access()` and `Tape.reset_array_read_flags()` are now private methods.
 - Fix reporting unmatched argument types
-- Fix errors when launching a CUDA graph after a module is reloaded
-- Minor improvements to kernel launch performance
 
 ## [1.3.0] - 2024-07-25
 
