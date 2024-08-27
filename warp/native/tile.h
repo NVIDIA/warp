@@ -227,12 +227,12 @@ struct tile_constant_t
     tile_constant_t() {}
     tile_constant_t(const T& c, T& adj_c) : c(c), adj_c(&adj_c) {}
 
-    Type fwd(int e)
+    Type fwd(int e) const
     {
         return c;
     }
 
-    void bwd(int e, const T& adj_ret)
+    void bwd(int e, const T& adj_ret) const
     {
         *adj_c += adj_ret;
     }
@@ -254,12 +254,12 @@ struct tile_zeros_t
 
     tile_zeros_t() {}
 
-    Type fwd(int e)
+    Type fwd(int e) const
     {
         return Type(0.0);
     }
 
-    void bwd(int e, const T& adj_ret) {}
+    void bwd(int e, const T& adj_ret) const {}
 
     void print()
     {
@@ -389,7 +389,30 @@ struct tile_binary_map_t
 };
 
 
+template <typename T, int M_, int N_>
+struct tile_shared_t
+{
+    using Type = T;
+    static constexpr int M = M_;
+    static constexpr int N = N_;
 
+    T* data = NULL;
+
+    tile_shared_t() {}
+    tile_shared_t(T* smem) : data(smem)
+    {
+    }
+
+    T fwd(int e) const
+    {
+        return data[e];
+    }
+
+    void bwd(int e, T adj_ret) const
+    {
+
+    }
+};
 
 //-----------------------------------------------------------------------------------------------------
 // High level entry points for each op (correspond to one Warp builtin)
@@ -405,6 +428,24 @@ template <typename T, int M, int N>
 tile_load_t<T, M, N> tile_load(array_t<T>& a, int x, int y)
 {
     return tile_load_t<T, M, N>(a, x, y);
+}
+
+template <int Index, typename Tile>
+tile_shared_t<typename Tile::Type, Tile::M, Tile::N> tile_eval(Tile& t)
+{
+    WP_TILE_SHARED typename Tile::Type data[Tile::M*Tile::N];
+    
+    // evaluate the input tile and store into shared memory
+    for (int i=threadIdx.x; i < size(t); i += blockDim.x)
+        data[i] = t.fwd(i);
+
+    return tile_shared_t<typename Tile::Type, Tile::M, Tile::N>(data);
+}
+
+template <typename Tile>
+void adj_tile_eval(Tile& t, Tile& adj_t, tile_shared_t<typename Tile::Type, Tile::M, Tile::N>& adj_ret)
+{
+    // nop
 }
 
 template <typename T, int M, int N>

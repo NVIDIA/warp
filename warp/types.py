@@ -2911,6 +2911,18 @@ class TileBinaryMap(Tile):
         return f"wp::tile_binary_map_t<{self.a.ctype()}, {self.b.ctype()}>"
 
 
+class TileShared(Tile):
+
+    def __init__(self, t):
+        Tile.__init__(self, t.dtype, t.M, t.N, "shared")
+
+        self.t = t
+        
+    def ctype(self):
+        from warp.codegen import Var
+        return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
+
+
 def is_tile(t):
     return isinstance(t, Tile)
 

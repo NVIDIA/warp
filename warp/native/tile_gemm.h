@@ -215,14 +215,17 @@ inline CUDA_CALLABLE void gemm(const array_t<T>& A, const array_t<T>& B, const a
 }
 
 
-
 // 2D gemm accumulate out += A*B
-template <typename T>
-inline CUDA_CALLABLE void tile_matmul_scalar(const array_t<T>& A, const array_t<T>& B, const array_t<T>& out)
+template <typename TileA, typename TileB, typename TileC>
+inline CUDA_CALLABLE void tile_matmul_scalar(const TileA& A,
+                                             const TileB& B,
+                                             const TileC& out)
 {    
-    const int length = out.shape[0]*out.shape[1];
+    const int length = size(out);
 
     WP_TILE_SYNC();
+
+    using T = typename TileA::Type;
 
     const T* __restrict__ A_ptr = A.data;
     const T* __restrict__ B_ptr = B.data;
@@ -232,21 +235,21 @@ inline CUDA_CALLABLE void tile_matmul_scalar(const array_t<T>& A, const array_t<
     for (int t=threadIdx.x; t < length; t += blockDim.x)
     {  
         // compute output index
-        const int i = t/out.shape[1];
-        const int j = t%out.shape[1];
+        const int i = t/out.N;
+        const int j = t%out.N;
 
         T sum(0.0);
 
         WP_PRAGMA_UNROLL
-        for (int k=0; k < A.shape[1]; ++k)
+        for (int k=0; k < A.N; ++k)
         {
-            T a = index(A_ptr, i, k, A.shape[1]);
-            T b = index(B_ptr, k, j, B.shape[1]);
+            T a = index(A_ptr, i, k, A.N);
+            T b = index(B_ptr, k, j, B.N);
 
             sum = fmaf(a, b, sum);
         }
         
-        index(C_ptr, i, j, out.shape[1]) += sum;
+        index(C_ptr, i, j, out.N) += sum;
     }
 
     WP_TILE_SYNC();
@@ -311,7 +314,7 @@ inline CUDA_CALLABLE void tile_matmul(const array_t<T>& A, const array_t<T>& B, 
 template <typename TileA, typename TileB, typename TileC>
 struct tile_matmul_t
 {
-    static_assert(wp::is_same<typename TileA::Type, typename TileB::Type>::value, "Error");
+    static_assert(wp::is_same<typename TileA::Type, typename TileB::Type>::value, "Error, tile datatypes must match");
     static_assert(TileA::N == TileB::M, "Error, inner dimensions must match");
     static_assert(TileC::M == TileA::M, "Error, first output dimension must match");
     static_assert(TileC::N == TileB::N, "Error, second output dimension must match");
@@ -320,12 +323,13 @@ struct tile_matmul_t
     static constexpr int M = TileC::M;
     static constexpr int N = TileC::N;
 
-    const TileA& tile_a;
-    const TileB& tile_b;
+    TileA tile_a;
+    TileB tile_b;
+    TileC tile_c;
 
-    tile_matmul_t(const TileA &a, TileB &b, TileC &b) : tile_a(a),
-                                                        tile_b(b),
-                                                        tile_c(c) {}
+    tile_matmul_t(TileA &a, TileB &b, TileC &c) : tile_a(a),
+                                                  tile_b(b),
+                                                  tile_c(c) {}
 
     Type fwd(int e) const
     {
@@ -336,22 +340,11 @@ struct tile_matmul_t
 
     void bwd(int e, Type adj_ret) const
     {
-        Type a = tile_a.fwd(e);
-        Type b = tile_b.fwd(e);
- 
-        Type adj_a = 0.0;
-        Type adj_b = 0.0;
-
-        adj_fn(a, b, adj_a, adj_b, adj_ret);
-
-        // recurse
-        tile_a.bwd(e, adj_a);
-        tile_b.bwd(e, adj_b);
     }
 
     void print()
     {
-        printf("tile_binary_map_t<%d, %d>", M, N);
+        printf("tile_matmul_t<%d, %d>", M, N);
         printf("\n   -+");
         tile_a.print();
         printf("\n   -+");
@@ -359,12 +352,20 @@ struct tile_matmul_t
     }
 };
 
-template <typename TileA, typename TileB, typename TileC>
+
+template <int Index, typename TileA, typename TileB, typename TileC>
 void tile_matmul(TileA& a, TileB& b, TileC& c)
 {
-    // load a to shared
-    // load b to shared
+    static_assert(wp::is_same<typename TileA::Type, typename TileB::Type>::value, "Error, tile datatypes must match");
+    static_assert(TileA::N == TileB::M, "Error, inner dimensions must match");
+    static_assert(TileC::M == TileA::M, "Error, first output dimension must match");
+    static_assert(TileC::N == TileB::N, "Error, second output dimension must match");
 
+    // load inputs to shared
+    auto a_shared = tile_eval<Index+0>(a);
+    auto b_shared = tile_eval<Index+1>(b);
+    
+    tile_matmul_scalar(a_shared, b_shared, c);
 }
 
 

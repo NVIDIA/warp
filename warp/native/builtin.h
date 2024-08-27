@@ -1590,5 +1590,5 @@ inline CUDA_CALLABLE void adj_expect_near(const vec3& actual, const vec3& expect
 // only include in kernels for now
 #if defined(__CUDACC_RTC__)
 #include "tile.h"
-//#include "tile_gemm.h"
+#include "tile_gemm.h"
 #endif

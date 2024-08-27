@@ -1845,31 +1845,6 @@ add_builtin(
 )
 
 
-def tile_realize_value_func(arg_types, arg_values):
-    
-    # return generic type (for doc builds)
-    if arg_types is None:
-        return None
-
-    m, n = arg_values["t"].m, arg_values["n"].n
-    dtype = arg_values["t"].dtype
-    
-    return Tile(dtype, m, n, "realize")
-
-
-
-add_builtin(
-    "tile_realize",
-    input_types={"t": Tile},
-    value_func=tile_realize_value_func,
-    variadic=True,
-    doc="Force evaluation of a tile expression tree into local memory",
-    group="Tile Primitives",
-    export=False,
-)
-
-
-
 
 def tile_matmul_value_func(arg_types, arg_values):
     
@@ -1886,21 +1861,80 @@ def tile_matmul_value_func(arg_types, arg_values):
     if not is_tile(arg_types["b"]):
         raise RuntimeError("tile_matmul() argument 1 must be an tile")
 
-    if not is_tile(arg_types["out"]):
-        raise RuntimeError("tile_matmul() argument 2 must be an tile")
+    if not isinstance(arg_types["out"], TileShared):
+        raise RuntimeError("tile_matmul() output must be a fully evaluated tile, e.g.: created using tile_eval()")
 
     return None
+
+def tile_matmul_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    
+    a = arg_values["a"]
+    b = arg_values["b"]
+    out = arg_values["out"]
+
+    # template_args.append(dtype)
+    # template_args.append(m)
+    # template_args.append(n)
+
+    global shared_memory_id
+
+    template_args = []
+    template_args.append(shared_memory_id)
+
+    # matmul makes two allocations (one for each of its arguments)
+    shared_memory_id += 1        
+    shared_memory_id += 1
+
+    return ((a, b, out), template_args)
 
 
 add_builtin(
     "tile_matmul",
     input_types={"a": Tile, "b": Tile, "out": Tile},
     value_func=tile_matmul_value_func,
+    dispatch_func=tile_matmul_dispatch_func,
     variadic=True,
     doc="Compute matrix product and accumulate out += a*b, a and b will be realized before evaluation, and output must already be realized.", 
     group="Tile Primitives",
     export=False,
 )
+
+def tile_eval_value_func(arg_types, arg_values):
+    
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return None
+
+    if not is_tile(arg_types["t"]):
+        raise RuntimeError("tile_eval() argument must be a tile")
+
+    return TileShared(arg_types["t"])
+
+def tile_eval_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+
+    t = arg_values["t"]
+
+    global shared_memory_id
+
+    template_args = []
+    template_args.append(shared_memory_id)
+
+    # matmul makes two allocations (one for each of its arguments)
+    shared_memory_id += 1        
+
+    return ((t,), template_args)
+
+add_builtin(
+    "tile_eval",
+    input_types={"t": Tile},
+    value_func=tile_eval_value_func,
+    dispatch_func=tile_eval_dispatch_func,
+    variadic=True,
+    doc="Force evaluation of a tile expression into shared memory", 
+    group="Tile Primitives",
+    export=False,
+)
+
 
 # does type propagation for load()
 def tile_map_value_func(arg_types, arg_values):

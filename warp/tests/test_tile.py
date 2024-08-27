@@ -176,57 +176,58 @@ TILE_K = wp.constant(8)
 
 
 
-# @wp.kernel
-# def tile_gemm(A: wp.array2d(dtype=float),
-#               B: wp.array2d(dtype=float),
-#               C: wp.array2d(dtype=float)):
+@wp.kernel
+def tile_gemm(A: wp.array2d(dtype=float),
+              B: wp.array2d(dtype=float),
+              C: wp.array2d(dtype=float)):
 
-#     # output tile index
-#     i, j = wp.tid()
+    # output tile index
+    i, j = wp.tid()
 
-#     sum = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32)
+    sum = wp.tile_eval(wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32))
 
-#     M = A.shape[0]
-#     N = B.shape[1]
-#     K = A.shape[1]
+    M = A.shape[0]
+    N = B.shape[1]
+    K = A.shape[1]
 
-#     count = int(K / TILE_K) # todo: must be the same as TILE_K
+    count = int(K / TILE_K) # todo: must be the same as TILE_K
 
-#     for k in range(0, K, TILE_K):
+    for k in range(0, count):
 
-#         a = wp.tile_load(A, i, k, m=TILE_M, n=TILE_K)
-#         b = wp.tile_load(B, k, j, m=TILE_K, n=TILE_N)
+        a = wp.tile_load(A, i, k, m=TILE_M, n=TILE_K)
+        b = wp.tile_load(B, k, j, m=TILE_K, n=TILE_N)
 
-#         # sum += a*b
-#         wp.tile_matmul(a, b, sum)
+        # sum += a*b
+        wp.tile_matmul(a, b, sum)
 
-#     wp.tile_store(C, i, j, sum)
+    wp.tile_store(C, i, j, sum)
 
 
-# def test_tile_gemm():
+def test_tile_gemm():
 
-#     M = TILE_M*7
-#     K = TILE_K*4
-#     N = TILE_N*6
+    M = TILE_M*7
+    K = TILE_K*4
+    N = TILE_N*6
 
-#     rng = np.random.default_rng(42)
-#     A = rng.random((M, K), dtype=np.float32)
-#     B = rng.random((K, N), dtype=np.float32)
-#     C = np.zeros((M, N), dtype=np.float32)
+    rng = np.random.default_rng(42)
+    A = rng.random((M, K), dtype=np.float32)
+    B = rng.random((K, N), dtype=np.float32)
+    C = np.zeros((M, N), dtype=np.float32)
 
-#     A_wp = wp.array(A)
-#     B_wp = wp.array(B)
-#     C_wp = wp.array(C)
+    A_wp = wp.array(A)
+    B_wp = wp.array(B)
+    C_wp = wp.array(C)
 
-#     iters = 10
+    wp.launch(tile_gemm, dim=(int(M/TILE_M), int(N/TILE_N)), inputs=[A_wp, B_wp, C_wp], tile_size=8)
 
-#     wp.launch(tile_gemm, dim=(M, N), inputs=[A_wp, B_wp, C_wp])
+    assert(np.allclose(A@B, C_wp.numpy(), rtol=1.e-4))
 
-#     assert(np.allclose(A@B, C_wp.numpy(), rtol=1.e-4))
+    # GEMM forward passed
+    print("Binary map backward passed")
 
 
 
 test_tile_copy()
 test_tile_unary_map()
 test_tile_binary_map()
-#test_tile_gemm()
+test_tile_gemm()
