@@ -646,13 +646,13 @@ def jacobian(
         input_output_mask = []
     arg_names = [arg.label for arg in kernel.adj.args]
 
-    def resolve_arg(name):
+    def resolve_arg(name, offset: int = 0):
         if isinstance(name, int):
             return name
-        return arg_names.index(name)
+        return arg_names.index(name) + offset
 
     input_output_mask = [
-        (resolve_arg(input_name), resolve_arg(output_name) - len(inputs))
+        (resolve_arg(input_name), resolve_arg(output_name, -len(inputs)))
         for input_name, output_name in input_output_mask
     ]
     input_output_mask = set(input_output_mask)
@@ -747,13 +747,13 @@ def jacobian_fd(
         input_output_mask = []
     arg_names = [arg.label for arg in kernel.adj.args]
 
-    def resolve_arg(name):
+    def resolve_arg(name, offset: int = 0):
         if isinstance(name, int):
             return name
-        return arg_names.index(name)
+        return arg_names.index(name) + offset
 
     input_output_mask = [
-        (resolve_arg(input_name), resolve_arg(output_name) - len(inputs))
+        (resolve_arg(input_name), resolve_arg(output_name, -len(inputs)))
         for input_name, output_name in input_output_mask
     ]
     input_output_mask = set(input_output_mask)
