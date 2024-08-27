@@ -12,6 +12,7 @@
 - Add `wp.mod()` for vector types ([GH-282](https://github.com/NVIDIA/warp/issues/282)).
 - Expose the modulo operator `%` to Python's runtime scalar and vector types.
 - Fix a bug in `wp.bvh_query_aabb()` ([GH-288](https://github.com/NVIDIA/warp/issues/288)).
+- Fix handling of integer indices in the `input_output_mask` argument to `autograd.jacobian` and `autograd.jacobian_fd` ([GH-289](https://github.com/NVIDIA/warp/issues/289)).
 
 ## [1.3.1] - 2024-07-27
 
