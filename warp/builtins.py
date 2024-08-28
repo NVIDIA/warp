@@ -1533,7 +1533,7 @@ add_builtin(
 
 def spatial_vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     if arg_types is None:
-        return spatial_vector(dtype=Float)
+        return vector(length=6, dtype=Float)
 
     dtype = arg_values.get("dtype", None)
 

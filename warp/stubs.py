@@ -734,6 +734,24 @@ def transform_inverse(xform: Transformation[Float]) -> Transformation[Float]:
 
 
 @over
+def spatial_vector(dtype: Float) -> Vector[6, Float]:
+    """Zero-initialize a 6D screw vector."""
+    ...
+
+
+@over
+def spatial_vector(w: Vector[3, Float], v: Vector[3, Float], dtype: Float) -> Vector[6, Float]:
+    """Construct a 6D screw vector from two 3D vectors."""
+    ...
+
+
+@over
+def spatial_vector(wx: Float, wy: Float, wz: Float, vx: Float, vy: Float, vz: Float, dtype: Float) -> Vector[6, Float]:
+    """Construct a 6D screw vector from six values."""
+    ...
+
+
+@over
 def spatial_dot(a: Vector[6, Float], b: Vector[6, Float]) -> Float:
     """Compute the dot product of two 6D screw vectors."""
     ...
