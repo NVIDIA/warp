@@ -3639,6 +3639,30 @@ add_builtin(
 )
 
 
+def vector_assign_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    vec_type = arg_types["a"]
+    return vec_type
+
+
+# implements vector[index] = value
+add_builtin(
+    "assign",
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
+    value_func=vector_assign_value_func,
+    hidden=True,
+    group="Utility",
+)
+
+# implements quaternion[index] = value
+add_builtin(
+    "assign",
+    input_types={"a": quaternion(dtype=Scalar), "i": int, "value": Scalar},
+    value_func=vector_assign_value_func,
+    hidden=True,
+    group="Utility",
+)
+
+
 def matrix_index_row_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     mat_type = arg_types["a"]
     row_type = mat_type._wp_row_type_
@@ -3646,7 +3670,7 @@ def matrix_index_row_value_func(arg_types: Mapping[str, type], arg_values: Mappi
     return Reference(row_type)
 
 
-# implements matrix[i] = row
+# implements &matrix[i] = row
 add_builtin(
     "index",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int},
@@ -3664,7 +3688,7 @@ def matrix_index_value_func(arg_types: Mapping[str, type], arg_values: Mapping[s
     return Reference(value_type)
 
 
-# implements matrix[i,j] = scalar
+# implements &matrix[i,j] = scalar
 add_builtin(
     "index",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int},
@@ -3673,6 +3697,41 @@ add_builtin(
     group="Utility",
     skip_replay=True,
 )
+
+
+def matrix_assign_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    mat_type = arg_types["a"]
+    return mat_type
+
+
+def matrix_vector_sametype(arg_types: Mapping[str, Any]):
+    mat_size = arg_types["a"]._shape_[0]
+    vec_size = arg_types["value"]._length_
+    mat_type = arg_types["a"]._type_
+    vec_type = arg_types["value"]._type_
+    return mat_size == vec_size and mat_type == vec_type
+
+
+# implements matrix[i,j] = scalar
+add_builtin(
+    "assign",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int, "value": Scalar},
+    value_func=matrix_assign_value_func,
+    hidden=True,
+    group="Utility",
+)
+
+
+# implements matrix[i] = vector
+add_builtin(
+    "assign",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "value": vector(length=Any, dtype=Scalar)},
+    constraint=matrix_vector_sametype,
+    value_func=matrix_assign_value_func,
+    hidden=True,
+    group="Utility",
+)
+
 
 for t in scalar_types + vector_types + (bool,):
     if "vec" in t.__name__ or "mat" in t.__name__:

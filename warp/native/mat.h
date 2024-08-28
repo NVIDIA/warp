@@ -387,6 +387,103 @@ inline CUDA_CALLABLE void adj_index(const mat_t<Rows,Cols,Type>& m, int row, int
     // nop
 }
 
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign(mat_t<Rows,Cols,Type>& m, int row, int col, Type value)
+{
+#ifndef NDEBUG
+    if (row < 0 || row >= Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+    if (col < 0 || col >= Cols)
+    {
+        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    mat_t<Rows,Cols,Type> ret(m);
+    ret.data[row][col] = value;
+    return ret;
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign(mat_t<Rows,Cols,Type>& m, int row, vec_t<Cols,Type>& value)
+{
+#ifndef NDEBUG
+    if (row < 0 || row >= Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    mat_t<Rows,Cols,Type> ret(m);
+    for(unsigned i=0; i < Cols; ++i)
+    {
+        ret.data[row][i] = value[i];
+    }
+    return ret;
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_assign(mat_t<Rows,Cols,Type>& m, int row, int col, Type value,
+                                        mat_t<Rows,Cols,Type>& adj_m, int& adj_row, int& adj_col, Type& adj_value, const mat_t<Rows,Cols,Type>& adj_ret)
+{
+#ifndef NDEBUG
+    if (row < 0 || row >= Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+    if (col < 0 || col >= Cols)
+    {
+        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    adj_value += adj_ret.data[row][col];
+    for(unsigned i=0; i < Rows; ++i)
+    {
+        for(unsigned j=0; j < Cols; ++j)
+        {
+            if(i != row || j != col)
+                adj_m.data[i][j] += adj_ret.data[i][j];
+        }
+    }
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_assign(mat_t<Rows,Cols,Type>& m, int row, vec_t<Cols,Type>& value,
+                                        mat_t<Rows,Cols,Type>& adj_m, int& adj_row, vec_t<Cols,Type>& adj_value, const mat_t<Rows,Cols,Type>& adj_ret)
+{
+#ifndef NDEBUG
+    if (row < 0 || row >= Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    for(unsigned i=0; i < Rows; ++i)
+    {
+        for(unsigned j=0; j < Cols; ++j)
+        {
+            if (i==row)
+                adj_value[j] += adj_ret.data[i][j];
+            else
+                adj_m.data[i][j] += adj_ret.data[i][j];
+        }
+    }
+}
+
+
 template<unsigned Rows, unsigned Cols, typename Type>
 inline bool CUDA_CALLABLE isfinite(const mat_t<Rows,Cols,Type>& m)
 {
