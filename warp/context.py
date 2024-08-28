@@ -5701,7 +5701,7 @@ def export_stubs(file):  # pragma: no cover
 
             return_str = ""
 
-            if not f.export or f.hidden:  # or f.generic:
+            if f.hidden:  # or f.generic:
                 continue
 
             return_type = f.value_func(None, None)
