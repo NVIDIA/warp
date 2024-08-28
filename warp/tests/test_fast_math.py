@@ -12,12 +12,19 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def test_pow(e: float, result: float):
+def test_pow(e: float, expected: float):
     tid = wp.tid()
 
     y = wp.pow(-2.0, e)
 
-    wp.expect_eq(y, result)
+    # Since equality comparisons with NaN's are false, we have to do something manually
+    if wp.isnan(expected):
+        if not wp.isnan(y):
+            print("Error, comparison failed")
+            wp.printf("    Expected: %f\n", expected)
+            wp.printf("    Actual: %f\n", y)
+    else:
+        wp.expect_eq(y, expected)
 
 
 def test_fast_math_disabled(test, device):
@@ -26,14 +33,13 @@ def test_fast_math_disabled(test, device):
     wp.launch(test_pow, dim=1, inputs=[2.0, 4.0], device=device)
 
 
-@unittest.expectedFailure
 def test_fast_math_cuda(test, device):
     # on CUDA with --fast-math enabled taking the pow()
     # of a negative number will result in a NaN
 
     wp.set_module_options({"fast_math": True})
     try:
-        wp.launch(test_pow, dim=1, inputs=[2.0, 4.0], device=device)
+        wp.launch(test_pow, dim=1, inputs=[2.0, wp.NAN], device=device)
     finally:
         # Turn fast math back off
         wp.set_module_options({"fast_math": False})
