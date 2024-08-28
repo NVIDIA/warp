@@ -1886,6 +1886,110 @@ def test_quat_identity(test, device, dtype, register_kernels=False):
 ############################################################
 
 
+def test_quat_assign(test, device, dtype, register_kernels=False):
+    np_type = np.dtype(dtype)
+    wp_type = wp.types.np_dtype_to_warp_type[np_type]
+
+    quat = wp.types.quaternion(dtype=wp_type)
+
+    def quattest_read_write_store(x: wp.array(dtype=wp_type), a: wp.array(dtype=quat)):
+        tid = wp.tid()
+
+        t = a[tid]
+        t[0] = x[tid]
+        a[tid] = t
+
+    def quattest_in_register(x: wp.array(dtype=wp_type), a: wp.array(dtype=quat)):
+        tid = wp.tid()
+
+        g = wp_type(0.0)
+        q = a[tid]
+        g = q[0] + wp_type(2.0) * q[1] + wp_type(3.0) * q[2] + wp_type(4.0) * q[3]
+        x[tid] = g
+
+    def quattest_in_register_overwrite(x: wp.array(dtype=quat), a: wp.array(dtype=quat)):
+        tid = wp.tid()
+
+        f = quat()
+        a_quat = a[tid]
+        f = a_quat
+        f[1] = wp_type(3.0)
+
+        x[tid] = f
+
+    def quattest_component(x: wp.array(dtype=quat), y: wp.array(dtype=wp_type)):
+        i = wp.tid()
+
+        a = quat()
+        a.x = wp_type(1.0) * y[i]
+        a.y = wp_type(2.0) * y[i]
+        a.z = wp_type(3.0) * y[i]
+        a.w = wp_type(4.0) * y[i]
+        x[i] = a
+
+    kernel_read_write_store = getkernel(quattest_read_write_store, suffix=dtype.__name__)
+    kernel_in_register = getkernel(quattest_in_register, suffix=dtype.__name__)
+    kernel_in_register_overwrite = getkernel(quattest_in_register_overwrite, suffix=dtype.__name__)
+    kernel_component = getkernel(quattest_component, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    a = wp.ones(1, dtype=quat, device=device, requires_grad=True)
+    x = wp.full(1, value=2.0, dtype=wp_type, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel_read_write_store, dim=1, inputs=[x, a], device=device)
+
+    tape.backward(grads={a: wp.ones_like(a, requires_grad=False)})
+
+    assert_np_equal(a.numpy(), np.array([[2.0, 1.0, 1.0, 1.0]], dtype=np_type))
+    assert_np_equal(x.grad.numpy(), np.array([1.0], dtype=np_type))
+
+    tape.reset()
+
+    a = wp.ones(1, dtype=quat, device=device, requires_grad=True)
+    x = wp.zeros(1, dtype=wp_type, device=device, requires_grad=True)
+
+    with tape:
+        wp.launch(kernel_in_register, dim=1, inputs=[x, a], device=device)
+
+    tape.backward(grads={x: wp.ones_like(x, requires_grad=False)})
+
+    assert_np_equal(x.numpy(), np.array([10.0], dtype=np_type))
+    assert_np_equal(a.grad.numpy(), np.array([[1.0, 2.0, 3.0, 4.0]], dtype=np_type))
+
+    tape.reset()
+
+    x = wp.zeros(1, dtype=quat, requires_grad=True)
+    y = wp.ones(1, dtype=wp_type, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel_component, dim=1, inputs=[x, y])
+
+    tape.backward(grads={x: wp.ones_like(x, requires_grad=False)})
+
+    assert_np_equal(x.numpy(), np.array([[1.0, 2.0, 3.0, 4.0]], dtype=np_type))
+    assert_np_equal(y.grad.numpy(), np.array([10.0], dtype=np_type))
+
+    x = wp.zeros(1, dtype=quat, device=device, requires_grad=True)
+    a = wp.ones(1, dtype=quat, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel_in_register_overwrite, dim=1, inputs=[x, a], device=device)
+
+    tape.backward(grads={x: wp.ones_like(x, requires_grad=False)})
+
+    assert_np_equal(x.numpy(), np.array([[1.0, 3.0, 1.0, 1.0]], dtype=np_type))
+    assert_np_equal(a.grad.numpy(), np.array([[1.0, 0.0, 1.0, 1.0]], dtype=np_type))
+
+
+############################################################
+
+
 def test_quat_euler_conversion(test, device, dtype, register_kernels=False):
     rng = np.random.default_rng(123)
     N = 3
@@ -2085,6 +2189,13 @@ for dtype in np_float_types:
         TestQuat,
         f"test_quat_euler_conversion_{dtype.__name__}",
         test_quat_euler_conversion,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestQuat,
+        f"test_quat_assign_{dtype.__name__}",
+        test_quat_assign,
         devices=devices,
         dtype=dtype,
     )

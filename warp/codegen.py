@@ -2289,20 +2289,40 @@ class Adjoint:
                     target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
             elif type_is_vector(target_type) or type_is_quaternion(target_type) or type_is_matrix(target_type):
+                # recursively unwind AST, stopping at penultimate node
+                node = lhs
+                while hasattr(node, "value"):
+                    if hasattr(node.value, "value"):
+                        node = node.value
+                    else:
+                        break
+                # lhs is updating a variable adjoint (i.e. wp.adjoint[var])
+                if hasattr(node, "attr") and node.attr == "adjoint":
+                    attr = adj.add_builtin_call("index", [target, *indices])
+                    adj.add_builtin_call("store", [attr, rhs])
+                    return
+
+                # TODO: array vec component case
                 if is_reference(target.type):
                     attr = adj.add_builtin_call("indexref", [target, *indices])
+                    adj.add_builtin_call("store", [attr, rhs])
+
+                    if warp.config.verbose and not adj.custom_reverse_mode:
+                        lineno = adj.lineno + adj.fun_lineno
+                        line = adj.source_lines[adj.lineno]
+                        node_source = adj.get_node_source(lhs.value)
+                        print(
+                            f"Warning: mutating {node_source} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n"
+                        )
+
                 else:
-                    attr = adj.add_builtin_call("index", [target, *indices])
+                    out = adj.add_builtin_call("assign", [target, *indices, rhs])
 
-                adj.add_builtin_call("store", [attr, rhs])
-
-                if warp.config.verbose and not adj.custom_reverse_mode:
-                    lineno = adj.lineno + adj.fun_lineno
-                    line = adj.source_lines[adj.lineno]
-                    node_source = adj.get_node_source(lhs.value)
-                    print(
-                        f"Warning: mutating {node_source} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n"
-                    )
+                    # re-point target symbol to out var
+                    for id in adj.symbols:
+                        if adj.symbols[id] == target:
+                            adj.symbols[id] = out
+                            break
 
             else:
                 raise WarpCodegenError(
@@ -2337,16 +2357,24 @@ class Adjoint:
             aggregate = adj.eval(lhs.value)
             aggregate_type = strip_reference(aggregate.type)
 
-            # assigning to a vector component
-            if type_is_vector(aggregate_type):
+            # assigning to a vector or quaternion component
+            if type_is_vector(aggregate_type) or type_is_quaternion(aggregate_type):
+                # TODO: handle wp.adjoint case
+
                 index = adj.vector_component_index(lhs.attr, aggregate_type)
 
+                # TODO: array vec componenet case
                 if is_reference(aggregate.type):
                     attr = adj.add_builtin_call("indexref", [aggregate, index])
+                    adj.add_builtin_call("store", [attr, rhs])
                 else:
-                    attr = adj.add_builtin_call("index", [aggregate, index])
+                    out = adj.add_builtin_call("assign", [aggregate, index, rhs])
 
-                adj.add_builtin_call("store", [attr, rhs])
+                    # re-point target symbol to out var
+                    for id in adj.symbols:
+                        if adj.symbols[id] == aggregate:
+                            adj.symbols[id] = out
+                            break
 
             else:
                 attr = adj.emit_Attribute(lhs)

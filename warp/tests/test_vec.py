@@ -1035,6 +1035,142 @@ def test_casting_constructors(test, device, dtype, register_kernels=False):
     assert_np_equal(out, a_grad.numpy())
 
 
+def test_vec_assign(test, device, dtype, register_kernels=False):
+    np_type = np.dtype(dtype)
+    wp_type = wp.types.np_dtype_to_warp_type[np_type]
+
+    vec2 = wp.types.vector(length=2, dtype=wp_type)
+    vec3 = wp.types.vector(length=3, dtype=wp_type)
+    vec4 = wp.types.vector(length=4, dtype=wp_type)
+
+    def vectest_read_write_store(
+        x: wp.array(dtype=wp_type), a: wp.array(dtype=vec2), b: wp.array(dtype=vec3), c: wp.array(dtype=vec4)
+    ):
+        tid = wp.tid()
+
+        t = a[tid]
+        t[0] = x[tid]
+        a[tid] = t
+
+        u = b[tid]
+        u[1] = x[tid]
+        b[tid] = u
+
+        v = c[tid]
+        v[2] = x[tid]
+        c[tid] = v
+
+    def vectest_in_register(
+        x: wp.array(dtype=wp_type), y: wp.array(dtype=vec3), a: wp.array(dtype=vec2), b: wp.array(dtype=vec3)
+    ):
+        tid = wp.tid()
+
+        f = vec3(wp_type(0.0))
+        b_vec = b[tid]
+        f[0] = b_vec[1]
+        f[2] = b_vec[0] * b_vec[1]
+        y[tid] = f
+
+        g = wp_type(0.0)
+        a_vec = a[tid]
+        g = a_vec[0] + a_vec[1]
+        x[tid] = g
+
+    def vectest_in_register_overwrite(x: wp.array(dtype=vec3), a: wp.array(dtype=vec3)):
+        tid = wp.tid()
+
+        f = vec3(wp_type(0.0))
+        a_vec = a[tid]
+        f = a_vec
+        f[1] = wp_type(3.0)
+
+        x[tid] = f
+
+    def vectest_component(x: wp.array(dtype=vec3), y: wp.array(dtype=wp_type)):
+        i = wp.tid()
+
+        a = vec3(wp_type(0.0))
+        a.x = wp_type(1.0) * y[i]
+        a.y = wp_type(2.0) * y[i]
+        a.z = wp_type(3.0) * y[i]
+        x[i] = a
+
+    kernel_read_write_store = getkernel(vectest_read_write_store, suffix=dtype.__name__)
+    kernel_in_register = getkernel(vectest_in_register, suffix=dtype.__name__)
+    kernel_in_register_overwrite = getkernel(vectest_in_register_overwrite, suffix=dtype.__name__)
+    kernel_component = getkernel(vectest_component, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    a = wp.ones(1, dtype=vec2, device=device, requires_grad=True)
+    b = wp.ones(1, dtype=vec3, device=device, requires_grad=True)
+    c = wp.ones(1, dtype=vec4, device=device, requires_grad=True)
+    x = wp.full(1, value=2.0, dtype=wp_type, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel_read_write_store, dim=1, inputs=[x, a, b, c], device=device)
+
+    tape.backward(
+        grads={
+            a: wp.ones_like(a, requires_grad=False),
+            b: wp.ones_like(b, requires_grad=False),
+            c: wp.ones_like(c, requires_grad=False),
+        }
+    )
+
+    assert_np_equal(a.numpy(), np.array([[2.0, 1.0]], dtype=np_type))
+    assert_np_equal(b.numpy(), np.array([[1.0, 2.0, 1.0]], dtype=np_type))
+    assert_np_equal(c.numpy(), np.array([[1.0, 1.0, 2.0, 1.0]], dtype=np_type))
+    assert_np_equal(x.grad.numpy(), np.array([3.0], dtype=np_type))
+
+    tape.reset()
+
+    a = wp.ones(1, dtype=vec2, device=device, requires_grad=True)
+    b = wp.ones(1, dtype=vec3, device=device, requires_grad=True)
+    x = wp.zeros(1, dtype=wp_type, device=device, requires_grad=True)
+    y = wp.zeros(1, dtype=vec3, device=device, requires_grad=True)
+
+    with tape:
+        wp.launch(kernel_in_register, dim=1, inputs=[x, y, a, b], device=device)
+
+    tape.backward(grads={x: wp.ones_like(x, requires_grad=False), y: wp.ones_like(y, requires_grad=False)})
+
+    assert_np_equal(x.numpy(), np.array([2.0], dtype=np_type))
+    assert_np_equal(y.numpy(), np.array([[1.0, 0.0, 1.0]], dtype=np_type))
+    assert_np_equal(a.grad.numpy(), np.array([[1.0, 1.0]], dtype=np_type))
+    assert_np_equal(b.grad.numpy(), np.array([[1.0, 2.0, 0.0]], dtype=np_type))
+
+    tape.reset()
+
+    x = wp.zeros(1, dtype=vec3, device=device, requires_grad=True)
+    y = wp.ones(1, dtype=wp_type, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel_component, dim=1, inputs=[x, y], device=device)
+
+    tape.backward(grads={x: wp.ones_like(x, requires_grad=False)})
+
+    assert_np_equal(x.numpy(), np.array([[1.0, 2.0, 3.0]], dtype=np_type))
+    assert_np_equal(y.grad.numpy(), np.array([6.0], dtype=np_type))
+
+    tape.reset()
+
+    x = wp.zeros(1, dtype=vec3, device=device, requires_grad=True)
+    a = wp.ones(1, dtype=vec3, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel_in_register_overwrite, dim=1, inputs=[x, a], device=device)
+
+    tape.backward(grads={x: wp.ones_like(x, requires_grad=False)})
+
+    assert_np_equal(x.numpy(), np.array([[1.0, 3.0, 1.0]], dtype=np_type))
+    assert_np_equal(a.grad.numpy(), np.array([[1.0, 0.0, 1.0]], dtype=np_type))
+
+
 @wp.kernel
 def test_vector_constructor_value_func():
     a = wp.vec2()
@@ -1167,6 +1303,13 @@ for dtype in np_float_types:
         TestVec,
         f"test_casting_constructors_{dtype.__name__}",
         test_casting_constructors,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestVec,
+        f"test_vec_assign_{dtype.__name__}",
+        test_vec_assign,
         devices=devices,
         dtype=dtype,
     )
