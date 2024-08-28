@@ -12,8 +12,9 @@
 #
 # Div[ d/dF Psi(F(u)) ] = 0
 #
-# with Dirichlet boundary conditions on vertical sides,
-# and Psi an elastic potential function of the deformation gradient (here Neo-Hookean)
+# with Dirichlet boundary conditions on vertical sides and Psi an elastic potential function of the deformation gradient.
+# Here we choose Psi Neo-Hookean, as per Sec 3.2 of "Stable Neo-Hookean Flesh Simulation" (Smith et al. 2018),
+# Psi(F) = mu ||F||^2 + lambda (det J - 1 - mu/lambda)^2
 #
 # which we write as a sequence of Newton iterations:
 # int {sigma : grad v}  = 0   for all displacement test functions v
@@ -37,19 +38,28 @@ def displacement_gradient_form(
     return wp.ddot(tau(s), fem.grad(u, s))
 
 
+@wp.func
+def nh_parameters_from_lame(lame: wp.vec2):
+    """Parameters such that for small strains model behaves according to Hooke's law"""
+    mu_nh = lame[1]
+    lambda_nh = lame[0] + lame[1]
+
+    return mu_nh, lambda_nh
+
+
 @fem.integrand
 def nh_stress_form(s: fem.Sample, tau: fem.Field, u_cur: fem.Field, lame: wp.vec2):
     """d Psi/dF : tau"""
 
+    # Deformation gradient
     F = wp.identity(n=2, dtype=float) + fem.grad(u_cur, s)
 
+    # Area term and its derivative w.r.t F
     J = wp.determinant(F)
-    mu_nh = 2.0 * lame[1]
-    lambda_nh = lame[0] + lame[1]
-    gamma = 1.0 + mu_nh / lambda_nh
+    dJ_dF = wp.mat22(F[1, 1], -F[1, 0], -F[0, 1], F[0, 0])
 
-    dJ_dS = wp.mat22(F[1, 1], -F[1, 0], -F[0, 1], F[0, 0])
-    nh_stress = mu_nh * F + lambda_nh * (J - gamma) * dJ_dS
+    mu_nh, lambda_nh = nh_parameters_from_lame(lame)
+    nh_stress = mu_nh * F + (lambda_nh * (J - 1.0) - mu_nh) * dJ_dF
 
     return wp.ddot(tau(s), nh_stress)
 
@@ -62,23 +72,11 @@ def nh_stress_delta_form(s: fem.Sample, tau: fem.Field, u: fem.Field, u_cur: fem
     sigma_s = fem.grad(u, s)
 
     F = wp.identity(n=2, dtype=float) + fem.grad(u_cur, s)
-
     dJ_dF = wp.mat22(F[1, 1], -F[1, 0], -F[0, 1], F[0, 0])
 
-    mu_nh = 2.0 * lame[1]
-    lambda_nh = lame[0] + lame[1]
-
-    dpsi_dpsi = mu_nh * wp.ddot(tau_s, sigma_s) + lambda_nh * wp.ddot(dJ_dF * tau_s, dJ_dF * sigma_s)
-
-    # positive part of d2J_dS2
-    gamma = 1.0 + mu_nh / lambda_nh
-    J = wp.determinant(F)
-    if J >= gamma:
-        d2J_dF_sig = wp.mat22(sigma_s[1, 1], 0.0, 0.0, sigma_s[0, 0])
-    else:
-        d2J_dF_sig = wp.mat22(0.0, -sigma_s[1, 0], -sigma_s[0, 1], 0.0)
-
-    return dpsi_dpsi + lambda_nh * (J - gamma) * wp.ddot(d2J_dF_sig, tau_s)
+    # Gauss--Newton approximation; ignore d2J/dF2 term
+    mu_nh, lambda_nh = nh_parameters_from_lame(lame)
+    return mu_nh * wp.ddot(tau_s, sigma_s) + lambda_nh * wp.ddot(dJ_dF, tau_s) * wp.ddot(dJ_dF, sigma_s)
 
 
 @fem.integrand
@@ -112,6 +110,12 @@ def tensor_mass_form(
     tau: fem.Field,
 ):
     return wp.ddot(tau(s), sig(s))
+
+
+@fem.integrand
+def area_form(s: fem.Sample, u_cur: fem.Field):
+    F = wp.identity(n=2, dtype=float) + fem.grad(u_cur, s)
+    return wp.determinant(F)
 
 
 class Example:
@@ -228,6 +232,12 @@ class Example:
             wp.utils.array_cast(in_array=x, out_array=delta_u)
             fem.utils.array_axpy(x=delta_u, y=self._u_field.dof_values)
 
+        # Evaluate area conservation, should converge to 1.0 as Poisson ratio approaches 1.0
+        final_area = fem.integrate(
+            area_form, quadrature=fem.RegularQuadrature(domain, order=4), fields={"u_cur": self._u_field}
+        )
+        print(f"Area gain: {final_area}  (using Poisson ratio={self._lame[0] / (self._lame[0] + 2.0*self._lame[1])})")
+
     def render(self):
         self.renderer.add_field("solution", self._u_field)
 
@@ -242,7 +252,7 @@ if __name__ == "__main__":
     parser.add_argument("--resolution", type=int, default=25, help="Grid resolution.")
     parser.add_argument("--degree", type=int, default=2, help="Polynomial degree of shape functions.")
     parser.add_argument("--displacement", type=float, default=-0.5)
-    parser.add_argument("--poisson_ratio", type=float, default=0.5)
+    parser.add_argument("--poisson_ratio", type=float, default=0.99)
     parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type")
     parser.add_argument(
         "--nonconforming_stresses", action="store_true", help="For grid, use non-conforming stresses (Q_d/P_d)"
