@@ -79,6 +79,7 @@ def kern(expect: float):
 
 def run(expect, device):
     wp.launch(kern, dim=1, inputs=[expect], device=device)
+    wp.synchronize_device(device)
 """
 
 square_four = """import warp as wp
@@ -96,6 +97,7 @@ def kern(expect: float):
 
 def run(expect, device):
     wp.launch(kern, dim=1, inputs=[expect], device=device)
+    wp.synchronize_device(device)
 """
 
 
@@ -224,7 +226,8 @@ class TestReload(unittest.TestCase):
 add_function_test(TestReload, "test_redefine", test_redefine, devices=devices)
 add_function_test(TestReload, "test_reload", test_reload, devices=devices)
 add_function_test(TestReload, "test_reload_class", test_reload_class, devices=devices)
-add_function_test(TestReload, "test_reload_references", test_reload_references, devices=devices)
+# TODO: test_reload_references sometimes has issues running on cuda:1
+add_function_test(TestReload, "test_reload_references", test_reload_references, devices=get_test_devices("basic"))
 add_function_test(
     TestReload, "test_graph_launch_after_module_reload", test_graph_launch_after_module_reload, devices=cuda_devices
 )

@@ -18,3 +18,4 @@ def kern(expect: float):
 
 def run(expect, device):
     wp.launch(kern, dim=1, inputs=[expect], device=device)
+    wp.synchronize_device(device)

@@ -198,11 +198,15 @@ class CheckOutput:
         if s != "":
             print(s.rstrip())
 
-        # fail if test produces unexpected output (e.g.: from wp.expect_eq() builtins)
-        # we allow strings starting of the form "Module xxx load on device xxx"
-        # for lazy loaded modules
-        if s != "" and not s.startswith("Module"):
-            self.test.fail(f"Unexpected output:\n'{s.rstrip()}'")
+            # fail if test produces unexpected output (e.g.: from wp.expect_eq() builtins)
+            # we allow strings starting of the form "Module xxx load on device xxx"
+            # for lazy loaded modules
+            filtered_s = "\n".join(
+                [line for line in s.splitlines() if not (line.startswith("Module") and "load on device" in line)]
+            )
+
+            if filtered_s.strip():
+                self.test.fail(f"Unexpected output:\n'{s.rstrip()}'")
 
 
 def assert_array_equal(result: wp.array, expect: wp.array):
