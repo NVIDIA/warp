@@ -102,6 +102,61 @@ class TestModel(unittest.TestCase):
         assert_np_equal(np.array(builder1.edge_rest_angle), np.array(builder2.edge_rest_angle), tol=1.0e-4)
         assert_np_equal(np.array(builder1.edge_bending_properties), np.array(builder2.edge_bending_properties))
 
+    def test_collapse_fixed_joints(self):
+        def add_three_cubes(builder: ModelBuilder, parent_body=-1):
+            unit_cube = {"hx": 0.5, "hy": 0.5, "hz": 0.5, "density": 1.0}
+            b0 = builder.add_body()
+            builder.add_shape_box(body=b0, **unit_cube)
+            builder.add_joint_fixed(parent=parent_body, child=b0, parent_xform=wp.transform(wp.vec3(1.0, 0.0, 0.0)))
+            b1 = builder.add_body()
+            builder.add_shape_box(body=b1, **unit_cube)
+            builder.add_joint_fixed(parent=parent_body, child=b1, parent_xform=wp.transform(wp.vec3(0.0, 1.0, 0.0)))
+            b2 = builder.add_body()
+            builder.add_shape_box(body=b2, **unit_cube)
+            builder.add_joint_fixed(parent=parent_body, child=b2, parent_xform=wp.transform(wp.vec3(0.0, 0.0, 1.0)))
+            return b2
+
+        builder = ModelBuilder()
+        # only fixed joints
+        builder.add_articulation()
+        add_three_cubes(builder)
+        assert builder.joint_count == 3
+        assert builder.body_count == 3
+
+        # fixed joints followed by a non-fixed joint
+        builder.add_articulation()
+        last_body = add_three_cubes(builder)
+        assert builder.joint_count == 6
+        assert builder.body_count == 6
+        assert builder.articulation_count == 2
+        b3 = builder.add_body()
+        builder.add_shape_box(body=b3, hx=0.5, hy=0.5, hz=0.5, density=1.0, pos=wp.vec3(1.0, 2.0, 3.0))
+        builder.add_joint_revolute(parent=last_body, child=b3, axis=wp.vec3(0.0, 1.0, 0.0))
+
+        # a non-fixed joint followed by fixed joints
+        builder.add_articulation()
+        b4 = builder.add_body()
+        builder.add_shape_box(body=b4, hx=0.5, hy=0.5, hz=0.5, density=1.0)
+        builder.add_joint_free(parent=-1, child=b4, parent_xform=wp.transform(wp.vec3(0.0, -1.0, 0.0)))
+        assert builder.joint_count == 8
+        assert builder.body_count == 8
+        assert builder.articulation_count == 3
+        add_three_cubes(builder, parent_body=b4)
+
+        builder.collapse_fixed_joints()
+
+        assert builder.joint_count == 2
+        assert builder.articulation_count == 2
+        assert builder.articulation_start == [0, 1]
+        assert builder.joint_type == [wp.sim.JOINT_REVOLUTE, wp.sim.JOINT_FREE]
+        assert builder.shape_count == 11
+        assert builder.shape_body == [-1, -1, -1, -1, -1, -1, 0, 1, 1, 1, 1]
+        assert builder.body_count == 2
+        assert builder.body_com[0] == wp.vec3(1.0, 2.0, 3.0)
+        assert builder.body_com[1] == wp.vec3(0.25, 0.25, 0.25)
+        assert builder.body_mass == [1.0, 4.0]
+        assert builder.body_inv_mass == [1.0, 0.25]
+
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
