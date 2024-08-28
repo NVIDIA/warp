@@ -18,6 +18,8 @@ UNIT_VEC = wp.constant(wp.vec3(SQRT3_OVER_3, SQRT3_OVER_3, SQRT3_OVER_3))
 ONE_FP16 = wp.constant(wp.float16(1.0))
 TEST_BOOL = wp.constant(True)
 
+SHADOWED_GLOBAL = wp.constant(17)
+
 
 class Foobar:
     ONE = wp.constant(1)
@@ -66,6 +68,18 @@ def test_closure_capture(test, device):
 
     wp.launch(one_closure, dim=(1), inputs=[1], device=device)
     wp.launch(two_closure, dim=(1), inputs=[2], device=device)
+
+
+def test_closure_precedence(test, device):
+    """Verifies that closure constants take precedence over globals"""
+
+    SHADOWED_GLOBAL = wp.constant(42)
+
+    @wp.kernel
+    def closure_kernel():
+        wp.expect_eq(SHADOWED_GLOBAL, 42)
+
+    wp.launch(closure_kernel, dim=1, device=device)
 
 
 def test_hash_global_capture(test, device):
@@ -206,6 +220,7 @@ add_kernel_test(TestConstants, test_int, dim=1, inputs=[a], devices=devices)
 add_kernel_test(TestConstants, test_float, dim=1, inputs=[x], devices=devices)
 
 add_function_test(TestConstants, "test_closure_capture", test_closure_capture, devices=devices)
+add_function_test(TestConstants, "test_closure_precedence", test_closure_precedence, devices=devices)
 add_function_test(TestConstants, "test_hash_global_capture", test_hash_global_capture, devices=devices)
 add_function_test(TestConstants, "test_hash_redefine_kernel", test_hash_redefine_kernel, devices=devices)
 add_function_test(TestConstants, "test_hash_redefine_constant_only", test_hash_redefine_constant_only, devices=devices)

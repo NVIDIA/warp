@@ -1598,15 +1598,7 @@ class Adjoint:
         if node.id in adj.symbols:
             return adj.symbols[node.id]
 
-        # try and resolve the name using the function's globals context (used to lookup constants + functions)
-        obj = adj.func.__globals__.get(node.id)
-
-        if obj is None:
-            # Lookup constant in captured contents
-            capturedvars = dict(
-                zip(adj.func.__code__.co_freevars, [c.cell_contents for c in (adj.func.__closure__ or [])])
-            )
-            obj = capturedvars.get(str(node.id), None)
+        obj = adj.resolve_external_reference(node.id)
 
         if obj is None:
             raise WarpCodegenKeyError("Referencing undefined symbol: " + str(node.id))
@@ -2484,24 +2476,11 @@ class Adjoint:
         if path[0] in __builtins__:
             return __builtins__[path[0]]
 
-        # Look up the closure info and append it to adj.func.__globals__
-        # in case you want to define a kernel inside a function and refer
-        # to variables you've declared inside that function:
-        def extract_contents(contents):
-            return contents if isinstance(contents, warp.context.Function) or not callable(contents) else contents
-
-        capturedvars = dict(
-            zip(
-                adj.func.__code__.co_freevars, [extract_contents(c.cell_contents) for c in (adj.func.__closure__ or [])]
-            )
-        )
-        vars_dict = {**adj.func.__globals__, **capturedvars}
-
-        if path[0] in vars_dict:
-            expr = vars_dict[path[0]]
+        # look up in closure/global variables
+        expr = adj.resolve_external_reference(path[0])
 
         # Support Warp types in kernels without the module suffix (e.g. v = vec3(0.0,0.2,0.4)):
-        else:
+        if expr is None:
             expr = getattr(warp, path[0], None)
 
         if expr:
@@ -2562,6 +2541,16 @@ class Adjoint:
 
         return None, path
 
+    def resolve_external_reference(adj, name: str):
+        try:
+            # look up in closure variables
+            idx = adj.func.__code__.co_freevars.index(name)
+            obj = adj.func.__closure__[idx].cell_contents
+        except ValueError:
+            # look up in global variables
+            obj = adj.func.__globals__.get(name)
+        return obj
+
     # annotate generated code with the original source code line
     def set_lineno(adj, lineno):
         if adj.lineno is None or adj.lineno != lineno:
@@ -2587,17 +2576,8 @@ class Adjoint:
 
         for node in ast.walk(adj.tree):
             if isinstance(node, ast.Name) and node.id not in local_variables:
-                # This node could be a reference to a wp.constant defined or imported into the current namespace
-
-                # try and resolve the name using the function's globals context (used to lookup constants + functions)
-                obj = adj.func.__globals__.get(node.id)
-
-                if obj is None:
-                    # Lookup constant in captured contents
-                    capturedvars = dict(
-                        zip(adj.func.__code__.co_freevars, [c.cell_contents for c in (adj.func.__closure__ or [])])
-                    )
-                    obj = capturedvars.get(str(node.id), None)
+                # look up in closure/global variables
+                obj = adj.resolve_external_reference(node.id)
 
                 if warp.types.is_value(obj):
                     constants_dict[node.id] = obj
@@ -2607,6 +2587,7 @@ class Adjoint:
 
                 if warp.types.is_value(obj):
                     constants_dict[".".join(path)] = obj
+
             elif isinstance(node, ast.Assign):
                 # Add the LHS names to the local_variables so we know any subsequent uses are shadowed
                 lhs = node.targets[0]

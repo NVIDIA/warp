@@ -18,6 +18,7 @@
 - Fix a bug in `wp.sim.collide.triangle_closest_point_barycentric()` where the returned barycentric coordinates may be incorrect when the closest point lies on an edge.
 - Fix handling of integer indices in the `input_output_mask` argument to `autograd.jacobian` and `autograd.jacobian_fd` ([GH-289](https://github.com/NVIDIA/warp/issues/289)).
 - Fix `ModelBuilder.collapse_fixed_joints()` to correctly update the body centers of mass and the `ModelBuilder.articulation_start` array.
+- Fix precedence of closure constants over global constants
 
 ## [1.3.1] - 2024-07-27
 
