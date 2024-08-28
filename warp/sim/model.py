@@ -2516,16 +2516,16 @@ class ModelBuilder:
                         )
                     if last_dynamic_body > -1:
                         self.shape_body[shape] = body_data[last_dynamic_body]["id"]
+                        source_m = body_data[last_dynamic_body]["mass"]
+                        source_com = body_data[last_dynamic_body]["com"]
                         # add inertia to last_dynamic_body
                         m = body_data[child_body]["mass"]
-                        com = body_data[child_body]["com"]
+                        com = wp.transform_point(incoming_xform, body_data[child_body]["com"])
                         inertia = body_data[child_body]["inertia"]
                         body_data[last_dynamic_body]["inertia"] += wp.sim.transform_inertia(
                             m, inertia, incoming_xform.p, incoming_xform.q
                         )
                         body_data[last_dynamic_body]["mass"] += m
-                        source_m = body_data[last_dynamic_body]["mass"]
-                        source_com = body_data[last_dynamic_body]["com"]
                         body_data[last_dynamic_body]["com"] = (m * com + source_m * source_com) / (m + source_m)
                         body_data[last_dynamic_body]["shapes"].append(shape)
                         # indicate to recompute inverse mass, inertia for this body
@@ -2593,6 +2593,19 @@ class ModelBuilder:
 
         # sort joints so they appear in the same order as before
         retained_joints.sort(key=lambda x: x["original_id"])
+
+        joint_remap = {}
+        for i, joint in enumerate(retained_joints):
+            joint_remap[joint["original_id"]] = i
+        # update articulation_start
+        for i, old_i in enumerate(self.articulation_start):
+            while old_i not in joint_remap:
+                old_i += 1
+                if old_i >= self.joint_count:
+                    break
+            self.articulation_start[i] = joint_remap.get(old_i, old_i)
+        # remove empty articulation starts, i.e. where the start and end are the same
+        self.articulation_start = list(set(self.articulation_start))
 
         self.joint_name.clear()
         self.joint_type.clear()
