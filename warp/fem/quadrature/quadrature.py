@@ -336,6 +336,7 @@ class ExplicitQuadrature(Quadrature):
     @cache.cached_arg_value
     def arg_value(self, device):
         arg = self.Arg()
+        arg.points_per_cell = self._points_per_cell
         arg.points = self._points.to(device)
         arg.weights = self._weights.to(device)
 

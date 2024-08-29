@@ -5,7 +5,7 @@
 - Bug fixes
   - Fix accuracy of 3x3 SVD ``wp.svd3`` with fp64 numbers ([GH-281](https://github.com/NVIDIA/warp/issues/281)).
   - Fix module hashing when a kernel argument contained a struct array ([GH-287](https://github.com/NVIDIA/warp/issues/287)).
-  - Fix a bug in `wp.bvh_query_aabb()` where the direction instead of the reciprocal direction was used
+  - Fix a bug in `wp.bvh_query_ray()` where the direction instead of the reciprocal direction was used
   ([GH-288](https://github.com/NVIDIA/warp/issues/288)).
   - Fix errors when launching a CUDA graph after a module is reloaded. Modules that were used during graph capture
     will no longer be unloaded before the graph is released.
@@ -18,10 +18,11 @@
   - Fix `ModelBuilder.collapse_fixed_joints()` to correctly update the body centers of mass and the
     `ModelBuilder.articulation_start` array.
   - Fix precedence of closure constants over global constants.
+  - Fix quadrature point indexing in `wp.fem.ExplicitQuadrature` (regression from 1.3.0).
 - Documentation improvements
   - Add missing return types for built-in functions.
   - Clarify that atomic operations also return the previous value.
-  - Clarify that `wp.bvh_query_aabb` returns parts that overlap the bounding volume.
+  - Clarify that `wp.bvh_query_aabb()` returns parts that overlap the bounding volume.
 
 ## [1.3.1] - 2024-07-27
 
