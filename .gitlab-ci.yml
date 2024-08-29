@@ -592,7 +592,7 @@ publish wheels to testpypi registry:
   extends:
     - .runner-utility-linux-x86_64
   rules:
-    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
+    - if: $CI_COMMIT_BRANCH =~ /release-.*/
       when: manual
       allow_failure: true
   environment:
@@ -611,7 +611,7 @@ publish wheels to pypi registry:
   extends:
     - .runner-utility-linux-x86_64
   rules:
-    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
+    - if: $CI_COMMIT_BRANCH =~ /release-.*/
       when: manual
       allow_failure: true
   environment:
