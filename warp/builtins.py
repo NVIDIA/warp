@@ -4442,3 +4442,94 @@ for t in int_types:
 
 
 add_builtin("unot", input_types={"a": array(dtype=Any)}, value_type=builtins.bool, doc="", group="Operators")
+
+
+# Tile operators
+def tile_unary_value_func(arg_types, arg_values):
+
+    if arg_types is None:
+        return Tile(dtype=Any, M=Any, N=Any)
+
+    t = arg_types["x"]
+
+    if not is_tile(t):
+        raise RuntimeError("Expected tile for unary expression")
+    
+    return TileUnaryMap(t)
+
+def tile_scalar_mul_value_func(arg_types, arg_values):
+
+    if arg_types is None:
+        return Tile(dtype=Any, M=Any, N=Any)
+
+    x = arg_types["x"]
+    y = arg_types["y"]
+
+    # tile*scalar
+    if is_tile(x):
+        if x.dtype != y:
+            raise RuntimeError("Scalar factor should have the same type as tile for tile*scalar, tile type: {x} scalar type: {y}")
+        
+        return TileBinaryMap(x, TileConstant(x.dtype, x.M, x.N))
+    
+    # scalar*tile
+    if is_tile(y):
+        if y.dtype != x:
+            raise RuntimeError("Scalar factor should have the same type as tile for scalar*tile, tile type: {x} scalar type: {y}")
+        
+        return TileBinaryMap(TileConstant(x.dtype, x.M, x.N), y)
+
+
+
+# def tile_binary_value_func(arg_types, arg_values):
+
+#     if arg_types is None:
+#         return Tile(dtype=Any, M=Any, N=Any)
+
+#     a = arg_types[0]
+    
+
+#     if not is_tile(t):
+#         raise RuntimeError("Expected tile for unary expression")
+    
+#     return TileUnaryMap(t.dtype, t.M, t.N)
+
+add_builtin(
+    "neg",
+    input_types={"x": Tile(dtype=Any, M=Any, N=Any)},
+    value_func=tile_unary_value_func,
+    doc="",
+    export=False,
+    native_func="tile_neg",
+    group="Operators",
+)
+
+add_builtin(
+    "mul",
+    input_types={"x": Tile(dtype=Any, M=Any, N=Any), "y": Scalar},
+    value_func=tile_scalar_mul_value_func,
+    doc="",
+    export=False,
+    native_func="tile_mul",
+    group="Operators",
+)
+
+add_builtin(
+    "mul",
+    input_types={"x": Scalar, "y": Tile(dtype=Any, M=Any, N=Any)},
+    value_func=tile_scalar_mul_value_func,
+    doc="",
+    export=False,
+    native_func="tile_mul",
+    group="Operators",
+)
+
+# add_builtin(
+#     "mul",
+#     input_types={"x": Tile, "s": Scalar},
+#     value_func=tile_binary_value_func,
+#     doc="",
+#     group="Operators",
+# )
+
+

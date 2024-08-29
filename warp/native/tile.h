@@ -31,13 +31,13 @@
 
 [x] Forward / Backward code-gen
 [ ] wp.tile_map()
-    [ ] Support user functions
+    [x]  Support user functions
     [ ] Support built-in functions
     [ ] Support for lambda functions
 [ ] wp.tile_matmul()
-    [ ] Forward
+    [x] Forward
     [ ] Reverse
-[ ] Support for n-d shape tiles / broadcasting / slicing?
+[ ] Support for n-d shape tiles / broadcasting / slicing / transpose?
 [ ] Compile-time block dimensions
 [ ] Support for CUB reductions
 [ ] Support for CUB sorts
@@ -46,7 +46,7 @@
     [ ] Batched MLP
     [ ] Point cloud alignment
     [ ] Layer norm
-
+    
 */
 
 // wp.tile_load(A, offset, shape)
@@ -388,7 +388,251 @@ struct tile_binary_map_t
     }
 };
 
+//-----------------------------------------------
+// Operators
 
+
+template<typename Tile>
+CUDA_CALLABLE inline tile_unary_map_t<Tile> tile_pos(const Tile& t)
+{
+    return tile_unary_map_t<Tile>(t, [](typename Tile::Type x) { return pos(x); } );
+}
+
+template<typename Tile>
+CUDA_CALLABLE inline tile_unary_map_t<Tile> tile_neg(Tile& t)
+{
+    typedef tile_unary_map_t<Tile> Op;
+
+    typename Op::FwdOp fwd = [](typename Tile::Type x) { return neg(x); };
+    typename Op::AdjOp adj = [](typename Tile::Type x, typename Tile::Type& adj_x, typename Tile::Type& adj_ret) { adj_neg(x, adj_x, adj_ret); };
+
+    return Op(t, fwd, adj);
+}
+
+template<typename Tile>
+CUDA_CALLABLE inline void adj_tile_neg(const Tile& t, Tile& adj_t, tile_unary_map_t<Tile>& adj_ret)
+{
+    // nop
+}
+
+
+/*
+
+template<unsigned Length, typename Type>
+CUDA_CALLABLE inline vec_t<Length, Type> neg(const vec_t<Length, Type>& x)
+{
+    return -x;
+}
+
+template<typename Type>
+CUDA_CALLABLE inline vec_t<3, Type> neg(const vec_t<3, Type>& x)
+{
+    return vec_t<3, Type>(-x.c[0], -x.c[1], -x.c[2]);
+}
+
+template<typename Type>
+CUDA_CALLABLE inline vec_t<2, Type> neg(const vec_t<2, Type>& x)
+{
+    return vec_t<2, Type>(-x.c[0], -x.c[1]);
+}
+
+template<unsigned Length, typename Type>
+CUDA_CALLABLE inline void adj_neg(const vec_t<Length, Type>& x, vec_t<Length, Type>& adj_x, const vec_t<Length, Type>& adj_ret)
+{
+    adj_x -= adj_ret;
+}
+
+// equality:
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE bool operator ==(const vec_t<Length, Type>& a, const vec_t<Length, Type>& b)
+{
+    for( unsigned i=0; i < Length; ++i )
+    {
+        if(a[i] != b[i])
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+// scalar multiplication:
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length, Type> mul(vec_t<Length, Type> a, Type s)
+{
+    vec_t<Length, Type> ret;
+    for( unsigned i=0; i < Length; ++i )
+    {
+        ret[i] = a[i] * s;
+    }
+    return ret;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec_t<3, Type> mul(vec_t<3, Type> a, Type s)
+{
+    return vec_t<3, Type>(a.c[0]*s,a.c[1]*s,a.c[2]*s);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec_t<2, Type> mul(vec_t<2, Type> a, Type s)
+{
+    return vec_t<2, Type>(a.c[0]*s,a.c[1]*s);
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length, Type> mul(Type s, vec_t<Length, Type> a)
+{
+    return mul(a, s);
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length, Type> operator*(Type s, vec_t<Length, Type> a)
+{
+    return mul(a, s);
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length, Type> operator*(vec_t<Length, Type> a, Type s)
+{
+    return mul(a, s);
+}
+
+
+// component wise multiplication:
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length, Type> cw_mul(vec_t<Length, Type> a, vec_t<Length, Type> b)
+{
+    vec_t<Length, Type> ret;
+    for( unsigned i=0; i < Length; ++i )
+    {
+        ret[i] = a[i] * b[i];
+    }
+    return ret;
+}
+
+// division
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length, Type> div(vec_t<Length, Type> a, Type s)
+{
+    vec_t<Length, Type> ret;
+    for( unsigned i=0; i < Length; ++i )
+    {
+        ret[i] = a[i] / s;
+    }
+    return ret;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec_t<3, Type> div(vec_t<3, Type> a, Type s)
+{
+    return vec_t<3, Type>(a.c[0]/s,a.c[1]/s,a.c[2]/s);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec_t<2, Type> div(vec_t<2, Type> a, Type s)
+{
+    return vec_t<2, Type>(a.c[0]/s,a.c[1]/s);
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length, Type> div(Type s, vec_t<Length, Type> a)
+{
+    vec_t<Length, Type> ret;
+    for (unsigned i=0; i < Length; ++i)
+    {
+        ret[i] = s / a[i];
+    }
+    return ret;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec_t<3, Type> div(Type s, vec_t<3, Type> a)
+{
+    return vec_t<3, Type>(s/a.c[0],s/a.c[1],s/a.c[2]);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec_t<2, Type> div(Type s, vec_t<2, Type> a)
+{
+    return vec_t<2, Type>(s/a.c[0],s/a.c[1]);
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length, Type> operator / (vec_t<Length, Type> a, Type s)
+{
+    return div(a,s);
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length, Type> operator / (Type s, vec_t<Length, Type> a)
+{
+    return div(s, a);
+}
+
+// component wise division
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length, Type> cw_div(vec_t<Length, Type> a, vec_t<Length, Type> b)
+{
+    vec_t<Length, Type> ret;
+    for( unsigned i=0; i < Length; ++i )
+    {
+        ret[i] = a[i] / b[i];
+    }
+    return ret;
+}
+
+// addition
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length, Type> add(vec_t<Length, Type> a, vec_t<Length, Type> b)
+{
+    vec_t<Length, Type> ret;
+    for( unsigned i=0; i < Length; ++i )
+    {
+        ret[i] = a[i] + b[i];
+    }
+    return ret;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec_t<2, Type> add(vec_t<2, Type> a, vec_t<2, Type> b)
+{
+    return vec_t<2, Type>( a.c[0] + b.c[0], a.c[1] + b.c[1]);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec_t<3, Type> add(vec_t<3, Type> a, vec_t<3, Type> b)
+{
+    return vec_t<3, Type>( a.c[0] + b.c[0], a.c[1] + b.c[1], a.c[2] + b.c[2]);
+}
+
+// subtraction
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length, Type> sub(vec_t<Length, Type> a, vec_t<Length, Type> b)
+{
+    vec_t<Length, Type> ret;
+    for( unsigned i=0; i < Length; ++i )
+    {
+        ret[i] = Type(a[i] - b[i]);
+    }
+    return ret;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec_t<2, Type> sub(vec_t<2, Type> a, vec_t<2, Type> b)
+{
+    return vec_t<2, Type>( a.c[0] - b.c[0], a.c[1] - b.c[1]);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec_t<3, Type> sub(vec_t<3, Type> a, vec_t<3, Type> b)
+{
+    return vec_t<3, Type>( a.c[0] - b.c[0], a.c[1] - b.c[1], a.c[2] - b.c[2]);
+}
+*/
+
+
+// represents a fully evaluated tile in shared memory
 template <typename T, int M_, int N_>
 struct tile_shared_t
 {
@@ -495,13 +739,59 @@ tile_binary_map_t<TileA, TileB> tile_map_impl(typename tile_binary_map_t<TileA, 
 #define tile_map(op, ...) tile_map_impl(op, adj_##op, __VA_ARGS__)
 //#define tile_map(op, a) tile_map_impl(wp::##op, wp::##op, a)
 
-
 // nop
 void adj_tile_map_impl(void) {}
 #define adj_tile_map(...) adj_tile_map_impl()
 
 // use a macro to capture the adjoint var in the expression
 #define tile_constant(T, M, N, var) tile_constant_t<T, M, N>(var, adj_##var)
+
+
+/*
+// handle tile*scalar
+template<typename Tile>
+CUDA_CALLABLE inline auto tile_mul_impl(Tile& t, typename Tile::Type s,
+                                        Tile& adj_t, typename Tile::Type adj_s)
+{
+    typedef typename Tile::Type T;
+    typedef tile_constant_t<T, Tile::M, Tile::N> Constant;
+
+    typedef tile_binary_map_t<Tile, Constant> Op;
+
+    typename Op::FwdOp fwd = [](T a, T b) { return mul(a, b); };
+    typename Op::AdjOp adj = [](T a, T b, T& adj_a, T& adj_b, T& adj_ret) { adj_mul(a, b, adj_a, adj_b, adj_ret); };
+
+    // promote scalar to constant tile
+    Constant c(s, adj_s);
+
+    return Op(t, c, fwd, adj);
+}
+
+// handle scalar*tile
+template<typename Tile>
+CUDA_CALLABLE inline auto tile_mul_impl(typename Tile::Type s, Tile& t,
+                                        typename Tile::Type adj_s, Tile& adj_t)
+{
+    typedef typename Tile::Type T;
+    typedef tile_constant_t<T, Tile::M, Tile::N> Constant;
+
+    typedef tile_binary_map_t<Constant, Tile> Op;
+
+    typename Op::FwdOp fwd = [](T a, T b) { return mul(a, b); };
+    typename Op::AdjOp adj = [](T a, T b, T& adj_a, T& adj_b, T& adj_ret) { adj_mul(a, b, adj_a, adj_b, adj_ret); };
+
+    // promote scalar to constant tile
+    Constant c(s, adj_s);
+
+    return Op(c, t, fwd, adj);
+
+}
+
+
+#define tile_mul(a, b) tile_mul_impl(a, b adj_##a, adj_##b)
+#define tile_add(a, b) tile_add_impl(a, b adj_##a, adj_##b)
+*/
+
 
 } // namespace wp
 

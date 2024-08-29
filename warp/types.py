@@ -1405,7 +1405,10 @@ def types_equal(a, b, match_generic=False):
 
     if is_array(a) and type(a) is type(b):
         return True
-
+    
+    if is_tile(a) and is_tile(b):
+        return True
+    
     return scalars_equal(a, b, match_generic)
 
 
@@ -2863,7 +2866,7 @@ def array_type_id(a):
 # tile expression objects
 class Tile:
     
-    def __init__(self, dtype, M, N, op):
+    def __init__(self, dtype, M, N, op=None):
         self.dtype = dtype
         self.M = M
         self.N = N
@@ -2877,6 +2880,16 @@ class TileZeros(Tile):
     def ctype(self):
         from warp.codegen import Var
         return f"wp::tile_zeros_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
+
+class TileConstant(Tile):
+
+    def __init__(self, dtype, M, N):
+        Tile.__init__(self, dtype, M, N, "zeros")
+        
+    def ctype(self):
+        from warp.codegen import Var
+        return f"wp::tile_constant_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
+
 
 class TileLoad(Tile):
 

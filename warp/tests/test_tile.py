@@ -156,24 +156,98 @@ def test_tile_binary_map():
     print("Binary map backward passed")
 
 
+@wp.kernel
+def tile_operators(input: wp.array3d(dtype=float),
+                   output: wp.array3d(dtype=float)):
+
+    # output tile index
+    i = wp.tid()
+
+    a = wp.tile_load(input[i], 0, 0, m=32, n=8)
+    
+    # neg
+    b = -a
+
+    # scalar multiply
+#    c = b*0.5
+
+    # # add tiles
+    # c = a + b    
+    
+    wp.tile_store(output[i], 0, 0, b)
+
+
+def test_tile_operators():
+
+    batch_count = 56
+
+    M = 32
+    N = 8
+
+    rng = np.random.default_rng(42)
+    input = rng.random((batch_count, M, N), dtype=np.float32)
+    output = -input
+
+    input_wp = wp.array(input)
+    output_wp = wp.zeros_like(input_wp)
+
+    wp.launch(tile_operators, dim=batch_count, inputs=[input_wp, output_wp], tile_size=8)
+
+    assert(np.allclose(output, output_wp.numpy(), rtol=1.e-4))
+
+    print("operators forward passed")
+
+
 
 TILE_M = wp.constant(64)
 TILE_N = wp.constant(64)
 TILE_K = wp.constant(8)
 
-# sum = wp.tile_zeros(M,N)
+@wp.kernel
+def tile_grouped_gemm(A: wp.array3d(dtype=float),
+                      B: wp.array3d(dtype=float),
+                      C: wp.array3d(dtype=float)):
 
-# for i in range(5):
+    # output tile index
+    i = wp.tid()
 
-#     a = wp.tile_load(A)
-#     b = wp.tile_load(B)
+    a = wp.tile_load(A[i], 0, 0, m=TILE_M, n=TILE_K)
+    b = wp.tile_load(B[i], 0, 0, m=TILE_K, n=TILE_N)
 
-#     a2 = a*2.0
-    
-#     wp.tile_matmul(a2, b, sum)
+    sum = wp.tile_eval(wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32))
 
-# wp.tile_store(sum)
+    wp.tile_matmul(a, b, sum)
 
+    wp.tile_store(C[i], 0, 0, sum)
+
+
+def test_tile_batched_gemm():
+
+    batch_count = 56
+
+    M = TILE_M
+    N = TILE_N
+    K = TILE_K
+
+    rng = np.random.default_rng(42)
+    A = rng.random((batch_count, M, K), dtype=np.float32)
+    B = rng.random((batch_count, K, N), dtype=np.float32)
+    C = np.zeros((batch_count, M, N), dtype=np.float32)
+
+    A_wp = wp.array(A)
+    B_wp = wp.array(B)
+    C_wp = wp.array(C)
+
+    wp.launch(tile_grouped_gemm, dim=batch_count, inputs=[A_wp, B_wp, C_wp], tile_size=8)
+
+    # bring back to host
+    C_wp = C_wp.numpy()
+
+    for i in range(batch_count):
+        assert(np.allclose(A[i]@B[i], C_wp[i], rtol=1.e-4))
+
+    # GEMM forward passed
+    print("batched matmul forward passed")
 
 
 @wp.kernel
@@ -190,7 +264,7 @@ def tile_gemm(A: wp.array2d(dtype=float),
     N = B.shape[1]
     K = A.shape[1]
 
-    count = int(K / TILE_K) # todo: must be the same as TILE_K
+    count = int(K / TILE_K) 
 
     for k in range(0, count):
 
@@ -223,11 +297,13 @@ def test_tile_gemm():
     assert(np.allclose(A@B, C_wp.numpy(), rtol=1.e-4))
 
     # GEMM forward passed
-    print("Binary map backward passed")
+    print("matmul forward passed")
 
 
 
 test_tile_copy()
 test_tile_unary_map()
 test_tile_binary_map()
+test_tile_batched_gemm()
 test_tile_gemm()
+test_tile_operators()

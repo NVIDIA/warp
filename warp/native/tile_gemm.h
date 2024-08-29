@@ -373,6 +373,13 @@ template <typename TileA, typename TileB, typename TileC>
 void adj_tile_matmul(TileA& a, TileB& b, TileC& c,
                      TileA& adj_a, TileB& adj_b, TileC& adj_c)
 {
+
+    // auto a_shared = tile_eval<Index+0>(a);
+    // auto b_shared = tile_eval<Index+1>(b);
+    // auto adj_c_shared = tile_eval<Index+1>(b);
+
+    // tile_matmul_scalar(adj_c, wp.tile_transpose(b), adj_a);
+    // tile_matmul_scalar(wp.tile_transpose(a), adj_c, adj_b);
 }
 
 
