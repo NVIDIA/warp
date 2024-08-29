@@ -1315,6 +1315,8 @@ def test_particle_quadratures(test, device):
     geo = fem.Grid2D(res=wp.vec2i(2))
 
     domain = fem.Cells(geo)
+
+    # Explicit quadrature
     points, weights = domain.reference_element().instantiate_quadrature(order=4, family=fem.Polynomial.GAUSS_LEGENDRE)
     points_per_cell = len(points)
 
@@ -1329,9 +1331,16 @@ def test_particle_quadratures(test, device):
     test.assertEqual(explicit_quadrature.max_points_per_element(), points_per_cell)
     test.assertEqual(explicit_quadrature.total_point_count(), points_per_cell * geo.cell_count())
 
+    # test integration accuracy
     val = fem.integrate(_bicubic, quadrature=explicit_quadrature)
     test.assertAlmostEqual(val, 1.0 / 16, places=5)
 
+    # test indexing validity
+    arr = wp.empty(explicit_quadrature.total_point_count(), dtype=float)
+    fem.interpolate(_piecewise_constant, dest=arr, quadrature=explicit_quadrature)
+    assert_np_equal(arr.numpy(), np.arange(geo.cell_count()).repeat(points_per_cell))
+
+    # PIC quadrature
     element_indices = wp.array([3, 3, 2], dtype=int, device=device)
     element_coords = wp.array(
         [
@@ -1349,6 +1358,7 @@ def test_particle_quadratures(test, device):
     test.assertEqual(pic_quadrature.total_point_count(), 3)
     test.assertEqual(pic_quadrature.active_cell_count(), 2)
 
+    # Test integration accuracy
     val = fem.integrate(_piecewise_constant, quadrature=pic_quadrature)
     test.assertAlmostEqual(val, 1.25, places=5)
 
