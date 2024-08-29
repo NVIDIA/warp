@@ -19,6 +19,7 @@
 - Fix handling of integer indices in the `input_output_mask` argument to `autograd.jacobian` and `autograd.jacobian_fd` ([GH-289](https://github.com/NVIDIA/warp/issues/289)).
 - Fix `ModelBuilder.collapse_fixed_joints()` to correctly update the body centers of mass and the `ModelBuilder.articulation_start` array.
 - Fix precedence of closure constants over global constants
+- Fix quadrature point indexing in `wp.fem.ExplicitQuadrature` (regression from 1.3.0)
 
 ## [1.3.1] - 2024-07-27
 
