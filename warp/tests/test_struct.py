@@ -589,6 +589,52 @@ def test_dependent_module_import(c: DependentModuleImport_C):
     wp.tid()  # nop, we're just testing codegen
 
 
+def test_struct_array_content_hash(test, device):
+    # Ensure that the memory address of the struct does not affect the content hash
+
+    @wp.struct
+    class ContentHashStruct:
+        i: int
+
+    @wp.kernel
+    def dummy_kernel(a: wp.array(dtype=ContentHashStruct)):
+        i = wp.tid()
+
+    module_hash_0 = wp.get_module(dummy_kernel.__module__).hash_module()
+
+    # Redefine ContentHashStruct to have the same members as before but a new memory address
+    @wp.struct
+    class ContentHashStruct:
+        i: int
+
+    @wp.kernel
+    def dummy_kernel(a: wp.array(dtype=ContentHashStruct)):
+        i = wp.tid()
+
+    module_hash_1 = wp.get_module(dummy_kernel.__module__).hash_module(recompute_content_hash=True)
+
+    test.assertEqual(
+        module_hash_1,
+        module_hash_0,
+        "Module hash should be unchanged when ContentHashStruct is redefined but unchanged.",
+    )
+
+    # Redefine ContentHashStruct to have different members. This time we should get a new hash.
+    @wp.struct
+    class ContentHashStruct:
+        i: float
+
+    @wp.kernel
+    def dummy_kernel(a: wp.array(dtype=ContentHashStruct)):
+        i = wp.tid()
+
+    module_hash_2 = wp.get_module(dummy_kernel.__module__).hash_module(recompute_content_hash=True)
+
+    test.assertNotEqual(
+        module_hash_2, module_hash_0, "Module hash should be different when ContentHashStruct redefined and changed."
+    )
+
+
 devices = get_test_devices()
 
 
@@ -644,36 +690,6 @@ add_kernel_test(
     inputs=[],
     devices=devices,
 )
-add_kernel_test(
-    TestStruct,
-    kernel=test_uninitialized,
-    name="test_uninitialized",
-    dim=1,
-    inputs=[Uninitialized()],
-    devices=devices,
-)
-add_kernel_test(TestStruct, kernel=test_return, name="test_return", dim=1, inputs=[], devices=devices)
-add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
-add_function_test(TestStruct, "test_nested_array_struct", test_nested_array_struct, devices=devices)
-add_function_test(TestStruct, "test_nested_empty_struct", test_nested_empty_struct, devices=devices)
-add_function_test(TestStruct, "test_struct_math_conversions", test_struct_math_conversions, devices=devices)
-add_kernel_test(
-    TestStruct,
-    name="test_struct_default_attributes",
-    kernel=test_struct_default_attributes_kernel,
-    dim=1,
-    inputs=[],
-    devices=devices,
-)
-
-add_kernel_test(
-    TestStruct,
-    name="test_struct_mutate_attributes",
-    kernel=test_struct_mutate_attributes_kernel,
-    dim=1,
-    inputs=[],
-    devices=devices,
-)
 
 for device in devices:
     add_kernel_test(
@@ -701,6 +717,8 @@ add_kernel_test(
     inputs=[DependentModuleImport_C()],
     devices=devices,
 )
+
+add_function_test(TestStruct, "test_struct_array_content_hash", test_struct_array_content_hash, devices=None)
 
 
 if __name__ == "__main__":

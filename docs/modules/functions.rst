@@ -426,7 +426,7 @@ Vector Math
     Compute the cross product of two 3D vectors.
 
 
-.. py:function:: skew(vec: Vector[3,Scalar])
+.. py:function:: skew(vec: Vector[3,Scalar]) -> Matrix[3,3,Scalar]
 
     Compute the skew-symmetric 3x3 matrix for a 3D vector ``vec``.
 
@@ -467,7 +467,7 @@ Vector Math
     Compute the normalized value of ``a``. If ``length(a)`` is 0, then the zero quaternion is returned.
 
 
-.. py:function:: transpose(a: Matrix[Any,Any,Scalar])
+.. py:function:: transpose(a: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
 
     Return the transpose of the matrix ``a``.
 
@@ -782,12 +782,12 @@ Spatial Math
     Compute the dual cross product of two 6D screw vectors.
 
 
-.. py:function:: spatial_top(svec: Vector[6,Float])
+.. py:function:: spatial_top(svec: Vector[6,Float]) -> Vector[3,Float]
 
     Return the top (first) part of a 6D screw vector.
 
 
-.. py:function:: spatial_bottom(svec: Vector[6,Float])
+.. py:function:: spatial_bottom(svec: Vector[6,Float]) -> Vector[3,Float]
 
     Return the bottom (second) part of a 6D screw vector.
 
@@ -876,446 +876,446 @@ Utility
     This function may not be called from user-defined Warp functions.
 
 
-.. py:function:: select(cond: bool, value_if_false: Any, value_if_true: Any)
+.. py:function:: select(cond: bool, value_if_false: Any, value_if_true: Any) -> Any
 
     Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: int8, value_if_false: Any, value_if_true: Any)
+.. py:function:: select(cond: int8, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
     Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: uint8, value_if_false: Any, value_if_true: Any)
+.. py:function:: select(cond: uint8, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
     Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: int16, value_if_false: Any, value_if_true: Any)
+.. py:function:: select(cond: int16, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
     Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: uint16, value_if_false: Any, value_if_true: Any)
+.. py:function:: select(cond: uint16, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
     Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: int32, value_if_false: Any, value_if_true: Any)
+.. py:function:: select(cond: int32, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
     Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: uint32, value_if_false: Any, value_if_true: Any)
+.. py:function:: select(cond: uint32, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
     Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: int64, value_if_false: Any, value_if_true: Any)
+.. py:function:: select(cond: int64, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
     Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: uint64, value_if_false: Any, value_if_true: Any)
+.. py:function:: select(cond: uint64, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
     Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(arr: Array[Any], value_if_false: Any, value_if_true: Any)
+.. py:function:: select(arr: Array[Any], value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
     Select between two arguments, if ``arr`` is null then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: atomic_add(arr: Array[Any], i: int32, value: Any)
+.. py:function:: atomic_add(arr: Array[Any], i: int32, value: Any) -> Any
 
-    Atomically add ``value`` onto ``arr[i]``.
+    Atomically add ``value`` onto ``arr[i]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: Array[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_add(arr: Array[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i,j]``.
+    Atomically add ``value`` onto ``arr[i,j]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: Array[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_add(arr: Array[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i,j,k]``.
+    Atomically add ``value`` onto ``arr[i,j,k]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_add(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i,j,k,l]``.
+    Atomically add ``value`` onto ``arr[i,j,k,l]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: FabricArray[Any], i: int32, value: Any)
+.. py:function:: atomic_add(arr: FabricArray[Any], i: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i]``.
+    Atomically add ``value`` onto ``arr[i]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: FabricArray[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_add(arr: FabricArray[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i,j]``.
+    Atomically add ``value`` onto ``arr[i,j]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_add(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i,j,k]``.
+    Atomically add ``value`` onto ``arr[i,j,k]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_add(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i,j,k,l]``.
+    Atomically add ``value`` onto ``arr[i,j,k,l]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: IndexedFabricArray[Any], i: int32, value: Any)
+.. py:function:: atomic_add(arr: IndexedFabricArray[Any], i: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i]``.
+    Atomically add ``value`` onto ``arr[i]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i,j]``.
+    Atomically add ``value`` onto ``arr[i,j]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i,j,k]``.
+    Atomically add ``value`` onto ``arr[i,j,k]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i,j,k,l]``.
+    Atomically add ``value`` onto ``arr[i,j,k,l]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: Array[Any], i: int32, value: Any)
+.. py:function:: atomic_sub(arr: Array[Any], i: int32, value: Any) -> Any
 
-    Atomically subtract ``value`` onto ``arr[i]``.
+    Atomically subtract ``value`` onto ``arr[i]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: Array[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_sub(arr: Array[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i,j]``.
+    Atomically subtract ``value`` onto ``arr[i,j]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: Array[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_sub(arr: Array[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i,j,k]``.
+    Atomically subtract ``value`` onto ``arr[i,j,k]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_sub(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i,j,k,l]``.
+    Atomically subtract ``value`` onto ``arr[i,j,k,l]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: FabricArray[Any], i: int32, value: Any)
+.. py:function:: atomic_sub(arr: FabricArray[Any], i: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i]``.
+    Atomically subtract ``value`` onto ``arr[i]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: FabricArray[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_sub(arr: FabricArray[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i,j]``.
+    Atomically subtract ``value`` onto ``arr[i,j]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_sub(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i,j,k]``.
+    Atomically subtract ``value`` onto ``arr[i,j,k]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_sub(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i,j,k,l]``.
+    Atomically subtract ``value`` onto ``arr[i,j,k,l]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: IndexedFabricArray[Any], i: int32, value: Any)
+.. py:function:: atomic_sub(arr: IndexedFabricArray[Any], i: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i]``.
+    Atomically subtract ``value`` onto ``arr[i]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i,j]``.
+    Atomically subtract ``value`` onto ``arr[i,j]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i,j,k]``.
+    Atomically subtract ``value`` onto ``arr[i,j,k]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i,j,k,l]``.
+    Atomically subtract ``value`` onto ``arr[i,j,k,l]`` and return the old value.
 
 
-.. py:function:: atomic_min(arr: Array[Any], i: int32, value: Any)
+.. py:function:: atomic_min(arr: Array[Any], i: int32, value: Any) -> Any
 
-    Compute the minimum of ``value`` and ``arr[i]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: Array[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_min(arr: Array[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i,j]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: Array[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_min(arr: Array[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i,j,k]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_min(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i,j,k,l]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: FabricArray[Any], i: int32, value: Any)
+.. py:function:: atomic_min(arr: FabricArray[Any], i: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: FabricArray[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_min(arr: FabricArray[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i,j]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_min(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i,j,k]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_min(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i,j,k,l]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: IndexedFabricArray[Any], i: int32, value: Any)
+.. py:function:: atomic_min(arr: IndexedFabricArray[Any], i: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i,j]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i,j,k]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i,j,k,l]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: Array[Any], i: int32, value: Any)
+.. py:function:: atomic_max(arr: Array[Any], i: int32, value: Any) -> Any
 
-    Compute the maximum of ``value`` and ``arr[i]`` and atomically update the array.
-
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
-
-
-.. py:function:: atomic_max(arr: Array[Any], i: int32, j: int32, value: Any)
-    :noindex:
-    :nocontentsentry:
-
-    Compute the maximum of ``value`` and ``arr[i,j]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: Array[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_max(arr: Array[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the maximum of ``value`` and ``arr[i,j,k]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_max(arr: Array[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the maximum of ``value`` and ``arr[i,j,k,l]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: FabricArray[Any], i: int32, value: Any)
+.. py:function:: atomic_max(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the maximum of ``value`` and ``arr[i]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: FabricArray[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_max(arr: FabricArray[Any], i: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the maximum of ``value`` and ``arr[i,j]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_max(arr: FabricArray[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the maximum of ``value`` and ``arr[i,j,k]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_max(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the maximum of ``value`` and ``arr[i,j,k,l]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: IndexedFabricArray[Any], i: int32, value: Any)
+.. py:function:: atomic_max(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the maximum of ``value`` and ``arr[i]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_max(arr: IndexedFabricArray[Any], i: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the maximum of ``value`` and ``arr[i,j]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the maximum of ``value`` and ``arr[i,j,k]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the maximum of ``value`` and ``arr[i,j,k,l]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+
+    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
@@ -2032,7 +2032,7 @@ Operators
     :nocontentsentry:
 
 
-.. py:function:: mul(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar])
+.. py:function:: mul(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
     :noindex:
     :nocontentsentry:
 
@@ -2053,6 +2053,8 @@ Operators
 
 
 .. py:function:: mod(a: Scalar, b: Scalar) -> Scalar
+
+    Modulo operation using truncated division.
 
 
 .. py:function:: div(a: Scalar, b: Scalar) -> Scalar

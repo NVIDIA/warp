@@ -2382,6 +2382,14 @@ def test_kernel_array_from_ptr(test, device):
     assert_np_equal(arr.numpy(), np.array(((1.0, 2.0, 3.0), (0.0, 0.0, 0.0))))
 
 
+def test_array_from_int32_domain(test, device):
+    wp.zeros(np.array([1504, 1080, 520], dtype=np.int32), dtype=wp.float32, device=device)
+
+
+def test_array_from_int64_domain(test, device):
+    wp.zeros(np.array([1504, 1080, 520], dtype=np.int64), dtype=wp.float32, device=device)
+
+
 devices = get_test_devices()
 
 
@@ -2442,6 +2450,9 @@ add_function_test(TestArray, "test_array_from_numpy", test_array_from_numpy, dev
 
 add_function_test(TestArray, "test_direct_from_numpy", test_direct_from_numpy, devices=["cpu"])
 add_function_test(TestArray, "test_kernel_array_from_ptr", test_kernel_array_from_ptr, devices=devices)
+
+add_function_test(TestArray, "test_array_from_int32_domain", test_array_from_int32_domain, devices=devices)
+add_function_test(TestArray, "test_array_from_int64_domain", test_array_from_int64_domain, devices=devices)
 
 try:
     import torch

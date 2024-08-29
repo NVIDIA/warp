@@ -1,5 +1,5 @@
-furo==2024.1.29
-sphinx==7.2.6
+furo==2024.7.18
+sphinx==7.4.7
 sphinx_copybutton==0.5.2
 numpy==1.26.4
-ruff==0.5.0
+ruff==0.5.5

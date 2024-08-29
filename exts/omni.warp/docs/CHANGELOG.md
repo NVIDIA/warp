@@ -1,9 +1,32 @@
 # CHANGELOG
 
+## [1.3.2] - 2024-08-30
+
+- Bug fixes
+  - Fix accuracy of 3x3 SVD ``wp.svd3`` with fp64 numbers ([GH-281](https://github.com/NVIDIA/warp/issues/281)).
+  - Fix module hashing when a kernel argument contained a struct array ([GH-287](https://github.com/NVIDIA/warp/issues/287)).
+  - Fix a bug in `wp.bvh_query_aabb()` where the direction instead of the reciprocal direction was used
+  ([GH-288](https://github.com/NVIDIA/warp/issues/288)).
+  - Fix errors when launching a CUDA graph after a module is reloaded. Modules that were used during graph capture
+    will no longer be unloaded before the graph is released.
+  - Fix a bug in `wp.sim.collide.triangle_closest_point_barycentric()` where the returned barycentric coordinates may be
+    incorrect when the closest point lies on an edge.
+  - Fix an aliasing issue with zero-copy array initialization from NumPy introduced in Warp 1.3.0.
+  - Fix 32-bit overflow when array shape is specified using `np.int32`.
+  - Fix handling of integer indices in the `input_output_mask` argument to `autograd.jacobian` and
+    `autograd.jacobian_fd` ([GH-289](https://github.com/NVIDIA/warp/issues/289)).
+  - Fix `ModelBuilder.collapse_fixed_joints()` to correctly update the body centers of mass and the
+    `ModelBuilder.articulation_start` array.
+  - Fix precedence of closure constants over global constants.
+- Documentation improvements
+  - Add missing return types for built-in functions.
+  - Clarify that atomic operations also return the previous value.
+  - Clarify that `wp.bvh_query_aabb` returns parts that overlap the bounding volume.
+
 ## [1.3.1] - 2024-07-27
 
-- Remove ``wp.synchronize()`` from PyTorch autograd function example
-- ``Tape.check_kernel_array_access()`` and ``Tape.reset_array_read_flags()`` are now private methods.
+- Remove `wp.synchronize()` from PyTorch autograd function example
+- `Tape.check_kernel_array_access()` and `Tape.reset_array_read_flags()` are now private methods.
 - Fix reporting unmatched argument types
 
 ## [1.3.0] - 2024-07-25

@@ -118,7 +118,7 @@ ruff lint:
     - .runner-utility-linux-x86_64
   before_script:
     - python -m pip install --upgrade pip
-    - pip install --upgrade ruff==0.5.0
+    - pip install --upgrade ruff==0.5.5
   script:
     - ruff check --output-format full  --exit-zero # Just to get something in the log
     - ruff check --output-format gitlab > gl-code-quality-report.json
@@ -134,7 +134,7 @@ ruff format:
     - .runner-utility-linux-x86_64
   before_script:
     - python -m pip install --upgrade pip
-    - pip install --upgrade ruff==0.5.0
+    - pip install --upgrade ruff==0.5.5
   script:
     - ruff format --diff
 
@@ -190,6 +190,27 @@ linux-aarch64 test:
     - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
   tags:
     - arch/arm
+
+linux-aarch64 test jetson:
+  image: ubuntu:22.04
+  needs: [linux-aarch64 build]
+  extends:
+    - .test_common_main
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH 
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
+    - when: manual # If not auto-triggered, allow any pipeline to run this job manually
+  allow_failure: true # Unsure of stability of Jetson runner for now
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - !reference [.snippets, install-python+warp-aarch64]
+    - python -m pip install coverage[toml]
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+  tags:
+    - gpu/orin
 
 linux-x86_64 test:
   needs: [linux-x86_64 build]
@@ -301,9 +322,8 @@ windows-x86_64 test mgpu:
   extends:
     - .save_test_report_artifact
   rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH 
     - if: $CI_COMMIT_TAG
-    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
     - when: manual # Can be triggered in all other scenarios
       allow_failure: true
   before_script:

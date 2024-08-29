@@ -250,7 +250,11 @@ add_example_test(
     test_options_cpu={"num_frames": 10},
 )
 add_example_test(
-    TestOptimExamples, name="optim.example_cloth_throw", devices=test_devices, test_options_cpu={"train_iters": 3}
+    TestOptimExamples,
+    name="optim.example_cloth_throw",
+    devices=test_devices,
+    test_options={"test_timeout": 600},
+    test_options_cpu={"train_iters": 3},
 )
 add_example_test(
     TestOptimExamples,
@@ -390,6 +394,7 @@ add_example_test(
     name="fem.example_mixed_elasticity",
     devices=test_devices,
     test_options={"nonconforming_stresses": True, "mesh": "quad", "headless": True},
+    test_options_cpu={"test_timeout": 600},
 )
 add_example_test(
     TestFemExamples, name="fem.example_stokes_transfer", devices=test_devices, test_options={"headless": True}

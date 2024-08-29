@@ -93,7 +93,8 @@ def test_gradcheck_3d(test, device):
         inputs=[a_3d, b_3d, c_3d],
         outputs=[out1_3d, out2_3d],
         max_inputs_per_var=4,
-        input_output_mask=[("a", "out1"), ("b", "out2")],
+        # use integer indices instead of variable names
+        input_output_mask=[(0, 0), (1, 1)],
         eps=1e-4,
     )
 

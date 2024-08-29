@@ -21,7 +21,9 @@ class Capturable:
 
     def __enter__(self):
         if self.use_graph:
-            wp.capture_begin(stream=self.stream)
+            # preload module before graph capture
+            wp.load_module(device=wp.get_device())
+            wp.capture_begin(stream=self.stream, force_module_load=False)
 
     def __exit__(self, exc_type, exc_value, traceback):
         if self.use_graph:

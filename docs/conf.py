@@ -51,6 +51,8 @@ extensions = [
 autodoc_typehints = "description"
 # document class *and* __init__ methods
 autoclass_content = "both"
+# default argument values of functions will be not evaluated on generating document
+autodoc_preserve_defaults = True
 
 autodoc_member_order = "bysource"
 
@@ -128,7 +130,6 @@ html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 
 html_theme_options = {
-    "top_of_page_button": None,
     "light_css_variables": {
         "admonition-title-font-size": "100%",
         "admonition-font-size": "100%",
@@ -157,4 +158,5 @@ html_theme_options = {
             "class": "",
         },
     ],
+    "source_edit_link": "https://github.com/NVIDIA/warp/edit/main/docs/{filename}",
 }
