@@ -24,7 +24,7 @@ else
 	PM_CURL_SILENT="-s -S"
 	PM_WGET_QUIET="--quiet"
 fi
-export PM_PACKMAN_VERSION=7.23.1
+export PM_PACKMAN_VERSION=7.24.1
 
 # This is necessary for newer macOS
 if [ `uname` == 'Darwin' ]; then
@@ -60,17 +60,49 @@ if [ ! -d "$PM_PACKAGES_ROOT" ]; then
 	mkdir -p -m a+rwx "$PM_PACKAGES_ROOT"
 fi
 
+execute_with_retry()
+{
+    # Don't exit on error, we need to handle them
+    set +e
+
+    local CMD="$1"
+    local MAX_TRIES=4
+    local DELAY=2
+    local TRIES=0
+    local exit_code
+
+    while [ $TRIES -lt $MAX_TRIES ]
+    do
+        ((TRIES++))
+        eval $CMD
+        exit_code=$?
+        if [ $exit_code -eq 0 ]; then
+            return 0
+        fi
+        
+        if [ $TRIES -lt $MAX_TRIES ]; then
+            echo "Attempt $TRIES failed. Retrying in $DELAY seconds ..."
+            sleep $DELAY
+			DELAY=$((DELAY * DELAY))
+			echo "Retrying ..."
+        fi
+    done
+
+    echo "Command failed after $MAX_TRIES attempts: $CMD"
+    return $exit_code
+}
+
 fetch_file_from_s3()
 {
-	SOURCE=$1
-	SOURCE_URL=http://bootstrap.packman.nvidia.com/$SOURCE
-	TARGET=$2
+	local SOURCE=$1
+	local SOURCE_URL=http://bootstrap.packman.nvidia.com/$SOURCE
+	local TARGET=$2
 	echo "Fetching $SOURCE from bootstrap.packman.nvidia.com ..."
+	local CMD="curl -o $TARGET $SOURCE_URL $PM_CURL_SILENT"
 	if command -v wget >/dev/null 2>&1; then
-		wget $PM_WGET_QUIET -O$TARGET $SOURCE_URL
-	else
-		curl -o $TARGET $SOURCE_URL $PM_CURL_SILENT
+		CMD="wget $PM_WGET_QUIET -O$TARGET $SOURCE_URL"
 	fi
+	execute_with_retry "$CMD"
 }
 
 generate_temp_file_name()

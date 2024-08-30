@@ -12,7 +12,7 @@
 :: See the License for the specific language governing permissions and
 :: limitations under the License.
 
-set PM_PACKMAN_VERSION=7.23.1
+set PM_PACKMAN_VERSION=7.24.1
 
 :: Specify where packman command is rooted
 set PM_INSTALL_PATH=%~dp0..
