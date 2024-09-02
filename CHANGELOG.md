@@ -11,6 +11,7 @@
 - Expose the modulo operator `%` to Python's runtime scalar and vector types.
 - Add support for local vec/mat/quat component gradient tracking in backwards mode.
 - Add support for quaternion indexing (e.g. `q.w`).
+- Add support for default argument values for user functions decorated with `wp.func`.
 
 ## [1.3.2] - 2024-08-30
 
