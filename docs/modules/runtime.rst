@@ -1163,8 +1163,7 @@ which returns ``True`` as long as there are intersecting bounds.
 Example: BVH Volume Traversal
 #############################
 
-Similar to the ray-traversal example, we can perform volume traversal to find the volumes that are fully contained
-within a specified bounding box.
+Similar to the ray-traversal example, we can perform volume traversal to find the volumes that are intersect a specified bounding box.
 
 .. code:: python
 
@@ -1176,12 +1175,12 @@ within a specified bounding box.
         bounds_intersected: wp.array(dtype=wp.bool),
     ):
         query = wp.bvh_query_aabb(bvh_id, lower, upper)
-        bounds_nr = wp.int32(0)
+        index = wp.int32(0)
 
-        while wp.bvh_query_next(query, bounds_nr):
-            # The volume with index bounds_nr is fully contained
-            # in the (lower,upper) bounding box
-            bounds_intersected[bounds_nr] = True
+        while wp.bvh_query_next(query, index):
+            # The volume with index intersects 
+            # with the (lower,upper) bounding box
+            bounds_intersected[index] = True
 
 
     bounds_intersected = wp.zeros(shape=(num_bounds), dtype=wp.bool, device="cuda:0")
