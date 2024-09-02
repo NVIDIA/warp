@@ -1156,14 +1156,14 @@ An example of performing a ray traversal on the data structure is as follows:
 The Warp kernel ``bvh_query_ray`` is launched with a single thread, provided the unique :class:`uint64`
 identifier of the :class:`wp.Bvh <Bvh>` object, parameters describing the ray, and an array to store the results.
 In ``bvh_query_ray``, :func:`wp.bvh_query_ray() <bvh_query_ray>` is called once to obtain an object that is stored in the
-variable ``query``. An integer is also allocated as ``bounds_nr`` to store the volume index of the traversal.
+variable ``query``. An integer is also allocated as ``index`` to store the volume index of the traversal.
 A while statement is used for the actual traversal using :func:`wp.bvh_query_next() <bvh_query_next>`,
 which returns ``True`` as long as there are intersecting bounds.
 
 Example: BVH Volume Traversal
 #############################
 
-Similar to the ray-traversal example, we can perform volume traversal to find the volumes that are intersect a specified bounding box.
+Similar to the ray-traversal example, we can perform volume traversal to find the leaf nodes that are intersecting a specified bounding box.
 
 .. code:: python
 
