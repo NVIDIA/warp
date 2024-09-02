@@ -1135,11 +1135,11 @@ An example of performing a ray traversal on the data structure is as follows:
         bounds_intersected: wp.array(dtype=wp.bool),
     ):
         query = wp.bvh_query_ray(bvh_id, start, dir)
-        bounds_nr = wp.int32(0)
+        index = wp.int32(0)
 
-        while wp.bvh_query_next(query, bounds_nr):
-            # The ray intersects the volume with index bounds_nr
-            bounds_intersected[bounds_nr] = True
+        while wp.bvh_query_next(query, index):
+            # The ray intersects the bounds of the item at this index
+            bounds_intersected[index] = True
 
 
     bounds_intersected = wp.zeros(shape=(num_bounds), dtype=wp.bool, device="cuda:0")
