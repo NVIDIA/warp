@@ -1178,7 +1178,7 @@ Similar to the ray-traversal example, we can perform volume traversal to find th
         index = wp.int32(0)
 
         while wp.bvh_query_next(query, index):
-            # The volume with index intersects 
+            # The volume at this index intersects 
             # with the (lower,upper) bounding box
             bounds_intersected[index] = True
 
