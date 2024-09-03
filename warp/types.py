@@ -12,18 +12,7 @@ import ctypes
 import inspect
 import struct
 import zlib
-from typing import (
-    Any,
-    Callable,
-    Generic,
-    List,
-    NamedTuple,
-    Optional,
-    Sequence,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import Any, Callable, Generic, List, NamedTuple, Optional, Sequence, Tuple, TypeVar, Union
 
 import numpy as np
 
@@ -1121,11 +1110,7 @@ ARRAY_TYPE_FABRIC_INDEXED = 3
 
 # represents bounds for kernel launch (number of threads across multiple dimensions)
 class launch_bounds_t(ctypes.Structure):
-    _fields_ = [
-        ("shape", ctypes.c_int32 * LAUNCH_MAX_DIMS),
-        ("ndim", ctypes.c_int32),
-        ("size", ctypes.c_size_t),
-    ]
+    _fields_ = [("shape", ctypes.c_int32 * LAUNCH_MAX_DIMS), ("ndim", ctypes.c_int32), ("size", ctypes.c_size_t)]
 
     def __init__(self, shape):
         if isinstance(shape, int):
@@ -1781,11 +1766,7 @@ class array(Array):
                 if arr.shape[-1] == dtype._length_:
                     target_npshape = (*arr.shape[:-1], *dtype_shape)
                 elif arr.shape[-1] % dtype._length_ == 0:
-                    target_npshape = (
-                        *arr.shape[:-1],
-                        arr.shape[-1] // dtype._length_,
-                        *dtype_shape,
-                    )
+                    target_npshape = (*arr.shape[:-1], arr.shape[-1] // dtype._length_, *dtype_shape)
                 else:
                     if dtype_ndim == 1:
                         raise RuntimeError(
@@ -2052,9 +2033,7 @@ class array(Array):
             # Performance note: avoid wrapping the external stream in a temporary Stream object
             if external_stream != array_stream.cuda_stream:
                 warp.context.runtime.core.cuda_stream_wait_stream(
-                    external_stream,
-                    array_stream.cuda_stream,
-                    array_stream.cached_event.cuda_event,
+                    external_stream, array_stream.cuda_stream, array_stream.cached_event.cuda_event
                 )
 
         return warp.dlpack.to_dlpack(self)
@@ -2202,13 +2181,7 @@ class array(Array):
         if self.ctype is None:
             data = 0 if self.ptr is None else ctypes.c_uint64(self.ptr)
             grad = 0 if self.grad is None or self.grad.ptr is None else ctypes.c_uint64(self.grad.ptr)
-            self.ctype = array_t(
-                data=data,
-                grad=grad,
-                ndim=self.ndim,
-                shape=self.shape,
-                strides=self.strides,
-            )
+            self.ctype = array_t(data=data, grad=grad, ndim=self.ndim, shape=self.shape, strides=self.strides)
 
         return self.ctype
 
@@ -2275,11 +2248,7 @@ class array(Array):
 
     def _alloc_grad(self):
         self._grad = warp.zeros(
-            dtype=self.dtype,
-            shape=self.shape,
-            strides=self.strides,
-            device=self.device,
-            pinned=self.pinned,
+            dtype=self.dtype, shape=self.shape, strides=self.strides, device=self.device, pinned=self.pinned
         )
 
         # trigger re-creation of C-representation
@@ -2397,11 +2366,7 @@ class array(Array):
 
             if self.device.is_cuda:
                 warp.context.runtime.core.array_fill_device(
-                    self.device.context,
-                    carr_ptr,
-                    ARRAY_TYPE_REGULAR,
-                    cvalue_ptr,
-                    cvalue_size,
+                    self.device.context, carr_ptr, ARRAY_TYPE_REGULAR, cvalue_ptr, cvalue_size
                 )
             else:
                 warp.context.runtime.core.array_fill_host(carr_ptr, ARRAY_TYPE_REGULAR, cvalue_ptr, cvalue_size)
@@ -2701,7 +2666,7 @@ def from_ptr(ptr, length, dtype=None, shape=None, device=None):
         dtype=dtype,
         length=length,
         capacity=length * type_size_in_bytes(dtype),
-        ptr=(0 if ptr == 0 else ctypes.cast(ptr, ctypes.POINTER(ctypes.c_size_t)).contents.value),
+        ptr=0 if ptr == 0 else ctypes.cast(ptr, ctypes.POINTER(ctypes.c_size_t)).contents.value,
         shape=shape,
         device=device,
         requires_grad=False,
@@ -2812,13 +2777,7 @@ class indexedarray(noncontiguous_array_base[T]):
     # (initialized when needed)
     _vars = None
 
-    def __init__(
-        self,
-        data: array = None,
-        indices: Union[array, List[array]] = None,
-        dtype=None,
-        ndim=None,
-    ):
+    def __init__(self, data: array = None, indices: Union[array, List[array]] = None, dtype=None, ndim=None):
         super().__init__(ARRAY_TYPE_INDEXED)
 
         # canonicalize types
@@ -2997,10 +2956,7 @@ class Bvh:
             self.id = self.runtime.core.bvh_create_host(get_data(lowers), get_data(uppers), int(len(lowers)))
         else:
             self.id = self.runtime.core.bvh_create_device(
-                self.device.context,
-                get_data(lowers),
-                get_data(uppers),
-                int(len(lowers)),
+                self.device.context, get_data(lowers), get_data(uppers), int(len(lowers))
             )
 
     def __del__(self):
@@ -3148,11 +3104,7 @@ class Volume:
             )
         else:
             self.id = self.runtime.core.volume_create_device(
-                self.device.context,
-                ctypes.cast(data.ptr, ctypes.c_void_p),
-                data.size,
-                copy,
-                owner,
+                self.device.context, ctypes.cast(data.ptr, ctypes.c_void_p), data.size, copy, owner
             )
 
         if self.id == 0:
@@ -3174,13 +3126,7 @@ class Volume:
         buf = ctypes.c_void_p(0)
         size = ctypes.c_uint64(0)
         self.runtime.core.volume_get_buffer_info(self.id, ctypes.byref(buf), ctypes.byref(size))
-        return array(
-            ptr=buf.value,
-            dtype=uint8,
-            shape=size.value,
-            device=self.device,
-            owner=False,
-        )
+        return array(ptr=buf.value, dtype=uint8, shape=size.value, device=self.device, owner=False)
 
     def get_tile_count(self) -> int:
         """Returns the number of tiles (NanoVDB leaf nodes) of the volume"""
@@ -3440,13 +3386,7 @@ class Volume:
         if type_size_in_bytes(dtype) != value_size:
             raise RuntimeError(f"Cannot cast feature data of size {value_size} to array dtype {type_repr(dtype)}")
 
-        return array(
-            ptr=info.ptr,
-            dtype=dtype,
-            shape=value_count,
-            device=self.device,
-            owner=False,
-        )
+        return array(ptr=info.ptr, dtype=dtype, shape=value_count, device=self.device, owner=False)
 
     @classmethod
     def load_from_nvdb(cls, file_or_buffer, device=None) -> Volume:
@@ -3462,10 +3402,7 @@ class Volume:
             data = file_or_buffer
 
         magic, version, grid_count, codec = struct.unpack("<QIHH", data[0:16])
-        if magic not in (
-            0x304244566F6E614E,
-            0x324244566F6E614E,
-        ):  # NanoVDB0 or NanoVDB2 in hex, little-endian
+        if magic not in (0x304244566F6E614E, 0x324244566F6E614E):  # NanoVDB0 or NanoVDB2 in hex, little-endian
             raise RuntimeError("NanoVDB signature not found")
         if version >> 21 != 32:  # checking major version
             raise RuntimeError("Unsupported NanoVDB version")
@@ -3508,10 +3445,7 @@ class Volume:
             raise RuntimeError(f"Unsupported codec code: {codec}")
 
         magic = struct.unpack("<Q", grid_data[0:8])[0]
-        if magic not in (
-            0x304244566F6E614E,
-            0x314244566F6E614E,
-        ):  # NanoVDB0 or NanoVDB1 in hex, little-endian
+        if magic not in (0x304244566F6E614E, 0x314244566F6E614E):  # NanoVDB0 or NanoVDB1 in hex, little-endian
             raise RuntimeError("NanoVDB signature not found on grid!")
 
         data_array = array(np.frombuffer(grid_data, dtype=np.byte), device=device)
@@ -3572,9 +3506,7 @@ class Volume:
             return None
 
         next_volume = Volume.load_from_address(
-            array.ptr + grid.size_in_bytes,
-            buffer_size=array.capacity - grid.size_in_bytes,
-            device=self.device,
+            array.ptr + grid.size_in_bytes, buffer_size=array.capacity - grid.size_in_bytes, device=self.device
         )
         # makes the new Volume keep a reference to the current grid, as we're aliasing its buffer
         next_volume._previous_grid = self
@@ -3583,12 +3515,7 @@ class Volume:
 
     @classmethod
     def load_from_numpy(
-        cls,
-        ndarray: np.array,
-        min_world=(0.0, 0.0, 0.0),
-        voxel_size=1.0,
-        bg_value=0.0,
-        device=None,
+        cls, ndarray: np.array, min_world=(0.0, 0.0, 0.0), voxel_size=1.0, bg_value=0.0, device=None
     ) -> Volume:
         """Creates a Volume object from a dense 3D NumPy array.
 
@@ -3615,9 +3542,7 @@ class Volume:
         if hasattr(bg_value, "__len__"):
             # vec3, assuming the numpy array is 4D
             padded_array = np.full(
-                shape=(target_shape[0], target_shape[1], target_shape[2], 3),
-                fill_value=bg_value,
-                dtype=np.single,
+                shape=(target_shape[0], target_shape[1], target_shape[2], 3), fill_value=bg_value, dtype=np.single
             )
             padded_array[0 : ndarray.shape[0], 0 : ndarray.shape[1], 0 : ndarray.shape[2], :] = ndarray
         else:
@@ -3653,30 +3578,21 @@ class Volume:
             warp.launch(
                 warp.utils.copy_dense_volume_to_nano_vdb_v,
                 dim=(shape[0], shape[1], shape[2]),
-                inputs=[
-                    volume.id,
-                    warp.array(padded_array, dtype=warp.vec3, device=device),
-                ],
+                inputs=[volume.id, warp.array(padded_array, dtype=warp.vec3, device=device)],
                 device=device,
             )
         elif isinstance(bg_value, int):
             warp.launch(
                 warp.utils.copy_dense_volume_to_nano_vdb_i,
                 dim=shape,
-                inputs=[
-                    volume.id,
-                    warp.array(padded_array, dtype=warp.int32, device=device),
-                ],
+                inputs=[volume.id, warp.array(padded_array, dtype=warp.int32, device=device)],
                 device=device,
             )
         else:
             warp.launch(
                 warp.utils.copy_dense_volume_to_nano_vdb_f,
                 dim=shape,
-                inputs=[
-                    volume.id,
-                    warp.array(padded_array, dtype=warp.float32, device=device),
-                ],
+                inputs=[volume.id, warp.array(padded_array, dtype=warp.float32, device=device)],
                 device=device,
             )
 
@@ -3744,17 +3660,7 @@ class Volume:
 
             if isinstance(voxel_size, float):
                 voxel_size = (voxel_size, voxel_size, voxel_size)
-            transform = mat33f(
-                voxel_size[0],
-                0.0,
-                0.0,
-                0.0,
-                voxel_size[1],
-                0.0,
-                0.0,
-                0.0,
-                voxel_size[2],
-            )
+            transform = mat33f(voxel_size[0], 0.0, 0.0, 0.0, voxel_size[1], 0.0, 0.0, 0.0, voxel_size[2])
         else:
             if voxel_size is not None:
                 raise ValueError("Only one of 'voxel_size' or 'transform' must be provided")
@@ -4175,13 +4081,7 @@ def adj_matmul(
     ):
         raise RuntimeError(
             "Invalid shapes for matrices: A = {} B = {} C = {} adj_D = {} adj_A = {} adj_B = {} adj_C = {}".format(
-                a.shape,
-                b.shape,
-                c.shape,
-                adj_d.shape,
-                adj_a.shape,
-                adj_b.shape,
-                adj_c.shape,
+                a.shape, b.shape, c.shape, adj_d.shape, adj_a.shape, adj_b.shape, adj_c.shape
             )
         )
 
@@ -4486,13 +4386,7 @@ def adj_batched_matmul(
     ):
         raise RuntimeError(
             "Invalid shapes for matrices: A = {} B = {} C = {} adj_D = {} adj_A = {} adj_B = {} adj_C = {}".format(
-                a.shape,
-                b.shape,
-                c.shape,
-                adj_d.shape,
-                adj_a.shape,
-                adj_b.shape,
-                adj_c.shape,
+                a.shape, b.shape, c.shape, adj_d.shape, adj_a.shape, adj_b.shape, adj_c.shape
             )
         )
 
