@@ -2865,75 +2865,72 @@ def array_type_id(a):
 
 # tile expression objects
 class Tile:
-    
-    def __init__(self, dtype, M, N, op=None):
+
+    allocation = 0
+
+    def __init__(self, dtype, M, N, op=None, storage="register"):
         self.dtype = dtype
         self.M = M
         self.N = N
         self.op = op
+        self.storage = storage
+
+    def ctype(self):
+        from warp.codegen import Var
+
+        if self.storage == "register":
+            return f"wp::tile_register_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
+        elif self.storage == "shared":
+            return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
+
+    # generate a unique allocation index for shared memory
+    @classmethod
+    def alloc(cls):
+        index = cls.allocation
+        cls.allocation += 1
+        return index
 
 class TileZeros(Tile):
 
     def __init__(self, dtype, M, N):
-        Tile.__init__(self, dtype, M, N, "zeros")
+        Tile.__init__(self, dtype, M, N, op="zeros", storage="shared")
         
-    def ctype(self):
-        from warp.codegen import Var
-        return f"wp::tile_zeros_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
 
 class TileConstant(Tile):
 
     def __init__(self, dtype, M, N):
-        Tile.__init__(self, dtype, M, N, "zeros")
+        Tile.__init__(self, dtype, M, N, op="constant", storage="register")
         
-    def ctype(self):
-        from warp.codegen import Var
-        return f"wp::tile_constant_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
-
 
 class TileLoad(Tile):
 
     def __init__(self, array, M, N):
-        Tile.__init__(self, array.dtype, M, N, "load")
+        Tile.__init__(self, array.dtype, M, N, op="load", storage="shared")
         
-    def ctype(self):
-        from warp.codegen import Var
-        return f"wp::tile_load_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
 
 class TileUnaryMap(Tile):
 
     def __init__(self, t):
-        Tile.__init__(self, t.dtype, t.M, t.N, "unary_map")
+        Tile.__init__(self, t.dtype, t.M, t.N, op="unary_map", storage="register")
 
         self.t = t
-        
-    def ctype(self):
-        from warp.codegen import Var
-        return f"wp::tile_unary_map_t<{self.t.ctype()}>"
+
 
 class TileBinaryMap(Tile):
 
     def __init__(self, a, b):
-        Tile.__init__(self, a.dtype, a.M, a.N, "binary_map")
+        Tile.__init__(self, a.dtype, a.M, a.N, op="binary_map", storage="register")
 
         self.a = a
         self.b = b
-        
-    def ctype(self):
-        from warp.codegen import Var
-        return f"wp::tile_binary_map_t<{self.a.ctype()}, {self.b.ctype()}>"
 
 
 class TileShared(Tile):
 
     def __init__(self, t):
-        Tile.__init__(self, t.dtype, t.M, t.N, "shared")
+        Tile.__init__(self, t.dtype, t.M, t.N, "shared", storage="shared")
 
         self.t = t
-        
-    def ctype(self):
-        from warp.codegen import Var
-        return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
 
 
 def is_tile(t):

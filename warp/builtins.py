@@ -1729,10 +1729,9 @@ def tile_zeros_dispatch_func(arg_types: Mapping[str, type], return_type: Any, ar
     template_args.append(m.constant)
     template_args.append(n.constant)
 
-    # global shared_memory_id
-    # template_args.append(shared_memory_id)
-
-    # shared_memory_id += 1
+    global shared_memory_id
+    template_args.append(shared_memory_id)
+    shared_memory_id += 1
 
     return ([], template_args)
 
@@ -1791,9 +1790,9 @@ def tile_load_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg
     template_args.append(m)
     template_args.append(n)
 
-    #global shared_memory_id
-    #templates.append(shared_memory_id)
-    #shared_memory_id += 1
+    global shared_memory_id
+    template_args.append(shared_memory_id)
+    shared_memory_id += 1
 
     return ((array, x, y), template_args)
 
@@ -1861,8 +1860,12 @@ def tile_matmul_value_func(arg_types, arg_values):
     if not is_tile(arg_types["b"]):
         raise RuntimeError("tile_matmul() argument 1 must be an tile")
 
-    if not isinstance(arg_types["out"], TileShared):
-        raise RuntimeError("tile_matmul() output must be a fully evaluated tile, e.g.: created using tile_eval()")
+    if not isinstance(arg_types["out"], Tile):
+        raise RuntimeError("tile_matmul() output argument must be a tile")
+
+    if arg_types["out"].storage != "shared":
+        raise RuntimeError("tile_matmul() output argument must have shared memory storage")
+
 
     return None
 
@@ -1876,14 +1879,14 @@ def tile_matmul_dispatch_func(arg_types: Mapping[str, type], return_type: Any, a
     # template_args.append(m)
     # template_args.append(n)
 
-    global shared_memory_id
+    # global shared_memory_id
 
     template_args = []
-    template_args.append(shared_memory_id)
+    # template_args.append(shared_memory_id)
 
-    # matmul makes two allocations (one for each of its arguments)
-    shared_memory_id += 1        
-    shared_memory_id += 1
+    # # matmul makes two allocations (one for each of its arguments)
+    # shared_memory_id += 1        
+    # shared_memory_id += 1
 
     return ((a, b, out), template_args)
 
@@ -1937,38 +1940,18 @@ add_builtin(
 
 
 # does type propagation for load()
-def tile_map_value_func(arg_types, arg_values):
+def tile_unary_map_value_func(arg_types, arg_values):
 
     if arg_types is None:
         return None
 
-    tiles = arg_types["args"]
+    a = arg_types["a"]
 
     # check all args are tiles
-    for a in tiles:
-        if not is_tile(a):
-            raise RuntimeError(f"tile_map() arguments must be tiles, got type {a}")
+    if not is_tile(a):
+        raise RuntimeError(f"tile_map() arguments must be tiles, got type {a}")
 
-    # use first argument to define output type
-    first = tiles[0]
-
-    # check all args have the same type and dimension
-    for a in tiles:
-        if a.dtype != first.dtype:
-            raise RuntimeError(f"tile_map() arguments must all have the same type {first.dtype} != {a.dtype}")
-
-        if a.M != first.M:
-            raise RuntimeError(f"tile_map() arguments must all have the same m dimension {first.M} != {a.M}")
-
-        if a.N != first.N:
-            raise RuntimeError(f"tile_map() arguments must all have the same n dimension {first.N} != {a.N}")
-
-    if len(tiles) == 1:
-        return TileUnaryMap(tiles[0])
-    elif len(tiles) == 2:
-        return TileBinaryMap(tiles[0], tiles[1])
-    else:
-        raise RuntimeError(f"tile_map() must have or two tile arguments")
+    return TileUnaryMap(a)
 
 
 def tile_map_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
@@ -1979,10 +1962,51 @@ def tile_map_dispatch_func(input_types: Mapping[str, type], return_type: Any, ar
 
 add_builtin(
     "tile_map",
-    input_types={"op": Callable, "*args": Any},
-    value_func=tile_map_value_func,
-    dispatch_func=tile_map_dispatch_func,
-    variadic=True,
+    input_types={"op": Callable, "a": Any},
+    value_func=tile_unary_map_value_func,
+    #dispatch_func=tile_map_dispatch_func,
+    #variadic=True,
+    native_func="tile_unary_map",
+    doc="Map the operation onto each element of the tile", 
+    group="Tile Primitives",
+    export=False,
+)
+
+def tile_binary_map_value_func(arg_types, arg_values):
+
+    if arg_types is None:
+        return None
+
+    a = arg_types["a"]
+    b = arg_types["b"]
+
+    # check all args are tiles
+    if not is_tile(a):
+        raise RuntimeError(f"tile_map() arguments must be tiles, got type {a}")
+
+    if not is_tile(b):
+        raise RuntimeError(f"tile_map() arguments must be tiles, got type {b}")
+
+    # use first argument to define output type
+    if a.dtype != b.dtype:
+        raise RuntimeError(f"tile_map() arguments must all have the same type {a.dtype} != {b.dtype}")
+
+    if a.M != b.M:
+        raise RuntimeError(f"tile_map() arguments must all have the same m dimension {a.M} != {b.M}")
+
+    if a.N != b.N:
+        raise RuntimeError(f"tile_map() arguments must all have the same n dimension {a.N} != {b.N}")
+
+    return TileBinaryMap(a, b)
+
+
+add_builtin(
+    "tile_map",
+    input_types={"op": Callable, "a": Any, "b": Any},
+    value_func=tile_binary_map_value_func,
+    #dispatch_func=tile_map_dispatch_func,
+    #variadic=True,
+    native_func="tile_binary_map",
     doc="Map the operation onto each element of the tile", 
     group="Tile Primitives",
     export=False,
@@ -4464,7 +4488,7 @@ def tile_scalar_mul_value_func(arg_types, arg_values):
 
     x = arg_types["x"]
     y = arg_types["y"]
-
+ 
     # tile*scalar
     if is_tile(x):
         if x.dtype != y:

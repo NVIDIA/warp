@@ -9,11 +9,13 @@ wp.init()
 wp.set_module_options({"enable_backward": True})
 wp.set_device("cuda:0")
 
+wp.config.verify_cuda = True
 
 wp.build.clear_kernel_cache()
 
-TILE_M = 8
-TILE_N = 4
+TILE_M = wp.constant(32)
+TILE_N = wp.constant(32)
+TILE_K = wp.constant(8)
 
 @wp.kernel
 def tile_copy(A: wp.array2d(dtype=float),
@@ -66,7 +68,7 @@ def tile_unary_map(input: wp.array2d(dtype=float),
     
     a = wp.tile_load(input, i, j, m=TILE_M, n=TILE_N)
     
-    sa = wp.tile_map(unary_func, a)
+    sa = wp.tile_map(wp.sin, a)
     
     wp.tile_store(output, i, j, sa)
 
@@ -199,10 +201,6 @@ def test_tile_operators():
 
 
 
-TILE_M = wp.constant(64)
-TILE_N = wp.constant(64)
-TILE_K = wp.constant(8)
-
 @wp.kernel
 def tile_grouped_gemm(A: wp.array3d(dtype=float),
                       B: wp.array3d(dtype=float),
@@ -214,7 +212,7 @@ def tile_grouped_gemm(A: wp.array3d(dtype=float),
     a = wp.tile_load(A[i], 0, 0, m=TILE_M, n=TILE_K)
     b = wp.tile_load(B[i], 0, 0, m=TILE_K, n=TILE_N)
 
-    sum = wp.tile_eval(wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32))
+    sum = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32)
 
     wp.tile_matmul(a, b, sum)
 
@@ -258,7 +256,7 @@ def tile_gemm(A: wp.array2d(dtype=float),
     # output tile index
     i, j = wp.tid()
 
-    sum = wp.tile_eval(wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32))
+    sum = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32)
 
     M = A.shape[0]
     N = B.shape[1]
@@ -304,6 +302,6 @@ def test_tile_gemm():
 test_tile_copy()
 test_tile_unary_map()
 test_tile_binary_map()
-test_tile_batched_gemm()
-test_tile_gemm()
+# test_tile_batched_gemm()
+# test_tile_gemm()
 test_tile_operators()

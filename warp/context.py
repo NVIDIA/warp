@@ -1404,9 +1404,9 @@ class ModuleBuilder:
 
         # add headers
         if device == "cpu":
-            source = warp.codegen.cpu_module_header + source
+            source = warp.codegen.cpu_module_header.format(tile_size=self.options["tile_size"]) + source
         else:
-            source = warp.codegen.cuda_module_header + source
+            source = warp.codegen.cuda_module_header.format(tile_size=self.options["tile_size"]) + source
 
         return source
 
@@ -1439,6 +1439,7 @@ class Module:
             "fast_math": False,
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
             "mode": warp.config.mode,
+            "tile_size": 0
         }
 
         # kernel hook lookup per device
@@ -1682,10 +1683,17 @@ class Module:
 
         return hash_recursive(self, visited=set())
 
-    def load(self, device) -> bool:
+    def load(self, device, tile_size=0) -> bool:
         from warp.utils import ScopedTimer
 
         device = get_device(device)
+
+        # re-compile module if tile size (blockdim) changes
+        # todo: it would be better to have a method such as `module.get_kernel(tile_size=N)`
+        # that can return a single kernel instance with a given block size
+        if self.options["tile_size"] != tile_size:
+            self.unload()
+        self.options["tile_size"] = tile_size
 
         if device.is_cpu:
             # check if already loaded
@@ -1695,7 +1703,7 @@ class Module:
             if self.cpu_build_failed:
                 return False
             if not warp.is_cpu_available():
-                raise RuntimeError("Failed to build CPU module because no CPU buildchain was found")
+                raise RuntimeError("Failed to build CPU module because no CPU build chain was found")
         else:
             # check if already loaded
             if device.context in self.cuda_modules:
@@ -4630,7 +4638,7 @@ def launch(
     record_tape=True,
     record_cmd=False,
     max_blocks=0,
-    tile_size=1,
+    tile_size=0,
 ):
     """Launch a Warp kernel on the target device
 
@@ -4650,6 +4658,7 @@ def launch(
         record_cmd: When True the launch will be returned as a ``Launch`` command object, the launch will not occur until the user calls ``cmd.launch()``
         max_blocks: The maximum number of CUDA thread blocks to use. Only has an effect for CUDA kernel launches.
             If negative or zero, the maximum hardware value will be used.
+        tile_size: The number of threads per-program instance
     """
 
     init()
@@ -4704,7 +4713,7 @@ def launch(
 
         # delay load modules, including new overload if needed
         module = kernel.module
-        if not module.load(device):
+        if not module.load(device, tile_size):
             return
 
         # late bind
@@ -4788,7 +4797,7 @@ def launch(
         # record file, lineno, func as metadata
         frame = inspect.currentframe().f_back
         caller = {"file": frame.f_code.co_filename, "lineno": frame.f_lineno, "func": frame.f_code.co_name}
-        runtime.tape.record_launch(kernel, dim, max_blocks, inputs, outputs, device, metadata={"caller": caller})
+        runtime.tape.record_launch(kernel, dim, max_blocks, inputs, outputs, device, tile_size, metadata={"caller": caller})
 
         # detect illegal inter-kernel read/write access patterns if verification flag is set
         if warp.config.verify_autograd_array_access:

@@ -221,7 +221,7 @@ inline CUDA_CALLABLE void tile_matmul_scalar(const TileA& A,
                                              const TileB& B,
                                              const TileC& out)
 {    
-    const int length = size(out);
+    const int length = tile_size(out);
 
     WP_TILE_SYNC();
 
@@ -353,19 +353,15 @@ struct tile_matmul_t
 };
 
 
-template <int Index, typename TileA, typename TileB, typename TileC>
+template <typename TileA, typename TileB, typename TileC>
 void tile_matmul(TileA& a, TileB& b, TileC& c)
 {
     static_assert(wp::is_same<typename TileA::Type, typename TileB::Type>::value, "Error, tile datatypes must match");
     static_assert(TileA::N == TileB::M, "Error, inner dimensions must match");
     static_assert(TileC::M == TileA::M, "Error, first output dimension must match");
     static_assert(TileC::N == TileB::N, "Error, second output dimension must match");
-
-    // load inputs to shared
-    auto a_shared = tile_eval<Index+0>(a);
-    auto b_shared = tile_eval<Index+1>(b);
-    
-    tile_matmul_scalar(a_shared, b_shared, c);
+   
+    tile_matmul_scalar(a, b, c);
 }
 
 

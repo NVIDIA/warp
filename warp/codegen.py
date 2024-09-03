@@ -942,9 +942,10 @@ class Adjoint:
             if isinstance(a, warp.context.Function):
                 # functions don't have a var_ prefix so strip it off here
                 if prefix == "var":
-                    arg_strs.append(a.key)
+                    arg_strs.append(f"{a.namespace}{a.key}")
                 else:
-                    arg_strs.append(f"{prefix}_{a.key}")
+                    arg_strs.append(f"{a.namespace}{prefix}_{a.key}")
+
             elif is_reference(a.type):
                 arg_strs.append(f"{prefix}_{a}")
             elif isinstance(a, Var):
@@ -2602,6 +2603,7 @@ class Adjoint:
 # code generation
 
 cpu_module_header = """
+#define WP_TILE_BLOCK_DIM {tile_size}
 #define WP_NO_CRT
 #include "builtin.h"
 
@@ -2620,6 +2622,7 @@ cpu_module_header = """
 """
 
 cuda_module_header = """
+#define WP_TILE_BLOCK_DIM {tile_size}
 #define WP_NO_CRT
 #include "builtin.h"
 
@@ -3013,10 +3016,6 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
 
     for var in adj.variables:
 
-        # do not predeclare vars with auto type
-        if var.ctype() == "auto":
-            continue
-
         if var.constant is None:
             lines += [f"{var.ctype()} {var.emit()};\n"]
         else:
@@ -3029,8 +3028,10 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
     for var in adj.variables:
         name = var.emit_adj()
         ctype = var.ctype(value_type=True)
-        
-        if ctype != "auto":
+               
+        if is_tile(var.type) and var.type.storage == "shared":
+            lines += [f"{ctype} {name} = wp::tile_alloc_shared<{Var.type_to_ctype(var.type.dtype)},{var.type.M},{var.type.N},{var.type.alloc()}>();\n"]
+        else:
             lines += [f"{ctype} {name} = {{}};\n"]
 
     # forward pass

@@ -129,7 +129,8 @@ class Tape:
                 inputs = launch[3]
                 outputs = launch[4]
                 device = launch[5]
-
+                tile_size = launch[6]
+                
                 adj_inputs = []
                 adj_outputs = []
 
@@ -151,13 +152,14 @@ class Tape:
                     device=device,
                     adjoint=True,
                     max_blocks=max_blocks,
+                    tile_size=tile_size
                 )
 
     # record a kernel launch on the tape
-    def record_launch(self, kernel, dim, max_blocks, inputs, outputs, device, metadata=None):
+    def record_launch(self, kernel, dim, max_blocks, inputs, outputs, device, tile_size=0, metadata=None):
         if metadata is None:
             metadata = {}
-        self.launches.append([kernel, dim, max_blocks, inputs, outputs, device, metadata])
+        self.launches.append([kernel, dim, max_blocks, inputs, outputs, device, tile_size, metadata])
 
     def record_func(self, backward, arrays):
         """
@@ -612,7 +614,7 @@ class ArrayStatsVisitor(TapeVisitor):
         self.array_grad_stats.insert(0, grad_stats)
 
 
-Launch = namedtuple("Launch", ["id", "kernel", "dim", "max_blocks", "inputs", "outputs", "device", "metadata"])
+Launch = namedtuple("Launch", ["id", "kernel", "dim", "max_blocks", "inputs", "outputs", "device", "tile_size", "metadata"])
 RepeatedSequence = namedtuple("RepeatedSequence", ["start", "end", "repetitions"])
 
 
