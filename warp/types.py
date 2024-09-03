@@ -3614,8 +3614,11 @@ class Volume:
         )
         if hasattr(bg_value, "__len__"):
             # vec3, assuming the numpy array is 4D
-            padded_array = np.zeros((target_shape[0], target_shape[1], target_shape[2], 3), dtype=np.single)
-            padded_array[:, :, :, :] = np.array(bg_value)
+            padded_array = np.full(
+                shape=(target_shape[0], target_shape[1], target_shape[2], 3),
+                fill_value=bg_value,
+                dtype=np.single,
+            )
             padded_array[0 : ndarray.shape[0], 0 : ndarray.shape[1], 0 : ndarray.shape[2], :] = ndarray
         else:
             padded_amount = (
