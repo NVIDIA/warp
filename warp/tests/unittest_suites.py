@@ -174,6 +174,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_tape import TestTape
     from warp.tests.test_torch import TestTorch
     from warp.tests.test_transient_module import TestTransientModule
+    from warp.tests.test_triangle_closest_point import TestTriangleClosestPoint
     from warp.tests.test_types import TestTypes
     from warp.tests.test_utils import TestUtils
     from warp.tests.test_vbd import TestVBD
@@ -271,6 +272,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTape,
         TestTorch,
         TestTransientModule,
+        TestTriangleClosestPoint,
         TestTypes,
         TestUtils,
         TestVBD,
