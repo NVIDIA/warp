@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [1.3.3] - 2024-09-04
+
+- Bug fixes
+  - Fix an aliasing issue with zero-copy array initialization from NumPy introduced in Warp 1.3.0.
+  - Fix `wp.Volume.load_from_numpy()` behavior when `bg_value` is a sequence of values.
+
 ## [1.3.2] - 2024-08-30
 
 - Bug fixes

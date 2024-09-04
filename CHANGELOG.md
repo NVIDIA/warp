@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [1.3.3] - 2024-09-04
+
+- Bug fixes
+  - Fix an aliasing issue with zero-copy array initialization from NumPy introduced in Warp 1.3.0.
+  - Fix `wp.Volume.load_from_numpy()` behavior when `bg_value` is a sequence of values.
+
 ## [1.3.2] - 2024-08-30
 
 - Bug fixes
@@ -11,7 +17,6 @@
     will no longer be unloaded before the graph is released.
   - Fix a bug in `wp.sim.collide.triangle_closest_point_barycentric()` where the returned barycentric coordinates may be
     incorrect when the closest point lies on an edge.
-  - Fix an aliasing issue with zero-copy array initialization from NumPy introduced in Warp 1.3.0.
   - Fix 32-bit overflow when array shape is specified using `np.int32`.
   - Fix handling of integer indices in the `input_output_mask` argument to `autograd.jacobian` and
     `autograd.jacobian_fd` ([GH-289](https://github.com/NVIDIA/warp/issues/289)).
@@ -23,17 +28,6 @@
   - Add missing return types for built-in functions.
   - Clarify that atomic operations also return the previous value.
   - Clarify that `wp.bvh_query_aabb()` returns parts that overlap the bounding volume.
-- Fix accuracy of `wp.svd3` with fp64 numbers ([GH-281](https://github.com/NVIDIA/warp/issues/281)).
-- Rename function `plot_kernel_jacobians` to `jacobian_plot` in `autograd` module.
-- Fix module hashing when a kernel argument contained a struct array ([GH-287](https://github.com/NVIDIA/warp/issues/287)).
-- Add support for fp64 `atomic_add`, `atomic_max`, and `atomic_min` ([GH-284](https://github.com/NVIDIA/warp/issues/284)).
-- Add support for stream priorities to hint to the device that it should process pending work
-  in high-priority streams over pending work in low-priority streams when possible
-  ([docs](https://nvidia.github.io/warp/modules/concurrency.html#stream-priorities)).
-- Add `wp.mod()` for vector types ([GH-282](https://github.com/NVIDIA/warp/issues/282)).
-- Expose the modulo operator `%` to Python's runtime scalar and vector types.
-- Fix a bug in `wp.bvh_query_aabb()` ([GH-288](https://github.com/NVIDIA/warp/issues/288)).
-- Fix an aliasing issue with zero-copy array initialization from numpy introduced in 1.3.0
 
 ## [1.3.1] - 2024-07-27
 
