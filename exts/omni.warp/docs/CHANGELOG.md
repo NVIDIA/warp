@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [1.3.3] - 2024-09-04
+
+- Bug fixes
+  - Fix an aliasing issue with zero-copy array initialization from NumPy introduced in Warp 1.3.0.
+  - Fix `wp.Volume.load_from_numpy()` behavior when `bg_value` is a sequence of values.
+
 ## [1.3.2] - 2024-08-30
 
 - Bug fixes
@@ -11,7 +17,6 @@
     will no longer be unloaded before the graph is released.
   - Fix a bug in `wp.sim.collide.triangle_closest_point_barycentric()` where the returned barycentric coordinates may be
     incorrect when the closest point lies on an edge.
-  - Fix an aliasing issue with zero-copy array initialization from NumPy introduced in Warp 1.3.0.
   - Fix 32-bit overflow when array shape is specified using `np.int32`.
   - Fix handling of integer indices in the `input_output_mask` argument to `autograd.jacobian` and
     `autograd.jacobian_fd` ([GH-289](https://github.com/NVIDIA/warp/issues/289)).
