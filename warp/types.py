@@ -1601,6 +1601,9 @@ class array(Array):
         self._array_interface = None
         self.is_transposed = False
 
+        # reference to other array
+        self._ref = None
+
         # canonicalize dtype
         if dtype == int:
             dtype = int32
@@ -1651,9 +1654,6 @@ class array(Array):
                 self._requires_grad = requires_grad
                 if requires_grad:
                     self._alloc_grad()
-
-        # reference to other array
-        self._ref = None
 
     def _init_from_data(self, data, dtype, shape, device, copy, pinned):
         if not hasattr(data, "__len__"):
@@ -2991,7 +2991,7 @@ class Mesh:
 
         Args:
             points (:class:`warp.array`): Array of vertex positions of type :class:`warp.vec3`
-            indices (:class:`warp.array`): Array of triangle indices of type :class:`warp.int32`, should be a 1d array with shape (num_tris, 3)
+            indices (:class:`warp.array`): Array of triangle indices of type :class:`warp.int32`, should be a 1d array with shape (num_tris * 3)
             velocities (:class:`warp.array`): Array of vertex velocities of type :class:`warp.vec3` (optional)
             support_winding_number (bool): If true the mesh will build additional datastructures to support `wp.mesh_query_point_sign_winding_number()` queries
         """
@@ -3529,8 +3529,9 @@ class Volume:
         )
         if hasattr(bg_value, "__len__"):
             # vec3, assuming the numpy array is 4D
-            padded_array = np.array((target_shape[0], target_shape[1], target_shape[2], 3), dtype=np.single)
-            padded_array[:, :, :, :] = np.array(bg_value)
+            padded_array = np.full(
+                shape=(target_shape[0], target_shape[1], target_shape[2], 3), fill_value=bg_value, dtype=np.single
+            )
             padded_array[0 : ndarray.shape[0], 0 : ndarray.shape[1], 0 : ndarray.shape[2], :] = ndarray
         else:
             padded_amount = (
