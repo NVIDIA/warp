@@ -19,6 +19,7 @@
   - Fix an aliasing issue with zero-copy array initialization from NumPy introduced in Warp 1.3.0.
   - Fix `wp.Volume.load_from_numpy()` behavior when `bg_value` is a sequence of values.
 - Fix array in-place op (`+=`, `-=`) adjoints to compute gradients correctly in the backwards pass.
+- `wp.sim.Model.edge_indices` now includes boundary edges
 
 ## [1.3.2] - 2024-08-30
 

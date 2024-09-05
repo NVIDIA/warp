@@ -450,6 +450,9 @@ def eval_bending(
     k = indices[tid, 2]
     l = indices[tid, 3]
 
+    if i == -1 or j == -1 or k == -1 or l == -1:
+        return
+
     rest_angle = rest[tid]
 
     x1 = x[i]
