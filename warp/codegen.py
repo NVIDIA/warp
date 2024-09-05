@@ -2410,9 +2410,66 @@ class Adjoint:
         adj.add_return(adj.return_var)
 
     def emit_AugAssign(adj, node):
-        # replace augmented assignment with assignment statement + binary op
-        new_node = ast.Assign(targets=[node.target], value=ast.BinOp(node.target, node.op, node.value))
-        adj.eval(new_node)
+        lhs = node.target
+
+        # replace augmented assignment with assignment statement + binary op (default behaviour)
+        def make_new_assign_statement():
+            new_node = ast.Assign(targets=[lhs], value=ast.BinOp(lhs, node.op, node.value))
+            adj.eval(new_node)
+
+        if isinstance(lhs, ast.Subscript):
+            rhs = adj.eval(node.value)
+
+            # wp.adjoint[var] appears in custom grad functions, and does not require
+            # special consideration in the AugAssign case
+            if hasattr(lhs.value, "attr") and lhs.value.attr == "adjoint":
+                make_new_assign_statement()
+                return
+
+            target, indices = adj.eval_subscript(lhs)
+
+            target_type = strip_reference(target.type)
+
+            if is_array(target_type):
+                # target_type is not suitable for atomic array accumulation
+                if target_type.dtype not in warp.types.atomic_types:
+                    make_new_assign_statement()
+                    return
+
+                kernel_name = adj.fun_name
+                filename = adj.filename
+                lineno = adj.lineno + adj.fun_lineno
+
+                if isinstance(node.op, ast.Add):
+                    adj.add_builtin_call("atomic_add", [target, *indices, rhs])
+
+                    if warp.config.verify_autograd_array_access:
+                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+
+                elif isinstance(node.op, ast.Sub):
+                    adj.add_builtin_call("atomic_sub", [target, *indices, rhs])
+
+                    if warp.config.verify_autograd_array_access:
+                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                else:
+                    print(f"Warning: in-place op {node.op} is not differentiable")
+
+            # TODO
+            elif type_is_vector(target_type) or type_is_quaternion(target_type) or type_is_matrix(target_type):
+                make_new_assign_statement()
+                return
+
+            else:
+                raise WarpCodegenError("Can only subscript in-place assign array, vector, quaternion, and matrix types")
+
+        # TODO
+        elif isinstance(lhs, ast.Attribute):
+            make_new_assign_statement()
+            return
+
+        else:
+            make_new_assign_statement()
+            return
 
     def emit_Tuple(adj, node):
         # LHS for expressions, such as i, j, k = 1, 2, 3
