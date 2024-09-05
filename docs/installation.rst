@@ -45,7 +45,7 @@ Note that building Warp with the ``--quick`` flag changes the driver requirement
 The quick build skips CUDA backward compatibility, so the minimum required driver is determined by the CUDA Toolkit version.
 Refer to the `latest CUDA Toolkit release notes <https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html>`_
 to find the minimum required driver for different CUDA Toolkit versions
-(e.g., `this table from CUDA Toolkit 12.5 <https://docs.nvidia.com/cuda/archive/12.5.0/cuda-toolkit-release-notes/index.html#id3>`_).
+(e.g., `this table from CUDA Toolkit 12.6 <https://docs.nvidia.com/cuda/archive/12.6.0/cuda-toolkit-release-notes/index.html#id5>`_).
 
 Warp checks the installed driver during initialization and will report a warning if the driver is not suitable, e.g.:
 
