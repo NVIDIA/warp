@@ -36,6 +36,10 @@ import warp.config
 
 def create_value_func(type):
     def value_func(arg_types, arg_values):
+        hint_origin = getattr(type, "__origin__", None)
+        if hint_origin is not None and issubclass(hint_origin, typing.Tuple):
+            return type.__args__
+
         return type
 
     return value_func
