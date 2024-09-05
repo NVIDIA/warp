@@ -83,15 +83,15 @@ def _test_compute_force_element_adjacency(
 ):
     wp.printf("num vertices: %d\n", adjacency.v_adj_edges_offsets.shape[0] - 1)
     for vertex in range(adjacency.v_adj_edges_offsets.shape[0] - 1):
-        num_adj_bending = get_vertex_num_adjacent_edges(vertex, adjacency)
-        for i_bd in range(num_adj_bending):
+        num_adj_edges = get_vertex_num_adjacent_edges(vertex, adjacency)
+        for i_bd in range(num_adj_edges):
             bd_id, v_order = get_vertex_adjacent_edge_id_order(vertex, i_bd, adjacency)
 
             if edge_indices[bd_id, v_order] != vertex:
                 print("Error!!!")
-                wp.printf("vertex: %d | num_adj_bending: %d\n", vertex, num_adj_bending)
+                wp.printf("vertex: %d | num_adj_edges: %d\n", vertex, num_adj_edges)
                 wp.printf("--iBd: %d | ", i_bd)
-                wp.printf("bending id: %d | v_order: %d\n", bd_id, v_order)
+                wp.printf("edge id: %d | v_order: %d\n", bd_id, v_order)
 
         num_adj_faces = get_vertex_num_adjacent_faces(vertex, adjacency)
 
@@ -423,26 +423,24 @@ class VBDIntegrator(Integrator):
 
     def compute_force_element_adjacency(self, model):
         adjacency = ForceElementAdjacencyInfo()
-        bending_edges_array = model.edge_indices.to("cpu")
+        edges_array = model.edge_indices.to("cpu")
 
-        if bending_edges_array.size:
+        if edges_array.size:
             # build vertex-edge adjacency data
             num_vertex_adjacent_edges = wp.zeros(shape=(self.model.particle_count,), dtype=wp.int32, device="cpu")
 
             wp.launch(
                 kernel=self.count_num_adjacent_edges,
-                inputs=[bending_edges_array, num_vertex_adjacent_edges],
+                inputs=[edges_array, num_vertex_adjacent_edges],
                 dim=1,
                 device="cpu",
             )
 
             num_vertex_adjacent_edges = num_vertex_adjacent_edges.numpy()
-            vertex_adjacent_bending_edges_offsets = np.empty(shape=(self.model.particle_count + 1,), dtype=wp.int32)
-            vertex_adjacent_bending_edges_offsets[1:] = np.cumsum(2 * num_vertex_adjacent_edges)[:]
-            vertex_adjacent_bending_edges_offsets[0] = 0
-            adjacency.v_adj_edges_offsets = wp.array(
-                vertex_adjacent_bending_edges_offsets, dtype=wp.int32, device="cpu"
-            )
+            vertex_adjacent_edges_offsets = np.empty(shape=(self.model.particle_count + 1,), dtype=wp.int32)
+            vertex_adjacent_edges_offsets[1:] = np.cumsum(2 * num_vertex_adjacent_edges)[:]
+            vertex_adjacent_edges_offsets[0] = 0
+            adjacency.v_adj_edges_offsets = wp.array(vertex_adjacent_edges_offsets, dtype=wp.int32, device="cpu")
 
             # temporal variables to record how much adjacent edges has been filled to each vertex
             vertex_adjacent_edges_fill_count = wp.zeros(
@@ -450,14 +448,13 @@ class VBDIntegrator(Integrator):
             )
 
             edge_adjacency_array_size = 2 * num_vertex_adjacent_edges.sum()
-            # (bending_edge_id, vertex_order) * num_bending_edges
-            # vertex order: v0: 0, v1: 1, o0: 2, v2: 3
+            # vertex order: o0: 0, o1: 1, v0: 2, v1: 3,
             adjacency.v_adj_edges = wp.empty(shape=(edge_adjacency_array_size,), dtype=wp.int32, device="cpu")
 
             wp.launch(
                 kernel=self.fill_adjacent_edges,
                 inputs=[
-                    bending_edges_array,
+                    edges_array,
                     adjacency.v_adj_edges_offsets,
                     vertex_adjacent_edges_fill_count,
                     adjacency.v_adj_edges,
@@ -568,57 +565,61 @@ class VBDIntegrator(Integrator):
 
     @wp.kernel
     def count_num_adjacent_edges(
-        bending_edges_array: wp.array(dtype=wp.int32, ndim=2), num_vertex_adjacent_edges: wp.array(dtype=wp.int32)
+        edges_array: wp.array(dtype=wp.int32, ndim=2), num_vertex_adjacent_edges: wp.array(dtype=wp.int32)
     ):
-        for edge_id in range(bending_edges_array.shape[0]):
-            v0 = bending_edges_array[edge_id, 0]
-            v1 = bending_edges_array[edge_id, 1]
+        for edge_id in range(edges_array.shape[0]):
+            o0 = edges_array[edge_id, 0]
+            o1 = edges_array[edge_id, 1]
 
-            o0 = bending_edges_array[edge_id, 2]
-            o1 = bending_edges_array[edge_id, 3]
+            v0 = edges_array[edge_id, 2]
+            v1 = edges_array[edge_id, 3]
 
             num_vertex_adjacent_edges[v0] = num_vertex_adjacent_edges[v0] + 1
             num_vertex_adjacent_edges[v1] = num_vertex_adjacent_edges[v1] + 1
 
-            num_vertex_adjacent_edges[o0] = num_vertex_adjacent_edges[o0] + 1
-            num_vertex_adjacent_edges[o1] = num_vertex_adjacent_edges[o1] + 1
+            if o0 != -1:
+                num_vertex_adjacent_edges[o0] = num_vertex_adjacent_edges[o0] + 1
+            if o1 != -1:
+                num_vertex_adjacent_edges[o1] = num_vertex_adjacent_edges[o1] + 1
 
     @wp.kernel
     def fill_adjacent_edges(
-        bending_edges_array: wp.array(dtype=wp.int32, ndim=2),
-        vertex_adjacent_bending_edges_offsets: wp.array(dtype=wp.int32),
+        edges_array: wp.array(dtype=wp.int32, ndim=2),
+        vertex_adjacent_edges_offsets: wp.array(dtype=wp.int32),
         vertex_adjacent_edges_fill_count: wp.array(dtype=wp.int32),
-        vertex_adjacent_bending_edges: wp.array(dtype=wp.int32),
+        vertex_adjacent_edges: wp.array(dtype=wp.int32),
     ):
-        for edge_id in range(bending_edges_array.shape[0]):
-            v0 = bending_edges_array[edge_id, 0]
-            v1 = bending_edges_array[edge_id, 1]
+        for edge_id in range(edges_array.shape[0]):
+            v0 = edges_array[edge_id, 2]
+            v1 = edges_array[edge_id, 3]
 
             fill_count_v0 = vertex_adjacent_edges_fill_count[v0]
-            buffer_offset_v0 = vertex_adjacent_bending_edges_offsets[v0]
-            vertex_adjacent_bending_edges[buffer_offset_v0 + fill_count_v0 * 2] = edge_id
-            vertex_adjacent_bending_edges[buffer_offset_v0 + fill_count_v0 * 2 + 1] = 0
+            buffer_offset_v0 = vertex_adjacent_edges_offsets[v0]
+            vertex_adjacent_edges[buffer_offset_v0 + fill_count_v0 * 2] = edge_id
+            vertex_adjacent_edges[buffer_offset_v0 + fill_count_v0 * 2 + 1] = 2
             vertex_adjacent_edges_fill_count[v0] = fill_count_v0 + 1
 
             fill_count_v1 = vertex_adjacent_edges_fill_count[v1]
-            buffer_offset_v1 = vertex_adjacent_bending_edges_offsets[v1]
-            vertex_adjacent_bending_edges[buffer_offset_v1 + fill_count_v1 * 2] = edge_id
-            vertex_adjacent_bending_edges[buffer_offset_v1 + fill_count_v1 * 2 + 1] = 1
+            buffer_offset_v1 = vertex_adjacent_edges_offsets[v1]
+            vertex_adjacent_edges[buffer_offset_v1 + fill_count_v1 * 2] = edge_id
+            vertex_adjacent_edges[buffer_offset_v1 + fill_count_v1 * 2 + 1] = 3
             vertex_adjacent_edges_fill_count[v1] = fill_count_v1 + 1
 
-            o0 = bending_edges_array[edge_id, 2]
-            fill_count_o0 = vertex_adjacent_edges_fill_count[o0]
-            buffer_offset_o0 = vertex_adjacent_bending_edges_offsets[o0]
-            vertex_adjacent_bending_edges[buffer_offset_o0 + fill_count_o0 * 2] = edge_id
-            vertex_adjacent_bending_edges[buffer_offset_o0 + fill_count_o0 * 2 + 1] = 2
-            vertex_adjacent_edges_fill_count[o0] = fill_count_o0 + 1
+            o0 = edges_array[edge_id, 2]
+            if o0 != -1:
+                fill_count_o0 = vertex_adjacent_edges_fill_count[o0]
+                buffer_offset_o0 = vertex_adjacent_edges_offsets[o0]
+                vertex_adjacent_edges[buffer_offset_o0 + fill_count_o0 * 2] = edge_id
+                vertex_adjacent_edges[buffer_offset_o0 + fill_count_o0 * 2 + 1] = 0
+                vertex_adjacent_edges_fill_count[o0] = fill_count_o0 + 1
 
-            o1 = bending_edges_array[edge_id, 3]
-            fill_count_o1 = vertex_adjacent_edges_fill_count[o1]
-            buffer_offset_o1 = vertex_adjacent_bending_edges_offsets[o1]
-            vertex_adjacent_bending_edges[buffer_offset_o1 + fill_count_o1 * 2] = edge_id
-            vertex_adjacent_bending_edges[buffer_offset_o1 + fill_count_o1 * 2 + 1] = 3
-            vertex_adjacent_edges_fill_count[o1] = fill_count_o1 + 1
+            o1 = edges_array[edge_id, 3]
+            if o1 != -1:
+                fill_count_o1 = vertex_adjacent_edges_fill_count[o1]
+                buffer_offset_o1 = vertex_adjacent_edges_offsets[o1]
+                vertex_adjacent_edges[buffer_offset_o1 + fill_count_o1 * 2] = edge_id
+                vertex_adjacent_edges[buffer_offset_o1 + fill_count_o1 * 2 + 1] = 1
+                vertex_adjacent_edges_fill_count[o1] = fill_count_o1 + 1
 
     @wp.kernel
     def count_num_adjacent_faces(

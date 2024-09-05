@@ -529,7 +529,7 @@ class Model:
         tri_materials (array): Triangle element materials, shape [tri_count, 5], float
         tri_areas (array): Triangle element rest areas, shape [tri_count], float
 
-        edge_indices (array): Bending edge indices, shape [edge_count*4], int
+        edge_indices (array): Bending edge indices, shape [edge_count*4], int, each row is [o0, o1, v1, v2], where v1, v2 are on the edge
         edge_rest_angle (array): Bending edge rest angle, shape [edge_count], float
         edge_bending_properties (array): Bending edge stiffness and damping parameters, shape [edge_count, 2], float
 
@@ -3692,10 +3692,10 @@ class ModelBuilder:
         by the `model.tri_kb` parameter.
 
         Args:
-            i: The index of the first particle
-            j: The index of the second particle
-            k: The index of the third particle
-            l: The index of the fourth particle
+            i: The index of the first particle, i.e., opposite vertex 0
+            j: The index of the second particle, i.e., opposite vertex 1
+            k: The index of the third particle, i.e., vertex 0
+            l: The index of the fourth particle, i.e., vertex 1
             rest: The rest angle across the edge in radians, if not specified it will be computed
 
         Note:
@@ -3743,10 +3743,10 @@ class ModelBuilder:
         by the `model.tri_kb` parameter.
 
         Args:
-            i: The indices of the first particle
-            j: The indices of the second particle
-            k: The indices of the third particle
-            l: The indices of the fourth particle
+            i: The index of the first particle, i.e., opposite vertex 0
+            j: The index of the second particle, i.e., opposite vertex 1
+            k: The index of the third particle, i.e., vertex 0
+            l: The index of the fourth particle, i.e., vertex 1
             rest: The rest angles across the edges in radians, if not specified they will be computed
 
         Note:
@@ -3909,22 +3909,20 @@ class ModelBuilder:
         spring_indices = set()
 
         for _k, e in adj.edges.items():
-            # skip open edges
-            if e.f0 == -1 or e.f1 == -1:
-                continue
-
             self.add_edge(
                 e.o0, e.o1, e.v0, e.v1, edge_ke=edge_ke, edge_kd=edge_kd
             )  # opposite 0, opposite 1, vertex 0, vertex 1
 
-            spring_indices.add((min(e.o0, e.o1), max(e.o0, e.o1)))
-            spring_indices.add((min(e.o0, e.v0), max(e.o0, e.v0)))
-            spring_indices.add((min(e.o0, e.v1), max(e.o0, e.v1)))
+            # skip constraints open edges
+            if e.f0 != -1 and e.f1 != -1:
+                spring_indices.add((min(e.o0, e.o1), max(e.o0, e.o1)))
+                spring_indices.add((min(e.o0, e.v0), max(e.o0, e.v0)))
+                spring_indices.add((min(e.o0, e.v1), max(e.o0, e.v1)))
 
-            spring_indices.add((min(e.o1, e.v0), max(e.o1, e.v0)))
-            spring_indices.add((min(e.o1, e.v1), max(e.o1, e.v1)))
+                spring_indices.add((min(e.o1, e.v0), max(e.o1, e.v0)))
+                spring_indices.add((min(e.o1, e.v1), max(e.o1, e.v1)))
 
-            spring_indices.add((min(e.v0, e.v1), max(e.v0, e.v1)))
+                spring_indices.add((min(e.v0, e.v1), max(e.v0, e.v1)))
 
         if add_springs:
             for i, j in spring_indices:
@@ -4008,7 +4006,7 @@ class ModelBuilder:
         adj = wp.utils.MeshAdjacency(self.tri_indices[start_tri:end_tri], end_tri - start_tri)
 
         edgeinds = np.fromiter(
-            (x for e in adj.edges.values() if e.f0 != -1 and e.f1 != -1 for x in (e.o0, e.o1, e.v0, e.v1)),
+            (x for e in adj.edges.values() for x in (e.o0, e.o1, e.v0, e.v1)),
             int,
         ).reshape(-1, 4)
         self.add_edges(
