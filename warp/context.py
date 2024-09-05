@@ -162,6 +162,11 @@ class Function:
                 else:
                     self.input_types[name] = type
 
+            # Record any default parameter values.
+            if not self.defaults:
+                signature = inspect.signature(func)
+                self.defaults = {k: v.default for k, v in signature.parameters.items() if v.default is not v.empty}
+
         else:
             # builtin function
 
@@ -338,42 +343,44 @@ class Function:
     def get_overload(self, arg_types, kwarg_types):
         assert not self.is_builtin()
 
-        sig = warp.types.get_signature(arg_types, func_name=self.key)
+        for f in self.user_overloads.values():
+            if warp.codegen.func_match_args(f, arg_types, kwarg_types):
+                return f
 
-        f = self.user_overloads.get(sig)
-        if f is not None:
-            return f
-        else:
-            for f in self.user_templates.values():
-                if len(f.input_types) != len(arg_types):
-                    continue
+        for f in self.user_templates.values():
+            if not warp.codegen.func_match_args(f, arg_types, kwarg_types):
+                continue
 
-                # try to match the given types to the function template types
-                template_types = list(f.input_types.values())
-                args_matched = True
+            if len(f.input_types) != len(arg_types):
+                continue
 
-                for i in range(len(arg_types)):
-                    if not warp.types.type_matches_template(arg_types[i], template_types[i]):
-                        args_matched = False
-                        break
+            # try to match the given types to the function template types
+            template_types = list(f.input_types.values())
+            args_matched = True
 
-                if args_matched:
-                    # instantiate this function with the specified argument types
+            for i in range(len(arg_types)):
+                if not warp.types.type_matches_template(arg_types[i], template_types[i]):
+                    args_matched = False
+                    break
 
-                    arg_names = f.input_types.keys()
-                    overload_annotations = dict(zip(arg_names, arg_types))
+            if args_matched:
+                # instantiate this function with the specified argument types
 
-                    ovl = shallowcopy(f)
-                    ovl.adj = warp.codegen.Adjoint(f.func, overload_annotations)
-                    ovl.input_types = overload_annotations
-                    ovl.value_func = None
+                arg_names = f.input_types.keys()
+                overload_annotations = dict(zip(arg_names, arg_types))
 
-                    self.user_overloads[sig] = ovl
+                ovl = shallowcopy(f)
+                ovl.adj = warp.codegen.Adjoint(f.func, overload_annotations)
+                ovl.input_types = overload_annotations
+                ovl.value_func = None
 
-                    return ovl
+                sig = warp.types.get_signature(arg_types, func_name=self.key)
+                self.user_overloads[sig] = ovl
 
-            # failed  to find overload
-            return None
+                return ovl
+
+        # failed  to find overload
+        return None
 
     def __repr__(self):
         inputs_str = ", ".join([f"{k}: {warp.types.type_repr(v)}" for k, v in self.input_types.items()])
