@@ -603,6 +603,82 @@ def cw_div(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[A
 
 
 @over
+def vector(*args: Scalar, length: int32, dtype: Scalar) -> Vector[Any, Scalar]:
+    """Construct a vector of given length and dtype."""
+    ...
+
+
+@over
+def matrix(pos: Vector[3, Float], rot: Quaternion[Float], scale: Vector[3, Float], dtype: Float) -> Matrix[4, 4, Float]:
+    """Construct a 4x4 transformation matrix that applies the transformations as
+    Translation(pos)*Rotation(rot)*Scaling(scale) when applied to column vectors, i.e.: y = (TRS)*x
+    """
+    ...
+
+
+@over
+def matrix(*args: Scalar, shape: Tuple[int, int], dtype: Scalar) -> Matrix[Any, Any, Scalar]:
+    """Construct a matrix. If the positional ``arg_types`` are not given, then matrix will be zero-initialized."""
+    ...
+
+
+@over
+def identity(n: int32, dtype: Scalar) -> Matrix[Any, Any, Scalar]:
+    """Create an identity matrix with shape=(n,n) with the type given by ``dtype``."""
+    ...
+
+
+@over
+def svd3(A: Matrix[3, 3, Float], U: Matrix[3, 3, Float], sigma: Vector[3, Float], V: Matrix[3, 3, Scalar]):
+    """Compute the SVD of a 3x3 matrix ``A``. The singular values are returned in ``sigma``,
+    while the left and right basis vectors are returned in ``U`` and ``V``.
+    """
+    ...
+
+
+@over
+def qr3(A: Matrix[3, 3, Float], Q: Matrix[3, 3, Float], R: Matrix[3, 3, Float]):
+    """Compute the QR decomposition of a 3x3 matrix ``A``. The orthogonal matrix is returned in ``Q``,
+    while the upper triangular matrix is returned in ``R``.
+    """
+    ...
+
+
+@over
+def eig3(A: Matrix[3, 3, Float], Q: Matrix[3, 3, Float], d: Vector[3, Float]):
+    """Compute the eigendecomposition of a 3x3 matrix ``A``. The eigenvectors are returned as the columns of ``Q``,
+    while the corresponding eigenvalues are returned in ``d``.
+    """
+    ...
+
+
+@over
+def quaternion(dtype: Float) -> Quaternion[Float]:
+    """Construct a zero-initialized quaternion. Quaternions are laid out as
+    [ix, iy, iz, r], where ix, iy, iz are the imaginary part, and r the real part.
+    """
+    ...
+
+
+@over
+def quaternion(x: Float, y: Float, z: Float, w: Float) -> Quaternion[Float]:
+    """Create a quaternion using the supplied components (type inferred from component type)."""
+    ...
+
+
+@over
+def quaternion(ijk: Vector[3, Float], real: Float, dtype: Float) -> Quaternion[Float]:
+    """Create a quaternion using the supplied vector/scalar (type inferred from scalar type)."""
+    ...
+
+
+@over
+def quaternion(quat: Quaternion[Float], dtype: Float) -> Quaternion[Float]:
+    """Construct a quaternion of type dtype from another quaternion of a different dtype."""
+    ...
+
+
+@over
 def quat_identity(dtype: Float) -> quatf:
     """Construct an identity quaternion with zero imaginary part and real part of 1.0"""
     ...
@@ -659,6 +735,12 @@ def quat_slerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaterni
 @over
 def quat_to_matrix(quat: Quaternion[Float]) -> Matrix[3, 3, Float]:
     """Convert a quaternion to a 3x3 rotation matrix."""
+    ...
+
+
+@over
+def transformation(pos: Vector[3, Float], rot: Quaternion[Float], dtype: Float) -> Transformation[Float]:
+    """Construct a rigid-body transformation with translation part ``pos`` and rotation ``rot``."""
     ...
 
 
@@ -725,6 +807,30 @@ def transform_vector(mat: Matrix[4, 4, Float], vec: Vector[3, Float]) -> Vector[
 @over
 def transform_inverse(xform: Transformation[Float]) -> Transformation[Float]:
     """Compute the inverse of the transformation ``xform``."""
+    ...
+
+
+@over
+def spatial_vector(dtype: Float) -> Vector[6, Float]:
+    """Zero-initialize a 6D screw vector."""
+    ...
+
+
+@over
+def spatial_vector(w: Vector[3, Float], v: Vector[3, Float], dtype: Float) -> Vector[6, Float]:
+    """Construct a 6D screw vector from two 3D vectors."""
+    ...
+
+
+@over
+def spatial_vector(wx: Float, wy: Float, wz: Float, vx: Float, vy: Float, vz: Float, dtype: Float) -> Vector[6, Float]:
+    """Construct a 6D screw vector from six values."""
+    ...
+
+
+@over
+def spatial_adjoint(r: Matrix[3, 3, Float], s: Matrix[3, 3, Float]) -> Matrix[6, 6, Float]:
+    """Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks."""
     ...
 
 
@@ -806,6 +912,282 @@ def mlp(
 
 
 @over
+def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> bvh_query_t:
+    """Construct an axis-aligned bounding box query against a BVH object.
+
+    This query can be used to iterate over all bounds inside a BVH.
+
+    :param id: The BVH identifier
+    :param low: The lower bound of the bounding box in BVH space
+    :param high: The upper bound of the bounding box in BVH space
+    """
+    ...
+
+
+@over
+def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> bvh_query_t:
+    """Construct a ray query against a BVH object.
+
+    This query can be used to iterate over all bounds that intersect the ray.
+
+    :param id: The BVH identifier
+    :param start: The start of the ray in BVH space
+    :param dir: The direction of the ray in BVH space
+    """
+    ...
+
+
+@over
+def bvh_query_next(query: bvh_query_t, index: int32) -> bool:
+    """Move to the next bound returned by the query.
+    The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.
+    """
+    ...
+
+
+@over
+def mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> mesh_query_point_t:
+    """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
+
+    Identifies the sign of the distance using additional ray-casts to determine if the point is inside or outside.
+    This method is relatively robust, but does increase computational cost.
+    See below for additional sign determination methods.
+
+    :param id: The mesh identifier
+    :param point: The point in space to query
+    :param max_dist: Mesh faces above this distance will not be considered by the query
+    """
+    ...
+
+
+@over
+def mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32) -> mesh_query_point_t:
+    """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
+
+    This method does not compute the sign of the point (inside/outside) which makes it faster than other point query methods.
+
+    :param id: The mesh identifier
+    :param point: The point in space to query
+    :param max_dist: Mesh faces above this distance will not be considered by the query
+    """
+    ...
+
+
+@over
+def mesh_query_furthest_point_no_sign(id: uint64, point: vec3f, min_dist: float32) -> mesh_query_point_t:
+    """Computes the furthest point on the mesh with identifier `id` to the given point in space.
+
+    This method does not compute the sign of the point (inside/outside).
+
+    :param id: The mesh identifier
+    :param point: The point in space to query
+    :param min_dist: Mesh faces below this distance will not be considered by the query
+    """
+    ...
+
+
+@over
+def mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, epsilon: float32) -> mesh_query_point_t:
+    """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
+
+    Identifies the sign of the distance (inside/outside) using the angle-weighted pseudo normal.
+    This approach to sign determination is robust for well conditioned meshes that are watertight and non-self intersecting.
+    It is also comparatively fast to compute.
+
+    :param id: The mesh identifier
+    :param point: The point in space to query
+    :param max_dist: Mesh faces above this distance will not be considered by the query
+    :param epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a
+                    fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3
+    """
+    ...
+
+
+@over
+def mesh_query_point_sign_winding_number(
+    id: uint64, point: vec3f, max_dist: float32, accuracy: float32, threshold: float32
+) -> mesh_query_point_t:
+    """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given point in space.
+
+    Identifies the sign using the winding number of the mesh relative to the query point. This method of sign determination is robust for poorly conditioned meshes
+    and provides a smooth approximation to sign even when the mesh is not watertight. This method is the most robust and accurate of the sign determination meshes
+    but also the most expensive.
+
+    .. note:: The :class:`Mesh` object must be constructed with ``support_winding_number=True`` for this method to return correct results.
+
+    :param id: The mesh identifier
+    :param point: The point in space to query
+    :param max_dist: Mesh faces above this distance will not be considered by the query
+    :param accuracy: Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation, default 2.0
+    :param threshold: The threshold of the winding number to be considered inside, default 0.5
+    """
+    ...
+
+
+@over
+def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32) -> mesh_query_ray_t:
+    """Computes the closest ray hit on the :class:`Mesh` with identifier ``id``.
+
+    :param id: The mesh identifier
+    :param start: The start point of the ray
+    :param dir: The ray direction (should be normalized)
+    :param max_t: The maximum distance along the ray to check for intersections
+    """
+    ...
+
+
+@over
+def mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> mesh_query_aabb_t:
+    """Construct an axis-aligned bounding box query against a :class:`Mesh`.
+
+    This query can be used to iterate over all triangles inside a volume.
+
+    :param id: The mesh identifier
+    :param low: The lower bound of the bounding box in mesh space
+    :param high: The upper bound of the bounding box in mesh space
+    """
+    ...
+
+
+@over
+def mesh_query_aabb_next(query: mesh_query_aabb_t, index: int32) -> bool:
+    """Move to the next triangle overlapping the query bounding box.
+
+    The index of the current face is stored in ``index``, returns ``False`` if there are no more overlapping triangles.
+    """
+    ...
+
+
+@over
+def mesh_eval_position(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f:
+    """Evaluates the position on the :class:`Mesh` given a face index and barycentric coordinates."""
+    ...
+
+
+@over
+def mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f:
+    """Evaluates the velocity on the :class:`Mesh` given a face index and barycentric coordinates."""
+    ...
+
+
+@over
+def hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> hash_grid_query_t:
+    """Construct a point query against a :class:`HashGrid`.
+
+    This query can be used to iterate over all neighboring point within a fixed radius from the query point.
+    """
+    ...
+
+
+@over
+def hash_grid_query_next(query: hash_grid_query_t, index: int32) -> bool:
+    """Move to the next point in the hash grid query.
+
+    The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.
+    """
+    ...
+
+
+@over
+def hash_grid_point_id(id: uint64, index: int32) -> int:
+    """Return the index of a point in the :class:`HashGrid`.
+
+    This can be used to reorder threads such that grid traversal occurs in a spatially coherent order.
+
+    Returns -1 if the :class:`HashGrid` has not been reserved.
+    """
+    ...
+
+
+@over
+def intersect_tri_tri(v0: vec3f, v1: vec3f, v2: vec3f, u0: vec3f, u1: vec3f, u2: vec3f) -> int:
+    """Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method.
+
+    Returns > 0 if triangles intersect.
+    """
+    ...
+
+
+@over
+def mesh_get(id: uint64) -> Mesh:
+    """Retrieves the mesh given its index."""
+    ...
+
+
+@over
+def mesh_eval_face_normal(id: uint64, face: int32) -> vec3f:
+    """Evaluates the face normal the mesh given a face index."""
+    ...
+
+
+@over
+def mesh_get_point(id: uint64, index: int32) -> vec3f:
+    """Returns the point of the mesh given a index."""
+    ...
+
+
+@over
+def mesh_get_velocity(id: uint64, index: int32) -> vec3f:
+    """Returns the velocity of the mesh given a index."""
+    ...
+
+
+@over
+def mesh_get_index(id: uint64, index: int32) -> int:
+    """Returns the point-index of the mesh given a face-vertex index."""
+    ...
+
+
+@over
+def closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon: float32) -> vec3f:
+    """Finds the closest points between two edges.
+
+    Returns barycentric weights to the points on each edge, as well as the closest distance between the edges.
+
+    :param p1: First point of first edge
+    :param q1: Second point of first edge
+    :param p2: First point of second edge
+    :param q2: Second point of second edge
+    :param epsilon: Zero tolerance for determining if points in an edge are degenerate.
+    :param out: vec3 output containing (s,t,d), where `s` in [0,1] is the barycentric weight for the first edge, `t` is the barycentric weight for the second edge, and `d` is the distance between the two edges at these two closest points.
+    """
+    ...
+
+
+@over
+def volume_sample(id: uint64, uvw: vec3f, sampling_mode: int32, dtype: Any) -> Any:
+    """Sample the volume of type `dtype` given by ``id`` at the volume local-space point ``uvw``.
+
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`
+    """
+    ...
+
+
+@over
+def volume_sample_grad(id: uint64, uvw: vec3f, sampling_mode: int32, grad: Any, dtype: Any) -> Any:
+    """Sample the volume given by ``id`` and its gradient at the volume local-space point ``uvw``.
+
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`
+    """
+    ...
+
+
+@over
+def volume_lookup(id: uint64, i: int32, j: int32, k: int32, dtype: Any) -> Any:
+    """Returns the value of voxel with coordinates ``i``, ``j``, ``k`` for a volume of type type `dtype`.
+
+    If the voxel at this index does not exist, this function returns the background value.
+    """
+    ...
+
+
+@over
+def volume_store(id: uint64, i: int32, j: int32, k: int32, value: Any):
+    """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``."""
+    ...
+
+
+@over
 def volume_sample_f(id: uint64, uvw: vec3f, sampling_mode: int32) -> float:
     """Sample the volume given by ``id`` at the volume local-space point ``uvw``.
 
@@ -880,6 +1262,32 @@ def volume_lookup_i(id: uint64, i: int32, j: int32, k: int32) -> int:
 @over
 def volume_store_i(id: uint64, i: int32, j: int32, k: int32, value: int32):
     """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``."""
+    ...
+
+
+@over
+def volume_sample_index(id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data: Array[Any], background: Any) -> Any:
+    """Sample the volume given by ``id`` at the volume local-space point ``uvw``.
+
+    Values for allocated voxels are read from the ``voxel_data`` array, and `background` is used as the value of non-existing voxels.
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR`.
+    This function is available for both index grids and classical volumes.
+
+    """
+    ...
+
+
+@over
+def volume_sample_grad_index(
+    id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data: Array[Any], background: Any, grad: Any
+) -> Any:
+    """Sample the volume given by ``id`` and its gradient at the volume local-space point ``uvw``.
+
+    Values for allocated voxels are read from the ``voxel_data`` array, and `background` is used as the value of non-existing voxels.
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR`.
+    This function is available for both index grids and classical volumes.
+
+    """
     ...
 
 
@@ -1103,6 +1511,30 @@ def curlnoise(state: uint32, xyzt: vec4f, octaves: uint32, lacunarity: float32, 
 @over
 def printf(fmt: str, *args: Any):
     """Allows printing formatted strings using C-style format specifiers."""
+    ...
+
+
+@over
+def print(value: Any):
+    """Print variable to stdout"""
+    ...
+
+
+@over
+def breakpoint():
+    """Debugger breakpoint"""
+    ...
+
+
+@over
+def tid() -> int:
+    """Return the current thread index for a 1D kernel launch.
+
+    Note that this is the *global* index of the thread in the range [0, dim)
+    where dim is the parameter passed to kernel launch.
+
+    This function may not be called from user-defined Warp functions.
+    """
     ...
 
 

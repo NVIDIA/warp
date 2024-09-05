@@ -743,19 +743,19 @@ Transformations
 
 Spatial Math
 ---------------
-.. py:function:: spatial_vector(dtype: Float)
+.. py:function:: spatial_vector(dtype: Float) -> Vector[6,Float]
 
     Zero-initialize a 6D screw vector.
 
 
-.. py:function:: spatial_vector(w: Vector[3,Float], v: Vector[3,Float], dtype: Float)
+.. py:function:: spatial_vector(w: Vector[3,Float], v: Vector[3,Float], dtype: Float) -> Vector[6,Float]
     :noindex:
     :nocontentsentry:
 
     Construct a 6D screw vector from two 3D vectors.
 
 
-.. py:function:: spatial_vector(wx: Float, wy: Float, wz: Float, vx: Float, vy: Float, vz: Float, dtype: Float)
+.. py:function:: spatial_vector(wx: Float, wy: Float, wz: Float, vx: Float, vy: Float, vz: Float, dtype: Float) -> Vector[6,Float]
     :noindex:
     :nocontentsentry:
 
