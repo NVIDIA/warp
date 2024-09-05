@@ -938,7 +938,6 @@ inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, in
     FP_VERIFY_ADJ_4(value, adj_value)
 }
 
-
 template<typename T>
 inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret)
 {
