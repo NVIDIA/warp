@@ -2530,9 +2530,6 @@ class Adjoint:
         if path[0] in adj.symbols:
             return None
 
-        if path[0] in __builtins__:
-            return __builtins__[path[0]]
-
         # look up in closure/global variables
         expr = adj.resolve_external_reference(path[0])
 
@@ -2540,7 +2537,11 @@ class Adjoint:
         if expr is None:
             expr = getattr(warp, path[0], None)
 
-        if expr:
+        # look up in builtins
+        if expr is None:
+            expr = __builtins__.get(path[0])
+
+        if expr is not None:
             for i in range(1, len(path)):
                 if hasattr(expr, path[i]):
                     expr = getattr(expr, path[i])

@@ -507,6 +507,17 @@ def test_call_syntax():
     wp.expect_eq(wp.matrix(rot=rot, pos=pos, dtype=wp.float32, scale=scale), expected_matrix)
 
 
+# test shadowing builtin functions
+@wp.func
+def sum(a: wp.vec3) -> float:
+    return a[0] + a[1] + a[2]
+
+
+@wp.kernel
+def test_shadow_builtin():
+    wp.expect_eq(sum(wp.vec3(1.0)), 3.0)
+
+
 class TestCodeGen(unittest.TestCase):
     pass
 
@@ -645,6 +656,7 @@ add_function_test(
 )
 
 add_kernel_test(TestCodeGen, name="test_call_syntax", kernel=test_call_syntax, dim=1, devices=devices)
+add_kernel_test(TestCodeGen, name="test_shadow_builtin", kernel=test_shadow_builtin, dim=1, devices=devices)
 
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@
 - Add support for quaternion indexing (e.g. `q.w`).
 - Add support for default argument values for user functions decorated with `wp.func`.
 - Fix for `wp.func` erroring out when defining a `Tuple` as a return type hint ([GH-302](https://github.com/NVIDIA/warp/issues/302)).
+- Allow shadowing builtin functions ([GH-308](https://github.com/NVIDIA/warp/issues/308))
 
 ## [1.3.3] - 2024-09-04
 
