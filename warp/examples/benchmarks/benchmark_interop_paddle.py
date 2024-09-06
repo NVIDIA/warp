@@ -153,6 +153,6 @@ num_iters = 100000
 
 for warp_dtype, kernel in params:
     print(f"\ndtype={wp.context.type_str(warp_dtype)}")
-    test_from_paddle(kernel, num_iters, 10, "gpu:0", warp_dtype=warp_dtype)
-    test_array_ctype_from_paddle(kernel, num_iters, 10, "gpu:0", warp_dtype=warp_dtype)
-    test_direct_from_paddle(kernel, num_iters, 10, "gpu:0", warp_dtype=warp_dtype)
+    test_from_paddle(kernel, num_iters, 10, "cuda:0", warp_dtype=warp_dtype)
+    test_array_ctype_from_paddle(kernel, num_iters, 10, "cuda:0", warp_dtype=warp_dtype)
+    test_direct_from_paddle(kernel, num_iters, 10, "cuda:0", warp_dtype=warp_dtype)

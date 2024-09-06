@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 import ctypes
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Union
 
 import numpy
 
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 
 # return the warp device corresponding to a paddle device
-def device_from_paddle(paddle_device) -> warp.context.Device:
+def device_from_paddle(paddle_device: Union[paddle.base.libpaddle.Place, str]) -> warp.context.Device:
     """Return the Warp device corresponding to a Paddle device.
 
     Args:
@@ -41,11 +41,9 @@ def device_from_paddle(paddle_device) -> warp.context.Device:
         import paddle
 
         try:
-            if isinstance(paddle_device, (paddle.CUDAPlace, paddle.CUDAPinnedPlace)):
-                return warp.context.runtime.cuda_devices[paddle_device.get_device_id()]
-            elif paddle_device.is_gpu_place():
+            if paddle_device.is_gpu_place():
                 return warp.context.runtime.cuda_devices[paddle_device.gpu_device_id()]
-            elif isinstance(paddle_device, paddle.CPUPlace) or paddle_device.is_cpu_place():
+            elif paddle_device.is_cpu_place():
                 return warp.context.runtime.cpu_device
             else:
                 raise RuntimeError(f"Unsupported Paddle device type {paddle_device}")
@@ -53,9 +51,7 @@ def device_from_paddle(paddle_device) -> warp.context.Device:
             import paddle
 
             if not isinstance(paddle_device, paddle.base.libpaddle.Place):
-                raise ValueError(
-                    f"Argument must be a paddle.base.libpaddle.Place object or a string, but got {paddle_device}"
-                ) from e
+                raise ValueError("Argument must be a paddle.base.libpaddle.Place object or a string") from e
             raise
 
 
@@ -100,11 +96,11 @@ def dtype_to_paddle(warp_dtype):
             warp.int32: paddle.int32,
             warp.int64: paddle.int64,
             warp.uint8: paddle.uint8,
+            warp.bool: paddle.bool,
             # paddle doesn't support unsigned ints bigger than 8 bits
             warp.uint16: paddle.int16,
             warp.uint32: paddle.int32,
             warp.uint64: paddle.int64,
-            warp.bool: paddle.bool,
         }
 
     paddle_dtype = dtype_to_paddle.type_map.get(warp_dtype)
@@ -153,7 +149,7 @@ def dtype_from_paddle(paddle_dtype):
         raise TypeError(f"Cannot convert {paddle_dtype} to a Warp type")
 
 
-def dtype_is_compatible(paddle_dtype, warp_dtype) -> bool:
+def dtype_is_compatible(paddle_dtype: paddle.dtype, warp_dtype) -> bool:
     """Evaluates whether the given paddle dtype is compatible with the given Warp dtype."""
     # initialize lookup table on first call to defer paddle import
     if dtype_is_compatible.compatible_sets is None:
@@ -196,14 +192,19 @@ dtype_is_compatible.compatible_sets = None
 
 # wrap a paddle tensor to a wp array, data is not copied
 def from_paddle(
-    t: paddle.Tensor, dtype=None, requires_grad: bool = None, grad: bool = None, return_ctype: bool = False
-):
+    t: paddle.Tensor,
+    dtype: Optional[paddle.dtype] = None,
+    requires_grad: Optional[bool] = None,
+    grad: Optional[paddle.Tensor] = None,
+    return_ctype: bool = False,
+) -> warp.array:
     """Convert a Paddle tensor to a Warp array without copying the data.
 
     Args:
         t (paddle.Tensor): The paddle tensor to wrap.
         dtype (warp.dtype, optional): The target data type of the resulting Warp array. Defaults to the tensor value type mapped to a Warp array value type.
         requires_grad (bool, optional): Whether the resulting array should wrap the tensor's gradient, if it exists (the grad tensor will be allocated otherwise). Defaults to the tensor's `requires_grad` value.
+        grad (paddle.Tensor, optional): The grad attached to given tensor. Defaults to None.
         return_ctype (bool, optional): Whether to return a low-level array descriptor instead of a ``wp.array`` object (faster).  The descriptor can be passed to Warp kernels.
 
     Returns:
@@ -279,8 +280,8 @@ def from_paddle(
             # allocate a zero-filled gradient if it doesn't exist
             # Note: we use Warp to allocate the shared gradient with compatible strides
             grad = warp.zeros(dtype=dtype, shape=shape, strides=strides, device=device_from_paddle(t.place))
-            paddle_grad = to_paddle(grad, requires_grad=False)
-            t.grad_ = paddle_grad
+            # use .grad_ for zero-copy
+            t.grad_ = to_paddle(grad, requires_grad=False)
             grad_ptr = grad.ptr
 
     if return_ctype:
@@ -313,7 +314,7 @@ def from_paddle(
         return a
 
 
-def to_paddle(a, requires_grad: bool = None):
+def to_paddle(a: warp.array, requires_grad: bool = None) -> paddle.Tensor:
     """
     Convert a Warp array to a Paddle tensor without copying the data.
 
@@ -339,20 +340,21 @@ def to_paddle(a, requires_grad: bool = None):
         # that support the __array_interface__ protocol
         # in this case we need to workaround by going
         # to an ndarray first, see https://pearu.github.io/array_interface_pypaddle.html
-        t = paddle.to_tensor(numpy.asarray(a))
+        t = paddle.to_tensor(numpy.asarray(a), place="cpu")
         t.stop_gradient = not requires_grad
         if requires_grad and a.requires_grad:
-            t.grad_ = paddle.to_tensor(numpy.asarray(a.grad))
+            # use .grad_ for zero-copy
+            t.grad_ = paddle.to_tensor(numpy.asarray(a.grad), place="cpu")
         return t
 
     elif a.device.is_cuda:
         # Paddle does support the __cuda_array_interface__
         # correctly, but we must be sure to maintain a reference
         # to the owning object to prevent memory allocs going out of scope
-        t = paddle.utils.dlpack.from_dlpack(warp.to_dlpack(a))
-        t = t.to(device=device_to_paddle(a.device))
+        t = paddle.utils.dlpack.from_dlpack(warp.to_dlpack(a)).to(device=device_to_paddle(a.device))
         t.stop_gradient = not requires_grad
         if requires_grad and a.requires_grad:
+            # use .grad_ for zero-copy
             t.grad_ = paddle.utils.dlpack.from_dlpack(warp.to_dlpack(a.grad)).to(device=device_to_paddle(a.device))
         return t
 

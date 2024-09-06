@@ -287,15 +287,15 @@ def test_dlpack_warp_to_paddle_v2(test, device):
     test.assertEqual(a.shape, tuple(t.shape))
     test.assertEqual(a.strides, tuple(s * item_size for s in t.strides))
 
-    assert_np_equal(a.numpy(), t.cpu().numpy())
+    assert_np_equal(a.numpy(), t.numpy())
 
     wp.launch(inc, dim=a.size, inputs=[a], device=device)
 
-    assert_np_equal(a.numpy(), t.cpu().numpy())
+    assert_np_equal(a.numpy(), t.numpy())
 
     t += 1
 
-    assert_np_equal(a.numpy(), t.cpu().numpy())
+    assert_np_equal(a.numpy(), t.numpy())
 
 
 def test_dlpack_paddle_to_warp(test, device):
@@ -314,15 +314,15 @@ def test_dlpack_paddle_to_warp(test, device):
     test.assertEqual(a.shape, tuple(t.shape))
     test.assertEqual(a.strides, tuple(s * item_size for s in t.stride()))
 
-    assert_np_equal(a.numpy(), t.cpu().numpy())
+    assert_np_equal(a.numpy(), t.numpy())
 
     wp.launch(inc, dim=a.size, inputs=[a], device=device)
 
-    assert_np_equal(a.numpy(), t.cpu().numpy())
+    assert_np_equal(a.numpy(), t.numpy())
 
     t += 1
 
-    assert_np_equal(a.numpy(), t.cpu().numpy())
+    assert_np_equal(a.numpy(), t.numpy())
 
 
 def test_dlpack_paddle_to_warp_v2(test, device):
@@ -343,15 +343,15 @@ def test_dlpack_paddle_to_warp_v2(test, device):
     test.assertEqual(a.shape, tuple(t.shape))
     test.assertEqual(a.strides, tuple(s * item_size for s in t.stride()))
 
-    assert_np_equal(a.numpy(), t.cpu().numpy())
+    assert_np_equal(a.numpy(), t.numpy())
 
     wp.launch(inc, dim=a.size, inputs=[a], device=device)
 
-    assert_np_equal(a.numpy(), t.cpu().numpy())
+    assert_np_equal(a.numpy(), t.numpy())
 
     t += 1
 
-    assert_np_equal(a.numpy(), t.cpu().numpy())
+    assert_np_equal(a.numpy(), t.numpy())
 
 
 def test_dlpack_torch_to_warp(test, device):

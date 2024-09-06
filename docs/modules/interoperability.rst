@@ -462,6 +462,289 @@ Here is an example of an operation with three inputs and two outputs::
     print(x)
     print(y)
 
+.. _paddle-interop:
+
+Paddle
+-------
+
+Warp provides helper functions to convert arrays to/from Paddle::
+
+    w = wp.array([1.0, 2.0, 3.0], dtype=float, device="cpu")
+
+    # convert to Torch tensor
+    t = wp.to_paddle(w)
+
+    # convert from Torch tensor
+    w = wp.from_paddle(t)
+
+These helper functions allow the conversion of Warp arrays to/from Paddle tensors without copying the underlying data.
+At the same time, if available, gradient arrays and tensors are converted to/from Paddle autograd tensors, allowing the use of Warp arrays
+in Paddle autograd computations.
+
+.. autofunction:: warp.from_paddle
+.. autofunction:: warp.to_paddle
+.. autofunction:: warp.device_from_paddle
+.. autofunction:: warp.device_to_paddle
+.. autofunction:: warp.dtype_from_paddle
+.. autofunction:: warp.dtype_to_paddle
+
+To convert a Paddle CUDA stream to a Warp CUDA stream and vice versa, Warp provides the following functions:
+
+.. autofunction:: warp.stream_from_paddle
+
+Example: Optimization using ``warp.from_paddle()``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+An example usage of minimizing a loss function over an array of 2D points written in Warp via Paddle's Adam optimizer
+using :func:`warp.from_paddle` is as follows::
+
+    import warp as wp
+    import paddle
+
+    # init warp context at beginning
+    wp.context.init()
+
+    @wp.kernel()
+    def loss(xs: wp.array(dtype=float, ndim=2), l: wp.array(dtype=float)):
+        tid = wp.tid()
+        wp.atomic_add(l, 0, xs[tid, 0] ** 2.0 + xs[tid, 1] ** 2.0)
+
+    # indicate requires_grad so that Warp can accumulate gradients in the grad buffers
+    xs = paddle.randn([100, 2])
+    xs.stop_gradient = False
+    l = paddle.zeros([1])
+    l.stop_gradient = False
+    opt = paddle.optimizer.Adam(learning_rate=0.1, parameters=[xs])
+
+    wp_xs = wp.from_paddle(xs)
+    wp_l = wp.from_paddle(l)
+
+    tape = wp.Tape()
+    with tape:
+        # record the loss function kernel launch on the tape
+        wp.launch(loss, dim=len(xs), inputs=[wp_xs], outputs=[wp_l], device=wp_xs.device)
+
+    for i in range(500):
+        tape.zero()
+        tape.backward(loss=wp_l)  # compute gradients
+        # now xs.grad will be populated with the gradients computed by Warp
+        opt.step()  # update xs (and thereby wp_xs)
+
+        # these lines are only needed for evaluating the loss
+        # (the optimization just needs the gradient, not the loss value)
+        wp_l.zero_()
+        wp.launch(loss, dim=len(xs), inputs=[wp_xs], outputs=[wp_l], device=wp_xs.device)
+        print(f"{i}\tloss: {l.item()}")
+
+Example: Optimization using ``warp.to_paddle``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Less code is needed when we declare the optimization variables directly in Warp and use :func:`warp.to_paddle` to convert them to Paddle tensors.
+Here, we revisit the same example from above where now only a single conversion to a paddle tensor is needed to supply Adam with the optimization variables::
+
+    import warp as wp
+    import numpy as np
+    import paddle
+
+    # init warp context at beginning
+    wp.context.init()
+
+    @wp.kernel()
+    def loss(xs: wp.array(dtype=float, ndim=2), l: wp.array(dtype=float)):
+        tid = wp.tid()
+        wp.atomic_add(l, 0, xs[tid, 0] ** 2.0 + xs[tid, 1] ** 2.0)
+
+    # initialize the optimization variables in Warp
+    xs = wp.array(np.random.randn(100, 2), dtype=wp.float32, requires_grad=True)
+    l = wp.zeros(1, dtype=wp.float32, requires_grad=True)
+    # just a single wp.to_paddle call is needed, Adam optimizes using the Warp array gradients
+    opt = paddle.optimizer.Adam(learning_rate=0.1, parameters=[wp.to_paddle(xs)])
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(loss, dim=len(xs), inputs=[xs], outputs=[l], device=xs.device)
+
+    for i in range(500):
+        tape.zero()
+        tape.backward(loss=l)
+        opt.step()
+
+        l.zero_()
+        wp.launch(loss, dim=len(xs), inputs=[xs], outputs=[l], device=xs.device)
+        print(f"{i}\tloss: {l.numpy()[0]}")
+
+Example: Optimization using ``paddle.autograd.PyLayer``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+One can insert Warp kernel launches in a Paddle graph by defining a :class:`paddle.autograd.PyLayer` class, which
+requires forward and backward functions to be defined. After mapping incoming paddle arrays to Warp arrays, a Warp kernel
+may be launched in the usual way. In the backward pass, the same kernel's adjoint may be launched by 
+setting ``adjoint = True`` in :func:`wp.launch() <launch>`. Alternatively, the user may choose to rely on Warp's tape.
+In the following example, we demonstrate how Warp may be used to evaluate the Rosenbrock function in an optimization context::
+
+    import warp as wp
+    import numpy as np
+    import paddle
+
+    # init warp context at beginning
+    wp.context.init()
+
+    pvec2 = wp.types.vector(length=2, dtype=wp.float32)
+
+    # Define the Rosenbrock function
+    @wp.func
+    def rosenbrock(x: float, y: float):
+        return (1.0 - x) ** 2.0 + 100.0 * (y - x**2.0) ** 2.0
+
+    @wp.kernel
+    def eval_rosenbrock(
+        xs: wp.array(dtype=pvec2),
+        # outputs
+        z: wp.array(dtype=float),
+    ):
+        i = wp.tid()
+        x = xs[i]
+        z[i] = rosenbrock(x[0], x[1])
+
+
+    class Rosenbrock(paddle.autograd.PyLayer):
+        @staticmethod
+        def forward(ctx, xy, num_points):
+            ctx.xy = wp.from_paddle(xy, dtype=pvec2, requires_grad=True)
+            ctx.num_points = num_points
+
+            # allocate output
+            ctx.z = wp.zeros(num_points, requires_grad=True)
+
+            wp.launch(
+                kernel=eval_rosenbrock,
+                dim=ctx.num_points,
+                inputs=[ctx.xy],
+                outputs=[ctx.z]
+            )
+
+            return wp.to_paddle(ctx.z)
+
+        @staticmethod
+        def backward(ctx, adj_z):
+            # map incoming Torch grads to our output variables
+            ctx.z.grad = wp.from_paddle(adj_z)
+
+            wp.launch(
+                kernel=eval_rosenbrock,
+                dim=ctx.num_points,
+                inputs=[ctx.xy],
+                outputs=[ctx.z],
+                adj_inputs=[ctx.xy.grad],
+                adj_outputs=[ctx.z.grad],
+                adjoint=True
+            )
+
+            # return adjoint w.r.t. inputs
+            return wp.to_paddle(ctx.xy.grad)
+
+
+    num_points = 1500
+    learning_rate = 5e-2
+
+    paddle_device = wp.device_to_paddle(wp.get_device())
+
+    rng = np.random.default_rng(42)
+    xy = paddle.to_tensor(
+        rng.normal(size=(num_points, 2)),
+        dtype=paddle.float32,
+        stop_gradient=False,
+        place=paddle_device,
+    )
+    opt = paddle.optimizer.Adam(learning_rate=learning_rate, parameters=[xy])
+
+    for _ in range(10000):
+        # step
+        opt.clear_grad()
+        z = Rosenbrock.apply(xy, num_points)
+        z.backward(paddle.ones_like(z))
+
+        opt.step()
+
+    # minimum at (1, 1)
+    xy_np = xy.numpy()
+    print(np.mean(xy_np, axis=0))
+
+Performance Notes
+^^^^^^^^^^^^^^^^^
+
+The ``wp.from_paddle()`` function creates a Warp array object that shares data with a Paddle tensor.  Although this function does not copy the data, there is always some CPU overhead during the conversion.  If these conversions happen frequently, the overall program performance may suffer.  As a general rule, it's good to avoid repeated conversions of the same tensor.  Instead of:
+
+.. code:: python
+
+    x_t = paddle.arange(n, dtype=paddle.float32, place=device)
+    y_t = paddle.ones([n], dtype=paddle.float32, place=device)
+
+    for i in range(10):
+        x_w = wp.from_paddle(x_t)
+        y_w = wp.from_paddle(y_t)
+        wp.launch(saxpy, dim=n, inputs=[x_w, y_w, 1.0], device=device)
+
+Try converting the arrays only once and reuse them:
+
+.. code:: python
+
+    x_t = paddle.arange(n, dtype=paddle.float32, place=device)
+    y_t = paddle.ones([n], dtype=paddle.float32, place=device)
+
+    x_w = wp.from_paddle(x_t)
+    y_w = wp.from_paddle(y_t)
+
+    for i in range(10):
+        wp.launch(saxpy, dim=n, inputs=[x_w, y_w, 1.0], device=device)
+
+If reusing arrays is not possible (e.g., a new Paddle tensor is constructed on every iteration), passing ``return_ctype=True`` to ``wp.from_paddle()`` should yield faster performance.  Setting this argument to True avoids constructing a ``wp.array`` object and instead returns a low-level array descriptor.  This descriptor is a simple C structure that can be passed to Warp kernels instead of a ``wp.array``, but cannot be used in other places that require a ``wp.array``.
+
+.. code:: python
+
+    for n in range(1, 10):
+        # get Torch tensors for this iteration
+        x_t = paddle.arange(n, dtype=paddle.float32, device=device)
+        y_t = paddle.ones([n], dtype=paddle.float32, device=device)
+
+        # get Warp array descriptors
+        x_ctype = wp.from_paddle(x_t, return_ctype=True)
+        y_ctype = wp.from_paddle(y_t, return_ctype=True)
+
+        wp.launch(saxpy, dim=n, inputs=[x_ctype, y_ctype, 1.0], device=device)
+
+An alternative approach is to pass the Paddle tensors to Warp kernels directly.  This avoids constructing temporary Warp arrays by leveraging standard array interfaces (like ``__cuda_array_interface__``) supported by both Paddle and Warp.  The main advantage of this approach is convenience, since there is no need to call any conversion functions.  The main limitation is that it does not handle gradients, because gradient information is not included in the standard array interfaces.  This technique is therefore most suitable for algorithms that do not involve differentiation.
+
+.. code:: python
+
+    x = paddle.arange(n, dtype=paddle.float32, device=device)
+    y = paddle.ones([n], dtype=paddle.float32, device=device)
+
+    for i in range(10):
+        wp.launch(saxpy, dim=n, inputs=[x, y, 1.0], device=device)
+
+.. code:: shell
+
+    python -m warp.examples.benchmarks.benchmark_interop_paddle
+
+Sample output:
+
+.. code::
+
+    14197 ms  from_paddle(...)
+    5965 ms  from_paddle(..., return_ctype=True)
+    35074 ms  direct from paddle
+
+The default ``wp.from_paddle()`` conversion is the slowest.  Passing ``return_ctype=True`` is the fastest, because it skips creating temporary Warp array objects.  Passing Paddle tensors to Warp kernels directly falls somewhere in between.  It skips creating temporary Warp arrays, but accessing the ``__cuda_array_interface__`` attributes of Paddle tensors adds overhead because they are initialized on-demand.
+
+
+CuPy/Numba
+----------
+
+Warp GPU arrays support the ``__cuda_array_interface__`` protocol for sharing data with other Python GPU frameworks.  This allows frameworks like CuPy to use Warp GPU arrays directly.
+
+Likewise, Warp arrays can be created from any object that exposes the ``__cuda_array_interface__``.  Such objects can also be passed to Warp kernels directly without creating a Warp array object.
+
 .. _DLPack:
 
 DLPack

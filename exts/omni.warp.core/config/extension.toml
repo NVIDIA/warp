@@ -38,6 +38,7 @@ pyCoverageOmit = [
     "warp/stubs.py",
     "warp/jax.py",
     "warp/torch.py",
+    "warp/paddle.py",
     "warp/build.py",
     "warp/build_dll.py",
     "warp/sim/**",
