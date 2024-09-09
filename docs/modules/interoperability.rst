@@ -418,7 +418,6 @@ Since this is an experimental feature, there are some limitations:
     - Kernel launch dimensions are inferred from the shape of the first argument.
     - Input arguments are followed by output arguments in the Warp kernel definition.
     - There must be at least one input argument and at least one output argument.
-    - Output shapes must match the launch dimensions (i.e., output shapes must match the shape of the first argument).
     - All arrays must be contiguous.
     - Only the CUDA backend is supported.
 
@@ -461,6 +460,164 @@ Here is an example of an operation with three inputs and two outputs::
 
     print(x)
     print(y)
+
+Using shardmap for distributed computation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warp can be used in conjunction with JAX's `shard_map <https://jax.readthedocs.io/en/latest/jep/14273-shard-map.html>`_ to perform distributed multi-GPU computations.
+
+To achieve this, the JAX distributed environment must be initialized (see `Distributed Arrays and Automatic Parallelization <https://jax.readthedocs.io/en/latest/notebooks/Distributed_arrays_and_automatic_parallelization.html>`_ for more details):
+
+.. code-block:: python
+
+    import jax
+    jax.distributed.initialize()
+
+This initialization must be called at the beginning of your program, before any other JAX operations.
+
+Here's an example of how to use `shard_map` with a Warp kernel:
+
+.. code-block:: python
+
+    import warp as wp
+    import jax
+    import jax.numpy as jnp
+    from jax.sharding import PartitionSpec as P
+    from jax.experimental.shard_map import shard_map
+    from warp.jax_experimental import jax_kernel
+
+    # Initialize JAX distributed environment
+    jax.distributed.initialize()
+
+    @wp.kernel
+    def multiply_by_two_kernel(
+        a_in: wp.array(dtype=wp.float32),
+        a_out: wp.array(dtype=wp.float32),
+    ):
+        index = wp.tid()
+        a_out[index] = a_in[index] * 2.0
+
+    jax_warp_multiply = jax_kernel(multiply_by_two_kernel)
+
+    def warp_distributed_operator(a_in):
+        def _sharded_operator(a_in):
+            return jax_warp_multiply(a_in)[0]
+
+        return shard_map(
+            _sharded_operator,
+            mesh=jax.sharding.Mesh(np.array(jax.devices()), "x"),
+            in_specs=(P("x"),),
+            out_specs=P("x"),
+            check_rep=False,
+        )(a_in)
+
+In this example, `shard_map` is used to distribute the computation across available devices. The input array `a_in` is sharded along the 'x' axis, and each device processes its local shard. The Warp kernel `multiply_by_two_kernel` is applied to each shard, and the results are combined to form the final output.
+
+This approach allows for efficient parallel processing of large arrays, as each device works on a portion of the data simultaneously.
+
+To run this program on multiple GPUs, you can use `mpirun` with the following command:
+
+.. code-block:: bash
+
+    mpirun -np <NUM_OF_GPUS> python <filename>.py
+
+
+Specifying launch dimensions for matrix operations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In some cases, particularly for matrix operations, it's necessary to specify the launch dimensions for Warp kernels. This is because the default behavior of inferring dimensions from the first argument may not always be suitable for matrix operations. Here's an example of a distributed matrix multiplication using Warp and JAX:
+
+.. code-block:: python
+
+    @wp.kernel
+    def matmul_kernel(
+        a: wp.array2d(dtype=wp.float32),
+        b: wp.array2d(dtype=wp.float32),
+        c: wp.array2d(dtype=wp.float32),
+    ):
+        i, j = wp.tid()
+        M, K = a.shape
+        N = b.shape[1]
+        if i < M and j < N:
+            s = wp.float32(0.0)
+            for k in range(K):
+                s += a[i, k] * b[k, j]
+            c[i, j] = s
+
+    # Specify launch dimensions based on the number of GPUs
+    def create_jax_warp_matmul(M, N):
+        num_gpus = jax.device_count()
+        block_size_m = M // num_gpus
+        block_size_n = N
+        return jax_kernel(matmul_kernel, launch_dims=(block_size_m, block_size_n))
+
+    def warp_distributed_matmul(a, b):
+        M, K = a.shape
+        _, N = b.shape
+        jax_warp_matmul = create_jax_warp_matmul(M, N)
+        
+        def _sharded_operator(a_shard, b):
+            return jax_warp_matmul(a_shard, b)
+
+        return shard_map(
+            _sharded_operator,
+            mesh=jax.sharding.Mesh(np.array(jax.devices()), "x"),
+            in_specs=(P("x", None), P(None, None)),
+            out_specs=P("x", None),
+            check_rep=False,
+        )(a, b)
+
+In this example, we create a function `create_jax_warp_matmul` that calculates the launch dimensions based on the number of available GPUs. We use `jax.device_count()` to get the number of GPUs and divide the `M` dimension (rows) of the matrix by this number. This ensures that each GPU processes an equal portion of the input matrix A. The `N` dimension (columns) remains unchanged as we're not sharding in that direction.
+
+Note that the launch dimensions are set to match the shape of the matrix portion on each GPU. The `block_size_m` is calculated by dividing the total number of rows by the number of GPUs, while `block_size_n` is set to the full width of the output matrix.
+
+Note that this is a naive implementation of matrix multiplication for the sake of this illustration, and there are many optimizations that can be made to improve performance.
+
+.. _DLPack:
+
+DLPack
+------
+
+Warp supports the DLPack protocol included in the Python Array API standard v2022.12.
+See the `Python Specification for DLPack <https://dmlc.github.io/dlpack/latest/python_spec.html>`_ for reference.
+
+The canonical way to import an external array into Warp is using the ``warp.from_dlpack()`` function::
+
+    warp_array = wp.from_dlpack(external_array)
+
+The external array can be a PyTorch tensor, Jax array, or any other array type compatible with this version of the DLPack protocol.
+For CUDA arrays, this approach requires the producer to perform stream synchronization which ensures that operations on the array
+are ordered correctly.  The ``warp.from_dlpack()`` function asks the producer to synchronize the current Warp stream on the device where
+the array resides.  Thus it should be safe to use the array in Warp kernels on that device without any additional synchronization.
+
+The canonical way to export a Warp array to an external framework is to use the ``from_dlpack()`` function in that framework::
+
+    jax_array = jax.dlpack.from_dlpack(warp_array)
+    torch_tensor = torch.utils.dlpack.from_dlpack(warp_array)
+
+For CUDA arrays, this will synchronize the current stream of the consumer framework with the current Warp stream on the array's device.
+Thus it should be safe to use the wrapped array in the consumer framework, even if the array was previously used in a Warp kernel
+on the device.
+
+Alternatively, arrays can be shared by explicitly creating PyCapsules using a ``to_dlpack()`` function provided by the producer framework.
+This approach may be used for older versions of frameworks that do not support the v2022.12 standard::
+
+    warp_array1 = wp.from_dlpack(jax.dlpack.to_dlpack(jax_array))
+    warp_array2 = wp.from_dlpack(torch.utils.dlpack.to_dlpack(torch_tensor))
+
+    jax_array = jax.dlpack.from_dlpack(wp.to_dlpack(warp_array))
+    torch_tensor = torch.utils.dlpack.from_dlpack(wp.to_dlpack(warp_array))
+
+This approach is generally faster because it skips any stream synchronization, but another solution must be used to ensure correct
+ordering of operations.  In situations where no synchronization is required, using this approach can yield better performance.
+This may be a good choice in situations like these:
+
+    - The external framework is using the synchronous CUDA default stream.
+    - Warp and the external framework are using the same CUDA stream.
+    - Another synchronization mechanism is already in place.
+
+.. autofunction:: warp.from_dlpack
+.. autofunction:: warp.to_dlpack
 
 .. _paddle-interop:
 
@@ -736,57 +893,3 @@ Sample output:
     35074 ms  direct from paddle
 
 The default ``wp.from_paddle()`` conversion is the slowest.  Passing ``return_ctype=True`` is the fastest, because it skips creating temporary Warp array objects.  Passing Paddle tensors to Warp kernels directly falls somewhere in between.  It skips creating temporary Warp arrays, but accessing the ``__cuda_array_interface__`` attributes of Paddle tensors adds overhead because they are initialized on-demand.
-
-
-CuPy/Numba
-----------
-
-Warp GPU arrays support the ``__cuda_array_interface__`` protocol for sharing data with other Python GPU frameworks.  This allows frameworks like CuPy to use Warp GPU arrays directly.
-
-Likewise, Warp arrays can be created from any object that exposes the ``__cuda_array_interface__``.  Such objects can also be passed to Warp kernels directly without creating a Warp array object.
-
-.. _DLPack:
-
-DLPack
-------
-
-Warp supports the DLPack protocol included in the Python Array API standard v2022.12.
-See the `Python Specification for DLPack <https://dmlc.github.io/dlpack/latest/python_spec.html>`_ for reference.
-
-The canonical way to import an external array into Warp is using the ``warp.from_dlpack()`` function::
-
-    warp_array = wp.from_dlpack(external_array)
-
-The external array can be a PyTorch tensor, Jax array, or any other array type compatible with this version of the DLPack protocol.
-For CUDA arrays, this approach requires the producer to perform stream synchronization which ensures that operations on the array
-are ordered correctly.  The ``warp.from_dlpack()`` function asks the producer to synchronize the current Warp stream on the device where
-the array resides.  Thus it should be safe to use the array in Warp kernels on that device without any additional synchronization.
-
-The canonical way to export a Warp array to an external framework is to use the ``from_dlpack()`` function in that framework::
-
-    jax_array = jax.dlpack.from_dlpack(warp_array)
-    torch_tensor = torch.utils.dlpack.from_dlpack(warp_array)
-
-For CUDA arrays, this will synchronize the current stream of the consumer framework with the current Warp stream on the array's device.
-Thus it should be safe to use the wrapped array in the consumer framework, even if the array was previously used in a Warp kernel
-on the device.
-
-Alternatively, arrays can be shared by explicitly creating PyCapsules using a ``to_dlpack()`` function provided by the producer framework.
-This approach may be used for older versions of frameworks that do not support the v2022.12 standard::
-
-    warp_array1 = wp.from_dlpack(jax.dlpack.to_dlpack(jax_array))
-    warp_array2 = wp.from_dlpack(torch.utils.dlpack.to_dlpack(torch_tensor))
-
-    jax_array = jax.dlpack.from_dlpack(wp.to_dlpack(warp_array))
-    torch_tensor = torch.utils.dlpack.from_dlpack(wp.to_dlpack(warp_array))
-
-This approach is generally faster because it skips any stream synchronization, but another solution must be used to ensure correct
-ordering of operations.  In situations where no synchronization is required, using this approach can yield better performance.
-This may be a good choice in situations like these:
-
-    - The external framework is using the synchronous CUDA default stream.
-    - Warp and the external framework are using the same CUDA stream.
-    - Another synchronization mechanism is already in place.
-
-.. autofunction:: warp.from_dlpack
-.. autofunction:: warp.to_dlpack

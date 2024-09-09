@@ -246,6 +246,60 @@ def test_jax_kernel_multiarg(test, device):
     assert_np_equal(result_y, expected_y)
 
 
+@unittest.skipUnless(_jax_version() >= (0, 4, 25), "Jax version too old")
+def test_jax_kernel_launch_dims(test, device):
+    import jax.numpy as jp
+
+    from warp.jax_experimental import jax_kernel
+
+    n = 64
+    m = 32
+
+    # Test with 1D launch dims
+    @wp.kernel
+    def add_one_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+        tid = wp.tid()
+        y[tid] = x[tid] + 1.0
+
+    jax_add_one = jax_kernel(
+        add_one_kernel, launch_dims=(n - 2,)
+    )  # Intentionally not the same as the first dimension of the input
+
+    @jax.jit
+    def f_1d():
+        x = jp.arange(n, dtype=jp.float32)
+        return jax_add_one(x)
+
+    # Test with 2D launch dims
+    @wp.kernel
+    def add_one_2d_kernel(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+        i, j = wp.tid()
+        y[i, j] = x[i, j] + 1.0
+
+    jax_add_one_2d = jax_kernel(
+        add_one_2d_kernel, launch_dims=(n - 2, m - 2)
+    )  # Intentionally not the same as the first dimension of the input
+
+    @jax.jit
+    def f_2d():
+        x = jp.zeros((n, m), dtype=jp.float32) + 3.0
+        return jax_add_one_2d(x)
+
+    # run on the given device
+    with jax.default_device(wp.device_to_jax(device)):
+        y_1d = f_1d()
+        y_2d = f_2d()
+
+    result_1d = np.asarray(y_1d).reshape((n - 2,))
+    expected_1d = np.arange(n - 2, dtype=np.float32) + 1.0
+
+    result_2d = np.asarray(y_2d).reshape((n - 2, m - 2))
+    expected_2d = np.full((n - 2, m - 2), 4.0, dtype=np.float32)
+
+    assert_np_equal(result_1d, expected_1d)
+    assert_np_equal(result_2d, expected_2d)
+
+
 class TestJax(unittest.TestCase):
     pass
 
@@ -294,6 +348,10 @@ try:
         )
         add_function_test(
             TestJax, "test_jax_kernel_multiarg", test_jax_kernel_multiarg, devices=jax_compatible_cuda_devices
+        )
+
+        add_function_test(
+            TestJax, "test_jax_kernel_launch_dims", test_jax_kernel_launch_dims, devices=jax_compatible_cuda_devices
         )
 
 except Exception as e:
