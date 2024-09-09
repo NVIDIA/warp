@@ -219,17 +219,13 @@ inline CUDA_CALLABLE void gemm(const array_t<T>& A, const array_t<T>& B, const a
 template <typename TileA, typename TileB, typename TileC>
 inline CUDA_CALLABLE void tile_matmul_scalar(const TileA& A,
                                              const TileB& B,
-                                             const TileC& out)
+                                             TileC& out)
 {    
     const int length = tile_size(out);
 
     WP_TILE_SYNC();
 
     using T = typename TileA::Type;
-
-    const T* __restrict__ A_ptr = A.data;
-    const T* __restrict__ B_ptr = B.data;
-    T* __restrict__ C_ptr = out.data;
 
     WP_PRAGMA_UNROLL
     for (int t=threadIdx.x; t < length; t += blockDim.x)
@@ -243,13 +239,13 @@ inline CUDA_CALLABLE void tile_matmul_scalar(const TileA& A,
         WP_PRAGMA_UNROLL
         for (int k=0; k < A.N; ++k)
         {
-            T a = index(A_ptr, i, k, A.N);
-            T b = index(B_ptr, k, j, B.N);
+            T a = A(i,k);
+            T b = B(k,j);
 
-            sum = fmaf(a, b, sum);
+            sum += a*b; // todo: use fmaf() 
         }
         
-        index(C_ptr, i, j, out.N) += sum;
+        out(i,j) += sum;
     }
 
     WP_TILE_SYNC();
@@ -311,46 +307,6 @@ inline CUDA_CALLABLE void tile_matmul(const array_t<T>& A, const array_t<T>& B, 
 
 #endif // USE_CUTE
 
-template <typename TileA, typename TileB, typename TileC>
-struct tile_matmul_t
-{
-    static_assert(wp::is_same<typename TileA::Type, typename TileB::Type>::value, "Error, tile datatypes must match");
-    static_assert(TileA::N == TileB::M, "Error, inner dimensions must match");
-    static_assert(TileC::M == TileA::M, "Error, first output dimension must match");
-    static_assert(TileC::N == TileB::N, "Error, second output dimension must match");
-
-    using Type = typename TileA::Type;
-    static constexpr int M = TileC::M;
-    static constexpr int N = TileC::N;
-
-    TileA tile_a;
-    TileB tile_b;
-    TileC tile_c;
-
-    tile_matmul_t(TileA &a, TileB &b, TileC &c) : tile_a(a),
-                                                  tile_b(b),
-                                                  tile_c(c) {}
-
-    Type fwd(int e) const
-    {
-        // load 
-        
-
-    }
-
-    void bwd(int e, Type adj_ret) const
-    {
-    }
-
-    void print()
-    {
-        printf("tile_matmul_t<%d, %d>", M, N);
-        printf("\n   -+");
-        tile_a.print();
-        printf("\n   -+");
-        tile_b.print();
-    }
-};
 
 
 template <typename TileA, typename TileB, typename TileC>
@@ -370,12 +326,8 @@ void adj_tile_matmul(TileA& a, TileB& b, TileC& c,
                      TileA& adj_a, TileB& adj_b, TileC& adj_c)
 {
 
-    // auto a_shared = tile_eval<Index+0>(a);
-    // auto b_shared = tile_eval<Index+1>(b);
-    // auto adj_c_shared = tile_eval<Index+1>(b);
-
-    // tile_matmul_scalar(adj_c, wp.tile_transpose(b), adj_a);
-    // tile_matmul_scalar(wp.tile_transpose(a), adj_c, adj_b);
+    tile_matmul_scalar(adj_c, wp::tile_transpose(b), adj_a);
+    tile_matmul_scalar(wp::tile_transpose(a), adj_c, adj_b);
 }
 
 

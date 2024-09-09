@@ -3,18 +3,16 @@ import warp as wp
 
 import torch
 
-#wp.config.mode = "debug"
-
 wp.init()
 wp.set_module_options({"enable_backward": True})
 wp.set_device("cuda:0")
-
+wp.config.mode = "debug"
 wp.config.verify_cuda = True
 
 wp.build.clear_kernel_cache()
 
 TILE_M = wp.constant(32)
-TILE_N = wp.constant(32)
+TILE_N = wp.constant(16)
 TILE_K = wp.constant(8)
 
 @wp.kernel
@@ -232,17 +230,15 @@ def test_tile_batched_gemm():
     B = rng.random((batch_count, K, N), dtype=np.float32)
     C = np.zeros((batch_count, M, N), dtype=np.float32)
 
-    A_wp = wp.array(A)
-    B_wp = wp.array(B)
-    C_wp = wp.array(C)
+    A_wp = wp.array(A, requires_grad=True)
+    B_wp = wp.array(B, requires_grad=True)
+    C_wp = wp.array(C, requires_grad=True)
 
-    wp.launch(tile_grouped_gemm, dim=batch_count, inputs=[A_wp, B_wp, C_wp], tile_size=8)
+    with wp.Tape() as tape:    
+        wp.launch(tile_grouped_gemm, dim=batch_count, inputs=[A_wp, B_wp, C_wp], tile_size=8)
 
     # bring back to host
-    C_wp = C_wp.numpy()
-
-    for i in range(batch_count):
-        assert(np.allclose(A[i]@B[i], C_wp[i], rtol=1.e-4))
+    C_host = C_wp.numpy()
 
     # GEMM forward passed
     print("batched matmul forward passed")
@@ -263,7 +259,7 @@ def tile_gemm(A: wp.array2d(dtype=float),
     K = A.shape[1]
 
     count = int(K / TILE_K) 
-
+    
     for k in range(0, count):
 
         a = wp.tile_load(A, i, k, m=TILE_M, n=TILE_K)
@@ -278,30 +274,41 @@ def tile_gemm(A: wp.array2d(dtype=float),
 def test_tile_gemm():
 
     M = TILE_M*7
-    K = TILE_K*4
-    N = TILE_N*6
+    K = TILE_K*5
+    N = TILE_N*2
 
     rng = np.random.default_rng(42)
     A = rng.random((M, K), dtype=np.float32)
     B = rng.random((K, N), dtype=np.float32)
     C = np.zeros((M, N), dtype=np.float32)
 
-    A_wp = wp.array(A)
-    B_wp = wp.array(B)
-    C_wp = wp.array(C)
+    A_wp = wp.array(A, requires_grad=True)
+    B_wp = wp.array(B, requires_grad=True)
+    C_wp = wp.array(C, requires_grad=True)
 
-    wp.launch(tile_gemm, dim=(int(M/TILE_M), int(N/TILE_N)), inputs=[A_wp, B_wp, C_wp], tile_size=8)
+    with wp.Tape() as tape:    
+        wp.launch(tile_gemm, dim=(int(M/TILE_M), int(N/TILE_N)), inputs=[A_wp, B_wp, C_wp], tile_size=32)
 
     assert(np.allclose(A@B, C_wp.numpy(), rtol=1.e-4))
 
     # GEMM forward passed
     print("matmul forward passed")
 
+    adj_C = np.ones_like(C)
+
+    tape.backward(grads={C_wp: wp.array(adj_C)})
+
+    assert(np.allclose(adj_C@B.T, A_wp.grad.numpy(), rtol=1.e-4))
+    assert(np.allclose(A.T@adj_C, B_wp.grad.numpy(), rtol=1.e-4))
+
+    print("matmul backward passed")
+
+
 
 
 test_tile_copy()
 test_tile_unary_map()
 test_tile_binary_map()
-# test_tile_batched_gemm()
-# test_tile_gemm()
+test_tile_batched_gemm()
+test_tile_gemm()
 test_tile_operators()

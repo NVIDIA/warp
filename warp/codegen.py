@@ -1424,7 +1424,10 @@ class Adjoint:
 
         # zero adjoints
         for i in body_block.vars:
-            reverse.append(adj.indentation + f"\t{i.emit_adj()} = {{}};")
+            if is_tile(i.type):
+                reverse.append(adj.indentation + f"\t{i.emit_adj()}.zero();")
+            else:
+                reverse.append(adj.indentation + f"\t{i.emit_adj()} = {{}};")
 
         # replay
         for i in body_block.body_replay:
