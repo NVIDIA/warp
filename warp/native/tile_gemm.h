@@ -228,7 +228,7 @@ inline CUDA_CALLABLE void tile_matmul_scalar(const TileA& A,
     using T = typename TileA::Type;
 
     WP_PRAGMA_UNROLL
-    for (int t=threadIdx.x; t < length; t += blockDim.x)
+    for (int t=threadIdx.x; t < length; t += WP_TILE_BLOCK_DIM)
     {  
         // compute output index
         const int i = t/out.N;

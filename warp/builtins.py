@@ -2012,6 +2012,18 @@ add_builtin(
     export=False,
 )
 
+add_builtin(
+    "add",
+    input_types={"a": Tile(dtype=Any, M=Any, N=Any), "b": Tile(dtype=Any, M=Any, N=Any)},
+    value_func=tile_binary_map_value_func,
+    #dispatch_func=tile_map_dispatch_func,
+    #variadic=True,
+    native_func="tile_add",
+    doc="Add each element of two tiles together", 
+    group="Tile Primitives",
+    export=False,
+)
+
 # ---------------------------------
 # Linear Algebra
 
@@ -4494,14 +4506,14 @@ def tile_scalar_mul_value_func(arg_types, arg_values):
         if x.dtype != y:
             raise RuntimeError("Scalar factor should have the same type as tile for tile*scalar, tile type: {x} scalar type: {y}")
         
-        return TileBinaryMap(x, TileConstant(x.dtype, x.M, x.N))
+        return TileBinaryMap(x, TileConstant(y, x.M, x.N))
     
     # scalar*tile
     if is_tile(y):
         if y.dtype != x:
             raise RuntimeError("Scalar factor should have the same type as tile for scalar*tile, tile type: {x} scalar type: {y}")
         
-        return TileBinaryMap(TileConstant(x.dtype, x.M, x.N), y)
+        return TileBinaryMap(TileConstant(x, y.M, y.N), y)
 
 
 

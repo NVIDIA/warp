@@ -6,14 +6,17 @@ import torch
 wp.init()
 wp.set_module_options({"enable_backward": True})
 wp.set_device("cuda:0")
-wp.config.mode = "debug"
-wp.config.verify_cuda = True
+#wp.config.mode = "debug"
+#wp.config.verify_cuda = True
 
 wp.build.clear_kernel_cache()
 
-TILE_M = wp.constant(32)
-TILE_N = wp.constant(16)
+TILE_M = wp.constant(16)
+TILE_N = wp.constant(8)
 TILE_K = wp.constant(8)
+
+# num threads per-tile
+TILE_DIM = 64
 
 @wp.kernel
 def tile_copy(A: wp.array2d(dtype=float),
@@ -40,7 +43,7 @@ def test_tile_copy():
     B_wp = wp.array(B, requires_grad=True)
 
     with wp.Tape() as tape:
-        wp.launch(tile_copy, dim=[int(M/TILE_M), int(N/TILE_N)], inputs=[A_wp, B_wp], tile_size=8)
+        wp.launch(tile_copy, dim=[int(M/TILE_M), int(N/TILE_N)], inputs=[A_wp, B_wp], tile_size=TILE_DIM)
 
     # verify forward pass
     assert(np.allclose(A, B_wp.numpy(), rtol=1.e-4))
@@ -87,7 +90,7 @@ def test_tile_unary_map():
     B_wp = wp.zeros_like(A_wp, requires_grad=True)
 
     with wp.Tape() as tape:
-        wp.launch(tile_unary_map, dim=[int(M/TILE_M), int(N/TILE_N)], inputs=[A_wp, B_wp], tile_size=8)
+        wp.launch(tile_unary_map, dim=[int(M/TILE_M), int(N/TILE_N)], inputs=[A_wp, B_wp], tile_size=TILE_DIM)
 
     # verify forward pass
     assert(np.allclose(B, B_wp.numpy(), rtol=1.e-4))
@@ -140,7 +143,7 @@ def test_tile_binary_map():
     C_wp = wp.zeros_like(A_wp, requires_grad=True)
 
     with wp.Tape() as tape:
-        wp.launch(tile_binary_map, dim=[int(M/TILE_M), int(N/TILE_N)], inputs=[A_wp, B_wp, C_wp], tile_size=8)
+        wp.launch(tile_binary_map, dim=[int(M/TILE_M), int(N/TILE_N)], inputs=[A_wp, B_wp, C_wp], tile_size=TILE_DIM)
 
     # verify forward pass
     assert(np.allclose(C, C_wp.numpy(), rtol=1.e-4))
@@ -154,49 +157,6 @@ def test_tile_binary_map():
     assert(np.allclose(B_wp.grad.numpy(), B_grad))
     
     print("Binary map backward passed")
-
-
-@wp.kernel
-def tile_operators(input: wp.array3d(dtype=float),
-                   output: wp.array3d(dtype=float)):
-
-    # output tile index
-    i = wp.tid()
-
-    a = wp.tile_load(input[i], 0, 0, m=32, n=8)
-    
-    # neg
-    b = -a
-
-    # scalar multiply
-#    c = b*0.5
-
-    # # add tiles
-    # c = a + b    
-    
-    wp.tile_store(output[i], 0, 0, b)
-
-
-def test_tile_operators():
-
-    batch_count = 56
-
-    M = 32
-    N = 8
-
-    rng = np.random.default_rng(42)
-    input = rng.random((batch_count, M, N), dtype=np.float32)
-    output = -input
-
-    input_wp = wp.array(input)
-    output_wp = wp.zeros_like(input_wp)
-
-    wp.launch(tile_operators, dim=batch_count, inputs=[input_wp, output_wp], tile_size=8)
-
-    assert(np.allclose(output, output_wp.numpy(), rtol=1.e-4))
-
-    print("operators forward passed")
-
 
 
 @wp.kernel
@@ -235,7 +195,7 @@ def test_tile_batched_gemm():
     C_wp = wp.array(C, requires_grad=True)
 
     with wp.Tape() as tape:    
-        wp.launch(tile_grouped_gemm, dim=batch_count, inputs=[A_wp, B_wp, C_wp], tile_size=8)
+        wp.launch(tile_grouped_gemm, dim=batch_count, inputs=[A_wp, B_wp, C_wp], tile_size=TILE_DIM)
 
     # bring back to host
     C_host = C_wp.numpy()
@@ -287,7 +247,7 @@ def test_tile_gemm():
     C_wp = wp.array(C, requires_grad=True)
 
     with wp.Tape() as tape:    
-        wp.launch(tile_gemm, dim=(int(M/TILE_M), int(N/TILE_N)), inputs=[A_wp, B_wp, C_wp], tile_size=32)
+        wp.launch(tile_gemm, dim=(int(M/TILE_M), int(N/TILE_N)), inputs=[A_wp, B_wp, C_wp], tile_size=TILE_DIM)
 
     assert(np.allclose(A@B, C_wp.numpy(), rtol=1.e-4))
 
@@ -303,6 +263,51 @@ def test_tile_gemm():
 
     print("matmul backward passed")
 
+
+
+@wp.kernel
+def tile_operators(input: wp.array3d(dtype=float),
+                   output: wp.array3d(dtype=float)):
+
+    # output tile index
+    i = wp.tid()
+
+    a = wp.tile_load(input[i], 0, 0, m=TILE_M, n=TILE_N)
+    
+    # neg
+    b = -a
+
+    # right scalar multiply
+    c = b*0.5
+
+    # left scalar multiply
+    d = 0.5*c
+
+    # add tiles
+    e = a + d
+    
+    wp.tile_store(output[i], 0, 0, e)
+
+
+def test_tile_operators():
+
+    batch_count = 56
+
+    M = TILE_M
+    N = TILE_N
+
+    rng = np.random.default_rng(42)
+    input = rng.random((batch_count, M, N), dtype=np.float32)
+    output = input*0.75
+
+    input_wp = wp.array(input)
+    output_wp = wp.zeros_like(input_wp)
+
+    wp.launch(tile_operators, dim=batch_count, inputs=[input_wp, output_wp], tile_size=TILE_DIM)
+
+    assert(np.allclose(output, output_wp.numpy(), rtol=1.e-4))
+
+    print("operators forward passed")
 
 
 

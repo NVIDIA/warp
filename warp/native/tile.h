@@ -64,6 +64,7 @@
 [ ] Error checking
     [ ] Ensure functions passed to tile_map() are compatible with tile type
     [ ] Ensure that args passed to tile ops are compatible
+    [ ] Ensure tile load/store operations don't go out of bounds of arrays in debug mode
 
 */
 
@@ -225,7 +226,7 @@ struct tile_register_t
 
     T data[NumRegs];
    
-    tile_register_t() 
+    tile_register_t(T value=T(0.0)) 
     {
         // zero-initialize by default necessary for tile adjoints
         // need to check if this results in worse codegen
@@ -233,7 +234,7 @@ struct tile_register_t
         // in backwards pass and letting default constructor
         // avoid initialization
         for (int i=0; i < NumRegs; ++i)
-            data[i] = T(0);
+            data[i] = value;
     }
 
     struct iterator
@@ -381,10 +382,13 @@ auto tile_map(Fwd op,
     auto out_iter = out.iter();
     auto a_iter = a.iter();
 
+    WP_PRAGMA_UNROLL
     for (; out_iter.valid(); ++out_iter, ++a_iter)
-    {
         *out_iter = op(*a_iter);
-    }
+
+    // WP_PRAGMA_UNROLL
+    // for (int i=0; i < Tile::NumRegs; ++i)
+    //     out.data[i] = op(a.data[i]);
 
     return out;
 }
@@ -400,6 +404,7 @@ void adj_tile_map(Fwd op,
     auto adj_a_iter = adj_a.iter();
     auto adj_ret_iter = adj_ret.iter();
 
+    WP_PRAGMA_UNROLL
     for (; a_iter.valid(); ++a_iter, ++adj_a_iter, ++adj_ret_iter)
     {
         adj_op(*a_iter, *adj_a_iter, *adj_ret_iter);
@@ -418,10 +423,14 @@ auto tile_map(Fwd op,
     auto a_iter = a.iter();
     auto b_iter = b.iter();
 
+    WP_PRAGMA_UNROLL
     for (; out_iter.valid(); ++out_iter, ++a_iter, ++b_iter)
-    {
         *out_iter = op(*a_iter, *b_iter);
-    }
+
+    // WP_PRAGMA_UNROLL
+    // for (int i=0; i < TileA::NumRegs; ++i)
+    //     out.data[i] = op(a.data[i], b.data[i]);
+
 
     return out;
 }
@@ -441,6 +450,7 @@ void adj_tile_map(Fwd op,
     auto adj_b_iter = adj_b.iter();    
     auto adj_ret_iter = adj_ret.iter();
 
+    WP_PRAGMA_UNROLL
     for (; a_iter.valid(); ++a_iter, ++b_iter, ++adj_a_iter, ++adj_b_iter, ++adj_ret_iter)
     {
         adj_op(*a_iter, *b_iter, *adj_a_iter, *adj_b_iter, *adj_ret_iter);
@@ -508,6 +518,67 @@ CUDA_CALLABLE inline auto tile_mul_impl(typename Tile::Type s, Tile& t,
 #define tile_mul(a, b) tile_mul_impl(a, b adj_##a, adj_##b)
 #define tile_add(a, b) tile_add_impl(a, b adj_##a, adj_##b)
 */
+
+template <typename TileA, typename TileB>
+auto tile_add(TileA& a, TileB& b)
+{
+    return tile_binary_map(add, a, b);
+}
+
+template <typename TileA, typename TileB, typename AdjTile>
+void adj_tile_add(TileA& a, TileB& b, TileA& adj_a, TileB& adj_b, AdjTile& adj_c)
+{
+    adj_tile_binary_map(add, a, b, adj_add, adj_a, adj_b, adj_c);
+}
+
+// tile*scalar
+template <typename Tile>
+auto tile_mul(Tile& a, const typename Tile::Type& s)
+{
+    // promote scalar to a constant tile
+    auto s_tile = tile_register_t<typename Tile::Type, Tile::M, Tile::N>(s);
+
+    return tile_binary_map(mul, a, s_tile);
+}
+
+template <typename Tile, typename AdjTile>
+void adj_tile_mul(Tile& a, const typename Tile::Type& s,
+                  Tile& adj_a, typename Tile::Type& adj_s,
+                  AdjTile& adj_c)
+{
+    // auto s_tile = tile_register_t<Tile::Type, Tile::M, Tile::N>(s);
+    // auto adj_s_tile = tile_register_t<Tile::Type, Tile::M, Tile::N>();
+
+    // adj_tile_binary_map(mul, a, s_tile, adj_mul, adj_a, adj_s_tile, adj_c);
+
+    // todo: sum up contribution from all adj_s_tile onto original scalar
+    //adj_tile_sum()
+}
+
+
+// scalar*tile
+template <typename Tile>
+auto tile_mul(const typename Tile::Type& s, Tile& a)
+{
+    // promote scalar to a constant tile
+    auto s_tile = tile_register_t<typename Tile::Type, Tile::M, Tile::N>(s);
+
+    return tile_binary_map(mul, s_tile, a);
+}
+
+template <typename Tile, typename AdjTile>
+void adj_tile_mul(const typename Tile::Type& s, Tile& a,
+                  typename Tile::Type& adj_s, Tile& adj_a,
+                  AdjTile& adj_c)
+{
+    // auto s_tile = tile_register_t<Tile::Type, Tile::M, Tile::N>(s);
+    // auto adj_s_tile = tile_register_t<Tile::Type, Tile::M, Tile::N>();
+
+    // adj_tile_binary_map(mul, a, s_tile, adj_mul, adj_a, adj_s_tile, adj_c);
+
+    // todo: sum up contribution from all adj_s_tile onto original scalar
+    //adj_tile_sum()
+}
 
 
 } // namespace wp
