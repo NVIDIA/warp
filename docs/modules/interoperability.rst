@@ -418,7 +418,6 @@ Since this is an experimental feature, there are some limitations:
     - Kernel launch dimensions are inferred from the shape of the first argument.
     - Input arguments are followed by output arguments in the Warp kernel definition.
     - There must be at least one input argument and at least one output argument.
-    - Output shapes must match the launch dimensions (i.e., output shapes must match the shape of the first argument).
     - All arrays must be contiguous.
     - Only the CUDA backend is supported.
 
@@ -461,6 +460,118 @@ Here is an example of an operation with three inputs and two outputs::
 
     print(x)
     print(y)
+
+Using shardmap for distributed computation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warp can be used in conjunction with JAX's `shard_map <https://jax.readthedocs.io/en/latest/jep/14273-shard-map.html>`_ to perform distributed multi-GPU computations.
+
+To achieve this, the JAX distributed environment must be initialized (see `Distributed Arrays and Automatic Parallelization <https://jax.readthedocs.io/en/latest/notebooks/Distributed_arrays_and_automatic_parallelization.html>`_ for more details):
+
+.. code-block:: python
+
+    import jax
+    jax.distributed.initialize()
+
+This initialization must be called at the beginning of your program, before any other JAX operations.
+
+Here's an example of how to use `shard_map` with a Warp kernel:
+
+.. code-block:: python
+
+    import warp as wp
+    import jax
+    import jax.numpy as jnp
+    from jax.sharding import PartitionSpec as P
+    from jax.experimental.shard_map import shard_map
+    from warp.jax_experimental import jax_kernel
+
+    # Initialize JAX distributed environment
+    jax.distributed.initialize()
+
+    @wp.kernel
+    def multiply_by_two_kernel(
+        a_in: wp.array(dtype=wp.float32),
+        a_out: wp.array(dtype=wp.float32),
+    ):
+        index = wp.tid()
+        a_out[index] = a_in[index] * 2.0
+
+    jax_warp_multiply = jax_kernel(multiply_by_two_kernel)
+
+    def warp_distributed_operator(a_in):
+        def _sharded_operator(a_in):
+            return jax_warp_multiply(a_in)[0]
+
+        return shard_map(
+            _sharded_operator,
+            mesh=jax.sharding.Mesh(np.array(jax.devices()), "x"),
+            in_specs=(P("x"),),
+            out_specs=P("x"),
+            check_rep=False,
+        )(a_in)
+
+In this example, `shard_map` is used to distribute the computation across available devices. The input array `a_in` is sharded along the 'x' axis, and each device processes its local shard. The Warp kernel `multiply_by_two_kernel` is applied to each shard, and the results are combined to form the final output.
+
+This approach allows for efficient parallel processing of large arrays, as each device works on a portion of the data simultaneously.
+
+To run this program on multiple GPUs, you can use `mpirun` with the following command:
+
+.. code-block:: bash
+
+    mpirun -np <NUM_OF_GPUS> python <filename>.py
+
+
+Specifying launch dimensions for matrix operations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In some cases, particularly for matrix operations, it's necessary to specify the launch dimensions for Warp kernels. This is because the default behavior of inferring dimensions from the first argument may not always be suitable for matrix operations. Here's an example of a distributed matrix multiplication using Warp and JAX:
+
+.. code-block:: python
+
+    @wp.kernel
+    def matmul_kernel(
+        a: wp.array2d(dtype=wp.float32),
+        b: wp.array2d(dtype=wp.float32),
+        c: wp.array2d(dtype=wp.float32),
+    ):
+        i, j = wp.tid()
+        M, K = a.shape
+        N = b.shape[1]
+        if i < M and j < N:
+            s = wp.float32(0.0)
+            for k in range(K):
+                s += a[i, k] * b[k, j]
+            c[i, j] = s
+
+    # Specify launch dimensions based on the number of GPUs
+    def create_jax_warp_matmul(M, N):
+        num_gpus = jax.device_count()
+        block_size_m = M // num_gpus
+        block_size_n = N
+        return jax_kernel(matmul_kernel, launch_dims=(block_size_m, block_size_n))
+
+    def warp_distributed_matmul(a, b):
+        M, K = a.shape
+        _, N = b.shape
+        jax_warp_matmul = create_jax_warp_matmul(M, N)
+        
+        def _sharded_operator(a_shard, b):
+            return jax_warp_matmul(a_shard, b)
+
+        return shard_map(
+            _sharded_operator,
+            mesh=jax.sharding.Mesh(np.array(jax.devices()), "x"),
+            in_specs=(P("x", None), P(None, None)),
+            out_specs=P("x", None),
+            check_rep=False,
+        )(a, b)
+
+In this example, we create a function `create_jax_warp_matmul` that calculates the launch dimensions based on the number of available GPUs. We use `jax.device_count()` to get the number of GPUs and divide the `M` dimension (rows) of the matrix by this number. This ensures that each GPU processes an equal portion of the input matrix A. The `N` dimension (columns) remains unchanged as we're not sharding in that direction.
+
+Note that the launch dimensions are set to match the shape of the matrix portion on each GPU. The `block_size_m` is calculated by dividing the total number of rows by the number of GPUs, while `block_size_n` is set to the full width of the output matrix.
+
+Note that this is a naive implementation of matrix multiplication for the sake of this illustration, and there are many optimizations that can be made to improve performance.
 
 .. _DLPack:
 
