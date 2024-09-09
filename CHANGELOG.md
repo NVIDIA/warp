@@ -15,6 +15,7 @@
 - Fix for `wp.func` erroring out when defining a `Tuple` as a return type hint ([GH-302](https://github.com/NVIDIA/warp/issues/302)).
 - Fix array in-place op (`+=`, `-=`) adjoints to compute gradients correctly in the backwards pass.
 - `wp.sim.Model.edge_indices` now includes boundary edges
+- Allow shadowing builtin functions ([GH-308](https://github.com/NVIDIA/warp/issues/308))
 
 ## [1.3.3] - 2024-09-04
 
