@@ -515,7 +515,7 @@ In this example, `shard_map` is used to distribute the computation across availa
 
 This approach allows for efficient parallel processing of large arrays, as each device works on a portion of the data simultaneously.
 
-To run this program on multiple GPUs, you can use `mpirun` with the following command:
+To run this program on multiple GPUs, you must have OpenMPI installed. You can consult the `OpenMPI installation guide <https://docs.open-mpi.org/en/v5.0.x/installing-open-mpi/quickstart.html>`_ for instructions on how to install it. Once OpenMPI is installed, you can use `mpirun` with the following command:
 
 .. code-block:: bash
 
