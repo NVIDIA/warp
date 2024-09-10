@@ -30,6 +30,7 @@ def jax_kernel(wp_kernel, launch_dims=None):
         wp_kernel: The Warp kernel to be wrapped.
         launch_dims: Optional. Specify the kernel launch dimensions. If None,
                      dimensions are inferred from the shape of the first argument.
+                     This option when set will specify the output dimensions.
 
     Current limitations:
     - All kernel arguments must be arrays.
