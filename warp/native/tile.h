@@ -93,29 +93,9 @@ struct is_same<T, T> {
     static constexpr bool value = true;
 };
 
-template <typename T>
-void print_tile(T& t)
-{
-    t.print();
-
-    printf("[");
-    for (int i=0; i < T::M; ++i)
-    {
-        printf("%*s[", i>0, "");
-        for (int j=0; j < T::N; ++j)
-        {
-            printf("%5.2f ", t.data[i*T::N + j]);
-        }
-
-        if (i == T::M-1)
-            printf("]]\n");
-        else
-            printf("]\n");
-    }
-}
 
 template <typename Tile>
-int tile_size(Tile& t) { return Tile::M*Tile::N; }
+constexpr int tile_size(Tile& t) { return Tile::M*Tile::N; }
 
 constexpr int tile_regcount(int m, int n) {
     return (m*n + WP_TILE_BLOCK_DIM - 1) / WP_TILE_BLOCK_DIM;
@@ -140,131 +120,221 @@ inline CUDA_CALLABLE T* tile_alloc_shared()
 }
 
 
-template <typename T, int M_, int N_, int StrideM_=N_, int StrideN_=1>
-struct tile_shared_t
-{
-    using Type = T;
-    static constexpr int M = M_;
-    static constexpr int N = N_;
-    static constexpr int StrideM = StrideM_;
-    static constexpr int StrideN = StrideN_;
-
-    T* data = NULL;
-
-    tile_shared_t() {}
-    tile_shared_t(T* smem) : data(smem)
-    {
-    }
-
-    inline T& operator()(int i, int j)
-    {
-        assert(i < M);
-        assert(j < N);
-
-        return data[i*StrideM + j*StrideN];
-    }
-
-    inline const T& operator()(int i, int j) const
-    {
-        assert(i < M);
-        assert(j < N);
-
-        return data[i*StrideM + j*StrideN];
-    }
-
-    struct iterator
-    {
-        tile_shared_t<Type, M, N, StrideM, StrideN>& tile;
-        int offset;
-        
-        template <typename Tile>
-        inline CUDA_CALLABLE iterator(Tile& t, int i) : tile(t), offset(i) {}
-        inline CUDA_CALLABLE T& operator*() const 
-        {
-            assert(offset < tile_size(tile));
-
-            return tile.data[offset];
-        }
-
-        inline CUDA_CALLABLE iterator& operator++() { offset += WP_TILE_BLOCK_DIM; return *this; }        
-        inline CUDA_CALLABLE bool valid() const { return index() < tile_size(tile); }
-
-        // linear index into the tile's data (assuming row-major layout)
-        inline CUDA_CALLABLE int index() const { return offset; }
-        inline CUDA_CALLABLE coord_t coord() const
-        {
-            int i = index();
-            return {i/N, i%N};
-        }
-    };    
-
-    iterator iter() { return iterator(*this, threadIdx.x); }
-
-    void zero()
-    {
-        // todo: make this subtile (stride aware)?
-        for (int i=threadIdx.x; i < M*N; i+= WP_TILE_BLOCK_DIM)
-            data[i] = T(0);
-    }
-};
-
-template <typename Tile>
-auto tile_transpose(Tile& t)
-{
-    // alias incoming tile 
-    return tile_shared_t<typename Tile::Type, Tile::N, Tile::M, Tile::StrideN, Tile::StrideM>(t.data);
-}
-
-
 template <typename T, int M_, int N_>
 struct tile_register_t
 {
     using Type = T;
     static constexpr int M = M_;
     static constexpr int N = N_;
+    static constexpr int Size = M*N;
+
     static constexpr int NumRegs = tile_regcount(M, N);
 
     T data[NumRegs];
    
-    tile_register_t(T value=T(0.0)) 
+    inline CUDA_CALLABLE tile_register_t(T value=T(0.0)) 
     {
         // zero-initialize by default necessary for tile adjoints
         // need to check if this results in worse codegen
         // than doing adj_var = tile_zeros() explicitly
         // in backwards pass and letting default constructor
         // avoid initialization
+        
         for (int i=0; i < NumRegs; ++i)
             data[i] = value;
     }
 
-    struct iterator
+    // compute linear tile index from a local register index
+    inline CUDA_CALLABLE int index(int reg) const
     {
-        tile_register_t<Type, M, N>& tile;
-        int offset;
-       
-        inline CUDA_CALLABLE iterator(tile_register_t<Type, M, N>& t) : tile(t), offset(0) { }
+        return threadIdx.x + reg*WP_TILE_BLOCK_DIM;
+    }
 
-        inline CUDA_CALLABLE T& operator*() const 
+    // compute tile coordinate from linear index
+    inline CUDA_CALLABLE coord_t coord(int index) const
+    {
+        return {index/N, index%N};
+    }
+
+    // Returns the number of valid registers for this tile
+    // i.e.: how many registers map to a valid coordinate.
+    // When a tile's size is not aligned to the block dimension
+    // some of the trailing registers may lie outside the valid range
+    inline CUDA_CALLABLE int valid() const
+    {
+        return (Size - threadIdx.x)/WP_TILE_BLOCK_DIM;
+    }    
+
+    // return the in-register version of this tile (nop)
+    inline CUDA_CALLABLE auto& get() { return *this; }
+
+    inline CUDA_CALLABLE void assign(const tile_register_t<T, M, N>& tile) 
+    { 
+        for (int i=0; i < NumRegs; ++i)
+            data[i] = tile.data[i];
+    }
+
+    
+    inline CUDA_CALLABLE void print()
+    {
+        printf("tid: %d ", threadIdx.x);
+
+        for (int i=0; i < NumRegs; ++i)
         {
-            assert(offset < NumRegs);
-
-            return tile.data[offset]; 
+            printf("%f ", data[i]);
         }
-        inline CUDA_CALLABLE iterator& operator++() { ++offset; return *this; }
-        inline CUDA_CALLABLE bool valid() const { return index() < tile_size(tile); }
 
-        // linear index into the tile's data (assuming row-major layout)
-        inline CUDA_CALLABLE int index() const { return threadIdx.x + offset*WP_TILE_BLOCK_DIM;}
-        inline CUDA_CALLABLE coord_t coord() const
-        {
-            int i = index();
-            return {i/N, i%N};
-        }
-    };    
-
-    iterator iter() { return iterator(*this); }
+        printf("\n");
+    }
+        
 };
 
+
+
+template <typename T, int M_, int N_, int StrideM_=N_, int StrideN_=1>
+struct tile_shared_t
+{
+    using Type = T;
+    static constexpr int M = M_;
+    static constexpr int N = N_;
+    static constexpr int Size = M*N;
+
+    static constexpr int StrideM = StrideM_;
+    static constexpr int StrideN = StrideN_;
+
+    T* data = NULL;
+
+    inline CUDA_CALLABLE tile_shared_t() {}
+    inline CUDA_CALLABLE tile_shared_t(T* smem) : data(smem)
+    {
+    }
+
+    inline CUDA_CALLABLE T& operator()(int i, int j)
+    {
+        assert(i < M);
+        assert(j < N);
+
+        return data[i*StrideM + j*StrideN];
+    }
+
+    inline CUDA_CALLABLE const T& operator()(int i, int j) const
+    {
+        assert(i < M);
+        assert(j < N);
+
+        return data[i*StrideM + j*StrideN];
+    }
+
+    inline CUDA_CALLABLE T& operator()(int index)
+    {
+        assert(index < M*N);
+
+        // unravel
+        int i = index/N;
+        int j = index%N;
+
+        return (*this)(i,j);
+    }    
+
+    inline CUDA_CALLABLE const T& operator()(int index) const
+    {
+        assert(index < M*N);
+
+        // unravel
+        int i = index/N;
+        int j = index%N;
+
+        return (*this)(i,j);
+    }    
+
+    // in-place zero
+    inline CUDA_CALLABLE void zero()
+    {
+        // todo: make this subtile (stride aware)
+        for (int i=threadIdx.x; i < M*N; i+= WP_TILE_BLOCK_DIM)
+            data[i] = T(0);
+    }
+
+    // compute linear tile index from a local register index
+    inline CUDA_CALLABLE int index(int reg) const
+    {
+        return threadIdx.x + reg*WP_TILE_BLOCK_DIM;
+    }
+
+    // compute tile coordinate from linear index
+    inline CUDA_CALLABLE coord_t coord(int index) const
+    {
+        return {index/N, index%N};
+    }
+
+    // copy shared tile to register
+    inline CUDA_CALLABLE tile_register_t<T, M, N> get() 
+    { 
+        tile_register_t<T, M, N> out;
+
+        WP_PRAGMA_UNROLL
+        for (int i=0; i < out.NumRegs; ++i)
+        {
+            const int linear = out.index(i);
+
+            // handle case where tile size is not
+            // aligned to block dimensions
+            if (linear > Size)
+                break;
+
+            out.data[i] = (*this)(linear);
+        }
+
+        return out;
+    }
+
+    // copy register tile to shared
+    inline CUDA_CALLABLE void assign(const tile_register_t<T, M, N>& tile)
+    { 
+        WP_PRAGMA_UNROLL
+        for (int i=0; i < tile.NumRegs; ++i)
+        {
+            const int linear = tile.index(i);
+
+            // handle case where tile size is not
+            // aligned to block dimensions
+            if (linear > Size)
+                break;
+
+            // todo: should use coord here to handle cases where
+            // shared tile is a slice?
+            data[linear] = tile.data[i];
+        }
+    }
+
+    inline CUDA_CALLABLE void print()
+    {
+        if (threadIdx.x == 0)
+        {
+            printf("[");
+            for (int i=0; i < M; ++i)
+            {
+                printf("%*s[", i>0, "");
+                for (int j=0; j < N; ++j)
+                {
+                    printf("%5.2f ", data(i, j));
+                }
+
+                if (i == M-1)
+                    printf("]]\n");
+                else
+                    printf("]\n");
+            }
+        }
+    }
+};
+
+template <typename Tile>
+inline CUDA_CALLABLE auto tile_transpose(Tile& t)
+{
+    // alias incoming tile 
+    return tile_shared_t<typename Tile::Type, Tile::N, Tile::M, Tile::StrideN, Tile::StrideM>(t.data);
+}
 
 
 //-----------------------------------------------------------------------------------------------------
@@ -287,7 +357,7 @@ inline CUDA_CALLABLE auto tile_zeros()
 }
 
 
-// entry point for store
+// entry point for load
 template <typename T, int M, int N, int Alloc>
 inline CUDA_CALLABLE auto tile_load(array_t<T>& src, int x, int y)
 {
@@ -297,12 +367,21 @@ inline CUDA_CALLABLE auto tile_load(array_t<T>& src, int x, int y)
 
     tile_shared_t<T, M, N> dest(data);
     
-    WP_PRAGMA_UNROLL
-    for (auto dst_iter=dest.iter(); dst_iter.valid(); ++dst_iter)
-    {  
-        coord_t c = dst_iter.coord();
+    const int tile_i = x*M;
+    const int tile_j = y*N;
 
-        *dst_iter = index(src, x*M + c.i, y*N + c.j);
+    // wp.array() indexing generates poor code due to char* casting
+    // here we unroll some of the ops, note this assumes byte strides are 
+    // aligned to the element size
+    T* ptr = &index(src, tile_i, tile_j);
+    const int stride_i = src.strides[0]/sizeof(T);
+    const int stride_j = src.strides[1]/sizeof(T);    
+
+    WP_PRAGMA_UNROLL
+    for (int i=threadIdx.x; i < length; i += WP_TILE_BLOCK_DIM)
+    {  
+        coord_t c = dest.coord(i);
+        dest.data[i] = ptr[c.i*stride_i + c.j*stride_j];    //index(src, tile_i + c.i, tile_j + c.j);
     }
 
     return dest;
@@ -312,18 +391,33 @@ inline CUDA_CALLABLE auto tile_load(array_t<T>& src, int x, int y)
 template <typename T, typename Tile>
 inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int x, int y, Tile& src)
 {
-    const int M = src.M;
-    const int N = src.N;
-   
-    // cooperatively store the tile, using a block-stride iterator
-    WP_PRAGMA_UNROLL
-    for (auto src_iter=src.iter(); src_iter.valid(); ++src_iter)
-    {  
-        coord_t c = src_iter.coord();
+    auto src_reg = src.get();
 
-        index(dest, x*M + c.i, y*N + c.j) = *src_iter;
+    const int tile_i = x*src.M;
+    const int tile_j = y*src.N;
+
+    // wp.array() indexing generates poor code due to char* casting
+    // here we unroll some of the ops, note this assumes byte strides are 
+    // aligned to the element size
+    T* ptr = &index(dest, tile_i, tile_j);
+    const int stride_i = dest.strides[0]/sizeof(T);
+    const int stride_j = dest.strides[1]/sizeof(T);
+    
+    WP_PRAGMA_UNROLL
+    for (int i=0; i < src_reg.NumRegs; ++i)
+    {
+        // handle case where tile size is not 
+        // aligned to block dimensions
+        int index = src_reg.index(i);
+        if (index > src_reg.Size)
+            break;
+
+        coord_t c = src_reg.coord(index);
+        ptr[c.i*stride_i + c.j*stride_j] = src_reg.data[i]; //index(dest, tile_i + c.i, tile_j + c.j);
     }
 }
+
+    
 
 //-------------------------------------
 // Adjoints
@@ -332,129 +426,146 @@ template <typename T, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_load(array_t<T>& src, int x, int y,
                                         array_t<T>& adj_src, int adj_x, int adj_y,
                                         AdjTile& adj_ret)
-{    
-    // add gradients to src array   
-    for (auto adj_iter=adj_ret.iter(); adj_iter.valid(); ++adj_iter)
+{
+    // early out
+    // if (!src.grad)
+    //     return;
+
+    auto adj_reg = adj_ret.get();
+
+    const int tile_i = x*adj_reg.M;
+    const int tile_j = y*adj_reg.N;
+
+    // add gradients to src array
+    WP_PRAGMA_UNROLL
+    for (int i=0; i < adj_reg.NumRegs; ++i)
     {  
-        coord_t c = adj_iter.coord();
+        int linear = adj_reg.index(i);
+        if (linear > adj_reg.Size)
+            break;
 
-        int i = x*adj_ret.M + c.i;
-        int j = y*adj_ret.N + c.j;
+        coord_t coord = adj_reg.coord(linear);
 
-        auto grad = *adj_iter;
+        auto grad = adj_reg.data[i];
 
         if (adj_src.data)
-            adj_atomic_add(&index(adj_src, i, j), grad);
+             adj_atomic_add(&index(adj_src, tile_i + coord.i, tile_j + coord.j), grad);
         else if (src.grad)
-            adj_atomic_add(&index_grad(src, i, j), grad);
+            adj_atomic_add(&index_grad(src, tile_i + coord.i, tile_j + coord.j), grad);
     }
 }
 
 template <typename T, typename Tile, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_store(array_t<T>& dest, int x, int y, Tile& t, array_t<T>& adj_dest, int adj_x, int adj_y, AdjTile& adj_t)
 {  
-    const int M = t.M;
-    const int N = t.N;
+    // if (!dest.grad)
+    //     return;
+
+    // convert to register if necessary
+    auto adj_reg = adj_t.get();
+
+    const int tile_i = x*adj_reg.M;
+    const int tile_j = y*adj_reg.N;
 
     // load gradients from output
     WP_PRAGMA_UNROLL
-    for (auto adj_iter=adj_t.iter(); adj_iter.valid(); ++adj_iter)
+    for (int i=0; i < adj_reg.NumRegs; ++i)
     {  
-        coord_t c = adj_iter.coord();
+        int linear = adj_reg.index(i);
+        if (linear > adj_reg.Size)
+            break;
 
-        int i = x*M + c.i;
-        int j = y*N + c.j;
+        coord_t coord = adj_reg.coord(linear);
 
-        if (adj_dest.data)
-            *adj_iter += index(adj_dest, i, j);
+         if (adj_dest.data)
+             adj_reg.data[i] += index(adj_dest, tile_i + coord.i, tile_j + coord.j);
         else if (dest.grad)
-            *adj_iter += index_grad(dest, i, j);        
+            adj_reg.data[i] += index_grad(dest, tile_i + coord.i, tile_j + coord.j);
     }
+
+    // store adjoint back to tile
+    adj_t.assign(adj_reg);
 }
 
 // unary map
 template <typename Tile, typename Fwd>
-auto tile_map(Fwd op,
-              Tile &a)
+inline CUDA_CALLABLE auto tile_map(Fwd op,
+                                   Tile &a)
 {
     auto out = tile_register_t<typename Tile::Type, Tile::M, Tile::N>();
-
-    auto out_iter = out.iter();
-    auto a_iter = a.iter();
-
+    auto a_reg = a.get();
+    
     WP_PRAGMA_UNROLL
-    for (; out_iter.valid(); ++out_iter, ++a_iter)
-        *out_iter = op(*a_iter);
-
-    // WP_PRAGMA_UNROLL
-    // for (int i=0; i < Tile::NumRegs; ++i)
-    //     out.data[i] = op(a.data[i]);
+    for (int i=0; i < out.NumRegs; ++i)
+    {
+        out.data[i] = op(a_reg.data[i]);
+    }
 
     return out;
 }
 
 template <typename Tile, typename AdjTile, typename Fwd, typename Adj>
-void adj_tile_map(Fwd op,
-                  Tile &a,
-                  Adj adj_op,
-                  Tile &adj_a,
-                  AdjTile &adj_ret)
+inline CUDA_CALLABLE void adj_tile_map(Fwd op,
+                                       Tile& a,
+                                       Adj adj_op,
+                                       Tile& adj_a,
+                                       AdjTile& adj_ret)
 {
-    auto a_iter = a.iter();   
-    auto adj_a_iter = adj_a.iter();
-    auto adj_ret_iter = adj_ret.iter();
+    auto a_reg = a.get();   
+    auto adj_a_reg = adj_a.get();
+    auto adj_ret_reg = adj_ret.get();
 
     WP_PRAGMA_UNROLL
-    for (; a_iter.valid(); ++a_iter, ++adj_a_iter, ++adj_ret_iter)
-    {
-        adj_op(*a_iter, *adj_a_iter, *adj_ret_iter);
+    for (int i=0; i < a_reg.NumRegs; ++i)
+    {        
+        adj_op(a_reg.data[i], adj_a_reg.data[i], adj_ret_reg.data[i]);
     }
+
+    // write adjoints back
+    adj_a.assign(adj_a_reg);
 }
 
 // binary map
 template <typename TileA, typename TileB, typename Fwd>
-auto tile_map(Fwd op,
-              TileA &a,
-              TileB &b)
+inline CUDA_CALLABLE auto tile_map(Fwd op,
+                                   TileA& a,
+                                   TileB& b)
 {
     auto out = tile_register_t<typename TileA::Type, TileA::M, TileA::N>();
 
-    auto out_iter = out.iter();
-    auto a_iter = a.iter();
-    auto b_iter = b.iter();
+    auto a_reg = a.get();
+    auto b_reg = b.get();
 
     WP_PRAGMA_UNROLL
-    for (; out_iter.valid(); ++out_iter, ++a_iter, ++b_iter)
-        *out_iter = op(*a_iter, *b_iter);
-
-    // WP_PRAGMA_UNROLL
-    // for (int i=0; i < TileA::NumRegs; ++i)
-    //     out.data[i] = op(a.data[i], b.data[i]);
-
+    for (int i=0; i < out.NumRegs; ++i)
+        out.data[i] = op(a_reg.data[i], b_reg.data[i]);
 
     return out;
 }
 
 template <typename TileA, typename TileB, typename Fwd, typename Adj, typename AdjTile>
-void adj_tile_map(Fwd op,
-                  TileA &a,
-                  TileB &b,
-                  Adj adj_op,
-                  TileA &adj_a,
-                  TileB &adj_b,
-                  AdjTile &adj_ret)
+inline CUDA_CALLABLE void adj_tile_map(Fwd op,
+                                       TileA &a,
+                                       TileB &b,
+                                       Adj adj_op,
+                                       TileA &adj_a,
+                                       TileB &adj_b,
+                                       AdjTile &adj_ret)
 {
-    auto a_iter = a.iter();   
-    auto b_iter = b.iter();
-    auto adj_a_iter = adj_a.iter();
-    auto adj_b_iter = adj_b.iter();    
-    auto adj_ret_iter = adj_ret.iter();
+    auto a_reg = a.get();   
+    auto b_reg = b.get();
+    auto adj_a_reg = adj_a.get();
+    auto adj_b_reg = adj_b.get();    
+    auto adj_ret_reg = adj_ret.get();
 
     WP_PRAGMA_UNROLL
-    for (; a_iter.valid(); ++a_iter, ++b_iter, ++adj_a_iter, ++adj_b_iter, ++adj_ret_iter)
+    for (int i=0; i < a_reg.NumRegs; ++i)
     {
-        adj_op(*a_iter, *b_iter, *adj_a_iter, *adj_b_iter, *adj_ret_iter);
+        adj_op(a_reg.data[i], b_reg.data[i], adj_a_reg.data[i], adj_b_reg.data[i], adj_ret_reg.data[i]);
     }
+
+    adj_a.assign(adj_a_reg);
+    adj_b.assign(adj_b_reg);
 }
 
 // wrap the operator in a lambda so that we don't have to do overload resolution for things like e.g.: wp.sin()
@@ -468,10 +579,10 @@ void adj_tile_map(Fwd op,
 
 // unary neg
 template <typename Tile>
-auto tile_neg(Tile& a) { return tile_unary_map(wp::neg, a); }
+inline CUDA_CALLABLE auto tile_neg(Tile& a) { return tile_unary_map(wp::neg, a); }
 
 template <typename Tile, typename AdjTile>
-void adj_tile_neg(Tile& a, Tile& adj_a, AdjTile& adj_ret) { adj_tile_unary_map(wp::neg, a, wp::adj_neg, adj_a, adj_ret); }
+inline CUDA_CALLABLE void adj_tile_neg(Tile& a, Tile& adj_a, AdjTile& adj_ret) { adj_tile_unary_map(wp::neg, a, wp::adj_neg, adj_a, adj_ret); }
 
 
 /*
@@ -520,20 +631,20 @@ CUDA_CALLABLE inline auto tile_mul_impl(typename Tile::Type s, Tile& t,
 */
 
 template <typename TileA, typename TileB>
-auto tile_add(TileA& a, TileB& b)
+inline CUDA_CALLABLE auto tile_add(TileA& a, TileB& b)
 {
     return tile_binary_map(add, a, b);
 }
 
 template <typename TileA, typename TileB, typename AdjTile>
-void adj_tile_add(TileA& a, TileB& b, TileA& adj_a, TileB& adj_b, AdjTile& adj_c)
+inline CUDA_CALLABLE void adj_tile_add(TileA& a, TileB& b, TileA& adj_a, TileB& adj_b, AdjTile& adj_c)
 {
     adj_tile_binary_map(add, a, b, adj_add, adj_a, adj_b, adj_c);
 }
 
 // tile*scalar
 template <typename Tile>
-auto tile_mul(Tile& a, const typename Tile::Type& s)
+inline CUDA_CALLABLE auto tile_mul(Tile& a, const typename Tile::Type& s)
 {
     // promote scalar to a constant tile
     auto s_tile = tile_register_t<typename Tile::Type, Tile::M, Tile::N>(s);
@@ -542,9 +653,9 @@ auto tile_mul(Tile& a, const typename Tile::Type& s)
 }
 
 template <typename Tile, typename AdjTile>
-void adj_tile_mul(Tile& a, const typename Tile::Type& s,
-                  Tile& adj_a, typename Tile::Type& adj_s,
-                  AdjTile& adj_c)
+inline CUDA_CALLABLE void adj_tile_mul(Tile& a, const typename Tile::Type& s,
+                                       Tile& adj_a, typename Tile::Type& adj_s,
+                                       AdjTile& adj_c)
 {
     // auto s_tile = tile_register_t<Tile::Type, Tile::M, Tile::N>(s);
     // auto adj_s_tile = tile_register_t<Tile::Type, Tile::M, Tile::N>();
@@ -558,7 +669,7 @@ void adj_tile_mul(Tile& a, const typename Tile::Type& s,
 
 // scalar*tile
 template <typename Tile>
-auto tile_mul(const typename Tile::Type& s, Tile& a)
+inline CUDA_CALLABLE auto tile_mul(const typename Tile::Type& s, Tile& a)
 {
     // promote scalar to a constant tile
     auto s_tile = tile_register_t<typename Tile::Type, Tile::M, Tile::N>(s);
@@ -567,9 +678,9 @@ auto tile_mul(const typename Tile::Type& s, Tile& a)
 }
 
 template <typename Tile, typename AdjTile>
-void adj_tile_mul(const typename Tile::Type& s, Tile& a,
-                  typename Tile::Type& adj_s, Tile& adj_a,
-                  AdjTile& adj_c)
+inline CUDA_CALLABLE void adj_tile_mul(const typename Tile::Type& s, Tile& a,
+                                       typename Tile::Type& adj_s, Tile& adj_a,
+                                       AdjTile& adj_c)
 {
     // auto s_tile = tile_register_t<Tile::Type, Tile::M, Tile::N>(s);
     // auto adj_s_tile = tile_register_t<Tile::Type, Tile::M, Tile::N>();

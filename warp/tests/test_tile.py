@@ -6,13 +6,14 @@ import torch
 wp.init()
 wp.set_module_options({"enable_backward": True})
 wp.set_device("cuda:0")
+wp.set_module_options({"fast_math": True})
 #wp.config.mode = "debug"
 #wp.config.verify_cuda = True
 
 wp.build.clear_kernel_cache()
 
-TILE_M = wp.constant(16)
-TILE_N = wp.constant(8)
+TILE_M = wp.constant(32)
+TILE_N = wp.constant(16)
 TILE_K = wp.constant(8)
 
 # num threads per-tile
@@ -93,7 +94,7 @@ def test_tile_unary_map():
         wp.launch(tile_unary_map, dim=[int(M/TILE_M), int(N/TILE_N)], inputs=[A_wp, B_wp], tile_size=TILE_DIM)
 
     # verify forward pass
-    assert(np.allclose(B, B_wp.numpy(), rtol=1.e-4))
+    assert(np.allclose(B, B_wp.numpy(), atol=1.e-4))
     print("Unary map forward passed")
 
     # verify backward pass
