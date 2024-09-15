@@ -17,6 +17,8 @@ import importlib
 
 import omni.kit.test
 
+import warp as wp
+
 TEST_DESCS = (
     ("test_array", "TestArray"),
     ("test_array_reduce", "TestArrayReduce"),
@@ -76,3 +78,6 @@ for module_name, cls_name in TEST_DESCS:
 # Each test class needs to be defined at the module level to be found by
 # the test runners.
 locals().update({str(i): x for i, x in enumerate(test_clss)})
+
+# Clear caches to ensure determinism.
+wp.clear_kernel_cache()
