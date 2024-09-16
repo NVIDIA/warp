@@ -3033,7 +3033,7 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
         ctype = var.ctype(value_type=True)
                
         if is_tile(var.type) and var.type.storage == "shared":
-            lines += [f"{ctype} {name} = wp::tile_alloc_shared<{Var.type_to_ctype(var.type.dtype)},{var.type.M},{var.type.N},{var.type.alloc()}>();\n"]
+            lines += [f"{ctype} {name} = {{0}};\n"]
         else:
             lines += [f"{ctype} {name} = {{}};\n"]
 

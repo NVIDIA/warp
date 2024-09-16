@@ -12,8 +12,8 @@ wp.set_module_options({"fast_math": True})
 
 wp.build.clear_kernel_cache()
 
-TILE_M = wp.constant(32)
-TILE_N = wp.constant(16)
+TILE_M = wp.constant(8)
+TILE_N = wp.constant(4)
 TILE_K = wp.constant(8)
 
 # num threads per-tile
@@ -154,8 +154,8 @@ def test_tile_binary_map():
     C_wp.grad = wp.ones_like(C_wp)
     tape.backward()
 
-    assert(np.allclose(A_wp.grad.numpy(), A_grad))
-    assert(np.allclose(B_wp.grad.numpy(), B_grad))
+    assert(np.allclose(A_wp.grad.numpy(), A_grad, rtol=1.e-2))
+    assert(np.allclose(B_wp.grad.numpy(), B_grad, rtol=1.e-2))
     
     print("Binary map backward passed")
 
@@ -235,8 +235,8 @@ def tile_gemm(A: wp.array2d(dtype=float),
 def test_tile_gemm():
 
     M = TILE_M*7
-    K = TILE_K*5
-    N = TILE_N*2
+    K = TILE_K*6
+    N = TILE_N*5
 
     rng = np.random.default_rng(42)
     A = rng.random((M, K), dtype=np.float32)

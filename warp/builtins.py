@@ -1875,6 +1875,11 @@ def tile_matmul_dispatch_func(arg_types: Mapping[str, type], return_type: Any, a
     b = arg_values["b"]
     out = arg_values["out"]
 
+    # set the storage type to the inputs to shared
+    a.type.storage = "shared"
+    b.type.storage = "shared"
+    out.type.storage = "shared"
+
     # template_args.append(dtype)
     # template_args.append(m)
     # template_args.append(n)

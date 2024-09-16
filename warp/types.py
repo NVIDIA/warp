@@ -2881,13 +2881,16 @@ class Tile:
         if self.storage == "register":
             return f"wp::tile_register_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
         elif self.storage == "shared":
-            return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
+            
+            # every shared memory tile will create a new static shared memory allocation
+            # this just needs to be a unique-id for templated allocation functions         
+            return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{Tile.alloc()}>"
 
     # generate a unique allocation index for shared memory
     @classmethod
     def alloc(cls):
-        index = cls.allocation
-        cls.allocation += 1
+        index = Tile.allocation
+        Tile.allocation += 1
         return index
 
 class TileZeros(Tile):
@@ -2905,7 +2908,7 @@ class TileConstant(Tile):
 class TileLoad(Tile):
 
     def __init__(self, array, M, N):
-        Tile.__init__(self, array.dtype, M, N, op="load", storage="shared")
+        Tile.__init__(self, array.dtype, M, N, op="load", storage="register")
         
 
 class TileUnaryMap(Tile):

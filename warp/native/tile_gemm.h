@@ -321,11 +321,11 @@ void tile_matmul(TileA& a, TileB& b, TileC& c)
 }
 
 
-template <typename TileA, typename TileB, typename TileC>
+template <typename TileA, typename TileB, typename TileC,
+          typename AdjTileA, typename AdjTileB, typename AdjTileC>
 void adj_tile_matmul(TileA& a, TileB& b, TileC& c,
-                     TileA& adj_a, TileB& adj_b, TileC& adj_c)
+                     AdjTileA& adj_a, AdjTileB& adj_b, AdjTileC& adj_c)
 {
-
     tile_matmul_scalar(adj_c, wp::tile_transpose(b), adj_a);
     tile_matmul_scalar(wp::tile_transpose(a), adj_c, adj_b);
 }
