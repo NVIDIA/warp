@@ -690,7 +690,7 @@ inline CUDA_CALLABLE void adj_tile_map(Fwd op,
 #define tile_binary_map(op, a, b) tile_map([](auto x, auto y) { return op(x, y);}, a, b)
 #define adj_tile_binary_map(op, a, b, adj_op, adj_a, adj_b, adj_ret) adj_tile_map([](auto x, auto y) { return op(x, y);}, a, b, [](auto x, auto y, auto& adj_x, auto& adj_y, auto adj_ret) { adj_op(x, y, adj_x, adj_y, adj_ret);}, adj_a, adj_b, adj_ret)
 
-// unary neg
+// -tile (unary neg)
 template <typename Tile>
 inline CUDA_CALLABLE auto tile_neg(Tile& a) { return tile_unary_map(wp::neg, a); }
 
@@ -698,51 +698,7 @@ template <typename Tile, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_neg(Tile& a, Tile& adj_a, AdjTile& adj_ret) { adj_tile_unary_map(wp::neg, a, wp::adj_neg, adj_a, adj_ret); }
 
 
-/*
-// handle tile*scalar
-template<typename Tile>
-CUDA_CALLABLE inline auto tile_mul_impl(Tile& t, typename Tile::Type s,
-                                        Tile& adj_t, typename Tile::Type adj_s)
-{
-    typedef typename Tile::Type T;
-    typedef tile_constant_t<T, Tile::M, Tile::N> Constant;
-
-    typedef tile_binary_map_t<Tile, Constant> Op;
-
-    typename Op::FwdOp fwd = [](T a, T b) { return mul(a, b); };
-    typename Op::AdjOp adj = [](T a, T b, T& adj_a, T& adj_b, T& adj_ret) { adj_mul(a, b, adj_a, adj_b, adj_ret); };
-
-    // promote scalar to constant tile
-    Constant c(s, adj_s);
-
-    return Op(t, c, fwd, adj);
-}
-
-// handle scalar*tile
-template<typename Tile>
-CUDA_CALLABLE inline auto tile_mul_impl(typename Tile::Type s, Tile& t,
-                                        typename Tile::Type adj_s, Tile& adj_t)
-{
-    typedef typename Tile::Type T;
-    typedef tile_constant_t<T, Tile::M, Tile::N> Constant;
-
-    typedef tile_binary_map_t<Constant, Tile> Op;
-
-    typename Op::FwdOp fwd = [](T a, T b) { return mul(a, b); };
-    typename Op::AdjOp adj = [](T a, T b, T& adj_a, T& adj_b, T& adj_ret) { adj_mul(a, b, adj_a, adj_b, adj_ret); };
-
-    // promote scalar to constant tile
-    Constant c(s, adj_s);
-
-    return Op(c, t, fwd, adj);
-
-}
-
-
-#define tile_mul(a, b) tile_mul_impl(a, b adj_##a, adj_##b)
-#define tile_add(a, b) tile_add_impl(a, b adj_##a, adj_##b)
-*/
-
+// tile + tile
 template <typename TileA, typename TileB>
 inline CUDA_CALLABLE auto tile_add(TileA& a, TileB& b)
 {
@@ -770,13 +726,15 @@ inline CUDA_CALLABLE void adj_tile_mul(Tile& a, const typename Tile::Type& s,
                                        Tile& adj_a, typename Tile::Type& adj_s,
                                        AdjTile& adj_c)
 {
-    // auto s_tile = tile_register_t<Tile::Type, Tile::M, Tile::N>(s);
-    // auto adj_s_tile = tile_register_t<Tile::Type, Tile::M, Tile::N>();
+    auto s_tile = tile_register_t<typename Tile::Type, Tile::M, Tile::N>(s);
+    auto adj_s_tile = tile_register_t<typename Tile::Type, Tile::M, Tile::N>();
 
-    // adj_tile_binary_map(mul, a, s_tile, adj_mul, adj_a, adj_s_tile, adj_c);
+    adj_tile_binary_map(mul, a, s_tile, adj_mul, adj_a, adj_s_tile, adj_c);
 
-    // todo: sum up contribution from all adj_s_tile onto original scalar
-    //adj_tile_sum()
+    for (int i=0; i < adj_s_tile.NumRegs; ++i)
+    {
+        adj_s += adj_s_tile.data[i];
+    }
 }
 
 
@@ -795,13 +753,15 @@ inline CUDA_CALLABLE void adj_tile_mul(const typename Tile::Type& s, Tile& a,
                                        typename Tile::Type& adj_s, Tile& adj_a,
                                        AdjTile& adj_c)
 {
-    // auto s_tile = tile_register_t<Tile::Type, Tile::M, Tile::N>(s);
-    // auto adj_s_tile = tile_register_t<Tile::Type, Tile::M, Tile::N>();
+    auto s_tile = tile_register_t<typename Tile::Type, Tile::M, Tile::N>(s);
+    auto adj_s_tile = tile_register_t<typename Tile::Type, Tile::M, Tile::N>();
 
-    // adj_tile_binary_map(mul, a, s_tile, adj_mul, adj_a, adj_s_tile, adj_c);
+    adj_tile_binary_map(mul, s_tile, a, adj_mul, adj_s_tile, adj_a, adj_c);
 
-    // todo: sum up contribution from all adj_s_tile onto original scalar
-    //adj_tile_sum()
+    for (int i=0; i < adj_s_tile.NumRegs; ++i)
+    {
+        adj_s += adj_s_tile.data[i];
+    }
 }
 
 

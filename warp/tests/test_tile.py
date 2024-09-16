@@ -301,14 +301,23 @@ def test_tile_operators():
     input = rng.random((batch_count, M, N), dtype=np.float32)
     output = input*0.75
 
-    input_wp = wp.array(input)
-    output_wp = wp.zeros_like(input_wp)
+    input_wp = wp.array(input, requires_grad=True)
+    output_wp = wp.zeros_like(input_wp, requires_grad=True)
 
-    wp.launch(tile_operators, dim=batch_count, inputs=[input_wp, output_wp], tile_size=TILE_DIM)
+    with wp.Tape() as tape:
+        wp.launch(tile_operators, dim=batch_count, inputs=[input_wp, output_wp], tile_size=TILE_DIM)
 
     assert(np.allclose(output, output_wp.numpy(), rtol=1.e-4))
 
     print("operators forward passed")
+
+    output_wp.grad.fill_(1.0)
+
+    tape.backward()
+
+    assert(np.allclose(input_wp.grad.numpy(), np.ones_like(input)*0.75, rtol=1.e-4))
+
+    print("operators backward passed")    
 
 
 
@@ -318,3 +327,104 @@ test_tile_binary_map()
 test_tile_batched_gemm()
 test_tile_gemm()
 test_tile_operators()
+
+
+# #-----------------------------------------
+# # center of mass computation
+
+# start = offset[i] 
+# end = offset[i+1] 
+
+# com = wp.tile_zeros(dtype=wp.vec3, M=1)
+
+# # load chunks of indices
+# for i in range(start, end, N):
+
+#     count = wp.min(N, end-i)
+    
+#     idx = wp.tile_load(indices, i, N, max_col=count)
+#     p = wp.tile_load(points, idx, max_col=count)
+
+#     com += wp.tile_sum(p)
+
+
+# wp.tile_store(out[i], com)
+
+
+
+# #-------------------------------------------
+# # compute deformation gradient
+
+# i = 
+# j =
+# k = 
+# l =
+
+# f = wp.tile(F)  # generate a block size tile of feature vectors
+
+# # layer 1
+# w1 = wp.tile_load(weights)
+# b1 = wp.tile_load(bias)
+
+# z = wp.tile_matmul(w1, f) + b1
+# z = wp.tile_map(relu, z)
+
+# # layer 2
+# w2 = wp.tile_load(weights)
+# b2 = wp.tile_load(bias)
+
+# z = wp.tile_matmul(w2, z) + b2
+# z = wp.tile_map(relu, z)
+
+# o = wp.untile(f)
+
+
+# #----------------------------------
+# # MLP with helper function for linear layers
+# # where shape is only partially known
+# # at compile time, and the other dims 
+# # are inferred from the input vector
+
+# f = wp.tile(F)
+
+# z = wp.tile_linear(weights1, bias1, f, hidden=16)
+# z = wp.tile_map(relu, z)
+
+# z = wp.tile_linear(weights2, bias2, f, hidden=8)
+# z = wp.tile_map(relu, z)
+
+# z = wp.tile_linear(weights3, bias3, f, hidden=4)
+# z = wp.tile_map(relu, z)
+
+# o = wp.untile(z)
+
+
+
+# #----------------------------------
+# # softmax
+
+# def softmax(z: Any):
+    
+#     e = wp.tile_map(wp.exp, z)
+#     s = wp.tile_sum(e, dim=0)
+
+#     return z/s[0]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
