@@ -21,17 +21,22 @@ _registered_kernels = [None]
 _registered_kernel_to_id = {}
 
 
-def jax_kernel(wp_kernel):
+def jax_kernel(wp_kernel, launch_dims=None):
     """Create a Jax primitive from a Warp kernel.
 
     NOTE: This is an experimental feature under development.
 
+    Args:
+        wp_kernel: The Warp kernel to be wrapped.
+        launch_dims: Optional. Specify the kernel launch dimensions. If None,
+                     dimensions are inferred from the shape of the first argument.
+                     This option when set will specify the output dimensions.
+
     Current limitations:
     - All kernel arguments must be arrays.
-    - Kernel launch dimensions are inferred from the shape of the first argument.
+    - If launch_dims is not provided, kernel launch dimensions are inferred from the shape of the first argument.
     - Input arguments are followed by output arguments in the Warp kernel definition.
     - There must be at least one input argument and at least one output argument.
-    - Output shapes must match the launch dimensions (i.e., output shapes must match the shape of the first argument).
     - All arrays must be contiguous.
     - Only the CUDA backend is supported.
     """
@@ -47,7 +52,7 @@ def jax_kernel(wp_kernel):
         id = _registered_kernel_to_id[wp_kernel]
 
     def bind(*args):
-        return _jax_warp_p.bind(*args, kernel=id)
+        return _jax_warp_p.bind(*args, kernel=id, launch_dims=launch_dims)
 
     return bind
 
@@ -106,7 +111,7 @@ def _get_jax_device():
     device = jax.config.jax_default_device
     # if default device is not set, use first device
     if device is None:
-        device = jax.devices()[0]
+        device = jax.local_devices()[0]
     return device
 
 
@@ -223,12 +228,17 @@ def _create_jax_warp_primitive():
             raise TypeError(f"Invalid or unsupported data type: {jax_ir_type}")
 
     # Abstract evaluation.
-    def jax_warp_abstract(*args, kernel=None):
+    def jax_warp_abstract(*args, kernel=None, launch_dims=None):
         wp_kernel = _registered_kernels[kernel]
         # All the extra arguments to the warp kernel are outputs.
         warp_outputs = [o.type for o in wp_kernel.adj.args[len(args) :]]
-        # TODO. Let's just use the first input dimension to infer the output's dimensions.
-        dims = strip_vecmat_dimensions(wp_kernel.adj.args[0], list(args[0].shape))
+
+        if launch_dims is None:
+            # Use the first input dimension to infer the output's dimensions if launch_dims is not provided
+            dims = strip_vecmat_dimensions(wp_kernel.adj.args[0], list(args[0].shape))
+        else:
+            dims = launch_dims
+
         jax_outputs = []
         for o in warp_outputs:
             shape = list(dims) + list(get_vecmat_shape(o))
@@ -260,7 +270,7 @@ def _create_jax_warp_primitive():
     def default_layout(shape):
         return range(len(shape) - 1, -1, -1)
 
-    def warp_call_lowering(ctx, *args, kernel=None):
+    def warp_call_lowering(ctx, *args, kernel=None, launch_dims=None):
         if not kernel:
             raise Exception("Unknown kernel id " + str(kernel))
         wp_kernel = _registered_kernels[kernel]
@@ -272,12 +282,15 @@ def _create_jax_warp_primitive():
         if not module.load(device):
             raise Exception("Could not load kernel on device")
 
-        # Infer dimensions from the first input.
-        warp_arg0 = wp_kernel.adj.args[0]
-        actual_shape0 = ir.RankedTensorType(args[0].type).shape
-        dims = strip_vecmat_dimensions(warp_arg0, actual_shape0)
-        warp_dims = collapse_into_leading_dimension(warp_arg0, dims)
-
+        if launch_dims is None:
+            # Infer dimensions from the first input.
+            warp_arg0 = wp_kernel.adj.args[0]
+            actual_shape0 = ir.RankedTensorType(args[0].type).shape
+            dims = strip_vecmat_dimensions(warp_arg0, actual_shape0)
+            warp_dims = collapse_into_leading_dimension(warp_arg0, dims)
+        else:
+            dims = launch_dims
+            warp_dims = launch_dims
         # Figure out the types and shapes of the input arrays.
         arg_strings = []
         operand_layouts = []
