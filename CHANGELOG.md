@@ -17,6 +17,8 @@
 - `wp.sim.Model.edge_indices` now includes boundary edges
 - Allow shadowing builtin functions ([GH-308](https://github.com/NVIDIA/warp/issues/308))
 - Fix a bug in which Python docstrings would be created as local function variables in generated code.
+- Allow passing custom launch dimensions to `jax_kernel()`.
+- Add new Jax interoperability examples for sharding and matrix multiplication (see Interoperability documentation).
 
 ## [1.3.3] - 2024-09-04
 
