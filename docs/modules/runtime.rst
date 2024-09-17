@@ -229,8 +229,8 @@ Matrix multiplication is fully differentiable, and can be recorded on the tape l
 
     tape = wp.Tape()
     with tape:
-        wp.matmul(A, B, C, D, device=device)
-        wp.launch(loss_kernel, dim=(m, n), inputs=[D, loss], device=device)
+        wp.matmul(A, B, C, D)
+        wp.launch(loss_kernel, dim=(m, n), inputs=[D, loss])
 
     tape.backward(loss=loss)
     A_grad = A.grad.numpy()
