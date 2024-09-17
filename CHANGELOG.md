@@ -19,6 +19,7 @@
 - Fix a bug in which Python docstrings would be created as local function variables in generated code.
 - Allow passing custom launch dimensions to `jax_kernel()`.
 - Add new Jax interoperability examples for sharding and matrix multiplication (see Interoperability documentation).
+- Fix a rare crash during error reporting on some systems.
 
 ## [1.3.3] - 2024-09-04
 

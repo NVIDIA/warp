@@ -28,7 +28,8 @@ void set_error_string(const char* fmt, ...)
     vsnprintf(g_error_buffer, sizeof(g_error_buffer), fmt, args);
     if (g_error_output_enabled)
     {
-        vfprintf(g_error_stream, fmt, args);
+        // note: we deliberately avoid vfprintf() due to problems with runtime glibc mismatch
+        fputs(g_error_buffer, g_error_stream);
         fputc('\n', g_error_stream);
         fflush(g_error_stream);
     }
@@ -46,7 +47,8 @@ void append_error_string(const char* fmt, ...)
     vsnprintf(g_error_buffer + offset, sizeof(g_error_buffer) - offset, fmt, args);
     if (g_error_output_enabled)
     {
-        vfprintf(g_error_stream, fmt, args);
+        // note: we deliberately avoid vfprintf() due to problems with runtime glibc mismatch
+        fputs(g_error_buffer + offset, g_error_stream);
         fputc('\n', g_error_stream);
         fflush(g_error_stream);
     }
