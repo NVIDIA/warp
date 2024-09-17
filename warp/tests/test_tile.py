@@ -320,6 +320,51 @@ def test_tile_operators():
     print("operators backward passed")    
 
 
+@wp.kernel
+def tile_sum_kernel(input: wp.array3d(dtype=float),
+                    output: wp.array(dtype=float)):
+
+    # output tile index
+    i = wp.tid()
+
+    a = wp.tile_load(input[i], 0, 0, m=TILE_M, n=TILE_N)
+    s = wp.tile_sum(a, axis=-1)*0.5
+    wp.tile_store(output, i, 0, s)
+
+def test_tile_sum():
+
+    batch_count = 2
+
+    M = TILE_M
+    N = TILE_N
+
+    rng = np.random.default_rng(42)
+    input = rng.random((batch_count, M, N), dtype=np.float32)
+
+    input_wp = wp.array(input, requires_grad=True)
+    output_wp = wp.zeros(batch_count, requires_grad=True)
+
+    with wp.Tape() as tape:
+        wp.launch(tile_sum_kernel, dim=batch_count, inputs=[input_wp, output_wp], tile_size=TILE_DIM)
+
+
+    for i in range(batch_count):
+        sum_np = np.sum(input[i])*0.5
+        sum_wp = output_wp.numpy()[i]
+
+        assert(np.allclose(sum_np, sum_wp, rtol=1.e-4))
+
+    print("Sum forward passed")
+
+    output_wp.grad.fill_(1.0)
+
+    tape.backward()
+
+    assert(np.allclose(input_wp.grad.numpy(), np.ones_like(input)*0.5, rtol=1.e-4))
+
+    print("Sum backward passed")
+
+
 
 test_tile_copy()
 test_tile_unary_map()
@@ -327,6 +372,7 @@ test_tile_binary_map()
 test_tile_batched_gemm()
 test_tile_gemm()
 test_tile_operators()
+test_tile_sum()
 
 
 # #-----------------------------------------

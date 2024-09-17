@@ -1880,19 +1880,7 @@ def tile_matmul_dispatch_func(arg_types: Mapping[str, type], return_type: Any, a
     b.type.storage = "shared"
     out.type.storage = "shared"
 
-    # template_args.append(dtype)
-    # template_args.append(m)
-    # template_args.append(n)
-
-    # global shared_memory_id
-
     template_args = []
-    # template_args.append(shared_memory_id)
-
-    # # matmul makes two allocations (one for each of its arguments)
-    # shared_memory_id += 1        
-    # shared_memory_id += 1
-
     return ((a, b, out), template_args)
 
 
@@ -1902,10 +1890,39 @@ add_builtin(
     value_func=tile_matmul_value_func,
     dispatch_func=tile_matmul_dispatch_func,
     variadic=True,
-    doc="Compute matrix product and accumulate out += a*b, a and b will be realized before evaluation, and output must already be realized.", 
+    doc="Compute matrix product and accumulate out += a*b.", 
     group="Tile Primitives",
     export=False,
 )
+
+def tile_sum_value_func(arg_types, arg_values):
+    
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return None
+
+    if len(arg_types) != 2:
+        raise RuntimeError("tile_sum() requires 2 positional args")
+
+    a = arg_types["a"]
+
+    if not is_tile(a):
+        raise RuntimeError("tile_sum() argument 0 must be a tile")
+
+    return Tile(dtype=a.dtype, M=1, N=1, op="sum")
+
+
+add_builtin(
+    "tile_sum",
+    input_types={"a": Tile, "axis": Any},
+    value_func=tile_sum_value_func,
+    variadic=True,
+    doc="Computes the sum of all elements in the tile, returns a 1x1 tile, axis is currently ignored", 
+    group="Tile Primitives",
+    export=False,
+)
+
+
 
 def tile_eval_value_func(arg_types, arg_values):
     
