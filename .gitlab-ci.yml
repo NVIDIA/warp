@@ -187,7 +187,7 @@ linux-aarch64 test:
     - python -m pip install coverage[toml]
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
   tags:
     - arch/arm
 
@@ -208,7 +208,7 @@ linux-aarch64 test jetson:
     - python -m pip install coverage[toml]
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
   tags:
     - gpu/orin
 
@@ -234,7 +234,7 @@ linux-x86_64 test:
     - python -m pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
 # Note that for throughput reasons this runs on a single-GPU runner
 windows-x86_64 test:
@@ -260,7 +260,7 @@ windows-x86_64 test:
     - python -m pip install -e .
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
-    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
 mac-x86_64 test:
   stage: test
@@ -275,7 +275,7 @@ mac-x86_64 test:
     - python -m pip install --upgrade usd-core coverage[toml]
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
 # Test the Linux release build in an environment with minimal Python dependencies installed
 linux-x86_64 test minimal:
@@ -313,7 +313,7 @@ linux-x86_64 test minimal:
     - python -m pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - python -m warp.tests --junit-report-xml rspec.xml -s autodetect
+    - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
 # Optional multi-GPU Windows job (likely longer queue time)
 windows-x86_64 test mgpu:
@@ -343,7 +343,7 @@ windows-x86_64 test mgpu:
     - python -m pip install -e .
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
-    - python -m warp.tests --junit-report-xml rspec.xml -s autodetect
+    - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
     - os/windows
     - gpu/2x-A5000
