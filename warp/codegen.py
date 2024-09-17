@@ -1493,6 +1493,9 @@ class Adjoint:
 
     def emit_FunctionDef(adj, node):
         for f in node.body:
+            # Skip variable creation for standalone constants, including docstrings
+            if isinstance(f, ast.Expr) and isinstance(f.value, ast.Constant):
+                continue
             adj.eval(f)
 
         if adj.return_var is not None and len(adj.return_var) == 1:
