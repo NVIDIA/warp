@@ -349,7 +349,7 @@ See the [FAQ](https://nvidia.github.io/warp/faq.html) in the Warp documentation.
 
 Problems, questions, and feature requests can be opened on [GitHub Issues](https://github.com/NVIDIA/warp/issues).
 
-The Warp team also monitors the **#warp** channel on the public [Omniverse Discord](https://discord.com/invite/nvidiaomniverse) server, come chat with us!
+The Warp team also monitors the **#warp** forum on the public [Omniverse Discord](https://discord.com/invite/nvidiaomniverse) server, come chat with us!
 
 ## Versioning
 

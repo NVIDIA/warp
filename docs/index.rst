@@ -293,7 +293,7 @@ Support
 Problems, questions, and feature requests can be opened on
 `GitHub Issues <https://github.com/NVIDIA/warp/issues>`_.
 
-The Warp team also monitors the **#warp** channel on the public
+The Warp team also monitors the **#warp** forum on the public
 `Omniverse Discord <https://discord.com/invite/nvidiaomniverse>`_ server, come chat with us!
 
 Versioning
@@ -387,6 +387,6 @@ Full Table of Contents
 
     GitHub <https://github.com/NVIDIA/warp>
     PyPI <https://pypi.org/project/warp-lang>
-    Discord <https://discord.com/channels/827959428476174346/953756751977648148>
+    Discord <https://discord.com/channels/827959428476174346/1285719658325999686>
 
 :ref:`Full Index <genindex>`
