@@ -7,7 +7,7 @@ regular Python functions and JIT compiles them to efficient kernel code that can
 Warp is designed for `spatial computing <https://en.wikipedia.org/wiki/Spatial_computing>`_
 and comes with a rich set of primitives that make it easy to write 
 programs for physics simulation, perception, robotics, and geometry processing. In addition, Warp kernels 
-are differentiable and can be used as part of machine-learning pipelines with frameworks such as PyTorch and JAX.
+are differentiable and can be used as part of machine-learning pipelines with frameworks such as PyTorch, JAX and Paddle.
 
 Below are some examples of simulations implemented using Warp:
 
