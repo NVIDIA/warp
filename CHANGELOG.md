@@ -53,6 +53,7 @@
 - Fix an aliasing issue with zero-copy array initialization from numpy introduced in 1.3.0
 - Fix a bug in `wp.sim.collide.triangle_closest_point_barycentric()` where the returned barycentric coordinates may be incorrect when the closest point lies on an edge.
 - Unexposed `wp.rand*()`, `wp.sample*()`, and `wp.poisson()` from Python's runtime.
+- Fix bug in `FeatherstoneIntegrator` where `eval_rigid_jacobian` could give incorrect results or reach an infinite loop when the body and joint indices were not in the same order. Added `Model.joint_ancestor` to fix the indexing from a joint to its parent joint in the articulation.
 
 ## [1.3.1] - 2024-07-27
 
