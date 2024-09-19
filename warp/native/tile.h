@@ -31,20 +31,42 @@
 
 /* Tile Expressions
 
-[x] Forward / Backward code-gen
-[ ] wp.tile_map()
+[ ] Tiles
+    [x] Register, Shared, Global
+    [ ] Layouts
+        [x] Simple
+        [ ] Cute
+    [ ] Remove Alloc type from tile_shared_t
+    
+[ ] Load/Store
+    [ ] 1D load/store variants
+    [ ] max_coord option for non-aligned loads
+    [ ] Indexed load
+    [ ] wp.tile_atomic_add()
+[ ] Maps
     [x] Support user functions
     [x] Support built-in functions
     [ ] Support for lambda functions
     [ ] Infer tile_map() output from operator type (e.g.: dot for each element)
-[x] wp.tile_matmul()
+[ ] Reductions
+    [x] Sum
+        [x] Forward
+        [x] Reverse
+    [ ] Min
+    [ ] Max
+    [ ] Custom
+[x] MatMul
     [x] Forward
     [x] Reverse
-[ ] wp.tile_atomic_add()   
-[ ] Support for n-d shape tiles / broadcasting / slicing / transpose?
-[x] Compile-time block dimensions
-[ ] Support for CUB reductions
-[ ] Support for CUB sorts
+[ ] Reshape
+    [ ] Broadcasting
+    [ ] Transpose
+        [x] Shared
+        [ ] Register
+    [ ] Slice
+[ ] Runtime
+    [x] Compile-time block dimensions
+    [ ] Switch between SIMT / Tile based execution if `tile_dim` not provided to wp.launch()
 [ ] Examples
     [ ] GEMM
     [ ] Batched MLP
@@ -215,6 +237,44 @@ struct tile_register_t
         for (int i=0; i < NumRegs; ++i)
             data[i] = tile.data[i];
     }
+
+    // extract a single tile element to a native type
+    inline CUDA_CALLABLE Type extract(int i, int j)
+    {
+        // map from logical coords (i, j) -> (thread, reg)
+        const int linear = i*N + j;
+
+        const int thread = linear/NumRegs;
+        const int reg = linear%NumRegs;
+
+        WP_TILE_SHARED Type scratch;
+
+        if (threadIdx.x == thread)
+        {
+            scratch = data[reg];
+        }
+
+        WP_TILE_SYNC();
+
+        return scratch;
+    }
+    
+
+    // backward version of scalar extract
+    inline CUDA_CALLABLE void adj_extract(int i, int j, Type adj_ret)
+    {
+        // map from logical coords (i, j) -> (thread, reg)
+        const int linear = i*N + j;
+
+        const int thread = linear/NumRegs;
+        const int reg = linear%NumRegs;
+
+        if (threadIdx.x == thread)
+        {
+            data[reg] += adj_ret;
+        }
+    }
+
 
     // return the in-register version of this tile (nop)
     inline CUDA_CALLABLE auto& copy_to_register() { return *this; }
@@ -388,6 +448,20 @@ struct tile_shared_t
         for (int i=threadIdx.x; i < M*N; i+= WP_TILE_BLOCK_DIM)
             data[i] = T(0);
     }
+
+    // extract a single tile element to a native type
+    inline CUDA_CALLABLE Type extract(int i, int j)
+    {
+        return (*this)(i, j);
+    }
+        
+    // backward of scalar extraction
+    inline CUDA_CALLABLE void adj_extract(int i, int j, Type adj_ret)
+    {
+        if (threadIdx.x == 0)
+            (*this)(i, j) += adj_ret;
+    }
+
 
     // copy register tile to shared
     inline CUDA_CALLABLE void assign(const tile_register_t<T, M, N>& tile)
@@ -765,92 +839,25 @@ inline CUDA_CALLABLE void adj_tile_mul(const typename Tile::Type& s, Tile& a,
 }
 
 
-} // namespace wp
 
-#if 0
-
-//-----------------------------------------------------
-// c = a + b
-
-// forward
-auto var_0 = wp::tile_load<wp::float32,8,4>(var_A, x, y);
-auto var_1 = wp::tile_load<wp::float32,8,4>(var_B, x, y);
-auto var_2 = wp::tile_add(var_0, var_1);
-wp::tile_store(var_C, x, y, var_2)
-
-// reverse
-wp::adj_store(var_C, x, y, var_2, adj_C, _, _, adj_2)
-wp::adj_tile_add(var_0, var_1, adj_0, adj_1, adj_2)
-wp::adj_tile_load(var_B, x, y, adj_B, _, _, adj_1);
-wp::adj_tile_load(var_B, x, y, adj_B, _, _, adj_0);
-
-
-//-----------------------------------------------------
-// x = a[0]
-// c = x*2.0 + x
-
-// forward
-auto var_0 = wp::tile_load<wp::float32,8,4>(var_A, x, y);
-auto var_1 = wp::tile_mul(var_0, 2.0);
-auto var_2 = wp::tile_add(var_0, var_1);
-wp::tile_store(var_C, x, y, var_2)
-
-struct adj_store_t
+template<typename Tile>
+typename Tile::Type tile_extract(Tile& t, int i, int j)
 {
-    adj_store_t()
-    {
+    assert(i < Tile::M);
+    assert(j < Tile::N);
 
-    }
+    return t.extract(i, j);
+}
 
-    float bwd(int i, float adj_ret)
-    {
-        return array.grad[i];
-    }
-};
-
-template <typename P>
-struct adj_add_t
+template<typename Tile, typename AdjTile>
+void adj_tile_extract(Tile& t, int i, int j, AdjTile& adj_t, int adj_i, int adj_j, typename Tile::Type adj_ret)
 {
-    adj_add_t(P& parent)
-    {
-        
-    }
+    assert(i < Tile::M);
+    assert(j < Tile::N);
 
-    float bwd(int i, float& adj_a, float& adj_b)
-    {
-        // evaluate parent
-        float adj_ret = parent.bwd(i);
-
-        adj_a += adj_ret;
-        adj_b += adj_ret;
-    }
-};
-
-template <typename T>
-struct adj_tile
-{
-    adj_tile(T& parent)
-    {
-
-    }
-
-
-
-};
-
-void adj_tile_load(A, x, y, adj_A, adj_x, adj_y, adj_ret)
-{
-    for i in A(x,y):
-        adj_A[i] += adj_ret(i);
+    adj_t.adj_extract(i, j, adj_ret);
 }
 
 
+} // namespace wp
 
-// reverse
-wp::adj_store(var_C, x, y, var_2, adj_C, _, _, adj_2)   // adj_2->adj_C
-wp::adj_tile_add(var_0, var_1, adj_0, adj_1, adj_2)     // adj_0->adj_2->adj_C, adj_1->adj_2->adj_C
-wp::adj_tile_mul(var_0, 2.0, adj_0, _, adj_1);          // adj_0->adj_1->adj_2->adj_C
-wp::adj_tile_load(var_A, x, y, adj_A, _, _, adj_0);     // adj_A->adj_0->adj_1->adj_2->adj_C
-
-
-#endif

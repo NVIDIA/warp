@@ -2187,8 +2187,8 @@ class Adjoint:
             return var
 
         target, indices = adj.eval_subscript(node)
-
         target_type = strip_reference(target.type)
+
         if is_array(target_type):
             if len(indices) == target_type.ndim:
                 # handles array loads (where each dimension has an index specified)
@@ -2208,6 +2208,14 @@ class Adjoint:
                     # view arg inherits target Var's read/write states
                     out.is_read = target.is_read
                     out.is_write = target.is_write
+
+        elif is_tile(target_type):
+            if len(indices) == 2:
+                # handles extracting a single element from a tile
+                out = adj.add_builtin_call("tile_extract", [target, *indices])
+            else:
+                # handles tile views
+                out = adj.add_builtin_call("tile_view", [target, *indices])
 
         else:
             # handles non-array type indexing, e.g: vec3, mat33, etc

@@ -178,7 +178,7 @@ def tile_grouped_gemm(A: wp.array3d(dtype=float),
     wp.tile_store(C[i], 0, 0, sum)
 
 
-def test_tile_batched_gemm():
+def test_tile_grouped_gemm():
 
     batch_count = 56
 
@@ -202,7 +202,7 @@ def test_tile_batched_gemm():
     C_host = C_wp.numpy()
 
     # GEMM forward passed
-    print("batched matmul forward passed")
+    print("Batched matmul forward passed")
 
 
 @wp.kernel
@@ -253,7 +253,7 @@ def test_tile_gemm():
     assert(np.allclose(A@B, C_wp.numpy(), rtol=1.e-4))
 
     # GEMM forward passed
-    print("matmul forward passed")
+    print("Tiled matmul forward passed")
 
     adj_C = np.ones_like(C)
 
@@ -262,7 +262,7 @@ def test_tile_gemm():
     assert(np.allclose(adj_C@B.T, A_wp.grad.numpy(), rtol=1.e-4))
     assert(np.allclose(A.T@adj_C, B_wp.grad.numpy(), rtol=1.e-4))
 
-    print("matmul backward passed")
+    print("Tiled matmul backward passed")
 
 
 
@@ -309,7 +309,7 @@ def test_tile_operators():
 
     assert(np.allclose(output, output_wp.numpy(), rtol=1.e-4))
 
-    print("operators forward passed")
+    print("Operators forward passed")
 
     output_wp.grad.fill_(1.0)
 
@@ -317,7 +317,7 @@ def test_tile_operators():
 
     assert(np.allclose(input_wp.grad.numpy(), np.ones_like(input)*0.75, rtol=1.e-4))
 
-    print("operators backward passed")    
+    print("Operators backward passed")    
 
 
 @wp.kernel
@@ -328,12 +328,13 @@ def tile_sum_kernel(input: wp.array3d(dtype=float),
     i = wp.tid()
 
     a = wp.tile_load(input[i], 0, 0, m=TILE_M, n=TILE_N)
-    s = wp.tile_sum(a, axis=-1)*0.5
+    s = wp.tile_sum(a)*0.5
+
     wp.tile_store(output, i, 0, s)
 
 def test_tile_sum():
 
-    batch_count = 2
+    batch_count = 56
 
     M = TILE_M
     N = TILE_N
@@ -365,15 +366,56 @@ def test_tile_sum():
     print("Sum backward passed")
 
 
+@wp.kernel
+def tile_extract_kernel(input: wp.array2d(dtype=float),
+                        output: wp.array2d(dtype=float)):
+
+    # output tile index
+    i = wp.tid()
+
+    t = wp.tile_load(input, 0, 0, m=TILE_M, n=TILE_N)
+
+    # perform a scalar copy, extracting each
+    # tile element individually
+    for i in range(TILE_M):
+        for j in range(TILE_N):
+            output[i,j] = t[i,j]
+
+def test_tile_extract():
+
+    M = TILE_M
+    N = TILE_N
+
+    rng = np.random.default_rng(42)
+    input = rng.random((M, N), dtype=np.float32)
+
+    input_wp = wp.array(input, requires_grad=True)
+    output_wp = wp.zeros_like(input_wp, requires_grad=True)
+
+    with wp.Tape() as tape:
+        wp.launch(tile_extract_kernel, dim=1, inputs=[input_wp, output_wp], tile_size=TILE_DIM)
+
+    assert(np.allclose(input_wp.numpy(), output_wp.numpy(), rtol=1.e-4))
+
+    print("Extract forward passed")
+
+    output_wp.grad.fill_(1.0)
+
+    tape.backward()
+
+    assert(np.allclose(input_wp.grad.numpy(), np.ones_like(input), rtol=1.e-4))
+
+    print("Extract backward passed")
+
 
 test_tile_copy()
 test_tile_unary_map()
 test_tile_binary_map()
-test_tile_batched_gemm()
+test_tile_grouped_gemm()
 test_tile_gemm()
 test_tile_operators()
 test_tile_sum()
-
+test_tile_extract()
 
 # #-----------------------------------------
 # # center of mass computation

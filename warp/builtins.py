@@ -1844,6 +1844,31 @@ add_builtin(
 )
 
 
+def tile_extract_value_func(arg_types, arg_values):
+    
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return None    
+    
+    if len(arg_types) != 3: 
+        raise RuntimeError("tile_extract() requires 3 positional args")
+
+    if not is_tile(arg_types["a"]):
+        raise RuntimeError("tile_extract() argument 0 must be a tile")
+    
+    return arg_types["a"].dtype
+
+
+add_builtin(
+    "tile_extract",
+    input_types={"a": Tile(dtype=Any, M=Any, N=Any), "i": int, "j": int},
+    value_func=tile_extract_value_func,
+    variadic=True,
+    doc="Extract element at index (i, j) of the tile and return the native type",
+    group="Tile Primitives",
+    export=False,
+)
+
 
 def tile_matmul_value_func(arg_types, arg_values):
     
@@ -1901,8 +1926,8 @@ def tile_sum_value_func(arg_types, arg_values):
     if arg_types is None:
         return None
 
-    if len(arg_types) != 2:
-        raise RuntimeError("tile_sum() requires 2 positional args")
+    if len(arg_types) != 1:
+        raise RuntimeError("tile_sum() requires 1 positional args")
 
     a = arg_types["a"]
 
@@ -1914,7 +1939,7 @@ def tile_sum_value_func(arg_types, arg_values):
 
 add_builtin(
     "tile_sum",
-    input_types={"a": Tile, "axis": Any},
+    input_types={"a": Tile},
     value_func=tile_sum_value_func,
     variadic=True,
     doc="Computes the sum of all elements in the tile, returns a 1x1 tile, axis is currently ignored", 
@@ -1922,43 +1947,6 @@ add_builtin(
     export=False,
 )
 
-
-
-def tile_eval_value_func(arg_types, arg_values):
-    
-    # return generic type (for doc builds)
-    if arg_types is None:
-        return None
-
-    if not is_tile(arg_types["t"]):
-        raise RuntimeError("tile_eval() argument must be a tile")
-
-    return TileShared(arg_types["t"])
-
-def tile_eval_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
-
-    t = arg_values["t"]
-
-    global shared_memory_id
-
-    template_args = []
-    template_args.append(shared_memory_id)
-
-    # matmul makes two allocations (one for each of its arguments)
-    shared_memory_id += 1        
-
-    return ((t,), template_args)
-
-add_builtin(
-    "tile_eval",
-    input_types={"t": Tile},
-    value_func=tile_eval_value_func,
-    dispatch_func=tile_eval_dispatch_func,
-    variadic=True,
-    doc="Force evaluation of a tile expression into shared memory", 
-    group="Tile Primitives",
-    export=False,
-)
 
 
 # does type propagation for load()
@@ -2034,17 +2022,6 @@ add_builtin(
     export=False,
 )
 
-add_builtin(
-    "add",
-    input_types={"a": Tile(dtype=Any, M=Any, N=Any), "b": Tile(dtype=Any, M=Any, N=Any)},
-    value_func=tile_binary_map_value_func,
-    #dispatch_func=tile_map_dispatch_func,
-    #variadic=True,
-    native_func="tile_add",
-    doc="Add each element of two tiles together", 
-    group="Tile Primitives",
-    export=False,
-)
 
 # ---------------------------------
 # Linear Algebra
@@ -4538,35 +4515,33 @@ def tile_scalar_mul_value_func(arg_types, arg_values):
         return TileBinaryMap(TileConstant(x, y.M, y.N), y)
 
 
-
-# def tile_binary_value_func(arg_types, arg_values):
-
-#     if arg_types is None:
-#         return Tile(dtype=Any, M=Any, N=Any)
-
-#     a = arg_types[0]
-    
-
-#     if not is_tile(t):
-#         raise RuntimeError("Expected tile for unary expression")
-    
-#     return TileUnaryMap(t.dtype, t.M, t.N)
-
 add_builtin(
     "neg",
     input_types={"x": Tile(dtype=Any, M=Any, N=Any)},
     value_func=tile_unary_value_func,
-    doc="",
+    doc="Negate each element of a tile",
     export=False,
     native_func="tile_neg",
     group="Operators",
 )
 
 add_builtin(
+    "add",
+    input_types={"a": Tile(dtype=Any, M=Any, N=Any), "b": Tile(dtype=Any, M=Any, N=Any)},
+    value_func=tile_binary_map_value_func,
+    #dispatch_func=tile_map_dispatch_func,
+    #variadic=True,
+    native_func="tile_add",
+    doc="Add each element of two tiles together", 
+    group="Tile Primitives",
+    export=False,
+)
+
+add_builtin(
     "mul",
     input_types={"x": Tile(dtype=Any, M=Any, N=Any), "y": Scalar},
     value_func=tile_scalar_mul_value_func,
-    doc="",
+    doc="Multiply each element of a tile by a scalar",
     export=False,
     native_func="tile_mul",
     group="Operators",
@@ -4576,18 +4551,10 @@ add_builtin(
     "mul",
     input_types={"x": Scalar, "y": Tile(dtype=Any, M=Any, N=Any)},
     value_func=tile_scalar_mul_value_func,
-    doc="",
+    doc="Multiply each element of a tile by a scalar",
     export=False,
     native_func="tile_mul",
     group="Operators",
 )
-
-# add_builtin(
-#     "mul",
-#     input_types={"x": Tile, "s": Scalar},
-#     value_func=tile_binary_value_func,
-#     doc="",
-#     group="Operators",
-# )
 
 
