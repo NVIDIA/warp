@@ -134,7 +134,7 @@ void adj_tile_sum(Tile& t, Tile& adj_t, AdjTile& adj_ret)
     WP_TILE_SYNC();
 
     auto adj_t_reg = adj_t.copy_to_register();
-    auto adj_ret_reg = tile_shared_t<T, Tile::M, Tile::N, -1, 0, 0>(&scratch).copy_to_register();
+    auto adj_ret_reg = tile_shared_t<T, Tile::M, Tile::N, 0, 0>(&scratch).copy_to_register();
 
     adj_t.assign(tile_add(adj_t_reg, adj_ret_reg));
 }

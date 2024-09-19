@@ -130,17 +130,6 @@ struct coord_t
 };
 
 
-template <typename T, int M, int N, int Alloc>
-inline CUDA_CALLABLE T* tile_alloc_shared()
-{
-    WP_TILE_SHARED __align__(16) T data[M*N];
-
-    for (int i=threadIdx.x; i < M*N; i+= WP_TILE_BLOCK_DIM)
-        data[i] = T(0);
-
-    return data;
-}
-
 // represents a tile stored in global memory with dynamic strides
 // only used to represent the source for tile loads to register/shared
 template <typename T, int M_, int N_>
@@ -339,15 +328,14 @@ struct tile_register_t
 
 
 
-template <typename T, int M_, int N_, int Alloc_, int StrideM_=N_, int StrideN_=1>
+template <typename T, int M_, int N_, int StrideM_=N_, int StrideN_=1>
 struct tile_shared_t
 {
     using Type = T;
     static constexpr int M = M_;
     static constexpr int N = N_;
     static constexpr int Size = M*N;
-    static constexpr int Alloc = Alloc_;
-
+    
     static constexpr int StrideM = StrideM_;
     static constexpr int StrideN = StrideN_;
 
@@ -358,15 +346,7 @@ struct tile_shared_t
     // default initialization (non-initialized)
     inline CUDA_CALLABLE tile_shared_t() 
     {
-        data = tile_alloc_shared<T, M, N, Alloc>();
     }
-
-    // zero initialization, handles adj_tile = {0} syntax
-    inline CUDA_CALLABLE tile_shared_t(int nil) 
-    {
-        data = tile_alloc_shared<T, M, N, Alloc>();
-        zero();
-    }    
 
     // initialize from an existing tile's memory
     inline CUDA_CALLABLE tile_shared_t(T* smem) : data(smem)
@@ -569,18 +549,37 @@ struct tile_shared_t
     }
 };
 
+// helpers to allocate shared tiles
+template <typename T, int M, int N, int Alloc>
+inline CUDA_CALLABLE auto tile_alloc_empty()
+{
+    WP_TILE_SHARED __align__(16) T data[M*N];
+    return tile_shared_t<T, M, N>(data);
+}
+
+template <typename T, int M, int N, int Alloc>
+inline CUDA_CALLABLE auto tile_alloc_zeros()
+{
+    WP_TILE_SHARED __align__(16) T data[M*N];
+
+    for (int i=threadIdx.x; i < M*N; i+= WP_TILE_BLOCK_DIM)
+        data[i] = T(0);
+
+    return tile_shared_t<T, M, N>(data);
+}
+
 template <typename Tile>
 inline CUDA_CALLABLE auto tile_transpose(Tile& t)
 {    
     // alias incoming tile 
-    return tile_shared_t<typename Tile::Type, Tile::N, Tile::M, Tile::Alloc, Tile::StrideN, Tile::StrideM>(t.data);
+    return tile_shared_t<typename Tile::Type, Tile::N, Tile::M, Tile::StrideN, Tile::StrideM>(t.data);
 }
 
 
 //-----------------------------------------------------------------------------------------------------
 // High level entry points for each op (correspond to one Warp builtin)
 
-template <typename T, int M, int N, int Alloc>
+template <typename T, int M, int N>
 inline CUDA_CALLABLE auto tile_zeros()
 {
     // tile variable assignment operator will handle initialization
@@ -589,7 +588,7 @@ inline CUDA_CALLABLE auto tile_zeros()
 
 
 // entry point for load
-template <typename T, int M, int N, int Alloc>
+template <typename T, int M, int N>
 inline CUDA_CALLABLE auto tile_load(array_t<T>& src, int x, int y)
 {
     // just return a ref. to the global memory

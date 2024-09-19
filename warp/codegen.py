@@ -2991,7 +2991,9 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu"):
         if var.ctype() == "auto":
             continue
 
-        if var.constant is None:
+        if is_tile(var.type):
+            lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit()};\n"]
+        elif var.constant is None:
             lines += [f"{var.ctype()} {var.emit()};\n"]
         else:
             lines += [f"const {var.ctype()} {var.emit()} = {constant_str(var.constant)};\n"]
@@ -3027,8 +3029,10 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
 
     for var in adj.variables:
 
-        if var.constant is None:
-            lines += [f"{var.ctype()} {var.emit()};\n"]
+        if is_tile(var.type):
+            lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit()};\n"]
+        elif var.constant is None:
+            lines += [f"{var.ctype()} {var.emit()};\n"]        
         else:
             lines += [f"const {var.ctype()} {var.emit()} = {constant_str(var.constant)};\n"]
 
@@ -3040,8 +3044,8 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
         name = var.emit_adj()
         ctype = var.ctype(value_type=True)
                
-        if is_tile(var.type) and var.type.storage == "shared":
-            lines += [f"{ctype} {name} = {{0}};\n"]
+        if is_tile(var.type):
+            lines += [f"{ctype} {name} = {var.type.cinit(adjoint=True)};\n"]
         else:
             lines += [f"{ctype} {name} = {{}};\n"]
 

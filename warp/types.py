@@ -2875,16 +2875,31 @@ class Tile:
         self.op = op
         self.storage = storage
 
+    # generates C-type string
     def ctype(self):
         from warp.codegen import Var
 
         if self.storage == "register":
             return f"wp::tile_register_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
+        elif self.storage == "shared":           
+            return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
+
+    # generates C-initializer string
+    def cinit(self, adjoint=False):
+        from warp.codegen import Var
+
+        if self.storage == "register":          
+            return f"{0}"
         elif self.storage == "shared":
+
+            if adjoint:
+                # backward pass requires zeroed memory
+                return f"wp::tile_alloc_zeros<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{Tile.alloc()}>()"
+            else:
+                # forward mode can be uninitialized until first used by the kernel
+                return f"wp::tile_alloc_empty<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{Tile.alloc()}>()"
             
-            # every shared memory tile will create a new static shared memory allocation
-            # this just needs to be a unique-id for templated allocation functions         
-            return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{Tile.alloc()}>"
+
 
     # generate a unique allocation index for shared memory
     @classmethod

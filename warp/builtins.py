@@ -1729,10 +1729,6 @@ def tile_zeros_dispatch_func(arg_types: Mapping[str, type], return_type: Any, ar
     template_args.append(m.constant)
     template_args.append(n.constant)
 
-    global shared_memory_id
-    template_args.append(shared_memory_id)
-    shared_memory_id += 1
-
     return ([], template_args)
 
 
@@ -1789,10 +1785,6 @@ def tile_load_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg
     template_args.append(dtype)
     template_args.append(m)
     template_args.append(n)
-
-    global shared_memory_id
-    template_args.append(shared_memory_id)
-    shared_memory_id += 1
 
     return ((array, x, y), template_args)
 
