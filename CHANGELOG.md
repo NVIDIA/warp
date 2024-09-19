@@ -1,21 +1,35 @@
 # CHANGELOG
 
-## [Upcoming Release] - 2024-??
+## [Unreleased] - 2024-??
 
-- Rename function `plot_kernel_jacobians` to `jacobian_plot` in `autograd` module.
-- Add support for fp64 `atomic_add`, `atomic_max`, and `atomic_min` ([GH-284](https://github.com/NVIDIA/warp/issues/284)).
-- Add support for stream priorities to hint to the device that it should process pending work
+### Added
+
+- Support for fp64 `atomic_add`, `atomic_max`, and `atomic_min` ([GH-284](https://github.com/NVIDIA/warp/issues/284)).
+- Support for stream priorities to hint to the device that it should process pending work
   in high-priority streams over pending work in low-priority streams when possible
   ([docs](https://nvidia.github.io/warp/modules/concurrency.html#stream-priorities)).
-- Add `wp.mod()` for vector types ([GH-282](https://github.com/NVIDIA/warp/issues/282)).
+- Support `wp.mod()` for vector types ([GH-282](https://github.com/NVIDIA/warp/issues/282)).
 - Expose the modulo operator `%` to Python's runtime scalar and vector types.
-- Add support for local vec/mat/quat component gradient tracking in backwards mode.
-- Add support for quaternion indexing (e.g. `q.w`).
-- Add support for default argument values for user functions decorated with `wp.func`.
+- Support for local vec/mat/quat component gradient tracking in backwards mode.
+- Support for quaternion indexing (e.g. `q.w`).
+- Support for default argument values for user functions decorated with `wp.func`.
+- Support shadowing builtin functions ([GH-308](https://github.com/NVIDIA/warp/issues/308)).
+- Allow passing custom launch dimensions to `jax_kernel()` ([GH-310](https://github.com/NVIDIA/warp/pull/310)).
+- Jax interoperability examples for sharding and matrix multiplication (see Interoperability documentation).
+- Include all non-hidden builtins in the stub file.
+- Adaptive sparse grid geometry to `warp.fem` ([docs](https://nvidia.github.io/warp/modules/fem.html#adaptivity)).
+- Improve accuracy of symmetric eigenvalues routine in `warp.fem`.
+
+### Changed
+
+- **Breaking:** Rename function `plot_kernel_jacobians` to `jacobian_plot` in `autograd` module.
+- `wp.sim.Model.edge_indices` now includes boundary edges.
+- Unexposed `wp.rand*()`, `wp.sample*()`, and `wp.poisson()` from the Python scope.
+
+### Fixed
+
 - Fix for `wp.func` erroring out when defining a `Tuple` as a return type hint ([GH-302](https://github.com/NVIDIA/warp/issues/302)).
 - Fix array in-place op (`+=`, `-=`) adjoints to compute gradients correctly in the backwards pass.
-- `wp.sim.Model.edge_indices` now includes boundary edges
-- Allow shadowing builtin functions ([GH-308](https://github.com/NVIDIA/warp/issues/308))
 - Fix a bug in which Python docstrings would be created as local function variables in generated code.
 - Allow passing custom launch dimensions to `jax_kernel()`.
 - Add new Jax interoperability examples for sharding and matrix multiplication (see Interoperability documentation).
@@ -33,20 +47,25 @@
   - Skip unused functions in module code generation, improving performance
   - Avoid reloading modules if their content does not change, improving performance
 - Add an ocean sample to the `omni.warp` extension.
+- Fix a rare crash during error reporting on some systems due to glibc mismatches.
+- Handle `--num_tiles 1` in `example_render_opengl.py` ([GH-306](https://github.com/NVIDIA/warp/issues/306)).
+- Fix bug in `FeatherstoneIntegrator` where `eval_rigid_jacobian` could give incorrect results or reach an infinite
+  loop when the body and joint indices were not in the same order. Added `Model.joint_ancestor` to fix the indexing
+  from a joint to its parent joint in the articulation.
+- Add a workaround for `__threadfence()` issues in the Compute Sanitizer initcheck tool.
 
 ## [1.3.3] - 2024-09-04
 
 - Bug fixes
   - Fix an aliasing issue with zero-copy array initialization from NumPy introduced in Warp 1.3.0.
-  - Fix `wp.Volume.load_from_numpy()` behavior when `bg_value` is a sequence of values.
+  - Fix `wp.Volume.load_from_numpy()` behavior when `bg_value` is a sequence of values ([GH-312](https://github.com/NVIDIA/warp/pull/312)).
 
 ## [1.3.2] - 2024-08-30
 
 - Bug fixes
   - Fix accuracy of 3x3 SVD ``wp.svd3`` with fp64 numbers ([GH-281](https://github.com/NVIDIA/warp/issues/281)).
   - Fix module hashing when a kernel argument contained a struct array ([GH-287](https://github.com/NVIDIA/warp/issues/287)).
-  - Fix a bug in `wp.bvh_query_ray()` where the direction instead of the reciprocal direction was used
-  ([GH-288](https://github.com/NVIDIA/warp/issues/288)).
+  - Fix a bug in `wp.bvh_query_ray()` where the direction instead of the reciprocal direction was used ([GH-288](https://github.com/NVIDIA/warp/issues/288)).
   - Fix errors when launching a CUDA graph after a module is reloaded. Modules that were used during graph capture
     will no longer be unloaded before the graph is released.
   - Fix a bug in `wp.sim.collide.triangle_closest_point_barycentric()` where the returned barycentric coordinates may be
@@ -62,11 +81,6 @@
   - Add missing return types for built-in functions.
   - Clarify that atomic operations also return the previous value.
   - Clarify that `wp.bvh_query_aabb()` returns parts that overlap the bounding volume.
-- Fix a bug in `wp.bvh_query_aabb()` ([GH-288](https://github.com/NVIDIA/warp/issues/288)).
-- Fix an aliasing issue with zero-copy array initialization from numpy introduced in 1.3.0
-- Fix a bug in `wp.sim.collide.triangle_closest_point_barycentric()` where the returned barycentric coordinates may be incorrect when the closest point lies on an edge.
-- Unexposed `wp.rand*()`, `wp.sample*()`, and `wp.poisson()` from Python's runtime.
-- Fix bug in `FeatherstoneIntegrator` where `eval_rigid_jacobian` could give incorrect results or reach an infinite loop when the body and joint indices were not in the same order. Added `Model.joint_ancestor` to fix the indexing from a joint to its parent joint in the articulation.
 
 ## [1.3.1] - 2024-07-27
 
@@ -1106,3 +1120,30 @@
 ## [0.1.0] - 2021-05-17
 
 - Initial publish for alpha testing
+
+[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.3.3...HEAD
+[1.3.3]: https://github.com/NVIDIA/warp/releases/tag/v1.3.3
+[1.3.2]: https://github.com/NVIDIA/warp/releases/tag/v1.3.2
+[1.3.1]: https://github.com/NVIDIA/warp/releases/tag/v1.3.1
+[1.3.0]: https://github.com/NVIDIA/warp/releases/tag/v1.3.0
+[1.2.2]: https://github.com/NVIDIA/warp/releases/tag/v1.2.2
+[1.2.1]: https://github.com/NVIDIA/warp/releases/tag/v1.2.1
+[1.2.0]: https://github.com/NVIDIA/warp/releases/tag/v1.2.0
+[1.1.0]: https://github.com/NVIDIA/warp/releases/tag/v1.1.0
+[1.0.2]: https://github.com/NVIDIA/warp/releases/tag/v1.0.2
+[1.0.1]: https://github.com/NVIDIA/warp/releases/tag/v1.0.1
+[1.0.0]: https://github.com/NVIDIA/warp/releases/tag/v1.0.0
+[0.15.1]: https://github.com/NVIDIA/warp/releases/tag/v0.15.1
+[0.15.0]: https://github.com/NVIDIA/warp/releases/tag/v0.15.0
+[0.13.0]: https://github.com/NVIDIA/warp/releases/tag/v0.13.0
+[0.11.0]: https://github.com/NVIDIA/warp/releases/tag/v0.11.0
+[1.0.0-beta.6]: https://github.com/NVIDIA/warp/releases/tag/v1.0.0-beta.6
+[1.0.0-beta.5]: https://github.com/NVIDIA/warp/releases/tag/v1.0.0-beta.5
+[0.10.1]: https://github.com/NVIDIA/warp/releases/tag/v0.10.1
+[0.9.0]: https://github.com/NVIDIA/warp/releases/tag/v0.9.0
+[0.7.0]: https://github.com/NVIDIA/warp/releases/tag/v0.7.0
+[0.5.0]: https://github.com/NVIDIA/warp/releases/tag/v0.5.0
+[0.4.3]: https://github.com/NVIDIA/warp/releases/tag/v0.4.3
+[0.3.1]: https://github.com/NVIDIA/warp/releases/tag/v0.3.1
+[0.2.3]: https://github.com/NVIDIA/warp/releases/tag/v0.2.3
+[0.2.0]: https://github.com/NVIDIA/warp/releases/tag/v0.2.0
