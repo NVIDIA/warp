@@ -559,6 +559,7 @@ class Model:
         joint_type (array): Joint type, shape [joint_count], int
         joint_parent (array): Joint parent body indices, shape [joint_count], int
         joint_child (array): Joint child body indices, shape [joint_count], int
+        joint_ancestor (array): Maps from joint index to the index of the joint that has the current joint parent body as child (-1 if no such joint ancestor exists), shape [joint_count], int
         joint_X_p (array): Joint transform in parent frame, shape [joint_count, 7], float
         joint_X_c (array): Joint mass frame in child frame, shape [joint_count, 7], float
         joint_axis (array): Joint axis in child frame, shape [joint_axis_count, 3], float
@@ -729,6 +730,7 @@ class Model:
         self.joint_type = None
         self.joint_parent = None
         self.joint_child = None
+        self.joint_ancestor = None
         self.joint_X_p = None
         self.joint_X_c = None
         self.joint_axis = None
@@ -4520,6 +4522,14 @@ class ModelBuilder:
             m.joint_q = wp.array(self.joint_q, dtype=wp.float32, requires_grad=requires_grad)
             m.joint_qd = wp.array(self.joint_qd, dtype=wp.float32, requires_grad=requires_grad)
             m.joint_name = self.joint_name
+            # compute joint ancestors
+            child_to_joint = {}
+            for i, child in enumerate(self.joint_child):
+                child_to_joint[child] = i
+            parent_joint = []
+            for parent in self.joint_parent:
+                parent_joint.append(child_to_joint.get(parent, -1))
+            m.joint_ancestor = wp.array(parent_joint, dtype=wp.int32)
 
             # dynamics properties
             m.joint_armature = wp.array(self.joint_armature, dtype=wp.float32, requires_grad=requires_grad)
