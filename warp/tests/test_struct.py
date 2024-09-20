@@ -589,7 +589,7 @@ def test_dependent_module_import(c: DependentModuleImport_C):
     wp.tid()  # nop, we're just testing codegen
 
 
-def test_struct_array_content_hash(test, device):
+def test_struct_array_hash(test, device):
     # Ensure that the memory address of the struct does not affect the content hash
 
     @wp.struct
@@ -611,7 +611,7 @@ def test_struct_array_content_hash(test, device):
     def dummy_kernel(a: wp.array(dtype=ContentHashStruct)):
         i = wp.tid()
 
-    module_hash_1 = wp.get_module(dummy_kernel.__module__).hash_module(recompute_content_hash=True)
+    module_hash_1 = wp.get_module(dummy_kernel.__module__).hash_module()
 
     test.assertEqual(
         module_hash_1,
@@ -628,7 +628,7 @@ def test_struct_array_content_hash(test, device):
     def dummy_kernel(a: wp.array(dtype=ContentHashStruct)):
         i = wp.tid()
 
-    module_hash_2 = wp.get_module(dummy_kernel.__module__).hash_module(recompute_content_hash=True)
+    module_hash_2 = wp.get_module(dummy_kernel.__module__).hash_module()
 
     test.assertNotEqual(
         module_hash_2, module_hash_0, "Module hash should be different when ContentHashStruct redefined and changed."
@@ -718,7 +718,7 @@ add_kernel_test(
     devices=devices,
 )
 
-add_function_test(TestStruct, "test_struct_array_content_hash", test_struct_array_content_hash, devices=None)
+add_function_test(TestStruct, "test_struct_array_hash", test_struct_array_hash, devices=None)
 
 
 if __name__ == "__main__":

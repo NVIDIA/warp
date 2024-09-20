@@ -19,6 +19,7 @@ import platform
 import sys
 import types
 import typing
+import weakref
 from copy import copy as shallowcopy
 from pathlib import Path
 from struct import pack as struct_pack
@@ -58,6 +59,38 @@ def get_function_args(func):
 complex_type_hints = (Any, Callable, Tuple)
 sequence_types = (list, tuple)
 
+function_key_counts = {}
+
+
+def generate_unique_function_identifier(key):
+    # Generate unique identifiers for user-defined functions in native code.
+    # - Prevents conflicts when a function is redefined and old versions are still in use.
+    # - Prevents conflicts between multiple closures returned from the same function.
+    # - Prevents conflicts between identically named functions from different modules.
+    #
+    # Currently, we generate a unique id when a new Function is created, which produces
+    # globally unique identifiers.
+    #
+    # NOTE:
+    #   We could move this to the Module class for generating unique identifiers at module scope,
+    #   but then we need another solution for preventing conflicts across modules (e.g., different namespaces).
+    #   That would requires more Python code, generate more native code, and would be slightly slower
+    #   with no clear advantages over globally-unique identifiers (non-global shared state is still shared state).
+    #
+    # TODO:
+    #   Kernels and structs use unique identifiers based on their hash.  Using hash-based identifiers
+    #   for functions would allow filtering out duplicate identical functions during codegen,
+    #   like we do with kernels and structs.  This is worth investigating further, but might require
+    #   additional refactoring.  For example, the code that deals with custom gradient and replay functions
+    #   requires matching function names, but these special functions get created before the hash
+    #   for the parent function can be computed.  In addition to these complications, computing hashes
+    #   for all function instances would increase the cost of module hashing when generic functions
+    #   are involved (currently we only hash the generic templates, which is sufficient).
+
+    unique_id = function_key_counts.get(key, 0)
+    function_key_counts[key] = unique_id + 1
+    return f"{key}_{unique_id}"
+
 
 class Function:
     def __init__(
@@ -94,6 +127,7 @@ class Function:
         code_transformers=None,
         skip_adding_overload=False,
         require_original_output_arg=False,
+        scope_locals=None,  # the locals() where the function is defined, used for overload management
     ):
         if code_transformers is None:
             code_transformers = []
@@ -119,6 +153,7 @@ class Function:
         self.replay_snippet = replay_snippet
         self.custom_grad_func = None
         self.require_original_output_arg = require_original_output_arg
+        self.generic_parent = None  # generic function that was used to instantiate this overload
 
         if initializer_list_func is None:
             self.initializer_list_func = lambda x, y: False
@@ -133,9 +168,14 @@ class Function:
         self.missing_grad = missing_grad  # whether builtin is missing a corresponding adjoint
         self.generic = generic
 
-        # allow registering builtin functions with a different name in Python from the native code
+        # allow registering functions with a different name in Python and native code
         if native_func is None:
-            self.native_func = key
+            if func is None:
+                # builtin function
+                self.native_func = key
+            else:
+                # user functions need unique identifiers to avoid conflicts
+                self.native_func = generate_unique_function_identifier(key)
         else:
             self.native_func = native_func
 
@@ -219,9 +259,13 @@ class Function:
             signature_params.append(param)
         self.signature = inspect.Signature(signature_params)
 
+        # scope for resolving overloads
+        if scope_locals is None:
+            scope_locals = inspect.currentframe().f_back.f_locals
+
         # add to current module
         if module:
-            module.register_function(self, skip_adding_overload)
+            module.register_function(self, scope_locals, skip_adding_overload)
 
     def __call__(self, *args, **kwargs):
         # handles calling a builtin (native) function
@@ -332,16 +376,8 @@ class Function:
 
             # check if generic
             if warp.types.is_generic_signature(sig):
-                if sig in self.user_templates:
-                    raise RuntimeError(
-                        f"Duplicate generic function overload {self.key} with arguments {f.input_types.values()}"
-                    )
                 self.user_templates[sig] = f
             else:
-                if sig in self.user_overloads:
-                    raise RuntimeError(
-                        f"Duplicate function overload {self.key} with arguments {f.input_types.values()}"
-                    )
                 self.user_overloads[sig] = f
 
     def get_overload(self, arg_types, kwarg_types):
@@ -377,6 +413,7 @@ class Function:
                 ovl.adj = warp.codegen.Adjoint(f.func, overload_annotations)
                 ovl.input_types = overload_annotations
                 ovl.value_func = None
+                ovl.generic_parent = f
 
                 sig = warp.types.get_signature(arg_types, func_name=self.key)
                 self.user_overloads[sig] = ovl
@@ -600,8 +637,7 @@ class Kernel:
             self.module = module
 
         if key is None:
-            unique_key = self.module.generate_unique_kernel_key(func.__name__)
-            self.key = unique_key
+            self.key = warp.codegen.make_full_qualified_name(func)
         else:
             self.key = key
 
@@ -625,8 +661,14 @@ class Kernel:
         # known overloads for generic kernels, indexed by type signature
         self.overloads = {}
 
+        # generic kernel that was used to instantiate this overload
+        self.generic_parent = None
+
         # argument indices by name
         self.arg_indices = {a.label: i for i, a in enumerate(self.adj.args)}
+
+        # hash will be computed when the module is built
+        self.hash = None
 
         if self.module:
             self.module.register_kernel(self)
@@ -675,10 +717,11 @@ class Kernel:
         ovl.is_generic = False
         ovl.overloads = {}
         ovl.sig = sig
+        ovl.generic_parent = self
 
         self.overloads[sig] = ovl
 
-        self.module.unload()
+        self.module.mark_modified()
 
         return ovl
 
@@ -687,10 +730,13 @@ class Kernel:
         return self.overloads.get(sig)
 
     def get_mangled_name(self):
-        if self.sig:
-            return f"{self.key}_{self.sig}"
-        else:
-            return self.key
+        if self.hash is None:
+            raise RuntimeError(f"Missing hash for kernel {self.key} in module {self.module.name}")
+
+        # TODO: allow customizing the number of hash characters used
+        hash_suffix = self.hash.hex()[:8]
+
+        return f"{self.key}_{hash_suffix}"
 
 
 # ----------------------
@@ -700,9 +746,11 @@ class Kernel:
 def func(f):
     name = warp.codegen.make_full_qualified_name(f)
 
+    scope_locals = inspect.currentframe().f_back.f_locals
+
     m = get_module(f.__module__)
     Function(
-        func=f, key=name, namespace="", module=m, value_func=None
+        func=f, key=name, namespace="", module=m, value_func=None, scope_locals=scope_locals
     )  # value_type not known yet, will be inferred during Adjoint.build()
 
     # use the top of the list of overloads for this key
@@ -716,6 +764,8 @@ def func_native(snippet, adj_snippet=None, replay_snippet=None):
     Decorator to register native code snippet, @func_native
     """
 
+    scope_locals = inspect.currentframe().f_back.f_locals
+
     def snippet_func(f):
         name = warp.codegen.make_full_qualified_name(f)
 
@@ -728,6 +778,7 @@ def func_native(snippet, adj_snippet=None, replay_snippet=None):
             native_snippet=snippet,
             adj_native_snippet=adj_snippet,
             replay_snippet=replay_snippet,
+            scope_locals=scope_locals,
         )  # value_type not known yet, will be inferred during Adjoint.build()
         g = m.functions[name]
         # copy over the function attributes, including docstring
@@ -794,6 +845,7 @@ def func_grad(forward_fn):
             f.custom_grad_func = Function(
                 grad_fn,
                 key=f.key,
+                native_func=f.native_func,
                 namespace=f.namespace,
                 input_types=reverse_args,
                 value_func=None,
@@ -952,7 +1004,7 @@ def overload(kernel, arg_types=None):
         # ensure this function name corresponds to a kernel
         fn = kernel
         module = get_module(fn.__module__)
-        kernel = module.kernels.get(fn.__name__)
+        kernel = module.find_kernel(fn)
         if kernel is None:
             raise RuntimeError(f"Failed to find a kernel named '{fn.__name__}' in module {fn.__module__}")
 
@@ -1288,7 +1340,6 @@ def get_module(name):
             # clear out old kernels, funcs, struct definitions
             old_module.kernels = {}
             old_module.functions = {}
-            old_module.constants = {}
             old_module.structs = {}
             old_module.loader = parent_loader
 
@@ -1300,30 +1351,198 @@ def get_module(name):
         return user_modules[name]
 
 
+# ModuleHasher computes the module hash based on all the kernels, module options,
+# and build configuration.  For each kernel, it computes a deep hash by recursively
+# hashing all referenced functions, structs, and constants, even those defined in
+# other modules.  The module hash is computed in the constructor and can be retrieved
+# using get_module_hash().  In addition, the ModuleHasher takes care of filtering out
+# duplicate kernels for codegen (see get_unique_kernels()).
+class ModuleHasher:
+    def __init__(self, module):
+        # cache function hashes to avoid hashing multiple times
+        self.function_hashes = {}  # (function: hash)
+
+        # avoid recursive spiral of doom (e.g., function calling an overload of itself)
+        self.functions_in_progress = set()
+
+        # all unique kernels for codegen, filtered by hash
+        self.unique_kernels = {}  # (hash: kernel)
+
+        # start hashing the module
+        ch = hashlib.sha256()
+
+        # hash all non-generic kernels
+        for kernel in module.live_kernels:
+            if kernel.is_generic:
+                for ovl in kernel.overloads.values():
+                    if not ovl.adj.skip_build:
+                        ovl.hash = self.hash_kernel(ovl)
+            else:
+                if not kernel.adj.skip_build:
+                    kernel.hash = self.hash_kernel(kernel)
+
+        # include all unique kernels in the module hash
+        for kernel_hash in sorted(self.unique_kernels.keys()):
+            ch.update(kernel_hash)
+
+        # configuration parameters
+        for opt in sorted(module.options.keys()):
+            s = f"{opt}:{module.options[opt]}"
+            ch.update(bytes(s, "utf-8"))
+
+        # ensure to trigger recompilation if flags affecting kernel compilation are changed
+        if warp.config.verify_fp:
+            ch.update(bytes("verify_fp", "utf-8"))
+
+        # build config
+        ch.update(bytes(warp.config.mode, "utf-8"))
+
+        # save the module hash
+        self.module_hash = ch.digest()
+
+    def hash_kernel(self, kernel):
+        # NOTE: We only hash non-generic kernels, so we don't traverse kernel overloads here.
+
+        ch = hashlib.sha256()
+
+        ch.update(bytes(kernel.key, "utf-8"))
+        ch.update(self.hash_adjoint(kernel.adj))
+
+        h = ch.digest()
+
+        self.unique_kernels[h] = kernel
+
+        return h
+
+    def hash_function(self, func):
+        # NOTE: This method hashes all possible overloads that a function call could resolve to.
+        # The exact overload will be resolved at build time, when the argument types are known.
+
+        h = self.function_hashes.get(func)
+        if h is not None:
+            return h
+
+        self.functions_in_progress.add(func)
+
+        ch = hashlib.sha256()
+
+        ch.update(bytes(func.key, "utf-8"))
+
+        # include all concrete and generic overloads
+        overloads = {**func.user_overloads, **func.user_templates}
+        for sig in sorted(overloads.keys()):
+            ovl = overloads[sig]
+
+            # skip instantiations of generic functions
+            if ovl.generic_parent is not None:
+                continue
+
+            # adjoint
+            ch.update(self.hash_adjoint(ovl.adj))
+
+            # custom bits
+            if ovl.custom_grad_func:
+                ch.update(bytes(ovl.custom_grad_func.adj.source, "utf-8"))
+            if ovl.custom_replay_func:
+                ch.update(bytes(ovl.custom_replay_func.adj.source, "utf-8"))
+            if ovl.replay_snippet:
+                ch.update(bytes(ovl.replay_snippet, "utf-8"))
+            if ovl.native_snippet:
+                ch.update(bytes(ovl.native_snippet, "utf-8"))
+            if ovl.adj_native_snippet:
+                ch.update(bytes(ovl.adj_native_snippet, "utf-8"))
+
+        h = ch.digest()
+
+        self.function_hashes[func] = h
+
+        self.functions_in_progress.remove(func)
+
+        return h
+
+    def hash_adjoint(self, adj):
+        # NOTE: We don't cache adjoint hashes, because adjoints are always unique.
+        # Even instances of generic kernels and functions have unique adjoints with
+        # different argument types.
+
+        ch = hashlib.sha256()
+
+        # source
+        ch.update(bytes(adj.source, "utf-8"))
+
+        # args
+        for arg, arg_type in adj.arg_types.items():
+            s = f"{arg}:{warp.types.get_type_code(arg_type)}"
+            ch.update(bytes(s, "utf-8"))
+
+            # hash struct types
+            if isinstance(arg_type, warp.codegen.Struct):
+                ch.update(arg_type.hash)
+            elif warp.types.is_array(arg_type) and isinstance(arg_type.dtype, warp.codegen.Struct):
+                ch.update(arg_type.dtype.hash)
+
+        # find referenced constants, types, and functions
+        constants, types, functions = adj.get_references()
+
+        # hash referenced constants
+        for name, value in constants.items():
+            ch.update(bytes(name, "utf-8"))
+            # hash the referenced object
+            if isinstance(value, builtins.bool):
+                # This needs to come before the check for `int` since all boolean
+                # values are also instances of `int`.
+                ch.update(struct_pack("?", value))
+            elif isinstance(value, int):
+                ch.update(struct_pack("<q", value))
+            elif isinstance(value, float):
+                ch.update(struct_pack("<d", value))
+            elif isinstance(value, warp.types.float16):
+                # float16 is a special case
+                p = ctypes.pointer(ctypes.c_float(value.value))
+                ch.update(p.contents)
+            elif isinstance(value, tuple(warp.types.scalar_types)):
+                p = ctypes.pointer(value._type_(value.value))
+                ch.update(p.contents)
+            elif isinstance(value, ctypes.Array):
+                ch.update(bytes(value))
+            else:
+                raise RuntimeError(f"Invalid constant type: {type(value)}")
+
+        # hash referenced types
+        for t in types.keys():
+            ch.update(bytes(warp.types.get_type_code(t), "utf-8"))
+
+        # hash referenced functions
+        for f in functions.keys():
+            if f not in self.functions_in_progress:
+                ch.update(self.hash_function(f))
+
+        return ch.digest()
+
+    def get_module_hash(self):
+        return self.module_hash
+
+    def get_unique_kernels(self):
+        return self.unique_kernels.values()
+
+
 class ModuleBuilder:
-    def __init__(self, module, options):
+    def __init__(self, module, options, hasher=None):
         self.functions = {}
         self.structs = {}
         self.options = options
         self.module = module
         self.deferred_functions = []
 
-        # build all functions declared in the module
-        for func in module.functions.values():
-            for f in func.user_overloads.values():
-                self.build_function(f)
-                if f.custom_replay_func is not None:
-                    self.build_function(f.custom_replay_func)
+        if hasher is None:
+            hasher = ModuleHasher(module)
 
-        # build all kernel entry points
-        for kernel in module.kernels.values():
-            if not kernel.is_generic:
-                self.build_kernel(kernel)
-            else:
-                for k in kernel.overloads.values():
-                    self.build_kernel(k)
+        # build all unique kernels
+        self.kernels = hasher.get_unique_kernels()
+        for kernel in self.kernels:
+            self.build_kernel(kernel)
 
-        # build all functions outside this module which are called from functions or kernels in this module
+        # build deferred functions
         for func in self.deferred_functions:
             self.build_function(func)
 
@@ -1339,7 +1558,7 @@ class ModuleBuilder:
             for var in s.vars.values():
                 if isinstance(var.type, warp.codegen.Struct):
                     stack.append(var.type)
-                elif isinstance(var.type, warp.types.array) and isinstance(var.type.dtype, warp.codegen.Struct):
+                elif warp.types.is_array(var.type) and isinstance(var.type.dtype, warp.codegen.Struct):
                     stack.append(var.type.dtype)
 
         # Build them in reverse to generate a correct dependency order.
@@ -1385,8 +1604,12 @@ class ModuleBuilder:
         source = ""
 
         # code-gen structs
+        visited_structs = set()
         for struct in self.structs.keys():
-            source += warp.codegen.codegen_struct(struct)
+            # avoid emitting duplicates
+            if struct.hash not in visited_structs:
+                source += warp.codegen.codegen_struct(struct)
+                visited_structs.add(struct.hash)
 
         # code-gen all imported functions
         for func in self.functions.keys():
@@ -1397,21 +1620,15 @@ class ModuleBuilder:
             else:
                 source += warp.codegen.codegen_snippet(
                     func.adj,
-                    name=func.key,
+                    name=func.native_func,
                     snippet=func.native_snippet,
                     adj_snippet=func.adj_native_snippet,
                     replay_snippet=func.replay_snippet,
                 )
 
-        for kernel in self.module.kernels.values():
-            # each kernel gets an entry point in the module
-            if not kernel.is_generic:
-                source += warp.codegen.codegen_kernel(kernel, device=device, options=self.options)
-                source += warp.codegen.codegen_module(kernel, device=device)
-            else:
-                for k in kernel.overloads.values():
-                    source += warp.codegen.codegen_kernel(k, device=device, options=self.options)
-                    source += warp.codegen.codegen_module(k, device=device)
+        for kernel in self.kernels:
+            source += warp.codegen.codegen_kernel(kernel, device=device, options=self.options)
+            source += warp.codegen.codegen_module(kernel, device=device)
 
         # add headers
         if device == "cpu":
@@ -1436,8 +1653,9 @@ class ModuleExec:
         instance.handle = None
         return instance
 
-    def __init__(self, handle, device):
+    def __init__(self, handle, module_hash, device):
         self.handle = handle
+        self.module_hash = module_hash
         self.device = device
         self.kernel_hooks = {}
 
@@ -1486,16 +1704,26 @@ class Module:
         self.name = name
         self.loader = loader
 
-        self.kernels = {}
-        self.functions = {}
-        self.constants = {}  # Any constants referenced in this module including those defined in other modules
-        self.structs = {}
+        # lookup the latest versions of kernels, functions, and structs by key
+        self.kernels = {}  # (key: kernel)
+        self.functions = {}  # (key: function)
+        self.structs = {}  # (key: struct)
 
-        self.cpu_exec = None  # executable CPU module
-        self.cuda_execs = {}  # executable CUDA module lookup by CUDA context
+        # Set of all "live" kernels in this module.
+        # The difference between `live_kernels` and `kernels` is that `live_kernels` may contain
+        # multiple kernels with the same key (which is essential to support closures), while `kernels`
+        # only holds the latest kernel for each key.  When the module is built, we compute the hash
+        # of each kernel in `live_kernels` and filter out duplicates for codegen.
+        self.live_kernels = weakref.WeakSet()
 
-        self.cpu_build_failed = False
-        self.cuda_build_failed = False
+        # executable modules currently loaded
+        self.execs = {}  # (device.context: ModuleExec)
+
+        # set of device contexts where the build has failed
+        self.failed_builds = set()
+
+        # hash data, including the module hash
+        self.hasher = None
 
         self.options = {
             "max_unroll": warp.config.max_unroll,
@@ -1508,11 +1736,6 @@ class Module:
         # Module dependencies are determined by scanning each function
         # and kernel for references to external functions and structs.
         #
-        # When a referenced module is modified, all of its dependents need to be reloaded
-        # on the next launch.  To detect this, a module's hash recursively includes
-        # all of its references.
-        # -> See ``Module.hash_module()``
-        #
         # The dependency mechanism works for both static and dynamic (runtime) modifications.
         # When a module is reloaded at runtime, we recursively unload all of its
         # dependents, so that they will be re-hashed and reloaded on the next launch.
@@ -1521,40 +1744,39 @@ class Module:
         self.references = set()  # modules whose content we depend on
         self.dependents = set()  # modules that depend on our content
 
-        # Since module hashing is recursive, we improve performance by caching the hash of the
-        # module contents (kernel source, function source, and struct source).
-        # After all kernels, functions, and structs are added to the module (usually at import time),
-        # the content hash doesn't change.
-        # -> See ``Module.hash_module_recursive()``
-
-        self.content_hash = None
-
-        # number of times module auto-generates kernel key for user
-        # used to ensure unique kernel keys
-        self.count = 0
-
     def register_struct(self, struct):
         self.structs[struct.key] = struct
 
         # for a reload of module on next launch
-        self.unload()
+        self.mark_modified()
 
     def register_kernel(self, kernel):
+        # keep a reference to the latest version
         self.kernels[kernel.key] = kernel
+
+        # track all kernel objects, even if they are duplicates
+        self.live_kernels.add(kernel)
 
         self.find_references(kernel.adj)
 
         # for a reload of module on next launch
-        self.unload()
+        self.mark_modified()
 
-    def register_function(self, func, skip_adding_overload=False):
-        if func.key not in self.functions:
-            self.functions[func.key] = func
+    def register_function(self, func, scope_locals, skip_adding_overload=False):
+        # check for another Function with the same name in the same scope
+        obj = scope_locals.get(func.func.__name__)
+        if isinstance(obj, Function):
+            func_existing = obj
         else:
+            func_existing = None
+
+        # keep a reference to the latest version
+        self.functions[func.key] = func_existing or func
+
+        if func_existing:
             # Check whether the new function's signature match any that has
             # already been registered. If so, then we simply override it, as
             # Python would do it, otherwise we register it as a new overload.
-            func_existing = self.functions[func.key]
             sig = warp.types.get_signature(
                 func.input_types.values(),
                 func_name=func.key,
@@ -1566,19 +1788,43 @@ class Module:
                 arg_names=list(func_existing.input_types.keys()),
             )
             if sig == sig_existing:
+                # replace the top-level function, but keep existing overloads
+
+                # copy generic overloads
+                func.user_templates = func_existing.user_templates.copy()
+
+                # copy concrete overloads
+                if warp.types.is_generic_signature(sig):
+                    # skip overloads that were instantiated from the function being replaced
+                    for k, v in func_existing.user_overloads.items():
+                        if v.generic_parent != func_existing:
+                            func.user_overloads[k] = v
+                    func.user_templates[sig] = func
+                else:
+                    func.user_overloads = func_existing.user_overloads.copy()
+                    func.user_overloads[sig] = func
+
                 self.functions[func.key] = func
             elif not skip_adding_overload:
+                # check if this is a generic overload that replaces an existing one
+                if warp.types.is_generic_signature(sig):
+                    old_generic = func_existing.user_templates.get(sig)
+                    if old_generic is not None:
+                        # purge any concrete overloads that were instantiated from the old one
+                        for k, v in list(func_existing.user_overloads.items()):
+                            if v.generic_parent == old_generic:
+                                del func_existing.user_overloads[k]
                 func_existing.add_overload(func)
 
         self.find_references(func.adj)
 
         # for a reload of module on next launch
-        self.unload()
+        self.mark_modified()
 
-    def generate_unique_kernel_key(self, key):
-        unique_key = f"{key}_{self.count}"
-        self.count += 1
-        return unique_key
+    # find kernel corresponding to a Python function
+    def find_kernel(self, func):
+        qualname = warp.codegen.make_full_qualified_name(func)
+        return self.kernels.get(qualname)
 
     # collect all referenced functions / structs
     # given the AST of a function or kernel
@@ -1610,165 +1856,30 @@ class Module:
             if isinstance(arg.type, warp.codegen.Struct) and arg.type.module is not None:
                 add_ref(arg.type.module)
 
-    def hash_module(self, recompute_content_hash=False):
-        """Recursively compute and return a hash for the module.
-
-        If ``recompute_content_hash`` is False, each module's previously
-        computed ``content_hash`` will be used.
-        """
-
-        def get_type_name(type_hint) -> str:
-            if isinstance(type_hint, warp.codegen.Struct):
-                return get_type_name(type_hint.cls)
-            elif isinstance(type_hint, warp.array) and isinstance(type_hint.dtype, warp.codegen.Struct):
-                return f"array{get_type_name(type_hint.dtype)}"
-
-            return str(type_hint)
-
-        def hash_recursive(module, visited):
-            # Hash this module, including all referenced modules recursively.
-            # The visited set tracks modules already visited to avoid circular references.
-
-            # check if we need to update the content hash
-            if not module.content_hash or recompute_content_hash:
-                # recompute content hash
-                ch = hashlib.sha256()
-
-                # Start with an empty constants dictionary in case any have been removed
-                module.constants = {}
-
-                # struct source
-                for struct in module.structs.values():
-                    s = ",".join(
-                        "{}: {}".format(name, get_type_name(type_hint))
-                        for name, type_hint in warp.codegen.get_annotations(struct.cls).items()
-                    )
-                    ch.update(bytes(s, "utf-8"))
-
-                # functions source
-                for function in module.functions.values():
-                    # include all concrete and generic overloads
-                    overloads = itertools.chain(function.user_overloads.items(), function.user_templates.items())
-                    for sig, func in overloads:
-                        # signature
-                        ch.update(bytes(sig, "utf-8"))
-
-                        # source
-                        ch.update(bytes(func.adj.source, "utf-8"))
-
-                        if func.custom_grad_func:
-                            ch.update(bytes(func.custom_grad_func.adj.source, "utf-8"))
-                        if func.custom_replay_func:
-                            ch.update(bytes(func.custom_replay_func.adj.source, "utf-8"))
-                        if func.replay_snippet:
-                            ch.update(bytes(func.replay_snippet, "utf-8"))
-                        if func.native_snippet:
-                            ch.update(bytes(func.native_snippet, "utf-8"))
-                        if func.adj_native_snippet:
-                            ch.update(bytes(func.adj_native_snippet, "utf-8"))
-
-                        # Populate constants referenced in this function
-                        if func.adj:
-                            module.constants.update(func.adj.get_constant_references())
-
-                # kernel source
-                for kernel in module.kernels.values():
-                    ch.update(bytes(kernel.key, "utf-8"))
-                    ch.update(bytes(kernel.adj.source, "utf-8"))
-                    # cache kernel arg types
-                    for arg, arg_type in kernel.adj.arg_types.items():
-                        s = f"{arg}: {get_type_name(arg_type)}"
-                        ch.update(bytes(s, "utf-8"))
-                    # for generic kernels the Python source is always the same,
-                    # but we hash the type signatures of all the overloads
-                    if kernel.is_generic:
-                        for sig in sorted(kernel.overloads.keys()):
-                            ch.update(bytes(sig, "utf-8"))
-
-                    # Populate constants referenced in this kernel
-                    module.constants.update(kernel.adj.get_constant_references())
-
-                # constants referenced in this module
-                for constant_name, constant_value in module.constants.items():
-                    ch.update(bytes(constant_name, "utf-8"))
-
-                    # hash the constant value
-                    if isinstance(constant_value, builtins.bool):
-                        # This needs to come before the check for `int` since all boolean
-                        # values are also instances of `int`.
-                        ch.update(struct_pack("?", constant_value))
-                    elif isinstance(constant_value, int):
-                        ch.update(struct_pack("<q", constant_value))
-                    elif isinstance(constant_value, float):
-                        ch.update(struct_pack("<d", constant_value))
-                    elif isinstance(constant_value, warp.types.float16):
-                        # float16 is a special case
-                        p = ctypes.pointer(ctypes.c_float(constant_value.value))
-                        ch.update(p.contents)
-                    elif isinstance(constant_value, tuple(warp.types.scalar_types)):
-                        p = ctypes.pointer(constant_value._type_(constant_value.value))
-                        ch.update(p.contents)
-                    elif isinstance(constant_value, ctypes.Array):
-                        ch.update(bytes(constant_value))
-                    else:
-                        raise RuntimeError(f"Invalid constant type: {type(constant_value)}")
-
-                module.content_hash = ch.digest()
-
-            h = hashlib.sha256()
-
-            # content hash
-            h.update(module.content_hash)
-
-            # configuration parameters
-            for k in sorted(module.options.keys()):
-                s = f"{k}={module.options[k]}"
-                h.update(bytes(s, "utf-8"))
-
-            # ensure to trigger recompilation if flags affecting kernel compilation are changed
-            if warp.config.verify_fp:
-                h.update(bytes("verify_fp", "utf-8"))
-
-            h.update(bytes(warp.config.mode, "utf-8"))
-
-            # recurse on references
-            visited.add(module)
-
-            sorted_deps = sorted(module.references, key=lambda m: m.name)
-            for dep in sorted_deps:
-                if dep not in visited:
-                    dep_hash = hash_recursive(dep, visited)
-                    h.update(dep_hash)
-
-            return h.digest()
-
-        return hash_recursive(self, visited=set())
+    def hash_module(self):
+        # compute latest hash
+        self.hasher = ModuleHasher(self)
+        return self.hasher.get_module_hash()
 
     def load(self, device) -> ModuleExec:
         device = runtime.get_device(device)
 
-        if device.is_cpu:
-            # check if already loaded
-            if self.cpu_exec:
-                return self.cpu_exec
-            # avoid repeated build attempts
-            if self.cpu_build_failed:
-                return None
-            if not warp.is_cpu_available():
-                raise RuntimeError("Failed to build CPU module because no CPU buildchain was found")
-        else:
-            # check if already loaded
-            cuda_exec = self.cuda_execs.get(device.context)
-            if cuda_exec is not None:
-                return cuda_exec
-            # avoid repeated build attempts
-            if self.cuda_build_failed:
-                return None
-            if not warp.is_cuda_available():
-                raise RuntimeError("Failed to build CUDA module because CUDA is not available")
+        # compute the hash if needed
+        if self.hasher is None:
+            self.hasher = ModuleHasher(self)
+
+        # check if executable module is already loaded and not stale
+        exec = self.execs.get(device.context)
+        if exec is not None:
+            if exec.module_hash == self.hasher.module_hash:
+                return exec
+
+        # quietly avoid repeated build attempts to reduce error spew
+        if device.context in self.failed_builds:
+            return None
 
         module_name = "wp_" + self.name
-        module_hash = self.hash_module()
+        module_hash = self.hasher.module_hash
 
         # use a unique module path using the module short hash
         module_dir = os.path.join(warp.config.kernel_cache_dir, f"{module_name}_{module_hash.hex()[:7]}")
@@ -1818,7 +1929,7 @@ class Module:
                 or not warp.config.cache_kernels
                 or warp.config.verify_autograd_array_access
             ):
-                builder = ModuleBuilder(self, self.options)
+                builder = ModuleBuilder(self, self.options, hasher=self.hasher)
 
                 # create a temporary (process unique) dir for build outputs before moving to the binary dir
                 build_dir = os.path.join(
@@ -1855,7 +1966,7 @@ class Module:
                             )
 
                     except Exception as e:
-                        self.cpu_build_failed = True
+                        self.failed_builds.add(None)
                         module_load_timer.extra_msg = " (error)"
                         raise (e)
 
@@ -1884,7 +1995,7 @@ class Module:
                             )
 
                     except Exception as e:
-                        self.cuda_build_failed = True
+                        self.failed_builds.add(device.context)
                         module_load_timer.extra_msg = " (error)"
                         raise (e)
 
@@ -1925,15 +2036,17 @@ class Module:
             # -----------------------------------------------------------
             # Load CPU or CUDA binary
             if device.is_cpu:
-                runtime.llvm.load_obj(binary_path.encode("utf-8"), module_name.encode("utf-8"))
-                module_exec = ModuleExec(module_name, device)
-                self.cpu_exec = module_exec
+                # LLVM modules are identified using strings, so include the hash for uniqueness
+                module_handle = f"{module_name}_{module_hash.hex()[:7]}"
+                runtime.llvm.load_obj(binary_path.encode("utf-8"), module_handle.encode("utf-8"))
+                module_exec = ModuleExec(module_handle, module_hash, device)
+                self.execs[None] = module_exec
 
             elif device.is_cuda:
                 cuda_module = warp.build.load_cuda(binary_path, device)
                 if cuda_module is not None:
-                    module_exec = ModuleExec(cuda_module, device)
-                    self.cuda_execs[device.context] = module_exec
+                    module_exec = ModuleExec(cuda_module, module_hash, device)
+                    self.execs[device.context] = module_exec
                 else:
                     module_load_timer.extra_msg = " (error)"
                     raise Exception(f"Failed to load CUDA module '{self.name}'")
@@ -1947,20 +2060,22 @@ class Module:
         return module_exec
 
     def unload(self):
-        # clear loaded modules
-        self.cpu_exec = None
-        self.cuda_execs = {}
+        # force rehashing on next load
+        self.mark_modified()
 
-        # clear content hash
-        self.content_hash = None
+        # clear loaded modules
+        self.execs = {}
+
+    def mark_modified(self):
+        # clear hash data
+        self.hasher = None
+
+        # clear build failures
+        self.failed_builds = set()
 
     # lookup kernel entry points based on name, called after compilation / module load
     def get_kernel_hooks(self, kernel, device):
-        if device.is_cuda:
-            module_exec = self.cuda_execs.get(device.context)
-        else:
-            module_exec = self.cpu_exec
-
+        module_exec = self.execs.get(device.context)
         if module_exec is not None:
             return module_exec.get_kernel_hooks(kernel)
         else:
@@ -5127,7 +5242,7 @@ def set_module_options(options: Dict[str, Any], module: Optional[Any] = None):
         m = module
 
     get_module(m.__name__).options.update(options)
-    get_module(m.__name__).unload()
+    get_module(m.__name__).mark_modified()
 
 
 def get_module_options(module: Optional[Any] = None) -> Dict[str, Any]:
