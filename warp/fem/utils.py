@@ -207,7 +207,7 @@ def tridiagonal_symmetric_eigenvalues_qr(D: Any, L: Any, Q: Any, tol: Any):
     Args:
         D: Main diagonal of the matrix
         L: Lower diagonal of the matrix, indexed such that L[i] = A[i+1, i]
-        Q: Initialization for the eigenvectors, useful if a pre-transformation has been apllied, otherwise may be identity
+        Q: Initialization for the eigenvectors, useful if a pre-transformation has been applied, otherwise may be identity
         tol: Tolerance for the diagonalization residual (Linf norm of off-diagonal over diagonal terms)
 
     Returns a tuple (D: vector of eigenvalues, P: matrix with one eigenvector per row) such that A = P^T D P
