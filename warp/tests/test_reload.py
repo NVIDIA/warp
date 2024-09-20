@@ -64,6 +64,32 @@ def test_redefine(test, device):
     assert_np_equal(np.arange(0, n, 1) * 2.0, y.numpy())
 
 
+def test_redefine_command(test, device):
+    # Test whether executable modules are retained correctly.
+    # A module can have multiple executable versions in use if something
+    # still holds a reference to them.
+
+    @wp.kernel
+    def k(value: int):
+        wp.expect_eq(value, 17)
+
+    # record a command
+    cmd1 = wp.launch(k, dim=1, inputs=[17], device=device, record_cmd=True)
+    cmd1.launch()
+
+    # redefine the kernel, triggering module reload
+    @wp.kernel
+    def k(value: int):
+        wp.expect_eq(value, 42)
+
+    # re-record the command
+    cmd2 = wp.launch(k, dim=1, inputs=[42], device=device, record_cmd=True)
+    cmd2.launch()
+
+    # previous command should still work
+    cmd1.launch()
+
+
 square_two = """import warp as wp
 
 
@@ -224,6 +250,7 @@ class TestReload(unittest.TestCase):
 
 
 add_function_test(TestReload, "test_redefine", test_redefine, devices=devices)
+add_function_test(TestReload, "test_redefine_command", test_redefine_command, devices=devices)
 add_function_test(TestReload, "test_reload", test_reload, devices=devices)
 add_function_test(TestReload, "test_reload_class", test_reload_class, devices=devices)
 # TODO: test_reload_references sometimes has issues running on cuda:1
