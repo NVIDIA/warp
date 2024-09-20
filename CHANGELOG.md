@@ -32,6 +32,7 @@
   - Fix issues with unrelated functions being treated as overloads (e.g., closures)
   - Skip unused functions in module code generation, improving performance
   - Avoid reloading modules if their content does not change, improving performance
+- Add an ocean sample to the `omni.warp` extension.
 
 ## [1.3.3] - 2024-09-04
 
