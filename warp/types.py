@@ -2054,24 +2054,27 @@ class array(Array):
         if self.device is None:
             raise RuntimeError("Array has no device assigned")
 
-        if self.device.is_cuda and stream != -1:
-            if not isinstance(stream, int):
-                raise TypeError("DLPack stream must be an integer or None")
+        # check if synchronization is needed
+        if stream != -1:
+            if self.device.is_cuda:
+                # validate stream argument
+                if stream is None:
+                    stream = 1  # legacy default stream
+                elif not isinstance(stream, int) or stream < -1:
+                    raise TypeError("DLPack stream must None or an integer >= -1")
 
-            # assume that the array is being used on its device's current stream
-            array_stream = self.device.stream
+                # assume that the array is being used on its device's current stream
+                array_stream = self.device.stream
 
-            # the external stream should wait for outstanding operations to complete
-            if stream in (None, 0, 1):
-                external_stream = 0
-            else:
-                external_stream = stream
-
-            # Performance note: avoid wrapping the external stream in a temporary Stream object
-            if external_stream != array_stream.cuda_stream:
-                warp.context.runtime.core.cuda_stream_wait_stream(
-                    external_stream, array_stream.cuda_stream, array_stream.cached_event.cuda_event
-                )
+                # Performance note: avoid wrapping the external stream in a temporary Stream object
+                if stream != array_stream.cuda_stream:
+                    warp.context.runtime.core.cuda_stream_wait_stream(
+                        stream, array_stream.cuda_stream, array_stream.cached_event.cuda_event
+                    )
+            elif self.device.is_cpu:
+                # on CPU, stream must be None or -1
+                if stream is not None:
+                    raise TypeError("DLPack stream must be None or -1 for CPU device")
 
         return warp.dlpack.to_dlpack(self)
 
