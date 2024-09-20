@@ -188,6 +188,57 @@ def test_dlpack_dtypes_and_shapes(test, device):
         wrap_scalar_to_matrix_tensor(mat_type)
 
 
+def test_dlpack_stream_arg(test, device):
+    # test valid range for the stream argument to array.__dlpack__()
+
+    data = np.arange(10)
+
+    def check_result(capsule):
+        result = wp.dlpack._from_dlpack(capsule)
+        assert_np_equal(result.numpy(), data)
+
+    with wp.ScopedDevice(device):
+        a = wp.array(data=data)
+
+        # stream arguments supported for all devices
+        check_result(a.__dlpack__())
+        check_result(a.__dlpack__(stream=None))
+        check_result(a.__dlpack__(stream=-1))
+
+        # device-specific stream arguments
+        if device.is_cuda:
+            check_result(a.__dlpack__(stream=0))  # default stream
+            check_result(a.__dlpack__(stream=1))  # legacy default stream
+            check_result(a.__dlpack__(stream=2))  # per thread default stream
+
+            # custom stream
+            stream = wp.Stream(device)
+            check_result(a.__dlpack__(stream=stream.cuda_stream))
+
+            # unsupported stream arguments
+            expected_error = r"DLPack stream must None or an integer >= -1"
+            with test.assertRaisesRegex(TypeError, expected_error):
+                check_result(a.__dlpack__(stream=-2))
+            with test.assertRaisesRegex(TypeError, expected_error):
+                check_result(a.__dlpack__(stream="nope"))
+        else:
+            expected_error = r"DLPack stream must be None or -1 for CPU device"
+
+            with test.assertRaisesRegex(TypeError, expected_error):
+                check_result(a.__dlpack__(stream=0))
+            with test.assertRaisesRegex(TypeError, expected_error):
+                check_result(a.__dlpack__(stream=1))
+            with test.assertRaisesRegex(TypeError, expected_error):
+                check_result(a.__dlpack__(stream=2))
+            with test.assertRaisesRegex(TypeError, expected_error):
+                check_result(a.__dlpack__(stream=1742))
+
+            with test.assertRaisesRegex(TypeError, expected_error):
+                check_result(a.__dlpack__(stream=-2))
+            with test.assertRaisesRegex(TypeError, expected_error):
+                check_result(a.__dlpack__(stream="nope"))
+
+
 def test_dlpack_warp_to_torch(test, device):
     import torch.utils.dlpack
 
@@ -559,6 +610,7 @@ devices = get_test_devices()
 
 add_function_test(TestDLPack, "test_dlpack_warp_to_warp", test_dlpack_warp_to_warp, devices=devices)
 add_function_test(TestDLPack, "test_dlpack_dtypes_and_shapes", test_dlpack_dtypes_and_shapes, devices=devices)
+add_function_test(TestDLPack, "test_dlpack_stream_arg", test_dlpack_stream_arg, devices=devices)
 
 # torch interop via dlpack
 try:

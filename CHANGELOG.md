@@ -19,40 +19,38 @@
 - Include all non-hidden builtins in the stub file.
 - Adaptive sparse grid geometry to `warp.fem` ([docs](https://nvidia.github.io/warp/modules/fem.html#adaptivity)).
 - Improve accuracy of symmetric eigenvalues routine in `warp.fem`.
+- Support for `wp.kernel` and `wp.func` closures.
+- Support for defining multiple versions of kernels, functions, and structs without manually assigning unique keys.
+- Support for redefining function overloads.
+- Add an ocean sample to the `omni.warp` extension.
 
 ### Changed
 
 - **Breaking:** Rename function `plot_kernel_jacobians` to `jacobian_plot` in `autograd` module.
 - `wp.sim.Model.edge_indices` now includes boundary edges.
 - Unexposed `wp.rand*()`, `wp.sample*()`, and `wp.poisson()` from the Python scope.
+- Skip unused functions in module code generation, improving performance.
+- Avoid reloading modules if their content does not change, improving performance.
 
 ### Fixed
 
 - Fix for `wp.func` erroring out when defining a `Tuple` as a return type hint ([GH-302](https://github.com/NVIDIA/warp/issues/302)).
 - Fix array in-place op (`+=`, `-=`) adjoints to compute gradients correctly in the backwards pass.
 - Fix a bug in which Python docstrings would be created as local function variables in generated code.
-- Allow passing custom launch dimensions to `jax_kernel()`.
-- Add new Jax interoperability examples for sharding and matrix multiplication (see Interoperability documentation).
 - Fix a rare crash during error reporting on some systems.
 - Fix a bug with autograd array access validation in functions from different modules.
-- Improve management of kernel, function, and struct instances
-  - Add support for `wp.kernel` and `wp.func` closures
-  - Add support for defining multiple versions of kernels, functions, and structs without manually assigning unique keys
-  - Add support for redefining function overloads
-  - Fix name clashes when Warp functions and structs are returned from Python functions multiple times
-  - Fix name clashes between Warp functions and structs defined in different modules
-  - Fix code generation errors when overloading generic kernels defined in a Python function
-  - Fix some bugs related to module hashing and caching
-  - Fix issues with unrelated functions being treated as overloads (e.g., closures)
-  - Skip unused functions in module code generation, improving performance
-  - Avoid reloading modules if their content does not change, improving performance
-- Add an ocean sample to the `omni.warp` extension.
 - Fix a rare crash during error reporting on some systems due to glibc mismatches.
 - Handle `--num_tiles 1` in `example_render_opengl.py` ([GH-306](https://github.com/NVIDIA/warp/issues/306)).
 - Fix bug in `FeatherstoneIntegrator` where `eval_rigid_jacobian` could give incorrect results or reach an infinite
   loop when the body and joint indices were not in the same order. Added `Model.joint_ancestor` to fix the indexing
   from a joint to its parent joint in the articulation.
 - Add a workaround for `__threadfence()` issues in the Compute Sanitizer initcheck tool.
+- Fix name clashes when Warp functions and structs are returned from Python functions multiple times.
+- Fix name clashes between Warp functions and structs defined in different modules.
+- Fix code generation errors when overloading generic kernels defined in a Python function.
+- Fix some bugs related to module hashing and caching.
+- Fix issues with unrelated functions being treated as overloads (e.g., closures).
+- Fix handling of `stream` argument in `array.__dlpack__()`.
 
 ## [1.3.3] - 2024-09-04
 
