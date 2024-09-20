@@ -1686,8 +1686,12 @@ class ModuleExec:
             )
         else:
             func = ctypes.CFUNCTYPE(None)
-            forward = func(runtime.llvm.lookup(self.handle.encode("utf-8"), (name + "_cpu_forward").encode("utf-8")))
-            backward = func(runtime.llvm.lookup(self.handle.encode("utf-8"), (name + "_cpu_backward").encode("utf-8")))
+            forward = (
+                func(runtime.llvm.lookup(self.handle.encode("utf-8"), (name + "_cpu_forward").encode("utf-8"))) or None
+            )
+            backward = (
+                func(runtime.llvm.lookup(self.handle.encode("utf-8"), (name + "_cpu_backward").encode("utf-8"))) or None
+            )
 
         hooks = KernelHooks(forward, backward)
         self.kernel_hooks[kernel] = hooks
@@ -1724,6 +1728,13 @@ class Module:
 
         # hash data, including the module hash
         self.hasher = None
+
+        # LLVM executable modules are identified using strings.  Since it's possible for multiple
+        # executable versions to be loaded at the same time, we need a way to ensure uniqueness.
+        # A unique handle is created from the module name and this auto-incremented integer id.
+        # NOTE: The module hash is not sufficient for uniqueness in rare cases where a module
+        # is retained and later reloaded with the same hash.
+        self.cpu_exec_id = 0
 
         self.options = {
             "max_unroll": warp.config.max_unroll,
@@ -2036,8 +2047,9 @@ class Module:
             # -----------------------------------------------------------
             # Load CPU or CUDA binary
             if device.is_cpu:
-                # LLVM modules are identified using strings, so include the hash for uniqueness
-                module_handle = f"{module_name}_{module_hash.hex()[:7]}"
+                # LLVM modules are identified using strings, so we need to ensure uniqueness
+                module_handle = f"{module_name}_{self.cpu_exec_id}"
+                self.cpu_exec_id += 1
                 runtime.llvm.load_obj(binary_path.encode("utf-8"), module_handle.encode("utf-8"))
                 module_exec = ModuleExec(module_handle, module_hash, device)
                 self.execs[None] = module_exec

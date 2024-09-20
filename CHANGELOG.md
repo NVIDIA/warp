@@ -51,6 +51,8 @@
 - Fix some bugs related to module hashing and caching.
 - Fix issues with unrelated functions being treated as overloads (e.g., closures).
 - Fix handling of `stream` argument in `array.__dlpack__()`.
+- Fix a bug related to reloading CPU modules.
+- Fix a crash when kernel functions are not found in CPU modules.
 
 ## [1.3.3] - 2024-09-04
 
