@@ -150,7 +150,7 @@ class Example:
         x = wp.zeros_like(rhs)
         fem_example_utils.bsr_cg(lhs, b=rhs, x=x, tol=1.0e-8, quiet=False)
 
-        # make sure result is exactly zero outisde of circle
+        # make sure result is exactly zero outside of circle
         wp.sparse.bsr_mv(dirichlet_bd_proj, x=x, y=x, alpha=-1.0, beta=1.0)
         wp.utils.array_cast(in_array=x, out_array=self.A_field.dof_values)
 

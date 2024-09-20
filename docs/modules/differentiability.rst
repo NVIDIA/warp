@@ -872,7 +872,7 @@ it is marked as having been read from. Later, if the same array is passed to a k
     Setting ``wp.config.verify_autograd_array_access = True`` will disable kernel caching and force the current module to rebuild.
 
 .. note::
-    Though in-place operations such as ``x[tid] += 1.0`` are technically ``read -> write``, the Warp graph specifically accomodates adjoint accumulation in these cases, so we mark them as write operations.
+    Though in-place operations such as ``x[tid] += 1.0`` are technically ``read -> write``, the Warp graph specifically accommodates adjoint accumulation in these cases, so we mark them as write operations.
 
 .. note::
     This feature does not yet support arrays packed in Warp structs.

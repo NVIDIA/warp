@@ -163,7 +163,7 @@ It is also possible to define the deformation field from an :class:`ImplicitFiel
 Particle-based quadrature and position lookups
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The global :func:`.lookup` operator allows generating a :class:`.Sample` from an arbitraty position; this is illustrated in 
+The global :func:`.lookup` operator allows generating a :class:`.Sample` from an arbitrary position; this is illustrated in 
 the ``example_streamlines.py`` example for generating 3D streamlines by tracing through a velocity field.
 
 This operator is also leveraged by the :class:`.PicQuadrature` to provide a way to define Particle-In-Cell quadratures from a set or arbitrary particles,
@@ -223,7 +223,7 @@ Memory management
 
 Several ``warp.fem`` functions require allocating temporary buffers to perform their computations. 
 If such functions are called many times in a tight loop, those many allocations and de-allocations may degrade performance,
-though this is a lot less signifiant when :ref:`mempool_allocators` are in use.
+though this is a lot less significant when :ref:`mempool_allocators` are in use.
 To overcome this issue, a :class:`.cache.TemporaryStore` object may be created to persist and reuse temporary allocations across calls,
 either globally using :func:`set_default_temporary_store` or at a per-function granularity using the corresponding argument.
 

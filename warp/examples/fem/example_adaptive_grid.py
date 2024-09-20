@@ -120,7 +120,7 @@ class Example:
         self.velocity_field = u_space.make_field()
 
         # Initialize velocity field with BC
-        bounds_scale = 0.9999  # accout for difference between bounds and actual grid extents
+        bounds_scale = 0.9999  # account for difference between bounds and actual grid extents
         bounds_center = 0.5 * (bounds_hi + bounds_lo)
         bounds_extent = 0.5 * (bounds_hi - bounds_lo)
         fem.interpolate(
