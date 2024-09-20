@@ -219,7 +219,7 @@ def compute(db: OgnSampleOceanDeformDatabase) -> None:
     water_depth = max(1.0, min(1000.0, db.inputs.waterDepth))
     scale = min(10000.0, max(0.001, db.inputs.scale))
 
-    # create 1D profile buffer for this timestep using wave paramters
+    # create 1D profile buffer for this timestep using wave parameters
     wp.launch(
         kernel=update_profile,
         dim=(PROFILE_RES,),

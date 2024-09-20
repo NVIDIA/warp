@@ -194,9 +194,9 @@ def enforce_nanogrid_grading(
     temporary_store: Optional[cache.TemporaryStore] = None,
 ) -> Tuple[wp.Volume, wp.array]:
     """
-    Refines an adapative grid such that if satisfies a grading condition.
+    Refines an adaptive grid such that if satisfies a grading condition.
 
-    Arguments are similar to the :class:`warp.fem.AdapativeNanogrid` constructor, with the
+    Arguments are similar to the :class:`warp.fem.AdaptiveNanogrid` constructor, with the
     addition of the `grading` condition which can be:
          - "face": two cells sharing a common face must have a level difference of at most 1
          - "vertex": two cells sharing a common vertex must have a level difference of at most 1

@@ -1535,7 +1535,7 @@ def array_ctype_from_interface(interface: dict, dtype=None, owner=None):
         strides = strides_from_shape(shape, element_dtype)
 
     if dtype is None:
-        # accept verbatum
+        # accept verbatim
         pass
     elif hasattr(dtype, "_shape_"):
         # vector/matrix types, ensure element dtype matches

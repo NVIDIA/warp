@@ -4651,7 +4651,7 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             return arg_type.__ctype__()
 
         elif isinstance(value, warp.types.array_t):
-            # accept array descriptors verbatum
+            # accept array descriptors verbatim
             return value
 
         else:

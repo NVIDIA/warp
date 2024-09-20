@@ -2385,7 +2385,7 @@ class Adjoint:
 
                 index = adj.vector_component_index(lhs.attr, aggregate_type)
 
-                # TODO: array vec componenet case
+                # TODO: array vec component case
                 if is_reference(aggregate.type):
                     attr = adj.add_builtin_call("indexref", [aggregate, index])
                     adj.add_builtin_call("store", [attr, rhs])
