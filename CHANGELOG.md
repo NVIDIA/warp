@@ -20,6 +20,18 @@
 - Allow passing custom launch dimensions to `jax_kernel()`.
 - Add new Jax interoperability examples for sharding and matrix multiplication (see Interoperability documentation).
 - Fix a rare crash during error reporting on some systems.
+- Fix a bug with autograd array access validation in functions from different modules.
+- Improve management of kernel, function, and struct instances
+  - Add support for `wp.kernel` and `wp.func` closures
+  - Add support for defining multiple versions of kernels, functions, and structs without manually assigning unique keys
+  - Add support for redefining function overloads
+  - Fix name clashes when Warp functions and structs are returned from Python functions multiple times
+  - Fix name clashes between Warp functions and structs defined in different modules
+  - Fix code generation errors when overloading generic kernels defined in a Python function
+  - Fix some bugs related to module hashing and caching
+  - Fix issues with unrelated functions being treated as overloads (e.g., closures)
+  - Skip unused functions in module code generation, improving performance
+  - Avoid reloading modules if their content does not change, improving performance
 
 ## [1.3.3] - 2024-09-04
 

@@ -25,6 +25,11 @@ def fn():
 @wp.func
 def fn(value: int):
     wp.print(value)
+
+@wp.kernel
+def k():
+    print(fn())
+    print(fn(99))
 """
 
 # should be same hash as FUNC_OVERLOAD_1
@@ -38,6 +43,11 @@ def fn():
 @wp.func
 def fn(value: int):
     wp.print(value)
+
+@wp.kernel
+def k():
+    print(fn())
+    print(fn(99))
 """
 
 # should be different hash than FUNC_OVERLOAD_1 (first overload is different)
@@ -51,6 +61,11 @@ def fn():
 @wp.func
 def fn(value: int):
     wp.print(value)
+
+@wp.kernel
+def k():
+    print(fn())
+    print(fn(99))
 """
 
 # should be different hash than FUNC_OVERLOAD_1 (second overload is different)
@@ -64,6 +79,11 @@ def fn():
 @wp.func
 def fn(value: int):
     wp.print(value + 1)
+
+@wp.kernel
+def k():
+    print(fn())
+    print(fn(99))
 """
 
 FUNC_GENERIC_1 = """# -*- coding: utf-8 -*-
@@ -78,6 +98,11 @@ def generic_fn(x: Any):
 @wp.func
 def generic_fn(x: Any, y: Any):
     return x * y
+
+@wp.kernel
+def k():
+    print(generic_fn(17))
+    print(generic_fn(17, 42))
 """
 
 # should be same hash as FUNC_GENERIC_1
@@ -93,6 +118,11 @@ def generic_fn(x: Any):
 @wp.func
 def generic_fn(x: Any, y: Any):
     return x * y
+
+@wp.kernel
+def k():
+    print(generic_fn(17))
+    print(generic_fn(17, 42))
 """
 
 # should be different hash than FUNC_GENERIC_1 (first overload is different)
@@ -108,6 +138,11 @@ def generic_fn(x: Any):
 @wp.func
 def generic_fn(x: Any, y: Any):
     return x * y
+
+@wp.kernel
+def k():
+    print(generic_fn(17))
+    print(generic_fn(17, 42))
 """
 
 # should be different hash than FUNC_GENERIC_1 (second overload is different)
@@ -123,6 +158,11 @@ def generic_fn(x: Any):
 @wp.func
 def generic_fn(x: Any, y: Any):
     return x + y
+
+@wp.kernel
+def k():
+    print(generic_fn(17))
+    print(generic_fn(17, 42))
 """
 
 
