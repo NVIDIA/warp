@@ -5074,7 +5074,7 @@ def get_type_code(arg_type):
     elif isinstance(arg_type, indexedfabricarray):
         return f"ifa{arg_type.ndim}{get_type_code(arg_type.dtype)}"
     elif isinstance(arg_type, warp.codegen.Struct):
-        return warp.codegen.make_full_qualified_name(arg_type.cls)
+        return arg_type.native_name
     elif arg_type == Scalar:
         # generic scalar type
         return "s?"

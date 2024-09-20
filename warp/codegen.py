@@ -11,6 +11,7 @@ import ast
 import builtins
 import ctypes
 import functools
+import hashlib
 import inspect
 import math
 import re
@@ -416,15 +417,35 @@ class Struct:
 
         self.ctype = StructType
 
+        # Compute the hash.  We can cache the hash because it's static, even with nested structs.
+        # All field types are specified in the annotations, so they're resolved at declaration time.
+        ch = hashlib.sha256()
+
+        ch.update(bytes(self.key, "utf-8"))
+
+        for name, type_hint in annotations.items():
+            s = f"{name}:{warp.types.get_type_code(type_hint)}"
+            ch.update(bytes(s, "utf-8"))
+
+            # recurse on nested structs
+            if isinstance(type_hint, Struct):
+                ch.update(type_hint.hash)
+
+        self.hash = ch.digest()
+
+        # generate unique identifier for structs in native code
+        hash_suffix = f"{self.hash.hex()[:8]}"
+        self.native_name = f"{self.key}_{hash_suffix}"
+
         # create default constructor (zero-initialize)
         self.default_constructor = warp.context.Function(
             func=None,
-            key=self.key,
+            key=self.native_name,
             namespace="",
             value_func=lambda *_: self,
             input_types={},
             initializer_list_func=lambda *_: False,
-            native_func=make_full_qualified_name(self.cls),
+            native_func=self.native_name,
         )
 
         # build a constructor that takes each param as a value
@@ -432,12 +453,12 @@ class Struct:
 
         self.value_constructor = warp.context.Function(
             func=None,
-            key=self.key,
+            key=self.native_name,
             namespace="",
             value_func=lambda *_: self,
             input_types=input_types,
             initializer_list_func=lambda *_: False,
-            native_func=make_full_qualified_name(self.cls),
+            native_func=self.native_name,
         )
 
         self.default_constructor.add_overload(self.value_constructor)
@@ -599,7 +620,7 @@ class Var:
             if hasattr(t.dtype, "_wp_generic_type_str_"):
                 dtypestr = compute_type_str(f"wp::{t.dtype._wp_generic_type_str_}", t.dtype._wp_type_params_)
             elif isinstance(t.dtype, Struct):
-                dtypestr = make_full_qualified_name(t.dtype.cls)
+                dtypestr = t.dtype.native_name
             elif t.dtype.__name__ in ("bool", "int", "float"):
                 dtypestr = t.dtype.__name__
             else:
@@ -607,7 +628,7 @@ class Var:
             classstr = f"wp::{type(t).__name__}"
             return f"{classstr}_t<{dtypestr}>"
         elif isinstance(t, Struct):
-            return make_full_qualified_name(t.cls)
+            return t.native_name
         elif is_reference(t):
             if not value_type:
                 return Var.type_to_ctype(t.value_type) + "*"
@@ -948,9 +969,9 @@ class Adjoint:
             if isinstance(a, warp.context.Function):
                 # functions don't have a var_ prefix so strip it off here
                 if prefix == "var":
-                    arg_strs.append(a.key)
+                    arg_strs.append(a.native_func)
                 else:
-                    arg_strs.append(f"{prefix}_{a.key}")
+                    arg_strs.append(f"{prefix}_{a.native_func}")
             elif is_reference(a.type):
                 arg_strs.append(f"{prefix}_{a}")
             elif isinstance(a, Var):
@@ -1254,6 +1275,10 @@ class Adjoint:
         for func_arg in func_args:
             if not isinstance(func_arg, (Reference, warp.context.Function)):
                 func_arg = adj.load(func_arg)
+
+            # if the argument is a function, build it recursively
+            if isinstance(func_arg, warp.context.Function):
+                adj.builder.build_function(func_arg)
 
             fwd_args.append(strip_reference(func_arg))
 
@@ -2086,6 +2111,9 @@ class Adjoint:
         args = tuple(adj.resolve_arg(x) for x in node.args)
         kwargs = {x.arg: adj.resolve_arg(x.value) for x in node.keywords}
 
+        # add the call and build the callee adjoint if needed (func.adj)
+        out = adj.add_call(func, args, kwargs, type_args, min_outputs=min_outputs)
+
         if warp.config.verify_autograd_array_access:
             # update arg read/write states according to what happens to that arg in the called function
             if hasattr(func, "adj"):
@@ -2098,7 +2126,6 @@ class Adjoint:
                     if func.adj.args[i].is_read:
                         arg.mark_read()
 
-        out = adj.add_call(func, args, kwargs, type_args, min_outputs=min_outputs)
         return out
 
     def emit_Index(adj, node):
@@ -2625,34 +2652,42 @@ class Adjoint:
         # return the Python code corresponding to the given AST node
         return ast.get_source_segment(adj.source, node)
 
-    def get_constant_references(adj) -> Dict[str, Any]:
-        """Traverses ``adj.tree`` and returns a dictionary containing constant variable names and values.
-
-        This function is meant to be used to populate a module's constants dictionary, which then feeds
-        into the computation of the module's ``content_hash``.
-        """
+    def get_references(adj) -> Dict[str, Any]:
+        """Traverses ``adj.tree`` and returns referenced constants, types, and user-defined functions."""
 
         local_variables = set()  # Track local variables appearing on the LHS so we know when variables are shadowed
-        constants_dict = {}
+
+        constants = {}
+        types = {}
+        functions = {}
 
         for node in ast.walk(adj.tree):
             if isinstance(node, ast.Name) and node.id not in local_variables:
                 # look up in closure/global variables
                 obj = adj.resolve_external_reference(node.id)
-
                 if warp.types.is_value(obj):
-                    constants_dict[node.id] = obj
+                    constants[node.id] = obj
 
             elif isinstance(node, ast.Attribute):
                 obj, path = adj.resolve_static_expression(node, eval_types=False)
-
                 if warp.types.is_value(obj):
-                    constants_dict[".".join(path)] = obj
+                    constants[".".join(path)] = obj
+
+            elif isinstance(node, ast.Call):
+                func, _ = adj.resolve_static_expression(node.func, eval_types=False)
+                if isinstance(func, warp.context.Function) and not func.is_builtin():
+                    # calling user-defined function
+                    functions[func] = None
+                elif isinstance(func, Struct):
+                    # calling struct constructor
+                    types[func] = None
+                elif isinstance(func, type) and warp.types.type_is_value(func):
+                    # calling value type constructor
+                    types[func] = None
 
             elif isinstance(node, ast.Assign):
                 # Add the LHS names to the local_variables so we know any subsequent uses are shadowed
                 lhs = node.targets[0]
-
                 if isinstance(lhs, ast.Tuple):
                     for v in lhs.elts:
                         if isinstance(v, ast.Name):
@@ -2660,7 +2695,7 @@ class Adjoint:
                 elif isinstance(lhs, ast.Name):
                     local_variables.add(lhs.id)
 
-        return constants_dict
+        return constants, types, functions
 
 
 # ----------------
@@ -2934,7 +2969,7 @@ def make_full_qualified_name(func):
 
 
 def codegen_struct(struct, device="cpu", indent_size=4):
-    name = make_full_qualified_name(struct.cls)
+    name = struct.native_name
 
     body = []
     indent_block = " " * indent_size

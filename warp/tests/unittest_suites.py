@@ -98,6 +98,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_bvh import TestBvh
     from warp.tests.test_closest_point_edge_edge import TestClosestPointEdgeEdgeMethods
     from warp.tests.test_codegen import TestCodeGen
+    from warp.tests.test_codegen_instancing import TestCodeGenInstancing
     from warp.tests.test_compile_consts import TestConstants
     from warp.tests.test_conditional import TestConditional
     from warp.tests.test_copy import TestCopy
@@ -197,6 +198,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestBvh,
         TestClosestPointEdgeEdgeMethods,
         TestCodeGen,
+        TestCodeGenInstancing,
         TestConstants,
         TestConditional,
         TestCopy,
@@ -296,6 +298,7 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_array_reduce import TestArrayReduce
     from warp.tests.test_bvh import TestBvh
     from warp.tests.test_codegen import TestCodeGen
+    from warp.tests.test_codegen_instancing import TestCodeGenInstancing
     from warp.tests.test_compile_consts import TestConstants
     from warp.tests.test_conditional import TestConditional
     from warp.tests.test_ctypes import TestCTypes
@@ -340,6 +343,7 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestArrayReduce,
         TestBvh,
         TestCodeGen,
+        TestCodeGenInstancing,
         TestConstants,
         TestConditional,
         TestCTypes,
