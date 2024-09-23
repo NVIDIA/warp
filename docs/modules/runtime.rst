@@ -950,6 +950,7 @@ After modifying point locations users should call ``Mesh.refit()`` to rebuild th
 
 .. autoclass:: Mesh
     :members:
+    :exclude-members: vars, Var
 
 Hash Grids
 ----------
