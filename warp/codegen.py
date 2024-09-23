@@ -1465,6 +1465,7 @@ class Adjoint:
         cond_block.body_forward.append(f"start_{cond_block.label}:;")
 
         c = adj.eval(cond)
+        c = adj.load(c)
 
         cond_block.body_forward.append(f"if (({c.emit()}) == false) goto end_{cond_block.label};")
 

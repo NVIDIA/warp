@@ -518,6 +518,19 @@ def test_shadow_builtin():
     wp.expect_eq(sum(wp.vec3(1.0)), 3.0)
 
 
+@wp.struct
+class Iterator:
+    valid: wp.bool
+
+
+@wp.kernel(enable_backward=False)
+def test_while_condition_eval():
+    it = Iterator()
+    it.valid = True
+    while it.valid:
+        it.valid = False
+
+
 class TestCodeGen(unittest.TestCase):
     pass
 
@@ -657,6 +670,7 @@ add_function_test(
 
 add_kernel_test(TestCodeGen, name="test_call_syntax", kernel=test_call_syntax, dim=1, devices=devices)
 add_kernel_test(TestCodeGen, name="test_shadow_builtin", kernel=test_shadow_builtin, dim=1, devices=devices)
+add_kernel_test(TestCodeGen, name="test_while_condition_eval", kernel=test_while_condition_eval, dim=1, devices=devices)
 
 
 if __name__ == "__main__":

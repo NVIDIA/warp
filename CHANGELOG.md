@@ -53,6 +53,7 @@
 - Fix handling of `stream` argument in `array.__dlpack__()`.
 - Fix a bug related to reloading CPU modules.
 - Fix a crash when kernel functions are not found in CPU modules.
+- Fix conditions not being evaluated as expected in `while` statements.
 
 ## [1.3.3] - 2024-09-04
 
