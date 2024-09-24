@@ -36,6 +36,16 @@ bool mesh_get_descriptor(uint64_t id, Mesh& mesh)
         return true;
 }
 
+bool mesh_set_descriptor(uint64_t id, const Mesh& mesh)
+{
+    const auto& iter = g_mesh_descriptors.find(id);
+    if (iter == g_mesh_descriptors.end())
+        return false;
+    else
+        iter->second = mesh;
+    return true;
+}
+
 void mesh_add_descriptor(uint64_t id, const Mesh& mesh)
 {
     g_mesh_descriptors[id] = mesh;
@@ -191,6 +201,30 @@ void mesh_refit_host(uint64_t id)
     }
 }
 
+void mesh_set_points_host(uint64_t id, wp::array_t<wp::vec3> points)
+{
+    Mesh* m = (Mesh*)(id);
+    if (points.ndim != 1 || points.shape[0] != m->points.shape[0])
+    {
+        fprintf(stderr, "The new points input for mesh_set_points_host does not match the shape of the original points!\n");
+        return;
+    }
+
+    m->points = points;
+
+    mesh_refit_host(id);
+}
+
+void mesh_set_velocities_host(uint64_t id, wp::array_t<wp::vec3> velocities)
+{
+    Mesh* m = (Mesh*)(id);
+    if (velocities.ndim != 1 || velocities.shape[0] != m->velocities.shape[0])
+    {
+        fprintf(stderr, "The new velocities input for mesh_set_velocities_host does not match the shape of the original velocities!\n");
+        return;
+    }
+    m->velocities = velocities;
+}
 
 // stubs for non-CUDA platforms
 #if !WP_ENABLE_CUDA
@@ -199,6 +233,8 @@ void mesh_refit_host(uint64_t id)
 WP_API uint64_t mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::array_t<wp::vec3> velocities, wp::array_t<int> tris, int num_points, int num_tris, int support_winding_number) { return 0; }
 WP_API void mesh_destroy_device(uint64_t id) {}
 WP_API void mesh_refit_device(uint64_t id) {}
+WP_API void mesh_set_points_device(uint64_t id, wp::array_t<wp::vec3> points) {};
+WP_API void mesh_set_velocities_device(uint64_t id, wp::array_t<wp::vec3> points) {};
 
 
 #endif // !WP_ENABLE_CUDA

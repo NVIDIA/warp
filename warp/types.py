@@ -3064,8 +3064,8 @@ class Mesh:
             raise RuntimeError("Mesh indices should be a flattened 1d array of indices")
 
         self.device = points.device
-        self.points = points
-        self.velocities = velocities
+        self._points = points
+        self._velocities = velocities
         self.indices = indices
 
         self.runtime = warp.context.runtime
@@ -3108,6 +3108,72 @@ class Mesh:
             self.runtime.core.mesh_refit_host(self.id)
         else:
             self.runtime.core.mesh_refit_device(self.id)
+            self.runtime.verify_cuda_device(self.device)
+
+    @property
+    def points(self):
+        """The array of mesh's vertex positions of type :class:`warp.vec3`.
+
+        The `Mesh.points` property has a custom setter method. Users can modify the vertex positions in-place,
+        but the `refit()` method must be called manually after such modifications. Alternatively, assigning a new array
+        to this property is also supported. The new array must have the same shape as the original, and once assigned,
+        the `Mesh` class will automatically perform a refit operation based on the new vertex positions.
+        """
+        return self._points
+
+    @points.setter
+    def points(self, points_new):
+        if points_new.device != self._points.device:
+            raise RuntimeError(
+                "The new points and the original points must live on the same device, currently "
+                "the new points lives on {} while the old points lives on {}.".format(
+                    points_new.device, self._points.device
+                )
+            )
+
+        if points_new.ndim != 1 or points_new.shape[0] != self._points.shape[0]:
+            raise RuntimeError(
+                "the new points and the original points must have the same shape, currently new points shape is: {},"
+                " while the old points' shape is: {}".format(points_new.shape, self._points.shape)
+            )
+
+        self._points = points_new
+        if self.device.is_cpu:
+            self.runtime.core.mesh_set_points_host(self.id, points_new.__ctype__())
+        else:
+            self.runtime.core.mesh_set_points_device(self.id, points_new.__ctype__())
+            self.runtime.verify_cuda_device(self.device)
+
+    @property
+    def velocities(self):
+        """The array of mesh's velocities of type :class:`warp.vec3`.
+
+        This is a property with a custom setter method. Users can modify the velocities in-place,
+        or assigning a new array to this property. No refitting is needed for changing velocities.
+        """
+        return self._velocities
+
+    @velocities.setter
+    def velocities(self, velocities_new):
+        if velocities_new.device != self._velocities.device:
+            raise RuntimeError(
+                "The new points and the original points must live on the same device, currently "
+                "the new points lives on {} while the old points lives on {}.".format(
+                    velocities_new.device, self._velocities.device
+                )
+            )
+
+        if velocities_new.ndim != 1 or velocities_new.shape[0] != self._velocities.shape[0]:
+            raise RuntimeError(
+                "the new points and the original points must have the same shape, currently new points shape is: {},"
+                " while the old points' shape is: {}".format(velocities_new.shape, self._velocities.shape)
+            )
+
+        self._velocities = velocities_new
+        if self.device.is_cpu:
+            self.runtime.core.mesh_set_velocities_host(self.id, velocities_new.__ctype__())
+        else:
+            self.runtime.core.mesh_set_velocities_device(self.id, velocities_new.__ctype__())
             self.runtime.verify_cuda_device(self.device)
 
 

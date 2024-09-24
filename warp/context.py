@@ -2996,6 +2996,12 @@ class Runtime:
             self.core.mesh_refit_host.argtypes = [ctypes.c_uint64]
             self.core.mesh_refit_device.argtypes = [ctypes.c_uint64]
 
+            self.core.mesh_set_points_host.argtypes = [ctypes.c_uint64, warp.types.array_t]
+            self.core.mesh_set_points_device.argtypes = [ctypes.c_uint64, warp.types.array_t]
+
+            self.core.mesh_set_velocities_host.argtypes = [ctypes.c_uint64, warp.types.array_t]
+            self.core.mesh_set_velocities_device.argtypes = [ctypes.c_uint64, warp.types.array_t]
+
             self.core.hash_grid_create_host.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
             self.core.hash_grid_create_host.restype = ctypes.c_uint64
             self.core.hash_grid_destroy_host.argtypes = [ctypes.c_uint64]
