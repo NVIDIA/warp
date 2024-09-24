@@ -238,11 +238,15 @@ struct tile_register_t
 
         WP_TILE_SHARED Type scratch;
 
+        // ensure any prevoiusly scheduled threads have finished reading from scratch
+        WP_TILE_SYNC();
+
         if (threadIdx.x == thread)
         {
             scratch = data[reg];
         }
 
+        // ensure extraction thread has updated smem
         WP_TILE_SYNC();
 
         return scratch;
