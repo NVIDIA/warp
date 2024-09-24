@@ -11,7 +11,7 @@ import numpy as np
 
 import warp as wp
 from warp.tests.unittest_utils import *
-from warp.utils import check_iommu
+from warp.utils import check_p2p
 
 
 @wp.kernel
@@ -105,7 +105,7 @@ class TestMultiGPU(unittest.TestCase):
         assert wp.get_cuda_device() == initial_cuda_device
 
     @unittest.skipUnless(len(wp.get_cuda_devices()) > 1, "Requires at least two CUDA devices")
-    @unittest.skipUnless(check_iommu(), "IOMMU seems enabled")
+    @unittest.skipUnless(check_p2p(), "Peer-to-Peer transfers not supported")
     def test_multigpu_pingpong(self):
         n = 1024 * 1024
 
@@ -129,7 +129,7 @@ class TestMultiGPU(unittest.TestCase):
         assert_np_equal(a1.numpy(), expected)
 
     @unittest.skipUnless(len(wp.get_cuda_devices()) > 1, "Requires at least two CUDA devices")
-    @unittest.skipUnless(check_iommu(), "IOMMU seems enabled")
+    @unittest.skipUnless(check_p2p(), "Peer-to-Peer transfers not supported")
     def test_multigpu_pingpong_streams(self):
         n = 1024 * 1024
 

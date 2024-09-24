@@ -42,6 +42,7 @@ from warp.tests.unittest_utils import (
     get_test_devices,
     sanitize_identifier,
 )
+from warp.utils import check_p2p
 
 wp.init()  # For wp.context.runtime.core.is_cutlass_enabled()
 
@@ -352,12 +353,14 @@ class TestFemDiffusionExamples(unittest.TestCase):
     pass
 
 
-add_example_test(
-    TestFemDiffusionExamples,
-    name="fem.example_diffusion_mgpu",
-    devices=get_selected_cuda_test_devices(mode="basic"),
-    test_options={"headless": True},
-)
+# MGPU tests may fail on systems where P2P transfers are misconfigured
+if check_p2p():
+    add_example_test(
+        TestFemDiffusionExamples,
+        name="fem.example_diffusion_mgpu",
+        devices=get_selected_cuda_test_devices(mode="basic"),
+        test_options={"headless": True},
+    )
 
 add_example_test(
     TestFemExamples,
