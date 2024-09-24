@@ -1485,14 +1485,19 @@ inline CUDA_CALLABLE void print(const str s)
     printf("%s\n", s);
 }
 
-inline CUDA_CALLABLE void print(int i)
+inline CUDA_CALLABLE void print(signed char i)
 {
     printf("%d\n", i);
 }
 
 inline CUDA_CALLABLE void print(short i)
 {
-    printf("%hd\n", i);
+    printf("%d\n", i);
+}
+
+inline CUDA_CALLABLE void print(int i)
+{
+    printf("%d\n", i);
 }
 
 inline CUDA_CALLABLE void print(long i)
@@ -1505,14 +1510,19 @@ inline CUDA_CALLABLE void print(long long i)
     printf("%lld\n", i);
 }
 
-inline CUDA_CALLABLE void print(unsigned i)
+inline CUDA_CALLABLE void print(unsigned char i)
 {
     printf("%u\n", i);
 }
 
 inline CUDA_CALLABLE void print(unsigned short i)
 {
-    printf("%hu\n", i);
+    printf("%u\n", i);
+}
+
+inline CUDA_CALLABLE void print(unsigned int i)
+{
+    printf("%u\n", i);
 }
 
 inline CUDA_CALLABLE void print(unsigned long i)
@@ -1523,6 +1533,11 @@ inline CUDA_CALLABLE void print(unsigned long i)
 inline CUDA_CALLABLE void print(unsigned long long i)
 {
     printf("%llu\n", i);
+}
+
+inline CUDA_CALLABLE void print(bool b)
+{
+    printf(b ? "True\n" : "False\n");
 }
 
 template<unsigned Length, typename Type>
