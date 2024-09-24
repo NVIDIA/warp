@@ -83,6 +83,12 @@ extern "C"
 	WP_API void mesh_destroy_device(uint64_t id);
     WP_API void mesh_refit_device(uint64_t id);
 
+    WP_API void mesh_set_points_host(uint64_t id, wp::array_t<wp::vec3> points);
+    WP_API void mesh_set_points_device(uint64_t id, wp::array_t<wp::vec3> points);
+
+    WP_API void mesh_set_velocities_host(uint64_t id, wp::array_t<wp::vec3> velocities);
+    WP_API void mesh_set_velocities_device(uint64_t id, wp::array_t<wp::vec3> velocities);
+
     WP_API uint64_t hash_grid_create_host(int dim_x, int dim_y, int dim_z);
     WP_API void hash_grid_reserve_host(uint64_t id, int num_points);
     WP_API void hash_grid_destroy_host(uint64_t id);
