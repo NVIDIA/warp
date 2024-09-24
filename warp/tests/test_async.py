@@ -11,7 +11,7 @@ import numpy as np
 
 import warp as wp
 from warp.tests.unittest_utils import *
-from warp.utils import check_iommu
+from warp.utils import check_p2p
 
 
 class Capturable:
@@ -507,8 +507,8 @@ for src_type, src_ctor in array_constructors.items():
         copy_type = f"{array_type_codes[src_type]}2{array_type_codes[dst_type]}"
 
         for transfer_type, device_pair in device_pairs.items():
-            # skip p2p tests if IOMMU is enabled on Linux
-            if transfer_type == "p2p" and not check_iommu():
+            # skip p2p tests if not supported (e.g., IOMMU is enabled on Linux)
+            if transfer_type == "p2p" and not check_p2p():
                 continue
 
             src_device = device_pair[0]

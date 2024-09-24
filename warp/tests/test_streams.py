@@ -11,7 +11,7 @@ import numpy as np
 
 import warp as wp
 from warp.tests.unittest_utils import *
-from warp.utils import check_iommu
+from warp.utils import check_p2p
 
 
 @wp.kernel
@@ -418,7 +418,7 @@ class TestStreams(unittest.TestCase):
             cpu_stream = cpu_device.stream  # noqa: F841
 
     @unittest.skipUnless(len(wp.get_cuda_devices()) > 1, "Requires at least two CUDA devices")
-    @unittest.skipUnless(check_iommu(), "IOMMU seems enabled")
+    @unittest.skipUnless(check_p2p(), "Peer-to-Peer transfers not supported")
     def test_stream_arg_graph_mgpu(self):
         wp.load_module(device="cuda:0")
         wp.load_module(device="cuda:1")
@@ -468,7 +468,7 @@ class TestStreams(unittest.TestCase):
             assert_np_equal(c0.numpy(), np.full(N, fill_value=2 * num_iters))
 
     @unittest.skipUnless(len(wp.get_cuda_devices()) > 1, "Requires at least two CUDA devices")
-    @unittest.skipUnless(check_iommu(), "IOMMU seems enabled")
+    @unittest.skipUnless(check_p2p(), "Peer-to-Peer transfers not supported")
     def test_stream_scope_graph_mgpu(self):
         wp.load_module(device="cuda:0")
         wp.load_module(device="cuda:1")
