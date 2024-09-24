@@ -2625,10 +2625,10 @@ cpu_module_header = """
 #define int(x) cast_int(x)
 #define adj_int(x, adj_x, adj_ret) adj_cast_int(x, adj_x, adj_ret)
 
-#define builtin_tid1d() wp::tid(_idx)
-#define builtin_tid2d(x, y) wp::tid(x, y, _idx, dim)
-#define builtin_tid3d(x, y, z) wp::tid(x, y, z, _idx, dim)
-#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, _idx, dim)
+#define builtin_tid1d() wp::tid(task_index)
+#define builtin_tid2d(x, y) wp::tid(x, y, task_index, dim)
+#define builtin_tid3d(x, y, z) wp::tid(x, y, z, task_index, dim)
+#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, task_index, dim)
 
 """
 
@@ -2761,7 +2761,7 @@ extern "C" {{
 WP_API void {name}_cpu_forward(
     {forward_args})
 {{
-    for (size_t _idx = 0; _idx < dim.size; ++_idx)
+    for (size_t task_index = 0; task_index < dim.size; ++task_index)
     {{
         {name}_cpu_kernel_forward(
             {forward_params});
@@ -2771,7 +2771,7 @@ WP_API void {name}_cpu_forward(
 WP_API void {name}_cpu_backward(
     {reverse_args})
 {{
-    for (size_t _idx = 0; _idx < dim.size; ++_idx)
+    for (size_t task_index = 0; task_index < dim.size; ++task_index)
     {{
         {name}_cpu_kernel_backward(
             {reverse_params});

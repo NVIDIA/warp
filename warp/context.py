@@ -4638,7 +4638,7 @@ def launch(
     record_tape=True,
     record_cmd=False,
     max_blocks=0,
-    block_dim=0,
+    block_dim=256,
 ):
     """Launch a Warp kernel on the target device
 
