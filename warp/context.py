@@ -4638,7 +4638,7 @@ def launch(
     record_tape=True,
     record_cmd=False,
     max_blocks=0,
-    tile_size=0,
+    block_dim=0,
 ):
     """Launch a Warp kernel on the target device
 
@@ -4658,7 +4658,7 @@ def launch(
         record_cmd: When True the launch will be returned as a ``Launch`` command object, the launch will not occur until the user calls ``cmd.launch()``
         max_blocks: The maximum number of CUDA thread blocks to use. Only has an effect for CUDA kernel launches.
             If negative or zero, the maximum hardware value will be used.
-        tile_size: The number of threads per-program instance
+        block_dim: The number of threads per-block
     """
 
     init()
@@ -4713,7 +4713,7 @@ def launch(
 
         # delay load modules, including new overload if needed
         module = kernel.module
-        if not module.load(device, tile_size):
+        if not module.load(device, block_dim):
             return
 
         # late bind
@@ -4760,7 +4760,7 @@ def launch(
                     )
 
                 runtime.core.cuda_launch_kernel(
-                    device.context, hooks.backward, bounds.size, max_blocks, tile_size, kernel_params, stream.cuda_stream
+                    device.context, hooks.backward, bounds.size, max_blocks, block_dim, kernel_params, stream.cuda_stream
                 )
 
             else:
@@ -4783,7 +4783,7 @@ def launch(
                 else:
                     # launch
                     runtime.core.cuda_launch_kernel(
-                        device.context, hooks.forward, bounds.size, max_blocks, tile_size, kernel_params, stream.cuda_stream
+                        device.context, hooks.forward, bounds.size, max_blocks, block_dim, kernel_params, stream.cuda_stream
                     )
 
             try:
@@ -4797,7 +4797,7 @@ def launch(
         # record file, lineno, func as metadata
         frame = inspect.currentframe().f_back
         caller = {"file": frame.f_code.co_filename, "lineno": frame.f_lineno, "func": frame.f_code.co_name}
-        runtime.tape.record_launch(kernel, dim, max_blocks, inputs, outputs, device, tile_size, metadata={"caller": caller})
+        runtime.tape.record_launch(kernel, dim, max_blocks, inputs, outputs, device, block_dim, metadata={"caller": caller})
 
         # detect illegal inter-kernel read/write access patterns if verification flag is set
         if warp.config.verify_autograd_array_access:
@@ -5348,7 +5348,9 @@ def type_str(t):
     elif typing.get_origin(t) in (List, Mapping, Sequence, Union, Tuple):
         args_repr = ", ".join(type_str(x) for x in typing.get_args(t))
         return f"{t.__name__}[{args_repr}]"
-
+    elif warp.types.is_tile(t):
+        return "Tile"
+    
     return t.__name__
 
 

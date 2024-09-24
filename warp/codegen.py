@@ -2714,38 +2714,14 @@ static CUDA_CALLABLE void adj_{name}(
 
 """
 
-# cuda_kernel_template = """
-
-# extern "C" __global__ void {name}_cuda_kernel_forward(
-#     {forward_args})
-# {{
-#     for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
-#          _idx < dim.size;
-#          _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
-#     {{
-# {forward_body}    }}
-# }}
-
-# extern "C" __global__ void {name}_cuda_kernel_backward(
-#     {reverse_args})
-# {{
-#     for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
-#          _idx < dim.size;
-#          _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
-#     {{
-# {reverse_body}    }}
-# }}
-
-# """
-
 cuda_kernel_template = """
 
 extern "C" __global__ void {name}_cuda_kernel_forward(
     {forward_args})
 {{
-    for (size_t _idx = static_cast<size_t>(blockIdx.x);
+    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
          _idx < dim.size;
-         _idx += static_cast<size_t>(gridDim.x))
+         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
 {forward_body}    }}
 }}
@@ -2753,9 +2729,9 @@ extern "C" __global__ void {name}_cuda_kernel_forward(
 extern "C" __global__ void {name}_cuda_kernel_backward(
     {reverse_args})
 {{
-    for (size_t _idx = static_cast<size_t>(blockIdx.x);
+    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
          _idx < dim.size;
-         _idx += static_cast<size_t>(gridDim.x))
+         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
 {reverse_body}    }}
 }}

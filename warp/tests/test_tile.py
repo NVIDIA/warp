@@ -24,7 +24,7 @@ def tile_copy(A: wp.array2d(dtype=float),
               B: wp.array2d(dtype=float)):
     
     # tile index
-    i, j = wp.tid() 
+    i, j, _ = wp.tid() 
     
     a = wp.tile_load(A, i, j, m=TILE_M, n=TILE_N)
     wp.tile_store(B, i, j, a)
@@ -44,7 +44,7 @@ def test_tile_copy():
     B_wp = wp.array(B, requires_grad=True)
 
     with wp.Tape() as tape:
-        wp.launch(tile_copy, dim=[int(M/TILE_M), int(N/TILE_N)], inputs=[A_wp, B_wp], tile_size=TILE_DIM)
+        wp.launch(tile_copy, dim=[int(M/TILE_M), int(N/TILE_N), TILE_DIM], inputs=[A_wp, B_wp], block_dim=TILE_DIM)
 
     # verify forward pass
     assert(np.allclose(A, B_wp.numpy(), rtol=1.e-4))
@@ -66,7 +66,7 @@ def tile_unary_map(input: wp.array2d(dtype=float),
                    output: wp.array2d(dtype=float)):
     
     # tile index
-    i, j = wp.tid() 
+    i, j, _ = wp.tid() 
     
     a = wp.tile_load(input, i, j, m=TILE_M, n=TILE_N)
     
@@ -91,7 +91,7 @@ def test_tile_unary_map():
     B_wp = wp.zeros_like(A_wp, requires_grad=True)
 
     with wp.Tape() as tape:
-        wp.launch(tile_unary_map, dim=[int(M/TILE_M), int(N/TILE_N)], inputs=[A_wp, B_wp], tile_size=TILE_DIM)
+        wp.launch(tile_unary_map, dim=[int(M/TILE_M), int(N/TILE_N), TILE_DIM], inputs=[A_wp, B_wp], block_dim=TILE_DIM)
 
     # verify forward pass
     assert(np.allclose(B, B_wp.numpy(), atol=1.e-4))
@@ -115,7 +115,7 @@ def tile_binary_map(input_a: wp.array2d(dtype=float),
                    output: wp.array2d(dtype=float)):
     
     # tile index
-    i, j = wp.tid() 
+    i, j, _= wp.tid() 
     
     a = wp.tile_load(input_a, i, j, m=TILE_M, n=TILE_N)
     b = wp.tile_load(input_b, i, j, m=TILE_M, n=TILE_N)
@@ -144,7 +144,7 @@ def test_tile_binary_map():
     C_wp = wp.zeros_like(A_wp, requires_grad=True)
 
     with wp.Tape() as tape:
-        wp.launch(tile_binary_map, dim=[int(M/TILE_M), int(N/TILE_N)], inputs=[A_wp, B_wp, C_wp], tile_size=TILE_DIM)
+        wp.launch(tile_binary_map, dim=[int(M/TILE_M), int(N/TILE_N), TILE_DIM], inputs=[A_wp, B_wp, C_wp], block_dim=TILE_DIM)
 
     # verify forward pass
     assert(np.allclose(C, C_wp.numpy(), rtol=1.e-4))
@@ -196,7 +196,7 @@ def test_tile_grouped_gemm():
     C_wp = wp.array(C, requires_grad=True)
 
     with wp.Tape() as tape:    
-        wp.launch(tile_grouped_gemm, dim=batch_count, inputs=[A_wp, B_wp, C_wp], tile_size=TILE_DIM)
+        wp.launch(tile_grouped_gemm, dim=[batch_count, TILE_DIM], inputs=[A_wp, B_wp, C_wp], block_dim=TILE_DIM)
 
     # bring back to host
     C_host = C_wp.numpy()
@@ -211,7 +211,7 @@ def tile_gemm(A: wp.array2d(dtype=float),
               C: wp.array2d(dtype=float)):
 
     # output tile index
-    i, j = wp.tid()
+    i, j, _= wp.tid()
 
     sum = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32)
 
@@ -248,7 +248,7 @@ def test_tile_gemm():
     C_wp = wp.array(C, requires_grad=True)
 
     with wp.Tape() as tape:    
-        wp.launch(tile_gemm, dim=(int(M/TILE_M), int(N/TILE_N)), inputs=[A_wp, B_wp, C_wp], tile_size=TILE_DIM)
+        wp.launch(tile_gemm, dim=(int(M/TILE_M), int(N/TILE_N), TILE_DIM), inputs=[A_wp, B_wp, C_wp], block_dim=TILE_DIM)
 
     assert(np.allclose(A@B, C_wp.numpy(), rtol=1.e-4))
 
@@ -271,7 +271,7 @@ def tile_operators(input: wp.array3d(dtype=float),
                    output: wp.array3d(dtype=float)):
 
     # output tile index
-    i = wp.tid()
+    i, _ = wp.tid()
 
     a = wp.tile_load(input[i], 0, 0, m=TILE_M, n=TILE_N)
     
@@ -305,7 +305,7 @@ def test_tile_operators():
     output_wp = wp.zeros_like(input_wp, requires_grad=True)
 
     with wp.Tape() as tape:
-        wp.launch(tile_operators, dim=batch_count, inputs=[input_wp, output_wp], tile_size=TILE_DIM)
+        wp.launch(tile_operators, dim=[batch_count, TILE_DIM], inputs=[input_wp, output_wp], block_dim=TILE_DIM)
 
     assert(np.allclose(output, output_wp.numpy(), rtol=1.e-4))
 
@@ -325,7 +325,7 @@ def tile_sum_kernel(input: wp.array3d(dtype=float),
                     output: wp.array(dtype=float)):
 
     # output tile index
-    i = wp.tid()
+    i, _ = wp.tid()
 
     a = wp.tile_load(input[i], 0, 0, m=TILE_M, n=TILE_N)
     s = wp.tile_sum(a)*0.5
@@ -346,7 +346,7 @@ def test_tile_sum():
     output_wp = wp.zeros(batch_count, requires_grad=True)
 
     with wp.Tape() as tape:
-        wp.launch(tile_sum_kernel, dim=batch_count, inputs=[input_wp, output_wp], tile_size=TILE_DIM)
+        wp.launch(tile_sum_kernel, dim=[batch_count, TILE_DIM], inputs=[input_wp, output_wp], block_dim=TILE_DIM)
 
 
     for i in range(batch_count):
@@ -371,7 +371,7 @@ def tile_extract_kernel(input: wp.array2d(dtype=float),
                         output: wp.array2d(dtype=float)):
 
     # output tile index
-    i = wp.tid()
+    i, _ = wp.tid()
 
     t = wp.tile_load(input, 0, 0, m=TILE_M, n=TILE_N)
 
@@ -393,7 +393,7 @@ def test_tile_extract():
     output_wp = wp.zeros_like(input_wp, requires_grad=True)
 
     with wp.Tape() as tape:
-        wp.launch(tile_extract_kernel, dim=1, inputs=[input_wp, output_wp], tile_size=TILE_DIM)
+        wp.launch(tile_extract_kernel, dim=[1, TILE_DIM], inputs=[input_wp, output_wp], block_dim=TILE_DIM)
 
     assert(np.allclose(input_wp.numpy(), output_wp.numpy(), rtol=1.e-4))
 
