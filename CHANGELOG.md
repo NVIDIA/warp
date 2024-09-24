@@ -54,6 +54,7 @@
 - Fix a bug related to reloading CPU modules.
 - Fix a crash when kernel functions are not found in CPU modules.
 - Fix conditions not being evaluated as expected in `while` statements.
+- Fix printing Boolean and 8-bit integer values.
 
 ## [1.3.3] - 2024-09-04
 
