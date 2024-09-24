@@ -857,16 +857,22 @@ for T in [wp.float16, wp.float32, wp.float64]:
     wp.overload(add_kernel_3d, [wp.array3d(dtype=T), wp.array3d(dtype=T), T])
 
 
-def check_iommu():
-    """Check if IOMMU is enabled on Linux, which can affect peer-to-peer transfers.
+def check_p2p():
+    """Check if the machine is configured properly for peer-to-peer transfers.
 
     Returns:
-        A Boolean indicating whether IOMMU is configured properly for peer-to-peer transfers.
+        A Boolean indicating whether the machine is configured properly for peer-to-peer transfers.
         On Linux, this function attempts to determine if IOMMU is enabled and will return `False` if IOMMU is detected.
         On other operating systems, it always return `True`.
     """
 
+    # HACK: allow disabling P2P tests using an environment variable
+    disable_p2p_tests = os.getenv("WARP_DISABLE_P2P_TESTS", default="0")
+    if int(disable_p2p_tests):
+        return False
+
     if sys.platform == "linux":
+        # IOMMU enablement can affect peer-to-peer transfers.
         # On modern Linux, there should be IOMMU-related entries in the /sys file system.
         # This should be more reliable than checking kernel logs like dmesg.
         if os.path.isdir("/sys/class/iommu") and os.listdir("/sys/class/iommu"):
@@ -874,15 +880,7 @@ def check_iommu():
         if os.path.isdir("/sys/kernel/iommu_groups") and os.listdir("/sys/kernel/iommu_groups"):
             return False
 
-        # HACK: disable P2P tests on misbehaving agents
-        disable_p2p_tests = os.getenv("WARP_DISABLE_P2P_TESTS", default="0")
-        if int(disable_p2p_tests):
-            return False
-
-        return True
-    else:
-        # doesn't matter
-        return True
+    return True
 
 
 class timing_result_t(ctypes.Structure):
