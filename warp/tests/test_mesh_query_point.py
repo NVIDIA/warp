@@ -11,6 +11,7 @@ import unittest
 import numpy as np
 
 import warp as wp
+import warp.examples
 from warp.tests.unittest_utils import *
 
 
@@ -654,6 +655,192 @@ def test_mesh_query_furthest_point(test, device):
     assert_np_equal(dist_query.numpy(), dist_brute.numpy(), tol=1.0e-3)
 
 
+@wp.func
+def triangle_closest_point_for_test(a: wp.vec3, b: wp.vec3, c: wp.vec3, p: wp.vec3):
+    ab = b - a
+    ac = c - a
+    ap = p - a
+
+    d1 = wp.dot(ab, ap)
+    d2 = wp.dot(ac, ap)
+    if d1 <= 0.0 and d2 <= 0.0:
+        bary = wp.vec3(1.0, 0.0, 0.0)
+        return a, bary
+
+    bp = p - b
+    d3 = wp.dot(ab, bp)
+    d4 = wp.dot(ac, bp)
+    if d3 >= 0.0 and d4 <= d3:
+        bary = wp.vec3(0.0, 1.0, 0.0)
+        return b, bary
+
+    cp = p - c
+    d5 = wp.dot(ab, cp)
+    d6 = wp.dot(ac, cp)
+    if d6 >= 0.0 and d5 <= d6:
+        bary = wp.vec3(0.0, 0.0, 1.0)
+        return c, bary
+
+    vc = d1 * d4 - d3 * d2
+    if vc <= 0.0 and d1 >= 0.0 and d3 <= 0.0:
+        v = d1 / (d1 - d3)
+        bary = wp.vec3(1.0 - v, v, 0.0)
+        return a + v * ab, bary
+
+    vb = d5 * d2 - d1 * d6
+    if vb <= 0.0 and d2 >= 0.0 and d6 <= 0.0:
+        v = d2 / (d2 - d6)
+        bary = wp.vec3(1.0 - v, 0.0, v)
+        return a + v * ac, bary
+
+    va = d3 * d6 - d5 * d4
+    if va <= 0.0 and (d4 - d3) >= 0.0 and (d5 - d6) >= 0.0:
+        v = (d4 - d3) / ((d4 - d3) + (d5 - d6))
+        bary = wp.vec3(0.0, 1.0 - v, v)
+        return b + v * (c - b), bary
+
+    denom = 1.0 / (va + vb + vc)
+    v = vb * denom
+    w = vc * denom
+    bary = wp.vec3(1.0 - v - w, v, w)
+    return a + v * ab + w * ac, bary
+
+
+def load_mesh():
+    from pxr import Usd, UsdGeom
+
+    usd_stage = Usd.Stage.Open(os.path.join(wp.examples.get_asset_directory(), "bunny.usd"))
+    usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/root/bunny"))
+
+    vertices = np.array(usd_geom.GetPointsAttr().Get())
+    faces = np.array(usd_geom.GetFaceVertexIndicesAttr().Get())
+
+    return vertices, faces
+
+
+@wp.kernel
+def point_query_aabb_and_closest(
+    query_radius: float,
+    mesh_id: wp.uint64,
+    pts: wp.array(dtype=wp.vec3),
+    pos: wp.array(dtype=wp.vec3),
+    tri_indices: wp.array(dtype=wp.int32, ndim=2),
+    query_results_num_collisions: wp.array(dtype=wp.int32),
+    query_results_min_dist: wp.array(dtype=float),
+    query_results_closest_point_velocity: wp.array(dtype=wp.vec3),
+):
+    p_index = wp.tid()
+    p = pts[p_index]
+
+    lower = wp.vec3(p[0] - query_radius, p[1] - query_radius, p[2] - query_radius)
+    upper = wp.vec3(p[0] + query_radius, p[1] + query_radius, p[2] + query_radius)
+
+    closest_query = wp.mesh_query_point_no_sign(mesh_id, p, query_radius)
+    if closest_query.result:
+        closest_p = wp.mesh_eval_position(mesh_id, closest_query.face, closest_query.u, closest_query.v)
+        closest_p_vel = wp.mesh_eval_velocity(mesh_id, closest_query.face, closest_query.u, closest_query.v)
+
+        query_results_min_dist[p_index] = wp.length(closest_p - p)
+        query_results_closest_point_velocity[p_index] = closest_p_vel
+
+    query = wp.mesh_query_aabb(mesh_id, lower, upper)
+
+    tri_index = wp.int32(0)
+    num_collisions = wp.int32(0)
+    min_dis_to_tris = query_radius
+    while wp.mesh_query_aabb_next(query, tri_index):
+        t1 = tri_indices[tri_index, 0]
+        t2 = tri_indices[tri_index, 1]
+        t3 = tri_indices[tri_index, 2]
+
+        u1 = pos[t1]
+        u2 = pos[t2]
+        u3 = pos[t3]
+
+        closest_p1, barycentric1 = triangle_closest_point_for_test(u1, u2, u3, p)
+
+        dis = wp.length(closest_p1 - p)
+
+        if dis < query_radius:
+            num_collisions = num_collisions + 1
+
+    query_results_num_collisions[p_index] = num_collisions
+
+
+@unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
+def test_set_mesh_points(test, device):
+    vs, fs = load_mesh()
+
+    vertices1 = wp.array(vs, dtype=wp.vec3, device=device)
+    velocities1_np = np.random.randn(vertices1.shape[0], 3)
+    velocities1 = wp.array(velocities1_np, dtype=wp.vec3, device=device)
+
+    faces = wp.array(fs, dtype=wp.int32, device=device)
+    mesh = wp.Mesh(vertices1, faces, velocities=velocities1)
+    fs_2D = faces.reshape((-1, 3))
+    np.random.seed(12345)
+    n = 1000
+    query_radius = 0.2
+
+    pts1 = wp.array(np.random.randn(n, 3), dtype=wp.vec3, device=device)
+
+    query_results_num_cols1 = wp.zeros(n, dtype=wp.int32, device=device)
+    query_results_min_dist1 = wp.zeros(n, dtype=float, device=device)
+    query_results_closest_point_velocity1 = wp.zeros(n, dtype=wp.vec3, device=device)
+
+    wp.launch(
+        kernel=point_query_aabb_and_closest,
+        inputs=[
+            query_radius,
+            mesh.id,
+            pts1,
+            vertices1,
+            fs_2D,
+            query_results_num_cols1,
+            query_results_min_dist1,
+            query_results_closest_point_velocity1,
+        ],
+        dim=n,
+        device=device,
+    )
+
+    shift = np.random.randn(3)
+
+    vs_higher = vs + shift
+    vertices2 = wp.array(vs_higher, dtype=wp.vec3, device=device)
+
+    velocities2_np = velocities1_np + shift[None, ...]
+    velocities2 = wp.array(velocities2_np, dtype=wp.vec3, device=device)
+
+    pts2 = wp.array(pts1.numpy() + shift, dtype=wp.vec3, device=device)
+
+    mesh.points = vertices2
+    mesh.velocities = velocities2
+
+    query_results_num_cols2 = wp.zeros(n, dtype=wp.int32, device=device)
+    query_results_min_dist2 = wp.zeros(n, dtype=float, device=device)
+    query_results_closest_point_velocity2 = wp.array([shift for i in range(n)], dtype=wp.vec3, device=device)
+
+    wp.launch(
+        kernel=point_query_aabb_and_closest,
+        inputs=[
+            query_radius,
+            mesh.id,
+            pts2,
+            vertices2,
+            fs_2D,
+            query_results_num_cols2,
+            query_results_min_dist2,
+            query_results_closest_point_velocity2,
+        ],
+        dim=n,
+        device=device,
+    )
+
+    test.assertTrue((query_results_num_cols1.numpy() == query_results_num_cols2.numpy()).all())
+    test.assertTrue(((query_results_min_dist1.numpy() - query_results_min_dist2.numpy()) < 1e-5).all())
+
+
 devices = get_test_devices()
 
 
@@ -684,6 +871,7 @@ class TestMeshQueryPoint(unittest.TestCase):
 add_function_test(TestMeshQueryPoint, "test_mesh_query_point", test_mesh_query_point, devices=devices)
 add_function_test(TestMeshQueryPoint, "test_mesh_query_furthest_point", test_mesh_query_furthest_point, devices=devices)
 add_function_test(TestMeshQueryPoint, "test_adj_mesh_query_point", test_adj_mesh_query_point, devices=devices)
+add_function_test(TestMeshQueryPoint, "test_set_mesh_points", test_set_mesh_points, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
