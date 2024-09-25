@@ -1881,6 +1881,7 @@ CUDA_CALLABLE inline void adj_mesh_get_index(uint64_t id, int index,
 }
 
 CUDA_CALLABLE bool mesh_get_descriptor(uint64_t id, Mesh& mesh);
+CUDA_CALLABLE bool mesh_set_descriptor(uint64_t id, const Mesh& mesh);
 CUDA_CALLABLE void mesh_add_descriptor(uint64_t id, const Mesh& mesh);
 CUDA_CALLABLE void mesh_rem_descriptor(uint64_t id);
 

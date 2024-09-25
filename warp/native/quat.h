@@ -480,6 +480,41 @@ inline CUDA_CALLABLE void adj_indexref(quat_t<Type>* q, int idx,
 }
 
 template<typename Type>
+inline CUDA_CALLABLE quat_t<Type> assign(quat_t<Type>& q, int idx, Type value)
+{
+#ifndef NDEBUG
+    if (idx < 0 || idx > 3)
+    {
+        printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    quat_t<Type> ret(q);
+    ret[idx] = value;
+    return ret;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_assign(quat_t<Type>& q, int idx, Type value, quat_t<Type>& adj_q, int& adj_idx, Type& adj_value, const quat_t<Type>& adj_ret)
+{
+#ifndef NDEBUG
+    if (idx < 0 || idx > 3)
+    {
+        printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    adj_value += adj_ret[idx];
+    for(unsigned i=0; i < 4; ++i)
+    {
+        if(i != idx)
+            adj_q[i] += adj_ret[i];
+    }
+}
+
+template<typename Type>
 CUDA_CALLABLE inline quat_t<Type> lerp(const quat_t<Type>& a, const quat_t<Type>& b, Type t)
 {
     return a*(Type(1)-t) + b*t;

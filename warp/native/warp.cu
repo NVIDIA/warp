@@ -2047,7 +2047,6 @@ void cuda_context_set_stream(void* context, void* stream, int sync)
     }
 }
 
-
 int cuda_is_peer_access_supported(int target_ordinal, int peer_ordinal)
 {
     int num_devices = int(g_devices.size());
@@ -2258,12 +2257,12 @@ int cuda_set_mempool_access_enabled(int target_ordinal, int peer_ordinal, int en
 }
 
 
-void* cuda_stream_create(void* context)
+void* cuda_stream_create(void* context, int priority)
 {
     ContextGuard guard(context, true);
 
     CUstream stream;
-    if (check_cu(cuStreamCreate_f(&stream, CU_STREAM_DEFAULT)))
+    if (check_cu(cuStreamCreateWithPriority_f(&stream, CU_STREAM_DEFAULT, priority)))
     {
         cuda_stream_register(WP_CURRENT_CONTEXT, stream);
         return stream;
@@ -2345,6 +2344,19 @@ int cuda_stream_is_capturing(void* stream)
     check_cuda(cudaStreamIsCapturing(static_cast<cudaStream_t>(stream), &status));
     
     return int(status != cudaStreamCaptureStatusNone);
+}
+
+uint64_t cuda_stream_get_capture_id(void* stream)
+{
+    return get_capture_id(static_cast<CUstream>(stream));
+}
+
+int cuda_stream_get_priority(void* stream)
+{
+    int priority = 0;
+    check_cuda(cuStreamGetPriority_f(static_cast<CUstream>(stream), &priority));
+
+    return priority;
 }
 
 void* cuda_event_create(void* context, unsigned flags)

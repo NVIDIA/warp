@@ -260,8 +260,8 @@ def boids(
     boids[tid] = boid
 
     # update glow as an exponentially weighted moving average to keep it smooth
-    glow = wp.min(1.0, float(num_neighbors) / 25.0)
-    glow_alpha = 0.25
+    glow = wp.min(1.0, float(num_neighbors) / 40.0)
+    glow_alpha = 0.5
     glows[tid] = glow_alpha * glow + (1.0 - glow_alpha) * glows[tid]
 
 
@@ -358,7 +358,7 @@ class InternalState:
         max_mass = 2.0
         npboids["mass"][:] = min_mass + (max_mass - min_mass) * np.random.rand(num_boids)
 
-        # we can have up to 3 groups currently, but that can be easily extended
+        # we can have up to 2 groups currently, but that can be easily extended
         self.num_groups = 2
         npboids["group"] = np.random.randint(self.num_groups, size=num_boids)
 
@@ -378,7 +378,7 @@ class InternalState:
             biases[i, i] = 1.0
 
         world = World()
-        world.lower = (-120, 20, -90)
+        world.lower = (-120, 10, -90)
         world.upper = (120, 40, 90)
         world.grid = self.grid.id
         world.seed = 0
@@ -391,9 +391,8 @@ class InternalState:
 
         # color ramps per group
         color_ramps = [
-            [[0.3, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.5, 0.0], [1.0, 1.0, 0.5]],
-            [[0.0, 0.0, 0.3], [0.0, 0.0, 1.0], [0.0, 0.5, 1.0], [0.5, 1.0, 1.0]],
-            [[0.0, 0.3, 0.0], [0.0, 1.0, 0.0], [0.0, 1.0, 0.5], [0.8, 1.0, 0.8]],
+            [[0.5, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.5, 0.0], [1.0, 1.0, 0.5]],
+            [[0.0, 0.0, 0.5], [0.0, 0.0, 1.0], [0.0, 0.5, 1.0], [0.5, 1.0, 1.0]],
         ]
 
         # copy of positions used for updating the spatial grid

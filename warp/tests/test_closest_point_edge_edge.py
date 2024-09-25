@@ -170,6 +170,93 @@ def test_edge_edge_perpendicular_s0_t1(test, device):
     test.assertAlmostEqual(st0[1], 1.0)  # t value
 
 
+@wp.func
+def check_edge_closest_point_sufficient_necessary(c1: wp.vec3, c2: wp.vec3, t: float, p: wp.vec3, q: wp.vec3):
+    """
+    This is a sufficient and necessary condition of closest point
+    c1: closest point on the other edge
+    c2: closest point on edge p-q
+    t: c2 = (1.0-t) * p + t * q
+    e1, e2: end points of the edge
+    """
+    eps = 1e-5
+    e = p - q
+    if t == 0.0:
+        wp.expect_eq(wp.dot(c1 - p, p - q) > -eps, True)
+        wp.expect_eq(wp.abs(wp.length(c2 - p)) < eps, True)
+    elif t == 1.0:
+        wp.expect_eq(wp.dot(c1 - q, q - p) > -eps, True)
+        wp.expect_eq(wp.abs(wp.length(c2 - q)) < eps, True)
+    else:
+        # interior closest point, c1c2 must be perpendicular to e
+        c1c2 = c1 - c2
+        wp.expect_eq(wp.abs(wp.dot(c1c2, e)) < eps, True)
+
+
+@wp.kernel
+def check_edge_closest_point_sufficient_necessary_kernel(
+    p1s: wp.array(dtype=wp.vec3),
+    q1s: wp.array(dtype=wp.vec3),
+    p2s: wp.array(dtype=wp.vec3),
+    q2s: wp.array(dtype=wp.vec3),
+    epsilon: float,
+):
+    tid = wp.tid()
+
+    p1 = p1s[tid]
+    q1 = q1s[tid]
+    p2 = p2s[tid]
+    q2 = q2s[tid]
+
+    st = wp.closest_point_edge_edge(p1, q1, p2, q2, epsilon)
+    s = st[0]
+    t = st[1]
+    c1 = p1 + (q1 - p1) * s
+    c2 = p2 + (q2 - p2) * t
+
+    check_edge_closest_point_sufficient_necessary(c1, c2, t, p2, q2)
+    check_edge_closest_point_sufficient_necessary(c2, c1, s, p1, q1)
+
+
+def check_edge_closest_point_random(test, device):
+    num_tests = 100000
+    np.random.seed(12345)
+    p1 = wp.array(np.random.randn(num_tests, 3), dtype=wp.vec3, device=device)
+    q1 = wp.array(np.random.randn(num_tests, 3), dtype=wp.vec3, device=device)
+
+    p2 = wp.array(np.random.randn(num_tests, 3), dtype=wp.vec3, device=device)
+    q2 = wp.array(np.random.randn(num_tests, 3), dtype=wp.vec3, device=device)
+
+    wp.launch(
+        kernel=check_edge_closest_point_sufficient_necessary_kernel,
+        dim=num_tests,
+        inputs=[p1, q1, p2, q2, epsilon],
+        device=device,
+    )
+
+    # parallel edges
+    p1 = np.random.randn(num_tests, 3)
+    q1 = np.random.randn(num_tests, 3)
+
+    shifts = np.random.randn(num_tests, 3)
+
+    p2 = p1 + shifts
+    q2 = q1 + shifts
+
+    p1 = wp.array(p1, dtype=wp.vec3, device=device)
+    q1 = wp.array(q1, dtype=wp.vec3, device=device)
+
+    p2 = wp.array(p2, dtype=wp.vec3, device=device)
+    q2 = wp.array(q2, dtype=wp.vec3, device=device)
+
+    wp.launch(
+        kernel=check_edge_closest_point_sufficient_necessary_kernel,
+        dim=num_tests,
+        inputs=[p1, q1, p2, q2, epsilon],
+        device=device,
+    )
+
+
 devices = get_test_devices()
 
 
@@ -220,7 +307,12 @@ add_function_test(
     test_edge_edge_perpendicular_s0_t1,
     devices=devices,
 )
-
+add_function_test(
+    TestClosestPointEdgeEdgeMethods,
+    "test_edge_closest_point_random",
+    check_edge_closest_point_random,
+    devices=devices,
+)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

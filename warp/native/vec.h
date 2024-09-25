@@ -381,6 +381,31 @@ inline CUDA_CALLABLE vec_t<3, Type> sub(vec_t<3, Type> a, vec_t<3, Type> b)
     return vec_t<3, Type>( a.c[0] - b.c[0], a.c[1] - b.c[1], a.c[2] - b.c[2]);
 }
 
+// modulo
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length, Type> mod(vec_t<Length, Type> a, vec_t<Length, Type> b)
+{
+    vec_t<Length, Type> ret;
+    for (unsigned i=0; i < Length; ++i)
+    {
+        ret[i] = mod(a[i], b[i]);
+    }
+
+    return ret;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec_t<2, Type> mod(vec_t<2, Type> a, vec_t<2, Type> b)
+{
+    return vec_t<2, Type>(mod(a.c[0], b.c[0]), mod(a.c[1], b.c[1]));
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec_t<3, Type> mod(vec_t<3, Type> a, vec_t<3, Type> b)
+{
+    return vec_t<3, Type>(mod(a.c[0], b.c[0]), mod(a.c[1], b.c[1]), mod(a.c[2], b.c[2]));
+}
+
 // dot product:
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE Type dot(vec_t<Length, Type> a, vec_t<Length, Type> b)
@@ -470,6 +495,40 @@ inline CUDA_CALLABLE void adj_indexref(vec_t<Length, Type>* v, int idx,
     // nop
 }
 
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length, Type> assign(vec_t<Length, Type>& v, int idx, Type value)
+{
+#ifndef NDEBUG
+    if (idx < 0 || idx >= Length)
+    {
+        printf("vec index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    vec_t<Length, Type> ret(v);
+    ret[idx] = value;
+    return ret;
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_assign(vec_t<Length, Type>& v, int idx, Type value, vec_t<Length, Type>& adj_v, int& adj_idx, Type& adj_value, const vec_t<Length, Type>& adj_ret)
+{
+#ifndef NDEBUG
+    if (idx < 0 || idx >= Length)
+    {
+        printf("vec index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    adj_value += adj_ret[idx];
+    for(unsigned i=0; i < Length; ++i)
+    {
+        if (i != idx)
+            adj_v[i] += adj_ret[i];
+    }
+}
 
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE Type length(vec_t<Length, Type> a)
@@ -894,6 +953,21 @@ inline CUDA_CALLABLE void adj_sub(vec_t<3, Type> a, vec_t<3, Type> b, vec_t<3, T
     adj_b.c[0] -= adj_ret.c[0];
     adj_b.c[1] -= adj_ret.c[1];
     adj_b.c[2] -= adj_ret.c[2];
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_mod(vec_t<Length, Type> a, vec_t<Length, Type> b, vec_t<Length, Type>& adj_a, vec_t<Length, Type>& adj_b, const vec_t<Length, Type>& adj_ret)
+{
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_mod(vec_t<2, Type> a, vec_t<2, Type> b, vec_t<2, Type>& adj_a, vec_t<2, Type>& adj_b, const vec_t<2, Type>& adj_ret)
+{
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_mod(vec_t<3, Type> a, vec_t<3, Type> b, vec_t<3, Type>& adj_a, vec_t<3, Type>& adj_b, const vec_t<3, Type>& adj_ret)
+{
 }
 
 template<unsigned Length, typename Type>

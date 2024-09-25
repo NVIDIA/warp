@@ -1,8 +1,6 @@
 import numpy as np
 import warp as wp
 
-import torch
-
 wp.init()
 wp.set_module_options({"enable_backward": True})
 wp.set_device("cuda:0")

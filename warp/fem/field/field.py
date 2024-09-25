@@ -114,7 +114,8 @@ class GeometryField(FieldLike):
         """Returns a deformed version of the underlying geometry, with positions displaced according to this field's values.
 
         Args:
-            relative: If ``True``, the field is intepreted as a relative displacement over the original geometry. If ``False``, the field values are intepreted as absolute positions.
+            relative: If ``True``, the field is interpreted as a relative displacement over the original geometry.
+              If ``False``, the field values are interpreted as absolute positions.
 
         """
         return DeformedGeometry(self, relative=relative)

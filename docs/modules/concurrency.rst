@@ -283,14 +283,14 @@ Note that when recording events, the event must be from the same device as the r
 When waiting for events, the waiting stream can be from another device.  This allows using events to synchronize streams
 on different GPUs.
 
-If the ``record_event()`` method is called without an event argument, a temporary event will be created, recorded, and returned:
+If the :meth:`Stream.record_event` method is called without an event argument, a temporary event will be created, recorded, and returned:
 
 .. code:: python
 
     event = stream1.record_event()
     stream2.wait_event(event)
 
-The ``wait_stream()`` method combines the acts of recording and waiting on an event in one call:
+The :meth:`Stream.wait_stream` method combines the acts of recording and waiting on an event in one call:
 
 .. code:: python
 
@@ -461,6 +461,84 @@ This is due to the :ref:`stream-ordered memory pool allocators<mempool_allocator
 empty array ``a1`` is scheduled on stream ``stream1``.  To avoid use-before-alloc errors, we need to wait until the 
 allocation completes before using that array on a different stream.
 
+Stream Priorities
+~~~~~~~~~~~~~~~~~
+
+Streams can be created with a specified numerical priority using the ``priority`` parameter when creating a new
+:class:`Stream`. High-priority streams can be created with a priority of -1, while low-priority streams
+have a priority of 0. By scheduling work on streams of different priorities, users can achieve finer-grained
+control of how the GPU schedules pending work. Priorities are only a hint to the GPU for how to
+process work and do not guarantee that pending work will be executed in a certain order.
+Stream priorities currently do not affect host-to-device or device-to-host memory transfers.
+
+Streams created with a priority outside the valid values of -1 and 0 will have
+the priority clamped.
+The priority of any stream can be queried using the :attr:`Stream.priority` attribute.
+If a CUDA device does not support stream priorities, then all streams will have
+a priority of 0 regardless of the priority requested when creating the stream.
+
+For more information on stream priorities, see the section in the
+`CUDA C++ Programming Guide <https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#stream-priorities>`_.
+
+The following example illustrates the impact of stream priorities:
+
+.. code:: python
+
+    import warp as wp
+
+    wp.config.verify_cuda = True
+
+    wp.init()
+
+    total_size = 256 * 1024 * 1024
+    each_size = 128 * 1024 * 1024
+
+    with wp.ScopedDevice("cuda:0"):
+        array_lo = wp.zeros(total_size, dtype=wp.float32)
+        array_hi = wp.zeros(total_size, dtype=wp.float32)
+
+        stream_lo = wp.Stream(wp.get_device(), 0)  # Low priority
+        stream_hi = wp.Stream(wp.get_device(), -1)  # High priority
+
+        start_lo_event = wp.Event(enable_timing=True)
+        start_hi_event = wp.Event(enable_timing=True)
+        end_lo_event = wp.Event(enable_timing=True)
+        end_hi_event = wp.Event(enable_timing=True)
+
+        wp.synchronize_device(wp.get_device())
+
+        stream_lo.record_event(start_lo_event)
+        stream_hi.record_event(start_hi_event)
+
+        for copy_offset in range(0, total_size, each_size):
+            wp.copy(array_lo, array_lo, copy_offset, copy_offset, each_size, stream_lo)
+            wp.copy(array_hi, array_hi, copy_offset, copy_offset, each_size, stream_hi)
+
+        stream_lo.record_event(end_lo_event)
+        stream_hi.record_event(end_hi_event)
+
+        # get elapsed time between the two events
+        elapsed_lo = wp.get_event_elapsed_time(start_lo_event, end_lo_event)
+        elapsed_hi = wp.get_event_elapsed_time(start_hi_event, end_hi_event)
+
+        print(f"elapsed_lo = {elapsed_lo:.6f}")
+        print(f"elapsed_hi = {elapsed_hi:.6f}")
+
+The output of the example on a test workstation looks like::
+
+    elapsed_lo = 5.118944
+    elapsed_hi = 2.647040
+
+If the example is modified so that both streams have the same priority, the output becomes::
+
+    elapsed_lo = 5.112832
+    elapsed_hi = 5.114880
+
+Finally, if we reverse the stream priorities so that ``stream_lo`` has a
+a priority of -1 and ``stream_hi`` has a priority of 0, we get::
+
+    elapsed_lo = 2.621440
+    elapsed_hi = 5.105664
 
 Stream Usage Guidance
 ~~~~~~~~~~~~~~~~~~~~~

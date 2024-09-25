@@ -1,0 +1,105 @@
+{
+    "WarpSampleOceanDeform": {
+        "version": 1,
+        "categoryDefinitions": "../../../../config/warp_categories.json",
+        "description": "Mesh deformer modeling ocean waves.",
+        "categories": ["warp"],
+        "language": "Python",
+        "uiName": "Ocean Deform",
+        "cudaPointers": "cpu",
+        "inputs": {
+            "execIn": {
+                "type": "execution",
+                "description": "Input execution."
+            },
+            "mesh": {
+                "type": "bundle",
+                "uiName": "Mesh",
+                "description": "Input mesh geometry.",
+                "memoryType": "cuda"
+            },
+            "directionality": {
+                "type": "float",
+                "uiName": "Directionality",
+                "description": "Isotropic vs directional wave motion",
+                "default": 0,
+                "minimum": 0.0,
+                "maximum": 1.0
+            },
+            "amplitude": {
+                "type": "float",
+                "uiName": "Amplitude",
+                "description": "Wave amplitude factor.",
+                "default": 1.0,
+                "minimum": 0.001,
+                "maximum": 1000.0
+            },
+            "direction": {
+                "type": "float",
+                "uiName": "Direction",
+                "description": "Wave direction.",
+                "default": 0,
+                "minimum": 0.0,
+                "maximum": 1.0
+            },
+            "scale": {
+                "type": "float",
+                "uiName": "Horizontal Scale",
+                "description": "Horizontal wave scaling, can be used to match scene units.",
+                "default": 1.0,
+                "minimum": 0.001,
+                "maximum": 1000.0
+            },
+            "waterDepth": {
+                "type": "float",
+                "uiName": "Water Depth",
+                "description": "Water depth (1..1000 m).",
+                "default": 50.0,
+                "minimum": 1.0,
+                "maximum": 1000.0
+            },
+            "windSpeed": {
+                "type": "float",
+                "uiName": "Wind Speed",
+                "description": "Wind speed (m/s) 10m above ocean (0..30).",
+                "default": 10.0,
+                "minimum": 0.0,
+                "maximum": 30.0
+            },
+            "cameraPos": {
+                "type": "vectorf[3]",
+                "uiName": "Camera Position",
+                "default": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "description": "Camera position to use to move the clipmap."
+            },
+            "clipmapCellSize": {
+                "type": "float",
+                "uiName": "Clipmap Cell Size",
+                "description": "Size of a single cell at the centre of the clipmap grid.",
+                "default": 1.0
+            },
+            "time": {
+                "type": "double",
+                "uiName": "Time",
+                "description": "Time.",
+                "default": 0
+            }
+        },
+        "outputs": {
+            "execOut": {
+                "type": "execution",
+                "description": "Output execution."
+            },
+            "mesh": {
+                "type": "bundle",
+                "uiName": "Mesh",
+                "description": "Output mesh geometry.",
+                "memoryType": "cuda"
+            }
+        }
+    }
+}

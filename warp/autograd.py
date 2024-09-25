@@ -17,7 +17,7 @@ __all__ = [
     "jacobian_fd",
     "gradcheck",
     "gradcheck_tape",
-    "plot_kernel_jacobians",
+    "jacobian_plot",
 ]
 
 
@@ -182,7 +182,7 @@ def gradcheck(
         else:
             print(FontColors.OKGREEN + f"Gradient check for kernel {function.key} passed" + FontColors.ENDC)
     if plot_relative_error:
-        plot_kernel_jacobians(
+        jacobian_plot(
             relative_error_jacs,
             function,
             inputs,
@@ -190,7 +190,7 @@ def gradcheck(
             title=f"{function.key} kernel Jacobian relative error",
         )
     if plot_absolute_error:
-        plot_kernel_jacobians(
+        jacobian_plot(
             absolute_error_jacs,
             function,
             inputs,
@@ -307,7 +307,7 @@ def infer_device(xs: list):
     return wp.get_preferred_device()
 
 
-def plot_kernel_jacobians(
+def jacobian_plot(
     jacobians: Dict[Tuple[int, int], wp.array],
     kernel: wp.Kernel,
     inputs: Sequence,
@@ -515,6 +515,59 @@ def plot_kernel_jacobians(
     return fig
 
 
+def plot_kernel_jacobians(
+    jacobians: Dict[Tuple[int, int], wp.array],
+    kernel: wp.Kernel,
+    inputs: Sequence,
+    outputs: Sequence,
+    show_plot=True,
+    show_colorbar=True,
+    scale_colors_per_submatrix=False,
+    title: str = None,
+    colormap: str = "coolwarm",
+    log_scale=False,
+):
+    """
+    Visualizes the Jacobians computed by :func:`jacobian` or :func:`jacobian_fd` in a combined image plot.
+    Requires the ``matplotlib`` package to be installed.
+
+    Note:
+        This function is deprecated and will be removed in a future Warp version. Please call :func:`jacobian_plot` instead.
+
+    Args:
+        jacobians: A dictionary of Jacobians, where the keys are tuples of input and output indices, and the values are the Jacobian matrices.
+        kernel: The Warp kernel function, decorated with the ``@wp.kernel`` decorator.
+        inputs: List of input variables.
+        outputs: List of output variables.
+        show_plot: If True, displays the plot via ``plt.show()``.
+        show_colorbar: If True, displays a colorbar next to the plot (or a colorbar next to every submatrix if ).
+        scale_colors_per_submatrix: If True, considers the minimum and maximum of each Jacobian submatrix separately for color scaling. Otherwise, uses the global minimum and maximum of all Jacobians.
+        title: The title of the plot (optional).
+        colormap: The colormap to use for the plot.
+        log_scale: If True, uses a logarithmic scale for the matrix values shown in the image plot.
+
+    Returns:
+        The created Matplotlib figure.
+    """
+    wp.utils.warn(
+        "The function `plot_kernel_jacobians` is deprecated and will be removed in a future Warp version. Please call `jacobian_plot` instead.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
+    return jacobian_plot(
+        jacobians,
+        kernel,
+        inputs,
+        outputs,
+        show_plot=show_plot,
+        show_colorbar=show_colorbar,
+        scale_colors_per_submatrix=scale_colors_per_submatrix,
+        title=title,
+        colormap=colormap,
+        log_scale=log_scale,
+    )
+
+
 def scalarize_array_1d(arr):
     # convert array to 1D array with scalar dtype
     if arr.dtype in wp.types.scalar_types:
@@ -593,13 +646,13 @@ def jacobian(
         input_output_mask = []
     arg_names = [arg.label for arg in kernel.adj.args]
 
-    def resolve_arg(name):
+    def resolve_arg(name, offset: int = 0):
         if isinstance(name, int):
             return name
-        return arg_names.index(name)
+        return arg_names.index(name) + offset
 
     input_output_mask = [
-        (resolve_arg(input_name), resolve_arg(output_name) - len(inputs))
+        (resolve_arg(input_name), resolve_arg(output_name, -len(inputs)))
         for input_name, output_name in input_output_mask
     ]
     input_output_mask = set(input_output_mask)
@@ -638,7 +691,7 @@ def jacobian(
         jacobians[input_i, output_i] = jacobian
 
     if plot_jacobians:
-        plot_kernel_jacobians(
+        jacobian_plot(
             jacobians,
             kernel,
             inputs,
@@ -694,13 +747,13 @@ def jacobian_fd(
         input_output_mask = []
     arg_names = [arg.label for arg in kernel.adj.args]
 
-    def resolve_arg(name):
+    def resolve_arg(name, offset: int = 0):
         if isinstance(name, int):
             return name
-        return arg_names.index(name)
+        return arg_names.index(name) + offset
 
     input_output_mask = [
-        (resolve_arg(input_name), resolve_arg(output_name) - len(inputs))
+        (resolve_arg(input_name), resolve_arg(output_name, -len(inputs)))
         for input_name, output_name in input_output_mask
     ]
     input_output_mask = set(input_output_mask)
@@ -753,7 +806,7 @@ def jacobian_fd(
         jacobians[input_i, output_i] = jacobian
 
     if plot_jacobians:
-        plot_kernel_jacobians(
+        jacobian_plot(
             jacobians,
             kernel,
             inputs,

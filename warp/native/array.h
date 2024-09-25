@@ -207,6 +207,22 @@ struct array_t
         strides[3] = sizeof(T);
     }
 
+    CUDA_CALLABLE array_t(uint64 data, int size, uint64 grad=0)
+        : array_t((T*)(data), size, (T*)(grad))
+    {}
+
+    CUDA_CALLABLE array_t(uint64 data, int dim0, int dim1, uint64 grad=0)
+        : array_t((T*)(data), dim0, dim1, (T*)(grad))
+    {}
+
+    CUDA_CALLABLE array_t(uint64 data, int dim0, int dim1, int dim2, uint64 grad=0)
+        : array_t((T*)(data), dim0, dim1, dim2, (T*)(grad))
+    {}
+
+    CUDA_CALLABLE array_t(uint64 data, int dim0, int dim1, int dim2, int dim3, uint64 grad=0)
+        : array_t((T*)(data), dim0, dim1, dim2, dim3, (T*)(grad))
+    {}
+
     CUDA_CALLABLE inline bool empty() const { return !data; }
 
     T* data;
@@ -928,7 +944,6 @@ inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, in
 
     FP_VERIFY_ADJ_4(value, adj_value)
 }
-
 
 template<typename T>
 inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret)

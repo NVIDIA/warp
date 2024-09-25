@@ -19,6 +19,7 @@ import platform
 import sys
 import types
 import typing
+import weakref
 from copy import copy as shallowcopy
 from pathlib import Path
 from struct import pack as struct_pack
@@ -36,6 +37,10 @@ import warp.config
 
 def create_value_func(type):
     def value_func(arg_types, arg_values):
+        hint_origin = getattr(type, "__origin__", None)
+        if hint_origin is not None and issubclass(hint_origin, typing.Tuple):
+            return type.__args__
+
         return type
 
     return value_func
@@ -53,6 +58,38 @@ def get_function_args(func):
 
 complex_type_hints = (Any, Callable, Tuple)
 sequence_types = (list, tuple)
+
+function_key_counts = {}
+
+
+def generate_unique_function_identifier(key):
+    # Generate unique identifiers for user-defined functions in native code.
+    # - Prevents conflicts when a function is redefined and old versions are still in use.
+    # - Prevents conflicts between multiple closures returned from the same function.
+    # - Prevents conflicts between identically named functions from different modules.
+    #
+    # Currently, we generate a unique id when a new Function is created, which produces
+    # globally unique identifiers.
+    #
+    # NOTE:
+    #   We could move this to the Module class for generating unique identifiers at module scope,
+    #   but then we need another solution for preventing conflicts across modules (e.g., different namespaces).
+    #   That would requires more Python code, generate more native code, and would be slightly slower
+    #   with no clear advantages over globally-unique identifiers (non-global shared state is still shared state).
+    #
+    # TODO:
+    #   Kernels and structs use unique identifiers based on their hash.  Using hash-based identifiers
+    #   for functions would allow filtering out duplicate identical functions during codegen,
+    #   like we do with kernels and structs.  This is worth investigating further, but might require
+    #   additional refactoring.  For example, the code that deals with custom gradient and replay functions
+    #   requires matching function names, but these special functions get created before the hash
+    #   for the parent function can be computed.  In addition to these complications, computing hashes
+    #   for all function instances would increase the cost of module hashing when generic functions
+    #   are involved (currently we only hash the generic templates, which is sufficient).
+
+    unique_id = function_key_counts.get(key, 0)
+    function_key_counts[key] = unique_id + 1
+    return f"{key}_{unique_id}"
 
 
 class Function:
@@ -91,6 +128,7 @@ class Function:
         code_transformers=None,
         skip_adding_overload=False,
         require_original_output_arg=False,
+        scope_locals=None,  # the locals() where the function is defined, used for overload management
     ):
         if code_transformers is None:
             code_transformers = []
@@ -117,6 +155,7 @@ class Function:
         self.replay_snippet = replay_snippet
         self.custom_grad_func = None
         self.require_original_output_arg = require_original_output_arg
+        self.generic_parent = None  # generic function that was used to instantiate this overload
 
         if initializer_list_func is None:
             self.initializer_list_func = lambda x, y: False
@@ -126,14 +165,19 @@ class Function:
             )
         self.hidden = hidden  # function will not be listed in docs
         self.skip_replay = (
-            skip_replay  # whether or not operation will be performed during the forward replay in the backward pass
+            skip_replay  # whether operation will be performed during the forward replay in the backward pass
         )
-        self.missing_grad = missing_grad  # whether or not builtin is missing a corresponding adjoint
+        self.missing_grad = missing_grad  # whether builtin is missing a corresponding adjoint
         self.generic = generic
 
-        # allow registering builtin functions with a different name in Python from the native code
+        # allow registering functions with a different name in Python and native code
         if native_func is None:
-            self.native_func = key
+            if func is None:
+                # builtin function
+                self.native_func = key
+            else:
+                # user functions need unique identifiers to avoid conflicts
+                self.native_func = generate_unique_function_identifier(key)
         else:
             self.native_func = native_func
 
@@ -163,6 +207,11 @@ class Function:
 
                 else:
                     self.input_types[name] = type
+
+            # Record any default parameter values.
+            if not self.defaults:
+                signature = inspect.signature(func)
+                self.defaults = {k: v.default for k, v in signature.parameters.items() if v.default is not v.empty}
 
         else:
             # builtin function
@@ -212,9 +261,13 @@ class Function:
             signature_params.append(param)
         self.signature = inspect.Signature(signature_params)
 
+        # scope for resolving overloads
+        if scope_locals is None:
+            scope_locals = inspect.currentframe().f_back.f_locals
+
         # add to current module
         if module:
-            module.register_function(self, skip_adding_overload)
+            module.register_function(self, scope_locals, skip_adding_overload)
 
     def __call__(self, *args, **kwargs):
         # handles calling a builtin (native) function
@@ -325,57 +378,52 @@ class Function:
 
             # check if generic
             if warp.types.is_generic_signature(sig):
-                if sig in self.user_templates:
-                    raise RuntimeError(
-                        f"Duplicate generic function overload {self.key} with arguments {f.input_types.values()}"
-                    )
                 self.user_templates[sig] = f
             else:
-                if sig in self.user_overloads:
-                    raise RuntimeError(
-                        f"Duplicate function overload {self.key} with arguments {f.input_types.values()}"
-                    )
                 self.user_overloads[sig] = f
 
     def get_overload(self, arg_types, kwarg_types):
         assert not self.is_builtin()
 
-        sig = warp.types.get_signature(arg_types, func_name=self.key)
+        for f in self.user_overloads.values():
+            if warp.codegen.func_match_args(f, arg_types, kwarg_types):
+                return f
 
-        f = self.user_overloads.get(sig)
-        if f is not None:
-            return f
-        else:
-            for f in self.user_templates.values():
-                if len(f.input_types) != len(arg_types):
-                    continue
+        for f in self.user_templates.values():
+            if not warp.codegen.func_match_args(f, arg_types, kwarg_types):
+                continue
 
-                # try to match the given types to the function template types
-                template_types = list(f.input_types.values())
-                args_matched = True
+            if len(f.input_types) != len(arg_types):
+                continue
 
-                for i in range(len(arg_types)):
-                    if not warp.types.type_matches_template(arg_types[i], template_types[i]):
-                        args_matched = False
-                        break
+            # try to match the given types to the function template types
+            template_types = list(f.input_types.values())
+            args_matched = True
 
-                if args_matched:
-                    # instantiate this function with the specified argument types
+            for i in range(len(arg_types)):
+                if not warp.types.type_matches_template(arg_types[i], template_types[i]):
+                    args_matched = False
+                    break
 
-                    arg_names = f.input_types.keys()
-                    overload_annotations = dict(zip(arg_names, arg_types))
+            if args_matched:
+                # instantiate this function with the specified argument types
 
-                    ovl = shallowcopy(f)
-                    ovl.adj = warp.codegen.Adjoint(f.func, overload_annotations)
-                    ovl.input_types = overload_annotations
-                    ovl.value_func = None
+                arg_names = f.input_types.keys()
+                overload_annotations = dict(zip(arg_names, arg_types))
 
-                    self.user_overloads[sig] = ovl
+                ovl = shallowcopy(f)
+                ovl.adj = warp.codegen.Adjoint(f.func, overload_annotations)
+                ovl.input_types = overload_annotations
+                ovl.value_func = None
+                ovl.generic_parent = f
 
-                    return ovl
+                sig = warp.types.get_signature(arg_types, func_name=self.key)
+                self.user_overloads[sig] = ovl
 
-            # failed  to find overload
-            return None
+                return ovl
+
+        # failed  to find overload
+        return None
 
     def __repr__(self):
         inputs_str = ", ".join([f"{k}: {warp.types.type_repr(v)}" for k, v in self.input_types.items()])
@@ -591,8 +639,7 @@ class Kernel:
             self.module = module
 
         if key is None:
-            unique_key = self.module.generate_unique_kernel_key(func.__name__)
-            self.key = unique_key
+            self.key = warp.codegen.make_full_qualified_name(func)
         else:
             self.key = key
 
@@ -616,8 +663,14 @@ class Kernel:
         # known overloads for generic kernels, indexed by type signature
         self.overloads = {}
 
+        # generic kernel that was used to instantiate this overload
+        self.generic_parent = None
+
         # argument indices by name
         self.arg_indices = {a.label: i for i, a in enumerate(self.adj.args)}
+
+        # hash will be computed when the module is built
+        self.hash = None
 
         if self.module:
             self.module.register_kernel(self)
@@ -666,10 +719,11 @@ class Kernel:
         ovl.is_generic = False
         ovl.overloads = {}
         ovl.sig = sig
+        ovl.generic_parent = self
 
         self.overloads[sig] = ovl
 
-        self.module.unload()
+        self.module.mark_modified()
 
         return ovl
 
@@ -678,10 +732,13 @@ class Kernel:
         return self.overloads.get(sig)
 
     def get_mangled_name(self):
-        if self.sig:
-            return f"{self.key}_{self.sig}"
-        else:
-            return self.key
+        if self.hash is None:
+            raise RuntimeError(f"Missing hash for kernel {self.key} in module {self.module.name}")
+
+        # TODO: allow customizing the number of hash characters used
+        hash_suffix = self.hash.hex()[:8]
+
+        return f"{self.key}_{hash_suffix}"
 
 
 # ----------------------
@@ -691,9 +748,11 @@ class Kernel:
 def func(f):
     name = warp.codegen.make_full_qualified_name(f)
 
+    scope_locals = inspect.currentframe().f_back.f_locals
+
     m = get_module(f.__module__)
     Function(
-        func=f, key=name, namespace="", module=m, value_func=None
+        func=f, key=name, namespace="", module=m, value_func=None, scope_locals=scope_locals
     )  # value_type not known yet, will be inferred during Adjoint.build()
 
     # use the top of the list of overloads for this key
@@ -707,6 +766,8 @@ def func_native(snippet, adj_snippet=None, replay_snippet=None):
     Decorator to register native code snippet, @func_native
     """
 
+    scope_locals = inspect.currentframe().f_back.f_locals
+
     def snippet_func(f):
         name = warp.codegen.make_full_qualified_name(f)
 
@@ -719,6 +780,7 @@ def func_native(snippet, adj_snippet=None, replay_snippet=None):
             native_snippet=snippet,
             adj_native_snippet=adj_snippet,
             replay_snippet=replay_snippet,
+            scope_locals=scope_locals,
         )  # value_type not known yet, will be inferred during Adjoint.build()
         g = m.functions[name]
         # copy over the function attributes, including docstring
@@ -785,6 +847,7 @@ def func_grad(forward_fn):
             f.custom_grad_func = Function(
                 grad_fn,
                 key=f.key,
+                native_func=f.native_func,
                 namespace=f.namespace,
                 input_types=reverse_args,
                 value_func=None,
@@ -943,7 +1006,7 @@ def overload(kernel, arg_types=None):
         # ensure this function name corresponds to a kernel
         fn = kernel
         module = get_module(fn.__module__)
-        kernel = module.kernels.get(fn.__name__)
+        kernel = module.find_kernel(fn)
         if kernel is None:
             raise RuntimeError(f"Failed to find a kernel named '{fn.__name__}' in module {fn.__module__}")
 
@@ -1285,7 +1348,6 @@ def get_module(name):
             # clear out old kernels, funcs, struct definitions
             old_module.kernels = {}
             old_module.functions = {}
-            old_module.constants = {}
             old_module.structs = {}
             old_module.loader = parent_loader
 
@@ -1297,8 +1359,183 @@ def get_module(name):
         return user_modules[name]
 
 
+# ModuleHasher computes the module hash based on all the kernels, module options,
+# and build configuration.  For each kernel, it computes a deep hash by recursively
+# hashing all referenced functions, structs, and constants, even those defined in
+# other modules.  The module hash is computed in the constructor and can be retrieved
+# using get_module_hash().  In addition, the ModuleHasher takes care of filtering out
+# duplicate kernels for codegen (see get_unique_kernels()).
+class ModuleHasher:
+    def __init__(self, module):
+        # cache function hashes to avoid hashing multiple times
+        self.function_hashes = {}  # (function: hash)
+
+        # avoid recursive spiral of doom (e.g., function calling an overload of itself)
+        self.functions_in_progress = set()
+
+        # all unique kernels for codegen, filtered by hash
+        self.unique_kernels = {}  # (hash: kernel)
+
+        # start hashing the module
+        ch = hashlib.sha256()
+
+        # hash all non-generic kernels
+        for kernel in module.live_kernels:
+            if kernel.is_generic:
+                for ovl in kernel.overloads.values():
+                    if not ovl.adj.skip_build:
+                        ovl.hash = self.hash_kernel(ovl)
+            else:
+                if not kernel.adj.skip_build:
+                    kernel.hash = self.hash_kernel(kernel)
+
+        # include all unique kernels in the module hash
+        for kernel_hash in sorted(self.unique_kernels.keys()):
+            ch.update(kernel_hash)
+
+        # configuration parameters
+        for opt in sorted(module.options.keys()):
+            s = f"{opt}:{module.options[opt]}"
+            ch.update(bytes(s, "utf-8"))
+
+        # ensure to trigger recompilation if flags affecting kernel compilation are changed
+        if warp.config.verify_fp:
+            ch.update(bytes("verify_fp", "utf-8"))
+
+        # build config
+        ch.update(bytes(warp.config.mode, "utf-8"))
+
+        # save the module hash
+        self.module_hash = ch.digest()
+
+    def hash_kernel(self, kernel):
+        # NOTE: We only hash non-generic kernels, so we don't traverse kernel overloads here.
+
+        ch = hashlib.sha256()
+
+        ch.update(bytes(kernel.key, "utf-8"))
+        ch.update(self.hash_adjoint(kernel.adj))
+
+        h = ch.digest()
+
+        self.unique_kernels[h] = kernel
+
+        return h
+
+    def hash_function(self, func):
+        # NOTE: This method hashes all possible overloads that a function call could resolve to.
+        # The exact overload will be resolved at build time, when the argument types are known.
+
+        h = self.function_hashes.get(func)
+        if h is not None:
+            return h
+
+        self.functions_in_progress.add(func)
+
+        ch = hashlib.sha256()
+
+        ch.update(bytes(func.key, "utf-8"))
+
+        # include all concrete and generic overloads
+        overloads = {**func.user_overloads, **func.user_templates}
+        for sig in sorted(overloads.keys()):
+            ovl = overloads[sig]
+
+            # skip instantiations of generic functions
+            if ovl.generic_parent is not None:
+                continue
+
+            # adjoint
+            ch.update(self.hash_adjoint(ovl.adj))
+
+            # custom bits
+            if ovl.custom_grad_func:
+                ch.update(bytes(ovl.custom_grad_func.adj.source, "utf-8"))
+            if ovl.custom_replay_func:
+                ch.update(bytes(ovl.custom_replay_func.adj.source, "utf-8"))
+            if ovl.replay_snippet:
+                ch.update(bytes(ovl.replay_snippet, "utf-8"))
+            if ovl.native_snippet:
+                ch.update(bytes(ovl.native_snippet, "utf-8"))
+            if ovl.adj_native_snippet:
+                ch.update(bytes(ovl.adj_native_snippet, "utf-8"))
+
+        h = ch.digest()
+
+        self.function_hashes[func] = h
+
+        self.functions_in_progress.remove(func)
+
+        return h
+
+    def hash_adjoint(self, adj):
+        # NOTE: We don't cache adjoint hashes, because adjoints are always unique.
+        # Even instances of generic kernels and functions have unique adjoints with
+        # different argument types.
+
+        ch = hashlib.sha256()
+
+        # source
+        ch.update(bytes(adj.source, "utf-8"))
+
+        # args
+        for arg, arg_type in adj.arg_types.items():
+            s = f"{arg}:{warp.types.get_type_code(arg_type)}"
+            ch.update(bytes(s, "utf-8"))
+
+            # hash struct types
+            if isinstance(arg_type, warp.codegen.Struct):
+                ch.update(arg_type.hash)
+            elif warp.types.is_array(arg_type) and isinstance(arg_type.dtype, warp.codegen.Struct):
+                ch.update(arg_type.dtype.hash)
+
+        # find referenced constants, types, and functions
+        constants, types, functions = adj.get_references()
+
+        # hash referenced constants
+        for name, value in constants.items():
+            ch.update(bytes(name, "utf-8"))
+            # hash the referenced object
+            if isinstance(value, builtins.bool):
+                # This needs to come before the check for `int` since all boolean
+                # values are also instances of `int`.
+                ch.update(struct_pack("?", value))
+            elif isinstance(value, int):
+                ch.update(struct_pack("<q", value))
+            elif isinstance(value, float):
+                ch.update(struct_pack("<d", value))
+            elif isinstance(value, warp.types.float16):
+                # float16 is a special case
+                p = ctypes.pointer(ctypes.c_float(value.value))
+                ch.update(p.contents)
+            elif isinstance(value, tuple(warp.types.scalar_types)):
+                p = ctypes.pointer(value._type_(value.value))
+                ch.update(p.contents)
+            elif isinstance(value, ctypes.Array):
+                ch.update(bytes(value))
+            else:
+                raise RuntimeError(f"Invalid constant type: {type(value)}")
+
+        # hash referenced types
+        for t in types.keys():
+            ch.update(bytes(warp.types.get_type_code(t), "utf-8"))
+
+        # hash referenced functions
+        for f in functions.keys():
+            if f not in self.functions_in_progress:
+                ch.update(self.hash_function(f))
+
+        return ch.digest()
+
+    def get_module_hash(self):
+        return self.module_hash
+
+    def get_unique_kernels(self):
+        return self.unique_kernels.values()
+
+
 class ModuleBuilder:
-    def __init__(self, module, options):
+    def __init__(self, module, options, hasher=None):
         self.functions = {}
         self.structs = {}
         self.options = options
@@ -1306,22 +1543,15 @@ class ModuleBuilder:
         self.deferred_functions = []
         self.ltoirs = []
 
-        # build all functions declared in the module
-        for func in module.functions.values():
-            for f in func.user_overloads.values():
-                self.build_function(f)
-                if f.custom_replay_func is not None:
-                    self.build_function(f.custom_replay_func)
+        if hasher is None:
+            hasher = ModuleHasher(module)
 
-        # build all kernel entry points
-        for kernel in module.kernels.values():
-            if not kernel.is_generic:
-                self.build_kernel(kernel)
-            else:
-                for k in kernel.overloads.values():
-                    self.build_kernel(k)
+        # build all unique kernels
+        self.kernels = hasher.get_unique_kernels()
+        for kernel in self.kernels:
+            self.build_kernel(kernel)
 
-        # build all functions outside this module which are called from functions or kernels in this module
+        # build deferred functions
         for func in self.deferred_functions:
             self.build_function(func)
 
@@ -1337,7 +1567,7 @@ class ModuleBuilder:
             for var in s.vars.values():
                 if isinstance(var.type, warp.codegen.Struct):
                     stack.append(var.type)
-                elif isinstance(var.type, warp.types.array) and isinstance(var.type.dtype, warp.codegen.Struct):
+                elif warp.types.is_array(var.type) and isinstance(var.type.dtype, warp.codegen.Struct):
                     stack.append(var.type.dtype)
 
         # Build them in reverse to generate a correct dependency order.
@@ -1383,8 +1613,12 @@ class ModuleBuilder:
         source = ""
 
         # code-gen structs
+        visited_structs = set()
         for struct in self.structs.keys():
-            source += warp.codegen.codegen_struct(struct)
+            # avoid emitting duplicates
+            if struct.hash not in visited_structs:
+                source += warp.codegen.codegen_struct(struct)
+                visited_structs.add(struct.hash)
 
         # code-gen all imported functions
         for func in self.functions.keys():
@@ -1395,52 +1629,121 @@ class ModuleBuilder:
             else:
                 source += warp.codegen.codegen_snippet(
                     func.adj,
-                    name=func.key,
+                    name=func.native_func,
                     snippet=func.native_snippet,
                     adj_snippet=func.adj_native_snippet,
                     replay_snippet=func.replay_snippet,
                 )
 
-        for kernel in self.module.kernels.values():
-            # each kernel gets an entry point in the module
-            if not kernel.is_generic:
-                source += warp.codegen.codegen_kernel(kernel, device=device, options=self.options)
-                source += warp.codegen.codegen_module(kernel, device=device)
-            else:
-                for k in kernel.overloads.values():
-                    source += warp.codegen.codegen_kernel(k, device=device, options=self.options)
-                    source += warp.codegen.codegen_module(k, device=device)
+        for kernel in self.kernels:
+            source += warp.codegen.codegen_kernel(kernel, device=device, options=self.options)
+            source += warp.codegen.codegen_module(kernel, device=device)
 
         # add headers
         if device == "cpu":
-            source = warp.codegen.cpu_module_header.format(tile_size=self.options["tile_size"]) + source
+            source = warp.codegen.cpu_module_header.format(tile_size=self.options["block_dim"]) + source
         else:
-            source = warp.codegen.cuda_module_header.format(tile_size=self.options["tile_size"]) + source
+            source = warp.codegen.cuda_module_header.format(tile_size=self.options["block_dim"]) + source
 
         return source
+
+
+# ModuleExec holds the compiled executable code for a specific device.
+# It can be used to obtain kernel hooks on that device and serves
+# as a reference-counted wrapper of the loaded module.
+# Clients can keep a reference to a ModuleExec object to prevent the
+# executable code from being unloaded prematurely.
+# For example, the Graph class retains references to all the CUDA modules
+# needed by a graph.  This ensures that graphs remain valid even if
+# the original Modules get reloaded.
+class ModuleExec:
+    def __new__(cls, *args, **kwargs):
+        instance = super(ModuleExec, cls).__new__(cls)
+        instance.handle = None
+        return instance
+
+    def __init__(self, handle, module_hash, device):
+        self.handle = handle
+        self.module_hash = module_hash
+        self.device = device
+        self.kernel_hooks = {}
+
+    # release the loaded module
+    def __del__(self):
+        if self.handle is not None:
+            if self.device.is_cuda:
+                # use CUDA context guard to avoid side effects during garbage collection
+                with self.device.context_guard:
+                    runtime.core.cuda_unload_module(self.device.context, self.handle)
+            else:
+                runtime.llvm.unload_obj(self.handle.encode("utf-8"))
+
+    # lookup and cache kernel entry points
+    def get_kernel_hooks(self, kernel):
+        hooks = self.kernel_hooks.get(kernel)
+        if hooks is not None:
+            return hooks
+
+        name = kernel.get_mangled_name()
+
+        if self.device.is_cuda:
+            forward = runtime.core.cuda_get_kernel(
+                self.device.context, self.handle, (name + "_cuda_kernel_forward").encode("utf-8")
+            )
+            backward = runtime.core.cuda_get_kernel(
+                self.device.context, self.handle, (name + "_cuda_kernel_backward").encode("utf-8")
+            )
+        else:
+            func = ctypes.CFUNCTYPE(None)
+            forward = (
+                func(runtime.llvm.lookup(self.handle.encode("utf-8"), (name + "_cpu_forward").encode("utf-8"))) or None
+            )
+            backward = (
+                func(runtime.llvm.lookup(self.handle.encode("utf-8"), (name + "_cpu_backward").encode("utf-8"))) or None
+            )
+
+        hooks = KernelHooks(forward, backward)
+        self.kernel_hooks[kernel] = hooks
+
+        return hooks
 
 
 # -----------------------------------------------------
 # stores all functions and kernels for a Python module
 # creates a hash of the function to use for checking
 # build cache
-
-
 class Module:
     def __init__(self, name, loader):
         self.name = name
         self.loader = loader
 
-        self.kernels = {}
-        self.functions = {}
-        self.constants = {}  # Any constants referenced in this module including those defined in other modules
-        self.structs = {}
+        # lookup the latest versions of kernels, functions, and structs by key
+        self.kernels = {}  # (key: kernel)
+        self.functions = {}  # (key: function)
+        self.structs = {}  # (key: struct)
 
-        self.cpu_module = None
-        self.cuda_modules = {}  # module lookup by CUDA context
+        # Set of all "live" kernels in this module.
+        # The difference between `live_kernels` and `kernels` is that `live_kernels` may contain
+        # multiple kernels with the same key (which is essential to support closures), while `kernels`
+        # only holds the latest kernel for each key.  When the module is built, we compute the hash
+        # of each kernel in `live_kernels` and filter out duplicates for codegen.
+        self.live_kernels = weakref.WeakSet()
 
-        self.cpu_build_failed = False
-        self.cuda_build_failed = False
+        # executable modules currently loaded
+        self.execs = {}  # (device.context: ModuleExec)
+
+        # set of device contexts where the build has failed
+        self.failed_builds = set()
+
+        # hash data, including the module hash
+        self.hasher = None
+
+        # LLVM executable modules are identified using strings.  Since it's possible for multiple
+        # executable versions to be loaded at the same time, we need a way to ensure uniqueness.
+        # A unique handle is created from the module name and this auto-incremented integer id.
+        # NOTE: The module hash is not sufficient for uniqueness in rare cases where a module
+        # is retained and later reloaded with the same hash.
+        self.cpu_exec_id = 0
 
         self.options = {
             "max_unroll": warp.config.max_unroll,
@@ -1448,21 +1751,11 @@ class Module:
             "fast_math": False,
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
             "mode": warp.config.mode,
-            "tile_size": 0
+            "block_dim": 0
         }
-
-        # kernel hook lookup per device
-        # hooks are stored with the module so they can be easily cleared when the module is reloaded.
-        # -> See ``Module.get_kernel_hooks()``
-        self.kernel_hooks = {}
 
         # Module dependencies are determined by scanning each function
         # and kernel for references to external functions and structs.
-        #
-        # When a referenced module is modified, all of its dependents need to be reloaded
-        # on the next launch.  To detect this, a module's hash recursively includes
-        # all of its references.
-        # -> See ``Module.hash_module()``
         #
         # The dependency mechanism works for both static and dynamic (runtime) modifications.
         # When a module is reloaded at runtime, we recursively unload all of its
@@ -1472,40 +1765,39 @@ class Module:
         self.references = set()  # modules whose content we depend on
         self.dependents = set()  # modules that depend on our content
 
-        # Since module hashing is recursive, we improve performance by caching the hash of the
-        # module contents (kernel source, function source, and struct source).
-        # After all kernels, functions, and structs are added to the module (usually at import time),
-        # the content hash doesn't change.
-        # -> See ``Module.hash_module_recursive()``
-
-        self.content_hash = None
-
-        # number of times module auto-generates kernel key for user
-        # used to ensure unique kernel keys
-        self.count = 0
-
     def register_struct(self, struct):
         self.structs[struct.key] = struct
 
         # for a reload of module on next launch
-        self.unload()
+        self.mark_modified()
 
     def register_kernel(self, kernel):
+        # keep a reference to the latest version
         self.kernels[kernel.key] = kernel
+
+        # track all kernel objects, even if they are duplicates
+        self.live_kernels.add(kernel)
 
         self.find_references(kernel.adj)
 
         # for a reload of module on next launch
-        self.unload()
+        self.mark_modified()
 
-    def register_function(self, func, skip_adding_overload=False):
-        if func.key not in self.functions:
-            self.functions[func.key] = func
+    def register_function(self, func, scope_locals, skip_adding_overload=False):
+        # check for another Function with the same name in the same scope
+        obj = scope_locals.get(func.func.__name__)
+        if isinstance(obj, Function):
+            func_existing = obj
         else:
+            func_existing = None
+
+        # keep a reference to the latest version
+        self.functions[func.key] = func_existing or func
+
+        if func_existing:
             # Check whether the new function's signature match any that has
             # already been registered. If so, then we simply override it, as
             # Python would do it, otherwise we register it as a new overload.
-            func_existing = self.functions[func.key]
             sig = warp.types.get_signature(
                 func.input_types.values(),
                 func_name=func.key,
@@ -1517,19 +1809,43 @@ class Module:
                 arg_names=list(func_existing.input_types.keys()),
             )
             if sig == sig_existing:
+                # replace the top-level function, but keep existing overloads
+
+                # copy generic overloads
+                func.user_templates = func_existing.user_templates.copy()
+
+                # copy concrete overloads
+                if warp.types.is_generic_signature(sig):
+                    # skip overloads that were instantiated from the function being replaced
+                    for k, v in func_existing.user_overloads.items():
+                        if v.generic_parent != func_existing:
+                            func.user_overloads[k] = v
+                    func.user_templates[sig] = func
+                else:
+                    func.user_overloads = func_existing.user_overloads.copy()
+                    func.user_overloads[sig] = func
+
                 self.functions[func.key] = func
             elif not skip_adding_overload:
+                # check if this is a generic overload that replaces an existing one
+                if warp.types.is_generic_signature(sig):
+                    old_generic = func_existing.user_templates.get(sig)
+                    if old_generic is not None:
+                        # purge any concrete overloads that were instantiated from the old one
+                        for k, v in list(func_existing.user_overloads.items()):
+                            if v.generic_parent == old_generic:
+                                del func_existing.user_overloads[k]
                 func_existing.add_overload(func)
 
         self.find_references(func.adj)
 
         # for a reload of module on next launch
-        self.unload()
+        self.mark_modified()
 
-    def generate_unique_kernel_key(self, key):
-        unique_key = f"{key}_{self.count}"
-        self.count += 1
-        return unique_key
+    # find kernel corresponding to a Python function
+    def find_kernel(self, func):
+        qualname = warp.codegen.make_full_qualified_name(func)
+        return self.kernels.get(qualname)
 
     # collect all referenced functions / structs
     # given the AST of a function or kernel
@@ -1561,175 +1877,43 @@ class Module:
             if isinstance(arg.type, warp.codegen.Struct) and arg.type.module is not None:
                 add_ref(arg.type.module)
 
-    def hash_module(self, recompute_content_hash=False):
-        """Recursively compute and return a hash for the module.
+    def hash_module(self):
+        # compute latest hash
+        self.hasher = ModuleHasher(self)
+        return self.hasher.get_module_hash()
 
-        If ``recompute_content_hash`` is False, each module's previously
-        computed ``content_hash`` will be used.
-        """
-
-        def get_type_name(type_hint):
-            if isinstance(type_hint, warp.codegen.Struct):
-                return get_type_name(type_hint.cls)
-            return type_hint
-
-        def hash_recursive(module, visited):
-            # Hash this module, including all referenced modules recursively.
-            # The visited set tracks modules already visited to avoid circular references.
-
-            # check if we need to update the content hash
-            if not module.content_hash or recompute_content_hash:
-                # recompute content hash
-                ch = hashlib.sha256()
-
-                # Start with an empty constants dictionary in case any have been removed
-                module.constants = {}
-
-                # struct source
-                for struct in module.structs.values():
-                    s = ",".join(
-                        "{}: {}".format(name, get_type_name(type_hint))
-                        for name, type_hint in warp.codegen.get_annotations(struct.cls).items()
-                    )
-                    ch.update(bytes(s, "utf-8"))
-
-                # functions source
-                for function in module.functions.values():
-                    # include all concrete and generic overloads
-                    overloads = itertools.chain(function.user_overloads.items(), function.user_templates.items())
-                    for sig, func in overloads:
-                        # signature
-                        ch.update(bytes(sig, "utf-8"))
-
-                        # source
-                        ch.update(bytes(func.adj.source, "utf-8"))
-
-                        if func.custom_grad_func:
-                            ch.update(bytes(func.custom_grad_func.adj.source, "utf-8"))
-                        if func.custom_replay_func:
-                            ch.update(bytes(func.custom_replay_func.adj.source, "utf-8"))
-                        if func.replay_snippet:
-                            ch.update(bytes(func.replay_snippet, "utf-8"))
-                        if func.native_snippet:
-                            ch.update(bytes(func.native_snippet, "utf-8"))
-                        if func.adj_native_snippet:
-                            ch.update(bytes(func.adj_native_snippet, "utf-8"))
-
-                        # Populate constants referenced in this function
-                        if func.adj:
-                            module.constants.update(func.adj.get_constant_references())
-
-                # kernel source
-                for kernel in module.kernels.values():
-                    ch.update(bytes(kernel.key, "utf-8"))
-                    ch.update(bytes(kernel.adj.source, "utf-8"))
-                    # cache kernel arg types
-                    for arg, arg_type in kernel.adj.arg_types.items():
-                        s = f"{arg}: {get_type_name(arg_type)}"
-                        ch.update(bytes(s, "utf-8"))
-                    # for generic kernels the Python source is always the same,
-                    # but we hash the type signatures of all the overloads
-                    if kernel.is_generic:
-                        for sig in sorted(kernel.overloads.keys()):
-                            ch.update(bytes(sig, "utf-8"))
-
-                    # Populate constants referenced in this kernel
-                    module.constants.update(kernel.adj.get_constant_references())
-
-                # constants referenced in this module
-                for constant_name, constant_value in module.constants.items():
-                    ch.update(bytes(constant_name, "utf-8"))
-
-                    # hash the constant value
-                    if isinstance(constant_value, builtins.bool):
-                        # This needs to come before the check for `int` since all boolean
-                        # values are also instances of `int`.
-                        ch.update(struct_pack("?", constant_value))
-                    elif isinstance(constant_value, int):
-                        ch.update(struct_pack("<q", constant_value))
-                    elif isinstance(constant_value, float):
-                        ch.update(struct_pack("<d", constant_value))
-                    elif isinstance(constant_value, warp.types.float16):
-                        # float16 is a special case
-                        p = ctypes.pointer(ctypes.c_float(constant_value.value))
-                        ch.update(p.contents)
-                    elif isinstance(constant_value, tuple(warp.types.scalar_types)):
-                        p = ctypes.pointer(constant_value._type_(constant_value.value))
-                        ch.update(p.contents)
-                    elif isinstance(constant_value, ctypes.Array):
-                        ch.update(bytes(constant_value))
-                    else:
-                        raise RuntimeError(f"Invalid constant type: {type(constant_value)}")
-
-                module.content_hash = ch.digest()
-
-            h = hashlib.sha256()
-
-            # content hash
-            h.update(module.content_hash)
-
-            # configuration parameters
-            for k in sorted(module.options.keys()):
-                s = f"{k}={module.options[k]}"
-                h.update(bytes(s, "utf-8"))
-
-            # ensure to trigger recompilation if flags affecting kernel compilation are changed
-            if warp.config.verify_fp:
-                h.update(bytes("verify_fp", "utf-8"))
-
-            h.update(bytes(warp.config.mode, "utf-8"))
-
-            # recurse on references
-            visited.add(module)
-
-            sorted_deps = sorted(module.references, key=lambda m: m.name)
-            for dep in sorted_deps:
-                if dep not in visited:
-                    dep_hash = hash_recursive(dep, visited)
-                    h.update(dep_hash)
-
-            return h.digest()
-
-        return hash_recursive(self, visited=set())
-
-    def load(self, device, tile_size=0) -> bool:
-        from warp.utils import ScopedTimer
-
-        device = get_device(device)
+    def load(self, device, block_dim=None) -> ModuleExec:
+        device = runtime.get_device(device)
 
         # re-compile module if tile size (blockdim) changes
-        # todo: it would be better to have a method such as `module.get_kernel(tile_size=N)`
+        # todo: it would be better to have a method such as `module.get_kernel(block_dim=N)`
         # that can return a single kernel instance with a given block size
-        if self.options["tile_size"] != tile_size:
-            self.unload()
-        self.options["tile_size"] = tile_size
+        if block_dim != None:
+            if self.options["block_dim"] != block_dim:
+                self.unload()
+            self.options["block_dim"] = block_dim
 
-        if device.is_cpu:
-            # check if already loaded
-            if self.cpu_module:
-                return True
-            # avoid repeated build attempts
-            if self.cpu_build_failed:
-                return False
-            if not warp.is_cpu_available():
-                raise RuntimeError("Failed to build CPU module because no CPU build chain was found")
-        else:
-            # check if already loaded
-            if device.context in self.cuda_modules:
-                return True
-            # avoid repeated build attempts
-            if self.cuda_build_failed:
-                return False
-            if not warp.is_cuda_available():
-                raise RuntimeError("Failed to build CUDA module because CUDA is not available")
+        # compute the hash if needed
+        if self.hasher is None:
+            self.hasher = ModuleHasher(self)
+
+        # check if executable module is already loaded and not stale
+        exec = self.execs.get(device.context)
+        if exec is not None:
+            if exec.module_hash == self.hasher.module_hash:
+                return exec
+
+        # quietly avoid repeated build attempts to reduce error spew
+        if device.context in self.failed_builds:
+            return None
 
         module_name = "wp_" + self.name
-        module_hash = self.hash_module()
+        module_hash = self.hasher.module_hash
 
         # use a unique module path using the module short hash
         module_dir = os.path.join(warp.config.kernel_cache_dir, f"{module_name}_{module_hash.hex()[:7]}")
 
-        with ScopedTimer(
+        with warp.ScopedTimer(
             f"Module {self.name} {module_hash.hex()[:7]} load on device '{device}'", active=not warp.config.quiet
         ) as module_load_timer:
             # -----------------------------------------------------------
@@ -1777,7 +1961,7 @@ class Module:
                 or not warp.config.cache_kernels
                 or warp.config.verify_autograd_array_access
             ):
-                builder = ModuleBuilder(self, self.options)
+                builder = ModuleBuilder(self, self.options, hasher=self.hasher)
 
                 # create a temporary (process unique) dir for build outputs before moving to the binary dir
                 build_dir = os.path.join(
@@ -1804,7 +1988,7 @@ class Module:
                         output_path = os.path.join(build_dir, output_name)
 
                         # build object code
-                        with ScopedTimer("Compile x86", active=warp.config.verbose):
+                        with warp.ScopedTimer("Compile x86", active=warp.config.verbose):
                             warp.build.build_cpu(
                                 output_path,
                                 source_code_path,
@@ -1814,7 +1998,7 @@ class Module:
                             )
 
                     except Exception as e:
-                        self.cpu_build_failed = True
+                        self.failed_builds.add(None)
                         module_load_timer.extra_msg = " (error)"
                         raise (e)
 
@@ -1832,7 +2016,7 @@ class Module:
                         output_path = os.path.join(build_dir, output_name)
 
                         # generate PTX or CUBIN
-                        with ScopedTimer("Compile CUDA", active=warp.config.verbose):
+                        with warp.ScopedTimer("Compile CUDA", active=warp.config.verbose):
                             warp.build.build_cuda(
                                 source_code_path,
                                 output_arch,
@@ -1844,7 +2028,7 @@ class Module:
                             )
 
                     except Exception as e:
-                        self.cuda_build_failed = True
+                        self.failed_builds.add(device.context)
                         module_load_timer.extra_msg = " (error)"
                         raise (e)
 
@@ -1885,13 +2069,18 @@ class Module:
             # -----------------------------------------------------------
             # Load CPU or CUDA binary
             if device.is_cpu:
-                runtime.llvm.load_obj(binary_path.encode("utf-8"), module_name.encode("utf-8"))
-                self.cpu_module = module_name
+                # LLVM modules are identified using strings, so we need to ensure uniqueness
+                module_handle = f"{module_name}_{self.cpu_exec_id}"
+                self.cpu_exec_id += 1
+                runtime.llvm.load_obj(binary_path.encode("utf-8"), module_handle.encode("utf-8"))
+                module_exec = ModuleExec(module_handle, module_hash, device)
+                self.execs[None] = module_exec
 
             elif device.is_cuda:
                 cuda_module = warp.build.load_cuda(binary_path, device)
                 if cuda_module is not None:
-                    self.cuda_modules[device.context] = cuda_module
+                    module_exec = ModuleExec(cuda_module, module_hash, device)
+                    self.execs[device.context] = module_exec
                 else:
                     module_load_timer.extra_msg = " (error)"
                     raise Exception(f"Failed to load CUDA module '{self.name}'")
@@ -1902,65 +2091,29 @@ class Module:
                 # clean up build_dir used for this process regardless
                 shutil.rmtree(build_dir, ignore_errors=True)
 
-        return True
+        return module_exec
 
     def unload(self):
-        if self.cpu_module:
-            runtime.llvm.unload_obj(self.cpu_module.encode("utf-8"))
-            self.cpu_module = None
+        # force rehashing on next load
+        self.mark_modified()
 
-        # need to unload the CUDA module from all CUDA contexts where it is loaded
-        # note: we ensure that this doesn't change the current CUDA context
-        if self.cuda_modules:
-            saved_context = runtime.core.cuda_context_get_current()
-            for context, module in self.cuda_modules.items():
-                device = runtime.context_map[context]
-                if device.is_capturing:
-                    raise RuntimeError(f"Failed to unload CUDA module '{self.name}' because graph capture is active")
-                runtime.core.cuda_unload_module(context, module)
-            runtime.core.cuda_context_set_current(saved_context)
-            self.cuda_modules = {}
+        # clear loaded modules
+        self.execs = {}
 
-        # clear kernel hooks
-        self.kernel_hooks = {}
+    def mark_modified(self):
+        # clear hash data
+        self.hasher = None
 
-        # clear content hash
-        self.content_hash = None
+        # clear build failures
+        self.failed_builds = set()
 
-    # lookup and cache kernel entry points based on name, called after compilation / module load
+    # lookup kernel entry points based on name, called after compilation / module load
     def get_kernel_hooks(self, kernel, device):
-        # get all hooks for this device
-        device_hooks = self.kernel_hooks.get(device.context)
-        if device_hooks is None:
-            self.kernel_hooks[device.context] = device_hooks = {}
-
-        # look up this kernel
-        hooks = device_hooks.get(kernel)
-        if hooks is not None:
-            return hooks
-
-        name = kernel.get_mangled_name()
-
-        if device.is_cpu:
-            func = ctypes.CFUNCTYPE(None)
-            forward = func(
-                runtime.llvm.lookup(self.cpu_module.encode("utf-8"), (name + "_cpu_forward").encode("utf-8"))
-            )
-            backward = func(
-                runtime.llvm.lookup(self.cpu_module.encode("utf-8"), (name + "_cpu_backward").encode("utf-8"))
-            )
+        module_exec = self.execs.get(device.context)
+        if module_exec is not None:
+            return module_exec.get_kernel_hooks(kernel)
         else:
-            cu_module = self.cuda_modules[device.context]
-            forward = runtime.core.cuda_get_kernel(
-                device.context, cu_module, (name + "_cuda_kernel_forward").encode("utf-8")
-            )
-            backward = runtime.core.cuda_get_kernel(
-                device.context, cu_module, (name + "_cuda_kernel_backward").encode("utf-8")
-            )
-
-        hooks = KernelHooks(forward, backward)
-        device_hooks[kernel] = hooks
-        return hooks
+            raise RuntimeError(f"Module is not loaded on device {device}")
 
 
 # -------------------------------------------
@@ -2063,83 +2216,13 @@ class ContextGuard:
             runtime.core.cuda_context_set_current(self.saved_context)
 
 
-class Stream:
-    def __new__(cls, *args, **kwargs):
-        instance = super(Stream, cls).__new__(cls)
-        instance.cuda_stream = None
-        instance.owner = False
-        return instance
-
-    def __init__(self, device=None, **kwargs):
-        # event used internally for synchronization (cached to avoid creating temporary events)
-        self._cached_event = None
-
-        # we can't use get_device() if called during init, but we can use an explicit Device arg
-        if runtime is not None:
-            device = runtime.get_device(device)
-        elif not isinstance(device, Device):
-            raise RuntimeError(
-                "A device object is required when creating a stream before or during Warp initialization"
-            )
-
-        if not device.is_cuda:
-            raise RuntimeError(f"Device {device} is not a CUDA device")
-
-        self.device = device
-
-        # we pass cuda_stream through kwargs because cuda_stream=None is actually a valid value (CUDA default stream)
-        if "cuda_stream" in kwargs:
-            self.cuda_stream = kwargs["cuda_stream"]
-            device.runtime.core.cuda_stream_register(device.context, self.cuda_stream)
-        else:
-            self.cuda_stream = device.runtime.core.cuda_stream_create(device.context)
-            if not self.cuda_stream:
-                raise RuntimeError(f"Failed to create stream on device {device}")
-            self.owner = True
-
-    def __del__(self):
-        if not self.cuda_stream:
-            return
-
-        if self.owner:
-            runtime.core.cuda_stream_destroy(self.device.context, self.cuda_stream)
-        else:
-            runtime.core.cuda_stream_unregister(self.device.context, self.cuda_stream)
-
-    @property
-    def cached_event(self):
-        if self._cached_event is None:
-            self._cached_event = Event(self.device)
-        return self._cached_event
-
-    def record_event(self, event=None):
-        if event is None:
-            event = Event(self.device)
-        elif event.device != self.device:
-            raise RuntimeError(
-                f"Event from device {event.device} cannot be recorded on stream from device {self.device}"
-            )
-
-        runtime.core.cuda_event_record(event.cuda_event, self.cuda_stream)
-
-        return event
-
-    def wait_event(self, event):
-        runtime.core.cuda_stream_wait_event(self.cuda_stream, event.cuda_event)
-
-    def wait_stream(self, other_stream, event=None):
-        if event is None:
-            event = other_stream.cached_event
-
-        runtime.core.cuda_stream_wait_stream(self.cuda_stream, other_stream.cuda_stream, event.cuda_event)
-
-    # whether a graph capture is currently ongoing on this stream
-    @property
-    def is_capturing(self):
-        return bool(runtime.core.cuda_stream_is_capturing(self.cuda_stream))
-
-
 class Event:
+    """A CUDA event that can be recorded onto a stream.
+
+    Events can be used for device-side synchronization, which do not block
+    the host thread.
+    """
+
     # event creation flags
     class Flags:
         DEFAULT = 0x0
@@ -2147,11 +2230,25 @@ class Event:
         DISABLE_TIMING = 0x2
 
     def __new__(cls, *args, **kwargs):
+        """Creates a new event instance."""
         instance = super(Event, cls).__new__(cls)
         instance.owner = False
         return instance
 
-    def __init__(self, device=None, cuda_event=None, enable_timing=False):
+    def __init__(self, device: "Devicelike" = None, cuda_event=None, enable_timing: bool = False):
+        """Initializes the event on a CUDA device.
+
+        Args:
+            device: The CUDA device whose streams this event may be recorded onto.
+              If ``None``, then the current default device will be used.
+            cuda_event: A pointer to a previously allocated CUDA event. If
+              `None`, then a new event will be allocated on the associated device.
+            enable_timing: If ``True`` this event will record timing data.
+              :func:`~warp.get_event_elapsed_time` can be used to measure the
+              time between two events created with ``enable_timing=True`` and
+              recorded onto streams.
+        """
+
         device = get_device(device)
         if not device.is_cuda:
             raise RuntimeError(f"Device {device} is not a CUDA device")
@@ -2176,6 +2273,142 @@ class Event:
         runtime.core.cuda_event_destroy(self.cuda_event)
 
 
+class Stream:
+    def __new__(cls, *args, **kwargs):
+        instance = super(Stream, cls).__new__(cls)
+        instance.cuda_stream = None
+        instance.owner = False
+        return instance
+
+    def __init__(self, device: Optional[Union["Device", str]] = None, priority: int = 0, **kwargs):
+        """Initialize the stream on a device with an optional specified priority.
+
+        Args:
+            device: The CUDA device on which this stream will be created.
+            priority: An optional integer specifying the requested stream priority.
+              Can be -1 (high priority) or 0 (low/default priority).
+              Values outside this range will be clamped.
+            cuda_stream (int): A optional external stream handle passed as an
+              integer. The caller is responsible for ensuring that the external
+              stream does not get destroyed while it is referenced by this
+              object.
+
+        Raises:
+            RuntimeError: If function is called before Warp has completed
+              initialization with a ``device`` that is not an instance of
+              :class:`Device``.
+            RuntimeError: ``device`` is not a CUDA Device.
+            RuntimeError: The stream could not be created on the device.
+            TypeError: The requested stream priority is not an integer.
+        """
+        # event used internally for synchronization (cached to avoid creating temporary events)
+        self._cached_event = None
+
+        # we can't use get_device() if called during init, but we can use an explicit Device arg
+        if runtime is not None:
+            device = runtime.get_device(device)
+        elif not isinstance(device, Device):
+            raise RuntimeError(
+                "A Device object is required when creating a stream before or during Warp initialization"
+            )
+
+        if not device.is_cuda:
+            raise RuntimeError(f"Device {device} is not a CUDA device")
+
+        self.device = device
+
+        # we pass cuda_stream through kwargs because cuda_stream=None is actually a valid value (CUDA default stream)
+        if "cuda_stream" in kwargs:
+            self.cuda_stream = kwargs["cuda_stream"]
+            device.runtime.core.cuda_stream_register(device.context, self.cuda_stream)
+        else:
+            if not isinstance(priority, int):
+                raise TypeError("Stream priority must be an integer.")
+            clamped_priority = max(-1, min(priority, 0))  # Only support two priority levels
+            self.cuda_stream = device.runtime.core.cuda_stream_create(device.context, clamped_priority)
+
+            if not self.cuda_stream:
+                raise RuntimeError(f"Failed to create stream on device {device}")
+            self.owner = True
+
+    def __del__(self):
+        if not self.cuda_stream:
+            return
+
+        if self.owner:
+            runtime.core.cuda_stream_destroy(self.device.context, self.cuda_stream)
+        else:
+            runtime.core.cuda_stream_unregister(self.device.context, self.cuda_stream)
+
+    @property
+    def cached_event(self) -> Event:
+        if self._cached_event is None:
+            self._cached_event = Event(self.device)
+        return self._cached_event
+
+    def record_event(self, event: Optional[Event] = None) -> Event:
+        """Record an event onto the stream.
+
+        Args:
+            event: A warp.Event instance to be recorded onto the stream. If not
+              provided, an :class:`~warp.Event` on the same device will be created.
+
+        Raises:
+            RuntimeError: The provided :class:`~warp.Event` is from a different device than
+                the recording stream.
+        """
+        if event is None:
+            event = Event(self.device)
+        elif event.device != self.device:
+            raise RuntimeError(
+                f"Event from device {event.device} cannot be recorded on stream from device {self.device}"
+            )
+
+        runtime.core.cuda_event_record(event.cuda_event, self.cuda_stream)
+
+        return event
+
+    def wait_event(self, event: Event):
+        """Makes all future work in this stream wait until `event` has completed.
+
+        This function does not block the host thread.
+        """
+        runtime.core.cuda_stream_wait_event(self.cuda_stream, event.cuda_event)
+
+    def wait_stream(self, other_stream: "Stream", event: Optional[Event] = None):
+        """Records an event on `other_stream` and makes this stream wait on it.
+
+        All work added to this stream after this function has been called will
+        delay their execution until all preceding commands in `other_stream`
+        have completed.
+
+        This function does not block the host thread.
+
+        Args:
+            other_stream: The stream on which the calling stream will wait for
+              previously issued commands to complete before executing subsequent
+              commands.
+            event: An optional :class:`Event` instance that will be used to
+              record an event onto ``other_stream``. If ``None``, an internally
+              managed :class:`Event` instance will be used.
+        """
+
+        if event is None:
+            event = other_stream.cached_event
+
+        runtime.core.cuda_stream_wait_stream(self.cuda_stream, other_stream.cuda_stream, event.cuda_event)
+
+    @property
+    def is_capturing(self) -> bool:
+        """A boolean indicating whether a graph capture is currently ongoing on this stream."""
+        return bool(runtime.core.cuda_stream_is_capturing(self.cuda_stream))
+
+    @property
+    def priority(self) -> int:
+        """An integer representing the priority of the stream."""
+        return runtime.core.cuda_stream_get_priority(self.cuda_stream)
+
+
 class Device:
     """A device to allocate Warp arrays and to launch kernels on.
 
@@ -2185,14 +2418,14 @@ class Device:
             or ``"CPU"`` if the processor name cannot be determined.
         arch: An integer representing the compute capability version number calculated as
             ``10 * major + minor``. ``0`` for CPU devices.
-        is_uva: A boolean indicating whether or not the device supports unified addressing.
+        is_uva: A boolean indicating whether the device supports unified addressing.
             ``False`` for CPU devices.
-        is_cubin_supported: A boolean indicating whether or not Warp's version of NVRTC can directly
+        is_cubin_supported: A boolean indicating whether Warp's version of NVRTC can directly
             generate CUDA binary files (cubin) for this device's architecture. ``False`` for CPU devices.
-        is_mempool_supported: A boolean indicating whether or not the device supports using the
+        is_mempool_supported: A boolean indicating whether the device supports using the
             ``cuMemAllocAsync`` and ``cuMemPool`` family of APIs for stream-ordered memory allocations. ``False`` for
             CPU devices.
-        is_primary: A boolean indicating whether or not this device's CUDA context is also the
+        is_primary: A boolean indicating whether this device's CUDA context is also the
             device's primary context.
         uuid: A string representing the UUID of the CUDA device. The UUID is in the same format used by
             ``nvidia-smi -L``. ``None`` for CPU devices.
@@ -2217,8 +2450,8 @@ class Device:
         self._stream = None
         self.null_stream = None
 
-        # set of streams where capture has started
-        self.captures = set()
+        # maps streams to started graph captures
+        self.captures = {}
 
         self.context_guard = ContextGuard(self)
 
@@ -2281,7 +2514,7 @@ class Device:
 
             # initialize streams unless context acquisition is postponed
             if self._context is not None:
-                self.init_streams()
+                self._init_streams()
 
             # TODO: add more device-specific dispatch functions
             self.memset = lambda ptr, value, size: runtime.core.memset_device(self.context, ptr, value, size)
@@ -2292,7 +2525,13 @@ class Device:
         else:
             raise RuntimeError(f"Invalid device ordinal ({ordinal})'")
 
-    def get_allocator(self, pinned=False):
+    def get_allocator(self, pinned: bool = False):
+        """Get the memory allocator for this device.
+
+        Args:
+            pinned: If ``True``, an allocator for pinned memory will be
+              returned. Only applicable when this device is a CPU device.
+        """
         if self.is_cuda:
             return self.current_allocator
         else:
@@ -2301,7 +2540,8 @@ class Device:
             else:
                 return self.default_allocator
 
-    def init_streams(self):
+    def _init_streams(self):
+        """Initializes the device's current stream and the device's null stream."""
         # create a stream for asynchronous work
         self.set_stream(Stream(self))
 
@@ -2309,17 +2549,18 @@ class Device:
         self.null_stream = Stream(self, cuda_stream=None)
 
     @property
-    def is_cpu(self):
-        """A boolean indicating whether or not the device is a CPU device."""
+    def is_cpu(self) -> bool:
+        """A boolean indicating whether the device is a CPU device."""
         return self.ordinal < 0
 
     @property
-    def is_cuda(self):
-        """A boolean indicating whether or not the device is a CUDA device."""
+    def is_cuda(self) -> bool:
+        """A boolean indicating whether the device is a CUDA device."""
         return self.ordinal >= 0
 
     @property
-    def is_capturing(self):
+    def is_capturing(self) -> bool:
+        """A boolean indicating whether this device's default stream is currently capturing a graph."""
         if self.is_cuda and self.stream is not None:
             # There is no CUDA API to check if graph capture was started on a device, so we
             # can't tell if a capture was started by external code on a different stream.
@@ -2343,17 +2584,17 @@ class Device:
                 raise RuntimeError(f"Failed to acquire primary context for device {self}")
             self.runtime.context_map[self._context] = self
             # initialize streams
-            self.init_streams()
+            self._init_streams()
             runtime.core.cuda_context_set_current(prev_context)
         return self._context
 
     @property
-    def has_context(self):
-        """A boolean indicating whether or not the device has a CUDA context associated with it."""
+    def has_context(self) -> bool:
+        """A boolean indicating whether the device has a CUDA context associated with it."""
         return self._context is not None
 
     @property
-    def stream(self):
+    def stream(self) -> Stream:
         """The stream associated with a CUDA device.
 
         Raises:
@@ -2368,7 +2609,22 @@ class Device:
     def stream(self, stream):
         self.set_stream(stream)
 
-    def set_stream(self, stream, sync=True):
+    def set_stream(self, stream: Stream, sync: bool = True) -> None:
+        """Set the current stream for this CUDA device.
+
+        The current stream will be used by default for all kernel launches and
+        memory operations on this device.
+
+        If this is an external stream, the caller is responsible for
+        guaranteeing the lifetime of the stream.
+
+        Consider using :class:`warp.ScopedStream` instead.
+
+        Args:
+            stream: The stream to set as this device's current stream.
+            sync: If ``True``, then ``stream`` will perform a device-side
+              synchronization with the device's previous current stream.
+        """
         if self.is_cuda:
             if stream.device != self:
                 raise RuntimeError(f"Stream from device {stream.device} cannot be used on device {self}")
@@ -2379,12 +2635,12 @@ class Device:
             raise RuntimeError(f"Device {self} is not a CUDA device")
 
     @property
-    def has_stream(self):
-        """A boolean indicating whether or not the device has a stream associated with it."""
+    def has_stream(self) -> bool:
+        """A boolean indicating whether the device has a stream associated with it."""
         return self._stream is not None
 
     @property
-    def total_memory(self):
+    def total_memory(self) -> int:
         """The total amount of device memory available in bytes.
 
         This function is currently only implemented for CUDA devices. 0 will be returned if called on a CPU device.
@@ -2398,7 +2654,7 @@ class Device:
             return 0
 
     @property
-    def free_memory(self):
+    def free_memory(self) -> int:
         """The amount of memory on the device that is free according to the OS in bytes.
 
         This function is currently only implemented for CUDA devices. 0 will be returned if called on a CPU device.
@@ -2455,20 +2711,25 @@ Devicelike = Union[Device, str, None]
 class Graph:
     def __new__(cls, *args, **kwargs):
         instance = super(Graph, cls).__new__(cls)
-        instance.exec = None
+        instance.graph_exec = None
         return instance
 
-    def __init__(self, device: Device, exec: ctypes.c_void_p):
+    def __init__(self, device: Device, capture_id: int):
         self.device = device
-        self.exec = exec
+        self.capture_id = capture_id
+        self.module_execs = set()
 
     def __del__(self):
-        if not self.exec:
+        if not self.graph_exec:
             return
 
         # use CUDA context guard to avoid side effects during garbage collection
         with self.device.context_guard:
-            runtime.core.cuda_graph_destroy(self.device.context, self.exec)
+            runtime.core.cuda_graph_destroy(self.device.context, self.graph_exec)
+
+    # retain executable CUDA modules used by this graph, which prevents them from being unloaded
+    def retain_module_exec(self, module_exec: ModuleExec):
+        self.module_execs.add(module_exec)
 
 
 class Runtime:
@@ -2508,6 +2769,9 @@ class Runtime:
             self.llvm.lookup.restype = ctypes.c_uint64
         else:
             self.llvm = None
+
+        # maps capture ids to graphs
+        self.captures = {}
 
         # setup c-types for warp.dll
         try:
@@ -2754,6 +3018,12 @@ class Runtime:
             self.core.mesh_refit_host.argtypes = [ctypes.c_uint64]
             self.core.mesh_refit_device.argtypes = [ctypes.c_uint64]
 
+            self.core.mesh_set_points_host.argtypes = [ctypes.c_uint64, warp.types.array_t]
+            self.core.mesh_set_points_device.argtypes = [ctypes.c_uint64, warp.types.array_t]
+
+            self.core.mesh_set_velocities_host.argtypes = [ctypes.c_uint64, warp.types.array_t]
+            self.core.mesh_set_velocities_device.argtypes = [ctypes.c_uint64, warp.types.array_t]
+
             self.core.hash_grid_create_host.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
             self.core.hash_grid_create_host.restype = ctypes.c_uint64
             self.core.hash_grid_destroy_host.argtypes = [ctypes.c_uint64]
@@ -2820,48 +3090,38 @@ class Runtime:
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_int,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
+                ctypes.c_float * 9,
+                ctypes.c_float * 3,
                 ctypes.c_bool,
+                ctypes.c_float,
             ]
             self.core.volume_f_from_tiles_device.restype = ctypes.c_uint64
             self.core.volume_v_from_tiles_device.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_int,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
+                ctypes.c_float * 9,
+                ctypes.c_float * 3,
                 ctypes.c_bool,
+                ctypes.c_float * 3,
             ]
             self.core.volume_v_from_tiles_device.restype = ctypes.c_uint64
             self.core.volume_i_from_tiles_device.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_int,
-                ctypes.c_float,
-                ctypes.c_int,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
+                ctypes.c_float * 9,
+                ctypes.c_float * 3,
                 ctypes.c_bool,
+                ctypes.c_int,
             ]
             self.core.volume_i_from_tiles_device.restype = ctypes.c_uint64
             self.core.volume_index_from_tiles_device.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_int,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
+                ctypes.c_float * 9,
+                ctypes.c_float * 3,
                 ctypes.c_bool,
             ]
             self.core.volume_index_from_tiles_device.restype = ctypes.c_uint64
@@ -2869,10 +3129,8 @@ class Runtime:
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_int,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_float,
+                ctypes.c_float * 9,
+                ctypes.c_float * 3,
                 ctypes.c_bool,
             ]
             self.core.volume_from_active_voxels_device.restype = ctypes.c_uint64
@@ -3040,7 +3298,7 @@ class Runtime:
             self.core.cuda_set_mempool_access_enabled.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
             self.core.cuda_set_mempool_access_enabled.restype = ctypes.c_int
 
-            self.core.cuda_stream_create.argtypes = [ctypes.c_void_p]
+            self.core.cuda_stream_create.argtypes = [ctypes.c_void_p, ctypes.c_int]
             self.core.cuda_stream_create.restype = ctypes.c_void_p
             self.core.cuda_stream_destroy.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.cuda_stream_destroy.restype = None
@@ -3056,6 +3314,10 @@ class Runtime:
             self.core.cuda_stream_wait_stream.restype = None
             self.core.cuda_stream_is_capturing.argtypes = [ctypes.c_void_p]
             self.core.cuda_stream_is_capturing.restype = ctypes.c_int
+            self.core.cuda_stream_get_capture_id.argtypes = [ctypes.c_void_p]
+            self.core.cuda_stream_get_capture_id.restype = ctypes.c_uint64
+            self.core.cuda_stream_get_priority.argtypes = [ctypes.c_void_p]
+            self.core.cuda_stream_get_priority.restype = ctypes.c_int
 
             self.core.cuda_event_create.argtypes = [ctypes.c_void_p, ctypes.c_uint]
             self.core.cuda_event_create.restype = ctypes.c_void_p
@@ -3430,10 +3692,10 @@ class Runtime:
 
         raise ValueError(f"Invalid device identifier: {ident}")
 
-    def set_default_device(self, ident: Devicelike):
+    def set_default_device(self, ident: Devicelike) -> None:
         self.default_device = self.get_device(ident)
 
-    def get_current_cuda_device(self):
+    def get_current_cuda_device(self) -> Device:
         current_context = self.core.cuda_context_get_current()
         if current_context is not None:
             current_device = self.context_map.get(current_context)
@@ -3463,7 +3725,7 @@ class Runtime:
             else:
                 raise RuntimeError('"cuda" device requested but CUDA is not supported by the hardware or driver')
 
-    def rename_device(self, device, alias):
+    def rename_device(self, device, alias) -> Device:
         del self.device_map[device.alias]
         device.alias = alias
         self.device_map[alias] = device
@@ -3510,7 +3772,7 @@ class Runtime:
 
                 return device
 
-    def unmap_cuda_device(self, alias):
+    def unmap_cuda_device(self, alias) -> None:
         device = self.device_map.get(alias)
 
         # make sure the alias refers to a CUDA device
@@ -3521,7 +3783,7 @@ class Runtime:
         del self.context_map[device.context]
         self.cuda_devices.remove(device)
 
-    def verify_cuda_device(self, device: Devicelike = None):
+    def verify_cuda_device(self, device: Devicelike = None) -> None:
         if warp.config.verify_cuda:
             device = runtime.get_device(device)
             if not device.is_cuda:
@@ -3533,13 +3795,13 @@ class Runtime:
 
 
 # global entry points
-def is_cpu_available():
+def is_cpu_available() -> bool:
     init()
 
-    return runtime.llvm
+    return runtime.llvm is not None
 
 
-def is_cuda_available():
+def is_cuda_available() -> bool:
     return get_cuda_device_count() > 0
 
 
@@ -3623,8 +3885,8 @@ def get_device(ident: Devicelike = None) -> Device:
     return runtime.get_device(ident)
 
 
-def set_device(ident: Devicelike):
-    """Sets the target device identified by the argument."""
+def set_device(ident: Devicelike) -> None:
+    """Sets the default device identified by the argument."""
 
     init()
 
@@ -3652,7 +3914,7 @@ def map_cuda_device(alias: str, context: ctypes.c_void_p = None) -> Device:
     return runtime.map_cuda_device(alias, context)
 
 
-def unmap_cuda_device(alias: str):
+def unmap_cuda_device(alias: str) -> None:
     """Remove a CUDA device with the given alias."""
 
     init()
@@ -3660,7 +3922,7 @@ def unmap_cuda_device(alias: str):
     runtime.unmap_cuda_device(alias)
 
 
-def is_mempool_supported(device: Devicelike):
+def is_mempool_supported(device: Devicelike) -> bool:
     """Check if CUDA memory pool allocators are available on the device."""
 
     init()
@@ -3670,7 +3932,7 @@ def is_mempool_supported(device: Devicelike):
     return device.is_mempool_supported
 
 
-def is_mempool_enabled(device: Devicelike):
+def is_mempool_enabled(device: Devicelike) -> bool:
     """Check if CUDA memory pool allocators are enabled on the device."""
 
     init()
@@ -3680,7 +3942,7 @@ def is_mempool_enabled(device: Devicelike):
     return device.is_mempool_enabled
 
 
-def set_mempool_enabled(device: Devicelike, enable: bool):
+def set_mempool_enabled(device: Devicelike, enable: bool) -> None:
     """Enable or disable CUDA memory pool allocators on the device.
 
     Pooled allocators are typically faster and allow allocating memory during graph capture.
@@ -3711,7 +3973,7 @@ def set_mempool_enabled(device: Devicelike, enable: bool):
             raise ValueError("Memory pools are only supported on CUDA devices")
 
 
-def set_mempool_release_threshold(device: Devicelike, threshold: Union[int, float]):
+def set_mempool_release_threshold(device: Devicelike, threshold: Union[int, float]) -> None:
     """Set the CUDA memory pool release threshold on the device.
 
     This is the amount of reserved memory to hold onto before trying to release memory back to the OS.
@@ -3742,7 +4004,7 @@ def set_mempool_release_threshold(device: Devicelike, threshold: Union[int, floa
         raise RuntimeError(f"Failed to set memory pool release threshold for device {device}")
 
 
-def get_mempool_release_threshold(device: Devicelike):
+def get_mempool_release_threshold(device: Devicelike) -> int:
     """Get the CUDA memory pool release threshold on the device."""
 
     init()
@@ -3758,7 +4020,7 @@ def get_mempool_release_threshold(device: Devicelike):
     return runtime.core.cuda_device_get_mempool_release_threshold(device.ordinal)
 
 
-def is_peer_access_supported(target_device: Devicelike, peer_device: Devicelike):
+def is_peer_access_supported(target_device: Devicelike, peer_device: Devicelike) -> bool:
     """Check if `peer_device` can directly access the memory of `target_device` on this system.
 
     This applies to memory allocated using default CUDA allocators.  For memory allocated using
@@ -3779,7 +4041,7 @@ def is_peer_access_supported(target_device: Devicelike, peer_device: Devicelike)
     return bool(runtime.core.cuda_is_peer_access_supported(target_device.ordinal, peer_device.ordinal))
 
 
-def is_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike):
+def is_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike) -> bool:
     """Check if `peer_device` can currently access the memory of `target_device`.
 
     This applies to memory allocated using default CUDA allocators.  For memory allocated using
@@ -3800,7 +4062,7 @@ def is_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike):
     return bool(runtime.core.cuda_is_peer_access_enabled(target_device.context, peer_device.context))
 
 
-def set_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike, enable: bool):
+def set_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike, enable: bool) -> None:
     """Enable or disable direct access from `peer_device` to the memory of `target_device`.
 
     Enabling peer access can improve the speed of peer-to-peer memory transfers, but can have
@@ -3832,7 +4094,7 @@ def set_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike, 
         raise RuntimeError(f"Failed to {action} peer access from device {peer_device} to device {target_device}")
 
 
-def is_mempool_access_supported(target_device: Devicelike, peer_device: Devicelike):
+def is_mempool_access_supported(target_device: Devicelike, peer_device: Devicelike) -> bool:
     """Check if `peer_device` can directly access the memory pool of `target_device`.
 
     If mempool access is possible, it can be managed using `set_mempool_access_enabled()` and `is_mempool_access_enabled()`.
@@ -3849,7 +4111,7 @@ def is_mempool_access_supported(target_device: Devicelike, peer_device: Deviceli
     return target_device.is_mempool_supported and is_peer_access_supported(target_device, peer_device)
 
 
-def is_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelike):
+def is_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelike) -> bool:
     """Check if `peer_device` can currently access the memory pool of `target_device`.
 
     This applies to memory allocated using CUDA pooled allocators.  For memory allocated using
@@ -3870,7 +4132,7 @@ def is_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelike
     return bool(runtime.core.cuda_is_mempool_access_enabled(target_device.ordinal, peer_device.ordinal))
 
 
-def set_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelike, enable: bool):
+def set_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelike, enable: bool) -> None:
     """Enable or disable access from `peer_device` to the memory pool of `target_device`.
 
     This applies to memory allocated using CUDA pooled allocators.  For memory allocated using
@@ -3906,26 +4168,41 @@ def set_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelik
 
 
 def get_stream(device: Devicelike = None) -> Stream:
-    """Return the stream currently used by the given device"""
+    """Return the stream currently used by the given device.
+
+    Args:
+        device: An optional :class:`Device` instance or device alias
+          (e.g. "cuda:0") for which the current stream will be returned.
+          If ``None``, the default device will be used.
+
+    Raises:
+        RuntimeError: The device is not a CUDA device.
+    """
 
     return get_device(device).stream
 
 
-def set_stream(stream, device: Devicelike = None, sync: bool = False):
-    """Set the stream to be used by the given device.
+def set_stream(stream: Stream, device: Devicelike = None, sync: bool = False) -> None:
+    """Convenience function for calling :meth:`Device.set_stream` on the given ``device``.
 
-    If this is an external stream, caller is responsible for guaranteeing the lifetime of the stream.
-    Consider using wp.ScopedStream instead.
+    Args:
+        device: An optional :class:`Device` instance or device alias
+          (e.g. "cuda:0") for which the current stream is to be replaced with
+          ``stream``. If ``None``, the default device will be used.
+        stream: The stream to set as this device's current stream.
+        sync: If ``True``, then ``stream`` will perform a device-side
+          synchronization with the device's previous current stream.
     """
 
     get_device(device).set_stream(stream, sync=sync)
 
 
-def record_event(event: Event = None):
-    """Record a CUDA event on the current stream.
+def record_event(event: Optional[Event] = None):
+    """Convenience function for calling :meth:`Stream.record_event` on the current stream.
 
     Args:
-        event: Event to record. If None, a new Event will be created.
+        event: :class:`Event` instance to record. If ``None``, a new :class:`Event`
+          instance will be created.
 
     Returns:
         The recorded event.
@@ -3935,29 +4212,31 @@ def record_event(event: Event = None):
 
 
 def wait_event(event: Event):
-    """Make the current stream wait for a CUDA event.
+    """Convenience function for calling :meth:`Stream.wait_event` on the current stream.
 
     Args:
-        event: Event to wait for.
+        event: :class:`Event` instance to wait for.
     """
 
     get_stream().wait_event(event)
 
 
-def get_event_elapsed_time(start_event: Event, end_event: Event, synchronize: bool = True):
+def get_event_elapsed_time(start_event: Event, end_event: Event, synchronize: Optional[bool] = True):
     """Get the elapsed time between two recorded events.
 
-    The result is in milliseconds with a resolution of about 0.5 microsecond.
-
-    Both events must have been previously recorded with ``wp.record_event()`` or ``wp.Stream.record_event()``.
+    Both events must have been previously recorded with
+    :func:`~warp.record_event()` or :meth:`warp.Stream.record_event()`.
 
     If ``synchronize`` is False, the caller must ensure that device execution has reached ``end_event``
     prior to calling ``get_event_elapsed_time()``.
 
     Args:
-        start_event (Event): The start event.
-        end_event (Event): The end event.
-        synchronize (bool, optional): Whether Warp should synchronize on the ``end_event``.
+        start_event: The start event.
+        end_event: The end event.
+        synchronize: Whether Warp should synchronize on the ``end_event``.
+
+    Returns:
+        The elapsed time in milliseconds with a resolution about 0.5 ms.
     """
 
     # ensure the end_event is reached
@@ -3967,14 +4246,19 @@ def get_event_elapsed_time(start_event: Event, end_event: Event, synchronize: bo
     return runtime.core.cuda_event_elapsed_time(start_event.cuda_event, end_event.cuda_event)
 
 
-def wait_stream(stream: Stream, event: Event = None):
-    """Make the current stream wait for another CUDA stream to complete its work.
+def wait_stream(other_stream: Stream, event: Event = None):
+    """Convenience function for calling :meth:`Stream.wait_stream` on the current stream.
 
     Args:
-        event: Event to be used.  If None, a new Event will be created.
+        other_stream: The stream on which the calling stream will wait for
+          previously issued commands to complete before executing subsequent
+          commands.
+        event: An optional :class:`Event` instance that will be used to
+          record an event onto ``other_stream``. If ``None``, an internally
+          managed :class:`Event` instance will be used.
     """
 
-    get_stream().wait_stream(stream, event=event)
+    get_stream().wait_stream(other_stream, event=event)
 
 
 class RegisteredGLBuffer:
@@ -4410,7 +4694,7 @@ def from_numpy(
         dtype: The data type of the new Warp array. If this is not provided, the data type will be inferred.
         shape: The shape of the Warp array.
         device: The device on which the Warp array will be constructed.
-        requires_grad: Whether or not gradients will be tracked for this array.
+        requires_grad: Whether gradients will be tracked for this array.
 
     Raises:
         RuntimeError: The data type of the NumPy array is not supported.
@@ -4446,7 +4730,7 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             return arg_type.__ctype__()
 
         elif isinstance(value, warp.types.array_t):
-            # accept array descriptors verbatum
+            # accept array descriptors verbatim
             return value
 
         else:
@@ -4562,13 +4846,14 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
 # so that launches can be replayed quickly, use `wp.launch(..., record_cmd=True)`
 class Launch:
     def __init__(self, kernel, device, hooks=None, params=None, params_addr=None, bounds=None, max_blocks=0):
+        # retain the module executable so it doesn't get unloaded
+        self.module_exec = kernel.module.load(device)
+        if not self.module_exec:
+            raise RuntimeError(f"Failed to load module {kernel.module.name} on device {device}")
+
         # if not specified look up hooks
         if not hooks:
-            module = kernel.module
-            if not module.load(device):
-                return
-
-            hooks = module.get_kernel_hooks(kernel, device)
+            hooks = self.module_exec.get_kernel_hooks(kernel)
 
         # if not specified set a zero bound
         if not bounds:
@@ -4666,6 +4951,15 @@ class Launch:
         else:
             if stream is None:
                 stream = self.device.stream
+
+            # If the stream is capturing, we retain the CUDA module so that it doesn't get unloaded
+            # before the captured graph is released.
+            if runtime.core.cuda_stream_is_capturing(stream.cuda_stream):
+                capture_id = runtime.core.cuda_stream_get_capture_id(stream.cuda_stream)
+                graph = runtime.captures.get(capture_id)
+                if graph is not None:
+                    graph.retain_module_exec(self.module_exec)
+
             runtime.core.cuda_launch_kernel(
                 self.device.context,
                 self.hooks.forward,
@@ -4763,12 +5057,12 @@ def launch(
             kernel = kernel.add_overload(fwd_types)
 
         # delay load modules, including new overload if needed
-        module = kernel.module
-        if not module.load(device, block_dim):
+        module_exec = kernel.module.load(device, block_dim)
+        if not module_exec:
             return
 
         # late bind
-        hooks = module.get_kernel_hooks(kernel, device)
+        hooks = module_exec.get_kernel_hooks(kernel)
 
         pack_args(fwd_args, params)
         pack_args(adj_args, params, adjoint=True)
@@ -4803,6 +5097,14 @@ def launch(
 
             if stream is None:
                 stream = device.stream
+
+            # If the stream is capturing, we retain the CUDA module so that it doesn't get unloaded
+            # before the captured graph is released.
+            if runtime.core.cuda_stream_is_capturing(stream.cuda_stream):
+                capture_id = runtime.core.cuda_stream_get_capture_id(stream.cuda_stream)
+                graph = runtime.captures.get(capture_id)
+                if graph is not None:
+                    graph.retain_module_exec(module_exec)
 
             if adjoint:
                 if hooks.backward is None:
@@ -4852,7 +5154,7 @@ def launch(
 
         # detect illegal inter-kernel read/write access patterns if verification flag is set
         if warp.config.verify_autograd_array_access:
-            runtime.tape.check_kernel_array_access(kernel, fwd_args)
+            runtime.tape._check_kernel_array_access(kernel, fwd_args)
 
 
 def synchronize():
@@ -4897,7 +5199,7 @@ def synchronize_device(device: Devicelike = None):
         runtime.core.cuda_context_synchronize(device.context)
 
 
-def synchronize_stream(stream_or_device=None):
+def synchronize_stream(stream_or_device: Union[Stream, Devicelike, None] = None):
     """Synchronize the calling CPU thread with any outstanding CUDA work on the specified stream.
 
     This function allows the host application code to ensure that all kernel launches
@@ -5021,7 +5323,7 @@ def set_module_options(options: Dict[str, Any], module: Optional[Any] = None):
         m = module
 
     get_module(m.__name__).options.update(options)
-    get_module(m.__name__).unload()
+    get_module(m.__name__).mark_modified()
 
 
 def get_module_options(module: Optional[Any] = None) -> Dict[str, Any]:
@@ -5048,7 +5350,7 @@ def capture_begin(device: Devicelike = None, stream=None, force_module_load=None
     Args:
         device: The CUDA device to capture on
         stream: The CUDA stream to capture on
-        force_module_load: Whether or not to force loading of all kernels before capture.
+        force_module_load: Whether to force loading of all kernels before capture.
           In general it is better to use :func:`~warp.load_module()` to selectively load kernels.
           When running with CUDA drivers that support CUDA 12.3 or newer, this option is not recommended to be set to
           ``True`` because kernels can be loaded during graph capture on more recent drivers. If this argument is
@@ -5088,10 +5390,17 @@ def capture_begin(device: Devicelike = None, stream=None, force_module_load=None
         if force_module_load:
             force_load(device)
 
-    device.captures.add(stream)
-
     if not runtime.core.cuda_graph_begin_capture(device.context, stream.cuda_stream, int(external)):
         raise RuntimeError(runtime.get_error_string())
+
+    capture_id = runtime.core.cuda_stream_get_capture_id(stream.cuda_stream)
+    graph = Graph(device, capture_id)
+
+    # add to ongoing captures on the device
+    device.captures[stream] = graph
+
+    # add to lookup table by globally unique capture id
+    runtime.captures[capture_id] = graph
 
 
 def capture_end(device: Devicelike = None, stream: Stream = None) -> Graph:
@@ -5114,21 +5423,27 @@ def capture_end(device: Devicelike = None, stream: Stream = None) -> Graph:
             raise RuntimeError("Must be a CUDA device")
         stream = device.stream
 
-    if stream not in device.captures:
+    # get the graph being captured
+    graph = device.captures.get(stream)
+
+    if graph is None:
         raise RuntimeError("Graph capture is not active on this stream")
 
-    device.captures.remove(stream)
+    del device.captures[stream]
+    del runtime.captures[graph.capture_id]
 
-    graph = ctypes.c_void_p()
-    result = runtime.core.cuda_graph_end_capture(device.context, stream.cuda_stream, ctypes.byref(graph))
+    # get the graph executable
+    graph_exec = ctypes.c_void_p()
+    result = runtime.core.cuda_graph_end_capture(device.context, stream.cuda_stream, ctypes.byref(graph_exec))
 
     if not result:
         # A concrete error should've already been reported, so we don't need to go into details here
         raise RuntimeError(f"CUDA graph capture failed. {runtime.get_error_string()}")
 
-    # note that for external captures, we do not return a graph, because we don't instantiate it ourselves
-    if graph:
-        return Graph(device, graph)
+    # set the graph executable
+    graph.graph_exec = graph_exec
+
+    return graph
 
 
 def capture_launch(graph: Graph, stream: Stream = None):
@@ -5147,7 +5462,7 @@ def capture_launch(graph: Graph, stream: Stream = None):
         device = graph.device
         stream = device.stream
 
-    if not runtime.core.cuda_graph_launch(graph.exec, stream.cuda_stream):
+    if not runtime.core.cuda_graph_launch(graph.graph_exec, stream.cuda_stream):
         raise RuntimeError(f"Graph launch error: {runtime.get_error_string()}")
 
 
@@ -5360,8 +5675,16 @@ def type_str(t):
         return "Any"
     elif t == Callable:
         return "Callable"
+    elif t == Tuple[int]:
+        return "Tuple[int]"
     elif t == Tuple[int, int]:
         return "Tuple[int, int]"
+    elif t == Tuple[int, int, int]:
+        return "Tuple[int, int, int]"
+    elif t == Tuple[int, int, int, int]:
+        return "Tuple[int, int, int, int]"
+    elif t == Tuple[int, ...]:
+        return "Tuple[int, ...]"
     elif isinstance(t, int):
         return str(t)
     elif isinstance(t, List):
@@ -5491,14 +5814,6 @@ def export_functions_rst(file):  # pragma: no cover
     print(".. class:: Transformation", file=file)
     print(".. class:: Array", file=file)
 
-    print("\nQuery Types", file=file)
-    print("-------------", file=file)
-    print(".. autoclass:: bvh_query_t", file=file)
-    print(".. autoclass:: hash_grid_query_t", file=file)
-    print(".. autoclass:: mesh_query_aabb_t", file=file)
-    print(".. autoclass:: mesh_query_point_t", file=file)
-    print(".. autoclass:: mesh_query_ray_t", file=file)
-
     # build dictionary of all functions by group
     groups = {}
 
@@ -5511,8 +5826,17 @@ def export_functions_rst(file):  # pragma: no cover
         for o in f.overloads:
             groups[f.group].append(o)
 
-    # Keep track of what function names have been written
-    written_functions = {}
+    # Keep track of what function and query types have been written
+    written_functions = set()
+    written_query_types = set()
+
+    query_types = (
+        ("bvh_query", "BvhQuery"),
+        ("mesh_query_aabb", "MeshQueryAABB"),
+        ("mesh_query_point", "MeshQueryPoint"),
+        ("mesh_query_ray", "MeshQueryRay"),
+        ("hash_grid_query", "HashGridQuery"),
+    )
 
     for k, g in groups.items():
         print("\n", file=file)
@@ -5520,12 +5844,18 @@ def export_functions_rst(file):  # pragma: no cover
         print("---------------", file=file)
 
         for f in g:
+            for f_prefix, query_type in query_types:
+                if f.key.startswith(f_prefix) and query_type not in written_query_types:
+                    print(f".. autoclass:: {query_type}", file=file)
+                    written_query_types.add(query_type)
+                    break
+
             if f.key in written_functions:
                 # Add :noindex: + :nocontentsentry: since Sphinx gets confused
                 print_function(f, file=file, noentry=True)
             else:
                 if print_function(f, file=file):
-                    written_functions[f.key] = []
+                    written_functions.add(f.key)
 
     # footnotes
     print(".. rubric:: Footnotes", file=file)
@@ -5580,18 +5910,12 @@ def export_stubs(file):  # pragma: no cover
 
             return_str = ""
 
-            if not f.export or f.hidden:  # or f.generic:
+            if f.hidden:  # or f.generic:
                 continue
 
-            try:
-                # todo: construct a default value for each of the functions args
-                # so we can generate the return type for overloaded functions
-                return_type = f.value_func(None, None)
-                if return_type:
-                    return_str = " -> " + type_str(return_type)
-
-            except Exception:
-                pass
+            return_type = f.value_func(None, None)
+            if return_type:
+                return_str = " -> " + type_str(return_type)
 
             print("@over", file=file)
             print(f"def {f.key}({args}){return_str}:", file=file)

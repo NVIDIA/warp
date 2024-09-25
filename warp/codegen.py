@@ -11,6 +11,7 @@ import ast
 import builtins
 import ctypes
 import functools
+import hashlib
 import inspect
 import math
 import re
@@ -416,15 +417,35 @@ class Struct:
 
         self.ctype = StructType
 
+        # Compute the hash.  We can cache the hash because it's static, even with nested structs.
+        # All field types are specified in the annotations, so they're resolved at declaration time.
+        ch = hashlib.sha256()
+
+        ch.update(bytes(self.key, "utf-8"))
+
+        for name, type_hint in annotations.items():
+            s = f"{name}:{warp.types.get_type_code(type_hint)}"
+            ch.update(bytes(s, "utf-8"))
+
+            # recurse on nested structs
+            if isinstance(type_hint, Struct):
+                ch.update(type_hint.hash)
+
+        self.hash = ch.digest()
+
+        # generate unique identifier for structs in native code
+        hash_suffix = f"{self.hash.hex()[:8]}"
+        self.native_name = f"{self.key}_{hash_suffix}"
+
         # create default constructor (zero-initialize)
         self.default_constructor = warp.context.Function(
             func=None,
-            key=self.key,
+            key=self.native_name,
             namespace="",
             value_func=lambda *_: self,
             input_types={},
             initializer_list_func=lambda *_: False,
-            native_func=make_full_qualified_name(self.cls),
+            native_func=self.native_name,
         )
 
         # build a constructor that takes each param as a value
@@ -432,12 +453,12 @@ class Struct:
 
         self.value_constructor = warp.context.Function(
             func=None,
-            key=self.key,
+            key=self.native_name,
             namespace="",
             value_func=lambda *_: self,
             input_types=input_types,
             initializer_list_func=lambda *_: False,
-            native_func=make_full_qualified_name(self.cls),
+            native_func=self.native_name,
         )
 
         self.default_constructor.add_overload(self.value_constructor)
@@ -599,7 +620,7 @@ class Var:
             if hasattr(t.dtype, "_wp_generic_type_str_"):
                 dtypestr = compute_type_str(f"wp::{t.dtype._wp_generic_type_str_}", t.dtype._wp_type_params_)
             elif isinstance(t.dtype, Struct):
-                dtypestr = make_full_qualified_name(t.dtype.cls)
+                dtypestr = t.dtype.native_name
             elif t.dtype.__name__ in ("bool", "int", "float"):
                 dtypestr = t.dtype.__name__
             else:
@@ -609,7 +630,7 @@ class Var:
         elif is_tile(t):
             return t.ctype()
         elif isinstance(t, Struct):
-            return make_full_qualified_name(t.cls)
+            return t.native_name
         elif is_reference(t):
             if not value_type:
                 return Var.type_to_ctype(t.value_type) + "*"
@@ -715,7 +736,9 @@ def func_match_args(func, arg_types, kwarg_types):
 
     # Populate the bound arguments with any default values.
     default_arg_types = {
-        k: get_arg_type(v) for k, v in func.defaults.items() if k not in bound_arg_types.arguments and v is not None
+        k: None if v is None else get_arg_type(v)
+        for k, v in func.defaults.items()
+        if k not in bound_arg_types.arguments
     }
     apply_defaults(bound_arg_types, default_arg_types)
     bound_arg_types = tuple(bound_arg_types.arguments.values())
@@ -795,7 +818,13 @@ class Adjoint:
         # extract name of source file
         adj.filename = inspect.getsourcefile(func) or "unknown source file"
         # get source file line number where function starts
-        _, adj.fun_lineno = inspect.getsourcelines(func)
+        try:
+            _, adj.fun_lineno = inspect.getsourcelines(func)
+        except OSError as e:
+            raise RuntimeError(
+                "Directly evaluating Warp code defined as a string using `exec()` is not supported, "
+                "please save it on a file and use `importlib` if needed."
+            ) from e
 
         # get function source code
         adj.source = inspect.getsource(func)
@@ -950,9 +979,9 @@ class Adjoint:
             if isinstance(a, warp.context.Function):
                 # functions don't have a var_ prefix so strip it off here
                 if prefix == "var":
-                    arg_strs.append(f"{a.namespace}{a.key}")
+                    arg_strs.append(f"{a.namespace}{a.native_func}")
                 else:
-                    arg_strs.append(f"{a.namespace}{prefix}_{a.key}")
+                    arg_strs.append(f"{a.namespace}{prefix}_{a.native_func}")
 
             elif is_reference(a.type):
                 arg_strs.append(f"{prefix}_{a}")
@@ -1260,6 +1289,10 @@ class Adjoint:
             if not isinstance(func_arg, (Reference, warp.context.Function)):
                 func_arg = adj.load(func_arg)
 
+            # if the argument is a function (and not a builtin), then build it recursively
+            if isinstance(func_arg, warp.context.Function) and not func_arg.is_builtin():
+                adj.builder.build_function(func_arg)
+
             fwd_args.append(strip_reference(func_arg))
 
         # used to create an alias of the adjoint var to the primal var for tile ops
@@ -1461,6 +1494,7 @@ class Adjoint:
         cond_block.body_forward.append(f"start_{cond_block.label}:;")
 
         c = adj.eval(cond)
+        c = adj.load(c)
 
         cond_block.body_forward.append(f"if (({c.emit()}) == false) goto end_{cond_block.label};")
 
@@ -1514,6 +1548,9 @@ class Adjoint:
 
     def emit_FunctionDef(adj, node):
         for f in node.body:
+            # Skip variable creation for standalone constants, including docstrings
+            if isinstance(f, ast.Expr) and isinstance(f.value, ast.Constant):
+                continue
             adj.eval(f)
 
         if adj.return_var is not None and len(adj.return_var) == 1:
@@ -1619,15 +1656,7 @@ class Adjoint:
         if node.id in adj.symbols:
             return adj.symbols[node.id]
 
-        # try and resolve the name using the function's globals context (used to lookup constants + functions)
-        obj = adj.func.__globals__.get(node.id)
-
-        if obj is None:
-            # Lookup constant in captured contents
-            capturedvars = dict(
-                zip(adj.func.__code__.co_freevars, [c.cell_contents for c in (adj.func.__closure__ or [])])
-            )
-            obj = capturedvars.get(str(node.id), None)
+        obj = adj.resolve_external_reference(node.id)
 
         if obj is None:
             raise WarpCodegenKeyError("Referencing undefined symbol: " + str(node.id))
@@ -2112,6 +2141,9 @@ class Adjoint:
         args = tuple(adj.resolve_arg(x) for x in node.args)
         kwargs = {x.arg: adj.resolve_arg(x.value) for x in node.keywords}
 
+        # add the call and build the callee adjoint if needed (func.adj)
+        out = adj.add_call(func, args, kwargs, type_args, min_outputs=min_outputs)
+
         if warp.config.verify_autograd_array_access:
             # update arg read/write states according to what happens to that arg in the called function
             if hasattr(func, "adj"):
@@ -2124,7 +2156,6 @@ class Adjoint:
                     if func.adj.args[i].is_read:
                         arg.mark_read()
 
-        out = adj.add_call(func, args, kwargs, type_args, min_outputs=min_outputs)
         return out
 
     def emit_Index(adj, node):
@@ -2318,23 +2349,45 @@ class Adjoint:
                     target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
             elif type_is_vector(target_type) or type_is_quaternion(target_type) or type_is_matrix(target_type):
+                # recursively unwind AST, stopping at penultimate node
+                node = lhs
+                while hasattr(node, "value"):
+                    if hasattr(node.value, "value"):
+                        node = node.value
+                    else:
+                        break
+                # lhs is updating a variable adjoint (i.e. wp.adjoint[var])
+                if hasattr(node, "attr") and node.attr == "adjoint":
+                    attr = adj.add_builtin_call("index", [target, *indices])
+                    adj.add_builtin_call("store", [attr, rhs])
+                    return
+
+                # TODO: array vec component case
                 if is_reference(target.type):
                     attr = adj.add_builtin_call("indexref", [target, *indices])
+                    adj.add_builtin_call("store", [attr, rhs])
+
+                    if warp.config.verbose and not adj.custom_reverse_mode:
+                        lineno = adj.lineno + adj.fun_lineno
+                        line = adj.source_lines[adj.lineno]
+                        node_source = adj.get_node_source(lhs.value)
+                        print(
+                            f"Warning: mutating {node_source} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n"
+                        )
+
                 else:
-                    attr = adj.add_builtin_call("index", [target, *indices])
+                    out = adj.add_builtin_call("assign", [target, *indices, rhs])
 
-                adj.add_builtin_call("store", [attr, rhs])
-
-                if warp.config.verbose and not adj.custom_reverse_mode:
-                    lineno = adj.lineno + adj.fun_lineno
-                    line = adj.source_lines[adj.lineno]
-                    node_source = adj.get_node_source(lhs.value)
-                    print(
-                        f"Warning: mutating {node_source} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n"
-                    )
+                    # re-point target symbol to out var
+                    for id in adj.symbols:
+                        if adj.symbols[id] == target:
+                            adj.symbols[id] = out
+                            break
 
             else:
-                raise WarpCodegenError("Can only subscript assign array, vector, quaternion, and matrix types")
+                raise WarpCodegenError(
+                    f"Can only subscript assign array, vector, quaternion, and matrix types, got {target_type}"
+                )
 
         elif isinstance(lhs, ast.Name):
             # symbol name
@@ -2364,16 +2417,24 @@ class Adjoint:
             aggregate = adj.eval(lhs.value)
             aggregate_type = strip_reference(aggregate.type)
 
-            # assigning to a vector component
-            if type_is_vector(aggregate_type):
+            # assigning to a vector or quaternion component
+            if type_is_vector(aggregate_type) or type_is_quaternion(aggregate_type):
+                # TODO: handle wp.adjoint case
+
                 index = adj.vector_component_index(lhs.attr, aggregate_type)
 
+                # TODO: array vec component case
                 if is_reference(aggregate.type):
                     attr = adj.add_builtin_call("indexref", [aggregate, index])
+                    adj.add_builtin_call("store", [attr, rhs])
                 else:
-                    attr = adj.add_builtin_call("index", [aggregate, index])
+                    out = adj.add_builtin_call("assign", [aggregate, index, rhs])
 
-                adj.add_builtin_call("store", [attr, rhs])
+                    # re-point target symbol to out var
+                    for id in adj.symbols:
+                        if adj.symbols[id] == aggregate:
+                            adj.symbols[id] = out
+                            break
 
             else:
                 attr = adj.emit_Attribute(lhs)
@@ -2417,9 +2478,66 @@ class Adjoint:
         adj.add_return(adj.return_var)
 
     def emit_AugAssign(adj, node):
-        # replace augmented assignment with assignment statement + binary op
-        new_node = ast.Assign(targets=[node.target], value=ast.BinOp(node.target, node.op, node.value))
-        adj.eval(new_node)
+        lhs = node.target
+
+        # replace augmented assignment with assignment statement + binary op (default behaviour)
+        def make_new_assign_statement():
+            new_node = ast.Assign(targets=[lhs], value=ast.BinOp(lhs, node.op, node.value))
+            adj.eval(new_node)
+
+        if isinstance(lhs, ast.Subscript):
+            rhs = adj.eval(node.value)
+
+            # wp.adjoint[var] appears in custom grad functions, and does not require
+            # special consideration in the AugAssign case
+            if hasattr(lhs.value, "attr") and lhs.value.attr == "adjoint":
+                make_new_assign_statement()
+                return
+
+            target, indices = adj.eval_subscript(lhs)
+
+            target_type = strip_reference(target.type)
+
+            if is_array(target_type):
+                # target_type is not suitable for atomic array accumulation
+                if target_type.dtype not in warp.types.atomic_types:
+                    make_new_assign_statement()
+                    return
+
+                kernel_name = adj.fun_name
+                filename = adj.filename
+                lineno = adj.lineno + adj.fun_lineno
+
+                if isinstance(node.op, ast.Add):
+                    adj.add_builtin_call("atomic_add", [target, *indices, rhs])
+
+                    if warp.config.verify_autograd_array_access:
+                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+
+                elif isinstance(node.op, ast.Sub):
+                    adj.add_builtin_call("atomic_sub", [target, *indices, rhs])
+
+                    if warp.config.verify_autograd_array_access:
+                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                else:
+                    print(f"Warning: in-place op {node.op} is not differentiable")
+
+            # TODO
+            elif type_is_vector(target_type) or type_is_quaternion(target_type) or type_is_matrix(target_type):
+                make_new_assign_statement()
+                return
+
+            else:
+                raise WarpCodegenError("Can only subscript in-place assign array, vector, quaternion, and matrix types")
+
+        # TODO
+        elif isinstance(lhs, ast.Attribute):
+            make_new_assign_statement()
+            return
+
+        else:
+            make_new_assign_statement()
+            return
 
     def emit_Tuple(adj, node):
         # LHS for expressions, such as i, j, k = 1, 2, 3
@@ -2480,30 +2598,18 @@ class Adjoint:
         if path[0] in adj.symbols:
             return None
 
-        if path[0] in __builtins__:
-            return __builtins__[path[0]]
-
-        # Look up the closure info and append it to adj.func.__globals__
-        # in case you want to define a kernel inside a function and refer
-        # to variables you've declared inside that function:
-        def extract_contents(contents):
-            return contents if isinstance(contents, warp.context.Function) or not callable(contents) else contents
-
-        capturedvars = dict(
-            zip(
-                adj.func.__code__.co_freevars, [extract_contents(c.cell_contents) for c in (adj.func.__closure__ or [])]
-            )
-        )
-        vars_dict = {**adj.func.__globals__, **capturedvars}
-
-        if path[0] in vars_dict:
-            expr = vars_dict[path[0]]
+        # look up in closure/global variables
+        expr = adj.resolve_external_reference(path[0])
 
         # Support Warp types in kernels without the module suffix (e.g. v = vec3(0.0,0.2,0.4)):
-        else:
+        if expr is None:
             expr = getattr(warp, path[0], None)
 
-        if expr:
+        # look up in builtins
+        if expr is None:
+            expr = __builtins__.get(path[0])
+
+        if expr is not None:
             for i in range(1, len(path)):
                 if hasattr(expr, path[i]):
                     expr = getattr(expr, path[i])
@@ -2561,6 +2667,16 @@ class Adjoint:
 
         return None, path
 
+    def resolve_external_reference(adj, name: str):
+        try:
+            # look up in closure variables
+            idx = adj.func.__code__.co_freevars.index(name)
+            obj = adj.func.__closure__[idx].cell_contents
+        except ValueError:
+            # look up in global variables
+            obj = adj.func.__globals__.get(name)
+        return obj
+
     # annotate generated code with the original source code line
     def set_lineno(adj, lineno):
         if adj.lineno is None or adj.lineno != lineno:
@@ -2574,42 +2690,42 @@ class Adjoint:
         # return the Python code corresponding to the given AST node
         return ast.get_source_segment(adj.source, node)
 
-    def get_constant_references(adj) -> Dict[str, Any]:
-        """Traverses ``adj.tree`` and returns a dictionary containing constant variable names and values.
-
-        This function is meant to be used to populate a module's constants dictionary, which then feeds
-        into the computation of the module's ``content_hash``.
-        """
+    def get_references(adj) -> Dict[str, Any]:
+        """Traverses ``adj.tree`` and returns referenced constants, types, and user-defined functions."""
 
         local_variables = set()  # Track local variables appearing on the LHS so we know when variables are shadowed
-        constants_dict = {}
+
+        constants = {}
+        types = {}
+        functions = {}
 
         for node in ast.walk(adj.tree):
             if isinstance(node, ast.Name) and node.id not in local_variables:
-                # This node could be a reference to a wp.constant defined or imported into the current namespace
-
-                # try and resolve the name using the function's globals context (used to lookup constants + functions)
-                obj = adj.func.__globals__.get(node.id)
-
-                if obj is None:
-                    # Lookup constant in captured contents
-                    capturedvars = dict(
-                        zip(adj.func.__code__.co_freevars, [c.cell_contents for c in (adj.func.__closure__ or [])])
-                    )
-                    obj = capturedvars.get(str(node.id), None)
-
+                # look up in closure/global variables
+                obj = adj.resolve_external_reference(node.id)
                 if warp.types.is_value(obj):
-                    constants_dict[node.id] = obj
+                    constants[node.id] = obj
 
             elif isinstance(node, ast.Attribute):
                 obj, path = adj.resolve_static_expression(node, eval_types=False)
-
                 if warp.types.is_value(obj):
-                    constants_dict[".".join(path)] = obj
+                    constants[".".join(path)] = obj
+
+            elif isinstance(node, ast.Call):
+                func, _ = adj.resolve_static_expression(node.func, eval_types=False)
+                if isinstance(func, warp.context.Function) and not func.is_builtin():
+                    # calling user-defined function
+                    functions[func] = None
+                elif isinstance(func, Struct):
+                    # calling struct constructor
+                    types[func] = None
+                elif isinstance(func, type) and warp.types.type_is_value(func):
+                    # calling value type constructor
+                    types[func] = None
+
             elif isinstance(node, ast.Assign):
                 # Add the LHS names to the local_variables so we know any subsequent uses are shadowed
                 lhs = node.targets[0]
-
                 if isinstance(lhs, ast.Tuple):
                     for v in lhs.elts:
                         if isinstance(v, ast.Name):
@@ -2617,7 +2733,7 @@ class Adjoint:
                 elif isinstance(lhs, ast.Name):
                     local_variables.add(lhs.id)
 
-        return constants_dict
+        return constants, types, functions
 
 
 # ----------------
@@ -2894,7 +3010,7 @@ def make_full_qualified_name(func):
 
 
 def codegen_struct(struct, device="cpu", indent_size=4):
-    name = make_full_qualified_name(struct.cls)
+    name = struct.native_name
 
     body = []
     indent_block = " " * indent_size

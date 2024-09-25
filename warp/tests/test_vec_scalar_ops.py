@@ -192,12 +192,14 @@ def test_py_arithmetic_ops(test, device, dtype):
     test.assertSequenceEqual(-v, make_vec(-1, 2, -3))
     test.assertSequenceEqual(v + vec_cls(5, 5, 5), make_vec(6, 3, 8))
     test.assertSequenceEqual(v - vec_cls(5, 5, 5), make_vec(-4, -7, -2))
+    test.assertSequenceEqual(v % vec_cls(2, 2, 2), make_vec(1, 0, 1))
 
     v = vec_cls(2, 4, 6)
     test.assertSequenceEqual(v * wptype(2), make_vec(4, 8, 12))
     test.assertSequenceEqual(wptype(2) * v, make_vec(4, 8, 12))
     test.assertSequenceEqual(v / wptype(2), make_vec(1, 2, 3))
     test.assertSequenceEqual(wptype(24) / v, make_vec(12, 6, 4))
+    test.assertSequenceEqual(v % vec_cls(3, 3, 3), make_vec(2, 1, 0))
 
 
 def test_constructors(test, device, dtype, register_kernels=False):
@@ -1797,6 +1799,140 @@ def test_dotproduct(test, device, dtype, register_kernels=False):
         tape.zero()
 
 
+def test_modulo(test, device, dtype, register_kernels=False):
+    rng = np.random.default_rng(123)
+
+    tol = {
+        np.float16: 1.0e-2,
+        np.float32: 1.0e-6,
+        np.float64: 1.0e-8,
+    }.get(dtype, 0)
+
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp.types.vector(length=2, dtype=wptype)
+    vec3 = wp.types.vector(length=3, dtype=wptype)
+    vec4 = wp.types.vector(length=4, dtype=wptype)
+    vec5 = wp.types.vector(length=5, dtype=wptype)
+
+    def check_mod(
+        s2: wp.array(dtype=vec2),
+        s3: wp.array(dtype=vec3),
+        s4: wp.array(dtype=vec4),
+        s5: wp.array(dtype=vec5),
+        v2: wp.array(dtype=vec2),
+        v3: wp.array(dtype=vec3),
+        v4: wp.array(dtype=vec4),
+        v5: wp.array(dtype=vec5),
+        v20: wp.array(dtype=wptype),
+        v21: wp.array(dtype=wptype),
+        v30: wp.array(dtype=wptype),
+        v31: wp.array(dtype=wptype),
+        v32: wp.array(dtype=wptype),
+        v40: wp.array(dtype=wptype),
+        v41: wp.array(dtype=wptype),
+        v42: wp.array(dtype=wptype),
+        v43: wp.array(dtype=wptype),
+        v50: wp.array(dtype=wptype),
+        v51: wp.array(dtype=wptype),
+        v52: wp.array(dtype=wptype),
+        v53: wp.array(dtype=wptype),
+        v54: wp.array(dtype=wptype),
+    ):
+        v20[0] = (wptype(2) * wp.mod(v2[0], s2[0]))[0]
+        v21[0] = (wptype(2) * wp.mod(v2[0], s2[0]))[1]
+
+        v30[0] = (wptype(2) * wp.mod(v3[0], s3[0]))[0]
+        v31[0] = (wptype(2) * wp.mod(v3[0], s3[0]))[1]
+        v32[0] = (wptype(2) * wp.mod(v3[0], s3[0]))[2]
+
+        v40[0] = (wptype(2) * wp.mod(v4[0], s4[0]))[0]
+        v41[0] = (wptype(2) * wp.mod(v4[0], s4[0]))[1]
+        v42[0] = (wptype(2) * wp.mod(v4[0], s4[0]))[2]
+        v43[0] = (wptype(2) * wp.mod(v4[0], s4[0]))[3]
+
+        v50[0] = (wptype(2) * wp.mod(v5[0], s5[0]))[0]
+        v51[0] = (wptype(2) * wp.mod(v5[0], s5[0]))[1]
+        v52[0] = (wptype(2) * wp.mod(v5[0], s5[0]))[2]
+        v53[0] = (wptype(2) * wp.mod(v5[0], s5[0]))[3]
+        v54[0] = (wptype(2) * wp.mod(v5[0], s5[0]))[4]
+
+    kernel = getkernel(check_mod, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    s2 = wp.array(randvals(rng, (1, 2), dtype), dtype=vec2, requires_grad=True, device=device)
+    s3 = wp.array(randvals(rng, (1, 3), dtype), dtype=vec3, requires_grad=True, device=device)
+    s4 = wp.array(randvals(rng, (1, 4), dtype), dtype=vec4, requires_grad=True, device=device)
+    s5 = wp.array(randvals(rng, (1, 5), dtype), dtype=vec5, requires_grad=True, device=device)
+    v2 = wp.array(randvals(rng, (1, 2), dtype), dtype=vec2, requires_grad=True, device=device)
+    v3 = wp.array(randvals(rng, (1, 3), dtype), dtype=vec3, requires_grad=True, device=device)
+    v4 = wp.array(randvals(rng, (1, 4), dtype), dtype=vec4, requires_grad=True, device=device)
+    v5 = wp.array(randvals(rng, (1, 5), dtype), dtype=vec5, requires_grad=True, device=device)
+    v20 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+    v21 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+    v30 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+    v31 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+    v32 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+    v40 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+    v41 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+    v42 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+    v43 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+    v50 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+    v51 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+    v52 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+    v53 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+    v54 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[
+                s2,
+                s3,
+                s4,
+                s5,
+                v2,
+                v3,
+                v4,
+                v5,
+            ],
+            outputs=[
+                v20,
+                v21,
+                v30,
+                v31,
+                v32,
+                v40,
+                v41,
+                v42,
+                v43,
+                v50,
+                v51,
+                v52,
+                v53,
+                v54,
+            ],
+            device=device,
+        )
+
+    assert_np_equal(v20.numpy()[0], 2.0 * np.fmod(v2.numpy(), s2.numpy())[0, 0], tol=10 * tol)
+    assert_np_equal(v21.numpy()[0], 2.0 * np.fmod(v2.numpy(), s2.numpy())[0, 1], tol=10 * tol)
+    assert_np_equal(v30.numpy()[0], 2.0 * np.fmod(v3.numpy(), s3.numpy())[0, 0], tol=10 * tol)
+    assert_np_equal(v31.numpy()[0], 2.0 * np.fmod(v3.numpy(), s3.numpy())[0, 1], tol=10 * tol)
+    assert_np_equal(v32.numpy()[0], 2.0 * np.fmod(v3.numpy(), s3.numpy())[0, 2], tol=10 * tol)
+    assert_np_equal(v40.numpy()[0], 2.0 * np.fmod(v4.numpy(), s4.numpy())[0, 0], tol=10 * tol)
+    assert_np_equal(v41.numpy()[0], 2.0 * np.fmod(v4.numpy(), s4.numpy())[0, 1], tol=10 * tol)
+    assert_np_equal(v42.numpy()[0], 2.0 * np.fmod(v4.numpy(), s4.numpy())[0, 2], tol=10 * tol)
+    assert_np_equal(v43.numpy()[0], 2.0 * np.fmod(v4.numpy(), s4.numpy())[0, 3], tol=10 * tol)
+    assert_np_equal(v50.numpy()[0], 2.0 * np.fmod(v5.numpy(), s5.numpy())[0, 0], tol=10 * tol)
+    assert_np_equal(v51.numpy()[0], 2.0 * np.fmod(v5.numpy(), s5.numpy())[0, 1], tol=10 * tol)
+    assert_np_equal(v52.numpy()[0], 2.0 * np.fmod(v5.numpy(), s5.numpy())[0, 2], tol=10 * tol)
+    assert_np_equal(v53.numpy()[0], 2.0 * np.fmod(v5.numpy(), s5.numpy())[0, 3], tol=10 * tol)
+    assert_np_equal(v54.numpy()[0], 2.0 * np.fmod(v5.numpy(), s5.numpy())[0, 4], tol=10 * tol)
+
+
 def test_equivalent_types(test, device, dtype, register_kernels=False):
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
 
@@ -2149,6 +2285,9 @@ for dtype in np_scalar_types:
     )
     add_function_test_register_kernel(
         TestVecScalarOps, f"test_addition_{dtype.__name__}", test_addition, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestVecScalarOps, f"test_modulo_{dtype.__name__}", test_modulo, devices=devices, dtype=dtype
     )
     add_function_test_register_kernel(
         TestVecScalarOps, f"test_dotproduct_{dtype.__name__}", test_dotproduct, devices=devices, dtype=dtype

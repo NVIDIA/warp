@@ -10,10 +10,12 @@ from .element import Cube, Square
 from .geometry import Geometry
 
 # Flag used for building edge/face grids to disambiguiate axis within the grid
+# Morton indexing allows for
 GRID_AXIS_FLAG = wp.constant(wp.int32(1 << 20))
-FACE_AXIS_MASK = wp.constant(wp.uint8((1 << 3) - 1))
-FACE_INNER_OFFSET_BIT = wp.constant(wp.uint8(3))
-FACE_OUTER_OFFSET_BIT = wp.constant(wp.uint8(4))
+
+FACE_AXIS_MASK = wp.constant(wp.uint8((1 << 2) - 1))
+FACE_INNER_OFFSET_BIT = wp.constant(wp.uint8(2))
+FACE_OUTER_OFFSET_BIT = wp.constant(wp.uint8(3))
 
 _mat32 = wp.mat(shape=(3, 2), dtype=float)
 
@@ -93,7 +95,7 @@ class Nanogrid(Geometry):
         self._face_ijk = None
 
         self._edge_grid = None
-        self._edge_ijk = None
+        self._edge_count = 0
 
     @property
     def cell_grid(self) -> wp.Volume:
@@ -129,7 +131,7 @@ class Nanogrid(Geometry):
 
     def edge_count(self):
         self._ensure_edge_grid()
-        return self._edge_ijk.shape[0]
+        return self._edge_count
 
     def reference_cell(self) -> Cube:
         return Cube()
@@ -154,7 +156,7 @@ class Nanogrid(Geometry):
     @wp.func
     def cell_position(args: CellArg, s: Sample):
         uvw = wp.vec3(args.cell_ijk[s.element_index]) + s.element_coords
-        return wp.volume_index_to_world(args.cell_grid, uvw)
+        return wp.volume_index_to_world(args.cell_grid, uvw - wp.vec3(0.5))
 
     @wp.func
     def cell_deformation_gradient(args: CellArg, s: Sample):
@@ -166,19 +168,35 @@ class Nanogrid(Geometry):
 
     @wp.func
     def cell_lookup(args: CellArg, pos: wp.vec3):
-        uvw = wp.volume_world_to_index(args.cell_grid, pos)
+        uvw = wp.volume_world_to_index(args.cell_grid, pos) + wp.vec3(0.5)
         ijk = wp.vec3i(int(wp.floor(uvw[0])), int(wp.floor(uvw[1])), int(wp.floor(uvw[2])))
-        element_index = wp.volume_lookup_index(args.cell_grid, ijk[0], ijk[1], ijk[2])
+        cell_index = wp.volume_lookup_index(args.cell_grid, ijk[0], ijk[1], ijk[2])
 
-        return wp.select(
-            element_index == -1,
-            make_free_sample(element_index, uvw - wp.vec3(ijk)),
-            make_free_sample(NULL_ELEMENT_INDEX, Coords(OUTSIDE)),
-        )
+        coords = uvw - wp.vec3(ijk)
+        if cell_index == -1:
+            if wp.min(coords) == 0.0 or wp.max(coords) == 1.0:
+                il = wp.select(coords[0] > 0.5, -1, 0)
+                jl = wp.select(coords[1] > 0.5, -1, 0)
+                kl = wp.select(coords[2] > 0.5, -1, 0)
+
+                for n in range(8):
+                    ni = n >> 2
+                    nj = (n & 2) >> 1
+                    nk = n & 1
+                    nijk = ijk + wp.vec3i(ni + il, nj + jl, nk + kl)
+
+                    coords = uvw - wp.vec3(nijk)
+                    if wp.min(coords) >= 0.0 and wp.max(coords) <= 1.0:
+                        cell_index = wp.volume_lookup_index(args.cell_grid, nijk[0], nijk[1], nijk[2])
+                        if cell_index != -1:
+                            return make_free_sample(cell_index, coords)
+
+            return make_free_sample(NULL_ELEMENT_INDEX, Coords(OUTSIDE))
+
+        return make_free_sample(cell_index, coords)
 
     @wp.func
-    def _project_on_voxel(uvw: wp.vec3, ijk: wp.vec3i):
-        coords = uvw - wp.vec3(ijk)
+    def _project_on_voxel_at_origin(coords: wp.vec3):
         proj_coords = wp.min(wp.max(coords, wp.vec3(0.0)), wp.vec3(1.0))
         return wp.length_sq(coords - proj_coords), proj_coords
 
@@ -194,14 +212,14 @@ class Nanogrid(Geometry):
         closest_dist = float(1.0e8)
 
         # project to closest in stencil
-        uvw = wp.volume_world_to_index(args.cell_grid, pos)
+        uvw = wp.volume_world_to_index(args.cell_grid, pos) + wp.vec3(0.5)
         cell_ijk = args.cell_ijk[guess.element_index]
         for ni in range(-1, 2):
             for nj in range(-1, 2):
                 for nk in range(-1, 2):
                     nijk = cell_ijk + wp.vec3i(ni, nj, nk)
                     cell_idx = wp.volume_lookup_index(args.cell_grid, nijk[0], nijk[1], nijk[2])
-                    dist, coords = Nanogrid._project_on_voxel(uvw, nijk)
+                    dist, coords = Nanogrid._project_on_voxel_at_origin(uvw - wp.vec3(nijk))
                     if cell_idx != -1 and dist <= closest_dist:
                         closest_dist = dist
                         closest_voxel = cell_idx
@@ -278,14 +296,12 @@ class Nanogrid(Geometry):
         uvw = wp.vec3(ijk) + Nanogrid._side_to_cell_coords(axis, 0.0, s.element_coords)
 
         cell_grid = args.cell_arg.cell_grid
-        return wp.volume_index_to_world(cell_grid, uvw)
+        return wp.volume_index_to_world(cell_grid, uvw - wp.vec3(0.5))
 
     @wp.func
-    def _face_tangent_vecs(args: SideArg, axis: int, flip: int):
+    def _face_tangent_vecs(cell_grid: wp.uint64, axis: int, flip: int):
         u_axis = utils.unit_element(wp.vec3(), (axis + 1 + flip) % 3)
         v_axis = utils.unit_element(wp.vec3(), (axis + 2 - flip) % 3)
-
-        cell_grid = args.cell_arg.cell_grid
 
         return wp.volume_index_to_world_dir(cell_grid, u_axis), wp.volume_index_to_world_dir(cell_grid, v_axis)
 
@@ -294,7 +310,7 @@ class Nanogrid(Geometry):
         flags = args.face_flags[s.element_index]
         axis = Nanogrid._get_face_axis(flags)
         flip = Nanogrid._get_face_inner_offset(flags)
-        v1, v2 = Nanogrid._face_tangent_vecs(args, axis, flip)
+        v1, v2 = Nanogrid._face_tangent_vecs(args.cell_arg.cell_grid, axis, flip)
         return _mat32(v1, v2)
 
     @wp.func
@@ -321,7 +337,7 @@ class Nanogrid(Geometry):
         axis = Nanogrid._get_face_axis(flags)
         flip = Nanogrid._get_face_inner_offset(flags)
 
-        v1, v2 = Nanogrid._face_tangent_vecs(args, axis, flip)
+        v1, v2 = Nanogrid._face_tangent_vecs(args.cell_arg.cell_grid, axis, flip)
         return wp.cross(v1, v2) / args.face_areas[axis]
 
     @wp.func
@@ -406,16 +422,14 @@ class Nanogrid(Geometry):
 
     def _build_edge_grid(self, temporary_store: Optional[cache.TemporaryStore] = None):
         self._edge_grid = _build_edge_grid(self._cell_ijk, self._cell_grid, temporary_store)
-        edge_count = self._edge_grid.get_voxel_count()
-        self._edge_ijk = wp.array(shape=(edge_count,), dtype=wp.vec3i, device=self._edge_grid.device)
-        self._edge_grid.get_voxels(out=self._edge_ijk)
+        self._edge_count = self._edge_grid.get_voxel_count()
 
     def _ensure_face_grid(self):
         if self._face_ijk is None:
             self._build_face_grid()
 
     def _ensure_edge_grid(self):
-        if self._edge_ijk is None:
+        if self._edge_grid is None:
             self._build_edge_grid()
 
 
@@ -476,7 +490,7 @@ def _build_node_grid(cell_ijk, grid: wp.Volume, temporary_store: cache.Temporary
         _cell_node_indices, dim=cell_nodes.array.shape, inputs=[cell_ijk, cell_nodes.array], device=cell_ijk.device
     )
     node_grid = wp.Volume.allocate_by_voxels(
-        cell_nodes.array.flatten(), voxel_size=grid.get_voxel_size()[0], device=cell_ijk.device
+        cell_nodes.array.flatten(), voxel_size=grid.get_voxel_size(), device=cell_ijk.device
     )
 
     return node_grid
@@ -488,7 +502,7 @@ def _build_face_grid(cell_ijk, grid: wp.Volume, temporary_store: cache.Temporary
     cell_faces = cache.borrow_temporary(temporary_store, shape=(cell_count, 6), dtype=wp.vec3i, device=cell_ijk.device)
     wp.launch(_cell_face_indices, dim=cell_count, inputs=[cell_ijk, cell_faces.array], device=cell_ijk.device)
     face_grid = wp.Volume.allocate_by_voxels(
-        cell_faces.array.flatten(), voxel_size=grid.get_voxel_size()[0], device=cell_ijk.device
+        cell_faces.array.flatten(), voxel_size=grid.get_voxel_size(), device=cell_ijk.device
     )
 
     return face_grid
@@ -500,10 +514,23 @@ def _build_edge_grid(cell_ijk, grid: wp.Volume, temporary_store: cache.Temporary
     cell_edges = cache.borrow_temporary(temporary_store, shape=(cell_count, 12), dtype=wp.vec3i, device=cell_ijk.device)
     wp.launch(_cell_edge_indices, dim=cell_count, inputs=[cell_ijk, cell_edges.array], device=cell_ijk.device)
     edge_grid = wp.Volume.allocate_by_voxels(
-        cell_edges.array.flatten(), voxel_size=grid.get_voxel_size()[0], device=cell_ijk.device
+        cell_edges.array.flatten(), voxel_size=grid.get_voxel_size(), device=cell_ijk.device
     )
 
     return edge_grid
+
+
+@wp.func
+def _make_face_flags(axis: int, plus_cell_index: int, minus_cell_index: int):
+    plus_boundary = wp.uint8(wp.select(plus_cell_index == -1, 0, 1)) << FACE_OUTER_OFFSET_BIT
+    minus_boundary = wp.uint8(wp.select(minus_cell_index == -1, 0, 1)) << FACE_INNER_OFFSET_BIT
+
+    return wp.uint8(axis) | plus_boundary | minus_boundary
+
+
+@wp.func
+def _get_boundary_mask(flags: wp.uint8):
+    return int((flags >> FACE_OUTER_OFFSET_BIT) | (flags >> FACE_INNER_OFFSET_BIT)) & 1
 
 
 @wp.kernel
@@ -523,9 +550,8 @@ def _build_face_flags(
     plus_cell_index = wp.volume_lookup_index(cell_grid, ijk[0], ijk[1], ijk[2])
     minus_cell_index = wp.volume_lookup_index(cell_grid, ijk_minus[0], ijk_minus[1], ijk_minus[2])
 
-    plus_boundary = wp.uint8(wp.select(plus_cell_index == -1, 0, 1)) << FACE_OUTER_OFFSET_BIT
-    minus_boundary = wp.uint8(wp.select(minus_cell_index == -1, 0, 1)) << FACE_INNER_OFFSET_BIT
-
     face_ijk[face] = ijk
-    face_flags[face] = wp.uint8(axis) | plus_boundary | minus_boundary
-    boundary_face_mask[face] = wp.select((plus_boundary | minus_boundary) == 0, 1, 0)
+
+    flags = _make_face_flags(axis, plus_cell_index, minus_cell_index)
+    face_flags[face] = flags
+    boundary_face_mask[face] = _get_boundary_mask(flags)

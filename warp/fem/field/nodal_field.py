@@ -107,7 +107,7 @@ class NodalFieldBase(DiscreteField):
         def eval_grad_inner_world_space(args: self.ElementEvalArg, s: Sample):
             grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
             res = eval_grad_inner_ref_space(args, s)
-            return utils.apply_right(res, grad_transform)
+            return res * grad_transform
 
         return eval_grad_inner_world_space if world_space else eval_grad_inner_ref_space
 
@@ -121,12 +121,10 @@ class NodalFieldBase(DiscreteField):
 
             res = utils.generalized_inner(
                 self._read_node_value(args, s.element_index, 0),
-                utils.apply_right(
-                    self.space.element_inner_weight_gradient(
-                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, 0
-                    ),
-                    grad_transform,
-                ),
+                self.space.element_inner_weight_gradient(
+                    args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, 0
+                )
+                * grad_transform,
             )
 
             node_count = self.space.topology.element_node_count(
@@ -135,12 +133,10 @@ class NodalFieldBase(DiscreteField):
             for k in range(1, node_count):
                 res += utils.generalized_inner(
                     self._read_node_value(args, s.element_index, k),
-                    utils.apply_right(
-                        self.space.element_inner_weight_gradient(
-                            args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k
-                        ),
-                        grad_transform,
-                    ),
+                    self.space.element_inner_weight_gradient(
+                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k
+                    )
+                    * grad_transform,
                 )
             return res
 
@@ -199,7 +195,7 @@ class NodalFieldBase(DiscreteField):
         def eval_grad_outer_world_space(args: self.ElementEvalArg, s: Sample):
             grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
             res = eval_grad_outer_ref_space(args, s)
-            return utils.apply_right(res, grad_transform)
+            return res * grad_transform
 
         return eval_grad_outer_world_space if world_space else eval_grad_outer_ref_space
 
@@ -213,12 +209,10 @@ class NodalFieldBase(DiscreteField):
 
             res = utils.generalized_inner(
                 self._read_node_value(args, s.element_index, 0),
-                utils.apply_right(
-                    self.space.element_outer_weight_gradient(
-                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, 0
-                    ),
-                    grad_transform,
-                ),
+                self.space.element_outer_weight_gradient(
+                    args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, 0
+                )
+                * grad_transform,
             )
 
             node_count = self.space.topology.element_node_count(
@@ -227,12 +221,10 @@ class NodalFieldBase(DiscreteField):
             for k in range(1, node_count):
                 res += utils.generalized_inner(
                     self._read_node_value(args, s.element_index, k),
-                    utils.apply_right(
-                        self.space.element_outer_weight_gradient(
-                            args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k
-                        ),
-                        grad_transform,
-                    ),
+                    self.space.element_outer_weight_gradient(
+                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k
+                    )
+                    * grad_transform,
                 )
             return res
 
@@ -247,7 +239,7 @@ class NodalFieldBase(DiscreteField):
 
     def _make_node_partition_index(self):
         @cache.dynamic_func(suffix=self.name)
-        def node_partition_index(args: self.EvalArg, node_index: int):
+        def node_partition_index(args: self.ElementEvalArg, node_index: int):
             return self.space_partition.partition_node_index(args.eval_arg.partition_arg, node_index)
 
         return node_partition_index

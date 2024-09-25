@@ -136,15 +136,6 @@ def scale_transposed_divergence_mat(
         tr_divergence_mat_values[b] = tr_divergence_mat_values[b] * inv_fraction_int[u_i]
 
 
-@wp.kernel
-def compute_particle_ijk(positions: wp.array(dtype=wp.vec3), voxel_size: float, ijks: wp.array(dtype=wp.vec3i)):
-    # Index-space coordinates of grid cell containing each particle
-
-    p = wp.tid()
-    pos = positions[p] / voxel_size
-    ijks[p] = wp.vec3i(int(wp.floor(pos[0])), int(wp.floor(pos[1])), int(wp.floor(pos[2])))
-
-
 def solve_incompressibility(
     divergence_mat: BsrMatrix, dirichlet_projector: BsrMatrix, inv_volume, pressure, velocity, quiet: bool = False
 ):
@@ -178,7 +169,7 @@ def solve_incompressibility(
     # For simplicity, assemble Schur complement and solve with CG
     schur = bsr_mm(divergence_mat, transposed_divergence_mat)
 
-    fem_example_utils.bsr_cg(schur, b=rhs, x=pressure, quiet=quiet, tol=1.0e-6)
+    fem_example_utils.bsr_cg(schur, b=rhs, x=pressure, quiet=quiet, tol=1.0e-6, method="cr", max_iters=1000)
 
     # Apply pressure to velocity
     bsr_mv(A=transposed_divergence_mat, x=pressure, y=velocity, alpha=1.0, beta=1.0)
@@ -254,23 +245,11 @@ class Example:
 
         self.current_frame = self.current_frame + 1
 
-        particle_ijk = wp.empty(self.state_0.particle_count, dtype=wp.vec3i)
-
         with wp.ScopedTimer(f"simulate frame {self.current_frame}", active=True):
             for _s in range(self.sim_substeps):
-                # Compute the voxel coordinates for each particle.
-                # `Volume.allocate_by_voxels` accepts world positions, but allocates
-                # the voxels with the closest origin rather than the enclosing ones
-                # (i.e, it "round"s the positions, while here we eant to "floor" it)
-                wp.launch(
-                    compute_particle_ijk,
-                    dim=particle_ijk.shape,
-                    inputs=[self.state_0.particle_q, self.voxel_size, particle_ijk],
-                )
-
                 # Allocate the voxels and create the warp.fem geometry
                 volume = wp.Volume.allocate_by_voxels(
-                    voxel_points=particle_ijk,
+                    voxel_points=self.state_0.particle_q,
                     voxel_size=self.voxel_size,
                 )
                 grid = fem.Nanogrid(volume)

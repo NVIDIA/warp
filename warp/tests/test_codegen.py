@@ -408,21 +408,21 @@ def test_error_global_var(test, device):
         RuntimeError,
         r"Cannot reference a global variable from a kernel unless `wp.constant\(\)` is being used",
     ):
-        wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,))
+        wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,), device=device)
 
     kernel = wp.Kernel(func=kernel_2_fn)
     with test.assertRaisesRegex(
         RuntimeError,
         r"Cannot reference a global variable from a kernel unless `wp.constant\(\)` is being used",
     ):
-        wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,))
+        wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,), device=device)
 
     kernel = wp.Kernel(func=kernel_3_fn)
     with test.assertRaisesRegex(
         RuntimeError,
         r"Cannot reference a global variable from a kernel unless `wp.constant\(\)` is being used",
     ):
-        wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,))
+        wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,), device=device)
 
 
 def test_error_collection_construct(test, device):
@@ -443,28 +443,50 @@ def test_error_collection_construct(test, device):
         RuntimeError,
         r"List constructs are not supported in kernels. Use vectors like `wp.vec3\(\)` for small collections instead.",
     ):
-        wp.launch(kernel, dim=1)
+        wp.launch(kernel, dim=1, device=device)
 
     kernel = wp.Kernel(func=kernel_2_fn)
     with test.assertRaisesRegex(
         RuntimeError,
         r"Tuple constructs are not supported in kernels. Use vectors like `wp.vec3\(\)` for small collections instead.",
     ):
-        wp.launch(kernel, dim=1)
+        wp.launch(kernel, dim=1, device=device)
 
     kernel = wp.Kernel(func=kernel_3_fn)
     with test.assertRaisesRegex(
         RuntimeError,
         r"Construct `ast.Dict` not supported in kernels.",
     ):
-        wp.launch(kernel, dim=1)
+        wp.launch(kernel, dim=1, device=device)
 
     kernel = wp.Kernel(func=kernel_4_fn)
     with test.assertRaisesRegex(
         RuntimeError,
         r"Tuple constructs are not supported in kernels. Use vectors like `wp.vec3\(\)` instead.",
     ):
-        wp.launch(kernel, dim=1)
+        wp.launch(kernel, dim=1, device=device)
+
+
+def test_error_unmatched_arguments(test, device):
+    def kernel_1_fn():
+        a = 1 * 1.0
+
+    def kernel_2_fn():
+        x = wp.dot(wp.vec2(1.0, 2.0), wp.vec2h(wp.float16(1.0), wp.float16(2.0)))
+
+    kernel = wp.Kernel(func=kernel_1_fn)
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Input types must be the same, got \['int32', 'float32'\]",
+    ):
+        wp.launch(kernel, dim=1, device=device)
+
+    kernel = wp.Kernel(func=kernel_2_fn)
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Input types must be exactly the same, got \[\"vector\(length=2, dtype=<class 'warp.types.float32'>\)\", \"vector\(length=2, dtype=<class 'warp.types.float16'>\)\"\]",
+    ):
+        wp.launch(kernel, dim=1, device=device)
 
 
 @wp.kernel
@@ -483,6 +505,30 @@ def test_call_syntax():
     wp.expect_eq(wp.matrix(pos=pos, rot=rot, scale=scale, dtype=wp.float32), expected_matrix)
     wp.expect_eq(wp.matrix(pos, rot, scale, dtype=wp.float32), expected_matrix)
     wp.expect_eq(wp.matrix(rot=rot, pos=pos, dtype=wp.float32, scale=scale), expected_matrix)
+
+
+# test shadowing builtin functions
+@wp.func
+def sum(a: wp.vec3) -> float:
+    return a[0] + a[1] + a[2]
+
+
+@wp.kernel
+def test_shadow_builtin():
+    wp.expect_eq(sum(wp.vec3(1.0)), 3.0)
+
+
+@wp.struct
+class Iterator:
+    valid: wp.bool
+
+
+@wp.kernel(enable_backward=False)
+def test_while_condition_eval():
+    it = Iterator()
+    it.valid = True
+    while it.valid:
+        it.valid = False
 
 
 class TestCodeGen(unittest.TestCase):
@@ -618,8 +664,13 @@ add_function_test(TestCodeGen, func=test_error_global_var, name="test_error_glob
 add_function_test(
     TestCodeGen, func=test_error_collection_construct, name="test_error_collection_construct", devices=devices
 )
+add_function_test(
+    TestCodeGen, func=test_error_unmatched_arguments, name="test_error_unmatched_arguments", devices=devices
+)
 
 add_kernel_test(TestCodeGen, name="test_call_syntax", kernel=test_call_syntax, dim=1, devices=devices)
+add_kernel_test(TestCodeGen, name="test_shadow_builtin", kernel=test_shadow_builtin, dim=1, devices=devices)
+add_kernel_test(TestCodeGen, name="test_while_condition_eval", kernel=test_while_condition_eval, dim=1, devices=devices)
 
 
 if __name__ == "__main__":

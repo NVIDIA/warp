@@ -91,58 +91,50 @@ Generic Types
 .. class:: Transformation
 .. class:: Array
 
-Query Types
--------------
-.. autoclass:: bvh_query_t
-.. autoclass:: hash_grid_query_t
-.. autoclass:: mesh_query_aabb_t
-.. autoclass:: mesh_query_point_t
-.. autoclass:: mesh_query_ray_t
-
 
 Scalar Math
 ---------------
-.. py:function:: min(x: Scalar, y: Scalar) -> Scalar
+.. py:function:: min(a: Scalar, b: Scalar) -> Scalar
 
     Return the minimum of two scalars.
 
 
-.. py:function:: min(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+.. py:function:: min(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
     :noindex:
     :nocontentsentry:
 
     Return the element-wise minimum of two vectors.
 
 
-.. py:function:: min(v: Vector[Any,Scalar]) -> Scalar
+.. py:function:: min(a: Vector[Any,Scalar]) -> Scalar
     :noindex:
     :nocontentsentry:
 
-    Return the minimum element of a vector ``v``.
+    Return the minimum element of a vector ``a``.
 
 
-.. py:function:: max(x: Scalar, y: Scalar) -> Scalar
+.. py:function:: max(a: Scalar, b: Scalar) -> Scalar
 
     Return the maximum of two scalars.
 
 
-.. py:function:: max(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+.. py:function:: max(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
     :noindex:
     :nocontentsentry:
 
     Return the element-wise maximum of two vectors.
 
 
-.. py:function:: max(v: Vector[Any,Scalar]) -> Scalar
+.. py:function:: max(a: Vector[Any,Scalar]) -> Scalar
     :noindex:
     :nocontentsentry:
 
-    Return the maximum element of a vector ``v``.
+    Return the maximum element of a vector ``a``.
 
 
-.. py:function:: clamp(x: Scalar, a: Scalar, b: Scalar) -> Scalar
+.. py:function:: clamp(x: Scalar, low: Scalar, high: Scalar) -> Scalar
 
-    Clamp the value of ``x`` to the range [a, b].
+    Clamp the value of ``x`` to the range [low, high].
 
 
 .. py:function:: abs(x: Scalar) -> Scalar
@@ -150,11 +142,11 @@ Scalar Math
     Return the absolute value of ``x``.
 
 
-.. py:function:: abs(a: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+.. py:function:: abs(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]
     :noindex:
     :nocontentsentry:
 
-    Return the absolute values of the elements of ``a``.
+    Return the absolute values of the elements of ``x``.
 
 
 .. py:function:: sign(x: Scalar) -> Scalar
@@ -162,11 +154,11 @@ Scalar Math
     Return -1 if ``x`` < 0, return 1 otherwise.
 
 
-.. py:function:: sign(a: Vector[Any,Scalar]) -> Scalar
+.. py:function:: sign(x: Vector[Any,Scalar]) -> Scalar
     :noindex:
     :nocontentsentry:
 
-    Return -1 for the negative elements of ``a``, and 1 otherwise.
+    Return -1 for the negative elements of ``x``, and 1 otherwise.
 
 
 .. py:function:: step(x: Scalar) -> Scalar
@@ -294,7 +286,7 @@ Scalar Math
     Return the nearest integer that is closer to zero than ``x``.
 
     In other words, it discards the fractional part of ``x``.
-    It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
+    It is similar to casting ``float(int(a))``, but preserves the negative sign when ``x`` is in the range [-0.0, -1.0).
     Equivalent to :func:`numpy.trunc()` and :func:`numpy.fix()`.
 
 
@@ -310,247 +302,247 @@ Scalar Math
 
 .. py:function:: frac(x: Float) -> Float
 
-    Retrieve the fractional part of x.
+    Retrieve the fractional part of ``x``.
 
-    In other words, it discards the integer part of x and is equivalent to ``x - trunc(x)``.
-
-
-.. py:function:: isfinite(x: Scalar) -> bool
-
-    Return ``True`` if x is a finite number, otherwise return ``False``.
+    In other words, it discards the integer part of ``x`` and is equivalent to ``x - trunc(x)``.
 
 
-.. py:function:: isfinite(x: Vector[Any,Scalar]) -> bool
+.. py:function:: isfinite(a: Scalar) -> bool
+
+    Return ``True`` if ``a`` is a finite number, otherwise return ``False``.
+
+
+.. py:function:: isfinite(a: Vector[Any,Scalar]) -> bool
     :noindex:
     :nocontentsentry:
 
-    Return ``True`` if all elements of the vector ``x`` are finite, otherwise return ``False``.
+    Return ``True`` if all elements of the vector ``a`` are finite, otherwise return ``False``.
 
 
-.. py:function:: isfinite(x: Quaternion[Scalar]) -> bool
+.. py:function:: isfinite(a: Quaternion[Scalar]) -> bool
     :noindex:
     :nocontentsentry:
 
-    Return ``True`` if all elements of the quaternion ``x`` are finite, otherwise return ``False``.
+    Return ``True`` if all elements of the quaternion ``a`` are finite, otherwise return ``False``.
 
 
-.. py:function:: isfinite(m: Matrix[Any,Any,Scalar]) -> bool
+.. py:function:: isfinite(a: Matrix[Any,Any,Scalar]) -> bool
     :noindex:
     :nocontentsentry:
 
-    Return ``True`` if all elements of the matrix ``m`` are finite, otherwise return ``False``.
+    Return ``True`` if all elements of the matrix ``a`` are finite, otherwise return ``False``.
 
 
-.. py:function:: isnan(x: Scalar) -> bool
+.. py:function:: isnan(a: Scalar) -> bool
 
-    Return ``True`` if ``x`` is NaN, otherwise return ``False``.
+    Return ``True`` if ``a`` is NaN, otherwise return ``False``.
 
 
-.. py:function:: isnan(x: Vector[Any,Scalar]) -> bool
+.. py:function:: isnan(a: Vector[Any,Scalar]) -> bool
     :noindex:
     :nocontentsentry:
 
-    Return ``True`` if any element of the vector ``x`` is NaN, otherwise return ``False``.
+    Return ``True`` if any element of the vector ``a`` is NaN, otherwise return ``False``.
 
 
-.. py:function:: isnan(x: Quaternion[Scalar]) -> bool
+.. py:function:: isnan(a: Quaternion[Scalar]) -> bool
     :noindex:
     :nocontentsentry:
 
-    Return ``True`` if any element of the quaternion ``x`` is NaN, otherwise return ``False``.
+    Return ``True`` if any element of the quaternion ``a`` is NaN, otherwise return ``False``.
 
 
-.. py:function:: isnan(m: Matrix[Any,Any,Scalar]) -> bool
+.. py:function:: isnan(a: Matrix[Any,Any,Scalar]) -> bool
     :noindex:
     :nocontentsentry:
 
-    Return ``True`` if any element of the matrix ``m`` is NaN, otherwise return ``False``.
+    Return ``True`` if any element of the matrix ``a`` is NaN, otherwise return ``False``.
 
 
-.. py:function:: isinf(x: Scalar) -> bool
+.. py:function:: isinf(a: Scalar) -> bool
 
-    Return ``True`` if x is positive or negative infinity, otherwise return ``False``.
+    Return ``True`` if ``a`` is positive or negative infinity, otherwise return ``False``.
 
 
-.. py:function:: isinf(x: Vector[Any,Scalar]) -> bool
+.. py:function:: isinf(a: Vector[Any,Scalar]) -> bool
     :noindex:
     :nocontentsentry:
 
-    Return ``True`` if any element of the vector ``x`` is positive or negative infinity, otherwise return ``False``.
+    Return ``True`` if any element of the vector ``a`` is positive or negative infinity, otherwise return ``False``.
 
 
-.. py:function:: isinf(x: Quaternion[Scalar]) -> bool
+.. py:function:: isinf(a: Quaternion[Scalar]) -> bool
     :noindex:
     :nocontentsentry:
 
-    Return ``True`` if any element of the quaternion ``x`` is positive or negative infinity, otherwise return ``False``.
+    Return ``True`` if any element of the quaternion ``a`` is positive or negative infinity, otherwise return ``False``.
 
 
-.. py:function:: isinf(m: Matrix[Any,Any,Scalar]) -> bool
+.. py:function:: isinf(a: Matrix[Any,Any,Scalar]) -> bool
     :noindex:
     :nocontentsentry:
 
-    Return ``True`` if any element of the matrix ``m`` is positive or negative infinity, otherwise return ``False``.
+    Return ``True`` if any element of the matrix ``a`` is positive or negative infinity, otherwise return ``False``.
 
 
 
 
 Vector Math
 ---------------
-.. py:function:: dot(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Scalar
+.. py:function:: dot(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Scalar
 
     Compute the dot product between two vectors.
 
 
-.. py:function:: dot(x: Quaternion[Float], y: Quaternion[Float]) -> Float
+.. py:function:: dot(a: Quaternion[Float], b: Quaternion[Float]) -> Float
     :noindex:
     :nocontentsentry:
 
     Compute the dot product between two quaternions.
 
 
-.. py:function:: ddot(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Scalar
+.. py:function:: ddot(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Scalar
 
     Compute the double dot product between two matrices.
 
 
-.. py:function:: argmin(v: Vector[Any,Scalar]) -> uint32
+.. py:function:: argmin(a: Vector[Any,Scalar]) -> uint32
 
-    Return the index of the minimum element of a vector ``v``. [1]_
-
-
-.. py:function:: argmax(v: Vector[Any,Scalar]) -> uint32
-
-    Return the index of the maximum element of a vector ``v``. [1]_
+    Return the index of the minimum element of a vector ``a``. [1]_
 
 
-.. py:function:: outer(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]
+.. py:function:: argmax(a: Vector[Any,Scalar]) -> uint32
 
-    Compute the outer product ``x*y^T`` for two vectors.
+    Return the index of the maximum element of a vector ``a``. [1]_
 
 
-.. py:function:: cross(x: Vector[3,Scalar], y: Vector[3,Scalar]) -> Vector[3,Scalar]
+.. py:function:: outer(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]
+
+    Compute the outer product ``a*b^T`` for two vectors.
+
+
+.. py:function:: cross(a: Vector[3,Scalar], b: Vector[3,Scalar]) -> Vector[3,Scalar]
 
     Compute the cross product of two 3D vectors.
 
 
-.. py:function:: skew(x: Vector[3,Scalar])
+.. py:function:: skew(vec: Vector[3,Scalar]) -> Matrix[3,3,Scalar]
 
-    Compute the skew-symmetric 3x3 matrix for a 3D vector ``x``.
-
-
-.. py:function:: length(x: Vector[Any,Float]) -> Float
-
-    Compute the length of a floating-point vector ``x``.
+    Compute the skew-symmetric 3x3 matrix for a 3D vector ``vec``.
 
 
-.. py:function:: length(x: Quaternion[Float]) -> Float
+.. py:function:: length(a: Vector[Any,Float]) -> Float
+
+    Compute the length of a floating-point vector ``a``.
+
+
+.. py:function:: length(a: Quaternion[Float]) -> Float
     :noindex:
     :nocontentsentry:
 
-    Compute the length of a quaternion ``x``.
+    Compute the length of a quaternion ``a``.
 
 
-.. py:function:: length_sq(x: Vector[Any,Scalar]) -> Scalar
+.. py:function:: length_sq(a: Vector[Any,Scalar]) -> Scalar
 
-    Compute the squared length of a vector ``x``.
+    Compute the squared length of a vector ``a``.
 
 
-.. py:function:: length_sq(x: Quaternion[Scalar]) -> Scalar
+.. py:function:: length_sq(a: Quaternion[Scalar]) -> Scalar
     :noindex:
     :nocontentsentry:
 
-    Compute the squared length of a quaternion ``x``.
+    Compute the squared length of a quaternion ``a``.
 
 
-.. py:function:: normalize(x: Vector[Any,Float]) -> Vector[Any,Float]
+.. py:function:: normalize(a: Vector[Any,Float]) -> Vector[Any,Float]
 
-    Compute the normalized value of ``x``. If ``length(x)`` is 0 then the zero vector is returned.
+    Compute the normalized value of ``a``. If ``length(a)`` is 0 then the zero vector is returned.
 
 
-.. py:function:: normalize(x: Quaternion[Float]) -> Quaternion[Float]
+.. py:function:: normalize(a: Quaternion[Float]) -> Quaternion[Float]
     :noindex:
     :nocontentsentry:
 
-    Compute the normalized value of ``x``. If ``length(x)`` is 0, then the zero quaternion is returned.
+    Compute the normalized value of ``a``. If ``length(a)`` is 0, then the zero quaternion is returned.
 
 
-.. py:function:: transpose(m: Matrix[Any,Any,Scalar])
+.. py:function:: transpose(a: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
 
-    Return the transpose of the matrix ``m``.
-
-
-.. py:function:: inverse(m: Matrix[2,2,Float]) -> Matrix[Any,Any,Float]
-
-    Return the inverse of a 2x2 matrix ``m``.
+    Return the transpose of the matrix ``a``.
 
 
-.. py:function:: inverse(m: Matrix[3,3,Float]) -> Matrix[Any,Any,Float]
+.. py:function:: inverse(a: Matrix[2,2,Float]) -> Matrix[Any,Any,Float]
+
+    Return the inverse of a 2x2 matrix ``a``.
+
+
+.. py:function:: inverse(a: Matrix[3,3,Float]) -> Matrix[Any,Any,Float]
     :noindex:
     :nocontentsentry:
 
-    Return the inverse of a 3x3 matrix ``m``.
+    Return the inverse of a 3x3 matrix ``a``.
 
 
-.. py:function:: inverse(m: Matrix[4,4,Float]) -> Matrix[Any,Any,Float]
+.. py:function:: inverse(a: Matrix[4,4,Float]) -> Matrix[Any,Any,Float]
     :noindex:
     :nocontentsentry:
 
-    Return the inverse of a 4x4 matrix ``m``.
+    Return the inverse of a 4x4 matrix ``a``.
 
 
-.. py:function:: determinant(m: Matrix[2,2,Float]) -> Float
+.. py:function:: determinant(a: Matrix[2,2,Float]) -> Float
 
-    Return the determinant of a 2x2 matrix ``m``.
+    Return the determinant of a 2x2 matrix ``a``.
 
 
-.. py:function:: determinant(m: Matrix[3,3,Float]) -> Float
+.. py:function:: determinant(a: Matrix[3,3,Float]) -> Float
     :noindex:
     :nocontentsentry:
 
-    Return the determinant of a 3x3 matrix ``m``.
+    Return the determinant of a 3x3 matrix ``a``.
 
 
-.. py:function:: determinant(m: Matrix[4,4,Float]) -> Float
+.. py:function:: determinant(a: Matrix[4,4,Float]) -> Float
     :noindex:
     :nocontentsentry:
 
-    Return the determinant of a 4x4 matrix ``m``.
+    Return the determinant of a 4x4 matrix ``a``.
 
 
-.. py:function:: trace(m: Matrix[Any,Any,Scalar]) -> Scalar
+.. py:function:: trace(a: Matrix[Any,Any,Scalar]) -> Scalar
 
-    Return the trace of the matrix ``m``.
-
-
-.. py:function:: diag(d: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]
-
-    Returns a matrix with the components of the vector ``d`` on the diagonal.
+    Return the trace of the matrix ``a``.
 
 
-.. py:function:: get_diag(m: Matrix[Any,Any,Scalar]) -> Vector[Any,Scalar]
+.. py:function:: diag(vec: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]
 
-    Returns a vector containing the diagonal elements of the square matrix ``m``.
+    Returns a matrix with the components of the vector ``vec`` on the diagonal.
 
 
-.. py:function:: cw_mul(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+.. py:function:: get_diag(mat: Matrix[Any,Any,Scalar]) -> Vector[Any,Scalar]
+
+    Returns a vector containing the diagonal elements of the square matrix ``mat``.
+
+
+.. py:function:: cw_mul(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
 
     Component-wise multiplication of two vectors.
 
 
-.. py:function:: cw_mul(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+.. py:function:: cw_mul(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
     :noindex:
     :nocontentsentry:
 
     Component-wise multiplication of two matrices.
 
 
-.. py:function:: cw_div(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+.. py:function:: cw_div(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
 
     Component-wise division of two vectors.
 
 
-.. py:function:: cw_div(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+.. py:function:: cw_div(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
     :noindex:
     :nocontentsentry:
 
@@ -565,7 +557,7 @@ Vector Math
 .. py:function:: matrix(pos: Vector[3,Float], rot: Quaternion[Float], scale: Vector[3,Float], dtype: Float) -> Matrix[4,4,Float]
 
     Construct a 4x4 transformation matrix that applies the transformations as
-    Translation(pos)*Rotation(rot)*Scale(scale) when applied to column vectors, i.e.: y = (TRS)*x
+    Translation(pos)*Rotation(rot)*Scaling(scale) when applied to column vectors, i.e.: y = (TRS)*x
 
 
 .. py:function:: matrix(*args: Scalar, shape: Tuple[int, int], dtype: Scalar) -> Matrix[Any,Any,Scalar]
@@ -615,14 +607,14 @@ Quaternion Math
     Create a quaternion using the supplied components (type inferred from component type).
 
 
-.. py:function:: quaternion(i: Vector[3,Float], r: Float, dtype: Float) -> Quaternion[Float]
+.. py:function:: quaternion(ijk: Vector[3,Float], real: Float, dtype: Float) -> Quaternion[Float]
     :noindex:
     :nocontentsentry:
 
     Create a quaternion using the supplied vector/scalar (type inferred from scalar type).
 
 
-.. py:function:: quaternion(q: Quaternion[Float], dtype: Float) -> Quaternion[Float]
+.. py:function:: quaternion(quat: Quaternion[Float], dtype: Float) -> Quaternion[Float]
     :noindex:
     :nocontentsentry:
 
@@ -639,12 +631,12 @@ Quaternion Math
     Construct a quaternion representing a rotation of angle radians around the given axis.
 
 
-.. py:function:: quat_to_axis_angle(q: Quaternion[Float], axis: Vector[3,Float], angle: Float) -> None
+.. py:function:: quat_to_axis_angle(quat: Quaternion[Float], axis: Vector[3,Float], angle: Float) -> None
 
     Extract the rotation axis and angle radians a quaternion represents.
 
 
-.. py:function:: quat_from_matrix(m: Matrix[3,3,Float]) -> Quaternion[Float]
+.. py:function:: quat_from_matrix(mat: Matrix[3,3,Float]) -> Quaternion[Float]
 
     Construct a quaternion from a 3x3 matrix.
 
@@ -654,27 +646,27 @@ Quaternion Math
     Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.
 
 
-.. py:function:: quat_inverse(q: Quaternion[Float]) -> Quaternion[Float]
+.. py:function:: quat_inverse(quat: Quaternion[Float]) -> Quaternion[Float]
 
     Compute quaternion conjugate.
 
 
-.. py:function:: quat_rotate(q: Quaternion[Float], p: Vector[3,Float]) -> Vector[3,Float]
+.. py:function:: quat_rotate(quat: Quaternion[Float], vec: Vector[3,Float]) -> Vector[3,Float]
 
     Rotate a vector by a quaternion.
 
 
-.. py:function:: quat_rotate_inv(q: Quaternion[Float], p: Vector[3,Float]) -> Vector[3,Float]
+.. py:function:: quat_rotate_inv(quat: Quaternion[Float], vec: Vector[3,Float]) -> Vector[3,Float]
 
     Rotate a vector by the inverse of a quaternion.
 
 
-.. py:function:: quat_slerp(q0: Quaternion[Float], q1: Quaternion[Float], t: Float) -> Quaternion[Float]
+.. py:function:: quat_slerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaternion[Float]
 
     Linearly interpolate between two quaternions.
 
 
-.. py:function:: quat_to_matrix(q: Quaternion[Float]) -> Matrix[3,3,Float]
+.. py:function:: quat_to_matrix(quat: Quaternion[Float]) -> Matrix[3,3,Float]
 
     Convert a quaternion to a 3x3 rotation matrix.
 
@@ -683,9 +675,9 @@ Quaternion Math
 
 Transformations
 ---------------
-.. py:function:: transformation(p: Vector[3,Float], q: Quaternion[Float], dtype: Float) -> Transformation[Float]
+.. py:function:: transformation(pos: Vector[3,Float], rot: Quaternion[Float], dtype: Float) -> Transformation[Float]
 
-    Construct a rigid-body transformation with translation part ``p`` and rotation ``q``.
+    Construct a rigid-body transformation with translation part ``pos`` and rotation ``rot``.
 
 
 .. py:function:: transform_identity(dtype: Float) -> transformf
@@ -693,14 +685,14 @@ Transformations
     Construct an identity transform with zero translation and identity rotation.
 
 
-.. py:function:: transform_get_translation(t: Transformation[Float]) -> Vector[3,Float]
+.. py:function:: transform_get_translation(xform: Transformation[Float]) -> Vector[3,Float]
 
-    Return the translational part of a transform ``t``.
+    Return the translational part of a transform ``xform``.
 
 
-.. py:function:: transform_get_rotation(t: Transformation[Float]) -> Quaternion[Float]
+.. py:function:: transform_get_rotation(xform: Transformation[Float]) -> Quaternion[Float]
 
-    Return the rotational part of a transform ``t``.
+    Return the rotational part of a transform ``xform``.
 
 
 .. py:function:: transform_multiply(a: Transformation[Float], b: Transformation[Float]) -> Transformation[Float]
@@ -708,62 +700,62 @@ Transformations
     Multiply two rigid body transformations together.
 
 
-.. py:function:: transform_point(t: Transformation[Float], p: Vector[3,Float]) -> Vector[3,Float]
+.. py:function:: transform_point(xform: Transformation[Float], point: Vector[3,Float]) -> Vector[3,Float]
 
-    Apply the transform to a point ``p`` treating the homogeneous coordinate as w=1 (translation and rotation).
+    Apply the transform to a point ``point`` treating the homogeneous coordinate as w=1 (translation and rotation).
 
 
-.. py:function:: transform_point(m: Matrix[4,4,Float], p: Vector[3,Float]) -> Vector[3,Float]
+.. py:function:: transform_point(mat: Matrix[4,4,Float], point: Vector[3,Float]) -> Vector[3,Float]
     :noindex:
     :nocontentsentry:
 
-    Apply the transform to a point ``p`` treating the homogeneous coordinate as w=1.
+    Apply the transform to a point ``point`` treating the homogeneous coordinate as w=1.
 
-    The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``.
-    Note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``.
+    The transformation is applied treating ``point`` as a column vector, e.g.: ``y = mat*point``.
+    Note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = point^T*mat^T``.
     If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
     matrix before calling this method.
 
 
-.. py:function:: transform_vector(t: Transformation[Float], v: Vector[3,Float]) -> Vector[3,Float]
+.. py:function:: transform_vector(xform: Transformation[Float], vec: Vector[3,Float]) -> Vector[3,Float]
 
-    Apply the transform to a vector ``v`` treating the homogeneous coordinate as w=0 (rotation only).
+    Apply the transform to a vector ``vec`` treating the homogeneous coordinate as w=0 (rotation only).
 
 
-.. py:function:: transform_vector(m: Matrix[4,4,Float], v: Vector[3,Float]) -> Vector[3,Float]
+.. py:function:: transform_vector(mat: Matrix[4,4,Float], vec: Vector[3,Float]) -> Vector[3,Float]
     :noindex:
     :nocontentsentry:
 
-    Apply the transform to a vector ``v`` treating the homogeneous coordinate as w=0.
+    Apply the transform to a vector ``vec`` treating the homogeneous coordinate as w=0.
 
-    The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
-    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``.
+    The transformation is applied treating ``vec`` as a column vector, e.g.: ``y = mat*vec``
+    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = vec^T*mat^T``.
     If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
     matrix before calling this method.
 
 
-.. py:function:: transform_inverse(t: Transformation[Float]) -> Transformation[Float]
+.. py:function:: transform_inverse(xform: Transformation[Float]) -> Transformation[Float]
 
-    Compute the inverse of the transformation ``t``.
+    Compute the inverse of the transformation ``xform``.
 
 
 
 
 Spatial Math
 ---------------
-.. py:function:: spatial_vector(dtype: Float)
+.. py:function:: spatial_vector(dtype: Float) -> Vector[6,Float]
 
     Zero-initialize a 6D screw vector.
 
 
-.. py:function:: spatial_vector(w: Vector[3,Float], v: Vector[3,Float], dtype: Float)
+.. py:function:: spatial_vector(w: Vector[3,Float], v: Vector[3,Float], dtype: Float) -> Vector[6,Float]
     :noindex:
     :nocontentsentry:
 
     Construct a 6D screw vector from two 3D vectors.
 
 
-.. py:function:: spatial_vector(wx: Float, wy: Float, wz: Float, vx: Float, vy: Float, vz: Float, dtype: Float)
+.. py:function:: spatial_vector(wx: Float, wy: Float, wz: Float, vx: Float, vy: Float, vz: Float, dtype: Float) -> Vector[6,Float]
     :noindex:
     :nocontentsentry:
 
@@ -790,12 +782,12 @@ Spatial Math
     Compute the dual cross product of two 6D screw vectors.
 
 
-.. py:function:: spatial_top(a: Vector[6,Float])
+.. py:function:: spatial_top(svec: Vector[6,Float]) -> Vector[3,Float]
 
     Return the top (first) part of a 6D screw vector.
 
 
-.. py:function:: spatial_bottom(a: Vector[6,Float])
+.. py:function:: spatial_bottom(svec: Vector[6,Float]) -> Vector[3,Float]
 
     Return the bottom (second) part of a 6D screw vector.
 
@@ -884,446 +876,446 @@ Utility
     This function may not be called from user-defined Warp functions.
 
 
-.. py:function:: select(cond: bool, arg1: Any, arg2: Any)
+.. py:function:: select(cond: bool, value_if_false: Any, value_if_true: Any) -> Any
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: int8, arg1: Any, arg2: Any)
+.. py:function:: select(cond: int8, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: uint8, arg1: Any, arg2: Any)
+.. py:function:: select(cond: uint8, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: int16, arg1: Any, arg2: Any)
+.. py:function:: select(cond: int16, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: uint16, arg1: Any, arg2: Any)
+.. py:function:: select(cond: uint16, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: int32, arg1: Any, arg2: Any)
+.. py:function:: select(cond: int32, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: uint32, arg1: Any, arg2: Any)
+.. py:function:: select(cond: uint32, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: int64, arg1: Any, arg2: Any)
+.. py:function:: select(cond: int64, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(cond: uint64, arg1: Any, arg2: Any)
+.. py:function:: select(cond: uint64, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: select(arr: Array[Any], arg1: Any, arg2: Any)
+.. py:function:: select(arr: Array[Any], value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``arr`` is null then return ``arg1``, otherwise return ``arg2``
+    Select between two arguments, if ``arr`` is null then return ``value_if_false``, otherwise return ``value_if_true``
 
 
-.. py:function:: atomic_add(arr: Array[Any], i: int32, value: Any)
+.. py:function:: atomic_add(arr: Array[Any], i: int32, value: Any) -> Any
 
-    Atomically add ``value`` onto ``arr[i]``.
+    Atomically add ``value`` onto ``arr[i]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: Array[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_add(arr: Array[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i,j]``.
+    Atomically add ``value`` onto ``arr[i,j]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: Array[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_add(arr: Array[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i,j,k]``.
+    Atomically add ``value`` onto ``arr[i,j,k]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_add(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i,j,k,l]``.
+    Atomically add ``value`` onto ``arr[i,j,k,l]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: FabricArray[Any], i: int32, value: Any)
+.. py:function:: atomic_add(arr: FabricArray[Any], i: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i]``.
+    Atomically add ``value`` onto ``arr[i]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: FabricArray[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_add(arr: FabricArray[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i,j]``.
+    Atomically add ``value`` onto ``arr[i,j]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_add(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i,j,k]``.
+    Atomically add ``value`` onto ``arr[i,j,k]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_add(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i,j,k,l]``.
+    Atomically add ``value`` onto ``arr[i,j,k,l]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: IndexedFabricArray[Any], i: int32, value: Any)
+.. py:function:: atomic_add(arr: IndexedFabricArray[Any], i: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i]``.
+    Atomically add ``value`` onto ``arr[i]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i,j]``.
+    Atomically add ``value`` onto ``arr[i,j]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i,j,k]``.
+    Atomically add ``value`` onto ``arr[i,j,k]`` and return the old value.
 
 
-.. py:function:: atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically add ``value`` onto ``arr[i,j,k,l]``.
+    Atomically add ``value`` onto ``arr[i,j,k,l]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: Array[Any], i: int32, value: Any)
+.. py:function:: atomic_sub(arr: Array[Any], i: int32, value: Any) -> Any
 
-    Atomically subtract ``value`` onto ``arr[i]``.
+    Atomically subtract ``value`` onto ``arr[i]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: Array[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_sub(arr: Array[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i,j]``.
+    Atomically subtract ``value`` onto ``arr[i,j]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: Array[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_sub(arr: Array[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i,j,k]``.
+    Atomically subtract ``value`` onto ``arr[i,j,k]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_sub(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i,j,k,l]``.
+    Atomically subtract ``value`` onto ``arr[i,j,k,l]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: FabricArray[Any], i: int32, value: Any)
+.. py:function:: atomic_sub(arr: FabricArray[Any], i: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i]``.
+    Atomically subtract ``value`` onto ``arr[i]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: FabricArray[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_sub(arr: FabricArray[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i,j]``.
+    Atomically subtract ``value`` onto ``arr[i,j]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_sub(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i,j,k]``.
+    Atomically subtract ``value`` onto ``arr[i,j,k]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_sub(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i,j,k,l]``.
+    Atomically subtract ``value`` onto ``arr[i,j,k,l]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: IndexedFabricArray[Any], i: int32, value: Any)
+.. py:function:: atomic_sub(arr: IndexedFabricArray[Any], i: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i]``.
+    Atomically subtract ``value`` onto ``arr[i]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i,j]``.
+    Atomically subtract ``value`` onto ``arr[i,j]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i,j,k]``.
+    Atomically subtract ``value`` onto ``arr[i,j,k]`` and return the old value.
 
 
-.. py:function:: atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Atomically subtract ``value`` onto ``arr[i,j,k,l]``.
+    Atomically subtract ``value`` onto ``arr[i,j,k,l]`` and return the old value.
 
 
-.. py:function:: atomic_min(arr: Array[Any], i: int32, value: Any)
+.. py:function:: atomic_min(arr: Array[Any], i: int32, value: Any) -> Any
 
-    Compute the minimum of ``value`` and ``arr[i]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: Array[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_min(arr: Array[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i,j]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: Array[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_min(arr: Array[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i,j,k]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_min(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i,j,k,l]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: FabricArray[Any], i: int32, value: Any)
+.. py:function:: atomic_min(arr: FabricArray[Any], i: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: FabricArray[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_min(arr: FabricArray[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i,j]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_min(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i,j,k]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_min(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i,j,k,l]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: IndexedFabricArray[Any], i: int32, value: Any)
+.. py:function:: atomic_min(arr: IndexedFabricArray[Any], i: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i,j]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i,j,k]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the minimum of ``value`` and ``arr[i,j,k,l]`` and atomically update the array.
+    Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: Array[Any], i: int32, value: Any)
+.. py:function:: atomic_max(arr: Array[Any], i: int32, value: Any) -> Any
 
-    Compute the maximum of ``value`` and ``arr[i]`` and atomically update the array.
-
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
-
-
-.. py:function:: atomic_max(arr: Array[Any], i: int32, j: int32, value: Any)
-    :noindex:
-    :nocontentsentry:
-
-    Compute the maximum of ``value`` and ``arr[i,j]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: Array[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_max(arr: Array[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the maximum of ``value`` and ``arr[i,j,k]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_max(arr: Array[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the maximum of ``value`` and ``arr[i,j,k,l]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: FabricArray[Any], i: int32, value: Any)
+.. py:function:: atomic_max(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the maximum of ``value`` and ``arr[i]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: FabricArray[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_max(arr: FabricArray[Any], i: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the maximum of ``value`` and ``arr[i,j]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_max(arr: FabricArray[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the maximum of ``value`` and ``arr[i,j,k]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_max(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the maximum of ``value`` and ``arr[i,j,k,l]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: IndexedFabricArray[Any], i: int32, value: Any)
+.. py:function:: atomic_max(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the maximum of ``value`` and ``arr[i]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any)
+.. py:function:: atomic_max(arr: IndexedFabricArray[Any], i: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the maximum of ``value`` and ``arr[i,j]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any)
+.. py:function:: atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the maximum of ``value`` and ``arr[i,j,k]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
-.. py:function:: atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. py:function:: atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Compute the maximum of ``value`` and ``arr[i,j,k,l]`` and atomically update the array.
+    Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+
+    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
@@ -1361,37 +1353,38 @@ Utility
     Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``
 
 
-.. py:function:: smoothstep(edge0: Float, edge1: Float, x: Float) -> Float
+.. py:function:: smoothstep(a: Float, b: Float, x: Float) -> Float
 
-    Smoothly interpolate between two values ``edge0`` and ``edge1`` using a factor ``x``,
+    Smoothly interpolate between two values ``a`` and ``b`` using a factor ``x``,
     and return a result between 0 and 1 using a cubic Hermite interpolation after clamping.
 
 
-.. py:function:: expect_near(arg1: Float, arg2: Float, tolerance: Float) -> None
+.. py:function:: expect_near(a: Float, b: Float, tolerance: Float) -> None
 
-    Prints an error to stdout if ``arg1`` and ``arg2`` are not closer than tolerance in magnitude
+    Prints an error to stdout if ``a`` and ``b`` are not closer than tolerance in magnitude
 
 
-.. py:function:: expect_near(arg1: vec3f, arg2: vec3f, tolerance: float32) -> None
+.. py:function:: expect_near(a: vec3f, b: vec3f, tolerance: float32) -> None
     :noindex:
     :nocontentsentry:
 
-    Prints an error to stdout if any element of ``arg1`` and ``arg2`` are not closer than tolerance in magnitude
+    Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude
 
 
 
 
 Geometry
 ---------------
-.. py:function:: bvh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> bvh_query_t
+.. autoclass:: BvhQuery
+.. py:function:: bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> bvh_query_t
 
     Construct an axis-aligned bounding box query against a BVH object.
 
     This query can be used to iterate over all bounds inside a BVH.
 
     :param id: The BVH identifier
-    :param lower: The lower bound of the bounding box in BVH space
-    :param upper: The upper bound of the bounding box in BVH space
+    :param low: The lower bound of the bounding box in BVH space
+    :param high: The upper bound of the bounding box in BVH space
 
 
 .. py:function:: bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> bvh_query_t
@@ -1411,6 +1404,7 @@ Geometry
     The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.
 
 
+.. autoclass:: MeshQueryPoint
 .. py:function:: mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> mesh_query_point_t
 
     Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
@@ -1478,6 +1472,7 @@ Geometry
     :param threshold: The threshold of the winding number to be considered inside, default 0.5
 
 
+.. autoclass:: MeshQueryRay
 .. py:function:: mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32) -> mesh_query_ray_t
 
     Computes the closest ray hit on the :class:`Mesh` with identifier ``id``.
@@ -1488,15 +1483,16 @@ Geometry
     :param max_t: The maximum distance along the ray to check for intersections
 
 
-.. py:function:: mesh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> mesh_query_aabb_t
+.. autoclass:: MeshQueryAABB
+.. py:function:: mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> mesh_query_aabb_t
 
     Construct an axis-aligned bounding box query against a :class:`Mesh`.
 
     This query can be used to iterate over all triangles inside a volume.
 
     :param id: The mesh identifier
-    :param lower: The lower bound of the bounding box in mesh space
-    :param upper: The upper bound of the bounding box in mesh space
+    :param low: The lower bound of the bounding box in mesh space
+    :param high: The upper bound of the bounding box in mesh space
 
 
 .. py:function:: mesh_query_aabb_next(query: mesh_query_aabb_t, index: int32) -> bool
@@ -1516,6 +1512,7 @@ Geometry
     Evaluates the velocity on the :class:`Mesh` given a face index and barycentric coordinates.
 
 
+.. autoclass:: HashGridQuery
 .. py:function:: hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> hash_grid_query_t
 
     Construct a point query against a :class:`HashGrid`.
@@ -1750,11 +1747,11 @@ Random
     Return a random integer in the range [0, 2^32).
 
 
-.. py:function:: randi(state: uint32, min: int32, max: int32) -> int
+.. py:function:: randi(state: uint32, low: int32, high: int32) -> int
     :noindex:
     :nocontentsentry:
 
-    Return a random integer between [min, max).
+    Return a random integer between [low, high).
 
 
 .. py:function:: randf(state: uint32) -> float
@@ -1762,11 +1759,11 @@ Random
     Return a random float between [0.0, 1.0).
 
 
-.. py:function:: randf(state: uint32, min: float32, max: float32) -> float
+.. py:function:: randf(state: uint32, low: float32, high: float32) -> float
     :noindex:
     :nocontentsentry:
 
-    Return a random float between [min, max).
+    Return a random float between [low, high).
 
 
 .. py:function:: randn(state: uint32) -> float
@@ -1919,179 +1916,188 @@ Other
     Search a sorted array ``arr`` in the range [arr_begin, arr_end) for the closest element greater than or equal to ``value``.
 
 
-.. py:function:: bit_and(x: Int, y: Int) -> Int
+.. py:function:: bit_and(a: Int, b: Int) -> Int
 
 
-.. py:function:: bit_or(x: Int, y: Int) -> Int
+.. py:function:: bit_or(a: Int, b: Int) -> Int
 
 
-.. py:function:: bit_xor(x: Int, y: Int) -> Int
+.. py:function:: bit_xor(a: Int, b: Int) -> Int
 
 
-.. py:function:: lshift(x: Int, y: Int) -> Int
+.. py:function:: lshift(a: Int, b: Int) -> Int
 
 
-.. py:function:: rshift(x: Int, y: Int) -> Int
+.. py:function:: rshift(a: Int, b: Int) -> Int
 
 
-.. py:function:: invert(x: Int) -> Int
+.. py:function:: invert(a: Int) -> Int
 
 
 
 
 Operators
 ---------------
-.. py:function:: add(x: Scalar, y: Scalar) -> Scalar
+.. py:function:: add(a: Scalar, b: Scalar) -> Scalar
 
 
-.. py:function:: add(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+.. py:function:: add(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: add(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]
+.. py:function:: add(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: add(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+.. py:function:: add(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: add(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]
+.. py:function:: add(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: sub(x: Scalar, y: Scalar) -> Scalar
+.. py:function:: sub(a: Scalar, b: Scalar) -> Scalar
 
 
-.. py:function:: sub(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+.. py:function:: sub(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: sub(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+.. py:function:: sub(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: sub(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]
+.. py:function:: sub(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: sub(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]
+.. py:function:: sub(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: mul(x: Scalar, y: Scalar) -> Scalar
+.. py:function:: mul(a: Scalar, b: Scalar) -> Scalar
 
 
-.. py:function:: mul(x: Vector[Any,Scalar], y: Scalar) -> Vector[Any,Scalar]
+.. py:function:: mul(a: Vector[Any,Scalar], b: Scalar) -> Vector[Any,Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: mul(x: Scalar, y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+.. py:function:: mul(a: Scalar, b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: mul(x: Quaternion[Scalar], y: Scalar) -> Quaternion[Scalar]
+.. py:function:: mul(a: Quaternion[Scalar], b: Scalar) -> Quaternion[Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: mul(x: Scalar, y: Quaternion[Scalar]) -> Quaternion[Scalar]
+.. py:function:: mul(a: Scalar, b: Quaternion[Scalar]) -> Quaternion[Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: mul(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]
+.. py:function:: mul(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: mul(x: Scalar, y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+.. py:function:: mul(a: Scalar, b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: mul(x: Matrix[Any,Any,Scalar], y: Scalar) -> Matrix[Any,Any,Scalar]
+.. py:function:: mul(a: Matrix[Any,Any,Scalar], b: Scalar) -> Matrix[Any,Any,Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: mul(x: Matrix[Any,Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+.. py:function:: mul(a: Matrix[Any,Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: mul(x: Vector[Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Vector[Any,Scalar]
+.. py:function:: mul(a: Vector[Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Vector[Any,Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: mul(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar])
+.. py:function:: mul(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: mul(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]
+.. py:function:: mul(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: mul(x: Scalar, y: Transformation[Scalar]) -> Transformation[Scalar]
+.. py:function:: mul(a: Scalar, b: Transformation[Scalar]) -> Transformation[Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: mul(x: Transformation[Scalar], y: Scalar) -> Transformation[Scalar]
+.. py:function:: mul(a: Transformation[Scalar], b: Scalar) -> Transformation[Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: mod(x: Scalar, y: Scalar) -> Scalar
+.. py:function:: mod(a: Scalar, b: Scalar) -> Scalar
+
+    Modulo operation using truncated division.
 
 
-.. py:function:: div(x: Scalar, y: Scalar) -> Scalar
+.. py:function:: mod(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Scalar
+    :noindex:
+    :nocontentsentry:
+
+    Modulo operation using truncated division.
 
 
-.. py:function:: div(x: Vector[Any,Scalar], y: Scalar) -> Vector[Any,Scalar]
+.. py:function:: div(a: Scalar, b: Scalar) -> Scalar
+
+
+.. py:function:: div(a: Vector[Any,Scalar], b: Scalar) -> Vector[Any,Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: div(x: Scalar, y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+.. py:function:: div(a: Scalar, b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: div(x: Matrix[Any,Any,Scalar], y: Scalar) -> Matrix[Any,Any,Scalar]
+.. py:function:: div(a: Matrix[Any,Any,Scalar], b: Scalar) -> Matrix[Any,Any,Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: div(x: Scalar, y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+.. py:function:: div(a: Scalar, b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: div(x: Quaternion[Scalar], y: Scalar) -> Quaternion[Scalar]
+.. py:function:: div(a: Quaternion[Scalar], b: Scalar) -> Quaternion[Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: div(x: Scalar, y: Quaternion[Scalar]) -> Quaternion[Scalar]
+.. py:function:: div(a: Scalar, b: Quaternion[Scalar]) -> Quaternion[Scalar]
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: floordiv(x: Scalar, y: Scalar) -> Scalar
+.. py:function:: floordiv(a: Scalar, b: Scalar) -> Scalar
 
 
 .. py:function:: pos(x: Scalar) -> Scalar
@@ -2130,45 +2136,45 @@ Operators
     :nocontentsentry:
 
 
-.. py:function:: unot(b: bool) -> bool
+.. py:function:: unot(a: bool) -> bool
 
 
-.. py:function:: unot(b: int8) -> bool
+.. py:function:: unot(a: int8) -> bool
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: unot(b: uint8) -> bool
+.. py:function:: unot(a: uint8) -> bool
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: unot(b: int16) -> bool
+.. py:function:: unot(a: int16) -> bool
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: unot(b: uint16) -> bool
+.. py:function:: unot(a: uint16) -> bool
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: unot(b: int32) -> bool
+.. py:function:: unot(a: int32) -> bool
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: unot(b: uint32) -> bool
+.. py:function:: unot(a: uint32) -> bool
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: unot(b: int64) -> bool
+.. py:function:: unot(a: int64) -> bool
     :noindex:
     :nocontentsentry:
 
 
-.. py:function:: unot(b: uint64) -> bool
+.. py:function:: unot(a: uint64) -> bool
     :noindex:
     :nocontentsentry:
 

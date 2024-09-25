@@ -1559,6 +1559,83 @@ def test_transform_vector(test, device, dtype, register_kernels=False):
             tape.zero()
 
 
+def test_mat_array_type_indexing(test, device, dtype, register_kernels=False):
+    np_type = np.dtype(dtype)
+    wp_type = wp.types.np_dtype_to_warp_type[np_type]
+
+    vec2 = wp.types.vector(length=2, dtype=wp_type)
+    mat22 = wp.types.matrix(shape=(2, 2), dtype=wp_type)
+    mat33 = wp.types.matrix(shape=(3, 3), dtype=wp_type)
+
+    def mattest_read_write_store(x: wp.array(dtype=wp_type), a: wp.array(dtype=mat22)):
+        tid = wp.tid()
+
+        t = a[tid]
+        t[0, 0] = x[tid]
+        a[tid] = t
+
+    def mattest_in_register(x: wp.array2d(dtype=mat22), y: wp.array(dtype=vec2)):
+        i, j = wp.tid()
+
+        a = mat22(wp_type(0.0))
+        a[0] = y[i]
+        a[1, 1] = wp_type(3.0)
+        x[i, j] = a
+
+    def mattest_in_register_overwrite(x: wp.array2d(dtype=mat22), y: wp.array(dtype=vec2)):
+        i, j = wp.tid()
+
+        a = mat22(wp_type(0.0))
+        a[0] = y[i]
+        a[0, 1] = wp_type(3.0)
+        x[i, j] = a
+
+    kernel_read_write_store = getkernel(mattest_read_write_store, suffix=dtype.__name__)
+    kernel_in_register = getkernel(mattest_in_register, suffix=dtype.__name__)
+    kernel_in_register_overwrite = getkernel(mattest_in_register_overwrite, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    a = wp.ones(1, dtype=mat22, device=device, requires_grad=True)
+    x = wp.full(1, value=2.0, dtype=wp_type, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel_read_write_store, dim=1, inputs=[x, a], device=device)
+
+    tape.backward(grads={a: wp.ones_like(a, requires_grad=False)})
+
+    assert_np_equal(a.numpy(), np.array([[[2.0, 1.0], [1.0, 1.0]]], dtype=np_type))
+    assert_np_equal(x.grad.numpy(), np.array([1.0], dtype=np_type))
+
+    tape.reset()
+
+    x = wp.zeros((1, 1), dtype=mat22, device=device, requires_grad=True)
+    y = wp.ones(1, dtype=vec2, device=device, requires_grad=True)
+
+    with tape:
+        wp.launch(kernel_in_register, dim=(1, 1), inputs=[x, y], device=device)
+
+    tape.backward(grads={x: wp.ones_like(x, requires_grad=False)})
+
+    assert_np_equal(x.numpy(), np.array([[[[1.0, 1.0], [0.0, 3.0]]]], dtype=np_type))
+    assert_np_equal(y.grad.numpy(), np.array([[1.0, 1.0]], dtype=np_type))
+
+    tape.reset()
+
+    x = wp.zeros((1, 1), dtype=mat22, device=device, requires_grad=True)
+    y = wp.ones(1, dtype=vec2, device=device, requires_grad=True)
+
+    with tape:
+        wp.launch(kernel_in_register_overwrite, dim=(1, 1), inputs=[x, y], device=device)
+
+    tape.backward(grads={x: wp.ones_like(x, requires_grad=False)})
+
+    assert_np_equal(x.numpy(), np.array([[[[1.0, 3.0], [0.0, 0.0]]]], dtype=np_type))
+    assert_np_equal(y.grad.numpy(), np.array([[1.0, 0.0]], dtype=np_type))
+
+
 # Test matrix constructors using explicit type (float16)
 # note that these tests are specifically not using generics / closure
 # args to create kernels dynamically (like the rest of this file)
@@ -1791,6 +1868,13 @@ for dtype in np_float_types:
         TestMat, f"test_determinant_{dtype.__name__}", test_determinant, devices=devices, dtype=dtype
     )
     add_function_test_register_kernel(TestMat, f"test_skew_{dtype.__name__}", test_skew, devices=devices, dtype=dtype)
+    add_function_test_register_kernel(
+        TestMat,
+        f"test_mat_array_type_indexing_{dtype.__name__}",
+        test_mat_array_type_indexing,
+        devices=devices,
+        dtype=dtype,
+    )
 
 
 if __name__ == "__main__":

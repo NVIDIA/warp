@@ -2295,6 +2295,39 @@ def test_array_from_numpy(test, device):
     assert_np_equal(result.numpy(), expected.numpy())
 
 
+def test_array_aliasing_from_numpy(test, device):
+    device = wp.get_device(device)
+    assert device.is_cpu
+
+    a_np = np.ones(8, dtype=np.int32)
+    a_wp = wp.array(a_np, dtype=int, copy=False, device=device)
+    test.assertIs(a_wp._ref, a_np)  # check that some ref is kept to original array
+    test.assertEqual(a_wp.ptr, a_np.ctypes.data)
+
+    a_np_2 = a_wp.numpy()
+    test.assertTrue((a_np_2 == 1).all())
+
+    # updating source array should update aliased array
+    a_np.fill(2)
+    test.assertTrue((a_np_2 == 2).all())
+
+    # trying to alias from a different type should do a copy
+    # do it twice to check that the copy buffer is not being reused for different arrays
+
+    b_np = np.ones(8, dtype=np.int64)
+    c_np = np.zeros(8, dtype=np.int64)
+    b_wp = wp.array(b_np, dtype=int, copy=False, device=device)
+    c_wp = wp.array(c_np, dtype=int, copy=False, device=device)
+
+    test.assertNotEqual(b_wp.ptr, b_np.ctypes.data)
+    test.assertNotEqual(b_wp.ptr, c_wp.ptr)
+
+    b_np_2 = b_wp.numpy()
+    c_np_2 = c_wp.numpy()
+    test.assertTrue((b_np_2 == 1).all())
+    test.assertTrue((c_np_2 == 0).all())
+
+
 def test_array_from_cai(test, device):
     import torch
 
@@ -2326,6 +2359,173 @@ def test_array_from_cai(test, device):
     wp.launch(kernel=first_row_plus_one, dim=(3, 3), inputs=[arr_warp], device=device)
 
     assert_np_equal(arr_warp.numpy(), np.array([[2, 1, 1], [1, 0, 0], [1, 0, 0]]))
+
+
+def test_array_inplace_ops(test, device):
+    @wp.kernel
+    def inplace_add_1d(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+        i = wp.tid()
+        x[i] += y[i]
+
+    @wp.kernel
+    def inplace_add_2d(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+        i, j = wp.tid()
+        x[i, j] += y[i, j]
+
+    @wp.kernel
+    def inplace_add_3d(x: wp.array3d(dtype=float), y: wp.array3d(dtype=float)):
+        i, j, k = wp.tid()
+        x[i, j, k] += y[i, j, k]
+
+    @wp.kernel
+    def inplace_add_4d(x: wp.array4d(dtype=float), y: wp.array4d(dtype=float)):
+        i, j, k, l = wp.tid()
+        x[i, j, k, l] += y[i, j, k, l]
+
+    @wp.kernel
+    def inplace_sub_1d(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+        i = wp.tid()
+        x[i] -= y[i]
+
+    @wp.kernel
+    def inplace_sub_2d(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+        i, j = wp.tid()
+        x[i, j] -= y[i, j]
+
+    @wp.kernel
+    def inplace_sub_3d(x: wp.array3d(dtype=float), y: wp.array3d(dtype=float)):
+        i, j, k = wp.tid()
+        x[i, j, k] -= y[i, j, k]
+
+    @wp.kernel
+    def inplace_sub_4d(x: wp.array4d(dtype=float), y: wp.array4d(dtype=float)):
+        i, j, k, l = wp.tid()
+        x[i, j, k, l] -= y[i, j, k, l]
+
+    @wp.kernel
+    def inplace_add_vecs(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
+        i = wp.tid()
+        x[i] += y[i]
+
+    @wp.kernel
+    def inplace_add_mats(x: wp.array(dtype=wp.mat33), y: wp.array(dtype=wp.mat33)):
+        i = wp.tid()
+        x[i] += y[i]
+
+    @wp.kernel
+    def inplace_add_rhs(x: wp.array(dtype=float), y: wp.array(dtype=float), z: wp.array(dtype=float)):
+        i = wp.tid()
+        a = y[i]
+        a += x[i]
+        wp.atomic_add(z, 0, a)
+
+    N = 3
+    x1 = wp.ones(N, dtype=float, requires_grad=True, device=device)
+    x2 = wp.ones((N, N), dtype=float, requires_grad=True, device=device)
+    x3 = wp.ones((N, N, N), dtype=float, requires_grad=True, device=device)
+    x4 = wp.ones((N, N, N, N), dtype=float, requires_grad=True, device=device)
+
+    y1 = wp.clone(x1, requires_grad=True, device=device)
+    y2 = wp.clone(x2, requires_grad=True, device=device)
+    y3 = wp.clone(x3, requires_grad=True, device=device)
+    y4 = wp.clone(x4, requires_grad=True, device=device)
+
+    v1 = wp.ones(1, dtype=wp.vec3, requires_grad=True, device=device)
+    v2 = wp.clone(v1, requires_grad=True, device=device)
+
+    m1 = wp.ones(1, dtype=wp.mat33, requires_grad=True, device=device)
+    m2 = wp.clone(m1, requires_grad=True, device=device)
+
+    x = wp.ones(1, dtype=float, requires_grad=True, device=device)
+    y = wp.clone(x, requires_grad=True, device=device)
+    z = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+
+    np_ones_1d = np.ones(N, dtype=float)
+    np_ones_2d = np.ones((N, N), dtype=float)
+    np_ones_3d = np.ones((N, N, N), dtype=float)
+    np_ones_4d = np.ones((N, N, N, N), dtype=float)
+
+    np_twos_1d = np.full(N, 2.0, dtype=float)
+    np_twos_2d = np.full((N, N), 2.0, dtype=float)
+    np_twos_3d = np.full((N, N, N), 2.0, dtype=float)
+    np_twos_4d = np.full((N, N, N, N), 2.0, dtype=float)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(inplace_add_1d, N, inputs=[x1, y1], device=device)
+        wp.launch(inplace_add_2d, (N, N), inputs=[x2, y2], device=device)
+        wp.launch(inplace_add_3d, (N, N, N), inputs=[x3, y3], device=device)
+        wp.launch(inplace_add_4d, (N, N, N, N), inputs=[x4, y4], device=device)
+
+    tape.backward(grads={x1: wp.ones_like(x1), x2: wp.ones_like(x2), x3: wp.ones_like(x3), x4: wp.ones_like(x4)})
+
+    assert_np_equal(x1.grad.numpy(), np_ones_1d)
+    assert_np_equal(x2.grad.numpy(), np_ones_2d)
+    assert_np_equal(x3.grad.numpy(), np_ones_3d)
+    assert_np_equal(x4.grad.numpy(), np_ones_4d)
+
+    assert_np_equal(y1.grad.numpy(), np_ones_1d)
+    assert_np_equal(y2.grad.numpy(), np_ones_2d)
+    assert_np_equal(y3.grad.numpy(), np_ones_3d)
+    assert_np_equal(y4.grad.numpy(), np_ones_4d)
+
+    assert_np_equal(x1.numpy(), np_twos_1d)
+    assert_np_equal(x2.numpy(), np_twos_2d)
+    assert_np_equal(x3.numpy(), np_twos_3d)
+    assert_np_equal(x4.numpy(), np_twos_4d)
+
+    x1.grad.zero_()
+    x2.grad.zero_()
+    x3.grad.zero_()
+    x4.grad.zero_()
+    tape.reset()
+
+    with tape:
+        wp.launch(inplace_sub_1d, N, inputs=[x1, y1], device=device)
+        wp.launch(inplace_sub_2d, (N, N), inputs=[x2, y2], device=device)
+        wp.launch(inplace_sub_3d, (N, N, N), inputs=[x3, y3], device=device)
+        wp.launch(inplace_sub_4d, (N, N, N, N), inputs=[x4, y4], device=device)
+
+    tape.backward(grads={x1: wp.ones_like(x1), x2: wp.ones_like(x2), x3: wp.ones_like(x3), x4: wp.ones_like(x4)})
+
+    assert_np_equal(x1.grad.numpy(), np_ones_1d)
+    assert_np_equal(x2.grad.numpy(), np_ones_2d)
+    assert_np_equal(x3.grad.numpy(), np_ones_3d)
+    assert_np_equal(x4.grad.numpy(), np_ones_4d)
+
+    assert_np_equal(y1.grad.numpy(), -np_ones_1d)
+    assert_np_equal(y2.grad.numpy(), -np_ones_2d)
+    assert_np_equal(y3.grad.numpy(), -np_ones_3d)
+    assert_np_equal(y4.grad.numpy(), -np_ones_4d)
+
+    assert_np_equal(x1.numpy(), np_ones_1d)
+    assert_np_equal(x2.numpy(), np_ones_2d)
+    assert_np_equal(x3.numpy(), np_ones_3d)
+    assert_np_equal(x4.numpy(), np_ones_4d)
+
+    x1.grad.zero_()
+    x2.grad.zero_()
+    x3.grad.zero_()
+    x4.grad.zero_()
+    tape.reset()
+
+    with tape:
+        wp.launch(inplace_add_vecs, 1, inputs=[v1, v2], device=device)
+        wp.launch(inplace_add_mats, 1, inputs=[m1, m2], device=device)
+        wp.launch(inplace_add_rhs, 1, inputs=[x, y, z], device=device)
+
+    tape.backward(loss=z, grads={v1: wp.ones_like(v1, requires_grad=False), m1: wp.ones_like(m1, requires_grad=False)})
+
+    assert_np_equal(v1.numpy(), np.full(shape=(1, 3), fill_value=2.0, dtype=float))
+    assert_np_equal(v1.grad.numpy(), np.ones(shape=(1, 3), dtype=float))
+    assert_np_equal(v2.grad.numpy(), np.ones(shape=(1, 3), dtype=float))
+
+    assert_np_equal(m1.numpy(), np.full(shape=(1, 3, 3), fill_value=2.0, dtype=float))
+    assert_np_equal(m1.grad.numpy(), np.ones(shape=(1, 3, 3), dtype=float))
+    assert_np_equal(m2.grad.numpy(), np.ones(shape=(1, 3, 3), dtype=float))
+
+    assert_np_equal(x.grad.numpy(), np.ones(1, dtype=float))
+    assert_np_equal(y.grad.numpy(), np.ones(1, dtype=float))
 
 
 @wp.kernel
@@ -2364,6 +2564,30 @@ def test_direct_from_numpy(test, device):
     assert_np_equal(s, expected)
     assert_np_equal(v.reshape(n), expected)
     assert_np_equal(m.reshape(n), expected)
+
+
+@wp.kernel
+def kernel_array_from_ptr(
+    ptr: wp.uint64,
+):
+    arr = wp.array(ptr=ptr, shape=(2, 3), dtype=wp.float32)
+    arr[0, 0] = 1.0
+    arr[0, 1] = 2.0
+    arr[0, 2] = 3.0
+
+
+def test_kernel_array_from_ptr(test, device):
+    arr = wp.zeros(shape=(2, 3), dtype=wp.float32, device=device)
+    wp.launch(kernel_array_from_ptr, dim=(1,), inputs=(arr.ptr,), device=device)
+    assert_np_equal(arr.numpy(), np.array(((1.0, 2.0, 3.0), (0.0, 0.0, 0.0))))
+
+
+def test_array_from_int32_domain(test, device):
+    wp.zeros(np.array([1504, 1080, 520], dtype=np.int32), dtype=wp.float32, device=device)
+
+
+def test_array_from_int64_domain(test, device):
+    wp.zeros(np.array([1504, 1080, 520], dtype=np.int64), dtype=wp.float32, device=device)
 
 
 devices = get_test_devices()
@@ -2423,8 +2647,14 @@ add_function_test(TestArray, "test_array_of_structs_grad", test_array_of_structs
 add_function_test(TestArray, "test_array_of_structs_from_numpy", test_array_of_structs_from_numpy, devices=devices)
 add_function_test(TestArray, "test_array_of_structs_roundtrip", test_array_of_structs_roundtrip, devices=devices)
 add_function_test(TestArray, "test_array_from_numpy", test_array_from_numpy, devices=devices)
+add_function_test(TestArray, "test_array_aliasing_from_numpy", test_array_aliasing_from_numpy, devices=["cpu"])
 
+add_function_test(TestArray, "test_array_inplace_ops", test_array_inplace_ops, devices=devices)
 add_function_test(TestArray, "test_direct_from_numpy", test_direct_from_numpy, devices=["cpu"])
+add_function_test(TestArray, "test_kernel_array_from_ptr", test_kernel_array_from_ptr, devices=devices)
+
+add_function_test(TestArray, "test_array_from_int32_domain", test_array_from_int32_domain, devices=devices)
+add_function_test(TestArray, "test_array_from_int64_domain", test_array_from_int64_domain, devices=devices)
 
 try:
     import torch

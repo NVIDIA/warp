@@ -28,7 +28,7 @@ from warp.types import spatial_matrix, spatial_matrixh, spatial_matrixf, spatial
 
 # geometry types
 from warp.types import Bvh, Mesh, HashGrid, Volume, MarchingCubes
-from warp.types import bvh_query_t, hash_grid_query_t, mesh_query_aabb_t, mesh_query_point_t, mesh_query_ray_t
+from warp.types import BvhQuery, HashGridQuery, MeshQueryAABB, MeshQueryPoint, MeshQueryRay
 
 # device-wide gemms
 from warp.types import matmul, adj_matmul, batched_matmul, adj_batched_matmul

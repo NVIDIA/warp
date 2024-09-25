@@ -1015,7 +1015,7 @@ def eval_rigid_tau(
 def eval_rigid_jacobian(
     articulation_start: wp.array(dtype=int),
     articulation_J_start: wp.array(dtype=int),
-    joint_parent: wp.array(dtype=int),
+    joint_ancestor: wp.array(dtype=int),
     joint_qd_start: wp.array(dtype=int),
     joint_S_s: wp.array(dtype=wp.spatial_vector),
     # outputs
@@ -1051,7 +1051,7 @@ def eval_rigid_jacobian(
                 for k in range(6):
                     J[J_offset + dense_index(articulation_dof_count, row_start + k, col)] = S[k]
 
-            j = joint_parent[j]
+            j = joint_ancestor[j]
 
 
 @wp.func
@@ -1769,7 +1769,7 @@ class FeatherstoneIntegrator(Integrator):
                             inputs=[
                                 model.articulation_start,
                                 self.articulation_J_start,
-                                model.joint_parent,
+                                model.joint_ancestor,
                                 model.joint_qd_start,
                                 state_aug.joint_S_s,
                             ],

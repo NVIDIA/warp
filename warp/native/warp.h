@@ -83,6 +83,12 @@ extern "C"
 	WP_API void mesh_destroy_device(uint64_t id);
     WP_API void mesh_refit_device(uint64_t id);
 
+    WP_API void mesh_set_points_host(uint64_t id, wp::array_t<wp::vec3> points);
+    WP_API void mesh_set_points_device(uint64_t id, wp::array_t<wp::vec3> points);
+
+    WP_API void mesh_set_velocities_host(uint64_t id, wp::array_t<wp::vec3> velocities);
+    WP_API void mesh_set_velocities_device(uint64_t id, wp::array_t<wp::vec3> velocities);
+
     WP_API uint64_t hash_grid_create_host(int dim_x, int dim_y, int dim_z);
     WP_API void hash_grid_reserve_host(uint64_t id, int num_points);
     WP_API void hash_grid_destroy_host(uint64_t id);
@@ -107,11 +113,11 @@ extern "C"
     WP_API void volume_get_voxels_device(uint64_t id, void* buf);
     WP_API void volume_destroy_device(uint64_t id);
     
-    WP_API uint64_t volume_f_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value, float tx, float ty, float tz, bool points_in_world_space);
-    WP_API uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value_x, float bg_value_y, float bg_value_z, float tx, float ty, float tz, bool points_in_world_space);
-    WP_API uint64_t volume_i_from_tiles_device(void* context, void* points, int num_points, float voxel_size, int bg_value, float tx, float ty, float tz, bool points_in_world_space);
-    WP_API uint64_t volume_index_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float tx, float ty, float tz, bool points_in_world_space);
-    WP_API uint64_t volume_from_active_voxels_device(void* context, void* points, int num_points, float voxel_size, float tx, float ty, float tz, bool points_in_world_space);
+    WP_API uint64_t volume_f_from_tiles_device(void* context, void* points, int num_points, float transform[9], float translation[3], bool points_in_world_space, float bg_value);
+    WP_API uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points, float transform[9], float translation[3], bool points_in_world_space, float bg_value[3]);
+    WP_API uint64_t volume_i_from_tiles_device(void* context, void* points, int num_points, float transform[9], float translation[3], bool points_in_world_space, int bg_value);
+    WP_API uint64_t volume_index_from_tiles_device(void* context, void* points, int num_points, float transform[9], float translation[3], bool points_in_world_space);
+    WP_API uint64_t volume_from_active_voxels_device(void* context, void* points, int num_points, float transform[9], float translation[3], bool points_in_world_space);
 
     WP_API void volume_get_buffer_info(uint64_t id, void** buf, uint64_t* size);
     WP_API void volume_get_voxel_size(uint64_t id, float* dx, float* dy, float* dz);
@@ -286,7 +292,7 @@ extern "C"
     WP_API int cuda_is_mempool_access_enabled(int target_ordinal, int peer_ordinal);
     WP_API int cuda_set_mempool_access_enabled(int target_ordinal, int peer_ordinal, int enable);
 
-    WP_API void* cuda_stream_create(void* context);
+    WP_API void* cuda_stream_create(void* context, int priority);
     WP_API void cuda_stream_destroy(void* context, void* stream);
     WP_API void cuda_stream_register(void* context, void* stream);
     WP_API void cuda_stream_unregister(void* context, void* stream);
@@ -295,6 +301,8 @@ extern "C"
     WP_API void cuda_stream_wait_event(void* stream, void* event);
     WP_API void cuda_stream_wait_stream(void* stream, void* other_stream, void* event);
     WP_API int cuda_stream_is_capturing(void* stream);
+    WP_API uint64_t cuda_stream_get_capture_id(void* stream);
+    WP_API int cuda_stream_get_priority(void* stream);
 
     WP_API void* cuda_event_create(void* context, unsigned flags);
     WP_API void cuda_event_destroy(void* event);

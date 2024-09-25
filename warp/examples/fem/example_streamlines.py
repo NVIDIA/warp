@@ -151,7 +151,9 @@ class Example:
             )
             self._geo = fem.Tetmesh(tet_vtx_indices, pos, build_bvh=True)
         elif mesh == "nano":
-            volume = wp.Volume.allocate(min=[0, 0, 0], max=[1.0, 1.0, 1.0], voxel_size=1.0 / resolution, bg_value=None)
+            volume = fem_example_utils.gen_volume(
+                res=res,
+            )
             self._geo = fem.Nanogrid(volume)
         else:
             self._geo = fem.Grid3D(
@@ -253,6 +255,7 @@ class Example:
             self.renderer.render_line_list("streamlines", vertices, indices)
             self.renderer.render_line_list("streamlines", vertices, indices, colors)
 
+            self.renderer.paused = True
             self.renderer.end_frame()
 
     def _generate_incompressible_flow(self):

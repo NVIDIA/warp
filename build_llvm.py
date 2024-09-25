@@ -31,16 +31,22 @@ def fetch_prebuilt_libraries(arch):
                 "x86_64": "18.1.3-linux-x86_64-gcc9.4",
             }
 
-    subprocess.check_call(
-        [
-            packman,
-            "install",
-            "-l",
-            f"./_build/host-deps/llvm-project/release-{arch}",
-            "clang+llvm-warp",
-            packages[arch],
-        ]
-    )
+    try:
+        subprocess.check_output(
+            [
+                packman,
+                "install",
+                "-l",
+                f"./_build/host-deps/llvm-project/release-{arch}",
+                "clang+llvm-warp",
+                packages[arch],
+            ],
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+    except subprocess.CalledProcessError as e:
+        print(e.output)
+        raise e
 
 
 def build_from_source_for_arch(args, arch, llvm_source):

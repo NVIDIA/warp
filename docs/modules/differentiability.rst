@@ -571,7 +571,7 @@ Warp provides utility functions to evaluate the partial Jacobian matrices for in
 :func:`jacobian` computes the Jacobian matrix of a kernel using Warp's automatic differentiation engine.
 :func:`jacobian_fd` computes the Jacobian matrix of a kernel using finite differences.
 :func:`gradcheck` compares the Jacobian matrices computed by the autodiff engine and finite differences to measure the accuracy of the gradients.
-:func:`plot_kernel_jacobians` visualizes the Jacobian matrices returned by the :func:`jacobian` and :func:`jacobian_fd` functions.
+:func:`jacobian_plot` visualizes the Jacobian matrices returned by the :func:`jacobian` and :func:`jacobian_fd` functions.
 
 .. autofunction:: gradcheck
 
@@ -581,7 +581,7 @@ Warp provides utility functions to evaluate the partial Jacobian matrices for in
 
 .. autofunction:: jacobian_fd
 
-.. autofunction:: plot_kernel_jacobians
+.. autofunction:: jacobian_plot
 
 
 Example usage
@@ -615,7 +615,7 @@ Example usage
 .. image:: ../img/kernel_jacobian_ad.svg
 
 The ``jacs`` dictionary contains the Jacobian matrices as Warp arrays for all input/output pairs of the kernel.
-The ``plot_jacobians`` argument visualizes the Jacobian matrices using the :func:`plot_kernel_jacobians` function.
+The ``plot_jacobians`` argument visualizes the Jacobian matrices using the :func:`jacobian_plot` function.
 The subplots show the Jacobian matrices for each input (column) and output (row) pair.
 The major (thick) gridlines in these image plots separate the array elements of the respective Warp arrays. Since the kernel arguments ``b``, ``out1``, and ``out2`` are Warp arrays with vector-type elements,
 the minor (thin, dashed) gridlines for the corresponding subplots indicate the vector elements.
@@ -872,7 +872,7 @@ it is marked as having been read from. Later, if the same array is passed to a k
     Setting ``wp.config.verify_autograd_array_access = True`` will disable kernel caching and force the current module to rebuild.
 
 .. note::
-    Though in-place operations such as ``x[tid] += 1.0`` are technically ``read -> write``, the Warp graph specifically accomodates adjoint accumulation in these cases, so we mark them as write operations.
+    Though in-place operations such as ``x[tid] += 1.0`` are technically ``read -> write``, the Warp graph specifically accommodates adjoint accumulation in these cases, so we mark them as write operations.
 
 .. note::
     This feature does not yet support arrays packed in Warp structs.

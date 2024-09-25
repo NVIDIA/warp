@@ -64,6 +64,32 @@ def test_redefine(test, device):
     assert_np_equal(np.arange(0, n, 1) * 2.0, y.numpy())
 
 
+def test_redefine_command(test, device):
+    # Test whether executable modules are retained correctly.
+    # A module can have multiple executable versions in use if something
+    # still holds a reference to them.
+
+    @wp.kernel
+    def k(value: int):
+        wp.expect_eq(value, 17)
+
+    # record a command
+    cmd1 = wp.launch(k, dim=1, inputs=[17], device=device, record_cmd=True)
+    cmd1.launch()
+
+    # redefine the kernel, triggering module reload
+    @wp.kernel
+    def k(value: int):
+        wp.expect_eq(value, 42)
+
+    # re-record the command
+    cmd2 = wp.launch(k, dim=1, inputs=[42], device=device, record_cmd=True)
+    cmd2.launch()
+
+    # previous command should still work
+    cmd1.launch()
+
+
 square_two = """import warp as wp
 
 
@@ -79,6 +105,7 @@ def kern(expect: float):
 
 def run(expect, device):
     wp.launch(kern, dim=1, inputs=[expect], device=device)
+    wp.synchronize_device(device)
 """
 
 square_four = """import warp as wp
@@ -96,6 +123,7 @@ def kern(expect: float):
 
 def run(expect, device):
     wp.launch(kern, dim=1, inputs=[expect], device=device)
+    wp.synchronize_device(device)
 """
 
 
@@ -189,7 +217,32 @@ def test_reload_references(test, device):
     test_dependent.run(expect=4.0, device=device)  # 2 * 2 = 4
 
 
+def test_graph_launch_after_module_reload(test, device):
+    @wp.kernel
+    def foo(a: wp.array(dtype=int)):
+        a[0] = 42
+
+    with wp.ScopedDevice(device):
+        a = wp.zeros(1, dtype=int)
+
+        # preload module before graph capture
+        wp.load_module(device=device)
+
+        # capture a launch
+        with wp.ScopedCapture(force_module_load=False) as capture:
+            wp.launch(foo, dim=1, inputs=[a])
+
+        # unload the module
+        foo.module.unload()
+
+        # launch previously captured graph
+        wp.capture_launch(capture.graph)
+
+        test.assertEqual(a.numpy()[0], 42)
+
+
 devices = get_test_devices()
+cuda_devices = get_cuda_test_devices()
 
 
 class TestReload(unittest.TestCase):
@@ -197,9 +250,14 @@ class TestReload(unittest.TestCase):
 
 
 add_function_test(TestReload, "test_redefine", test_redefine, devices=devices)
+add_function_test(TestReload, "test_redefine_command", test_redefine_command, devices=devices)
 add_function_test(TestReload, "test_reload", test_reload, devices=devices)
 add_function_test(TestReload, "test_reload_class", test_reload_class, devices=devices)
-add_function_test(TestReload, "test_reload_references", test_reload_references, devices=devices)
+# TODO: test_reload_references sometimes has issues running on cuda:1
+add_function_test(TestReload, "test_reload_references", test_reload_references, devices=get_test_devices("basic"))
+add_function_test(
+    TestReload, "test_graph_launch_after_module_reload", test_graph_launch_after_module_reload, devices=cuda_devices
+)
 
 
 if __name__ == "__main__":

@@ -98,6 +98,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_bvh import TestBvh
     from warp.tests.test_closest_point_edge_edge import TestClosestPointEdgeEdgeMethods
     from warp.tests.test_codegen import TestCodeGen
+    from warp.tests.test_codegen_instancing import TestCodeGenInstancing
     from warp.tests.test_compile_consts import TestConstants
     from warp.tests.test_conditional import TestConditional
     from warp.tests.test_copy import TestCopy
@@ -117,6 +118,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_fem import TestFem, TestFemShapeFunctions
     from warp.tests.test_fp16 import TestFp16
     from warp.tests.test_func import TestFunc
+    from warp.tests.test_future_annotations import TestFutureAnnotations
     from warp.tests.test_generics import TestGenerics
     from warp.tests.test_grad import TestGrad
     from warp.tests.test_grad_customs import TestGradCustoms
@@ -160,6 +162,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_reload import TestReload
     from warp.tests.test_rounding import TestRounding
     from warp.tests.test_runlength_encode import TestRunlengthEncode
+    from warp.tests.test_scalar_ops import TestScalarOps
     from warp.tests.test_sim_grad import TestSimGradients
     from warp.tests.test_sim_kinematics import TestSimKinematics
     from warp.tests.test_smoothstep import TestSmoothstep
@@ -172,8 +175,10 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_tape import TestTape
     from warp.tests.test_torch import TestTorch
     from warp.tests.test_transient_module import TestTransientModule
+    from warp.tests.test_triangle_closest_point import TestTriangleClosestPoint
     from warp.tests.test_types import TestTypes
     from warp.tests.test_utils import TestUtils
+    from warp.tests.test_vbd import TestVBD
     from warp.tests.test_vec import TestVec
     from warp.tests.test_vec_lite import TestVecLite
     from warp.tests.test_vec_scalar_ops import TestVecScalarOps
@@ -193,6 +198,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestBvh,
         TestClosestPointEdgeEdgeMethods,
         TestCodeGen,
+        TestCodeGenInstancing,
         TestConstants,
         TestConditional,
         TestCopy,
@@ -211,6 +217,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestFemShapeFunctions,
         TestFp16,
         TestFunc,
+        TestFutureAnnotations,
         TestGenerics,
         TestGrad,
         TestGradCustoms,
@@ -254,6 +261,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestReload,
         TestRounding,
         TestRunlengthEncode,
+        TestScalarOps,
         TestSimGradients,
         TestSimKinematics,
         TestSmoothstep,
@@ -266,8 +274,10 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTape,
         TestTorch,
         TestTransientModule,
+        TestTriangleClosestPoint,
         TestTypes,
         TestUtils,
+        TestVBD,
         TestVec,
         TestVecLite,
         TestVecScalarOps,
@@ -288,6 +298,7 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_array_reduce import TestArrayReduce
     from warp.tests.test_bvh import TestBvh
     from warp.tests.test_codegen import TestCodeGen
+    from warp.tests.test_codegen_instancing import TestCodeGenInstancing
     from warp.tests.test_compile_consts import TestConstants
     from warp.tests.test_conditional import TestConditional
     from warp.tests.test_ctypes import TestCTypes
@@ -332,6 +343,7 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestArrayReduce,
         TestBvh,
         TestCodeGen,
+        TestCodeGenInstancing,
         TestConstants,
         TestConditional,
         TestCTypes,

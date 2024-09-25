@@ -1,0 +1,518 @@
+#usda 1.0
+(
+    customLayerData = {
+        dictionary cameraSettings = {
+            string boundCamera = "/CameraRoot/Camera"
+        }
+        dictionary renderSettings = {
+            bool "rtx:ambientOcclusion:enabled" = 0
+            bool "rtx:directLighting:domeLight:enabled" = 0
+            bool "rtx:indirectDiffuse:enabled" = 0
+            int "rtx:post:dlss:execMode" = 0
+            double "rtx:sceneDb:ambientLightIntensity" = 2
+            bool "rtx:shadows:enabled" = 0
+            bool "rtx:translucency:reflectAtAllBounce" = 1
+        }
+    }
+    defaultPrim = "World"
+    endTimeCode = 36000
+    metersPerUnit = 1
+    startTimeCode = 0
+    timeCodesPerSecond = 60
+    upAxis = "Y"
+)
+
+def Xform "World"
+{
+    def OmniGraph "ActionGraph"
+    {
+        token evaluationMode = "Automatic"
+        token evaluator:type = "execution"
+        token fabricCacheBacking = "Shared"
+        int2 fileFormatVersion = (1, 9)
+        token pipelineStage = "pipelineStageSimulation"
+
+        def OmniGraphNode "on_loaded" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            token node:type = "omni.graph.action.OnLoaded"
+            int node:typeVersion = 1
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (280, -160)
+        }
+
+        def OmniGraphNode "on_tick" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom uint inputs:framePeriod = 0
+            custom bool inputs:onlyPlayback = 1
+            token node:type = "omni.graph.action.OnTick"
+            int node:typeVersion = 2
+            custom double outputs:absoluteSimTime
+            custom double outputs:deltaSeconds
+            custom double outputs:frame
+            custom bool outputs:isPlaying
+            custom uint outputs:tick (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            custom double outputs:time
+            custom double outputs:timeSinceStart
+            custom double state:accumulatedSeconds = 0
+            custom uint state:frameCount = 0
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (230, -35)
+        }
+
+        def OmniGraphNode "get_camera_position" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom rel inputs:prim = </CameraRoot/Camera> (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            string relType = "target"
+                        }
+                    }
+                }
+            )
+            custom token inputs:primPath
+            custom bool inputs:usePath = 0
+            token node:type = "omni.graph.ui_nodes.GetCameraPosition"
+            int node:typeVersion = 2
+            custom point3d outputs:position
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (280, 110)
+        }
+
+        def OmniGraphNode "read_prims" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom int inputs:_debugStamp
+            custom bool inputs:applySkelBinding = 0
+            custom string inputs:attrNamesToImport = "*"
+            custom bool inputs:computeBoundingBox = 0
+            custom bool inputs:enableBundleChangeTracking = 1
+            custom bool inputs:enableChangeTracking
+            custom string inputs:pathPattern = ""
+            custom rel inputs:prims = </World/MeshIn/Plane> (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            string relType = "target"
+                        }
+                    }
+                }
+            )
+            custom string inputs:typePattern = "*"
+            custom timecode inputs:usdTimecode = nan
+            token node:type = "omni.graph.nodes.ReadPrimsV2"
+            int node:typeVersion = 1
+            custom rel outputs_primsBundle (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            string relType = "bundle"
+                        }
+                    }
+                }
+            )
+            custom bool state:applySkelBinding = 0
+            custom string state:attrNamesToImport
+            custom bool state:computeBoundingBox = 0
+            custom bool state:enableBundleChangeTracking
+            custom bool state:enableChangeTracking
+            custom uint64[] state:inputPrimPaths = []
+            custom string state:pathPattern
+            custom uint64[] state:primPaths = []
+            custom string state:typePattern
+            custom timecode state:usdTimecode = -1
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (440, 230)
+
+            def Output "outputs_primsBundle" (
+                active = false
+            )
+            {
+            }
+        }
+
+        def OmniGraphNode "ocean_deformer" (
+            apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom float inputs:amplitude
+            custom vector3f inputs:cameraPos = (0, 0, 0)
+            prepend vector3f inputs:cameraPos.connect = </World/ActionGraph/get_camera_position.outputs:position>
+            custom float inputs:clipmapCellSize = 32
+            custom float inputs:direction = 3.1
+            custom float inputs:directionality = 1
+            custom uint inputs:execIn (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            prepend uint inputs:execIn.connect = [
+                </World/ActionGraph/on_loaded.outputs:execOut>,
+                </World/ActionGraph/on_tick.outputs:tick>,
+            ]
+            custom rel inputs:mesh (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            string relType = "bundle"
+                        }
+                    }
+                }
+            )
+            prepend rel inputs:mesh = </World/ActionGraph/read_prims.outputs_primsBundle>
+            custom float inputs:scale = 1
+            custom double inputs:time = 0
+            double inputs:time.connect = </World/ActionGraph/on_tick.outputs:time>
+            custom float inputs:waterDepth = 50
+            custom float inputs:waveAmplitude = 1
+            custom float inputs:windSpeed = 30.7
+            token node:type = "omni.warp.WarpSampleOceanDeform"
+            int node:typeVersion = 1
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            custom rel outputs_mesh (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            string relType = "bundle"
+                        }
+                    }
+                }
+            )
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (725, 0)
+        }
+
+        def OmniGraphNode "write_prims" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom string inputs:attrNamesToExport = "points"
+            custom uint inputs:execIn
+            prepend uint inputs:execIn.connect = </World/ActionGraph/ocean_deformer.outputs:execOut>
+            custom token inputs:layerIdentifier
+            custom string inputs:pathPattern = "*"
+            custom rel inputs:prims = </World/MeshOut/Plane> (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            string relType = "target"
+                        }
+                    }
+                }
+            )
+            custom rel inputs:primsBundle = </World/ActionGraph/ocean_deformer.outputs_mesh> (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            string relType = "bundle"
+                        }
+                    }
+                }
+            )
+            custom bool inputs:scatterUnderTargets = 0
+            custom string inputs:typePattern = "*"
+            custom bool inputs:usdWriteBack = 0
+            token node:type = "omni.graph.nodes.WritePrimsV2"
+            int node:typeVersion = 1
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            custom string state:attrNamesToExport = "*"
+            custom token state:layerIdentifier
+            custom string state:pathPattern = "*"
+            custom uint64 state:primBundleDirtyId
+            custom uint64[] state:prims = []
+            custom bool state:scatterUnderTargets = 0
+            custom string state:typePattern = "*"
+            custom bool state:usdWriteBack = 1
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (1050, 50)
+        }
+    }
+
+    def Scope "Looks"
+    {
+        def Material "OceanWater"
+        {
+            token outputs:mdl:displacement.connect = </World/Looks/OceanWater/Shader.outputs:out>
+            token outputs:mdl:surface.connect = </World/Looks/OceanWater/Shader.outputs:out>
+            token outputs:mdl:volume.connect = </World/Looks/OceanWater/Shader.outputs:out>
+
+            def Shader "Shader"
+            {
+                uniform token info:implementationSource = "sourceAsset"
+                uniform asset info:mdl:sourceAsset = @http://omniverse-content-production.s3-us-west-2.amazonaws.com/Materials/Base/Natural/Water_Opaque.mdl@
+                uniform token info:mdl:sourceAsset:subIdentifier = "Water_Opaque"
+                color3f inputs:diffuse_color_constant = (0.022957334, 0.039920207, 0.05405408) (
+                    customData = {
+                        float3 default = (0.008, 0.02, 0.03)
+                    }
+                    displayGroup = "Albedo"
+                    displayName = "Albedo Color"
+                    doc = "This is the albedo base color"
+                    hidden = false
+                )
+                color3f inputs:diffuse_tint = (0.6096809, 0.6351467, 0.6525097) (
+                    customData = {
+                        float3 default = (1, 1, 1)
+                    }
+                    displayGroup = "Albedo"
+                    displayName = "Color Tint"
+                    doc = "When enabled, this color value is multiplied over the final albedo color"
+                    hidden = false
+                )
+                asset inputs:normalmap_texture = @@ (
+                    colorSpace = "raw"
+                    customData = {
+                        asset default = @http://omniverse-content-production.s3-us-west-2.amazonaws.com/Materials/Base/Natural/Water/Water_Normal.png@
+                    }
+                    displayGroup = "Normal"
+                    displayName = "Normal Map"
+                    hidden = false
+                )
+                float inputs:reflection_roughness_constant = 0.04 (
+                    customData = {
+                        float default = 0
+                        dictionary range = {
+                            float max = 1
+                            float min = 0
+                        }
+                    }
+                    displayGroup = "Reflectivity"
+                    displayName = "Roughness Amount"
+                    doc = "Higher roughness values lead to more blurry reflections"
+                    hidden = false
+                )
+                token outputs:out
+            }
+        }
+    }
+
+    def "MeshIn" (
+        prepend payload = @./assets/geometries/ocean.usd@
+    )
+    {
+        token visibility = "invisible"
+        float3 xformOp:rotateXYZ = (0, 0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (0, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+    }
+
+    def "MeshOut" (
+        prepend payload = @./assets/geometries/ocean.usd@
+    )
+    {
+        float3 xformOp:rotateXYZ = (0, 0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (0, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        over "Plane" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </World/Looks/OceanWater> (
+                bindMaterialAs = "weakerThanDescendants"
+            )
+        }
+    }
+}
+
+def "Environment"
+{
+    def Xform "Sky"
+    {
+        def Xform "SkySphere" (
+            kind = "model"
+        )
+        {
+            float3[] extent = [(0, 0, 0)]
+            rel material:binding = </Environment/Sky/Looks/SkyMaterial> (
+                bindMaterialAs = "strongerThanDescendants"
+            )
+            bool primvars:doNotCastShadows = 1
+            token visibility = "inherited"
+            float3 xformOp:rotateZYX = (0, 0, 0)
+            float3 xformOp:scale = (10000, 10000, 10000)
+            double3 xformOp:translate = (0, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZYX", "xformOp:scale"]
+
+            def Mesh "Sphere"
+            {
+                float3[] extent = [(-0.0005, -0.0005, 0), (0.0005, 0.0005, 0.0005)]
+                int[] faceVertexCounts = [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
+                int[] faceVertexIndices = [25, 11, 3, 10, 24, 14, 7, 13, 23, 17, 5, 16, 22, 9, 1, 19, 21, 18, 4, 15, 20, 19, 1, 10, 16, 5, 19, 20, 7, 16, 20, 13, 13, 20, 10, 3, 8, 0, 18, 21, 2, 8, 21, 12, 12, 21, 15, 6, 18, 0, 9, 22, 4, 18, 22, 17, 17, 22, 19, 5, 15, 4, 17, 23, 6, 15, 23, 14, 14, 23, 16, 7, 12, 6, 14, 24, 2, 12, 24, 11, 11, 24, 13, 3, 8, 2, 11, 25, 0, 8, 25, 9, 9, 25, 10, 1]
+                normal3f[] normals = [(1, 0, 0), (0.70708334, -0.70708334, 0), (0.5773492, -0.5773492, -0.5773492), (0.70708334, 0, -0.70708334), (0, -1, 0), (-0.70708334, -0.70708334, 0), (-0.5773492, -0.5773492, -0.5773492), (0, -0.70708334, -0.70708334), (-1, 0, 0), (-0.70708334, 0.70708334, 0), (-0.5773492, 0.5773492, -0.5773492), (-0.70708334, 0, -0.70708334), (0, 1, 0), (0.70708334, 0.70708334, 0), (0.5773492, 0.5773492, -0.5773492), (0, 0.70708334, -0.70708334), (0, 0, 1), (0, 0.70708334, 0.70708334), (-0.5773492, 0.5773492, 0.5773492), (-0.70708334, 0, 0.70708334), (0, 0, -1), (0, 0.70708334, -0.70708334), (0.5773492, 0.5773492, -0.5773492), (0.70708334, 0, -0.70708334), (-0.70708334, 0, -0.70708334), (-0.5773492, 0.5773492, -0.5773492), (0, 0.70708334, -0.70708334), (0, 0, -1), (-0.5773492, -0.5773492, -0.5773492), (-0.70708334, 0, -0.70708334), (0, 0, -1), (0, -0.70708334, -0.70708334), (0, -0.70708334, -0.70708334), (0, 0, -1), (0.70708334, 0, -0.70708334), (0.5773492, -0.5773492, -0.5773492), (0.70708334, 0, 0.70708334), (0.5773492, 0.5773492, 0.5773492), (0, 0.70708334, 0.70708334), (0, 0, 1), (0.5773492, -0.5773492, 0.5773492), (0.70708334, 0, 0.70708334), (0, 0, 1), (0, -0.70708334, 0.70708334), (0, -0.70708334, 0.70708334), (0, 0, 1), (-0.70708334, 0, 0.70708334), (-0.5773492, -0.5773492, 0.5773492), (0, 0.70708334, 0.70708334), (0.5773492, 0.5773492, 0.5773492), (0.70708334, 0.70708334, 0), (0, 1, 0), (-0.5773492, 0.5773492, 0.5773492), (0, 0.70708334, 0.70708334), (0, 1, 0), (-0.70708334, 0.70708334, 0), (-0.70708334, 0.70708334, 0), (0, 1, 0), (0, 0.70708334, -0.70708334), (-0.5773492, 0.5773492, -0.5773492), (-0.70708334, 0, 0.70708334), (-0.5773492, 0.5773492, 0.5773492), (-0.70708334, 0.70708334, 0), (-1, 0, 0), (-0.5773492, -0.5773492, 0.5773492), (-0.70708334, 0, 0.70708334), (-1, 0, 0), (-0.70708334, -0.70708334, 0), (-0.70708334, -0.70708334, 0), (-1, 0, 0), (-0.70708334, 0, -0.70708334), (-0.5773492, -0.5773492, -0.5773492), (0, -0.70708334, 0.70708334), (-0.5773492, -0.5773492, 0.5773492), (-0.70708334, -0.70708334, 0), (0, -1, 0), (0.5773492, -0.5773492, 0.5773492), (0, -0.70708334, 0.70708334), (0, -1, 0), (0.70708334, -0.70708334, 0), (0.70708334, -0.70708334, 0), (0, -1, 0), (0, -0.70708334, -0.70708334), (0.5773492, -0.5773492, -0.5773492), (0.70708334, 0, 0.70708334), (0.5773492, -0.5773492, 0.5773492), (0.70708334, -0.70708334, 0), (1, 0, 0), (0.5773492, 0.5773492, 0.5773492), (0.70708334, 0, 0.70708334), (1, 0, 0), (0.70708334, 0.70708334, 0), (0.70708334, 0.70708334, 0), (1, 0, 0), (0.70708334, 0, -0.70708334), (0.5773492, 0.5773492, -0.5773492)] (
+                    interpolation = "faceVarying"
+                )
+                point3f[] points = [(-0.8177715, -0.8177715, -0.8177715), (-0.8177715, -0.8177715, 0.8177715), (-0.8177715, 0.8177715, -0.8177715), (-0.8177715, 0.8177715, 0.8177715), (0.8177715, -0.8177715, -0.8177715), (0.8177715, -0.8177715, 0.8177715), (0.8177715, 0.8177715, -0.8177715), (0.8177715, 0.8177715, 0.8177715), (-1.0015614, 0, -1.0015614), (-1.0015614, -1.0015614, 0), (-1.0015614, 0, 1.0015614), (-1.0015614, 1.0015614, 0), (0, 1.0015614, -1.0015614), (0, 1.0015614, 1.0015614), (1.0015614, 1.0015614, 0), (1.0015614, 0, -1.0015614), (1.0015614, 0, 1.0015614), (1.0015614, -1.0015614, 0), (0, -1.0015614, -1.0015614), (0, -1.0015614, 1.0015614), (0, 0, 1.4164218), (0, 0, -1.4164218), (0, -1.4164218, 0), (1.4164218, 0, 0), (0, 1.4164218, 0), (-1.4164218, 0, 0)]
+                float2[] primvars:st = [(0.5, 0.125), (0.5, 0.25), (0.625, 0.25), (0.625, 0.125), (0.5, 0.375), (0.5, 0.5), (0.625, 0.5), (0.625, 0.375), (0.5, 0.625), (0.5, 0.75), (0.625, 0.75), (0.625, 0.625), (0.5, 0.875), (0.5, 1), (0.625, 1), (0.625, 0.875), (0.25, 0.625), (0.25, 0.75), (0.375, 0.75), (0.375, 0.625), (0.75, 0.625), (0.75, 0.75), (0.875, 0.75), (0.875, 0.625), (0.625, 0.625), (0.625, 0.75), (0.75, 0.75), (0.75, 0.625), (0.625, 0.5), (0.625, 0.625), (0.75, 0.625), (0.75, 0.5), (0.75, 0.5), (0.75, 0.625), (0.875, 0.625), (0.875, 0.5), (0.125, 0.625), (0.125, 0.75), (0.25, 0.75), (0.25, 0.625), (0.125, 0.5), (0.125, 0.625), (0.25, 0.625), (0.25, 0.5), (0.25, 0.5), (0.25, 0.625), (0.375, 0.625), (0.375, 0.5), (0.375, 0.875), (0.375, 1), (0.5, 1), (0.5, 0.875), (0.375, 0.75), (0.375, 0.875), (0.5, 0.875), (0.5, 0.75), (0.5, 0.75), (0.5, 0.875), (0.625, 0.875), (0.625, 0.75), (0.375, 0.625), (0.375, 0.75), (0.5, 0.75), (0.5, 0.625), (0.375, 0.5), (0.375, 0.625), (0.5, 0.625), (0.5, 0.5), (0.5, 0.5), (0.5, 0.625), (0.625, 0.625), (0.625, 0.5), (0.375, 0.375), (0.375, 0.5), (0.5, 0.5), (0.5, 0.375), (0.375, 0.25), (0.375, 0.375), (0.5, 0.375), (0.5, 0.25), (0.5, 0.25), (0.5, 0.375), (0.625, 0.375), (0.625, 0.25), (0.375, 0.125), (0.375, 0.25), (0.5, 0.25), (0.5, 0.125), (0.375, 0), (0.375, 0.125), (0.5, 0.125), (0.5, 0), (0.5, 0), (0.5, 0.125), (0.625, 0.125), (0.625, 0)] (
+                    interpolation = "faceVarying"
+                )
+                uniform token subdivisionScheme = "none"
+                matrix4d xformOp:transform = ( (100, 0, 0, 0), (0, -0.000016292067812173627, -100, 0), (0, 100, -0.000016292067812173627, 0), (0, 0, 0, 1) )
+                uniform token[] xformOpOrder = ["xformOp:transform"]
+            }
+        }
+
+        def Scope "Looks"
+        {
+            def Material "SkyMaterial"
+            {
+                token outputs:mdl:displacement.connect = </Environment/Sky/Looks/SkyMaterial/Shader.outputs:out>
+                token outputs:mdl:surface.connect = </Environment/Sky/Looks/SkyMaterial/Shader.outputs:out>
+                token outputs:mdl:volume.connect = </Environment/Sky/Looks/SkyMaterial/Shader.outputs:out>
+
+                def Shader "Shader"
+                {
+                    uniform token info:implementationSource = "sourceAsset"
+                    uniform asset info:mdl:sourceAsset = @https://omniverse-content-production.s3.us-west-2.amazonaws.com/Assets/Skies/2022_1/Skies/Sky_Elements/materials/procedural/CumulusLight.mdl@
+                    uniform token info:mdl:sourceAsset:subIdentifier = "CumulusLight"
+                    float inputs:Azimuth = -91.8089 (
+                        customData = {
+                            float default = -175.76622
+                            dictionary range = {
+                                float max = 100000
+                                float min = -100000
+                            }
+                        }
+                        displayGroup = "Coords"
+                    )
+                    float inputs:Declination = 7.9998345 (
+                        customData = {
+                            float default = 18
+                            dictionary range = {
+                                float max = 100000
+                                float min = -100000
+                            }
+                        }
+                        displayGroup = "Coords"
+                    )
+                    float inputs:Elevation = 11.692829 (
+                        customData = {
+                            float default = 46.50608
+                            dictionary range = {
+                                float max = 100000
+                                float min = -100000
+                            }
+                        }
+                        displayGroup = "Coords"
+                    )
+                    float inputs:Latitude = 51.426 (
+                        customData = {
+                            float default = 64.326
+                            dictionary range = {
+                                float max = 100000
+                                float min = -100000
+                            }
+                        }
+                        displayGroup = "Coords"
+                    )
+                    float inputs:SHA = -81.25645 (
+                        customData = {
+                            float default = -2.9412704
+                            dictionary range = {
+                                float max = 100000
+                                float min = -100000
+                            }
+                        }
+                        displayGroup = "Coords"
+                    )
+                    bool inputs:SunPositionFromTOD = 0 (
+                        customData = {
+                            bool default = 1
+                        }
+                        displayGroup = "Coords"
+                    )
+                    float inputs:TimeOfDay = 6.93 (
+                        customData = {
+                            float default = 3.696
+                            dictionary range = {
+                                float max = 100000
+                                float min = -100000
+                            }
+                        }
+                        displayGroup = "Coords"
+                    )
+                    float inputs:TimeOfDaySpeed = 0 (
+                        customData = {
+                            float default = 1.057
+                            dictionary range = {
+                                float max = 100000
+                                float min = -100000
+                            }
+                        }
+                        displayGroup = "Coords"
+                    )
+                    token outputs:out
+                }
+            }
+        }
+
+        def DomeLight "DomeLight" (
+            apiSchemas = ["ShapingAPI"]
+            kind = "model"
+        )
+        {
+            color3f color = (1, 1, 1)
+            float intensity = 1
+            rel material:binding = </Environment/Sky/Looks/SkyMaterial> (
+                bindMaterialAs = "weakerThanDescendants"
+            )
+            float shaping:cone:angle = 180
+            float shaping:cone:softness
+            float shaping:focus
+            color3f shaping:focusTint
+            asset shaping:ies:file
+            token texture:format = "latlong"
+            token visibility = "inherited"
+            float3 xformOp:rotateZYX = (270, 0, 0)
+            float3 xformOp:translate = (0, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZYX"]
+        }
+    }
+}
+
+def Xform "CameraRoot"
+{
+    double3 xformOp:rotateXYZ = (-5, 180, 0)
+    double3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (0, 0, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+    def Camera "Camera"
+    {
+        float2 clippingRange = (1, 10000000)
+        float focalLength = 25
+        float focusDistance = 2500
+        float fStop = 0
+        bool omni:kit:cameraLock = 0
+        double3 xformOp:rotateYXZ = (0, 0, 0)
+        double3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (0, 0, 500)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateYXZ", "xformOp:scale"]
+    }
+}

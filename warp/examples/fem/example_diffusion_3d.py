@@ -30,9 +30,9 @@ def vert_boundary_projector_form(
     u: fem.Field,
     v: fem.Field,
 ):
-    # Non-zero mass on vertical sides only
+    # Constrain XY and YZ faces
     nor = fem.normal(domain, s)
-    w = wp.abs(nor[0])
+    w = 1.0 - wp.abs(nor[1])
     return w * u(s) * v(s)
 
 
@@ -53,29 +53,35 @@ class Example:
         self._boundary_compliance = boundary_compliance
 
         res = wp.vec3i(resolution, max(1, resolution // 2), resolution * 2)
+        bounds_lo = wp.vec3(0.0, 0.0, 0.0)
+        bounds_hi = wp.vec3(1.0, 0.5, 2.0)
 
         if mesh == "tet":
             pos, tet_vtx_indices = fem_example_utils.gen_tetmesh(
                 res=res,
-                bounds_lo=wp.vec3(0.0, 0.0, 0.0),
-                bounds_hi=wp.vec3(1.0, 0.5, 2.0),
+                bounds_lo=bounds_lo,
+                bounds_hi=bounds_hi,
             )
             self._geo = fem.Tetmesh(tet_vtx_indices, pos)
         elif mesh == "hex":
             pos, hex_vtx_indices = fem_example_utils.gen_hexmesh(
                 res=res,
-                bounds_lo=wp.vec3(0.0, 0.0, 0.0),
-                bounds_hi=wp.vec3(1.0, 0.5, 2.0),
+                bounds_lo=bounds_lo,
+                bounds_hi=bounds_hi,
             )
             self._geo = fem.Hexmesh(hex_vtx_indices, pos)
         elif mesh == "nano":
-            volume = wp.Volume.allocate(min=[0, 0, 0], max=[1.0, 0.5, 2.0], voxel_size=1.0 / res[0], bg_value=None)
+            volume = fem_example_utils.gen_volume(
+                res=res,
+                bounds_lo=bounds_lo,
+                bounds_hi=bounds_hi,
+            )
             self._geo = fem.Nanogrid(volume)
         else:
             self._geo = fem.Grid3D(
                 res=res,
-                bounds_lo=wp.vec3(0.0, 0.0, 0.0),
-                bounds_hi=wp.vec3(1.0, 0.5, 2.0),
+                bounds_lo=bounds_lo,
+                bounds_hi=bounds_hi,
             )
 
         # Domain and function spaces
@@ -140,7 +146,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--boundary_compliance", type=float, default=0.0, help="Dirichlet boundary condition compliance."
     )
-    parser.add_argument("--mesh", choices=("grid", "tet", "hex", "nano"), default="grid", help="Mesh type.")
+    parser.add_argument("--mesh", choices=("grid", "tet", "hex", "nano", "anano"), default="grid", help="Mesh type.")
     parser.add_argument(
         "--headless",
         action="store_true",
@@ -165,4 +171,4 @@ if __name__ == "__main__":
         example.render()
 
         if not args.headless:
-            example.renderer.plot()
+            example.renderer.plot(backend="matplotlib")

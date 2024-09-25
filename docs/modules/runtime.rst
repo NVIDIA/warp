@@ -229,8 +229,8 @@ Matrix multiplication is fully differentiable, and can be recorded on the tape l
 
     tape = wp.Tape()
     with tape:
-        wp.matmul(A, B, C, D, device=device)
-        wp.launch(loss_kernel, dim=(m, n), inputs=[D, loss], device=device)
+        wp.matmul(A, B, C, D)
+        wp.launch(loss_kernel, dim=(m, n), inputs=[D, loss])
 
     tape.backward(loss=loss)
     A_grad = A.grad.numpy()
@@ -814,6 +814,42 @@ Arithmetic Operators
     to the correct type. Also note that the multiplication expression ``a * b`` is used to represent scalar
     multiplication and matrix multiplication. The ``@`` operator is not currently supported.
 
+Streams
+-------
+
+A CUDA stream is a sequence of operations that execute in order on the GPU.
+Operations from different streams may run concurrently and may be interleaved by the device scheduler.
+See the :ref:`Streams documentation <streams>` for more information on using streams.
+
+.. autoclass:: Stream
+    :members:
+    :exclude-members: cached_event
+
+.. autofunction:: get_stream
+.. autofunction:: set_stream
+.. autofunction:: wait_stream
+.. autofunction:: synchronize_stream
+
+.. autoclass:: ScopedStream
+
+Events
+------
+
+Events can be inserted into streams and used to synchronize a stream
+with a different one. See the :ref:`Events documentation <cuda_events>` for
+information on how to use events for cross-stream synchronization
+or the :ref:`CUDA Events Timing documentation <cuda_events_profiling>` for
+information on how to use events for measuring GPU performance.
+
+.. autoclass:: Event
+    :members:
+    :exclude-members: Flags
+
+.. autofunction:: record_event
+.. autofunction:: wait_event
+.. autofunction:: synchronize_event
+.. autofunction:: get_event_elapsed_time
+
 Graphs
 -----------
 
@@ -867,7 +903,6 @@ Typically it is only beneficial to use CUDA graphs when the graph will be reused
 .. autoclass:: ScopedCapture
     :members:
 
-
 Meshes
 ------
 
@@ -915,6 +950,7 @@ After modifying point locations users should call ``Mesh.refit()`` to rebuild th
 
 .. autoclass:: Mesh
     :members:
+    :exclude-members: vars, Var
 
 Hash Grids
 ----------
@@ -1064,8 +1100,8 @@ Bounding Value Hierarchies (BVH)
 --------------------------------
 
 The :class:`wp.Bvh <Bvh>` class can be used to create a BVH for a group of bounding volumes. This object can then be traversed
-to determine which parts are intersected by a ray using :func:`bvh_query_ray` and which parts are fully contained
-within a certain bounding volume using :func:`bvh_query_aabb`.
+to determine which parts are intersected by a ray using :func:`bvh_query_ray` and which parts overlap
+with a certain bounding volume using :func:`bvh_query_aabb`.
 
 The following snippet demonstrates how to create a :class:`wp.Bvh <Bvh>` object from 100 random bounding volumes:
 

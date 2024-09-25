@@ -25,11 +25,11 @@ the ``pip install`` command, e.g.
    * - Platform
      - Install Command
    * - Linux aarch64
-     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.3.0/warp_lang-1.3.0+cu11-py3-none-manylinux2014_aarch64.whl``
+     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.3.3/warp_lang-1.3.3+cu11-py3-none-manylinux2014_aarch64.whl``
    * - Linux x86-64
-     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.3.0/warp_lang-1.3.0+cu11-py3-none-manylinux2014_x86_64.whl``
+     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.3.3/warp_lang-1.3.3+cu11-py3-none-manylinux2014_x86_64.whl``
    * - Windows x86-64
-     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.3.0/warp_lang-1.3.0+cu11-py3-none-win_amd64.whl``
+     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.3.3/warp_lang-1.3.3+cu11-py3-none-win_amd64.whl``
 
 The ``--force-reinstall`` option may need to be used to overwrite a previous installation.
 
@@ -45,7 +45,7 @@ Note that building Warp with the ``--quick`` flag changes the driver requirement
 The quick build skips CUDA backward compatibility, so the minimum required driver is determined by the CUDA Toolkit version.
 Refer to the `latest CUDA Toolkit release notes <https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html>`_
 to find the minimum required driver for different CUDA Toolkit versions
-(e.g., `this table from CUDA Toolkit 12.5 <https://docs.nvidia.com/cuda/archive/12.5.0/cuda-toolkit-release-notes/index.html#id3>`_).
+(e.g., `this table from CUDA Toolkit 12.6 <https://docs.nvidia.com/cuda/archive/12.6.0/cuda-toolkit-release-notes/index.html#id5>`_).
 
 Warp checks the installed driver during initialization and will report a warning if the driver is not suitable, e.g.:
 

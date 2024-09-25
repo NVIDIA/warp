@@ -40,7 +40,7 @@ from warp.types import spatial_vector, spatial_vectorh, spatial_vectorf, spatial
 from warp.types import spatial_matrix, spatial_matrixh, spatial_matrixf, spatial_matrixd
 
 from warp.types import Bvh, Mesh, HashGrid, Volume, MarchingCubes
-from warp.types import bvh_query_t, hash_grid_query_t, mesh_query_aabb_t, mesh_query_point_t, mesh_query_ray_t
+from warp.types import BvhQuery, HashGridQuery, MeshQueryAABB, MeshQueryPoint, MeshQueryRay
 
 from warp.types import matmul, adj_matmul, batched_matmul, adj_batched_matmul
 
@@ -120,44 +120,44 @@ __version__ = config.version
 
 
 @over
-def min(x: Scalar, y: Scalar) -> Scalar:
+def min(a: Scalar, b: Scalar) -> Scalar:
     """Return the minimum of two scalars."""
     ...
 
 
 @over
-def min(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+def min(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """Return the element-wise minimum of two vectors."""
     ...
 
 
 @over
-def min(v: Vector[Any, Scalar]) -> Scalar:
-    """Return the minimum element of a vector ``v``."""
+def min(a: Vector[Any, Scalar]) -> Scalar:
+    """Return the minimum element of a vector ``a``."""
     ...
 
 
 @over
-def max(x: Scalar, y: Scalar) -> Scalar:
+def max(a: Scalar, b: Scalar) -> Scalar:
     """Return the maximum of two scalars."""
     ...
 
 
 @over
-def max(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+def max(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """Return the element-wise maximum of two vectors."""
     ...
 
 
 @over
-def max(v: Vector[Any, Scalar]) -> Scalar:
-    """Return the maximum element of a vector ``v``."""
+def max(a: Vector[Any, Scalar]) -> Scalar:
+    """Return the maximum element of a vector ``a``."""
     ...
 
 
 @over
-def clamp(x: Scalar, a: Scalar, b: Scalar) -> Scalar:
-    """Clamp the value of ``x`` to the range [a, b]."""
+def clamp(x: Scalar, low: Scalar, high: Scalar) -> Scalar:
+    """Clamp the value of ``x`` to the range [low, high]."""
     ...
 
 
@@ -168,8 +168,8 @@ def abs(x: Scalar) -> Scalar:
 
 
 @over
-def abs(a: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
-    """Return the absolute values of the elements of ``a``."""
+def abs(x: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """Return the absolute values of the elements of ``x``."""
     ...
 
 
@@ -180,8 +180,8 @@ def sign(x: Scalar) -> Scalar:
 
 
 @over
-def sign(a: Vector[Any, Scalar]) -> Scalar:
-    """Return -1 for the negative elements of ``a``, and 1 otherwise."""
+def sign(x: Vector[Any, Scalar]) -> Scalar:
+    """Return -1 for the negative elements of ``x``, and 1 otherwise."""
     ...
 
 
@@ -335,7 +335,7 @@ def trunc(x: Float) -> Float:
     """Return the nearest integer that is closer to zero than ``x``.
 
     In other words, it discards the fractional part of ``x``.
-    It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
+    It is similar to casting ``float(int(a))``, but preserves the negative sign when ``x`` is in the range [-0.0, -1.0).
     Equivalent to :func:`numpy.trunc()` and :func:`numpy.fix()`.
     """
     ...
@@ -355,250 +355,326 @@ def ceil(x: Float) -> Float:
 
 @over
 def frac(x: Float) -> Float:
-    """Retrieve the fractional part of x.
+    """Retrieve the fractional part of ``x``.
 
-    In other words, it discards the integer part of x and is equivalent to ``x - trunc(x)``.
+    In other words, it discards the integer part of ``x`` and is equivalent to ``x - trunc(x)``.
     """
     ...
 
 
 @over
-def isfinite(x: Scalar) -> bool:
-    """Return ``True`` if x is a finite number, otherwise return ``False``."""
+def isfinite(a: Scalar) -> bool:
+    """Return ``True`` if ``a`` is a finite number, otherwise return ``False``."""
     ...
 
 
 @over
-def isfinite(x: Vector[Any, Scalar]) -> bool:
-    """Return ``True`` if all elements of the vector ``x`` are finite, otherwise return ``False``."""
+def isfinite(a: Vector[Any, Scalar]) -> bool:
+    """Return ``True`` if all elements of the vector ``a`` are finite, otherwise return ``False``."""
     ...
 
 
 @over
-def isfinite(x: Quaternion[Scalar]) -> bool:
-    """Return ``True`` if all elements of the quaternion ``x`` are finite, otherwise return ``False``."""
+def isfinite(a: Quaternion[Scalar]) -> bool:
+    """Return ``True`` if all elements of the quaternion ``a`` are finite, otherwise return ``False``."""
     ...
 
 
 @over
-def isfinite(m: Matrix[Any, Any, Scalar]) -> bool:
-    """Return ``True`` if all elements of the matrix ``m`` are finite, otherwise return ``False``."""
+def isfinite(a: Matrix[Any, Any, Scalar]) -> bool:
+    """Return ``True`` if all elements of the matrix ``a`` are finite, otherwise return ``False``."""
     ...
 
 
 @over
-def isnan(x: Scalar) -> bool:
-    """Return ``True`` if ``x`` is NaN, otherwise return ``False``."""
+def isnan(a: Scalar) -> bool:
+    """Return ``True`` if ``a`` is NaN, otherwise return ``False``."""
     ...
 
 
 @over
-def isnan(x: Vector[Any, Scalar]) -> bool:
-    """Return ``True`` if any element of the vector ``x`` is NaN, otherwise return ``False``."""
+def isnan(a: Vector[Any, Scalar]) -> bool:
+    """Return ``True`` if any element of the vector ``a`` is NaN, otherwise return ``False``."""
     ...
 
 
 @over
-def isnan(x: Quaternion[Scalar]) -> bool:
-    """Return ``True`` if any element of the quaternion ``x`` is NaN, otherwise return ``False``."""
+def isnan(a: Quaternion[Scalar]) -> bool:
+    """Return ``True`` if any element of the quaternion ``a`` is NaN, otherwise return ``False``."""
     ...
 
 
 @over
-def isnan(m: Matrix[Any, Any, Scalar]) -> bool:
-    """Return ``True`` if any element of the matrix ``m`` is NaN, otherwise return ``False``."""
+def isnan(a: Matrix[Any, Any, Scalar]) -> bool:
+    """Return ``True`` if any element of the matrix ``a`` is NaN, otherwise return ``False``."""
     ...
 
 
 @over
-def isinf(x: Scalar) -> bool:
-    """Return ``True`` if x is positive or negative infinity, otherwise return ``False``."""
+def isinf(a: Scalar) -> bool:
+    """Return ``True`` if ``a`` is positive or negative infinity, otherwise return ``False``."""
     ...
 
 
 @over
-def isinf(x: Vector[Any, Scalar]) -> bool:
-    """Return ``True`` if any element of the vector ``x`` is positive or negative infinity, otherwise return ``False``."""
+def isinf(a: Vector[Any, Scalar]) -> bool:
+    """Return ``True`` if any element of the vector ``a`` is positive or negative infinity, otherwise return ``False``."""
     ...
 
 
 @over
-def isinf(x: Quaternion[Scalar]) -> bool:
-    """Return ``True`` if any element of the quaternion ``x`` is positive or negative infinity, otherwise return ``False``."""
+def isinf(a: Quaternion[Scalar]) -> bool:
+    """Return ``True`` if any element of the quaternion ``a`` is positive or negative infinity, otherwise return ``False``."""
     ...
 
 
 @over
-def isinf(m: Matrix[Any, Any, Scalar]) -> bool:
-    """Return ``True`` if any element of the matrix ``m`` is positive or negative infinity, otherwise return ``False``."""
+def isinf(a: Matrix[Any, Any, Scalar]) -> bool:
+    """Return ``True`` if any element of the matrix ``a`` is positive or negative infinity, otherwise return ``False``."""
     ...
 
 
 @over
-def dot(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Scalar:
+def dot(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Scalar:
     """Compute the dot product between two vectors."""
     ...
 
 
 @over
-def dot(x: Quaternion[Float], y: Quaternion[Float]) -> Float:
+def dot(a: Quaternion[Float], b: Quaternion[Float]) -> Float:
     """Compute the dot product between two quaternions."""
     ...
 
 
 @over
-def ddot(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Scalar:
+def ddot(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Scalar:
     """Compute the double dot product between two matrices."""
     ...
 
 
 @over
-def argmin(v: Vector[Any, Scalar]) -> uint32:
-    """Return the index of the minimum element of a vector ``v``."""
+def argmin(a: Vector[Any, Scalar]) -> uint32:
+    """Return the index of the minimum element of a vector ``a``."""
     ...
 
 
 @over
-def argmax(v: Vector[Any, Scalar]) -> uint32:
-    """Return the index of the maximum element of a vector ``v``."""
+def argmax(a: Vector[Any, Scalar]) -> uint32:
+    """Return the index of the maximum element of a vector ``a``."""
     ...
 
 
 @over
-def outer(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
-    """Compute the outer product ``x*y^T`` for two vectors."""
+def outer(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """Compute the outer product ``a*b^T`` for two vectors."""
     ...
 
 
 @over
-def cross(x: Vector[3, Scalar], y: Vector[3, Scalar]) -> Vector[3, Scalar]:
+def cross(a: Vector[3, Scalar], b: Vector[3, Scalar]) -> Vector[3, Scalar]:
     """Compute the cross product of two 3D vectors."""
     ...
 
 
 @over
-def skew(x: Vector[3, Scalar]):
-    """Compute the skew-symmetric 3x3 matrix for a 3D vector ``x``."""
+def skew(vec: Vector[3, Scalar]) -> Matrix[3, 3, Scalar]:
+    """Compute the skew-symmetric 3x3 matrix for a 3D vector ``vec``."""
     ...
 
 
 @over
-def length(x: Vector[Any, Float]) -> Float:
-    """Compute the length of a floating-point vector ``x``."""
+def length(a: Vector[Any, Float]) -> Float:
+    """Compute the length of a floating-point vector ``a``."""
     ...
 
 
 @over
-def length(x: Quaternion[Float]) -> Float:
-    """Compute the length of a quaternion ``x``."""
+def length(a: Quaternion[Float]) -> Float:
+    """Compute the length of a quaternion ``a``."""
     ...
 
 
 @over
-def length_sq(x: Vector[Any, Scalar]) -> Scalar:
-    """Compute the squared length of a vector ``x``."""
+def length_sq(a: Vector[Any, Scalar]) -> Scalar:
+    """Compute the squared length of a vector ``a``."""
     ...
 
 
 @over
-def length_sq(x: Quaternion[Scalar]) -> Scalar:
-    """Compute the squared length of a quaternion ``x``."""
+def length_sq(a: Quaternion[Scalar]) -> Scalar:
+    """Compute the squared length of a quaternion ``a``."""
     ...
 
 
 @over
-def normalize(x: Vector[Any, Float]) -> Vector[Any, Float]:
-    """Compute the normalized value of ``x``. If ``length(x)`` is 0 then the zero vector is returned."""
+def normalize(a: Vector[Any, Float]) -> Vector[Any, Float]:
+    """Compute the normalized value of ``a``. If ``length(a)`` is 0 then the zero vector is returned."""
     ...
 
 
 @over
-def normalize(x: Quaternion[Float]) -> Quaternion[Float]:
-    """Compute the normalized value of ``x``. If ``length(x)`` is 0, then the zero quaternion is returned."""
+def normalize(a: Quaternion[Float]) -> Quaternion[Float]:
+    """Compute the normalized value of ``a``. If ``length(a)`` is 0, then the zero quaternion is returned."""
     ...
 
 
 @over
-def transpose(m: Matrix[Any, Any, Scalar]):
-    """Return the transpose of the matrix ``m``."""
+def transpose(a: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """Return the transpose of the matrix ``a``."""
     ...
 
 
 @over
-def inverse(m: Matrix[2, 2, Float]) -> Matrix[Any, Any, Float]:
-    """Return the inverse of a 2x2 matrix ``m``."""
+def inverse(a: Matrix[2, 2, Float]) -> Matrix[Any, Any, Float]:
+    """Return the inverse of a 2x2 matrix ``a``."""
     ...
 
 
 @over
-def inverse(m: Matrix[3, 3, Float]) -> Matrix[Any, Any, Float]:
-    """Return the inverse of a 3x3 matrix ``m``."""
+def inverse(a: Matrix[3, 3, Float]) -> Matrix[Any, Any, Float]:
+    """Return the inverse of a 3x3 matrix ``a``."""
     ...
 
 
 @over
-def inverse(m: Matrix[4, 4, Float]) -> Matrix[Any, Any, Float]:
-    """Return the inverse of a 4x4 matrix ``m``."""
+def inverse(a: Matrix[4, 4, Float]) -> Matrix[Any, Any, Float]:
+    """Return the inverse of a 4x4 matrix ``a``."""
     ...
 
 
 @over
-def determinant(m: Matrix[2, 2, Float]) -> Float:
-    """Return the determinant of a 2x2 matrix ``m``."""
+def determinant(a: Matrix[2, 2, Float]) -> Float:
+    """Return the determinant of a 2x2 matrix ``a``."""
     ...
 
 
 @over
-def determinant(m: Matrix[3, 3, Float]) -> Float:
-    """Return the determinant of a 3x3 matrix ``m``."""
+def determinant(a: Matrix[3, 3, Float]) -> Float:
+    """Return the determinant of a 3x3 matrix ``a``."""
     ...
 
 
 @over
-def determinant(m: Matrix[4, 4, Float]) -> Float:
-    """Return the determinant of a 4x4 matrix ``m``."""
+def determinant(a: Matrix[4, 4, Float]) -> Float:
+    """Return the determinant of a 4x4 matrix ``a``."""
     ...
 
 
 @over
-def trace(m: Matrix[Any, Any, Scalar]) -> Scalar:
-    """Return the trace of the matrix ``m``."""
+def trace(a: Matrix[Any, Any, Scalar]) -> Scalar:
+    """Return the trace of the matrix ``a``."""
     ...
 
 
 @over
-def diag(d: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
-    """Returns a matrix with the components of the vector ``d`` on the diagonal."""
+def diag(vec: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """Returns a matrix with the components of the vector ``vec`` on the diagonal."""
     ...
 
 
 @over
-def get_diag(m: Matrix[Any, Any, Scalar]) -> Vector[Any, Scalar]:
-    """Returns a vector containing the diagonal elements of the square matrix ``m``."""
+def get_diag(mat: Matrix[Any, Any, Scalar]) -> Vector[Any, Scalar]:
+    """Returns a vector containing the diagonal elements of the square matrix ``mat``."""
     ...
 
 
 @over
-def cw_mul(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+def cw_mul(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """Component-wise multiplication of two vectors."""
     ...
 
 
 @over
-def cw_mul(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+def cw_mul(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """Component-wise multiplication of two matrices."""
     ...
 
 
 @over
-def cw_div(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+def cw_div(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """Component-wise division of two vectors."""
     ...
 
 
 @over
-def cw_div(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+def cw_div(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """Component-wise division of two matrices."""
+    ...
+
+
+@over
+def vector(*args: Scalar, length: int32, dtype: Scalar) -> Vector[Any, Scalar]:
+    """Construct a vector of given length and dtype."""
+    ...
+
+
+@over
+def matrix(pos: Vector[3, Float], rot: Quaternion[Float], scale: Vector[3, Float], dtype: Float) -> Matrix[4, 4, Float]:
+    """Construct a 4x4 transformation matrix that applies the transformations as
+    Translation(pos)*Rotation(rot)*Scaling(scale) when applied to column vectors, i.e.: y = (TRS)*x
+    """
+    ...
+
+
+@over
+def matrix(*args: Scalar, shape: Tuple[int, int], dtype: Scalar) -> Matrix[Any, Any, Scalar]:
+    """Construct a matrix. If the positional ``arg_types`` are not given, then matrix will be zero-initialized."""
+    ...
+
+
+@over
+def identity(n: int32, dtype: Scalar) -> Matrix[Any, Any, Scalar]:
+    """Create an identity matrix with shape=(n,n) with the type given by ``dtype``."""
+    ...
+
+
+@over
+def svd3(A: Matrix[3, 3, Float], U: Matrix[3, 3, Float], sigma: Vector[3, Float], V: Matrix[3, 3, Scalar]):
+    """Compute the SVD of a 3x3 matrix ``A``. The singular values are returned in ``sigma``,
+    while the left and right basis vectors are returned in ``U`` and ``V``.
+    """
+    ...
+
+
+@over
+def qr3(A: Matrix[3, 3, Float], Q: Matrix[3, 3, Float], R: Matrix[3, 3, Float]):
+    """Compute the QR decomposition of a 3x3 matrix ``A``. The orthogonal matrix is returned in ``Q``,
+    while the upper triangular matrix is returned in ``R``.
+    """
+    ...
+
+
+@over
+def eig3(A: Matrix[3, 3, Float], Q: Matrix[3, 3, Float], d: Vector[3, Float]):
+    """Compute the eigendecomposition of a 3x3 matrix ``A``. The eigenvectors are returned as the columns of ``Q``,
+    while the corresponding eigenvalues are returned in ``d``.
+    """
+    ...
+
+
+@over
+def quaternion(dtype: Float) -> Quaternion[Float]:
+    """Construct a zero-initialized quaternion. Quaternions are laid out as
+    [ix, iy, iz, r], where ix, iy, iz are the imaginary part, and r the real part.
+    """
+    ...
+
+
+@over
+def quaternion(x: Float, y: Float, z: Float, w: Float) -> Quaternion[Float]:
+    """Create a quaternion using the supplied components (type inferred from component type)."""
+    ...
+
+
+@over
+def quaternion(ijk: Vector[3, Float], real: Float, dtype: Float) -> Quaternion[Float]:
+    """Create a quaternion using the supplied vector/scalar (type inferred from scalar type)."""
+    ...
+
+
+@over
+def quaternion(quat: Quaternion[Float], dtype: Float) -> Quaternion[Float]:
+    """Construct a quaternion of type dtype from another quaternion of a different dtype."""
     ...
 
 
@@ -615,13 +691,13 @@ def quat_from_axis_angle(axis: Vector[3, Float], angle: Float) -> Quaternion[Flo
 
 
 @over
-def quat_to_axis_angle(q: Quaternion[Float], axis: Vector[3, Float], angle: Float):
+def quat_to_axis_angle(quat: Quaternion[Float], axis: Vector[3, Float], angle: Float):
     """Extract the rotation axis and angle radians a quaternion represents."""
     ...
 
 
 @over
-def quat_from_matrix(m: Matrix[3, 3, Float]) -> Quaternion[Float]:
+def quat_from_matrix(mat: Matrix[3, 3, Float]) -> Quaternion[Float]:
     """Construct a quaternion from a 3x3 matrix."""
     ...
 
@@ -633,32 +709,38 @@ def quat_rpy(roll: Float, pitch: Float, yaw: Float) -> Quaternion[Float]:
 
 
 @over
-def quat_inverse(q: Quaternion[Float]) -> Quaternion[Float]:
+def quat_inverse(quat: Quaternion[Float]) -> Quaternion[Float]:
     """Compute quaternion conjugate."""
     ...
 
 
 @over
-def quat_rotate(q: Quaternion[Float], p: Vector[3, Float]) -> Vector[3, Float]:
+def quat_rotate(quat: Quaternion[Float], vec: Vector[3, Float]) -> Vector[3, Float]:
     """Rotate a vector by a quaternion."""
     ...
 
 
 @over
-def quat_rotate_inv(q: Quaternion[Float], p: Vector[3, Float]) -> Vector[3, Float]:
+def quat_rotate_inv(quat: Quaternion[Float], vec: Vector[3, Float]) -> Vector[3, Float]:
     """Rotate a vector by the inverse of a quaternion."""
     ...
 
 
 @over
-def quat_slerp(q0: Quaternion[Float], q1: Quaternion[Float], t: Float) -> Quaternion[Float]:
+def quat_slerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaternion[Float]:
     """Linearly interpolate between two quaternions."""
     ...
 
 
 @over
-def quat_to_matrix(q: Quaternion[Float]) -> Matrix[3, 3, Float]:
+def quat_to_matrix(quat: Quaternion[Float]) -> Matrix[3, 3, Float]:
     """Convert a quaternion to a 3x3 rotation matrix."""
+    ...
+
+
+@over
+def transformation(pos: Vector[3, Float], rot: Quaternion[Float], dtype: Float) -> Transformation[Float]:
+    """Construct a rigid-body transformation with translation part ``pos`` and rotation ``rot``."""
     ...
 
 
@@ -669,14 +751,14 @@ def transform_identity(dtype: Float) -> transformf:
 
 
 @over
-def transform_get_translation(t: Transformation[Float]) -> Vector[3, Float]:
-    """Return the translational part of a transform ``t``."""
+def transform_get_translation(xform: Transformation[Float]) -> Vector[3, Float]:
+    """Return the translational part of a transform ``xform``."""
     ...
 
 
 @over
-def transform_get_rotation(t: Transformation[Float]) -> Quaternion[Float]:
-    """Return the rotational part of a transform ``t``."""
+def transform_get_rotation(xform: Transformation[Float]) -> Quaternion[Float]:
+    """Return the rotational part of a transform ``xform``."""
     ...
 
 
@@ -687,17 +769,17 @@ def transform_multiply(a: Transformation[Float], b: Transformation[Float]) -> Tr
 
 
 @over
-def transform_point(t: Transformation[Float], p: Vector[3, Float]) -> Vector[3, Float]:
-    """Apply the transform to a point ``p`` treating the homogeneous coordinate as w=1 (translation and rotation)."""
+def transform_point(xform: Transformation[Float], point: Vector[3, Float]) -> Vector[3, Float]:
+    """Apply the transform to a point ``point`` treating the homogeneous coordinate as w=1 (translation and rotation)."""
     ...
 
 
 @over
-def transform_point(m: Matrix[4, 4, Float], p: Vector[3, Float]) -> Vector[3, Float]:
-    """Apply the transform to a point ``p`` treating the homogeneous coordinate as w=1.
+def transform_point(mat: Matrix[4, 4, Float], point: Vector[3, Float]) -> Vector[3, Float]:
+    """Apply the transform to a point ``point`` treating the homogeneous coordinate as w=1.
 
-    The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``.
-    Note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``.
+    The transformation is applied treating ``point`` as a column vector, e.g.: ``y = mat*point``.
+    Note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = point^T*mat^T``.
     If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
     matrix before calling this method.
     """
@@ -705,17 +787,17 @@ def transform_point(m: Matrix[4, 4, Float], p: Vector[3, Float]) -> Vector[3, Fl
 
 
 @over
-def transform_vector(t: Transformation[Float], v: Vector[3, Float]) -> Vector[3, Float]:
-    """Apply the transform to a vector ``v`` treating the homogeneous coordinate as w=0 (rotation only)."""
+def transform_vector(xform: Transformation[Float], vec: Vector[3, Float]) -> Vector[3, Float]:
+    """Apply the transform to a vector ``vec`` treating the homogeneous coordinate as w=0 (rotation only)."""
     ...
 
 
 @over
-def transform_vector(m: Matrix[4, 4, Float], v: Vector[3, Float]) -> Vector[3, Float]:
-    """Apply the transform to a vector ``v`` treating the homogeneous coordinate as w=0.
+def transform_vector(mat: Matrix[4, 4, Float], vec: Vector[3, Float]) -> Vector[3, Float]:
+    """Apply the transform to a vector ``vec`` treating the homogeneous coordinate as w=0.
 
-    The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
-    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``.
+    The transformation is applied treating ``vec`` as a column vector, e.g.: ``y = mat*vec``
+    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = vec^T*mat^T``.
     If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
     matrix before calling this method.
     """
@@ -723,8 +805,32 @@ def transform_vector(m: Matrix[4, 4, Float], v: Vector[3, Float]) -> Vector[3, F
 
 
 @over
-def transform_inverse(t: Transformation[Float]) -> Transformation[Float]:
-    """Compute the inverse of the transformation ``t``."""
+def transform_inverse(xform: Transformation[Float]) -> Transformation[Float]:
+    """Compute the inverse of the transformation ``xform``."""
+    ...
+
+
+@over
+def spatial_vector(dtype: Float) -> Vector[6, Float]:
+    """Zero-initialize a 6D screw vector."""
+    ...
+
+
+@over
+def spatial_vector(w: Vector[3, Float], v: Vector[3, Float], dtype: Float) -> Vector[6, Float]:
+    """Construct a 6D screw vector from two 3D vectors."""
+    ...
+
+
+@over
+def spatial_vector(wx: Float, wy: Float, wz: Float, vx: Float, vy: Float, vz: Float, dtype: Float) -> Vector[6, Float]:
+    """Construct a 6D screw vector from six values."""
+    ...
+
+
+@over
+def spatial_adjoint(r: Matrix[3, 3, Float], s: Matrix[3, 3, Float]) -> Matrix[6, 6, Float]:
+    """Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks."""
     ...
 
 
@@ -747,13 +853,13 @@ def spatial_cross_dual(a: Vector[6, Float], b: Vector[6, Float]) -> Vector[6, Fl
 
 
 @over
-def spatial_top(a: Vector[6, Float]):
+def spatial_top(svec: Vector[6, Float]) -> Vector[3, Float]:
     """Return the top (first) part of a 6D screw vector."""
     ...
 
 
 @over
-def spatial_bottom(a: Vector[6, Float]):
+def spatial_bottom(svec: Vector[6, Float]) -> Vector[3, Float]:
     """Return the bottom (second) part of a 6D screw vector."""
     ...
 
@@ -806,14 +912,14 @@ def mlp(
 
 
 @over
-def bvh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> bvh_query_t:
+def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> bvh_query_t:
     """Construct an axis-aligned bounding box query against a BVH object.
 
     This query can be used to iterate over all bounds inside a BVH.
 
     :param id: The BVH identifier
-    :param lower: The lower bound of the bounding box in BVH space
-    :param upper: The upper bound of the bounding box in BVH space
+    :param low: The lower bound of the bounding box in BVH space
+    :param high: The upper bound of the bounding box in BVH space
     """
     ...
 
@@ -931,14 +1037,14 @@ def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32) -> mesh
 
 
 @over
-def mesh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> mesh_query_aabb_t:
+def mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> mesh_query_aabb_t:
     """Construct an axis-aligned bounding box query against a :class:`Mesh`.
 
     This query can be used to iterate over all triangles inside a volume.
 
     :param id: The mesh identifier
-    :param lower: The lower bound of the bounding box in mesh space
-    :param upper: The upper bound of the bounding box in mesh space
+    :param low: The lower bound of the bounding box in mesh space
+    :param high: The upper bound of the bounding box in mesh space
     """
     ...
 
@@ -1049,6 +1155,39 @@ def closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon:
 
 
 @over
+def volume_sample(id: uint64, uvw: vec3f, sampling_mode: int32, dtype: Any) -> Any:
+    """Sample the volume of type `dtype` given by ``id`` at the volume local-space point ``uvw``.
+
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`
+    """
+    ...
+
+
+@over
+def volume_sample_grad(id: uint64, uvw: vec3f, sampling_mode: int32, grad: Any, dtype: Any) -> Any:
+    """Sample the volume given by ``id`` and its gradient at the volume local-space point ``uvw``.
+
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`
+    """
+    ...
+
+
+@over
+def volume_lookup(id: uint64, i: int32, j: int32, k: int32, dtype: Any) -> Any:
+    """Returns the value of voxel with coordinates ``i``, ``j``, ``k`` for a volume of type type `dtype`.
+
+    If the voxel at this index does not exist, this function returns the background value.
+    """
+    ...
+
+
+@over
+def volume_store(id: uint64, i: int32, j: int32, k: int32, value: Any):
+    """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``."""
+    ...
+
+
+@over
 def volume_sample_f(id: uint64, uvw: vec3f, sampling_mode: int32) -> float:
     """Sample the volume given by ``id`` at the volume local-space point ``uvw``.
 
@@ -1127,6 +1266,32 @@ def volume_store_i(id: uint64, i: int32, j: int32, k: int32, value: int32):
 
 
 @over
+def volume_sample_index(id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data: Array[Any], background: Any) -> Any:
+    """Sample the volume given by ``id`` at the volume local-space point ``uvw``.
+
+    Values for allocated voxels are read from the ``voxel_data`` array, and `background` is used as the value of non-existing voxels.
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR`.
+    This function is available for both index grids and classical volumes.
+
+    """
+    ...
+
+
+@over
+def volume_sample_grad_index(
+    id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data: Array[Any], background: Any, grad: Any
+) -> Any:
+    """Sample the volume given by ``id`` and its gradient at the volume local-space point ``uvw``.
+
+    Values for allocated voxels are read from the ``voxel_data`` array, and `background` is used as the value of non-existing voxels.
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR`.
+    This function is available for both index grids and classical volumes.
+
+    """
+    ...
+
+
+@over
 def volume_lookup_index(id: uint64, i: int32, j: int32, k: int32) -> int32:
     """Returns the index associated to the voxel with coordinates ``i``, ``j``, ``k``.
 
@@ -1184,8 +1349,8 @@ def randi(state: uint32) -> int:
 
 
 @over
-def randi(state: uint32, min: int32, max: int32) -> int:
-    """Return a random integer between [min, max)."""
+def randi(state: uint32, low: int32, high: int32) -> int:
+    """Return a random integer between [low, high)."""
     ...
 
 
@@ -1196,8 +1361,8 @@ def randf(state: uint32) -> float:
 
 
 @over
-def randf(state: uint32, min: float32, max: float32) -> float:
-    """Return a random float between [min, max)."""
+def randf(state: uint32, low: float32, high: float32) -> float:
+    """Return a random float between [low, high)."""
     ...
 
 
@@ -1350,6 +1515,30 @@ def printf(fmt: str, *args: Any):
 
 
 @over
+def print(value: Any):
+    """Print variable to stdout"""
+    ...
+
+
+@over
+def breakpoint():
+    """Debugger breakpoint"""
+    ...
+
+
+@over
+def tid() -> int:
+    """Return the current thread index for a 1D kernel launch.
+
+    Note that this is the *global* index of the thread in the range [0, dim)
+    where dim is the parameter passed to kernel launch.
+
+    This function may not be called from user-defined Warp functions.
+    """
+    ...
+
+
+@over
 def tid() -> Tuple[int, int]:
     """Return the current thread indices for a 2D kernel launch.
 
@@ -1383,212 +1572,212 @@ def tid() -> Tuple[int, int, int, int]:
 
 
 @over
-def select(cond: bool, arg1: Any, arg2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``"""
+def select(cond: bool, value_if_false: Any, value_if_true: Any) -> Any:
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: int8, arg1: Any, arg2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``"""
+def select(cond: int8, value_if_false: Any, value_if_true: Any) -> Any:
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: uint8, arg1: Any, arg2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``"""
+def select(cond: uint8, value_if_false: Any, value_if_true: Any) -> Any:
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: int16, arg1: Any, arg2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``"""
+def select(cond: int16, value_if_false: Any, value_if_true: Any) -> Any:
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: uint16, arg1: Any, arg2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``"""
+def select(cond: uint16, value_if_false: Any, value_if_true: Any) -> Any:
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: int32, arg1: Any, arg2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``"""
+def select(cond: int32, value_if_false: Any, value_if_true: Any) -> Any:
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: uint32, arg1: Any, arg2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``"""
+def select(cond: uint32, value_if_false: Any, value_if_true: Any) -> Any:
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: int64, arg1: Any, arg2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``"""
+def select(cond: int64, value_if_false: Any, value_if_true: Any) -> Any:
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(cond: uint64, arg1: Any, arg2: Any):
-    """Select between two arguments, if ``cond`` is ``False`` then return ``arg1``, otherwise return ``arg2``"""
+def select(cond: uint64, value_if_false: Any, value_if_true: Any) -> Any:
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def select(arr: Array[Any], arg1: Any, arg2: Any):
-    """Select between two arguments, if ``arr`` is null then return ``arg1``, otherwise return ``arg2``"""
+def select(arr: Array[Any], value_if_false: Any, value_if_true: Any) -> Any:
+    """Select between two arguments, if ``arr`` is null then return ``value_if_false``, otherwise return ``value_if_true``"""
     ...
 
 
 @over
-def atomic_add(arr: Array[Any], i: int32, value: Any):
-    """Atomically add ``value`` onto ``arr[i]``."""
+def atomic_add(arr: Array[Any], i: int32, value: Any) -> Any:
+    """Atomically add ``value`` onto ``arr[i]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: Array[Any], i: int32, j: int32, value: Any):
-    """Atomically add ``value`` onto ``arr[i,j]``."""
+def atomic_add(arr: Array[Any], i: int32, j: int32, value: Any) -> Any:
+    """Atomically add ``value`` onto ``arr[i,j]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: Array[Any], i: int32, j: int32, k: int32, value: Any):
-    """Atomically add ``value`` onto ``arr[i,j,k]``."""
+def atomic_add(arr: Array[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+    """Atomically add ``value`` onto ``arr[i,j,k]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
-    """Atomically add ``value`` onto ``arr[i,j,k,l]``."""
+def atomic_add(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+    """Atomically add ``value`` onto ``arr[i,j,k,l]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: FabricArray[Any], i: int32, value: Any):
-    """Atomically add ``value`` onto ``arr[i]``."""
+def atomic_add(arr: FabricArray[Any], i: int32, value: Any) -> Any:
+    """Atomically add ``value`` onto ``arr[i]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: FabricArray[Any], i: int32, j: int32, value: Any):
-    """Atomically add ``value`` onto ``arr[i,j]``."""
+def atomic_add(arr: FabricArray[Any], i: int32, j: int32, value: Any) -> Any:
+    """Atomically add ``value`` onto ``arr[i,j]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any):
-    """Atomically add ``value`` onto ``arr[i,j,k]``."""
+def atomic_add(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+    """Atomically add ``value`` onto ``arr[i,j,k]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
-    """Atomically add ``value`` onto ``arr[i,j,k,l]``."""
+def atomic_add(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+    """Atomically add ``value`` onto ``arr[i,j,k,l]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: IndexedFabricArray[Any], i: int32, value: Any):
-    """Atomically add ``value`` onto ``arr[i]``."""
+def atomic_add(arr: IndexedFabricArray[Any], i: int32, value: Any) -> Any:
+    """Atomically add ``value`` onto ``arr[i]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any):
-    """Atomically add ``value`` onto ``arr[i,j]``."""
+def atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any) -> Any:
+    """Atomically add ``value`` onto ``arr[i,j]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any):
-    """Atomically add ``value`` onto ``arr[i,j,k]``."""
+def atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+    """Atomically add ``value`` onto ``arr[i,j,k]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
-    """Atomically add ``value`` onto ``arr[i,j,k,l]``."""
+def atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+    """Atomically add ``value`` onto ``arr[i,j,k,l]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: Array[Any], i: int32, value: Any):
-    """Atomically subtract ``value`` onto ``arr[i]``."""
+def atomic_sub(arr: Array[Any], i: int32, value: Any) -> Any:
+    """Atomically subtract ``value`` onto ``arr[i]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: Array[Any], i: int32, j: int32, value: Any):
-    """Atomically subtract ``value`` onto ``arr[i,j]``."""
+def atomic_sub(arr: Array[Any], i: int32, j: int32, value: Any) -> Any:
+    """Atomically subtract ``value`` onto ``arr[i,j]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: Array[Any], i: int32, j: int32, k: int32, value: Any):
-    """Atomically subtract ``value`` onto ``arr[i,j,k]``."""
+def atomic_sub(arr: Array[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+    """Atomically subtract ``value`` onto ``arr[i,j,k]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
-    """Atomically subtract ``value`` onto ``arr[i,j,k,l]``."""
+def atomic_sub(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+    """Atomically subtract ``value`` onto ``arr[i,j,k,l]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: FabricArray[Any], i: int32, value: Any):
-    """Atomically subtract ``value`` onto ``arr[i]``."""
+def atomic_sub(arr: FabricArray[Any], i: int32, value: Any) -> Any:
+    """Atomically subtract ``value`` onto ``arr[i]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: FabricArray[Any], i: int32, j: int32, value: Any):
-    """Atomically subtract ``value`` onto ``arr[i,j]``."""
+def atomic_sub(arr: FabricArray[Any], i: int32, j: int32, value: Any) -> Any:
+    """Atomically subtract ``value`` onto ``arr[i,j]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any):
-    """Atomically subtract ``value`` onto ``arr[i,j,k]``."""
+def atomic_sub(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+    """Atomically subtract ``value`` onto ``arr[i,j,k]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
-    """Atomically subtract ``value`` onto ``arr[i,j,k,l]``."""
+def atomic_sub(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+    """Atomically subtract ``value`` onto ``arr[i,j,k,l]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: IndexedFabricArray[Any], i: int32, value: Any):
-    """Atomically subtract ``value`` onto ``arr[i]``."""
+def atomic_sub(arr: IndexedFabricArray[Any], i: int32, value: Any) -> Any:
+    """Atomically subtract ``value`` onto ``arr[i]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any):
-    """Atomically subtract ``value`` onto ``arr[i,j]``."""
+def atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any) -> Any:
+    """Atomically subtract ``value`` onto ``arr[i,j]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any):
-    """Atomically subtract ``value`` onto ``arr[i,j,k]``."""
+def atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+    """Atomically subtract ``value`` onto ``arr[i,j,k]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
-    """Atomically subtract ``value`` onto ``arr[i,j,k,l]``."""
+def atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+    """Atomically subtract ``value`` onto ``arr[i,j,k,l]`` and return the old value."""
     ...
 
 
 @over
-def atomic_min(arr: Array[Any], i: int32, value: Any):
-    """Compute the minimum of ``value`` and ``arr[i]`` and atomically update the array.
+def atomic_min(arr: Array[Any], i: int32, value: Any) -> Any:
+    """Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1596,8 +1785,8 @@ def atomic_min(arr: Array[Any], i: int32, value: Any):
 
 
 @over
-def atomic_min(arr: Array[Any], i: int32, j: int32, value: Any):
-    """Compute the minimum of ``value`` and ``arr[i,j]`` and atomically update the array.
+def atomic_min(arr: Array[Any], i: int32, j: int32, value: Any) -> Any:
+    """Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1605,8 +1794,8 @@ def atomic_min(arr: Array[Any], i: int32, j: int32, value: Any):
 
 
 @over
-def atomic_min(arr: Array[Any], i: int32, j: int32, k: int32, value: Any):
-    """Compute the minimum of ``value`` and ``arr[i,j,k]`` and atomically update the array.
+def atomic_min(arr: Array[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+    """Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1614,8 +1803,8 @@ def atomic_min(arr: Array[Any], i: int32, j: int32, k: int32, value: Any):
 
 
 @over
-def atomic_min(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
-    """Compute the minimum of ``value`` and ``arr[i,j,k,l]`` and atomically update the array.
+def atomic_min(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+    """Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1623,8 +1812,8 @@ def atomic_min(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: A
 
 
 @over
-def atomic_min(arr: FabricArray[Any], i: int32, value: Any):
-    """Compute the minimum of ``value`` and ``arr[i]`` and atomically update the array.
+def atomic_min(arr: FabricArray[Any], i: int32, value: Any) -> Any:
+    """Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1632,8 +1821,8 @@ def atomic_min(arr: FabricArray[Any], i: int32, value: Any):
 
 
 @over
-def atomic_min(arr: FabricArray[Any], i: int32, j: int32, value: Any):
-    """Compute the minimum of ``value`` and ``arr[i,j]`` and atomically update the array.
+def atomic_min(arr: FabricArray[Any], i: int32, j: int32, value: Any) -> Any:
+    """Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1641,8 +1830,8 @@ def atomic_min(arr: FabricArray[Any], i: int32, j: int32, value: Any):
 
 
 @over
-def atomic_min(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any):
-    """Compute the minimum of ``value`` and ``arr[i,j,k]`` and atomically update the array.
+def atomic_min(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+    """Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1650,8 +1839,8 @@ def atomic_min(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any):
 
 
 @over
-def atomic_min(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
-    """Compute the minimum of ``value`` and ``arr[i,j,k,l]`` and atomically update the array.
+def atomic_min(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+    """Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1659,8 +1848,8 @@ def atomic_min(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, va
 
 
 @over
-def atomic_min(arr: IndexedFabricArray[Any], i: int32, value: Any):
-    """Compute the minimum of ``value`` and ``arr[i]`` and atomically update the array.
+def atomic_min(arr: IndexedFabricArray[Any], i: int32, value: Any) -> Any:
+    """Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1668,8 +1857,8 @@ def atomic_min(arr: IndexedFabricArray[Any], i: int32, value: Any):
 
 
 @over
-def atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any):
-    """Compute the minimum of ``value`` and ``arr[i,j]`` and atomically update the array.
+def atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any) -> Any:
+    """Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1677,8 +1866,8 @@ def atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any):
 
 
 @over
-def atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any):
-    """Compute the minimum of ``value`` and ``arr[i,j,k]`` and atomically update the array.
+def atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+    """Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1686,8 +1875,8 @@ def atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value
 
 
 @over
-def atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
-    """Compute the minimum of ``value`` and ``arr[i,j,k,l]`` and atomically update the array.
+def atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+    """Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1695,8 +1884,8 @@ def atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: in
 
 
 @over
-def atomic_max(arr: Array[Any], i: int32, value: Any):
-    """Compute the maximum of ``value`` and ``arr[i]`` and atomically update the array.
+def atomic_max(arr: Array[Any], i: int32, value: Any) -> Any:
+    """Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1704,8 +1893,8 @@ def atomic_max(arr: Array[Any], i: int32, value: Any):
 
 
 @over
-def atomic_max(arr: Array[Any], i: int32, j: int32, value: Any):
-    """Compute the maximum of ``value`` and ``arr[i,j]`` and atomically update the array.
+def atomic_max(arr: Array[Any], i: int32, j: int32, value: Any) -> Any:
+    """Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1713,8 +1902,8 @@ def atomic_max(arr: Array[Any], i: int32, j: int32, value: Any):
 
 
 @over
-def atomic_max(arr: Array[Any], i: int32, j: int32, k: int32, value: Any):
-    """Compute the maximum of ``value`` and ``arr[i,j,k]`` and atomically update the array.
+def atomic_max(arr: Array[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+    """Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1722,8 +1911,8 @@ def atomic_max(arr: Array[Any], i: int32, j: int32, k: int32, value: Any):
 
 
 @over
-def atomic_max(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
-    """Compute the maximum of ``value`` and ``arr[i,j,k,l]`` and atomically update the array.
+def atomic_max(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+    """Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1731,8 +1920,8 @@ def atomic_max(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: A
 
 
 @over
-def atomic_max(arr: FabricArray[Any], i: int32, value: Any):
-    """Compute the maximum of ``value`` and ``arr[i]`` and atomically update the array.
+def atomic_max(arr: FabricArray[Any], i: int32, value: Any) -> Any:
+    """Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1740,8 +1929,8 @@ def atomic_max(arr: FabricArray[Any], i: int32, value: Any):
 
 
 @over
-def atomic_max(arr: FabricArray[Any], i: int32, j: int32, value: Any):
-    """Compute the maximum of ``value`` and ``arr[i,j]`` and atomically update the array.
+def atomic_max(arr: FabricArray[Any], i: int32, j: int32, value: Any) -> Any:
+    """Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1749,8 +1938,8 @@ def atomic_max(arr: FabricArray[Any], i: int32, j: int32, value: Any):
 
 
 @over
-def atomic_max(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any):
-    """Compute the maximum of ``value`` and ``arr[i,j,k]`` and atomically update the array.
+def atomic_max(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+    """Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1758,8 +1947,8 @@ def atomic_max(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any):
 
 
 @over
-def atomic_max(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
-    """Compute the maximum of ``value`` and ``arr[i,j,k,l]`` and atomically update the array.
+def atomic_max(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+    """Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1767,8 +1956,8 @@ def atomic_max(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, va
 
 
 @over
-def atomic_max(arr: IndexedFabricArray[Any], i: int32, value: Any):
-    """Compute the maximum of ``value`` and ``arr[i]`` and atomically update the array.
+def atomic_max(arr: IndexedFabricArray[Any], i: int32, value: Any) -> Any:
+    """Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1776,8 +1965,8 @@ def atomic_max(arr: IndexedFabricArray[Any], i: int32, value: Any):
 
 
 @over
-def atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any):
-    """Compute the maximum of ``value`` and ``arr[i,j]`` and atomically update the array.
+def atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any) -> Any:
+    """Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1785,8 +1974,8 @@ def atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any):
 
 
 @over
-def atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any):
-    """Compute the maximum of ``value`` and ``arr[i,j,k]`` and atomically update the array.
+def atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+    """Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1794,8 +1983,8 @@ def atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value
 
 
 @over
-def atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
-    """Compute the maximum of ``value`` and ``arr[i,j,k,l]`` and atomically update the array.
+def atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+    """Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
     """
@@ -1833,22 +2022,22 @@ def lerp(a: Transformation[Float], b: Transformation[Float], t: Float) -> Transf
 
 
 @over
-def smoothstep(edge0: Float, edge1: Float, x: Float) -> Float:
-    """Smoothly interpolate between two values ``edge0`` and ``edge1`` using a factor ``x``,
+def smoothstep(a: Float, b: Float, x: Float) -> Float:
+    """Smoothly interpolate between two values ``a`` and ``b`` using a factor ``x``,
     and return a result between 0 and 1 using a cubic Hermite interpolation after clamping.
     """
     ...
 
 
 @over
-def expect_near(arg1: Float, arg2: Float, tolerance: Float):
-    """Prints an error to stdout if ``arg1`` and ``arg2`` are not closer than tolerance in magnitude"""
+def expect_near(a: Float, b: Float, tolerance: Float):
+    """Prints an error to stdout if ``a`` and ``b`` are not closer than tolerance in magnitude"""
     ...
 
 
 @over
-def expect_near(arg1: vec3f, arg2: vec3f, tolerance: float32):
-    """Prints an error to stdout if any element of ``arg1`` and ``arg2`` are not closer than tolerance in magnitude"""
+def expect_near(a: vec3f, b: vec3f, tolerance: float32):
+    """Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude"""
     ...
 
 
@@ -1865,235 +2054,241 @@ def lower_bound(arr: Array[Scalar], arr_begin: int32, arr_end: int32, value: Sca
 
 
 @over
-def add(x: Scalar, y: Scalar) -> Scalar:
+def add(a: Scalar, b: Scalar) -> Scalar:
     """ """
     ...
 
 
 @over
-def add(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+def add(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """ """
     ...
 
 
 @over
-def add(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]:
+def add(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]:
     """ """
     ...
 
 
 @over
-def add(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+def add(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """ """
     ...
 
 
 @over
-def add(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]:
+def add(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[Scalar]:
     """ """
     ...
 
 
 @over
-def sub(x: Scalar, y: Scalar) -> Scalar:
+def sub(a: Scalar, b: Scalar) -> Scalar:
     """ """
     ...
 
 
 @over
-def sub(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+def sub(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """ """
     ...
 
 
 @over
-def sub(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+def sub(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """ """
     ...
 
 
 @over
-def sub(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]:
+def sub(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]:
     """ """
     ...
 
 
 @over
-def sub(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]:
+def sub(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[Scalar]:
     """ """
     ...
 
 
 @over
-def bit_and(x: Int, y: Int) -> Int:
+def bit_and(a: Int, b: Int) -> Int:
     """ """
     ...
 
 
 @over
-def bit_or(x: Int, y: Int) -> Int:
+def bit_or(a: Int, b: Int) -> Int:
     """ """
     ...
 
 
 @over
-def bit_xor(x: Int, y: Int) -> Int:
+def bit_xor(a: Int, b: Int) -> Int:
     """ """
     ...
 
 
 @over
-def lshift(x: Int, y: Int) -> Int:
+def lshift(a: Int, b: Int) -> Int:
     """ """
     ...
 
 
 @over
-def rshift(x: Int, y: Int) -> Int:
+def rshift(a: Int, b: Int) -> Int:
     """ """
     ...
 
 
 @over
-def invert(x: Int) -> Int:
+def invert(a: Int) -> Int:
     """ """
     ...
 
 
 @over
-def mul(x: Scalar, y: Scalar) -> Scalar:
+def mul(a: Scalar, b: Scalar) -> Scalar:
     """ """
     ...
 
 
 @over
-def mul(x: Vector[Any, Scalar], y: Scalar) -> Vector[Any, Scalar]:
+def mul(a: Vector[Any, Scalar], b: Scalar) -> Vector[Any, Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Scalar, y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+def mul(a: Scalar, b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Quaternion[Scalar], y: Scalar) -> Quaternion[Scalar]:
+def mul(a: Quaternion[Scalar], b: Scalar) -> Quaternion[Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Scalar, y: Quaternion[Scalar]) -> Quaternion[Scalar]:
+def mul(a: Scalar, b: Quaternion[Scalar]) -> Quaternion[Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]:
+def mul(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Scalar, y: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+def mul(a: Scalar, b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Matrix[Any, Any, Scalar], y: Scalar) -> Matrix[Any, Any, Scalar]:
+def mul(a: Matrix[Any, Any, Scalar], b: Scalar) -> Matrix[Any, Any, Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Matrix[Any, Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+def mul(a: Matrix[Any, Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Vector[Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Vector[Any, Scalar]:
+def mul(a: Vector[Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Vector[Any, Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]):
+def mul(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]:
+def mul(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Scalar, y: Transformation[Scalar]) -> Transformation[Scalar]:
+def mul(a: Scalar, b: Transformation[Scalar]) -> Transformation[Scalar]:
     """ """
     ...
 
 
 @over
-def mul(x: Transformation[Scalar], y: Scalar) -> Transformation[Scalar]:
+def mul(a: Transformation[Scalar], b: Scalar) -> Transformation[Scalar]:
     """ """
     ...
 
 
 @over
-def mod(x: Scalar, y: Scalar) -> Scalar:
+def mod(a: Scalar, b: Scalar) -> Scalar:
+    """Modulo operation using truncated division."""
+    ...
+
+
+@over
+def mod(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Scalar:
+    """Modulo operation using truncated division."""
+    ...
+
+
+@over
+def div(a: Scalar, b: Scalar) -> Scalar:
     """ """
     ...
 
 
 @over
-def div(x: Scalar, y: Scalar) -> Scalar:
+def div(a: Vector[Any, Scalar], b: Scalar) -> Vector[Any, Scalar]:
     """ """
     ...
 
 
 @over
-def div(x: Vector[Any, Scalar], y: Scalar) -> Vector[Any, Scalar]:
+def div(a: Scalar, b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """ """
     ...
 
 
 @over
-def div(x: Scalar, y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+def div(a: Matrix[Any, Any, Scalar], b: Scalar) -> Matrix[Any, Any, Scalar]:
     """ """
     ...
 
 
 @over
-def div(x: Matrix[Any, Any, Scalar], y: Scalar) -> Matrix[Any, Any, Scalar]:
+def div(a: Scalar, b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """ """
     ...
 
 
 @over
-def div(x: Scalar, y: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+def div(a: Quaternion[Scalar], b: Scalar) -> Quaternion[Scalar]:
     """ """
     ...
 
 
 @over
-def div(x: Quaternion[Scalar], y: Scalar) -> Quaternion[Scalar]:
+def div(a: Scalar, b: Quaternion[Scalar]) -> Quaternion[Scalar]:
     """ """
     ...
 
 
 @over
-def div(x: Scalar, y: Quaternion[Scalar]) -> Quaternion[Scalar]:
-    """ """
-    ...
-
-
-@over
-def floordiv(x: Scalar, y: Scalar) -> Scalar:
+def floordiv(a: Scalar, b: Scalar) -> Scalar:
     """ """
     ...
 
@@ -2147,55 +2342,55 @@ def neg(x: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
 
 
 @over
-def unot(b: bool) -> bool:
+def unot(a: bool) -> bool:
     """ """
     ...
 
 
 @over
-def unot(b: int8) -> bool:
+def unot(a: int8) -> bool:
     """ """
     ...
 
 
 @over
-def unot(b: uint8) -> bool:
+def unot(a: uint8) -> bool:
     """ """
     ...
 
 
 @over
-def unot(b: int16) -> bool:
+def unot(a: int16) -> bool:
     """ """
     ...
 
 
 @over
-def unot(b: uint16) -> bool:
+def unot(a: uint16) -> bool:
     """ """
     ...
 
 
 @over
-def unot(b: int32) -> bool:
+def unot(a: int32) -> bool:
     """ """
     ...
 
 
 @over
-def unot(b: uint32) -> bool:
+def unot(a: uint32) -> bool:
     """ """
     ...
 
 
 @over
-def unot(b: int64) -> bool:
+def unot(a: int64) -> bool:
     """ """
     ...
 
 
 @over
-def unot(b: uint64) -> bool:
+def unot(a: uint64) -> bool:
     """ """
     ...
 

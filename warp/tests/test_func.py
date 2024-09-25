@@ -7,6 +7,7 @@
 
 import math
 import unittest
+from typing import Tuple
 
 import numpy as np
 
@@ -153,6 +154,41 @@ def sign(x: float):
 @wp.kernel
 def test_builtin_shadowing():
     wp.expect_eq(sign(1.23), 123.0)
+
+
+@wp.func
+def user_func_with_defaults(a: int = 123, b: int = 234) -> int:
+    return a + b
+
+
+@wp.kernel
+def test_user_func_with_defaults():
+    a = user_func_with_defaults()
+    wp.expect_eq(a, 357)
+
+    b = user_func_with_defaults(111)
+    wp.expect_eq(b, 345)
+
+    c = user_func_with_defaults(111, 222)
+    wp.expect_eq(c, 333)
+
+    d = user_func_with_defaults(a=111)
+    wp.expect_eq(d, 345)
+
+    e = user_func_with_defaults(b=111)
+    wp.expect_eq(e, 234)
+
+
+@wp.func
+def user_func_return_multiple_values(a: int, b: float) -> Tuple[int, float]:
+    return a + a, b * b
+
+
+@wp.kernel
+def test_user_func_return_multiple_values():
+    a, b = user_func_return_multiple_values(123, 234.0)
+    wp.expect_eq(a, 246)
+    wp.expect_eq(b, 54756.0)
 
 
 devices = get_test_devices()
@@ -329,6 +365,16 @@ add_function_test(TestFunc, func=test_func_closure_capture, name="test_func_clos
 add_function_test(TestFunc, func=test_multi_valued_func, name="test_multi_valued_func", devices=devices)
 add_kernel_test(TestFunc, kernel=test_func_defaults, name="test_func_defaults", dim=1, devices=devices)
 add_kernel_test(TestFunc, kernel=test_builtin_shadowing, name="test_builtin_shadowing", dim=1, devices=devices)
+add_kernel_test(
+    TestFunc, kernel=test_user_func_with_defaults, name="test_user_func_with_defaults", dim=1, devices=devices
+)
+add_kernel_test(
+    TestFunc,
+    kernel=test_user_func_return_multiple_values,
+    name="test_user_func_return_multiple_values",
+    dim=1,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":

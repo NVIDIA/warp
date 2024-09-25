@@ -748,7 +748,7 @@ inline CUDA_CALLABLE half floordiv(half a, half b)
 #if FP_CHECK
     if (!isfinite(a) || !isfinite(b) || float(b) == 0.0f)
     {
-        printf("%s:%d mod(%f, %f)\n", __FILE__, __LINE__, float(a), float(b));
+        printf("%s:%d floordiv(%f, %f)\n", __FILE__, __LINE__, float(a), float(b));
         assert(0);
     }
 #endif
@@ -759,7 +759,7 @@ inline CUDA_CALLABLE float floordiv(float a, float b)
 #if FP_CHECK
     if (!isfinite(a) || !isfinite(b) || b == 0.0f)
     {
-        printf("%s:%d mod(%f, %f)\n", __FILE__, __LINE__, a, b);
+        printf("%s:%d floordiv(%f, %f)\n", __FILE__, __LINE__, a, b);
         assert(0);
     }
 #endif
@@ -770,7 +770,7 @@ inline CUDA_CALLABLE double floordiv(double a, double b)
 #if FP_CHECK
     if (!isfinite(a) || !isfinite(b) || b == 0.0)
     {
-        printf("%s:%d mod(%f, %f)\n", __FILE__, __LINE__, a, b);
+        printf("%s:%d floordiv(%f, %f)\n", __FILE__, __LINE__, a, b);
         assert(0);
     }
 #endif
@@ -1240,7 +1240,7 @@ inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
 
 }
 
-// emulate atomic float max
+// emulate atomic float max with atomicCAS()
 inline CUDA_CALLABLE float atomic_max(float* address, float val)
 {
 #if defined(__CUDA_ARCH__)
@@ -1263,7 +1263,7 @@ inline CUDA_CALLABLE float atomic_max(float* address, float val)
 #endif
 }
 
-// emulate atomic float min/max with atomicCAS()
+// emulate atomic float min with atomicCAS()
 inline CUDA_CALLABLE float atomic_min(float* address, float val)
 {
 #if defined(__CUDA_ARCH__)
@@ -1281,6 +1281,88 @@ inline CUDA_CALLABLE float atomic_min(float* address, float val)
 
 #else
     float old = *address;
+    *address = min(old, val);
+    return old;
+#endif
+}
+
+template<>
+inline CUDA_CALLABLE float64 atomic_add(float64* buf, float64 value)
+{
+#if !defined(__CUDA_ARCH__)
+    float64 old = buf[0];
+    buf[0] += value;
+    return old;
+#elif defined(__clang__)  // CUDA compiled by Clang
+	return atomicAdd(buf, value);
+#else  // CUDA compiled by NVRTC
+    
+    /* Define __PTR for atomicAdd prototypes below, undef after done */
+    #if (defined(_MSC_VER) && defined(_WIN64)) || defined(__LP64__) || defined(__CUDACC_RTC__)
+    #define __PTR   "l"
+    #else
+    #define __PTR   "r"
+    #endif /*(defined(_MSC_VER) && defined(_WIN64)) || defined(__LP64__) || defined(__CUDACC_RTC__)*/
+   
+    double r = 0.0;
+
+    #if __CUDA_ARCH__ >= 600
+
+        asm volatile ("{ atom.add.f64 %0,[%1],%2; }\n"
+                    : "=d"(r)
+                    : __PTR(buf), "d"(value)
+                    : "memory");
+    #endif
+
+    return r;
+
+    #undef __PTR
+
+#endif  // CUDA compiled by NVRTC
+
+}
+
+// emulate atomic double max with atomicCAS()
+inline CUDA_CALLABLE double atomic_max(double* address, double val)
+{
+#if defined(__CUDA_ARCH__)
+        unsigned long long int *address_as_ull = (unsigned long long int*)address;
+        unsigned long long int old = *address_as_ull, assumed;
+    
+	while (val > __longlong_as_double(old))
+	{
+        assumed = old;
+        old = atomicCAS(address_as_ull, assumed,
+                        __double_as_longlong(val));
+    }
+
+    return __longlong_as_double(old);
+
+#else
+    double old = *address;
+    *address = max(old, val);
+    return old;
+#endif
+}
+
+// emulate atomic double min with atomicCAS()
+inline CUDA_CALLABLE double atomic_min(double* address, double val)
+{
+#if defined(__CUDA_ARCH__)
+    unsigned long long int *address_as_ull = (unsigned long long int*)address;
+    unsigned long long int old = *address_as_ull, assumed;
+
+    while (val < __longlong_as_double(old)) 
+	{
+        assumed = old;
+        old = atomicCAS(address_as_ull, assumed,
+                        __double_as_longlong(val));
+    }
+
+    return __longlong_as_double(old);
+
+#else
+    double old = *address;
     *address = min(old, val);
     return old;
 #endif
@@ -1403,14 +1485,19 @@ inline CUDA_CALLABLE void print(const str s)
     printf("%s\n", s);
 }
 
-inline CUDA_CALLABLE void print(int i)
+inline CUDA_CALLABLE void print(signed char i)
 {
     printf("%d\n", i);
 }
 
 inline CUDA_CALLABLE void print(short i)
 {
-    printf("%hd\n", i);
+    printf("%d\n", i);
+}
+
+inline CUDA_CALLABLE void print(int i)
+{
+    printf("%d\n", i);
 }
 
 inline CUDA_CALLABLE void print(long i)
@@ -1423,14 +1510,19 @@ inline CUDA_CALLABLE void print(long long i)
     printf("%lld\n", i);
 }
 
-inline CUDA_CALLABLE void print(unsigned i)
+inline CUDA_CALLABLE void print(unsigned char i)
 {
     printf("%u\n", i);
 }
 
 inline CUDA_CALLABLE void print(unsigned short i)
 {
-    printf("%hu\n", i);
+    printf("%u\n", i);
+}
+
+inline CUDA_CALLABLE void print(unsigned int i)
+{
+    printf("%u\n", i);
 }
 
 inline CUDA_CALLABLE void print(unsigned long i)
@@ -1441,6 +1533,11 @@ inline CUDA_CALLABLE void print(unsigned long i)
 inline CUDA_CALLABLE void print(unsigned long long i)
 {
     printf("%llu\n", i);
+}
+
+inline CUDA_CALLABLE void print(bool b)
+{
+    printf(b ? "True\n" : "False\n");
 }
 
 template<unsigned Length, typename Type>

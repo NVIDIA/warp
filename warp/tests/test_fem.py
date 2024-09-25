@@ -430,6 +430,9 @@ def _launch_test_geometry_kernel(geo: fem.Geometry, device):
         pos_inner = geo.cell_position(cell_arg, inner_s)
         pos_outer = geo.cell_position(cell_arg, outer_s)
 
+        # if wp.length(pos_outer - pos_side) > 0.1:
+        #    wp.print(side_index)
+
         for k in range(type(pos_side).length):
             wp.expect_near(pos_side[k], pos_inner[k], 0.0001)
             wp.expect_near(pos_side[k], pos_outer[k], 0.0001)
@@ -614,6 +617,66 @@ def test_nanogrid(test, device):
 
     assert_np_equal(side_measures.numpy(), np.full(side_measures.shape, 1.0 / (N**2)), tol=1.0e-4)
     assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 1.0 / (N**3)), tol=1.0e-4)
+
+
+@wp.func
+def _refinement_field(x: wp.vec3):
+    return 4.0 * (wp.length(x) - 0.5)
+
+
+def test_adaptive_nanogrid(test, device):
+    # 3 res-1 voxels, 8 res-0 voxels
+
+    res0 = wp.array(
+        [
+            [2, 2, 0],
+            [2, 3, 0],
+            [3, 2, 0],
+            [3, 3, 0],
+            [2, 2, 1],
+            [2, 3, 1],
+            [3, 2, 1],
+            [3, 3, 1],
+        ],
+        dtype=int,
+        device=device,
+    )
+    res1 = wp.array(
+        [
+            [0, 0, 0],
+            [0, 1, 0],
+            [1, 0, 0],
+            [1, 1, 0],
+        ],
+        dtype=int,
+        device=device,
+    )
+
+    grid0 = wp.Volume.allocate_by_voxels(res0, 0.5, device=device)
+    grid1 = wp.Volume.allocate_by_voxels(res1, 1.0, device=device)
+    geo = fem.adaptive_nanogrid_from_hierarchy([grid0, grid1])
+
+    test.assertEqual(geo.cell_count(), 3 + 8)
+    test.assertEqual(geo.vertex_count(), 2 * 9 + 27 - 8)
+    test.assertEqual(geo.side_count(), 2 * 4 + 6 * 2 + (3 * (2 + 1) * 2**2 - 6))
+    test.assertEqual(geo.boundary_side_count(), 2 * 4 + 4 * 2 + (4 * 4 - 4))
+    # test.assertEqual(geo.edge_count(), 6 * 4 + 9 + (3 * 2 * (2 + 1) ** 2 - 12))
+    test.assertEqual(geo.stacked_face_count(), geo.side_count() + 2)
+    test.assertEqual(geo.stacked_edge_count(), 6 * 4 + 9 + (3 * 2 * (2 + 1) ** 2 - 12) + 7)
+
+    side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
+
+    test.assertAlmostEqual(np.sum(cell_measures.numpy()), 4.0, places=4)
+    test.assertAlmostEqual(np.sum(side_measures.numpy()), 20 + 3.0, places=4)
+
+    # Test with non-graded geometry
+    ref_field = fem.ImplicitField(fem.Cells(geo), func=_refinement_field)
+    non_graded_geo = fem.adaptive_nanogrid_from_field(grid1, level_count=3, refinement_field=ref_field)
+    _launch_test_geometry_kernel(geo, device)
+
+    # Test automatic grading
+    graded_geo = fem.adaptive_nanogrid_from_field(grid1, level_count=3, refinement_field=ref_field, grading="face")
+    test.assertEqual(non_graded_geo.cell_count() + 7, graded_geo.cell_count())
 
 
 @integrand
@@ -1252,6 +1315,8 @@ def test_particle_quadratures(test, device):
     geo = fem.Grid2D(res=wp.vec2i(2))
 
     domain = fem.Cells(geo)
+
+    # Explicit quadrature
     points, weights = domain.reference_element().instantiate_quadrature(order=4, family=fem.Polynomial.GAUSS_LEGENDRE)
     points_per_cell = len(points)
 
@@ -1266,9 +1331,16 @@ def test_particle_quadratures(test, device):
     test.assertEqual(explicit_quadrature.max_points_per_element(), points_per_cell)
     test.assertEqual(explicit_quadrature.total_point_count(), points_per_cell * geo.cell_count())
 
+    # test integration accuracy
     val = fem.integrate(_bicubic, quadrature=explicit_quadrature)
     test.assertAlmostEqual(val, 1.0 / 16, places=5)
 
+    # test indexing validity
+    arr = wp.empty(explicit_quadrature.total_point_count(), dtype=float)
+    fem.interpolate(_piecewise_constant, dest=arr, quadrature=explicit_quadrature)
+    assert_np_equal(arr.numpy(), np.arange(geo.cell_count()).repeat(points_per_cell))
+
+    # PIC quadrature
     element_indices = wp.array([3, 3, 2], dtype=int, device=device)
     element_coords = wp.array(
         [
@@ -1286,6 +1358,7 @@ def test_particle_quadratures(test, device):
     test.assertEqual(pic_quadrature.total_point_count(), 3)
     test.assertEqual(pic_quadrature.active_cell_count(), 2)
 
+    # Test integration accuracy
     val = fem.integrate(_piecewise_constant, quadrature=pic_quadrature)
     test.assertAlmostEqual(val, 1.25, places=5)
 
@@ -1303,6 +1376,46 @@ def test_particle_quadratures(test, device):
 
     assert_np_equal(points.grad.numpy(), np.full((3, 2), 2.0))  # == 1.0 / cell_size
     assert_np_equal(measures.grad.numpy(), np.full(3, 4.0))  # == 1.0 / cell_area
+
+
+@fem.integrand
+def _value_at_node(s: fem.Sample, f: fem.Field, values: wp.array(dtype=float)):
+    node_index = fem.operator.node_partition_index(f, s.qp_index)
+    return values[node_index]
+
+
+def test_nodal_quadrature(test, device):
+    geo = fem.Grid2D(res=wp.vec2i(2))
+
+    domain = fem.Cells(geo)
+
+    space = fem.make_polynomial_space(geo, degree=2, discontinuous=True, family=fem.Polynomial.GAUSS_LEGENDRE)
+    nodal_quadrature = fem.NodalQuadrature(domain, space)
+
+    test.assertEqual(nodal_quadrature.max_points_per_element(), 9)
+    test.assertEqual(nodal_quadrature.total_point_count(), 9 * geo.cell_count())
+
+    val = fem.integrate(_bicubic, quadrature=nodal_quadrature)
+    test.assertAlmostEqual(val, 1.0 / 16, places=5)
+
+    # test accessing data associated to a given node
+
+    piecewise_constant_space = fem.make_polynomial_space(geo, degree=0)
+    geo_partition = fem.LinearGeometryPartition(geo, 3, 4)
+    space_partition = fem.make_space_partition(piecewise_constant_space, geo_partition)
+    field = fem.make_discrete_field(piecewise_constant_space, space_partition=space_partition)
+
+    partition_domain = fem.Cells(geo_partition)
+    partition_nodal_quadrature = fem.NodalQuadrature(partition_domain, piecewise_constant_space)
+
+    partition_node_values = wp.array([5.0], dtype=float)
+    val = fem.integrate(
+        _value_at_node,
+        quadrature=partition_nodal_quadrature,
+        fields={"f": field},
+        values={"values": partition_node_values},
+    )
+    test.assertAlmostEqual(val, 5.0 / geo.cell_count(), places=5)
 
 
 @wp.func
@@ -1481,10 +1594,12 @@ add_function_test(TestFem, "test_grid_3d", test_grid_3d, devices=devices)
 add_function_test(TestFem, "test_tet_mesh", test_tet_mesh, devices=devices)
 add_function_test(TestFem, "test_hex_mesh", test_hex_mesh, devices=devices)
 add_function_test(TestFem, "test_nanogrid", test_nanogrid, devices=cuda_devices)
+add_function_test(TestFem, "test_adaptive_nanogrid", test_adaptive_nanogrid, devices=cuda_devices)
 add_function_test(TestFem, "test_deformed_geometry", test_deformed_geometry, devices=devices)
 add_function_test(TestFem, "test_dof_mapper", test_dof_mapper)
 add_function_test(TestFem, "test_point_basis", test_point_basis)
 add_function_test(TestFem, "test_particle_quadratures", test_particle_quadratures)
+add_function_test(TestFem, "test_nodal_quadrature", test_nodal_quadrature)
 add_function_test(TestFem, "test_implicit_fields", test_implicit_fields)
 add_kernel_test(TestFem, test_qr_eigenvalues, dim=1, devices=devices)
 add_kernel_test(TestFem, test_qr_inverse, dim=100, devices=devices)

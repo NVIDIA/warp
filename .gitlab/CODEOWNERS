@@ -11,11 +11,8 @@
 # At present this is the only required approval. The rest are optional (^).
 [Public API] @mmacklin
 /warp/__init__.py
-/warp/builtins.py
+/warp/stubs.py
 /warp/constants.py
-/licenses/
-/README.md
-/SECURITY.md
 
 ^[CI/CD] @ershi @ncapens
 /.github/
@@ -29,6 +26,9 @@
 ^[Docs and Examples] @mmacklin @ershi
 /docs/
 /warp/examples/
+/licenses/
+/README.md
+/SECURITY.md
 
 ^[Code Generation] @ncapens @mmacklin
 /warp/codegen.py

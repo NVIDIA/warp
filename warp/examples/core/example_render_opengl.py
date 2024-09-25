@@ -21,6 +21,9 @@ import warp.render
 
 class Example:
     def __init__(self, num_tiles=4, custom_tile_arrangement=False):
+        if num_tiles < 1:
+            raise ValueError("num_tiles must be greater than or equal to 1.")
+
         self.renderer = wp.render.OpenGLRenderer(vsync=False)
         instance_ids = []
 
@@ -31,16 +34,15 @@ class Example:
             positions = None
             sizes = None
 
-        if num_tiles > 1:
-            # set up instances to hide one of the capsules in each tile
-            for i in range(num_tiles):
-                instances = [j for j in np.arange(13) if j != i + 2]
-                instance_ids.append(instances)
-                if custom_tile_arrangement:
-                    angle = np.pi * 2.0 / num_tiles * i
-                    positions.append((int(np.cos(angle) * 150 + 250), int(np.sin(angle) * 150 + 250)))
-                    sizes.append((150, 150))
-            self.renderer.setup_tiled_rendering(instance_ids, tile_positions=positions, tile_sizes=sizes)
+        # set up instances to hide one of the capsules in each tile
+        for i in range(num_tiles):
+            instances = [j for j in np.arange(13) if j != i + 2]
+            instance_ids.append(instances)
+            if custom_tile_arrangement:
+                angle = np.pi * 2.0 / num_tiles * i
+                positions.append((int(np.cos(angle) * 150 + 250), int(np.sin(angle) * 150 + 250)))
+                sizes.append((150, 150))
+        self.renderer.setup_tiled_rendering(instance_ids, tile_positions=positions, tile_sizes=sizes)
 
         self.renderer.render_ground()
 
