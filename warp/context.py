@@ -1751,7 +1751,7 @@ class Module:
             "fast_math": False,
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
             "mode": warp.config.mode,
-            "block_dim": 0
+            "block_dim": 0,
         }
 
         # Module dependencies are determined by scanning each function
@@ -1888,7 +1888,7 @@ class Module:
         # re-compile module if tile size (blockdim) changes
         # todo: it would be better to have a method such as `module.get_kernel(block_dim=N)`
         # that can return a single kernel instance with a given block size
-        if block_dim != None:
+        if block_dim is not None:
             if self.options["block_dim"] != block_dim:
                 self.unload()
             self.options["block_dim"] = block_dim
@@ -3220,6 +3220,8 @@ class Runtime:
             self.core.is_cuda_compatibility_enabled.restype = ctypes.c_int
             self.core.is_cutlass_enabled.argtypes = None
             self.core.is_cutlass_enabled.restype = ctypes.c_int
+            self.core.is_mathdx_enabled.argtypes = None
+            self.core.is_mathdx_enabled.restype = ctypes.c_int
 
             self.core.cuda_driver_version.argtypes = None
             self.core.cuda_driver_version.restype = ctypes.c_int
@@ -3344,52 +3346,52 @@ class Runtime:
             self.core.cuda_graph_destroy.restype = ctypes.c_bool
 
             self.core.cuda_compile_program.argtypes = [
-                ctypes.c_char_p, # cuda_src
-                ctypes.c_int, # arch
-                ctypes.c_char_p, # include_dir
-                ctypes.c_int, # num_cuda_include_dirs
-                ctypes.POINTER(ctypes.c_char_p), # cuda include dirs
-                ctypes.c_bool, # debug
-                ctypes.c_bool, # verbose
-                ctypes.c_bool, # verify_fp
-                ctypes.c_bool, # fast_math
-                ctypes.c_char_p, # output_path
-                ctypes.c_size_t, # num_ltoirs
-                ctypes.POINTER(ctypes.c_char_p), # ltoirs
-                ctypes.POINTER(ctypes.c_size_t), # ltoir_sizes
+                ctypes.c_char_p,  # cuda_src
+                ctypes.c_int,  # arch
+                ctypes.c_char_p,  # include_dir
+                ctypes.c_int,  # num_cuda_include_dirs
+                ctypes.POINTER(ctypes.c_char_p),  # cuda include dirs
+                ctypes.c_bool,  # debug
+                ctypes.c_bool,  # verbose
+                ctypes.c_bool,  # verify_fp
+                ctypes.c_bool,  # fast_math
+                ctypes.c_char_p,  # output_path
+                ctypes.c_size_t,  # num_ltoirs
+                ctypes.POINTER(ctypes.c_char_p),  # ltoirs
+                ctypes.POINTER(ctypes.c_size_t),  # ltoir_sizes
             ]
             self.core.cuda_compile_program.restype = ctypes.c_size_t
 
             self.core.cuda_compile_fft.argtypes = [
-                ctypes.c_char_p, # lto
-                ctypes.c_char_p, # function name
-                ctypes.c_int, # num include dirs
-                ctypes.POINTER(ctypes.c_char_p), # include dirs
-                ctypes.c_char_p, # mathdx include dir
-                ctypes.c_int, # arch
-                ctypes.c_int, # size
-                ctypes.c_int, # ept
-                ctypes.c_int, # direction
-                ctypes.c_int, # precision
-                ctypes.POINTER(ctypes.c_int) # smem (out)
+                ctypes.c_char_p,  # lto
+                ctypes.c_char_p,  # function name
+                ctypes.c_int,  # num include dirs
+                ctypes.POINTER(ctypes.c_char_p),  # include dirs
+                ctypes.c_char_p,  # mathdx include dir
+                ctypes.c_int,  # arch
+                ctypes.c_int,  # size
+                ctypes.c_int,  # ept
+                ctypes.c_int,  # direction
+                ctypes.c_int,  # precision
+                ctypes.POINTER(ctypes.c_int),  # smem (out)
             ]
             self.core.cuda_compile_fft.restype = ctypes.c_bool
 
             self.core.cuda_compile_dot.argtypes = [
-                ctypes.c_char_p, # lto
-                ctypes.c_char_p, # function name
-                ctypes.c_int, # num include dirs
-                ctypes.POINTER(ctypes.c_char_p), # include dirs
-                ctypes.c_char_p, # mathdx include dir
-                ctypes.c_int, # arch
-                ctypes.c_int, # M
-                ctypes.c_int, # N
-                ctypes.c_int, # K
-                ctypes.c_int, # precision
-                ctypes.c_int, # type
-                ctypes.c_int, # tA
-                ctypes.c_int, # tB
-                ctypes.c_int  # num threads
+                ctypes.c_char_p,  # lto
+                ctypes.c_char_p,  # function name
+                ctypes.c_int,  # num include dirs
+                ctypes.POINTER(ctypes.c_char_p),  # include dirs
+                ctypes.c_char_p,  # mathdx include dir
+                ctypes.c_int,  # arch
+                ctypes.c_int,  # M
+                ctypes.c_int,  # N
+                ctypes.c_int,  # K
+                ctypes.c_int,  # precision
+                ctypes.c_int,  # type
+                ctypes.c_int,  # tA
+                ctypes.c_int,  # tB
+                ctypes.c_int,  # num threads
             ]
             self.core.cuda_compile_dot.restype = ctypes.c_bool
 
@@ -4845,7 +4847,9 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
 # represents all data required for a kernel launch
 # so that launches can be replayed quickly, use `wp.launch(..., record_cmd=True)`
 class Launch:
-    def __init__(self, kernel, device, hooks=None, params=None, params_addr=None, bounds=None, max_blocks=0):
+    def __init__(
+        self, kernel, device, hooks=None, params=None, params_addr=None, bounds=None, max_blocks=0, block_dim=256
+    ):
         # retain the module executable so it doesn't get unloaded
         self.module_exec = kernel.module.load(device)
         if not self.module_exec:
@@ -4884,6 +4888,7 @@ class Launch:
         self.device = device
         self.bounds = bounds
         self.max_blocks = max_blocks
+        self.block_dim = block_dim
 
     def set_dim(self, dim):
         self.bounds = warp.types.launch_bounds_t(dim)
@@ -4965,6 +4970,7 @@ class Launch:
                 self.hooks.forward,
                 self.bounds.size,
                 self.max_blocks,
+                self.block_dim,
                 self.params_addr,
                 stream.cuda_stream,
             )
@@ -5113,7 +5119,13 @@ def launch(
                     )
 
                 runtime.core.cuda_launch_kernel(
-                    device.context, hooks.backward, bounds.size, max_blocks, block_dim, kernel_params, stream.cuda_stream
+                    device.context,
+                    hooks.backward,
+                    bounds.size,
+                    max_blocks,
+                    block_dim,
+                    kernel_params,
+                    stream.cuda_stream,
                 )
 
             else:
@@ -5136,7 +5148,13 @@ def launch(
                 else:
                     # launch
                     runtime.core.cuda_launch_kernel(
-                        device.context, hooks.forward, bounds.size, max_blocks, block_dim, kernel_params, stream.cuda_stream
+                        device.context,
+                        hooks.forward,
+                        bounds.size,
+                        max_blocks,
+                        block_dim,
+                        kernel_params,
+                        stream.cuda_stream,
                     )
 
             try:
@@ -5150,7 +5168,9 @@ def launch(
         # record file, lineno, func as metadata
         frame = inspect.currentframe().f_back
         caller = {"file": frame.f_code.co_filename, "lineno": frame.f_lineno, "func": frame.f_code.co_name}
-        runtime.tape.record_launch(kernel, dim, max_blocks, inputs, outputs, device, block_dim, metadata={"caller": caller})
+        runtime.tape.record_launch(
+            kernel, dim, max_blocks, inputs, outputs, device, block_dim, metadata={"caller": caller}
+        )
 
         # detect illegal inter-kernel read/write access patterns if verification flag is set
         if warp.config.verify_autograd_array_access:
@@ -5724,7 +5744,7 @@ def type_str(t):
         return f"{t.__name__}[{args_repr}]"
     elif warp.types.is_tile(t):
         return "Tile"
-    
+
     return t.__name__
 
 

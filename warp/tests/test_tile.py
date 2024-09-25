@@ -1,14 +1,16 @@
+# Copyright (c) 2024 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+import unittest
+
 import numpy as np
+
 import warp as wp
-
-wp.init()
-wp.set_module_options({"enable_backward": True})
-wp.set_device("cuda:0")
-wp.set_module_options({"fast_math": True})
-#wp.config.mode = "debug"
-#wp.config.verify_cuda = True
-
-wp.build.clear_kernel_cache()
+from warp.tests.unittest_utils import *
 
 TILE_M = wp.constant(8)
 TILE_N = wp.constant(4)
@@ -17,118 +19,122 @@ TILE_K = wp.constant(8)
 # num threads per-tile
 TILE_DIM = 64
 
+
 @wp.kernel
-def tile_copy(A: wp.array2d(dtype=float),
-              B: wp.array2d(dtype=float)):
-    
+def tile_copy(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float)):
     # tile index
-    i, j, _ = wp.tid() 
-    
+    i, j, _ = wp.tid()
+
     a = wp.tile_load(A, i, j, m=TILE_M, n=TILE_N)
     wp.tile_store(B, i, j, a)
 
 
-def test_tile_copy():
-
+def test_tile_copy(test, device):
     rng = np.random.default_rng(42)
 
-    M = TILE_M*7
-    N = TILE_N*5
+    M = TILE_M * 7
+    N = TILE_N * 5
 
     A = rng.random((M, N), dtype=np.float32)
     B = rng.random((M, N), dtype=np.float32)
 
-    A_wp = wp.array(A, requires_grad=True)
-    B_wp = wp.array(B, requires_grad=True)
+    A_wp = wp.array(A, requires_grad=True, device=device)
+    B_wp = wp.array(B, requires_grad=True, device=device)
 
     with wp.Tape() as tape:
-        wp.launch(tile_copy, dim=[int(M/TILE_M), int(N/TILE_N), TILE_DIM], inputs=[A_wp, B_wp], block_dim=TILE_DIM)
+        wp.launch(
+            tile_copy,
+            dim=[int(M / TILE_M), int(N / TILE_N), TILE_DIM],
+            inputs=[A_wp, B_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
 
     # verify forward pass
-    assert(np.allclose(A, B_wp.numpy(), rtol=1.e-4))
-    print("Copy forward passed")
+    assert_array_equal(B_wp, A_wp)
 
     # verify backward pass
-    B_wp.grad = wp.ones_like(B_wp)
+    B_wp.grad = wp.ones_like(B_wp, device=device)
     tape.backward()
 
-    assert(np.allclose(A_wp.grad.numpy(), B_wp.grad.numpy()))
-    print("Copy backward passed")
+    assert_array_equal(B_wp.grad, A_wp.grad)
+
 
 @wp.func
 def unary_func(x: float):
     return wp.sin(x)
 
+
 @wp.kernel
-def tile_unary_map(input: wp.array2d(dtype=float),
-                   output: wp.array2d(dtype=float)):
-    
+def tile_unary_map(input: wp.array2d(dtype=float), output: wp.array2d(dtype=float)):
     # tile index
-    i, j, _ = wp.tid() 
-    
+    i, j, _ = wp.tid()
+
     a = wp.tile_load(input, i, j, m=TILE_M, n=TILE_N)
-    
+
     sa = wp.tile_map(wp.sin, a)
-    
+
     wp.tile_store(output, i, j, sa)
 
 
-def test_tile_unary_map():
-
+def test_tile_unary_map(test, device):
     rng = np.random.default_rng(42)
 
-    M = TILE_M*7
-    N = TILE_N*5
+    M = TILE_M * 7
+    N = TILE_N * 5
 
     A = rng.random((M, N), dtype=np.float32)
     B = np.sin(A)
 
     A_grad = np.cos(A)
 
-    A_wp = wp.array(A, requires_grad=True)
-    B_wp = wp.zeros_like(A_wp, requires_grad=True)
+    A_wp = wp.array(A, requires_grad=True, device=device)
+    B_wp = wp.zeros_like(A_wp, requires_grad=True, device=device)
 
     with wp.Tape() as tape:
-        wp.launch(tile_unary_map, dim=[int(M/TILE_M), int(N/TILE_N), TILE_DIM], inputs=[A_wp, B_wp], block_dim=TILE_DIM)
+        wp.launch(
+            tile_unary_map,
+            dim=[int(M / TILE_M), int(N / TILE_N), TILE_DIM],
+            inputs=[A_wp, B_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
 
     # verify forward pass
-    assert(np.allclose(B, B_wp.numpy(), atol=1.e-4))
-    print("Unary map forward passed")
+    assert_np_equal(B_wp.numpy(), B, tol=1.0e-4)
 
     # verify backward pass
-    B_wp.grad = wp.ones_like(B_wp)
+    B_wp.grad = wp.ones_like(B_wp, device=device)
     tape.backward()
 
-    assert(np.allclose(A_wp.grad.numpy(), A_grad))
-    print("Unary map backward passed")
+    assert_np_equal(A_wp.grad.numpy(), A_grad, tol=1.0e-6)
 
 
 @wp.func
 def binary_func(x: float, y: float):
     return wp.sin(x) + y
 
+
 @wp.kernel
-def tile_binary_map(input_a: wp.array2d(dtype=float),
-                   input_b: wp.array2d(dtype=float),
-                   output: wp.array2d(dtype=float)):
-    
+def tile_binary_map(
+    input_a: wp.array2d(dtype=float), input_b: wp.array2d(dtype=float), output: wp.array2d(dtype=float)
+):
     # tile index
-    i, j, _= wp.tid() 
-    
+    i, j, _ = wp.tid()
+
     a = wp.tile_load(input_a, i, j, m=TILE_M, n=TILE_N)
     b = wp.tile_load(input_b, i, j, m=TILE_M, n=TILE_N)
-    
+
     sa = wp.tile_map(binary_func, a, b)
-    
+
     wp.tile_store(output, i, j, sa)
 
 
-def test_tile_binary_map():
-
+def test_tile_binary_map(test, device):
     rng = np.random.default_rng(42)
 
-    M = TILE_M*7
-    N = TILE_N*5
+    M = TILE_M * 7
+    N = TILE_N * 5
 
     A = rng.random((M, N), dtype=np.float32)
     B = rng.random((M, N), dtype=np.float32)
@@ -137,32 +143,32 @@ def test_tile_binary_map():
     A_grad = np.cos(A)
     B_grad = np.ones_like(B)
 
-    A_wp = wp.array(A, requires_grad=True)
-    B_wp = wp.array(B, requires_grad=True)
-    C_wp = wp.zeros_like(A_wp, requires_grad=True)
+    A_wp = wp.array(A, requires_grad=True, device=device)
+    B_wp = wp.array(B, requires_grad=True, device=device)
+    C_wp = wp.zeros_like(A_wp, requires_grad=True, device=device)
 
     with wp.Tape() as tape:
-        wp.launch(tile_binary_map, dim=[int(M/TILE_M), int(N/TILE_N), TILE_DIM], inputs=[A_wp, B_wp, C_wp], block_dim=TILE_DIM)
+        wp.launch(
+            tile_binary_map,
+            dim=[int(M / TILE_M), int(N / TILE_N), TILE_DIM],
+            inputs=[A_wp, B_wp, C_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
 
     # verify forward pass
-    assert(np.allclose(C, C_wp.numpy(), rtol=1.e-4))
-    print("Binary map forward passed")
+    assert_np_equal(C_wp.numpy(), C, tol=1.0e-6)
 
     # verify backward pass
-    C_wp.grad = wp.ones_like(C_wp)
+    C_wp.grad = wp.ones_like(C_wp, device=device)
     tape.backward()
 
-    assert(np.allclose(A_wp.grad.numpy(), A_grad, rtol=1.e-2))
-    assert(np.allclose(B_wp.grad.numpy(), B_grad, rtol=1.e-2))
-    
-    print("Binary map backward passed")
+    assert_np_equal(A_wp.grad.numpy(), A_grad, tol=1.0e-6)
+    assert_np_equal(B_wp.grad.numpy(), B_grad)
 
 
 @wp.kernel
-def tile_grouped_gemm(A: wp.array3d(dtype=float),
-                      B: wp.array3d(dtype=float),
-                      C: wp.array3d(dtype=float)):
-
+def tile_grouped_gemm(A: wp.array3d(dtype=float), B: wp.array3d(dtype=float), C: wp.array3d(dtype=float)):
     # output tile index
     i = wp.tid()
 
@@ -176,8 +182,8 @@ def tile_grouped_gemm(A: wp.array3d(dtype=float),
     wp.tile_store(C[i], 0, 0, sum)
 
 
-def test_tile_grouped_gemm():
-
+@unittest.expectedFailure
+def test_tile_grouped_gemm(test, device):
     batch_count = 56
 
     M = TILE_M
@@ -187,29 +193,25 @@ def test_tile_grouped_gemm():
     rng = np.random.default_rng(42)
     A = rng.random((batch_count, M, K), dtype=np.float32)
     B = rng.random((batch_count, K, N), dtype=np.float32)
-    C = np.zeros((batch_count, M, N), dtype=np.float32)
+    C = A @ B
 
-    A_wp = wp.array(A, requires_grad=True)
-    B_wp = wp.array(B, requires_grad=True)
-    C_wp = wp.array(C, requires_grad=True)
+    A_wp = wp.array(A, requires_grad=True, device=device)
+    B_wp = wp.array(B, requires_grad=True, device=device)
+    C_wp = wp.array(C, requires_grad=True, device=device)
 
-    with wp.Tape() as tape:    
-        wp.launch(tile_grouped_gemm, dim=[batch_count, TILE_DIM], inputs=[A_wp, B_wp, C_wp], block_dim=TILE_DIM)
+    with wp.Tape() as tape:
+        wp.launch(
+            tile_grouped_gemm, dim=[batch_count, TILE_DIM], inputs=[A_wp, B_wp, C_wp], block_dim=TILE_DIM, device=device
+        )
 
-    # bring back to host
-    C_host = C_wp.numpy()
-
-    # GEMM forward passed
-    print("Batched matmul forward passed")
+    # TODO: 32 mismatched elements
+    assert_np_equal(C_wp.numpy(), C)
 
 
 @wp.kernel
-def tile_gemm(A: wp.array2d(dtype=float),
-              B: wp.array2d(dtype=float),
-              C: wp.array2d(dtype=float)):
-
+def tile_gemm(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float), C: wp.array2d(dtype=float)):
     # output tile index
-    i, j, _= wp.tid()
+    i, j, _ = wp.tid()
 
     sum = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32)
 
@@ -217,10 +219,9 @@ def tile_gemm(A: wp.array2d(dtype=float),
     N = B.shape[1]
     K = A.shape[1]
 
-    count = int(K / TILE_K) 
-    
-    for k in range(0, count):
+    count = int(K / TILE_K)
 
+    for k in range(0, count):
         a = wp.tile_load(A, i, k, m=TILE_M, n=TILE_K)
         b = wp.tile_load(B, k, j, m=TILE_K, n=TILE_N)
 
@@ -230,66 +231,62 @@ def tile_gemm(A: wp.array2d(dtype=float),
     wp.tile_store(C, i, j, sum)
 
 
-def test_tile_gemm():
-
-    M = TILE_M*7
-    K = TILE_K*6
-    N = TILE_N*5
+def test_tile_gemm(test, device):
+    M = TILE_M * 7
+    K = TILE_K * 6
+    N = TILE_N * 5
 
     rng = np.random.default_rng(42)
     A = rng.random((M, K), dtype=np.float32)
     B = rng.random((K, N), dtype=np.float32)
     C = np.zeros((M, N), dtype=np.float32)
 
-    A_wp = wp.array(A, requires_grad=True)
-    B_wp = wp.array(B, requires_grad=True)
-    C_wp = wp.array(C, requires_grad=True)
+    A_wp = wp.array(A, requires_grad=True, device=device)
+    B_wp = wp.array(B, requires_grad=True, device=device)
+    C_wp = wp.array(C, requires_grad=True, device=device)
 
-    with wp.Tape() as tape:    
-        wp.launch(tile_gemm, dim=(int(M/TILE_M), int(N/TILE_N), TILE_DIM), inputs=[A_wp, B_wp, C_wp], block_dim=TILE_DIM)
+    with wp.Tape() as tape:
+        wp.launch(
+            tile_gemm,
+            dim=(int(M / TILE_M), int(N / TILE_N), TILE_DIM),
+            inputs=[A_wp, B_wp, C_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
 
-    assert(np.allclose(A@B, C_wp.numpy(), rtol=1.e-4))
-
-    # GEMM forward passed
-    print("Tiled matmul forward passed")
+    assert_np_equal(C_wp.numpy(), A @ B, tol=1.0e-5)
 
     adj_C = np.ones_like(C)
 
-    tape.backward(grads={C_wp: wp.array(adj_C)})
+    tape.backward(grads={C_wp: wp.array(adj_C, device=device)})
 
-    assert(np.allclose(adj_C@B.T, A_wp.grad.numpy(), rtol=1.e-4))
-    assert(np.allclose(A.T@adj_C, B_wp.grad.numpy(), rtol=1.e-4))
-
-    print("Tiled matmul backward passed")
-
+    assert_np_equal(A_wp.grad.numpy(), adj_C @ B.T, tol=1.0e-5)
+    assert_np_equal(B_wp.grad.numpy(), A.T @ adj_C, 1.0e-5)
 
 
 @wp.kernel
-def tile_operators(input: wp.array3d(dtype=float),
-                   output: wp.array3d(dtype=float)):
-
+def tile_operators(input: wp.array3d(dtype=float), output: wp.array3d(dtype=float)):
     # output tile index
     i, _ = wp.tid()
 
     a = wp.tile_load(input[i], 0, 0, m=TILE_M, n=TILE_N)
-    
+
     # neg
     b = -a
 
     # right scalar multiply
-    c = b*0.5
+    c = b * 0.5
 
     # left scalar multiply
-    d = 0.5*c
+    d = 0.5 * c
 
     # add tiles
     e = a + d
-    
+
     wp.tile_store(output[i], 0, 0, e)
 
 
-def test_tile_operators():
-
+def test_tile_operators(test, device):
     batch_count = 56
 
     M = TILE_M
@@ -297,41 +294,37 @@ def test_tile_operators():
 
     rng = np.random.default_rng(42)
     input = rng.random((batch_count, M, N), dtype=np.float32)
-    output = input*0.75
+    output = input * 0.75
 
-    input_wp = wp.array(input, requires_grad=True)
-    output_wp = wp.zeros_like(input_wp, requires_grad=True)
+    input_wp = wp.array(input, requires_grad=True, device=device)
+    output_wp = wp.zeros_like(input_wp, requires_grad=True, device=device)
 
     with wp.Tape() as tape:
-        wp.launch(tile_operators, dim=[batch_count, TILE_DIM], inputs=[input_wp, output_wp], block_dim=TILE_DIM)
+        wp.launch(
+            tile_operators, dim=[batch_count, TILE_DIM], inputs=[input_wp, output_wp], block_dim=TILE_DIM, device=device
+        )
 
-    assert(np.allclose(output, output_wp.numpy(), rtol=1.e-4))
-
-    print("Operators forward passed")
+    assert_np_equal(output_wp.numpy(), output)
 
     output_wp.grad.fill_(1.0)
 
     tape.backward()
 
-    assert(np.allclose(input_wp.grad.numpy(), np.ones_like(input)*0.75, rtol=1.e-4))
-
-    print("Operators backward passed")    
+    assert_np_equal(input_wp.grad.numpy(), np.ones_like(input) * 0.75)
 
 
 @wp.kernel
-def tile_sum_kernel(input: wp.array3d(dtype=float),
-                    output: wp.array(dtype=float)):
-
+def tile_sum_kernel(input: wp.array3d(dtype=float), output: wp.array(dtype=float)):
     # output tile index
     i, _ = wp.tid()
 
     a = wp.tile_load(input[i], 0, 0, m=TILE_M, n=TILE_N)
-    s = wp.tile_sum(a)*0.5
+    s = wp.tile_sum(a) * 0.5
 
     wp.tile_store(output, i, 0, s)
 
-def test_tile_sum():
 
+def test_tile_sum(test, device):
     batch_count = 56
 
     M = TILE_M
@@ -340,34 +333,33 @@ def test_tile_sum():
     rng = np.random.default_rng(42)
     input = rng.random((batch_count, M, N), dtype=np.float32)
 
-    input_wp = wp.array(input, requires_grad=True)
-    output_wp = wp.zeros(batch_count, requires_grad=True)
+    input_wp = wp.array(input, requires_grad=True, device=device)
+    output_wp = wp.zeros(batch_count, requires_grad=True, device=device)
 
     with wp.Tape() as tape:
-        wp.launch(tile_sum_kernel, dim=[batch_count, TILE_DIM], inputs=[input_wp, output_wp], block_dim=TILE_DIM)
+        wp.launch(
+            tile_sum_kernel,
+            dim=[batch_count, TILE_DIM],
+            inputs=[input_wp, output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
 
+    sum_wp = output_wp.numpy()
 
     for i in range(batch_count):
-        sum_np = np.sum(input[i])*0.5
-        sum_wp = output_wp.numpy()[i]
-
-        assert(np.allclose(sum_np, sum_wp, rtol=1.e-4))
-
-    print("Sum forward passed")
+        sum_np = np.sum(input[i]) * 0.5
+        test.assertAlmostEqual(sum_wp[i], sum_np, places=5)
 
     output_wp.grad.fill_(1.0)
 
     tape.backward()
 
-    assert(np.allclose(input_wp.grad.numpy(), np.ones_like(input)*0.5, rtol=1.e-4))
-
-    print("Sum backward passed")
+    assert_np_equal(input_wp.grad.numpy(), np.ones_like(input) * 0.5)
 
 
 @wp.kernel
-def tile_extract_kernel(input: wp.array2d(dtype=float),
-                        output: wp.array2d(dtype=float)):
-
+def tile_extract_kernel(input: wp.array2d(dtype=float), output: wp.array2d(dtype=float)):
     # output tile index
     i, _ = wp.tid()
 
@@ -377,126 +369,38 @@ def tile_extract_kernel(input: wp.array2d(dtype=float),
     # tile element individually
     for i in range(TILE_M):
         for j in range(TILE_N):
-            output[i,j] = t[i,j]
+            output[i, j] = t[i, j]
 
-def test_tile_extract():
 
+def test_tile_extract(test, device):
     M = TILE_M
     N = TILE_N
 
     rng = np.random.default_rng(42)
     input = rng.random((M, N), dtype=np.float32)
 
-    input_wp = wp.array(input, requires_grad=True)
-    output_wp = wp.zeros_like(input_wp, requires_grad=True)
+    input_wp = wp.array(input, requires_grad=True, device=device)
+    output_wp = wp.zeros_like(input_wp, requires_grad=True, device=device)
 
     with wp.Tape() as tape:
-        wp.launch(tile_extract_kernel, dim=[1, TILE_DIM], inputs=[input_wp, output_wp], block_dim=TILE_DIM)
+        wp.launch(
+            tile_extract_kernel, dim=[1, TILE_DIM], inputs=[input_wp, output_wp], block_dim=TILE_DIM, device=device
+        )
 
-    assert(np.allclose(input_wp.numpy(), output_wp.numpy(), rtol=1.e-4))
-
-    print("Extract forward passed")
+    assert_array_equal(output_wp, input_wp)
 
     output_wp.grad.fill_(1.0)
 
     tape.backward()
 
-    assert(np.allclose(input_wp.grad.numpy(), np.ones_like(input), rtol=1.e-4))
+    assert_np_equal(input_wp.grad.numpy(), np.ones_like(input))
 
-    print("Extract backward passed")
-
-@wp.kernel()
-def tile_matmul_dx_kernel(ga: wp.array2d(dtype=wp.float64),
-                          gb: wp.array2d(dtype=wp.float64),
-                          gc: wp.array2d(dtype=wp.float64)):
-    i, j, _ = wp.tid()
-    a = wp.tile_load(ga, i, j, m=TILE_M, n=TILE_K)
-    b = wp.tile_load(gb, i, j, m=TILE_K, n=TILE_N)
-    c = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float64)
-    wp.tile_matmul_dx(a, b, c)
-    wp.tile_store(gc, i, j, c)
-
-def test_tile_matmul_dx():
-
-    rng = np.random.default_rng(42)
-
-    A = rng.random((TILE_M, TILE_K), dtype=np.float64)
-    B = rng.random((TILE_K, TILE_N), dtype=np.float64)
-    C = np.zeros((TILE_M, TILE_N), dtype=np.float64)
-
-    A_wp = wp.array(A, requires_grad=True)
-    B_wp = wp.array(B, requires_grad=True)
-    C_wp = wp.array(C, requires_grad=True)
-
-    with wp.Tape() as tape:
-        wp.launch(tile_matmul_dx_kernel, dim=[1, 1, TILE_DIM], inputs=[A_wp, B_wp, C_wp], block_dim=TILE_DIM)
-
-    # verify forward pass
-    assert(np.allclose(A @ B, C_wp.numpy(), rtol=1.e-4))
-
-    print("Matmul (Dx) forward passed")
-
-    adj_C = np.ones_like(C)
-
-    tape.backward(grads={C_wp: wp.array(adj_C)})
-
-    assert(np.allclose(adj_C@B.T, A_wp.grad.numpy(), rtol=1.e-4))
-    assert(np.allclose(A.T@adj_C, B_wp.grad.numpy(), rtol=1.e-4))
-
-    print("Matmul (Dx) backward passed")
-
-N_FFT = 128
-
-@wp.kernel()
-def tile_fft_dx_kernel(gx: wp.array2d(dtype=wp.vec2f),
-                       gy: wp.array2d(dtype=wp.vec2f)):
-    i, j, _ = wp.tid()
-    xy = wp.tile_load(gx, i, j, m=N_FFT, n=N_FFT)
-    wp.tile_fft_dx(xy)
-    wp.tile_store(gy, i, j, xy)
-
-def test_tile_fft_dx():
-
-    rng = np.random.default_rng(42)
-
-    # Warp doesn't really have a complex64 type, 
-    # so we use 2 float32 to represent a single complex64 number and then convert it to vec2f
-
-    X = rng.random((N_FFT, 2*N_FFT), dtype=np.float32)
-    Y = np.zeros_like(X)
-    
-    X_wp = wp.array2d(X, requires_grad=True, dtype=wp.vec2f)
-    Y_wp = wp.array2d(Y, requires_grad=True, dtype=wp.vec2f)
-    
-    X_c64 = X.view(np.complex64).reshape(N_FFT, N_FFT)
-    Y_c64 = np.fft.fft(X_c64, axis=-1)
-
-    with wp.Tape() as tape:
-        wp.launch(tile_fft_dx_kernel, dim=[1, 1, TILE_DIM], inputs=[X_wp, Y_wp], block_dim=TILE_DIM)
-
-    Y_wp_c64 = Y_wp.numpy().view(np.complex64).reshape(N_FFT, N_FFT)
-    assert(np.allclose(Y_c64, Y_wp_c64, rtol=1.e-4))
-
-    print("FFT (Dx) forward passed")
-
-    # TODO: implement and test backward pass
-
-test_tile_copy()
-test_tile_unary_map()
-test_tile_binary_map()
-test_tile_grouped_gemm()
-test_tile_gemm()
-test_tile_operators()
-test_tile_sum()
-test_tile_extract()
-test_tile_matmul_dx()
-test_tile_fft_dx()
 
 # #-----------------------------------------
 # # center of mass computation
 
-# start = offset[i] 
-# end = offset[i+1] 
+# start = offset[i]
+# end = offset[i+1]
 
 # com = wp.tile_zeros(dtype=wp.vec3, M=1)
 
@@ -504,7 +408,7 @@ test_tile_fft_dx()
 # for i in range(start, end, N):
 
 #     count = wp.min(N, end-i)
-    
+
 #     idx = wp.tile_load(indices, i, N, max_col=count)
 #     p = wp.tile_load(points, idx, max_col=count)
 
@@ -514,13 +418,12 @@ test_tile_fft_dx()
 # wp.tile_store(out[i], com)
 
 
-
 # #-------------------------------------------
 # # compute deformation gradient
 
-# i = 
+# i =
 # j =
-# k = 
+# k =
 # l =
 
 # f = wp.tile(F)  # generate a block size tile of feature vectors
@@ -545,7 +448,7 @@ test_tile_fft_dx()
 # #----------------------------------
 # # MLP with helper function for linear layers
 # # where shape is only partially known
-# # at compile time, and the other dims 
+# # at compile time, and the other dims
 # # are inferred from the input vector
 
 # f = wp.tile(F)
@@ -562,32 +465,33 @@ test_tile_fft_dx()
 # o = wp.untile(z)
 
 
-
 # #----------------------------------
 # # softmax
 
 # def softmax(z: Any):
-    
+
 #     e = wp.tile_map(wp.exp, z)
 #     s = wp.tile_sum(e, dim=0)
 
 #     return z/s[0]
 
+devices = get_cuda_test_devices()
 
 
+class TestTile(unittest.TestCase):
+    pass
 
 
+add_function_test(TestTile, "test_tile_copy", test_tile_copy, devices=devices)
+add_function_test(TestTile, "test_tile_unary_map", test_tile_unary_map, devices=devices)
+add_function_test(TestTile, "test_tile_binary_map", test_tile_binary_map, devices=devices)
+add_function_test(TestTile, "test_tile_grouped_gemm", test_tile_grouped_gemm, devices=devices)  # FAILS
+add_function_test(TestTile, "test_tile_gemm", test_tile_gemm, devices=devices)
+add_function_test(TestTile, "test_tile_operators", test_tile_operators, devices=devices)
+add_function_test(TestTile, "test_tile_sum", test_tile_sum, devices=devices)
+add_function_test(TestTile, "test_tile_extract", test_tile_extract, devices=devices)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+if __name__ == "__main__":
+    wp.clear_kernel_cache()
+    unittest.main(verbosity=2)

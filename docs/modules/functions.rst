@@ -800,6 +800,77 @@ Spatial Math
 
 
 
+Tile Primitives
+---------------
+.. py:function:: tile_zeros(m: int32, n: int32, dtype: Scalar) -> Tile
+
+    Allocate a tile local block of zero'd memory
+
+
+.. py:function:: tile_load(a: Array[Any], x: int32, y: int32, m: int32, n: int32) -> Tile
+
+    Load a tile of size (m, n) worth of data from array a from offset (i=x*m, j=y*n)
+
+
+.. py:function:: tile_store(a: Array[Any], x: int32, y: int32, t: Any) -> None
+
+    Store tile `t` to an array `a` at offset `(i=x*m, j=y*n)`
+
+
+.. py:function:: tile_atomic_add(a: Array[Any], x: int32, y: int32, t: Any) -> Tile
+
+    Atomically add a tile `t` worth of data to array `a` at offset `(i=x*m, j=y*n)`
+
+
+.. py:function:: tile(x: Any) -> Tile
+
+    Construct a Tile from a per-thread kernel value, returns a tile with dimensions of `(1, block_dim)` where block_dim is the number of threads specified in `wp.launch()`
+
+
+.. py:function:: tile_extract(a: Tile, i: int32, j: int32) -> None
+
+    Extract element at index (i, j) of the tile and return the native type
+
+
+.. py:function:: tile_matmul(a: Tile, b: Tile, out: Tile) -> None
+
+    Compute matrix product and accumulate out += a*b.
+
+
+.. py:function:: tile_sum(a: Tile) -> None
+
+    Computes the sum of all elements in the tile, returns a 1x1 tile, axis is currently ignored
+
+
+.. py:function:: tile_map(op: Callable, a: Any) -> None
+
+    Map the operation onto each element of the tile
+
+
+.. py:function:: tile_map(op: Callable, a: Any, b: Any) -> None
+    :noindex:
+    :nocontentsentry:
+
+    Map the operation onto each element of the tile
+
+
+.. py:function:: tile_matmul_dx(a: Tile, b: Tile, out: Tile) -> None
+
+    Compute matrix product and accumulate out += a*b.
+
+
+.. py:function:: tile_fft_dx(inout: Tile) -> None
+
+    Compute the FFT along the second dimension of a 2D tile of data.
+
+
+.. py:function:: tile_ifft_dx(inout: Tile) -> None
+
+    Compute the inverse FFT along the second dimension of a 2D tile of data.
+
+
+
+
 Utility
 ---------------
 .. py:function:: mlp(weights: Array[float32], bias: Array[float32], activation: Callable, index: int32, x: Array[float32], out: Array[float32]) -> None
@@ -1961,6 +2032,13 @@ Operators
     :nocontentsentry:
 
 
+.. py:function:: add(a: Tile, b: Tile) -> None
+    :noindex:
+    :nocontentsentry:
+
+    Add each element of two tiles together
+
+
 .. py:function:: sub(a: Scalar, b: Scalar) -> Scalar
 
 
@@ -2052,6 +2130,20 @@ Operators
     :nocontentsentry:
 
 
+.. py:function:: mul(x: Tile, y: Scalar) -> Tile
+    :noindex:
+    :nocontentsentry:
+
+    Multiply each element of a tile by a scalar
+
+
+.. py:function:: mul(x: Scalar, y: Tile) -> Tile
+    :noindex:
+    :nocontentsentry:
+
+    Multiply each element of a tile by a scalar
+
+
 .. py:function:: mod(a: Scalar, b: Scalar) -> Scalar
 
     Modulo operation using truncated division.
@@ -2134,6 +2226,13 @@ Operators
 .. py:function:: neg(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
     :noindex:
     :nocontentsentry:
+
+
+.. py:function:: neg(x: Tile) -> Tile
+    :noindex:
+    :nocontentsentry:
+
+    Negate each element of a tile
 
 
 .. py:function:: unot(a: bool) -> bool

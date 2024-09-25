@@ -5,40 +5,48 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import ctypes
 import os
 
 import warp.config
+from warp.mathdx import get_cuda_include_dirs
 from warp.thirdparty import appdirs
-import ctypes
 
-def get_mathdx_include_dirs():
-    return (os.environ['MATHDX_HOME'] + '/include').encode("utf-8")
-
-def get_cuda_include_dirs():
-    cuda_inc_path = (os.environ['CUDA_HOME'] + '/include').encode("utf-8")
-    include_dirs = [cuda_inc_path]
-    arr_include_dirs = (ctypes.c_char_p * len(include_dirs))()
-    arr_include_dirs[:] = include_dirs
-    return arr_include_dirs
 
 # builds cuda source to PTX or CUBIN using NVRTC (output type determined by output_path extension)
-def build_cuda(cu_path, arch, output_path, config="release", verify_fp=False, fast_math=False, ltoirs=[]):
+def build_cuda(cu_path, arch, output_path, config="release", verify_fp=False, fast_math=False, ltoirs=None):
     with open(cu_path, "rb") as src_file:
         src = src_file.read()
         cu_path = cu_path.encode("utf-8")
         inc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "native").encode("utf-8")
         output_path = output_path.encode("utf-8")
-        cuda_include_dirs = get_cuda_include_dirs()
 
         if warp.config.llvm_cuda:
             warp.context.runtime.llvm.compile_cuda(src, cu_path, inc_path, output_path, False)
 
         else:
+            cuda_include_dirs = get_cuda_include_dirs()
+
+            if ltoirs is None:
+                ltoirs = []
+
             num_ltoirs = len(ltoirs)
             arr_lroirs = (ctypes.c_char_p * num_ltoirs)(*ltoirs)
             arr_lroir_sizes = (ctypes.c_size_t * num_ltoirs)(*[len(l) for l in ltoirs])
             err = warp.context.runtime.core.cuda_compile_program(
-                src, arch, inc_path, len(cuda_include_dirs), cuda_include_dirs, config == "debug", warp.config.verbose, verify_fp, fast_math, output_path, num_ltoirs, arr_lroirs, arr_lroir_sizes
+                src,
+                arch,
+                inc_path,
+                len(cuda_include_dirs),
+                cuda_include_dirs,
+                config == "debug",
+                warp.config.verbose,
+                verify_fp,
+                fast_math,
+                output_path,
+                num_ltoirs,
+                arr_lroirs,
+                arr_lroir_sizes,
             )
             if err != 0:
                 raise Exception(f"CUDA kernel build failed with error code {err}")
