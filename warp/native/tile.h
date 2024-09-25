@@ -268,6 +268,8 @@ struct tile_register_t
         }
     }
 
+    inline CUDA_CALLABLE void print();
+
 
     // return the in-register version of this tile (nop)
     inline CUDA_CALLABLE auto& copy_to_register() { return *this; }
@@ -327,7 +329,6 @@ struct tile_register_t
             data[i] = ptr[c.i*stride_i + c.j*stride_j];
         }
     }
-        
 };
 
 
@@ -466,15 +467,17 @@ struct tile_shared_t
 
     inline CUDA_CALLABLE void print()
     {
+        WP_TILE_SYNC();
+
         if (threadIdx.x == 0)
         {
-            printf("[");
+            printf("Tile(M=%d, N=%d, storage=shared) = [\n", M, N);
             for (int i=0; i < M; ++i)
             {
                 printf("%*s[", i>0, "");
                 for (int j=0; j < N; ++j)
                 {
-                    printf("%5.2f ", (*this)(i, j));
+                    printf("%g ", double((*this)(i, j)));
                 }
 
                 if (i == M-1)
@@ -553,6 +556,52 @@ struct tile_shared_t
     }
 };
 
+template <typename T, int M, int N>
+void tile_register_t<T, M, N>::print()
+{
+    // create a temporary shared tile so that
+    // we can print it deterministically
+    WP_TILE_SHARED T smem[M*N];
+    
+    tile_shared_t<T, M, N> scratch(smem);
+    scratch.assign(*this);
+
+    WP_TILE_SYNC();
+
+    if (threadIdx.x == 0)
+    {
+        printf("Tile(M=%d, N=%d, storage=register) = [\n", M, N);
+        for (int i=0; i < M; ++i)
+        {
+            printf("%*s[", i>0, "");
+            for (int j=0; j < N; ++j)
+            {
+                printf("%g ", double(scratch(i, j)));
+            }
+
+            if (i == M-1)
+                printf("]]\n");
+            else
+                printf("]\n");
+        }
+    }
+
+    WP_TILE_SYNC();
+}
+
+template <typename Tile>
+inline CUDA_CALLABLE void print(Tile& t)
+{
+    t.print();
+}
+
+template <typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_print(Tile& t, AdjTile& a)
+{
+    a.print();
+}
+
+
 // helpers to allocate shared tiles
 template <typename T, int M, int N, int Alloc>
 inline CUDA_CALLABLE auto tile_alloc_empty()
@@ -579,14 +628,44 @@ inline CUDA_CALLABLE auto tile_transpose(Tile& t)
     return tile_shared_t<typename Tile::Type, Tile::N, Tile::M, Tile::StrideN, Tile::StrideM>(t.data);
 }
 
-
 //-----------------------------------------------------------------------------------------------------
 // High level entry points for each op (correspond to one Warp builtin)
 
+// construct a tile from a local SIMT value (one per-thread)
+template <typename T>
+inline CUDA_CALLABLE auto tile(const T& x)
+{
+    tile_register_t<T, 1, WP_TILE_BLOCK_DIM> result;
+    
+    // code-gen should have set the tile to 
+    // have exactly the block dimension so 
+    // there is exactly one value per-thread
+    static_assert(result.NumRegs == 1);
+
+    result.data[0] = x;
+    return result;
+}
+
+// construct a tile from a local SIMT value (one per-thread)
+template <typename T, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile(const T& x, T& adj_x, const AdjTile& adj_ret)
+{
+    static_assert(AdjTile::M == 1);
+    static_assert(AdjTile::N == WP_TILE_BLOCK_DIM);
+
+    // code-gen should have set the tile to 
+    // have exactly the block dimension so 
+    // there is exactly one value per-thread
+    static_assert(AdjTile::NumRegs == 1);
+
+    adj_x += adj_ret.data[0];
+}
+
+// zero initialized tile
 template <typename T, int M, int N>
 inline CUDA_CALLABLE auto tile_zeros()
 {
-    // tile variable assignment operator will handle initialization
+    // tile variable assignment operator will handle initialization (since lhs could be shared/register tile)
     return T(0.0);
 }
 
@@ -608,6 +687,35 @@ inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int x, int y, Tile& src)
     // dispatch to tile type
     src.copy_to_global(dest, x, y);
 }
+
+// entry point for store
+template <typename T, typename Tile>
+inline CUDA_CALLABLE auto tile_atomic_add(array_t<T>& dest, int x, int y, Tile& src)
+{
+    auto src_reg = src.copy_to_register();
+
+    const int tile_i = x*src_reg.M;
+    const int tile_j = y*src_reg.N;
+
+    tile_register_t<T, src_reg.M, src_reg.N> previous;
+
+    WP_PRAGMA_UNROLL
+    for (int i=0; i < src_reg.NumRegs; ++i)
+    {
+        // handle case where tile size is not 
+        // aligned to block dimensions
+        int linear = src_reg.index(i);
+        if (!src_reg.Aligned && linear >= src_reg.Size)
+            break;
+
+        coord_t c = src_reg.coord(linear);
+        previous.data[i] = atomic_add(dest, tile_i + c.i, tile_j + c.j, src_reg.data[i]);
+    }
+
+    return previous;
+}
+
+
 
 //-------------------------------------
 // Adjoints
@@ -674,8 +782,15 @@ inline CUDA_CALLABLE void adj_tile_store(array_t<T>& dest, int x, int y, Tile& t
     }
 
     // store adjoint back to tile
-    adj_t.assign(adj_reg);
+    adj_t.assign(adj_reg);    
 }
+
+template <typename T, typename Tile, typename AdjTile, typename AdjRet>
+inline CUDA_CALLABLE void adj_tile_atomic_add(array_t<T>& dest, int x, int y, Tile& t, array_t<T>& adj_dest, int adj_x, int adj_y, AdjTile& adj_t, AdjRet& adj_ret)
+{  
+    adj_tile_store(dest, x, y, t, adj_dest, adj_x, adj_y, adj_t);
+}
+
 
 // unary map
 template <typename Tile, typename Fwd>

@@ -1712,7 +1712,7 @@ def tile_zeros_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str
     
     # return generic type (for doc builds)
     if arg_types is None:
-        return array_t(shape=(Any, Any), dtype=Scalar)
+        return Tile(dtype=Any, M=Any, N=Any)
 
     # if len(arg_types) > 0:
     #     raise RuntimeError("tile_zero() args must be passed by keyword")
@@ -1759,7 +1759,7 @@ def tile_load_value_func(arg_types, arg_values):
     
     # return generic type (for doc builds)
     if arg_types is None:
-        return array_t(shape=(Any, Any), dtype=Scalar)
+        return Tile(dtype=Any, M=Any, N=Any)
 
     # if len(arg_types) != 3: 
     #     raise RuntimeError("tile_load() requires 3 positional args")
@@ -1841,7 +1841,75 @@ add_builtin(
     input_types={"a": array(dtype=Any), "x": int, "y": int, "t": Any},
     value_func=tile_store_value_func,
     variadic=True,
-    doc="Load a tile of size (m, n) worth of data from array a from offset (i=x*m, j=y*n)",
+    doc="Store tile `t` to an array `a` at offset `(i=x*m, j=y*n)`",
+    group="Tile Primitives",
+    export=False,
+)
+
+def tile_atomic_add_value_func(arg_types, arg_values):
+    
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return Tile(dtype=Any, M=Any, N=Any)
+
+    if len(arg_types) != 4: 
+        raise RuntimeError("tile_atomic_add() requires 4 positional args")
+
+    if not is_array(arg_types["a"]):
+        raise RuntimeError("tile_atomic_add() argument 0 must be an array")
+
+    if not type_is_int(arg_types["x"]):
+        raise RuntimeError("tile_atomic_add() argument 1 must be an integer")
+
+    if not type_is_int(arg_types["y"]):
+        raise RuntimeError("tile_atomic_add() argument 2 must be an integer")
+
+    if not is_tile(arg_types["t"]):
+        raise RuntimeError("tile_atomic_add() argument 3 must be a tile")
+
+    if arg_types["a"].dtype != arg_types["t"].dtype:
+        raise RuntimeError("tile_atomic_add() tile dtype and array dtype must match")
+
+    return Tile(dtype=arg_types["t"].dtype,
+                M=arg_types["t"].M,
+                N=arg_types["t"].N)
+
+
+
+add_builtin(
+    "tile_atomic_add",
+    input_types={"a": array(dtype=Any), "x": int, "y": int, "t": Any},
+    value_func=tile_atomic_add_value_func,
+    variadic=True,
+    doc="Atomically add a tile `t` worth of data to array `a` at offset `(i=x*m, j=y*n)`",
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_value_func(arg_types, arg_values):
+    
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return Tile
+
+    if len(arg_types) != 1: 
+        raise RuntimeError("tile() requires 1 positional arg")
+
+    # todo: we need a way to pass things like current compiler options
+    # into the value_func, for now we use a single global options dictionary
+    # we should ideally pass in the Adjoint object if it exists
+
+    return Tile(dtype=arg_types["x"], M=1, N=warp.codegen.options["block_dim"], op="Tile")
+
+
+
+add_builtin(
+    "tile",
+    input_types={"x": Any},
+    value_func=tile_value_func,
+    variadic=True,
+    doc="Construct a Tile from a per-thread kernel value, returns a tile with dimensions of `(1, block_dim)` where block_dim is the number of threads specified in `wp.launch()`",
     group="Tile Primitives",
     export=False,
 )

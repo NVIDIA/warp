@@ -23,6 +23,9 @@ from typing import Any, Callable, Dict, Mapping, Optional, Sequence
 import warp.config
 from warp.types import *
 
+# used as a globally accessible copy
+# of current compile options (block_dim) etc
+options = {}
 
 class WarpCodegenError(RuntimeError):
     def __init__(self, message):
@@ -916,6 +919,9 @@ class Adjoint:
             adj.builder_options = adj.builder.options
         else:
             adj.builder_options = default_builder_options
+
+        global options
+        options = adj.builder_options
 
         adj.symbols = {}  # map from symbols to adjoint variables
         adj.variables = []  # list of local variables (in order)
