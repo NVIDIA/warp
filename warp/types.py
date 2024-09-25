@@ -2888,8 +2888,8 @@ class Tile:
     def cinit(self, adjoint=False):
         from warp.codegen import Var
 
-        if self.storage == "register":          
-            return f"{0}"
+        if self.storage == "register":
+            return self.ctype() + "(0.0)"
         elif self.storage == "shared":
 
             if adjoint:

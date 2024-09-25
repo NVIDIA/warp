@@ -865,6 +865,9 @@ class Adjoint:
         # for unit testing errors being spit out from kernels.
         adj.skip_build = False
 
+        # Collect the LTOIR required at link-time
+        adj.ltoirs = []
+
     # generate function ssa form and adjoint
     def build(adj, builder, default_builder_options=None):
         # arg Var read/write flags are held during module rebuilds, so we reset here even when skipping a build
@@ -901,6 +904,9 @@ class Adjoint:
         # used to generate new label indices
         adj.label_count = 0
 
+        # collect ltoirs
+        adj.ltoirs = []
+
         # update symbol map for each argument
         for a in adj.args:
             adj.symbols[a.label] = a
@@ -925,6 +931,8 @@ class Adjoint:
                     builder.build_struct_recursive(a.type)
                 elif isinstance(a.type, warp.types.array) and isinstance(a.type.dtype, Struct):
                     builder.build_struct_recursive(a.type.dtype)
+
+            builder.ltoirs.extend(adj.ltoirs)
 
     # code generation methods
     def format_template(adj, template, input_vars, output_var):
@@ -1227,15 +1235,17 @@ class Adjoint:
             bound_arg_values,
         )
 
-        if func.dispatch_func is not None:
-            # If we have a built-in that requires special handling to dispatch
-            # the arguments to the underlying C++ function, then we can resolve
-            # these using the `dispatch_func`. Since this is only called from
-            # within codegen, we pass it directly `codegen.Var` objects,
-            # which allows for some more advanced resolution to be performed,
-            # for example by checking whether an argument corresponds to
-            # a literal value or references a variable.
-
+        # If we have a built-in that requires special handling to dispatch
+        # the arguments to the underlying C++ function, then we can resolve
+        # these using the `dispatch_func`. Since this is only called from
+        # within codegen, we pass it directly `codegen.Var` objects,
+        # which allows for some more advanced resolution to be performed,
+        # for example by checking whether an argument corresponds to
+        # a literal value or references a variable.
+        if func.lto_dispatch_func is not None:
+            func_args, template_args, ltoirs = func.lto_dispatch_func(func.input_types, return_type, bound_args, options=adj.builder_options)
+            adj.ltoirs.extend(ltoirs)
+        elif func.dispatch_func is not None:
             func_args, template_args = func.dispatch_func(func.input_types, return_type, bound_args)
         else:
             func_args = tuple(bound_args.values())

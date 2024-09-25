@@ -52,7 +52,7 @@ parser.add_argument("--no_fast_math", dest="fast_math", action="store_false")
 parser.set_defaults(fast_math=False)
 
 parser.add_argument("--quick", action="store_true", help="Only generate PTX code, disable CUTLASS ops")
-parser.set_defaults(quick=True)
+parser.set_defaults(quick=False)
 
 parser.add_argument("--build_llvm", action="store_true", help="Build Clang/LLVM compiler from source, default disabled")
 parser.add_argument("--no_build_llvm", dest="build_llvm", action="store_false")
