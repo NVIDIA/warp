@@ -887,6 +887,66 @@ def spatial_mass(
 
 
 @over
+def tile_zeros(m: int32, n: int32, dtype: Scalar) -> Tile:
+    """Allocate a tile local block of zero'd memory"""
+    ...
+
+
+@over
+def tile_load(a: Array[Any], x: int32, y: int32, m: int32, n: int32) -> Tile:
+    """Load a tile of size (m, n) worth of data from array a from offset (i=x*m, j=y*n)"""
+    ...
+
+
+@over
+def tile_store(a: Array[Any], x: int32, y: int32, t: Any):
+    """Store tile `t` to an array `a` at offset `(i=x*m, j=y*n)`"""
+    ...
+
+
+@over
+def tile_atomic_add(a: Array[Any], x: int32, y: int32, t: Any) -> Tile:
+    """Atomically add a tile `t` worth of data to array `a` at offset `(i=x*m, j=y*n)`"""
+    ...
+
+
+@over
+def tile(x: Any) -> Tile:
+    """Construct a Tile from a per-thread kernel value, returns a tile with dimensions of `(1, block_dim)` where block_dim is the number of threads specified in `wp.launch()`"""
+    ...
+
+
+@over
+def tile_extract(a: Tile, i: int32, j: int32):
+    """Extract element at index (i, j) of the tile and return the native type"""
+    ...
+
+
+@over
+def tile_matmul(a: Tile, b: Tile, out: Tile):
+    """Compute matrix product and accumulate out += a*b."""
+    ...
+
+
+@over
+def tile_sum(a: Tile):
+    """Computes the sum of all elements in the tile, returns a 1x1 tile, axis is currently ignored"""
+    ...
+
+
+@over
+def tile_map(op: Callable, a: Any):
+    """Map the operation onto each element of the tile"""
+    ...
+
+
+@over
+def tile_map(op: Callable, a: Any, b: Any):
+    """Map the operation onto each element of the tile"""
+    ...
+
+
+@over
 def mlp(
     weights: Array[float32],
     bias: Array[float32],
@@ -2084,6 +2144,12 @@ def add(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[
 
 
 @over
+def add(a: Tile, b: Tile):
+    """Add each element of two tiles together"""
+    ...
+
+
+@over
 def sub(a: Scalar, b: Scalar) -> Scalar:
     """ """
     ...
@@ -2234,6 +2300,18 @@ def mul(a: Transformation[Scalar], b: Scalar) -> Transformation[Scalar]:
 
 
 @over
+def mul(x: Tile, y: Scalar) -> Tile:
+    """Multiply each element of a tile by a scalar"""
+    ...
+
+
+@over
+def mul(x: Scalar, y: Tile) -> Tile:
+    """Multiply each element of a tile by a scalar"""
+    ...
+
+
+@over
 def mod(a: Scalar, b: Scalar) -> Scalar:
     """Modulo operation using truncated division."""
     ...
@@ -2342,6 +2420,12 @@ def neg(x: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
 
 
 @over
+def neg(x: Tile) -> Tile:
+    """Negate each element of a tile"""
+    ...
+
+
+@over
 def unot(a: bool) -> bool:
     """ """
     ...
@@ -2398,4 +2482,22 @@ def unot(a: uint64) -> bool:
 @over
 def unot(a: Array[Any]) -> bool:
     """ """
+    ...
+
+
+@over
+def tile_matmul_dx(a: Tile, b: Tile, out: Tile):
+    """Compute matrix product and accumulate out += a*b."""
+    ...
+
+
+@over
+def tile_fft_dx(inout: Tile):
+    """Compute the FFT along the second dimension of a 2D tile of data."""
+    ...
+
+
+@over
+def tile_ifft_dx(inout: Tile):
+    """Compute the inverse FFT along the second dimension of a 2D tile of data."""
     ...

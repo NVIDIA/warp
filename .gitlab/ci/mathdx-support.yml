@@ -1,0 +1,169 @@
+# Copyright (c) 2024 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+# ==============================================================================
+# CI/CD Pipeline Configuration
+# ==============================================================================
+
+include: /.gitlab/ci/common.yml
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "parent_pipeline"
+
+stages:
+  - build
+  - test
+  - package
+  - deploy
+
+# ==============================================================================
+# Build Jobs (Release)
+# ==============================================================================
+
+linux-x86_64 build:
+  stage: build
+  image: ubuntu:20.04
+  extends:
+    - .save_warp_bin_artifact
+    - .runner-build-linux-x86_64
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - apt-get update && apt-get install build-essential curl wget --no-install-recommends -y
+    - >
+      wget --header="X-JFrog-Art-Api:$ARTIFACTORY_API_KEY" -nv --no-check-certificate
+      $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/main/PostMerge/30/libmathdx_build_x86_64_ubuntu20.04_cuda12.0.0_release.tar.gz
+      -O libmathdx.tar.gz
+    - mkdir -p _build/target-deps
+    - tar -xzf libmathdx.tar.gz -C _build/target-deps
+    - export LIBMATHDX_HOME="$CI_PROJECT_DIR/_build/target-deps/libmathdx-0.0.1-Linux"
+    - gcc --version
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - ./tools/ci/building/build-linux-x86_64/build.sh --no-docker # We are already using the builder image
+    - mkdir -p warp/bin/linux-x86_64
+    - mv warp/bin/warp.so warp/bin/linux-x86_64
+    - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
+
+linux-aarch64 build:
+  stage: build
+  image: ubuntu:20.04
+  extends:
+    - .save_warp_bin_artifact
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - apt-get update && apt-get install build-essential curl wget --no-install-recommends -y
+    - >
+      wget --header="X-JFrog-Art-Api:$ARTIFACTORY_API_KEY" -nv --no-check-certificate
+      $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/main/PostMerge/30/libmathdx_build_aarch64_ubuntu20.04_cuda12.0.0_release.tar.gz
+      -O libmathdx.tar.gz
+    - mkdir -p _build/target-deps
+    - tar -xzf libmathdx.tar.gz -C _build/target-deps
+    - export LIBMATHDX_HOME="$CI_PROJECT_DIR/_build/target-deps/libmathdx-0.0.1-Linux"
+    - gcc --version
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - ./tools/ci/building/build-linux-x86_64/build.sh --no-docker # We are already using the builder image
+    - mkdir -p warp/bin/linux-aarch64
+    - mv warp/bin/warp.so warp/bin/linux-aarch64
+    - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
+  tags:
+    - arch/arm
+
+# ==============================================================================
+# Unit Testing Jobs (MathDx Support)
+#
+# Unlike the main testing jobs defined in /.gitlab-ci.yml, the jobs don't
+# generate code coverage reports.
+# ==============================================================================
+
+linux-x86_64 test:
+  stage: test
+  needs: [linux-x86_64 build]
+  extends:
+    - .omni_nvks_gpu_2x
+    - .save_test_report_artifact
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    - tools/packman/packman install -l _build/target-deps/python python ${DEFAULT_PYTHON}-linux-x86_64
+    - export PATH="$CUDA_BIN:$PATH"
+    - $PYTHON -m venv _venv
+    - source _venv/bin/activate
+    - python -m pip install --upgrade pip
+    - python -m pip install --upgrade usd-core
+    - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
+    - python -m pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    - python -m pip install --upgrade nvidia-mathdx==24.4.0 nvidia-cuda-cccl-cu12 nvidia-cuda-runtime-cu12
+    - python -m pip install -e .
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+    # HACK: disable P2P tests due to misbehaving agents
+    - export WARP_DISABLE_P2P_TESTS=1
+  script:
+    - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+
+linux-aarch64 test jetson:
+  image: ubuntu:22.04
+  needs: [linux-aarch64 build]
+  extends:
+    - .save_test_report_artifact
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - !reference [.snippets, install-python+warp-aarch64]
+    - python -m pip install --upgrade nvidia-mathdx==24.4.0 nvidia-cuda-cccl-cu12 nvidia-cuda-runtime-cu12
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+  tags:
+    - gpu/orin
+
+# ==============================================================================
+# Packaging Jobs
+# ==============================================================================
+
+# Creates wheel files for PyPI
+create pypi wheels:
+  stage: package
+  needs:
+    - linux-aarch64 build
+    - linux-x86_64 build
+  extends:
+    - .runner-utility-linux-x86_64
+  before_script:
+    - python3 -m pip install --upgrade pip
+    - python3 -m pip install build
+  script:
+    - sed -i 's/dependencies = \["numpy"\]/dependencies = \["numpy", "nvidia-mathdx==24.4.0", "nvidia-cuda-cccl-cu12", "nvidia-cuda-runtime-cu12"\]/' pyproject.toml
+    - sed -i "s/^\(.*\)$/\1+tile/" VERSION.md  # Modify VERSION.md with +tile
+    - python3 -m build --wheel -C--build-option=-Plinux-x86_64
+    - python3 -m build --wheel -C--build-option=-Plinux-aarch64
+    - find . -type f -exec chmod 664 {} +
+    - find . -type d -exec chmod 775 {} +
+  artifacts:
+    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    expose_as: "Python Wheels MathDx"
+    paths:
+      - "dist/"
+    when: always
+
+publish wheels to gitlab pypi registry:
+  stage: deploy
+  image: python:3.11-slim
+  needs: ["create pypi wheels"]
+  extends:
+    - .runner-utility-linux-x86_64
+  rules:
+    - when: manual
+      allow_failure: true
+  before_script:
+    - python3 -m pip install --upgrade pip
+    - python3 -m pip install --upgrade build twine
+  script:
+    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python3 -m twine upload --verbose --skip-existing --non-interactive --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist/*

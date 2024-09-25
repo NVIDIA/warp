@@ -196,7 +196,7 @@ create pypi wheels:
     - find . -type d -exec chmod 775 {} +
   artifacts:
     name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
-    expose_as: "Python Wheels"
+    expose_as: "Python Wheels Debug"
     paths:
       - "dist/"
     when: always

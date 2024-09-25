@@ -187,7 +187,7 @@ create pypi wheels:
     - find . -type d -exec chmod 775 {} +
   artifacts:
     name: $PARENT_COMMIT_REF_SLUG-$PARENT_COMMIT_SHORT_SHA
-    expose_as: "Python Wheels"
+    expose_as: "Python Wheels Cu11"
     paths:
       - "dist/"
     when: always
