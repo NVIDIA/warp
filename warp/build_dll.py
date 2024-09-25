@@ -292,6 +292,8 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
             run_cmd(link_cmd)
 
     else:
+        libmathdx_home = os.environ['LIBMATHDX_HOME']
+        libmathdx_includes = f'-I{libmathdx_home}/include'
         cpp_includes = f' -I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}-{arch}/include"'
         cpp_includes += f' -I"{warp_home_path.parent}/_build/host-deps/llvm-project/release-{arch}/include"'
         cuda_includes = f' -I"{cuda_home}/include"' if cu_path else ""
@@ -330,17 +332,17 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
             cu_out = cu_path + ".o"
 
             if mode == "debug":
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(nvcc_opts)} -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{cutlass_enabled} {cutlass_includes} -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(nvcc_opts)} -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{cutlass_enabled} {cutlass_includes} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
 
             elif mode == "release":
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -O3 --compiler-options -fPIC,-fvisibility=hidden {" ".join(nvcc_opts)} -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{cutlass_enabled} {cutlass_includes} -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -O3 --compiler-options -fPIC,-fvisibility=hidden {" ".join(nvcc_opts)} -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{cutlass_enabled} {cutlass_includes} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
 
             with ScopedTimer("build_cuda", active=args.verbose):
                 run_cmd(cuda_cmd)
 
                 ld_inputs.append(quote(cu_out))
                 ld_inputs.append(
-                    f'-L"{cuda_home}/lib64" -lcudart_static -lnvrtc_static -lnvrtc-builtins_static -lnvptxcompiler_static -lpthread -ldl -lrt'
+                    f'-L"{cuda_home}/lib64" -L{libmathdx_home}/lib -lcudart_static -lnvrtc_static -lnvrtc-builtins_static -lnvptxcompiler_static -lnvJitLink_static -lpthread -ldl -lrt -lmathdx_static'
                 )
 
         if sys.platform == "darwin":

@@ -66,6 +66,7 @@ class Function:
         value_func=None,
         export_func=None,
         dispatch_func=None,
+        lto_dispatch_func=None,
         module=None,
         variadic=False,
         initializer_list_func=None,
@@ -101,6 +102,7 @@ class Function:
         self.value_func = value_func  # a function that takes a list of args and a list of templates and returns the value type, e.g.: load(array, index) returns the type of value being loaded
         self.export_func = export_func
         self.dispatch_func = dispatch_func
+        self.lto_dispatch_func = lto_dispatch_func
         self.input_types = {}
         self.export = export
         self.doc = doc
@@ -1012,6 +1014,7 @@ def add_builtin(
     value_func=None,
     export_func=None,
     dispatch_func=None,
+    lto_dispatch_func=None,
     doc="",
     namespace="wp::",
     variadic=False,
@@ -1052,6 +1055,9 @@ def add_builtin(
             The arguments returned must be of type `codegen.Var`.
             If not provided, all arguments passed by the users when calling
             the built-in are passed as-is as runtime arguments to the C++ function.
+        lto_dispatch_func (Callable): Same as dispatch_func, but takes an 'option' dict
+            as extra argument (indicating tile_size and target architecture) and returns
+            an LTO-IR buffer as extra return value
         doc (str): Used to generate the Python's docstring and the HTML documentation.
         namespace: Namespace for the underlying C++ function.
         variadic (bool): Whether the function declares variadic arguments.
@@ -1190,6 +1196,7 @@ def add_builtin(
                     value_type=return_type,
                     export_func=export_func,
                     dispatch_func=dispatch_func,
+                    lto_dispatch_func=lto_dispatch_func,
                     doc=doc,
                     namespace=namespace,
                     variadic=variadic,
@@ -1212,6 +1219,7 @@ def add_builtin(
         value_func=value_func,
         export_func=export_func,
         dispatch_func=dispatch_func,
+        lto_dispatch_func=lto_dispatch_func,
         variadic=variadic,
         initializer_list_func=initializer_list_func,
         export=export,
@@ -1296,6 +1304,7 @@ class ModuleBuilder:
         self.options = options
         self.module = module
         self.deferred_functions = []
+        self.ltoirs = []
 
         # build all functions declared in the module
         for func in module.functions.values():
@@ -1750,6 +1759,9 @@ class Module:
                     output_arch = device.arch
                     output_name = f"module_codegen.sm{output_arch}.cubin"
 
+                # Some of the Tile codegen, such as cuFFTDx and cuBLASDx, requires knowledge of the target arch
+                self.options["output_arch"] = output_arch
+
             # final object binary path
             binary_path = os.path.join(module_dir, output_name)
 
@@ -1828,6 +1840,7 @@ class Module:
                                 config=self.options["mode"],
                                 fast_math=self.options["fast_math"],
                                 verify_fp=warp.config.verify_fp,
+                                ltoirs=builder.ltoirs,
                             )
 
                     except Exception as e:
@@ -3069,16 +3082,54 @@ class Runtime:
             self.core.cuda_graph_destroy.restype = ctypes.c_bool
 
             self.core.cuda_compile_program.argtypes = [
-                ctypes.c_char_p,
-                ctypes.c_int,
-                ctypes.c_char_p,
-                ctypes.c_bool,
-                ctypes.c_bool,
-                ctypes.c_bool,
-                ctypes.c_bool,
-                ctypes.c_char_p,
+                ctypes.c_char_p, # cuda_src
+                ctypes.c_int, # arch
+                ctypes.c_char_p, # include_dir
+                ctypes.c_int, # num_cuda_include_dirs
+                ctypes.POINTER(ctypes.c_char_p), # cuda include dirs
+                ctypes.c_bool, # debug
+                ctypes.c_bool, # verbose
+                ctypes.c_bool, # verify_fp
+                ctypes.c_bool, # fast_math
+                ctypes.c_char_p, # output_path
+                ctypes.c_size_t, # num_ltoirs
+                ctypes.POINTER(ctypes.c_char_p), # ltoirs
+                ctypes.POINTER(ctypes.c_size_t), # ltoir_sizes
             ]
             self.core.cuda_compile_program.restype = ctypes.c_size_t
+
+            self.core.cuda_compile_fft.argtypes = [
+                ctypes.c_char_p, # lto
+                ctypes.c_char_p, # function name
+                ctypes.c_int, # num include dirs
+                ctypes.POINTER(ctypes.c_char_p), # include dirs
+                ctypes.c_char_p, # mathdx include dir
+                ctypes.c_int, # arch
+                ctypes.c_int, # size
+                ctypes.c_int, # ept
+                ctypes.c_int, # direction
+                ctypes.c_int, # precision
+                ctypes.POINTER(ctypes.c_int) # smem (out)
+            ]
+            self.core.cuda_compile_fft.restype = ctypes.c_bool
+
+            self.core.cuda_compile_dot.argtypes = [
+                ctypes.c_char_p, # lto
+                ctypes.c_char_p, # function name
+                ctypes.c_int, # num include dirs
+                ctypes.POINTER(ctypes.c_char_p), # include dirs
+                ctypes.c_char_p, # mathdx include dir
+                ctypes.c_int, # arch
+                ctypes.c_int, # M
+                ctypes.c_int, # N
+                ctypes.c_int, # K
+                ctypes.c_int, # precision
+                ctypes.c_int, # type
+                ctypes.c_int, # tA
+                ctypes.c_int, # tB
+                ctypes.c_int  # num threads
+            ]
+            self.core.cuda_compile_dot.restype = ctypes.c_bool
 
             self.core.cuda_load_module.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
             self.core.cuda_load_module.restype = ctypes.c_void_p

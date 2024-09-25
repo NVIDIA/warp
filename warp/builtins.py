@@ -5,12 +5,16 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 import builtins
+import tempfile
+import functools
+import os
 from typing import Any, Callable, Mapping, Sequence
 
 from warp.codegen import Reference, Var, strip_reference
 from warp.types import *
 
 from .context import add_builtin
+from .build import get_cuda_include_dirs, get_mathdx_include_dirs
 
 
 def seq_check_equal(seq_1, seq_2):
@@ -4550,3 +4554,248 @@ add_builtin(
 )
 
 
+##
+## MathDx, LTOIR-based, Tile functions
+##
+   
+##
+## Matmul
+##
+def tile_matmul_generic_value_func(arg_types, arg_values):
+    
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return None
+
+    if len(arg_types) != 3: 
+        raise RuntimeError("tile_matmul() requires 4 positional args")
+
+    if not is_tile(arg_types["a"]):
+        raise RuntimeError("tile_matmul() argument 0 must be a tile")
+
+    if not is_tile(arg_types["b"]):
+        raise RuntimeError("tile_matmul() argument 1 must be an tile")
+
+    if not isinstance(arg_types["out"], Tile):
+        raise RuntimeError("tile_matmul() output argument must be a tile")
+
+    if arg_types["out"].storage != "shared":
+        raise RuntimeError("tile_matmul() output argument must have shared memory storage")
+
+
+    return None
+
+def tile_matmul_generic_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var], options: Mapping[str, Any]):
+    
+    a = arg_values["a"]
+    b = arg_values["b"]
+    out = arg_values["out"]
+
+    if any(not is_tile(arg.type) for arg in [a, b, out]):
+        raise RuntimeError(f"tile_matmul() requires three Tile arguments")
+    
+    if any(arg.type.dtype not in [float16, float32, float64, vec2h, vec2f, vec2d] for arg in [a, b, out]):
+        raise RuntimeError(f"tile_matmul() arguments must be tiles of float16, float32 or float64, vec2h, vec2f, vec2d entries")
+    
+    if any(arg.type.dtype != out.type.dtype for arg in [a, b]):
+        raise RuntimeError(f"tile_matmul() arguments must have the same type")
+
+    if (a.type.N != b.type.M) or (a.type.M != out.type.M) or (b.type.N != out.type.N):
+        raise RuntimeError(f"tile_matmul(A, B, C) requires sizes of A, B and C to be consistent for a matmul")
+
+    # set the storage type to the inputs to shared
+    a.type.storage = "shared"
+    b.type.storage = "shared"
+    out.type.storage = "shared"
+    template_args = []
+
+    # Real
+    if out.type.dtype == float16:
+        dtype = "wp::float16"
+        precision = 2 # COMMONDX_PRECISION_F16
+        element_type = 0 # CUBLASDX_TYPE_REAL
+    elif out.type.dtype == float32:
+        dtype = "wp::float32"
+        precision = 3 # COMMONDX_PRECISION_F32
+        element_type = 0 # CUBLASDX_TYPE_REAL
+    elif out.type.dtype == float64:
+        dtype = "wp::float64"
+        precision = 4 # COMMONDX_PRECISION_F64
+        element_type = 0 # CUBLASDX_TYPE_REAL
+    # Complex
+    elif out.type.dtype == vec2h:
+        dtype = "wp::vec2h"
+        precision = 2 # COMMONDX_PRECISION_F16
+        element_type = 1 # CUBLASDX_TYPE_COMPLEX
+    elif out.type.dtype == vec2f:
+        dtype = "wp::vec2f"
+        precision = 3 # COMMONDX_PRECISION_F32
+        element_type = 1 # CUBLASDX_TYPE_COMPLEX
+    elif out.type.dtype == vec2d:
+        dtype = "wp::vec2d"
+        precision = 4 # COMMONDX_PRECISION_F64
+        element_type = 1 # CUBLASDX_TYPE_COMPLEX
+    else:
+        raise RuntimeError("Unsupported datatype")
+
+    # generate the LTO
+    M, K = a.type.M, a.type.N
+    _, N = b.type.M, b.type.N
+    num_threads = options['tile_size']
+    arch = options['output_arch']
+
+    def make_function(M, N, K, tA, tB):
+        # Warp follows Numpy: matrices are row-major
+        # But cuBLASDx follows BLAS: matrices are col-major
+        # So we have to flip M <-> N and A <-> B
+        def make_transpose(t):
+            if t == 'N':
+                return 0 # CUBLASDX_TRANSPOSE_MODE_NON_TRANSPOSED
+            elif t == 'T':
+                return 1 # CUBLASDX_TRANSPOSE_MODE_TRANSPOSED
+            raise RuntimeError("Invalid transpose mode")
+        lto_symbol = f"dot_{M}_{N}_{K}_{tA}_{tB}_{precision}_{element_type}"
+        lto_code = tempfile.NamedTemporaryFile()
+        include_dirs = get_cuda_include_dirs()
+        result = warp.context.runtime.core.cuda_compile_dot(
+            lto_code.name.encode("utf-8"),  lto_symbol.encode("utf-8"),
+            len(include_dirs), include_dirs, get_mathdx_include_dirs(),
+            arch, N, M, K, precision, element_type, make_transpose(tB), make_transpose(tA), num_threads)
+        if not result:
+            raise RuntimeError("Failed to compile tile_matmul")
+        else:
+            with open(lto_code.name, 'rb') as f:
+                lto_code = f.read()
+            return lto_symbol, lto_code
+
+    (fun_forward, lto_forward) = make_function(M, N, K, 'N', 'N')       #    C += A * B
+    (fun_backward_A, lto_backward_A) = make_function(M, K, N, 'N', 'T') # adjA += adjC * B^T
+    (fun_backward_B, lto_backward_B) = make_function(K, N, M, 'T', 'N') # adjB += A^T * adjC
+
+    return ((Var(fun_forward, str, False, True, False), 
+             Var(fun_backward_A, str, False, True, False), 
+             Var(fun_backward_B, str, False, True, False), 
+             Var(dtype, str, False, True, False),
+             a, 
+             b, 
+             out), 
+             template_args, 
+             [lto_forward, lto_backward_A, lto_backward_B])
+
+add_builtin(
+    "tile_matmul_dx",
+    input_types={"a": Tile, "b": Tile, "out": Tile},
+    value_func=tile_matmul_generic_value_func,
+    lto_dispatch_func=tile_matmul_generic_dispatch_func,
+    variadic=True,
+    doc="Compute matrix product and accumulate out += a*b.", 
+    group="Tile Primitives",
+    export=False,
+    namespace="",
+)
+
+##
+## FFT
+##
+def tile_fft_generic_value_func(arg_types, arg_values):
+    
+    if arg_types is None:
+        return None
+
+    if len(arg_types) != 1: 
+        raise RuntimeError("tile_fft() requires 1 positional args")
+
+    if not is_tile(arg_types["inout"]):
+        raise RuntimeError("tile_fft() argument 0 must be a tile")
+
+    if arg_types["inout"].storage != "register":
+        raise RuntimeError("tile_fft() input/output argument must have register memory storage")
+
+    return None
+
+def tile_fft_generic_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var], options: Mapping[str, Any], direction:str = None):
+    
+    inout = arg_values["inout"]
+    inout.type.storage = "register"
+
+    if (not is_tile(inout.type)):
+        raise RuntimeError(f"tile_fft() arguments must be a single tile with register storage")
+
+    if (inout.type.dtype not in [vec2f, vec2d]):
+        raise RuntimeError(f"tile_fft() argument must be a tile of vec2f or vec2d (interpreted as complex) entries")
+
+    # see libcufftdx.hpp
+    if direction == 'forward':
+        dir = 0 # CUFFTDX_DIRECTION_FORWARD
+    elif direction == 'inverse':
+        dir = 1 # CUFFTDX_DIRECTION_INVERSE
+    else:
+        raise RuntimeError("Invalid direction")
+    
+    if inout.type.dtype == vec2f:
+        dtype = "wp::vec2f"
+        precision = 3 # COMMONDX_PRECISION_F32
+    elif inout.type.dtype == vec2d:
+        dtype = "wp::vec2d"
+        precision = 4 # COMMONDX_PRECISION_F64
+    else:
+        raise RuntimeError("Unsupported datatype")
+
+    # M FFTs of size N each
+    batch, size = inout.type.M, inout.type.N
+    num_threads = options['tile_size']
+    arch = options['output_arch']
+    ept = size // num_threads
+    lto_symbol = f"fft_{size}_{ept}_{arch}_{direction}_{precision}"
+
+    lto_code = tempfile.NamedTemporaryFile()
+    shared_memory_size = ctypes.c_int(0)
+
+    include_dirs = get_cuda_include_dirs()
+
+    result = warp.context.runtime.core.cuda_compile_fft(
+        lto_code.name.encode("utf-8"), 
+        lto_symbol.encode("utf-8"),
+        len(include_dirs), include_dirs,
+        get_mathdx_include_dirs(),
+        arch, size, ept, dir, precision, ctypes.byref(shared_memory_size)
+    )
+
+    if not result:
+        raise RuntimeError("Failed to compile tile_matmul")
+
+    with open(lto_code.name, 'rb') as f:
+        lto_code = f.read()
+
+    return ((Var(lto_symbol, str, False, True, False), 
+             Var(dtype, str, False, True, False),
+             Var(str(shared_memory_size.value), str, False, True, False),
+             Var(str(batch), str, False, True, False),
+             Var(str(ept), str, False, True, False),
+             inout), 
+             [], 
+             [lto_code])
+
+add_builtin(
+    "tile_fft_dx",
+    input_types={"inout": Tile},
+    value_func=tile_fft_generic_value_func,
+    lto_dispatch_func=functools.partial(tile_fft_generic_dispatch_func, direction='forward'),
+    variadic=True,
+    doc="Compute the FFT along the second dimension of a 2D tile of data.", 
+    group="Tile Primitives",
+    export=False,
+    namespace="",
+)
+
+add_builtin(
+    "tile_ifft_dx",
+    input_types={"inout": Tile},
+    value_func=tile_fft_generic_value_func,
+    lto_dispatch_func=functools.partial(tile_fft_generic_dispatch_func, direction='inverse'),
+    variadic=True,
+    doc="Compute the inverse FFT along the second dimension of a 2D tile of data.", 
+    group="Tile Primitives",
+    export=False,
+    namespace="",
+)

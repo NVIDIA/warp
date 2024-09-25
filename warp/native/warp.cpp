@@ -1031,7 +1031,7 @@ WP_API bool cuda_graph_end_capture(void* context, void* stream, void** graph_ret
 WP_API bool cuda_graph_launch(void* graph, void* stream) { return false; }
 WP_API bool cuda_graph_destroy(void* context, void* graph) { return false; }
 
-WP_API size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, bool debug, bool verbose, bool verify_fp, bool fast_math, const char* output_file) { return 0; }
+WP_API size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs, bool debug, bool verbose, bool verify_fp, bool fast_math, const char* output_path, size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes) { return 0; }
 
 WP_API void* cuda_load_module(void* context, const char* ptx) { return NULL; }
 WP_API void cuda_unload_module(void* context, void* module) {}

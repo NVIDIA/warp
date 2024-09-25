@@ -407,6 +407,81 @@ def test_tile_extract():
 
     print("Extract backward passed")
 
+@wp.kernel()
+def tile_matmul_dx_kernel(ga: wp.array2d(dtype=wp.float64),
+                          gb: wp.array2d(dtype=wp.float64),
+                          gc: wp.array2d(dtype=wp.float64)):
+    i, j, _ = wp.tid()
+    a = wp.tile_load(ga, i, j, m=TILE_M, n=TILE_K)
+    b = wp.tile_load(gb, i, j, m=TILE_K, n=TILE_N)
+    c = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float64)
+    wp.tile_matmul_dx(a, b, c)
+    wp.tile_store(gc, i, j, c)
+
+def test_tile_matmul_dx():
+
+    rng = np.random.default_rng(42)
+
+    A = rng.random((TILE_M, TILE_K), dtype=np.float64)
+    B = rng.random((TILE_K, TILE_N), dtype=np.float64)
+    C = np.zeros((TILE_M, TILE_N), dtype=np.float64)
+
+    A_wp = wp.array(A, requires_grad=True)
+    B_wp = wp.array(B, requires_grad=True)
+    C_wp = wp.array(C, requires_grad=True)
+
+    with wp.Tape() as tape:
+        wp.launch(tile_matmul_dx_kernel, dim=[1, 1, TILE_DIM], inputs=[A_wp, B_wp, C_wp], block_dim=TILE_DIM)
+
+    # verify forward pass
+    assert(np.allclose(A @ B, C_wp.numpy(), rtol=1.e-4))
+
+    print("Matmul (Dx) forward passed")
+
+    adj_C = np.ones_like(C)
+
+    tape.backward(grads={C_wp: wp.array(adj_C)})
+
+    assert(np.allclose(adj_C@B.T, A_wp.grad.numpy(), rtol=1.e-4))
+    assert(np.allclose(A.T@adj_C, B_wp.grad.numpy(), rtol=1.e-4))
+
+    print("Matmul (Dx) backward passed")
+
+N_FFT = 128
+
+@wp.kernel()
+def tile_fft_dx_kernel(gx: wp.array2d(dtype=wp.vec2f),
+                       gy: wp.array2d(dtype=wp.vec2f)):
+    i, j, _ = wp.tid()
+    xy = wp.tile_load(gx, i, j, m=N_FFT, n=N_FFT)
+    wp.tile_fft_dx(xy)
+    wp.tile_store(gy, i, j, xy)
+
+def test_tile_fft_dx():
+
+    rng = np.random.default_rng(42)
+
+    # Warp doesn't really have a complex64 type, 
+    # so we use 2 float32 to represent a single complex64 number and then convert it to vec2f
+
+    X = rng.random((N_FFT, 2*N_FFT), dtype=np.float32)
+    Y = np.zeros_like(X)
+    
+    X_wp = wp.array2d(X, requires_grad=True, dtype=wp.vec2f)
+    Y_wp = wp.array2d(Y, requires_grad=True, dtype=wp.vec2f)
+    
+    X_c64 = X.view(np.complex64).reshape(N_FFT, N_FFT)
+    Y_c64 = np.fft.fft(X_c64, axis=-1)
+
+    with wp.Tape() as tape:
+        wp.launch(tile_fft_dx_kernel, dim=[1, 1, TILE_DIM], inputs=[X_wp, Y_wp], block_dim=TILE_DIM)
+
+    Y_wp_c64 = Y_wp.numpy().view(np.complex64).reshape(N_FFT, N_FFT)
+    assert(np.allclose(Y_c64, Y_wp_c64, rtol=1.e-4))
+
+    print("FFT (Dx) forward passed")
+
+    # TODO: implement and test backward pass
 
 test_tile_copy()
 test_tile_unary_map()
@@ -416,6 +491,8 @@ test_tile_gemm()
 test_tile_operators()
 test_tile_sum()
 test_tile_extract()
+test_tile_matmul_dx()
+test_tile_fft_dx()
 
 # #-----------------------------------------
 # # center of mass computation

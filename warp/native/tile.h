@@ -861,6 +861,58 @@ void adj_tile_extract(Tile& t, int i, int j, AdjTile& adj_t, int adj_i, int adj_
     adj_t.adj_extract(i, j, adj_ret);
 }
 
+// But cuBLASDx follows the BLAS convention: matrices are col-major, so we swap A & B in the code below
+
+#define tile_matmul_dx(fun_forward, fun_backward_A, fun_backward_B, dtype, A, B, C) \
+    do { \
+        void fun_forward(dtype, dtype*, dtype*, dtype, dtype*); \
+        WP_TILE_SYNC(); \
+        fun_forward(dtype(1.0), B.data, A.data, dtype(1.0), C.data); \
+        WP_TILE_SYNC(); \
+    } while (0)
+
+// adj_fun_forward, adj_fun_backward_A, adj_fun_backward_B, adj_dtype are in practice ignored
+// but are here because builtins.py creates them even though those are effectively compile time constants
+#define adj_tile_matmul_dx(fun_forward, fun_backward_A, fun_backward_B, dtype, A, B, C, \
+                           adj_fun_forward, adj_fun_backward_A, adj_fun_backward_B, adj_dtype, \
+                           adjA, adjB, adjC) \
+    do { \
+        void fun_backward_A(dtype, dtype*, dtype*, dtype, dtype*); \
+        void fun_backward_B(dtype, dtype*, dtype*, dtype, dtype*); \
+        WP_TILE_SYNC(); \
+        fun_backward_A(dtype(1.0), B.data, adjC.data, dtype(1.0), adjA.data); \
+        fun_backward_B(dtype(1.0), adjC.data, A.data, dtype(1.0), adjB.data); \
+        WP_TILE_SYNC(); \
+    } while (0)
+
+#define tile_fft_dx(function_name, dtype, shared_memory_size, batch_size, ept, Xinout) \
+    do { \
+        void function_name(dtype*, dtype*); \
+        WP_TILE_SHARED __align__(16) char buffer[shared_memory_size]; \
+        WP_TILE_SYNC(); \
+        for(int b = 0; b < (int)batch_size; b++) { \
+            function_name(Xinout.data + (int)b * (int)ept, (dtype*)buffer); \
+            WP_TILE_SYNC(); \
+        } \
+    } while (0)
+
+#define tile_ifft_dx tile_fft_dx
+
+// adj_function_name, adj_dtype, adj_shared_memory_size, adj_batch_size, adj_ept are all ignored
+
+#define adj_tile_fft_dx(function_name, dtype, shared_memory_size, batch_size, ept, Xinout, \
+                        adj_function_name, adj_dtype, adj_shared_memory_size, adj_batch_size, adj_ept, \
+                        adj_Xinout) \
+    do { \
+        tile_ifft_dx(function_name, dtype, shared_memory_size, batch_size, ept, adj_Xinout); \
+    } while (0)
+
+#define adj_tile_ifft_dx(function_name, dtype, shared_memory_size, batch_size, ept, Xinout, \
+                         adj_function_name, adj_dtype, adj_shared_memory_size, adj_batch_size, adj_ept, \
+                         adj_Xinout) \
+    do { \
+        tile_fft_dx(function_name, dtype, shared_memory_size, batch_size, ept, adj_Xinout); \
+    } while (0)
 
 } // namespace wp
 
