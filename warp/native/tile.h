@@ -471,7 +471,7 @@ struct tile_shared_t
 
         if (threadIdx.x == 0)
         {
-            printf("Tile(M=%d, N=%d, storage=shared) = [\n", M, N);
+            printf("tile(m=%d, n=%d, storage=shared) = [", M, N);
             for (int i=0; i < M; ++i)
             {
                 printf("%*s[", i>0, "");
@@ -570,7 +570,7 @@ void tile_register_t<T, M, N>::print()
 
     if (threadIdx.x == 0)
     {
-        printf("Tile(M=%d, N=%d, storage=register) = [\n", M, N);
+        printf("tile(m=%d, n=%d, storage=register) = [", M, N);
         for (int i=0; i < M; ++i)
         {
             printf("%*s[", i>0, "");
@@ -666,9 +666,42 @@ template <typename T, int M, int N>
 inline CUDA_CALLABLE auto tile_zeros()
 {
     // tile variable assignment operator will handle initialization (since lhs could be shared/register tile)
-    return T(0.0);
+    return T(0);
 }
 
+// zero initialized tile
+template <typename T, int M, int N>
+inline CUDA_CALLABLE auto tile_ones()
+{
+    // tile variable assignment operator will handle initialization (since lhs could be shared/register tile)
+    return T(1);
+}
+
+// zero initialized tile
+template <typename T, int M, int N>
+inline CUDA_CALLABLE auto tile_arange(T start, T stop, T step)
+{
+    tile_register_t<T, M, N> out;
+    
+    WP_PRAGMA_UNROLL
+    for (int i=0; i < out.NumRegs; ++i)
+    {
+        const int linear = out.index(i);
+
+        // handle case where tile size is not
+        // aligned to block dimensions
+        if (!out.Aligned && linear >= out.Size)
+            break;
+
+        out.data[i] = start + linear*step;
+    }
+    
+    return out;
+}
+
+template <typename T, int M, int N>
+inline CUDA_CALLABLE void adj_tile_arange(int start, int stop, int step,
+                                          int adj_start, int adj_stop, int adj_step, const tile_register_t<T,M,N>& adj_ret) {}
 
 // entry point for load
 template <typename T, int M, int N>

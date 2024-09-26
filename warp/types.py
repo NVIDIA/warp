@@ -3001,6 +3001,17 @@ class TileZeros(Tile):
     def __init__(self, dtype, M, N):
         Tile.__init__(self, dtype, M, N, op="zeros", storage="shared")
 
+class TileRange(Tile):
+    def __init__(self, dtype, start, stop, step):
+
+        self.start = start
+        self.stop = stop
+        self.step = step
+
+        M = 1
+        N = int((stop-start)/step)
+
+        Tile.__init__(self, dtype, M, N, op="arange", storage="register")
 
 class TileConstant(Tile):
     def __init__(self, dtype, M, N):
