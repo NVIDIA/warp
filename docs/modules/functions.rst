@@ -804,67 +804,196 @@ Tile Primitives
 ---------------
 .. py:function:: tile_zeros(m: int32, n: int32, dtype: Scalar) -> Tile
 
-    Allocate a tile local block of zero'd memory
+    Allocates a tile of zero initialized items.
+
+    :param m: Size of the first dimension of the output tile
+    :param n: Size of the second dimension of the output tile
+    :param dtype: Datatype of output tile's elements
+    :returns: A zero initialized tile with ``shape=(m,n)`` and the specified datatype
+
+
+.. py:function:: tile_ones(m: int32, n: int32, dtype: Scalar) -> Tile
+
+    Allocates a tile of one initialized items.
+
+    :param m: Size of the first dimension of the output tile
+    :param n: Size of the second dimension of the output tile
+    :param dtype: Datatype of output tile's elements
+    :returns: A one initialized tile with ``shape=(m,n)`` and the specified dtype
+
+
+.. py:function:: tile_arange(*args: Scalar, dtype: Scalar) -> Tile
+
+    Generates a tile of linearly spaced elements.
+
+    :param args: Variable length positional arguments, interpreted as:
+
+        - ``(stop,)``: Generates values from ``0`` to ``stop - 1``
+        - ``(start, stop)``: Generates values from ``start`` to ``stop - 1``
+        - ``(start, stop, step)``: Generates values from ``start`` to ``stop - 1`` with a step size
+
+    :param dtype: Datatype of output tile's elements (optional, default: int)
+    :returns: A tile with ``shape=(1,n)`` with linearly spaced elements of specified dtype
 
 
 .. py:function:: tile_load(a: Array[Any], x: int32, y: int32, m: int32, n: int32) -> Tile
 
-    Load a tile of size (m, n) worth of data from array a from offset (i=x*m, j=y*n)
+    Loads a tile from a global memory array.
+
+    This method will cooperatively load a tile from global memory using all threads in the block.
+
+    :param a: The source array in global memory
+    :param x: Offset in the source array measured in multiples of ``m``, i.e.: ``i=x*m``
+    :param y: Offset in the source array measured in multiples of ``n``, i.e.; ``j=y*n``
+    :param m: The size of the tile's first dimension
+    :param n: The size of the tile's second dimensions
+    :returns: A tile with ``shape=(m,n)`` and dtype the same as the source array
 
 
 .. py:function:: tile_store(a: Array[Any], x: int32, y: int32, t: Any) -> None
 
-    Store tile `t` to an array `a` at offset `(i=x*m, j=y*n)`
+    Stores a tile to a global memory array.
+
+    This method will cooperatively store a tile to global memory using all threads in the block.
+
+    :param a: The destination array in global memory
+    :param x: Offset in the destination array measured in multiples of ``m``, i.e.: ``i=x*m``
+    :param y: Offset in the destination array measured in multiples of ``n``, i.e.; ``j=y*n``
+    :param t: The source tile to store data from, must have the same dtype as the destination array
 
 
 .. py:function:: tile_atomic_add(a: Array[Any], x: int32, y: int32, t: Any) -> Tile
 
-    Atomically add a tile `t` worth of data to array `a` at offset `(i=x*m, j=y*n)`
+    Atomically add a tile to the array `a`, each element will be updated atomically.
+
+    :param a: Array in global memory, should have the same ``dtype`` as the input tile
+    :param x: Offset in the destination array measured in multiples of ``m``, i.e.: ``i=x*M`` where ``M`` is the first tile dimension
+    :param y: Offset in the destination array measured in multiples of ``n``, i.e.: ``j=y*N`` where ``N`` is the second tile dimension
+    :param t: Source tile to add to the destination array
+    :returns: A tile with the same dimensions and type as the source tile, holding the original value of the destination elements
 
 
 .. py:function:: tile(x: Any) -> Tile
 
-    Construct a Tile from a per-thread kernel value, returns a tile with dimensions of `(1, block_dim)` where block_dim is the number of threads specified in `wp.launch()`
+    Constructs a new Tile from a per-thread kernel values.
+
+    This function converts values computed using scalar kernel code to a tile representation for input into collective operations.
+
+    :param x: A per-thread local value, e.g.: scalar, vector, or matrix.
+    :returns: A tile with ``shape=(1, block_dim)`` where ``block_dim`` is the number of threads specified in ``wp.launch()``.
+
+    This example shows how to create a linear sequence from thread variables:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+            i = wp.tid()
+            t = wp.tile(i*2)
+            print(t)
+
+        wp.launch(compute, dim=16, inputs=[], block_dim=16)
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=16, storage=register) = [[0 2 4 6 8 10 12 14...]]
+    
 
 
-.. py:function:: tile_extract(a: Tile, i: int32, j: int32) -> None
+.. py:function:: tile_extract(a: Tile, i: int32, j: int32) -> Scalar
 
-    Extract element at index (i, j) of the tile and return the native type
+    Extracts a single element from the tile and returns it as a scalar type.
 
+    This function will extract an element from the tile and broadcast its value to all threads in the block, note that this may incur additional synchronization if the source tile is a register tile.
 
-.. py:function:: tile_matmul(a: Tile, b: Tile, out: Tile) -> None
-
-    Compute matrix product and accumulate out += a*b.
-
-
-.. py:function:: tile_sum(a: Tile) -> None
-
-    Computes the sum of all elements in the tile, returns a 1x1 tile, axis is currently ignored
+    :param a: Tile to extract the element from
+    :param i: Coordinate of element on first dimension
+    :param j: Coordinate of element on the second dimension
+    :returns: The value of the element at the specified tile location, with the same type as the input tile's per-element dtype
 
 
-.. py:function:: tile_map(op: Callable, a: Any) -> None
+.. py:function:: tile_sum(a: Tile) -> Tile
 
-    Map the operation onto each element of the tile
+    Cooperatively compute the sum the tile elements using all threads in the block.
+
+    :param a: The tile to compute the sum of
+    :returns: A single element tile with dimensions of (1,1) holding the sum
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            t = wp.tile_ones(dtype=float, m=16, n=16)
+            s = wp.tile_sum(t)
+
+            print(t)
+
+        wp.launch(compute, dim=[64], inputs=[])
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=1, storage=register) = [[256]]
+
+    
 
 
-.. py:function:: tile_map(op: Callable, a: Any, b: Any) -> None
+.. py:function:: tile_map(op: Callable, a: Any) -> Tile
+
+    Apply a unary function onto the tile.
+
+    This function cooperatively applies a unary function to each element of the tile using all threads in the block.
+
+    :param op: A callable function that accepts one argument and returns one argument, may be a user function or builtin
+    :param a: The input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
+    :returns: A tile with the same dimensions as the input tile, currently output tiles must have the same dtype as the input.
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            t = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
+            s = wp.tile_map(wp.sin, t)
+
+            print(s)
+
+        wp.launch(compute, dim=[64], inputs=[])
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=10, storage=register) = [[0 0.0998334 0.198669 0.29552 ...]]
+    
+
+
+.. py:function:: tile_map(op: Callable, a: Any, b: Any) -> Tile
     :noindex:
     :nocontentsentry:
 
-    Map the operation onto each element of the tile
+    Apply the binary map operation onto each corresponding pair of elements from each the tile.
 
 
-.. py:function:: tile_matmul_dx(a: Tile, b: Tile, out: Tile) -> None
+.. py:function:: tile_matmul_dx(a: Tile, b: Tile, out: Tile) -> Tile
 
     Compute matrix product and accumulate out += a*b.
 
 
-.. py:function:: tile_fft_dx(inout: Tile) -> None
+.. py:function:: tile_fft_dx(inout: Tile) -> Tile
 
     Compute the FFT along the second dimension of a 2D tile of data.
 
 
-.. py:function:: tile_ifft_dx(inout: Tile) -> None
+.. py:function:: tile_ifft_dx(inout: Tile) -> Tile
 
     Compute the inverse FFT along the second dimension of a 2D tile of data.
 
@@ -1183,16 +1312,12 @@ Utility
 
     Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
-
 
 .. py:function:: atomic_min(arr: Array[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
     Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
-
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
 .. py:function:: atomic_min(arr: Array[Any], i: int32, j: int32, k: int32, value: Any) -> Any
@@ -1201,16 +1326,12 @@ Utility
 
     Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
-
 
 .. py:function:: atomic_min(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
     Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
-
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
 .. py:function:: atomic_min(arr: FabricArray[Any], i: int32, value: Any) -> Any
@@ -1219,16 +1340,12 @@ Utility
 
     Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
-
 
 .. py:function:: atomic_min(arr: FabricArray[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
     Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
-
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
 .. py:function:: atomic_min(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any
@@ -1237,16 +1354,12 @@ Utility
 
     Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
-
 
 .. py:function:: atomic_min(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
     Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
-
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
 .. py:function:: atomic_min(arr: IndexedFabricArray[Any], i: int32, value: Any) -> Any
@@ -1255,16 +1368,12 @@ Utility
 
     Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
-
 
 .. py:function:: atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
     Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
-
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
 .. py:function:: atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any
@@ -1273,8 +1382,6 @@ Utility
 
     Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
-
 
 .. py:function:: atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
@@ -1282,14 +1389,10 @@ Utility
 
     Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
-
 
 .. py:function:: atomic_max(arr: Array[Any], i: int32, value: Any) -> Any
 
     Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
-
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
 .. py:function:: atomic_max(arr: Array[Any], i: int32, j: int32, value: Any) -> Any
@@ -1298,16 +1401,12 @@ Utility
 
     Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
-
 
 .. py:function:: atomic_max(arr: Array[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
     Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
-
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
 .. py:function:: atomic_max(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
@@ -1316,16 +1415,12 @@ Utility
 
     Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
-
 
 .. py:function:: atomic_max(arr: FabricArray[Any], i: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
     Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
-
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
 .. py:function:: atomic_max(arr: FabricArray[Any], i: int32, j: int32, value: Any) -> Any
@@ -1334,16 +1429,12 @@ Utility
 
     Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
-
 
 .. py:function:: atomic_max(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
     Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
-
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
 .. py:function:: atomic_max(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
@@ -1352,16 +1443,12 @@ Utility
 
     Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
-
 
 .. py:function:: atomic_max(arr: IndexedFabricArray[Any], i: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
     Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
-
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
 .. py:function:: atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any) -> Any
@@ -1370,8 +1457,6 @@ Utility
 
     Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
-
 
 .. py:function:: atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any
     :noindex:
@@ -1379,16 +1464,12 @@ Utility
 
     Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
-
 
 .. py:function:: atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any
     :noindex:
     :nocontentsentry:
 
     Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
-
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
 
 
 .. py:function:: lerp(a: Float, b: Float, t: Float) -> Float
@@ -2032,7 +2113,7 @@ Operators
     :nocontentsentry:
 
 
-.. py:function:: add(a: Tile, b: Tile) -> None
+.. py:function:: add(a: Tile, b: Tile) -> Tile
     :noindex:
     :nocontentsentry:
 
