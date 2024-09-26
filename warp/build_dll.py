@@ -244,7 +244,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
             iter_dbg = "_ITERATOR_DEBUG_LEVEL=2"
             debug = "_DEBUG"
 
-        cpp_flags = f'/nologo /std:c++17 /GR- {runtime} /D "{debug}" /D "{cuda_enabled}" /D "{cutlass_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" {includes} '
+        cpp_flags = f'/nologo /std:c++17 /GR- {runtime} /D "{debug}" /D "{cuda_enabled}" /D "{cutlass_enabled}" /D "WP_ENABLE_MATHDX=0" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" {includes} '
 
         if args.mode == "debug":
             cpp_flags += "/Zi /Od /D WP_ENABLE_DEBUG=1"
@@ -282,7 +282,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
                 run_cmd(cuda_cmd)
                 linkopts.append(quote(cu_out))
                 linkopts.append(
-                    f'cudart_static.lib nvrtc_static.lib nvrtc-builtins_static.lib nvptxcompiler_static.lib ws2_32.lib user32.lib /LIBPATH:"{cuda_home}/lib/x64"'
+                    f'cudart_static.lib nvrtc_static.lib nvrtc-builtins_static.lib nvptxcompiler_static.lib ws2_32.lib user32.lib nvJitLink_static.lib /LIBPATH:"{cuda_home}/lib/x64"'
                 )
 
         with ScopedTimer("link", active=args.verbose):
@@ -290,19 +290,24 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
             run_cmd(link_cmd)
 
     else:
-        libmathdx_home = os.environ['LIBMATHDX_HOME']
-        libmathdx_includes = f'-I{libmathdx_home}/include'
         cpp_includes = f' -I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}-{arch}/include"'
         cpp_includes += f' -I"{warp_home_path.parent}/_build/host-deps/llvm-project/release-{arch}/include"'
         cuda_includes = f' -I"{cuda_home}/include"' if cu_path else ""
         includes = cpp_includes + cuda_includes
+
+        if args.libmathdx_path:
+            libmathdx_includes = f' -I"{args.libmathdx_path}/include"'
+            mathdx_enabled = "WP_ENABLE_MATHDX=1"
+        else:
+            libmathdx_includes = ""
+            mathdx_enabled = "WP_ENABLE_MATHDX=0"
 
         if sys.platform == "darwin":
             version = f"--target={arch}-apple-macos11"
         else:
             version = "-fabi-version=13"  # GCC 8.2+
 
-        cpp_flags = f'{version} --std=c++17 -fno-rtti -D{cuda_enabled} -D{cutlass_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden -D_GLIBCXX_USE_CXX11_ABI=0 -I"{native_dir}" {includes} '
+        cpp_flags = f'{version} --std=c++17 -fno-rtti -D{cuda_enabled} -D{cutlass_enabled} -D{mathdx_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden -D_GLIBCXX_USE_CXX11_ABI=0 -I"{native_dir}" {includes} '
 
         if mode == "debug":
             cpp_flags += "-O0 -g -D_DEBUG -DWP_ENABLE_DEBUG=1 -fkeep-inline-functions"
@@ -330,18 +335,21 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
             cu_out = cu_path + ".o"
 
             if mode == "debug":
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(nvcc_opts)} -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{cutlass_enabled} {cutlass_includes} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(nvcc_opts)} -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{cutlass_enabled} {cutlass_includes} -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
 
             elif mode == "release":
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -O3 --compiler-options -fPIC,-fvisibility=hidden {" ".join(nvcc_opts)} -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{cutlass_enabled} {cutlass_includes} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -O3 --compiler-options -fPIC,-fvisibility=hidden {" ".join(nvcc_opts)} -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{cutlass_enabled} {cutlass_includes} -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
 
             with ScopedTimer("build_cuda", active=args.verbose):
                 run_cmd(cuda_cmd)
 
                 ld_inputs.append(quote(cu_out))
                 ld_inputs.append(
-                    f'-L"{cuda_home}/lib64" -L{libmathdx_home}/lib -lcudart_static -lnvrtc_static -lnvrtc-builtins_static -lnvptxcompiler_static -lnvJitLink_static -lpthread -ldl -lrt -lmathdx_static'
+                    f'-L"{cuda_home}/lib64" -lcudart_static -lnvrtc_static -lnvrtc-builtins_static -lnvptxcompiler_static -lnvJitLink_static -lpthread -ldl -lrt'
                 )
+
+                if args.libmathdx_path:
+                    ld_inputs.append(f"-L{args.libmathdx_path}/lib -lmathdx_static")
 
         if sys.platform == "darwin":
             opt_no_undefined = "-Wl,-undefined,error"

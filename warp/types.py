@@ -1492,10 +1492,10 @@ def types_equal(a, b, match_generic=False):
 
     if is_array(a) and type(a) is type(b):
         return True
-    
+
     if is_tile(a) and is_tile(b):
         return True
-    
+
     return scalars_equal(a, b, match_generic)
 
 
@@ -2957,7 +2957,6 @@ def array_type_id(a):
 
 # tile expression objects
 class Tile:
-
     allocation = 0
 
     def __init__(self, dtype, M, N, op=None, storage="register"):
@@ -2973,7 +2972,7 @@ class Tile:
 
         if self.storage == "register":
             return f"wp::tile_register_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
-        elif self.storage == "shared":           
+        elif self.storage == "shared":
             return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
 
     # generates C-initializer string
@@ -2983,15 +2982,12 @@ class Tile:
         if self.storage == "register":
             return self.ctype() + "(0.0)"
         elif self.storage == "shared":
-
             if adjoint:
                 # backward pass requires zeroed memory
                 return f"wp::tile_alloc_zeros<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{Tile.alloc()}>()"
             else:
                 # forward mode can be uninitialized until first used by the kernel
                 return f"wp::tile_alloc_empty<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{Tile.alloc()}>()"
-            
-
 
     # generate a unique allocation index for shared memory
     @classmethod
@@ -3000,26 +2996,23 @@ class Tile:
         Tile.allocation += 1
         return index
 
-class TileZeros(Tile):
 
+class TileZeros(Tile):
     def __init__(self, dtype, M, N):
         Tile.__init__(self, dtype, M, N, op="zeros", storage="shared")
-        
+
 
 class TileConstant(Tile):
-
     def __init__(self, dtype, M, N):
         Tile.__init__(self, dtype, M, N, op="constant", storage="register")
-        
+
 
 class TileLoad(Tile):
-
     def __init__(self, array, M, N):
         Tile.__init__(self, array.dtype, M, N, op="load", storage="register")
-        
+
 
 class TileUnaryMap(Tile):
-
     def __init__(self, t):
         Tile.__init__(self, t.dtype, t.M, t.N, op="unary_map", storage="register")
 
@@ -3027,7 +3020,6 @@ class TileUnaryMap(Tile):
 
 
 class TileBinaryMap(Tile):
-
     def __init__(self, a, b):
         Tile.__init__(self, a.dtype, a.M, a.N, op="binary_map", storage="register")
 
@@ -3036,7 +3028,6 @@ class TileBinaryMap(Tile):
 
 
 class TileShared(Tile):
-
     def __init__(self, t):
         Tile.__init__(self, t.dtype, t.M, t.N, "shared", storage="shared")
 

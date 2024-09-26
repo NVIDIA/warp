@@ -2,9 +2,6 @@
 
 #include "builtin.h"
 
-// todo: requires CTK, replace with inline ptx
-#include "cuda_pipeline_primitives.h"
-
 #define USE_CUTE 0
 
 #if USE_CUTE

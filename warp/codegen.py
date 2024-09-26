@@ -27,6 +27,7 @@ from warp.types import *
 # of current compile options (block_dim) etc
 options = {}
 
+
 class WarpCodegenError(RuntimeError):
     def __init__(self, message):
         super().__init__(message)
@@ -1278,7 +1279,9 @@ class Adjoint:
         # for example by checking whether an argument corresponds to
         # a literal value or references a variable.
         if func.lto_dispatch_func is not None:
-            func_args, template_args, ltoirs = func.lto_dispatch_func(func.input_types, return_type, bound_args, options=adj.builder_options)
+            func_args, template_args, ltoirs = func.lto_dispatch_func(
+                func.input_types, return_type, bound_args, options=adj.builder_options
+            )
             adj.ltoirs.extend(ltoirs)
         elif func.dispatch_func is not None:
             func_args, template_args = func.dispatch_func(func.input_types, return_type, bound_args)
@@ -1335,7 +1338,7 @@ class Adjoint:
             replay_call = forward_call
             if func.custom_replay_func is not None:
                 replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
-               
+
         else:
             # handle multiple value functions
 
@@ -1346,7 +1349,6 @@ class Adjoint:
                 f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + output, use_initializer_list)});"
             )
             replay_call = forward_call
-
 
         if func.skip_replay:
             adj.add_forward(forward_call, replay="// " + replay_call)
@@ -1360,7 +1362,7 @@ class Adjoint:
             adj_args = tuple(strip_reference(x) for x in func_args)
             reverse_has_output_args = (
                 func.require_original_output_arg or len(output_list) > 1
-            ) and func.custom_grad_func is None            
+            ) and func.custom_grad_func is None
             arg_str = adj.format_reverse_call_args(
                 fwd_args,
                 adj_args,
@@ -3094,7 +3096,6 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu"):
     lines += ["// primal vars\n"]
 
     for var in adj.variables:
-        
         # do not predeclare vars with auto type
         if var.ctype() == "auto":
             continue
@@ -3136,11 +3137,10 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
     lines += ["// primal vars\n"]
 
     for var in adj.variables:
-
         if is_tile(var.type):
             lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit()};\n"]
         elif var.constant is None:
-            lines += [f"{var.ctype()} {var.emit()};\n"]        
+            lines += [f"{var.ctype()} {var.emit()};\n"]
         else:
             lines += [f"const {var.ctype()} {var.emit()} = {constant_str(var.constant)};\n"]
 
@@ -3151,7 +3151,7 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
     for var in adj.variables:
         name = var.emit_adj()
         ctype = var.ctype(value_type=True)
-               
+
         if is_tile(var.type):
             lines += [f"{ctype} {name} = {var.type.cinit(adjoint=True)};\n"]
         else:

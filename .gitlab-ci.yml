@@ -30,6 +30,7 @@ variables:
   PIP_CACHE_DIR: '$CI_PROJECT_DIR/.cache/pip'
   CUDA_BIN: '$CI_PROJECT_DIR/_build/target-deps/cuda/bin'
   CUDA: '$CI_PROJECT_DIR/_build/target-deps/cuda'
+  CUDA_HOME: '$CI_PROJECT_DIR/_build/target-deps/cuda'
   PYTHON: '$CI_PROJECT_DIR/_build/target-deps/python/python'
   LINBUILD: '$CI_PROJECT_DIR/_build/host-deps/linbuild/linbuild.sh'
   WARP_CACHE_ROOT: '$CI_PROJECT_DIR/.cache/warp' # Used by the parallel test runner
@@ -490,6 +491,32 @@ debug build and test:
   needs: [trigger debug build and test pipeline]
   trigger:
     include: /.gitlab/ci/debug-build-and-test.yml
+  extends:
+    - .trigger_common
+
+trigger mathdx support pipeline:
+  stage: test
+  image: busybox
+  extends:
+    - .runner-utility-linux-x86_64
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
+    - when: manual # Can be triggered in all other scenarios
+      allow_failure: true
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - echo "Run this job to test Warp compiled with mathdx support."
+
+# Uses the same Python version as the main pipeline.
+mathdx support:
+  stage: child pipelines
+  needs: [trigger mathdx support pipeline]
+  trigger:
+    include: /.gitlab/ci/mathdx-support.yml
   extends:
     - .trigger_common
 
