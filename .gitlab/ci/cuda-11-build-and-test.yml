@@ -122,7 +122,7 @@ linux-x86_64 test:
     - python -m pip install --upgrade pip
     - python -m pip install --upgrade usd-core
     - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
-    - python -m pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    - python -m pip install -U "jax[cuda12]"
     - python -m pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
     # HACK: disable P2P tests due to misbehaving agents
