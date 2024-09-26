@@ -1750,7 +1750,7 @@ add_builtin(
     value_func=tile_zeros_value_func,
     dispatch_func=tile_zeros_dispatch_func,
     variadic=True,
-    doc="Allocate a tile local block of zero'd memory",
+    doc="Allocate a tile of zero initialized items",
     group="Tile Primitives",
     export=False,
 )
@@ -1909,8 +1909,27 @@ add_builtin(
     input_types={"x": Any},
     value_func=tile_value_func,
     variadic=True,
-    doc="Construct a Tile from a per-thread kernel value, returns a tile with dimensions of `(1, block_dim)` where block_dim is the number of threads specified in `wp.launch()`",
-    group="Tile Primitives",
+    doc="""Construct a Tile from a per-thread kernel value.
+    
+    Args:
+        x (Any): A per-thread local value, e.g.: scalar, vector, or matrix.
+
+    Returns:
+        Tile: A tile with dimensions of ``(1, block_dim)`` where ``block_dim`` is the number of threads specified in ``wp.launch().``
+
+    Examples:
+        This example shows how to create a linear sequence from thread variables:
+
+        .. code-block:: python
+            
+            # get thread id
+            i = wp.tid()
+            
+            # convert to block wide tile
+            t = wp.tile(i*2)
+    """,
+
+    group="Tile Primitives""",
     export=False,
 )
 
@@ -1919,7 +1938,7 @@ def tile_extract_value_func(arg_types, arg_values):
     
     # return generic type (for doc builds)
     if arg_types is None:
-        return None    
+        return Scalar    
     
     if len(arg_types) != 3: 
         raise RuntimeError("tile_extract() requires 3 positional args")
@@ -1945,7 +1964,7 @@ def tile_matmul_value_func(arg_types, arg_values):
     
     # return generic type (for doc builds)
     if arg_types is None:
-        return None
+        return Tile(dtype=Any, M=Any, N=Any)
 
     if len(arg_types) != 3: 
         raise RuntimeError("tile_matmul() requires 4 positional args")
@@ -1971,7 +1990,7 @@ def tile_matmul_dispatch_func(arg_types: Mapping[str, type], return_type: Any, a
     b = arg_values["b"]
     out = arg_values["out"]
 
-    # set the storage type to the inputs to shared
+    # force the storage type of the input variables to shared memory
     a.type.storage = "shared"
     b.type.storage = "shared"
     out.type.storage = "shared"
@@ -1995,7 +2014,7 @@ def tile_sum_value_func(arg_types, arg_values):
     
     # return generic type (for doc builds)
     if arg_types is None:
-        return None
+        return Tile(dtype=Any, M=1, N=1)
 
     if len(arg_types) != 1:
         raise RuntimeError("tile_sum() requires 1 positional args")
@@ -2024,7 +2043,7 @@ add_builtin(
 def tile_unary_map_value_func(arg_types, arg_values):
 
     if arg_types is None:
-        return None
+        return Tile(dtype=Any, M=Any, N=Any)
 
     a = arg_types["a"]
 
@@ -2048,7 +2067,7 @@ add_builtin(
     #dispatch_func=tile_map_dispatch_func,
     #variadic=True,
     native_func="tile_unary_map",
-    doc="Map the operation onto each element of the tile", 
+    doc="Unary map the operation onto each element of the tile.", 
     group="Tile Primitives",
     export=False,
 )
@@ -2056,7 +2075,7 @@ add_builtin(
 def tile_binary_map_value_func(arg_types, arg_values):
 
     if arg_types is None:
-        return None
+        return Tile(dtype=Any, M=Any, N=Any)
 
     a = arg_types["a"]
     b = arg_types["b"]
@@ -2088,7 +2107,7 @@ add_builtin(
     #dispatch_func=tile_map_dispatch_func,
     #variadic=True,
     native_func="tile_binary_map",
-    doc="Map the operation onto each element of the tile", 
+    doc="Apply the binary map operation onto each corresponding pair of elements from each the tile.", 
     group="Tile Primitives",
     export=False,
 )
@@ -4793,7 +4812,7 @@ def tile_matmul_generic_value_func(arg_types, arg_values):
     
     # return generic type (for doc builds)
     if arg_types is None:
-        return None
+        return Tile(dtype=Any, M=Any, N=Any)
 
     if len(arg_types) != 3: 
         raise RuntimeError("tile_matmul() requires 4 positional args")
@@ -4928,7 +4947,7 @@ add_builtin(
 def tile_fft_generic_value_func(arg_types, arg_values):
     
     if arg_types is None:
-        return None
+        return Tile(dtype=Any, M=Any, N=Any)
 
     if len(arg_types) != 1: 
         raise RuntimeError("tile_fft() requires 1 positional args")
