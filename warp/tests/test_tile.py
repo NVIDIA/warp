@@ -12,6 +12,8 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
+wp.init()  # For wp.context.runtime.core.is_mathdx_enabled()
+
 TILE_M = wp.constant(8)
 TILE_N = wp.constant(4)
 TILE_K = wp.constant(8)
@@ -167,22 +169,22 @@ def test_tile_binary_map(test, device):
     assert_np_equal(B_wp.grad.numpy(), B_grad)
 
 
-@wp.kernel
-def tile_grouped_gemm(A: wp.array3d(dtype=float), B: wp.array3d(dtype=float), C: wp.array3d(dtype=float)):
-    # output tile index
-    i = wp.tid()
-
-    a = wp.tile_load(A[i], 0, 0, m=TILE_M, n=TILE_K)
-    b = wp.tile_load(B[i], 0, 0, m=TILE_K, n=TILE_N)
-
-    sum = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32)
-
-    wp.tile_matmul(a, b, sum)
-
-    wp.tile_store(C[i], 0, 0, sum)
-
-
+@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_tile_grouped_gemm(test, device):
+    @wp.kernel
+    def tile_grouped_gemm(A: wp.array3d(dtype=float), B: wp.array3d(dtype=float), C: wp.array3d(dtype=float)):
+        # output tile index
+        i = wp.tid()
+
+        a = wp.tile_load(A[i], 0, 0, m=TILE_M, n=TILE_K)
+        b = wp.tile_load(B[i], 0, 0, m=TILE_K, n=TILE_N)
+
+        sum = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32)
+
+        wp.tile_matmul(a, b, sum)
+
+        wp.tile_store(C[i], 0, 0, sum)
+
     batch_count = 56
 
     M = TILE_M
@@ -199,40 +201,38 @@ def test_tile_grouped_gemm(test, device):
     C_wp = wp.zeros((batch_count, TILE_M, TILE_N), requires_grad=True, device=device)
 
     with wp.Tape() as tape:
-        wp.launch_tiled(tile_grouped_gemm, 
-                  dim=[batch_count],
-                  inputs=[A_wp, B_wp, C_wp], 
-                  block_dim=TILE_DIM, 
-                  device=device)
+        wp.launch_tiled(
+            tile_grouped_gemm, dim=[batch_count], inputs=[A_wp, B_wp, C_wp], block_dim=TILE_DIM, device=device
+        )
 
     # TODO: 32 mismatched elements
     assert_np_equal(C_wp.numpy(), C)
 
 
-@wp.kernel
-def tile_gemm(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float), C: wp.array2d(dtype=float)):
-    # output tile index
-    i, j = wp.tid()
-
-    sum = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32)
-
-    M = A.shape[0]
-    N = B.shape[1]
-    K = A.shape[1]
-
-    count = int(K / TILE_K)
-
-    for k in range(0, count):
-        a = wp.tile_load(A, i, k, m=TILE_M, n=TILE_K)
-        b = wp.tile_load(B, k, j, m=TILE_K, n=TILE_N)
-
-        # sum += a*b
-        wp.tile_matmul(a, b, sum)
-
-    wp.tile_store(C, i, j, sum)
-
-
+@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_tile_gemm(test, device):
+    @wp.kernel
+    def tile_gemm(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float), C: wp.array2d(dtype=float)):
+        # output tile index
+        i, j = wp.tid()
+
+        sum = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32)
+
+        M = A.shape[0]
+        N = B.shape[1]
+        K = A.shape[1]
+
+        count = int(K / TILE_K)
+
+        for k in range(0, count):
+            a = wp.tile_load(A, i, k, m=TILE_M, n=TILE_K)
+            b = wp.tile_load(B, k, j, m=TILE_K, n=TILE_N)
+
+            # sum += a*b
+            wp.tile_matmul(a, b, sum)
+
+        wp.tile_store(C, i, j, sum)
+
     M = TILE_M * 7
     K = TILE_K * 6
     N = TILE_N * 5
@@ -302,11 +302,8 @@ def test_tile_operators(test, device):
 
     with wp.Tape() as tape:
         wp.launch_tiled(
-            tile_operators, 
-            dim=[batch_count], 
-            inputs=[input_wp, output_wp], 
-            block_dim=TILE_DIM, 
-            device=device)
+            tile_operators, dim=[batch_count], inputs=[input_wp, output_wp], block_dim=TILE_DIM, device=device
+        )
 
     assert_np_equal(output_wp.numpy(), output)
 
@@ -387,12 +384,7 @@ def test_tile_extract(test, device):
     output_wp = wp.zeros_like(input_wp, requires_grad=True, device=device)
 
     with wp.Tape() as tape:
-        wp.launch_tiled(
-            tile_extract_kernel, 
-            dim=[1], 
-            inputs=[input_wp, output_wp], 
-            block_dim=TILE_DIM, 
-            device=device)
+        wp.launch_tiled(tile_extract_kernel, dim=[1], inputs=[input_wp, output_wp], block_dim=TILE_DIM, device=device)
 
     assert_array_equal(output_wp, input_wp)
 
