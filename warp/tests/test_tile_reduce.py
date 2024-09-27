@@ -72,8 +72,9 @@ def tile_reduce_simt_kernel(output: wp.array(dtype=int)):
 
 
 def test_tile_reduce_simt(test, device):
+    
     # use an unaligned grid dimension
-    N = int(TILE_DIM * 3 / 2)
+    N = TILE_DIM*4 + 5
 
     output = wp.zeros(shape=1, dtype=int, requires_grad=True, device=device)
 

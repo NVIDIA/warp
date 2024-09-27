@@ -30,7 +30,7 @@ inline CUDA_CALLABLE T warp_shuffle_down(T val, int offset)
     Word* src  = reinterpret_cast<Word*>(&input);
 
     unsigned int shuffle_word;
-    unsigned int mask = 0xffffffff;
+    unsigned int mask = __activemask();
 
     constexpr int word_count = (sizeof(T) + sizeof(Word) - 1) / sizeof(Word);
 
