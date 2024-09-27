@@ -1844,14 +1844,18 @@ def tile_arange_dispatch_func(arg_types: Mapping[str, type], return_type: Any, a
     template_args.append(m)
     template_args.append(n)
 
-    # take dtype from stop value
-    t = return_type.dtype
+    # todo: it is somewhat redundant to create new vars here since some of start,stop,step
+    # already exist depending on which form the function was called by the user
+    start = warp.codegen.Var(label=None, type=return_type.dtype, constant=return_type.start)
+    stop = warp.codegen.Var(label=None, type=return_type.dtype, constant=return_type.stop)
+    step = warp.codegen.Var(label=None, type=return_type.dtype, constant=return_type.step)
 
-    start = warp.codegen.Var(label=None, type=t, constant=return_type.start)
-    stop = warp.codegen.Var(label=None, type=t, constant=return_type.stop)
-    step = warp.codegen.Var(label=None, type=t, constant=return_type.step)
+    function_args = []
+    function_args.append(start)
+    function_args.append(stop)
+    function_args.append(step)
 
-    return ([start, stop, step], template_args)
+    return (function_args, template_args)
 
 
 add_builtin(
