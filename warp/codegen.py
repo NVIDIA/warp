@@ -1647,7 +1647,7 @@ class Adjoint:
         if isinstance(obj, types.ModuleType):
             return obj
 
-        raise RuntimeError("Cannot reference a global variable from a kernel unless `wp.constant()` is being used")
+        raise TypeError(f"Invalid external reference type: {type(obj)}")
 
     @staticmethod
     def resolve_type_attribute(var_type: type, attr: str):

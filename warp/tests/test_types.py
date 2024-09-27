@@ -215,7 +215,7 @@ class TestTypes(unittest.TestCase):
         self.assertEqual(const, wp.vec3i(1, 2, 3))
 
     def test_constant_error_invalid_type(self):
-        with self.assertRaisesRegex(RuntimeError, r"Invalid constant type: <class 'tuple'>$"):
+        with self.assertRaisesRegex(TypeError, r"Invalid constant type: <class 'tuple'>$"):
             wp.constant((1, 2, 3))
 
     def test_vector_assign(self):

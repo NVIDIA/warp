@@ -32,6 +32,7 @@
 - Skip unused functions in module code generation, improving performance.
 - Avoid reloading modules if their content does not change, improving performance.
 - `wp.Mesh.points` is now a property instead of a raw data member, its reference can be changed after the mesh is initialized.
+- Improve error message when invalid objects are referenced in a Warp kernel.
 
 ### Fixed
 
