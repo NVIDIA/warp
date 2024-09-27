@@ -305,6 +305,7 @@ inline CUDA_CALLABLE void tile_matmul(const array_t<T>& A, const array_t<T>& B, 
 #endif // USE_CUTE
 
 
+#if 0
 
 template <typename TileA, typename TileB, typename TileC>
 void tile_matmul(TileA& a, TileB& b, TileC& c)
@@ -327,6 +328,6 @@ void adj_tile_matmul(TileA& a, TileB& b, TileC& c,
     tile_matmul_scalar(wp::tile_transpose(a), adj_c, adj_b);
 }
 
-
+#endif // 0
 
 } // namespace wp

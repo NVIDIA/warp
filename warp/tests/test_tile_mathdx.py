@@ -25,18 +25,18 @@ TILE_DIM = 64
 
 
 @wp.kernel()
-def tile_math_dx_matmul_kernel(
+def tile_math_matmul_kernel(
     ga: wp.array2d(dtype=wp.float64), gb: wp.array2d(dtype=wp.float64), gc: wp.array2d(dtype=wp.float64)
 ):
     i, j, _ = wp.tid()
     a = wp.tile_load(ga, i, j, m=TILE_M, n=TILE_K)
     b = wp.tile_load(gb, i, j, m=TILE_K, n=TILE_N)
     c = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float64)
-    wp.tile_matmul_dx(a, b, c)
+    wp.tile_matmul(a, b, c)
     wp.tile_store(gc, i, j, c)
 
 
-def test_tile_math_dx_matmul(test, device):
+def test_tile_math_matmul(test, device):
     rng = np.random.default_rng(42)
 
     A = rng.random((TILE_M, TILE_K), dtype=np.float64)
@@ -49,7 +49,7 @@ def test_tile_math_dx_matmul(test, device):
 
     with wp.Tape() as tape:
         wp.launch(
-            tile_math_dx_matmul_kernel,
+            tile_math_matmul_kernel,
             dim=[1, 1, TILE_DIM],
             inputs=[A_wp, B_wp, C_wp],
             block_dim=TILE_DIM,
@@ -68,14 +68,14 @@ def test_tile_math_dx_matmul(test, device):
 
 
 @wp.kernel()
-def tile_math_dx_fft_kernel(gx: wp.array2d(dtype=wp.vec2f), gy: wp.array2d(dtype=wp.vec2f)):
+def tile_math_fft_kernel(gx: wp.array2d(dtype=wp.vec2f), gy: wp.array2d(dtype=wp.vec2f)):
     i, j, _ = wp.tid()
     xy = wp.tile_load(gx, i, j, m=N_FFT, n=N_FFT)
-    wp.tile_fft_dx(xy)
+    wp.tile_fft(xy)
     wp.tile_store(gy, i, j, xy)
 
 
-def test_tile_math_dx_fft(test, device):
+def test_tile_math_fft(test, device):
     rng = np.random.default_rng(42)
 
     # Warp doesn't really have a complex64 type,
@@ -91,7 +91,7 @@ def test_tile_math_dx_fft(test, device):
     Y_c64 = np.fft.fft(X_c64, axis=-1)
 
     with wp.Tape() as tape:
-        wp.launch(tile_math_dx_fft_kernel, dim=[1, 1, TILE_DIM], inputs=[X_wp, Y_wp], block_dim=TILE_DIM, device=device)
+        wp.launch(tile_math_fft_kernel, dim=[1, 1, TILE_DIM], inputs=[X_wp, Y_wp], block_dim=TILE_DIM, device=device)
 
     Y_wp_c64 = Y_wp.numpy().view(np.complex64).reshape(N_FFT, N_FFT)
 
@@ -108,8 +108,8 @@ class TestTileMathDx(unittest.TestCase):
     pass
 
 
-add_function_test(TestTileMathDx, "test_tile_math_dx_matmul", test_tile_math_dx_matmul, devices=devices)
-add_function_test(TestTileMathDx, "test_tile_math_dx_fft", test_tile_math_dx_fft, devices=devices)
+add_function_test(TestTileMathDx, "test_tile_math_matmul", test_tile_math_matmul, devices=devices)
+add_function_test(TestTileMathDx, "test_tile_math_fft", test_tile_math_fft, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

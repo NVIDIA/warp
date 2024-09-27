@@ -2250,7 +2250,7 @@ add_builtin(
 
     :param op: A callable function that accepts one argument and returns one argument, may be a user function or builtin
     :param a: The input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
-    :returns: A tile with the same dimensions as the input tile, currently output tiles must have the same dtype as the input.
+    :returns: A tile with the same dimensions and datatype as the input tile.
 
     Example:
 
@@ -2264,7 +2264,7 @@ add_builtin(
 
             print(s)
 
-        wp.launch(compute, dim=[64], inputs=[])
+        wp.launch(compute, dim=[16], inputs=[])
 
     Prints:
 
@@ -2311,7 +2311,37 @@ add_builtin(
     # dispatch_func=tile_map_dispatch_func,
     # variadic=True,
     native_func="tile_binary_map",
-    doc="Apply the binary map operation onto each corresponding pair of elements from each the tile.",
+    doc="""Apply a binary function onto the tile.
+
+    This function cooperatively applies a binary function to each element of the tiles using all threads in the block.
+    Both input tiles must have the same dimensions and datatype.
+
+    :param op: A callable function that accepts two arguments and returns one argument, all of the same type, may be a user function or builtin
+    :param a: The first input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
+    :param b: The second input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
+    :returns: A tile with the same dimensions and datatype as the input tiles.
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            a = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
+            b = wp.tile_ones(m=1, n=10, dtype=float)
+
+            s = wp.tile_map(wp.add, a, b)
+
+            print(s)
+
+        wp.launch(compute, dim=[16], inputs=[])
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=10, storage=register) = [[1 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9]]""",
     group="Tile Primitives",
     export=False,
 )
@@ -5023,8 +5053,8 @@ def tile_matmul_generic_value_func(arg_types, arg_values):
     return None
 
 
-def tile_matmul_generic_dispatch_func(
-    arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var], options: Mapping[str, Any]
+def tile_matmul_generic_lto_dispatch_func(
+    arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var], options: Mapping[str, Any], builder: warp.context.ModuleBuilder
 ):
     a = arg_values["a"]
     b = arg_values["b"]
@@ -5097,6 +5127,12 @@ def tile_matmul_generic_dispatch_func(
             raise RuntimeError("Invalid transpose mode")
 
         lto_symbol = f"dot_{M}_{N}_{K}_{tA}_{tB}_{precision}_{element_type}"
+
+        # early out if LTO for this combination already exists for this module
+        if lto_symbol in builder.ltoirs:
+            return lto_symbol, builder.ltoirs[lto_symbol]
+
+        # otherwise compile LTO
         lto_code = tempfile.NamedTemporaryFile()
         include_dirs = get_cuda_include_dirs()
         result = warp.context.runtime.core.cuda_compile_dot(
@@ -5120,6 +5156,8 @@ def tile_matmul_generic_dispatch_func(
         else:
             with open(lto_code.name, "rb") as f:
                 lto_code = f.read()
+
+            builder.ltoirs[lto_symbol] = lto_code            
             return lto_symbol, lto_code
 
     (fun_forward, lto_forward) = make_function(M, N, K, "N", "N")  #    C += A * B
@@ -5142,12 +5180,24 @@ def tile_matmul_generic_dispatch_func(
 
 
 add_builtin(
-    "tile_matmul_dx",
+    "tile_matmul",
     input_types={"a": Tile, "b": Tile, "out": Tile},
     value_func=tile_matmul_generic_value_func,
-    lto_dispatch_func=tile_matmul_generic_dispatch_func,
+    lto_dispatch_func=tile_matmul_generic_lto_dispatch_func,
     variadic=True,
-    doc="Compute matrix product and accumulate out += a*b.",
+    doc="""Computes the matrix product and accumulates ``out += a*b``.
+
+    Supported datatypes are:
+        * fp16, fp32, fp64 (real)
+        * vec2h, vec2f, vec2d (complex)
+
+    All input and output tiles must have the same datatype. Tile data will be automatically be migrated 
+    to shared memory if necessary and will use TensoreCore operations when available.
+       
+    :param a: A tile with ``shape=(M, K)``
+    :param b: A tile with ``shape=(K, N)``
+    :param out: A tile with ``shape=(M, N)``
+    """,
     group="Tile Primitives",
     export=False,
     namespace="",
@@ -5173,11 +5223,12 @@ def tile_fft_generic_value_func(arg_types, arg_values):
     return None
 
 
-def tile_fft_generic_dispatch_func(
+def tile_fft_generic_lto_dispatch_func(
     arg_types: Mapping[str, type],
     return_type: Any,
     arg_values: Mapping[str, Var],
     options: Mapping[str, Any],
+    builder: warp.context.ModuleBuilder,
     direction: str = None,
 ):
     inout = arg_values["inout"]
@@ -5213,6 +5264,11 @@ def tile_fft_generic_dispatch_func(
     ept = size // num_threads
     lto_symbol = f"fft_{size}_{ept}_{arch}_{direction}_{precision}"
 
+    # early out if LTO for this combination already exists for this module
+    if lto_symbol in builder.ltoirs:
+        return lto_symbol, builder.ltoirs[lto_symbol]
+
+    # otherwise compile LTO
     lto_code = tempfile.NamedTemporaryFile()
     shared_memory_size = ctypes.c_int(0)
 
@@ -5238,6 +5294,8 @@ def tile_fft_generic_dispatch_func(
     with open(lto_code.name, "rb") as f:
         lto_code = f.read()
 
+    builder.ltoirs[lto_symbol] = lto_code
+
     return (
         (
             Var(lto_symbol, str, False, True, False),
@@ -5253,24 +5311,38 @@ def tile_fft_generic_dispatch_func(
 
 
 add_builtin(
-    "tile_fft_dx",
+    "tile_fft",
     input_types={"inout": Tile},
     value_func=tile_fft_generic_value_func,
-    lto_dispatch_func=functools.partial(tile_fft_generic_dispatch_func, direction="forward"),
+    lto_dispatch_func=functools.partial(tile_fft_generic_lto_dispatch_func, direction="forward"),
     variadic=True,
-    doc="Compute the FFT along the second dimension of a 2D tile of data.",
+    doc="""Compute the forward FFT along the second dimension of a 2D tile of data.
+    
+    This function cooperatively computes the forward FFT on a tile of data inplace, treating each row individually.
+
+    Supported datatypes are:
+        * vec2f, vec2d
+
+    :param inout: The input/output tile""",
     group="Tile Primitives",
     export=False,
     namespace="",
 )
 
 add_builtin(
-    "tile_ifft_dx",
+    "tile_ifft",
     input_types={"inout": Tile},
     value_func=tile_fft_generic_value_func,
-    lto_dispatch_func=functools.partial(tile_fft_generic_dispatch_func, direction="inverse"),
+    lto_dispatch_func=functools.partial(tile_fft_generic_lto_dispatch_func, direction="inverse"),
     variadic=True,
-    doc="Compute the inverse FFT along the second dimension of a 2D tile of data.",
+    doc="""Compute the inverse FFT along the second dimension of a 2D tile of data.
+    
+    This function cooperatively computes the inverse FFT on a tile of data inplace, treating each row individually.
+
+    Supported datatypes are:
+        * vec2f, vec2d
+
+    :param inout: The input/output tile""",
     group="Tile Primitives",
     export=False,
     namespace="",

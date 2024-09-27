@@ -940,9 +940,6 @@ class Adjoint:
         # used to generate new label indices
         adj.label_count = 0
 
-        # collect ltoirs
-        adj.ltoirs = []
-
         # update symbol map for each argument
         for a in adj.args:
             adj.symbols[a.label] = a
@@ -967,8 +964,6 @@ class Adjoint:
                     builder.build_struct_recursive(a.type)
                 elif isinstance(a.type, warp.types.array) and isinstance(a.type.dtype, Struct):
                     builder.build_struct_recursive(a.type.dtype)
-
-            builder.ltoirs.extend(adj.ltoirs)
 
     # code generation methods
     def format_template(adj, template, input_vars, output_var):
@@ -1280,9 +1275,8 @@ class Adjoint:
         # a literal value or references a variable.
         if func.lto_dispatch_func is not None:
             func_args, template_args, ltoirs = func.lto_dispatch_func(
-                func.input_types, return_type, bound_args, options=adj.builder_options
+                func.input_types, return_type, bound_args, options=adj.builder_options, builder=adj.builder
             )
-            adj.ltoirs.extend(ltoirs)
         elif func.dispatch_func is not None:
             func_args, template_args = func.dispatch_func(func.input_types, return_type, bound_args)
         else:
@@ -2759,7 +2753,7 @@ cpu_module_header = """
 #define int(x) cast_int(x)
 #define adj_int(x, adj_x, adj_ret) adj_cast_int(x, adj_x, adj_ret)
 
-#define builtin_tid1d() wp::tid(task_index)
+#define builtin_tid1d() wp::tid(task_index, dim)
 #define builtin_tid2d(x, y) wp::tid(x, y, task_index, dim)
 #define builtin_tid3d(x, y, z) wp::tid(x, y, z, task_index, dim)
 #define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, task_index, dim)
@@ -2778,7 +2772,7 @@ cuda_module_header = """
 #define int(x) cast_int(x)
 #define adj_int(x, adj_x, adj_ret) adj_cast_int(x, adj_x, adj_ret)
 
-#define builtin_tid1d() wp::tid(_idx)
+#define builtin_tid1d() wp::tid(_idx, dim)
 #define builtin_tid2d(x, y) wp::tid(x, y, _idx, dim)
 #define builtin_tid3d(x, y, z) wp::tid(x, y, z, _idx, dim)
 #define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, _idx, dim)

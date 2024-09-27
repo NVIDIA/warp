@@ -1541,7 +1541,7 @@ class ModuleBuilder:
         self.options = options
         self.module = module
         self.deferred_functions = []
-        self.ltoirs = []
+        self.ltoirs = {}    # map from lto symbol to lto binary
 
         if hasher is None:
             hasher = ModuleHasher(module)
@@ -2024,7 +2024,7 @@ class Module:
                                 config=self.options["mode"],
                                 fast_math=self.options["fast_math"],
                                 verify_fp=warp.config.verify_fp,
-                                ltoirs=builder.ltoirs,
+                                ltoirs=builder.ltoirs.values(),
                             )
 
                     except Exception as e:

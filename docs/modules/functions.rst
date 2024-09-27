@@ -952,7 +952,7 @@ Tile Primitives
 
     :param op: A callable function that accepts one argument and returns one argument, may be a user function or builtin
     :param a: The input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
-    :returns: A tile with the same dimensions as the input tile, currently output tiles must have the same dtype as the input.
+    :returns: A tile with the same dimensions and datatype as the input tile.
 
     Example:
 
@@ -966,7 +966,7 @@ Tile Primitives
 
             print(s)
 
-        wp.launch(compute, dim=[64], inputs=[])
+        wp.launch(compute, dim=[16], inputs=[])
 
     Prints:
 
@@ -980,22 +980,77 @@ Tile Primitives
     :noindex:
     :nocontentsentry:
 
-    Apply the binary map operation onto each corresponding pair of elements from each the tile.
+    Apply a binary function onto the tile.
+
+    This function cooperatively applies a binary function to each element of the tiles using all threads in the block.
+    Both input tiles must have the same dimensions and datatype.
+
+    :param op: A callable function that accepts two arguments and returns one argument, all of the same type, may be a user function or builtin
+    :param a: The first input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
+    :param b: The second input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
+    :returns: A tile with the same dimensions and datatype as the input tiles.
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            a = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
+            b = wp.tile_ones(m=1, n=10, dtype=float)
+
+            s = wp.tile_map(wp.add, a, b)
+
+            print(s)
+
+        wp.launch(compute, dim=[16], inputs=[])
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=10, storage=register) = [[1 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9]]
 
 
-.. py:function:: tile_matmul_dx(a: Tile, b: Tile, out: Tile) -> Tile
+.. py:function:: tile_matmul(a: Tile, b: Tile, out: Tile) -> Tile
 
-    Compute matrix product and accumulate out += a*b.
+    Computes the matrix product and accumulates ``out += a*b``.
+
+    Supported datatypes are:
+        * fp16, fp32, fp64 (real)
+        * vec2h, vec2f, vec2d (complex)
+
+    All input and output tiles must have the same datatype, and will be automatically be migrated to shared memory if necessary.
+       
+    :param a: A tile with ``shape=(M, K)``
+    :param b: A tile with ``shape=(K, N)``
+    :param out: A tile with ``shape=(M, N)``
+    
 
 
-.. py:function:: tile_fft_dx(inout: Tile) -> Tile
+.. py:function:: tile_fft(inout: Tile) -> Tile
 
-    Compute the FFT along the second dimension of a 2D tile of data.
+    Compute the forward FFT along the second dimension of a 2D tile of data.
+    
+    This function cooperatively computes the forward FFT on a tile of data inplace, treating each row individually.
+
+    Supported datatypes are:
+        * vec2f, vec2d
+
+    :param inout: The input/output tile
 
 
-.. py:function:: tile_ifft_dx(inout: Tile) -> Tile
+.. py:function:: tile_ifft(inout: Tile) -> Tile
 
     Compute the inverse FFT along the second dimension of a 2D tile of data.
+    
+    This function cooperatively computes the inverse FFT on a tile of data inplace, treating each row individually.
+
+    Supported datatypes are:
+        * vec2f, vec2d
+
+    :param inout: The input/output tile
 
 
 

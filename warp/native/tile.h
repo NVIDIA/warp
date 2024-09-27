@@ -36,13 +36,20 @@
     [ ] Layouts
         [x] Simple
         [ ] Cute
-    [ ] Remove Alloc type from tile_shared_t
-    
+    [x] Remove Alloc type from tile_shared_t
+    [ ] wp.launch_tiled() helper
+[ ] Creation
+    [x] zeros
+    [x] ones
+    [x] arange
+    [x] tile()
+    [ ] untile()
+    [ ] explicit storage
 [ ] Load/Store
     [ ] 1D load/store variants
     [ ] max_coord option for non-aligned loads
     [ ] Indexed load
-    [ ] wp.tile_atomic_add()
+    [x] wp.tile_atomic_add()
 [ ] Maps
     [x] Support user functions
     [x] Support built-in functions
@@ -58,6 +65,9 @@
 [x] MatMul
     [x] Forward
     [x] Reverse
+[ ] Operators
+    [ ] +, -, *, /, @?
+    [ ] += for matmul, e.g.: c += a@b, or c = a@b
 [ ] Reshape
     [ ] Broadcasting
     [ ] Transpose
@@ -66,7 +76,7 @@
     [ ] Slice
 [ ] Runtime
     [x] Compile-time block dimensions
-    [ ] Switch between SIMT / Tile based execution if `tile_dim` not provided to wp.launch()
+    [x] Switch between SIMT / Tile based execution if `tile_dim` not provided to wp.launch()
 [ ] Examples
     [ ] GEMM
     [ ] Batched MLP
@@ -1011,7 +1021,7 @@ void adj_tile_extract(Tile& t, int i, int j, AdjTile& adj_t, int adj_i, int adj_
 
 // But cuBLASDx follows the BLAS convention: matrices are col-major, so we swap A & B in the code below
 
-#define tile_matmul_dx(fun_forward, fun_backward_A, fun_backward_B, dtype, A, B, C) \
+#define tile_matmul(fun_forward, fun_backward_A, fun_backward_B, dtype, A, B, C) \
     do { \
         void fun_forward(dtype, dtype*, dtype*, dtype, dtype*); \
         WP_TILE_SYNC(); \
@@ -1021,7 +1031,7 @@ void adj_tile_extract(Tile& t, int i, int j, AdjTile& adj_t, int adj_i, int adj_
 
 // adj_fun_forward, adj_fun_backward_A, adj_fun_backward_B, adj_dtype are in practice ignored
 // but are here because builtins.py creates them even though those are effectively compile time constants
-#define adj_tile_matmul_dx(fun_forward, fun_backward_A, fun_backward_B, dtype, A, B, C, \
+#define adj_tile_matmul(fun_forward, fun_backward_A, fun_backward_B, dtype, A, B, C, \
                            adj_fun_forward, adj_fun_backward_A, adj_fun_backward_B, adj_dtype, \
                            adjA, adjB, adjC) \
     do { \
@@ -1033,7 +1043,7 @@ void adj_tile_extract(Tile& t, int i, int j, AdjTile& adj_t, int adj_i, int adj_
         WP_TILE_SYNC(); \
     } while (0)
 
-#define tile_fft_dx(function_name, dtype, shared_memory_size, batch_size, ept, Xinout) \
+#define tile_fft(function_name, dtype, shared_memory_size, batch_size, ept, Xinout) \
     do { \
         void function_name(dtype*, dtype*); \
         WP_TILE_SHARED __align__(16) char buffer[shared_memory_size]; \
@@ -1044,22 +1054,22 @@ void adj_tile_extract(Tile& t, int i, int j, AdjTile& adj_t, int adj_i, int adj_
         } \
     } while (0)
 
-#define tile_ifft_dx tile_fft_dx
+#define tile_ifft tile_fft
 
 // adj_function_name, adj_dtype, adj_shared_memory_size, adj_batch_size, adj_ept are all ignored
 
-#define adj_tile_fft_dx(function_name, dtype, shared_memory_size, batch_size, ept, Xinout, \
+#define adj_tile_fft(function_name, dtype, shared_memory_size, batch_size, ept, Xinout, \
                         adj_function_name, adj_dtype, adj_shared_memory_size, adj_batch_size, adj_ept, \
                         adj_Xinout) \
     do { \
-        tile_ifft_dx(function_name, dtype, shared_memory_size, batch_size, ept, adj_Xinout); \
+        tile_ifft(function_name, dtype, shared_memory_size, batch_size, ept, adj_Xinout); \
     } while (0)
 
-#define adj_tile_ifft_dx(function_name, dtype, shared_memory_size, batch_size, ept, Xinout, \
+#define adj_tile_ifft(function_name, dtype, shared_memory_size, batch_size, ept, Xinout, \
                          adj_function_name, adj_dtype, adj_shared_memory_size, adj_batch_size, adj_ept, \
                          adj_Xinout) \
     do { \
-        tile_fft_dx(function_name, dtype, shared_memory_size, batch_size, ept, adj_Xinout); \
+        tile_fft(function_name, dtype, shared_memory_size, batch_size, ept, adj_Xinout); \
     } while (0)
 
 } // namespace wp

@@ -196,12 +196,14 @@ def test_tile_grouped_gemm(test, device):
 
     A_wp = wp.array(A, requires_grad=True, device=device)
     B_wp = wp.array(B, requires_grad=True, device=device)
-    C_wp = wp.array(C, requires_grad=True, device=device)
+    C_wp = wp.zeros((batch_count, TILE_M, TILE_N), requires_grad=True, device=device)
 
     with wp.Tape() as tape:
-        wp.launch(
-            tile_grouped_gemm, dim=[batch_count, TILE_DIM], inputs=[A_wp, B_wp, C_wp], block_dim=TILE_DIM, device=device
-        )
+        wp.launch(tile_grouped_gemm, 
+                  dim=[batch_count, TILE_DIM], 
+                  inputs=[A_wp, B_wp, C_wp], 
+                  block_dim=TILE_DIM, 
+                  device=device)
 
     # TODO: 32 mismatched elements
     assert_np_equal(C_wp.numpy(), C)
