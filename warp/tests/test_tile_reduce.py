@@ -21,7 +21,7 @@ TILE_DIM = 64
 
 
 @wp.kernel
-def tile_sum_kernel(input: wp.array3d(dtype=float), output: wp.array(dtype=float)):    
+def tile_sum_kernel(input: wp.array3d(dtype=float), output: wp.array(dtype=float)):
     # output tile index
     i = wp.tid()
 
@@ -44,7 +44,9 @@ def test_tile_reduce_sum(test, device):
     output_wp = wp.zeros(batch_count, requires_grad=True, device=device)
 
     with wp.Tape() as tape:
-        wp.launch_tiled(tile_sum_kernel, dim=[batch_count], inputs=[input_wp, output_wp], block_dim=TILE_DIM, device=device)
+        wp.launch_tiled(
+            tile_sum_kernel, dim=[batch_count], inputs=[input_wp, output_wp], block_dim=TILE_DIM, device=device
+        )
 
     sum_wp = output_wp.numpy()
     for i in range(batch_count):
@@ -60,7 +62,6 @@ def test_tile_reduce_sum(test, device):
 
 @wp.kernel
 def tile_reduce_simt_kernel(output: wp.array(dtype=int)):
-    
     # thread index
     i = wp.tid()
 
