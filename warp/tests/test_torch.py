@@ -382,6 +382,27 @@ def test_array_ctype_from_torch(test, device):
     wrap_vec_tensor_with_warp_grad(wp.transform)
 
 
+def test_cuda_array_interface(test, device):
+    # We should be able to construct Torch tensors from Warp arrays via __cuda_array_interface__ on GPU.
+    # Note that Torch does not support __array_interface__ on CPU.
+
+    torch_device = wp.device_to_torch(device)
+    n = 10
+
+    # test the types supported by both Warp and Torch
+    scalar_types = [wp.float16, wp.float32, wp.float64, wp.int8, wp.int16, wp.int32, wp.int64, wp.uint8]
+
+    for dtype in scalar_types:
+        # test round trip
+        a1 = wp.zeros(n, dtype=dtype, device=device)
+        t = torch.tensor(a1, device=torch_device)
+        a2 = wp.array(t, device=device)
+
+        assert a1.dtype == a2.dtype
+        assert a1.shape == a2.shape
+        assert a1.strides == a2.strides
+
+
 def test_to_torch(test, device):
     import torch
 
@@ -917,6 +938,9 @@ try:
             "test_warp_graph_torch_stream",
             test_warp_graph_torch_stream,
             devices=torch_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestTorch, "test_cuda_array_interface", test_cuda_array_interface, devices=torch_compatible_cuda_devices
         )
 
     # multi-GPU tests
