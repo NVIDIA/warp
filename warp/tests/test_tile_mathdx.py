@@ -91,12 +91,7 @@ def test_tile_math_fft(test, device):
     Y_c64 = np.fft.fft(X_c64, axis=-1)
 
     with wp.Tape() as tape:
-        wp.launch_tiled(
-            tile_math_fft_kernel, 
-            dim=[1, 1], 
-            inputs=[X_wp, Y_wp], 
-            block_dim=TILE_DIM, 
-            device=device)
+        wp.launch_tiled(tile_math_fft_kernel, dim=[1, 1], inputs=[X_wp, Y_wp], block_dim=TILE_DIM, device=device)
 
     Y_wp_c64 = Y_wp.numpy().view(np.complex64).reshape(N_FFT, N_FFT)
 

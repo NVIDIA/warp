@@ -1541,7 +1541,7 @@ class ModuleBuilder:
         self.options = options
         self.module = module
         self.deferred_functions = []
-        self.ltoirs = {}    # map from lto symbol to lto binary
+        self.ltoirs = {}  # map from lto symbol to lto binary
 
         if hasher is None:
             hasher = ModuleHasher(module)
@@ -5176,6 +5176,7 @@ def launch(
         if warp.config.verify_autograd_array_access:
             runtime.tape._check_kernel_array_access(kernel, fwd_args)
 
+
 def launch_tiled(*args, **kwargs):
     """A helper method for launching a grid with an extra trailing dimension equal to the block size.
 
@@ -5216,7 +5217,7 @@ def launch_tiled(*args, **kwargs):
 
     # forward to original launch method
     launch(*args, **kwargs)
-    
+
 
 def synchronize():
     """Manually synchronize the calling CPU thread with any outstanding CUDA work on all devices

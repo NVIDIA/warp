@@ -5054,7 +5054,11 @@ def tile_matmul_generic_value_func(arg_types, arg_values):
 
 
 def tile_matmul_generic_lto_dispatch_func(
-    arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var], options: Mapping[str, Any], builder: warp.context.ModuleBuilder
+    arg_types: Mapping[str, type],
+    return_type: Any,
+    arg_values: Mapping[str, Var],
+    options: Mapping[str, Any],
+    builder: warp.context.ModuleBuilder,
 ):
     a = arg_values["a"]
     b = arg_values["b"]
@@ -5157,7 +5161,7 @@ def tile_matmul_generic_lto_dispatch_func(
             with open(lto_code.name, "rb") as f:
                 lto_code = f.read()
 
-            builder.ltoirs[lto_symbol] = lto_code            
+            builder.ltoirs[lto_symbol] = lto_code
             return lto_symbol, lto_code
 
     (fun_forward, lto_forward) = make_function(M, N, K, "N", "N")  #    C += A * B
@@ -5191,9 +5195,9 @@ add_builtin(
         * fp16, fp32, fp64 (real)
         * vec2h, vec2f, vec2d (complex)
 
-    All input and output tiles must have the same datatype. Tile data will be automatically be migrated 
+    All input and output tiles must have the same datatype. Tile data will be automatically be migrated
     to shared memory if necessary and will use TensorCore operations when available.
-       
+
     :param a: A tile with ``shape=(M, K)``
     :param b: A tile with ``shape=(K, N)``
     :param out: A tile with ``shape=(M, N)``
@@ -5317,7 +5321,7 @@ add_builtin(
     lto_dispatch_func=functools.partial(tile_fft_generic_lto_dispatch_func, direction="forward"),
     variadic=True,
     doc="""Compute the forward FFT along the second dimension of a 2D tile of data.
-    
+
     This function cooperatively computes the forward FFT on a tile of data inplace, treating each row individually.
 
     Supported datatypes are:
@@ -5336,7 +5340,7 @@ add_builtin(
     lto_dispatch_func=functools.partial(tile_fft_generic_lto_dispatch_func, direction="inverse"),
     variadic=True,
     doc="""Compute the inverse FFT along the second dimension of a 2D tile of data.
-    
+
     This function cooperatively computes the inverse FFT on a tile of data inplace, treating each row individually.
 
     Supported datatypes are:
