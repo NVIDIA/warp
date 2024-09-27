@@ -58,6 +58,7 @@
 - Fix conditions not being evaluated as expected in `while` statements.
 - Fix printing Boolean and 8-bit integer values.
 - Fix array interface type strings used for Boolean and 8-bit integer values.
+- Fix initialization error when setting struct members.
 
 ## [1.3.3] - 2024-09-04
 
