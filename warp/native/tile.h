@@ -238,7 +238,7 @@ struct tile_register_t
 
         WP_TILE_SHARED Type scratch;
 
-        // ensure any prevoiusly scheduled threads have finished reading from scratch
+        // ensure any previously scheduled threads have finished reading from scratch
         WP_TILE_SYNC();
 
         if (threadIdx.x == thread)
@@ -1063,4 +1063,3 @@ void adj_tile_extract(Tile& t, int i, int j, AdjTile& adj_t, int adj_i, int adj_
     } while (0)
 
 } // namespace wp
-

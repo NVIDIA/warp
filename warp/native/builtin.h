@@ -1575,11 +1575,14 @@ inline CUDA_CALLABLE void print(transform_t<Type> t)
     printf("(%g %g %g) (%g %g %g %g)\n", float(t.p[0]), float(t.p[1]), float(t.p[2]), float(t.q.x), float(t.q.y), float(t.q.z), float(t.q.w));
 }
 
+inline CUDA_CALLABLE void adj_print(bool i, bool adj_i) { printf("%d adj: %d\n", i, adj_i); }
+inline CUDA_CALLABLE void adj_print(int8 i, int8 adj_i) { printf("%hhd adj: %hhd\n", i, adj_i); }
 inline CUDA_CALLABLE void adj_print(int i, int adj_i) { printf("%d adj: %d\n", i, adj_i); }
 inline CUDA_CALLABLE void adj_print(float f, float adj_f) { printf("%g adj: %g\n", f, adj_f); }
 inline CUDA_CALLABLE void adj_print(short f, short adj_f) { printf("%hd adj: %hd\n", f, adj_f); }
 inline CUDA_CALLABLE void adj_print(long f, long adj_f) { printf("%ld adj: %ld\n", f, adj_f); }
 inline CUDA_CALLABLE void adj_print(long long f, long long adj_f) { printf("%lld adj: %lld\n", f, adj_f); }
+inline CUDA_CALLABLE void adj_print(uint8 i, uint8 adj_i) { printf("%hhu adj: %hhu\n", i, adj_i); }
 inline CUDA_CALLABLE void adj_print(unsigned f, unsigned adj_f) { printf("%u adj: %u\n", f, adj_f); }
 inline CUDA_CALLABLE void adj_print(unsigned short f, unsigned short adj_f) { printf("%hu adj: %hu\n", f, adj_f); }
 inline CUDA_CALLABLE void adj_print(unsigned long f, unsigned long adj_f) { printf("%lu adj: %lu\n", f, adj_f); }

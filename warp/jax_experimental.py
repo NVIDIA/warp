@@ -102,7 +102,9 @@ def _warp_custom_callback(stream, buffers, opaque, opaque_len):
     assert hooks.forward, "Failed to find kernel entry point"
 
     # Launch the kernel.
-    wp.context.runtime.core.cuda_launch_kernel(device.context, hooks.forward, bounds.size, 0, kernel_params, stream)
+    wp.context.runtime.core.cuda_launch_kernel(
+        device.context, hooks.forward, bounds.size, 0, 256, kernel_params, stream
+    )
 
 
 # TODO: is there a simpler way of getting the Jax "current" device?

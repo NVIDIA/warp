@@ -3121,10 +3121,19 @@ size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, int max_block
 {
     ContextGuard guard(context);
 
+    if (tile_size <= 0)
+    {
+#if defined(_DEBUG)
+        fprintf(stderr, "Warp warning: Got tile_size %d. Setting to 256.\n", dim, tile_size);
+#endif
+        tile_size = 256;
+    }
+
     const int block_dim = tile_size;
+
     // CUDA specs up to compute capability 9.0 says the max x-dim grid is 2**31-1, so
     // grid_dim is fine as an int for the near future
-    int grid_dim = dim;
+    int grid_dim = (dim + block_dim - 1)/block_dim;
 
     if (max_blocks <= 0) {
         max_blocks = 2147483647;

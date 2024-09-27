@@ -100,7 +100,7 @@ linux-x86_64 test:
     - python -m pip install --upgrade pip
     - python -m pip install --upgrade usd-core
     - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
-    - python -m pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    - python -m pip install -U "jax[cuda12]"
     - python -m pip install --upgrade nvidia-mathdx==24.4.0 nvidia-cuda-cccl-cu12 nvidia-cuda-runtime-cu12
     - python -m pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
@@ -117,6 +117,7 @@ linux-aarch64 test jetson:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - !reference [.snippets, install-python+warp-aarch64]
+    - python -m pip install -U "jax[cuda12]"
     - python -m pip install --upgrade nvidia-mathdx==24.4.0 nvidia-cuda-cccl-cu12 nvidia-cuda-runtime-cu12
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:

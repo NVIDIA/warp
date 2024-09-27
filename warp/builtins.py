@@ -1746,7 +1746,7 @@ add_builtin(
     dispatch_func=tile_zeros_dispatch_func,
     variadic=True,
     doc="""Allocates a tile of zero initialized items.
-    
+
     :param m: Size of the first dimension of the output tile
     :param n: Size of the second dimension of the output tile
     :param dtype: Datatype of output tile's elements
@@ -1754,6 +1754,7 @@ add_builtin(
     group="Tile Primitives",
     export=False,
 )
+
 
 def tile_ones_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     # return generic type (for doc builds)
@@ -1793,7 +1794,7 @@ add_builtin(
     dispatch_func=tile_ones_dispatch_func,
     variadic=True,
     doc="""Allocates a tile of one initialized items.
-    
+
     :param m: Size of the first dimension of the output tile
     :param n: Size of the second dimension of the output tile
     :param dtype: Datatype of output tile's elements
@@ -1801,6 +1802,7 @@ add_builtin(
     group="Tile Primitives",
     export=False,
 )
+
 
 def tile_arange_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     # return generic type (for doc builds)
@@ -1827,7 +1829,7 @@ def tile_arange_value_func(arg_types: Mapping[str, type], arg_values: Mapping[st
         stop = args[1]
         step = args[2]
 
-    if start == None or stop == None or step == None:
+    if start is None or stop is None or step is None:
         raise RuntimeError("wp.tile_arange() arguments must be compile time constants")
 
     if arg_values["dtype"] is not None:
@@ -1866,7 +1868,7 @@ add_builtin(
     dispatch_func=tile_arange_dispatch_func,
     variadic=True,
     doc="""Generates a tile of linearly spaced elements.
-    
+
     :param args: Variable length positional arguments, interpreted as:
 
         - ``(stop,)``: Generates values from ``0`` to ``stop - 1``
@@ -1878,7 +1880,6 @@ add_builtin(
     group="Tile Primitives",
     export=False,
 )
-
 
 
 def tile_load_value_func(arg_types, arg_values):
@@ -1931,7 +1932,7 @@ add_builtin(
     dispatch_func=tile_load_dispatch_func,
     variadic=True,
     doc="""Loads a tile from a global memory array.
-    
+
     This method will cooperatively load a tile from global memory using all threads in the block.
 
     :param a: The source array in global memory
@@ -1977,7 +1978,7 @@ add_builtin(
     value_func=tile_store_value_func,
     variadic=True,
     doc="""Stores a tile to a global memory array.
-    
+
     This method will cooperatively store a tile to global memory using all threads in the block.
 
     :param a: The destination array in global memory
@@ -2021,11 +2022,11 @@ add_builtin(
     value_func=tile_atomic_add_value_func,
     variadic=True,
     doc="""Atomically add a tile to the array `a`, each element will be updated atomically.
-   
+
     :param a: Array in global memory, should have the same ``dtype`` as the input tile
     :param x: Offset in the destination array measured in multiples of ``m``, i.e.: ``i=x*M`` where ``M`` is the first tile dimension
     :param y: Offset in the destination array measured in multiples of ``n``, i.e.: ``j=y*N`` where ``N`` is the second tile dimension
-    :param t: Source tile to add to the desination array
+    :param t: Source tile to add to the destination array
     :returns: A tile with the same dimensions and type as the source tile, holding the original value of the destination elements""",
     group="Tile Primitives",
     export=False,
@@ -2053,7 +2054,7 @@ add_builtin(
     value_func=tile_value_func,
     variadic=True,
     doc="""Constructs a new Tile from a per-thread kernel values.
-    
+
     This function converts values computed using scalar kernel code to a tile representation for input into collective operations.
 
     :param x: A per-thread local value, e.g.: scalar, vector, or matrix.
@@ -2072,13 +2073,12 @@ add_builtin(
         wp.launch(compute, dim=16, inputs=[], block_dim=16)
 
     Prints:
-    
+
     .. code-block:: text
 
         tile(m=1, n=16, storage=register) = [[0 2 4 6 8 10 12 14...]]
     """,
-
-    group="Tile Primitives""",
+    group="Tile Primitives" "",
     export=False,
 )
 
@@ -2086,9 +2086,9 @@ add_builtin(
 def tile_extract_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
-        return Scalar    
-    
-    if len(arg_types) != 3: 
+        return Scalar
+
+    if len(arg_types) != 3:
         raise RuntimeError("tile_extract() requires 3 positional args")
 
     if not is_tile(arg_types["a"]):
@@ -2103,7 +2103,7 @@ add_builtin(
     value_func=tile_extract_value_func,
     variadic=True,
     doc="""Extracts a single element from the tile and returns it as a scalar type.
-    
+
     This function will extract an element from the tile and broadcast its value to all threads in the block, note that this may incur additional synchronization if the source tile is a register tile.
 
     :param a: Tile to extract the element from
@@ -2187,17 +2187,17 @@ add_builtin(
     value_func=tile_sum_value_func,
     variadic=True,
     doc="""Cooperatively compute the sum the tile elements using all threads in the block.
-    
+
     :param a: The tile to compute the sum of
     :returns: A single element tile with dimensions of (1,1) holding the sum
-    
+
     Example:
 
     .. code-block:: python
 
         @wp.kernel
         def compute():
-            
+
             t = wp.tile_ones(dtype=float, m=16, n=16)
             s = wp.tile_sum(t)
 
@@ -2206,11 +2206,11 @@ add_builtin(
         wp.launch(compute, dim=[64], inputs=[])
 
     Prints:
-    
+
     .. code-block:: text
 
         tile(m=1, n=1, storage=register) = [[256]]
-    
+
     """,
     group="Tile Primitives",
     export=False,
@@ -2245,13 +2245,13 @@ add_builtin(
     # variadic=True,
     native_func="tile_unary_map",
     doc="""Apply a unary function onto the tile.
-    
+
     This function cooperatively applies a unary function to each element of the tile using all threads in the block.
-    
+
     :param op: A callable function that accepts one argument and returns one argument, may be a user function or builtin
     :param a: The input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
     :returns: A tile with the same dimensions as the input tile, currently output tiles must have the same dtype as the input.
-    
+
     Example:
 
     .. code-block:: python
@@ -2267,11 +2267,11 @@ add_builtin(
         wp.launch(compute, dim=[64], inputs=[])
 
     Prints:
-    
+
     .. code-block:: text
 
         tile(m=1, n=10, storage=register) = [[0 0.0998334 0.198669 0.29552 ...]]
-    """, 
+    """,
     group="Tile Primitives",
     export=False,
 )
@@ -2311,7 +2311,7 @@ add_builtin(
     # dispatch_func=tile_map_dispatch_func,
     # variadic=True,
     native_func="tile_binary_map",
-    doc="Apply the binary map operation onto each corresponding pair of elements from each the tile.", 
+    doc="Apply the binary map operation onto each corresponding pair of elements from each the tile.",
     group="Tile Primitives",
     export=False,
 )

@@ -182,7 +182,6 @@ def tile_grouped_gemm(A: wp.array3d(dtype=float), B: wp.array3d(dtype=float), C:
     wp.tile_store(C[i], 0, 0, sum)
 
 
-@unittest.expectedFailure
 def test_tile_grouped_gemm(test, device):
     batch_count = 56
 

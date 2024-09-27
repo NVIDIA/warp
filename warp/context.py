@@ -1751,7 +1751,7 @@ class Module:
             "fast_math": False,
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
             "mode": warp.config.mode,
-            "block_dim": 0,
+            "block_dim": 256,
         }
 
         # Module dependencies are determined by scanning each function
@@ -5009,7 +5009,7 @@ def launch(
         record_cmd: When True the launch will be returned as a ``Launch`` command object, the launch will not occur until the user calls ``cmd.launch()``
         max_blocks: The maximum number of CUDA thread blocks to use. Only has an effect for CUDA kernel launches.
             If negative or zero, the maximum hardware value will be used.
-        block_dim: The number of threads per-block
+        block_dim: The number of threads per block.
     """
 
     init()
