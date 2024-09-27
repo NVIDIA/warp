@@ -8,7 +8,7 @@ namespace wp
 {
 
 template <typename T>
-inline CUDA_CALLABLE T warp_shuffle_down(T val, int offset)
+inline CUDA_CALLABLE T warp_shuffle_down(T val, int offset, int mask)
 {
     typedef unsigned int Word;
 
@@ -30,7 +30,6 @@ inline CUDA_CALLABLE T warp_shuffle_down(T val, int offset)
     Word* src  = reinterpret_cast<Word*>(&input);
 
     unsigned int shuffle_word;
-    unsigned int mask = __activemask();
 
     constexpr int word_count = (sizeof(T) + sizeof(Word) - 1) / sizeof(Word);
 
@@ -49,9 +48,25 @@ inline CUDA_CALLABLE T warp_reduce_sum(T val)
 {
     T sum = val;
 
-    for (int offset=WP_TILE_WARP_SIZE/2; offset > 0; offset /= 2)
+    unsigned int mask = __activemask();
+
+    if (mask == 0xFFFFFFFF)
     {
-        sum += warp_shuffle_down(sum, offset);
+        // handle case where entire warp is active
+        for (int offset=WP_TILE_WARP_SIZE/2; offset > 0; offset /= 2)
+        {
+            sum += warp_shuffle_down(sum, offset, mask);
+        }
+    }
+    else
+    {
+        // handle partial warp case
+        for (int offset=WP_TILE_WARP_SIZE/2; offset > 0; offset /= 2)
+        {            
+            T shfl_val = warp_shuffle_down(sum, offset, mask);
+            if ((mask & (1 << ((threadIdx.x + offset)%WP_TILE_WARP_SIZE))) != 0)
+                sum += shfl_val;
+        }
     }
 
     return sum;
