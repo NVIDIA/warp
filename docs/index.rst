@@ -351,6 +351,7 @@ Full Table of Contents
     modules/devices
     modules/differentiability
     modules/generics
+    modules/tiles
     modules/interoperability
     configuration
     debugging

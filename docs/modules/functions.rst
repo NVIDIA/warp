@@ -1022,7 +1022,7 @@ Tile Primitives
         * vec2h, vec2f, vec2d (complex)
 
     All input and output tiles must have the same datatype. Tile data will be automatically be migrated 
-    to shared memory if necessary and will use TensoreCore operations when available.
+    to shared memory if necessary and will use TensorCore operations when available.
        
     :param a: A tile with ``shape=(M, K)``
     :param b: A tile with ``shape=(K, N)``
