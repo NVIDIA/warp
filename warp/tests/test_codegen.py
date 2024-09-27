@@ -405,22 +405,22 @@ def test_error_global_var(test, device):
 
     kernel = wp.Kernel(func=kernel_1_fn)
     with test.assertRaisesRegex(
-        RuntimeError,
-        r"Cannot reference a global variable from a kernel unless `wp.constant\(\)` is being used",
+        TypeError,
+        r"Invalid external reference type: <class 'warp.types.array'>",
     ):
         wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,), device=device)
 
     kernel = wp.Kernel(func=kernel_2_fn)
     with test.assertRaisesRegex(
-        RuntimeError,
-        r"Cannot reference a global variable from a kernel unless `wp.constant\(\)` is being used",
+        TypeError,
+        r"Invalid external reference type: <class 'warp.types.array'>",
     ):
         wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,), device=device)
 
     kernel = wp.Kernel(func=kernel_3_fn)
     with test.assertRaisesRegex(
-        RuntimeError,
-        r"Cannot reference a global variable from a kernel unless `wp.constant\(\)` is being used",
+        TypeError,
+        r"Invalid external reference type: <class 'warp.types.array'>",
     ):
         wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,), device=device)
 
