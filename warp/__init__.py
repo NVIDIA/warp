@@ -58,6 +58,7 @@ from warp.context import (
     copy,
     from_numpy,
     launch,
+    launch_tiled,
     synchronize,
     force_load,
     load_module,

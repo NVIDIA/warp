@@ -5176,6 +5176,47 @@ def launch(
         if warp.config.verify_autograd_array_access:
             runtime.tape._check_kernel_array_access(kernel, fwd_args)
 
+def launch_tiled(*args, **kwargs):
+    """A helper method for launching a grid with an extra trailing dimension equal to the block size.
+
+    For example, to launch a 2D grid, where each element has 64 threads assigned you would use the following:
+
+    .. code-block:: python
+
+        wp.launch_tiled(kernel, [M, N], inputs=[...], block_dim=64)
+
+    Which is equivalent to the following:
+
+    .. code-block:: python
+
+        wp.launch(kernel, [M, N, 64], inputs=[...], block_dim=64)
+
+    Inside your kernel code you can retrieve the first two indices of the thread as usual, ignoring the implicit third dimension if desired:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute()
+
+            i, j = wp.tid()
+
+            ...
+    """
+
+    if len(kwargs["dim"]) > 3:
+        raise RuntimeError("wp.launch_tiled() requires a grid with fewer than 4 dimensions")
+
+    # promote dim to a list in case it was passed as a scalar or tuple
+    dim = kwargs["dim"]
+    if not isinstance(dim, list):
+        dim = list(dim) if isinstance(dim, tuple) else [dim]
+
+    # add trailing dimension
+    kwargs["dim"] = dim + [kwargs["block_dim"]]
+
+    # forward to original launch method
+    launch(*args, **kwargs)
+    
 
 def synchronize():
     """Manually synchronize the calling CPU thread with any outstanding CUDA work on all devices

@@ -38,6 +38,8 @@ The location of the kernel cache is printed when Warp is initialized.
 generated compilation artifacts as Warp does not automatically try to keep the cache below a certain size.
 
 .. autofunction:: launch
+.. autofunction:: launch_tiled
+    
 .. autofunction:: clear_kernel_cache
 
 .. _Runtime Kernel Creation:

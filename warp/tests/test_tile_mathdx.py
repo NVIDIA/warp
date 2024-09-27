@@ -28,7 +28,7 @@ TILE_DIM = 64
 def tile_math_matmul_kernel(
     ga: wp.array2d(dtype=wp.float64), gb: wp.array2d(dtype=wp.float64), gc: wp.array2d(dtype=wp.float64)
 ):
-    i, j, _ = wp.tid()
+    i, j = wp.tid()
     a = wp.tile_load(ga, i, j, m=TILE_M, n=TILE_K)
     b = wp.tile_load(gb, i, j, m=TILE_K, n=TILE_N)
     c = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float64)
@@ -48,9 +48,9 @@ def test_tile_math_matmul(test, device):
     C_wp = wp.array(C, requires_grad=True, device=device)
 
     with wp.Tape() as tape:
-        wp.launch(
+        wp.launch_tiled(
             tile_math_matmul_kernel,
-            dim=[1, 1, TILE_DIM],
+            dim=[1, 1],
             inputs=[A_wp, B_wp, C_wp],
             block_dim=TILE_DIM,
             device=device,
@@ -69,7 +69,7 @@ def test_tile_math_matmul(test, device):
 
 @wp.kernel()
 def tile_math_fft_kernel(gx: wp.array2d(dtype=wp.vec2f), gy: wp.array2d(dtype=wp.vec2f)):
-    i, j, _ = wp.tid()
+    i, j = wp.tid()
     xy = wp.tile_load(gx, i, j, m=N_FFT, n=N_FFT)
     wp.tile_fft(xy)
     wp.tile_store(gy, i, j, xy)
@@ -91,7 +91,12 @@ def test_tile_math_fft(test, device):
     Y_c64 = np.fft.fft(X_c64, axis=-1)
 
     with wp.Tape() as tape:
-        wp.launch(tile_math_fft_kernel, dim=[1, 1, TILE_DIM], inputs=[X_wp, Y_wp], block_dim=TILE_DIM, device=device)
+        wp.launch_tiled(
+            tile_math_fft_kernel, 
+            dim=[1, 1], 
+            inputs=[X_wp, Y_wp], 
+            block_dim=TILE_DIM, 
+            device=device)
 
     Y_wp_c64 = Y_wp.numpy().view(np.complex64).reshape(N_FFT, N_FFT)
 

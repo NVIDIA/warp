@@ -1021,7 +1021,8 @@ Tile Primitives
         * fp16, fp32, fp64 (real)
         * vec2h, vec2f, vec2d (complex)
 
-    All input and output tiles must have the same datatype, and will be automatically be migrated to shared memory if necessary.
+    All input and output tiles must have the same datatype. Tile data will be automatically be migrated 
+    to shared memory if necessary and will use TensoreCore operations when available.
        
     :param a: A tile with ``shape=(M, K)``
     :param b: A tile with ``shape=(K, N)``
