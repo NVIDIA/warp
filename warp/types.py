@@ -1302,7 +1302,7 @@ def type_to_warp(dtype):
 
 def type_typestr(dtype):
     if dtype == bool:
-        return "?"
+        return "|b1"
     elif dtype == float16:
         return "<f2"
     elif dtype == float32:
@@ -1310,9 +1310,9 @@ def type_typestr(dtype):
     elif dtype == float64:
         return "<f8"
     elif dtype == int8:
-        return "b"
+        return "|i1"
     elif dtype == uint8:
-        return "B"
+        return "|u1"
     elif dtype == int16:
         return "<i2"
     elif dtype == uint16:
