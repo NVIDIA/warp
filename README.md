@@ -372,7 +372,8 @@ Warp is provided under the NVIDIA Software License, please see [LICENSE.md](./LI
 
 Contributions and pull requests from the community are welcome and are taken under the
 terms described in the **Feedback** section of [LICENSE.md](LICENSE.md#9-feedback).
-[CONTRIBUTING.md](./CONTRIBUTING.md) provides additional information on how to open a pull request for Warp.
+Please see the [Contribution Guide](https://nvidia.github.io/warp/modules/contribution_guide.html) for more
+information on contributing to the development of Warp.
 
 ## Citing
 
