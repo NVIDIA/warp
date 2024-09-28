@@ -73,9 +73,8 @@ def tile_reduce_simt_kernel(output: wp.array(dtype=int)):
 
 
 def test_tile_reduce_simt(test, device):
-    
     # use an unaligned grid dimension
-    N = TILE_DIM*4 + 5
+    N = TILE_DIM * 4 + 5
 
     output = wp.zeros(shape=1, dtype=int, requires_grad=True, device=device)
 
@@ -83,6 +82,30 @@ def test_tile_reduce_simt(test, device):
         wp.launch(tile_reduce_simt_kernel, dim=N, inputs=[output], block_dim=TILE_DIM, device=device)
 
     test.assertEqual(output.numpy()[0], np.sum(np.arange(N)))
+
+
+@wp.kernel
+def tile_untile_kernel(output: wp.array(dtype=int)):
+    # thread index
+    i = wp.tid()
+
+    # convert to block wide tile
+    t = wp.tile(i) * 2
+    s = wp.untile(t)
+
+    output[i] = s
+
+
+def test_tile_untile(test, device):
+    # use an unaligned grid dimension
+    N = TILE_DIM * 4 + 5
+
+    output = wp.zeros(shape=N, dtype=int, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch(tile_untile_kernel, dim=N, inputs=[output], block_dim=TILE_DIM, device=device)
+
+    assert_np_equal(output.numpy(), np.arange(N) * 2)
 
 
 @wp.kernel
@@ -141,6 +164,7 @@ add_function_test(TestTileReduce, "test_tile_reduce_sum", test_tile_reduce_sum, 
 add_function_test(TestTileReduce, "test_tile_reduce_simt", test_tile_reduce_simt, devices=devices)
 add_function_test(TestTileReduce, "test_tile_ones", test_tile_ones, devices=devices)
 add_function_test(TestTileReduce, "test_tile_arange", test_tile_arange, devices=devices)
+add_function_test(TestTileReduce, "test_tile_untile", test_tile_untile, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

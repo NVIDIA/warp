@@ -2999,7 +2999,7 @@ class Tile:
 
 class TileZeros(Tile):
     def __init__(self, dtype, M, N):
-        Tile.__init__(self, dtype, M, N, op="zeros", storage="shared")
+        Tile.__init__(self, dtype, M, N, op="zeros", storage="register")
 
 
 class TileRange(Tile):

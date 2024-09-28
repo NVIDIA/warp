@@ -902,6 +902,46 @@ Tile Primitives
     
 
 
+.. py:function:: untile(a: Any) -> Scalar
+
+    Convert a Tile back to per-thread values.
+
+    This function converts a block-wide tile back to per-thread values.
+
+    :param a: A tile with dimensions ``shape=(1, block_dim)``
+    :returns: A single value per-thread with the same dtype as the tile
+
+    This example shows how to create a linear sequence from thread variables:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+            i = wp.tid()
+
+            # create block-wide tile
+            t = wp.tile(i)*2
+
+            # convert back to per-thread values
+            s = wp.untile()
+
+            print(s)
+
+        wp.launch(compute, dim=16, inputs=[], block_dim=16)
+
+    Prints:
+
+    .. code-block:: text
+
+        0
+        2
+        4
+        6
+        8
+        ...
+    
+
+
 .. py:function:: tile_extract(a: Tile, i: int32, j: int32) -> Scalar
 
     Extracts a single element from the tile and returns it as a scalar type.

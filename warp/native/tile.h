@@ -647,14 +647,12 @@ inline CUDA_CALLABLE auto tile(const T& x)
 {
     tile_register_t<T, 1, WP_TILE_BLOCK_DIM> result;
     
-    // code-gen should have set the tile to 
-    // have exactly the block dimension so 
-    // there is exactly one value per-thread
     static_assert(result.NumRegs == 1);
 
     result.data[0] = x;
     return result;
 }
+
 
 // construct a tile from a local SIMT value (one per-thread)
 template <typename T, typename AdjTile>
@@ -662,13 +660,28 @@ inline CUDA_CALLABLE void adj_tile(const T& x, T& adj_x, const AdjTile& adj_ret)
 {
     static_assert(AdjTile::M == 1);
     static_assert(AdjTile::N == WP_TILE_BLOCK_DIM);
-
-    // code-gen should have set the tile to 
-    // have exactly the block dimension so 
-    // there is exactly one value per-thread
     static_assert(AdjTile::NumRegs == 1);
 
     adj_x += adj_ret.data[0];
+}
+
+template <typename Tile>
+inline CUDA_CALLABLE auto untile(Tile& tile)
+{    
+    // code-gen should have set the tile to 
+    // have exactly the block dimension so 
+    // there is exactly one value per-thread
+    static_assert(Tile::NumRegs == 1);
+
+    return tile.copy_to_register().data[0];
+}
+
+template <typename Tile>
+inline CUDA_CALLABLE void adj_untile(Tile& tile, Tile& adj_tile, typename Tile::Type& adj_ret)
+{    
+    auto adj = adj_tile.copy_to_register();
+    adj.data[0] += adj_ret;
+    adj_tile.assign(adj);
 }
 
 // zero initialized tile

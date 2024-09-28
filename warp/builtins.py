@@ -2083,6 +2083,73 @@ add_builtin(
 )
 
 
+def untile_value_func(arg_types, arg_values):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return Scalar
+
+    if len(arg_types) != 1:
+        raise RuntimeError("untile() requires 1 positional arg")
+
+    t = arg_types["a"]
+
+    if not is_tile(t):
+        raise RuntimeError(f"untile() accepts arguments of type tile only, got {arg_types[0]}")
+
+    if t.N != warp.codegen.options["block_dim"]:
+        raise RuntimeError(
+            f"until() argument must have the same length as the block width, got {t.N}, expected {warp.codegen.options['block_dim']}"
+        )
+
+    return t.dtype
+
+
+add_builtin(
+    "untile",
+    input_types={"a": Any},
+    value_func=untile_value_func,
+    variadic=True,
+    doc="""Convert a Tile back to per-thread values.
+
+    This function converts a block-wide tile back to per-thread values.
+
+    :param a: A tile with dimensions ``shape=(M, block_dim)``
+    :returns: A single value per-thread with the same dtype as the tile
+
+    This example shows how to create a linear sequence from thread variables:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+            i = wp.tid()
+
+            # create block-wide tile
+            t = wp.tile(i)*2
+
+            # convert back to per-thread values
+            s = wp.untile()
+
+            print(s)
+
+        wp.launch(compute, dim=16, inputs=[], block_dim=16)
+
+    Prints:
+
+    .. code-block:: text
+
+        0
+        2
+        4
+        6
+        8
+        ...
+    """,
+    group="Tile Primitives" "",
+    export=False,
+)
+
+
 def tile_extract_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
@@ -2131,9 +2198,6 @@ def tile_matmul_value_func(arg_types, arg_values):
 
     if not isinstance(arg_types["out"], Tile):
         raise RuntimeError("tile_matmul() output argument must be a tile")
-
-    if arg_types["out"].storage != "shared":
-        raise RuntimeError("tile_matmul() output argument must have shared memory storage")
 
     return None
 
@@ -5046,9 +5110,6 @@ def tile_matmul_generic_value_func(arg_types, arg_values):
 
     if not isinstance(arg_types["out"], Tile):
         raise RuntimeError("tile_matmul() output argument must be a tile")
-
-    if arg_types["out"].storage != "shared":
-        raise RuntimeError("tile_matmul() output argument must have shared memory storage")
 
     return None
 
