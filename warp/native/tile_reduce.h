@@ -113,9 +113,18 @@ auto tile_sum(Tile& t)
     // fixed size scratch pad for partial results in shared memory
     WP_TILE_SHARED T partials[warp_count];
 
+    // count of active warps
+    WP_TILE_SHARED int active_warps;
+    if (threadIdx.x == 0)
+        active_warps = 0;
+    
+    // ensure active_warps is initialized
+    WP_TILE_SYNC();
+
     if (lane_index == 0)
     {
         partials[warp_index] = warp_sum;
+        atomicAdd(&active_warps, 1);
     }
 
     // ensure partials are ready
@@ -127,7 +136,7 @@ auto tile_sum(Tile& t)
         T block_sum = partials[0];
         
         WP_PRAGMA_UNROLL
-        for (int i=1; i < warp_count; ++i)
+        for (int i=1; i < active_warps; ++i)
             block_sum += partials[i];
 
         output.data[0] = block_sum;
