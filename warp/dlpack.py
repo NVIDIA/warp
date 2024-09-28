@@ -124,6 +124,8 @@ def device_to_dlpack(wp_device) -> DLDevice:
 
 
 def dtype_to_dlpack(wp_dtype) -> DLDataType:
+    if wp_dtype == warp.bool:
+        return (DLDataTypeCode.kDLBool, 8, 1)
     if wp_dtype == warp.int8:
         return (DLDataTypeCode.kDLInt, 8, 1)
     elif wp_dtype == warp.uint8:
