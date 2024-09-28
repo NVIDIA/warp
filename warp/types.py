@@ -1491,6 +1491,10 @@ def types_equal(a, b, match_generic=False):
     if is_array(a) and type(a) is type(b):
         return True
 
+    # match NewStructInstance and Struct dtype
+    if getattr(a, "cls", "a") is getattr(b, "cls", "b"):
+        return True
+
     return scalars_equal(a, b, match_generic)
 
 

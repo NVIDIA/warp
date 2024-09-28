@@ -1442,9 +1442,9 @@ class ModuleHasher:
 
             # custom bits
             if ovl.custom_grad_func:
-                ch.update(bytes(ovl.custom_grad_func.adj.source, "utf-8"))
+                ch.update(self.hash_adjoint(ovl.custom_grad_func.adj))
             if ovl.custom_replay_func:
-                ch.update(bytes(ovl.custom_replay_func.adj.source, "utf-8"))
+                ch.update(self.hash_adjoint(ovl.custom_replay_func.adj))
             if ovl.replay_snippet:
                 ch.update(bytes(ovl.replay_snippet, "utf-8"))
             if ovl.native_snippet:
@@ -1507,6 +1507,10 @@ class ModuleHasher:
                 ch.update(bytes(value))
             else:
                 raise RuntimeError(f"Invalid constant type: {type(value)}")
+
+        # hash wp.static() expressions that were evaluated at declaration time
+        for k, v in adj.static_expressions.items():
+            ch.update(bytes(f"{k} = {v}", "utf-8"))
 
         # hash referenced types
         for t in types.keys():

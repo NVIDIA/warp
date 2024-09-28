@@ -104,6 +104,7 @@ from warp.build import clear_kernel_cache
 from warp.constants import *
 
 from . import builtins
+from warp.builtins import static
 
 import warp.config as config
 

@@ -364,6 +364,7 @@ Full Table of Contents
     modules/allocators
     modules/concurrency
     profiling
+    codegen
 
 .. toctree::
     :maxdepth: 2

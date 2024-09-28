@@ -113,6 +113,7 @@ from warp.build import clear_kernel_cache
 from warp.constants import *
 
 from . import builtins
+from warp.builtins import static
 
 import warp.config as config
 
@@ -2398,4 +2399,19 @@ def unot(a: uint64) -> bool:
 @over
 def unot(a: Array[Any]) -> bool:
     """ """
+    ...
+
+
+@over
+def static(expr: Any) -> Any:
+    """Evaluates a static Python expression and replaces it with its result.
+
+    See the `codegen.html#static-expressions <section on code generation>`_ for more details.
+
+    Note:
+        The inner expression must only reference variables that are available from the current scope where the Warp kernel or function containing the expression is defined,
+        which includes constant variables and variables captured in the current closure in which the function or kernel is implemented.
+        The return type of the expression must be either a Warp function, a string, or a type that is supported inside Warp kernels and functions
+        (excluding Warp arrays since they cannot be created in a Warp kernel at the moment).
+    """
     ...
