@@ -4307,3 +4307,36 @@ for t in int_types:
 
 
 add_builtin("unot", input_types={"a": array(dtype=Any)}, value_type=builtins.bool, doc="", group="Operators")
+
+# ---------------------------------
+# Code Generation
+
+add_builtin(
+    "static",
+    input_types={"expr": Any},
+    value_type=Any,
+    doc="""Evaluates a static Python expression and replaces it with its result.
+
+    See the `codegen.html#static-expressions <section on code generation>`_ for more details.
+
+    Note:
+        The inner expression must only reference variables that are available from the current scope where the Warp kernel or function containing the expression is defined,
+        which includes constant variables and variables captured in the current closure in which the function or kernel is implemented.
+        The return type of the expression must be either a Warp function, a string, or a type that is supported inside Warp kernels and functions
+        (excluding Warp arrays since they cannot be created in a Warp kernel at the moment).""",
+    group="Code Generation",
+)
+
+
+def static(expr):
+    """
+    Evaluates a static expression and replaces the expression with its result.
+
+    Args:
+        expr: A Python expression to evaluate. Must return a non-null value which must be either a Warp function, a string, or a type that is supported inside Warp kernels and functions (excluding Warp arrays since they cannot be created in a Warp kernel at the moment).
+
+    Note:
+        The inner expression must only reference variables that are available from the current scope where the Warp kernel or function containing the expression is defined,
+        which includes constant variables and variables captured in the current closure in which the function or kernel is implemented.
+    """
+    return expr

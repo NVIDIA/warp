@@ -23,6 +23,7 @@
 - Support for defining multiple versions of kernels, functions, and structs without manually assigning unique keys.
 - Support for redefining function overloads.
 - Add an ocean sample to the `omni.warp` extension.
+- Support for a new `wp.static(expr)` function that allows arbitrary Python expressions to be evaluated at the time of function/kernel definition ([docs](https://nvidia.github.io/warp/codegen.html#static-expressions)).
 
 ### Changed
 
@@ -32,6 +33,7 @@
 - Skip unused functions in module code generation, improving performance.
 - Avoid reloading modules if their content does not change, improving performance.
 - `wp.Mesh.points` is now a property instead of a raw data member, its reference can be changed after the mesh is initialized.
+- `if`/`else`/`elif` statements with constant conditions are resolved at compile time with no branches being inserted in the generated code.
 
 ### Fixed
 

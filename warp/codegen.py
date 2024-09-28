@@ -233,8 +233,11 @@ class StructInstance:
 
     def __getattribute__(self, name):
         cls = super().__getattribute__("_cls")
-        if name in cls.vars:
-            var = cls.vars[name]
+        if name == "native_name":
+            return cls.native_name
+
+        var = cls.vars.get(name)
+        if var is not None:
             if isinstance(var.type, type) and issubclass(var.type, ctypes.Array):
                 # Each field stored in a `StructInstance` is exposed as
                 # a standard Python attribute but also has a `ctypes`
@@ -486,6 +489,10 @@ class Struct:
             def __init__(inst):
                 StructInstance.__init__(inst, self, None)
 
+        # make sure warp.types.get_type_code works with this StructInstance
+        NewStructInstance.cls = self.cls
+        NewStructInstance.native_name = self.native_name
+
         return NewStructInstance()
 
     def initializer(self):
@@ -628,6 +635,9 @@ class Var:
             classstr = f"wp::{type(t).__name__}"
             return f"{classstr}_t<{dtypestr}>"
         elif isinstance(t, Struct):
+            return t.native_name
+        elif isinstance(t, type) and issubclass(t, StructInstance):
+            # ensure the actual Struct name is used instead of "NewStructInstance"
             return t.native_name
         elif is_reference(t):
             if not value_type:
@@ -884,6 +894,12 @@ class Adjoint:
             # this is to avoid registering false references to overshadowed modules
             adj.symbols[name] = arg
 
+        # try to replace static expressions by their constant result if the
+        # expression can be evaluated at declaration time
+        adj.static_expressions: Dict[str, Any] = {}
+        if "static" in adj.source:
+            adj.replace_static_expressions()
+
         # There are cases where a same module might be rebuilt multiple times,
         # for example when kernels are nested inside of functions, or when
         # a kernel's launch raises an exception. Ideally we'd always want to
@@ -917,6 +933,7 @@ class Adjoint:
 
         adj.return_var = None  # return type for function or kernel
         adj.loop_symbols = []  # symbols at the start of each loop
+        adj.loop_const_iter_symbols = set()  # iteration variables (constant) for static loops
 
         # blocks
         adj.blocks = [Block()]
@@ -1552,6 +1569,16 @@ class Adjoint:
         # eval condition
         cond = adj.eval(node.test)
 
+        if cond.constant is not None:
+            # resolve constant condition
+            if cond.constant:
+                for stmt in node.body:
+                    adj.eval(stmt)
+            else:
+                for stmt in node.orelse:
+                    adj.eval(stmt)
+            return None
+
         # save symbol map
         symbols_prev = adj.symbols.copy()
 
@@ -1761,7 +1788,7 @@ class Adjoint:
 
     def emit_NameConstant(adj, node):
         if node.value:
-            return adj.add_constant(True)
+            return adj.add_constant(node.value)
         elif node.value is None:
             raise WarpCodegenTypeError("None type unsupported")
         else:
@@ -1775,7 +1802,7 @@ class Adjoint:
         elif isinstance(node, ast.Ellipsis):
             return adj.emit_Ellipsis(node)
         else:
-            assert isinstance(node, ast.NameConstant)
+            assert isinstance(node, ast.NameConstant) or isinstance(node, ast.Constant)
             return adj.emit_NameConstant(node)
 
     def emit_BinOp(adj, node):
@@ -1816,6 +1843,11 @@ class Adjoint:
         # detect symbols with conflicting definitions (assigned inside the for loop)
         for items in symbols.items():
             sym = items[0]
+            if adj.loop_const_iter_symbols is not None and sym in adj.loop_const_iter_symbols:
+                # ignore constant overwriting in for-loops if it is a loop iterator
+                # (it is no problem to unroll static loops multiple times in sequence)
+                continue
+
             var1 = items[1]
             var2 = adj.symbols[sym]
 
@@ -1962,15 +1994,27 @@ class Adjoint:
         )
         return range_call
 
+    def begin_record_constant_iter_symbols(adj):
+        if adj.loop_const_iter_symbols is None:
+            adj.loop_const_iter_symbols = set()
+
+    def end_record_constant_iter_symbols(adj):
+        adj.loop_const_iter_symbols = None
+
     def emit_For(adj, node):
         # try and unroll simple range() statements that use constant args
         unroll_range = adj.get_unroll_range(node)
 
         if isinstance(unroll_range, range):
+            const_iter_sym = node.target.id
+            if adj.loop_const_iter_symbols is not None:
+                # prevent constant conflicts in `materialize_redefinitions()`
+                adj.loop_const_iter_symbols.add(const_iter_sym)
+
+            # unroll static for-loop
             for i in unroll_range:
                 const_iter = adj.add_constant(i)
-                var_iter = adj.add_builtin_call("int", [const_iter])
-                adj.symbols[node.target.id] = var_iter
+                adj.symbols[const_iter_sym] = const_iter
 
                 # eval body
                 for s in node.body:
@@ -1986,6 +2030,7 @@ class Adjoint:
                 iter = adj.eval(node.iter)
 
             adj.symbols[node.target.id] = adj.begin_for(iter)
+            adj.begin_record_constant_iter_symbols()
 
             # for loops should be side-effect free, here we store a copy
             adj.loop_symbols.append(adj.symbols.copy())
@@ -1996,6 +2041,7 @@ class Adjoint:
 
             adj.materialize_redefinitions(adj.loop_symbols[-1])
             adj.loop_symbols.pop()
+            adj.end_record_constant_iter_symbols()
 
             adj.end_for(iter)
 
@@ -2052,13 +2098,28 @@ class Adjoint:
 
         # try and lookup function in globals by
         # resolving path (e.g.: module.submodule.attr)
-        func, path = adj.resolve_static_expression(node.func)
+        if hasattr(node.func, "warp_func"):
+            func = node.func.warp_func
+            path = []
+        else:
+            func, path = adj.resolve_static_expression(node.func)
         if func is None:
             func = adj.eval(node.func)
 
+        if adj.is_static_expression(func):
+            # try to evaluate wp.static() expressions
+            obj, _ = adj.evaluate_static_expression(node)
+            if obj is not None:
+                if isinstance(obj, warp.context.Function):
+                    # special handling for wp.static() evaluating to a function
+                    return obj
+                else:
+                    out = adj.add_constant(obj)
+                    return out
+
         type_args = {}
 
-        if not isinstance(func, warp.context.Function):
+        if len(path) > 0 and not isinstance(func, warp.context.Function):
             attr = path[-1]
             caller = func
             func = None
@@ -2579,6 +2640,190 @@ class Adjoint:
 
         return expr
 
+    # retrieves a dictionary of all closure and global variables and their values
+    # to be used in the evaluation context of wp.static() expressions
+    def get_static_evaluation_context(adj):
+        closure_vars = dict(
+            zip(
+                adj.func.__code__.co_freevars,
+                [c.cell_contents for c in (adj.func.__closure__ or [])],
+            )
+        )
+
+        vars_dict = {}
+        vars_dict.update(adj.func.__globals__)
+        # variables captured in closure have precedence over global vars
+        vars_dict.update(closure_vars)
+
+        return vars_dict
+
+    def is_static_expression(adj, func):
+        return (
+            isinstance(func, types.FunctionType)
+            and func.__module__ == "warp.builtins"
+            and func.__qualname__ == "static"
+        )
+
+    # verify the return type of a wp.static() expression is supported inside a Warp kernel
+    def verify_static_return_value(adj, value):
+        if value is None:
+            raise ValueError("None is returned")
+        if warp.types.is_value(value):
+            return True
+        if warp.types.is_array(value):
+            # more useful explanation for the common case of creating a Warp array
+            raise ValueError("a Warp array cannot be created inside Warp kernels")
+        if isinstance(value, str):
+            # we want to support cases such as `print(wp.static("test"))`
+            return True
+        if isinstance(value, warp.context.Function):
+            return True
+
+        def verify_struct(s: StructInstance, attr_path: List[str]):
+            for key in s._cls.vars.keys():
+                v = getattr(s, key)
+                if issubclass(type(v), StructInstance):
+                    verify_struct(v, attr_path + [key])
+                else:
+                    try:
+                        adj.verify_static_return_value(v)
+                    except ValueError as e:
+                        raise ValueError(
+                            f"the returned Warp struct contains a data type that cannot be constructed inside Warp kernels: {e} at {value._cls.key}.{'.'.join(attr_path)}"
+                        ) from e
+
+        if issubclass(type(value), StructInstance):
+            return verify_struct(value, [])
+
+        raise ValueError(f"value of type {type(value)} cannot be constructed inside Warp kernels")
+
+    # find the source code string of an AST node
+    def extract_node_source(adj, node) -> Optional[str]:
+        if not hasattr(node, "lineno") or not hasattr(node, "col_offset"):
+            return None
+
+        start_line = node.lineno - 1  # line numbers start at 1
+        start_col = node.col_offset
+
+        if hasattr(node, "end_lineno") and hasattr(node, "end_col_offset"):
+            end_line = node.end_lineno - 1
+            end_col = node.end_col_offset
+        else:
+            # fallback for Python versions before 3.8
+            # we have to find the end line and column manually
+            end_line = start_line
+            end_col = start_col
+            parenthesis_count = 1
+            for lineno in range(start_line, len(adj.source_lines)):
+                if lineno == start_line:
+                    c_start = start_col
+                else:
+                    c_start = 0
+                line = adj.source_lines[lineno]
+                for i in range(c_start, len(line)):
+                    c = line[i]
+                    if c == "(":
+                        parenthesis_count += 1
+                    elif c == ")":
+                        parenthesis_count -= 1
+                        if parenthesis_count == 0:
+                            end_col = i
+                            end_line = lineno
+                            break
+                if parenthesis_count == 0:
+                    break
+
+        if start_line == end_line:
+            # single-line expression
+            return adj.source_lines[start_line][start_col:end_col]
+        else:
+            # multi-line expression
+            lines = []
+            # first line (from start_col to the end)
+            lines.append(adj.source_lines[start_line][start_col:])
+            # middle lines (entire lines)
+            lines.extend(adj.source_lines[start_line + 1 : end_line])
+            # last line (from the start to end_col)
+            lines.append(adj.source_lines[end_line][:end_col])
+            return "\n".join(lines).strip()
+
+    # handles a wp.static() expression and returns the resulting object and a string representing the code
+    # of the static expression
+    def evaluate_static_expression(adj, node) -> Tuple[Any, str]:
+        if len(node.args) == 1:
+            static_code = adj.extract_node_source(node.args[0])
+        elif len(node.keywords) == 1:
+            static_code = adj.extract_node_source(node.keywords[0])
+        else:
+            raise WarpCodegenError("warp.static() requires a single argument or keyword")
+        if static_code is None:
+            raise WarpCodegenError("Error extracting source code from wp.static() expression")
+
+        vars_dict = adj.get_static_evaluation_context()
+        # add constant variables to the static call context
+        constant_vars = {k: v.constant for k, v in adj.symbols.items() if isinstance(v, Var) and v.constant is not None}
+        vars_dict.update(constant_vars)
+
+        try:
+            value = eval(static_code, vars_dict)
+            if warp.config.verbose:
+                print(f"Evaluated static command: {static_code} = {value}")
+        except NameError as e:
+            raise WarpCodegenError(
+                f"Error evaluating static expression: {e}. Make sure all variables used in the static expression are constant."
+            ) from e
+        except Exception as e:
+            raise WarpCodegenError(
+                f"Error evaluating static expression: {e} while evaluating the following code generated from the static expression:\n{static_code}"
+            ) from e
+
+        try:
+            adj.verify_static_return_value(value)
+        except ValueError as e:
+            raise WarpCodegenError(
+                f"Static expression returns an unsupported value: {e} while evaluating the following code generated from the static expression:\n{static_code}"
+            ) from e
+
+        return value, static_code
+
+    # try to replace wp.static() expressions by their evaluated value if the
+    # expression can be evaluated
+    def replace_static_expressions(adj):
+        class StaticExpressionReplacer(ast.NodeTransformer):
+            def visit_Call(self, node):
+                func, _ = adj.resolve_static_expression(node.func, eval_types=False)
+                if adj.is_static_expression(func):
+                    try:
+                        # the static expression will execute as long as the static expression is valid and
+                        # only depends on global or captured variables
+                        obj, code = adj.evaluate_static_expression(node)
+                        if code is not None:
+                            adj.static_expressions[code] = obj
+                            if isinstance(obj, warp.context.Function):
+                                name_node = ast.Name("__warp_func__")
+                                # we add a pointer to the Warp function here so that we can refer to it later at
+                                # codegen time (note that the function key itself is not sufficient to uniquely
+                                # identify the function, as the function may be redefined between the current time
+                                # of wp.static() declaration and the time of codegen during module building)
+                                name_node.warp_func = obj
+                                return ast.copy_location(name_node, node)
+                            else:
+                                return ast.copy_location(ast.Constant(value=obj), node)
+                    except Exception:
+                        # Ignoring failing static expressions should generally not be an issue because only
+                        # one of these cases should be possible:
+                        #   1) the static expression itself is invalid code, in which case the module cannot be
+                        #      built all,
+                        #   2) the static expression contains a reference to a local (even if constant) variable
+                        #      (and is therefore not executable and raises this exception), in which
+                        #      case changing the constant, or the code affecting this constant, would lead to
+                        #      a different module hash anyway.
+                        pass
+
+                return self.generic_visit(node)
+
+        adj.tree = StaticExpressionReplacer().visit(adj.tree)
+
     # Evaluates a static expression that does not depend on runtime values
     # if eval_types is True, try resolving the path using evaluated type information as well
     def resolve_static_expression(adj, root_node, eval_types=True):
@@ -2653,7 +2898,7 @@ class Adjoint:
         # return the Python code corresponding to the given AST node
         return ast.get_source_segment(adj.source, node)
 
-    def get_references(adj) -> Dict[str, Any]:
+    def get_references(adj) -> Tuple[Dict[str, Any], Dict[Any, Any], Dict[warp.context.Function, Any]]:
         """Traverses ``adj.tree`` and returns referenced constants, types, and user-defined functions."""
 
         local_variables = set()  # Track local variables appearing on the LHS so we know when variables are shadowed
@@ -2941,6 +3186,15 @@ def constant_str(value):
     elif value_type in warp.types.scalar_types:
         # make sure we emit the value of objects, e.g. uint32
         return str(value.value)
+
+    elif issubclass(value_type, warp.codegen.StructInstance):
+        # constant struct instance
+        arg_strs = []
+        for key, var in value._cls.vars.items():
+            attr = getattr(value, key)
+            arg_strs.append(f"{Var.type_to_ctype(var.type)}({constant_str(attr)})")
+        arg_str = ", ".join(arg_strs)
+        return f"{value.native_name}({arg_str})"
 
     elif value == math.inf:
         return "INFINITY"
