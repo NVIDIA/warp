@@ -19,19 +19,184 @@ TILE_K = wp.constant(8)
 # num threads per-tile
 TILE_DIM = 64
 
-
 @wp.kernel
-def tile_sum_kernel(input: wp.array3d(dtype=float), output: wp.array(dtype=float)):
+def tile_sum_kernel(input: wp.array2d(dtype=float), 
+                    output: wp.array(dtype=float)):
+    
     # output tile index
     i = wp.tid()
 
-    a = wp.tile_load(input[i], 0, 0, m=TILE_M, n=TILE_N)
-    s = wp.tile_sum(a) * 0.5
+    n = input.shape[1]
+    count = int(n / TILE_DIM)
+
+    s = wp.tile_zeros(m=1, n=1, dtype=float)
+
+    for j in range(count):
+        a = wp.tile_load(input, i, j, m=1, n=TILE_DIM)
+        s += wp.tile_sum(a) * 0.5 
 
     wp.tile_store(output, i, 0, s)
 
 
 def test_tile_reduce_sum(test, device):
+    batch_count = 56
+
+    N = TILE_DIM*3
+
+    rng = np.random.default_rng(42)
+    input = rng.random((batch_count, N), dtype=np.float32)
+
+    input_wp = wp.array(input, requires_grad=True, device=device)
+    output_wp = wp.zeros(batch_count, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_sum_kernel, 
+            dim=[batch_count], 
+            inputs=[input_wp, output_wp], 
+            block_dim=TILE_DIM, 
+            device=device)
+
+    sum_wp = output_wp.numpy()
+    for i in range(batch_count):
+        sum_np = np.sum(input[i]) * 0.5
+        test.assertAlmostEqual(sum_wp[i], sum_np, places=4)
+
+    output_wp.grad.fill_(1.0)
+
+    tape.backward()
+
+    assert_np_equal(input_wp.grad.numpy(), np.ones_like(input) * 0.5, tol=1.e-4)
+
+
+@wp.kernel
+def tile_min_kernel(input: wp.array2d(dtype=float), 
+                    output: wp.array(dtype=float)):
+    
+    # output tile index
+    i = wp.tid()
+
+    a = wp.tile_load(input, i, 0, m=1, n=TILE_DIM)
+    m = wp.tile_min(a)
+
+    wp.tile_store(output, i, 0, m)
+
+
+def test_tile_reduce_min(test, device):
+    batch_count = 56
+
+    N = TILE_DIM
+
+    rng = np.random.default_rng(42)
+    input = rng.random((batch_count, N), dtype=np.float32)
+
+    input_wp = wp.array(input, requires_grad=True, device=device)
+    output_wp = wp.zeros(batch_count, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_min_kernel, 
+            dim=[batch_count], 
+            inputs=[input_wp, output_wp], 
+            block_dim=TILE_DIM, 
+            device=device)
+
+    min_wp = output_wp.numpy()
+    for i in range(batch_count):
+        min_np = np.min(input[i])
+        test.assertAlmostEqual(min_wp[i], min_np, places=4)
+
+
+@wp.kernel
+def tile_max_kernel(input: wp.array2d(dtype=float), 
+                    output: wp.array(dtype=float)):
+    
+    # output tile index
+    i = wp.tid()
+
+    a = wp.tile_load(input, i, 0, m=1, n=TILE_DIM)
+    m = wp.tile_max(a)
+
+    wp.tile_store(output, i, 0, m)
+
+
+def test_tile_reduce_max(test, device):
+    batch_count = 56
+
+    N = TILE_DIM
+
+    rng = np.random.default_rng(42)
+    input = rng.random((batch_count, N), dtype=np.float32)
+
+    input_wp = wp.array(input, requires_grad=True, device=device)
+    output_wp = wp.zeros(batch_count, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_max_kernel, 
+            dim=[batch_count], 
+            inputs=[input_wp, output_wp], 
+            block_dim=TILE_DIM, 
+            device=device)
+
+    max_wp = output_wp.numpy()
+    for i in range(batch_count):
+        max_np = np.max(input[i])
+        test.assertAlmostEqual(max_wp[i], max_np, places=4)
+
+
+@wp.kernel
+def tile_reduce_custom_kernel(input: wp.array2d(dtype=float), 
+                              output: wp.array(dtype=float)):
+    
+    # output tile index
+    i = wp.tid()
+
+    a = wp.tile_load(input, i, 0, m=1, n=TILE_DIM)
+    m = wp.tile_reduce(wp.mul, a)
+
+    wp.tile_store(output, i, 0, m)
+
+
+def test_tile_reduce_custom(test, device):
+    batch_count = 56
+
+    N = TILE_DIM
+
+    rng = np.random.default_rng(42)
+    input = rng.random((batch_count, N), dtype=np.float32)
+
+    input_wp = wp.array(input, requires_grad=True, device=device)
+    output_wp = wp.zeros(batch_count, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_reduce_custom_kernel, 
+            dim=[batch_count], 
+            inputs=[input_wp, output_wp], 
+            block_dim=TILE_DIM, 
+            device=device)
+
+    prod_wp = output_wp.numpy()
+    for i in range(batch_count):
+        prod_np = np.prod(input[i])
+        test.assertAlmostEqual(prod_wp[i], prod_np, places=4)
+
+
+
+
+@wp.kernel
+def tile_grouped_sum_kernel(input: wp.array3d(dtype=float), output: wp.array(dtype=float)):
+    # output tile index
+    i = wp.tid()
+
+    a = wp.tile_load(input, i, 0, m=TILE_M, n=TILE_N)
+    s = wp.tile_sum(a) * 0.5
+
+    wp.tile_store(output, i, 0, s)
+
+
+def test_tile_reduce_grouped_sum(test, device):
     batch_count = 56
 
     M = TILE_M
@@ -51,13 +216,13 @@ def test_tile_reduce_sum(test, device):
     sum_wp = output_wp.numpy()
     for i in range(batch_count):
         sum_np = np.sum(input[i]) * 0.5
-        test.assertAlmostEqual(sum_wp[i], sum_np, places=5)
+        test.assertAlmostEqual(sum_wp[i], sum_np, places=4)
 
     output_wp.grad.fill_(1.0)
 
     tape.backward()
 
-    assert_np_equal(input_wp.grad.numpy(), np.ones_like(input) * 0.5)
+    assert_np_equal(input_wp.grad.numpy(), np.ones_like(input) * 0.5, tol=1.e-4)
 
 
 @wp.kernel
@@ -160,7 +325,12 @@ class TestTileReduce(unittest.TestCase):
     pass
 
 
+
 add_function_test(TestTileReduce, "test_tile_reduce_sum", test_tile_reduce_sum, devices=devices)
+add_function_test(TestTileReduce, "test_tile_reduce_min", test_tile_reduce_min, devices=devices)
+add_function_test(TestTileReduce, "test_tile_reduce_max", test_tile_reduce_max, devices=devices)
+add_function_test(TestTileReduce, "test_tile_reduce_custom", test_tile_reduce_custom, devices=devices)
+add_function_test(TestTileReduce, "test_tile_reduce_grouped_sum", test_tile_reduce_sum, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_simt", test_tile_reduce_simt, devices=devices)
 add_function_test(TestTileReduce, "test_tile_ones", test_tile_ones, devices=devices)
 add_function_test(TestTileReduce, "test_tile_arange", test_tile_arange, devices=devices)

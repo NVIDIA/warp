@@ -2280,6 +2280,167 @@ add_builtin(
     export=False,
 )
 
+def tile_min_value_func(arg_types, arg_values):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return Tile(dtype=Any, M=1, N=1)
+
+    if len(arg_types) != 1:
+        raise RuntimeError("tile_min() requires 1 positional args")
+
+    a = arg_types["a"]
+
+    if not is_tile(a):
+        raise RuntimeError("tile_min() argument 0 must be a tile")
+
+    return Tile(dtype=a.dtype, M=1, N=1, op="min")
+
+
+add_builtin(
+    "tile_min",
+    input_types={"a": Tile},
+    value_func=tile_min_value_func,
+    variadic=True,
+    doc="""Cooperatively compute the minimum of the tile elements using all threads in the block.
+
+    :param a: The tile to compute the minimum of
+    :returns: A single element tile with dimensions of (1,1) holding the minimum value
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            t = wp.tile_arange(start=--10, stop=10, dtype=float)
+            s = wp.tile_min(t)
+
+            print(t)
+
+        wp.launch(compute, dim=[64], inputs=[])
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=1, storage=register) = [[-10]]
+
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+def tile_max_value_func(arg_types, arg_values):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return Tile(dtype=Any, M=1, N=1)
+
+    if len(arg_types) != 1:
+        raise RuntimeError("tile_max() requires 1 positional args")
+
+    a = arg_types["a"]
+
+    if not is_tile(a):
+        raise RuntimeError("tile_max() argument 0 must be a tile")
+
+    return Tile(dtype=a.dtype, M=1, N=1, op="min")
+
+
+add_builtin(
+    "tile_max",
+    input_types={"a": Tile},
+    value_func=tile_max_value_func,
+    variadic=True,
+    doc="""Cooperatively compute the maximum of the tile elements using all threads in the block.
+
+    :param a: The tile to compute the maximum from
+    :returns: A single element tile with dimensions of (1,1) holding the maximum value
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            t = wp.tile_arange(start=--10, stop=10, dtype=float)
+            s = wp.tile_min(t)
+
+            print(t)
+
+        wp.launch(compute, dim=[64], inputs=[])
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=1, storage=register) = [[10]]
+
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+# does type propagation for load()
+def tile_reduce_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return Tile(dtype=Any, M=Any, N=Any)
+
+    a = arg_types["a"]
+
+    # check all args are tiles
+    if not is_tile(a):
+        raise RuntimeError(f"tile_reduce() arguments must be tiles, got type {a}")
+
+    return Tile(dtype=a.dtype, M=1, N=1, op="reduce")
+
+
+def tile_reduce_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    func_args = (args["op"], *args["args"])
+    template_args = ()
+    return (func_args, template_args)
+
+
+add_builtin(
+    "tile_reduce",
+    input_types={"op": Callable, "a": Any},
+    value_func=tile_reduce_value_func,
+    native_func="tile_reduce",
+    doc="""Apply a custom reduction operator across the tile.
+
+    This function cooperatively performs a reduction using the provided operator across the tile.
+
+    :param op: A callable function that accepts two arguments and returns one argument, may be a user function or builtin
+    :param a: The input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
+    :returns: A single element tile with ``shape=(1,1)`` with the same datatype as the input tile.
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            t = wp.tile_arange(1, 10, dtype=int)
+            s = wp.tile_reduce(wp.prod, t)
+
+            print(s)
+
+        wp.launch(compute, dim=[16], inputs=[])
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=1, storage=register) = [[362880]]
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+# maps
+
 
 # does type propagation for load()
 def tile_unary_map_value_func(arg_types, arg_values):
@@ -2356,7 +2517,7 @@ def tile_binary_map_value_func(arg_types, arg_values):
         raise RuntimeError(f"tile_map() arguments must be tiles, got type {b}")
 
     # use first argument to define output type
-    if a.dtype != b.dtype:
+    if not types_equal(a.dtype, b.dtype):
         raise RuntimeError(f"tile_map() arguments must all have the same type {a.dtype} != {b.dtype}")
 
     if a.M != b.M:
@@ -5108,7 +5269,7 @@ def tile_matmul_generic_value_func(arg_types, arg_values):
     if not is_tile(arg_types["b"]):
         raise RuntimeError("tile_matmul() argument 1 must be an tile")
 
-    if not isinstance(arg_types["out"], Tile):
+    if not is_tile(arg_types["out"]):
         raise RuntimeError("tile_matmul() output argument must be a tile")
 
     return None
@@ -5268,6 +5429,29 @@ add_builtin(
     namespace="",
 )
 
+add_builtin(
+    "tile_matmul",
+    input_types={"a": Tile, "b": Tile},
+    value_func=tile_matmul_generic_value_func,
+    lto_dispatch_func=tile_matmul_generic_lto_dispatch_func,
+    variadic=True,
+    doc="""Computes the matrix product ``out = a*b``.
+
+    Supported datatypes are:
+        * fp16, fp32, fp64 (real)
+        * vec2h, vec2f, vec2d (complex)
+
+    Both input tiles must have the same datatype. Tile data will be automatically be migrated
+    to shared memory if necessary and will use TensorCore operations when available.
+
+    :param a: A tile with ``shape=(M, K)``
+    :param b: A tile with ``shape=(K, N)``
+    :returns: A tile with ``shape=(M, N)``
+    """,
+    group="Tile Primitives",
+    export=False,
+    namespace="",
+)
 
 ##
 ## FFT

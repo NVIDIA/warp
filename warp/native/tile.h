@@ -37,13 +37,14 @@
         [x] Simple
         [ ] Cute
     [x] Remove Alloc type from tile_shared_t
-    [ ] wp.launch_tiled() helper
+    [x] wp.launch_tiled() helper
 [ ] Creation
     [x] zeros
     [x] ones
     [x] arange
     [x] tile()
-    [ ] untile()
+    [x] untile()
+    [ ] fromfunction()
     [ ] explicit storage
 [ ] Load/Store
     [ ] 1D load/store variants
@@ -76,23 +77,22 @@
     [ ] Slice
 [ ] Runtime
     [x] Compile-time block dimensions
-    [x] Switch between SIMT / Tile based execution if `tile_dim` not provided to wp.launch()
+    [x] Switch between SIMT / Tile based execution if `block_dim` not provided to wp.launch()
 [ ] Examples
+    [ ] Point registration
     [ ] GEMM
+    [ ] MLP
+    [ ] LayerNorm  
+    [ ] SoftMax
+    [ ] GEMM
+    [ ] warp.sim (CRBA)
     [ ] Batched MLP
-    [ ] Point cloud alignment
     [ ] Layer norm
     [ ] Convolution: https://github.com/NVIDIA/MinkowskiEngine/blob/master/src/convolution_kernel.cu#L123
     [ ] MeshCNN (Modulus, Oliver)
     [ ] BioNemo (Ali)
     [ ] Skinning (David/Or/Vismay)
     [ ] warp.sim (VBD)
-    [ ] warp.sim (CRBA)
-    [ ] Point clustering
-    [ ] GEMM
-    [ ] MLP
-    [ ] LayerNorm  
-    [ ] SoftMax
 [ ] Error checking
     [ ] Ensure functions passed to tile_map() are compatible with tile type
     [ ] Ensure that args passed to tile ops are compatible
@@ -235,6 +235,12 @@ struct tile_register_t
     { 
         for (int i=0; i < NumRegs; ++i)
             data[i] = tile.data[i];
+    }
+
+    inline CUDA_CALLABLE void zero()
+    {
+        for (int i=0; i < NumRegs; ++i)
+            data[i] = T(0);        
     }
 
     // extract a single tile element to a native type

@@ -43,19 +43,17 @@ inline CUDA_CALLABLE T warp_shuffle_down(T val, int offset, int mask)
   return output;
 }
 
-template <typename T>
-inline CUDA_CALLABLE T warp_reduce_sum(T val)
+template <typename T, typename Op>
+inline CUDA_CALLABLE T warp_reduce(T val, Op f, unsigned int mask)
 {
     T sum = val;
-
-    unsigned int mask = __activemask();
 
     if (mask == 0xFFFFFFFF)
     {
         // handle case where entire warp is active
         for (int offset=WP_TILE_WARP_SIZE/2; offset > 0; offset /= 2)
         {
-            sum += warp_shuffle_down(sum, offset, mask);
+            sum = f(sum, warp_shuffle_down(sum, offset, mask));
         }
     }
     else
@@ -65,31 +63,17 @@ inline CUDA_CALLABLE T warp_reduce_sum(T val)
         {            
             T shfl_val = warp_shuffle_down(sum, offset, mask);
             if ((mask & (1 << ((threadIdx.x + offset)%WP_TILE_WARP_SIZE))) != 0)
-                sum += shfl_val;
+                sum = f(sum, shfl_val);
         }
     }
 
     return sum;
 }
 
-template <typename T, typename Op>
-inline CUDA_CALLABLE T warp_reduce(T val, Op op)
-{
-    T sum = val;
-
-    for (int offset=WP_TILE_WARP_SIZE/2; offset > 0; offset /= 2)
-    {
-        sum = op(sum, warp_shuffle_down(sum, offset));
-    }
-
-    return sum;
-}
-
-
 // non-axis version which computes sum 
 // across the entire tile using the whole block
-template <typename Tile>
-auto tile_sum(Tile& t)
+template <typename Tile, typename Op>
+auto tile_reduce_impl(Op f, Tile& t)
 {
     using T = typename Tile::Type;
 
@@ -105,10 +89,19 @@ auto tile_sum(Tile& t)
     // thread reduction
     WP_PRAGMA_UNROLL
     for (int i=1; i < input.NumRegs; ++i)
-        thread_sum += input.data[i];
+    {
+        int linear = t.index(i);
+        if (!Tile::Aligned && linear >= Tile::Size)
+            break;
+
+        thread_sum = f(thread_sum, input.data[i]);
+    }
+
+    // ensure that only threads with at least one valid item participate in the reduction
+    unsigned int mask = __ballot_sync(__activemask(), t.index(0) < Tile::Size);
 
     // warp reduction
-    T warp_sum = warp_reduce_sum(thread_sum);
+    T warp_sum = warp_reduce(thread_sum, f, mask);
 
     // fixed size scratch pad for partial results in shared memory
     WP_TILE_SHARED T partials[warp_count];
@@ -137,7 +130,7 @@ auto tile_sum(Tile& t)
         
         WP_PRAGMA_UNROLL
         for (int i=1; i < active_warps; ++i)
-            block_sum += partials[i];
+            block_sum = f(block_sum, partials[i]);
 
         output.data[0] = block_sum;
     }
@@ -145,6 +138,24 @@ auto tile_sum(Tile& t)
     return output;
 }
 
+void adj_tile_reduce_impl() 
+{
+    // todo: general purpose reduction gradients not implemented 
+}
+
+// entry point for Python code-gen, wraps op in a lambda to perform overload resolution
+#define tile_reduce(op, t) tile_reduce_impl([](auto x, auto y) { return op(x, y);}, t)
+#define adj_tile_reduce(op, a, adj_op, adj_a, adj_ret) adj_tile_reduce_impl()
+
+// convenience methods for specific reductions
+
+template <typename Tile>
+auto tile_sum(Tile& t)
+{
+    return tile_reduce(add, t);
+}
+
+// special case adjoint for summation
 template <typename Tile, typename AdjTile>
 void adj_tile_sum(Tile& t, Tile& adj_t, AdjTile& adj_ret)
 {
@@ -163,70 +174,30 @@ void adj_tile_sum(Tile& t, Tile& adj_t, AdjTile& adj_ret)
     adj_t.assign(tile_add(adj_t_reg, adj_ret_reg));
 }
 
-
-template <typename Tile, typename Fwd>
-auto tile_reduce(Fwd op, Tile& t, int axis)
+template <typename Tile>
+auto tile_max(Tile& t)
 {
-    using T = typename Tile::Type;
-
-    auto input = t.copy_to_register();
-    auto output = tile_register_t<T, 1, 1>();
-
-    const int warp_count = (WP_TILE_BLOCK_DIM + WP_TILE_WARP_SIZE - 1)/WP_TILE_WARP_SIZE;
-    const int warp_index = threadIdx.x/WP_TILE_WARP_SIZE;
-    const int lane_index = threadIdx.x%WP_TILE_WARP_SIZE;
-
-    T thread_sum = input.data[0];
-
-    // thread reduction
-    WP_PRAGMA_UNROLL
-    for (int i=1; i < input.NumRegs; ++i)
-        thread_sum = op(thread_sum, input.data[i]);
-
-    // warp reduction
-    T warp_sum = warp_reduce(thread_sum, op);
-
-    // fixed size scratch pad for partial results
-    WP_TILE_SHARED T partials[warp_count];
-
-    if (lane_index == 0)
-    {
-        partials[warp_index] = warp_sum;
-    }
-
-    WP_TILE_SYNC();
-
-    // reduce across block, todo: use warp_reduce() here
-    if (threadIdx.x == 0)
-    {
-        T block_sum = partials[0];
-        
-        WP_PRAGMA_UNROLL
-        for (int i=1; i < warp_count; ++i)
-            block_sum = op(block_sum, partials[i]);
-
-        output.data[0] = block_sum;
-    }
-
-    return output;
+    return tile_reduce(max, t);
 }
 
-template <typename Tile, typename AdjTile, typename Fwd>
-void adj_tile_reduce(Tile& t, int axis, Tile& adj_t, int adj_axis, AdjTile& adj_ret)
+template <typename Tile, typename AdjTile>
+void adj_tile_max(Tile& t, Tile& adj_t, AdjTile& adj_ret)
 {
-    using T = typename Tile::Type;
-
-    // broadcast incoming adjoint to block
-    WP_TILE_SHARED T scratch;
-    if (threadIdx.x == 0)
-        scratch = adj_ret.data[0];
-
-    WP_TILE_SYNC();
-
-    auto adj_t_reg = adj_t.copy_to_register();
-    auto adj_ret_reg = tile_shared_t<T, Tile::M, Tile::N, -1, 0, 0>(&scratch).copy_to_register();
-
-    adj_t.assign(tile_add(adj_t_reg, adj_ret_reg));
+    // todo: not implemented
 }
+
+template <typename Tile>
+auto tile_min(Tile& t)
+{
+    return tile_reduce(min, t);
+}
+
+template <typename Tile, typename AdjTile>
+void adj_tile_min(Tile& t, Tile& adj_t, AdjTile& adj_ret)
+{
+    // todo: not implemented
+}
+
+
 
 } // namespace wp

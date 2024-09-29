@@ -1298,9 +1298,6 @@ class Adjoint:
 
             fwd_args.append(strip_reference(func_arg))
 
-        # used to create an alias of the adjoint var to the primal var for tile ops
-        alias_call = None
-
         if return_type is None:
             # handles expression (zero output) functions, e.g.: void do_something();
 
@@ -1324,11 +1321,6 @@ class Adjoint:
 
             forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
 
-            # prepend auto if it is an anonymously typed var (e.g.: a tile op)
-            if output.ctype() == "auto":
-                forward_call = "auto " + forward_call
-                alias_call = f"auto& adj_{output} = var_{output};"
-
             replay_call = forward_call
             if func.custom_replay_func is not None:
                 replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
@@ -1348,9 +1340,6 @@ class Adjoint:
             adj.add_forward(forward_call, replay="// " + replay_call)
         else:
             adj.add_forward(forward_call, replay=replay_call)
-
-        if alias_call:
-            adj.add_forward(alias_call)
 
         if not func.missing_grad and len(args):
             adj_args = tuple(strip_reference(x) for x in func_args)
@@ -3090,9 +3079,6 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu"):
     lines += ["// primal vars\n"]
 
     for var in adj.variables:
-        # do not predeclare vars with auto type
-        if var.ctype() == "auto":
-            continue
 
         if is_tile(var.type):
             lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit()};\n"]
