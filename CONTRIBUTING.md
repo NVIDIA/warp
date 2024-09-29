@@ -1,7 +1,17 @@
 # Contributing to NVIDIA Warp
 
 Contributions and PRs from the community are welcome and are taken under the
-terms described in the **9. Feedback** section of the [license](LICENSE.md).
+terms described in the *Feedback** section below.
+
+## Feedback
+
+You may, but are not obligated to, provide suggestions, requests, fixes, modifications, enhancements or other feedback regarding or in connection with your use of the Software (collectively, “Feedback”). Feedback, even if designated as confidential by you, will not create any confidentiality obligation for NVIDIA or its affiliates. 
+
+If you provide Feedback, you hereby grant NVIDIA, its affiliates and its designees a non-exclusive, perpetual, irrevocable, sublicensable, worldwide, royalty-free, fully paid-up and transferable license, under your intellectual property rights, to publicly perform, publicly display, reproduce, use, make, have made, sell, offer for sale, distribute (through multiple tiers of distribution), import, create derivative works of and otherwise commercialize and exploit the Feedback at NVIDIA’s discretion. 
+
+You must not give Feedback 
+- (i) that you have reason to believe is subject to any restriction that impairs the exercise of the NVIDIA Warp License, such as third-party intellectual property rights or 
+- (ii) subject to license terms which seek to require any product incorporating or developed using such Feedback, or other intellectual property of NVIDIA or its affiliates, to be licensed to or otherwise shared with any third party.
 
 ## Forking and Branch Naming
 
@@ -74,6 +84,8 @@ As a reviewer, your role is crucial in maintaining the quality of the NVIDIA War
    - Beware of breaking changes, even if the API does not change, does it break semantics existing users may be relying on?
 
    Once you are satisfied with a thread resolution you should mark it as resolved. All threads must be resolved for the MR to be merged.
+
+
 
 ## Feature Owners
 
