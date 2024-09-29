@@ -118,7 +118,7 @@ ruff lint:
     - .runner-utility-linux-x86_64
   before_script:
     - python -m pip install --upgrade pip
-    - pip install --upgrade ruff==0.5.5
+    - pip install --upgrade ruff==0.6.8
   script:
     - ruff check --output-format full  --exit-zero # Just to get something in the log
     - ruff check --output-format gitlab > gl-code-quality-report.json
@@ -134,7 +134,7 @@ ruff format:
     - .runner-utility-linux-x86_64
   before_script:
     - python -m pip install --upgrade pip
-    - pip install --upgrade ruff==0.5.5
+    - pip install --upgrade ruff==0.6.8
   script:
     - ruff format --diff
 
@@ -395,7 +395,7 @@ linux-x86_64 test warp-init:
 # artifacts.
 windows-x86_64 docs:
   stage: test
-  needs: []
+  needs: [windows-x86_64 build]
   extends:
     - .runner-utility-windows-x86_64
   artifacts:
@@ -405,7 +405,7 @@ windows-x86_64 docs:
     - !reference [.snippets, define-powershell-GetTime]
     - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
     - powershell -command "Get-Volume | Format-Table -AutoSize"
-    - $python_name = $DEFAULT_PYTHON + "-windows-x86_64"
+    - $python_name = "3.12.6+nv1-windows-x86_64"
     - tools/packman/packman.cmd install -l _build/target-deps/python python $python_name
     - '& $env:CI_PROJECT_DIR\_build\target-deps\python\python.exe -m venv _venv'
     - .\_venv\Scripts\Activate.ps1
@@ -668,7 +668,7 @@ publish wheels to gitlab package registry:
 .build-docs-common:
   stage: deploy
   image: python:3.11-slim
-  needs: []
+  needs: [linux-x86_64 build]
   extends:
     - .runner-utility-linux-x86_64
   artifacts:
@@ -676,7 +676,11 @@ publish wheels to gitlab package registry:
       - public
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KSet up docs environment"
+    - df -h
     - apt-get update && apt-get install make --no-install-recommends -y
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
     - python -m pip install --upgrade pip
     - python -m pip install -r docs/requirements.txt
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
