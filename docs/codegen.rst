@@ -2,7 +2,8 @@ Code Generation
 ===============
 
 Warp explicitly generates C++/CUDA code for CPU/GPU and stores the .cpp/.cu source files under the module directories of the kernel cache.
-The kernel cache folder path is printed during the `Warp initialization <basics.html#initialization>`_ and can be retrieved after Warp has been initialized from the ``warp.config.kernel_cache_dir`` `configuration <configuration.html#global-settings>`_.
+The kernel cache folder path is printed during the :ref:`Warp initialization <warp-initialization>` and
+can be retrieved after Warp has been initialized from the ``warp.config.kernel_cache_dir`` :ref:`configuration setting <global-settings>`.
 
 Consider the following example:
 
@@ -36,20 +37,28 @@ The resulting CUDA code looks similar to this:
         return var_1;
     }
 
-The generated code follows `static-single-assignment (SSA) form <https://en.wikipedia.org/wiki/Static_single-assignment_form>`_. To ease the readability, comments referring to the original Python source code lines are inserted. Besides the forward pass, the gradient function is also generated, and, if a `custom replay function <differentiability.html#custom-gradient-functions>`_ is provided, the replay function is generated as well.
+The generated code follows `static-single-assignment (SSA) form <https://en.wikipedia.org/wiki/Static_single-assignment_form>`__.
+To ease the readability, comments referring to the original Python source code lines are inserted.
+Besides the forward pass, the gradient function is also generated, and,
+if a :ref:`custom replay function <custom-gradient-functions>` is provided, the replay function is generated as well.
 
 Static Expressions
 ------------------
 
-We often encounter situations where a kernel needs to be specialized for a given input or where certain parts of the code are static by the time the code is executed. With static expressions we can write Python expressions to be evaluated at the time of declaring a Warp function or kernel.
+We often encounter situations where a kernel needs to be specialized for a given input or where certain parts of the code are static by the time the code is executed.
+With static expressions, we can write Python expressions to be evaluated at the time of declaring a Warp function or kernel.
 
-``wp.static(...)`` expressions allow the user to run arbitrary Python code at the time of when the Warp function or kernel containing the expression is defined. :func:`wp.static(expr) <static>` accepts a Python expression and replaces it with the result. Note that the expression can only access variables that can be evaluated at the time the expression is declared. This includes global variables and variables captured in a closure in which the Warp function or kernel is defined. Additionally, Warp constants from within the kernel or function can be accessed, such as the constant iteration variable for static for-loops (i.e. where the range is known at the time of code generation).
+``wp.static(...)`` expressions allow the user to run arbitrary Python code at the time the Warp function or kernel containing the expression is defined.
+:func:`wp.static(expr) <static>` accepts a Python expression and replaces it with the result.
+Note that the expression can only access variables that can be evaluated at the time the expression is declared.
+This includes global variables and variables captured in a closure in which the Warp function or kernel is defined.
+Additionally, Warp constants from within the kernel or function can be accessed, such as the constant iteration variable for static for-loops (i.e. when the range is known at the time of code generation).
 
-The result from `wp.static()` must be a non-null value of one of the following types:
+The result from ``wp.static()`` must be a non-null value of one of the following types:
 
-- a Warp function
-- a string
-- any type that is supported by Warp inside kernels (e.g. scalars, structs, matrices, vectors, etc.), excluding Warp arrays or structs containing Warp arrays.
+- A Warp function
+- A string
+- Any type that is supported by Warp inside kernels (e.g. scalars, structs, matrices, vectors, etc.), excluding Warp arrays or structs containing Warp arrays
 
 Example: Static Math Expressions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -87,7 +96,8 @@ The static expressions are evaluated at the time of when the ``@wp.kernel`` deco
 Example: Static Conditionals
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If/else/elif conditions that are constant can be eliminated from the generated code. We can leverage such mechanism by using ``wp.static()`` inside the branch condition to yield a constant boolean. This can provide improved performance by avoiding branching and can be useful for generating specialized kernels:
+If/else/elif conditions that are constant can be eliminated from the generated code by using ``wp.static()`` inside the branch condition to yield a constant boolean.
+This can provide improved performance by avoiding branching and can be useful for generating specialized kernels:
 
 .. code:: python
 
@@ -150,7 +160,7 @@ The generated code will not contain the for-loop but instead the loop body will 
 Example: Function Pointers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``wp.static(...)`` may also return a Warp function. This can be useful to specialize a kernel or function based on information available at the time of declaring t he Warp function or kernel, or to automatically generate overloads for different types.
+``wp.static(...)`` may also return a Warp function. This can be useful to specialize a kernel or function based on information available at the time of declaring the Warp function or kernel, or to automatically generate overloads for different types.
 
 .. code:: python
 

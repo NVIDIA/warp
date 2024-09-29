@@ -174,6 +174,7 @@ When we run simulations independently in parallel, the Jacobian corresponding to
         
         tape.zero()
 
+.. _custom-gradient-functions:
 
 Custom Gradient Functions
 #########################
