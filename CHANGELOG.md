@@ -4,23 +4,24 @@
 
 ### Added
 
-- Support for fp64 `atomic_add`, `atomic_max`, and `atomic_min` ([GH-284](https://github.com/NVIDIA/warp/issues/284)).
+- Support for a new `wp.static(expr)` function that allows arbitrary Python expressions to be evaluated at the time of
+  function/kernel definition ([docs](https://nvidia.github.io/warp/codegen.html#static-expressions)).
 - Support for stream priorities to hint to the device that it should process pending work
   in high-priority streams over pending work in low-priority streams when possible
   ([docs](https://nvidia.github.io/warp/modules/concurrency.html#stream-priorities)).
-- Support `wp.mod()` for vector types ([GH-282](https://github.com/NVIDIA/warp/issues/282)).
-- Expose the modulo operator `%` to Python's runtime scalar and vector types.
-- Support for local vec/mat/quat component gradient tracking in backwards mode.
-- Support for quaternion indexing (e.g. `q.w`).
-- Support for default argument values for user functions decorated with `wp.func`.
-- Support shadowing builtin functions ([GH-308](https://github.com/NVIDIA/warp/issues/308)).
-- Allow passing custom launch dimensions to `jax_kernel()` ([GH-310](https://github.com/NVIDIA/warp/pull/310)).
-- JAX interoperability examples for sharding and matrix multiplication (see Interoperability documentation).
-- Include all non-hidden builtins in the stub file.
 - Adaptive sparse grid geometry to `warp.fem` ([docs](https://nvidia.github.io/warp/modules/fem.html#adaptivity)).
-- Improve accuracy of symmetric eigenvalues routine in `warp.fem`.
 - Support for `wp.kernel` and `wp.func` closures.
 - Support for defining multiple versions of kernels, functions, and structs without manually assigning unique keys.
+- Support for default argument values for user functions decorated with `wp.func`.
+- Allow passing custom launch dimensions to `jax_kernel()` ([GH-310](https://github.com/NVIDIA/warp/pull/310)).
+- JAX interoperability examples for sharding and matrix multiplication ([docs](https://nvidia.github.io/warp/modules/interoperability.html#using-shardmap-for-distributed-computation)).
+- Interoperability support for the PaddlePaddle ML framework ([GH-318](https://github.com/NVIDIA/warp/pull/318)).
+- Support `wp.mod()` for vector types ([GH-282](https://github.com/NVIDIA/warp/issues/282)).
+- Expose the modulo operator `%` to Python's runtime scalar and vector types.
+- Support for fp64 `atomic_add`, `atomic_max`, and `atomic_min` ([GH-284](https://github.com/NVIDIA/warp/issues/284)).
+- Support for local vec/mat/quat component gradient tracking in backwards mode.
+- Support for quaternion indexing (e.g. `q.w`).
+- Support shadowing builtin functions ([GH-308](https://github.com/NVIDIA/warp/issues/308)).
 - Support for redefining function overloads.
 - Add an ocean sample to the `omni.warp` extension.
 - Support for a new `wp.static(expr)` function that allows arbitrary Python expressions to be evaluated at the time of
@@ -29,6 +30,8 @@
 - Add documentation for dynamic code generation.
 - Support for a new `wp.static(expr)` function that allows arbitrary Python expressions to be evaluated at the time of function/kernel definition ([docs](https://nvidia.github.io/warp/codegen.html#static-expressions)).
 - `warp.sim.VBDIntegrator` now supports body-particle collision.
+- Add a [contributing guide](https://nvidia.github.io/warp/modules/contribution_guide.html) to the Sphinx docs .
+- Add documentation for dynamic code generation ([docs](https://nvidia.github.io/warp/codegen.html#dynamic-kernel-creation)).
 
 ### Changed
 
@@ -39,6 +42,8 @@
 - `wp.Mesh.points` is now a property instead of a raw data member, its reference can be changed after the mesh is initialized.
 - Improve error message when invalid objects are referenced in a Warp kernel.
 - `if`/`else`/`elif` statements with constant conditions are resolved at compile time with no branches being inserted in the generated code.
+- Include all non-hidden builtins in the stub file.
+- Improve accuracy of symmetric eigenvalues routine in `warp.fem`.
 
 ### Fixed
 
@@ -52,20 +57,20 @@
 - Fix bug in `FeatherstoneIntegrator` where `eval_rigid_jacobian` could give incorrect results or reach an infinite
   loop when the body and joint indices were not in the same order. Added `Model.joint_ancestor` to fix the indexing
   from a joint to its parent joint in the articulation.
-- Add a workaround for uninitialized memory read warning in the ComputeSanitizer initcheck tool when using `wp.Mesh`.
+- Fix wrong vertex index passed to `add_edges()` called from `ModelBuilder.add_cloth_mesh()` ([GH-319](https://github.com/NVIDIA/warp/issues/319)).
+- Add a workaround for uninitialized memory read warning in the `compute-sanitizer` initcheck tool when using `wp.Mesh`.
 - Fix name clashes when Warp functions and structs are returned from Python functions multiple times.
 - Fix name clashes between Warp functions and structs defined in different modules.
 - Fix code generation errors when overloading generic kernels defined in a Python function.
-- Fix some bugs related to module hashing and caching.
 - Fix issues with unrelated functions being treated as overloads (e.g., closures).
 - Fix handling of `stream` argument in `array.__dlpack__()`.
+- Fix some bugs related to module hashing and caching.
 - Fix a bug related to reloading CPU modules.
 - Fix a crash when kernel functions are not found in CPU modules.
 - Fix conditions not being evaluated as expected in `while` statements.
 - Fix printing Boolean and 8-bit integer values.
 - Fix array interface type strings used for Boolean and 8-bit integer values.
 - Fix initialization error when setting struct members.
-- Fix wrong vertex index passed to `add_edges()` called from `ModelBuilder.add_cloth_mesh()` ([GH-319](https://github.com/NVIDIA/warp/issues/319)).
 
 ## [1.3.3] - 2024-09-04
 
