@@ -361,10 +361,10 @@ Full Table of Contents
     :maxdepth: 2
     :caption: Advanced Topics
 
+    codegen
     modules/allocators
     modules/concurrency
     profiling
-    codegen
 
 .. toctree::
     :maxdepth: 2
