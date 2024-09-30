@@ -26,6 +26,7 @@
 - Support for a new `wp.static(expr)` function that allows arbitrary Python expressions to be evaluated at the time of
   function/kernel definition ([docs](https://nvidia.github.io/warp/codegen.html#static-expressions)).
 - Add a contributing guide to the Sphinx docs.
+- Fix Warp not being initialized upon entering a `wp.Tape` context.
 
 ### Changed
 

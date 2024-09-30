@@ -375,6 +375,27 @@ add_function_test(
 )
 
 
+#   Tape
+# ------------------------------------------------------------------------------
+
+
+def test_tape(test, device):
+    with wp.Tape():
+        pass
+
+
+class TestImplicitInitTape(unittest.TestCase):
+    pass
+
+
+add_function_test(
+    TestImplicitInitTape,
+    "test_tape",
+    test_tape,
+    check_output=False,
+)
+
+
 if __name__ == "__main__":
     # Do not clear the kernel cache or call anything that would initialize Warp
     # since these tests are specifically aiming to catch issues where Warp isn't
