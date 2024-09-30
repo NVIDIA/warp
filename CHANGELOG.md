@@ -15,7 +15,7 @@
 - Support for default argument values for user functions decorated with `wp.func`.
 - Support shadowing builtin functions ([GH-308](https://github.com/NVIDIA/warp/issues/308)).
 - Allow passing custom launch dimensions to `jax_kernel()` ([GH-310](https://github.com/NVIDIA/warp/pull/310)).
-- Jax interoperability examples for sharding and matrix multiplication (see Interoperability documentation).
+- JAX interoperability examples for sharding and matrix multiplication (see Interoperability documentation).
 - Include all non-hidden builtins in the stub file.
 - Adaptive sparse grid geometry to `warp.fem` ([docs](https://nvidia.github.io/warp/modules/fem.html#adaptivity)).
 - Improve accuracy of symmetric eigenvalues routine in `warp.fem`.
@@ -27,7 +27,6 @@
 
 ### Changed
 
-- **Breaking:** Rename function `plot_kernel_jacobians` to `jacobian_plot` in `autograd` module.
 - `wp.sim.Model.edge_indices` now includes boundary edges.
 - Unexposed `wp.rand*()`, `wp.sample*()`, and `wp.poisson()` from the Python scope.
 - Skip unused functions in module code generation, improving performance.
@@ -39,16 +38,16 @@
 ### Fixed
 
 - Fix for `wp.func` erroring out when defining a `Tuple` as a return type hint ([GH-302](https://github.com/NVIDIA/warp/issues/302)).
-- Fix array in-place op (`+=`, `-=`) adjoints to compute gradients correctly in the backwards pass.
+- Fix array in-place op (`+=`, `-=`) adjoints to compute gradients correctly in the backwards pass
+- Fix vector, matrix in-place assignment adjoints to compute gradients correctly in the backwards pass, e.g.: `v[1] = x`
 - Fix a bug in which Python docstrings would be created as local function variables in generated code.
-- Fix a rare crash during error reporting on some systems.
 - Fix a bug with autograd array access validation in functions from different modules.
 - Fix a rare crash during error reporting on some systems due to glibc mismatches.
 - Handle `--num_tiles 1` in `example_render_opengl.py` ([GH-306](https://github.com/NVIDIA/warp/issues/306)).
 - Fix bug in `FeatherstoneIntegrator` where `eval_rigid_jacobian` could give incorrect results or reach an infinite
   loop when the body and joint indices were not in the same order. Added `Model.joint_ancestor` to fix the indexing
   from a joint to its parent joint in the articulation.
-- Add a workaround for `__threadfence()` issues in the Compute Sanitizer initcheck tool.
+- Add a workaround for uninitialized memory read warning in the ComputeSanitizer initcheck tool when using `wp.Mesh`.
 - Fix name clashes when Warp functions and structs are returned from Python functions multiple times.
 - Fix name clashes between Warp functions and structs defined in different modules.
 - Fix code generation errors when overloading generic kernels defined in a Python function.
