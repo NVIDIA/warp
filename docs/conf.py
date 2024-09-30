@@ -68,7 +68,6 @@ intersphinx_mapping = {
     "numpy": ("https://numpy.org/doc/stable", None),
     "jax": ("https://jax.readthedocs.io/en/latest", None),
     "pytorch": ("https://pytorch.org/docs/stable", None),
-    "paddle": ("https://www.paddlepaddle.org.cn/", None),
 }
 
 extlinks = {

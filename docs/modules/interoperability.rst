@@ -768,7 +768,7 @@ To convert a Paddle CUDA stream to a Warp CUDA stream and vice versa, Warp provi
 .. autofunction:: warp.stream_from_paddle
 
 Example: Optimization using ``warp.from_paddle()``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 An example usage of minimizing a loss function over an array of 2D points written in Warp via Paddle's Adam optimizer
 using :func:`warp.from_paddle` is as follows::
@@ -812,7 +812,7 @@ using :func:`warp.from_paddle` is as follows::
         print(f"{i}\tloss: {l.item()}")
 
 Example: Optimization using ``warp.to_paddle``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Less code is needed when we declare the optimization variables directly in Warp and use :func:`warp.to_paddle` to convert them to Paddle tensors.
 Here, we revisit the same example from above where now only a single conversion to a paddle tensor is needed to supply Adam with the optimization variables::
