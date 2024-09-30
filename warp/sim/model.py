@@ -4015,7 +4015,7 @@ class ModelBuilder:
             edgeinds[:, 0],
             edgeinds[:, 1],
             edgeinds[:, 2],
-            edgeinds[:, 0],
+            edgeinds[:, 3],
             edge_ke=[edge_ke] * len(edgeinds),
             edge_kd=[edge_kd] * len(edgeinds),
         )
