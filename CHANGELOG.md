@@ -27,6 +27,8 @@
   function/kernel definition ([docs](https://nvidia.github.io/warp/codegen.html#static-expressions)).
 - Add a contributing guide to the Sphinx docs.
 - Add documentation for dynamic code generation.
+- Support for a new `wp.static(expr)` function that allows arbitrary Python expressions to be evaluated at the time of function/kernel definition ([docs](https://nvidia.github.io/warp/codegen.html#static-expressions)).
+- `warp.sim.VBDIntegrator` now supports body-particle collision.
 
 ### Changed
 
