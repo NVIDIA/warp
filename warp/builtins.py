@@ -2182,6 +2182,49 @@ add_builtin(
 )
 
 
+def tile_transpose_value_func(arg_types, arg_values):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return Tile
+
+    if len(arg_types) != 1:
+        raise RuntimeError("tile_transpose() requires 1 positional args")
+
+    t = arg_types["a"]
+
+    if not is_tile(t):
+        raise RuntimeError("tile_transpose() argument 0 must be a tile")
+
+    layout = None
+
+    # flip layout
+    if t.layout == "rowmajor":
+        layout = "colmajor"
+    elif t.layout == "colmajor":
+        layout = "rowmajor"
+
+    # force the input tile to shared memory
+    t.storage = "shared"
+
+    return Tile(dtype=t.dtype, M=t.N, N=t.M, op="transpose", storage=t.storage, layout=layout, owner=False)
+
+
+add_builtin(
+    "tile_transpose",
+    input_types={"a": Tile(dtype=Any, M=Any, N=Any)},
+    value_func=tile_transpose_value_func,
+    variadic=True,
+    doc="""Transpose a tile.
+
+    For shared memory tiles this operation will alias the input tile, register tiles will first be transferred to shared memory before transposition.
+
+    :param a: Tile to transpose with ``shape=(M,N)``
+    :returns: Tile with ``shape=(N,M)``""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
 def tile_matmul_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
@@ -2280,6 +2323,7 @@ add_builtin(
     export=False,
 )
 
+
 def tile_min_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
@@ -2330,6 +2374,7 @@ add_builtin(
     group="Tile Primitives",
     export=False,
 )
+
 
 def tile_max_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
@@ -2382,6 +2427,7 @@ add_builtin(
     export=False,
 )
 
+
 # does type propagation for load()
 def tile_reduce_value_func(arg_types, arg_values):
     if arg_types is None:
@@ -2420,14 +2466,14 @@ add_builtin(
     .. code-block:: python
 
         @wp.kernel
-        def compute():
+        def factorial():
 
             t = wp.tile_arange(1, 10, dtype=int)
-            s = wp.tile_reduce(wp.prod, t)
+            s = wp.tile_reduce(wp.mul, t)
 
             print(s)
 
-        wp.launch(compute, dim=[16], inputs=[])
+        wp.launch(factorial, dim=[16], inputs=[], block_dim=16)
 
     Prints:
 
@@ -5386,9 +5432,29 @@ def tile_matmul_generic_lto_dispatch_func(
             builder.ltoirs[lto_symbol] = lto_code
             return lto_symbol, lto_code
 
-    (fun_forward, lto_forward) = make_function(M, N, K, "N", "N")  #    C += A * B
-    (fun_backward_A, lto_backward_A) = make_function(M, K, N, "N", "T")  # adjA += adjC * B^T
-    (fun_backward_B, lto_backward_B) = make_function(K, N, M, "T", "N")  # adjB += A^T * adjC
+    def tile_layout_mode(tile):
+        if tile.layout == "rowmajor":
+            return "N"
+        if tile.layout == "colmajor":
+            return "T"
+
+    def tile_flip_layout(layout):
+        if layout == "N":
+            return "T"
+        elif layout == "T":
+            return "N"
+
+    a_layout = tile_layout_mode(a.type)
+    b_layout = tile_layout_mode(b.type)
+    c_layout = tile_layout_mode(out.type)
+
+    (fun_forward, lto_forward) = make_function(M, N, K, a_layout, b_layout)  #    C += A * B
+    (fun_backward_A, lto_backward_A) = make_function(
+        M, K, N, c_layout, tile_flip_layout(b_layout)
+    )  # adjA += adjC * B^T
+    (fun_backward_B, lto_backward_B) = make_function(
+        K, N, M, tile_flip_layout(a_layout), c_layout
+    )  # adjB += A^T * adjC
 
     return (
         (
@@ -5452,6 +5518,7 @@ add_builtin(
     export=False,
     namespace="",
 )
+
 
 ##
 ## FFT

@@ -60,9 +60,9 @@
     [x] Sum
         [x] Forward
         [x] Reverse
-    [ ] Min
-    [ ] Max
-    [ ] Custom
+    [x] Min
+    [x] Max
+    [x] Custom
 [x] MatMul
     [x] Forward
     [x] Reverse
@@ -380,6 +380,22 @@ struct tile_shared_t
         copy_from_global(t.array, t.x, t.y);
     }
 
+    // construct from another shared tile, this constructor
+    // is invoked for reshape operations like `wp.tile_transpose()`
+    template <typename OtherT, int OtherM, int OtherN, int OtherStrideM, int OtherStrideN>
+    inline CUDA_CALLABLE auto& operator=(const tile_shared_t<OtherT, OtherM, OtherN, OtherStrideM, OtherStrideN>& stile) 
+    {
+        using OtherTile = tile_shared_t<OtherT, OtherM, OtherN, OtherStrideM, OtherStrideN>;
+
+        // check dimensions are compatible
+        static_assert(Size == OtherTile::Size);
+
+        // alias tile directly
+        data = stile.data;
+
+        return *this;
+    }    
+
     // assign from a global tile
     inline CUDA_CALLABLE auto& operator=(const tile_global_t<T, M, N>& t)
     {
@@ -637,12 +653,6 @@ inline CUDA_CALLABLE auto tile_alloc_zeros()
     return tile_shared_t<T, M, N>(data);
 }
 
-template <typename Tile>
-inline CUDA_CALLABLE auto tile_transpose(Tile& t)
-{    
-    // alias incoming tile 
-    return tile_shared_t<typename Tile::Type, Tile::N, Tile::M, Tile::StrideN, Tile::StrideM>(t.data);
-}
 
 //-----------------------------------------------------------------------------------------------------
 // High level entry points for each op (correspond to one Warp builtin)
@@ -1090,5 +1100,23 @@ void adj_tile_extract(Tile& t, int i, int j, AdjTile& adj_t, int adj_i, int adj_
     do { \
         tile_fft(function_name, dtype, shared_memory_size, batch_size, ept, adj_Xinout); \
     } while (0)
+
+
+template <typename Tile>
+inline CUDA_CALLABLE auto tile_transpose(Tile& t)
+{    
+    // alias incoming tile 
+    return tile_shared_t<typename Tile::Type, Tile::N, Tile::M, Tile::StrideN, Tile::StrideM>(t.data);
+}
+
+template <typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_transpose(Tile& t, Tile& adj_t, AdjTile& adj_ret)
+{    
+    auto a = adj_t.copy_to_register();
+    auto b = t.copy_to_register();
+    
+    adj_t.assign(tile_add(a,b));
+}
+
 
 } // namespace wp

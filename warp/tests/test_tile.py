@@ -395,6 +395,45 @@ def test_tile_extract(test, device):
     assert_np_equal(input_wp.grad.numpy(), np.ones_like(input))
 
 
+@wp.kernel
+def test_tile_transpose_kernel(input: wp.array2d(dtype=float), output: wp.array2d(dtype=float)):
+    x = wp.tile_load(input, 0, 0, m=TILE_M, n=TILE_N)
+    y = wp.tile_transpose(x)
+
+    wp.tile_store(output, 0, 0, y)
+
+
+def test_tile_transpose(test, device):
+    rng = np.random.default_rng(42)
+    input = wp.array(rng.random((TILE_M, TILE_N), dtype=np.float32), device=device)
+    output = wp.zeros_like(input.transpose(), device=device)
+
+    wp.launch_tiled(test_tile_transpose_kernel, dim=[1], inputs=[input, output], block_dim=32, device=device)
+
+    assert_np_equal(output.numpy(), input.numpy().T)
+
+
+@wp.kernel
+def test_tile_transpose_matmul_kernel(input: wp.array2d(dtype=float), output: wp.array2d(dtype=float)):
+    x = wp.tile_load(input, 0, 0, m=TILE_M, n=TILE_N)
+    y = wp.tile_transpose(x)
+
+    z = wp.tile_zeros(dtype=float, m=TILE_N, n=TILE_N)
+    wp.tile_matmul(y, x, z)
+
+    wp.tile_store(output, 0, 0, z)
+
+
+def test_tile_transpose_matmul(test, device):
+    rng = np.random.default_rng(42)
+    input = wp.array(rng.random((TILE_M, TILE_N), dtype=np.float32), device=device)
+    output = wp.zeros((TILE_N, TILE_N), dtype=float, device=device)
+
+    wp.launch_tiled(test_tile_transpose_matmul_kernel, dim=[1], inputs=[input, output], block_dim=32, device=device)
+
+    assert_np_equal(output.numpy(), input.numpy().T @ input.numpy())
+
+
 # #-----------------------------------------
 # # center of mass computation
 
@@ -486,6 +525,8 @@ add_function_test(TestTile, "test_tile_unary_map", test_tile_unary_map, devices=
 add_function_test(TestTile, "test_tile_binary_map", test_tile_binary_map, devices=devices)
 add_function_test(TestTile, "test_tile_grouped_gemm", test_tile_grouped_gemm, devices=devices)  # FAILS
 add_function_test(TestTile, "test_tile_gemm", test_tile_gemm, devices=devices)
+add_function_test(TestTile, "test_tile_transpose", test_tile_transpose, devices=devices)  # FAILS
+add_function_test(TestTile, "test_tile_transpose_matmul", test_tile_transpose_matmul, devices=devices)
 add_function_test(TestTile, "test_tile_operators", test_tile_operators, devices=devices)
 add_function_test(TestTile, "test_tile_sum", test_tile_sum, devices=devices)
 add_function_test(TestTile, "test_tile_extract", test_tile_extract, devices=devices)

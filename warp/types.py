@@ -2959,12 +2959,21 @@ def array_type_id(a):
 class Tile:
     allocation = 0
 
-    def __init__(self, dtype, M, N, op=None, storage="register"):
-        self.dtype = dtype
+    def __init__(self, dtype, M, N, op=None, storage="register", layout="rowmajor", owner=True):
+        self.dtype = type_to_warp(dtype)
         self.M = M
         self.N = N
         self.op = op
         self.storage = storage
+        self.layout = layout
+
+        # default to row major layout
+        if layout == "rowmajor":
+            self.strides = (N, 1)
+        elif layout == "colmajor":
+            self.strides = (1, M)
+
+        self.owner = owner
 
     # generates C-type string
     def ctype(self):
@@ -2973,7 +2982,9 @@ class Tile:
         if self.storage == "register":
             return f"wp::tile_register_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
         elif self.storage == "shared":
-            return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
+            return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}, {self.strides[0]}, {self.strides[1]}>"
+        else:
+            raise RuntimeError(f"Unrecognized tile storage type {self.storage}")
 
     # generates C-initializer string
     def cinit(self, adjoint=False):
@@ -2982,6 +2993,11 @@ class Tile:
         if self.storage == "register":
             return self.ctype() + "(0.0)"
         elif self.storage == "shared":
+            # if this is a reference to another tile
+            # then don't allocate any memory
+            if self.owner == False:
+                return "NULL"
+
             if adjoint:
                 # backward pass requires zeroed memory
                 return f"wp::tile_alloc_zeros<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{Tile.alloc()}>()"

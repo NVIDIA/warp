@@ -908,7 +908,7 @@ Tile Primitives
 
     This function converts a block-wide tile back to per-thread values.
 
-    :param a: A tile with dimensions ``shape=(1, block_dim)``
+    :param a: A tile with dimensions ``shape=(M, block_dim)``
     :returns: A single value per-thread with the same dtype as the tile
 
     This example shows how to create a linear sequence from thread variables:
@@ -954,6 +954,16 @@ Tile Primitives
     :returns: The value of the element at the specified tile location, with the same type as the input tile's per-element dtype
 
 
+.. py:function:: tile_transpose(a: Tile) -> Tile
+
+    Transpose a tile.
+
+    For shared memory tiles this operation will alias the input tile, register tiles will first be transferred to shared memory before transposition.
+
+    :param a: Tile to transpose with ``shape=(M,N)``
+    :returns: Tile with ``shape=(N,M)``
+
+
 .. py:function:: tile_sum(a: Tile) -> Tile
 
     Cooperatively compute the sum the tile elements using all threads in the block.
@@ -981,6 +991,98 @@ Tile Primitives
 
         tile(m=1, n=1, storage=register) = [[256]]
 
+    
+
+
+.. py:function:: tile_min(a: Tile) -> Tile
+
+    Cooperatively compute the minimum of the tile elements using all threads in the block.
+
+    :param a: The tile to compute the minimum of
+    :returns: A single element tile with dimensions of (1,1) holding the minimum value
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            t = wp.tile_arange(start=--10, stop=10, dtype=float)
+            s = wp.tile_min(t)
+
+            print(t)
+
+        wp.launch(compute, dim=[64], inputs=[])
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=1, storage=register) = [[-10]]
+
+    
+
+
+.. py:function:: tile_max(a: Tile) -> Tile
+
+    Cooperatively compute the maximum of the tile elements using all threads in the block.
+
+    :param a: The tile to compute the maximum from
+    :returns: A single element tile with dimensions of (1,1) holding the maximum value
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            t = wp.tile_arange(start=--10, stop=10, dtype=float)
+            s = wp.tile_min(t)
+
+            print(t)
+
+        wp.launch(compute, dim=[64], inputs=[])
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=1, storage=register) = [[10]]
+
+    
+
+
+.. py:function:: tile_reduce(op: Callable, a: Any) -> Tile
+
+    Apply a custom reduction operator across the tile.
+
+    This function cooperatively performs a reduction using the provided operator across the tile.
+
+    :param op: A callable function that accepts two arguments and returns one argument, may be a user function or builtin
+    :param a: The input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
+    :returns: A single element tile with ``shape=(1,1)`` with the same datatype as the input tile.
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def factorial():
+
+            t = wp.tile_arange(1, 10, dtype=int)
+            s = wp.tile_reduce(wp.mul, t)
+
+            print(s)
+
+        wp.launch(factorial, dim=[16], inputs=[], block_dim=16)
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=1, storage=register) = [[362880]]
     
 
 
@@ -1067,6 +1169,25 @@ Tile Primitives
     :param a: A tile with ``shape=(M, K)``
     :param b: A tile with ``shape=(K, N)``
     :param out: A tile with ``shape=(M, N)``
+    
+
+
+.. py:function:: tile_matmul(a: Tile, b: Tile) -> Tile
+    :noindex:
+    :nocontentsentry:
+
+    Computes the matrix product ``out = a*b``.
+
+    Supported datatypes are:
+        * fp16, fp32, fp64 (real)
+        * vec2h, vec2f, vec2d (complex)
+
+    Both input tiles must have the same datatype. Tile data will be automatically be migrated
+    to shared memory if necessary and will use TensorCore operations when available.
+
+    :param a: A tile with ``shape=(M, K)``
+    :param b: A tile with ``shape=(K, N)``
+    :returns: A tile with ``shape=(M, N)``
     
 
 

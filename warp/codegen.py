@@ -3079,7 +3079,6 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu"):
     lines += ["// primal vars\n"]
 
     for var in adj.variables:
-
         if is_tile(var.type):
             lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit()};\n"]
         elif var.constant is None:

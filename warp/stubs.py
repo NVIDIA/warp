@@ -1060,6 +1060,18 @@ def tile_extract(a: Tile, i: int32, j: int32) -> Scalar:
 
 
 @over
+def tile_transpose(a: Tile) -> Tile:
+    """Transpose a tile.
+
+    For shared memory tiles this operation will alias the input tile, register tiles will first be transferred to shared memory before transposition.
+
+    :param a: Tile to transpose with ``shape=(M,N)``
+    :returns: Tile with ``shape=(N,M)``
+    """
+    ...
+
+
+@over
 def tile_sum(a: Tile) -> Tile:
     """Cooperatively compute the sum the tile elements using all threads in the block.
 
@@ -1086,6 +1098,104 @@ def tile_sum(a: Tile) -> Tile:
 
         tile(m=1, n=1, storage=register) = [[256]]
 
+
+    """
+    ...
+
+
+@over
+def tile_min(a: Tile) -> Tile:
+    """Cooperatively compute the minimum of the tile elements using all threads in the block.
+
+    :param a: The tile to compute the minimum of
+    :returns: A single element tile with dimensions of (1,1) holding the minimum value
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+            t = wp.tile_arange(start=--10, stop=10, dtype=float)
+            s = wp.tile_min(t)
+
+            print(t)
+
+
+        wp.launch(compute, dim=[64], inputs=[])
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=1, storage=register) = [[-10]]
+
+
+    """
+    ...
+
+
+@over
+def tile_max(a: Tile) -> Tile:
+    """Cooperatively compute the maximum of the tile elements using all threads in the block.
+
+    :param a: The tile to compute the maximum from
+    :returns: A single element tile with dimensions of (1,1) holding the maximum value
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+            t = wp.tile_arange(start=--10, stop=10, dtype=float)
+            s = wp.tile_min(t)
+
+            print(t)
+
+
+        wp.launch(compute, dim=[64], inputs=[])
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=1, storage=register) = [[10]]
+
+
+    """
+    ...
+
+
+@over
+def tile_reduce(op: Callable, a: Any) -> Tile:
+    """Apply a custom reduction operator across the tile.
+
+    This function cooperatively performs a reduction using the provided operator across the tile.
+
+    :param op: A callable function that accepts two arguments and returns one argument, may be a user function or builtin
+    :param a: The input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
+    :returns: A single element tile with ``shape=(1,1)`` with the same datatype as the input tile.
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def factorial():
+            t = wp.tile_arange(1, 10, dtype=int)
+            s = wp.tile_reduce(wp.mul, t)
+
+            print(s)
+
+
+        wp.launch(factorial, dim=[16], inputs=[], block_dim=16)
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=1, storage=register) = [[362880]]
 
     """
     ...
@@ -2643,6 +2753,25 @@ def tile_matmul(a: Tile, b: Tile, out: Tile) -> Tile:
     :param a: A tile with ``shape=(M, K)``
     :param b: A tile with ``shape=(K, N)``
     :param out: A tile with ``shape=(M, N)``
+
+    """
+    ...
+
+
+@over
+def tile_matmul(a: Tile, b: Tile) -> Tile:
+    """Computes the matrix product ``out = a*b``.
+
+    Supported datatypes are:
+        * fp16, fp32, fp64 (real)
+        * vec2h, vec2f, vec2d (complex)
+
+    Both input tiles must have the same datatype. Tile data will be automatically be migrated
+    to shared memory if necessary and will use TensorCore operations when available.
+
+    :param a: A tile with ``shape=(M, K)``
+    :param b: A tile with ``shape=(K, N)``
+    :returns: A tile with ``shape=(M, N)``
 
     """
     ...
