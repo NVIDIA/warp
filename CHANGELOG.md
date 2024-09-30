@@ -54,6 +54,7 @@
 - Fix a bug with autograd array access validation in functions from different modules.
 - Fix a rare crash during error reporting on some systems due to glibc mismatches.
 - Handle `--num_tiles 1` in `example_render_opengl.py` ([GH-306](https://github.com/NVIDIA/warp/issues/306)).
+- Fix the computation of body contact forces in `FeatherstoneIntegrator` when bodies and particles collide.
 - Fix bug in `FeatherstoneIntegrator` where `eval_rigid_jacobian` could give incorrect results or reach an infinite
   loop when the body and joint indices were not in the same order. Added `Model.joint_ancestor` to fix the indexing
   from a joint to its parent joint in the articulation.
