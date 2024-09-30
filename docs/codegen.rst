@@ -136,6 +136,148 @@ if a :ref:`custom replay function <custom-gradient-functions>` is provided, the 
 
 Warp passes the generated source code to native compilers (e.g., LLVM for CPU and NVRTC for CUDA) to produce executable code that is invoked when launching kernels.
 
+.. _external_references:
+
+External References and Constants
+---------------------------------
+
+A Warp kernel can access regular Python variables defined outside of the kernel itself, as long as those variables are of a supported type. Such external references are treated as compile-time constants in the kernel. It's not possible for code running on a different device to access the state of the Python interpreter, so these variables are folded into the kernels by value:
+
+.. code:: python
+
+    C = 42
+
+    @wp.kernel
+    def k():
+        print(C)
+
+    wp.launch(k, dim=1)
+
+During code generation, the external variable ``C`` becomes a constant:
+
+.. code:: c++
+
+    {
+        //---------
+        // primal vars
+        const wp::int32 var_0 = 42;
+        //---------
+        // forward
+        // def k():
+        // print(C)
+        wp::print(var_0);
+    }
+
+
+Supported Constant Types
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Only value types can be used as constants in Warp kernels.  This includes integers, floating point numbers, vectors (``wp.vec*``), matrices (``wp.mat*``) and other built-in math types.  Attempting to capture other variables types will result in an exception:
+
+.. code:: python
+
+    global_array = wp.zeros(5, dtype=int)
+
+    @wp.kernel
+    def k():
+        tid = wp.tid()
+        global_array[tid] = 42  # referencing external arrays is not allowed!
+
+    wp.launch(k, dim=global_array.shape, inputs=[])
+
+Output:
+
+.. code:: text
+
+    TypeError: Invalid external reference type: <class 'warp.types.array'>
+
+The reason why arrays cannot be captured is because they exist on a particular device and contain pointers to the device memory, which would make the kernel not portable across different devices.  Arrays should always be passed as kernel inputs.
+
+
+Usage of ``wp.constant()``
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In older versions of Warp, ``wp.constant()`` was required to declare constants that can be used in a kernel.  This is no longer necessary, but the old syntax is still supported for backward compatibility.  ``wp.constant()`` can still be used to check if a value can be referenced in a kernel:
+
+.. code:: python
+
+    x = wp.constant(17.0)  # ok
+    v = wp.constant(wp.vec3(1.0, 2.0, 3.0))  # ok
+    a = wp.constant(wp.zeros(n=5, dtype=int))  # error, invalid constant type
+
+    @wp.kernel
+    def k():
+        tid = wp.tid()
+        a[tid] = x * v
+
+In this snippet, a ``TypeError`` will be raised when declaring the array with ``wp.constant()``.  If ``wp.constant()`` was omitted, the error would be raised later during code generation, which might be slightly harder to debug.
+
+
+Updating Constants
+~~~~~~~~~~~~~~~~~~
+
+One limitation of using external variables in Warp kernels is that Warp doesn't know when the value is modified:
+
+.. code:: python
+
+    C = 17
+
+    @wp.kernel
+    def k():
+        print(C)
+
+    wp.launch(k, dim=1)
+
+    # redefine constant
+    C = 42
+
+    wp.launch(k, dim=1)
+
+This prints:
+
+.. code:: text
+
+    Module __main__ 4494df2 load on device 'cuda:0' took 163.54 ms  (compiled)
+    17
+    17
+
+During the first launch of kernel ``k``, the kernel is compiled using the existing value of ``C`` (17).  Since ``C`` is just a plain Python variable, Warp has no way of detecting when it is modified.  Thus on the second launch the old value is printed again.
+
+One way to get around this limitation is to tell Warp that the module was modified:
+
+.. code:: python
+
+    C = 17
+
+    @wp.kernel
+    def k():
+        print(C)
+
+    wp.launch(k, dim=1)
+
+    # redefine constant
+    C = 42
+
+    # tell Warp that the module was modified
+    k.module.mark_modified()
+
+    wp.launch(k, dim=1)
+
+This produces the updated output:
+
+.. code:: text
+
+    Module __main__ 4494df2 load on device 'cuda:0' took 167.92 ms  (compiled)
+    17
+    Module __main__ 9a0664f load on device 'cuda:0' took 164.83 ms  (compiled)
+    42
+
+Notice that calling ``module.mark_modified()`` caused the module to be recompiled on the second launch using the latest value of ``C``.
+
+.. note::
+    The ``Module`` class and the ``mark_modified()`` method are considered internal.  A public API for working with modules is planned, but currently it is subject to change without notice.  Programs should not overly rely on the ``mark_modified()`` method, but it can be used in a pinch.
+
+
 .. _static_expressions:
 
 Static Expressions
