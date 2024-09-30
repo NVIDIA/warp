@@ -45,67 +45,7 @@ generated compilation artifacts as Warp does not automatically try to keep the c
 Runtime Kernel Creation
 #######################
 
-It is often desirable to specialize kernels for different types, constants, or functions at runtime.
-We can achieve this through the use of runtime kernel specialization using Python closures.
-
-For example, we might require a variety of kernels that execute particular functions for each item in an array.
-We might also want this function call to be valid for a variety of data types. Making use of closure and generics, we can generate
-these kernels using a single kernel definition::
-
-    def make_kernel(func, dtype):
-        def closure_kernel_fn(data: wp.array(dtype=dtype), out: wp.array(dtype=dtype)):
-            tid = wp.tid()
-            out[tid] = func(data[tid])
-
-        return wp.Kernel(closure_kernel_fn)
-
-In practice, we might use our kernel generator, ``make_kernel()`` as follows::
-
-    @wp.func
-    def sqr(x: Any) -> Any:
-        return x * x
-
-    @wp.func
-    def cube(x: Any) -> Any:
-        return sqr(x) * x
-
-    sqr_float = make_kernel(sqr, wp.float32)
-    cube_double = make_kernel(cube, wp.float64)
-
-    arr = [1.0, 2.0, 3.0]
-    N = len(arr)
-
-    data_float = wp.array(arr, dtype=wp.float32, device=device)
-    data_double = wp.array(arr, dtype=wp.float64, device=device)
-
-    out_float = wp.zeros(N, dtype=wp.float32, device=device)
-    out_double = wp.zeros(N, dtype=wp.float64, device=device)
-
-    wp.launch(sqr_float, dim=N, inputs=[data_float], outputs=[out_float], device=device)
-    wp.launch(cube_double, dim=N, inputs=[data_double], outputs=[out_double], device=device)
-
-We can specialize kernel definitions over Warp constants similarly. The following generates kernels that add a specified constant
-to a generic-typed array value::
-
-    def make_add_kernel(key, constant):
-        def closure_kernel_fn(data: wp.array(dtype=Any), out: wp.array(dtype=Any)):
-            tid = wp.tid()
-            out[tid] = data[tid] + constant
-
-        return wp.Kernel(closure_kernel_fn, key=key)
-
-    add_ones_int = make_add_kernel("add_one", wp.constant(1))
-    add_ones_vec3 = make_add_kernel("add_ones_vec3", wp.constant(wp.vec3(1.0, 1.0, 1.0)))
-
-    a = wp.zeros(2, dtype=int)
-    b = wp.zeros(2, dtype=wp.vec3)
-
-    a_out = wp.zeros_like(a)
-    b_out = wp.zeros_like(b)
-
-    wp.launch(add_ones_int, dim=a.size, inputs=[a], outputs=[a_out], device=device)
-    wp.launch(add_ones_vec3, dim=b.size, inputs=[b], outputs=[b_out], device=device)
-
+Warp allows generating kernels on-the-fly with various customizations, including closure support.  Refer to the :ref:`Code Generation<code_generation>` section for the latest features.
 
 .. _Arrays:
 
@@ -682,31 +622,151 @@ This can be surprising for users that are accustomed to C-style conversions but 
     Users should explicitly cast variables to compatible types using constructors like
     ``int()``, ``float()``, ``wp.float16()``, ``wp.uint8()``, etc.
 
+.. note::
+    For performance reasons, Warp relies on native compilers to perform numeric conversions (e.g., LLVM for CPU and NVRTC for CUDA).  This is generally not a problem, but in some cases the results may vary on different devices.  For example, the conversion ``wp.uint8(-1.0)`` results in undefined behavior, since the floating point value -1.0 is out of range for unsigned integer types.  C++ compilers are free to handle such cases as they see fit.  Numeric conversions are only guaranteed to produce correct results when the value being converted is in the range supported by the target data type.
+
 Constants
 ---------
 
-In general, Warp kernels cannot access variables in the global Python interpreter state. One exception to this is for compile-time constants, which may be declared globally (or as class attributes) and folded into the kernel definition.
+Warp kernels can access Python variables with some restrictions.  External values referenced in a kernel are treated as compile-time constants and are folded into the kernel definition when the module is built.
 
-Constants are defined using the ``wp.constant()`` function. An example is shown below::
+.. code:: python
 
-    TYPE_SPHERE = wp.constant(0)
-    TYPE_CUBE = wp.constant(1)
-    TYPE_CAPSULE = wp.constant(2)
+    TYPE_SPHERE = 0
+    TYPE_CUBE = 1
+    TYPE_CAPSULE = 2
 
     @wp.kernel
     def collide(geometry: wp.array(dtype=int)):
 
         t = geometry[wp.tid()]
 
-        if (t == TYPE_SPHERE):
+        if t == TYPE_SPHERE:
             print("sphere")
-        if (t == TYPE_CUBE):
+        elif t == TYPE_CUBE:
             print("cube")
-        if (t == TYPE_CAPSULE):
+        elif t == TYPE_CAPSULE:
             print("capsule")
 
 
-.. autoclass:: constant
+Supported Constant Types
+########################
+
+Only value types can be used as constants in Warp kernels.  This includes integers, floating point numbers, vectors (``wp.vec*``), matrices (``wp.mat*``) and other built-in math types.  Attempting to capture other variables types will result in an exception:
+
+.. code:: python
+
+    global_array = wp.zeros(5, dtype=int)
+
+    @wp.kernel
+    def k():
+        tid = wp.tid()
+        global_array[tid] = 42  # referencing external arrays is not allowed!
+
+    wp.launch(k, dim=global_array.shape, inputs=[])
+
+Output:
+
+.. code:: text
+
+    TypeError: Invalid external reference type: <class 'warp.types.array'>
+
+The reason why arrays cannot be captured is because they exist on a particular device and contain pointers to the device memory, which would make the kernel not portable across different devices.  Arrays should always be passed as kernel inputs.
+
+
+Usage of ``wp.constant()``
+##########################
+
+In older versions of Warp, ``wp.constant()`` was required to declare constants that can be used in a kernel.  This is no longer necessary, but the old syntax is still supported for backward compatibility.  ``wp.constant()`` can still be used to check if a value can be referenced in a kernel:
+
+.. code:: python
+
+    x = wp.constant(17.0)  # ok
+    v = wp.constant(wp.vec3(1.0, 2.0, 3.0))  # ok
+    a = wp.constant(wp.zeros(n=5, dtype=int))  # error, invalid constant type
+
+    @wp.kernel
+    def k():
+        tid = wp.tid()
+        a[tid] = x * v
+
+In this snippet, a ``TypeError`` will be raised when declaring the array with ``wp.constant()``.  If ``wp.constant()`` was omitted, the error would be raised later during code generation, which might be slightly harder to debug.
+
+
+Updating Constants
+##################
+
+One limitation of using external variables in Warp kernels is that Warp doesn't know when the value is modified:
+
+.. code:: python
+
+    C = 17
+
+    @wp.kernel
+    def k():
+        print(C)
+
+    wp.launch(k, dim=1)
+
+    # redefine constant
+    C = 42
+
+    wp.launch(k, dim=1)
+
+This prints:
+
+.. code:: text
+
+    Module __main__ 4494df2 load on device 'cuda:0' took 163.54 ms  (compiled)
+    17
+    17
+
+During the first launch of kernel ``k``, the kernel is compiled using the existing value of ``C`` (17).  Since ``C`` is just a plain Python variable, Warp has no way of detecting when it is modified.  Thus on the second launch the old value is printed again.
+
+One way to get around this limitation is to tell Warp that the module was modified:
+
+.. code:: python
+
+    C = 17
+
+    @wp.kernel
+    def k():
+        print(C)
+
+    wp.launch(k, dim=1)
+
+    # redefine constant
+    C = 42
+
+    # tell Warp that the module was modified
+    k.module.mark_modified()
+
+    wp.launch(k, dim=1)
+
+This produces the updated output:
+
+.. code:: text
+
+    Module __main__ 4494df2 load on device 'cuda:0' took 167.92 ms  (compiled)
+    17
+    Module __main__ 9a0664f load on device 'cuda:0' took 164.83 ms  (compiled)
+    42
+
+Notice that calling ``module.mark_modified()`` caused the module to be recompiled on the second launch using the latest value of ``C``.
+
+.. note::
+    The ``Module`` class and the ``mark_modified()`` method are considered internal.  A public API for working with modules is planned, but currently it is subject to change without notice.  Programs should not overly rely on the ``mark_modified()`` method, but it can be used in a pinch.
+
+
+Related Links
+#############
+
+The :ref:`Code Generation<code_generation>` section contains additional information about working with constants and external variables:
+
+* :ref:`Static expressions<static_expressions>`
+* :ref:`Dynamic kernel creation<dynamic_generation>`
+* :ref:`Late binding<late_binding>`
+
 
 Predefined Constants
 ####################
