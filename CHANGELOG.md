@@ -72,6 +72,7 @@
 - Fix printing Boolean and 8-bit integer values.
 - Fix array interface type strings used for Boolean and 8-bit integer values.
 - Fix initialization error when setting struct members.
+- Fix Warp not being initialized upon entering a `wp.Tape` context.
 
 ## [1.3.3] - 2024-09-04
 
