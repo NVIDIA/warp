@@ -23,7 +23,9 @@
 - Support for defining multiple versions of kernels, functions, and structs without manually assigning unique keys.
 - Support for redefining function overloads.
 - Add an ocean sample to the `omni.warp` extension.
-- Support for a new `wp.static(expr)` function that allows arbitrary Python expressions to be evaluated at the time of function/kernel definition ([docs](https://nvidia.github.io/warp/codegen.html#static-expressions)).
+- Support for a new `wp.static(expr)` function that allows arbitrary Python expressions to be evaluated at the time of
+  function/kernel definition ([docs](https://nvidia.github.io/warp/codegen.html#static-expressions)).
+- Add a contributing guide to the Sphinx docs.
 
 ### Changed
 

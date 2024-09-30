@@ -320,8 +320,7 @@ Contributing
 
 Contributions and pull requests from the community are welcome and are taken under the
 terms described in the **Feedback** section of `LICENSE.md <https://github.com/NVIDIA/warp/blob/main/LICENSE.md#9-feedback>`__.
-`CONTRIBUTING.md <https://github.com/NVIDIA/warp/blob/main/CONTRIBUTING.md>`_ provides additional information on
-how to open a pull request for Warp.
+Please see the :doc:`modules/contribution_guide` for more information on contributing to the development of Warp.
 
 Citing
 ------
@@ -355,6 +354,7 @@ Full Table of Contents
     configuration
     debugging
     limitations
+    modules/contribution_guide
     faq
 
 .. toctree::
