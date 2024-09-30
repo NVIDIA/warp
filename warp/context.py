@@ -1541,7 +1541,8 @@ class ModuleBuilder:
         self.options = options
         self.module = module
         self.deferred_functions = []
-        self.ltoirs = {}  # map from lto symbol to lto binary
+        self.ltoirs = {}        # map from lto symbol to lto binary
+        self.ltoirs_decl = {}   # map from lto symbol to lto forward declaration
 
         if hasher is None:
             hasher = ModuleHasher(module)
@@ -1611,6 +1612,12 @@ class ModuleBuilder:
 
     def codegen(self, device):
         source = ""
+
+        # code-gen LTO forward declarations
+        source += 'extern "C" {\n'
+        for fwd in self.ltoirs_decl.values():
+            source += fwd + "\n"
+        source += '}\n'
 
         # code-gen structs
         visited_structs = set()

@@ -1266,6 +1266,23 @@ class Adjoint:
             bound_arg_values,
         )
 
+        # immediately allocate output variables so we can pass them into the dispatch method
+        if return_type is None:
+            # void function 
+            output = None
+            output_list = []
+        elif not isinstance(return_type, Sequence) or len(return_type) == 1:
+            # single return value function
+            if isinstance(return_type, Sequence):
+                return_type = return_type[0]
+            output = adj.add_var(return_type)
+            output_list = [output]
+        else:
+            # multiple return value function
+            output = [adj.add_var(v) for v in return_type]
+            output_list = output
+
+
         # If we have a built-in that requires special handling to dispatch
         # the arguments to the underlying C++ function, then we can resolve
         # these using the `dispatch_func`. Since this is only called from
@@ -1275,7 +1292,7 @@ class Adjoint:
         # a literal value or references a variable.
         if func.lto_dispatch_func is not None:
             func_args, template_args, ltoirs = func.lto_dispatch_func(
-                func.input_types, return_type, bound_args, options=adj.builder_options, builder=adj.builder
+                func.input_types, return_type, output_list, bound_args, options=adj.builder_options, builder=adj.builder
             )
         elif func.dispatch_func is not None:
             func_args, template_args = func.dispatch_func(func.input_types, return_type, bound_args)
@@ -1300,10 +1317,6 @@ class Adjoint:
 
         if return_type is None:
             # handles expression (zero output) functions, e.g.: void do_something();
-
-            output = None
-            output_list = []
-
             forward_call = (
                 f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
             )
@@ -1313,12 +1326,6 @@ class Adjoint:
 
         elif not isinstance(return_type, Sequence) or len(return_type) == 1:
             # handle simple function (one output)
-
-            if isinstance(return_type, Sequence):
-                return_type = return_type[0]
-            output = adj.add_var(return_type)
-            output_list = [output]
-
             forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
 
             replay_call = forward_call
@@ -1327,10 +1334,6 @@ class Adjoint:
 
         else:
             # handle multiple value functions
-
-            output = [adj.add_var(v) for v in return_type]
-            output_list = output
-
             forward_call = (
                 f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + output, use_initializer_list)});"
             )

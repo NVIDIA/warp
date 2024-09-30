@@ -534,4 +534,4 @@ add_function_test(TestTile, "test_tile_extract", test_tile_extract, devices=devi
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
-    unittest.main(verbosity=2)
+    unittest.main(verbosity=2, failfast=True)

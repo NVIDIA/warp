@@ -1832,8 +1832,10 @@ def tile_arange_value_func(arg_types: Mapping[str, type], arg_values: Mapping[st
     if start is None or stop is None or step is None:
         raise RuntimeError("wp.tile_arange() arguments must be compile time constants")
 
-    if arg_values["dtype"] is not None:
+    if "dtype" in arg_values:
         dtype = arg_values["dtype"]
+    else:
+        dtype = float
 
     return TileRange(dtype=dtype, start=start, stop=stop, step=step)
 
@@ -2223,6 +2225,76 @@ add_builtin(
     group="Tile Primitives",
     export=False,
 )
+
+def tile_broadcast_value_func(arg_types, arg_values):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return Tile
+
+    if len(arg_types) != 3:
+        raise RuntimeError("tile_broadcast() requires 1 positional args")
+
+    t = arg_types["a"]
+    m = arg_values["m"]
+    n = arg_values["n"]
+
+    if not is_tile(t):
+        raise RuntimeError("tile_transpose() argument 0 must be a tile")
+
+    # try to broadcast last dimension
+    if t.N == 1:
+        stride_n = 0
+    elif t.N == n:
+        stride_n = t.strides[1]
+    else:
+        raise RuntimeError(f"Broadcast dimension must be 1 or match destination, shape(src) = {t.m, t.n}, shape(dest) = {m, n}")
+
+    # try to broadcast first dimension
+    if t.M == 1:
+        stride_m = 0
+    elif t.M == m:
+        stride_m = t.strides[0]
+    else:
+        raise RuntimeError(f"Broadcast dimension must be 1 or match destination, shape(src) = {t.m, t.n}, shape(dest) = {m, n}")
+
+    # force the input tile to shared memory
+    t.storage = "shared"
+
+    tile_type = Tile(dtype=t.dtype, M=m, N=n, op="broadcast", storage=t.storage, owner=False)
+    tile_type.strides = (stride_m, stride_n)
+
+    return tile_type
+
+def tile_broadcast_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+
+    tile = arg_values["a"]
+
+    template_args = []
+    template_args.append(return_type.M)
+    template_args.append(return_type.N)
+    template_args.append(return_type.strides[0])
+    template_args.append(return_type.strides[1])
+
+    return ((tile,), template_args)
+
+
+add_builtin(
+    "tile_broadcast",
+    input_types={"a": Tile(dtype=Any, M=Any, N=Any), "m": int, "n": int},
+    value_func=tile_broadcast_value_func,
+    dispatch_func=tile_broadcast_dispatch_func,
+    variadic=True,
+    doc="""Broadcast a tile.
+
+    This method will attempt to broadcast the input tile ``a`` to the destination shape (m, n), broadcasting follows NumPy broadcast rules.
+
+    :param a: Tile to broadcast
+    :returns: Tile with broadcast ``shape=(m, n)``""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
 
 
 def tile_matmul_value_func(arg_types, arg_values):
@@ -5306,17 +5378,22 @@ def tile_matmul_generic_value_func(arg_types, arg_values):
     if arg_types is None:
         return Tile(dtype=Any, M=Any, N=Any)
 
-    if len(arg_types) != 3:
-        raise RuntimeError("tile_matmul() requires 4 positional args")
+    a = arg_types["a"]
+    b = arg_types["b"]
 
-    if not is_tile(arg_types["a"]):
+    if not is_tile(a):
         raise RuntimeError("tile_matmul() argument 0 must be a tile")
-
-    if not is_tile(arg_types["b"]):
+    if not is_tile(b):
         raise RuntimeError("tile_matmul() argument 1 must be an tile")
 
-    if not is_tile(arg_types["out"]):
-        raise RuntimeError("tile_matmul() output argument must be a tile")
+    # out = wp.tile_matmul(a, b)
+    if len(arg_types) == 2:        
+        return Tile(dtype=a.dtype, M=a.M, N=b.N, storage="shared")
+
+    # wp.tile_matmul(a, b, out)
+    elif len(arg_types) == 3:
+        if not is_tile(arg_types["out"]):
+            raise RuntimeError("tile_matmul() output argument must be a tile")
 
     return None
 
@@ -5324,13 +5401,18 @@ def tile_matmul_generic_value_func(arg_types, arg_values):
 def tile_matmul_generic_lto_dispatch_func(
     arg_types: Mapping[str, type],
     return_type: Any,
+    return_values: List[Var],
     arg_values: Mapping[str, Var],
     options: Mapping[str, Any],
     builder: warp.context.ModuleBuilder,
 ):
     a = arg_values["a"]
     b = arg_values["b"]
-    out = arg_values["out"]
+
+    if len(return_values) > 0:
+        out = return_values[0]
+    else:
+        out = arg_values["out"]
 
     if any(not is_tile(arg.type) for arg in [a, b, out]):
         raise RuntimeError("tile_matmul() requires three Tile arguments")
@@ -5430,6 +5512,8 @@ def tile_matmul_generic_lto_dispatch_func(
                 lto_code = f.read()
 
             builder.ltoirs[lto_symbol] = lto_code
+            builder.ltoirs_decl[lto_symbol] = f"void {lto_symbol}({dtype}, {dtype}*, {dtype}*, {dtype}, {dtype}*);"
+
             return lto_symbol, lto_code
 
     def tile_layout_mode(tile):
@@ -5461,7 +5545,6 @@ def tile_matmul_generic_lto_dispatch_func(
             Var(fun_forward, str, False, True, False),
             Var(fun_backward_A, str, False, True, False),
             Var(fun_backward_B, str, False, True, False),
-            Var(dtype, str, False, True, False),
             a,
             b,
             out,
@@ -5473,10 +5556,10 @@ def tile_matmul_generic_lto_dispatch_func(
 
 add_builtin(
     "tile_matmul",
-    input_types={"a": Tile, "b": Tile, "out": Tile},
+    input_types={"a": Tile(dtype=Any, M=Any, N=Any), "b": Tile(dtype=Any, M=Any, N=Any), "out": Tile(dtype=Any, M=Any, N=Any)},
     value_func=tile_matmul_generic_value_func,
     lto_dispatch_func=tile_matmul_generic_lto_dispatch_func,
-    variadic=True,
+    variadic=False,
     doc="""Computes the matrix product and accumulates ``out += a*b``.
 
     Supported datatypes are:
@@ -5497,10 +5580,10 @@ add_builtin(
 
 add_builtin(
     "tile_matmul",
-    input_types={"a": Tile, "b": Tile},
+    input_types={"a": Tile(dtype=Any, M=Any, N=Any), "b": Tile(dtype=Any, M=Any, N=Any)},
     value_func=tile_matmul_generic_value_func,
     lto_dispatch_func=tile_matmul_generic_lto_dispatch_func,
-    variadic=True,
+    variadic=False,
     doc="""Computes the matrix product ``out = a*b``.
 
     Supported datatypes are:
@@ -5542,6 +5625,7 @@ def tile_fft_generic_value_func(arg_types, arg_values):
 def tile_fft_generic_lto_dispatch_func(
     arg_types: Mapping[str, type],
     return_type: Any,
+    return_values: List[Var],
     arg_values: Mapping[str, Var],
     options: Mapping[str, Any],
     builder: warp.context.ModuleBuilder,

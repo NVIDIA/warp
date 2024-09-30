@@ -380,6 +380,14 @@ struct tile_shared_t
         copy_from_global(t.array, t.x, t.y);
     }
 
+    // assign from a register tile
+    template <typename Tile>
+    inline CUDA_CALLABLE auto& operator=(const Tile& t)
+    {
+        assign(t);
+        return *this;
+    }
+
     // construct from another shared tile, this constructor
     // is invoked for reshape operations like `wp.tile_transpose()`
     template <typename OtherT, int OtherM, int OtherN, int OtherStrideM, int OtherStrideN>
@@ -738,9 +746,9 @@ inline CUDA_CALLABLE auto tile_arange(T start, T stop, T step)
     return out;
 }
 
-template <typename T, int M, int N>
+template <typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_arange(int start, int stop, int step,
-                                          int adj_start, int adj_stop, int adj_step, const tile_register_t<T,M,N>& adj_ret) {}
+                                          int adj_start, int adj_stop, int adj_step, AdjTile& adj_ret) {}
 
 // entry point for load
 template <typename T, int M, int N>
@@ -1048,29 +1056,45 @@ void adj_tile_extract(Tile& t, int i, int j, AdjTile& adj_t, int adj_i, int adj_
     adj_t.adj_extract(i, j, adj_ret);
 }
 
-// But cuBLASDx follows the BLAS convention: matrices are col-major, so we swap A & B in the code below
+// cuBLASDx follows the BLAS convention: matrices are col-major, so we swap A & B in the code below
+template <typename Fwd, typename AdjA, typename AdjB, typename TileA, typename TileB, typename TileC>
+TileC& tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, TileA& A, TileB& B, TileC& C)
+{       
+    using T = typename TileA::Type;
 
-#define tile_matmul(fun_forward, fun_backward_A, fun_backward_B, dtype, A, B, C) \
-    do { \
-        void fun_forward(dtype, dtype*, dtype*, dtype, dtype*); \
-        WP_TILE_SYNC(); \
-        fun_forward(dtype(1.0), B.data, A.data, dtype(1.0), C.data); \
-        WP_TILE_SYNC(); \
-    } while (0)
+    WP_TILE_SYNC();
+    fun_forward(T(1.0), B.data, A.data, T(1.0), C.data);
+    WP_TILE_SYNC();
+    
+    return C;
+}
 
-// adj_fun_forward, adj_fun_backward_A, adj_fun_backward_B, adj_dtype are in practice ignored
-// but are here because builtins.py creates them even though those are effectively compile time constants
-#define adj_tile_matmul(fun_forward, fun_backward_A, fun_backward_B, dtype, A, B, C, \
-                           adj_fun_forward, adj_fun_backward_A, adj_fun_backward_B, adj_dtype, \
-                           adjA, adjB, adjC) \
-    do { \
-        void fun_backward_A(dtype, dtype*, dtype*, dtype, dtype*); \
-        void fun_backward_B(dtype, dtype*, dtype*, dtype, dtype*); \
-        WP_TILE_SYNC(); \
-        fun_backward_A(dtype(1.0), B.data, adjC.data, dtype(1.0), adjA.data); \
-        fun_backward_B(dtype(1.0), adjC.data, A.data, dtype(1.0), adjB.data); \
-        WP_TILE_SYNC(); \
-    } while (0)
+// backward for the wp.tile_matmul(a, b, out) syntax
+template <typename Fwd, typename AdjA, typename AdjB, typename TileA, typename TileB, typename TileC>
+void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, TileA& A, TileB& B, TileC& C,
+                   Fwd adj_fun_forward, AdjA adj_fun_backward_A, AdjB adj_fun_backward_B, TileA& adj_A, TileB& adj_B, TileC& adj_C)
+{   
+    using T = typename TileA::Type;    
+
+    WP_TILE_SYNC();
+    fun_backward_A(T(1.0), B.data, adj_C.data, T(1.0), adj_A.data);
+    fun_backward_B(T(1.0), adj_C.data, A.data, T(1.0), adj_B.data);
+    WP_TILE_SYNC();
+}
+
+// backward for the out = wp.tile_matmul(a, b) syntax
+template <typename Fwd, typename AdjA, typename AdjB, typename TileA, typename TileB, typename TileC>
+void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, TileA& A, TileB& B, TileC& C,
+                   Fwd adj_fun_forward, AdjA adj_fun_backward_A, AdjB adj_fun_backward_B, TileA& adj_A, TileB& adj_B, TileC& adj_C, TileC& adj_ret)
+{   
+    using T = typename TileA::Type;    
+
+    WP_TILE_SYNC();
+    fun_backward_A(T(1.0), B.data, adj_C.data, T(1.0), adj_A.data);
+    fun_backward_B(T(1.0), adj_C.data, A.data, T(1.0), adj_B.data);
+    WP_TILE_SYNC();
+}
+
 
 #define tile_fft(function_name, dtype, shared_memory_size, batch_size, ept, Xinout) \
     do { \
@@ -1112,10 +1136,23 @@ inline CUDA_CALLABLE auto tile_transpose(Tile& t)
 template <typename Tile, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_transpose(Tile& t, Tile& adj_t, AdjTile& adj_ret)
 {    
-    auto a = adj_t.copy_to_register();
-    auto b = t.copy_to_register();
+    auto a = tile_transpose(adj_ret);
+    auto b = adj_t;
     
     adj_t.assign(tile_add(a,b));
+}
+
+template <int M, int N, int StrideM, int StrideN, typename Tile>
+inline CUDA_CALLABLE auto tile_broadcast(Tile& t)
+{    
+    // alias incoming tile with new strides
+    return tile_shared_t<typename Tile::Type, M, N, StrideN, StrideM>(t.data);
+}
+
+template <typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_broadcast(Tile& t, Tile& adj_t, AdjTile& adj_ret)
+{   
+    // todo: 
 }
 
 
