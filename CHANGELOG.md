@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## [Unreleased] - 2024-??
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Fix `iter_reverse()` not working as expected for ranges with steps other than 1 ([GH-311](https://github.com/NVIDIA/warp/issues/311)).
+
+
 ## [1.4.0] - 2024-10-01
 
 ### Added
