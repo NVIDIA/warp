@@ -34,7 +34,7 @@ def tile_sum_kernel(input: wp.array2d(dtype=float), output: wp.array(dtype=float
         a = wp.tile_load(input, i, j, m=1, n=TILE_DIM)
         s += wp.tile_sum(a) * 0.5
 
-    wp.tile_store(output, i, 0, s)
+    wp.tile_store(output, i, s)
 
 
 def test_tile_reduce_sum(test, device):
@@ -73,7 +73,7 @@ def tile_min_kernel(input: wp.array2d(dtype=float), output: wp.array(dtype=float
     a = wp.tile_load(input, i, 0, m=1, n=TILE_DIM)
     m = wp.tile_min(a)
 
-    wp.tile_store(output, i, 0, m)
+    wp.tile_store(output, i, m)
 
 
 def test_tile_reduce_min(test, device):
@@ -106,7 +106,7 @@ def tile_max_kernel(input: wp.array2d(dtype=float), output: wp.array(dtype=float
     a = wp.tile_load(input, i, 0, m=1, n=TILE_DIM)
     m = wp.tile_max(a)
 
-    wp.tile_store(output, i, 0, m)
+    wp.tile_store(output, i, m)
 
 
 def test_tile_reduce_max(test, device):
@@ -139,7 +139,7 @@ def tile_reduce_custom_kernel(input: wp.array2d(dtype=float), output: wp.array(d
     a = wp.tile_load(input, i, 0, m=1, n=TILE_DIM)
     m = wp.tile_reduce(wp.mul, a)
 
-    wp.tile_store(output, i, 0, m)
+    wp.tile_store(output, i, m)
 
 
 def test_tile_reduce_custom(test, device):
@@ -173,10 +173,10 @@ def tile_grouped_sum_kernel(input: wp.array3d(dtype=float), output: wp.array(dty
     # output tile index
     i = wp.tid()
 
-    a = wp.tile_load(input, i, 0, m=TILE_M, n=TILE_N)
+    a = wp.tile_load(input[i], 0, 0, m=TILE_M, n=TILE_N)
     s = wp.tile_sum(a) * 0.5
 
-    wp.tile_store(output, i, 0, s)
+    wp.tile_store(output, i, s)
 
 
 def test_tile_reduce_grouped_sum(test, device):
@@ -257,17 +257,72 @@ def test_tile_untile(test, device):
 
 
 @wp.kernel
+def tile_untile_scalar_kernel(output: wp.array(dtype=int)):
+    # thread index
+    i = wp.tid()
+
+    # convert to block wide tile
+    t = wp.tile(i) * 2
+    s = wp.untile(t)
+
+    output[i] = s
+
+
+def test_tile_untile_scalar(test, device):
+    # use an unaligned grid dimension
+    N = TILE_DIM * 4 + 5
+
+    output = wp.zeros(shape=N, dtype=int, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch(tile_untile_kernel, dim=N, inputs=[output], block_dim=TILE_DIM, device=device)
+
+    assert_np_equal(output.numpy(), np.arange(N) * 2)
+
+
+
+@wp.kernel
+def test_untile_vector_kernel(
+    input: wp.array(dtype=wp.vec3),
+    output: wp.array(dtype=wp.vec3)):
+
+    i = wp.tid()
+
+    v = input[i]*0.5
+
+    t = wp.tile(v)
+    u = wp.untile(t)
+
+    output[i] = u*2.0
+
+def test_tile_untile_vector(test, device):
+
+    input = wp.full(16, wp.vec3(1.0, 2.0, 3.0), requires_grad=True)
+    output = wp.zeros_like(input)
+
+    with wp.Tape() as tape:
+        wp.launch(test_untile_vector_kernel, dim=16, inputs=[input, output], block_dim=16)
+
+    output.grad = wp.ones_like(output)
+    tape.backward()
+
+    assert_np_equal(output.numpy(), input.numpy())
+    assert_np_equal(input.grad.numpy(), np.ones((16, 3)))
+
+
+@wp.kernel
 def tile_ones_kernel(out: wp.array(dtype=float)):
     i = wp.tid()
 
     t = wp.tile_ones(dtype=float, m=16, n=16)
     s = wp.tile_sum(t)
 
-    wp.tile_store(out, 0, 0, s)
+    wp.tile_store(out, 0, s)
 
 
 def test_tile_ones(test, device):
-    output = wp.zeros(shape=1, dtype=float, device=device)
+    
+    output = wp.zeros(1, dtype=float, device=device)
 
     with wp.Tape() as tape:
         wp.launch_tiled(tile_ones_kernel, dim=[1], inputs=[output], block_dim=TILE_DIM, device=device)
@@ -316,8 +371,9 @@ add_function_test(TestTileReduce, "test_tile_reduce_grouped_sum", test_tile_redu
 add_function_test(TestTileReduce, "test_tile_reduce_simt", test_tile_reduce_simt, devices=devices)
 add_function_test(TestTileReduce, "test_tile_ones", test_tile_ones, devices=devices)
 add_function_test(TestTileReduce, "test_tile_arange", test_tile_arange, devices=devices)
-add_function_test(TestTileReduce, "test_tile_untile", test_tile_untile, devices=devices)
+add_function_test(TestTileReduce, "test_tile_untile_scalar", test_tile_untile_scalar, devices=devices)
+add_function_test(TestTileReduce, "test_tile_untile_vector", test_tile_untile_vector, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
-    unittest.main(verbosity=2)
+    unittest.main(verbosity=2, failfast=True)
