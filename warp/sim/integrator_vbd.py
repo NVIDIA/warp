@@ -322,10 +322,50 @@ def evaluate_stvk_force_hessian(
 
 
 @wp.func
-def evaluate_body_particle_contact(
-    vertex_index: int,
+def evaluate_ground_contact_force_hessian(
     vertex_pos: wp.vec3,
     vertex_prev_pos: wp.vec3,
+    particle_radius: float,
+    ground_normal: wp.vec3,
+    ground_level: float,
+    soft_contact_ke: float,
+    friction_mu: float,
+    friction_epsilon: float,
+    dt: float,
+):
+    penetration_depth = -(wp.dot(ground_normal, vertex_pos) + ground_level - particle_radius)
+
+    if penetration_depth > 0:
+        ground_contact_force_norm = penetration_depth * soft_contact_ke
+        ground_contact_force = ground_normal * ground_contact_force_norm
+        ground_contact_hessian = soft_contact_ke * wp.outer(ground_normal, ground_normal)
+
+        dx = vertex_pos - vertex_prev_pos
+
+        # friction
+        e0, e1 = build_orthonormal_basis(ground_normal)
+
+        T = mat32(e0[0], e1[0], e0[1], e1[1], e0[2], e1[2])
+
+        relative_translation = dx
+        u = wp.transpose(T) * relative_translation
+        eps_u = friction_epsilon * dt
+
+        friction_force, friction_hessian = compute_friction(friction_mu, ground_contact_force_norm, T, u, eps_u)
+        ground_contact_force = ground_contact_force + friction_force
+        ground_contact_hessian = ground_contact_hessian + friction_hessian
+    else:
+        ground_contact_force = wp.vec3(0.0, 0.0, 0.0)
+        ground_contact_hessian = wp.mat33(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+
+    return ground_contact_force, ground_contact_hessian
+
+
+@wp.func
+def evaluate_body_particle_contact(
+    particle_index: int,
+    particle_pos: wp.vec3,
+    particle_prev_pos: wp.vec3,
     contact_index: int,
     soft_contact_ke: float,
     friction_mu: float,
@@ -357,7 +397,7 @@ def evaluate_body_particle_contact(
 
     n = contact_normal[contact_index]
 
-    penetration_depth = -(wp.dot(n, vertex_pos - bx) - particle_radius[vertex_index])
+    penetration_depth = -(wp.dot(n, particle_pos - bx) - particle_radius[particle_index])
     if penetration_depth > 0:
         body_contact_force_norm = penetration_depth * soft_contact_ke
         body_contact_force = n * body_contact_force_norm
@@ -365,7 +405,7 @@ def evaluate_body_particle_contact(
 
         mu = 0.5 * (friction_mu + shape_materials.mu[shape_index])
 
-        dx = vertex_pos - vertex_prev_pos
+        dx = particle_pos - particle_prev_pos
 
         # body velocity
         body_v_s = wp.spatial_vector()
@@ -444,21 +484,21 @@ def forward_step(
     particle_flags: wp.array(dtype=wp.uint32),
     inertia: wp.array(dtype=wp.vec3),
 ):
-    vertex = wp.tid()
+    particle = wp.tid()
 
-    prev_pos[vertex] = pos[vertex]
-    if not particle_flags[vertex] & PARTICLE_FLAG_ACTIVE:
-        inertia[vertex] = prev_pos[vertex]
+    prev_pos[particle] = pos[particle]
+    if not particle_flags[particle] & PARTICLE_FLAG_ACTIVE:
+        inertia[particle] = prev_pos[particle]
         return
-    vel_new = vel[vertex] + (gravity + external_force[vertex] * inv_mass[vertex]) * dt
-    pos[vertex] = pos[vertex] + vel_new * dt
-    inertia[vertex] = pos[vertex]
+    vel_new = vel[particle] + (gravity + external_force[particle] * inv_mass[particle]) * dt
+    pos[particle] = pos[particle] + vel_new * dt
+    inertia[particle] = pos[particle]
 
 
 @wp.kernel
 def VBD_solve_trimesh(
     dt: float,
-    vertex_ids_in_color: wp.array(dtype=wp.int32),
+    particle_ids_in_color: wp.array(dtype=wp.int32),
     prev_pos: wp.array(dtype=wp.vec3),
     pos: wp.array(dtype=wp.vec3),
     pos_new: wp.array(dtype=wp.vec3),
@@ -491,35 +531,38 @@ def VBD_solve_trimesh(
     contact_body_pos: wp.array(dtype=wp.vec3),
     contact_body_vel: wp.array(dtype=wp.vec3),
     contact_normal: wp.array(dtype=wp.vec3),
+    # ground-particle contact
+    has_ground: bool,
+    ground: wp.array(dtype=float),
 ):
-    t_id = wp.tid()
+    tid = wp.tid()
 
-    vertex = vertex_ids_in_color[t_id]
-    # wp.printf("vId: %d\n", vertex)
+    particle_index = particle_ids_in_color[tid]
+    # wp.printf("vId: %d\n", particle)
 
-    if not particle_flags[vertex] & PARTICLE_FLAG_ACTIVE:
+    if not particle_flags[particle_index] & PARTICLE_FLAG_ACTIVE:
         return
 
-    vertex_pos = pos[vertex]
-    vertex_prev_pos = pos[vertex]
+    particle_pos = pos[particle_index]
+    particle_prev_pos = pos[particle_index]
 
     dt_sqr_reciprocal = 1.0 / (dt * dt)
 
     # inertia force and hessian
-    f = mass[vertex] * (inertia[vertex] - pos[vertex]) * (dt_sqr_reciprocal)
-    h = mass[vertex] * dt_sqr_reciprocal * wp.identity(n=3, dtype=float)
+    f = mass[particle_index] * (inertia[particle_index] - pos[particle_index]) * (dt_sqr_reciprocal)
+    h = mass[particle_index] * dt_sqr_reciprocal * wp.identity(n=3, dtype=float)
 
     # elastic force and hessian
-    for i_adj_tri in range(get_vertex_num_adjacent_faces(vertex, adjacency)):
-        # wp.printf("vertex: %d | num_adj_faces: %d | ", vertex, get_vertex_num_adjacent_faces(vertex, adjacency))
-        tri_id, vertex_order = get_vertex_adjacent_face_id_order(vertex, i_adj_tri, adjacency)
+    for i_adj_tri in range(get_vertex_num_adjacent_faces(particle_index, adjacency)):
+        # wp.printf("particle: %d | num_adj_faces: %d | ", particle, get_particle_num_adjacent_faces(particle, adjacency))
+        tri_id, particle_order = get_vertex_adjacent_face_id_order(particle_index, i_adj_tri, adjacency)
 
-        # wp.printf("i_face: %d | face id: %d | v_order: %d | ", i_adj_tri, tri_id, vertex_order)
+        # wp.printf("i_face: %d | face id: %d | v_order: %d | ", i_adj_tri, tri_id, particle_order)
         # wp.printf("face: %d %d %d\n", tri_indices[tri_id, 0], tri_indices[tri_id, 1], tri_indices[tri_id, 2], )
 
         f_tri, h_tri = evaluate_stvk_force_hessian(
             tri_id,
-            vertex_order,
+            particle_order,
             pos,
             tri_indices,
             tri_poses[tri_id],
@@ -532,13 +575,13 @@ def VBD_solve_trimesh(
         k_d = tri_materials[tri_id, 2]
         h_d = h_tri * (k_d / dt)
 
-        f_d = h_d * (prev_pos[vertex] - pos[vertex])
+        f_d = h_d * (prev_pos[particle_index] - pos[particle_index])
 
         f = f + f_tri + f_d
         h = h + h_tri + h_d
 
-        # wp.printf("vertex: %d, i_adj_tri: %d, vertex_order: %d, \nforce:\n %f %f %f, \nhessian:, \n%f %f %f, \n%f %f %f, \n%f %f %f\n",
-        #           vertex, i_adj_tri, vertex_order,
+        # wp.printf("particle: %d, i_adj_tri: %d, particle_order: %d, \nforce:\n %f %f %f, \nhessian:, \n%f %f %f, \n%f %f %f, \n%f %f %f\n",
+        #           particle, i_adj_tri, particle_order,
         #           f[0], f[1], f[2],
         #           h[0, 0], h[0, 1], h[0, 2],
         #           h[1, 0], h[1, 1], h[1, 2],
@@ -546,17 +589,17 @@ def VBD_solve_trimesh(
         #           )
 
     # body-particle contact
-    particle_contact_count = min(body_particle_contact_count[vertex], body_particle_contact_buffer_pre_alloc)
+    particle_contact_count = min(body_particle_contact_count[particle_index], body_particle_contact_buffer_pre_alloc)
 
-    offset = body_particle_contact_buffer_pre_alloc * vertex
+    offset = body_particle_contact_buffer_pre_alloc * particle_index
     for contact_counter in range(particle_contact_count):
         # the index to access body-particle data, which is size-variable and only contains active contact
         contact_index = body_particle_contact_buffer[offset + contact_counter]
 
         body_contact_force, body_contact_hessian = evaluate_body_particle_contact(
-            vertex,
-            vertex_pos,
-            vertex_prev_pos,
+            particle_index,
+            particle_pos,
+            particle_prev_pos,
             contact_index,
             soft_contact_ke,
             friction_mu,
@@ -577,29 +620,47 @@ def VBD_solve_trimesh(
         f = f + body_contact_force
         h = h + body_contact_hessian
 
+    if has_ground:
+        ground_normal = wp.vec3(ground[0], ground[1], ground[2])
+        ground_level = ground[3]
+        ground_contact_force, ground_contact_hessian = evaluate_ground_contact_force_hessian(
+            particle_pos,
+            particle_prev_pos,
+            particle_radius[particle_index],
+            ground_normal,
+            ground_level,
+            soft_contact_ke,
+            friction_mu,
+            friction_epsilon,
+            dt,
+        )
+
+        f = f + ground_contact_force
+        h = h + ground_contact_hessian
+
     if abs(wp.determinant(h)) > 1e-5:
         hInv = wp.inverse(h)
-        pos_new[vertex] = pos[vertex] + hInv * f
+        pos_new[particle_index] = particle_pos + hInv * f
 
 
 @wp.kernel
 def VBD_copy_particle_positions_back(
-    vertex_ids_in_color: wp.array(dtype=wp.int32),
+    particle_ids_in_color: wp.array(dtype=wp.int32),
     pos: wp.array(dtype=wp.vec3),
     pos_new: wp.array(dtype=wp.vec3),
 ):
-    t_id = wp.tid()
-    vertex = vertex_ids_in_color[t_id]
+    tid = wp.tid()
+    particle = particle_ids_in_color[tid]
 
-    pos[vertex] = pos_new[vertex]
+    pos[particle] = pos_new[particle]
 
 
 @wp.kernel
 def update_velocity(
     dt: float, prev_pos: wp.array(dtype=wp.vec3), pos: wp.array(dtype=wp.vec3), vel: wp.array(dtype=wp.vec3)
 ):
-    vertex = wp.tid()
-    vel[vertex] = (pos[vertex] - prev_pos[vertex]) / dt
+    particle = wp.tid()
+    vel[particle] = (pos[particle] - prev_pos[particle]) / dt
 
 
 @wp.kernel
@@ -826,6 +887,8 @@ class VBDIntegrator(Integrator):
                         self.model.soft_contact_body_pos,
                         self.model.soft_contact_body_vel,
                         self.model.soft_contact_normal,
+                        self.model.ground,
+                        self.model.ground_plane,
                     ],
                     dim=self.model.particle_coloring[color_counter].size,
                     device=self.device,
