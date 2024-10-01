@@ -818,6 +818,11 @@ Utility
            All matrices are assumed to be stored in flattened row-major memory layout (NumPy default).
 
 
+.. py:function:: reversed(range: range_t) -> range_t
+
+    Returns the range in reversed order.
+
+
 .. py:function:: printf(fmt: str, *args: Any) -> None
 
     Allows printing formatted strings using C-style format specifiers.

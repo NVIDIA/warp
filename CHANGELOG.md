@@ -4,6 +4,8 @@
 
 ### Added
 
+- Expose a `reversed()` built-in for iterators.
+
 ### Changed
 
 ### Fixed

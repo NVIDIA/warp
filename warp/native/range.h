@@ -115,4 +115,8 @@ CUDA_CALLABLE inline range_t iter_reverse(const range_t& r)
     return rev;
 }
 
+CUDA_CALLABLE inline void adj_iter_reverse(const range_t& r, range_t& adj_r, range_t& adj_ret)
+{
+}
+
 } // namespace wp
