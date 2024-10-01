@@ -293,13 +293,13 @@ def test_untile_vector_kernel(input: wp.array(dtype=wp.vec3), output: wp.array(d
 
 
 def test_tile_untile_vector(test, device):
-    input = wp.full(16, wp.vec3(1.0, 2.0, 3.0), requires_grad=True)
-    output = wp.zeros_like(input)
+    input = wp.full(16, wp.vec3(1.0, 2.0, 3.0), requires_grad=True, device=device)
+    output = wp.zeros_like(input, device=device)
 
     with wp.Tape() as tape:
-        wp.launch(test_untile_vector_kernel, dim=16, inputs=[input, output], block_dim=16)
+        wp.launch(test_untile_vector_kernel, dim=16, inputs=[input, output], block_dim=16, device=device)
 
-    output.grad = wp.ones_like(output)
+    output.grad = wp.ones_like(output, device=device)
     tape.backward()
 
     assert_np_equal(output.numpy(), input.numpy())
