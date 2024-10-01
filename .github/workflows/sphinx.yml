@@ -29,7 +29,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r docs/requirements.txt
+          pip install --no-cache-dir -r docs/requirements.txt
+      - name: Build Warp without CUDA Support
+        run: python build_lib.py
       - name: Build Sphinx documentation
         run: python build_docs.py
       - name: Upload artifacts
@@ -46,7 +48,7 @@ jobs:
           mv docs/_build/html/* .
           mv docs/_build/html/.nojekyll .
           mv docs/_build/html/.buildinfo .
-          rm -rf docs warp
+          rm -rf docs warp _build __pycache__
           git add . .nojekyll .buildinfo
           git commit -m "Deploy Sphinx documentation"
           git push -f origin gh-pages

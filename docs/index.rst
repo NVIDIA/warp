@@ -7,7 +7,7 @@ regular Python functions and JIT compiles them to efficient kernel code that can
 Warp is designed for `spatial computing <https://en.wikipedia.org/wiki/Spatial_computing>`_
 and comes with a rich set of primitives that make it easy to write 
 programs for physics simulation, perception, robotics, and geometry processing. In addition, Warp kernels 
-are differentiable and can be used as part of machine-learning pipelines with frameworks such as PyTorch and JAX.
+are differentiable and can be used as part of machine-learning pipelines with frameworks such as PyTorch, JAX and Paddle.
 
 Below are some examples of simulations implemented using Warp:
 
@@ -320,8 +320,7 @@ Contributing
 
 Contributions and pull requests from the community are welcome and are taken under the
 terms described in the **Feedback** section of `LICENSE.md <https://github.com/NVIDIA/warp/blob/main/LICENSE.md#9-feedback>`__.
-`CONTRIBUTING.md <https://github.com/NVIDIA/warp/blob/main/CONTRIBUTING.md>`_ provides additional information on
-how to open a pull request for Warp.
+Please see the :doc:`modules/contribution_guide` for more information on contributing to the development of Warp.
 
 Citing
 ------
@@ -356,12 +355,14 @@ Full Table of Contents
     configuration
     debugging
     limitations
+    modules/contribution_guide
     faq
 
 .. toctree::
     :maxdepth: 2
     :caption: Advanced Topics
 
+    codegen
     modules/allocators
     modules/concurrency
     profiling

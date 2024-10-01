@@ -29,6 +29,14 @@ struct quat_t
         w = static_cast<Type>(other.w);
     }
 
+    inline CUDA_CALLABLE quat_t(const initializer_array<4, Type> &l)
+    {
+        x = l[0];
+        y = l[1];
+        z = l[2];
+        w = l[3];
+    }
+
     // imaginary part
     Type x;
     Type y;

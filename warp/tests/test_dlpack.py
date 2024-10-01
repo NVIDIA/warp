@@ -350,6 +350,34 @@ def test_dlpack_torch_to_warp_v2(test, device):
     assert_np_equal(a.numpy(), t.cpu().numpy())
 
 
+def test_dlpack_paddle_to_warp(test, device):
+    import paddle
+    import paddle.utils.dlpack
+
+    t = paddle.arange(N, dtype=paddle.float32).to(device=wp.device_to_paddle(device))
+
+    # paddle do not implement __dlpack__ yet, so only test to_dlpack here
+    a = wp.from_dlpack(paddle.utils.dlpack.to_dlpack(t))
+
+    item_size = wp.types.type_size_in_bytes(a.dtype)
+
+    test.assertEqual(a.ptr, t.data_ptr())
+    test.assertEqual(a.device, wp.device_from_paddle(t.place))
+    test.assertEqual(a.dtype, wp.dtype_from_paddle(t.dtype))
+    test.assertEqual(a.shape, tuple(t.shape))
+    test.assertEqual(a.strides, tuple(s * item_size for s in t.strides))
+
+    assert_np_equal(a.numpy(), t.numpy())
+
+    wp.launch(inc, dim=a.size, inputs=[a], device=device)
+
+    assert_np_equal(a.numpy(), t.numpy())
+
+    paddle.assign(t + 1, t)
+
+    assert_np_equal(a.numpy(), t.numpy())
+
+
 def test_dlpack_warp_to_jax(test, device):
     import jax
     import jax.dlpack
@@ -419,6 +447,61 @@ def test_dlpack_warp_to_jax_v2(test, device):
 
     assert_np_equal(a.numpy(), np.asarray(j1))
     assert_np_equal(a.numpy(), np.asarray(j2))
+
+
+def test_dlpack_warp_to_paddle(test, device):
+    import paddle.utils.dlpack
+
+    a = wp.array(data=np.arange(N, dtype=np.float32), device=device)
+
+    t = paddle.utils.dlpack.from_dlpack(wp.to_dlpack(a))
+
+    item_size = wp.types.type_size_in_bytes(a.dtype)
+
+    test.assertEqual(a.ptr, t.data_ptr())
+    test.assertEqual(a.device, wp.device_from_paddle(t.place))
+    test.assertEqual(a.dtype, wp.dtype_from_paddle(t.dtype))
+    test.assertEqual(a.shape, tuple(t.shape))
+    test.assertEqual(a.strides, tuple(s * item_size for s in t.strides))
+
+    assert_np_equal(a.numpy(), t.cpu().numpy())
+
+    wp.launch(inc, dim=a.size, inputs=[a], device=device)
+
+    assert_np_equal(a.numpy(), t.cpu().numpy())
+
+    paddle.assign(t + 1, t)
+
+    assert_np_equal(a.numpy(), t.cpu().numpy())
+
+
+def test_dlpack_warp_to_paddle_v2(test, device):
+    # same as original test, but uses newer __dlpack__() method
+
+    import paddle.utils.dlpack
+
+    a = wp.array(data=np.arange(N, dtype=np.float32), device=device)
+
+    # pass the array directly
+    t = paddle.utils.dlpack.from_dlpack(a)
+
+    item_size = wp.types.type_size_in_bytes(a.dtype)
+
+    test.assertEqual(a.ptr, t.data_ptr())
+    test.assertEqual(a.device, wp.device_from_paddle(t.place))
+    test.assertEqual(a.dtype, wp.dtype_from_paddle(t.dtype))
+    test.assertEqual(a.shape, tuple(t.shape))
+    test.assertEqual(a.strides, tuple(s * item_size for s in t.strides))
+
+    assert_np_equal(a.numpy(), t.numpy())
+
+    wp.launch(inc, dim=a.size, inputs=[a], device=device)
+
+    assert_np_equal(a.numpy(), t.numpy())
+
+    paddle.assign(t + 1, t)
+
+    assert_np_equal(a.numpy(), t.numpy())
 
 
 def test_dlpack_jax_to_warp(test, device):
@@ -573,6 +656,41 @@ try:
 
 except Exception as e:
     print(f"Skipping Jax DLPack tests due to exception: {e}")
+
+
+# paddle interop via dlpack
+try:
+    import paddle
+    import paddle.utils.dlpack
+
+    # check which Warp devices work with paddle
+    # CUDA devices may fail if paddle was not compiled with CUDA support
+    test_devices = get_test_devices()
+    paddle_compatible_devices = []
+    for d in test_devices:
+        try:
+            t = paddle.arange(10).to(device=wp.device_to_paddle(d))
+            paddle.assign(t + 1, t)
+            paddle_compatible_devices.append(d)
+        except Exception as e:
+            print(f"Skipping paddle DLPack tests on device '{d}' due to exception: {e}")
+
+    if paddle_compatible_devices:
+        add_function_test(
+            TestDLPack, "test_dlpack_warp_to_paddle", test_dlpack_warp_to_paddle, devices=paddle_compatible_devices
+        )
+        add_function_test(
+            TestDLPack,
+            "test_dlpack_warp_to_paddle_v2",
+            test_dlpack_warp_to_paddle_v2,
+            devices=paddle_compatible_devices,
+        )
+        add_function_test(
+            TestDLPack, "test_dlpack_paddle_to_warp", test_dlpack_paddle_to_warp, devices=paddle_compatible_devices
+        )
+
+except Exception as e:
+    print(f"Skipping Paddle DLPack tests due to exception: {e}")
 
 
 if __name__ == "__main__":

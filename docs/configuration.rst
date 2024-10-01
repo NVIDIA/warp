@@ -7,6 +7,8 @@ Warp has settings at the global, module, and kernel level that can be used to fi
 of Warp programs. In cases in which a setting can be changed at multiple levels (e.g.: ``enable_backward``),
 the setting at the more-specific scope takes precedence.
 
+.. _global-settings:
+
 Global Settings
 ---------------
 

@@ -1,6 +1,6 @@
 [package]
 # Semantic Versioning is used: https://semver.org/
-version = "1.3.3"
+version = "1.4.0"
 authors = ["NVIDIA"]
 title = "Warp Core"
 description="The core Warp Python module"
@@ -38,6 +38,7 @@ pyCoverageOmit = [
     "warp/stubs.py",
     "warp/jax.py",
     "warp/torch.py",
+    "warp/paddle.py",
     "warp/build.py",
     "warp/build_dll.py",
     "warp/sim/**",
