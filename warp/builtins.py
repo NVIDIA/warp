@@ -2012,6 +2012,9 @@ def tile_store_1d_value_func(arg_types, arg_values):
     if not is_array(arg_types["a"]):
         raise RuntimeError("tile_store() argument 0 must be an array")
 
+    if arg_types["a"].ndim != 1:
+        raise RuntimeError("tile_load() argument 0 must be a 1-dimensional array if using the ``wp.tile_store(array, i, t)`` syntax.")
+
     if not type_is_int(arg_types["i"]):
         raise RuntimeError("tile_store() argument 1 must be an integer")
 
@@ -2029,6 +2032,7 @@ add_builtin(
     input_types={"a": array(dtype=Any), "i": int, "t": Any},
     value_func=tile_store_1d_value_func,
     variadic=False,
+    skip_replay=True,
     doc="""Stores a 1D tile to a global memory array.
 
     This method will cooperatively store a tile to global memory using all threads in the block.
@@ -2051,6 +2055,9 @@ def tile_store_2d_value_func(arg_types, arg_values):
     if not is_array(arg_types["a"]):
         raise RuntimeError("tile_store() argument 0 must be an array")
 
+    if arg_types["a"].ndim != 2:
+        raise RuntimeError("tile_load() argument 0 must be a 2-dimensional array if using the ``wp.tile_store(array, i, j, t)`` syntax.")
+
     if not type_is_int(arg_types["i"]):
         raise RuntimeError("tile_store() argument 1 must be an integer")
 
@@ -2071,6 +2078,7 @@ add_builtin(
     input_types={"a": array(dtype=Any), "i": int, "j": int, "t": Any},
     value_func=tile_store_2d_value_func,
     variadic=False,
+    skip_replay=True,
     doc="""Stores a tile to a global memory array.
 
     This method will cooperatively store a tile to global memory using all threads in the block.
@@ -2115,6 +2123,7 @@ add_builtin(
     input_types={"a": array(dtype=Any), "x": int, "y": int, "t": Any},
     value_func=tile_atomic_add_value_func,
     variadic=True,
+    skip_replay=True,
     doc="""Atomically add a tile to the array `a`, each element will be updated atomically.
 
     :param a: Array in global memory, should have the same ``dtype`` as the input tile

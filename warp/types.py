@@ -2982,7 +2982,7 @@ class Tile:
         if self.storage == "register":
             return f"wp::tile_register_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
         elif self.storage == "shared":
-            return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}, {self.strides[0]}, {self.strides[1]}>"
+            return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{self.strides[0]}, {self.strides[1]}>"
         else:
             raise RuntimeError(f"Unrecognized tile storage type {self.storage}")
 
@@ -2995,15 +2995,17 @@ class Tile:
         elif self.storage == "shared":
             # if this is a reference to another tile
             # then don't allocate any memory
-            if self.owner == False:
-                return "NULL"
 
             if adjoint:
                 # backward pass requires zeroed memory
-                return f"wp::tile_alloc_zeros<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{Tile.alloc()}>()"
+                return f"wp::tile_alloc_zeros<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{self.strides[0]}, {self.strides[1]}, {Tile.alloc()}>()"
             else:
-                # forward mode can be uninitialized until first used by the kernel
-                return f"wp::tile_alloc_empty<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{Tile.alloc()}>()"
+                if self.owner == False:
+                    # will be initialized by subsequent call, e.g.: t = tile_broadcast(a)
+                    return "NULL"
+                else:
+                    # forward mode can be uninitialized until first used by the kernel
+                    return f"wp::tile_alloc_empty<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{Tile.alloc()}>()"
 
     # generate a unique allocation index for shared memory
     @classmethod

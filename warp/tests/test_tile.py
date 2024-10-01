@@ -359,7 +359,7 @@ def tile_sum_kernel(input: wp.array3d(dtype=float), output: wp.array(dtype=float
     a = wp.tile_load(input[i], 0, 0, m=TILE_M, n=TILE_N)
     s = wp.tile_sum(a) * 0.5
 
-    wp.tile_store(output, i, 0, s)
+    wp.tile_store(output, i, s)
 
 
 def test_tile_sum(test, device):
@@ -472,7 +472,7 @@ def test_tile_transpose_matmul(test, device):
 
 
 @wp.kernel
-def test_tile_broadcast_kernel(
+def test_tile_broadcast_add_kernel(
     input_a: wp.array2d(dtype=float),
     input_b: wp.array(dtype=float),
     output: wp.array2d(dtype=float)):
@@ -485,7 +485,7 @@ def test_tile_broadcast_kernel(
 
     wp.tile_store(output, 0, 0, d)   
 
-def test_tile_broadcast(test, device):
+def test_tile_broadcast_add(test, device):
 
     M = 10
     N = 10
@@ -494,11 +494,36 @@ def test_tile_broadcast(test, device):
     b = wp.array(np.arange(0, N, dtype=np.float32), device=device)
     out = wp.zeros((M,N), dtype=float, device=device)
 
-    wp.launch_tiled(test_tile_broadcast_kernel, dim=[1], inputs=[a, b, out], block_dim=32)
+    wp.launch_tiled(test_tile_broadcast_add_kernel, dim=[1], inputs=[a, b, out], block_dim=32)
     
     assert_np_equal(out.numpy(), a.numpy() + b.numpy())
 
 
+@wp.kernel
+def test_tile_broadcast_grad_kernel(
+    a: wp.array(dtype=float),
+    b: wp.array2d(dtype=float)):
+
+    x = wp.tile_load(a, i=0, n=5)
+    y = wp.tile_broadcast(x, m=5, n=5)
+
+    w = wp.tile_ones(dtype=float, m=5, n=5)
+    z = w + y
+    
+    wp.tile_store(b, 0, 0, z)
+
+def test_tile_broadcast_grad(test, device):
+        
+    a = wp.array(np.arange(0, 5, dtype=np.float32), requires_grad=True)
+    b = wp.array(np.ones((5, 5), dtype=np.float32), requires_grad=True)
+
+    with wp.Tape() as tape:   
+        wp.launch_tiled(test_tile_broadcast_grad_kernel, dim=[1], inputs=[a, b], block_dim=32)
+
+    b.grad = wp.ones_like(b)
+    tape.backward()
+
+    assert_np_equal(a.grad.numpy(), np.ones(5)*5.0)
 
 # #-----------------------------------------
 # # center of mass computation
@@ -597,7 +622,8 @@ add_function_test(TestTile, "test_tile_transpose_matmul", test_tile_transpose_ma
 add_function_test(TestTile, "test_tile_operators", test_tile_operators, devices=devices)
 add_function_test(TestTile, "test_tile_sum", test_tile_sum, devices=devices)
 add_function_test(TestTile, "test_tile_extract", test_tile_extract, devices=devices)
-add_function_test(TestTile, "test_tile_broadcast", test_tile_broadcast, devices=devices)
+add_function_test(TestTile, "test_tile_broadcast_add", test_tile_broadcast_add, devices=devices)
+add_function_test(TestTile, "test_tile_broadcast_grad", test_tile_broadcast_grad, devices=devices)
 
 
 if __name__ == "__main__":
