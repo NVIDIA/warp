@@ -280,23 +280,19 @@ def test_tile_untile_scalar(test, device):
     assert_np_equal(output.numpy(), np.arange(N) * 2)
 
 
-
 @wp.kernel
-def test_untile_vector_kernel(
-    input: wp.array(dtype=wp.vec3),
-    output: wp.array(dtype=wp.vec3)):
-
+def test_untile_vector_kernel(input: wp.array(dtype=wp.vec3), output: wp.array(dtype=wp.vec3)):
     i = wp.tid()
 
-    v = input[i]*0.5
+    v = input[i] * 0.5
 
     t = wp.tile(v)
     u = wp.untile(t)
 
-    output[i] = u*2.0
+    output[i] = u * 2.0
+
 
 def test_tile_untile_vector(test, device):
-
     input = wp.full(16, wp.vec3(1.0, 2.0, 3.0), requires_grad=True)
     output = wp.zeros_like(input)
 
@@ -321,7 +317,6 @@ def tile_ones_kernel(out: wp.array(dtype=float)):
 
 
 def test_tile_ones(test, device):
-    
     output = wp.zeros(1, dtype=float, device=device)
 
     with wp.Tape() as tape:

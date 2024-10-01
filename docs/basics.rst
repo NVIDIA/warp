@@ -3,6 +3,8 @@ Basics
 
 .. currentmodule:: warp
 
+.. _warp-initialization:
+
 Initialization
 --------------
 
@@ -272,6 +274,8 @@ less time to load since code compilation is skipped:
     Module warp.sim.integrator 036f39a load on device 'cuda:0' took 0.39 ms (cached)
     step took 0.04 ms
     render took 5.05 ms
+
+For more information, see the :doc:`codegen` section.
 
 Language Details
 ----------------

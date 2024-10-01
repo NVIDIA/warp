@@ -21,6 +21,7 @@ TILE_K = wp.constant(8)
 # num threads per-tile
 TILE_DIM = 64
 
+
 @wp.kernel
 def tile_copy_1d_kernel(A: wp.array(dtype=float), B: wp.array(dtype=float)):
     # tile index
@@ -58,6 +59,7 @@ def test_tile_copy_1d(test, device):
     tape.backward()
 
     assert_array_equal(B_wp.grad, A_wp.grad)
+
 
 @wp.kernel
 def tile_copy_2d_kernel(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float)):
@@ -450,18 +452,18 @@ def test_tile_transpose(test, device):
     assert_np_equal(output.numpy(), input.numpy().T)
 
 
-@wp.kernel
-def test_tile_transpose_matmul_kernel(input: wp.array2d(dtype=float), output: wp.array2d(dtype=float)):
-    x = wp.tile_load(input, 0, 0, m=TILE_M, n=TILE_N)
-    y = wp.tile_transpose(x)
-
-    z = wp.tile_zeros(dtype=float, m=TILE_N, n=TILE_N)
-    wp.tile_matmul(y, x, z)
-
-    wp.tile_store(output, 0, 0, z)
-
-
+@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_tile_transpose_matmul(test, device):
+    @wp.kernel
+    def test_tile_transpose_matmul_kernel(input: wp.array2d(dtype=float), output: wp.array2d(dtype=float)):
+        x = wp.tile_load(input, 0, 0, m=TILE_M, n=TILE_N)
+        y = wp.tile_transpose(x)
+
+        z = wp.tile_zeros(dtype=float, m=TILE_N, n=TILE_N)
+        wp.tile_matmul(y, x, z)
+
+        wp.tile_store(output, 0, 0, z)
+
     rng = np.random.default_rng(42)
     input = wp.array(rng.random((TILE_M, TILE_N), dtype=np.float32), device=device)
     output = wp.zeros((TILE_N, TILE_N), dtype=float, device=device)
@@ -473,57 +475,53 @@ def test_tile_transpose_matmul(test, device):
 
 @wp.kernel
 def test_tile_broadcast_add_kernel(
-    input_a: wp.array2d(dtype=float),
-    input_b: wp.array(dtype=float),
-    output: wp.array2d(dtype=float)):
-
+    input_a: wp.array2d(dtype=float), input_b: wp.array(dtype=float), output: wp.array2d(dtype=float)
+):
     a = wp.tile_load(input_a, 0, 0, m=10, n=10)
     b = wp.tile_load(input_b, 0, n=10)
 
     c = wp.tile_broadcast(b, 10, 10)
     d = a + c
 
-    wp.tile_store(output, 0, 0, d)   
+    wp.tile_store(output, 0, 0, d)
+
 
 def test_tile_broadcast_add(test, device):
-
     M = 10
     N = 10
-    
-    a = wp.array(np.ones((M,N), dtype=np.float32), device=device)
-    b = wp.array(np.arange(0, N, dtype=np.float32), device=device)
-    out = wp.zeros((M,N), dtype=float, device=device)
 
-    wp.launch_tiled(test_tile_broadcast_add_kernel, dim=[1], inputs=[a, b, out], block_dim=32)
-    
+    a = wp.array(np.ones((M, N), dtype=np.float32), device=device)
+    b = wp.array(np.arange(0, N, dtype=np.float32), device=device)
+    out = wp.zeros((M, N), dtype=float, device=device)
+
+    wp.launch_tiled(test_tile_broadcast_add_kernel, dim=[1], inputs=[a, b, out], block_dim=32, device=device)
+
     assert_np_equal(out.numpy(), a.numpy() + b.numpy())
 
 
 @wp.kernel
-def test_tile_broadcast_grad_kernel(
-    a: wp.array(dtype=float),
-    b: wp.array2d(dtype=float)):
-
+def test_tile_broadcast_grad_kernel(a: wp.array(dtype=float), b: wp.array2d(dtype=float)):
     x = wp.tile_load(a, i=0, n=5)
     y = wp.tile_broadcast(x, m=5, n=5)
 
     w = wp.tile_ones(dtype=float, m=5, n=5)
     z = w + y
-    
+
     wp.tile_store(b, 0, 0, z)
 
+
 def test_tile_broadcast_grad(test, device):
-        
-    a = wp.array(np.arange(0, 5, dtype=np.float32), requires_grad=True)
-    b = wp.array(np.ones((5, 5), dtype=np.float32), requires_grad=True)
+    a = wp.array(np.arange(0, 5, dtype=np.float32), requires_grad=True, device=device)
+    b = wp.array(np.ones((5, 5), dtype=np.float32), requires_grad=True, device=device)
 
-    with wp.Tape() as tape:   
-        wp.launch_tiled(test_tile_broadcast_grad_kernel, dim=[1], inputs=[a, b], block_dim=32)
+    with wp.Tape() as tape:
+        wp.launch_tiled(test_tile_broadcast_grad_kernel, dim=[1], inputs=[a, b], block_dim=32, device=device)
 
-    b.grad = wp.ones_like(b)
+    b.grad = wp.ones_like(b, device=device)
     tape.backward()
 
-    assert_np_equal(a.grad.numpy(), np.ones(5)*5.0)
+    assert_np_equal(a.grad.numpy(), np.ones(5) * 5.0)
+
 
 # #-----------------------------------------
 # # center of mass computation
@@ -615,9 +613,9 @@ add_function_test(TestTile, "test_tile_copy_1d", test_tile_copy_1d, devices=devi
 add_function_test(TestTile, "test_tile_copy_2d", test_tile_copy_2d, devices=devices)
 add_function_test(TestTile, "test_tile_unary_map", test_tile_unary_map, devices=devices)
 add_function_test(TestTile, "test_tile_binary_map", test_tile_binary_map, devices=devices)
-add_function_test(TestTile, "test_tile_grouped_gemm", test_tile_grouped_gemm, devices=devices)  
+add_function_test(TestTile, "test_tile_grouped_gemm", test_tile_grouped_gemm, devices=devices)
 add_function_test(TestTile, "test_tile_gemm", test_tile_gemm, devices=devices)
-add_function_test(TestTile, "test_tile_transpose", test_tile_transpose, devices=devices)  
+add_function_test(TestTile, "test_tile_transpose", test_tile_transpose, devices=devices)
 add_function_test(TestTile, "test_tile_transpose_matmul", test_tile_transpose_matmul, devices=devices)
 add_function_test(TestTile, "test_tile_operators", test_tile_operators, devices=devices)
 add_function_test(TestTile, "test_tile_sum", test_tile_sum, devices=devices)

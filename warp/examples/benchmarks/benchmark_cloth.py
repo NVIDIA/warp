@@ -219,6 +219,16 @@ def run_benchmark(mode, dim, timers, render=False):
 
             integrator = benchmark_cloth_jax.JxIntegrator(cloth)
 
+        elif mode == "paddle_cpu":
+            import benchmark_cloth_paddle
+
+            integrator = benchmark_cloth_paddle.TrIntegrator(cloth, "cpu")
+
+        elif mode == "paddle_gpu":
+            import benchmark_cloth_paddle
+
+            integrator = benchmark_cloth_paddle.TrIntegrator(cloth, "gpu")
+
         else:
             raise RuntimeError("Unknown simulation backend")
 

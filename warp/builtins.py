@@ -1883,6 +1883,7 @@ add_builtin(
     export=False,
 )
 
+
 def tile_load_1d_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
@@ -1892,7 +1893,9 @@ def tile_load_1d_value_func(arg_types, arg_values):
         raise RuntimeError("tile_load() argument 0 must be an array")
 
     if arg_types["a"].ndim != 1:
-        raise RuntimeError("tile_load() argument 0 must be 1-dimensional if using the ``wp.tile_load(array, i, n)`` syntax.")
+        raise RuntimeError(
+            "tile_load() argument 0 must be 1-dimensional if using the ``wp.tile_load(array, i, n)`` syntax."
+        )
 
     if not type_is_int(arg_types["i"]):
         raise RuntimeError("tile_load() argument 1 must be an integer")
@@ -1901,7 +1904,7 @@ def tile_load_1d_value_func(arg_types, arg_values):
         raise RuntimeError("'n' keyword argument must be specified when calling tile_load() function")
 
     a = arg_types["a"]
-    m, n = 1, arg_values["n"]
+    _m, n = 1, arg_values["n"]
 
     return TileLoad(a, 1, n)
 
@@ -1917,6 +1920,7 @@ def tile_load_1d_dispatch_func(arg_types: Mapping[str, type], return_type: Any, 
     template_args.append(n)
 
     return ((array, i), template_args)
+
 
 add_builtin(
     "tile_load",
@@ -1946,7 +1950,9 @@ def tile_load_2d_value_func(arg_types, arg_values):
         raise RuntimeError("tile_load() argument 0 must be an array")
 
     if arg_types["a"].ndim != 2:
-        raise RuntimeError("tile_load() argument 0 must be 2-dimensional if using the ``wp.tile_load(array, i, j, m, n)`` syntax.")
+        raise RuntimeError(
+            "tile_load() argument 0 must be 2-dimensional if using the ``wp.tile_load(array, i, j, m, n)`` syntax."
+        )
 
     if not type_is_int(arg_types["i"]):
         raise RuntimeError("tile_load() argument 1 must be an integer")
@@ -2013,7 +2019,9 @@ def tile_store_1d_value_func(arg_types, arg_values):
         raise RuntimeError("tile_store() argument 0 must be an array")
 
     if arg_types["a"].ndim != 1:
-        raise RuntimeError("tile_load() argument 0 must be a 1-dimensional array if using the ``wp.tile_store(array, i, t)`` syntax.")
+        raise RuntimeError(
+            "tile_load() argument 0 must be a 1-dimensional array if using the ``wp.tile_store(array, i, t)`` syntax."
+        )
 
     if not type_is_int(arg_types["i"]):
         raise RuntimeError("tile_store() argument 1 must be an integer")
@@ -2044,6 +2052,7 @@ add_builtin(
     export=False,
 )
 
+
 def tile_store_2d_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
@@ -2056,7 +2065,9 @@ def tile_store_2d_value_func(arg_types, arg_values):
         raise RuntimeError("tile_store() argument 0 must be an array")
 
     if arg_types["a"].ndim != 2:
-        raise RuntimeError("tile_load() argument 0 must be a 2-dimensional array if using the ``wp.tile_store(array, i, j, t)`` syntax.")
+        raise RuntimeError(
+            "tile_load() argument 0 must be a 2-dimensional array if using the ``wp.tile_store(array, i, j, t)`` syntax."
+        )
 
     if not type_is_int(arg_types["i"]):
         raise RuntimeError("tile_store() argument 1 must be an integer")
@@ -2343,6 +2354,7 @@ add_builtin(
     export=False,
 )
 
+
 def tile_broadcast_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
@@ -2364,7 +2376,9 @@ def tile_broadcast_value_func(arg_types, arg_values):
     elif t.N == n:
         stride_n = t.strides[1]
     else:
-        raise RuntimeError(f"Broadcast dimension must be 1 or match destination, shape(src) = {t.m, t.n}, shape(dest) = {m, n}")
+        raise RuntimeError(
+            f"Broadcast dimension must be 1 or match destination, shape(src) = {t.m, t.n}, shape(dest) = {m, n}"
+        )
 
     # try to broadcast first dimension
     if t.M == 1:
@@ -2372,7 +2386,9 @@ def tile_broadcast_value_func(arg_types, arg_values):
     elif t.M == m:
         stride_m = t.strides[0]
     else:
-        raise RuntimeError(f"Broadcast dimension must be 1 or match destination, shape(src) = {t.m, t.n}, shape(dest) = {m, n}")
+        raise RuntimeError(
+            f"Broadcast dimension must be 1 or match destination, shape(src) = {t.m, t.n}, shape(dest) = {m, n}"
+        )
 
     # force the input tile to shared memory
     t.storage = "shared"
@@ -2382,8 +2398,8 @@ def tile_broadcast_value_func(arg_types, arg_values):
 
     return tile_type
 
-def tile_broadcast_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
 
+def tile_broadcast_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
     tile = arg_values["a"]
 
     template_args = []
@@ -2410,8 +2426,6 @@ add_builtin(
     group="Tile Primitives",
     export=False,
 )
-
-
 
 
 def tile_matmul_value_func(arg_types, arg_values):
@@ -4579,7 +4593,9 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="""Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.""",
+        doc="""Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+
+    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
     )
@@ -4588,7 +4604,9 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="""Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.""",
+        doc="""Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+
+    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
     )
@@ -4597,7 +4615,9 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="""Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.""",
+        doc="""Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+
+    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
     )
@@ -4606,7 +4626,9 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="""Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.""",
+        doc="""Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+
+    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
     )
@@ -4616,7 +4638,9 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="""Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.""",
+        doc="""Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+
+    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
     )
@@ -4625,7 +4649,9 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="""Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.""",
+        doc="""Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+
+    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
     )
@@ -4634,7 +4660,9 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="""Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.""",
+        doc="""Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+
+    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
     )
@@ -4643,7 +4671,9 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any},
         value_func=atomic_op_value_func,
-        doc="""Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.""",
+        doc="""Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+
+    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
     )
@@ -5504,7 +5534,7 @@ def tile_matmul_generic_value_func(arg_types, arg_values):
         raise RuntimeError("tile_matmul() argument 1 must be an tile")
 
     # out = wp.tile_matmul(a, b)
-    if len(arg_types) == 2:        
+    if len(arg_types) == 2:
         return Tile(dtype=a.dtype, M=a.M, N=b.N, storage="shared")
 
     # wp.tile_matmul(a, b, out)
@@ -5673,7 +5703,11 @@ def tile_matmul_generic_lto_dispatch_func(
 
 add_builtin(
     "tile_matmul",
-    input_types={"a": Tile(dtype=Any, M=Any, N=Any), "b": Tile(dtype=Any, M=Any, N=Any), "out": Tile(dtype=Any, M=Any, N=Any)},
+    input_types={
+        "a": Tile(dtype=Any, M=Any, N=Any),
+        "b": Tile(dtype=Any, M=Any, N=Any),
+        "out": Tile(dtype=Any, M=Any, N=Any),
+    },
     value_func=tile_matmul_generic_value_func,
     lto_dispatch_func=tile_matmul_generic_lto_dispatch_func,
     variadic=False,
@@ -5864,3 +5898,36 @@ add_builtin(
     export=False,
     namespace="",
 )
+
+# ---------------------------------
+# Code Generation
+
+add_builtin(
+    "static",
+    input_types={"expr": Any},
+    value_type=Any,
+    doc="""Evaluates a static Python expression and replaces it with its result.
+
+    See the `codegen.html#static-expressions <section on code generation>`_ for more details.
+
+    Note:
+        The inner expression must only reference variables that are available from the current scope where the Warp kernel or function containing the expression is defined,
+        which includes constant variables and variables captured in the current closure in which the function or kernel is implemented.
+        The return type of the expression must be either a Warp function, a string, or a type that is supported inside Warp kernels and functions
+        (excluding Warp arrays since they cannot be created in a Warp kernel at the moment).""",
+    group="Code Generation",
+)
+
+
+def static(expr):
+    """
+    Evaluates a static expression and replaces the expression with its result.
+
+    Args:
+        expr: A Python expression to evaluate. Must return a non-null value which must be either a Warp function, a string, or a type that is supported inside Warp kernels and functions (excluding Warp arrays since they cannot be created in a Warp kernel at the moment).
+
+    Note:
+        The inner expression must only reference variables that are available from the current scope where the Warp kernel or function containing the expression is defined,
+        which includes constant variables and variables captured in the current closure in which the function or kernel is implemented.
+    """
+    return expr

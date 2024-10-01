@@ -2590,6 +2590,25 @@ def test_array_from_int64_domain(test, device):
     wp.zeros(np.array([1504, 1080, 520], dtype=np.int64), dtype=wp.float32, device=device)
 
 
+def test_numpy_array_interface(test, device):
+    # We should be able to convert between NumPy and Warp arrays using __array_interface__ on CPU.
+    # This tests all scalar types supported by both.
+
+    n = 10
+
+    scalar_types = wp.types.scalar_types
+
+    for dtype in scalar_types:
+        # test round trip
+        a1 = wp.zeros(n, dtype=dtype, device="cpu")
+        na = np.array(a1)
+        a2 = wp.array(na, device="cpu")
+
+        assert a1.dtype == a2.dtype
+        assert a1.shape == a2.shape
+        assert a1.strides == a2.strides
+
+
 devices = get_test_devices()
 
 
@@ -2648,6 +2667,7 @@ add_function_test(TestArray, "test_array_of_structs_from_numpy", test_array_of_s
 add_function_test(TestArray, "test_array_of_structs_roundtrip", test_array_of_structs_roundtrip, devices=devices)
 add_function_test(TestArray, "test_array_from_numpy", test_array_from_numpy, devices=devices)
 add_function_test(TestArray, "test_array_aliasing_from_numpy", test_array_aliasing_from_numpy, devices=["cpu"])
+add_function_test(TestArray, "test_numpy_array_interface", test_numpy_array_interface, devices=["cpu"])
 
 add_function_test(TestArray, "test_array_inplace_ops", test_array_inplace_ops, devices=devices)
 add_function_test(TestArray, "test_direct_from_numpy", test_direct_from_numpy, devices=["cpu"])

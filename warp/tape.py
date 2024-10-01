@@ -50,6 +50,8 @@ class Tape:
         self.loss = None
 
     def __enter__(self):
+        wp.context.init()
+
         if wp.context.runtime.tape is not None:
             raise RuntimeError("Warp: Error, entering a tape while one is already active")
 

@@ -26,9 +26,33 @@ import warp.sim
 import warp.sim.render
 
 
+def color_lattice_grid(num_x, num_y):
+    colors = []
+    for _i in range(4):
+        colors.append([])
+
+    for xi in range(num_x + 1):
+        for yi in range(num_y + 1):
+            vId = xi * (num_y + 1) + yi
+
+            a = 1 if xi % 2 else 0
+            b = 1 if yi % 2 else 0
+
+            c = a * 2 + b
+
+            colors[c].append(vId)
+
+    colors_wp = []
+    for i_color in range(len(colors)):
+        colors_wp.append(wp.array(colors[i_color], dtype=wp.int32))
+
+    return colors_wp
+
+
 class IntegratorType(Enum):
     EULER = "euler"
     XPBD = "xpbd"
+    VBD = "vbd"
 
     def __str__(self):
         return self.value
@@ -67,7 +91,7 @@ class Example:
                 tri_ka=1.0e3,
                 tri_kd=1.0e1,
             )
-        else:
+        elif self.integrator_type == IntegratorType.XPBD:
             builder.add_cloth_grid(
                 pos=wp.vec3(0.0, 4.0, 0.0),
                 rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), math.pi * 0.5),
@@ -82,6 +106,22 @@ class Example:
                 add_springs=True,
                 spring_ke=1.0e3,
                 spring_kd=0.0,
+            )
+        else:
+            # VBD
+            builder.add_cloth_grid(
+                pos=wp.vec3(0.0, 4.0, 0.0),
+                rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), math.pi * 0.5),
+                vel=wp.vec3(0.0, 0.0, 0.0),
+                dim_x=self.sim_width,
+                dim_y=self.sim_height,
+                cell_x=0.1,
+                cell_y=0.1,
+                mass=0.1,
+                fix_left=True,
+                tri_ke=1e4,
+                tri_ka=1e4,
+                tri_kd=1e-5,
             )
 
         usd_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
@@ -103,15 +143,19 @@ class Example:
             kf=1.0e1,
         )
 
-        if self.integrator_type == IntegratorType.EULER:
-            self.integrator = wp.sim.SemiImplicitIntegrator()
-        else:
-            self.integrator = wp.sim.XPBDIntegrator(iterations=1)
-
         self.model = builder.finalize()
         self.model.ground = True
         self.model.soft_contact_ke = 1.0e4
         self.model.soft_contact_kd = 1.0e2
+
+        if self.integrator_type == IntegratorType.EULER:
+            self.integrator = wp.sim.SemiImplicitIntegrator()
+        elif self.integrator_type == IntegratorType.XPBD:
+            self.integrator = wp.sim.XPBDIntegrator(iterations=1)
+        else:
+            self.integrator = wp.sim.VBDIntegrator(self.model, iterations=1)
+            # we need to give VBD coloring information
+            self.model.particle_coloring = color_lattice_grid(width, height)
 
         self.state_0 = self.model.state()
         self.state_1 = self.model.state()
