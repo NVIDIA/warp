@@ -127,6 +127,12 @@ struct transform_t
     CUDA_CALLABLE inline transform_t(vec_t<3,Type> p=vec_t<3,Type>(), quat_t<Type> q=quat_t<Type>()) : p(p), q(q) {}
     CUDA_CALLABLE inline transform_t(Type)  {}  // helps uniform initialization
 
+    CUDA_CALLABLE inline transform_t(const initializer_array<7, Type> &l)
+    {
+        p = vec_t<3,Type>(l[0], l[1], l[2]);
+        q = quat_t<Type>(l[3], l[4], l[5], l[6]);
+    }
+
     CUDA_CALLABLE inline Type operator[](int index) const
     {
         assert(index < 7);

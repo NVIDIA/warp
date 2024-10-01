@@ -641,6 +641,8 @@ class Model:
         joint_dof_count (int): Total number of velocity degrees of freedom of all joints in the system
         joint_coord_count (int): Total number of position degrees of freedom of all joints in the system
 
+        particle_coloring (list of array): The coloring of all the particles, used for VBD's Gauss-Seidel interation.
+
         device (wp.Device): Device on which the Model was allocated
 
     Note:
@@ -809,6 +811,8 @@ class Model:
         self.articulation_count = 0
         self.joint_dof_count = 0
         self.joint_coord_count = 0
+
+        self.particle_coloring = []
 
         self.device = wp.get_device(device)
 
@@ -3858,16 +3862,22 @@ class ModelBuilder:
                 p = wp.quat_rotate(rot, g) + pos
                 m = mass
 
+                particle_flag = PARTICLE_FLAG_ACTIVE
+
                 if x == 0 and fix_left:
                     m = 0.0
+                    particle_flag = wp.uint32(int(particle_flag) & ~int(PARTICLE_FLAG_ACTIVE))
                 elif x == dim_x and fix_right:
                     m = 0.0
+                    particle_flag = wp.uint32(int(particle_flag) & ~int(PARTICLE_FLAG_ACTIVE))
                 elif y == 0 and fix_bottom:
                     m = 0.0
+                    particle_flag = wp.uint32(int(particle_flag) & ~int(PARTICLE_FLAG_ACTIVE))
                 elif y == dim_y and fix_top:
                     m = 0.0
+                    particle_flag = wp.uint32(int(particle_flag) & ~int(PARTICLE_FLAG_ACTIVE))
 
-                self.add_particle(p, vel, m)
+                self.add_particle(p, vel, m, flags=particle_flag)
 
                 if x > 0 and y > 0:
                     if reverse_winding:
@@ -4015,7 +4025,7 @@ class ModelBuilder:
             edgeinds[:, 0],
             edgeinds[:, 1],
             edgeinds[:, 2],
-            edgeinds[:, 0],
+            edgeinds[:, 3],
             edge_ke=[edge_ke] * len(edgeinds),
             edge_kd=[edge_kd] * len(edgeinds),
         )

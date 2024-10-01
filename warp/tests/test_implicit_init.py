@@ -347,6 +347,55 @@ add_function_test(
 )
 
 
+#   Structs
+# ------------------------------------------------------------------------------
+
+
+def test_struct_member_init(test, device):
+    @wp.struct
+    class S:
+        # fp16 requires conversion functions from warp.so
+        x: wp.float16
+        v: wp.vec3h
+
+    s = S()
+    s.x = 42.0
+    s.v = wp.vec3h(1.0, 2.0, 3.0)
+
+
+class TestImplicitInitStructMemberInit(unittest.TestCase):
+    pass
+
+
+add_function_test(
+    TestImplicitInitStructMemberInit,
+    "test_struct_member_init",
+    test_struct_member_init,
+    check_output=False,
+)
+
+
+#   Tape
+# ------------------------------------------------------------------------------
+
+
+def test_tape(test, device):
+    with wp.Tape():
+        pass
+
+
+class TestImplicitInitTape(unittest.TestCase):
+    pass
+
+
+add_function_test(
+    TestImplicitInitTape,
+    "test_tape",
+    test_tape,
+    check_output=False,
+)
+
+
 if __name__ == "__main__":
     # Do not clear the kernel cache or call anything that would initialize Warp
     # since these tests are specifically aiming to catch issues where Warp isn't

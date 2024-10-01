@@ -761,6 +761,7 @@ def eval_particle_contacts(
     contact_body_vel: wp.array(dtype=wp.vec3),
     contact_normal: wp.array(dtype=wp.vec3),
     contact_max: int,
+    body_f_in_world_frame: bool,
     # outputs
     particle_f: wp.array(dtype=wp.vec3),
     body_f: wp.array(dtype=wp.spatial_vector),
@@ -809,7 +810,11 @@ def eval_particle_contacts(
     body_v = wp.spatial_bottom(body_v_s)
 
     # compute the body velocity at the particle position
-    bv = body_v + wp.cross(body_w, r) + wp.transform_vector(X_wb, contact_body_vel[tid])
+    bv = body_v + wp.transform_vector(X_wb, contact_body_vel[tid])
+    if body_f_in_world_frame:
+        bv += wp.cross(body_w, bx)
+    else:
+        bv += wp.cross(body_w, r)
 
     # relative velocity
     v = pv - bv
@@ -840,12 +845,14 @@ def eval_particle_contacts(
     ft = wp.normalize(vt) * wp.min(kf * wp.length(vt), abs(mu * c * ke))
 
     f_total = fn + (fd + ft)
-    t_total = wp.cross(r, f_total)
 
     wp.atomic_sub(particle_f, particle_index, f_total)
 
     if body_index >= 0:
-        wp.atomic_add(body_f, body_index, wp.spatial_vector(t_total, f_total))
+        if body_f_in_world_frame:
+            wp.atomic_sub(body_f, body_index, wp.spatial_vector(wp.cross(bx, f_total), f_total))
+        else:
+            wp.atomic_add(body_f, body_index, wp.spatial_vector(wp.cross(r, f_total), f_total))
 
 
 @wp.kernel
@@ -1814,7 +1821,9 @@ def eval_body_joint_forces(model: Model, state: State, control: Control, body_f:
         )
 
 
-def eval_particle_body_contact_forces(model: Model, state: State, particle_f: wp.array, body_f: wp.array):
+def eval_particle_body_contact_forces(
+    model: Model, state: State, particle_f: wp.array, body_f: wp.array, body_f_in_world_frame: bool = False
+):
     if model.particle_count and model.shape_count > 1:
         wp.launch(
             kernel=eval_particle_contacts,
@@ -1841,6 +1850,7 @@ def eval_particle_body_contact_forces(model: Model, state: State, particle_f: wp
                 model.soft_contact_body_vel,
                 model.soft_contact_normal,
                 model.soft_contact_max,
+                body_f_in_world_frame,
             ],
             # outputs
             outputs=[particle_f, body_f],
@@ -1897,7 +1907,7 @@ def compute_forces(model: Model, state: State, control: Control, particle_f: wp.
     eval_body_contact_forces(model, state, particle_f)
 
     # particle shape contact
-    eval_particle_body_contact_forces(model, state, particle_f, body_f)
+    eval_particle_body_contact_forces(model, state, particle_f, body_f, body_f_in_world_frame=False)
 
     # muscles
     if False:

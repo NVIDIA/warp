@@ -405,22 +405,22 @@ def test_error_global_var(test, device):
 
     kernel = wp.Kernel(func=kernel_1_fn)
     with test.assertRaisesRegex(
-        RuntimeError,
-        r"Cannot reference a global variable from a kernel unless `wp.constant\(\)` is being used",
+        TypeError,
+        r"Invalid external reference type: <class 'warp.types.array'>",
     ):
         wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,), device=device)
 
     kernel = wp.Kernel(func=kernel_2_fn)
     with test.assertRaisesRegex(
-        RuntimeError,
-        r"Cannot reference a global variable from a kernel unless `wp.constant\(\)` is being used",
+        TypeError,
+        r"Invalid external reference type: <class 'warp.types.array'>",
     ):
         wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,), device=device)
 
     kernel = wp.Kernel(func=kernel_3_fn)
     with test.assertRaisesRegex(
-        RuntimeError,
-        r"Cannot reference a global variable from a kernel unless `wp.constant\(\)` is being used",
+        TypeError,
+        r"Invalid external reference type: <class 'warp.types.array'>",
     ):
         wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,), device=device)
 
@@ -487,6 +487,21 @@ def test_error_unmatched_arguments(test, device):
         r"Input types must be exactly the same, got \[\"vector\(length=2, dtype=<class 'warp.types.float32'>\)\", \"vector\(length=2, dtype=<class 'warp.types.float16'>\)\"\]",
     ):
         wp.launch(kernel, dim=1, device=device)
+
+
+def test_error_mutating_constant_in_dynamic_loop(test, device):
+    @wp.kernel
+    def dynamic_loop_kernel(n: int, input: wp.array(dtype=float)):
+        my_constant = 0.0
+        for i in range(n):
+            my_constant += input[i]
+
+    inputs = wp.array([1.0, 2.0, 3.0], dtype=float, device=device)
+    with test.assertRaisesRegex(
+        wp.codegen.WarpCodegenError,
+        r"Error mutating a constant my_constant inside a dynamic loop, use the following syntax\: pi = float\(3\.141\) to declare a dynamic variable",
+    ):
+        wp.launch(dynamic_loop_kernel, dim=1, inputs=[3, inputs], device=device)
 
 
 @wp.kernel
@@ -666,6 +681,12 @@ add_function_test(
 )
 add_function_test(
     TestCodeGen, func=test_error_unmatched_arguments, name="test_error_unmatched_arguments", devices=devices
+)
+add_function_test(
+    TestCodeGen,
+    func=test_error_mutating_constant_in_dynamic_loop,
+    name="test_error_mutating_constant_in_dynamic_loop",
+    devices=devices,
 )
 
 add_kernel_test(TestCodeGen, name="test_call_syntax", kernel=test_call_syntax, dim=1, devices=devices)

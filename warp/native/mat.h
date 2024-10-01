@@ -210,6 +210,12 @@ inline CUDA_CALLABLE mat_t<Rows, Rows, Type> identity()
     return m;
 }
 
+template<unsigned Rows, typename Type>
+inline CUDA_CALLABLE void adj_identity(const mat_t<Rows, Rows, Type>& adj_ret)
+{
+    // nop
+}
+
 template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE bool operator==(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b)
 {

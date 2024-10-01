@@ -13,7 +13,7 @@ regular Python functions and JIT compiles them to efficient kernel code that can
 Warp is designed for [spatial computing](https://en.wikipedia.org/wiki/Spatial_computing)
 and comes with a rich set of primitives that make it easy to write
 programs for physics simulation, perception, robotics, and geometry processing. In addition, Warp kernels
-are differentiable and can be used as part of machine-learning pipelines with frameworks such as PyTorch and JAX.
+are differentiable and can be used as part of machine-learning pipelines with frameworks such as PyTorch, JAX and Paddle.
 
 Please refer to the project [Documentation](https://nvidia.github.io/warp/) for API and language reference and [CHANGELOG.md](./CHANGELOG.md) for release history.
 
@@ -45,9 +45,9 @@ the `pip install` command, e.g.
 
 | Platform        | Install Command                                                                                                               |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Linux aarch64   | `pip install https://github.com/NVIDIA/warp/releases/download/v1.3.3/warp_lang-1.3.3+cu11-py3-none-manylinux2014_aarch64.whl` |
-| Linux x86-64    | `pip install https://github.com/NVIDIA/warp/releases/download/v1.3.3/warp_lang-1.3.3+cu11-py3-none-manylinux2014_x86_64.whl`  |
-| Windows x86-64  | `pip install https://github.com/NVIDIA/warp/releases/download/v1.3.3/warp_lang-1.3.3+cu11-py3-none-win_amd64.whl`             |
+| Linux aarch64   | `pip install https://github.com/NVIDIA/warp/releases/download/v1.4.0/warp_lang-1.4.0+cu11-py3-none-manylinux2014_aarch64.whl` |
+| Linux x86-64    | `pip install https://github.com/NVIDIA/warp/releases/download/v1.4.0/warp_lang-1.4.0+cu11-py3-none-manylinux2014_x86_64.whl`  |
+| Windows x86-64  | `pip install https://github.com/NVIDIA/warp/releases/download/v1.4.0/warp_lang-1.4.0+cu11-py3-none-win_amd64.whl`             |
 
 The `--force-reinstall` option may need to be used to overwrite a previous installation.
 
@@ -372,7 +372,8 @@ Warp is provided under the NVIDIA Software License, please see [LICENSE.md](./LI
 
 Contributions and pull requests from the community are welcome and are taken under the
 terms described in the **Feedback** section of [LICENSE.md](LICENSE.md#9-feedback).
-[CONTRIBUTING.md](./CONTRIBUTING.md) provides additional information on how to open a pull request for Warp.
+Please see the [Contribution Guide](https://nvidia.github.io/warp/modules/contribution_guide.html) for more
+information on contributing to the development of Warp.
 
 ## Citing
 
