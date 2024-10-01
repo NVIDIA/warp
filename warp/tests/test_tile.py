@@ -21,9 +21,46 @@ TILE_K = wp.constant(8)
 # num threads per-tile
 TILE_DIM = 64
 
+@wp.kernel
+def tile_copy_1d_kernel(A: wp.array(dtype=float), B: wp.array(dtype=float)):
+    # tile index
+    i = wp.tid()
+
+    a = wp.tile_load(A, i, n=TILE_N)
+    wp.tile_store(B, i, a)
+
+
+def test_tile_copy_1d(test, device):
+    rng = np.random.default_rng(42)
+
+    N = TILE_N * 5
+
+    A = rng.random((N), dtype=np.float32)
+    B = rng.random((N), dtype=np.float32)
+
+    A_wp = wp.array(A, requires_grad=True, device=device)
+    B_wp = wp.array(B, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_copy_1d_kernel,
+            dim=[int(N / TILE_N)],
+            inputs=[A_wp, B_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # verify forward pass
+    assert_array_equal(B_wp, A_wp)
+
+    # verify backward pass
+    B_wp.grad = wp.ones_like(B_wp, device=device)
+    tape.backward()
+
+    assert_array_equal(B_wp.grad, A_wp.grad)
 
 @wp.kernel
-def tile_copy(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float)):
+def tile_copy_2d_kernel(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float)):
     # tile index
     i, j = wp.tid()
 
@@ -31,7 +68,7 @@ def tile_copy(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float)):
     wp.tile_store(B, i, j, a)
 
 
-def test_tile_copy(test, device):
+def test_tile_copy_2d(test, device):
     rng = np.random.default_rng(42)
 
     M = TILE_M * 7
@@ -45,7 +82,7 @@ def test_tile_copy(test, device):
 
     with wp.Tape() as tape:
         wp.launch_tiled(
-            tile_copy,
+            tile_copy_2d_kernel,
             dim=[int(M / TILE_M), int(N / TILE_N)],
             inputs=[A_wp, B_wp],
             block_dim=TILE_DIM,
@@ -434,6 +471,35 @@ def test_tile_transpose_matmul(test, device):
     assert_np_equal(output.numpy(), input.numpy().T @ input.numpy())
 
 
+@wp.kernel
+def test_tile_broadcast_kernel(
+    input_a: wp.array2d(dtype=float),
+    input_b: wp.array(dtype=float),
+    output: wp.array2d(dtype=float)):
+
+    a = wp.tile_load(input_a, 0, 0, m=10, n=10)
+    b = wp.tile_load(input_b, 0, n=10)
+
+    c = wp.tile_broadcast(b, 10, 10)
+    d = a + c
+
+    wp.tile_store(output, 0, 0, d)   
+
+def test_tile_broadcast(test, device):
+
+    M = 10
+    N = 10
+    
+    a = wp.array(np.ones((M,N), dtype=np.float32), device=device)
+    b = wp.array(np.arange(0, N, dtype=np.float32), device=device)
+    out = wp.zeros((M,N), dtype=float, device=device)
+
+    wp.launch_tiled(test_tile_broadcast_kernel, dim=[1], inputs=[a, b, out], block_dim=32)
+    
+    assert_np_equal(out.numpy(), a.numpy() + b.numpy())
+
+
+
 # #-----------------------------------------
 # # center of mass computation
 
@@ -520,16 +586,18 @@ class TestTile(unittest.TestCase):
     pass
 
 
-add_function_test(TestTile, "test_tile_copy", test_tile_copy, devices=devices)
+add_function_test(TestTile, "test_tile_copy_1d", test_tile_copy_1d, devices=devices)
+add_function_test(TestTile, "test_tile_copy_2d", test_tile_copy_2d, devices=devices)
 add_function_test(TestTile, "test_tile_unary_map", test_tile_unary_map, devices=devices)
 add_function_test(TestTile, "test_tile_binary_map", test_tile_binary_map, devices=devices)
-add_function_test(TestTile, "test_tile_grouped_gemm", test_tile_grouped_gemm, devices=devices)  # FAILS
+add_function_test(TestTile, "test_tile_grouped_gemm", test_tile_grouped_gemm, devices=devices)  
 add_function_test(TestTile, "test_tile_gemm", test_tile_gemm, devices=devices)
-add_function_test(TestTile, "test_tile_transpose", test_tile_transpose, devices=devices)  # FAILS
+add_function_test(TestTile, "test_tile_transpose", test_tile_transpose, devices=devices)  
 add_function_test(TestTile, "test_tile_transpose_matmul", test_tile_transpose_matmul, devices=devices)
 add_function_test(TestTile, "test_tile_operators", test_tile_operators, devices=devices)
 add_function_test(TestTile, "test_tile_sum", test_tile_sum, devices=devices)
 add_function_test(TestTile, "test_tile_extract", test_tile_extract, devices=devices)
+add_function_test(TestTile, "test_tile_broadcast", test_tile_broadcast, devices=devices)
 
 
 if __name__ == "__main__":

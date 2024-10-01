@@ -88,6 +88,8 @@
     [ ] warp.sim (CRBA)
     [ ] Batched MLP
     [ ] Layer norm
+    [ ] FNO + Burgers equation
+    [ ] Stochastic financial modeling
     [ ] Convolution: https://github.com/NVIDIA/MinkowskiEngine/blob/master/src/convolution_kernel.cu#L123
     [ ] MeshCNN (Modulus, Oliver)
     [ ] BioNemo (Ali)
@@ -142,7 +144,7 @@ struct coord_t
 
 // represents a tile stored in global memory with dynamic strides
 // only used to represent the source for tile loads to register/shared
-template <typename T, int M_, int N_>
+template <typename T>
 struct tile_global_t
 {
     using Type = T;
@@ -183,20 +185,16 @@ struct tile_register_t
             data[i] = value;
     }
 
-    inline CUDA_CALLABLE tile_register_t(tile_global_t<T, M, N>& t)
+    inline CUDA_CALLABLE auto& operator=(const tile_global_t<T>& t)
     {
-        // construct from a global tile
-        copy_from_global(t.data, t.x, t.y);
-    }
-
-
-    inline CUDA_CALLABLE auto& operator=(const tile_global_t<T, M, N>& t)
-    {
-        // assign from a global tile
-        copy_from_global(t.data, t.x, t.y);
+        if (t.data.ndim == 1)
+            copy_from_global(t.data, t.x); // 1d load
+        else
+            copy_from_global(t.data, t.x, t.y); // 2d load
+       
         return *this;
-    }
 
+    }
 
     inline CUDA_CALLABLE T& operator()(int index)
     {
@@ -288,11 +286,34 @@ struct tile_register_t
 
 
     // return the in-register version of this tile (nop)
-    inline CUDA_CALLABLE auto& copy_to_register() { return *this; }
+    inline CUDA_CALLABLE auto& copy_to_register() 
+    {
+        return *this; 
+    }
 
+    void copy_to_global(array_t<T> dest, int x)
+    {
+        assert(dest.ndim == 1);
+
+        const int tile_i = x*N;
+
+        WP_PRAGMA_UNROLL
+        for (int i=0; i < NumRegs; ++i)
+        {
+            // handle case where tile size is not 
+            // aligned to block dimensions
+            int linear = index(i);
+            if (!Aligned && linear >= Size)
+                break;
+
+            wp::index(dest, tile_i + linear) = data[i];
+        }
+    }
 
     void copy_to_global(array_t<T> dest, int x, int y)
     {
+        assert(dest.ndim == 2);
+
         const int tile_i = x*M;
         const int tile_j = y*N;
 
@@ -314,6 +335,22 @@ struct tile_register_t
 
             coord_t c = coord(linear);
             ptr[c.i*stride_i + c.j*stride_j] = data[i]; 
+        }
+    }
+
+    inline CUDA_CALLABLE void copy_from_global(const array_t<T>& src, int x)
+    {
+        // todo: use async pipelines or TMA here
+        const int tile_i = x*N;
+
+        WP_PRAGMA_UNROLL
+        for (int i=0; i < NumRegs; ++i)
+        {  
+            int linear = index(i);
+            if (!Aligned && linear >= Size)
+                break;
+
+            data[i] = wp::index(src, tile_i + linear);
         }
     }
 
@@ -374,12 +411,6 @@ struct tile_shared_t
     {
     }    
 
-    // construct from a global tile
-    inline CUDA_CALLABLE tile_shared_t(tile_global_t<T, M, N>& t)
-    {        
-        copy_from_global(t.array, t.x, t.y);
-    }
-
     // assign from a register tile
     template <typename Tile>
     inline CUDA_CALLABLE auto& operator=(const Tile& t)
@@ -405,9 +436,13 @@ struct tile_shared_t
     }    
 
     // assign from a global tile
-    inline CUDA_CALLABLE auto& operator=(const tile_global_t<T, M, N>& t)
-    {
-        copy_from_global(t.data, t.x, t.y);
+    inline CUDA_CALLABLE auto& operator=(const tile_global_t<T>& t)
+    {        
+        if (t.data.ndim == 1)
+            copy_from_global(t.data, t.x);  // 1d load
+        else
+            copy_from_global(t.data, t.x, t.y); // 2d load
+        
         return *this;
     }
 
@@ -549,6 +584,21 @@ struct tile_shared_t
         return out;
     }
 
+    inline CUDA_CALLABLE void copy_to_global(array_t<T> dest, int x)
+    {
+        assert(dest.ndim == 1);
+
+        // todo: use TMA here
+        const int tile_i = x*N;
+
+        WP_PRAGMA_UNROLL
+        for (int i=threadIdx.x; i < Size; i += WP_TILE_BLOCK_DIM)
+        {
+            coord_t c = coord(i);
+            wp::index(dest, tile_i + linear) = (*this)(c.i, c.j);
+        }
+    }
+
     inline CUDA_CALLABLE void copy_to_global(array_t<T> dest, int x, int y)
     {
         // todo: use TMA here
@@ -567,6 +617,18 @@ struct tile_shared_t
         {
             coord_t c = coord(i);
             ptr[c.i*stride_i + c.j*stride_j] = (*this)(c.i, c.j);
+        }
+    }
+
+    inline CUDA_CALLABLE void copy_from_global(const array_t<T>& src, int x)
+    {
+        // todo: use async pipelines or TMA here
+        const int tile_i = x*N;
+
+        WP_PRAGMA_UNROLL
+        for (int i=threadIdx.x; i < Size; i += WP_TILE_BLOCK_DIM)
+        {  
+            (*this)(i) = wp::index(src, tile_i + i);
         }
     }
 
@@ -750,17 +812,29 @@ template <typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_arange(int start, int stop, int step,
                                           int adj_start, int adj_stop, int adj_step, AdjTile& adj_ret) {}
 
-// entry point for load
+// entry point for 1d load
+template <typename T, int N>
+inline CUDA_CALLABLE auto tile_load(array_t<T>& src, int x)
+{
+    return tile_global_t<T>(src, x, 0);
+}
+
+// entry point for 2d load
 template <typename T, int M, int N>
 inline CUDA_CALLABLE auto tile_load(array_t<T>& src, int x, int y)
 {
-    // just return a ref. to the global memory
-    // it will be loaded to shared or registers
-    // on assignment to the variable
-    return tile_global_t<T, M, N>(src, x, y);
+    return tile_global_t<T>(src, x, y);
 }
 
-// entry point for store
+// entry point for 1d store
+template <typename T, typename Tile>
+inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int x, Tile& src)
+{
+    // dispatch to tile type
+    src.copy_to_global(dest, x);
+}
+
+// entry point for 2d store
 template <typename T, typename Tile>
 inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int x, int y, Tile& src)
 {
@@ -801,6 +875,36 @@ inline CUDA_CALLABLE auto tile_atomic_add(array_t<T>& dest, int x, int y, Tile& 
 // Adjoints
 
 template <typename T, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_load(array_t<T>& src, int x,
+                                        array_t<T>& adj_src, int adj_x,
+                                        AdjTile& adj_ret)
+{
+    // early out
+    // if (!src.grad)
+    //     return;
+
+    auto adj_reg = adj_ret.copy_to_register();
+
+    const int tile_i = x*adj_reg.N;
+
+    // add gradients to src array
+    WP_PRAGMA_UNROLL
+    for (int i=0; i < adj_reg.NumRegs; ++i)
+    {  
+        int linear = adj_reg.index(i);
+        if (!adj_reg.Aligned && linear >= adj_reg.Size)
+            break;
+
+        auto grad = adj_reg.data[i];
+
+        if (adj_src.data)
+            adj_atomic_add(&index(adj_src, tile_i + linear), grad);
+        else if (src.grad)
+            adj_atomic_add(&index_grad(src, tile_i + linear), grad);
+    }
+}
+
+template <typename T, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_load(array_t<T>& src, int x, int y,
                                         array_t<T>& adj_src, int adj_x, int adj_y,
                                         AdjTile& adj_ret)
@@ -831,6 +935,36 @@ inline CUDA_CALLABLE void adj_tile_load(array_t<T>& src, int x, int y,
         else if (src.grad)
             adj_atomic_add(&index_grad(src, tile_i + coord.i, tile_j + coord.j), grad);
     }
+}
+
+
+template <typename T, typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_store(array_t<T>& dest, int x, Tile& t, array_t<T>& adj_dest, int adj_x, AdjTile& adj_t)
+{  
+    // if (!dest.grad)
+    //     return;
+
+    // convert to register if necessary
+    auto adj_reg = adj_t.copy_to_register();
+
+    const int tile_i = x*adj_reg.N;
+
+    // load gradients from output
+    WP_PRAGMA_UNROLL
+    for (int i=0; i < adj_reg.NumRegs; ++i)
+    {  
+        int linear = adj_reg.index(i);
+        if (!adj_reg.Aligned && linear >= adj_reg.Size)
+            break;
+
+         if (adj_dest.data)
+            adj_reg.data[i] += index(adj_dest, tile_i + linear);
+        else if (dest.grad)
+            adj_reg.data[i] += index_grad(dest, tile_i + linear);
+    }
+
+    // store adjoint back to tile
+    adj_t.assign(adj_reg);    
 }
 
 template <typename T, typename Tile, typename AdjTile>
