@@ -775,16 +775,42 @@ inline CUDA_CALLABLE auto tile(const T& x)
     return result;
 }
 
+// overload for constructing a tile from a per-thread vector
+template <typename T, unsigned Length>
+inline CUDA_CALLABLE auto tile(const wp::vec_t<Length, T>& x)
+{
+    tile_register_t<T, Length, WP_TILE_BLOCK_DIM> result;
+    
+    static_assert(result.NumRegs == Length);
+
+    for (int i=0; i < Length; ++i)
+        result.data[i] = x[i]; 
+
+    return result;
+}
 
 // construct a tile from a local SIMT value (one per-thread)
 template <typename T, typename AdjTile>
-inline CUDA_CALLABLE void adj_tile(const T& x, T& adj_x, const AdjTile& adj_ret)
+inline CUDA_CALLABLE void adj_tile(const T& x, T& adj_x, AdjTile& adj_ret)
 {
     static_assert(AdjTile::M == 1);
     static_assert(AdjTile::N == WP_TILE_BLOCK_DIM);
-    static_assert(AdjTile::NumRegs == 1);
+    
+    auto adj_reg = adj_ret.copy_to_register();
 
-    adj_x += adj_ret.data[0];
+    adj_x += adj_reg.data[0];
+}
+
+template <typename T, unsigned Length, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile(const wp::vec_t<Length, T>& x, wp::vec_t<Length, T>& adj_x, AdjTile& adj_ret)
+{
+    static_assert(AdjTile::M == Length);
+    static_assert(AdjTile::N == WP_TILE_BLOCK_DIM);
+
+    auto adj_reg = adj_ret.copy_to_register();
+
+    for (int i=0; i < Length; ++i)
+        adj_x[i] += adj_reg.data[i];
 }
 
 template <typename Tile>
@@ -793,16 +819,45 @@ inline CUDA_CALLABLE auto untile(Tile& tile)
     // code-gen should have set the tile to 
     // have exactly the block dimension so 
     // there is exactly one value per-thread
-    static_assert(Tile::NumRegs == 1);
+    auto reg = tile.copy_to_register();
 
-    return tile.copy_to_register().data[0];
+    // scalar case
+    if constexpr(Tile::M == 1)
+    {
+        return reg.data[0];
+    }
+        
+    // vector case
+    if constexpr(Tile::M > 1)
+    {
+        wp::vec_t<Tile::M, typename Tile::Type> v;
+        for (int i=0; i < Tile::M; ++i)
+            v[i] = reg.data[i];
+
+        return v;
+    }
 }
 
-template <typename Tile>
-inline CUDA_CALLABLE void adj_untile(Tile& tile, Tile& adj_tile, typename Tile::Type& adj_ret)
+
+
+template <typename Tile, typename Value>
+inline CUDA_CALLABLE void adj_untile(Tile& tile, Tile& adj_tile, Value& adj_ret)
 {    
-    auto adj = adj_tile.copy_to_register();
-    adj.data[0] += adj_ret;
+    auto adj = adj_tile.copy_to_register();   
+    
+    // scalar case
+    if constexpr(Tile::M == 1)
+    {
+        adj.data[0] += adj_ret;
+    }
+
+    // vector case
+    if constexpr(Tile::M > 1)
+    {
+        for (int i=0; i < Tile::M; ++i)
+            adj.data[i] = adj_ret[i];
+    }
+
     adj_tile.assign(adj);
 }
 

@@ -2144,11 +2144,17 @@ def tile_value_func(arg_types, arg_values):
     if len(arg_types) != 1:
         raise RuntimeError("tile() requires 1 positional arg")
 
-    # todo: we need a way to pass things like current compiler options
-    # into the value_func, for now we use a single global options dictionary
-    # we should ideally pass in the Adjoint object if it exists
+    dtype = None
+    length = None
 
-    return Tile(dtype=arg_types["x"], M=1, N=warp.codegen.options["block_dim"], op="Tile")
+    if type_is_vector(arg_types["x"]):
+        dtype = arg_types["x"]._wp_scalar_type_
+        length = arg_types["x"]._shape_[0]
+    else:
+        dtype = arg_types["x"]
+        length = 1
+
+    return Tile(dtype=dtype, M=length, N=warp.codegen.options["block_dim"], op="tile")
 
 
 add_builtin(
@@ -2160,8 +2166,11 @@ add_builtin(
 
     This function converts values computed using scalar kernel code to a tile representation for input into collective operations.
 
+    * If the input value is a scalar then the resulting tile has ``shape=(1, block_dim)``
+    * If the input value is a vector then the resulting tile has ``shape=(length(vector), block_dim)``
+
     :param x: A per-thread local value, e.g.: scalar, vector, or matrix.
-    :returns: A tile with ``shape=(1, block_dim)`` where ``block_dim`` is the number of threads specified in ``wp.launch()``.
+    :returns: A tile with first dimension according to the value type length and a second dimension equal to ``block_dim``
 
     This example shows how to create a linear sequence from thread variables:
 
@@ -2179,9 +2188,10 @@ add_builtin(
 
     .. code-block:: text
 
-        tile(m=1, n=16, storage=register) = [[0 2 4 6 8 10 12 14...]]
+        tile(m=1, n=16, storage=register) = [[0 2 4 6 8 ...]]
+
     """,
-    group="Tile Primitives" "",
+    group="Tile Primitives",
     export=False,
 )
 
@@ -2201,10 +2211,13 @@ def untile_value_func(arg_types, arg_values):
 
     if t.N != warp.codegen.options["block_dim"]:
         raise RuntimeError(
-            f"until() argument must have the same length as the block width, got {t.N}, expected {warp.codegen.options['block_dim']}"
+            f"untile() argument must have the same length as the block width, got {t.N}, expected {warp.codegen.options['block_dim']}"
         )
 
-    return t.dtype
+    if t.M == 1:
+        return t.dtype
+    elif t.M > 1:
+        return warp.types.vector(t.M, t.dtype)
 
 
 add_builtin(
@@ -2215,6 +2228,9 @@ add_builtin(
     doc="""Convert a Tile back to per-thread values.
 
     This function converts a block-wide tile back to per-thread values.
+
+    * If the input tile is 1-dimensional then the resulting value will be a per-thread scalar
+    * If the input tile is 2-dimensional then the the resulting value will be a per-thread vector of length M
 
     :param a: A tile with dimensions ``shape=(M, block_dim)``
     :returns: A single value per-thread with the same dtype as the tile
@@ -2248,7 +2264,7 @@ add_builtin(
         8
         ...
     """,
-    group="Tile Primitives" "",
+    group="Tile Primitives",
     export=False,
 )
 
