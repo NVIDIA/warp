@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## [Unreleased] - 2024-??
+## [1.4.0] - 2024-10-01
 
 ### Added
 
@@ -10,7 +10,7 @@
   in high-priority streams over pending work in low-priority streams when possible
   ([docs](https://nvidia.github.io/warp/modules/concurrency.html#stream-priorities)).
 - Adaptive sparse grid geometry to `warp.fem` ([docs](https://nvidia.github.io/warp/modules/fem.html#adaptivity)).
-- Support for `wp.kernel` and `wp.func` closures.
+- Support for defining `wp.kernel` and `wp.func` objects from within closures.
 - Support for defining multiple versions of kernels, functions, and structs without manually assigning unique keys.
 - Support for default argument values for user functions decorated with `wp.func`.
 - Allow passing custom launch dimensions to `jax_kernel()` ([GH-310](https://github.com/NVIDIA/warp/pull/310)).
@@ -19,7 +19,6 @@
 - Support `wp.mod()` for vector types ([GH-282](https://github.com/NVIDIA/warp/issues/282)).
 - Expose the modulo operator `%` to Python's runtime scalar and vector types.
 - Support for fp64 `atomic_add`, `atomic_max`, and `atomic_min` ([GH-284](https://github.com/NVIDIA/warp/issues/284)).
-- Support for local vec/mat/quat component gradient tracking in backwards mode.
 - Support for quaternion indexing (e.g. `q.w`).
 - Support shadowing builtin functions ([GH-308](https://github.com/NVIDIA/warp/issues/308)).
 - Support for redefining function overloads.
@@ -65,7 +64,6 @@
 - Fix code generation errors when overloading generic kernels defined in a Python function.
 - Fix issues with unrelated functions being treated as overloads (e.g., closures).
 - Fix handling of `stream` argument in `array.__dlpack__()`.
-- Fix some bugs related to module hashing and caching.
 - Fix a bug related to reloading CPU modules.
 - Fix a crash when kernel functions are not found in CPU modules.
 - Fix conditions not being evaluated as expected in `while` statements.
@@ -73,6 +71,7 @@
 - Fix array interface type strings used for Boolean and 8-bit integer values.
 - Fix initialization error when setting struct members.
 - Fix Warp not being initialized upon entering a `wp.Tape` context.
+- Use `kDLBool` instead of `kDLUInt` for DLPack interop of Booleans.
 
 ## [1.3.3] - 2024-09-04
 
@@ -1136,7 +1135,8 @@
 
 - Initial publish for alpha testing
 
-[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.3.3...HEAD
+[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/NVIDIA/warp/releases/tag/v1.4.0
 [1.3.3]: https://github.com/NVIDIA/warp/releases/tag/v1.3.3
 [1.3.2]: https://github.com/NVIDIA/warp/releases/tag/v1.3.2
 [1.3.1]: https://github.com/NVIDIA/warp/releases/tag/v1.3.1
