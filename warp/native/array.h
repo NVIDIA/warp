@@ -811,7 +811,7 @@ CUDA_CALLABLE inline void adj_atomic_add(bool* buf, bool value) { }
 
 // only generate gradients for T types
 template<typename T>
-inline CUDA_CALLABLE void adj_address(const array_t<T>& buf, int i, const array_t<T>& adj_buf, int& adj_i, const T& adj_output)
+inline CUDA_CALLABLE void adj_address(const array_t<T>& buf, int i, const array_t<T>& adj_buf, int adj_i, const T& adj_output)
 {
     if (adj_buf.data)
         adj_atomic_add(&index(adj_buf, i), adj_output);
@@ -819,7 +819,7 @@ inline CUDA_CALLABLE void adj_address(const array_t<T>& buf, int i, const array_
         adj_atomic_add(&index_grad(buf, i), adj_output);
 }
 template<typename T>
-inline CUDA_CALLABLE void adj_address(const array_t<T>& buf, int i, int j, const array_t<T>& adj_buf, int& adj_i, int& adj_j, const T& adj_output)
+inline CUDA_CALLABLE void adj_address(const array_t<T>& buf, int i, int j, const array_t<T>& adj_buf, int adj_i, int adj_j, const T& adj_output)
 {
     if (adj_buf.data)
         adj_atomic_add(&index(adj_buf, i, j), adj_output);
@@ -827,7 +827,7 @@ inline CUDA_CALLABLE void adj_address(const array_t<T>& buf, int i, int j, const
         adj_atomic_add(&index_grad(buf, i, j), adj_output);
 }
 template<typename T>
-inline CUDA_CALLABLE void adj_address(const array_t<T>& buf, int i, int j, int k, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, const T& adj_output)
+inline CUDA_CALLABLE void adj_address(const array_t<T>& buf, int i, int j, int k, const array_t<T>& adj_buf, int adj_i, int adj_j, int adj_k, const T& adj_output)
 {
     if (adj_buf.data)
         adj_atomic_add(&index(adj_buf, i, j, k), adj_output);
@@ -835,7 +835,7 @@ inline CUDA_CALLABLE void adj_address(const array_t<T>& buf, int i, int j, int k
         adj_atomic_add(&index_grad(buf, i, j, k), adj_output);
 }
 template<typename T>
-inline CUDA_CALLABLE void adj_address(const array_t<T>& buf, int i, int j, int k, int l, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, const T& adj_output)
+inline CUDA_CALLABLE void adj_address(const array_t<T>& buf, int i, int j, int k, int l, const array_t<T>& adj_buf, int adj_i, int adj_j, int adj_k, int adj_l, const T& adj_output)
 {
     if (adj_buf.data)
         adj_atomic_add(&index(adj_buf, i, j, k, l), adj_output);
@@ -844,7 +844,7 @@ inline CUDA_CALLABLE void adj_address(const array_t<T>& buf, int i, int j, int k
 }
 
 template<typename T>
-inline CUDA_CALLABLE void adj_array_store(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value)
+inline CUDA_CALLABLE void adj_array_store(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int adj_i, T& adj_value)
 {
     if (adj_buf.data)
         adj_value += index(adj_buf, i);
@@ -854,7 +854,7 @@ inline CUDA_CALLABLE void adj_array_store(const array_t<T>& buf, int i, T value,
     FP_VERIFY_ADJ_1(value, adj_value)
 }
 template<typename T>
-inline CUDA_CALLABLE void adj_array_store(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value)
+inline CUDA_CALLABLE void adj_array_store(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int adj_i, int adj_j, T& adj_value)
 {
     if (adj_buf.data)
         adj_value += index(adj_buf, i, j);
@@ -864,7 +864,7 @@ inline CUDA_CALLABLE void adj_array_store(const array_t<T>& buf, int i, int j, T
     FP_VERIFY_ADJ_2(value, adj_value)
 }
 template<typename T>
-inline CUDA_CALLABLE void adj_array_store(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value)
+inline CUDA_CALLABLE void adj_array_store(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int adj_i, int adj_j, int adj_k, T& adj_value)
 {
     if (adj_buf.data)
         adj_value += index(adj_buf, i, j, k);
@@ -874,7 +874,7 @@ inline CUDA_CALLABLE void adj_array_store(const array_t<T>& buf, int i, int j, i
     FP_VERIFY_ADJ_3(value, adj_value)
 }
 template<typename T>
-inline CUDA_CALLABLE void adj_array_store(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value)
+inline CUDA_CALLABLE void adj_array_store(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int adj_i, int adj_j, int adj_k, int adj_l, T& adj_value)
 {
     if (adj_buf.data)
         adj_value += index(adj_buf, i, j, k, l);
@@ -898,7 +898,7 @@ inline CUDA_CALLABLE void adj_load(const T* address, const T& adj_address, T& ad
 }
 
 template<typename T>
-inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret)
+inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int adj_i, T& adj_value, const T& adj_ret)
 {
     if (adj_buf.data)
         adj_value += index(adj_buf, i);
@@ -908,7 +908,7 @@ inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, T value, 
     FP_VERIFY_ADJ_1(value, adj_value)
 }
 template<typename T>
-inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret)
+inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int adj_i, int adj_j, T& adj_value, const T& adj_ret)
 {
     if (adj_buf.data)
         adj_value += index(adj_buf, i, j);
@@ -918,7 +918,7 @@ inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, T 
     FP_VERIFY_ADJ_2(value, adj_value)
 }
 template<typename T>
-inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret)
+inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int adj_i, int adj_j, int adj_k, T& adj_value, const T& adj_ret)
 {
     if (adj_buf.data)
         adj_value += index(adj_buf, i, j, k);
@@ -928,7 +928,7 @@ inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, in
     FP_VERIFY_ADJ_3(value, adj_value)
 }
 template<typename T>
-inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret)
+inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int adj_i, int adj_j, int adj_k, int adj_l, T& adj_value, const T& adj_ret)
 {
     if (adj_buf.data)
         adj_value += index(adj_buf, i, j, k, l);
@@ -939,7 +939,7 @@ inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, in
 }
 
 template<typename T>
-inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret)
+inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int adj_i, T& adj_value, const T& adj_ret)
 {
     if (adj_buf.data)
         adj_value -= index(adj_buf, i);
@@ -949,7 +949,7 @@ inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, T value, 
     FP_VERIFY_ADJ_1(value, adj_value)
 }
 template<typename T>
-inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret)
+inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int adj_i, int adj_j, T& adj_value, const T& adj_ret)
 {
     if (adj_buf.data)
         adj_value -= index(adj_buf, i, j);
@@ -959,7 +959,7 @@ inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, T 
     FP_VERIFY_ADJ_2(value, adj_value)
 }
 template<typename T>
-inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret)
+inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int adj_i, int adj_j, int adj_k, T& adj_value, const T& adj_ret)
 {
     if (adj_buf.data)
         adj_value -= index(adj_buf, i, j, k);
@@ -969,7 +969,7 @@ inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, in
     FP_VERIFY_ADJ_3(value, adj_value)
 }
 template<typename T>
-inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret)
+inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int adj_i, int adj_j, int adj_k, int adj_l, T& adj_value, const T& adj_ret)
 {
     if (adj_buf.data)
         adj_value -= index(adj_buf, i, j, k, l);
@@ -981,44 +981,44 @@ inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, in
 
 // generic array types that do not support gradient computation (indexedarray, etc.)
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_address(const A1<T>& buf, int i, const A2<T>& adj_buf, int& adj_i, const T& adj_output) {}
+inline CUDA_CALLABLE void adj_address(const A1<T>& buf, int i, const A2<T>& adj_buf, int adj_i, const T& adj_output) {}
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_address(const A1<T>& buf, int i, int j, const A2<T>& adj_buf, int& adj_i, int& adj_j, const T& adj_output) {}
+inline CUDA_CALLABLE void adj_address(const A1<T>& buf, int i, int j, const A2<T>& adj_buf, int adj_i, int adj_j, const T& adj_output) {}
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_address(const A1<T>& buf, int i, int j, int k, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, const T& adj_output) {}
+inline CUDA_CALLABLE void adj_address(const A1<T>& buf, int i, int j, int k, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, const T& adj_output) {}
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_address(const A1<T>& buf, int i, int j, int k, int l, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, const T& adj_output) {}
+inline CUDA_CALLABLE void adj_address(const A1<T>& buf, int i, int j, int k, int l, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, int adj_l, const T& adj_output) {}
 
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_array_store(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int& adj_i, T& adj_value) {}
+inline CUDA_CALLABLE void adj_array_store(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int adj_i, T& adj_value) {}
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_array_store(const A1<T>& buf, int i, int j, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value) {}
+inline CUDA_CALLABLE void adj_array_store(const A1<T>& buf, int i, int j, T value, const A2<T>& adj_buf, int adj_i, int adj_j, T& adj_value) {}
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_array_store(const A1<T>& buf, int i, int j, int k, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value) {}
+inline CUDA_CALLABLE void adj_array_store(const A1<T>& buf, int i, int j, int k, T value, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, T& adj_value) {}
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_array_store(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value) {}
+inline CUDA_CALLABLE void adj_array_store(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, int adj_l, T& adj_value) {}
 
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_add(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret) {}
+inline CUDA_CALLABLE void adj_atomic_add(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int adj_i, T& adj_value, const T& adj_ret) {}
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_add(const A1<T>& buf, int i, int j, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret) {}
+inline CUDA_CALLABLE void adj_atomic_add(const A1<T>& buf, int i, int j, T value, const A2<T>& adj_buf, int adj_i, int adj_j, T& adj_value, const T& adj_ret) {}
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_add(const A1<T>& buf, int i, int j, int k, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret) {}
+inline CUDA_CALLABLE void adj_atomic_add(const A1<T>& buf, int i, int j, int k, T value, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, T& adj_value, const T& adj_ret) {}
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_add(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret) {}
+inline CUDA_CALLABLE void adj_atomic_add(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, int adj_l, T& adj_value, const T& adj_ret) {}
 
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_sub(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret) {}
+inline CUDA_CALLABLE void adj_atomic_sub(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int adj_i, T& adj_value, const T& adj_ret) {}
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_sub(const A1<T>& buf, int i, int j, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret) {}
+inline CUDA_CALLABLE void adj_atomic_sub(const A1<T>& buf, int i, int j, T value, const A2<T>& adj_buf, int adj_i, int adj_j, T& adj_value, const T& adj_ret) {}
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_sub(const A1<T>& buf, int i, int j, int k, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret) {}
+inline CUDA_CALLABLE void adj_atomic_sub(const A1<T>& buf, int i, int j, int k, T value, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, T& adj_value, const T& adj_ret) {}
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_sub(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret) {}
+inline CUDA_CALLABLE void adj_atomic_sub(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, int adj_l, T& adj_value, const T& adj_ret) {}
 
 // generic handler for scalar values
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_min(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret) {
+inline CUDA_CALLABLE void adj_atomic_min(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int adj_i, T& adj_value, const T& adj_ret) {
     if (adj_buf.data)
         adj_atomic_minmax(&index(buf, i), &index(adj_buf, i), value, adj_value);
     else if (buf.grad)
@@ -1027,7 +1027,7 @@ inline CUDA_CALLABLE void adj_atomic_min(const A1<T>& buf, int i, T value, const
     FP_VERIFY_ADJ_1(value, adj_value)
 }
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_min(const A1<T>& buf, int i, int j, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret) {
+inline CUDA_CALLABLE void adj_atomic_min(const A1<T>& buf, int i, int j, T value, const A2<T>& adj_buf, int adj_i, int adj_j, T& adj_value, const T& adj_ret) {
     if (adj_buf.data)
         adj_atomic_minmax(&index(buf, i, j), &index(adj_buf, i, j), value, adj_value);
     else if (buf.grad)
@@ -1036,7 +1036,7 @@ inline CUDA_CALLABLE void adj_atomic_min(const A1<T>& buf, int i, int j, T value
     FP_VERIFY_ADJ_2(value, adj_value)
 }
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_min(const A1<T>& buf, int i, int j, int k, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret) {
+inline CUDA_CALLABLE void adj_atomic_min(const A1<T>& buf, int i, int j, int k, T value, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, T& adj_value, const T& adj_ret) {
     if (adj_buf.data)
         adj_atomic_minmax(&index(buf, i, j, k), &index(adj_buf, i, j, k), value, adj_value);
     else if (buf.grad)
@@ -1045,7 +1045,7 @@ inline CUDA_CALLABLE void adj_atomic_min(const A1<T>& buf, int i, int j, int k, 
     FP_VERIFY_ADJ_3(value, adj_value)
 }
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_min(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret) {
+inline CUDA_CALLABLE void adj_atomic_min(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, int adj_l, T& adj_value, const T& adj_ret) {
     if (adj_buf.data)
         adj_atomic_minmax(&index(buf, i, j, k, l), &index(adj_buf, i, j, k, l), value, adj_value);
     else if (buf.grad)
@@ -1055,7 +1055,7 @@ inline CUDA_CALLABLE void adj_atomic_min(const A1<T>& buf, int i, int j, int k, 
 }
 
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_max(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret) {
+inline CUDA_CALLABLE void adj_atomic_max(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int adj_i, T& adj_value, const T& adj_ret) {
     if (adj_buf.data)
         adj_atomic_minmax(&index(buf, i), &index(adj_buf, i), value, adj_value);
     else if (buf.grad)
@@ -1064,7 +1064,7 @@ inline CUDA_CALLABLE void adj_atomic_max(const A1<T>& buf, int i, T value, const
     FP_VERIFY_ADJ_1(value, adj_value)
 }
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_max(const A1<T>& buf, int i, int j, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret) {
+inline CUDA_CALLABLE void adj_atomic_max(const A1<T>& buf, int i, int j, T value, const A2<T>& adj_buf, int adj_i, int adj_j, T& adj_value, const T& adj_ret) {
     if (adj_buf.data)
         adj_atomic_minmax(&index(buf, i, j), &index(adj_buf, i, j), value, adj_value);
     else if (buf.grad)
@@ -1073,7 +1073,7 @@ inline CUDA_CALLABLE void adj_atomic_max(const A1<T>& buf, int i, int j, T value
     FP_VERIFY_ADJ_2(value, adj_value)
 }
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_max(const A1<T>& buf, int i, int j, int k, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret) {
+inline CUDA_CALLABLE void adj_atomic_max(const A1<T>& buf, int i, int j, int k, T value, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, T& adj_value, const T& adj_ret) {
     if (adj_buf.data)
         adj_atomic_minmax(&index(buf, i, j, k), &index(adj_buf, i, j, k), value, adj_value);
     else if (buf.grad)
@@ -1082,7 +1082,7 @@ inline CUDA_CALLABLE void adj_atomic_max(const A1<T>& buf, int i, int j, int k, 
     FP_VERIFY_ADJ_3(value, adj_value)
 }
 template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_max(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret) {
+inline CUDA_CALLABLE void adj_atomic_max(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, int adj_l, T& adj_value, const T& adj_ret) {
     if (adj_buf.data)
         adj_atomic_minmax(&index(buf, i, j, k, l), &index(adj_buf, i, j, k, l), value, adj_value);
     else if (buf.grad)

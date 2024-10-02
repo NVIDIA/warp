@@ -12,6 +12,17 @@
 - Fix `ModelBuilder.add_builder(builder)` to correctly update `articulation_start` and thereby `articulation_count` when `builder` contains more than one articulation.
 - Re-introduced the `wp.rand*()`, `wp.sample*()`, and `wp.poisson()` onto the Python scope to revert a breaking change.
 
+## [Unreleased] - 2024-??
+
+### Added
+
+### Changed
+
+- Relax the integer types expected when indexing arrays.
+
+### Fixed
+
+
 ## [1.4.0] - 2024-10-01
 
 ### Added

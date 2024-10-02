@@ -3167,7 +3167,8 @@ def address_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, A
 for array_type in array_types:
     add_builtin(
         "address",
-        input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "l": int},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int},
+        constraint=sametypes,
         defaults={"j": None, "k": None, "l": None},
         hidden=True,
         value_func=address_value_func,
@@ -3211,8 +3212,9 @@ def view_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]
 for array_type in array_types:
     add_builtin(
         "view",
-        input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int},
         defaults={"j": None, "k": None},
+        constraint=sametypes,
         hidden=True,
         value_func=view_value_func,
         group="Utility",
@@ -3254,7 +3256,8 @@ def array_store_value_func(arg_types: Mapping[str, type], arg_values: Mapping[st
 for array_type in array_types:
     add_builtin(
         "array_store",
-        input_types={"arr": array_type(dtype=Any), "i": int, "value": Any},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "value": Any},
+        constraint=sametypes,
         hidden=True,
         value_func=array_store_value_func,
         skip_replay=True,
@@ -3262,7 +3265,8 @@ for array_type in array_types:
     )
     add_builtin(
         "array_store",
-        input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "value": Any},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "value": Any},
+        constraint=sametypes,
         hidden=True,
         value_func=array_store_value_func,
         skip_replay=True,
@@ -3270,7 +3274,8 @@ for array_type in array_types:
     )
     add_builtin(
         "array_store",
-        input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "value": Any},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "value": Any},
+        constraint=sametypes,
         hidden=True,
         value_func=array_store_value_func,
         skip_replay=True,
@@ -3278,7 +3283,8 @@ for array_type in array_types:
     )
     add_builtin(
         "array_store",
-        input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int, "value": Any},
+        constraint=sametypes,
         hidden=True,
         value_func=array_store_value_func,
         skip_replay=True,
@@ -3330,6 +3336,11 @@ add_builtin(
 )
 
 
+def atomic_op_constraint(arg_types: Mapping[str, Any]):
+    idx_types = tuple(arg_types[x] for x in "ijkl" if arg_types.get(x, None) is not None)
+    return all(types_equal(idx_types[0], t) for t in idx_types[1:]) and arg_types["arr"].ndim == len(idx_types)
+
+
 def atomic_op_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     if arg_types is None:
         return Any
@@ -3374,7 +3385,8 @@ for array_type in array_types:
     add_builtin(
         "atomic_add",
         hidden=hidden,
-        input_types={"arr": array_type(dtype=Any), "i": int, "value": Any},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "value": Any},
+        constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
         doc="Atomically add ``value`` onto ``arr[i]`` and return the old value.",
         group="Utility",
@@ -3383,7 +3395,8 @@ for array_type in array_types:
     add_builtin(
         "atomic_add",
         hidden=hidden,
-        input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "value": Any},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "value": Any},
+        constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
         doc="Atomically add ``value`` onto ``arr[i,j]`` and return the old value.",
         group="Utility",
@@ -3392,7 +3405,8 @@ for array_type in array_types:
     add_builtin(
         "atomic_add",
         hidden=hidden,
-        input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "value": Any},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "value": Any},
+        constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
         doc="Atomically add ``value`` onto ``arr[i,j,k]`` and return the old value.",
         group="Utility",
@@ -3401,7 +3415,8 @@ for array_type in array_types:
     add_builtin(
         "atomic_add",
         hidden=hidden,
-        input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int, "value": Any},
+        constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
         doc="Atomically add ``value`` onto ``arr[i,j,k,l]`` and return the old value.",
         group="Utility",
@@ -3411,7 +3426,8 @@ for array_type in array_types:
     add_builtin(
         "atomic_sub",
         hidden=hidden,
-        input_types={"arr": array_type(dtype=Any), "i": int, "value": Any},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "value": Any},
+        constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
         doc="Atomically subtract ``value`` onto ``arr[i]`` and return the old value.",
         group="Utility",
@@ -3420,7 +3436,8 @@ for array_type in array_types:
     add_builtin(
         "atomic_sub",
         hidden=hidden,
-        input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "value": Any},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "value": Any},
+        constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
         doc="Atomically subtract ``value`` onto ``arr[i,j]`` and return the old value.",
         group="Utility",
@@ -3429,7 +3446,8 @@ for array_type in array_types:
     add_builtin(
         "atomic_sub",
         hidden=hidden,
-        input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "value": Any},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "value": Any},
+        constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
         doc="Atomically subtract ``value`` onto ``arr[i,j,k]`` and return the old value.",
         group="Utility",
@@ -3438,7 +3456,8 @@ for array_type in array_types:
     add_builtin(
         "atomic_sub",
         hidden=hidden,
-        input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int, "value": Any},
+        constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
         doc="Atomically subtract ``value`` onto ``arr[i,j,k,l]`` and return the old value.",
         group="Utility",
@@ -3448,7 +3467,8 @@ for array_type in array_types:
     add_builtin(
         "atomic_min",
         hidden=hidden,
-        input_types={"arr": array_type(dtype=Any), "i": int, "value": Any},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "value": Any},
+        constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
         doc="""Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
@@ -3459,7 +3479,8 @@ for array_type in array_types:
     add_builtin(
         "atomic_min",
         hidden=hidden,
-        input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "value": Any},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "value": Any},
+        constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
         doc="""Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
@@ -3470,7 +3491,8 @@ for array_type in array_types:
     add_builtin(
         "atomic_min",
         hidden=hidden,
-        input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "value": Any},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "value": Any},
+        constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
         doc="""Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
@@ -3481,7 +3503,8 @@ for array_type in array_types:
     add_builtin(
         "atomic_min",
         hidden=hidden,
-        input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int, "value": Any},
+        constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
         doc="""Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
@@ -3493,7 +3516,8 @@ for array_type in array_types:
     add_builtin(
         "atomic_max",
         hidden=hidden,
-        input_types={"arr": array_type(dtype=Any), "i": int, "value": Any},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "value": Any},
+        constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
         doc="""Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
@@ -3504,7 +3528,8 @@ for array_type in array_types:
     add_builtin(
         "atomic_max",
         hidden=hidden,
-        input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "value": Any},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "value": Any},
+        constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
         doc="""Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
@@ -3515,7 +3540,8 @@ for array_type in array_types:
     add_builtin(
         "atomic_max",
         hidden=hidden,
-        input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "value": Any},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "value": Any},
+        constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
         doc="""Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
@@ -3526,7 +3552,8 @@ for array_type in array_types:
     add_builtin(
         "atomic_max",
         hidden=hidden,
-        input_types={"arr": array_type(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any},
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int, "value": Any},
+        constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
         doc="""Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
