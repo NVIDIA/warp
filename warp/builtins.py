@@ -1745,12 +1745,12 @@ add_builtin(
     value_func=tile_zeros_value_func,
     dispatch_func=tile_zeros_dispatch_func,
     variadic=True,
-    doc="""Allocates a tile of zero initialized items.
+    doc="""Allocates a tile of zero-initialized items.
 
     :param m: Size of the first dimension of the output tile
     :param n: Size of the second dimension of the output tile
     :param dtype: Datatype of output tile's elements
-    :returns: A zero initialized tile with ``shape=(m,n)`` and the specified datatype""",
+    :returns: A zero-initialized tile with ``shape=(m,n)`` and the specified datatype""",
     group="Tile Primitives",
     export=False,
 )
@@ -1793,12 +1793,12 @@ add_builtin(
     value_func=tile_ones_value_func,
     dispatch_func=tile_ones_dispatch_func,
     variadic=True,
-    doc="""Allocates a tile of one initialized items.
+    doc="""Allocates a tile of one-initialized items.
 
     :param m: Size of the first dimension of the output tile
     :param n: Size of the second dimension of the output tile
     :param dtype: Datatype of output tile's elements
-    :returns: A one initialized tile with ``shape=(m,n)`` and the specified dtype""",
+    :returns: A one-initialized tile with ``shape=(m,n)`` and the specified dtype""",
     group="Tile Primitives",
     export=False,
 )
@@ -1871,7 +1871,7 @@ add_builtin(
     variadic=True,
     doc="""Generates a tile of linearly spaced elements.
 
-    :param args: Variable length positional arguments, interpreted as:
+    :param args: Variable-length positional arguments, interpreted as:
 
         - ``(stop,)``: Generates values from ``0`` to ``stop - 1``
         - ``(start, stop)``: Generates values from ``start`` to ``stop - 1``
@@ -2173,12 +2173,12 @@ add_builtin(
     input_types={"x": Any},
     value_func=tile_value_func,
     variadic=True,
-    doc="""Constructs a new Tile from a per-thread kernel values.
+    doc="""Constructs a new Tile from per-thread kernel values.
 
     This function converts values computed using scalar kernel code to a tile representation for input into collective operations.
 
-    * If the input value is a scalar then the resulting tile has ``shape=(1, block_dim)``
-    * If the input value is a vector then the resulting tile has ``shape=(length(vector), block_dim)``
+    * If the input value is a scalar, then the resulting tile has ``shape=(1, block_dim)``
+    * If the input value is a vector, then the resulting tile has ``shape=(length(vector), block_dim)``
 
     :param x: A per-thread local value, e.g.: scalar, vector, or matrix.
     :returns: A tile with first dimension according to the value type length and a second dimension equal to ``block_dim``
@@ -2241,7 +2241,7 @@ add_builtin(
     This function converts a block-wide tile back to per-thread values.
 
     * If the input tile is 1-dimensional then the resulting value will be a per-thread scalar
-    * If the input tile is 2-dimensional then the the resulting value will be a per-thread vector of length M
+    * If the input tile is 2-dimensional then the resulting value will be a per-thread vector of length M
 
     :param a: A tile with dimensions ``shape=(M, block_dim)``
     :returns: A single value per-thread with the same dtype as the tile
@@ -2301,7 +2301,9 @@ add_builtin(
     variadic=True,
     doc="""Extracts a single element from the tile and returns it as a scalar type.
 
-    This function will extract an element from the tile and broadcast its value to all threads in the block, note that this may incur additional synchronization if the source tile is a register tile.
+    This function will extract an element from the tile and broadcast its value to all threads in the block.
+
+    Note that this may incur additional synchronization if the source tile is a register tile.
 
     :param a: Tile to extract the element from
     :param i: Coordinate of element on first dimension
@@ -2496,10 +2498,10 @@ add_builtin(
     input_types={"a": Tile},
     value_func=tile_sum_value_func,
     variadic=True,
-    doc="""Cooperatively compute the sum the tile elements using all threads in the block.
+    doc="""Cooperatively compute the sum of the tile elements using all threads in the block.
 
     :param a: The tile to compute the sum of
-    :returns: A single element tile with dimensions of (1,1) holding the sum
+    :returns: A single-element tile with dimensions of (1,1) holding the sum
 
     Example:
 
@@ -2551,7 +2553,7 @@ add_builtin(
     doc="""Cooperatively compute the minimum of the tile elements using all threads in the block.
 
     :param a: The tile to compute the minimum of
-    :returns: A single element tile with dimensions of (1,1) holding the minimum value
+    :returns: A single-element tile with dimensions of (1,1) holding the minimum value
 
     Example:
 
@@ -2603,7 +2605,7 @@ add_builtin(
     doc="""Cooperatively compute the maximum of the tile elements using all threads in the block.
 
     :param a: The tile to compute the maximum from
-    :returns: A single element tile with dimensions of (1,1) holding the maximum value
+    :returns: A single-element tile with dimensions of (1,1) holding the maximum value
 
     Example:
 
@@ -2662,7 +2664,7 @@ add_builtin(
 
     :param op: A callable function that accepts two arguments and returns one argument, may be a user function or builtin
     :param a: The input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
-    :returns: A single element tile with ``shape=(1,1)`` with the same datatype as the input tile.
+    :returns: A single-element tile with ``shape=(1,1)`` with the same datatype as the input tile.
 
     Example:
 
