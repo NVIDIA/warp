@@ -234,7 +234,7 @@ def test_function_variable(test, device):
             results[0] = wp.static(func)(3, 2)  # noqa: B023
 
         results = wp.zeros(1, dtype=int, device=device)
-        # note that the kernel has to be recompiled everytime the value of func changes
+        # note that the kernel has to be recompiled every time the value of func changes
         wp.launch(function_variable_kernel, 1, [results], device=device)
         assert_np_equal(results.numpy(), np.array([func(3, 2)], dtype=int))
 
