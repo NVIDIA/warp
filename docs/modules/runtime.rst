@@ -817,7 +817,7 @@ To record a series of kernel launches use the :func:`wp.capture_begin() <capture
         # end capture and return a graph object
         graph = wp.capture_end(device="cuda")
 
-We strongly recommend the use of the the try-finally pattern when capturing graphs because the `finally`
+We strongly recommend the use of the try-finally pattern when capturing graphs because the `finally`
 statement will ensure :func:`wp.capture_end <capture_end>` gets called, even if an exception occurs during
 capture, which would otherwise trap the stream in a capturing state.
 
