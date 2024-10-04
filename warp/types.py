@@ -3465,7 +3465,7 @@ class Volume:
         )
 
     def feature_array(self, feature_index: int, dtype=None) -> array:
-        """Returns one the the grid's feature data arrays as a Warp array
+        """Returns one the grid's feature data arrays as a Warp array
 
         Args:
             feature_index: Index of the supplemental data array in the grid

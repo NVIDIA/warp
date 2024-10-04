@@ -101,7 +101,7 @@ __global__ void bvh_refit_with_solid_angle_kernel(int n, const int* __restrict__
             int finished = atomicAdd(&child_count[parent], 1);
 
             // if we have are the last thread (such that the parent node is now complete)
-            // then update its bounds and move onto the the next parent in the hierarchy
+            // then update its bounds and move onto the next parent in the hierarchy
             if (finished == 1)
             {
                 //printf("Compute non-leaf at %d\n", index);
