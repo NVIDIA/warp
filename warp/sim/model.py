@@ -641,7 +641,7 @@ class Model:
         joint_dof_count (int): Total number of velocity degrees of freedom of all joints in the system
         joint_coord_count (int): Total number of position degrees of freedom of all joints in the system
 
-        particle_coloring (list of array): The coloring of all the particles, used for VBD's Gauss-Seidel interation.
+        particle_coloring (list of array): The coloring of all the particles, used for VBD's Gauss-Seidel iteration.
 
         device (wp.Device): Device on which the Model was allocated
 
