@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## [Unreleased] - 2024-??
+
+### Added
+
+### Changed
+
+- Relax the integer types expected when indexing arrays.
+
+### Fixed
+
+
 ## [1.4.0] - 2024-10-01
 
 ### Added
