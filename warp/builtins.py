@@ -1722,10 +1722,18 @@ def tile_zeros_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str
     if "dtype" not in arg_values:
         raise RuntimeError("'dtype' keyword argument must be specified when calling tile_zeros() function")
 
+    if "storage" not in arg_values:
+        raise ValueError("'storage' keyword not provided for tile_zeros")
+
+    if arg_values["storage"] not in {"shared", "register"}:
+        raise ValueError(
+            f"'storage' keyword argument must be either 'shared' or 'register', got {arg_values['storage']}"
+        )
+
     m, n = arg_values["m"], arg_values["n"]
     dtype = arg_values["dtype"]
 
-    return TileZeros(dtype=dtype, M=m, N=n)
+    return TileZeros(dtype=dtype, M=m, N=n, storage=arg_values["storage"])
 
 
 def tile_zeros_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
@@ -1741,7 +1749,8 @@ def tile_zeros_dispatch_func(arg_types: Mapping[str, type], return_type: Any, ar
 
 add_builtin(
     "tile_zeros",
-    input_types={"m": int, "n": int, "dtype": Scalar},
+    input_types={"m": int, "n": int, "dtype": Scalar, "storage": str},
+    defaults={"storage": "register"},
     value_func=tile_zeros_value_func,
     dispatch_func=tile_zeros_dispatch_func,
     variadic=True,
@@ -1750,6 +1759,8 @@ add_builtin(
     :param m: Size of the first dimension of the output tile
     :param n: Size of the second dimension of the output tile
     :param dtype: Datatype of output tile's elements
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
     :returns: A zero-initialized tile with ``shape=(m,n)`` and the specified datatype""",
     group="Tile Primitives",
     export=False,
@@ -1770,10 +1781,15 @@ def tile_ones_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str,
     if "dtype" not in arg_values:
         raise RuntimeError("'dtype' keyword argument must be specified when calling tile_zeros() function")
 
+    if arg_values["storage"] not in {"shared", "register"}:
+        raise ValueError(
+            f"'storage' keyword argument must be either 'shared' or 'register', got {arg_values['storage']}"
+        )
+
     m, n = arg_values["m"], arg_values["n"]
     dtype = arg_values["dtype"]
 
-    return TileZeros(dtype=dtype, M=m, N=n)
+    return TileZeros(dtype=dtype, M=m, N=n, storage=arg_values["storage"])
 
 
 def tile_ones_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
@@ -1789,7 +1805,8 @@ def tile_ones_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg
 
 add_builtin(
     "tile_ones",
-    input_types={"m": int, "n": int, "dtype": Scalar},
+    input_types={"m": int, "n": int, "dtype": Scalar, "storage": str},
+    defaults={"storage": "register"},
     value_func=tile_ones_value_func,
     dispatch_func=tile_ones_dispatch_func,
     variadic=True,
@@ -1798,6 +1815,8 @@ add_builtin(
     :param m: Size of the first dimension of the output tile
     :param n: Size of the second dimension of the output tile
     :param dtype: Datatype of output tile's elements
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
     :returns: A one-initialized tile with ``shape=(m,n)`` and the specified dtype""",
     group="Tile Primitives",
     export=False,
@@ -1837,7 +1856,12 @@ def tile_arange_value_func(arg_types: Mapping[str, type], arg_values: Mapping[st
     else:
         dtype = float
 
-    return TileRange(dtype=dtype, start=start, stop=stop, step=step)
+    if arg_values["storage"] not in {"shared", "register"}:
+        raise ValueError(
+            f"'storage' keyword argument must be either 'shared' or 'register', got {arg_values['storage']}"
+        )
+
+    return TileRange(dtype=dtype, start=start, stop=stop, step=step, storage=arg_values["storage"])
 
 
 def tile_arange_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
@@ -1864,8 +1888,8 @@ def tile_arange_dispatch_func(arg_types: Mapping[str, type], return_type: Any, a
 
 add_builtin(
     "tile_arange",
-    input_types={"*args": Scalar, "dtype": Scalar},
-    defaults={"dtype": None},
+    input_types={"*args": Scalar, "dtype": Scalar, "storage": str},
+    defaults={"dtype": None, "storage": "register"},
     value_func=tile_arange_value_func,
     dispatch_func=tile_arange_dispatch_func,
     variadic=True,
@@ -1878,6 +1902,8 @@ add_builtin(
         - ``(start, stop, step)``: Generates values from ``start`` to ``stop - 1`` with a step size
 
     :param dtype: Datatype of output tile's elements (optional, default: int)
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
     :returns: A tile with ``shape=(1,n)`` with linearly spaced elements of specified dtype""",
     group="Tile Primitives",
     export=False,
@@ -1903,10 +1929,15 @@ def tile_load_1d_value_func(arg_types, arg_values):
     if "n" not in arg_values:
         raise RuntimeError("'n' keyword argument must be specified when calling tile_load() function")
 
+    if arg_values["storage"] not in {"shared", "register"}:
+        raise ValueError(
+            f"'storage' keyword argument must be either 'shared' or 'register', got {arg_values['storage']}"
+        )
+
     a = arg_types["a"]
     _m, n = 1, arg_values["n"]
 
-    return TileLoad(a, 1, n)
+    return TileLoad(a, 1, n, arg_values["storage"])
 
 
 def tile_load_1d_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
@@ -1924,7 +1955,8 @@ def tile_load_1d_dispatch_func(arg_types: Mapping[str, type], return_type: Any, 
 
 add_builtin(
     "tile_load",
-    input_types={"a": array(dtype=Any), "i": int, "n": int},
+    input_types={"a": array(dtype=Any), "i": int, "n": int, "storage": str},
+    defaults={"storage": "register"},
     value_func=tile_load_1d_value_func,
     dispatch_func=tile_load_1d_dispatch_func,
     variadic=False,
@@ -1935,6 +1967,8 @@ add_builtin(
     :param a: The source array in global memory
     :param i: Offset in the source array measured in multiples of ``n``, i.e.: ``offset=i*n``
     :param n: The number of elements in the tile
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
     :returns: A tile with ``shape=(1,n)`` and dtype the same as the source array""",
     group="Tile Primitives",
     export=False,
@@ -1966,10 +2000,15 @@ def tile_load_2d_value_func(arg_types, arg_values):
     if "n" not in arg_values:
         raise RuntimeError("'n' keyword argument must be specified when calling tile_load() function")
 
+    if arg_values["storage"] not in {"shared", "register"}:
+        raise ValueError(
+            f"'storage' keyword argument must be either 'shared' or 'register', got {arg_values['storage']}"
+        )
+
     a = arg_types["a"]
     m, n = arg_values["m"], arg_values["n"]
 
-    return TileLoad(a, m, n)
+    return TileLoad(a, m, n, arg_values["storage"])
 
 
 def tile_load_2d_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
@@ -1988,7 +2027,8 @@ def tile_load_2d_dispatch_func(arg_types: Mapping[str, type], return_type: Any, 
 
 add_builtin(
     "tile_load",
-    input_types={"a": array(dtype=Any), "i": int, "j": int, "m": int, "n": int},
+    input_types={"a": array(dtype=Any), "i": int, "j": int, "m": int, "n": int, "storage": str},
+    defaults={"storage": "register"},
     value_func=tile_load_2d_value_func,
     dispatch_func=tile_load_2d_dispatch_func,
     variadic=False,
@@ -2001,6 +2041,8 @@ add_builtin(
     :param j: Offset in the source array measured in multiples of ``n``, i.e.; ``col=j*n``
     :param m: The size of the tile's first dimension
     :param n: The size of the tile's second dimension
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
     :returns: A tile with ``shape=(m,n)`` and dtype the same as the source array""",
     group="Tile Primitives",
     export=False,
@@ -2707,10 +2749,10 @@ def tile_unary_map_value_func(arg_types, arg_values):
     return TileUnaryMap(a)
 
 
-def tile_map_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
-    func_args = (args["op"], *args["args"])
-    template_args = ()
-    return (func_args, template_args)
+# def tile_map_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+#    func_args = (args["op"], *args["args"])
+#    template_args = ()
+#    return (func_args, template_args)
 
 
 add_builtin(

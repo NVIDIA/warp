@@ -783,6 +783,9 @@ def func_match_args(func, arg_types, kwarg_types):
 
 
 def get_arg_type(arg: Union[Var, Any]):
+    if isinstance(arg, str):
+        return str
+
     if isinstance(arg, Sequence):
         return tuple(get_arg_type(x) for x in arg)
 

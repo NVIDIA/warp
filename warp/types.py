@@ -3020,12 +3020,12 @@ class Tile:
 
 
 class TileZeros(Tile):
-    def __init__(self, dtype, M, N):
-        Tile.__init__(self, dtype, M, N, op="zeros", storage="register")
+    def __init__(self, dtype, M, N, storage="register"):
+        Tile.__init__(self, dtype, M, N, op="zeros", storage=storage)
 
 
 class TileRange(Tile):
-    def __init__(self, dtype, start, stop, step):
+    def __init__(self, dtype, start, stop, step, storage="register"):
         self.start = start
         self.stop = stop
         self.step = step
@@ -3033,7 +3033,7 @@ class TileRange(Tile):
         M = 1
         N = int((stop - start) / step)
 
-        Tile.__init__(self, dtype, M, N, op="arange", storage="register")
+        Tile.__init__(self, dtype, M, N, op="arange", storage=storage)
 
 
 class TileConstant(Tile):
@@ -3042,20 +3042,20 @@ class TileConstant(Tile):
 
 
 class TileLoad(Tile):
-    def __init__(self, array, M, N):
-        Tile.__init__(self, array.dtype, M, N, op="load", storage="register")
+    def __init__(self, array, M, N, storage="register"):
+        Tile.__init__(self, array.dtype, M, N, op="load", storage=storage)
 
 
 class TileUnaryMap(Tile):
-    def __init__(self, t):
-        Tile.__init__(self, t.dtype, t.M, t.N, op="unary_map", storage="register")
+    def __init__(self, t, storage="register"):
+        Tile.__init__(self, t.dtype, t.M, t.N, op="unary_map", storage=storage)
 
         self.t = t
 
 
 class TileBinaryMap(Tile):
-    def __init__(self, a, b):
-        Tile.__init__(self, a.dtype, a.M, a.N, op="binary_map", storage="register")
+    def __init__(self, a, b, storage="register"):
+        Tile.__init__(self, a.dtype, a.M, a.N, op="binary_map", storage=storage)
 
         self.a = a
         self.b = b
