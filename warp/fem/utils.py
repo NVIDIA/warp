@@ -193,9 +193,14 @@ def _givens_rotation(a: Any, b: Any):
     # Givens rotation [[c -s], [s c]] such that sa+cb =0
     zero = type(a)(0.0)
     one = type(a)(1.0)
-    abn_sq = a * a + b * b
-    abn = wp.select(abn_sq == zero, one / wp.sqrt(abn_sq), zero)
-    return a * abn, -b * abn
+
+    b2 = b * b
+    if b2 == zero:
+        # id rotation
+        return one, zero
+
+    scale = one / wp.sqrt(a * a + b2)
+    return a * scale, -b * scale
 
 
 @wp.func
@@ -229,7 +234,7 @@ def tridiagonal_symmetric_eigenvalues_qr(D: Any, L: Any, Q: Any, tol: Any):
     x = D.dtype(0.0)  # coeff atop buldge
 
     for _ in range(32 * m):  # failsafe, usually converges faster than that
-        # Iterate over all idependant (deflated) blocks
+        # Iterate over all independent (deflated) blocks
         end = int(-1)
 
         for k in range(m - 1):

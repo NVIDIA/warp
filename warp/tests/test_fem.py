@@ -28,6 +28,9 @@ from warp.fem.utils import (
 )
 from warp.tests.unittest_utils import *
 
+vec6f = wp.vec(length=6, dtype=float)
+mat66f = wp.mat(shape=(6, 6), dtype=float)
+
 
 @integrand
 def linear_form(s: Sample, u: Field):
@@ -1507,7 +1510,7 @@ def test_implicit_fields(test, device):
 
 @wp.kernel
 def test_qr_eigenvalues():
-    tol = 1.0e-6
+    tol = 1.0e-8
 
     # zero
     Zero = wp.mat33(0.0)
@@ -1545,6 +1548,19 @@ def test_qr_eigenvalues():
     D4, P4 = symmetric_eigenvalues_qr(Rank4, tol * tol)
     Err4 = wp.transpose(P4) * wp.diag(D4) * P4 - Rank4
     wp.expect_near(wp.ddot(Err4, Err4), 0.0, tol)
+
+    # test robustness to low requested tolerance
+    Rank6 = mat66f(
+        vec6f(0.00171076, 0.0, 0.0, 0.0, 0.0, 0.0),
+        vec6f(0.0, 0.00169935, 6.14367e-06, -3.52589e-05, 3.02397e-05, -1.53458e-11),
+        vec6f(0.0, 6.14368e-06, 0.00172217, 2.03568e-05, 1.74589e-05, -2.92627e-05),
+        vec6f(0.0, -3.52589e-05, 2.03568e-05, 0.00172178, 2.53422e-05, 3.02397e-05),
+        vec6f(0.0, 3.02397e-05, 1.74589e-05, 2.53422e-05, 0.00171114, 3.52589e-05),
+        vec6f(0.0, 6.42993e-12, -2.92627e-05, 3.02397e-05, 3.52589e-05, 0.00169935),
+    )
+    D6, P6 = symmetric_eigenvalues_qr(Rank6, 0.0)
+    Err6 = wp.transpose(P6) * wp.diag(D6) * P6 - Rank6
+    wp.expect_near(wp.ddot(Err6, Err6), 0.0, 1.0e-13)
 
 
 @wp.kernel
