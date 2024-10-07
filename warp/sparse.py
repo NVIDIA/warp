@@ -106,7 +106,7 @@ class BsrMatrix(Generic[_BlockType]):
             return
 
         BsrMatrix.__setattr__(
-            self, "_nnz_buf", wp.zeros(dtype=int, shape=(1,), device="cpu", pinned=self.device.is_cuda)
+            self, "_nnz_buf", wp.empty(dtype=int, shape=(1,), device="cpu", pinned=self.device.is_cuda)
         )
         if self.device.is_cuda:
             BsrMatrix.__setattr__(self, "_nnz_event", wp.Event(self.device))
@@ -524,7 +524,7 @@ def _bsr_assign_split_blocks(
     if dest_block >= dest_offsets[dest_row_count]:
         return
 
-    dest_row = wp.lower_bound(dest_offsets, dest_block + 1) - 1
+    dest_row = wp.lower_bound(dest_offsets, 0, dest_row_count + 1, dest_block + 1) - 1
     src_row = dest_row // row_factor
 
     dest_col_in_row = dest_block - dest_offsets[dest_row]
@@ -566,7 +566,7 @@ def _bsr_assign_merge_row_col(
         dest_rows[block] = -1  # invalid
         dest_cols[block] = -1
     else:
-        row = wp.lower_bound(src_offsets, block + 1) - 1
+        row = wp.lower_bound(src_offsets, 0, src_row_count + 1, block + 1) - 1
         dest_rows[block] = row // row_factor
         dest_cols[block] = src_columns[block] // col_factor
 
@@ -589,7 +589,7 @@ def _bsr_assign_merge_blocks(
     if src_block >= src_offsets[src_row_count]:
         return
 
-    src_row = wp.lower_bound(src_offsets, src_block + 1) - 1
+    src_row = wp.lower_bound(src_offsets, 0, src_row_count + 1, src_block + 1) - 1
     src_col = src_columns[src_block]
 
     dest_row = src_row // row_factor
@@ -828,7 +828,7 @@ def bsr_copy(
         block_type=block_type,
         device=A.device,
     )
-    bsr_assign(dest=copy, src=A)
+    bsr_assign(dest=copy, src=A, structure_only=structure_only)
     return copy
 
 
@@ -1190,7 +1190,7 @@ def _bsr_get_block_row(dest_offset: int, row_count: int, bsr_offsets: wp.array(d
     if i >= bsr_offsets[row_count]:
         rows[dest_offset + i] = -1  # invalid
     else:
-        row = wp.lower_bound(bsr_offsets, i + 1) - 1
+        row = wp.lower_bound(bsr_offsets, 0, row_count + 1, i + 1) - 1
         rows[dest_offset + i] = row
 
 
@@ -1461,13 +1461,14 @@ def _bsr_mm_compute_values(
     y_offsets: wp.array(dtype=int),
     y_columns: wp.array(dtype=int),
     y_values: wp.array(dtype=Any),
+    mm_row_count: int,
     mm_offsets: wp.array(dtype=int),
     mm_cols: wp.array(dtype=int),
     mm_values: wp.array(dtype=Any),
 ):
     mm_block = wp.tid()
 
-    row = wp.lower_bound(mm_offsets, mm_block + 1) - 1
+    row = wp.lower_bound(mm_offsets, 0, mm_row_count + 1, mm_block + 1) - 1
     col = mm_cols[mm_block]
 
     mm_val = mm_values.dtype(type(alpha)(0.0))
@@ -1759,6 +1760,7 @@ def bsr_mm(
             work_arrays._old_z_offsets if y == z else y.offsets,
             work_arrays._old_z_columns if y == z else y.columns,
             work_arrays._old_z_values if y == z else y.values,
+            z.nrow,
             z.offsets,
             z.columns,
             mm_values,
