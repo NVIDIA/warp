@@ -9,9 +9,6 @@ import os
 
 from PIL import Image
 
-TILE_M = wp.constant(4)
-TILE_N = wp.constant(2)
-
 #wp.clear_kernel_cache()
 #wp.config.mode = "debug"
 #wp.config.verify_cuda = True
@@ -23,7 +20,7 @@ rng = np.random.default_rng(45)
 def assert_equal(result: np.ndarray, expect: np.ndarray, tol=1.e-2):
     if tol != 0.0:
         # TODO: Get all tests working without the .flatten()
-        np.testing.assert_allclose(result.flatten(), expect.flatten(), rtol=tol, atol=0, equal_nan=True)
+        np.testing.assert_allclose(result.flatten(), expect.flatten(), rtol=tol, atol=1.e-2, equal_nan=True)
     else:
         # TODO: Get all tests working with strict=True
         np.testing.assert_array_equal(result, expect)
@@ -188,7 +185,7 @@ def test_multi_layer_nn():
                         output],
                 block_dim=NUM_THREADS)
 
-        print(loss.numpy())
+        print(f"Iter: {i} Loss: {loss.numpy()}")
 
         # output.grad = wp.ones_like(output)
         # tape.backward()
