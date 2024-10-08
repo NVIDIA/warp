@@ -35,6 +35,7 @@
   hard-coded value of 0.01 ([GH-329](https://github.com/NVIDIA/warp/issues/329)).
 - Add a `particle_radius` parameter to `wp.sim.ModelBuilder.add_cloth_mesh()` and `wp.sim.ModelBuilder.add_cloth_grid()`
   to set a uniform radius for the added particles.
+- Add introductory Jupyter notebooks.
 
 ### Changed
 
