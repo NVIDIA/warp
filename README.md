@@ -297,6 +297,31 @@ python -m warp.tests
     </tbody>
 </table>
 
+## Running Notebooks
+
+A few notebooks are available in the [notebooks](./notebooks/) directory to provide an overview over the key features available in Warp.
+
+To run these notebooks, ``jupyterlab`` is required to be installed using:
+
+
+```text
+pip install jupyterlab
+```
+
+From there, opening the notebooks can be done with the following command:
+
+```text
+jupyter lab ./notebooks
+```
+
+- [Warp Core Tutorial: Basics](https://github.com/NVIDIA/warp/tree/main/warp/notebooks/core_01_basics.ipynb) <a target="_blank" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_01_basics.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+- [Warp Core Tutorial: Generics](https://github.com/NVIDIA/warp/tree/main/warp/notebooks/core_02_generics.ipynb) <a target="_blank" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/notebooks/core_02_generics.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+- [Warp Core Tutorial: Points](https://github.com/NVIDIA/warp/tree/main/warp/notebooks/core_03_points.ipynb) <a target="_blank" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/notebooks/core_03_points.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+- [Warp Core Tutorial: Meshes](https://github.com/NVIDIA/warp/tree/main/warp/notebooks/core_04_meshes.ipynb) <a target="_blank" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/notebooks/core_04_meshes.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+- [Warp Core Tutorial: Volumes](https://github.com/NVIDIA/warp/tree/main/warp/notebooks/core_05_volumes.ipynb) <a target="_blank" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/notebooks/core_05_volumes.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+
+
+
 ## Building
 
 For developers who want to build the library themselves, the following tools are required:

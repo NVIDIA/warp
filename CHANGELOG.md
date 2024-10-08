@@ -24,6 +24,7 @@
   to set a uniform radius for the added particles.
 - Document `array` attributes ([GH-364](https://github.com/NVIDIA/warp/issues/364)).
 - Document time-to-compile tradeoffs when using vector component assignment statements in kernels.
+- Add introductory Jupyter notebooks.
 
 ### Changed
 
