@@ -33,11 +33,11 @@ linux-x86_64 build:
     - .runner-build-linux-x86_64
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - apt-get update && apt-get install build-essential curl wget --no-install-recommends -y
+    - apt-get update && apt-get install build-essential curl --no-install-recommends -y
     - >
-      wget --header="X-JFrog-Art-Api:$ARTIFACTORY_API_KEY" -nv --no-check-certificate
+      curl -k -H "Authorization: Bearer $ARTIFACTORY_ACCESS_TOKEN"
       $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/main/PostMerge/30/libmathdx_build_x86_64_ubuntu20.04_cuda12.0.0_release.tar.gz
-      -O libmathdx.tar.gz
+      -o libmathdx.tar.gz
     - mkdir -p _build/target-deps
     - tar -xzf libmathdx.tar.gz -C _build/target-deps
     - export LIBMATHDX_HOME="$CI_PROJECT_DIR/_build/target-deps/libmathdx-0.0.1-Linux"
@@ -56,11 +56,11 @@ linux-aarch64 build:
     - .save_warp_bin_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - apt-get update && apt-get install build-essential curl wget --no-install-recommends -y
+    - apt-get update && apt-get install build-essential curl --no-install-recommends -y
     - >
-      wget --header="X-JFrog-Art-Api:$ARTIFACTORY_API_KEY" -nv --no-check-certificate
+      curl -k -H "Authorization: Bearer $ARTIFACTORY_ACCESS_TOKEN"
       $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/main/PostMerge/30/libmathdx_build_aarch64_ubuntu20.04_cuda12.0.0_release.tar.gz
-      -O libmathdx.tar.gz
+      -o libmathdx.tar.gz
     - mkdir -p _build/target-deps
     - tar -xzf libmathdx.tar.gz -C _build/target-deps
     - export LIBMATHDX_HOME="$CI_PROJECT_DIR/_build/target-deps/libmathdx-0.0.1-Linux"
