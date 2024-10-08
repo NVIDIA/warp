@@ -76,16 +76,13 @@ def test_multi_layer_nn():
         row, col = wp.tid()
         linear = row*IMG_WIDTH + col
 
-        # linear = wp.tid()
-        # row = linear/IMG_WIDTH
-        # col = linear%IMG_WIDTH
-
-        # # normalize input coordinates to [-1, 1]
+        # normalize input coordinates to [-1, 1]
         x = (float(row)/float(IMG_WIDTH) - 0.5)*2.0
         y = (float(col)/float(IMG_HEIGHT) - 0.5)*2.0
 
         local = wp.vector(dtype=float, length=DIM_IN)
 
+        # construct positional encoding
         for s in range(NUM_FREQ):
 
             scale = wp.pow(2.0, float(s))*wp.pi
@@ -98,48 +95,43 @@ def test_multi_layer_nn():
             local[s*4 + 2] = wp.sin(y * scale)
             local[s*4 + 3] = wp.cos(y * scale)
 
-
             # write input back to array so that torch can use it
             input[s*4 + 0, linear] = local[s*4 + 0]
             input[s*4 + 1, linear] = local[s*4 + 1]
             input[s*4 + 2, linear] = local[s*4 + 2]
             input[s*4 + 3, linear] = local[s*4 + 3]
         
-        ## load from input array
-        # local = wp.vector(dtype=float, length=DIM_IN)
-        # for i in range(DIM_IN):
-        #     local[i] = input[i, linear]
 
-
+        # tile feature vectors across the block, returns [dim(f), NUM_THREADS]
         f = wp.tile(local)
         
-
         # input layer
         w0 = wp.tile_load(weights_0, 0, 0, m=DIM_HID, n=DIM_IN)
         b0 = wp.tile_load(bias_0, 0, 0, m=DIM_HID, n=1)
         z = wp.tile_map(relu, wp.tile_matmul(w0, f) + wp.tile_broadcast(b0, m=DIM_HID, n=NUM_THREADS))
 
-        # output layer
+        # hidden layer
         w1 = wp.tile_load(weights_1, 0, 0, m=DIM_HID, n=DIM_HID)
         b1 = wp.tile_load(bias_1, 0, 0, m=DIM_HID, n=1)
         z = wp.tile_map(relu, wp.tile_matmul(w1, z) + wp.tile_broadcast(b1, m=DIM_HID, n=NUM_THREADS))
 
-
+        # output layer
         w2 = wp.tile_load(weights_2, 0, 0, m=DIM_OUT, n=DIM_HID)
         b2 = wp.tile_load(bias_2, 0, 0, m=DIM_OUT, n=1)
         o = wp.tile_map(relu, wp.tile_matmul(w2, z) + wp.tile_broadcast(b2, m=DIM_OUT, n=NUM_THREADS))
 
-        #wp.tile_store(out, 0, i, o)
-
+        # until back to SIMT
         output = wp.untile(o)
 
+        # compute error
         error = wp.vec3(output[0] - reference[0,linear],
                         output[1] - reference[1,linear],
                         output[2] - reference[2,linear])
 
+        # write MSE loss
         wp.atomic_add(loss, 0, wp.length_sq(error)/float(3*IMG_WIDTH*IMG_HEIGHT))
 
-
+        # image output
         for i in range(DIM_OUT):
             out[i, linear] = output[i]
                 
