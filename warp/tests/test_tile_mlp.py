@@ -140,7 +140,7 @@ def test_multi_layer_nn():
                         output[1] - reference[1,linear],
                         output[2] - reference[2,linear])
 
-        wp.atomic_add(loss, 0, wp.length_sq(error)/float(IMG_WIDTH*IMG_HEIGHT))
+        wp.atomic_add(loss, 0, wp.length_sq(error)/float(3*IMG_WIDTH*IMG_HEIGHT))
 
 
         for i in range(DIM_OUT):
@@ -190,10 +190,10 @@ def test_multi_layer_nn():
 
         print(loss.numpy())
 
-        output.grad = wp.ones_like(output)
-        tape.backward()
+        # output.grad = wp.ones_like(output)
+        # tape.backward()
         
-        #tape.backward(loss)
+        tape.backward(loss)
 
         # optimizer.step(optimizer_grads)
 
@@ -240,10 +240,12 @@ def test_multi_layer_nn():
     z_tc = tc.clamp(weights_2_tc@z_tc + bias_2_tc, min=0.0)
     
     ref_tc = tc.from_numpy(reference.numpy()).requires_grad_(True)
-    #l_tc = tc.mean((z_tc - ref_tc)**2)
-    #l_tc.backward()
+    
+    
+    l_tc = tc.mean((z_tc - ref_tc)**2)
+    l_tc.backward()
 
-    z_tc.backward(tc.ones_like(z_tc))
+    #z_tc.backward(tc.ones_like(z_tc))
 
     # test torch
     print("Torch output close:        ", assert_equal(z_tc.cpu().detach().numpy(), output.numpy()))
