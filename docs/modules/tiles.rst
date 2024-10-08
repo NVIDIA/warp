@@ -3,16 +3,16 @@ Tiles
 
 .. warning:: Tile-based operations in Warp are under preview, APIs are subject to change.
 
-Block-based programming models such as those in OpenAI Triton have proved to be effective ways of expressing high performance kernels that can leverage cooperative operations on modern GPUs.
+Block-based programming models such as those in OpenAI Triton have proved to be effective ways of expressing high-performance kernels that can leverage cooperative operations on modern GPUs.
 
 Warp 1.4.0 introduces tile extensions that expose a block-based programming to Warp kernels. 
 
 Execution Model
 ---------------
 
-Warp's execution model allows users to specify an up to 4-dimensional grid of logical threads for kernel execution at launch time. With the introduction of tile primitives, users can now specify the block size for kernel launches, which partitions the thread grid into smaller sets of threads that are executed on a single compute unit.
+Warp's execution model allows users to specify a grid of logical threads with up to 4 dimensions for kernel execution at launch time. With the introduction of tile primitives, users can now specify the *block size* for kernel launches, which partitions the thread grid into smaller sets of threads that are executed on a single compute unit.
 
-Inside kernels, tile operations are executed cooperatively across each block of threads, allowing them to take advantage of efficient memory access, local memory, and dedicated hardware units like TensorCores.
+Inside kernels, tile operations are executed cooperatively across each block of threads, allowing them to take advantage of efficient memory access, local memory, and dedicated hardware units like `Tensor Cores <https://www.nvidia.com/en-us/data-center/tensor-cores/>`__.
 
 In the following example, we launch a grid of threads where each block is responsible for loading a row of data from a 2D array and computing its sum:
 
@@ -34,13 +34,13 @@ In the following example, we launch a grid of threads where each block is respon
 
     wp.launch_tiled(compute, dim=[a.shape[0]], inputs=[a], block_dim=TILE_THREADS)
     
-Here, we have used the new :func:`warp.launch_tiled` function which assigns ``TILE_THREADS`` to each of the elements in the launch grid. Each block then loads an entire row of 256 values from the global memory array, computes its sum (cooperatively), and then stores the result back to global memory.
+Here, we have used the new :func:`warp.launch_tiled` function which assigns ``TILE_THREADS`` threads to each of the elements in the launch grid. Each block of ``TILE_THREADS`` threads then loads an entire row of 256 values from the global memory array and computes its sum (cooperatively).
 
 
 Tile Properties
 ---------------
 
-In Warp, tile objects are 2D arrays of data where the tile elements may be scalars, vectors, matrices, or user defined structures. We can load 2D tiles directly from 2D global memory arrays as follows:
+In Warp, tile objects are 2D arrays of data where the tile elements may be scalars, vectors, matrices, or user-defined structures. We can load 2D tiles directly from 2D global memory arrays as follows:
 
 .. code:: python
     
@@ -55,31 +55,42 @@ In Warp, tile objects are 2D arrays of data where the tile elements may be scala
         i, j = wp.tid()
 
         # load a 2d tile from global memory
-        t = wp.tile_load(array, i, j, TILE_M, TILE_N)
+        t = wp.tile_load(array, i, j, m=TILE_M, n=TILE_N)
         s = wp.sum(t)
         ...
 
     wp.launch_tiled(compute, dim=[a.shape[0]/TILE_M, a.shape[1]/TILE_N], inputs=[a], block_dim=TILE_THREADS)
     
-Here we divide the array ``a`` into 2d tiles of shape 16x16, each block cooperatively loads tile from the input array and computes its sum before returning the result.
+Here, we divide the array ``a`` into 2D tiles of shape 16 x 16.
+Each block cooperatively loads a tile from the input array and computes its sum.
 
 Tile Storage
 ------------
 
-When tiles are created they are placed in either `register` or `shared` memory. In general Warp tries to determine the best storage for each, by default tiles are allocated in register storage, however some operations such as matrix multiplies may migrate data from register to shared as necessary.
+When tiles are created, they are placed in either *register* or *shared* memory.
+In general, Warp tries to determine the best storage location for tiles.
+By default, tiles are allocated in register storage, but some operations such as matrix multiplication may migrate data from register to shared as necessary.
 
 Register Tiles
-++++++++++++++
+^^^^^^^^^^^^^^
 
-Values in register tiles are stored across the entire block, for example, if the block dimension at launch is set to 64, a register tile with ``shape=(1, 256)`` will result in each thread storing 4 elements. Register based storage is the fastest storage on most hardware, however, because the tile storage is spread across the threads in the block, an individual thread cannot randomly access data that is assigned to another thread efficiently. For this reason operations on tiles tend to expressed as higher level maps, reductions, and reshaping operations that may transfer values through shared memory.
+Values in register tiles are stored across the entire block.
+For example, if the block dimension at launch is set to 64, a register tile with ``shape=(1, 256)`` will result in each thread storing 4 elements.
+Register-based storage is the fastest storage on most hardware, but an individual thread cannot randomly access data that is assigned to another thread efficiently 
+because the tile storage is spread across the threads in the block.
+For this reason, operations on tiles tend to be expressed as higher-level maps, reductions, and reshaping operations that may transfer values through shared memory.
 
 Shared Memory Tiles
-+++++++++++++++++++
+^^^^^^^^^^^^^^^^^^^
 
-Some operations like matrix multiplication, require access to an entire tile of values. In this case the tile data may be stored in shared memory, which allows efficient random access. Warp will automatically migrate tiles to shared memory as necessary for specific operations. Shared memory is a limited resource, and so tile size must be set appropriately to avoid exceeding the hardware limitations, otherwise kernel compilation may fail.
+Some operations like matrix multiplication require access to an entire tile of values.
+In this case, the tile data may be stored in shared memory, which allows efficient random access.
+Warp will automatically migrate tiles to shared memory as necessary for specific operations.
+Shared memory is a limited resource, and so the tile size must be set appropriately to avoid exceeding the hardware limitations.
+Otherwise, kernel compilation may fail.
 
-Example: GEMM
--------------
+Example: General Matrix Multiply (GEMM)
+---------------------------------------
 
 .. code:: python
 
@@ -152,7 +163,7 @@ Tile Operations
 
 
 Construction
-++++++++++++
+^^^^^^^^^^^^
 
 * :func:`warp.tile_zeros`
 * :func:`warp.tile_ones`
@@ -161,14 +172,14 @@ Construction
 * :func:`warp.untile`
 
 Load/Store
-++++++++++
+^^^^^^^^^^
 
 * :func:`warp.tile_load`
 * :func:`warp.tile_store`
 * :func:`warp.tile_atomic_add`
 
 Maps/Reductions
-+++++++++++++++
+^^^^^^^^^^^^^^^
 
 * :func:`warp.tile_map`
 * :func:`warp.tile_reduce`
@@ -177,7 +188,7 @@ Maps/Reductions
 * :func:`warp.tile_max`
 
 Linear Algebra
-++++++++++++++
+^^^^^^^^^^^^^^
 
 * :func:`warp.tile_matmul`
 * :func:`warp.tile_transpose`
@@ -187,7 +198,7 @@ Linear Algebra
 Tiles and SIMT Code
 -------------------
 
-Traditionally Warp kernels are primarily written in the SIMT programming model, where each thread's execution happens independently. Tiles on the other hand allow threads to work cooperatively to perform operations. Warp exposes :func:`warp.tile`, and :func:`warp.untile` methods to convert data between per-thread value types and the equivalent tile representation. For example:
+Traditionally, Warp kernels are primarily written in the SIMT programming model, where each thread's execution happens independently. Tiles, on the other hand, allow threads to work **cooperatively** to perform operations. Warp exposes the :func:`warp.tile`, and :func:`warp.untile` methods to convert data between per-thread value types and the equivalent tile representation. For example:
 
 .. code:: python
     
@@ -208,18 +219,15 @@ Traditionally Warp kernels are primarily written in the SIMT programming model, 
     # launch as regular SIMT kernel
     wp.launch(compute, dim=[N], inputs=[], block_dim=TILE_THREADS)
 
-In this example we have launched a regular SIMT grid using ``wp.launch()``, with ``N`` logical threads. The kernel performs some per-thread computations, and then converts the scalar ``x`` value into a tile object using the  :func:`warp.tile` function. This function takes a single value as input, and returns a tile with the same dimensions as the number of threads in the block. From here, the tile can used in other regular cooperative operations such as reductions, GEMMs, etc.
+In this example, we have launched a regular SIMT grid with ``N`` logical threads using ``wp.launch()``. The kernel performs some per-thread computations and then converts the scalar ``x`` value into a tile object using :func:`warp.tile`. This function takes a single value as input and returns a tile with the same dimensions as the number of threads in the block. From here, the tile can be used in other regular cooperative operations such as reductions, GEMMs, etc.
 
 Similarly, we can `untile` tile objects back to their per-thread scalar equivalent values.
 
-.. Note:: All threads in a block must execute tile operations, however code surrounding tile operations may contain arbitrary conditional logic.
+.. Note:: All threads in a block must execute tile operations, but code surrounding tile operations may contain arbitrary conditional logic.
 
 Automatic Differentiation
 -------------------------
 
-Warp can automatically generate the backward version of tile-based programs, in general tile programs must obey the same rules for auto-diff as regular Warp programs, e.g.: avoiding in-place operations, etc. Please see the :ref:`differentiability` section for more details.
-
-
-
-
-
+Warp can automatically generate the backward version of tile-based programs.
+In general, tile programs must obey the same rules for auto-diff as regular Warp programs, e.g. avoiding in-place operations, etc.
+Please see the :ref:`differentiability` section for more details.
