@@ -13,6 +13,7 @@
 ###########################################################################
 
 import numpy as np
+
 import warp as wp
 
 # tile size
@@ -23,16 +24,16 @@ TILE_K = wp.constant(8)
 # num threads per-tile
 TILE_THREADS = 64
 
+
 @wp.kernel
 def tile_gemm(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float), C: wp.array2d(dtype=float)):
-    
     # output tile index
     i, j = wp.tid()
 
     sum = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32)
 
-    M = A.shape[0]
-    N = B.shape[1]
+    _M = A.shape[0]
+    _N = B.shape[1]
     K = A.shape[1]
 
     count = int(K / TILE_K)
@@ -47,9 +48,7 @@ def tile_gemm(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float), C: wp.arra
     wp.tile_store(C, i, j, sum)
 
 
-
 if __name__ == "__main__":
-
     wp.set_device("cuda:0")
 
     # generate some tile aligned matrix dimensions
@@ -68,13 +67,9 @@ if __name__ == "__main__":
 
     with wp.Tape() as tape:
         wp.launch_tiled(
-            tile_gemm,
-            dim=(int(M / TILE_M), int(N / TILE_N)),
-            inputs=[A_wp, B_wp, C_wp],
-            block_dim=TILE_THREADS)
+            tile_gemm, dim=(int(M / TILE_M), int(N / TILE_N)), inputs=[A_wp, B_wp, C_wp], block_dim=TILE_THREADS
+        )
 
-    assert(np.allclose(C_wp.numpy(), A@B))
+    assert np.allclose(C_wp.numpy(), A @ B)
 
     print("Example matrix multiplication passed")
-
-
