@@ -13,7 +13,10 @@ from PIL import Image
 #wp.config.mode = "debug"
 #wp.config.verify_cuda = True
 
+wp.set_device("cuda:0")
 wp.set_module_options({"fast_math": False})
+
+#wp.clear_kernel_cache()
 
 rng = np.random.default_rng(45)
 
@@ -53,10 +56,11 @@ DIM_HID = 16
 DIM_OUT = 3
 
 NUM_THREADS = 32
-NUM_BLOCKS = 36
 
-IMG_WIDTH = NUM_THREADS*2
-IMG_HEIGHT = NUM_THREADS*2
+IMG_WIDTH = NUM_THREADS*8
+IMG_HEIGHT = NUM_THREADS*8
+
+BATCH_SIZE = min(1024, int((IMG_WIDTH*IMG_HEIGHT)/8))
 
 def test_multi_layer_nn():
 
@@ -64,8 +68,17 @@ def test_multi_layer_nn():
     def relu(x: float):
         return wp.max(x, 0.0)
 
+    @wp.func
+    def sigmoid(x: float):
+        return 1.0 / (1.0 + wp.exp(-x))
+
     @wp.kernel
-    def compute(input: wp.array2d(dtype=float),
+    def zero(loss: wp.array(dtype=float)):
+        loss[0] = 0.0
+
+    @wp.kernel
+    def compute(batches: wp.array(dtype=int),
+                input: wp.array2d(dtype=float),
                 weights_0: wp.array2d(dtype=float), bias_0: wp.array2d(dtype=float),
                 weights_1: wp.array2d(dtype=float), bias_1: wp.array2d(dtype=float),
                 weights_2: wp.array2d(dtype=float), bias_2: wp.array2d(dtype=float),
@@ -73,8 +86,12 @@ def test_multi_layer_nn():
                 loss: wp.array1d(dtype=float),
                 out: wp.array2d(dtype=float)):
 
-        row, col = wp.tid()
-        linear = row*IMG_WIDTH + col
+        # row, col = wp.tid()
+        # linear = row*IMG_WIDTH + col
+
+        linear = batches[wp.tid()]
+        row = linear/IMG_WIDTH
+        col = linear%IMG_WIDTH
 
         # normalize input coordinates to [-1, 1]
         x = (float(row)/float(IMG_WIDTH) - 0.5)*2.0
@@ -118,7 +135,7 @@ def test_multi_layer_nn():
         # output layer
         w2 = wp.tile_load(weights_2, 0, 0, m=DIM_OUT, n=DIM_HID)
         b2 = wp.tile_load(bias_2, 0, 0, m=DIM_OUT, n=1)
-        o = wp.tile_map(relu, wp.tile_matmul(w2, z) + wp.tile_broadcast(b2, m=DIM_OUT, n=NUM_THREADS))
+        o = wp.tile_map(sigmoid, wp.tile_matmul(w2, z) + wp.tile_broadcast(b2, m=DIM_OUT, n=NUM_THREADS))
 
         # until back to SIMT
         output = wp.untile(o)
@@ -129,7 +146,7 @@ def test_multi_layer_nn():
                         output[2] - reference[2,linear])
 
         # write MSE loss
-        wp.atomic_add(loss, 0, wp.length_sq(error)/float(3*IMG_WIDTH*IMG_HEIGHT))
+        wp.atomic_add(loss, 0, wp.length_sq(error)/float(3*BATCH_SIZE))
 
         # image output
         for i in range(DIM_OUT):
@@ -160,40 +177,52 @@ def test_multi_layer_nn():
     optimizer_inputs = [p.flatten() for p in params]
     optimizer = warp.optim.Adam(optimizer_inputs, lr=0.001)
 
-    for i in range(1):
+    # create shuffled batch indices
+    indices = np.arange(0, IMG_WIDTH*IMG_HEIGHT)
+    np.random.shuffle(indices)
+    batches = wp.array(indices, dtype=int)
 
-        loss.zero_()
+    for i in range(32):
 
-        with wp.Tape() as tape:
-            wp.launch(
-                compute, 
-                dim=[IMG_WIDTH, IMG_HEIGHT], 
-                inputs=[input,
-                        weights_0, bias_0,
-                        weights_1, bias_1,
-                        weights_2, bias_2, 
-                        reference,
-                        loss,
-                        output],
-                block_dim=NUM_THREADS)
+        for b in range(0, IMG_WIDTH*IMG_HEIGHT, BATCH_SIZE):
 
-        print(f"Iter: {i} Loss: {loss.numpy()}")
+            loss.zero_()
 
-        # output.grad = wp.ones_like(output)
-        # tape.backward()
-        
-        tape.backward(loss)
+            with wp.Tape() as tape:
+                wp.launch(
+                    compute, 
+                    dim=[BATCH_SIZE],
+                    inputs=[batches[b:b+BATCH_SIZE],
+                            input,
+                            weights_0, bias_0,
+                            weights_1, bias_1,
+                            weights_2, bias_2, 
+                            reference,
+                            loss,
+                            output],
+                    block_dim=NUM_THREADS)
 
-        # optimizer.step(optimizer_grads)
+            print(f"Iter: {i} Loss: {loss.numpy()}")
 
-        # tape.zero()
+            tape.backward(loss)
 
+            optimizer.step(optimizer_grads)
+
+            tape.zero()
+
+            # uncommenting this line fixes convergence
+            # wp.synchronize()
+
+               
 
     predicted_image = output.numpy().T.reshape(IMG_WIDTH, IMG_HEIGHT, 3)
     predicted_image = (predicted_image * 255).astype(np.uint8)
 
     predicted_image_pil = Image.fromarray(predicted_image)
     predicted_image_pil.save("test_tile_mlp_wp.jpg")
+
+    return
+
 
     # print(input)
     # print(output)
