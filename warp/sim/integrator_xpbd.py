@@ -2808,12 +2808,8 @@ class XPBDIntegrator(Integrator):
 
         with wp.ScopedTimer("simulate", False):
             if model.particle_count:
-                if requires_grad:
-                    particle_q = state_out.particle_q
-                    particle_qd = state_out.particle_qd
-                else:
-                    particle_q = state_out.particle_q
-                    particle_qd = state_out.particle_qd
+                particle_q = state_out.particle_q
+                particle_qd = state_out.particle_qd
 
                 self.particle_q_init = wp.clone(state_in.particle_q)
                 if self.enable_restitution:
