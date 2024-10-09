@@ -7,6 +7,7 @@
 ### Changed
 
 - Relax the integer types expected when indexing arrays.
+- Promote the `wp.Int`, `wp.Float`, and `wp.Scalar` generic annotation types to the public API.
 
 ### Fixed
 

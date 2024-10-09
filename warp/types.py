@@ -100,8 +100,10 @@ def vector(length, dtype):
 
         if dtype is bool:
             _type_ = ctypes.c_bool
-        elif dtype in [Scalar, Float]:
+        elif dtype in (Scalar, Float):
             _type_ = ctypes.c_float
+        elif dtype is Int:
+            _type_ = ctypes.c_int
         else:
             _type_ = dtype._type_
 
@@ -289,8 +291,10 @@ def matrix(shape, dtype):
 
         if dtype is bool:
             _type_ = ctypes.c_bool
-        elif dtype in [Scalar, Float]:
+        elif dtype in (Scalar, Float):
             _type_ = ctypes.c_float
+        elif dtype is Int:
+            _type_ = ctypes.c_int
         else:
             _type_ = dtype._type_
 
