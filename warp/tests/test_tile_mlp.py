@@ -5,6 +5,7 @@ import warp.optim
 
 import torch as tc
 
+import math
 import os
 
 from PIL import Image
@@ -49,7 +50,7 @@ def create_array(dim_in, dim_hid, dtype=float):
     return a
 
 
-NUM_FREQ = wp.constant(4)
+NUM_FREQ = wp.constant(8)
 
 DIM_IN = wp.constant(4*NUM_FREQ)  # sin,cos for both x,y at each frequenecy
 DIM_HID = 16
@@ -57,8 +58,8 @@ DIM_OUT = 3
 
 NUM_THREADS = 32
 
-IMG_WIDTH = NUM_THREADS*8
-IMG_HEIGHT = NUM_THREADS*8
+IMG_WIDTH = NUM_THREADS*16
+IMG_HEIGHT = NUM_THREADS*16
 
 BATCH_SIZE = min(1024, int((IMG_WIDTH*IMG_HEIGHT)/8))
 
@@ -82,6 +83,7 @@ def test_multi_layer_nn():
                 weights_0: wp.array2d(dtype=float), bias_0: wp.array2d(dtype=float),
                 weights_1: wp.array2d(dtype=float), bias_1: wp.array2d(dtype=float),
                 weights_2: wp.array2d(dtype=float), bias_2: wp.array2d(dtype=float),
+                weights_3: wp.array2d(dtype=float), bias_3: wp.array2d(dtype=float),
                 reference: wp.array2d(dtype=float),
                 loss: wp.array1d(dtype=float),
                 out: wp.array2d(dtype=float)):
@@ -132,12 +134,16 @@ def test_multi_layer_nn():
         b1 = wp.tile_load(bias_1, 0, 0, m=DIM_HID, n=1)
         z = wp.tile_map(relu, wp.tile_matmul(w1, z) + wp.tile_broadcast(b1, m=DIM_HID, n=NUM_THREADS))
 
-        # output layer
-        w2 = wp.tile_load(weights_2, 0, 0, m=DIM_OUT, n=DIM_HID)
-        b2 = wp.tile_load(bias_2, 0, 0, m=DIM_OUT, n=1)
-        o = wp.tile_map(sigmoid, wp.tile_matmul(w2, z) + wp.tile_broadcast(b2, m=DIM_OUT, n=NUM_THREADS))
+        w2 = wp.tile_load(weights_2, 0, 0, m=DIM_HID, n=DIM_HID)
+        b2 = wp.tile_load(bias_2, 0, 0, m=DIM_HID, n=1)
+        z = wp.tile_map(relu, wp.tile_matmul(w2, z) + wp.tile_broadcast(b2, m=DIM_HID, n=NUM_THREADS))
 
-        # until back to SIMT
+        # output layer
+        w3 = wp.tile_load(weights_3, 0, 0, m=DIM_OUT, n=DIM_HID)
+        b3 = wp.tile_load(bias_3, 0, 0, m=DIM_OUT, n=1)
+        o = wp.tile_map(sigmoid, wp.tile_matmul(w3, z) + wp.tile_broadcast(b3, m=DIM_OUT, n=NUM_THREADS))
+
+        # untile back to SIMT
         output = wp.untile(o)
 
         # compute error
@@ -156,7 +162,8 @@ def test_multi_layer_nn():
 
     weights_0, bias_0 = create_layer(DIM_IN, DIM_HID, dtype=float)
     weights_1, bias_1 = create_layer(DIM_HID, DIM_HID, dtype=float)
-    weights_2, bias_2 = create_layer(DIM_HID, DIM_OUT, dtype=float)
+    weights_2, bias_2 = create_layer(DIM_HID, DIM_HID, dtype=float)
+    weights_3, bias_3 = create_layer(DIM_HID, DIM_OUT, dtype=float)
 
     input = create_array(IMG_WIDTH*IMG_HEIGHT, DIM_IN)
     output = create_array(IMG_WIDTH*IMG_HEIGHT, DIM_OUT)
@@ -171,18 +178,20 @@ def test_multi_layer_nn():
 
     params = [weights_0, bias_0,
               weights_1, bias_1, 
-              weights_2, bias_2]
+              weights_2, bias_2,
+              weights_3, bias_3]
 
     optimizer_grads = [p.grad.flatten() for p in params]
     optimizer_inputs = [p.flatten() for p in params]
     optimizer = warp.optim.Adam(optimizer_inputs, lr=0.001)
 
-    # create shuffled batch indices
-    indices = np.arange(0, IMG_WIDTH*IMG_HEIGHT)
-    np.random.shuffle(indices)
-    batches = wp.array(indices, dtype=int)
+    max_iters = 500
 
-    for i in range(32):
+    for i in range(max_iters):
+
+        # create randomized batch indices
+        batches = wp.array(rng.integers(low=0, high=IMG_WIDTH*IMG_HEIGHT, size=IMG_WIDTH*IMG_HEIGHT, dtype=np.int32))
+        
 
         for b in range(0, IMG_WIDTH*IMG_HEIGHT, BATCH_SIZE):
 
@@ -197,15 +206,19 @@ def test_multi_layer_nn():
                             weights_0, bias_0,
                             weights_1, bias_1,
                             weights_2, bias_2, 
+                            weights_3, bias_3, 
                             reference,
                             loss,
                             output],
                     block_dim=NUM_THREADS)
 
-            print(f"Iter: {i} Loss: {loss.numpy()}")
+            if b == 0:
+                print(f"Iter: {i} Loss: {loss.numpy()}")
 
             tape.backward(loss)
 
+            # cosine weighted decay
+            optimizer.lr = 0.5*0.01*(1.0 + math.cos(float(i)/float(max_iters)*math.pi))
             optimizer.step(optimizer_grads)
 
             tape.zero()
