@@ -13,6 +13,7 @@
 - Fix potential out-of-bounds memory access when a `wp.sparse.BsrMatrix` object is reused for storing matrices of different shapes
 - Fix robustness to very low desired tolerance in `wp.fem.utils.symmetric_eigenvalues_qr`
 - Fix invalid code generation error messages when nesting dynamic and static for-loops
+- Fix caching of kernels with static expressions
 
 ## [1.4.0] - 2024-10-01
 
