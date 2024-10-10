@@ -446,6 +446,153 @@ The above program uses a static expression to select the right function given th
     [2. 0.]
 
 
+Advanced Example: Branching Elimination with Static Loop Unrolling
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In computational simulations, it's common to apply different operations or boundary conditions based on runtime variables. However, conditional branching using runtime variables often leads to performance issues due to register pressure, as the GPU may allocate resources for all branches even if some of them are never taken. To tackle this, we can utilize static loop unrolling via ``wp.static(...)``, which helps eliminate unnecessary branching at compile-time and improve parallel execution.
+
+**Scenario:**
+
+Suppose we have three different functions ``apply_func_a``, ``apply_func_b``, and ``apply_func_c`` that perform different mathematical operations.
+
+We are currently interested in applying only two of these functions (``apply_func_a`` and ``apply_func_b``) on a given dataset. Which function we apply to each data point is determined by a runtime variable ``func_id``, which is provided as an array to the kernel called ``func_field``.
+
+In practice, ``func_field`` represents a mapping of which operation should be applied to each data point, and is particularly useful when dealing with boundary conditions or different regions of a physical simulation. For example, in a fluid simulation, different regions of the fluid might require different updates based on pre-defined boundary conditions.
+
+**Naive Approach Implementation**
+
+To start, let us first consider a naive approach to implement this, which involves straightforward runtime branching based on the value of func_id. This approach will highlight why we need to optimize further.
+
+.. code:: python
+
+    import warp as wp
+    import numpy as np
+
+    # Define three functions that perform different operations
+    @wp.func
+    def apply_func_a(x: float) -> float:
+        return x + 10.0
+
+    @wp.func
+    def apply_func_b(x: float) -> float:
+        return x * 2.0
+
+    @wp.func
+    def apply_func_c(x: float) -> float:
+        return x - 5.0
+
+    # Assign static IDs to represent each function
+    func_id_a = 0
+    func_id_b = 1
+    func_id_c = 2  # Not used in this kernel
+
+    # Kernel that applies the correct function to each element of the input array
+    @wp.kernel
+    def apply_func_conditions_naive(x: wp.array(dtype=wp.float32), func_field: wp.array(dtype=wp.int8)):
+        tid = wp.tid()
+        value = x[tid]
+        result = value
+        func_id = func_field[tid]  # Get the function ID for this element
+
+        # Apply the corresponding function based on func_id
+        if func_id == func_id_a:
+            result = apply_func_a(value)
+        elif func_id == func_id_b:
+            result = apply_func_b(value)
+        elif func_id == func_id_c:
+            result = apply_func_c(value)
+
+        x[tid] = result
+
+    # Example usage
+    data = wp.array([1.0, 2.0, 3.0, 4.0, 5.0], dtype=wp.float32)
+
+    # Create an array that specifies which function to apply to each element
+    func_field = wp.array([func_id_a, func_id_b, func_id_b, func_id_a, func_id_b], dtype=wp.int8)
+
+    # Launch the kernel
+    wp.launch(apply_func_conditions_naive, inputs=[data, func_field], dim=data.size)
+
+    print(data.numpy())
+
+**Output:**
+
+.. code:: python
+
+    [11.  4.  6. 14. 10.]
+
+Since ``func_id`` is not static, the compiler cannot eliminate the unused function at compile time. Looking at the generated CUDA code, we can see the kernel includes an extra branching for the unused ``apply_func_c``:
+
+.. code:: cpp
+
+    //...
+    var_11 = wp::select(var_9, var_4, var_10);
+    if (!var_9) {
+        var_13 = (var_7 == var_12);
+        if (var_13) {
+            var_14 = apply_func_b_0(var_3);
+        }
+        var_15 = wp::select(var_13, var_11, var_14);
+        if (!var_13) {
+            var_17 = (var_7 == var_16);
+            if (var_17) {
+                var_18 = apply_func_c_0(var_3);
+            }
+            var_19 = wp::select(var_17, var_15, var_18);
+        }
+        var_20 = wp::select(var_13, var_19, var_15);
+    }
+    //...
+
+**Optimization**
+
+To avoid the extra branching, we can use the static loop unrolling via ``wp.static(...)`` to effectively "compile out" the unnecessary branches and only keep the operations that are relevant.
+
+**Implementation:**
+
+.. code:: python
+
+    funcs = [apply_func_a, apply_func_b, apply_func_c]
+
+    # Assign static IDs to represent each function
+    func_id_a = 0
+    func_id_b = 1
+    func_id_c = 2  # Not used in this kernel
+
+    # Define which function IDs are actually used in this kernel
+    used_func_ids = (func_id_a, func_id_b)
+
+    @wp.kernel
+    def apply_func_conditions(x: wp.array(dtype=wp.float32), func_field: wp.array(dtype=wp.int8)):
+        tid = wp.tid()
+        value = x[tid]
+        result = value
+        func_id = func_field[tid]  # Get the function ID for this element
+
+        # Unroll the loop over the used function IDs
+        for i in range(wp.static(len(used_func_ids))):
+            func_static_id = wp.static(used_func_ids[i])
+            if func_id == func_static_id:
+                result = wp.static(funcs[i])(value)
+
+        x[tid] = result
+
+
+In the generated CUDA code, we can see that the optimized code does not branch for the unused function.
+
+.. code:: cpp
+    
+    //...
+    var_10 = (var_7 == var_9);
+    if (var_10) {
+        var_11 = apply_func_a_1(var_3);
+    }
+    var_12 = wp::select(var_10, var_4, var_11);
+    var_15 = (var_7 == var_14);
+    if (var_15) {
+        var_16 = apply_func_b_1(var_3);
+    }
+    //...
+
 .. _dynamic_generation:
 
 Dynamic Kernel Creation
@@ -565,7 +712,6 @@ Output:
 
     [ 1.  4.  9.  16.  25.]
     [ 1.  8.  27.  64.  125.]
-
 
 Function Closures
 ~~~~~~~~~~~~~~~~~
