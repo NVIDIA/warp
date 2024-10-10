@@ -6,7 +6,6 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import ast
-import builtins
 import ctypes
 import functools
 import hashlib
@@ -22,7 +21,6 @@ import typing
 import weakref
 from copy import copy as shallowcopy
 from pathlib import Path
-from struct import pack as struct_pack
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
@@ -1488,30 +1486,16 @@ class ModuleHasher:
         # hash referenced constants
         for name, value in constants.items():
             ch.update(bytes(name, "utf-8"))
-            # hash the referenced object
-            if isinstance(value, builtins.bool):
-                # This needs to come before the check for `int` since all boolean
-                # values are also instances of `int`.
-                ch.update(struct_pack("?", value))
-            elif isinstance(value, int):
-                ch.update(struct_pack("<q", value))
-            elif isinstance(value, float):
-                ch.update(struct_pack("<d", value))
-            elif isinstance(value, warp.types.float16):
-                # float16 is a special case
-                p = ctypes.pointer(ctypes.c_float(value.value))
-                ch.update(p.contents)
-            elif isinstance(value, tuple(warp.types.scalar_types)):
-                p = ctypes.pointer(value._type_(value.value))
-                ch.update(p.contents)
-            elif isinstance(value, ctypes.Array):
-                ch.update(bytes(value))
-            else:
-                raise RuntimeError(f"Invalid constant type: {type(value)}")
+            ch.update(self.get_constant_bytes(value))
 
         # hash wp.static() expressions that were evaluated at declaration time
         for k, v in adj.static_expressions.items():
-            ch.update(bytes(f"{k} = {v}", "utf-8"))
+            ch.update(bytes(k, "utf-8"))
+            if isinstance(v, Function):
+                if v not in self.functions_in_progress:
+                    ch.update(self.hash_function(v))
+            else:
+                ch.update(self.get_constant_bytes(v))
 
         # hash referenced types
         for t in types.keys():
@@ -1523,6 +1507,24 @@ class ModuleHasher:
                 ch.update(self.hash_function(f))
 
         return ch.digest()
+
+    def get_constant_bytes(self, value):
+        if isinstance(value, int):
+            # this also handles builtins.bool
+            return bytes(ctypes.c_int(value))
+        elif isinstance(value, float):
+            return bytes(ctypes.c_float(value))
+        elif isinstance(value, warp.types.float16):
+            # float16 is a special case
+            return bytes(ctypes.c_float(value.value))
+        elif isinstance(value, tuple(warp.types.scalar_and_bool_types)):
+            return bytes(value._type_(value.value))
+        elif hasattr(value, "_wp_scalar_type_"):
+            return bytes(value)
+        elif isinstance(value, warp.codegen.StructInstance):
+            return bytes(value._ctype)
+        else:
+            raise TypeError(f"Invalid constant type: {type(value)}")
 
     def get_module_hash(self):
         return self.module_hash
