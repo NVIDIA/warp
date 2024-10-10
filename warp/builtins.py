@@ -5559,8 +5559,10 @@ def tile_matmul_generic_lto_dispatch_func(
     b = arg_values["b"]
 
     if len(return_values) > 0:
+        accumulate = 0 # for c = tile_matmul(a,b) case we want to overwrite c value
         out = return_values[0]
     else:
+        accumulate = 1 # for tile_matmul(a,b,c) case we want to add to c value
         out = arg_values["out"]
 
     if any(not is_tile(arg.type) for arg in [a, b, out]):
@@ -5581,7 +5583,7 @@ def tile_matmul_generic_lto_dispatch_func(
     a.type.storage = "shared"
     b.type.storage = "shared"
     out.type.storage = "shared"
-    template_args = []
+    template_args = [accumulate]
 
     # Real
     if out.type.dtype == float16:
@@ -5728,7 +5730,6 @@ add_builtin(
     """,
     group="Tile Primitives",
     export=False,
-    namespace="",
 )
 
 add_builtin(
@@ -5752,7 +5753,6 @@ add_builtin(
     """,
     group="Tile Primitives",
     export=False,
-    namespace="",
 )
 
 

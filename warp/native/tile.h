@@ -742,6 +742,16 @@ template <typename T, int M, int N, int Alloc>
 inline CUDA_CALLABLE auto tile_alloc_empty()
 {
     WP_TILE_SHARED __align__(16) T data[M*N];
+
+#if FP_CHECK
+
+    for (int i=threadIdx.x; i < M*N; i+= WP_TILE_BLOCK_DIM)
+        data[i] = T(nanf(""));
+
+    WP_TILE_SYNC();
+
+#endif // FP_CHECK
+
     return tile_shared_t<T, M, N>(data);
 }
 
@@ -1287,13 +1297,13 @@ void adj_tile_extract(Tile& t, int i, int j, AdjTile& adj_t, int adj_i, int adj_
 }
 
 // cuBLASDx follows the BLAS convention: matrices are col-major, so we swap A & B in the code below
-template <typename Fwd, typename AdjA, typename AdjB, typename TileA, typename TileB, typename TileC>
+template <int Add, typename Fwd, typename AdjA, typename AdjB, typename TileA, typename TileB, typename TileC>
 TileC& tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, TileA& A, TileB& B, TileC& C)
 {       
     using T = typename TileA::Type;
 
     WP_TILE_SYNC();
-    fun_forward(T(1.0), B.data, A.data, T(1.0), C.data);
+    fun_forward(T(1.0), B.data, A.data, T(Add), C.data);
     WP_TILE_SYNC();
     
     return C;
@@ -1314,7 +1324,7 @@ void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, 
 
 // backward for the out = wp.tile_matmul(a, b) syntax
 template <typename Fwd, typename AdjA, typename AdjB, typename TileA, typename TileB, typename TileC>
-void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, TileA& A, TileB& B, TileC& C,
+void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, TileA& A, TileB& B, TileC& C, 
                    Fwd adj_fun_forward, AdjA adj_fun_backward_A, AdjB adj_fun_backward_B, TileA& adj_A, TileB& adj_B, TileC& adj_C, TileC& adj_ret)
 {   
     using T = typename TileA::Type;    
