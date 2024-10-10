@@ -2905,6 +2905,7 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
             CHECK_CUFFTDX(cufftDxSetOptionStr(h, commonDxOption::COMMONDX_OPTION_INCLUDE, include_dirs[dir]));
         }
         CHECK_CUFFTDX(cufftDxSetOptionStr(h, commonDxOption::COMMONDX_OPTION_INCLUDE, mathdx_include_dir));
+        CHECK_CUFFTDX(cufftDxSetOptionStr(h, commonDxOption::COMMONDX_OPTION_INCLUDE, (std::string(mathdx_include_dir) + "/../external/cutlass/include").c_str()));
 
         size_t lto_size = 0;
         CHECK_CUFFTDX(cufftDxGetLTOIRSize(h, &lto_size));
@@ -2925,7 +2926,7 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
         return res;
     }
 
-    bool cuda_compile_dot(const char* ltoir_output_path, const char* symbol_name, int num_include_dirs, const char** include_dirs, const char* mathdx_include_dir, int arch, int M, int N, int K, int precision, int type, int tA, int tB, int num_threads)
+    bool cuda_compile_dot(const char* ltoir_output_path, const char* symbol_name, int num_include_dirs, const char** include_dirs, const char* mathdx_include_dir, int arch, int M, int N, int K, int precision_A, int precision_B, int precision_C, int type, int tA, int tB, int num_threads)
     {
 
         CHECK_ANY(ltoir_output_path != nullptr);
@@ -2940,7 +2941,8 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
         CHECK_CUBLASDX(cublasDxSetOperatorInt64(h, cublasDxOperatorType::CUBLASDX_OPERATOR_FUNCTION, cublasDxFunction::CUBLASDX_FUNCTION_MM));
         CHECK_CUBLASDX(cublasDxSetOperatorInt64(h, cublasDxOperatorType::CUBLASDX_OPERATOR_EXECUTION, commonDxExecution::COMMONDX_EXECUTION_BLOCK));
         CHECK_CUBLASDX(cublasDxSetOperatorInt64(h, cublasDxOperatorType::CUBLASDX_OPERATOR_API, cublasDxApi::CUBLASDX_API_BLOCK_SMEM));
-        CHECK_CUBLASDX(cublasDxSetOperatorInt64(h, cublasDxOperatorType::CUBLASDX_OPERATOR_PRECISION, (commonDxPrecision)precision));
+        std::array<long long int, 3> precisions = {precision_A, precision_B, precision_C};
+        CHECK_CUBLASDX(cublasDxSetOperatorInt64Array(h, cublasDxOperatorType::CUBLASDX_OPERATOR_PRECISION, 3, precisions.data()));
         CHECK_CUBLASDX(cublasDxSetOperatorInt64(h, cublasDxOperatorType::CUBLASDX_OPERATOR_SM, (long long)(arch * 10)));
         CHECK_CUBLASDX(cublasDxSetOperatorInt64(h, cublasDxOperatorType::CUBLASDX_OPERATOR_TYPE, (cublasDxType)type));
         std::array<long long int, 3> block_dim = {num_threads, 1, 1};
