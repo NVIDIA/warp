@@ -576,8 +576,8 @@ def test_while_condition_eval():
     while it.valid:
         it.valid = False
 
-def test_function_assignment(test, device):
 
+def test_function_assignment(test, device):
     @wp.func
     def multiply_by_two(a: float):
         return a * 2.0
@@ -590,9 +590,12 @@ def test_function_assignment(test, device):
 
     input_data = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
     output_data = wp.empty_like(input_data)
-    wp.launch(kernel_function_assignment, dim=input_data.size, inputs=[input_data], outputs=[output_data], device=device)
+    wp.launch(
+        kernel_function_assignment, dim=input_data.size, inputs=[input_data], outputs=[output_data], device=device
+    )
     expected_output = np.array([2.0, 4.0, 6.0], dtype=np.float32)
     assert_np_equal(output_data.numpy(), expected_output)
+
 
 class TestCodeGen(unittest.TestCase):
     pass
@@ -736,13 +739,7 @@ add_function_test(
     name="test_error_mutating_constant_in_dynamic_loop",
     devices=devices,
 )
-add_function_test(
-    TestCodeGen,
-    func=test_function_assignment,
-    name="test_function_assignment",
-    devices=devices
-)
-
+add_function_test(TestCodeGen, func=test_function_assignment, name="test_function_assignment", devices=devices)
 add_kernel_test(TestCodeGen, name="test_call_syntax", kernel=test_call_syntax, dim=1, devices=devices)
 add_kernel_test(TestCodeGen, name="test_shadow_builtin", kernel=test_shadow_builtin, dim=1, devices=devices)
 add_kernel_test(TestCodeGen, name="test_while_condition_eval", kernel=test_while_condition_eval, dim=1, devices=devices)

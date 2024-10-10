@@ -1660,7 +1660,7 @@ class Adjoint:
         if node.id in adj.symbols:
             return adj.symbols[node.id]
         # Check if the node has a warp_func attribute
-        if hasattr(node, 'warp_func'):
+        if hasattr(node, "warp_func"):
             return node.warp_func
 
         obj = adj.resolve_external_reference(node.id)
