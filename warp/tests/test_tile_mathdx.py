@@ -26,7 +26,7 @@ TILE_DIM = 64
 
 @wp.kernel()
 def tile_math_matmul_kernel(
-    ga: wp.array2d(dtype=wp.float64), gb: wp.array2d(dtype=wp.float64), gc: wp.array2d(dtype=wp.float64)
+    ga: wp.array2d(dtype=wp.float16), gb: wp.array2d(dtype=wp.float32), gc: wp.array2d(dtype=wp.float64)
 ):
     i, j = wp.tid()
     a = wp.tile_load(ga, i, j, m=TILE_M, n=TILE_K)
@@ -39,8 +39,8 @@ def tile_math_matmul_kernel(
 def test_tile_math_matmul(test, device):
     rng = np.random.default_rng(42)
 
-    A = rng.random((TILE_M, TILE_K), dtype=np.float64)
-    B = rng.random((TILE_K, TILE_N), dtype=np.float64)
+    A = rng.random((TILE_M, TILE_K), dtype=np.float64).astype(np.float16)
+    B = rng.random((TILE_K, TILE_N), dtype=np.float32)
     C = np.zeros((TILE_M, TILE_N), dtype=np.float64)
 
     A_wp = wp.array(A, requires_grad=True, device=device)
@@ -57,14 +57,14 @@ def test_tile_math_matmul(test, device):
         )
 
     # verify forward pass
-    assert_np_equal(C_wp.numpy(), A @ B)
+    assert_np_equal(C_wp.numpy(), A @ B, tol=1e-2)
 
     adj_C = np.ones_like(C)
 
     tape.backward(grads={C_wp: wp.array(adj_C, device=device)})
 
-    assert_np_equal(A_wp.grad.numpy(), adj_C @ B.T)
-    assert_np_equal(B_wp.grad.numpy(), A.T @ adj_C)
+    assert_np_equal(A_wp.grad.numpy(), adj_C @ B.T, tol=1e-2)
+    assert_np_equal(B_wp.grad.numpy(), A.T @ adj_C, tol=1e-2)
 
 
 @wp.kernel()

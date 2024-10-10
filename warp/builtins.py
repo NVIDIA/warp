@@ -5573,9 +5573,6 @@ def tile_matmul_generic_lto_dispatch_func(
             "tile_matmul() arguments must be tiles of float16, float32 or float64, vec2h, vec2f, vec2d entries"
         )
 
-    if any(arg.type.dtype != out.type.dtype for arg in [a, b]):
-        raise RuntimeError("tile_matmul() arguments must have the same type")
-
     if (a.type.N != b.type.M) or (a.type.M != out.type.M) or (b.type.N != out.type.N):
         raise RuntimeError("tile_matmul(A, B, C) requires sizes of A, B and C to be consistent for a matmul")
 
@@ -5585,34 +5582,21 @@ def tile_matmul_generic_lto_dispatch_func(
     out.type.storage = "shared"
     template_args = [accumulate]
 
-    # Real
-    if out.type.dtype == float16:
-        dtype = "wp::float16"
-        precision = 2  # COMMONDX_PRECISION_F16
-        element_type = 0  # CUBLASDX_TYPE_REAL
-    elif out.type.dtype == float32:
-        dtype = "wp::float32"
-        precision = 3  # COMMONDX_PRECISION_F32
-        element_type = 0  # CUBLASDX_TYPE_REAL
-    elif out.type.dtype == float64:
-        dtype = "wp::float64"
-        precision = 4  # COMMONDX_PRECISION_F64
-        element_type = 0  # CUBLASDX_TYPE_REAL
-    # Complex
-    elif out.type.dtype == vec2h:
-        dtype = "wp::vec2h"
-        precision = 2  # COMMONDX_PRECISION_F16
-        element_type = 1  # CUBLASDX_TYPE_COMPLEX
-    elif out.type.dtype == vec2f:
-        dtype = "wp::vec2f"
-        precision = 3  # COMMONDX_PRECISION_F32
-        element_type = 1  # CUBLASDX_TYPE_COMPLEX
-    elif out.type.dtype == vec2d:
-        dtype = "wp::vec2d"
-        precision = 4  # COMMONDX_PRECISION_F64
-        element_type = 1  # CUBLASDX_TYPE_COMPLEX
-    else:
-        raise RuntimeError("Unsupported datatype")
+    def cublasdx_type_map(dtype):
+        if dtype == float16:
+            return ("wp::float16", 3, 0)
+        if dtype == float32:
+            return ("wp::float32", 5, 0)
+        if dtype == float64:
+            return ("wp::float64", 6, 0)
+        if dtype == vec2h:
+            return ("wp::vec2h", 3, 1)
+        if dtype == vec2f:
+            return ("wp::vec2f", 5, 1)
+        if dtype == vec2d:
+            return ("wp::vec2d", 6, 1)
+        raise RuntimeError("Unsupported input type in tile_matmul")
+
 
     # generate the LTO
     M, K = a.type.M, a.type.N
@@ -5620,7 +5604,17 @@ def tile_matmul_generic_lto_dispatch_func(
     num_threads = options["block_dim"]
     arch = options["output_arch"]
 
-    def make_function(M, N, K, tA, tB):
+    def make_function(M, N, K, adtype, bdtype, cdtype, tA, tB):
+
+        (a_dtype, a_prec, a_type) = cublasdx_type_map(adtype)
+        (b_dtype, b_prec, b_type) = cublasdx_type_map(bdtype)
+        (c_dtype, c_prec, c_type) = cublasdx_type_map(cdtype)
+
+        if (a_type != b_type or a_type != c_type):
+            raise RuntimeError("time_matmul(A, B, C) requires all inputs to be real or complex")
+
+        element_type = a_type
+
         # Warp follows Numpy: matrices are row-major
         # But cuBLASDx follows BLAS: matrices are col-major
         # So we have to flip M <-> N and A <-> B
@@ -5631,7 +5625,7 @@ def tile_matmul_generic_lto_dispatch_func(
                 return 1  # CUBLASDX_TRANSPOSE_MODE_TRANSPOSED
             raise RuntimeError("Invalid transpose mode")
 
-        lto_symbol = f"dot_{M}_{N}_{K}_{tA}_{tB}_{precision}_{element_type}"
+        lto_symbol = f"dot_{M}_{N}_{K}_{tA}_{tB}_{a_prec}_{b_prec}_{c_prec}_{element_type}"
 
         # early out if LTO for this combination already exists for this module
         if lto_symbol in builder.ltoirs:
@@ -5650,7 +5644,9 @@ def tile_matmul_generic_lto_dispatch_func(
             N,
             M,
             K,
-            precision,
+            b_prec,
+            a_prec,
+            c_prec,
             element_type,
             make_transpose(tB),
             make_transpose(tA),
@@ -5663,7 +5659,7 @@ def tile_matmul_generic_lto_dispatch_func(
                 lto_code = f.read()
 
             builder.ltoirs[lto_symbol] = lto_code
-            builder.ltoirs_decl[lto_symbol] = f"void {lto_symbol}({dtype}, {dtype}*, {dtype}*, {dtype}, {dtype}*);"
+            builder.ltoirs_decl[lto_symbol] = f"void {lto_symbol}({c_dtype}, {b_dtype}*, {a_dtype}*, {c_dtype}, {c_dtype}*);"
 
             return lto_symbol, lto_code
 
@@ -5683,13 +5679,16 @@ def tile_matmul_generic_lto_dispatch_func(
     b_layout = tile_layout_mode(b.type)
     c_layout = tile_layout_mode(out.type)
 
-    (fun_forward, lto_forward) = make_function(M, N, K, a_layout, b_layout)  #    C += A * B
+    #    C += A * B
+    (fun_forward, lto_forward) = make_function(M, N, K, a.type.dtype, b.type.dtype, out.type.dtype, a_layout, b_layout) 
+    # adjA += adjC * B^T
     (fun_backward_A, lto_backward_A) = make_function(
-        M, K, N, c_layout, tile_flip_layout(b_layout)
-    )  # adjA += adjC * B^T
+        M, K, N, out.type.dtype, b.type.dtype, a.type.dtype, c_layout, tile_flip_layout(b_layout)
+    )
+    # adjB += A^T * adjC
     (fun_backward_B, lto_backward_B) = make_function(
-        K, N, M, tile_flip_layout(a_layout), c_layout
-    )  # adjB += A^T * adjC
+        K, N, M, a.type.dtype, out.type.dtype, b.type.dtype, tile_flip_layout(a_layout), c_layout
+    )  
 
     return (
         (
@@ -5803,10 +5802,10 @@ def tile_fft_generic_lto_dispatch_func(
 
     if inout.type.dtype == vec2f:
         dtype = "wp::vec2f"
-        precision = 3  # COMMONDX_PRECISION_F32
+        precision = 5  # COMMONDX_PRECISION_F32
     elif inout.type.dtype == vec2d:
         dtype = "wp::vec2d"
-        precision = 4  # COMMONDX_PRECISION_F64
+        precision = 6  # COMMONDX_PRECISION_F64
     else:
         raise RuntimeError("Unsupported datatype")
 
