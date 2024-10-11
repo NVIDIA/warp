@@ -39,6 +39,8 @@ from warp.types import transform, transformh, transformf, transformd
 from warp.types import spatial_vector, spatial_vectorh, spatial_vectorf, spatial_vectord
 from warp.types import spatial_matrix, spatial_matrixh, spatial_matrixf, spatial_matrixd
 
+from warp.types import Int, Float, Scalar
+
 from warp.types import Bvh, Mesh, HashGrid, Volume, MarchingCubes
 from warp.types import BvhQuery, HashGridQuery, MeshQueryAABB, MeshQueryPoint, MeshQueryRay
 
