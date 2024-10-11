@@ -22,6 +22,7 @@
 
 - Fix `iter_reverse()` not working as expected for ranges with steps other than 1 ([GH-311](https://github.com/NVIDIA/warp/issues/311)).
 
+- Fix `ModelBuilder.add_builder(builder)` to correctly update `articulation_start` and thereby `articulation_count` when `builder` contains more than one articulation
 
 ## [1.4.0] - 2024-10-01
 
