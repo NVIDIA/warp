@@ -1404,9 +1404,8 @@ class ModelBuilder:
             self.joint_X_p.extend(joint_X_p)
             self.joint_q.extend(joint_q)
 
-            self.add_articulation()
-
             # offset the indices
+            self.articulation_start.extend([a + self.joint_count for a in builder.articulation_start])
             self.joint_parent.extend([p + self.joint_count if p != -1 else -1 for p in builder.joint_parent])
             self.joint_child.extend([c + self.joint_count for c in builder.joint_child])
 
