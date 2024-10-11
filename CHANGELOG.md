@@ -14,6 +14,14 @@
 - Fix robustness to very low desired tolerance in `wp.fem.utils.symmetric_eigenvalues_qr`
 - Fix invalid code generation error messages when nesting dynamic and static for-loops
 - Fix caching of kernels with static expressions
+- Expose a `reversed()` built-in for iterators.
+
+### Changed
+
+### Fixed
+
+- Fix `iter_reverse()` not working as expected for ranges with steps other than 1 ([GH-311](https://github.com/NVIDIA/warp/issues/311)).
+
 
 ## [1.4.0] - 2024-10-01
 

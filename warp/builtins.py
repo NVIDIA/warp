@@ -2387,6 +2387,16 @@ add_builtin(
     "iter_next", input_types={"query": mesh_query_aabb_t}, value_type=int, group="Utility", export=False, hidden=True
 )
 
+add_builtin(
+    "reversed",
+    input_types={"range": range_t},
+    value_type=range_t,
+    native_func="iter_reverse",
+    group="Utility",
+    doc="""Returns the range in reversed order.""",
+    export=False,
+)
+
 # ---------------------------------
 # Volumes
 
