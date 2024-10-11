@@ -157,6 +157,19 @@ class TestModel(unittest.TestCase):
         assert builder.body_mass == [1.0, 4.0]
         assert builder.body_inv_mass == [1.0, 0.25]
 
+        # create another builder, test add_builder function
+        builder2 = ModelBuilder()
+        builder2.add_builder(builder)
+        assert builder2.articulation_count == builder.articulation_count
+        assert builder2.joint_count == builder.joint_count
+        assert builder2.body_count == builder.body_count
+        assert builder2.shape_count == builder.shape_count
+        assert builder2.articulation_start == builder.articulation_start
+        # add the same builder again
+        builder2.add_builder(builder)
+        assert builder2.articulation_count == 2 * builder.articulation_count
+        assert builder2.articulation_start == [0, 1, 2, 3]
+
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
