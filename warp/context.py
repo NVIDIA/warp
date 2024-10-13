@@ -5824,9 +5824,6 @@ def export_stubs(file):  # pragma: no cover
     print('Cols = TypeVar("Cols", bound=int)', file=file)
     print('DType = TypeVar("DType")', file=file)
 
-    print('Int = TypeVar("Int")', file=file)
-    print('Float = TypeVar("Float")', file=file)
-    print('Scalar = TypeVar("Scalar")', file=file)
     print("Vector = Generic[Length, Scalar]", file=file)
     print("Matrix = Generic[Rows, Cols, Scalar]", file=file)
     print("Quaternion = Generic[Float]", file=file)
