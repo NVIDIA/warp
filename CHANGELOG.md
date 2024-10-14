@@ -18,6 +18,7 @@
 - Expose a `reversed()` built-in for iterators.
 - Fix `iter_reverse()` not working as expected for ranges with steps other than 1 ([GH-311](https://github.com/NVIDIA/warp/issues/311)).
 - Fix `ModelBuilder.add_builder(builder)` to correctly update `articulation_start` and thereby `articulation_count` when `builder` contains more than one articulation.
+- Re-introduced the `wp.rand*()`, `wp.sample*()`, and `wp.poisson()` onto the Python scope to revert a breaking change.
 
 ## [1.4.0] - 2024-10-01
 
