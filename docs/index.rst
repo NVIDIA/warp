@@ -356,6 +356,7 @@ Full Table of Contents
     limitations
     modules/contribution_guide
     faq
+    changelog
 
 .. toctree::
     :maxdepth: 2
