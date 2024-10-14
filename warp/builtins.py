@@ -2768,7 +2768,6 @@ add_builtin(
     "rand_init",
     input_types={"seed": int},
     value_type=uint32,
-    export=False,
     group="Random",
     doc="Initialize a new random number generator given a user-defined seed. Returns a 32-bit integer representing the RNG state.",
 )
@@ -2777,7 +2776,6 @@ add_builtin(
     "rand_init",
     input_types={"seed": int, "offset": int},
     value_type=uint32,
-    export=False,
     group="Random",
     doc="""Initialize a new random number generator given a user-defined seed and an offset.
 
@@ -2789,7 +2787,6 @@ add_builtin(
     "randi",
     input_types={"state": uint32},
     value_type=int,
-    export=False,
     group="Random",
     doc="Return a random integer in the range [0, 2^32).",
 )
@@ -2797,7 +2794,6 @@ add_builtin(
     "randi",
     input_types={"state": uint32, "low": int, "high": int},
     value_type=int,
-    export=False,
     group="Random",
     doc="Return a random integer between [low, high).",
 )
@@ -2805,7 +2801,6 @@ add_builtin(
     "randf",
     input_types={"state": uint32},
     value_type=float,
-    export=False,
     group="Random",
     doc="Return a random float between [0.0, 1.0).",
 )
@@ -2813,24 +2808,17 @@ add_builtin(
     "randf",
     input_types={"state": uint32, "low": float, "high": float},
     value_type=float,
-    export=False,
     group="Random",
     doc="Return a random float between [low, high).",
 )
 add_builtin(
-    "randn",
-    input_types={"state": uint32},
-    value_type=float,
-    export=False,
-    group="Random",
-    doc="Sample a normal distribution.",
+    "randn", input_types={"state": uint32}, value_type=float, group="Random", doc="Sample a normal distribution."
 )
 
 add_builtin(
     "sample_cdf",
     input_types={"state": uint32, "cdf": array(dtype=float)},
     value_type=int,
-    export=False,
     group="Random",
     doc="Inverse-transform sample a cumulative distribution function.",
 )
@@ -2838,7 +2826,6 @@ add_builtin(
     "sample_triangle",
     input_types={"state": uint32},
     value_type=vec2,
-    export=False,
     group="Random",
     doc="Uniformly sample a triangle. Returns sample barycentric coordinates.",
 )
@@ -2846,7 +2833,6 @@ add_builtin(
     "sample_unit_ring",
     input_types={"state": uint32},
     value_type=vec2,
-    export=False,
     group="Random",
     doc="Uniformly sample a ring in the xy plane.",
 )
@@ -2854,7 +2840,6 @@ add_builtin(
     "sample_unit_disk",
     input_types={"state": uint32},
     value_type=vec2,
-    export=False,
     group="Random",
     doc="Uniformly sample a disk in the xy plane.",
 )
@@ -2862,7 +2847,6 @@ add_builtin(
     "sample_unit_sphere_surface",
     input_types={"state": uint32},
     value_type=vec3,
-    export=False,
     group="Random",
     doc="Uniformly sample a unit sphere surface.",
 )
@@ -2870,7 +2854,6 @@ add_builtin(
     "sample_unit_sphere",
     input_types={"state": uint32},
     value_type=vec3,
-    export=False,
     group="Random",
     doc="Uniformly sample a unit sphere.",
 )
@@ -2878,7 +2861,6 @@ add_builtin(
     "sample_unit_hemisphere_surface",
     input_types={"state": uint32},
     value_type=vec3,
-    export=False,
     group="Random",
     doc="Uniformly sample a unit hemisphere surface.",
 )
@@ -2886,7 +2868,6 @@ add_builtin(
     "sample_unit_hemisphere",
     input_types={"state": uint32},
     value_type=vec3,
-    export=False,
     group="Random",
     doc="Uniformly sample a unit hemisphere.",
 )
@@ -2894,7 +2875,6 @@ add_builtin(
     "sample_unit_square",
     input_types={"state": uint32},
     value_type=vec2,
-    export=False,
     group="Random",
     doc="Uniformly sample a unit square.",
 )
@@ -2902,7 +2882,6 @@ add_builtin(
     "sample_unit_cube",
     input_types={"state": uint32},
     value_type=vec3,
-    export=False,
     group="Random",
     doc="Uniformly sample a unit cube.",
 )
@@ -2911,7 +2890,6 @@ add_builtin(
     "poisson",
     input_types={"state": uint32, "lam": float},
     value_type=uint32,
-    export=False,
     group="Random",
     doc="""Generate a random sample from a Poisson distribution.
 
