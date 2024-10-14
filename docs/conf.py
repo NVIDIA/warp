@@ -34,6 +34,7 @@ release = version
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    "myst_parser",  # Parse markdown files
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",  # Convert docstrings to reStructuredText
     "sphinx.ext.intersphinx",
@@ -72,6 +73,11 @@ intersphinx_mapping = {
 
 extlinks = {
     "github": ("https://github.com/NVIDIA/warp/blob/main/%s", "%s"),
+}
+
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".md": "markdown",
 }
 
 
