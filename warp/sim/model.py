@@ -641,7 +641,7 @@ class Model:
         joint_dof_count (int): Total number of velocity degrees of freedom of all joints in the system
         joint_coord_count (int): Total number of position degrees of freedom of all joints in the system
 
-        particle_coloring (list of array): The coloring of all the particles, used for VBD's Gauss-Seidel interation.
+        particle_coloring (list of array): The coloring of all the particles, used for VBD's Gauss-Seidel iteration.
 
         device (wp.Device): Device on which the Model was allocated
 
@@ -1404,9 +1404,8 @@ class ModelBuilder:
             self.joint_X_p.extend(joint_X_p)
             self.joint_q.extend(joint_q)
 
-            self.add_articulation()
-
             # offset the indices
+            self.articulation_start.extend([a + self.joint_count for a in builder.articulation_start])
             self.joint_parent.extend([p + self.joint_count if p != -1 else -1 for p in builder.joint_parent])
             self.joint_child.extend([c + self.joint_count for c in builder.joint_child])
 

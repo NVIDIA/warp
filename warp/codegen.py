@@ -777,6 +777,9 @@ def func_match_args(func, arg_types, kwarg_types):
 
 
 def get_arg_type(arg: Union[Var, Any]):
+    if isinstance(arg, str):
+        return str
+
     if isinstance(arg, Sequence):
         return tuple(get_arg_type(x) for x in arg)
 
@@ -936,7 +939,7 @@ class Adjoint:
 
         adj.return_var = None  # return type for function or kernel
         adj.loop_symbols = []  # symbols at the start of each loop
-        adj.loop_const_iter_symbols = set()  # iteration variables (constant) for static loops
+        adj.loop_const_iter_symbols = []  # iteration variables (constant) for static loops
 
         # blocks
         adj.blocks = [Block()]
@@ -1846,7 +1849,7 @@ class Adjoint:
         # detect symbols with conflicting definitions (assigned inside the for loop)
         for items in symbols.items():
             sym = items[0]
-            if adj.loop_const_iter_symbols is not None and sym in adj.loop_const_iter_symbols:
+            if adj.is_constant_iter_symbol(sym):
                 # ignore constant overwriting in for-loops if it is a loop iterator
                 # (it is no problem to unroll static loops multiple times in sequence)
                 continue
@@ -1998,11 +2001,21 @@ class Adjoint:
         return range_call
 
     def begin_record_constant_iter_symbols(adj):
-        if adj.loop_const_iter_symbols is None:
-            adj.loop_const_iter_symbols = set()
+        if len(adj.loop_const_iter_symbols) > 0:
+            adj.loop_const_iter_symbols.append(adj.loop_const_iter_symbols[-1])
+        else:
+            adj.loop_const_iter_symbols.append(set())
 
     def end_record_constant_iter_symbols(adj):
-        adj.loop_const_iter_symbols = None
+        if len(adj.loop_const_iter_symbols) > 0:
+            adj.loop_const_iter_symbols.pop()
+
+    def record_constant_iter_symbol(adj, sym):
+        if len(adj.loop_const_iter_symbols) > 0:
+            adj.loop_const_iter_symbols[-1].add(sym)
+
+    def is_constant_iter_symbol(adj, sym):
+        return len(adj.loop_const_iter_symbols) > 0 and sym in adj.loop_const_iter_symbols[-1]
 
     def emit_For(adj, node):
         # try and unroll simple range() statements that use constant args
@@ -2010,9 +2023,8 @@ class Adjoint:
 
         if isinstance(unroll_range, range):
             const_iter_sym = node.target.id
-            if adj.loop_const_iter_symbols is not None:
-                # prevent constant conflicts in `materialize_redefinitions()`
-                adj.loop_const_iter_symbols.add(const_iter_sym)
+            # prevent constant conflicts in `materialize_redefinitions()`
+            adj.record_constant_iter_symbol(const_iter_sym)
 
             # unroll static for-loop
             for i in unroll_range:

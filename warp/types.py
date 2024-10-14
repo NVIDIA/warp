@@ -2261,13 +2261,22 @@ class array(Array):
             self._requires_grad = False
         else:
             # make sure the given gradient array is compatible
-            if (
-                grad.dtype != self.dtype
-                or grad.shape != self.shape
-                or grad.strides != self.strides
-                or grad.device != self.device
-            ):
-                raise ValueError("The given gradient array is incompatible")
+            if grad.dtype != self.dtype:
+                raise ValueError(
+                    f"The given gradient array is incompatible: expected dtype {self.dtype}, got {grad.dtype}"
+                )
+            if grad.shape != self.shape:
+                raise ValueError(
+                    f"The given gradient array is incompatible: expected shape {self.shape}, got {grad.shape}"
+                )
+            if grad.device != self.device:
+                raise ValueError(
+                    f"The given gradient array is incompatible: expected device {self.device}, got {grad.device}"
+                )
+            if grad.strides != self.strides:
+                raise ValueError(
+                    f"The given gradient array is incompatible: expected strides {self.strides}, got {grad.strides}"
+                )
             self._grad = grad
             self._requires_grad = True
 
@@ -3465,7 +3474,7 @@ class Volume:
         )
 
     def feature_array(self, feature_index: int, dtype=None) -> array:
-        """Returns one the the grid's feature data arrays as a Warp array
+        """Returns one the grid's feature data arrays as a Warp array
 
         Args:
             feature_index: Index of the supplemental data array in the grid
