@@ -3,36 +3,15 @@ import warp as wp
 import warp.examples
 import warp.optim
 
-import torch as tc
+from warp.tests.unittest_utils import *
 
 import math
 import os
 
-from PIL import Image
+# needs to be constant for the whole module
+NUM_THREADS = 32
 
-#wp.config.mode = "debug"
-#wp.config.verify_fp = True
-#wp.config.verify_cuda = True
-
-wp.set_device("cuda:0")
-wp.set_module_options({"fast_math": False})
-
-#wp.clear_kernel_cache()
-
-rng = np.random.default_rng(45)
-
-def assert_equal(result: np.ndarray, expect: np.ndarray, tol=1.e-2):
-    if tol != 0.0:
-        # TODO: Get all tests working without the .flatten()
-        np.testing.assert_allclose(result.flatten(), expect.flatten(), rtol=tol, atol=1.e-2, equal_nan=True)
-    else:
-        # TODO: Get all tests working with strict=True
-        np.testing.assert_array_equal(result, expect)
-
-    return True
-
-
-def create_layer(dim_in, dim_hid, dtype=float):
+def create_layer(rng, dim_in, dim_hid, dtype=float):
 
     w = rng.uniform(-1.0 / np.sqrt(dim_in), 1.0 / np.sqrt(dim_in), (dim_hid, dim_in))
     b = rng.uniform(-1.0 / np.sqrt(dim_in), 1.0 / np.sqrt(dim_in), (dim_hid, 1))
@@ -42,7 +21,7 @@ def create_layer(dim_in, dim_hid, dtype=float):
 
     return (weights, bias)
 
-def create_array(dim_in, dim_hid, dtype=float):
+def create_array(rng, dim_in, dim_hid, dtype=float):
 
     s = rng.uniform(-1.0 / np.sqrt(dim_in), 1.0 / np.sqrt(dim_in), (dim_hid, dim_in))
     a = wp.array(s, dtype=dtype, requires_grad=True)
@@ -50,22 +29,22 @@ def create_array(dim_in, dim_hid, dtype=float):
     return a
 
 
-NUM_FREQ = wp.constant(8)
+def test_multi_layer_nn(test, device):
 
-DIM_IN = wp.constant(4*NUM_FREQ)  # sin,cos for both x,y at each frequenecy
-DIM_HID = 32
-DIM_OUT = 3
+    import torch as tc
 
-NUM_THREADS = 32
+    NUM_FREQ = wp.constant(8)
 
-IMG_WIDTH = NUM_THREADS*16
-IMG_HEIGHT = NUM_THREADS*16
+    DIM_IN = wp.constant(4*NUM_FREQ)  # sin,cos for both x,y at each frequenecy
+    DIM_HID = 32
+    DIM_OUT = 3
 
-BATCH_SIZE = min(1024, int((IMG_WIDTH*IMG_HEIGHT)/8))
+    IMG_WIDTH = NUM_THREADS*8
+    IMG_HEIGHT = NUM_THREADS*8
 
-dtype = wp.float16
+    BATCH_SIZE = min(512, int((IMG_WIDTH*IMG_HEIGHT)/8))
 
-def test_multi_layer_nn():
+    dtype = wp.float16
 
     @wp.func
     def relu(x: dtype):
@@ -90,9 +69,6 @@ def test_multi_layer_nn():
                 loss: wp.array1d(dtype=float),
                 out: wp.array2d(dtype=float)):
 
-        # row, col = wp.tid()
-        # linear = row*IMG_WIDTH + col
-
         linear = batches[wp.tid()]
         row = linear/IMG_WIDTH
         col = linear%IMG_WIDTH
@@ -116,7 +92,7 @@ def test_multi_layer_nn():
             local[s*4 + 2] = dtype(wp.sin(y * scale))
             local[s*4 + 3] = dtype(wp.cos(y * scale))
 
-            # # write input back to array so that torch can use it
+            # write input back to array so that torch can use it
             input[s*4 + 0, linear] = local[s*4 + 0]
             input[s*4 + 1, linear] = local[s*4 + 1]
             input[s*4 + 2, linear] = local[s*4 + 2]
@@ -148,6 +124,7 @@ def test_multi_layer_nn():
         # untile back to SIMT
         output = wp.untile(o)
 
+
         # compute error
         error = wp.vec3(float(output[0]) - reference[0,linear],
                         float(output[1]) - reference[1,linear],
@@ -162,20 +139,26 @@ def test_multi_layer_nn():
             out[i, linear] = float(output[i])
                 
 
+    rng = np.random.default_rng(45)
 
-    weights_0, bias_0 = create_layer(DIM_IN, DIM_HID, dtype=dtype)
-    weights_1, bias_1 = create_layer(DIM_HID, DIM_HID, dtype=dtype)
-    weights_2, bias_2 = create_layer(DIM_HID, DIM_HID, dtype=dtype)
-    weights_3, bias_3 = create_layer(DIM_HID, DIM_OUT, dtype=dtype)
+    weights_0, bias_0 = create_layer(rng, DIM_IN, DIM_HID, dtype=dtype)
+    weights_1, bias_1 = create_layer(rng, DIM_HID, DIM_HID, dtype=dtype)
+    weights_2, bias_2 = create_layer(rng, DIM_HID, DIM_HID, dtype=dtype)
+    weights_3, bias_3 = create_layer(rng, DIM_HID, DIM_OUT, dtype=dtype)
 
-    input = create_array(IMG_WIDTH*IMG_HEIGHT, DIM_IN, dtype=dtype)
-    output = create_array(IMG_WIDTH*IMG_HEIGHT, DIM_OUT)
+    input = create_array(rng, IMG_WIDTH*IMG_HEIGHT, DIM_IN, dtype=dtype)
+    output = create_array(rng, IMG_WIDTH*IMG_HEIGHT, DIM_OUT)
 
-    # # reference 
+    # generate reference image
+    from PIL import Image
     reference_path = os.path.join(wp.examples.get_asset_directory(), "pixel.jpg")
     with Image.open(reference_path) as im:
-        reference_image = np.asarray(im.resize((IMG_WIDTH, IMG_HEIGHT)).convert("RGB")) / 255.0    
-    reference = wp.array(reference_image.reshape(IMG_WIDTH*IMG_HEIGHT, 3).T, dtype=float)
+        reference_image = np.asarray(im.resize((IMG_WIDTH, IMG_HEIGHT)).convert("RGB"))
+        reference_np = reference_image.reshape(IMG_WIDTH*IMG_HEIGHT, 3).T
+    np.save(os.path.join(os.path.dirname(__file__), "assets/pixel.npy"), reference_np, allow_pickle=True)
+
+    reference_np =  np.load(os.path.join(os.path.dirname(__file__), "assets/pixel.npy"), allow_pickle=True)/255.0
+    reference = wp.array(reference_np, dtype=float)
 
     loss = wp.zeros(1, dtype=float, requires_grad=True)
 
@@ -186,20 +169,19 @@ def test_multi_layer_nn():
 
     optimizer_grads = [p.grad.flatten() for p in params]
     optimizer_inputs = [p.flatten() for p in params]
-    optimizer = warp.optim.Adam(optimizer_inputs, lr=0.001)
+    optimizer = warp.optim.Adam(optimizer_inputs, lr=0.01)
 
     num_batches = int((IMG_WIDTH*IMG_HEIGHT)/BATCH_SIZE)
-    max_iters = 5000
-    max_epochs = int(max_iters/num_batches)
+    max_epochs = 30
 
     # create randomized batch indices
     batches = np.arange(0, IMG_WIDTH*IMG_HEIGHT, dtype=np.int32)
     rng.shuffle(batches)
     batches = wp.array(batches)
          
-    with wp.ScopedTimer("Training"):
+    with wp.ScopedTimer("Training", active=False):
 
-        for i in range(max_epochs):
+        for epoch in range(max_epochs):
             
             for b in range(0, IMG_WIDTH*IMG_HEIGHT, BATCH_SIZE):
 
@@ -222,8 +204,10 @@ def test_multi_layer_nn():
 
                 tape.backward(loss)
 
-                verify = False
-                if verify:
+                # check outputs + grads on the first few epoch only
+                # since this is a relatively slow operation
+                verify = True
+                if verify and epoch < 3:
 
                     indices = batches[b:b+BATCH_SIZE].numpy()
 
@@ -233,7 +217,7 @@ def test_multi_layer_nn():
                     z_np = np.maximum(weights_3.numpy()@z_np + bias_3.numpy(), 0.0)
 
                     # test numpy foward
-                    assert_equal(output.numpy()[:,indices], z_np)
+                    assert_np_equal(output.numpy()[:,indices], z_np, tol=1.e-2)
 
                     # torch
                     input_tc = tc.from_numpy(input.numpy()[:, indices]).requires_grad_(True)
@@ -261,47 +245,42 @@ def test_multi_layer_nn():
                     l_tc.backward()
 
                     # test torch
-                    assert_equal(z_tc.cpu().detach().numpy(), output.numpy()[:, indices])
-                    assert_equal(weights_0.grad.numpy(), weights_0_tc.grad.cpu().detach().numpy())
-                    assert_equal(bias_0.grad.numpy(), bias_0_tc.grad.cpu().detach().numpy())
-                    assert_equal(weights_1.grad.numpy(), weights_1_tc.grad.cpu().detach().numpy())
-                    assert_equal(bias_1.grad.numpy(), bias_1_tc.grad.cpu().detach().numpy())
-                    assert_equal(weights_2.grad.numpy(), weights_2_tc.grad.cpu().detach().numpy())
-                    assert_equal(bias_2.grad.numpy(), bias_2_tc.grad.cpu().detach().numpy())
-                    assert_equal(weights_3.grad.numpy(), weights_3_tc.grad.cpu().detach().numpy())
-                    assert_equal(bias_3.grad.numpy(), bias_3_tc.grad.cpu().detach().numpy())
+                    assert_np_equal(z_tc.cpu().detach().numpy(), output.numpy()[:, indices], tol=1.e-2)
+                    assert_np_equal(weights_0.grad.numpy(), weights_0_tc.grad.cpu().detach().numpy(), tol=1.e-2)
+                    assert_np_equal(bias_0.grad.numpy(), bias_0_tc.grad.cpu().detach().numpy(), tol=1.e-2)
+                    assert_np_equal(weights_1.grad.numpy(), weights_1_tc.grad.cpu().detach().numpy(), tol=1.e-2)
+                    assert_np_equal(bias_1.grad.numpy(), bias_1_tc.grad.cpu().detach().numpy(), tol=1.e-2)
+                    assert_np_equal(weights_2.grad.numpy(), weights_2_tc.grad.cpu().detach().numpy(), tol=1.e-2)
+                    assert_np_equal(bias_2.grad.numpy(), bias_2_tc.grad.cpu().detach().numpy(), tol=1.e-2)
+                    assert_np_equal(weights_3.grad.numpy(), weights_3_tc.grad.cpu().detach().numpy(), tol=1.e-2)
+                    assert_np_equal(bias_3.grad.numpy(), bias_3_tc.grad.cpu().detach().numpy(), tol=1.e-2)
 
-                # cosine weighted decay
-                optimizer.lr = 0.5*0.01*(1.0 + math.cos(float(i)/float(max_iters)*math.pi))
                 optimizer.step(optimizer_grads)
-
                 tape.zero()
 
-            print(f"Epoch: {i} Loss: {loss.numpy()}")
+            #print(f"Epoch: {epoch} Loss: {loss.numpy()}")
 
-              
+    # predicted_image = output.numpy().T.reshape(IMG_WIDTH, IMG_HEIGHT, 3)
+    # predicted_image = (predicted_image * 255).astype(np.uint8)
 
-    predicted_image = output.numpy().T.reshape(IMG_WIDTH, IMG_HEIGHT, 3)
-    predicted_image = (predicted_image * 255).astype(np.uint8)
+    # predicted_image_pil = Image.fromarray(predicted_image)
+    # predicted_image_pil.save("test_tile_mlp_wp.jpg")
 
-    predicted_image_pil = Image.fromarray(predicted_image)
-    predicted_image_pil.save("test_tile_mlp_wp.jpg")
-
-    return
-
-
-    # print(input)
-    # print(output)
-
-    # numpy
-
-
-    
+    # initial loss is ~0.061
+    assert loss.numpy()[0] < 0.002
 
 
 
 
-def test_single_layer_nn():
+def test_single_layer_nn(test, device):
+
+    import torch as tc
+
+    DIM_IN = 8
+    DIM_HID = 32
+    DIM_OUT = 16
+
+    NUM_BLOCKS = 56
 
     @wp.func
     def relu(x: float):
@@ -325,40 +304,72 @@ def test_single_layer_nn():
         wp.tile_store(out, 0, i, o)
 
 
-    weights, bias = create_layer(DIM_IN, DIM_OUT, dtype=float)
+    with wp.ScopedDevice(device):
 
-    input = create_array(NUM_THREADS*NUM_BLOCKS, DIM_IN)
-    output = create_array(NUM_THREADS*NUM_BLOCKS, DIM_OUT)
+        rng = np.random.default_rng(45)
 
-    with wp.Tape() as tape:
-        wp.launch_tiled(compute, dim=[NUM_BLOCKS], inputs=[input, weights, bias, output], block_dim=NUM_THREADS)
+        # single layer weights, bias
+        weights, bias = create_layer(rng, DIM_IN, DIM_OUT, dtype=float)
 
-    output.grad = wp.ones_like(output)
-    tape.backward()    
+        input = create_array(rng, NUM_THREADS*NUM_BLOCKS, DIM_IN)
+        output = create_array(rng, NUM_THREADS*NUM_BLOCKS, DIM_OUT)
 
+        with wp.Tape() as tape:
+            wp.launch_tiled(compute, dim=[NUM_BLOCKS], inputs=[input, weights, bias, output], block_dim=NUM_THREADS)
 
-    # print(input)
-    # print(output)
+        output.grad = wp.ones_like(output)
+        tape.backward()    
 
-    # numpy
-    output_np = np.maximum(weights.numpy()@input.numpy() + bias.numpy(), 0.0)
+        # numpy
+        output_np = np.maximum(weights.numpy()@input.numpy() + bias.numpy(), 0.0)
 
-    # test numpy foward
-    print(np.allclose(output.numpy(), output_np))
-
-
-    # torch
-    weights_tc = tc.from_numpy(weights.numpy()).requires_grad_(True)   # use .numpy() to avoid any memory aliasing
-    input_tc = tc.from_numpy(input.numpy()).requires_grad_(True)
-    bias_tc = tc.from_numpy(bias.numpy()).requires_grad_(True)
-
-    output_tc = tc.clamp(weights_tc@input_tc + bias_tc, min=0.0)
-    output_tc.backward(tc.ones_like(output_tc))
-
-    # test torch
-    print(np.allclose(output_tc.detach().numpy(), output.numpy()))
-    print(np.allclose(input.grad.numpy(), input_tc.grad.detach().numpy()))
+        # test numpy foward
+        assert_np_equal(output.numpy(), output_np, tol=1.e-2)
 
 
-#test_single_layer_nn()
-test_multi_layer_nn()
+        # torch
+        weights_tc = tc.from_numpy(weights.numpy()).requires_grad_(True)   # use .numpy() to avoid any memory aliasing
+        input_tc = tc.from_numpy(input.numpy()).requires_grad_(True)
+        bias_tc = tc.from_numpy(bias.numpy()).requires_grad_(True)
+
+        output_tc = tc.clamp(weights_tc@input_tc + bias_tc, min=0.0)
+        output_tc.backward(tc.ones_like(output_tc))
+
+        # test torch
+        assert_np_equal(output_tc.detach().numpy(), output.numpy(), tol=1.e-2)
+        assert_np_equal(input.grad.numpy(), input_tc.grad.detach().numpy(), tol=1.e-2)
+
+
+class TestTileMLP(unittest.TestCase):
+    pass
+
+test_devices = get_test_devices()
+
+try:
+    import torch
+
+    # check which Warp devices work with Torch
+    # CUDA devices may fail if Torch was not compiled with CUDA support
+    torch_compatible_devices = []
+    torch_compatible_cuda_devices = []
+
+    for d in test_devices:
+        try:
+            t = torch.arange(10, device=wp.device_to_torch(d))
+            t += 1
+            torch_compatible_devices.append(d)
+            if d.is_cuda:
+                torch_compatible_cuda_devices.append(d)
+        except Exception as e:
+            print(f"Skipping Torch tests on device '{d}' due to exception: {e}")
+
+    add_function_test(TestTileMLP, "test_single_layer_nn", test_single_layer_nn, check_output=False, devices=torch_compatible_cuda_devices)
+    add_function_test(TestTileMLP, "test_multi_layer_nn", test_multi_layer_nn, check_output=False, devices=torch_compatible_cuda_devices)
+
+except Exception as e:
+    print(f"Skipping Torch tests due to exception: {e}")
+
+
+if __name__ == "__main__":
+#    wp.clear_kernel_cache()
+    unittest.main(verbosity=2, failfast=True)
