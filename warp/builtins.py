@@ -5713,11 +5713,11 @@ def tile_matmul_generic_lto_dispatch_func(
 
     #    C += A * B
     (fun_forward, lto_forward) = make_function(M, N, K, a.type.dtype, b.type.dtype, out.type.dtype, a.type.layout, b.type.layout, out.type.layout) 
-    # adjA += adjC * B^T - Tranpose ~= flipped layout
+    # adjA += adjC * B^T - Transpose ~= flipped layout
     (fun_backward_A, lto_backward_A) = make_function(
         M, K, N, out.type.dtype, b.type.dtype, a.type.dtype, out.type.layout, tile_flip_layout(b.type.layout), a.type.layout
     )
-    # adjB += A^T * adjC - Tranpose ~= flipped layout
+    # adjB += A^T * adjC - Transpose ~= flipped layout
     (fun_backward_B, lto_backward_B) = make_function(
         K, N, M, a.type.dtype, out.type.dtype, b.type.dtype, tile_flip_layout(a.type.layout), out.type.layout, b.type.layout
     )  
