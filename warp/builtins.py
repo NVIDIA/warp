@@ -5624,6 +5624,7 @@ def tile_matmul_generic_lto_dispatch_func(
     out.type.storage = "shared"
     template_args = [accumulate]
 
+    # Maps Python/Warp types to C++ types and enums
     def cublasdx_type_map(dtype):
         if dtype == float16:
             return ("wp::float16", 3, 0)
@@ -5638,7 +5639,13 @@ def tile_matmul_generic_lto_dispatch_func(
         if dtype == vec2d:
             return ("wp::vec2d", 6, 1)
         raise RuntimeError("Unsupported input type in tile_matmul")
-
+    
+    def cublasdx_arrangement_map(layout):
+        if layout == "colmajor":
+            return 0 # CUBLASDX_ARRANGEMENT_COL_MAJOR
+        if layout == "rowmajor":
+            return 1 # CUBLASDX_ARRANGEMENT_ROW_MAJOR
+        raise RuntimeError("Unsupported layout in tile_matmul")
 
     # generate the LTO
     M, K = a.type.M, a.type.N
@@ -5646,28 +5653,20 @@ def tile_matmul_generic_lto_dispatch_func(
     num_threads = options["block_dim"]
     arch = options["output_arch"]
 
-    def make_function(M, N, K, adtype, bdtype, cdtype, tA, tB):
+    def make_function(M, N, K, adtype, bdtype, cdtype, alayout, blayout, clayout):
 
         (a_dtype, a_prec, a_type) = cublasdx_type_map(adtype)
         (b_dtype, b_prec, b_type) = cublasdx_type_map(bdtype)
         (c_dtype, c_prec, c_type) = cublasdx_type_map(cdtype)
+        a_arrangement = cublasdx_arrangement_map(alayout)
+        b_arrangement = cublasdx_arrangement_map(blayout)
+        c_arrangement = cublasdx_arrangement_map(clayout)
 
         if (a_type != b_type or a_type != c_type):
             raise RuntimeError("time_matmul(A, B, C) requires all inputs to be real or complex")
-
         element_type = a_type
 
-        # Warp follows Numpy: matrices are row-major
-        # But cuBLASDx follows BLAS: matrices are col-major
-        # So we have to flip M <-> N and A <-> B
-        def make_transpose(t):
-            if t == "N":
-                return 0  # CUBLASDX_TRANSPOSE_MODE_NON_TRANSPOSED
-            elif t == "T":
-                return 1  # CUBLASDX_TRANSPOSE_MODE_TRANSPOSED
-            raise RuntimeError("Invalid transpose mode")
-
-        lto_symbol = f"dot_{M}_{N}_{K}_{tA}_{tB}_{a_prec}_{b_prec}_{c_prec}_{element_type}"
+        lto_symbol = f"dot_{M}_{N}_{K}_{a_arrangement}_{b_arrangement}_{c_arrangement}_{a_prec}_{b_prec}_{c_prec}_{element_type}"
 
         # early out if LTO for this combination already exists for this module
         if lto_symbol in builder.ltoirs:
@@ -5683,15 +5682,16 @@ def tile_matmul_generic_lto_dispatch_func(
             include_dirs,
             get_mathdx_include_dirs(),
             arch,
-            N,
             M,
+            N,
             K,
-            b_prec,
             a_prec,
+            b_prec,
             c_prec,
             element_type,
-            make_transpose(tB),
-            make_transpose(tA),
+            a_arrangement,
+            b_arrangement,
+            c_arrangement,
             num_threads,
         )
         if not result:
@@ -5701,35 +5701,25 @@ def tile_matmul_generic_lto_dispatch_func(
                 lto_code = f.read()
 
             builder.ltoirs[lto_symbol] = lto_code
-            builder.ltoirs_decl[lto_symbol] = f"void {lto_symbol}({c_dtype}, {b_dtype}*, {a_dtype}*, {c_dtype}, {c_dtype}*);"
+            builder.ltoirs_decl[lto_symbol] = f"void {lto_symbol}({c_dtype}, {a_dtype}*, {b_dtype}*, {c_dtype}, {c_dtype}*);"
 
             return lto_symbol, lto_code
 
-    def tile_layout_mode(tile):
-        if tile.layout == "rowmajor":
-            return "N"
-        if tile.layout == "colmajor":
-            return "T"
-
     def tile_flip_layout(layout):
-        if layout == "N":
-            return "T"
-        elif layout == "T":
-            return "N"
-
-    a_layout = tile_layout_mode(a.type)
-    b_layout = tile_layout_mode(b.type)
-    c_layout = tile_layout_mode(out.type)
+        if layout == "rowmajor":
+            return "colmajor"
+        elif layout == "colmajor":
+            return "rowmajor"
 
     #    C += A * B
-    (fun_forward, lto_forward) = make_function(M, N, K, a.type.dtype, b.type.dtype, out.type.dtype, a_layout, b_layout) 
-    # adjA += adjC * B^T
+    (fun_forward, lto_forward) = make_function(M, N, K, a.type.dtype, b.type.dtype, out.type.dtype, a.type.layout, b.type.layout, out.type.layout) 
+    # adjA += adjC * B^T - Tranpose ~= flipped layout
     (fun_backward_A, lto_backward_A) = make_function(
-        M, K, N, out.type.dtype, b.type.dtype, a.type.dtype, c_layout, tile_flip_layout(b_layout)
+        M, K, N, out.type.dtype, b.type.dtype, a.type.dtype, out.type.layout, tile_flip_layout(b.type.layout), a.type.layout
     )
-    # adjB += A^T * adjC
+    # adjB += A^T * adjC - Tranpose ~= flipped layout
     (fun_backward_B, lto_backward_B) = make_function(
-        K, N, M, a.type.dtype, out.type.dtype, b.type.dtype, tile_flip_layout(a_layout), c_layout
+        K, N, M, a.type.dtype, out.type.dtype, b.type.dtype, tile_flip_layout(a.type.layout), out.type.layout, b.type.layout
     )  
 
     return (

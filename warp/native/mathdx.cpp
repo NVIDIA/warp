@@ -45,8 +45,9 @@ WP_API bool cuda_compile_dot(
                              int precision_B,
                              int precision_C,
                              int type,
-                             int tA,
-                             int tB,
+                             int a_arrangement,
+                             int b_arrangement,
+                             int c_arrangement,
                              int num_threads)
 {
     printf("CUDA is disabled and/or Warp was not compiled with MathDx support.\n");

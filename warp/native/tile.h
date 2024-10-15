@@ -1296,14 +1296,13 @@ void adj_tile_extract(Tile& t, int i, int j, AdjTile& adj_t, int adj_i, int adj_
     adj_t.adj_extract(i, j, adj_ret);
 }
 
-// cuBLASDx follows the BLAS convention: matrices are col-major, so we swap A & B in the code below
 template <int Add, typename Fwd, typename AdjA, typename AdjB, typename TileA, typename TileB, typename TileC>
 TileC& tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, TileA& A, TileB& B, TileC& C)
 {       
     using T = typename TileA::Type;
 
     WP_TILE_SYNC();
-    fun_forward(T(1.0), B.data, A.data, T(Add), C.data);
+    fun_forward(T(1.0), A.data, B.data, T(Add), C.data);
     WP_TILE_SYNC();
     
     return C;
@@ -1317,8 +1316,8 @@ void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, 
     using T = typename TileA::Type;    
 
     WP_TILE_SYNC();
-    fun_backward_A(T(1.0), B.data, adj_C.data, T(1.0), adj_A.data);
-    fun_backward_B(T(1.0), adj_C.data, A.data, T(1.0), adj_B.data);
+    fun_backward_A(T(1.0), adj_C.data, B.data, T(1.0), adj_A.data);
+    fun_backward_B(T(1.0), A.data, adj_C.data, T(1.0), adj_B.data);
     WP_TILE_SYNC();
 }
 
@@ -1330,8 +1329,8 @@ void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, 
     using T = typename TileA::Type;    
 
     WP_TILE_SYNC();
-    fun_backward_A(T(1.0), B.data, adj_C.data, T(1.0), adj_A.data);
-    fun_backward_B(T(1.0), adj_C.data, A.data, T(1.0), adj_B.data);
+    fun_backward_A(T(1.0), adj_C.data, B.data, T(1.0), adj_A.data);
+    fun_backward_B(T(1.0), A.data, adj_C.data, T(1.0), adj_B.data);
     WP_TILE_SYNC();
 }
 
