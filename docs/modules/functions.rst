@@ -802,27 +802,31 @@ Spatial Math
 
 Tile Primitives
 ---------------
-.. py:function:: tile_zeros(m: int32, n: int32, dtype: Scalar) -> Tile
+.. py:function:: tile_zeros(m: int32, n: int32, dtype: Scalar, storage: str) -> Tile
 
     Allocates a tile of zero-initialized items.
 
     :param m: Size of the first dimension of the output tile
     :param n: Size of the second dimension of the output tile
     :param dtype: Datatype of output tile's elements
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
     :returns: A zero-initialized tile with ``shape=(m,n)`` and the specified datatype
 
 
-.. py:function:: tile_ones(m: int32, n: int32, dtype: Scalar) -> Tile
+.. py:function:: tile_ones(m: int32, n: int32, dtype: Scalar, storage: str) -> Tile
 
     Allocates a tile of one-initialized items.
 
     :param m: Size of the first dimension of the output tile
     :param n: Size of the second dimension of the output tile
     :param dtype: Datatype of output tile's elements
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
     :returns: A one-initialized tile with ``shape=(m,n)`` and the specified dtype
 
 
-.. py:function:: tile_arange(*args: Scalar, dtype: Scalar) -> Tile
+.. py:function:: tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile
 
     Generates a tile of linearly spaced elements.
 
@@ -833,10 +837,12 @@ Tile Primitives
         - ``(start, stop, step)``: Generates values from ``start`` to ``stop - 1`` with a step size
 
     :param dtype: Datatype of output tile's elements (optional, default: int)
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
     :returns: A tile with ``shape=(1,n)`` with linearly spaced elements of specified dtype
 
 
-.. py:function:: tile_load(a: Array[Any], i: int32, n: int32) -> Tile
+.. py:function:: tile_load(a: Array[Any], i: int32, n: int32, storage: str) -> Tile
 
     Loads a 1D tile from a global memory array.
 
@@ -845,10 +851,12 @@ Tile Primitives
     :param a: The source array in global memory
     :param i: Offset in the source array measured in multiples of ``n``, i.e.: ``offset=i*n``
     :param n: The number of elements in the tile
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
     :returns: A tile with ``shape=(1,n)`` and dtype the same as the source array
 
 
-.. py:function:: tile_load(a: Array[Any], i: int32, j: int32, m: int32, n: int32) -> Tile
+.. py:function:: tile_load(a: Array[Any], i: int32, j: int32, m: int32, n: int32, storage: str) -> Tile
     :noindex:
     :nocontentsentry:
 
@@ -861,6 +869,8 @@ Tile Primitives
     :param j: Offset in the source array measured in multiples of ``n``, i.e.; ``col=j*n``
     :param m: The size of the tile's first dimension
     :param n: The size of the tile's second dimension
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
     :returns: A tile with ``shape=(m,n)`` and dtype the same as the source array
 
 
