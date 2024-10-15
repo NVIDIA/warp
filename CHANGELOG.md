@@ -4,6 +4,8 @@
 
 ### Added
 
+- Expose a `reversed()` built-in for iterators.
+
 ### Changed
 
 - Relax the integer types expected when indexing arrays.
@@ -11,12 +13,15 @@
 
 ### Fixed
 
+## [1.4.1] - 2024-10-15
+
+### Fixed
+
+- Fix `iter_reverse()` not working as expected for ranges with steps other than 1 ([GH-311](https://github.com/NVIDIA/warp/issues/311)).
 - Fix potential out-of-bounds memory access when a `wp.sparse.BsrMatrix` object is reused for storing matrices of different shapes.
 - Fix robustness to very low desired tolerance in `wp.fem.utils.symmetric_eigenvalues_qr`.
 - Fix invalid code generation error messages when nesting dynamic and static for-loops.
 - Fix caching of kernels with static expressions.
-- Expose a `reversed()` built-in for iterators.
-- Fix `iter_reverse()` not working as expected for ranges with steps other than 1 ([GH-311](https://github.com/NVIDIA/warp/issues/311)).
 - Fix `ModelBuilder.add_builder(builder)` to correctly update `articulation_start` and thereby `articulation_count` when `builder` contains more than one articulation.
 - Re-introduced the `wp.rand*()`, `wp.sample*()`, and `wp.poisson()` onto the Python scope to revert a breaking change.
 
@@ -1150,7 +1155,8 @@
 
 - Initial publish for alpha testing
 
-[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.4.1...HEAD
+[1.4.1]: https://github.com/NVIDIA/warp/releases/tag/v1.4.1
 [1.4.0]: https://github.com/NVIDIA/warp/releases/tag/v1.4.0
 [1.3.3]: https://github.com/NVIDIA/warp/releases/tag/v1.3.3
 [1.3.2]: https://github.com/NVIDIA/warp/releases/tag/v1.3.2
