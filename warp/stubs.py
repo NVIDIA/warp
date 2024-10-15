@@ -11,9 +11,6 @@ Length = TypeVar("Length", bound=int)
 Rows = TypeVar("Rows", bound=int)
 Cols = TypeVar("Cols", bound=int)
 DType = TypeVar("DType")
-Int = TypeVar("Int")
-Float = TypeVar("Float")
-Scalar = TypeVar("Scalar")
 Vector = Generic[Length, Scalar]
 Matrix = Generic[Rows, Cols, Scalar]
 Quaternion = Generic[Float]
