@@ -10,6 +10,7 @@
 
 - Relax the integer types expected when indexing arrays.
 - Promote the `wp.Int`, `wp.Float`, and `wp.Scalar` generic annotation types to the public API.
+- Make the output of `wp.print()` in backward kernels consistent for all supported data types.
 
 ### Fixed
 
@@ -24,6 +25,8 @@
 - Fix caching of kernels with static expressions.
 - Fix `ModelBuilder.add_builder(builder)` to correctly update `articulation_start` and thereby `articulation_count` when `builder` contains more than one articulation.
 - Re-introduced the `wp.rand*()`, `wp.sample*()`, and `wp.poisson()` onto the Python scope to revert a breaking change.
+- Fix printing vector and matrix adjoints in backward kernels.
+- Fix kernel compile error when printing structs.
 
 ## [1.4.0] - 2024-10-01
 
