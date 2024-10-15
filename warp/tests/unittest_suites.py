@@ -170,6 +170,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_sparse import TestSparse
     from warp.tests.test_spatial import TestSpatial
     from warp.tests.test_special_values import TestSpecialValues
+    from warp.tests.test_static import TestStatic
     from warp.tests.test_streams import TestStreams
     from warp.tests.test_struct import TestStruct
     from warp.tests.test_tape import TestTape
@@ -269,6 +270,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestSparse,
         TestSpatial,
         TestSpecialValues,
+        TestStatic,
         TestStreams,
         TestStruct,
         TestTape,
@@ -329,6 +331,7 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_rounding import TestRounding
     from warp.tests.test_runlength_encode import TestRunlengthEncode
     from warp.tests.test_sparse import TestSparse
+    from warp.tests.test_static import TestStatic
     from warp.tests.test_streams import TestStreams
     from warp.tests.test_tape import TestTape
     from warp.tests.test_transient_module import TestTransientModule
@@ -374,6 +377,7 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestRounding,
         TestRunlengthEncode,
         TestSparse,
+        TestStatic,
         TestStreams,
         TestTape,
         TestTransientModule,
