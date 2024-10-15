@@ -149,13 +149,13 @@ def test_multi_layer_nn(test, device):
     input = create_array(rng, IMG_WIDTH*IMG_HEIGHT, DIM_IN, dtype=dtype)
     output = create_array(rng, IMG_WIDTH*IMG_HEIGHT, DIM_OUT)
 
-    # generate reference image
-    from PIL import Image
-    reference_path = os.path.join(wp.examples.get_asset_directory(), "pixel.jpg")
-    with Image.open(reference_path) as im:
-        reference_image = np.asarray(im.resize((IMG_WIDTH, IMG_HEIGHT)).convert("RGB"))
-        reference_np = reference_image.reshape(IMG_WIDTH*IMG_HEIGHT, 3).T
-    np.save(os.path.join(os.path.dirname(__file__), "assets/pixel.npy"), reference_np, allow_pickle=True)
+    # # generate reference image
+    # from PIL import Image
+    # reference_path = os.path.join(wp.examples.get_asset_directory(), "pixel.jpg")
+    # with Image.open(reference_path) as im:
+    #     reference_image = np.asarray(im.resize((IMG_WIDTH, IMG_HEIGHT)).convert("RGB"))
+    #     reference_np = reference_image.reshape(IMG_WIDTH*IMG_HEIGHT, 3).T
+    # np.save(os.path.join(os.path.dirname(__file__), "assets/pixel.npy"), reference_np, allow_pickle=True)
 
     reference_np =  np.load(os.path.join(os.path.dirname(__file__), "assets/pixel.npy"), allow_pickle=True)/255.0
     reference = wp.array(reference_np, dtype=float)
