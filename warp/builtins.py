@@ -5601,10 +5601,10 @@ def tile_matmul_generic_lto_dispatch_func(
     b = arg_values["b"]
 
     if len(return_values) > 0:
-        accumulate = 0 # for c = tile_matmul(a,b) case we want to overwrite c value
+        accumulate = 0  # for c = tile_matmul(a,b) case we want to overwrite c value
         out = return_values[0]
     else:
-        accumulate = 1 # for tile_matmul(a,b,c) case we want to add to c value
+        accumulate = 1  # for tile_matmul(a,b,c) case we want to add to c value
         out = arg_values["out"]
 
     if any(not is_tile(arg.type) for arg in [a, b, out]):
@@ -5639,7 +5639,6 @@ def tile_matmul_generic_lto_dispatch_func(
             return ("wp::vec2d", 6, 1)
         raise RuntimeError("Unsupported input type in tile_matmul")
 
-
     # generate the LTO
     M, K = a.type.M, a.type.N
     _, N = b.type.M, b.type.N
@@ -5647,12 +5646,11 @@ def tile_matmul_generic_lto_dispatch_func(
     arch = options["output_arch"]
 
     def make_function(M, N, K, adtype, bdtype, cdtype, tA, tB):
-
         (a_dtype, a_prec, a_type) = cublasdx_type_map(adtype)
         (b_dtype, b_prec, b_type) = cublasdx_type_map(bdtype)
         (c_dtype, c_prec, c_type) = cublasdx_type_map(cdtype)
 
-        if (a_type != b_type or a_type != c_type):
+        if a_type != b_type or a_type != c_type:
             raise RuntimeError("time_matmul(A, B, C) requires all inputs to be real or complex")
 
         element_type = a_type
@@ -5701,7 +5699,9 @@ def tile_matmul_generic_lto_dispatch_func(
                 lto_code = f.read()
 
             builder.ltoirs[lto_symbol] = lto_code
-            builder.ltoirs_decl[lto_symbol] = f"void {lto_symbol}({c_dtype}, {b_dtype}*, {a_dtype}*, {c_dtype}, {c_dtype}*);"
+            builder.ltoirs_decl[lto_symbol] = (
+                f"void {lto_symbol}({c_dtype}, {b_dtype}*, {a_dtype}*, {c_dtype}, {c_dtype}*);"
+            )
 
             return lto_symbol, lto_code
 
@@ -5722,7 +5722,7 @@ def tile_matmul_generic_lto_dispatch_func(
     c_layout = tile_layout_mode(out.type)
 
     #    C += A * B
-    (fun_forward, lto_forward) = make_function(M, N, K, a.type.dtype, b.type.dtype, out.type.dtype, a_layout, b_layout) 
+    (fun_forward, lto_forward) = make_function(M, N, K, a.type.dtype, b.type.dtype, out.type.dtype, a_layout, b_layout)
     # adjA += adjC * B^T
     (fun_backward_A, lto_backward_A) = make_function(
         M, K, N, out.type.dtype, b.type.dtype, a.type.dtype, c_layout, tile_flip_layout(b_layout)
@@ -5730,7 +5730,7 @@ def tile_matmul_generic_lto_dispatch_func(
     # adjB += A^T * adjC
     (fun_backward_B, lto_backward_B) = make_function(
         K, N, M, a.type.dtype, out.type.dtype, b.type.dtype, tile_flip_layout(a_layout), c_layout
-    )  
+    )
 
     return (
         (

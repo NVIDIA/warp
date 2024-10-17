@@ -101,7 +101,7 @@ class Adam:
                 elif param.dtype == wp.float32:
                     dtype = wp.float32
                 elif param.dtype == wp.float16:
-                    dtype = wp.float32      # we always use fp32 for moments, even if params are fp16
+                    dtype = wp.float32  # we always use fp32 for moments, even if params are fp16
                 else:
                     raise RuntimeError(f"Unsupported dtype for Warp Adam optimizer: {param.dtype}")
 
@@ -143,7 +143,7 @@ class Adam:
                 dim=len(params),
                 inputs=kernel_inputs,
                 device=params.device,
-            )            
+            )
         elif params.dtype == wp.types.vec3:
             wp.launch(
                 kernel=adam_step_kernel_vec3,
