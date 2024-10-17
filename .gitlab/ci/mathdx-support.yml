@@ -36,7 +36,7 @@ linux-x86_64 build:
     - apt-get update && apt-get install build-essential curl --no-install-recommends -y
     - >
       curl -k -H "Authorization: Bearer $ARTIFACTORY_ACCESS_TOKEN"
-      $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/main/PostMerge/54/libmathdx_build_x86_64_ubuntu20.04_cuda12.0.0_release.tar.gz
+      $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/main/PostMerge/69/libmathdx_build_x86_64_rockylinux8_cuda12.0.0_release.tar.gz
       -o libmathdx.tar.gz
     - mkdir -p _build/target-deps
     - tar -xzf libmathdx.tar.gz -C _build/target-deps
@@ -59,7 +59,7 @@ linux-aarch64 build:
     - apt-get update && apt-get install build-essential curl --no-install-recommends -y
     - >
       curl -k -H "Authorization: Bearer $ARTIFACTORY_ACCESS_TOKEN"
-      $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/main/PostMerge/54/libmathdx_build_aarch64_ubuntu20.04_cuda12.0.0_release.tar.gz
+      $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/main/PostMerge/69/libmathdx_build_aarch64_rockylinux8_cuda12.0.0_release.tar.gz
       -o libmathdx.tar.gz
     - mkdir -p _build/target-deps
     - tar -xzf libmathdx.tar.gz -C _build/target-deps

@@ -3398,10 +3398,13 @@ class Runtime:
                 ctypes.c_int,  # M
                 ctypes.c_int,  # N
                 ctypes.c_int,  # K
-                ctypes.c_int,  # precision
+                ctypes.c_int,  # a_precision
+                ctypes.c_int,  # b_precision
+                ctypes.c_int,  # c_precision
                 ctypes.c_int,  # type
-                ctypes.c_int,  # tA
-                ctypes.c_int,  # tB
+                ctypes.c_int,  # a_arrangement
+                ctypes.c_int,  # b_arrangement
+                ctypes.c_int,  # c_arrangement
                 ctypes.c_int,  # num threads
             ]
             self.core.cuda_compile_dot.restype = ctypes.c_bool

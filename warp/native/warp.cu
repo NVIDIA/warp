@@ -2926,7 +2926,7 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
         return res;
     }
 
-    bool cuda_compile_dot(const char* ltoir_output_path, const char* symbol_name, int num_include_dirs, const char** include_dirs, const char* mathdx_include_dir, int arch, int M, int N, int K, int precision_A, int precision_B, int precision_C, int type, int tA, int tB, int num_threads)
+    bool cuda_compile_dot(const char* ltoir_output_path, const char* symbol_name, int num_include_dirs, const char** include_dirs, const char* mathdx_include_dir, int arch, int M, int N, int K, int precision_A, int precision_B, int precision_C, int type, int arrangement_A, int arrangement_B, int arrangement_C, int num_threads)
     {
 
         CHECK_ANY(ltoir_output_path != nullptr);
@@ -2949,8 +2949,8 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
         CHECK_CUBLASDX(cublasDxSetOperatorInt64Array(h, cublasDxOperatorType::CUBLASDX_OPERATOR_BLOCK_DIM, block_dim.size(), block_dim.data()));
         std::array<long long int, 3> size = {M, N, K};
         CHECK_CUBLASDX(cublasDxSetOperatorInt64Array(h, cublasDxOperatorType::CUBLASDX_OPERATOR_SIZE, size.size(), size.data()));
-        std::array<long long int, 2> transpose_mode = {(cublasDxTransposeMode_t)tA, (cublasDxTransposeMode_t)tB};
-        CHECK_CUBLASDX(cublasDxSetOperatorInt64Array(h, cublasDxOperatorType::CUBLASDX_OPERATOR_TRANSPOSE_MODE, transpose_mode.size(), transpose_mode.data()));
+        std::array<long long int, 3> arrangement = {arrangement_A, arrangement_B, arrangement_C};
+        CHECK_CUBLASDX(cublasDxSetOperatorInt64Array(h, cublasDxOperatorType::CUBLASDX_OPERATOR_ARRANGEMENT, arrangement.size(), arrangement.data()));
         
         CHECK_CUBLASDX(cublasDxSetOptionStr(h, commonDxOption::COMMONDX_OPTION_SYMBOL_NAME, symbol_name));
         for(int dir = 0; dir < num_include_dirs; dir++) 
