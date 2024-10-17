@@ -102,15 +102,25 @@
 
 */
 
-// wp.tile_load(A, offset, shape)
-// wp.tile_load(A, (x, y), (16, 16))
-// wp.tile_load(A, (x, y, z), (3, 3, 3))
-
-// wp.tile_load(A, index, shape)
-// wp.tile_load(A, x, m)
-// wp.tile_load(A, x, y, m, n)
-// wp.tile_load(A, x, y, z, m, n, o)
-// wp.tile_load(A, x, y, z, m, n, o, p)
+// Notes on shared memory synchronization
+// ======================================
+//
+// Currently operations that wite to shared memory tiles (e.g.: tile_load())
+// must synchronize before they return through WP_TILE_SYNC(), this
+// ensures subsequent read operations from the tile do not cause a race condition.
+//
+// For tile_shared_t adjoints, the gradient accumulation is done through shared
+// memory atomics, i.e.: atomic_add(), so explicit synchronization is not
+// required, with the exception of some operations like GEMMs, which use
+// standard shared memory loads and stores to compute and  accumulate gradients.
+//
+// The current synchronization strategy is conservative, can lead to more
+// synchronization than necessary. A more sophisticated strategy would be
+// to track the 'dirty' state of shared tiles, and synchronize only when
+// necessary. In addition, custom synchronization for e.g.: tile_load()
+// operations could be added through a SyncProvider template parameter on
+// the tile_shared_t type, for example to support barrier synchronization
+// for asynchronous global to shared loads.
 
 namespace wp
 {
@@ -458,6 +468,8 @@ struct tile_shared_t
         else
             copy_from_global(t.data, t.x, t.y); // 2d load
         
+        // synchronization happens in copy functions
+
         return *this;
     }
 
@@ -468,6 +480,7 @@ struct tile_shared_t
         for (int i=threadIdx.x; i < M*N; i+= WP_TILE_BLOCK_DIM)
             data[i] = x;
 
+        WP_TILE_SYNC();
         return *this;
     }
 
@@ -522,6 +535,8 @@ struct tile_shared_t
         // todo: make this subtile (stride aware)
         for (int i=threadIdx.x; i < M*N; i+= WP_TILE_BLOCK_DIM)
             data[i] = T(0);
+
+        WP_TILE_SYNC();
     }
 
     // extract a single tile element to a native type
@@ -553,6 +568,8 @@ struct tile_shared_t
 
             (*this)(linear) = tile.data[i];
         }
+
+        WP_TILE_SYNC();
     }
 
     inline CUDA_CALLABLE void add(const tile_register_t<T, M, N>& tile) 
@@ -576,8 +593,6 @@ struct tile_shared_t
 
     inline CUDA_CALLABLE void print()
     {
-        WP_TILE_SYNC();
-
         if (threadIdx.x == 0)
         {
             printf("tile(m=%d, n=%d, storage=shared) = [", M, N);
@@ -663,6 +678,8 @@ struct tile_shared_t
         {  
             (*this)(i) = wp::index(src, tile_i + i);
         }
+
+        WP_TILE_SYNC();
     }
 
     inline CUDA_CALLABLE void copy_from_global(const array_t<T>& src, int x, int y)
@@ -688,6 +705,8 @@ struct tile_shared_t
             coord_t c = coord(i);
             (*this)(c.i, c.j) = ptr[c.i*stride_i + c.j*stride_j];
         }
+
+        WP_TILE_SYNC();
     }
 };
 
@@ -765,6 +784,8 @@ inline CUDA_CALLABLE auto tile_alloc_zeros()
 
     for (int i=threadIdx.x; i < Len; i+= WP_TILE_BLOCK_DIM)
         data[i] = T(0);
+
+    WP_TILE_SYNC();
 
     return tile_shared_t<T, M, N, StrideM, StrideN>(data);
 }
@@ -1302,7 +1323,6 @@ TileC& tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, Ti
 {       
     using T = typename TileA::Type;
 
-    WP_TILE_SYNC();
     fun_forward(T(1.0), B.data, A.data, T(Add), C.data);
     WP_TILE_SYNC();
     
@@ -1316,6 +1336,8 @@ void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, 
 {   
     using T = typename TileA::Type;    
 
+    // need to sync here because previous operations
+    // may still be performing atomic adds onto adj_A, adj_B, adjC
     WP_TILE_SYNC();
     fun_backward_A(T(1.0), B.data, adj_C.data, T(1.0), adj_A.data);
     fun_backward_B(T(1.0), adj_C.data, A.data, T(1.0), adj_B.data);
@@ -1329,6 +1351,8 @@ void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, 
 {   
     using T = typename TileA::Type;    
 
+    // need to sync here because previous operations
+    // may still be performing atomic adds onto adj_A, adj_B, adjC
     WP_TILE_SYNC();
     fun_backward_A(T(1.0), B.data, adj_C.data, T(1.0), adj_A.data);
     fun_backward_B(T(1.0), adj_C.data, A.data, T(1.0), adj_B.data);
@@ -1340,7 +1364,6 @@ void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, 
     do { \
         void function_name(dtype*, dtype*); \
         WP_TILE_SHARED __align__(16) char buffer[shared_memory_size]; \
-        WP_TILE_SYNC(); \
         for(int b = 0; b < (int)batch_size; b++) { \
             function_name(Xinout.data + (int)b * (int)ept, (dtype*)buffer); \
             WP_TILE_SYNC(); \
@@ -1397,13 +1420,14 @@ inline CUDA_CALLABLE void adj_tile_broadcast(Tile& t, Tile& adj_t, AdjTile& adj_
 
     static_assert(LenTile == LenAdjTile);
 
-    // since the incoming adjoint will have the same physical storage 
+    // since the incoming adjoint will have the same sized physical storage 
     // as the original tile (just with different strides and expanded dimensions), 
     // we can simply update the gradient element by element
     for (int i=threadIdx.x; i < LenTile; i+=WP_TILE_BLOCK_DIM)
     {
-        adj_t.data[i] += adj_ret.data[i];
+        atomic_add(&adj_t.data[i], adj_ret.data[i]);
     }
 }
+
 
 } // namespace wp
