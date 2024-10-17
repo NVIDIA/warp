@@ -1,3 +1,10 @@
+# Copyright (c) 2024 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
 import os
 
 import numpy as np
@@ -142,135 +149,136 @@ def test_multi_layer_nn(test, device):
         for i in range(DIM_OUT):
             out[i, linear] = float(output[i])
 
-    rng = np.random.default_rng(45)
+    with wp.ScopedDevice(device):
+        rng = np.random.default_rng(45)
 
-    weights_0, bias_0 = create_layer(rng, DIM_IN, DIM_HID, dtype=dtype)
-    weights_1, bias_1 = create_layer(rng, DIM_HID, DIM_HID, dtype=dtype)
-    weights_2, bias_2 = create_layer(rng, DIM_HID, DIM_HID, dtype=dtype)
-    weights_3, bias_3 = create_layer(rng, DIM_HID, DIM_OUT, dtype=dtype)
+        weights_0, bias_0 = create_layer(rng, DIM_IN, DIM_HID, dtype=dtype)
+        weights_1, bias_1 = create_layer(rng, DIM_HID, DIM_HID, dtype=dtype)
+        weights_2, bias_2 = create_layer(rng, DIM_HID, DIM_HID, dtype=dtype)
+        weights_3, bias_3 = create_layer(rng, DIM_HID, DIM_OUT, dtype=dtype)
 
-    input = create_array(rng, IMG_WIDTH * IMG_HEIGHT, DIM_IN, dtype=dtype)
-    output = create_array(rng, IMG_WIDTH * IMG_HEIGHT, DIM_OUT)
+        input = create_array(rng, IMG_WIDTH * IMG_HEIGHT, DIM_IN, dtype=dtype)
+        output = create_array(rng, IMG_WIDTH * IMG_HEIGHT, DIM_OUT)
 
-    # # generate reference image
-    # from PIL import Image
-    # reference_path = os.path.join(wp.examples.get_asset_directory(), "pixel.jpg")
-    # with Image.open(reference_path) as im:
-    #     reference_image = np.asarray(im.resize((IMG_WIDTH, IMG_HEIGHT)).convert("RGB"))
-    #     reference_np = reference_image.reshape(IMG_WIDTH*IMG_HEIGHT, 3).T
-    # np.save(os.path.join(os.path.dirname(__file__), "assets/pixel.npy"), reference_np, allow_pickle=True)
+        # # generate reference image
+        # from PIL import Image
+        # reference_path = os.path.join(wp.examples.get_asset_directory(), "pixel.jpg")
+        # with Image.open(reference_path) as im:
+        #     reference_image = np.asarray(im.resize((IMG_WIDTH, IMG_HEIGHT)).convert("RGB"))
+        #     reference_np = reference_image.reshape(IMG_WIDTH*IMG_HEIGHT, 3).T
+        # np.save(os.path.join(os.path.dirname(__file__), "assets/pixel.npy"), reference_np, allow_pickle=True)
 
-    reference_np = np.load(os.path.join(os.path.dirname(__file__), "assets/pixel.npy"), allow_pickle=True) / 255.0
-    reference = wp.array(reference_np, dtype=float)
+        reference_np = np.load(os.path.join(os.path.dirname(__file__), "assets/pixel.npy"), allow_pickle=True) / 255.0
+        reference = wp.array(reference_np, dtype=float)
 
-    loss = wp.zeros(1, dtype=float, requires_grad=True)
+        loss = wp.zeros(1, dtype=float, requires_grad=True)
 
-    params = [weights_0, bias_0, weights_1, bias_1, weights_2, bias_2, weights_3, bias_3]
+        params = [weights_0, bias_0, weights_1, bias_1, weights_2, bias_2, weights_3, bias_3]
 
-    optimizer_grads = [p.grad.flatten() for p in params]
-    optimizer_inputs = [p.flatten() for p in params]
-    optimizer = warp.optim.Adam(optimizer_inputs, lr=0.01)
+        optimizer_grads = [p.grad.flatten() for p in params]
+        optimizer_inputs = [p.flatten() for p in params]
+        optimizer = warp.optim.Adam(optimizer_inputs, lr=0.01)
 
-    num_batches = int((IMG_WIDTH * IMG_HEIGHT) / BATCH_SIZE)
-    max_epochs = 30
+        num_batches = int((IMG_WIDTH * IMG_HEIGHT) / BATCH_SIZE)
+        max_epochs = 30
 
-    # create randomized batch indices
-    batches = np.arange(0, IMG_WIDTH * IMG_HEIGHT, dtype=np.int32)
-    rng.shuffle(batches)
-    batches = wp.array(batches)
+        # create randomized batch indices
+        batches = np.arange(0, IMG_WIDTH * IMG_HEIGHT, dtype=np.int32)
+        rng.shuffle(batches)
+        batches = wp.array(batches)
 
-    with wp.ScopedTimer("Training", active=False):
-        for epoch in range(max_epochs):
-            for b in range(0, IMG_WIDTH * IMG_HEIGHT, BATCH_SIZE):
-                loss.zero_()
+        with wp.ScopedTimer("Training", active=False):
+            for epoch in range(max_epochs):
+                for b in range(0, IMG_WIDTH * IMG_HEIGHT, BATCH_SIZE):
+                    loss.zero_()
 
-                with wp.Tape() as tape:
-                    wp.launch(
-                        compute,
-                        dim=[BATCH_SIZE],
-                        inputs=[
-                            batches[b : b + BATCH_SIZE],
-                            input,
-                            weights_0,
-                            bias_0,
-                            weights_1,
-                            bias_1,
-                            weights_2,
-                            bias_2,
-                            weights_3,
-                            bias_3,
-                            reference,
-                            loss,
-                            output,
-                        ],
-                        block_dim=NUM_THREADS,
-                    )
+                    with wp.Tape() as tape:
+                        wp.launch(
+                            compute,
+                            dim=[BATCH_SIZE],
+                            inputs=[
+                                batches[b : b + BATCH_SIZE],
+                                input,
+                                weights_0,
+                                bias_0,
+                                weights_1,
+                                bias_1,
+                                weights_2,
+                                bias_2,
+                                weights_3,
+                                bias_3,
+                                reference,
+                                loss,
+                                output,
+                            ],
+                            block_dim=NUM_THREADS,
+                        )
 
-                tape.backward(loss)
+                    tape.backward(loss)
 
-                # check outputs + grads on the first few epoch only
-                # since this is a relatively slow operation
-                verify = True
-                if verify and epoch < 3:
-                    indices = batches[b : b + BATCH_SIZE].numpy()
+                    # check outputs + grads on the first few epoch only
+                    # since this is a relatively slow operation
+                    verify = True
+                    if verify and epoch < 3:
+                        indices = batches[b : b + BATCH_SIZE].numpy()
 
-                    z_np = np.maximum(weights_0.numpy() @ input.numpy()[:, indices] + bias_0.numpy(), 0.0)
-                    z_np = np.maximum(weights_1.numpy() @ z_np + bias_1.numpy(), 0.0)
-                    z_np = np.maximum(weights_2.numpy() @ z_np + bias_2.numpy(), 0.0)
-                    z_np = np.maximum(weights_3.numpy() @ z_np + bias_3.numpy(), 0.0)
+                        z_np = np.maximum(weights_0.numpy() @ input.numpy()[:, indices] + bias_0.numpy(), 0.0)
+                        z_np = np.maximum(weights_1.numpy() @ z_np + bias_1.numpy(), 0.0)
+                        z_np = np.maximum(weights_2.numpy() @ z_np + bias_2.numpy(), 0.0)
+                        z_np = np.maximum(weights_3.numpy() @ z_np + bias_3.numpy(), 0.0)
 
-                    # test numpy foward
-                    assert_np_equal(output.numpy()[:, indices], z_np, tol=1.0e-2)
+                        # test numpy foward
+                        assert_np_equal(output.numpy()[:, indices], z_np, tol=1.0e-2)
 
-                    # torch
-                    input_tc = tc.from_numpy(input.numpy()[:, indices]).requires_grad_(True)
+                        # torch
+                        input_tc = tc.from_numpy(input.numpy()[:, indices]).requires_grad_(True)
 
-                    weights_0_tc = tc.from_numpy(weights_0.numpy()).requires_grad_(True)
-                    bias_0_tc = tc.from_numpy(bias_0.numpy()).requires_grad_(True)
+                        weights_0_tc = tc.from_numpy(weights_0.numpy()).requires_grad_(True)
+                        bias_0_tc = tc.from_numpy(bias_0.numpy()).requires_grad_(True)
 
-                    weights_1_tc = tc.from_numpy(weights_1.numpy()).requires_grad_(True)
-                    bias_1_tc = tc.from_numpy(bias_1.numpy()).requires_grad_(True)
+                        weights_1_tc = tc.from_numpy(weights_1.numpy()).requires_grad_(True)
+                        bias_1_tc = tc.from_numpy(bias_1.numpy()).requires_grad_(True)
 
-                    weights_2_tc = tc.from_numpy(weights_2.numpy()).requires_grad_(True)
-                    bias_2_tc = tc.from_numpy(bias_2.numpy()).requires_grad_(True)
+                        weights_2_tc = tc.from_numpy(weights_2.numpy()).requires_grad_(True)
+                        bias_2_tc = tc.from_numpy(bias_2.numpy()).requires_grad_(True)
 
-                    weights_3_tc = tc.from_numpy(weights_3.numpy()).requires_grad_(True)
-                    bias_3_tc = tc.from_numpy(bias_3.numpy()).requires_grad_(True)
+                        weights_3_tc = tc.from_numpy(weights_3.numpy()).requires_grad_(True)
+                        bias_3_tc = tc.from_numpy(bias_3.numpy()).requires_grad_(True)
 
-                    z_tc = tc.clamp(weights_0_tc @ input_tc + bias_0_tc, min=0.0)
-                    z_tc = tc.clamp(weights_1_tc @ z_tc + bias_1_tc, min=0.0)
-                    z_tc = tc.clamp(weights_2_tc @ z_tc + bias_2_tc, min=0.0)
-                    z_tc = tc.clamp(weights_3_tc @ z_tc + bias_3_tc, min=0.0)
+                        z_tc = tc.clamp(weights_0_tc @ input_tc + bias_0_tc, min=0.0)
+                        z_tc = tc.clamp(weights_1_tc @ z_tc + bias_1_tc, min=0.0)
+                        z_tc = tc.clamp(weights_2_tc @ z_tc + bias_2_tc, min=0.0)
+                        z_tc = tc.clamp(weights_3_tc @ z_tc + bias_3_tc, min=0.0)
 
-                    ref_tc = tc.from_numpy(reference.numpy()[:, indices]).requires_grad_(True)
+                        ref_tc = tc.from_numpy(reference.numpy()[:, indices]).requires_grad_(True)
 
-                    l_tc = tc.mean((z_tc - ref_tc) ** 2)
-                    l_tc.backward()
+                        l_tc = tc.mean((z_tc - ref_tc) ** 2)
+                        l_tc.backward()
 
-                    # test torch
-                    assert_np_equal(z_tc.cpu().detach().numpy(), output.numpy()[:, indices], tol=1.0e-2)
-                    assert_np_equal(weights_0.grad.numpy(), weights_0_tc.grad.cpu().detach().numpy(), tol=1.0e-2)
-                    assert_np_equal(bias_0.grad.numpy(), bias_0_tc.grad.cpu().detach().numpy(), tol=1.0e-2)
-                    assert_np_equal(weights_1.grad.numpy(), weights_1_tc.grad.cpu().detach().numpy(), tol=1.0e-2)
-                    assert_np_equal(bias_1.grad.numpy(), bias_1_tc.grad.cpu().detach().numpy(), tol=1.0e-2)
-                    assert_np_equal(weights_2.grad.numpy(), weights_2_tc.grad.cpu().detach().numpy(), tol=1.0e-2)
-                    assert_np_equal(bias_2.grad.numpy(), bias_2_tc.grad.cpu().detach().numpy(), tol=1.0e-2)
-                    assert_np_equal(weights_3.grad.numpy(), weights_3_tc.grad.cpu().detach().numpy(), tol=1.0e-2)
-                    assert_np_equal(bias_3.grad.numpy(), bias_3_tc.grad.cpu().detach().numpy(), tol=1.0e-2)
+                        # test torch
+                        assert_np_equal(z_tc.cpu().detach().numpy(), output.numpy()[:, indices], tol=1.0e-2)
+                        assert_np_equal(weights_0.grad.numpy(), weights_0_tc.grad.cpu().detach().numpy(), tol=1.0e-2)
+                        assert_np_equal(bias_0.grad.numpy(), bias_0_tc.grad.cpu().detach().numpy(), tol=1.0e-2)
+                        assert_np_equal(weights_1.grad.numpy(), weights_1_tc.grad.cpu().detach().numpy(), tol=1.0e-2)
+                        assert_np_equal(bias_1.grad.numpy(), bias_1_tc.grad.cpu().detach().numpy(), tol=1.0e-2)
+                        assert_np_equal(weights_2.grad.numpy(), weights_2_tc.grad.cpu().detach().numpy(), tol=1.0e-2)
+                        assert_np_equal(bias_2.grad.numpy(), bias_2_tc.grad.cpu().detach().numpy(), tol=1.0e-2)
+                        assert_np_equal(weights_3.grad.numpy(), weights_3_tc.grad.cpu().detach().numpy(), tol=1.0e-2)
+                        assert_np_equal(bias_3.grad.numpy(), bias_3_tc.grad.cpu().detach().numpy(), tol=1.0e-2)
 
-                optimizer.step(optimizer_grads)
-                tape.zero()
+                    optimizer.step(optimizer_grads)
+                    tape.zero()
 
-            # print(f"Epoch: {epoch} Loss: {loss.numpy()}")
+                # print(f"Epoch: {epoch} Loss: {loss.numpy()}")
 
-    # predicted_image = output.numpy().T.reshape(IMG_WIDTH, IMG_HEIGHT, 3)
-    # predicted_image = (predicted_image * 255).astype(np.uint8)
+        # predicted_image = output.numpy().T.reshape(IMG_WIDTH, IMG_HEIGHT, 3)
+        # predicted_image = (predicted_image * 255).astype(np.uint8)
 
-    # predicted_image_pil = Image.fromarray(predicted_image)
-    # predicted_image_pil.save("test_tile_mlp_wp.jpg")
+        # predicted_image_pil = Image.fromarray(predicted_image)
+        # predicted_image_pil.save("test_tile_mlp_wp.jpg")
 
-    # initial loss is ~0.061
-    assert loss.numpy()[0] < 0.002
+        # initial loss is ~0.061
+        test.assertLess(loss.numpy()[0], 0.002)
 
 
 @unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
