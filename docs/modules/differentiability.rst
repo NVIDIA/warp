@@ -776,9 +776,11 @@ In the example above we can see that the array ``c`` does not have its ``require
 Array Overwrite Tracking
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-It is a common mistake to inadvertently overwrite an array that participates in the computation graph. For example::
+It is a common mistake to inadvertently overwrite an array that participates in the computation graph. For example:
 
-    with tape as wp.Tape():
+.. code-block:: python
+
+    with wp.Tape() as tape:
 
         # step 1
         wp.launch(compute_forces, dim=n, inputs=[pos0, vel0], outputs=[force])
@@ -789,7 +791,7 @@ It is a common mistake to inadvertently overwrite an array that participates in 
         wp.launch(simulate, dim=n, inputs=[pos1, vel1, force], outputs=[pos2, vel2])
 
         # compute loss
-        wp.launch(loss, dim=n, inputs=[pos2])
+        wp.launch(compute_loss, dim=n, inputs=[pos2], outputs=[loss])
 
     tape.backward(loss)
 
