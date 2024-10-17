@@ -8,6 +8,8 @@ from warp.tests.unittest_utils import *
 import math
 import os
 
+wp.init()
+
 # needs to be constant for the whole module
 NUM_THREADS = 32
 
@@ -28,7 +30,7 @@ def create_array(rng, dim_in, dim_hid, dtype=float):
 
     return a
 
-
+@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_multi_layer_nn(test, device):
 
     import torch as tc
@@ -271,7 +273,7 @@ def test_multi_layer_nn(test, device):
 
 
 
-
+@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_single_layer_nn(test, device):
 
     import torch as tc
