@@ -9,7 +9,11 @@
 # CI/CD Pipeline Configuration
 # ==============================================================================
 
-include: /.gitlab/ci/common.yml
+include:
+  - local: /.gitlab/ci/common.yml
+  - project: "omniverse/devplat/gitlab/templates/common/compliance"
+    file: "modules/omniverse-repo-compliance.gitlab-ci.yml"
+    ref: v1_latest
 
 workflow:
   rules:
@@ -137,6 +141,12 @@ ruff format:
     - pip install --upgrade ruff==0.6.8
   script:
     - ruff format --diff
+
+osec:sonarqube:
+  variables:
+    # Disable C/C++ analyzer until project specific work is done to enable it.
+    # See: https://confluence.nvidia.com/display/OMNIVERSE/SonarQube+Gitlab+CI+Integration#C+Project+Enablement+Additions
+    SONAR_EXTRA_ARGS: "-Dsonar.c.file.suffixes=- -Dsonar.cpp.file.suffixes=- -Dsonar.objc.file.suffixes=-"
 
 # ==============================================================================
 # Main Unit Testing Jobs
