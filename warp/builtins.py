@@ -5601,10 +5601,10 @@ def tile_matmul_generic_lto_dispatch_func(
     b = arg_values["b"]
 
     if len(return_values) > 0:
-        accumulate = 0 # for c = tile_matmul(a,b) case we want to overwrite c value
+        accumulate = 0  # for c = tile_matmul(a,b) case we want to overwrite c value
         out = return_values[0]
     else:
-        accumulate = 1 # for tile_matmul(a,b,c) case we want to add to c value
+        accumulate = 1  # for tile_matmul(a,b,c) case we want to add to c value
         out = arg_values["out"]
 
     if any(not is_tile(arg.type) for arg in [a, b, out]):
@@ -5662,7 +5662,7 @@ def tile_matmul_generic_lto_dispatch_func(
         b_arrangement = cublasdx_arrangement_map(blayout)
         c_arrangement = cublasdx_arrangement_map(clayout)
 
-        if (a_type != b_type or a_type != c_type):
+        if a_type != b_type or a_type != c_type:
             raise RuntimeError("time_matmul(A, B, C) requires all inputs to be real or complex")
         element_type = a_type
 
