@@ -110,11 +110,12 @@
 // ensures subsequent read operations from the tile do not cause a race condition.
 //
 // For tile_shared_t adjoints, the gradient accumulation is done through shared
-// memory atomics, i.e.: atomic_add(), so explicit synchronization is not
-// required, with the exception of some operations like GEMMs, which use
-// standard shared memory loads and stores to compute and  accumulate gradients.
+// memory atomics, i.e.: atomic_add() since for broadcast tiles multiple threads
+// may map to the same location. Synchronization is still required after these 
+// updates, since subsequent operations e.g.: adj_tile_load() will store the
+// gradients to memory, and all updates must be visible at that point.
 //
-// The current synchronization strategy is conservative, can lead to more
+// The current synchronization strategy is conservative, and can lead to more
 // synchronization than necessary. A more sophisticated strategy would be
 // to track the 'dirty' state of shared tiles, and synchronize only when
 // necessary. In addition, custom synchronization for e.g.: tile_load()
@@ -550,6 +551,8 @@ struct tile_shared_t
     {
         if (threadIdx.x == 0)
             (*this)(i, j) += adj_ret;
+
+        WP_TILE_SYNC();
     }
 
 
@@ -585,10 +588,12 @@ struct tile_shared_t
                 break;
 
             // use shared memory atomics to accumulate gradients
-            // since for broadcast tiles multiple incoming values 
+            // since for broadcast tiles multiple incoming threads 
             // may map to a single location in shared memory
             atomic_add(&(*this)(linear), tile.data[i]);
         }
+
+        WP_TILE_SYNC();
     }
 
     inline CUDA_CALLABLE void print()
@@ -1063,9 +1068,6 @@ inline CUDA_CALLABLE void adj_tile_load(array_t<T>& src, int x, int y,
 template <typename T, typename Tile, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_store(array_t<T>& dest, int x, Tile& t, array_t<T>& adj_dest, int adj_x, AdjTile& adj_t)
 {  
-    // if (!dest.grad)
-    //     return;
-
     // convert to register if necessary
     tile_register_t<T, AdjTile::M, AdjTile::N> adj_reg;
 
@@ -1092,10 +1094,7 @@ inline CUDA_CALLABLE void adj_tile_store(array_t<T>& dest, int x, Tile& t, array
 template <typename T, typename Tile, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_store(array_t<T>& dest, int x, int y, Tile& t, array_t<T>& adj_dest, int adj_x, int adj_y, AdjTile& adj_t)
 {  
-    // if (!dest.grad)
-    //     return;
-
-    // convert to register if necessary
+    // allocate register tile to load grads into
     tile_register_t<T, AdjTile::M, AdjTile::N> adj_reg;
 
     const int tile_i = x*adj_reg.M;
@@ -1335,9 +1334,6 @@ void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, 
 {   
     using T = typename TileA::Type;    
 
-    // need to sync here because previous operations
-    // may still be performing atomic adds onto adj_A, adj_B, adjC
-    WP_TILE_SYNC();
     fun_backward_A(T(1.0), adj_C.data, B.data, T(1.0), adj_A.data);
     fun_backward_B(T(1.0), A.data, adj_C.data, T(1.0), adj_B.data);
     WP_TILE_SYNC();
@@ -1350,9 +1346,6 @@ void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, 
 {   
     using T = typename TileA::Type;    
 
-    // need to sync here because previous operations
-    // may still be performing atomic adds onto adj_A, adj_B, adjC
-    WP_TILE_SYNC();
     fun_backward_A(T(1.0), adj_C.data, B.data, T(1.0), adj_A.data);
     fun_backward_B(T(1.0), A.data, adj_C.data, T(1.0), adj_B.data);
     WP_TILE_SYNC();
@@ -1426,6 +1419,8 @@ inline CUDA_CALLABLE void adj_tile_broadcast(Tile& t, Tile& adj_t, AdjTile& adj_
     {
         atomic_add(&adj_t.data[i], adj_ret.data[i]);
     }
+
+    WP_TILE_SYNC();
 }
 
 
