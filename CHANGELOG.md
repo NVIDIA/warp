@@ -11,7 +11,6 @@
 - Relax the integer types expected when indexing arrays.
 - Promote the `wp.Int`, `wp.Float`, and `wp.Scalar` generic annotation types to the public API.
 - Make the output of `wp.print()` in backward kernels consistent for all supported data types.
-- Added an attribute called `soft_contact_radius` to `sim.Model`, which controls the self contact distance of Symplectic Euler Integrator and VBD Integrator.
 
 ### Fixed
 
