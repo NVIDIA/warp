@@ -102,26 +102,46 @@
 
 */
 
-// Notes on shared memory synchronization
-// ======================================
-//
-// Currently operations that wite to shared memory tiles (e.g.: tile_load())
-// must synchronize before they return through WP_TILE_SYNC(), this
-// ensures subsequent read operations from the tile do not cause a race condition.
-//
-// For tile_shared_t adjoints, the gradient accumulation is done through shared
-// memory atomics, i.e.: atomic_add() since for broadcast tiles multiple threads
-// may map to the same location. Synchronization is still required after these 
-// updates, since subsequent operations e.g.: adj_tile_load() will store the
-// gradients to memory, and all updates must be visible at that point.
-//
-// The current synchronization strategy is conservative, and can lead to more
-// synchronization than necessary. A more sophisticated strategy would be
-// to track the 'dirty' state of shared tiles, and synchronize only when
-// necessary. In addition, custom synchronization for e.g.: tile_load()
-// operations could be added through a SyncProvider template parameter on
-// the tile_shared_t type, for example to support barrier synchronization
-// for asynchronous global to shared loads.
+/*
+Notes on shared memory synchronization
+======================================
+
+Currently operations that wite to shared memory tiles (e.g.: tile_load())
+must synchronize before they return through WP_TILE_SYNC(), this
+ensures subsequent read operations from the tile do not cause a race condition.
+
+For tile_shared_t adjoints, the gradient accumulation is done through shared
+memory atomics, i.e.: atomic_add(), since for broadcast tiles multiple threads
+may map to the same location. Synchronization is still required after these 
+updates, since subsequent operations e.g.: adj_tile_load() will store the
+gradients to memory, and all updates must be visible at that point, e.g.:
+
+    a = wp.tile_load(...)
+    b = wp.tile_load(...)
+    c = wp.tile_matmul(a, b)
+    wp.tile_store(c)
+
+    // loads incoming adjoints from global -> shared
+    wp.adj_tile_store(c, adj_c)
+    // consumes adj_c, requires synchronization
+    wp.adj_tile_matmul(a, b, adj_a, adj_b, adj_c)
+    // consumes adj_b, requires synchronization
+    wp.adj_tile_load(..., adj_b)
+    // consumes adj_b, requires synchronization
+    wp.adj_tile_load(..., adj_a)
+
+Generally synchronization to adjoint tiles will happen through the
+tile_shared_t::add() and tile_shared_t::assign() function automatically,
+but in some cases e.g.: tile_matmul() it is done manually.
+
+The current synchronization strategy is conservative, and can lead to more
+synchronization than necessary. A more sophisticated strategy would be
+to track the 'dirty' state of shared tiles, and synchronize only when
+necessary. In addition, custom synchronization for e.g.: tile_load()
+operations could be added through a SyncProvider template parameter on
+the tile_shared_t type, for example to support barrier synchronization
+for asynchronous global to shared loads.
+*/
 
 namespace wp
 {
