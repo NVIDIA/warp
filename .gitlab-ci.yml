@@ -381,6 +381,7 @@ linux-x86_64 test warp-init:
         - build_llvm.py
     - when: manual # If not auto-triggered, allow any pipeline to run this job manually
       allow_failure: true
+  timeout: 10m
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
@@ -706,6 +707,7 @@ merge request docs:
       - public
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  timeout: 10m
   environment:
     name: review/$CI_MERGE_REQUEST_IID
     url: https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html
@@ -730,6 +732,7 @@ check generated files:
       - docs/modules/functions.rst
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  timeout: 10m
   extends:
     - .runner-utility-linux-x86_64
   script:
@@ -747,6 +750,7 @@ pages:
     - .build-docs-common
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  timeout: 10m
   environment:
     name: GitLab Pages
     deployment_tier: staging
