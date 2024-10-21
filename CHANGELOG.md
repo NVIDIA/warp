@@ -14,6 +14,10 @@
 
 ### Fixed
 
+- Fix printing vector and matrix adjoints in backward kernels.
+- Fix kernel compile error when printing structs.
+- Fix an incorrect user function being sometimes resolved when multiple overloads are available with array parameters with different `dtype` values.
+
 ## [1.4.1] - 2024-10-15
 
 ### Fixed
