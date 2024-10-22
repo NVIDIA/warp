@@ -1492,7 +1492,7 @@ def types_equal(a, b, match_generic=False):
 
         return True
 
-    if is_array(a) and type(a) is type(b):
+    if is_array(a) and type(a) is type(b) and types_equal(a.dtype, b.dtype, match_generic=match_generic):
         return True
 
     # match NewStructInstance and Struct dtype
