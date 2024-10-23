@@ -77,7 +77,6 @@ def relu(x: dtype):
 
 @wp.kernel
 def compute(indices: wp.array(dtype=int),
-            encoding: wp.array2d(dtype=dtype),
             weights_0: wp.array2d(dtype=dtype), bias_0: wp.array2d(dtype=dtype),
             weights_1: wp.array2d(dtype=dtype), bias_1: wp.array2d(dtype=dtype),
             weights_2: wp.array2d(dtype=dtype), bias_2: wp.array2d(dtype=dtype),
@@ -86,11 +85,8 @@ def compute(indices: wp.array(dtype=int),
             loss: wp.array1d(dtype=float),
             out: wp.array2d(dtype=float)):
 
-    if indices:
-        # use batch indices if provided
-        linear = indices[wp.tid()]
-    else:
-        linear = wp.tid()
+    # batch indices
+    linear = indices[wp.tid()]
 
     row = linear/IMG_WIDTH
     col = linear%IMG_WIDTH
@@ -112,13 +108,6 @@ def compute(indices: wp.array(dtype=int),
         # y-coord
         local[s*4 + 2] = dtype(wp.sin(y * scale))
         local[s*4 + 3] = dtype(wp.cos(y * scale))
-
-        # if requested then write the encoding back to device memory
-        if encoding:
-            encoding[s*4 + 0, linear] = local[s*4 + 0]
-            encoding[s*4 + 1, linear] = local[s*4 + 1]
-            encoding[s*4 + 2, linear] = local[s*4 + 2]
-            encoding[s*4 + 3, linear] = local[s*4 + 3]
 
 
     # tile feature vectors across the block, returns [dim(f), NUM_THREADS]
@@ -163,7 +152,7 @@ def compute(indices: wp.array(dtype=int),
 
 class Example:
 
-    def __init__(self):
+    def __init__(self, train_iters):
 
         self.weights_0, self.bias_0 = create_layer(DIM_IN, DIM_HID, dtype=dtype)
         self.weights_1, self.bias_1 = create_layer(DIM_HID, DIM_HID, dtype=dtype)
@@ -182,8 +171,8 @@ class Example:
         self.indices = wp.array(indices)
 
         self.num_batches = int((IMG_WIDTH*IMG_HEIGHT)/BATCH_SIZE)
-        self.max_iters = 20000
-        self.max_epochs = int(self.max_iters/self.num_batches)
+        self.max_iters = train_iters
+        self.max_epochs = max(1, int(self.max_iters/self.num_batches))
 
     def train_warp(self):
 
@@ -202,7 +191,7 @@ class Example:
         # capture graph for whole epoch
         wp.capture_begin()
     
-        for b in range(0, IMG_WIDTH*IMG_HEIGHT, BATCH_SIZE):
+        for b in range(0, min(self.max_iters, IMG_WIDTH*IMG_HEIGHT, BATCH_SIZE)):
 
             loss.zero_()
 
@@ -211,7 +200,6 @@ class Example:
                     compute, 
                     dim=[BATCH_SIZE],
                     inputs=[self.indices[b:b+BATCH_SIZE],
-                            None,
                             self.weights_0, self.bias_0,
                             self.weights_1, self.bias_1,
                             self.weights_2, self.bias_2, 
@@ -241,8 +229,7 @@ class Example:
         wp.launch(
             compute, 
             dim=[IMG_WIDTH*IMG_HEIGHT],
-            inputs=[None,
-                    None,
+            inputs=[self.indices,
                     self.weights_0, self.bias_0,
                     self.weights_1, self.bias_1,
                     self.weights_2, self.bias_2, 
@@ -377,8 +364,15 @@ class Example:
 
 if __name__ == "__main__":
 
+    import argparse
+
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--train_iters", type=int, default=20000, help="Total number of training iterations.")
+
+    args = parser.parse_known_args()[0]
+
     with wp.ScopedDevice("cuda:0"):
 
-        example = Example()
-        #example.train_warp()
-        example.train_torch()
+        example = Example(args.train_iters)
+        example.train_warp()
+        #example.train_torch()
