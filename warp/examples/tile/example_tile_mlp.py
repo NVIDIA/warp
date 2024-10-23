@@ -66,8 +66,6 @@ IMG_HEIGHT = NUM_THREADS*16
 
 BATCH_SIZE = min(1024, int((IMG_WIDTH*IMG_HEIGHT)/8))
 
-wp.set_module_options({"fast_math": True})
-
 # dtype for our weights and bias matrices
 dtype = wp.float16
 
@@ -191,7 +189,7 @@ class Example:
         # capture graph for whole epoch
         wp.capture_begin()
     
-        for b in range(0, min(self.max_iters, IMG_WIDTH*IMG_HEIGHT, BATCH_SIZE)):
+        for b in range(0, IMG_WIDTH*IMG_HEIGHT, BATCH_SIZE):
 
             loss.zero_()
 
@@ -238,9 +236,8 @@ class Example:
                     loss,
                     output],
             block_dim=NUM_THREADS)
-
         
-        self.save_image(output.numpy())
+        self.save_image(f"example_tile_mlp.jpg", output.numpy())
         
 
 
@@ -348,16 +345,16 @@ class Example:
         z = tc.relu(weights_2 @ z + bias_2)
         z = tc.relu(weights_3 @ z + bias_3)
 
-        self.save_image(z.detach().cpu().numpy())
+        self.save_image("example_tile_mlp_torch.jpg", z.detach().cpu().numpy())
 
 
-    def save_image(self, output):
+    def save_image(self, name, output):
 
         predicted_image = output.T.reshape(IMG_WIDTH, IMG_HEIGHT, 3)
         predicted_image = (predicted_image * 255).astype(np.uint8)
 
         predicted_image_pil = Image.fromarray(predicted_image)
-        predicted_image_pil.save("example_tile_mlp.jpg")
+        predicted_image_pil.save(name)
 
 
 
