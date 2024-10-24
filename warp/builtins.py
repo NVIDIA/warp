@@ -10,7 +10,6 @@ import tempfile
 from typing import Any, Callable, Mapping, Sequence
 
 from warp.codegen import Reference, Var, strip_reference
-from warp.mathdx import get_cuda_include_dirs, get_mathdx_include_dirs
 from warp.types import *
 
 from .context import add_builtin
@@ -5675,13 +5674,12 @@ def tile_matmul_generic_lto_dispatch_func(
 
         # otherwise compile LTO
         lto_code = tempfile.NamedTemporaryFile()
-        include_dirs = get_cuda_include_dirs()
         result = warp.context.runtime.core.cuda_compile_dot(
             lto_code.name.encode("utf-8"),
             lto_symbol.encode("utf-8"),
-            len(include_dirs),
-            include_dirs,
-            get_mathdx_include_dirs(),
+            0,
+            None,
+            None,
             arch,
             M,
             N,
@@ -5877,14 +5875,12 @@ def tile_fft_generic_lto_dispatch_func(
     lto_code = tempfile.NamedTemporaryFile()
     shared_memory_size = ctypes.c_int(0)
 
-    include_dirs = get_cuda_include_dirs()
-
     result = warp.context.runtime.core.cuda_compile_fft(
         lto_code.name.encode("utf-8"),
         lto_symbol.encode("utf-8"),
-        len(include_dirs),
-        include_dirs,
-        get_mathdx_include_dirs(),
+        0,
+        None,
+        None,
         arch,
         size,
         ept,

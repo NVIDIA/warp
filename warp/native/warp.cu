@@ -17,7 +17,7 @@
 #include <nvJitLink.h>
 #include <nvPTXCompiler.h>
 #if WP_ENABLE_MATHDX
-    #include <libmathdx.hpp>
+    #include <libmathdx.h>
 #endif
 
 #include <array>
@@ -2881,9 +2881,11 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
 
         CHECK_ANY(ltoir_output_path != nullptr);
         CHECK_ANY(symbol_name != nullptr);
-        CHECK_ANY(mathdx_include_dir != nullptr);
         CHECK_ANY(shared_memory_size != nullptr);
-        CHECK_ANY(num_include_dirs == 0 || include_dirs != nullptr);
+        // Includes currently unused
+        CHECK_ANY(include_dirs == nullptr);
+        CHECK_ANY(mathdx_include_dir == nullptr);
+        CHECK_ANY(num_include_dirs == 0);
 
         bool res = true;
         cufftdxHandle h;
@@ -2900,12 +2902,6 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
         CHECK_CUFFTDX(cufftDxSetOperatorInt64(h, cufftDxOperatorType::CUFFTDX_OPERATOR_FFTS_PER_BLOCK, 1));
 
         CHECK_CUFFTDX(cufftDxSetOptionStr(h, commonDxOption::COMMONDX_OPTION_SYMBOL_NAME, symbol_name));
-        for(int dir = 0; dir < num_include_dirs; dir++) 
-        {
-            CHECK_CUFFTDX(cufftDxSetOptionStr(h, commonDxOption::COMMONDX_OPTION_INCLUDE, include_dirs[dir]));
-        }
-        CHECK_CUFFTDX(cufftDxSetOptionStr(h, commonDxOption::COMMONDX_OPTION_INCLUDE, mathdx_include_dir));
-        CHECK_CUFFTDX(cufftDxSetOptionStr(h, commonDxOption::COMMONDX_OPTION_INCLUDE, (std::string(mathdx_include_dir) + "/../external/cutlass/include").c_str()));
 
         size_t lto_size = 0;
         CHECK_CUFFTDX(cufftDxGetLTOIRSize(h, &lto_size));
@@ -2931,8 +2927,10 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
 
         CHECK_ANY(ltoir_output_path != nullptr);
         CHECK_ANY(symbol_name != nullptr);
-        CHECK_ANY(mathdx_include_dir != nullptr);
-        CHECK_ANY(num_include_dirs == 0 || include_dirs != nullptr);
+        // Includes currently unused
+        CHECK_ANY(include_dirs == nullptr);
+        CHECK_ANY(mathdx_include_dir == nullptr);
+        CHECK_ANY(num_include_dirs == 0);
 
         bool res = true;
         cublasdxHandle h;
@@ -2953,13 +2951,6 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
         CHECK_CUBLASDX(cublasDxSetOperatorInt64Array(h, cublasDxOperatorType::CUBLASDX_OPERATOR_ARRANGEMENT, arrangement.size(), arrangement.data()));
         
         CHECK_CUBLASDX(cublasDxSetOptionStr(h, commonDxOption::COMMONDX_OPTION_SYMBOL_NAME, symbol_name));
-        for(int dir = 0; dir < num_include_dirs; dir++) 
-        {
-            CHECK_CUBLASDX(cublasDxSetOptionStr(h, commonDxOption::COMMONDX_OPTION_INCLUDE, include_dirs[dir]));
-        }
-        CHECK_CUBLASDX(cublasDxSetOptionStr(h, commonDxOption::COMMONDX_OPTION_INCLUDE, mathdx_include_dir));
-        CHECK_CUBLASDX(cublasDxSetOptionStr(h, commonDxOption::COMMONDX_OPTION_INCLUDE, (std::string(mathdx_include_dir) + "/cublasdx/include").c_str()));
-        CHECK_CUBLASDX(cublasDxSetOptionStr(h, commonDxOption::COMMONDX_OPTION_INCLUDE, (std::string(mathdx_include_dir) + "/../external/cutlass/include").c_str()));
 
         size_t lto_size = 0;
         CHECK_CUBLASDX(cublasDxGetLTOIRSize(h, &lto_size));

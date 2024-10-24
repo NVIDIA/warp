@@ -14,8 +14,6 @@ import warnings
 from importlib.metadata import PackageNotFoundError, files
 
 CUDA_HOME = None
-MATHDX_HOME = None
-CUTLASS_HOME = None
 
 
 PLATFORM_LINUX = sys.platform.startswith("linux")
@@ -94,51 +92,6 @@ def _check_cuda_home():
                 "Both CUDA_HOME and CUDA_PATH are set but not consistent. " "Ignoring CUDA_PATH...", stacklevel=2
             )
     CUDA_HOME = (CUDA_HOME,)
-
-
-def _check_mathdx_home():
-    # Find mathDx headers
-    global MATHDX_HOME
-
-    # Try wheel
-    try:
-        MATHDX_HOME = files("nvidia-mathdx")
-    except PackageNotFoundError:
-        pass
-    else:
-        # use cufftdx.hpp as a proxy
-        MATHDX_HOME = [f for f in MATHDX_HOME if "cufftdx.hpp" in str(f)][0]
-        MATHDX_HOME = os.path.join(os.path.dirname(MATHDX_HOME.locate()), "..")
-        return
-
-    # Try conda
-    if "CONDA_PREFIX" in os.environ:
-        if PLATFORM_LINUX:
-            conda_include = os.path.join(os.environ["CONDA_PREFIX"], "include")
-        elif PLATFORM_WIN:
-            conda_include = os.path.join(os.environ["CONDA_PREFIX"], "Library", "include")
-        if os.path.isfile(os.path.join(conda_include, "cufftdx.hpp")):
-            MATHDX_HOME = os.path.join(conda_include, "..")
-            return
-
-    # Try local
-    if "MATHDX_HOME" not in os.environ:
-        raise RuntimeError(
-            "mathDx headers not found. Depending on how you install nvmath-python and other CUDA packages, "
-            "you may need to perform one of the steps below:\n"
-            "   - pip install nvidia-mathdx\n"
-            "   - conda install -c conda-forge mathdx\n"
-            "   - export MATHDX_HOME=/path/to/mathdx"
-        )
-    else:
-        MATHDX_HOME = os.environ["MATHDX_HOME"]
-
-
-def get_mathdx_include_dirs():
-    _check_mathdx_home()
-
-    global MATHDX_HOME
-    return (MATHDX_HOME + "/include").encode("utf-8")
 
 
 def get_cuda_include_dirs():
