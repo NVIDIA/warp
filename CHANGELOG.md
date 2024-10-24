@@ -4,16 +4,16 @@
 
 ### Added
 
-- Expose a `reversed()` built-in for iterators.
+- Expose a `reversed()` built-in for iterators to test ([GH-311](https://github.com/NVIDIA/warp/issues/311)).
 
 ### Changed
 
-- Relax the integer types expected when indexing arrays.
 - Promote the `wp.Int`, `wp.Float`, and `wp.Scalar` generic annotation types to the public API.
 - Make the output of `wp.print()` in backward kernels consistent for all supported data types.
 
 ### Fixed
 
+- Fix to relax the integer types expected when indexing arrays (regression in 1.3.0).
 - Fix printing vector and matrix adjoints in backward kernels.
 - Fix kernel compile error when printing structs.
 - Fix an incorrect user function being sometimes resolved when multiple overloads are available with array parameters with different `dtype` values.
