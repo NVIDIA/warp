@@ -1,19 +1,14 @@
 # Changelog
 
-## [Unreleased] - 2024-??
-
-### Added
-
-- Expose a `reversed()` built-in for iterators to test ([GH-311](https://github.com/NVIDIA/warp/issues/311)).
+## [1.4.2] - 2024-11-01
 
 ### Changed
 
-- Promote the `wp.Int`, `wp.Float`, and `wp.Scalar` generic annotation types to the public API.
 - Make the output of `wp.print()` in backward kernels consistent for all supported data types.
 
 ### Fixed
 
-- Fix to relax the integer types expected when indexing arrays (regression in 1.3.0).
+- Fix to relax the integer types expected when indexing arrays (regression in `1.3.0`).
 - Fix printing vector and matrix adjoints in backward kernels.
 - Fix kernel compile error when printing structs.
 - Fix an incorrect user function being sometimes resolved when multiple overloads are available with array parameters with different `dtype` values.
@@ -29,19 +24,6 @@
 - Fix caching of kernels with static expressions.
 - Fix `ModelBuilder.add_builder(builder)` to correctly update `articulation_start` and thereby `articulation_count` when `builder` contains more than one articulation.
 - Re-introduced the `wp.rand*()`, `wp.sample*()`, and `wp.poisson()` onto the Python scope to revert a breaking change.
-- Fix printing vector and matrix adjoints in backward kernels.
-- Fix kernel compile error when printing structs.
-
-## [Unreleased] - 2024-??
-
-### Added
-
-### Changed
-
-- Relax the integer types expected when indexing arrays.
-
-### Fixed
-
 
 ## [1.4.0] - 2024-10-01
 
@@ -1173,7 +1155,7 @@
 
 - Initial publish for alpha testing
 
-[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.4.1...HEAD
+[1.4.2]: https://github.com/NVIDIA/warp/releases/tag/v1.4.2
 [1.4.1]: https://github.com/NVIDIA/warp/releases/tag/v1.4.1
 [1.4.0]: https://github.com/NVIDIA/warp/releases/tag/v1.4.0
 [1.3.3]: https://github.com/NVIDIA/warp/releases/tag/v1.3.3
