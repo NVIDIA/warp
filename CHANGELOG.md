@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.2] - 2024-11-01
+
+### Changed
+
+- Make the output of `wp.print()` in backward kernels consistent for all supported data types.
+
+### Fixed
+
+- Fix to relax the integer types expected when indexing arrays (regression in `1.3.0`).
+- Fix printing vector and matrix adjoints in backward kernels.
+- Fix kernel compile error when printing structs.
+- Fix an incorrect user function being sometimes resolved when multiple overloads are available with array parameters with different `dtype` values.
+
 ## [1.4.1] - 2024-10-15
 
 ### Fixed
@@ -1142,7 +1155,7 @@
 
 - Initial publish for alpha testing
 
-[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.4.1...HEAD
+[1.4.2]: https://github.com/NVIDIA/warp/releases/tag/v1.4.2
 [1.4.1]: https://github.com/NVIDIA/warp/releases/tag/v1.4.1
 [1.4.0]: https://github.com/NVIDIA/warp/releases/tag/v1.4.0
 [1.3.3]: https://github.com/NVIDIA/warp/releases/tag/v1.3.3

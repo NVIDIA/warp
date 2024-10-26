@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## [1.4.2] - 2024-11-01
+
+### Changed
+
+- Make the output of `wp.print()` in backward kernels consistent for all supported data types.
+
+### Fixed
+
+- Fix to relax the integer types expected when indexing arrays (regression in `1.3.0`).
+- Fix printing vector and matrix adjoints in backward kernels.
+- Fix kernel compile error when printing structs.
+- Fix an incorrect user function being sometimes resolved when multiple overloads are available with array parameters with different `dtype` values.
+
 ## [1.4.1] - 2024-10-15
 
 ### Fixed

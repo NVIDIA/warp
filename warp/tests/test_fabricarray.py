@@ -822,6 +822,38 @@ def test_fabricarray_fill_matrix(test, device):
 
 
 @wp.kernel
+def fa_kernel_indexing_types(
+    a: wp.fabricarray(dtype=wp.int32),
+):
+    x = a[wp.uint8(0)]
+    y = a[wp.int16(1)]
+    z = a[wp.uint32(2)]
+    w = a[wp.int64(3)]
+
+    a[wp.uint8(0)] = 123
+    a[wp.int16(1)] = 123
+    a[wp.uint32(2)] = 123
+    a[wp.int64(3)] = 123
+
+    wp.atomic_add(a, wp.uint8(0), 123)
+    wp.atomic_sub(a, wp.int16(1), 123)
+    # wp.atomic_min(a, wp.uint32(2), 123)
+    # wp.atomic_max(a, wp.int64(3), 123)
+
+
+def test_fabricarray_indexing_types(test, device):
+    data = wp.zeros(shape=(4,), dtype=wp.int32, device=device)
+    iface = _create_fabric_array_interface(data, "foo", copy=True)
+    fa = wp.fabricarray(data=iface, attrib="foo")
+    wp.launch(
+        kernel=fa_kernel_indexing_types,
+        dim=1,
+        inputs=(fa,),
+        device=device,
+    )
+
+
+@wp.kernel
 def fa_generic_sums_kernel(a: wp.fabricarrayarray(dtype=Any), sums: wp.array(dtype=Any)):
     i = wp.tid()
 
@@ -945,6 +977,7 @@ add_function_test(TestFabricArray, "test_fabricarray_generic_array", test_fabric
 add_function_test(TestFabricArray, "test_fabricarray_fill_scalar", test_fabricarray_fill_scalar, devices=devices)
 add_function_test(TestFabricArray, "test_fabricarray_fill_vector", test_fabricarray_fill_vector, devices=devices)
 add_function_test(TestFabricArray, "test_fabricarray_fill_matrix", test_fabricarray_fill_matrix, devices=devices)
+add_function_test(TestFabricArray, "test_fabricarray_indexing_types", test_fabricarray_indexing_types, devices=devices)
 
 # fabric arrays of arrays
 add_function_test(TestFabricArray, "test_fabricarrayarray", test_fabricarrayarray, devices=devices)

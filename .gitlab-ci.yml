@@ -9,7 +9,11 @@
 # CI/CD Pipeline Configuration
 # ==============================================================================
 
-include: /.gitlab/ci/common.yml
+include:
+  - local: /.gitlab/ci/common.yml
+  - project: "omniverse/devplat/gitlab/templates/common/compliance"
+    file: "modules/omniverse-repo-compliance.gitlab-ci.yml"
+    ref: v1_latest
 
 workflow:
   rules:
@@ -137,6 +141,12 @@ ruff format:
     - pip install --upgrade ruff==0.6.8
   script:
     - ruff format --diff
+
+osec:sonarqube:
+  variables:
+    # Disable C/C++ analyzer until project specific work is done to enable it.
+    # See: https://confluence.nvidia.com/display/OMNIVERSE/SonarQube+Gitlab+CI+Integration#C+Project+Enablement+Additions
+    SONAR_EXTRA_ARGS: "-Dsonar.c.file.suffixes=- -Dsonar.cpp.file.suffixes=- -Dsonar.objc.file.suffixes=-"
 
 # ==============================================================================
 # Main Unit Testing Jobs
@@ -371,6 +381,7 @@ linux-x86_64 test warp-init:
         - build_llvm.py
     - when: manual # If not auto-triggered, allow any pipeline to run this job manually
       allow_failure: true
+  timeout: 10m
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
@@ -696,6 +707,7 @@ merge request docs:
       - public
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  timeout: 10m
   environment:
     name: review/$CI_MERGE_REQUEST_IID
     url: https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html
@@ -720,6 +732,7 @@ check generated files:
       - docs/modules/functions.rst
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  timeout: 10m
   extends:
     - .runner-utility-linux-x86_64
   script:
@@ -737,6 +750,7 @@ pages:
     - .build-docs-common
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  timeout: 10m
   environment:
     name: GitLab Pages
     deployment_tier: staging

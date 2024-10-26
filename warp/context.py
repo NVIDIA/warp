@@ -1249,6 +1249,7 @@ def add_builtin(
                     key,
                     input_types=arg_types,
                     value_type=return_type,
+                    value_func=value_func if return_type is Any else None,
                     export_func=export_func,
                     dispatch_func=dispatch_func,
                     doc=doc,
