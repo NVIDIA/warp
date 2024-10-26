@@ -21,7 +21,7 @@ import math
 import os
 
 import numpy as np
-from pxr import Usd, UsdGeom
+from pxr import Gf, Usd, UsdGeom
 
 import warp as wp
 import warp.examples
@@ -93,7 +93,7 @@ class Example:
         geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath("/root/bear"))
         points = geom.GetPointsAttr().Get()
 
-        xform = geom.ComputeLocalToWorldTransform(0.0)
+        xform = Gf.Matrix4f(geom.ComputeLocalToWorldTransform(0.0))
         for i in range(len(points)):
             points[i] = xform.Transform(points[i])
 
