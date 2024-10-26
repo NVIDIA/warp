@@ -5,25 +5,36 @@
 ### Added
 
 - Expose a `reversed()` built-in for iterators to test ([GH-311](https://github.com/NVIDIA/warp/issues/311)).
-- Expose a `reversed()` built-in for iterators.
 - warp.fem: Added Trimesh3D and Quadmesh3D geometry types for 3D surfaces, with new `example_distortion_energy` example
 
 ### Changed
 
 - Promote the `wp.Int`, `wp.Float`, and `wp.Scalar` generic annotation types to the public API.
+- warp.fem: Simplified querying neighboring cell quantities when integrating on sides using new
+  `warp.fem.cells()`, `warp.fem.to_inner_cell()`, `warp.fem.to_outer_cell()` operators
+
+### Fixed
+
+- Fix `place` setting of paddle backend.
+- warp.fem: Fixed tri-cubic shape functions on quadrilateral meshes
+- warp.fem: Fixed caching of integrand kernels when changing code-generation options
+- Fix `wp.expect_neq()` overloads missing for scalar types.
+
+## [1.4.2] - 2024-11-13
+
+### Changed
+
 - Make the output of `wp.print()` in backward kernels consistent for all supported data types.
 
 ### Fixed
 
-- Fix place setting of paddle backend and add 2 missing benchmark files.
-- Fix to relax the integer types expected when indexing arrays (regression in 1.3.0).
+- Fix to relax the integer types expected when indexing arrays (regression in `1.3.0`).
 - Fix printing vector and matrix adjoints in backward kernels.
 - Fix kernel compile error when printing structs.
 - Fix an incorrect user function being sometimes resolved when multiple overloads are available with array parameters with different `dtype` values.
 - Fix error being raised when static and dynamic for-loops are written in sequence with the same iteration variable names ([GH-331](https://github.com/NVIDIA/warp/issues/331)).
 - Fix an issue with the `Texture Write` node, used in the Mandelbrot Omniverse sample, sometimes erroring out in multi-GPU environments.
 - Code generation of in-place multiplication and division operations (regression introduced in a69d061)([GH-342](https://github.com/NVIDIA/warp/issues/342)).
-- Fix `wp.expect_neq()` overloads missing for scalar types.
 
 ## [1.4.1] - 2024-10-15
 
@@ -36,17 +47,6 @@
 - Fix caching of kernels with static expressions.
 - Fix `ModelBuilder.add_builder(builder)` to correctly update `articulation_start` and thereby `articulation_count` when `builder` contains more than one articulation.
 - Re-introduced the `wp.rand*()`, `wp.sample*()`, and `wp.poisson()` onto the Python scope to revert a breaking change.
-- Fix printing vector and matrix adjoints in backward kernels.
-- Fix kernel compile error when printing structs.
-- warp.fem: Simplified querying neighboring cell quantities when integrating on sides using new `warp.fem.cells()`, `warp.fem.to_inner_cell()`, `warp.fem.to_outer_cell()` operators
-
-### Fixed
-
-- Fix potential out-of-bounds memory access when a `wp.sparse.BsrMatrix` object is reused for storing matrices of different shapes
-- Fix robustness to very low desired tolerance in `wp.fem.utils.symmetric_eigenvalues_qr`
-- Fix invalid code generation error messages when nesting dynamic and static for-loops
-- warp.fem: Fixed tri-cubic shape functions on quadrilateral meshes 
-- warp.fem: Fixed caching of integrand kernels when changing code-generation options
 
 ## [1.4.0] - 2024-10-01
 
@@ -1178,7 +1178,8 @@
 
 - Initial publish for alpha testing
 
-[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.4.1...HEAD
+[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.4.2...HEAD
+[1.4.2]: https://github.com/NVIDIA/warp/releases/tag/v1.4.2
 [1.4.1]: https://github.com/NVIDIA/warp/releases/tag/v1.4.1
 [1.4.0]: https://github.com/NVIDIA/warp/releases/tag/v1.4.0
 [1.3.3]: https://github.com/NVIDIA/warp/releases/tag/v1.3.3
