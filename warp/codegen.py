@@ -939,7 +939,9 @@ class Adjoint:
 
         adj.return_var = None  # return type for function or kernel
         adj.loop_symbols = []  # symbols at the start of each loop
-        adj.loop_const_iter_symbols = []  # iteration variables (constant) for static loops
+        adj.loop_const_iter_symbols = (
+            set()
+        )  # constant iteration variables for static loops (mutating them does not raise an error)
 
         # blocks
         adj.blocks = [Block()]
@@ -2000,22 +2002,11 @@ class Adjoint:
         )
         return range_call
 
-    def begin_record_constant_iter_symbols(adj):
-        if len(adj.loop_const_iter_symbols) > 0:
-            adj.loop_const_iter_symbols.append(adj.loop_const_iter_symbols[-1])
-        else:
-            adj.loop_const_iter_symbols.append(set())
-
-    def end_record_constant_iter_symbols(adj):
-        if len(adj.loop_const_iter_symbols) > 0:
-            adj.loop_const_iter_symbols.pop()
-
     def record_constant_iter_symbol(adj, sym):
-        if len(adj.loop_const_iter_symbols) > 0:
-            adj.loop_const_iter_symbols[-1].add(sym)
+        adj.loop_const_iter_symbols.add(sym)
 
     def is_constant_iter_symbol(adj, sym):
-        return len(adj.loop_const_iter_symbols) > 0 and sym in adj.loop_const_iter_symbols[-1]
+        return sym in adj.loop_const_iter_symbols
 
     def emit_For(adj, node):
         # try and unroll simple range() statements that use constant args
@@ -2045,7 +2036,6 @@ class Adjoint:
                 iter = adj.eval(node.iter)
 
             adj.symbols[node.target.id] = adj.begin_for(iter)
-            adj.begin_record_constant_iter_symbols()
 
             # for loops should be side-effect free, here we store a copy
             adj.loop_symbols.append(adj.symbols.copy())
@@ -2056,7 +2046,6 @@ class Adjoint:
 
             adj.materialize_redefinitions(adj.loop_symbols[-1])
             adj.loop_symbols.pop()
-            adj.end_record_constant_iter_symbols()
 
             adj.end_for(iter)
 
