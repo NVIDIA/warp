@@ -12,6 +12,7 @@
 - Fix printing vector and matrix adjoints in backward kernels.
 - Fix kernel compile error when printing structs.
 - Fix an incorrect user function being sometimes resolved when multiple overloads are available with array parameters with different `dtype` values.
+- Fix error being raised when static and dynamic for-loops are written in sequence with the same iteration variable names ([GH-331](https://github.com/NVIDIA/warp/issues/331)).
 
 ## [1.4.1] - 2024-10-15
 
