@@ -574,7 +574,6 @@ def test_error_mutating_constant_in_dynamic_loop(test, device):
     assert_np_equal(mats.numpy(), np.zeros((1, 3, 3)))
 
 
-
 @wp.kernel
 def test_call_syntax():
     expected_pow = 16.0
