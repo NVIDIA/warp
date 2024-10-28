@@ -9,7 +9,6 @@ import ctypes
 import os
 
 import warp.config
-from warp.mathdx import get_cuda_include_dirs
 from warp.thirdparty import appdirs
 
 
@@ -25,8 +24,6 @@ def build_cuda(cu_path, arch, output_path, config="release", verify_fp=False, fa
             warp.context.runtime.llvm.compile_cuda(src, cu_path, inc_path, output_path, False)
 
         else:
-            cuda_include_dirs = get_cuda_include_dirs()
-
             if ltoirs is None:
                 ltoirs = []
 
@@ -37,8 +34,8 @@ def build_cuda(cu_path, arch, output_path, config="release", verify_fp=False, fa
                 src,
                 arch,
                 inc_path,
-                len(cuda_include_dirs),
-                cuda_include_dirs,
+                0,
+                None,
                 config == "debug",
                 warp.config.verbose,
                 verify_fp,

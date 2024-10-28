@@ -36,7 +36,7 @@ linux-x86_64 build:
     - apt-get update && apt-get install build-essential curl --no-install-recommends -y
     - >
       curl -k -H "Authorization: Bearer $ARTIFACTORY_ACCESS_TOKEN"
-      $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/main/PostMerge/88/libmathdx_build_x86_64_rockylinux8_cuda12.0.0_release.tar.gz
+      $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/main/PostMerge/92/libmathdx_build_x86_64_rockylinux8_cuda12.0.0_release.tar.gz
       -o libmathdx.tar.gz
     - mkdir -p _build/target-deps
     - tar -xzf libmathdx.tar.gz -C _build/target-deps
@@ -59,7 +59,7 @@ linux-aarch64 build:
     - apt-get update && apt-get install build-essential curl --no-install-recommends -y
     - >
       curl -k -H "Authorization: Bearer $ARTIFACTORY_ACCESS_TOKEN"
-      $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/main/PostMerge/88/libmathdx_build_aarch64_rockylinux8_cuda12.0.0_release.tar.gz
+      $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/main/PostMerge/92/libmathdx_build_aarch64_rockylinux8_cuda12.0.0_release.tar.gz
       -o libmathdx.tar.gz
     - mkdir -p _build/target-deps
     - tar -xzf libmathdx.tar.gz -C _build/target-deps
@@ -101,7 +101,6 @@ linux-x86_64 test:
     - python -m pip install --upgrade usd-core
     - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
     - python -m pip install -U "jax[cuda12]"
-    - python -m pip install --upgrade nvidia-cuda-cccl-cu12 nvidia-cuda-runtime-cu12
     - python -m pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
     # HACK: disable P2P tests due to misbehaving agents
@@ -118,7 +117,6 @@ linux-aarch64 test jetson:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - !reference [.snippets, install-python+warp-aarch64]
     - python -m pip install -U "jax[cuda12]"
-    - python -m pip install --upgrade nvidia-cuda-cccl-cu12 nvidia-cuda-runtime-cu12
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
@@ -141,7 +139,6 @@ create pypi wheels:
     - python3 -m pip install --upgrade pip
     - python3 -m pip install build
   script:
-    - sed -i 's/dependencies = \["numpy"\]/dependencies = \["numpy", "nvidia-mathdx==24.4.0", "nvidia-cuda-cccl-cu12", "nvidia-cuda-runtime-cu12"\]/' pyproject.toml
     - sed -i "s/^\(.*\)$/\1+tile/" VERSION.md  # Modify VERSION.md with +tile
     - python3 -m build --wheel -C--build-option=-Plinux-x86_64
     - python3 -m build --wheel -C--build-option=-Plinux-aarch64
