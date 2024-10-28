@@ -939,7 +939,9 @@ class Adjoint:
 
         adj.return_var = None  # return type for function or kernel
         adj.loop_symbols = []  # symbols at the start of each loop
-        adj.loop_const_iter_symbols = set()  # constant iteration variables for static loops (mutating them does not raise an error)
+        adj.loop_const_iter_symbols = (
+            set()
+        )  # constant iteration variables for static loops (mutating them does not raise an error)
 
         # blocks
         adj.blocks = [Block()]
