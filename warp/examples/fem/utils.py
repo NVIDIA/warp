@@ -143,7 +143,7 @@ def gen_hexmesh(res, bounds_lo: Optional[wp.vec3] = None, bounds_hi: Optional[wp
 
     x = np.linspace(bounds_lo[0], bounds_hi[0], Nx + 1)
     y = np.linspace(bounds_lo[1], bounds_hi[1], Ny + 1)
-    z = np.linspace(bounds_lo[1], bounds_hi[1], Nz + 1)
+    z = np.linspace(bounds_lo[2], bounds_hi[2], Nz + 1)
 
     positions = np.transpose(np.meshgrid(x, y, z, indexing="ij"), axes=(1, 2, 3, 0)).reshape(-1, 3)
 
@@ -252,6 +252,7 @@ def bsr_cg(
         check_every=check_every,
         M=M,
         callback=callback,
+        use_cuda_graph=not wp.config.verify_cuda,
     )
 
     if not quiet:

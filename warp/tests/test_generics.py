@@ -522,6 +522,57 @@ def test_type_attribute_error(test, device):
         )
 
 
+@wp.func
+def vec_int_annotation_func(v: wp.vec(3, wp.Int)) -> wp.Int:
+    return v[0] + v[1] + v[2]
+
+
+@wp.func
+def vec_float_annotation_func(v: wp.vec(3, wp.Float)) -> wp.Float:
+    return v[0] + v[1] + v[2]
+
+
+@wp.func
+def vec_scalar_annotation_func(v: wp.vec(3, wp.Scalar)) -> wp.Scalar:
+    return v[0] + v[1] + v[2]
+
+
+@wp.func
+def mat_int_annotation_func(m: wp.mat((2, 2), wp.Int)) -> wp.Int:
+    return m[0, 0] + m[0, 1] + m[1, 0] + m[1, 1]
+
+
+@wp.func
+def mat_float_annotation_func(m: wp.mat((2, 2), wp.Float)) -> wp.Float:
+    return m[0, 0] + m[0, 1] + m[1, 0] + m[1, 1]
+
+
+@wp.func
+def mat_scalar_annotation_func(m: wp.mat((2, 2), wp.Scalar)) -> wp.Scalar:
+    return m[0, 0] + m[0, 1] + m[1, 0] + m[1, 1]
+
+
+mat22s = wp.mat((2, 2), wp.int16)
+mat22d = wp.mat((2, 2), wp.float64)
+
+
+@wp.kernel
+def test_annotations_kernel():
+    vi16 = wp.vec3s(wp.int16(1), wp.int16(2), wp.int16(3))
+    vf64 = wp.vec3d(wp.float64(1), wp.float64(2), wp.float64(3))
+    wp.expect_eq(vec_int_annotation_func(vi16), wp.int16(6))
+    wp.expect_eq(vec_float_annotation_func(vf64), wp.float64(6))
+    wp.expect_eq(vec_scalar_annotation_func(vi16), wp.int16(6))
+    wp.expect_eq(vec_scalar_annotation_func(vf64), wp.float64(6))
+
+    mi16 = mat22s(wp.int16(1), wp.int16(2), wp.int16(3), wp.int16(4))
+    mf64 = mat22d(wp.float64(1), wp.float64(2), wp.float64(3), wp.float64(4))
+    wp.expect_eq(mat_int_annotation_func(mi16), wp.int16(10))
+    wp.expect_eq(mat_float_annotation_func(mf64), wp.float64(10))
+    wp.expect_eq(mat_scalar_annotation_func(mi16), wp.int16(10))
+    wp.expect_eq(mat_scalar_annotation_func(mf64), wp.float64(10))
+
+
 class TestGenerics(unittest.TestCase):
     pass
 
@@ -590,6 +641,7 @@ add_kernel_test(
 )
 add_function_test(TestGenerics, "test_type_operator_misspell", test_type_operator_misspell, devices=devices)
 add_function_test(TestGenerics, "test_type_attribute_error", test_type_attribute_error, devices=devices)
+add_kernel_test(TestGenerics, name="test_annotations_kernel", kernel=test_annotations_kernel, dim=1, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

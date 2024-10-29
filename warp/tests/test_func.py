@@ -7,7 +7,7 @@
 
 import math
 import unittest
-from typing import Tuple
+from typing import Any, Tuple
 
 import numpy as np
 
@@ -189,6 +189,37 @@ def test_user_func_return_multiple_values():
     a, b = user_func_return_multiple_values(123, 234.0)
     wp.expect_eq(a, 246)
     wp.expect_eq(b, 54756.0)
+
+
+@wp.func
+def user_func_overload(
+    b: wp.array(dtype=Any),
+    i: int,
+):
+    return b[i] * 2.0
+
+
+@wp.kernel
+def user_func_overload_resolution_kernel(
+    a: wp.array(dtype=Any),
+    b: wp.array(dtype=Any),
+):
+    i = wp.tid()
+    a[i] = user_func_overload(b, i)
+
+
+def test_user_func_overload_resolution(test, device):
+    a0 = wp.array((1, 2, 3), dtype=wp.vec3)
+    b0 = wp.array((2, 3, 4), dtype=wp.vec3)
+
+    a1 = wp.array((5,), dtype=float)
+    b1 = wp.array((6,), dtype=float)
+
+    wp.launch(user_func_overload_resolution_kernel, a0.shape, (a0, b0))
+    wp.launch(user_func_overload_resolution_kernel, a1.shape, (a1, b1))
+
+    assert_np_equal(a0.numpy()[0], (4, 6, 8))
+    assert a1.numpy()[0] == 12
 
 
 devices = get_test_devices()
@@ -374,6 +405,9 @@ add_kernel_test(
     name="test_user_func_return_multiple_values",
     dim=1,
     devices=devices,
+)
+add_function_test(
+    TestFunc, func=test_user_func_overload_resolution, name="test_user_func_overload_resolution", devices=devices
 )
 
 

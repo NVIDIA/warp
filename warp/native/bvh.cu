@@ -65,7 +65,7 @@ __global__ void bvh_refit_kernel(int n, const int* __restrict__ parents, int* __
             int finished = atomicAdd(&child_count[parent], 1);
 
             // if we have are the last thread (such that the parent node is now complete)
-            // then update its bounds and move onto the the next parent in the hierarchy
+            // then update its bounds and move onto the next parent in the hierarchy
             if (finished == 1)
             {
                 const int left_child = node_lowers[parent].i;
@@ -273,7 +273,7 @@ __global__ void build_hierarchy(int n, int* root, const int* __restrict__ deltas
             }
 
             // if we have are the last thread (such that the parent node is now complete)
-            // then update its bounds and move onto the the next parent in the hierarchy
+            // then update its bounds and move onto the next parent in the hierarchy
             if (childCount == 1)
             {
                 const int left_child = lowers[parent].i;

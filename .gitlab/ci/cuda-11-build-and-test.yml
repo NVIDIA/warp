@@ -25,6 +25,7 @@ include:
       - "templates/v3/windows/codesign.gitlab-ci.yml"
       - "templates/v3/linux/packman_s3.gitlab-ci.yml"
       - "templates/v3/windows/packman_s3.gitlab-ci.yml"
+      - "templates/v3/linux/nucleus/kit-extensions.ov.nvidia.com/kit-extension-svc.gitlab-ci.yml"
 
     ref: v1_latest
 
@@ -52,7 +53,7 @@ linux-aarch64 build:
     - apt-get update && apt-get install build-essential curl --no-install-recommends -y
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - ./tools/ci/building/build-linux-x86_64/build.sh --cuda 11 --no-docker # We are already using the builder image
+    - ./tools/ci/building/build-linux-aarch64/build.sh --cuda 11 --no-docker # We are already using the builder image
     - mkdir -p warp/bin/linux-aarch64
     - mv warp/bin/warp.so warp/bin/linux-aarch64
     - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
@@ -144,11 +145,7 @@ windows-x86_64 test:
     - tools/packman/packman.cmd install -l _build/target-deps/python python $python_name
     - '& $env:CI_PROJECT_DIR\_build\target-deps\python\python.exe -m venv _venv'
     - .\_venv\Scripts\Activate.ps1
-    - python -m pip install --upgrade pip
-    - python -m pip install --upgrade usd-core
-    # Temporary HACK: use NumPy < 2.0 on Windows due to issues with Torch wheels that are not compatible
-    # https://github.com/pytorch/pytorch/issues/128860
-    - python -m pip install "numpy<2"
+    - python -m pip install --upgrade pip usd-core numpy
     - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
     - python -m pip install -e .
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
@@ -314,4 +311,5 @@ publish extensions to packman:
   script:
     - !reference [.osec:vault:v3:linux, codesign:perform_vault_requests]
     - !reference [.osec:vault:v3:linux, packman_s3:perform_vault_requests]
+    - !reference [.osec:vault:v3:linux, nucleus:kit-extensions.ov.nvidia.com:kit-extension-svc:perform_vault_requests]
     - tools/repo.sh publish_exts --publish-all

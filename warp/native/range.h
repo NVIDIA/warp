@@ -97,13 +97,26 @@ CUDA_CALLABLE inline range_t iter_reverse(const range_t& r)
 {
     // generates a reverse range, equivalent to reversed(range())
     range_t rev;
-    rev.start = r.end-1;
-    rev.end = r.start-1;
+
+    if (r.step > 0)
+    {
+        rev.start = r.start + int((r.end - r.start - 1) / r.step) * r.step;
+    }
+    else
+    {
+        rev.start = r.start + int((r.end - r.start + 1) / r.step) * r.step;
+    }
+
+    rev.end = r.start - r.step;
     rev.step = -r.step;
 
     rev.i = rev.start;
     
     return rev;
+}
+
+CUDA_CALLABLE inline void adj_iter_reverse(const range_t& r, range_t& adj_r, range_t& adj_ret)
+{
 }
 
 } // namespace wp
