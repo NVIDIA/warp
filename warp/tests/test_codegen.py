@@ -7,6 +7,7 @@
 
 import sys
 import unittest
+from typing import Tuple
 
 import warp as wp
 from warp.tests.unittest_utils import *
@@ -589,6 +590,64 @@ def test_error_mutating_constant_in_dynamic_loop(test, device):
     assert_np_equal(mats.numpy(), np.zeros((1, 3, 3)))
 
 
+def test_error_return_annotation_mismatch(test, device):
+    @wp.func
+    def foo_1(x: wp.int32) -> wp.int16:
+        return wp.int8(x)
+
+    def kernel_1_fn():
+        x = foo_1(123)
+
+    @wp.func
+    def foo_2(x: int) -> int:
+        return (x + x, x * x)
+
+    def kernel_2_fn():
+        x = foo_2(123)
+
+    @wp.func
+    def foo_3(x: int) -> Tuple[int, int]:
+        return (x, 1.23)
+
+    def kernel_3_fn():
+        x, y = foo_3(123)
+
+    @wp.func
+    def foo_4(x: int) -> Tuple[int, int, int]:
+        return (x + x, x * x)
+
+    def kernel_4_fn():
+        x, y, z = foo_4(123)
+
+    kernel = wp.Kernel(func=kernel_1_fn)
+    with test.assertRaisesRegex(
+        wp.codegen.WarpCodegenError,
+        r"The function `foo_1` has its return type annotated as `int16` but the code returns a value of type `int8`.",
+    ):
+        wp.launch(kernel, dim=1, device=device)
+
+    kernel = wp.Kernel(func=kernel_2_fn)
+    with test.assertRaisesRegex(
+        wp.codegen.WarpCodegenError,
+        r"The function `foo_2` has its return type annotated as `int` but the code returns 2 values.",
+    ):
+        wp.launch(kernel, dim=1, device=device)
+
+    kernel = wp.Kernel(func=kernel_3_fn)
+    with test.assertRaisesRegex(
+        wp.codegen.WarpCodegenError,
+        r"The function `foo_3` has its return type annotated as `Tuple\[int, int\]` but the code returns a tuple with types `\(int32, float32\)`.",
+    ):
+        wp.launch(kernel, dim=1, device=device)
+
+    kernel = wp.Kernel(func=kernel_4_fn)
+    with test.assertRaisesRegex(
+        wp.codegen.WarpCodegenError,
+        r"The function `foo_4` has its return type annotated as a tuple of 3 elements but the code returns 2 values.",
+    ):
+        wp.launch(kernel, dim=1, device=device)
+
+
 @wp.kernel
 def test_call_syntax():
     expected_pow = 16.0
@@ -774,7 +833,12 @@ add_function_test(
     name="test_error_mutating_constant_in_dynamic_loop",
     devices=devices,
 )
-
+add_function_test(
+    TestCodeGen,
+    func=test_error_return_annotation_mismatch,
+    name="test_error_return_annotation_mismatch",
+    devices=devices,
+)
 add_kernel_test(TestCodeGen, name="test_call_syntax", kernel=test_call_syntax, dim=1, devices=devices)
 add_kernel_test(TestCodeGen, name="test_shadow_builtin", kernel=test_shadow_builtin, dim=1, devices=devices)
 add_kernel_test(TestCodeGen, name="test_while_condition_eval", kernel=test_while_condition_eval, dim=1, devices=devices)

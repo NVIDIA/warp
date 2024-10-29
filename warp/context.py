@@ -5102,7 +5102,12 @@ def launch(
             kernel = kernel.add_overload(fwd_types)
 
         # delay load modules, including new overload if needed
-        module_exec = kernel.module.load(device, block_dim)
+        try:
+            module_exec = kernel.module.load(device, block_dim)
+        except Exception:
+            kernel.adj.skip_build = True
+            raise
+
         if not module_exec:
             return
 
