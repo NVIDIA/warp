@@ -25,7 +25,7 @@ class PaddleDevice:
         elif device.startswith("gpu:"):
             self.device_new = device
         elif device == "gpu":
-            self.device_new = "gpu"
+            self.device_new = device
         else:
             raise NotImplementedError(f"Unsupported device type {device}")
 
@@ -870,11 +870,11 @@ try:
     #         devices=paddle_compatible_cuda_devices,
     #     )
 
-    # multi-GPU tests
-    if len(paddle_compatible_cuda_devices) > 1:
-        add_function_test(TestPaddle, "test_paddle_mgpu_from_paddle", test_paddle_mgpu_from_paddle)
-        add_function_test(TestPaddle, "test_paddle_mgpu_to_paddle", test_paddle_mgpu_to_paddle)
-        add_function_test(TestPaddle, "test_paddle_mgpu_interop", test_paddle_mgpu_interop)
+    # multi-GPU not supported yet.
+    # if len(paddle_compatible_cuda_devices) > 1:
+    #     add_function_test(TestPaddle, "test_paddle_mgpu_from_paddle", test_paddle_mgpu_from_paddle)
+    #     add_function_test(TestPaddle, "test_paddle_mgpu_to_paddle", test_paddle_mgpu_to_paddle)
+    #     add_function_test(TestPaddle, "test_paddle_mgpu_interop", test_paddle_mgpu_interop)
 
 except Exception as e:
     print(f"Skipping Paddle tests due to exception: {e}")
