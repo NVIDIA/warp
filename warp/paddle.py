@@ -30,7 +30,6 @@ def device_from_paddle(paddle_device: Union[Place, CPUPlace, CUDAPinnedPlace, CU
     Raises:
         RuntimeError: Paddle device does not have a corresponding Warp device
     """
-    print(paddle_device)
     if type(paddle_device) is str:
         if paddle_device.startswith("gpu:"):
             paddle_device = paddle_device.replace("gpu:", "cuda:")
