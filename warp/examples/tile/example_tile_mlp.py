@@ -21,20 +21,20 @@
 #
 ###########################################################################
 
+import math
+import os
+
 import numpy as np
+from PIL import Image
+
 import warp as wp
 import warp.examples
 import warp.optim
 
-import math
-import os
-
-from PIL import Image
-
 rng = np.random.default_rng(45)
 
-def create_layer(dim_in, dim_hid, dtype=float):
 
+def create_layer(dim_in, dim_hid, dtype=float):
     w = rng.uniform(-1.0 / np.sqrt(dim_in), 1.0 / np.sqrt(dim_in), (dim_hid, dim_in))
     b = rng.uniform(-1.0 / np.sqrt(dim_in), 1.0 / np.sqrt(dim_in), (dim_hid, 1))
 
@@ -43,8 +43,8 @@ def create_layer(dim_in, dim_hid, dtype=float):
 
     return (weights, bias)
 
-def create_array(dim_in, dim_hid, dtype=float):
 
+def create_array(dim_in, dim_hid, dtype=float):
     s = rng.uniform(-1.0 / np.sqrt(dim_in), 1.0 / np.sqrt(dim_in), (dim_hid, dim_in))
     a = wp.array(s, dtype=dtype, requires_grad=True)
 
@@ -54,63 +54,68 @@ def create_array(dim_in, dim_hid, dtype=float):
 # number of frequencies for the positional encoding
 NUM_FREQ = wp.constant(8)
 
-DIM_IN = wp.constant(4*NUM_FREQ)  # sin,cos for both x,y at each frequenecy
+DIM_IN = wp.constant(4 * NUM_FREQ)  # sin,cos for both x,y at each frequenecy
 DIM_HID = 32
 DIM_OUT = 3
 
 # threads per-block
 NUM_THREADS = 32
 
-IMG_WIDTH = NUM_THREADS*16
-IMG_HEIGHT = NUM_THREADS*16
+IMG_WIDTH = NUM_THREADS * 16
+IMG_HEIGHT = NUM_THREADS * 16
 
-BATCH_SIZE = min(1024, int((IMG_WIDTH*IMG_HEIGHT)/8))
+BATCH_SIZE = min(1024, int((IMG_WIDTH * IMG_HEIGHT) / 8))
 
 # dtype for our weights and bias matrices
 dtype = wp.float16
+
 
 @wp.func
 def relu(x: dtype):
     return wp.max(x, dtype(0.0))
 
-@wp.kernel
-def compute(indices: wp.array(dtype=int),
-            weights_0: wp.array2d(dtype=dtype), bias_0: wp.array2d(dtype=dtype),
-            weights_1: wp.array2d(dtype=dtype), bias_1: wp.array2d(dtype=dtype),
-            weights_2: wp.array2d(dtype=dtype), bias_2: wp.array2d(dtype=dtype),
-            weights_3: wp.array2d(dtype=dtype), bias_3: wp.array2d(dtype=dtype),
-            reference: wp.array2d(dtype=float),
-            loss: wp.array1d(dtype=float),
-            out: wp.array2d(dtype=float)):
 
+@wp.kernel
+def compute(
+    indices: wp.array(dtype=int),
+    weights_0: wp.array2d(dtype=dtype),
+    bias_0: wp.array2d(dtype=dtype),
+    weights_1: wp.array2d(dtype=dtype),
+    bias_1: wp.array2d(dtype=dtype),
+    weights_2: wp.array2d(dtype=dtype),
+    bias_2: wp.array2d(dtype=dtype),
+    weights_3: wp.array2d(dtype=dtype),
+    bias_3: wp.array2d(dtype=dtype),
+    reference: wp.array2d(dtype=float),
+    loss: wp.array1d(dtype=float),
+    out: wp.array2d(dtype=float),
+):
     # batch indices
     linear = indices[wp.tid()]
 
-    row = linear/IMG_WIDTH
-    col = linear%IMG_WIDTH
+    row = linear / IMG_WIDTH
+    col = linear % IMG_WIDTH
 
     # normalize input coordinates to [-1, 1]
-    x = (float(row)/float(IMG_WIDTH) - 0.5)*2.0
-    y = (float(col)/float(IMG_HEIGHT) - 0.5)*2.0
+    x = (float(row) / float(IMG_WIDTH) - 0.5) * 2.0
+    y = (float(col) / float(IMG_HEIGHT) - 0.5) * 2.0
 
     local = wp.vector(dtype=dtype, length=DIM_IN)
 
     # construct positional encoding
     for s in range(NUM_FREQ):
-
-        scale = wp.pow(2.0, float(s))*wp.pi
+        scale = wp.pow(2.0, float(s)) * wp.pi
 
         # x-coord
-        local[s*4 + 0] = dtype(wp.sin(x * scale))
-        local[s*4 + 1] = dtype(wp.cos(x * scale))
+        local[s * 4 + 0] = dtype(wp.sin(x * scale))
+        local[s * 4 + 1] = dtype(wp.cos(x * scale))
         # y-coord
-        local[s*4 + 2] = dtype(wp.sin(y * scale))
-        local[s*4 + 3] = dtype(wp.cos(y * scale))
-
+        local[s * 4 + 2] = dtype(wp.sin(y * scale))
+        local[s * 4 + 3] = dtype(wp.cos(y * scale))
 
     # tile feature vectors across the block, returns [dim(f), NUM_THREADS]
     f = wp.tile(local)
-    
+
     # input layer
     w0 = wp.tile_load(weights_0, 0, 0, m=DIM_HID, n=DIM_IN)
     b0 = wp.tile_load(bias_0, 0, 0, m=DIM_HID, n=1)
@@ -134,78 +139,89 @@ def compute(indices: wp.array(dtype=int),
     output = wp.untile(o)
 
     # compute error
-    error = wp.vec3(float(output[0]) - reference[0,linear],
-                    float(output[1]) - reference[1,linear],
-                    float(output[2]) - reference[2,linear])
+    error = wp.vec3(
+        float(output[0]) - reference[0, linear],
+        float(output[1]) - reference[1, linear],
+        float(output[2]) - reference[2, linear],
+    )
 
     # write MSE loss
     if loss:
-        wp.atomic_add(loss, 0, wp.length_sq(error)/float(3*BATCH_SIZE))
+        wp.atomic_add(loss, 0, wp.length_sq(error) / float(3 * BATCH_SIZE))
 
     #  write image output
     if out:
         for i in range(DIM_OUT):
             out[i, linear] = float(output[i])
-            
+
 
 class Example:
-
     def __init__(self, train_iters):
-
         self.weights_0, self.bias_0 = create_layer(DIM_IN, DIM_HID, dtype=dtype)
         self.weights_1, self.bias_1 = create_layer(DIM_HID, DIM_HID, dtype=dtype)
         self.weights_2, self.bias_2 = create_layer(DIM_HID, DIM_HID, dtype=dtype)
         self.weights_3, self.bias_3 = create_layer(DIM_HID, DIM_OUT, dtype=dtype)
 
-        # reference 
+        # reference
         reference_path = os.path.join(wp.examples.get_asset_directory(), "pixel.jpg")
         with Image.open(reference_path) as im:
-            reference_image = np.asarray(im.resize((IMG_WIDTH, IMG_HEIGHT)).convert("RGB")) / 255.0    
-        self.reference = wp.array(reference_image.reshape(IMG_WIDTH*IMG_HEIGHT, 3).T, dtype=float)
+            reference_image = np.asarray(im.resize((IMG_WIDTH, IMG_HEIGHT)).convert("RGB")) / 255.0
+        self.reference = wp.array(reference_image.reshape(IMG_WIDTH * IMG_HEIGHT, 3).T, dtype=float)
 
         # create randomized batch indices
-        indices = np.arange(0, IMG_WIDTH*IMG_HEIGHT, dtype=np.int32)
+        indices = np.arange(0, IMG_WIDTH * IMG_HEIGHT, dtype=np.int32)
         rng.shuffle(indices)
         self.indices = wp.array(indices)
 
-        self.num_batches = int((IMG_WIDTH*IMG_HEIGHT)/BATCH_SIZE)
+        self.num_batches = int((IMG_WIDTH * IMG_HEIGHT) / BATCH_SIZE)
         self.max_iters = train_iters
-        self.max_epochs = max(1, int(self.max_iters/self.num_batches))
+        self.max_epochs = max(1, int(self.max_iters / self.num_batches))
 
     def train_warp(self):
-
-        params = [self.weights_0, self.bias_0,
-                  self.weights_1, self.bias_1, 
-                  self.weights_2, self.bias_2,
-                  self.weights_3, self.bias_3]
+        params = [
+            self.weights_0,
+            self.bias_0,
+            self.weights_1,
+            self.bias_1,
+            self.weights_2,
+            self.bias_2,
+            self.weights_3,
+            self.bias_3,
+        ]
 
         optimizer_grads = [p.grad.flatten() for p in params]
         optimizer_inputs = [p.flatten() for p in params]
         optimizer = warp.optim.Adam(optimizer_inputs, lr=0.01)
-       
+
         loss = wp.zeros(1, dtype=float, requires_grad=True)
-        output = create_array(IMG_WIDTH*IMG_HEIGHT, DIM_OUT)
+        output = create_array(IMG_WIDTH * IMG_HEIGHT, DIM_OUT)
 
         # capture graph for whole epoch
         wp.capture_begin()
-    
-        for b in range(0, IMG_WIDTH*IMG_HEIGHT, BATCH_SIZE):
 
+        for b in range(0, IMG_WIDTH * IMG_HEIGHT, BATCH_SIZE):
             loss.zero_()
 
             with wp.Tape() as tape:
                 wp.launch(
-                    compute, 
+                    compute,
                     dim=[BATCH_SIZE],
-                    inputs=[self.indices[b:b+BATCH_SIZE],
-                            self.weights_0, self.bias_0,
-                            self.weights_1, self.bias_1,
-                            self.weights_2, self.bias_2, 
-                            self.weights_3, self.bias_3, 
-                            self.reference,
-                            loss,
-                            None],
-                    block_dim=NUM_THREADS)
+                    inputs=[
+                        self.indices[b : b + BATCH_SIZE],
+                        self.weights_0,
+                        self.bias_0,
+                        self.weights_1,
+                        self.bias_1,
+                        self.weights_2,
+                        self.bias_2,
+                        self.weights_3,
+                        self.bias_3,
+                        self.reference,
+                        loss,
+                        None,
+                    ],
+                    block_dim=NUM_THREADS,
+                )
 
             tape.backward(loss)
             optimizer.step(optimizer_grads)
@@ -213,36 +229,36 @@ class Example:
 
         graph = wp.capture_end()
 
-
         with wp.ScopedTimer("Training"):
-
             for i in range(self.max_epochs):
-
                 with wp.ScopedTimer("Epoch"):
                     wp.capture_launch(graph)
                     print(f"Epoch: {i} Loss: {loss.numpy()}")
 
-
         # evaluate full image
         wp.launch(
-            compute, 
-            dim=[IMG_WIDTH*IMG_HEIGHT],
-            inputs=[self.indices,
-                    self.weights_0, self.bias_0,
-                    self.weights_1, self.bias_1,
-                    self.weights_2, self.bias_2, 
-                    self.weights_3, self.bias_3, 
-                    self.reference,
-                    loss,
-                    output],
-            block_dim=NUM_THREADS)
-        
-        self.save_image(f"example_tile_mlp.jpg", output.numpy())
-        
+            compute,
+            dim=[IMG_WIDTH * IMG_HEIGHT],
+            inputs=[
+                self.indices,
+                self.weights_0,
+                self.bias_0,
+                self.weights_1,
+                self.bias_1,
+                self.weights_2,
+                self.bias_2,
+                self.weights_3,
+                self.bias_3,
+                self.reference,
+                loss,
+                output,
+            ],
+            block_dim=NUM_THREADS,
+        )
 
+        self.save_image("example_tile_mlp.jpg", output.numpy())
 
     def train_torch(self):
-
         import torch as tc
 
         weights_0 = tc.nn.Parameter(wp.to_torch(self.weights_0))
@@ -258,20 +274,17 @@ class Example:
         indices = wp.to_torch(self.indices)
         reference = wp.to_torch(self.reference)
 
-        optimizer = tc.optim.Adam([weights_0,
-                                   bias_0, 
-                                   weights_1,
-                                   bias_1,
-                                   weights_2,
-                                   bias_2,
-                                   weights_3,
-                                   bias_3], capturable=True, lr=0.0001, betas=(0.9, 0.95), eps=1.e-6)
-
+        optimizer = tc.optim.Adam(
+            [weights_0, bias_0, weights_1, bias_1, weights_2, bias_2, weights_3, bias_3],
+            capturable=True,
+            lr=0.0001,
+            betas=(0.9, 0.95),
+            eps=1.0e-6,
+        )
 
         # generate frequency space encoding of pixels
         # based on their linear index in the image
         def encode(linear):
-            
             row = (linear // IMG_WIDTH).float()
             col = (linear % IMG_WIDTH).float()
 
@@ -287,17 +300,16 @@ class Example:
                 encoding[s * 4 + 0, :] = tc.sin(scale * x)
                 encoding[s * 4 + 1, :] = tc.cos(scale * x)
                 encoding[s * 4 + 2, :] = tc.sin(scale * y)
-                encoding[s * 4 + 3, :] = tc.cos(scale * y)        
+                encoding[s * 4 + 3, :] = tc.cos(scale * y)
 
             return encoding
-
 
         stream = tc.cuda.Stream()
         graph = tc.cuda.CUDAGraph()
 
         # warm-up
         with tc.cuda.stream(stream):
-            f = tc.rand((NUM_FREQ*4, BATCH_SIZE), dtype=tc.float16, device="cuda")
+            f = tc.rand((NUM_FREQ * 4, BATCH_SIZE), dtype=tc.float16, device="cuda")
             z = tc.relu(weights_0 @ f + bias_0)
             z = tc.relu(weights_1 @ z + bias_1)
             z = tc.relu(weights_2 @ z + bias_2)
@@ -309,10 +321,8 @@ class Example:
             optimizer.step()
 
         with tc.cuda.graph(graph):
-
-            for b in range(0, IMG_WIDTH*IMG_HEIGHT, BATCH_SIZE):
-
-                linear = indices[b:b+BATCH_SIZE]
+            for b in range(0, IMG_WIDTH * IMG_HEIGHT, BATCH_SIZE):
+                linear = indices[b : b + BATCH_SIZE]
 
                 f = encode(linear)
 
@@ -323,23 +333,19 @@ class Example:
 
                 ref = reference[:, linear]
                 loss = tc.mean((z - ref) ** 2)
-                
+
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
-
         with wp.ScopedTimer("Training (Torch)"):
-
-            for i in range(self.max_epochs):
-
+            for _i in range(self.max_epochs):
                 with wp.ScopedTimer("Epoch"):
                     graph.replay()
 
                     print(loss)
-        
 
-        f = encode(tc.arange(0, IMG_WIDTH*IMG_HEIGHT))
+        f = encode(tc.arange(0, IMG_WIDTH * IMG_HEIGHT))
         z = tc.relu(weights_0 @ f + bias_0)
         z = tc.relu(weights_1 @ z + bias_1)
         z = tc.relu(weights_2 @ z + bias_2)
@@ -347,9 +353,7 @@ class Example:
 
         self.save_image("example_tile_mlp_torch.jpg", z.detach().cpu().numpy())
 
-
     def save_image(self, name, output):
-
         predicted_image = output.T.reshape(IMG_WIDTH, IMG_HEIGHT, 3)
         predicted_image = (predicted_image * 255).astype(np.uint8)
 
@@ -357,10 +361,7 @@ class Example:
         predicted_image_pil.save(name)
 
 
-
-
 if __name__ == "__main__":
-
     import argparse
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -369,7 +370,6 @@ if __name__ == "__main__":
     args = parser.parse_known_args()[0]
 
     with wp.ScopedDevice("cuda:0"):
-
         example = Example(args.train_iters)
         example.train_warp()
-        #example.train_torch()
+        # example.train_torch()
