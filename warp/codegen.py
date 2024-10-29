@@ -114,6 +114,16 @@ def get_closure_cell_contents(obj):
     return None
 
 
+def get_type_origin(tp):
+    # Compatible version of `typing.get_origin()` for Python 3.7 and older.
+    return getattr(tp, "__origin__", None)
+
+
+def get_type_args(tp):
+    # Compatible version of `typing.get_args()` for Python 3.7 and older.
+    return getattr(tp, "__args__", ())
+
+
 def eval_annotations(annotations: Mapping[str, Any], obj: Any) -> Mapping[str, Any]:
     """Un-stringize annotations caused by `from __future__ import annotations` of PEP 563."""
     # Implementation backported from `inspect.get_annotations()` for Python 3.9 and older.

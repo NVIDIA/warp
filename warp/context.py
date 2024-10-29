@@ -21,7 +21,7 @@ import typing
 import weakref
 from copy import copy as shallowcopy
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -5776,16 +5776,6 @@ def type_str(t):
         return "Any"
     elif t == Callable:
         return "Callable"
-    elif t == Tuple[int]:
-        return "Tuple[int]"
-    elif t == Tuple[int, int]:
-        return "Tuple[int, int]"
-    elif t == Tuple[int, int, int]:
-        return "Tuple[int, int, int]"
-    elif t == Tuple[int, int, int, int]:
-        return "Tuple[int, int, int, int]"
-    elif t == Tuple[int, ...]:
-        return "Tuple[int, ...]"
     elif isinstance(t, int):
         return str(t)
     elif isinstance(t, List):
@@ -5820,9 +5810,11 @@ def type_str(t):
             return f"Transformation[{type_str(t._wp_scalar_type_)}]"
 
         raise TypeError("Invalid vector or matrix dimensions")
-    elif typing.get_origin(t) in (List, Mapping, Sequence, Union, Tuple):
-        args_repr = ", ".join(type_str(x) for x in typing.get_args(t))
-        return f"{t.__name__}[{args_repr}]"
+    elif warp.codegen.get_type_origin(t) in (list, tuple):
+        args_repr = ", ".join(type_str(x) for x in warp.codegen.get_type_args(t))
+        return f"{t._name}[{args_repr}]"
+    elif t is Ellipsis:
+        return "..."
     elif warp.types.is_tile(t):
         return "Tile"
 
