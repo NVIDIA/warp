@@ -35,7 +35,7 @@ stages:
 # Hide this job for now until debug aarch64 builds work
 .linux-aarch64 build:
   stage: build
-  image: ubuntu:22.04
+  image: ubuntu:20.04
   extends:
     - .save_warp_bin_artifact
   before_script:

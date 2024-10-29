@@ -62,15 +62,23 @@ stages:
 
 linux-aarch64 build:
   stage: build
-  image: ubuntu:22.04
+  image: ubuntu:20.04
   extends:
     - .save_warp_bin_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - apt-get update && apt-get install build-essential curl --no-install-recommends -y
+    - >
+      curl -k -H "Authorization: Bearer $ARTIFACTORY_ACCESS_TOKEN"
+      $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/main/PostMerge/96/libmathdx_build_aarch64_rockylinux8_cuda12.0.0_release.tar.gz
+      -o libmathdx.tar.gz
+    - mkdir -p _build/target-deps
+    - tar -xzf libmathdx.tar.gz -C _build/target-deps
+    - export LIBMATHDX_HOME="$CI_PROJECT_DIR/_build/target-deps/libmathdx-0.0.1-Linux"
+    - gcc --version
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - ./tools/ci/building/build-linux-aarch64/build.sh --no-docker # We are already using the builder image
+    - ./tools/ci/building/build-linux-aarch64/build.sh --no-docker
     - mkdir -p warp/bin/linux-aarch64
     - mv warp/bin/warp.so warp/bin/linux-aarch64
     - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
@@ -79,12 +87,24 @@ linux-aarch64 build:
 
 linux-x86_64 build:
   stage: build
-  image: urm.nvidia.com/ct-omniverse-docker/centos7-gcc10-builder:3.2.0
+  image: ubuntu:20.04
   extends:
     - .save_warp_bin_artifact
     - .runner-build-linux-x86_64
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - apt-get update && apt-get install build-essential curl --no-install-recommends -y
+    - >
+      curl -k -H "Authorization: Bearer $ARTIFACTORY_ACCESS_TOKEN"
+      $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/main/PostMerge/96/libmathdx_build_x86_64_rockylinux8_cuda12.0.0_release.tar.gz
+      -o libmathdx.tar.gz
+    - mkdir -p _build/target-deps
+    - tar -xzf libmathdx.tar.gz -C _build/target-deps
+    - export LIBMATHDX_HOME="$CI_PROJECT_DIR/_build/target-deps/libmathdx-0.0.1-Linux"
+    - gcc --version
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - ./tools/ci/building/build-linux-x86_64/build.sh --no-docker # We are already using the builder image
+    - ./tools/ci/building/build-linux-x86_64/build.sh --no-docker
     - mkdir -p warp/bin/linux-x86_64
     - mv warp/bin/warp.so warp/bin/linux-x86_64
     - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
@@ -499,32 +519,6 @@ debug build and test:
   needs: [trigger debug build and test pipeline]
   trigger:
     include: /.gitlab/ci/debug-build-and-test.yml
-  extends:
-    - .trigger_common
-
-trigger mathdx support pipeline:
-  stage: test
-  image: busybox
-  extends:
-    - .runner-utility-linux-x86_64
-  needs: []
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-    - if: $CI_COMMIT_TAG
-    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
-    - when: manual # Can be triggered in all other scenarios
-      allow_failure: true
-  variables:
-    GIT_STRATEGY: none
-  script:
-    - echo "Run this job to test Warp compiled with mathdx support."
-
-# Uses the same Python version as the main pipeline.
-mathdx support:
-  stage: child pipelines
-  needs: [trigger mathdx support pipeline]
-  trigger:
-    include: /.gitlab/ci/mathdx-support.yml
   extends:
     - .trigger_common
 
