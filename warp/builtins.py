@@ -1497,7 +1497,8 @@ add_builtin(
     doc="""Apply the transform to a point ``point`` treating the homogeneous coordinate as w=1.
 
     The transformation is applied treating ``point`` as a column vector, e.g.: ``y = mat*point``.
-    Note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = point^T*mat^T``.
+
+    This is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = point^T*mat^T``.
     If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
     matrix before calling this method.""",
 )
@@ -1515,8 +1516,9 @@ add_builtin(
     group="Vector Math",
     doc="""Apply the transform to a vector ``vec`` treating the homogeneous coordinate as w=0.
 
-    The transformation is applied treating ``vec`` as a column vector, e.g.: ``y = mat*vec``
-    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = vec^T*mat^T``.
+    The transformation is applied treating ``vec`` as a column vector, e.g.: ``y = mat*vec``.
+
+    This is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = vec^T*mat^T``.
     If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
     matrix before calling this method.""",
 )
@@ -2768,7 +2770,6 @@ add_builtin(
     "rand_init",
     input_types={"seed": int},
     value_type=uint32,
-    export=False,
     group="Random",
     doc="Initialize a new random number generator given a user-defined seed. Returns a 32-bit integer representing the RNG state.",
 )
@@ -2777,7 +2778,6 @@ add_builtin(
     "rand_init",
     input_types={"seed": int, "offset": int},
     value_type=uint32,
-    export=False,
     group="Random",
     doc="""Initialize a new random number generator given a user-defined seed and an offset.
 
@@ -2789,7 +2789,6 @@ add_builtin(
     "randi",
     input_types={"state": uint32},
     value_type=int,
-    export=False,
     group="Random",
     doc="Return a random integer in the range [0, 2^32).",
 )
@@ -2797,7 +2796,6 @@ add_builtin(
     "randi",
     input_types={"state": uint32, "low": int, "high": int},
     value_type=int,
-    export=False,
     group="Random",
     doc="Return a random integer between [low, high).",
 )
@@ -2805,7 +2803,6 @@ add_builtin(
     "randf",
     input_types={"state": uint32},
     value_type=float,
-    export=False,
     group="Random",
     doc="Return a random float between [0.0, 1.0).",
 )
@@ -2813,24 +2810,17 @@ add_builtin(
     "randf",
     input_types={"state": uint32, "low": float, "high": float},
     value_type=float,
-    export=False,
     group="Random",
     doc="Return a random float between [low, high).",
 )
 add_builtin(
-    "randn",
-    input_types={"state": uint32},
-    value_type=float,
-    export=False,
-    group="Random",
-    doc="Sample a normal distribution.",
+    "randn", input_types={"state": uint32}, value_type=float, group="Random", doc="Sample a normal distribution."
 )
 
 add_builtin(
     "sample_cdf",
     input_types={"state": uint32, "cdf": array(dtype=float)},
     value_type=int,
-    export=False,
     group="Random",
     doc="Inverse-transform sample a cumulative distribution function.",
 )
@@ -2838,7 +2828,6 @@ add_builtin(
     "sample_triangle",
     input_types={"state": uint32},
     value_type=vec2,
-    export=False,
     group="Random",
     doc="Uniformly sample a triangle. Returns sample barycentric coordinates.",
 )
@@ -2846,7 +2835,6 @@ add_builtin(
     "sample_unit_ring",
     input_types={"state": uint32},
     value_type=vec2,
-    export=False,
     group="Random",
     doc="Uniformly sample a ring in the xy plane.",
 )
@@ -2854,7 +2842,6 @@ add_builtin(
     "sample_unit_disk",
     input_types={"state": uint32},
     value_type=vec2,
-    export=False,
     group="Random",
     doc="Uniformly sample a disk in the xy plane.",
 )
@@ -2862,7 +2849,6 @@ add_builtin(
     "sample_unit_sphere_surface",
     input_types={"state": uint32},
     value_type=vec3,
-    export=False,
     group="Random",
     doc="Uniformly sample a unit sphere surface.",
 )
@@ -2870,7 +2856,6 @@ add_builtin(
     "sample_unit_sphere",
     input_types={"state": uint32},
     value_type=vec3,
-    export=False,
     group="Random",
     doc="Uniformly sample a unit sphere.",
 )
@@ -2878,7 +2863,6 @@ add_builtin(
     "sample_unit_hemisphere_surface",
     input_types={"state": uint32},
     value_type=vec3,
-    export=False,
     group="Random",
     doc="Uniformly sample a unit hemisphere surface.",
 )
@@ -2886,7 +2870,6 @@ add_builtin(
     "sample_unit_hemisphere",
     input_types={"state": uint32},
     value_type=vec3,
-    export=False,
     group="Random",
     doc="Uniformly sample a unit hemisphere.",
 )
@@ -2894,7 +2877,6 @@ add_builtin(
     "sample_unit_square",
     input_types={"state": uint32},
     value_type=vec2,
-    export=False,
     group="Random",
     doc="Uniformly sample a unit square.",
 )
@@ -2902,7 +2884,6 @@ add_builtin(
     "sample_unit_cube",
     input_types={"state": uint32},
     value_type=vec3,
-    export=False,
     group="Random",
     doc="Uniformly sample a unit cube.",
 )
@@ -2911,7 +2892,6 @@ add_builtin(
     "poisson",
     input_types={"state": uint32, "lam": float},
     value_type=uint32,
-    export=False,
     group="Random",
     doc="""Generate a random sample from a Poisson distribution.
 
@@ -3504,7 +3484,7 @@ for array_type in array_types:
         value_func=atomic_op_value_func,
         doc="""Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
+    The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
     )
@@ -3516,7 +3496,7 @@ for array_type in array_types:
         value_func=atomic_op_value_func,
         doc="""Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
+    The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
     )
@@ -3528,7 +3508,7 @@ for array_type in array_types:
         value_func=atomic_op_value_func,
         doc="""Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
+    The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
     )
@@ -3540,7 +3520,7 @@ for array_type in array_types:
         value_func=atomic_op_value_func,
         doc="""Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
+    The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
     )
@@ -3553,7 +3533,7 @@ for array_type in array_types:
         value_func=atomic_op_value_func,
         doc="""Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
+    The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
     )
@@ -3565,7 +3545,7 @@ for array_type in array_types:
         value_func=atomic_op_value_func,
         doc="""Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
+    The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
     )
@@ -3577,7 +3557,7 @@ for array_type in array_types:
         value_func=atomic_op_value_func,
         doc="""Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
+    The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
     )
@@ -3589,7 +3569,7 @@ for array_type in array_types:
         value_func=atomic_op_value_func,
         doc="""Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.""",
+    The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
     )
@@ -4354,13 +4334,12 @@ add_builtin(
     value_type=Any,
     doc="""Evaluates a static Python expression and replaces it with its result.
 
-    See the `codegen.html#static-expressions <section on code generation>`_ for more details.
+    See the :ref:`code generation guide <static_expressions>` for more details.
 
-    Note:
-        The inner expression must only reference variables that are available from the current scope where the Warp kernel or function containing the expression is defined,
-        which includes constant variables and variables captured in the current closure in which the function or kernel is implemented.
-        The return type of the expression must be either a Warp function, a string, or a type that is supported inside Warp kernels and functions
-        (excluding Warp arrays since they cannot be created in a Warp kernel at the moment).""",
+    The inner expression must only reference variables that are available from the current scope where the Warp kernel or function containing the expression is defined,
+    which includes constant variables and variables captured in the current closure in which the function or kernel is implemented.
+    The return type of the expression must be either a Warp function, a string, or a type that is supported inside Warp kernels and functions
+    (excluding Warp arrays since they cannot be created in a Warp kernel at the moment).""",
     group="Code Generation",
 )
 

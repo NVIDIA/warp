@@ -2678,14 +2678,15 @@ def kernel_indexing_types(
 
 
 def test_indexing_types(test, device):
-    arr_1d = wp.zeros(shape=(4,), dtype=wp.int32)
-    arr_2d = wp.zeros(shape=(4, 4), dtype=wp.int32)
-    arr_3d = wp.zeros(shape=(4, 4, 4), dtype=wp.int32)
-    arr_4d = wp.zeros(shape=(4, 4, 4, 4), dtype=wp.int32)
+    arr_1d = wp.zeros(shape=(4,), dtype=wp.int32, device=device)
+    arr_2d = wp.zeros(shape=(4, 4), dtype=wp.int32, device=device)
+    arr_3d = wp.zeros(shape=(4, 4, 4), dtype=wp.int32, device=device)
+    arr_4d = wp.zeros(shape=(4, 4, 4, 4), dtype=wp.int32, device=device)
     wp.launch(
         kernel=kernel_indexing_types,
         dim=1,
         inputs=(arr_1d, arr_2d, arr_3d, arr_4d),
+        device=device,
     )
 
 
