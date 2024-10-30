@@ -1501,10 +1501,6 @@ def types_equal(a, b, match_generic=False):
     if getattr(a, "cls", "a") is getattr(b, "cls", "b"):
         return True
 
-    # match NewStructInstance and Struct dtype
-    if getattr(a, "cls", "a") is getattr(b, "cls", "b"):
-        return True
-
     if is_tile(a) and is_tile(b):
         return True
 
