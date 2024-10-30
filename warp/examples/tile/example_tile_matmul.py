@@ -26,11 +26,11 @@ TILE_THREADS = 64
 
 
 @wp.kernel
-def tile_gemm(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float), C: wp.array2d(dtype=float)):
+def tile_gemm(A: wp.array2d(dtype=wp.float32), B: wp.array2d(dtype=wp.float16), C: wp.array2d(dtype=wp.float64)):
     # output tile index
     i, j = wp.tid()
 
-    sum = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32)
+    sum = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float64)
 
     _M = A.shape[0]
     _N = B.shape[1]
@@ -58,8 +58,8 @@ if __name__ == "__main__":
 
     rng = np.random.default_rng(42)
     A = rng.random((M, K), dtype=np.float32)
-    B = rng.random((K, N), dtype=np.float32)
-    C = np.zeros((M, N), dtype=np.float32)
+    B = rng.random((K, N), dtype=np.float32).astype(np.float16)
+    C = np.zeros((M, N), dtype=np.float64)
 
     A_wp = wp.array(A, requires_grad=True)
     B_wp = wp.array(B, requires_grad=True)
