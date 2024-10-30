@@ -951,7 +951,9 @@ class Adjoint:
 
         adj.return_var = None  # return type for function or kernel
         adj.loop_symbols = []  # symbols at the start of each loop
-        adj.loop_const_iter_symbols = set()  # iteration variables (constant) for static loops
+        adj.loop_const_iter_symbols = (
+            set()
+        )  # constant iteration variables for static loops (mutating them does not raise an error)
 
         # blocks
         adj.blocks = [Block()]
@@ -1007,7 +1009,6 @@ class Adjoint:
                     arg_strs.append(f"{a.namespace}{a.native_func}")
                 else:
                     arg_strs.append(f"{a.namespace}{prefix}_{a.native_func}")
-
             elif is_reference(a.type):
                 arg_strs.append(f"{prefix}_{a}")
             elif isinstance(a, Var):
@@ -1349,7 +1350,6 @@ class Adjoint:
         elif not isinstance(return_type, Sequence) or len(return_type) == 1:
             # handle simple function (one output)
             forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
-
             replay_call = forward_call
             if func.custom_replay_func is not None:
                 replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
@@ -1366,7 +1366,7 @@ class Adjoint:
         else:
             adj.add_forward(forward_call, replay=replay_call)
 
-        if not func.missing_grad and len(args):
+        if not func.missing_grad and len(func_args):
             adj_args = tuple(strip_reference(x) for x in func_args)
             reverse_has_output_args = (
                 func.require_original_output_arg or len(output_list) > 1
@@ -1871,7 +1871,7 @@ class Adjoint:
         # detect symbols with conflicting definitions (assigned inside the for loop)
         for items in symbols.items():
             sym = items[0]
-            if adj.loop_const_iter_symbols is not None and sym in adj.loop_const_iter_symbols:
+            if adj.is_constant_iter_symbol(sym):
                 # ignore constant overwriting in for-loops if it is a loop iterator
                 # (it is no problem to unroll static loops multiple times in sequence)
                 continue
@@ -2022,12 +2022,11 @@ class Adjoint:
         )
         return range_call
 
-    def begin_record_constant_iter_symbols(adj):
-        if adj.loop_const_iter_symbols is None:
-            adj.loop_const_iter_symbols = set()
+    def record_constant_iter_symbol(adj, sym):
+        adj.loop_const_iter_symbols.add(sym)
 
-    def end_record_constant_iter_symbols(adj):
-        adj.loop_const_iter_symbols = None
+    def is_constant_iter_symbol(adj, sym):
+        return sym in adj.loop_const_iter_symbols
 
     def emit_For(adj, node):
         # try and unroll simple range() statements that use constant args
@@ -2035,9 +2034,8 @@ class Adjoint:
 
         if isinstance(unroll_range, range):
             const_iter_sym = node.target.id
-            if adj.loop_const_iter_symbols is not None:
-                # prevent constant conflicts in `materialize_redefinitions()`
-                adj.loop_const_iter_symbols.add(const_iter_sym)
+            # prevent constant conflicts in `materialize_redefinitions()`
+            adj.record_constant_iter_symbol(const_iter_sym)
 
             # unroll static for-loop
             for i in unroll_range:
@@ -2058,7 +2056,6 @@ class Adjoint:
                 iter = adj.eval(node.iter)
 
             adj.symbols[node.target.id] = adj.begin_for(iter)
-            adj.begin_record_constant_iter_symbols()
 
             # for loops should be side-effect free, here we store a copy
             adj.loop_symbols.append(adj.symbols.copy())
@@ -2069,7 +2066,6 @@ class Adjoint:
 
             adj.materialize_redefinitions(adj.loop_symbols[-1])
             adj.loop_symbols.pop()
-            adj.end_record_constant_iter_symbols()
 
             adj.end_for(iter)
 
@@ -2288,8 +2284,8 @@ class Adjoint:
             return var
 
         target, indices = adj.eval_subscript(node)
-        target_type = strip_reference(target.type)
 
+        target_type = strip_reference(target.type)
         if is_array(target_type):
             if len(indices) == target_type.ndim:
                 # handles array loads (where each dimension has an index specified)
@@ -3107,7 +3103,6 @@ extern "C" __global__ void {name}_cuda_kernel_backward(
 }}
 
 """
-
 
 cpu_kernel_template = """
 

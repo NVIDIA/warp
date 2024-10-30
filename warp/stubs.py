@@ -11,9 +11,6 @@ Length = TypeVar("Length", bound=int)
 Rows = TypeVar("Rows", bound=int)
 Cols = TypeVar("Cols", bound=int)
 DType = TypeVar("DType")
-Int = TypeVar("Int")
-Float = TypeVar("Float")
-Scalar = TypeVar("Scalar")
 Vector = Generic[Length, Scalar]
 Matrix = Generic[Rows, Cols, Scalar]
 Quaternion = Generic[Float]
@@ -38,6 +35,8 @@ from warp.types import quat, quath, quatf, quatd
 from warp.types import transform, transformh, transformf, transformd
 from warp.types import spatial_vector, spatial_vectorh, spatial_vectorf, spatial_vectord
 from warp.types import spatial_matrix, spatial_matrixh, spatial_matrixf, spatial_matrixd
+
+from warp.types import Int, Float, Scalar
 
 from warp.types import Bvh, Mesh, HashGrid, Volume, MarchingCubes
 from warp.types import BvhQuery, HashGridQuery, MeshQueryAABB, MeshQueryPoint, MeshQueryRay
@@ -786,7 +785,8 @@ def transform_point(mat: Matrix[4, 4, Float], point: Vector[3, Float]) -> Vector
     """Apply the transform to a point ``point`` treating the homogeneous coordinate as w=1.
 
     The transformation is applied treating ``point`` as a column vector, e.g.: ``y = mat*point``.
-    Note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = point^T*mat^T``.
+
+    This is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = point^T*mat^T``.
     If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
     matrix before calling this method.
     """
@@ -803,8 +803,9 @@ def transform_vector(xform: Transformation[Float], vec: Vector[3, Float]) -> Vec
 def transform_vector(mat: Matrix[4, 4, Float], vec: Vector[3, Float]) -> Vector[3, Float]:
     """Apply the transform to a vector ``vec`` treating the homogeneous coordinate as w=0.
 
-    The transformation is applied treating ``vec`` as a column vector, e.g.: ``y = mat*vec``
-    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = vec^T*mat^T``.
+    The transformation is applied treating ``vec`` as a column vector, e.g.: ``y = mat*vec``.
+
+    This is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = vec^T*mat^T``.
     If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
     matrix before calling this method.
     """
@@ -1605,6 +1606,12 @@ def closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon:
 
 
 @over
+def reversed(range: range_t) -> range_t:
+    """Returns the range in reversed order."""
+    ...
+
+
+@over
 def volume_sample(id: uint64, uvw: vec3f, sampling_mode: int32, dtype: Any) -> Any:
     """Sample the volume of type `dtype` given by ``id`` at the volume local-space point ``uvw``.
 
@@ -2082,361 +2089,361 @@ def select(arr: Array[Any], value_if_false: Any, value_if_true: Any) -> Any:
 
 
 @over
-def atomic_add(arr: Array[Any], i: int32, value: Any) -> Any:
+def atomic_add(arr: Array[Any], i: Int, value: Any) -> Any:
     """Atomically add ``value`` onto ``arr[i]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: Array[Any], i: int32, j: int32, value: Any) -> Any:
+def atomic_add(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically add ``value`` onto ``arr[i,j]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: Array[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+def atomic_add(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically add ``value`` onto ``arr[i,j,k]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+def atomic_add(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically add ``value`` onto ``arr[i,j,k,l]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: FabricArray[Any], i: int32, value: Any) -> Any:
+def atomic_add(arr: FabricArray[Any], i: Int, value: Any) -> Any:
     """Atomically add ``value`` onto ``arr[i]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: FabricArray[Any], i: int32, j: int32, value: Any) -> Any:
+def atomic_add(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically add ``value`` onto ``arr[i,j]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+def atomic_add(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically add ``value`` onto ``arr[i,j,k]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+def atomic_add(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically add ``value`` onto ``arr[i,j,k,l]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: IndexedFabricArray[Any], i: int32, value: Any) -> Any:
+def atomic_add(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """Atomically add ``value`` onto ``arr[i]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any) -> Any:
+def atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically add ``value`` onto ``arr[i,j]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+def atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically add ``value`` onto ``arr[i,j,k]`` and return the old value."""
     ...
 
 
 @over
-def atomic_add(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+def atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically add ``value`` onto ``arr[i,j,k,l]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: Array[Any], i: int32, value: Any) -> Any:
+def atomic_sub(arr: Array[Any], i: Int, value: Any) -> Any:
     """Atomically subtract ``value`` onto ``arr[i]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: Array[Any], i: int32, j: int32, value: Any) -> Any:
+def atomic_sub(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically subtract ``value`` onto ``arr[i,j]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: Array[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+def atomic_sub(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically subtract ``value`` onto ``arr[i,j,k]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+def atomic_sub(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically subtract ``value`` onto ``arr[i,j,k,l]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: FabricArray[Any], i: int32, value: Any) -> Any:
+def atomic_sub(arr: FabricArray[Any], i: Int, value: Any) -> Any:
     """Atomically subtract ``value`` onto ``arr[i]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: FabricArray[Any], i: int32, j: int32, value: Any) -> Any:
+def atomic_sub(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically subtract ``value`` onto ``arr[i,j]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+def atomic_sub(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically subtract ``value`` onto ``arr[i,j,k]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+def atomic_sub(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically subtract ``value`` onto ``arr[i,j,k,l]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: IndexedFabricArray[Any], i: int32, value: Any) -> Any:
+def atomic_sub(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """Atomically subtract ``value`` onto ``arr[i]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any) -> Any:
+def atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically subtract ``value`` onto ``arr[i,j]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+def atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically subtract ``value`` onto ``arr[i,j,k]`` and return the old value."""
     ...
 
 
 @over
-def atomic_sub(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+def atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically subtract ``value`` onto ``arr[i,j,k,l]`` and return the old value."""
     ...
 
 
 @over
-def atomic_min(arr: Array[Any], i: int32, value: Any) -> Any:
+def atomic_min(arr: Array[Any], i: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_min(arr: Array[Any], i: int32, j: int32, value: Any) -> Any:
+def atomic_min(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_min(arr: Array[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+def atomic_min(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_min(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+def atomic_min(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_min(arr: FabricArray[Any], i: int32, value: Any) -> Any:
+def atomic_min(arr: FabricArray[Any], i: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_min(arr: FabricArray[Any], i: int32, j: int32, value: Any) -> Any:
+def atomic_min(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_min(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+def atomic_min(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_min(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+def atomic_min(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_min(arr: IndexedFabricArray[Any], i: int32, value: Any) -> Any:
+def atomic_min(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any) -> Any:
+def atomic_min(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+def atomic_min(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_min(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+def atomic_min(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_max(arr: Array[Any], i: int32, value: Any) -> Any:
+def atomic_max(arr: Array[Any], i: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_max(arr: Array[Any], i: int32, j: int32, value: Any) -> Any:
+def atomic_max(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_max(arr: Array[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+def atomic_max(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_max(arr: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+def atomic_max(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_max(arr: FabricArray[Any], i: int32, value: Any) -> Any:
+def atomic_max(arr: FabricArray[Any], i: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_max(arr: FabricArray[Any], i: int32, j: int32, value: Any) -> Any:
+def atomic_max(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_max(arr: FabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+def atomic_max(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_max(arr: FabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+def atomic_max(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_max(arr: IndexedFabricArray[Any], i: int32, value: Any) -> Any:
+def atomic_max(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, value: Any) -> Any:
+def atomic_max(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, value: Any) -> Any:
+def atomic_max(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
 
 @over
-def atomic_max(arr: IndexedFabricArray[Any], i: int32, j: int32, k: int32, l: int32, value: Any) -> Any:
+def atomic_max(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
-    .. note:: The operation is only atomic on a per-component basis for vectors and matrices.
+    The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
 
@@ -2945,12 +2952,11 @@ def tile_ifft(inout: Tile) -> Tile:
 def static(expr: Any) -> Any:
     """Evaluates a static Python expression and replaces it with its result.
 
-    See the `codegen.html#static-expressions <section on code generation>`_ for more details.
+    See the :ref:`code generation guide <static_expressions>` for more details.
 
-    Note:
-        The inner expression must only reference variables that are available from the current scope where the Warp kernel or function containing the expression is defined,
-        which includes constant variables and variables captured in the current closure in which the function or kernel is implemented.
-        The return type of the expression must be either a Warp function, a string, or a type that is supported inside Warp kernels and functions
-        (excluding Warp arrays since they cannot be created in a Warp kernel at the moment).
+    The inner expression must only reference variables that are available from the current scope where the Warp kernel or function containing the expression is defined,
+    which includes constant variables and variables captured in the current closure in which the function or kernel is implemented.
+    The return type of the expression must be either a Warp function, a string, or a type that is supported inside Warp kernels and functions
+    (excluding Warp arrays since they cannot be created in a Warp kernel at the moment).
     """
     ...

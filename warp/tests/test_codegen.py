@@ -503,6 +503,76 @@ def test_error_mutating_constant_in_dynamic_loop(test, device):
     ):
         wp.launch(dynamic_loop_kernel, dim=1, inputs=[3, inputs], device=device)
 
+    # the following nested loop must not raise an error
+    const_a = 7
+    const_b = 5
+
+    @wp.kernel
+    def mixed_dyn_static_loop_kernel(dyn_a: int, dyn_b: int, dyn_c: int, output: wp.array(dtype=float, ndim=2)):
+        tid = wp.tid()
+        for i in range(const_a + 1):
+            for j in range(dyn_a + 1):
+                for k in range(dyn_b + 1):
+                    for l in range(const_b + 1):
+                        for m in range(dyn_c + 1):
+                            coeff = i + j + k + l + m
+                            output[tid, coeff] = 1.0
+
+    dyn_a, dyn_b, dyn_c = 3, 4, 5
+    num_threads = 10
+    output = wp.empty([num_threads, const_a + const_b + dyn_a + dyn_b + dyn_c + 1], dtype=float, device=device)
+    wp.launch(
+        mixed_dyn_static_loop_kernel,
+        num_threads,
+        inputs=[
+            dyn_a,
+            dyn_b,
+            dyn_c,
+        ],
+        outputs=[output],
+        device=device,
+    )
+    assert_np_equal(output.numpy(), np.ones([num_threads, const_a + const_b + dyn_a + dyn_b + dyn_c + 1]))
+
+    @wp.kernel
+    def static_then_dynamic_loop_kernel(mats: wp.array(dtype=wp.mat33d)):
+        tid = wp.tid()
+        mat = wp.mat33d()
+        for i in range(3):
+            for j in range(3):
+                mat[i, j] = wp.float64(0.0)
+
+        dim = 2
+        for i in range(dim + 1):
+            for j in range(dim + 1):
+                mat[i, j] = wp.float64(1.0)
+
+        mats[tid] = mat
+
+    mats = wp.empty(1, dtype=wp.mat33d, device=device)
+    wp.launch(static_then_dynamic_loop_kernel, dim=1, inputs=[mats], device=device)
+    assert_np_equal(mats.numpy(), np.ones((1, 3, 3)))
+
+    @wp.kernel
+    def dynamic_then_static_loop_kernel(mats: wp.array(dtype=wp.mat33d)):
+        tid = wp.tid()
+        mat = wp.mat33d()
+
+        dim = 2
+        for i in range(dim + 1):
+            for j in range(dim + 1):
+                mat[i, j] = wp.float64(1.0)
+
+        for i in range(3):
+            for j in range(3):
+                mat[i, j] = wp.float64(0.0)
+
+        mats[tid] = mat
+
+    mats = wp.empty(1, dtype=wp.mat33d, device=device)
+    wp.launch(dynamic_then_static_loop_kernel, dim=1, inputs=[mats], device=device)
+    assert_np_equal(mats.numpy(), np.zeros((1, 3, 3)))
+
 
 @wp.kernel
 def test_call_syntax():

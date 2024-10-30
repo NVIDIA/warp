@@ -100,8 +100,10 @@ def vector(length, dtype):
 
         if dtype is bool:
             _type_ = ctypes.c_bool
-        elif dtype in [Scalar, Float]:
+        elif dtype in (Scalar, Float):
             _type_ = ctypes.c_float
+        elif dtype is Int:
+            _type_ = ctypes.c_int
         else:
             _type_ = dtype._type_
 
@@ -289,8 +291,10 @@ def matrix(shape, dtype):
 
         if dtype is bool:
             _type_ = ctypes.c_bool
-        elif dtype in [Scalar, Float]:
+        elif dtype in (Scalar, Float):
             _type_ = ctypes.c_float
+        elif dtype is Int:
+            _type_ = ctypes.c_int
         else:
             _type_ = dtype._type_
 
@@ -1490,7 +1494,11 @@ def types_equal(a, b, match_generic=False):
 
         return True
 
-    if is_array(a) and type(a) is type(b):
+    if is_array(a) and type(a) is type(b) and types_equal(a.dtype, b.dtype, match_generic=match_generic):
+        return True
+
+    # match NewStructInstance and Struct dtype
+    if getattr(a, "cls", "a") is getattr(b, "cls", "b"):
         return True
 
     # match NewStructInstance and Struct dtype
@@ -2266,13 +2274,22 @@ class array(Array):
             self._requires_grad = False
         else:
             # make sure the given gradient array is compatible
-            if (
-                grad.dtype != self.dtype
-                or grad.shape != self.shape
-                or grad.strides != self.strides
-                or grad.device != self.device
-            ):
-                raise ValueError("The given gradient array is incompatible")
+            if grad.dtype != self.dtype:
+                raise ValueError(
+                    f"The given gradient array is incompatible: expected dtype {self.dtype}, got {grad.dtype}"
+                )
+            if grad.shape != self.shape:
+                raise ValueError(
+                    f"The given gradient array is incompatible: expected shape {self.shape}, got {grad.shape}"
+                )
+            if grad.device != self.device:
+                raise ValueError(
+                    f"The given gradient array is incompatible: expected device {self.device}, got {grad.device}"
+                )
+            if grad.strides != self.strides:
+                raise ValueError(
+                    f"The given gradient array is incompatible: expected strides {self.strides}, got {grad.strides}"
+                )
             self._grad = grad
             self._requires_grad = True
 

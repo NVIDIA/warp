@@ -5,6 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import importlib
+import tempfile
 import unittest
 from typing import Dict, List
 
@@ -15,6 +17,23 @@ import warp as wp
 from warp.tests.unittest_utils import *
 
 global_variable = 3
+
+
+def load_code_as_module(code, name):
+    file, file_path = tempfile.mkstemp(suffix=".py")
+
+    try:
+        with os.fdopen(file, "w") as f:
+            f.write(code)
+
+        spec = importlib.util.spec_from_file_location(name, file_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    finally:
+        os.remove(file_path)
+
+    # return Warp module
+    return wp.get_module(module.__name__)
 
 
 @wp.func
@@ -234,7 +253,7 @@ def test_function_variable(test, device):
             results[0] = wp.static(func)(3, 2)  # noqa: B023
 
         results = wp.zeros(1, dtype=int, device=device)
-        # note that the kernel has to be recompiled everytime the value of func changes
+        # note that the kernel has to be recompiled every time the value of func changes
         wp.launch(function_variable_kernel, 1, [results], device=device)
         assert_np_equal(results.numpy(), np.array([func(3, 2)], dtype=int))
 
@@ -383,6 +402,140 @@ def test_static_if_else_elif(test, device):
         assert_np_equal(counts["else"], 0)
 
 
+static_builtin_constant_template = """
+import warp as wp
+
+# Python builtin literal like 17, 42.0, or True
+C = {value}
+
+@wp.kernel
+def k():
+    print(wp.static(C))
+"""
+
+static_warp_constant_template = """
+import warp as wp
+
+# Warp scalar value like wp.uint8(17)
+C = wp.{dtype}({value})
+
+@wp.kernel
+def k():
+    print(wp.static(C))
+"""
+
+static_struct_constant_template = """
+import warp as wp
+
+@wp.struct
+class SimpleStruct:
+    x: float
+
+C = SimpleStruct()
+C.x = {value}
+
+@wp.kernel
+def k():
+    print(wp.static(C))
+"""
+
+static_func_template = """
+import warp as wp
+
+@wp.func
+def f():
+    # modify the function to verify hashing
+    return {value}
+
+@wp.kernel
+def k():
+    print(wp.static(f)())
+"""
+
+
+def test_static_constant_hash(test, _):
+    # Python literals
+    # (type, value1, value2)
+    literals = [
+        (int, 17, 42),
+        (float, 17.5, 42.5),
+        (bool, True, False),
+    ]
+
+    for builtin_type, value1, value2 in literals:
+        type_name = builtin_type.__name__
+        with test.subTest(msg=f"{type_name}"):
+            source1 = static_builtin_constant_template.format(value=value1)
+            source2 = static_builtin_constant_template.format(value=value2)
+            source3 = static_builtin_constant_template.format(value=value1)
+
+            module1 = load_code_as_module(source1, f"aux_static_constant_builtin_{type_name}_1")
+            module2 = load_code_as_module(source2, f"aux_static_constant_builtin_{type_name}_2")
+            module3 = load_code_as_module(source3, f"aux_static_constant_builtin_{type_name}_3")
+
+            hash1 = module1.hash_module()
+            hash2 = module2.hash_module()
+            hash3 = module3.hash_module()
+
+            test.assertNotEqual(hash1, hash2)
+            test.assertEqual(hash1, hash3)
+
+    # Warp types (scalars, vectors, matrices)
+    for warp_type in [*wp.types.scalar_types, *wp.types.vector_types]:
+        type_name = warp_type.__name__
+        with test.subTest(msg=f"wp.{type_name}"):
+            value1 = ", ".join([str(17)] * warp_type._length_)
+            value2 = ", ".join([str(42)] * warp_type._length_)
+            source1 = static_warp_constant_template.format(dtype=type_name, value=value1)
+            source2 = static_warp_constant_template.format(dtype=type_name, value=value2)
+            source3 = static_warp_constant_template.format(dtype=type_name, value=value1)
+
+            module1 = load_code_as_module(source1, f"aux_static_constant_wp_{type_name}_1")
+            module2 = load_code_as_module(source2, f"aux_static_constant_wp_{type_name}_2")
+            module3 = load_code_as_module(source3, f"aux_static_constant_wp_{type_name}_3")
+
+            hash1 = module1.hash_module()
+            hash2 = module2.hash_module()
+            hash3 = module3.hash_module()
+
+            test.assertNotEqual(hash1, hash2)
+            test.assertEqual(hash1, hash3)
+
+    # structs
+    with test.subTest(msg="struct"):
+        source1 = static_struct_constant_template.format(value=17)
+        source2 = static_struct_constant_template.format(value=42)
+        source3 = static_struct_constant_template.format(value=17)
+
+        module1 = load_code_as_module(source1, "aux_static_constant_struct_1")
+        module2 = load_code_as_module(source2, "aux_static_constant_struct_2")
+        module3 = load_code_as_module(source3, "aux_static_constant_struct_3")
+
+        hash1 = module1.hash_module()
+        hash2 = module2.hash_module()
+        hash3 = module3.hash_module()
+
+        test.assertNotEqual(hash1, hash2)
+        test.assertEqual(hash1, hash3)
+
+
+def test_static_function_hash(test, _):
+    source1 = static_func_template.format(value=17)
+    source2 = static_func_template.format(value=42)
+    source3 = static_func_template.format(value=17)
+
+    module1 = load_code_as_module(source1, "aux_static_func1")
+    module2 = load_code_as_module(source2, "aux_static_func2")
+    module3 = load_code_as_module(source3, "aux_static_func3")
+
+    hash1 = module1.hash_module()
+    hash2 = module2.hash_module()
+    hash3 = module3.hash_module()
+
+    test.assertNotEqual(hash1, hash2)
+    test.assertEqual(hash1, hash3)
+
+
 devices = get_test_devices()
 
 
@@ -405,6 +558,9 @@ add_function_test(
 )
 add_function_test(TestStatic, "test_static_for_loop", test_static_for_loop, devices=devices)
 add_function_test(TestStatic, "test_static_if_else_elif", test_static_if_else_elif, devices=devices)
+
+add_function_test(TestStatic, "test_static_constant_hash", test_static_constant_hash, devices=None)
+add_function_test(TestStatic, "test_static_function_hash", test_static_function_hash, devices=None)
 
 
 if __name__ == "__main__":

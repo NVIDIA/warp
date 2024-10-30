@@ -404,6 +404,10 @@ CUDA_CALLABLE inline bvh_query_t iter_reverse(const bvh_query_t& query)
     return query;
 }
 
+CUDA_CALLABLE inline void adj_iter_reverse(const bvh_query_t& query, bvh_query_t& adj_query, bvh_query_t& adj_ret)
+{
+}
+
 
 // stub
 CUDA_CALLABLE inline void adj_bvh_query_next(bvh_query_t& query, int& index, bvh_query_t&, int&, bool&) 

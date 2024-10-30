@@ -209,6 +209,10 @@ CUDA_CALLABLE inline hash_grid_query_t iter_reverse(const hash_grid_query_t& que
     return query;
 }
 
+CUDA_CALLABLE inline void adj_iter_reverse(const hash_grid_query_t& query, hash_grid_query_t& adj_query, hash_grid_query_t& adj_ret)
+{
+}
+
 
 
 CUDA_CALLABLE inline int hash_grid_point_id(uint64_t id, int& index)

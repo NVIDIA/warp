@@ -768,18 +768,29 @@ void tile_register_t<T, M, N>::print()
     WP_TILE_SYNC();
 }
 
-template <typename Tile>
-inline CUDA_CALLABLE void print(Tile& t)
+template <typename T, int M, int N>
+inline CUDA_CALLABLE void print(const tile_register_t<T, M, N>& t)
 {
     t.print();
 }
 
-template <typename Tile, typename AdjTile>
-inline CUDA_CALLABLE void adj_print(Tile& t, AdjTile& a)
+template <typename T, int M, int N>
+inline CUDA_CALLABLE void adj_print(const tile_register_t<T, M, N>& t, const tile_register_t<T, M, N>& a)
 {
     a.print();
 }
 
+template <typename T, int M, int N>
+inline CUDA_CALLABLE void print(const tile_shared_t<T, M, N>& t)
+{
+    t.print();
+}
+
+template <typename T, int M, int N>
+inline CUDA_CALLABLE void adj_print(const tile_shared_t<T, M, N>& t, const tile_shared_t<T, M, N>& a)
+{
+    a.print();
+}
 
 // helpers to allocate shared tiles
 template <typename T, int M, int N, int Alloc>
