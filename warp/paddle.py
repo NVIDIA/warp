@@ -11,13 +11,13 @@ import ctypes
 from typing import TYPE_CHECKING, Optional, Union
 
 import numpy
-from paddle.base.libpaddle import CPUPlace, CUDAPinnedPlace, CUDAPlace, Place
 
 import warp
 import warp.context
 
 if TYPE_CHECKING:
     import paddle
+    from paddle.base.libpaddle import CPUPlace, CUDAPinnedPlace, CUDAPlace, Place
 
 
 # return the warp device corresponding to a paddle device
@@ -42,6 +42,8 @@ def device_from_paddle(paddle_device: Union[Place, CPUPlace, CUDAPinnedPlace, CU
             raise RuntimeError(f"Unsupported Paddle device {paddle_device}")
     else:
         try:
+            from paddle.base.libpaddle import CPUPlace, CUDAPinnedPlace, CUDAPlace, Place
+
             if isinstance(paddle_device, Place):
                 if paddle_device.is_gpu_place():
                     return warp.context.runtime.cuda_devices[paddle_device.gpu_device_id()]
@@ -55,6 +57,8 @@ def device_from_paddle(paddle_device: Union[Place, CPUPlace, CUDAPinnedPlace, CU
                 return warp.context.runtime.cuda_devices[paddle_device.get_device_id()]
             else:
                 raise RuntimeError(f"Unsupported Paddle device type {paddle_device}")
+        except ModuleNotFoundError as e:
+            raise ModuleNotFoundError("Please install paddlepaddle first.") from e
         except Exception as e:
             if not isinstance(paddle_device, (Place, CPUPlace, CUDAPinnedPlace, CUDAPlace)):
                 raise TypeError(
