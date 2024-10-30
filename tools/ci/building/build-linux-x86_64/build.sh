@@ -74,7 +74,7 @@ CUDA="$SCRIPT_DIR/../../../../_build/target-deps/cuda"
 
 # pip deps
 $PYTHON -m pip install --upgrade pip
-$PYTHON -m pip install --upgrade numpy gitpython cmake ninja nvidia-mathdx==24.4.0
+$PYTHON -m pip install --upgrade numpy gitpython cmake ninja
 
 if [ "$GITLAB_CI" = "true" ]; then
     echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
