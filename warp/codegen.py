@@ -1340,10 +1340,6 @@ class Adjoint:
 
         if return_type is None:
             # handles expression (zero output) functions, e.g.: void do_something();
-
-            output = None
-            output_list = []
-
             forward_call = (
                 f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
             )
@@ -1353,12 +1349,6 @@ class Adjoint:
 
         elif not isinstance(return_type, Sequence) or len(return_type) == 1:
             # handle simple function (one output)
-
-            if isinstance(return_type, Sequence):
-                return_type = return_type[0]
-            output = adj.add_var(return_type)
-            output_list = [output]
-
             forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
             replay_call = forward_call
             if func.custom_replay_func is not None:
@@ -1366,10 +1356,6 @@ class Adjoint:
 
         else:
             # handle multiple value functions
-
-            output = [adj.add_var(v) for v in return_type]
-            output_list = output
-
             forward_call = (
                 f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + output, use_initializer_list)});"
             )
