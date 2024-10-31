@@ -24,6 +24,7 @@ TILE_DIM = 32
 FFT_SIZE_FP32 = 64
 FFT_SIZE_FP64 = 64
 
+
 @wp.kernel()
 def tile_math_matmul_kernel(
     ga: wp.array2d(dtype=wp.float16), gb: wp.array2d(dtype=wp.float32), gc: wp.array2d(dtype=wp.float64)
@@ -84,7 +85,6 @@ def tile_math_fft_kernel_vec2d(gx: wp.array2d(dtype=wp.vec2d), gy: wp.array2d(dt
 
 
 def test_tile_math_fft(test, device, wp_dtype):
-
     np_real_dtype = {wp.vec2f: np.float32, wp.vec2d: np.float64}[wp_dtype]
     np_cplx_dtype = {wp.vec2f: np.complex64, wp.vec2d: np.complex128}[wp_dtype]
     kernel = {wp.vec2d: tile_math_fft_kernel_vec2d, wp.vec2f: tile_math_fft_kernel_vec2f}[wp_dtype]
@@ -121,25 +121,23 @@ devices = get_cuda_test_devices()
 class TestTileMathDx(unittest.TestCase):
     pass
 
+
 # check_output=False so we can enable libmathdx's logging without failing the tests
-add_function_test(
-    TestTileMathDx,
-    "test_tile_math_matmul",
-    test_tile_math_matmul,
-    devices=devices,
-    check_output=False
-)
+add_function_test(TestTileMathDx, "test_tile_math_matmul", test_tile_math_matmul, devices=devices, check_output=False)
 add_function_test(
     TestTileMathDx,
     "test_tile_math_fft_vec2f",
     functools.partial(test_tile_math_fft, wp_dtype=wp.vec2f),
     devices=devices,
-    check_output=False)
+    check_output=False,
+)
 add_function_test(
     TestTileMathDx,
     "test_tile_math_fft_vec2d",
     functools.partial(test_tile_math_fft, wp_dtype=wp.vec2d),
-    devices=devices,check_output=False)
+    devices=devices,
+    check_output=False,
+)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
