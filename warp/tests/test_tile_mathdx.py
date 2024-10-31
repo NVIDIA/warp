@@ -5,10 +5,10 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import functools
 import unittest
 
 import numpy as np
-import functools
 
 import warp as wp
 from warp.tests.unittest_utils import *
@@ -66,6 +66,7 @@ def test_tile_math_matmul(test, device):
     assert_np_equal(A_wp.grad.numpy(), adj_C @ B.T, tol=1e-2)
     assert_np_equal(B_wp.grad.numpy(), A.T @ adj_C, tol=1e-2)
 
+
 @wp.kernel()
 def tile_math_fft_kernel_vec2f(gx: wp.array2d(dtype=wp.vec2f), gy: wp.array2d(dtype=wp.vec2f)):
     i, j = wp.tid()
@@ -73,12 +74,14 @@ def tile_math_fft_kernel_vec2f(gx: wp.array2d(dtype=wp.vec2f), gy: wp.array2d(dt
     wp.tile_fft(xy)
     wp.tile_store(gy, i, j, xy)
 
+
 @wp.kernel()
 def tile_math_fft_kernel_vec2d(gx: wp.array2d(dtype=wp.vec2d), gy: wp.array2d(dtype=wp.vec2d)):
     i, j = wp.tid()
     xy = wp.tile_load(gx, i, j, m=FFT_SIZE_FP64, n=FFT_SIZE_FP64)
     wp.tile_fft(xy)
     wp.tile_store(gy, i, j, xy)
+
 
 def test_tile_math_fft(test, device, wp_dtype):
 
@@ -119,9 +122,24 @@ class TestTileMathDx(unittest.TestCase):
     pass
 
 # check_output=False so we can enable libmathdx's logging without failing the tests
-add_function_test(TestTileMathDx, "test_tile_math_matmul", test_tile_math_matmul, devices=devices, check_output=False)
-add_function_test(TestTileMathDx, "test_tile_math_fft_vec2f", functools.partial(test_tile_math_fft, wp_dtype=wp.vec2f), devices=devices, check_output=False)
-add_function_test(TestTileMathDx, "test_tile_math_fft_vec2d", functools.partial(test_tile_math_fft, wp_dtype=wp.vec2d), devices=devices, check_output=False)
+add_function_test(
+    TestTileMathDx,
+    "test_tile_math_matmul",
+    test_tile_math_matmul,
+    devices=devices,
+    check_output=False
+)
+add_function_test(
+    TestTileMathDx,
+    "test_tile_math_fft_vec2f",
+    functools.partial(test_tile_math_fft, wp_dtype=wp.vec2f),
+    devices=devices,
+    check_output=False)
+add_function_test(
+    TestTileMathDx,
+    "test_tile_math_fft_vec2d",
+    functools.partial(test_tile_math_fft, wp_dtype=wp.vec2d),
+    devices=devices,check_output=False)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
