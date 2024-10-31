@@ -210,7 +210,7 @@ def compute(db: OgnSampleOceanDeformDatabase) -> None:
     if not db.inputs.mesh.valid or not db.outputs.mesh.valid:
         return
 
-    state = db.internal_state
+    state = db.per_instance_state
 
     amplitude = max(0.0001, min(1000.0, db.inputs.amplitude))
     direction = db.inputs.direction % 6.28318530718
