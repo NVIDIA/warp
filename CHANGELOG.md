@@ -13,6 +13,7 @@
 
 ### Fixed
 
+- Fix place setting of paddle backend and add 2 missing benchmark files.
 - Fix to relax the integer types expected when indexing arrays (regression in 1.3.0).
 - Fix printing vector and matrix adjoints in backward kernels.
 - Fix kernel compile error when printing structs.

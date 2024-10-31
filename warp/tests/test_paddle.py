@@ -7,8 +7,6 @@
 
 import unittest
 
-import numpy as np
-
 import warp as wp
 from warp.tests.unittest_utils import *
 
@@ -444,7 +442,7 @@ def test_from_paddle_slices(test, device):
     assert a.ptr == t.data_ptr()
     assert a.is_contiguous
     assert a.shape == tuple(t.shape)
-    assert_np_equal(a.numpy(), t.cpu().numpy())
+    assert_np_equal(a.numpy(), t.numpy())
 
     # 1D slice with non-contiguous stride
     t_base = paddle.arange(10, dtype=paddle.float32).to(device=paddle_device)
@@ -456,7 +454,7 @@ def test_from_paddle_slices(test, device):
     # copy contents to contiguous array
     a_contiguous = wp.empty_like(a)
     wp.launch(copy1d_float_kernel, dim=a.shape, inputs=[a_contiguous, a], device=device)
-    assert_np_equal(a_contiguous.numpy(), t.cpu().numpy())
+    assert_np_equal(a_contiguous.numpy(), t.numpy())
 
     # 2D slices (non-contiguous)
     t_base = paddle.arange(24, dtype=paddle.float32).to(device=paddle_device).reshape((4, 6))
@@ -468,7 +466,7 @@ def test_from_paddle_slices(test, device):
     # copy contents to contiguous array
     a_contiguous = wp.empty_like(a)
     wp.launch(copy2d_float_kernel, dim=a.shape, inputs=[a_contiguous, a], device=device)
-    assert_np_equal(a_contiguous.numpy(), t.cpu().numpy())
+    assert_np_equal(a_contiguous.numpy(), t.numpy())
 
     # 3D slices (non-contiguous)
     t_base = paddle.arange(36, dtype=paddle.float32).to(device=paddle_device).reshape((4, 3, 3))
@@ -480,7 +478,7 @@ def test_from_paddle_slices(test, device):
     # copy contents to contiguous array
     a_contiguous = wp.empty_like(a)
     wp.launch(copy3d_float_kernel, dim=a.shape, inputs=[a_contiguous, a], device=device)
-    assert_np_equal(a_contiguous.numpy(), t.cpu().numpy())
+    assert_np_equal(a_contiguous.numpy(), t.numpy())
 
     # 2D slices of vec3 (inner contiguous, outer non-contiguous)
     t_base = paddle.arange(150, dtype=paddle.float32).to(device=paddle_device).reshape((10, 5, 3))
@@ -492,7 +490,7 @@ def test_from_paddle_slices(test, device):
     # copy contents to contiguous array
     a_contiguous = wp.empty_like(a)
     wp.launch(copy2d_vec3_kernel, dim=a.shape, inputs=[a_contiguous, a], device=device)
-    assert_np_equal(a_contiguous.numpy(), t.cpu().numpy())
+    assert_np_equal(a_contiguous.numpy(), t.numpy())
 
     # 2D slices of mat22 (inner contiguous, outer non-contiguous)
     t_base = paddle.arange(200, dtype=paddle.float32).to(device=paddle_device).reshape((10, 5, 2, 2))
@@ -504,7 +502,7 @@ def test_from_paddle_slices(test, device):
     # copy contents to contiguous array
     a_contiguous = wp.empty_like(a)
     wp.launch(copy2d_mat22_kernel, dim=a.shape, inputs=[a_contiguous, a], device=device)
-    assert_np_equal(a_contiguous.numpy(), t.cpu().numpy())
+    assert_np_equal(a_contiguous.numpy(), t.numpy())
 
 
 def test_from_paddle_zero_strides(test, device):
@@ -522,7 +520,7 @@ def test_from_paddle_zero_strides(test, device):
     assert a.shape == tuple(t.shape)
     a_contiguous = wp.empty_like(a)
     wp.launch(copy3d_float_kernel, dim=a.shape, inputs=[a_contiguous, a], device=device)
-    assert_np_equal(a_contiguous.numpy(), t.cpu().numpy())
+    assert_np_equal(a_contiguous.numpy(), t.numpy())
 
     # expand middle dimension
     t = t_base.unsqueeze(1).expand([-1, 3, -1])
@@ -532,7 +530,7 @@ def test_from_paddle_zero_strides(test, device):
     assert a.shape == tuple(t.shape)
     a_contiguous = wp.empty_like(a)
     wp.launch(copy3d_float_kernel, dim=a.shape, inputs=[a_contiguous, a], device=device)
-    assert_np_equal(a_contiguous.numpy(), t.cpu().numpy())
+    assert_np_equal(a_contiguous.numpy(), t.numpy())
 
     # expand innermost dimension
     t = t_base.unsqueeze(2).expand([-1, -1, 3])
@@ -542,77 +540,7 @@ def test_from_paddle_zero_strides(test, device):
     assert a.shape == tuple(t.shape)
     a_contiguous = wp.empty_like(a)
     wp.launch(copy3d_float_kernel, dim=a.shape, inputs=[a_contiguous, a], device=device)
-    assert_np_equal(a_contiguous.numpy(), t.cpu().numpy())
-
-
-def test_paddle_mgpu_from_paddle(test, device):
-    import paddle
-
-    n = 32
-
-    t0 = paddle.arange(0, n, 1, dtype=paddle.int32).to(device="gpu:0")
-    t1 = paddle.arange(0, n * 2, 2, dtype=paddle.int32).to(device="gpu:1")
-
-    a0 = wp.from_paddle(t0, dtype=wp.int32)
-    a1 = wp.from_paddle(t1, dtype=wp.int32)
-
-    assert a0.device == "gpu:0"
-    assert a1.device == "gpu:1"
-
-    expected0 = np.arange(0, n, 1)
-    expected1 = np.arange(0, n * 2, 2)
-
-    assert_np_equal(a0.numpy(), expected0)
-    assert_np_equal(a1.numpy(), expected1)
-
-
-def test_paddle_mgpu_to_paddle(test, device):
-    n = 32
-
-    with wp.ScopedDevice("gpu:0"):
-        a0 = wp.empty(n, dtype=wp.int32)
-        wp.launch(arange, dim=a0.size, inputs=[0, 1, a0])
-
-    with wp.ScopedDevice("gpu:1"):
-        a1 = wp.empty(n, dtype=wp.int32)
-        wp.launch(arange, dim=a1.size, inputs=[0, 2, a1])
-
-    t0 = wp.to_paddle(a0)
-    t1 = wp.to_paddle(a1)
-
-    assert str(t0.device) == "gpu:0"
-    assert str(t1.device) == "gpu:1"
-
-    expected0 = np.arange(0, n, 1, dtype=np.int32)
-    expected1 = np.arange(0, n * 2, 2, dtype=np.int32)
-
-    assert_np_equal(t0.cpu().numpy(), expected0)
-    assert_np_equal(t1.cpu().numpy(), expected1)
-
-
-def test_paddle_mgpu_interop(test, device):
-    import paddle
-
-    n = 1024 * 1024
-
-    with paddle.cuda.device(0):
-        t0 = paddle.arange(n, dtype=paddle.float32).to(device="gpu")
-        a0 = wp.from_paddle(t0)
-        wp.launch(inc, dim=a0.size, inputs=[a0], stream=wp.stream_from_paddle())
-
-    with paddle.cuda.device(1):
-        t1 = paddle.arange(n, dtype=paddle.float32).to(device="gpu")
-        a1 = wp.from_paddle(t1)
-        wp.launch(inc, dim=a1.size, inputs=[a1], stream=wp.stream_from_paddle())
-
-    assert a0.device == "gpu:0"
-    assert a1.device == "gpu:1"
-
-    expected = np.arange(n, dtype=int) + 1
-
-    # ensure the paddle tensors were modified by warp
-    assert_np_equal(t0.cpu().numpy(), expected)
-    assert_np_equal(t1.cpu().numpy(), expected)
+    assert_np_equal(a_contiguous.numpy(), t.numpy())
 
 
 def test_paddle_autograd(test, device):
@@ -624,6 +552,9 @@ def test_paddle_autograd(test, device):
     class TestFunc(paddle.autograd.PyLayer):
         @staticmethod
         def forward(ctx, x):
+            # ensure Paddle operations complete before running Warp
+            wp.synchronize_device()
+
             # allocate output array
             y = paddle.empty_like(x)
 
@@ -632,10 +563,16 @@ def test_paddle_autograd(test, device):
 
             wp.launch(kernel=op_kernel, dim=len(x), inputs=[wp.from_paddle(x)], outputs=[wp.from_paddle(y)])
 
+            # ensure Warp operations complete before returning data to Paddle
+            wp.synchronize_device()
+
             return y
 
         @staticmethod
         def backward(ctx, adj_y):
+            # ensure Paddle operations complete before running Warp
+            wp.synchronize_device()
+
             # adjoints should be allocated as zero initialized
             adj_x = paddle.zeros_like(ctx.x).contiguous()
             adj_y = adj_y.contiguous()
@@ -654,6 +591,9 @@ def test_paddle_autograd(test, device):
                 adj_outputs=[None],
                 adjoint=True,
             )
+
+            # ensure Warp operations complete before returning data to Paddle
+            wp.synchronize_device()
 
             return adj_x
 
@@ -691,7 +631,7 @@ def test_warp_graph_warp_stream(test, device):
     paddle_stream = wp.stream_to_paddle(device)
 
     # capture graph
-    with wp.ScopedDevice(device), paddle.device.stream(paddle_stream):
+    with wp.ScopedDevice(device), paddle.device.stream_guard(paddle.device.Stream(paddle_stream)):
         wp.capture_begin(force_module_load=False)
         try:
             t += 1.0
@@ -837,11 +777,11 @@ try:
     #         devices=paddle_compatible_cuda_devices,
     #     )
 
-    # multi-GPU tests
-    if len(paddle_compatible_cuda_devices) > 1:
-        add_function_test(TestPaddle, "test_paddle_mgpu_from_paddle", test_paddle_mgpu_from_paddle)
-        add_function_test(TestPaddle, "test_paddle_mgpu_to_paddle", test_paddle_mgpu_to_paddle)
-        add_function_test(TestPaddle, "test_paddle_mgpu_interop", test_paddle_mgpu_interop)
+    # multi-GPU not supported yet.
+    # if len(paddle_compatible_cuda_devices) > 1:
+    #     add_function_test(TestPaddle, "test_paddle_mgpu_from_paddle", test_paddle_mgpu_from_paddle)
+    #     add_function_test(TestPaddle, "test_paddle_mgpu_to_paddle", test_paddle_mgpu_to_paddle)
+    #     add_function_test(TestPaddle, "test_paddle_mgpu_interop", test_paddle_mgpu_interop)
 
 except Exception as e:
     print(f"Skipping Paddle tests due to exception: {e}")
