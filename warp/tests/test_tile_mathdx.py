@@ -5,10 +5,10 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import functools
 import unittest
 
 import numpy as np
-import functools
 
 import warp as wp
 from warp.tests.unittest_utils import *
@@ -67,7 +67,6 @@ def test_tile_math_matmul(test, device):
 
 
 def test_tile_math_fft(test, device, wp_dtype, fft_size):
-
     np_real_dtype = {wp.vec2f: np.float32, wp.vec2d: np.float64}[wp_dtype]
     np_cplx_dtype = {wp.vec2f: np.complex64, wp.vec2d: np.complex128}[wp_dtype]
 
@@ -77,7 +76,7 @@ def test_tile_math_fft(test, device, wp_dtype, fft_size):
         xy = wp.tile_load(gx, i, j, m=fft_size, n=fft_size)
         wp.tile_fft(xy)
         wp.tile_store(gy, i, j, xy)
-    
+
     rng = np.random.default_rng(42)
 
     # Warp doesn't really have a complex64 type,
@@ -111,8 +110,18 @@ class TestTileMathDx(unittest.TestCase):
 
 
 add_function_test(TestTileMathDx, "test_tile_math_matmul", test_tile_math_matmul, devices=devices)
-add_function_test(TestTileMathDx, "test_tile_math_fft", functools.partial(test_tile_math_fft, wp_dtype=wp.vec2f, fft_size=wp.constant(128)), devices=devices)
-add_function_test(TestTileMathDx, "test_tile_math_fft", functools.partial(test_tile_math_fft, wp_dtype=wp.vec2d, fft_size=wp.constant(256)), devices=devices)
+add_function_test(
+    TestTileMathDx,
+    "test_tile_math_fft",
+    functools.partial(test_tile_math_fft, wp_dtype=wp.vec2f, fft_size=wp.constant(128)),
+    devices=devices,
+)
+add_function_test(
+    TestTileMathDx,
+    "test_tile_math_fft",
+    functools.partial(test_tile_math_fft, wp_dtype=wp.vec2d, fft_size=wp.constant(256)),
+    devices=devices,
+)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
