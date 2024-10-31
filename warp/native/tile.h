@@ -1390,13 +1390,18 @@ void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, 
     WP_TILE_SYNC();
 }
 
-
+// TODO(lcambier): use a properly overaligned complex type that matches cuFFTDx's expectation
+// TODO(lcambier): use dynamic smem
 #define tile_fft(function_name, dtype, shared_memory_size, batch_size, ept, Xinout) \
     do { \
         void function_name(dtype*, dtype*); \
         WP_TILE_SHARED __align__(16) char buffer[shared_memory_size]; \
+        __align__(16) dtype data[ept]; \
         for(int b = 0; b < (int)batch_size; b++) { \
-            function_name(Xinout.data + (int)b * (int)ept, (dtype*)buffer); \
+            dtype* inout = Xinout.data + (int)b * (int)ept; \
+            memcpy(data, inout, sizeof(dtype) * ept); \
+            function_name(data, (dtype*)buffer); \
+            memcpy(inout, data, sizeof(dtype) * ept); \
             WP_TILE_SYNC(); \
         } \
     } while (0)
