@@ -101,7 +101,7 @@ def compute(db: OgnMeshFromVolumeDatabase) -> None:
     if not db.inputs.data.memory or db.inputs.data.shape[0] == 0:
         return
 
-    state = db.internal_state
+    state = db.per_instance_state
 
     # Initialize the internal state if it hasn't been already.
     if state.needs_initialization(db):
@@ -210,10 +210,10 @@ class OgnMeshFromVolume:
                 compute(db)
         except Exception:
             db.log_error(traceback.format_exc())
-            db.internal_state.is_valid = False
+            db.per_instance_state.is_valid = False
             return
 
-        db.internal_state.is_valid = True
+        db.per_instance_state.is_valid = True
 
         # Fire the execution for the downstream nodes.
         db.outputs.execOut = og.ExecutionAttributeState.ENABLED
