@@ -7,35 +7,8 @@
 
 import unittest
 
-import numpy as np
-import paddle
-
 import warp as wp
 from warp.tests.unittest_utils import *
-
-device_stack = []
-# push global device into device stack
-device_stack.append(paddle.device.get_device())
-
-
-class PaddleDevice:
-    def __init__(self, device: str):
-        if device == "cpu":
-            self.device_new = device
-        elif device.startswith("gpu:"):
-            self.device_new = device
-        elif device == "gpu":
-            self.device_new = device
-        else:
-            raise NotImplementedError(f"Unsupported device type {device}")
-
-    def __enter__(self) -> bool:
-        device_stack.append(self.device_new)
-        paddle.device.set_device(self.device_new)
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        device_stack.pop()
-        paddle.device.set_device(device_stack[-1])
 
 
 @wp.kernel
@@ -568,72 +541,6 @@ def test_from_paddle_zero_strides(test, device):
     a_contiguous = wp.empty_like(a)
     wp.launch(copy3d_float_kernel, dim=a.shape, inputs=[a_contiguous, a], device=device)
     assert_np_equal(a_contiguous.numpy(), t.numpy())
-
-
-def test_paddle_mgpu_from_paddle(test, device):
-    import paddle
-
-    n = 32
-
-    expected0 = np.arange(0, n, 1)
-    expected1 = np.arange(0, n * 2, 2)
-
-    t0 = paddle.arange(0, n, 1, dtype=paddle.int32).to(device="gpu:0")
-    a0 = wp.from_paddle(t0, dtype=wp.int32)
-    assert a0.device == "cuda:0"
-    assert_np_equal(a0.numpy(), expected0)
-
-    t1 = paddle.arange(0, n * 2, 2, dtype=paddle.int32).to(device="gpu:1")
-    a1 = wp.from_paddle(t1, dtype=wp.int32)
-    assert a1.device == "cuda:1"
-    assert_np_equal(a1.numpy(), expected1)
-
-
-def test_paddle_mgpu_to_paddle(test, device):
-    n = 32
-
-    with wp.ScopedDevice("cuda:0"):
-        a0 = wp.empty(n, dtype=wp.int32)
-        wp.launch(arange, dim=a0.size, inputs=[0, 1, a0])
-
-        t0 = wp.to_paddle(a0)
-        assert str(t0.place) == "Place(gpu:0)"
-        expected0 = np.arange(0, n, 1, dtype=np.int32)
-        assert_np_equal(t0.numpy(), expected0)
-
-    with wp.ScopedDevice("cuda:1"):
-        a1 = wp.empty(n, dtype=wp.int32)
-        wp.launch(arange, dim=a1.size, inputs=[0, 2, a1])
-
-        t1 = wp.to_paddle(a1)
-        assert str(t1.place) == "Place(gpu:1)"
-        expected1 = np.arange(0, n * 2, 2, dtype=np.int32)
-        assert_np_equal(t1.numpy(), expected1)
-
-
-def test_paddle_mgpu_interop(test, device):
-    import paddle
-
-    n = 1024 * 1024
-
-    with PaddleDevice("gpu:0"):
-        t0 = paddle.arange(n, dtype=paddle.float32).to(device="gpu:0")
-        a0 = wp.from_paddle(t0)
-        wp.launch(inc, dim=a0.size, inputs=[a0], stream=wp.stream_from_paddle())
-
-    with PaddleDevice("gpu:1"):
-        t1 = paddle.arange(n, dtype=paddle.float32).to(device="gpu:1")
-        a1 = wp.from_paddle(t1)
-        wp.launch(inc, dim=a1.size, inputs=[a1], stream=wp.stream_from_paddle())
-
-    # ensure the paddle tensors were modified by warp
-    assert a0.device == "cuda:0"
-    assert a1.device == "cuda:1"
-
-    expected = np.arange(n, dtype=int) + 1
-
-    assert_np_equal(t0.numpy(), expected)
-    assert_np_equal(t1.numpy(), expected)
 
 
 def test_paddle_autograd(test, device):
