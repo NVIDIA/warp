@@ -210,6 +210,12 @@ inline CUDA_CALLABLE mat_t<Rows, Rows, Type> identity()
     return m;
 }
 
+template<unsigned Rows, typename Type>
+inline CUDA_CALLABLE void adj_identity(const mat_t<Rows, Rows, Type>& adj_ret)
+{
+    // nop
+}
+
 template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE bool operator==(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b)
 {
@@ -650,13 +656,18 @@ inline CUDA_CALLABLE mat_t<Rows,ColsOut,Type> mul(const mat_t<Rows,Cols,Type>& a
 {
     mat_t<Rows,ColsOut,Type> t(0);
     for (unsigned i=0; i < Rows; ++i)
-    {
-        for (unsigned j=0; j < ColsOut; ++j)
+    {        
+        for (unsigned j=0; j < ColsOut; ++j)     
         {
+            Type sum(0.0);
+
             for (unsigned k=0; k < Cols; ++k)
             {
-                t.data[i][j] += a.data[i][k]*b.data[k][j];
+                //t.data[i][j] += a.data[i][k]*b.data[k][j];
+                sum = fmaf(a.data[i][k], b.data[k][j], sum);
             }
+
+            t.data[i][j] = sum;
         }
     }
     

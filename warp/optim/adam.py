@@ -50,6 +50,26 @@ def adam_step_kernel_float(
     params[i] = params[i] - lr * mhat / (wp.sqrt(vhat) + eps)
 
 
+@wp.kernel
+def adam_step_kernel_half(
+    g: wp.array(dtype=wp.float16),
+    m: wp.array(dtype=float),
+    v: wp.array(dtype=float),
+    lr: float,
+    beta1: float,
+    beta2: float,
+    t: float,
+    eps: float,
+    params: wp.array(dtype=wp.float16),
+):
+    i = wp.tid()
+    m[i] = beta1 * m[i] + (1.0 - beta1) * float(g[i])
+    v[i] = beta2 * v[i] + (1.0 - beta2) * float(g[i]) * float(g[i])
+    mhat = m[i] / (1.0 - wp.pow(beta1, (t + 1.0)))
+    vhat = v[i] / (1.0 - wp.pow(beta2, (t + 1.0)))
+    params[i] = params[i] - wp.float16(lr * mhat / (wp.sqrt(vhat) + eps))
+
+
 class Adam:
     """An implementation of the Adam Optimizer
     It is designed to mimic Pytorch's version.
@@ -75,10 +95,20 @@ class Adam:
                 self.v = [None] * len(params)  # reset second moment
             for i in range(len(params)):
                 param = params[i]
+
+                if param.dtype == wp.vec3:
+                    dtype = wp.vec3
+                elif param.dtype == wp.float32:
+                    dtype = wp.float32
+                elif param.dtype == wp.float16:
+                    dtype = wp.float32  # we always use fp32 for moments, even if params are fp16
+                else:
+                    raise RuntimeError(f"Unsupported dtype for Warp Adam optimizer: {param.dtype}")
+
                 if self.m[i] is None or self.m[i].shape != param.shape or self.m[i].dtype != param.dtype:
-                    self.m[i] = wp.zeros_like(param)
+                    self.m[i] = wp.zeros(shape=param.shape, dtype=dtype, device=param.device)
                 if self.v[i] is None or self.v[i].shape != param.shape or self.v[i].dtype != param.dtype:
-                    self.v[i] = wp.zeros_like(param)
+                    self.v[i] = wp.zeros(shape=param.shape, dtype=dtype, device=param.device)
 
     def reset_internal_state(self):
         for m_i in self.m:
@@ -98,13 +128,18 @@ class Adam:
     @staticmethod
     def step_detail(g, m, v, lr, beta1, beta2, t, eps, params):
         assert params.dtype == g.dtype
-        assert params.dtype == m.dtype
-        assert params.dtype == v.dtype
         assert params.shape == g.shape
         kernel_inputs = [g, m, v, lr, beta1, beta2, t, eps, params]
         if params.dtype == wp.types.float32:
             wp.launch(
                 kernel=adam_step_kernel_float,
+                dim=len(params),
+                inputs=kernel_inputs,
+                device=params.device,
+            )
+        elif params.dtype == wp.types.float16:
+            wp.launch(
+                kernel=adam_step_kernel_half,
                 dim=len(params),
                 inputs=kernel_inputs,
                 device=params.device,

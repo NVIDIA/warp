@@ -17,6 +17,7 @@ if sys.version_info < (3, 7):
 import argparse
 import glob
 import os
+import platform
 import shutil
 
 from warp.build_dll import build_dll, find_host_compiler, set_msvc_env, verbose_cmd
@@ -26,6 +27,7 @@ parser = argparse.ArgumentParser(description="Warp build script")
 parser.add_argument("--msvc_path", type=str, help="Path to MSVC compiler (optional if already on PATH)")
 parser.add_argument("--sdk_path", type=str, help="Path to WinSDK (optional if already on PATH)")
 parser.add_argument("--cuda_path", type=str, help="Path to CUDA SDK")
+parser.add_argument("--libmathdx_path", type=str, help="Path to libmathdx (optional if LIBMATHDX_HOME is defined)")
 parser.add_argument(
     "--mode",
     type=str,
@@ -52,6 +54,7 @@ parser.add_argument("--no_fast_math", dest="fast_math", action="store_false")
 parser.set_defaults(fast_math=False)
 
 parser.add_argument("--quick", action="store_true", help="Only generate PTX code, disable CUTLASS ops")
+parser.set_defaults(quick=False)
 
 parser.add_argument("--build_llvm", action="store_true", help="Build Clang/LLVM compiler from source, default disabled")
 parser.add_argument("--no_build_llvm", dest="build_llvm", action="store_false")
@@ -68,6 +71,7 @@ parser.set_defaults(debug_llvm=False)
 parser.add_argument("--standalone", action="store_true", help="Use standalone LLVM-based JIT compiler, default enabled")
 parser.add_argument("--no_standalone", dest="standalone", action="store_false")
 parser.set_defaults(standalone=True)
+
 
 args = parser.parse_args()
 
@@ -96,7 +100,7 @@ def find_cuda_sdk():
         return cuda_sdk
 
     # check default paths
-    if os.name == "nt":
+    if platform.system() == "Windows":
         cuda_paths = glob.glob("C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v*.*")
         if len(cuda_paths) >= 1:
             cuda_sdk = cuda_paths[0]
@@ -114,16 +118,21 @@ def find_cuda_sdk():
 
 
 # setup CUDA Toolkit path
-if sys.platform == "darwin":
+if platform.system() == "Darwin":
     args.cuda_path = None
-
 else:
     if not args.cuda_path:
         args.cuda_path = find_cuda_sdk()
 
+    if not args.libmathdx_path:
+        libmathdx_path = os.environ.get("LIBMATHDX_HOME")
+
+        if libmathdx_path:
+            print(f"Using libmathdx path '{libmathdx_path}' provided through the 'LIBMATHDX_HOME' environment variable")
+            args.libmathdx_path = libmathdx_path
 
 # setup MSVC and WinSDK paths
-if os.name == "nt":
+if platform.system() == "Windows":
     if args.msvc_path or args.sdk_path:
         # user provided MSVC and Windows SDK
         assert args.msvc_path and args.sdk_path, "--msvc_path and --sdk_path must be used together."
@@ -140,9 +149,9 @@ if os.name == "nt":
 
 # return platform specific shared library name
 def lib_name(name):
-    if sys.platform == "win32":
+    if platform.system() == "Windows":
         return f"{name}.dll"
-    elif sys.platform == "darwin":
+    elif platform.system() == "Darwin":
         return f"lib{name}.dylib"
     else:
         return f"{name}.so"
@@ -188,6 +197,7 @@ try:
         "native/volume.cpp",
         "native/marching.cpp",
         "native/cutlass_gemm.cpp",
+        "native/mathdx.cpp",
     ]
     warp_cpp_paths = [os.path.join(build_path, cpp) for cpp in cpp_sources]
 
@@ -196,6 +206,9 @@ try:
         warp_cu_path = None
     else:
         warp_cu_path = os.path.join(build_path, "native/warp.cu")
+
+    if args.libmathdx_path is None:
+        print("Warning: libmathdx not found, building without MathDx support")
 
     warp_dll_path = os.path.join(build_path, f"bin/{lib_name('warp')}")
 

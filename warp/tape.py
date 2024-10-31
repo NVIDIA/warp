@@ -131,6 +131,7 @@ class Tape:
                 inputs = launch[3]
                 outputs = launch[4]
                 device = launch[5]
+                block_dim = launch[6]
 
                 adj_inputs = []
                 adj_outputs = []
@@ -153,13 +154,14 @@ class Tape:
                     device=device,
                     adjoint=True,
                     max_blocks=max_blocks,
+                    block_dim=block_dim,
                 )
 
     # record a kernel launch on the tape
-    def record_launch(self, kernel, dim, max_blocks, inputs, outputs, device, metadata=None):
+    def record_launch(self, kernel, dim, max_blocks, inputs, outputs, device, block_dim=0, metadata=None):
         if metadata is None:
             metadata = {}
-        self.launches.append([kernel, dim, max_blocks, inputs, outputs, device, metadata])
+        self.launches.append([kernel, dim, max_blocks, inputs, outputs, device, block_dim, metadata])
 
     def record_func(self, backward, arrays):
         """
@@ -614,7 +616,9 @@ class ArrayStatsVisitor(TapeVisitor):
         self.array_grad_stats.insert(0, grad_stats)
 
 
-Launch = namedtuple("Launch", ["id", "kernel", "dim", "max_blocks", "inputs", "outputs", "device", "metadata"])
+Launch = namedtuple(
+    "Launch", ["id", "kernel", "dim", "max_blocks", "inputs", "outputs", "device", "block_dim", "metadata"]
+)
 RepeatedSequence = namedtuple("RepeatedSequence", ["start", "end", "repetitions"])
 
 
@@ -645,8 +649,8 @@ def visit_tape(
     def get_launch_id(launch):
         kernel = launch[0]
         suffix = ""
-        if len(launch) > 6:
-            metadata = launch[6]
+        if len(launch) > 7:
+            metadata = launch[7]
             # calling function helps to identify unique launches
             if "caller" in metadata:
                 caller = metadata["caller"]
@@ -680,7 +684,8 @@ def visit_tape(
             inputs=launch[3],
             outputs=launch[4],
             device=launch[5],
-            metadata=launch[6] if len(launch) > 6 else {},
+            block_dim=launch[6],
+            metadata=launch[7] if len(launch) > 7 else {},
         )
         for launch in kernel_launches
     ]

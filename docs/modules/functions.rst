@@ -802,6 +802,479 @@ Spatial Math
 
 
 
+Tile Primitives
+---------------
+.. py:function:: tile_zeros(m: int32, n: int32, dtype: Scalar, storage: str) -> Tile
+
+    Allocates a tile of zero-initialized items.
+
+    :param m: Size of the first dimension of the output tile
+    :param n: Size of the second dimension of the output tile
+    :param dtype: Datatype of output tile's elements
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A zero-initialized tile with ``shape=(m,n)`` and the specified datatype
+
+
+.. py:function:: tile_ones(m: int32, n: int32, dtype: Scalar, storage: str) -> Tile
+
+    Allocates a tile of one-initialized items.
+
+    :param m: Size of the first dimension of the output tile
+    :param n: Size of the second dimension of the output tile
+    :param dtype: Datatype of output tile's elements
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A one-initialized tile with ``shape=(m,n)`` and the specified dtype
+
+
+.. py:function:: tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile
+
+    Generates a tile of linearly spaced elements.
+
+    :param args: Variable-length positional arguments, interpreted as:
+
+        - ``(stop,)``: Generates values from ``0`` to ``stop - 1``
+        - ``(start, stop)``: Generates values from ``start`` to ``stop - 1``
+        - ``(start, stop, step)``: Generates values from ``start`` to ``stop - 1`` with a step size
+
+    :param dtype: Datatype of output tile's elements (optional, default: int)
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A tile with ``shape=(1,n)`` with linearly spaced elements of specified dtype
+
+
+.. py:function:: tile_load(a: Array[Any], i: int32, n: int32, storage: str) -> Tile
+
+    Loads a 1D tile from a global memory array.
+
+    This method will cooperatively load a tile from global memory using all threads in the block.
+
+    :param a: The source array in global memory
+    :param i: Offset in the source array measured in multiples of ``n``, i.e.: ``offset=i*n``
+    :param n: The number of elements in the tile
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A tile with ``shape=(1,n)`` and dtype the same as the source array
+
+
+.. py:function:: tile_load(a: Array[Any], i: int32, j: int32, m: int32, n: int32, storage: str) -> Tile
+    :noindex:
+    :nocontentsentry:
+
+    Loads a 2D tile from a global memory array.
+
+    This method will cooperatively load a tile from global memory using all threads in the block.
+
+    :param a: The source array in global memory
+    :param i: Offset in the source array measured in multiples of ``m``, i.e.: ``row=i*m``
+    :param j: Offset in the source array measured in multiples of ``n``, i.e.; ``col=j*n``
+    :param m: The size of the tile's first dimension
+    :param n: The size of the tile's second dimension
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A tile with ``shape=(m,n)`` and dtype the same as the source array
+
+
+.. py:function:: tile_store(a: Array[Any], i: int32, t: Any) -> None
+
+    Stores a 1D tile to a global memory array.
+
+    This method will cooperatively store a tile to global memory using all threads in the block.
+
+    :param a: The destination array in global memory
+    :param i: Offset in the destination array measured in multiples of ``n``, i.e.: ``offset=i*n``
+    :param t: The source tile to store data from, must have the same dtype as the destination array
+
+
+.. py:function:: tile_store(a: Array[Any], i: int32, j: int32, t: Any) -> None
+    :noindex:
+    :nocontentsentry:
+
+    Stores a tile to a global memory array.
+
+    This method will cooperatively store a tile to global memory using all threads in the block.
+
+    :param a: The destination array in global memory
+    :param i: Offset in the destination array measured in multiples of ``m``, i.e.: ``row=i*m``
+    :param j: Offset in the destination array measured in multiples of ``n``, i.e.; ``col=j*n``
+    :param t: The source tile to store data from, must have the same dtype as the destination array
+
+
+.. py:function:: tile_atomic_add(a: Array[Any], x: int32, y: int32, t: Any) -> Tile
+
+    Atomically add a tile to the array `a`, each element will be updated atomically.
+
+    :param a: Array in global memory, should have the same ``dtype`` as the input tile
+    :param x: Offset in the destination array measured in multiples of ``m``, i.e.: ``i=x*M`` where ``M`` is the first tile dimension
+    :param y: Offset in the destination array measured in multiples of ``n``, i.e.: ``j=y*N`` where ``N`` is the second tile dimension
+    :param t: Source tile to add to the destination array
+    :returns: A tile with the same dimensions and type as the source tile, holding the original value of the destination elements
+
+
+.. py:function:: tile(x: Any) -> Tile
+
+    Constructs a new Tile from per-thread kernel values.
+
+    This function converts values computed using scalar kernel code to a tile representation for input into collective operations.
+
+    * If the input value is a scalar, then the resulting tile has ``shape=(1, block_dim)``
+    * If the input value is a vector, then the resulting tile has ``shape=(length(vector), block_dim)``
+
+    :param x: A per-thread local value, e.g.: scalar, vector, or matrix.
+    :returns: A tile with first dimension according to the value type length and a second dimension equal to ``block_dim``
+
+    This example shows how to create a linear sequence from thread variables:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+            i = wp.tid()
+            t = wp.tile(i*2)
+            print(t)
+
+        wp.launch(compute, dim=16, inputs=[], block_dim=16)
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=16, storage=register) = [[0 2 4 6 8 ...]]
+
+    
+
+
+.. py:function:: untile(a: Any) -> Scalar
+
+    Convert a Tile back to per-thread values.
+
+    This function converts a block-wide tile back to per-thread values.
+
+    * If the input tile is 1-dimensional then the resulting value will be a per-thread scalar
+    * If the input tile is 2-dimensional then the resulting value will be a per-thread vector of length M
+
+    :param a: A tile with dimensions ``shape=(M, block_dim)``
+    :returns: A single value per-thread with the same dtype as the tile
+
+    This example shows how to create a linear sequence from thread variables:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+            i = wp.tid()
+
+            # create block-wide tile
+            t = wp.tile(i)*2
+
+            # convert back to per-thread values
+            s = wp.untile()
+
+            print(s)
+
+        wp.launch(compute, dim=16, inputs=[], block_dim=16)
+
+    Prints:
+
+    .. code-block:: text
+
+        0
+        2
+        4
+        6
+        8
+        ...
+    
+
+
+.. py:function:: tile_extract(a: Tile, i: int32, j: int32) -> Scalar
+
+    Extracts a single element from the tile and returns it as a scalar type.
+
+    This function will extract an element from the tile and broadcast its value to all threads in the block.
+
+    Note that this may incur additional synchronization if the source tile is a register tile.
+
+    :param a: Tile to extract the element from
+    :param i: Coordinate of element on first dimension
+    :param j: Coordinate of element on the second dimension
+    :returns: The value of the element at the specified tile location, with the same type as the input tile's per-element dtype
+
+
+.. py:function:: tile_transpose(a: Tile) -> Tile
+
+    Transpose a tile.
+
+    For shared memory tiles this operation will alias the input tile, register tiles will first be transferred to shared memory before transposition.
+
+    :param a: Tile to transpose with ``shape=(M,N)``
+    :returns: Tile with ``shape=(N,M)``
+
+
+.. py:function:: tile_broadcast(a: Tile, m: int32, n: int32) -> Tile
+
+    Broadcast a tile.
+
+    This method will attempt to broadcast the input tile ``a`` to the destination shape (m, n), broadcasting follows NumPy broadcast rules.
+
+    :param a: Tile to broadcast
+    :returns: Tile with broadcast ``shape=(m, n)``
+
+
+.. py:function:: tile_sum(a: Tile) -> Tile
+
+    Cooperatively compute the sum of the tile elements using all threads in the block.
+
+    :param a: The tile to compute the sum of
+    :returns: A single-element tile with dimensions of (1,1) holding the sum
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            t = wp.tile_ones(dtype=float, m=16, n=16)
+            s = wp.tile_sum(t)
+
+            print(t)
+
+        wp.launch(compute, dim=[64], inputs=[])
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=1, storage=register) = [[256]]
+
+    
+
+
+.. py:function:: tile_min(a: Tile) -> Tile
+
+    Cooperatively compute the minimum of the tile elements using all threads in the block.
+
+    :param a: The tile to compute the minimum of
+    :returns: A single-element tile with dimensions of (1,1) holding the minimum value
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            t = wp.tile_arange(start=--10, stop=10, dtype=float)
+            s = wp.tile_min(t)
+
+            print(t)
+
+        wp.launch(compute, dim=[64], inputs=[])
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=1, storage=register) = [[-10]]
+
+    
+
+
+.. py:function:: tile_max(a: Tile) -> Tile
+
+    Cooperatively compute the maximum of the tile elements using all threads in the block.
+
+    :param a: The tile to compute the maximum from
+    :returns: A single-element tile with dimensions of (1,1) holding the maximum value
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            t = wp.tile_arange(start=--10, stop=10, dtype=float)
+            s = wp.tile_min(t)
+
+            print(t)
+
+        wp.launch(compute, dim=[64], inputs=[])
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=1, storage=register) = [[10]]
+
+    
+
+
+.. py:function:: tile_reduce(op: Callable, a: Any) -> Tile
+
+    Apply a custom reduction operator across the tile.
+
+    This function cooperatively performs a reduction using the provided operator across the tile.
+
+    :param op: A callable function that accepts two arguments and returns one argument, may be a user function or builtin
+    :param a: The input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
+    :returns: A single-element tile with ``shape=(1,1)`` with the same datatype as the input tile.
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def factorial():
+
+            t = wp.tile_arange(1, 10, dtype=int)
+            s = wp.tile_reduce(wp.mul, t)
+
+            print(s)
+
+        wp.launch(factorial, dim=[16], inputs=[], block_dim=16)
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=1, storage=register) = [[362880]]
+    
+
+
+.. py:function:: tile_map(op: Callable, a: Any) -> Tile
+
+    Apply a unary function onto the tile.
+
+    This function cooperatively applies a unary function to each element of the tile using all threads in the block.
+
+    :param op: A callable function that accepts one argument and returns one argument, may be a user function or builtin
+    :param a: The input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
+    :returns: A tile with the same dimensions and datatype as the input tile.
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            t = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
+            s = wp.tile_map(wp.sin, t)
+
+            print(s)
+
+        wp.launch(compute, dim=[16], inputs=[])
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=10, storage=register) = [[0 0.0998334 0.198669 0.29552 ...]]
+    
+
+
+.. py:function:: tile_map(op: Callable, a: Any, b: Any) -> Tile
+    :noindex:
+    :nocontentsentry:
+
+    Apply a binary function onto the tile.
+
+    This function cooperatively applies a binary function to each element of the tiles using all threads in the block.
+    Both input tiles must have the same dimensions and datatype.
+
+    :param op: A callable function that accepts two arguments and returns one argument, all of the same type, may be a user function or builtin
+    :param a: The first input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
+    :param b: The second input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
+    :returns: A tile with the same dimensions and datatype as the input tiles.
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            a = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
+            b = wp.tile_ones(m=1, n=10, dtype=float)
+
+            s = wp.tile_map(wp.add, a, b)
+
+            print(s)
+
+        wp.launch(compute, dim=[16], inputs=[])
+
+    Prints:
+
+    .. code-block:: text
+
+        tile(m=1, n=10, storage=register) = [[1 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9]]
+
+
+.. py:function:: tile_matmul(a: Tile, b: Tile, out: Tile) -> Tile
+
+    Computes the matrix product and accumulates ``out += a*b``.
+
+    Supported datatypes are:
+        * fp16, fp32, fp64 (real)
+        * vec2h, vec2f, vec2d (complex)
+
+    All input and output tiles must have the same datatype. Tile data will be automatically be migrated
+    to shared memory if necessary and will use TensorCore operations when available.
+
+    :param a: A tile with ``shape=(M, K)``
+    :param b: A tile with ``shape=(K, N)``
+    :param out: A tile with ``shape=(M, N)``
+    
+
+
+.. py:function:: tile_matmul(a: Tile, b: Tile) -> Tile
+    :noindex:
+    :nocontentsentry:
+
+    Computes the matrix product ``out = a*b``.
+
+    Supported datatypes are:
+        * fp16, fp32, fp64 (real)
+        * vec2h, vec2f, vec2d (complex)
+
+    Both input tiles must have the same datatype. Tile data will be automatically be migrated
+    to shared memory if necessary and will use TensorCore operations when available.
+
+    :param a: A tile with ``shape=(M, K)``
+    :param b: A tile with ``shape=(K, N)``
+    :returns: A tile with ``shape=(M, N)``
+    
+
+
+.. py:function:: tile_fft(inout: Tile) -> Tile
+
+    Compute the forward FFT along the second dimension of a 2D tile of data.
+
+    This function cooperatively computes the forward FFT on a tile of data inplace, treating each row individually.
+
+    Supported datatypes are:
+        * vec2f, vec2d
+
+    :param inout: The input/output tile
+
+
+.. py:function:: tile_ifft(inout: Tile) -> Tile
+
+    Compute the inverse FFT along the second dimension of a 2D tile of data.
+
+    This function cooperatively computes the inverse FFT on a tile of data inplace, treating each row individually.
+
+    Supported datatypes are:
+        * vec2f, vec2d
+
+    :param inout: The input/output tile
+
+
+
+
 Utility
 ---------------
 .. py:function:: mlp(weights: Array[float32], bias: Array[float32], activation: Callable, index: int32, x: Array[float32], out: Array[float32]) -> None
@@ -1968,6 +2441,13 @@ Operators
     :nocontentsentry:
 
 
+.. py:function:: add(a: Tile, b: Tile) -> Tile
+    :noindex:
+    :nocontentsentry:
+
+    Add each element of two tiles together
+
+
 .. py:function:: sub(a: Scalar, b: Scalar) -> Scalar
 
 
@@ -2059,6 +2539,20 @@ Operators
     :nocontentsentry:
 
 
+.. py:function:: mul(x: Tile, y: Scalar) -> Tile
+    :noindex:
+    :nocontentsentry:
+
+    Multiply each element of a tile by a scalar
+
+
+.. py:function:: mul(x: Scalar, y: Tile) -> Tile
+    :noindex:
+    :nocontentsentry:
+
+    Multiply each element of a tile by a scalar
+
+
 .. py:function:: mod(a: Scalar, b: Scalar) -> Scalar
 
     Modulo operation using truncated division.
@@ -2141,6 +2635,13 @@ Operators
 .. py:function:: neg(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
     :noindex:
     :nocontentsentry:
+
+
+.. py:function:: neg(x: Tile) -> Tile
+    :noindex:
+    :nocontentsentry:
+
+    Negate each element of a tile
 
 
 .. py:function:: unot(a: bool) -> bool

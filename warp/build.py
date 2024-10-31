@@ -5,6 +5,7 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import ctypes
 import os
 
 import warp.config
@@ -12,7 +13,7 @@ from warp.thirdparty import appdirs
 
 
 # builds cuda source to PTX or CUBIN using NVRTC (output type determined by output_path extension)
-def build_cuda(cu_path, arch, output_path, config="release", verify_fp=False, fast_math=False):
+def build_cuda(cu_path, arch, output_path, config="release", verify_fp=False, fast_math=False, ltoirs=None):
     with open(cu_path, "rb") as src_file:
         src = src_file.read()
         cu_path = cu_path.encode("utf-8")
@@ -23,8 +24,26 @@ def build_cuda(cu_path, arch, output_path, config="release", verify_fp=False, fa
             warp.context.runtime.llvm.compile_cuda(src, cu_path, inc_path, output_path, False)
 
         else:
+            if ltoirs is None:
+                ltoirs = []
+
+            num_ltoirs = len(ltoirs)
+            arr_lroirs = (ctypes.c_char_p * num_ltoirs)(*ltoirs)
+            arr_lroir_sizes = (ctypes.c_size_t * num_ltoirs)(*[len(l) for l in ltoirs])
             err = warp.context.runtime.core.cuda_compile_program(
-                src, arch, inc_path, config == "debug", warp.config.verbose, verify_fp, fast_math, output_path
+                src,
+                arch,
+                inc_path,
+                0,
+                None,
+                config == "debug",
+                warp.config.verbose,
+                verify_fp,
+                fast_math,
+                output_path,
+                num_ltoirs,
+                arr_lroirs,
+                arr_lroir_sizes,
             )
             if err != 0:
                 raise Exception(f"CUDA kernel build failed with error code {err}")

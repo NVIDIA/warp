@@ -1341,6 +1341,8 @@ def type_typestr(dtype):
 def type_repr(t):
     if is_array(t):
         return str(f"array(ndim={t.ndim}, dtype={t.dtype})")
+    if is_tile(t):
+        return str(f"tile(dtype={t.dtype}, m={t.M}, n={t.N})")
     if type_is_vector(t):
         return str(f"vector(length={t._shape_[0]}, dtype={t._wp_scalar_type_})")
     if type_is_matrix(t):
@@ -1497,6 +1499,9 @@ def types_equal(a, b, match_generic=False):
 
     # match NewStructInstance and Struct dtype
     if getattr(a, "cls", "a") is getattr(b, "cls", "b"):
+        return True
+
+    if is_tile(a) and is_tile(b):
         return True
 
     return scalars_equal(a, b, match_generic)
@@ -2965,6 +2970,119 @@ def array_type_id(a):
         return ARRAY_TYPE_FABRIC_INDEXED
     else:
         raise ValueError("Invalid array type")
+
+
+# tile expression objects
+class Tile:
+    allocation = 0
+
+    def __init__(self, dtype, M, N, op=None, storage="register", layout="rowmajor", owner=True):
+        self.dtype = type_to_warp(dtype)
+        self.M = M
+        self.N = N
+        self.op = op
+        self.storage = storage
+        self.layout = layout
+
+        # default to row major layout
+        if layout == "rowmajor":
+            self.strides = (N, 1)
+        elif layout == "colmajor":
+            self.strides = (1, M)
+
+        self.owner = owner
+
+    # generates C-type string
+    def ctype(self):
+        from warp.codegen import Var
+
+        if self.storage == "register":
+            return f"wp::tile_register_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
+        elif self.storage == "shared":
+            return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{self.strides[0]}, {self.strides[1]}>"
+        else:
+            raise RuntimeError(f"Unrecognized tile storage type {self.storage}")
+
+    # generates C-initializer string
+    def cinit(self, adjoint=False):
+        from warp.codegen import Var
+
+        if self.storage == "register":
+            return self.ctype() + "(0.0)"
+        elif self.storage == "shared":
+            # if this is a reference to another tile
+            # then don't allocate any memory
+
+            if adjoint:
+                # backward pass requires zeroed memory
+                return f"wp::tile_alloc_zeros<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{self.strides[0]}, {self.strides[1]}, {Tile.alloc()}>()"
+            else:
+                if not self.owner:
+                    # will be initialized by subsequent call, e.g.: t = tile_broadcast(a)
+                    return "NULL"
+                else:
+                    # forward mode can be uninitialized until first used by the kernel
+                    return f"wp::tile_alloc_empty<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{Tile.alloc()}>()"
+
+    # generate a unique allocation index for shared memory
+    @classmethod
+    def alloc(cls):
+        index = Tile.allocation
+        Tile.allocation += 1
+        return index
+
+
+class TileZeros(Tile):
+    def __init__(self, dtype, M, N, storage="register"):
+        Tile.__init__(self, dtype, M, N, op="zeros", storage=storage)
+
+
+class TileRange(Tile):
+    def __init__(self, dtype, start, stop, step, storage="register"):
+        self.start = start
+        self.stop = stop
+        self.step = step
+
+        M = 1
+        N = int((stop - start) / step)
+
+        Tile.__init__(self, dtype, M, N, op="arange", storage=storage)
+
+
+class TileConstant(Tile):
+    def __init__(self, dtype, M, N):
+        Tile.__init__(self, dtype, M, N, op="constant", storage="register")
+
+
+class TileLoad(Tile):
+    def __init__(self, array, M, N, storage="register"):
+        Tile.__init__(self, array.dtype, M, N, op="load", storage=storage)
+
+
+class TileUnaryMap(Tile):
+    def __init__(self, t, storage="register"):
+        Tile.__init__(self, t.dtype, t.M, t.N, op="unary_map", storage=storage)
+
+        self.t = t
+
+
+class TileBinaryMap(Tile):
+    def __init__(self, a, b, storage="register"):
+        Tile.__init__(self, a.dtype, a.M, a.N, op="binary_map", storage=storage)
+
+        self.a = a
+        self.b = b
+
+
+class TileShared(Tile):
+    def __init__(self, t):
+        Tile.__init__(self, t.dtype, t.M, t.N, "shared", storage="shared")
+
+        self.t = t
+
+
+def is_tile(t):
+    return isinstance(t, Tile)
 
 
 class Bvh:

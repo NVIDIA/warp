@@ -101,6 +101,7 @@ class Function:
         value_func=None,
         export_func=None,
         dispatch_func=None,
+        lto_dispatch_func=None,
         module=None,
         variadic=False,
         initializer_list_func=None,
@@ -137,6 +138,7 @@ class Function:
         self.value_func = value_func  # a function that takes a list of args and a list of templates and returns the value type, e.g.: load(array, index) returns the type of value being loaded
         self.export_func = export_func
         self.dispatch_func = dispatch_func
+        self.lto_dispatch_func = lto_dispatch_func
         self.input_types = {}
         self.export = export
         self.doc = doc
@@ -1073,6 +1075,7 @@ def add_builtin(
     value_func=None,
     export_func=None,
     dispatch_func=None,
+    lto_dispatch_func=None,
     doc="",
     namespace="wp::",
     variadic=False,
@@ -1113,6 +1116,9 @@ def add_builtin(
             The arguments returned must be of type `codegen.Var`.
             If not provided, all arguments passed by the users when calling
             the built-in are passed as-is as runtime arguments to the C++ function.
+        lto_dispatch_func (Callable): Same as dispatch_func, but takes an 'option' dict
+            as extra argument (indicating tile_size and target architecture) and returns
+            an LTO-IR buffer as extra return value
         doc (str): Used to generate the Python's docstring and the HTML documentation.
         namespace: Namespace for the underlying C++ function.
         variadic (bool): Whether the function declares variadic arguments.
@@ -1252,6 +1258,7 @@ def add_builtin(
                     value_func=value_func if return_type is Any else None,
                     export_func=export_func,
                     dispatch_func=dispatch_func,
+                    lto_dispatch_func=lto_dispatch_func,
                     doc=doc,
                     namespace=namespace,
                     variadic=variadic,
@@ -1274,6 +1281,7 @@ def add_builtin(
         value_func=value_func,
         export_func=export_func,
         dispatch_func=dispatch_func,
+        lto_dispatch_func=lto_dispatch_func,
         variadic=variadic,
         initializer_list_func=initializer_list_func,
         export=export,
@@ -1540,6 +1548,8 @@ class ModuleBuilder:
         self.options = options
         self.module = module
         self.deferred_functions = []
+        self.ltoirs = {}  # map from lto symbol to lto binary
+        self.ltoirs_decl = {}  # map from lto symbol to lto forward declaration
 
         if hasher is None:
             hasher = ModuleHasher(module)
@@ -1610,6 +1620,12 @@ class ModuleBuilder:
     def codegen(self, device):
         source = ""
 
+        # code-gen LTO forward declarations
+        source += 'extern "C" {\n'
+        for fwd in self.ltoirs_decl.values():
+            source += fwd + "\n"
+        source += "}\n"
+
         # code-gen structs
         visited_structs = set()
         for struct in self.structs.keys():
@@ -1639,9 +1655,9 @@ class ModuleBuilder:
 
         # add headers
         if device == "cpu":
-            source = warp.codegen.cpu_module_header + source
+            source = warp.codegen.cpu_module_header.format(tile_size=self.options["block_dim"]) + source
         else:
-            source = warp.codegen.cuda_module_header + source
+            source = warp.codegen.cuda_module_header.format(tile_size=self.options["block_dim"]) + source
 
         return source
 
@@ -1749,6 +1765,7 @@ class Module:
             "fast_math": False,
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
             "mode": warp.config.mode,
+            "block_dim": 256,
         }
 
         # Module dependencies are determined by scanning each function
@@ -1879,8 +1896,16 @@ class Module:
         self.hasher = ModuleHasher(self)
         return self.hasher.get_module_hash()
 
-    def load(self, device) -> ModuleExec:
+    def load(self, device, block_dim=None) -> ModuleExec:
         device = runtime.get_device(device)
+
+        # re-compile module if tile size (blockdim) changes
+        # todo: it would be better to have a method such as `module.get_kernel(block_dim=N)`
+        # that can return a single kernel instance with a given block size
+        if block_dim is not None:
+            if self.options["block_dim"] != block_dim:
+                self.unload()
+            self.options["block_dim"] = block_dim
 
         # compute the hash if needed
         if self.hasher is None:
@@ -1931,6 +1956,9 @@ class Module:
                 else:
                     output_arch = device.arch
                     output_name = f"module_codegen.sm{output_arch}.cubin"
+
+                # Some of the Tile codegen, such as cuFFTDx and cuBLASDx, requires knowledge of the target arch
+                self.options["output_arch"] = output_arch
 
             # final object binary path
             binary_path = os.path.join(module_dir, output_name)
@@ -2010,6 +2038,7 @@ class Module:
                                 config=self.options["mode"],
                                 fast_math=self.options["fast_math"],
                                 verify_fp=warp.config.verify_fp,
+                                ltoirs=builder.ltoirs.values(),
                             )
 
                     except Exception as e:
@@ -3205,6 +3234,8 @@ class Runtime:
             self.core.is_cuda_compatibility_enabled.restype = ctypes.c_int
             self.core.is_cutlass_enabled.argtypes = None
             self.core.is_cutlass_enabled.restype = ctypes.c_int
+            self.core.is_mathdx_enabled.argtypes = None
+            self.core.is_mathdx_enabled.restype = ctypes.c_int
 
             self.core.cuda_driver_version.argtypes = None
             self.core.cuda_driver_version.restype = ctypes.c_int
@@ -3329,16 +3360,57 @@ class Runtime:
             self.core.cuda_graph_destroy.restype = ctypes.c_bool
 
             self.core.cuda_compile_program.argtypes = [
-                ctypes.c_char_p,
-                ctypes.c_int,
-                ctypes.c_char_p,
-                ctypes.c_bool,
-                ctypes.c_bool,
-                ctypes.c_bool,
-                ctypes.c_bool,
-                ctypes.c_char_p,
+                ctypes.c_char_p,  # cuda_src
+                ctypes.c_int,  # arch
+                ctypes.c_char_p,  # include_dir
+                ctypes.c_int,  # num_cuda_include_dirs
+                ctypes.POINTER(ctypes.c_char_p),  # cuda include dirs
+                ctypes.c_bool,  # debug
+                ctypes.c_bool,  # verbose
+                ctypes.c_bool,  # verify_fp
+                ctypes.c_bool,  # fast_math
+                ctypes.c_char_p,  # output_path
+                ctypes.c_size_t,  # num_ltoirs
+                ctypes.POINTER(ctypes.c_char_p),  # ltoirs
+                ctypes.POINTER(ctypes.c_size_t),  # ltoir_sizes
             ]
             self.core.cuda_compile_program.restype = ctypes.c_size_t
+
+            self.core.cuda_compile_fft.argtypes = [
+                ctypes.c_char_p,  # lto
+                ctypes.c_char_p,  # function name
+                ctypes.c_int,  # num include dirs
+                ctypes.POINTER(ctypes.c_char_p),  # include dirs
+                ctypes.c_char_p,  # mathdx include dir
+                ctypes.c_int,  # arch
+                ctypes.c_int,  # size
+                ctypes.c_int,  # ept
+                ctypes.c_int,  # direction
+                ctypes.c_int,  # precision
+                ctypes.POINTER(ctypes.c_int),  # smem (out)
+            ]
+            self.core.cuda_compile_fft.restype = ctypes.c_bool
+
+            self.core.cuda_compile_dot.argtypes = [
+                ctypes.c_char_p,  # lto
+                ctypes.c_char_p,  # function name
+                ctypes.c_int,  # num include dirs
+                ctypes.POINTER(ctypes.c_char_p),  # include dirs
+                ctypes.c_char_p,  # mathdx include dir
+                ctypes.c_int,  # arch
+                ctypes.c_int,  # M
+                ctypes.c_int,  # N
+                ctypes.c_int,  # K
+                ctypes.c_int,  # a_precision
+                ctypes.c_int,  # b_precision
+                ctypes.c_int,  # c_precision
+                ctypes.c_int,  # type
+                ctypes.c_int,  # a_arrangement
+                ctypes.c_int,  # b_arrangement
+                ctypes.c_int,  # c_arrangement
+                ctypes.c_int,  # num threads
+            ]
+            self.core.cuda_compile_dot.restype = ctypes.c_bool
 
             self.core.cuda_load_module.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
             self.core.cuda_load_module.restype = ctypes.c_void_p
@@ -3353,6 +3425,7 @@ class Runtime:
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_size_t,
+                ctypes.c_int,
                 ctypes.c_int,
                 ctypes.POINTER(ctypes.c_void_p),
                 ctypes.c_void_p,
@@ -4791,7 +4864,9 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
 # represents all data required for a kernel launch
 # so that launches can be replayed quickly, use `wp.launch(..., record_cmd=True)`
 class Launch:
-    def __init__(self, kernel, device, hooks=None, params=None, params_addr=None, bounds=None, max_blocks=0):
+    def __init__(
+        self, kernel, device, hooks=None, params=None, params_addr=None, bounds=None, max_blocks=0, block_dim=256
+    ):
         # retain the module executable so it doesn't get unloaded
         self.module_exec = kernel.module.load(device)
         if not self.module_exec:
@@ -4830,6 +4905,7 @@ class Launch:
         self.device = device
         self.bounds = bounds
         self.max_blocks = max_blocks
+        self.block_dim = block_dim
 
     def set_dim(self, dim):
         self.bounds = warp.types.launch_bounds_t(dim)
@@ -4911,6 +4987,7 @@ class Launch:
                 self.hooks.forward,
                 self.bounds.size,
                 self.max_blocks,
+                self.block_dim,
                 self.params_addr,
                 stream.cuda_stream,
             )
@@ -4929,6 +5006,7 @@ def launch(
     record_tape=True,
     record_cmd=False,
     max_blocks=0,
+    block_dim=256,
 ):
     """Launch a Warp kernel on the target device
 
@@ -4948,6 +5026,7 @@ def launch(
         record_cmd: When True the launch will be returned as a ``Launch`` command object, the launch will not occur until the user calls ``cmd.launch()``
         max_blocks: The maximum number of CUDA thread blocks to use. Only has an effect for CUDA kernel launches.
             If negative or zero, the maximum hardware value will be used.
+        block_dim: The number of threads per block.
     """
 
     init()
@@ -5001,7 +5080,7 @@ def launch(
             kernel = kernel.add_overload(fwd_types)
 
         # delay load modules, including new overload if needed
-        module_exec = kernel.module.load(device)
+        module_exec = kernel.module.load(device, block_dim)
         if not module_exec:
             return
 
@@ -5057,7 +5136,13 @@ def launch(
                     )
 
                 runtime.core.cuda_launch_kernel(
-                    device.context, hooks.backward, bounds.size, max_blocks, kernel_params, stream.cuda_stream
+                    device.context,
+                    hooks.backward,
+                    bounds.size,
+                    max_blocks,
+                    block_dim,
+                    kernel_params,
+                    stream.cuda_stream,
                 )
 
             else:
@@ -5080,7 +5165,13 @@ def launch(
                 else:
                     # launch
                     runtime.core.cuda_launch_kernel(
-                        device.context, hooks.forward, bounds.size, max_blocks, kernel_params, stream.cuda_stream
+                        device.context,
+                        hooks.forward,
+                        bounds.size,
+                        max_blocks,
+                        block_dim,
+                        kernel_params,
+                        stream.cuda_stream,
                     )
 
             try:
@@ -5094,11 +5185,55 @@ def launch(
         # record file, lineno, func as metadata
         frame = inspect.currentframe().f_back
         caller = {"file": frame.f_code.co_filename, "lineno": frame.f_lineno, "func": frame.f_code.co_name}
-        runtime.tape.record_launch(kernel, dim, max_blocks, inputs, outputs, device, metadata={"caller": caller})
+        runtime.tape.record_launch(
+            kernel, dim, max_blocks, inputs, outputs, device, block_dim, metadata={"caller": caller}
+        )
 
         # detect illegal inter-kernel read/write access patterns if verification flag is set
         if warp.config.verify_autograd_array_access:
             runtime.tape._check_kernel_array_access(kernel, fwd_args)
+
+
+def launch_tiled(*args, **kwargs):
+    """A helper method for launching a grid with an extra trailing dimension equal to the block size.
+
+    For example, to launch a 2D grid, where each element has 64 threads assigned you would use the following:
+
+    .. code-block:: python
+
+        wp.launch_tiled(kernel, [M, N], inputs=[...], block_dim=64)
+
+    Which is equivalent to the following:
+
+    .. code-block:: python
+
+        wp.launch(kernel, [M, N, 64], inputs=[...], block_dim=64)
+
+    Inside your kernel code you can retrieve the first two indices of the thread as usual, ignoring the implicit third dimension if desired:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute()
+
+            i, j = wp.tid()
+
+            ...
+    """
+
+    if len(kwargs["dim"]) > 3:
+        raise RuntimeError("wp.launch_tiled() requires a grid with fewer than 4 dimensions")
+
+    # promote dim to a list in case it was passed as a scalar or tuple
+    dim = kwargs["dim"]
+    if not isinstance(dim, list):
+        dim = list(dim) if isinstance(dim, tuple) else [dim]
+
+    # add trailing dimension
+    kwargs["dim"] = dim + [kwargs["block_dim"]]
+
+    # forward to original launch method
+    launch(*args, **kwargs)
 
 
 def synchronize():
@@ -5666,6 +5801,8 @@ def type_str(t):
     elif typing.get_origin(t) in (List, Mapping, Sequence, Union, Tuple):
         args_repr = ", ".join(type_str(x) for x in typing.get_args(t))
         return f"{t.__name__}[{args_repr}]"
+    elif warp.types.is_tile(t):
+        return "Tile"
 
     return t.__name__
 

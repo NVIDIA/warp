@@ -1501,7 +1501,7 @@ def test_matmat_multiplication(test, device, dtype, register_kernels=False):
     tol = {
         np.float16: 2.0e-2,
         np.float32: 5.0e-6,
-        np.float64: 1.0e-8,
+        np.float64: 5.0e-7,
     }.get(dtype, 0)
 
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]

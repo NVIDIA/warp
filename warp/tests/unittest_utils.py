@@ -232,6 +232,10 @@ def create_test_func(func, device, check_output, **kwargs):
         else:
             func(self, device, **kwargs)
 
+    # Copy the __unittest_expecting_failure__ attribute from func to test_func
+    if hasattr(func, "__unittest_expecting_failure__"):
+        test_func.__unittest_expecting_failure__ = func.__unittest_expecting_failure__
+
     return test_func
 
 

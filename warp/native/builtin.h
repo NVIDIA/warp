@@ -1145,7 +1145,47 @@ struct launch_bounds_t
     size_t size;                // total number of threads
 };
 
-inline CUDA_CALLABLE int tid(size_t index)
+// represents coordinate in the launch grid
+struct launch_coord_t
+{
+    int i;
+    int j;
+    int k;
+    int l;
+};
+
+// unravels a linear thread index to the corresponding launch grid coord (up to 4d)
+inline CUDA_CALLABLE launch_coord_t launch_coord(size_t linear, const launch_bounds_t& bounds)
+{
+    launch_coord_t coord = {0, 0, 0, 0};
+
+    if (bounds.ndim > 3)
+    {
+        coord.l = linear%bounds.shape[3];
+        linear /= bounds.shape[3];
+    }
+
+    if (bounds.ndim > 2)
+    {
+        coord.k = linear%bounds.shape[2];
+        linear /= bounds.shape[2];
+    }
+
+    if (bounds.ndim > 1)
+    {
+        coord.j = linear%bounds.shape[1];
+        linear /= bounds.shape[1];
+    }
+
+    if (bounds.ndim > 0)
+    {
+        coord.i = linear;
+    }
+
+    return coord;
+}
+
+inline CUDA_CALLABLE int tid(size_t index, const launch_bounds_t& bounds)
 {
     // For the 1-D tid() we need to warn the user if we're about to provide a truncated index
     // Only do this in _DEBUG when called from device to avoid excessive register allocation
@@ -1154,40 +1194,33 @@ inline CUDA_CALLABLE int tid(size_t index)
         printf("Warp warning: tid() is returning an overflowed int\n");
     }
 #endif
-    return static_cast<int>(index);
+
+    launch_coord_t c = launch_coord(index, bounds);
+    return static_cast<int>(c.i);
 }
 
-inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, size_t index, const launch_bounds_t& launch_bounds)
+inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, size_t index, const launch_bounds_t& bounds)
 {
-    const size_t n = launch_bounds.shape[1];
-
-    // convert to work item
-    i = index/n;
-    j = index%n;
+    launch_coord_t c = launch_coord(index, bounds);
+    i = c.i;
+    j = c.j;
 }
 
-inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, size_t index, const launch_bounds_t& launch_bounds)
+inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, size_t index, const launch_bounds_t& bounds)
 {
-    const size_t n = launch_bounds.shape[1];
-    const size_t o = launch_bounds.shape[2];
-
-    // convert to work item
-    i = index/(n*o);
-    j = index%(n*o)/o;
-    k = index%o;
+    launch_coord_t c = launch_coord(index, bounds);
+    i = c.i;
+    j = c.j;
+    k = c.k;
 }
 
-inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, int& l, size_t index, const launch_bounds_t& launch_bounds)
+inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, int& l, size_t index, const launch_bounds_t& bounds)
 {
-    const size_t n = launch_bounds.shape[1];
-    const size_t o = launch_bounds.shape[2];
-    const size_t p = launch_bounds.shape[3];
-
-    // convert to work item
-    i = index/(n*o*p);
-    j = index%(n*o*p)/(o*p);
-    k = index%(o*p)/p;
-    l = index%p;
+    launch_coord_t c = launch_coord(index, bounds);
+    i = c.i;
+    j = c.j;
+    k = c.k;
+    l = c.l;
 }
 
 template<typename T>
@@ -1724,3 +1757,10 @@ inline CUDA_CALLABLE void adj_expect_near(const vec3& actual, const vec3& expect
 #include "rand.h"
 #include "noise.h"
 #include "matnn.h"
+
+// only include in kernels for now
+#if defined(__CUDACC_RTC__)
+#include "tile.h"
+#include "tile_gemm.h"
+#include "tile_reduce.h"
+#endif
