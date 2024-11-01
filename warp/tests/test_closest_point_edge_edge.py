@@ -220,12 +220,12 @@ def check_edge_closest_point_sufficient_necessary_kernel(
 
 def check_edge_closest_point_random(test, device):
     num_tests = 100000
-    np.random.seed(12345)
-    p1 = wp.array(np.random.randn(num_tests, 3), dtype=wp.vec3, device=device)
-    q1 = wp.array(np.random.randn(num_tests, 3), dtype=wp.vec3, device=device)
+    rng = np.random.default_rng(123)
+    p1 = wp.array(rng.standard_normal(size=(num_tests, 3)), dtype=wp.vec3, device=device)
+    q1 = wp.array(rng.standard_normal(size=(num_tests, 3)), dtype=wp.vec3, device=device)
 
-    p2 = wp.array(np.random.randn(num_tests, 3), dtype=wp.vec3, device=device)
-    q2 = wp.array(np.random.randn(num_tests, 3), dtype=wp.vec3, device=device)
+    p2 = wp.array(rng.standard_normal(size=(num_tests, 3)), dtype=wp.vec3, device=device)
+    q2 = wp.array(rng.standard_normal(size=(num_tests, 3)), dtype=wp.vec3, device=device)
 
     wp.launch(
         kernel=check_edge_closest_point_sufficient_necessary_kernel,
@@ -235,10 +235,10 @@ def check_edge_closest_point_random(test, device):
     )
 
     # parallel edges
-    p1 = np.random.randn(num_tests, 3)
-    q1 = np.random.randn(num_tests, 3)
+    p1 = rng.standard_normal(size=(num_tests, 3))
+    q1 = rng.standard_normal(size=(num_tests, 3))
 
-    shifts = np.random.randn(num_tests, 3)
+    shifts = rng.standard_normal(size=(num_tests, 3))
 
     p2 = p1 + shifts
     q2 = q1 + shifts

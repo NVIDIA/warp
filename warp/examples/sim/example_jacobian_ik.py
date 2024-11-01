@@ -41,6 +41,8 @@ def compute_endeffector_position(
 
 class Example:
     def __init__(self, stage_path="example_jacobian_ik.usd", num_envs=10):
+        rng = np.random.default_rng(42)
+
         builder = wp.sim.ModelBuilder()
 
         self.num_envs = num_envs
@@ -81,7 +83,7 @@ class Example:
             )
             self.target_origin.append((i * 2.0, 4.0, 0.0))
             # joint initial positions
-            builder.joint_q[-3:] = np.random.uniform(-0.5, 0.5, size=3)
+            builder.joint_q[-3:] = rng.uniform(-0.5, 0.5, size=3)
         self.target_origin = np.array(self.target_origin)
 
         # finalize model
@@ -207,6 +209,8 @@ if __name__ == "__main__":
 
     args = parser.parse_known_args()[0]
 
+    rng = np.random.default_rng(42)
+
     with wp.ScopedDevice(args.device):
         example = Example(stage_path=args.stage_path, num_envs=args.num_envs)
 
@@ -218,7 +222,7 @@ if __name__ == "__main__":
         for _ in range(args.num_rollouts):
             # select new random target points for all envs
             example.targets = example.target_origin.copy()
-            example.targets[:, 1:] += np.random.uniform(-0.5, 0.5, size=(example.num_envs, 2))
+            example.targets[:, 1:] += rng.uniform(-0.5, 0.5, size=(example.num_envs, 2))
 
             for iter in range(args.train_iters):
                 example.step()
