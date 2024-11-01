@@ -19,6 +19,7 @@
 - Fix kernel compile error when printing structs.
 - Fix an incorrect user function being sometimes resolved when multiple overloads are available with array parameters with different `dtype` values.
 - Fix error being raised when static and dynamic for-loops are written in sequence with the same iteration variable names ([GH-331](https://github.com/NVIDIA/warp/issues/331)).
+- Fix an issue with the `Texture Write` node, used in the Mandelbrot Omniverse sample, sometimes erroring out in multi-GPU environments.
 
 ## [1.4.1] - 2024-10-15
 
