@@ -16,6 +16,8 @@
 # and homogeneous Dirichlet boundary conditions other sides.
 ###########################################################################
 
+import numpy as np
+
 import warp as wp
 import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
@@ -24,7 +26,7 @@ from warp.sparse import bsr_axpy
 
 
 @fem.integrand
-def vert_boundary_projector_form(
+def vertical_boundary_projector_form(
     s: fem.Sample,
     domain: fem.Domain,
     u: fem.Field,
@@ -34,6 +36,18 @@ def vert_boundary_projector_form(
     nor = fem.normal(domain, s)
     w = 1.0 - wp.abs(nor[1])
     return w * u(s) * v(s)
+
+
+@fem.integrand
+def y_boundary_projector_form(
+    s: fem.Sample,
+    domain: fem.Domain,
+    u: fem.Field,
+    v: fem.Field,
+):
+    # Constrain Y edges
+    tangent = fem.deformation_gradient(domain, s)
+    return wp.abs(tangent[1]) * u(s) * v(s)
 
 
 class Example:
@@ -77,6 +91,28 @@ class Example:
                 bounds_hi=bounds_hi,
             )
             self._geo = fem.Nanogrid(volume)
+        elif mesh == "tri":
+            pos, quad_vtx_indices = fem_example_utils.gen_trimesh(
+                res=res,
+                bounds_lo=bounds_lo,
+                bounds_hi=bounds_hi,
+            )
+            pos = pos.numpy()
+            pos_z = np.cos(3.0 * pos[:, 0]) * np.sin(4.0 * pos[:, 1])
+            pos = np.hstack((pos, np.expand_dims(pos_z, axis=1)))
+            pos = wp.array(pos, dtype=wp.vec3)
+            self._geo = fem.Trimesh3D(quad_vtx_indices, pos)
+        elif mesh == "quad":
+            pos, quad_vtx_indices = fem_example_utils.gen_quadmesh(
+                res=res,
+                bounds_lo=bounds_lo,
+                bounds_hi=bounds_hi,
+            )
+            pos = pos.numpy()
+            pos_z = np.cos(3.0 * pos[:, 0]) * np.sin(4.0 * pos[:, 1])
+            pos = np.hstack((pos, np.expand_dims(pos_z, axis=1)))
+            pos = wp.array(pos, dtype=wp.vec3)
+            self._geo = fem.Quadmesh3D(quad_vtx_indices, pos)
         else:
             self._geo = fem.Grid3D(
                 res=res,
@@ -108,7 +144,14 @@ class Example:
 
             bd_test = fem.make_test(space=self._scalar_space, domain=boundary)
             bd_trial = fem.make_trial(space=self._scalar_space, domain=boundary)
-            bd_matrix = fem.integrate(vert_boundary_projector_form, fields={"u": bd_trial, "v": bd_test}, nodal=True)
+
+            # Pick boundary conditions depending on whether our geometry is a 3d surface or a volume
+            boundary_projector_form = (
+                vertical_boundary_projector_form
+                if self._geo.reference_cell().dimension == 3
+                else y_boundary_projector_form
+            )
+            bd_matrix = fem.integrate(boundary_projector_form, fields={"u": bd_trial, "v": bd_test}, nodal=True)
 
             # Diffusion form
             trial = fem.make_trial(space=self._scalar_space, domain=domain)
@@ -146,7 +189,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--boundary_compliance", type=float, default=0.0, help="Dirichlet boundary condition compliance."
     )
-    parser.add_argument("--mesh", choices=("grid", "tet", "hex", "nano", "anano"), default="grid", help="Mesh type.")
+    parser.add_argument(
+        "--mesh", choices=("grid", "tet", "hex", "nano", "anano", "tri", "quad"), default="grid", help="Mesh type."
+    )
     parser.add_argument(
         "--headless",
         action="store_true",
@@ -171,4 +216,4 @@ if __name__ == "__main__":
         example.render()
 
         if not args.headless:
-            example.renderer.plot(backend="matplotlib")
+            example.renderer.plot()

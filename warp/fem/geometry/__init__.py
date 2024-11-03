@@ -12,6 +12,6 @@ from .partition import (
     LinearGeometryPartition,
     WholeGeometryPartition,
 )
-from .quadmesh_2d import Quadmesh2D
+from .quadmesh import Quadmesh, Quadmesh2D, Quadmesh3D
 from .tetmesh import Tetmesh
-from .trimesh_2d import Trimesh2D
+from .trimesh import Trimesh, Trimesh2D, Trimesh3D

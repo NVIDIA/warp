@@ -429,8 +429,14 @@ add_example_test(
 add_example_test(
     TestFemExamples,
     name="fem.example_streamlines",
-    devices=test_devices,
+    devices=get_selected_cuda_test_devices(),
     test_options={"headless": True},
+)
+add_example_test(
+    TestFemExamples,
+    name="fem.example_distortion_energy",
+    devices=get_selected_cuda_test_devices(),
+    test_options={"headless": True, "resolution": 16},
 )
 add_example_test(
     TestFemExamples,

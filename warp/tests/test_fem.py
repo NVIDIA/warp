@@ -14,7 +14,6 @@ import warp as wp
 import warp.fem as fem
 from warp.fem import Coords, D, Domain, Field, Sample, curl, div, grad, integrand, normal
 from warp.fem.cache import dynamic_kernel
-from warp.fem.geometry import DeformedGeometry
 from warp.fem.geometry.closest_point import project_on_tet_at_origin, project_on_tri_at_origin
 from warp.fem.space import shape
 from warp.fem.types import make_free_sample
@@ -391,100 +390,91 @@ def _gen_hexmesh(N):
     return wp.array(positions, dtype=wp.vec3), wp.array(vidx, dtype=int)
 
 
+@fem.integrand(kernel_options={"enable_backward": False})
+def _test_geo_cells(
+    s: fem.Sample,
+    domain: fem.Domain,
+    cell_measures: wp.array(dtype=float),
+):
+    wp.atomic_add(cell_measures, s.element_index, fem.measure(domain, s) * s.qp_weight)
+
+
+@fem.integrand(kernel_options={"enable_backward": False, "max_unroll": 1})
+def _test_geo_sides(
+    s: fem.Sample,
+    domain: fem.Domain,
+    ref_measure: float,
+    side_measures: wp.array(dtype=float),
+):
+    side_index = s.element_index
+    coords = s.element_coords
+
+    cells = fem.cells(domain)
+
+    inner_s = fem.to_inner_cell(domain, s)
+    outer_s = fem.to_outer_cell(domain, s)
+
+    pos_side = domain(s)
+    pos_inner = cells(inner_s)
+    pos_outer = cells(outer_s)
+
+    for k in range(type(pos_side).length):
+        wp.expect_near(pos_side[k], pos_inner[k], 0.0001)
+        wp.expect_near(pos_side[k], pos_outer[k], 0.0001)
+
+    inner_side_s = fem.to_cell_side(domain, inner_s, side_index)
+    outer_side_s = fem.to_cell_side(domain, outer_s, side_index)
+
+    wp.expect_near(coords, inner_side_s.element_coords, 0.0001)
+    wp.expect_near(coords, outer_side_s.element_coords, 0.0001)
+
+    area = fem.measure(domain, s)
+    wp.atomic_add(side_measures, side_index, area * s.qp_weight)
+
+    F = fem.deformation_gradient(domain, s)
+    F_det = fem.Geometry._element_measure(F)
+    wp.expect_near(F_det * ref_measure, area)
+
+
+@fem.integrand(kernel_options={"enable_backward": False, "max_unroll": 1})
+def _test_side_normals(
+    s: fem.Sample,
+    domain: fem.Domain,
+):
+    # test consistency of side normal, measure, and deformation gradient
+    F = fem.deformation_gradient(domain, s)
+
+    nor = fem.normal(domain, s)
+    F_cross = fem.Geometry._element_normal(F)
+
+    for k in range(type(nor).length):
+        wp.expect_near(F_cross[k], nor[k], 0.0001)
+
+
 def _launch_test_geometry_kernel(geo: fem.Geometry, device):
-    @dynamic_kernel(suffix=geo.name, kernel_options={"enable_backward": False})
-    def test_geo_cells_kernel(
-        cell_arg: geo.CellArg,
-        qps: wp.array(dtype=Coords),
-        qp_weights: wp.array(dtype=float),
-        cell_measures: wp.array(dtype=float),
-    ):
-        cell_index, q = wp.tid()
-
-        coords = qps[q]
-        s = make_free_sample(cell_index, coords)
-
-        wp.atomic_add(cell_measures, cell_index, geo.cell_measure(cell_arg, s) * qp_weights[q])
-
-    REF_MEASURE = geo.reference_side().measure()
-
-    @dynamic_kernel(suffix=geo.name, kernel_options={"enable_backward": False, "max_unroll": 1})
-    def test_geo_sides_kernel(
-        side_arg: geo.SideArg,
-        qps: wp.array(dtype=Coords),
-        qp_weights: wp.array(dtype=float),
-        side_measures: wp.array(dtype=float),
-    ):
-        side_index, q = wp.tid()
-
-        coords = qps[q]
-        s = make_free_sample(side_index, coords)
-
-        cell_arg = geo.side_to_cell_arg(side_arg)
-        inner_cell_index = geo.side_inner_cell_index(side_arg, side_index)
-        outer_cell_index = geo.side_outer_cell_index(side_arg, side_index)
-        inner_cell_coords = geo.side_inner_cell_coords(side_arg, side_index, coords)
-        outer_cell_coords = geo.side_outer_cell_coords(side_arg, side_index, coords)
-
-        inner_s = make_free_sample(inner_cell_index, inner_cell_coords)
-        outer_s = make_free_sample(outer_cell_index, outer_cell_coords)
-
-        pos_side = geo.side_position(side_arg, s)
-        pos_inner = geo.cell_position(cell_arg, inner_s)
-        pos_outer = geo.cell_position(cell_arg, outer_s)
-
-        # if wp.length(pos_outer - pos_side) > 0.1:
-        #    wp.print(side_index)
-
-        for k in range(type(pos_side).length):
-            wp.expect_near(pos_side[k], pos_inner[k], 0.0001)
-            wp.expect_near(pos_side[k], pos_outer[k], 0.0001)
-
-        inner_side_coords = geo.side_from_cell_coords(side_arg, side_index, inner_cell_index, inner_cell_coords)
-        outer_side_coords = geo.side_from_cell_coords(side_arg, side_index, outer_cell_index, outer_cell_coords)
-
-        wp.expect_near(coords, inner_side_coords, 0.0001)
-        wp.expect_near(coords, outer_side_coords, 0.0001)
-
-        area = geo.side_measure(side_arg, s)
-        wp.atomic_add(side_measures, side_index, area * qp_weights[q])
-
-        # test consistency of side normal, measure, and deformation gradient
-        F = geo.side_deformation_gradient(side_arg, s)
-        F_det = DeformedGeometry._side_measure(F)
-        wp.expect_near(F_det * REF_MEASURE, area)
-
-        nor = geo.side_normal(side_arg, s)
-        F_cross = DeformedGeometry._side_normal(F)
-
-        for k in range(type(pos_side).length):
-            wp.expect_near(F_cross[k], nor[k], 0.0001)
-
     cell_measures = wp.zeros(dtype=float, device=device, shape=geo.cell_count())
-
     cell_quadrature = fem.RegularQuadrature(fem.Cells(geo), order=2)
-    cell_qps = wp.array(cell_quadrature.points, dtype=Coords, device=device)
-    cell_qp_weights = wp.array(cell_quadrature.weights, dtype=float, device=device)
-
-    wp.launch(
-        kernel=test_geo_cells_kernel,
-        dim=(geo.cell_count(), cell_qps.shape[0]),
-        inputs=[geo.cell_arg_value(device), cell_qps, cell_qp_weights, cell_measures],
-        device=device,
-    )
 
     side_measures = wp.zeros(dtype=float, device=device, shape=geo.side_count())
-
     side_quadrature = fem.RegularQuadrature(fem.Sides(geo), order=2)
-    side_qps = wp.array(side_quadrature.points, dtype=Coords, device=device)
-    side_qp_weights = wp.array(side_quadrature.weights, dtype=float, device=device)
 
-    wp.launch(
-        kernel=test_geo_sides_kernel,
-        dim=(geo.side_count(), side_qps.shape[0]),
-        inputs=[geo.side_arg_value(device), side_qps, side_qp_weights, side_measures],
-        device=device,
-    )
+    with wp.ScopedDevice(device):
+        fem.interpolate(
+            _test_geo_cells,
+            quadrature=cell_quadrature,
+            values={"cell_measures": cell_measures},
+        )
+        fem.interpolate(
+            _test_geo_sides,
+            quadrature=side_quadrature,
+            values={"side_measures": side_measures, "ref_measure": geo.reference_side().measure()},
+        )
+
+        if geo.side_normal is not None:
+            fem.interpolate(
+                _test_side_normals,
+                quadrature=side_quadrature,
+            )
 
     return side_measures, cell_measures
 
@@ -523,6 +513,24 @@ def test_triangle_mesh(test, device):
     assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 0.5 / (N**2)), tol=1.0e-4)
     test.assertAlmostEqual(np.sum(side_measures.numpy()), 2 * (N + 1) + N * math.sqrt(2.0), places=4)
 
+    # 3d
+
+    positions = positions.numpy()
+    positions = np.hstack((positions, np.ones((positions.shape[0], 1))))
+    positions = wp.array(positions, device=device, dtype=wp.vec3)
+
+    geo = fem.Trimesh3D(tri_vertex_indices=tri_vidx, positions=positions)
+
+    test.assertEqual(geo.cell_count(), 2 * (N) ** 2)
+    test.assertEqual(geo.vertex_count(), (N + 1) ** 2)
+    test.assertEqual(geo.side_count(), 2 * (N + 1) * N + (N**2))
+    test.assertEqual(geo.boundary_side_count(), 4 * N)
+
+    side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
+
+    assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 0.5 / (N**2)), tol=1.0e-4)
+    test.assertAlmostEqual(np.sum(side_measures.numpy()), 2 * (N + 1) + N * math.sqrt(2.0), places=4)
+
 
 def test_quad_mesh(test, device):
     N = 3
@@ -531,6 +539,24 @@ def test_quad_mesh(test, device):
         positions, quad_vidx = _gen_quadmesh(N)
 
     geo = fem.Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions)
+
+    test.assertEqual(geo.cell_count(), N**2)
+    test.assertEqual(geo.vertex_count(), (N + 1) ** 2)
+    test.assertEqual(geo.side_count(), 2 * (N + 1) * N)
+    test.assertEqual(geo.boundary_side_count(), 4 * N)
+
+    side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
+
+    assert_np_equal(side_measures.numpy(), np.full(side_measures.shape, 1.0 / (N)), tol=1.0e-4)
+    assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 1.0 / (N**2)), tol=1.0e-4)
+
+    # 3d
+
+    positions = positions.numpy()
+    positions = np.hstack((positions, np.ones((positions.shape[0], 1))))
+    positions = wp.array(positions, device=device, dtype=wp.vec3)
+
+    geo = fem.Quadmesh3D(quad_vertex_indices=quad_vidx, positions=positions)
 
     test.assertEqual(geo.cell_count(), N**2)
     test.assertEqual(geo.vertex_count(), (N + 1) ** 2)
@@ -1184,9 +1210,9 @@ def test_tri_shape_functions(test, device):
         b = param_delta[1]
         return param_delta, Coords(-a - b, a, b)
 
-    P_1 = shape.Triangle2DPolynomialShapeFunctions(degree=1)
-    P_2 = shape.Triangle2DPolynomialShapeFunctions(degree=2)
-    P_3 = shape.Triangle2DPolynomialShapeFunctions(degree=3)
+    P_1 = shape.TrianglePolynomialShapeFunctions(degree=1)
+    P_2 = shape.TrianglePolynomialShapeFunctions(degree=2)
+    P_3 = shape.TrianglePolynomialShapeFunctions(degree=3)
 
     test_shape_function_weight(test, P_1, tri_coord_sampler, TRI_CENTER_COORDS)
     test_shape_function_weight(test, P_2, tri_coord_sampler, TRI_CENTER_COORDS)
@@ -1198,9 +1224,9 @@ def test_tri_shape_functions(test, device):
     test_shape_function_gradient(test, P_2, tri_coord_sampler, tri_coord_delta_sampler)
     test_shape_function_gradient(test, P_3, tri_coord_sampler, tri_coord_delta_sampler)
 
-    P_1d = shape.Triangle2DNonConformingPolynomialShapeFunctions(degree=1)
-    P_2d = shape.Triangle2DNonConformingPolynomialShapeFunctions(degree=2)
-    P_3d = shape.Triangle2DNonConformingPolynomialShapeFunctions(degree=3)
+    P_1d = shape.TriangleNonConformingPolynomialShapeFunctions(degree=1)
+    P_2d = shape.TriangleNonConformingPolynomialShapeFunctions(degree=2)
+    P_3d = shape.TriangleNonConformingPolynomialShapeFunctions(degree=3)
 
     test_shape_function_weight(test, P_1d, tri_coord_sampler, TRI_CENTER_COORDS)
     test_shape_function_weight(test, P_2d, tri_coord_sampler, TRI_CENTER_COORDS)

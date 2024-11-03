@@ -72,22 +72,30 @@ def _resolve_path(func, node):
 class IntegrandTransformer(ast.NodeTransformer):
     def __init__(self, integrand: Integrand, field_args: Dict[str, FieldLike], annotations: Dict[str, Any]):
         self._integrand = integrand
-        self._field_args = field_args
-        self._annotations = annotations
+        self._field_symbols = {
+            name: (field, integrand.argspec.annotations[name], annotations[name]) for name, field in field_args.items()
+        }
+
+        self._field_nodes = {}
+
+    def _get_field(self, node: ast.expr):
+        field_info = self._field_nodes.get(node)
+        if field_info is None and isinstance(node, ast.Name):
+            field_info = self._field_symbols.get(node.id)
+
+        return field_info
 
     def visit_Call(self, call: ast.Call):
         call = self.generic_visit(call)
 
         callee = getattr(call.func, "id", None)
-        if callee in self._field_args:
+        if callee in self._field_symbols:
             # Shortcut for evaluating fields as f(x...)
-            field = self._field_args[callee]
+            field, abstract_type, concrete_type = self._field_symbols[callee]
 
             # Replace with default call operator
-            abstract_arg_type = self._integrand.argspec.annotations[callee]
-            default_operator = abstract_arg_type.call_operator
-            concrete_arg_type = self._annotations[callee]
-            self._replace_call_func(call, concrete_arg_type, default_operator, field)
+            default_operator = abstract_type.call_operator
+            self._replace_call_func(call, concrete_type, default_operator, field, abstract_type)
 
             # insert callee as first argument
             call.args = [ast.Name(id=callee, ctx=ast.Load())] + call.args
@@ -98,10 +106,13 @@ class IntegrandTransformer(ast.NodeTransformer):
 
         if isinstance(func, Operator) and len(call.args) > 0:
             # Evaluating operators as op(field, x, ...)
-            callee = getattr(call.args[0], "id", None)
-            if callee in self._field_args:
-                field = self._field_args[callee]
-                self._replace_call_func(call, func, func, field)
+            field_info = self._get_field(call.args[0])
+            if field_info is not None:
+                field, abstract_type, _ = field_info
+                self._replace_call_func(call, func, func, field, abstract_type)
+
+                if func.field_result:
+                    self._field_nodes[call] = func.field_result(field)
 
         if isinstance(func, Integrand):
             key = self._translate_callee(func, call.args)
@@ -110,20 +121,36 @@ class IntegrandTransformer(ast.NodeTransformer):
                 attr=key,
                 ctx=ast.Load(),
             )
-
         # print(ast.dump(call, indent=4))
 
         return call
 
-    def _replace_call_func(self, call: ast.Call, callee: Union[type, Operator], operator: Operator, field: FieldLike):
+    def visit_Assign(self, node: ast.Assign):
+        node = self.generic_visit(node)
+
+        # Check if we're assigning a field
+        src_field_info = self._get_field(node.value)
+        if src_field_info is not None:
+            if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
+                raise NotImplementedError("warp.fem Fields and Domains may only be assigned to simple variables")
+
+            self._field_symbols[node.targets[0].id] = src_field_info
+
+        return node
+
+    def _replace_call_func(
+        self, call: ast.Call, callee: Union[type, Operator], operator: Operator, field: FieldLike, abstract_type: type
+    ):
         try:
             # Retrieve the function pointer corresponding to the operator implementation for the field type
             pointer = operator.resolver(field)
-            if pointer is None:
+            if not isinstance(pointer, wp.context.Function):
                 raise NotImplementedError(operator.resolver.__name__)
 
         except (AttributeError, NotImplementedError) as e:
-            raise ValueError(f"Operator {operator.func.__name__} is not defined for field {field.name}") from e
+            raise ValueError(
+                f"Operator {operator.func.__name__} is not defined for {abstract_type.__name__} {field.name}"
+            ) from e
         # Save the pointer as an attribute than can be accessed from the callee scope
         setattr(callee, pointer.key, pointer)
         # Update the ast Call node to use the new function pointer
@@ -133,9 +160,9 @@ class IntegrandTransformer(ast.NodeTransformer):
         # Get field types for call site arguments
         call_site_field_args = []
         for arg in args:
-            name = getattr(arg, "id", None)
-            if name in self._field_args:
-                call_site_field_args.append(self._field_args[name])
+            field_info = self._get_field(arg)
+            if field_info is not None:
+                call_site_field_args.append(field_info[0])
 
         call_site_field_args.reverse()
 
@@ -403,6 +430,16 @@ class PassFieldArgsToIntegrand(ast.NodeTransformer):
             )
 
         return call
+
+
+def _combined_kernel_options(integrand_options: Optional[Dict[str, Any]], call_site_options: Optional[Dict[str, Any]]):
+    if integrand_options is None:
+        return {} if call_site_options is None else call_site_options
+
+    options = integrand_options.copy()
+    if call_site_options is not None:
+        options.update(call_site_options)
+    return options
 
 
 def get_integrate_constant_kernel(
@@ -761,9 +798,6 @@ def _generate_integrate_kernel(
     accumulate_dtype: type,
     kernel_options: Optional[Dict[str, Any]] = None,
 ) -> wp.Kernel:
-    if kernel_options is None:
-        kernel_options = {}
-
     output_dtype = wp.types.type_scalar_type(output_dtype)
 
     # Extract field arguments from integrand
@@ -776,6 +810,7 @@ def _generate_integrate_kernel(
 
     # Check if kernel exist in cache
     kernel_suffix = f"_itg_{wp.types.type_typestr(output_dtype)}{wp.types.type_typestr(accumulate_dtype)}_{domain.name}_{FieldStruct.key}"
+
     if nodal:
         kernel_suffix += "_nodal"
     else:
@@ -786,10 +821,7 @@ def _generate_integrate_kernel(
     if trial:
         kernel_suffix += f"_trial_{trial.space_partition.name}_{trial.space.name}"
 
-    kernel = cache.get_integrand_kernel(
-        integrand=integrand,
-        suffix=kernel_suffix,
-    )
+    kernel = cache.get_integrand_kernel(integrand=integrand, suffix=kernel_suffix, kernel_options=kernel_options)
     if kernel is not None:
         return kernel, FieldStruct, ValueStruct
 
@@ -1182,9 +1214,6 @@ def integrate(
     if values is None:
         values = {}
 
-    if kernel_options is None:
-        kernel_options = {}
-
     if not isinstance(integrand, Integrand):
         raise ValueError("integrand must be tagged with @warp.fem.integrand decorator")
 
@@ -1473,9 +1502,6 @@ def _generate_interpolate_kernel(
     fields: Dict[str, FieldLike],
     kernel_options: Optional[Dict[str, Any]] = None,
 ) -> wp.Kernel:
-    if kernel_options is None:
-        kernel_options = {}
-
     # Extract field arguments from integrand
     field_args, value_args, domain_name, sample_name = _get_integrand_field_arguments(
         integrand, fields=fields, domain=domain
@@ -1508,6 +1534,7 @@ def _generate_interpolate_kernel(
     kernel = cache.get_integrand_kernel(
         integrand=integrand,
         suffix=kernel_suffix,
+        kernel_options=kernel_options,
     )
     if kernel is not None:
         return kernel, FieldStruct, ValueStruct
@@ -1686,9 +1713,6 @@ def interpolate(
 
     if values is None:
         values = {}
-
-    if kernel_options is None:
-        kernel_options = {}
 
     if not isinstance(integrand, Integrand):
         raise ValueError("integrand must be tagged with @integrand decorator")

@@ -17,11 +17,11 @@ from .grid_2d_function_space import make_grid_2d_space_topology
 
 from .grid_3d_function_space import make_grid_3d_space_topology
 
-from .trimesh_2d_function_space import make_trimesh_2d_space_topology
+from .trimesh_function_space import make_trimesh_space_topology
 
 from .tetmesh_function_space import make_tetmesh_space_topology
 
-from .quadmesh_2d_function_space import make_quadmesh_2d_space_topology
+from .quadmesh_function_space import make_quadmesh_space_topology
 
 from .hexmesh_function_space import make_hexmesh_space_topology
 
@@ -115,12 +115,12 @@ def make_polynomial_basis_space(
         topology = make_grid_2d_space_topology(geo, shape)
     elif isinstance(base_geo, _geometry.Grid3D):
         topology = make_grid_3d_space_topology(geo, shape)
-    elif isinstance(base_geo, _geometry.Trimesh2D):
-        topology = make_trimesh_2d_space_topology(geo, shape)
+    elif isinstance(base_geo, _geometry.Trimesh):
+        topology = make_trimesh_space_topology(geo, shape)
     elif isinstance(base_geo, _geometry.Tetmesh):
         topology = make_tetmesh_space_topology(geo, shape)
-    elif isinstance(base_geo, _geometry.Quadmesh2D):
-        topology = make_quadmesh_2d_space_topology(geo, shape)
+    elif isinstance(base_geo, _geometry.Quadmesh):
+        topology = make_quadmesh_space_topology(geo, shape)
     elif isinstance(base_geo, _geometry.Hexmesh):
         topology = make_hexmesh_space_topology(geo, shape)
     elif isinstance(base_geo, _geometry.Nanogrid) or isinstance(base_geo, _geometry.AdaptiveNanogrid):

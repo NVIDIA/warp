@@ -34,7 +34,7 @@ def _triangle_node_index(tx: int, ty: int, degree: int):
     return vertex_edge_node_count + _triangle_node_index(tx - 1, ty - 1, degree - 3)
 
 
-class Triangle2DPolynomialShapeFunctions:
+class TrianglePolynomialShapeFunctions:
     VERTEX = wp.constant(0)
     EDGE = wp.constant(1)
     INTERIOR = wp.constant(2)
@@ -79,12 +79,12 @@ class Triangle2DPolynomialShapeFunctions:
             node_index_in_elt: int,
         ):
             if node_index_in_elt < 3:
-                return Triangle2DPolynomialShapeFunctions.VERTEX, node_index_in_elt
+                return TrianglePolynomialShapeFunctions.VERTEX, node_index_in_elt
 
             if node_index_in_elt < 3 * ORDER:
-                return Triangle2DPolynomialShapeFunctions.EDGE, (node_index_in_elt - 3)
+                return TrianglePolynomialShapeFunctions.EDGE, (node_index_in_elt - 3)
 
-            return Triangle2DPolynomialShapeFunctions.INTERIOR, (node_index_in_elt - 3 * ORDER)
+            return TrianglePolynomialShapeFunctions.INTERIOR, (node_index_in_elt - 3 * ORDER)
 
         return cache.get_func(node_type_and_index, self.name)
 
@@ -125,9 +125,9 @@ class Triangle2DPolynomialShapeFunctions:
         def node_quadrature_weight(node_index_in_element: int):
             node_type, type_index = self.node_type_and_type_index(node_index_in_element)
 
-            if node_type == Triangle2DPolynomialShapeFunctions.VERTEX:
+            if node_type == TrianglePolynomialShapeFunctions.VERTEX:
                 return VERTEX_WEIGHT
-            elif node_type == Triangle2DPolynomialShapeFunctions.EDGE:
+            elif node_type == TrianglePolynomialShapeFunctions.EDGE:
                 return EDGE_WEIGHT
 
             return INTERIOR_WEIGHT
@@ -153,7 +153,7 @@ class Triangle2DPolynomialShapeFunctions:
         def trace_node_quadrature_weight(node_index_in_element: int):
             node_type, type_index = self.node_type_and_type_index(node_index_in_element)
 
-            return wp.select(node_type == Triangle2DPolynomialShapeFunctions.VERTEX, EDGE_WEIGHT, VERTEX_WEIGHT)
+            return wp.select(node_type == TrianglePolynomialShapeFunctions.VERTEX, EDGE_WEIGHT, VERTEX_WEIGHT)
 
         return trace_node_quadrature_weight
 
@@ -172,7 +172,7 @@ class Triangle2DPolynomialShapeFunctions:
         ):
             node_type, type_index = self.node_type_and_type_index(node_index_in_elt)
 
-            if node_type == Triangle2DPolynomialShapeFunctions.VERTEX:
+            if node_type == TrianglePolynomialShapeFunctions.VERTEX:
                 # Vertex
                 return coords[type_index] * (2.0 * coords[type_index] - 1.0)
 
@@ -187,11 +187,11 @@ class Triangle2DPolynomialShapeFunctions:
         ):
             node_type, type_index = self.node_type_and_type_index(node_index_in_elt)
 
-            if node_type == Triangle2DPolynomialShapeFunctions.VERTEX:
+            if node_type == TrianglePolynomialShapeFunctions.VERTEX:
                 # Vertex
                 return 0.5 * coords[type_index] * (3.0 * coords[type_index] - 1.0) * (3.0 * coords[type_index] - 2.0)
 
-            elif node_type == Triangle2DPolynomialShapeFunctions.EDGE:
+            elif node_type == TrianglePolynomialShapeFunctions.EDGE:
                 # Edge
                 edge = type_index // 2
                 k = type_index - 2 * edge
@@ -233,7 +233,7 @@ class Triangle2DPolynomialShapeFunctions:
 
             dw_dc = wp.vec3(0.0)
 
-            if node_type == Triangle2DPolynomialShapeFunctions.VERTEX:
+            if node_type == TrianglePolynomialShapeFunctions.VERTEX:
                 # Vertex
                 dw_dc[type_index] = 4.0 * coords[type_index] - 1.0
 
@@ -255,13 +255,13 @@ class Triangle2DPolynomialShapeFunctions:
 
             dw_dc = wp.vec3(0.0)
 
-            if node_type == Triangle2DPolynomialShapeFunctions.VERTEX:
+            if node_type == TrianglePolynomialShapeFunctions.VERTEX:
                 # Vertex
                 dw_dc[type_index] = (
                     0.5 * 27.0 * coords[type_index] * coords[type_index] - 9.0 * coords[type_index] + 1.0
                 )
 
-            elif node_type == Triangle2DPolynomialShapeFunctions.EDGE:
+            elif node_type == TrianglePolynomialShapeFunctions.EDGE:
                 # Edge
                 edge = type_index // 2
                 k = type_index - 2 * edge
@@ -318,9 +318,9 @@ class Triangle2DPolynomialShapeFunctions:
         return cells[np.newaxis, :], np.array([cell_type], dtype=np.int8)
 
 
-class Triangle2DNonConformingPolynomialShapeFunctions:
+class TriangleNonConformingPolynomialShapeFunctions:
     def __init__(self, degree: int):
-        self._tri_shape = Triangle2DPolynomialShapeFunctions(degree=degree)
+        self._tri_shape = TrianglePolynomialShapeFunctions(degree=degree)
         self.ORDER = self._tri_shape.ORDER
         self.NODES_PER_ELEMENT = self._tri_shape.NODES_PER_ELEMENT
 
@@ -373,9 +373,9 @@ class Triangle2DNonConformingPolynomialShapeFunctions:
         def node_quadrature_weight(node_index_in_element: int):
             node_type, type_index = self._tri_shape.node_type_and_type_index(node_index_in_element)
 
-            if node_type == Triangle2DPolynomialShapeFunctions.VERTEX:
+            if node_type == TrianglePolynomialShapeFunctions.VERTEX:
                 return VERTEX_WEIGHT
-            elif node_type == Triangle2DPolynomialShapeFunctions.EDGE:
+            elif node_type == TrianglePolynomialShapeFunctions.EDGE:
                 return EDGE_WEIGHT
 
             return INTERIOR_WEIGHT

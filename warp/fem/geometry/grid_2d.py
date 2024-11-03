@@ -29,7 +29,7 @@ class Grid2D(Geometry):
         Args:
             res: Resolution of the grid along each dimension
             bounds_lo: Position of the lower bound of the axis-aligned grid
-            bounds_up: Position of the upper bound of the axis-aligned grid
+            bounds_hi: Position of the upper bound of the axis-aligned grid
         """
 
         if bounds_lo is None:
@@ -158,10 +158,7 @@ class Grid2D(Geometry):
             return Grid2D.Side(axis, origin)
 
         axis_side_index = side_index - 2 * arg.cell_count
-        if axis_side_index < arg.axis_offsets[1]:
-            axis = 0
-        else:
-            axis = 1
+        axis = wp.select(axis_side_index < arg.axis_offsets[1], 1, 0)
 
         altitude = arg.cell_arg.res[Grid2D.ROTATION[axis, 0]]
         longitude = axis_side_index - arg.axis_offsets[axis]
@@ -230,7 +227,7 @@ class Grid2D(Geometry):
 
         args.axis_offsets = wp.vec2i(
             0,
-            self.res[0],
+            self.res[1],
         )
         args.cell_count = self.cell_count()
         args.cell_arg = self.cell_arg_value(device)

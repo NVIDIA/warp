@@ -1,8 +1,8 @@
-from typing import Any, Callable
+from typing import Any, Callable, Dict, Optional
 
 import warp as wp
 from warp.fem import utils
-from warp.fem.types import Domain, Field, NodeIndex, Sample
+from warp.fem.types import Coords, Domain, ElementIndex, Field, NodeIndex, Sample, make_free_sample
 
 
 class Integrand:
@@ -10,11 +10,12 @@ class Integrand:
     It will get transformed to a proper warp.Function by resolving concrete Field types at call time.
     """
 
-    def __init__(self, func: Callable):
+    def __init__(self, func: Callable, kernel_options: Optional[Dict[str, Any]] = None):
         self.func = func
         self.name = wp.codegen.make_full_qualified_name(self.func)
         self.module = wp.get_module(self.func.__module__)
         self.argspec = wp.codegen.get_full_arg_spec(self.func)
+        self.kernel_options = {} if kernel_options is None else kernel_options
 
 
 class Operator:
@@ -22,23 +23,38 @@ class Operator:
     Operators provide syntaxic sugar over Field and Domain evaluation functions and arguments
     """
 
-    def __init__(self, func: Callable, resolver: Callable):
+    def __init__(self, func: Callable, resolver: Callable, field_result: Callable = None):
         self.func = func
         self.resolver = resolver
+        self.field_result = field_result
 
 
-def integrand(func: Callable):
-    """Decorator for functions to be integrated (or interpolated) using warp.fem"""
-    itg = Integrand(func)
-    itg.__doc__ = func.__doc__
-    return itg
+def integrand(func: Callable = None, kernel_options: Optional[Dict[str, Any]] = None):
+    """Decorator for functions to be integrated (or interpolated) using warp.fem
+
+    Args:
+        func: Decorated function
+        kernel_options: Supplemental code-generation options to be passed to the generated kernel.
+    """
+
+    if func is not None:
+        itg = Integrand(func)
+        itg.__doc__ = func.__doc__
+        return itg
+
+    def wrap_integrand(func: Callable):
+        itg = Integrand(func, kernel_options)
+        itg.__doc__ = func.__doc__
+        return itg
+
+    return wrap_integrand
 
 
-def operator(resolver: Callable):
+def operator(**kwargs):
     """Decorator for functions operating on Field-like or Domain-like data inside warp.fem integrands"""
 
     def wrap_operator(func: Callable):
-        op = Operator(func, resolver)
+        op = Operator(func, **kwargs)
         op.__doc__ = func.__doc__
         return op
 
@@ -56,7 +72,7 @@ def position(domain: Domain, s: Sample):
 
 @operator(resolver=lambda dmn: dmn.element_normal)
 def normal(domain: Domain, s: Sample):
-    """Evaluates the element normal at the sample point `s`. Null for interior points."""
+    """Evaluates the element normal at the sample point `s`. Non zero if the element is a side or the geometry is embedded in a higher-dimensional space (e.g. :class:`Trimesh3D`)"""
     pass
 
 
@@ -75,7 +91,7 @@ def lookup(domain: Domain, x: Any) -> Sample:
         guess: (optional) :class:`Sample` initial guess, may help perform the query
 
     Note:
-        Currently this operator is unsupported for :class:`Hexmesh`, :class:`Quadmesh2D` and deformed geometries.
+        Currently this operator is unsupported for :class:`Hexmesh`, :class:`Quadmesh2D`, :class:`Quadmesh3D` and deformed geometries.
     """
     pass
 
@@ -90,6 +106,69 @@ def measure(domain: Domain, s: Sample) -> float:
 def measure_ratio(domain: Domain, s: Sample) -> float:
     """Returns the maximum ratio between the measure of this element and that of higher-dimensional neighbours."""
     pass
+
+
+# Operators for evaluating cell-level quantities on domains defined on sides
+
+
+@operator(
+    resolver=lambda dmn: dmn.domain_cell_arg, field_result=lambda dmn: (dmn.cell_domain(), Domain, dmn.geometry.CellArg)
+)
+def cells(domain: Domain) -> Domain:
+    """Converts a domain defined on geometry sides to a domain defined of cells."""
+    pass
+
+
+@operator(resolver=lambda dmn: dmn.element_inner_cell_index)
+def _inner_cell_index(domain: Domain, side_index: ElementIndex, side_coords: Coords) -> Sample:
+    pass
+
+
+@operator(resolver=lambda dmn: dmn.element_outer_cell_index)
+def _outer_cell_index(domain: Domain, side_index: ElementIndex, side_coords: Coords) -> Sample:
+    pass
+
+
+@operator(resolver=lambda dmn: dmn.element_inner_cell_coords)
+def _inner_cell_coords(domain: Domain, side_index: ElementIndex, side_coords: Coords) -> Sample:
+    pass
+
+
+@operator(resolver=lambda dmn: dmn.element_outer_cell_coords)
+def _outer_cell_coords(domain: Domain, side_index: ElementIndex, side_coords: Coords) -> Sample:
+    pass
+
+
+@operator(resolver=lambda dmn: dmn.cell_to_element_coords)
+def _cell_to_element_coords(
+    domain: Domain, side_index: ElementIndex, cell_index: ElementIndex, cell_coords: Coords
+) -> Sample:
+    pass
+
+
+@integrand
+def to_inner_cell(domain: Domain, s: Sample):
+    """Converts a :class:`Sample` defined on a side to a sample defined on the side's inner cell"""
+    return make_free_sample(
+        _inner_cell_index(domain, s.element_index), _inner_cell_coords(domain, s.element_index, s.element_coords)
+    )
+
+
+@integrand
+def to_outer_cell(domain: Domain, s: Sample):
+    """Converts a :class:`Sample` defined on a side to a sample defined on the side's outer cell"""
+    return make_free_sample(
+        _outer_cell_index(domain, s.element_index), _outer_cell_coords(domain, s.element_index, s.element_coords)
+    )
+
+
+@integrand
+def to_cell_side(domain: Domain, cell_s: Sample, side_index: ElementIndex):
+    """Converts a :class:`Sample` defined on a cell to a sample defined on one of its side.
+    If the result does not lie on the side `side_index`, the resulting coordinates will be set to ``OUTSIDE``."""
+    return make_free_sample(
+        side_index, _cell_to_element_coords(domain, side_index, cell_s.element_index, cell_s.element_coords)
+    )
 
 
 # Field operators

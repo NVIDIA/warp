@@ -361,7 +361,7 @@ class TraceBasisSpace(BasisSpace):
 
     def make_element_inner_weight_gradient(self):
         cell_inner_weight_gradient = self._basis.make_element_inner_weight_gradient()
-        grad_vec_type = wp.vec(length=self.geometry.dimension, dtype=float)
+        grad_vec_type = wp.vec(length=self.geometry.reference_cell().dimension, dtype=float)
 
         @cache.dynamic_func(suffix=self._basis.name)
         def trace_element_inner_weight_gradient(
@@ -383,7 +383,7 @@ class TraceBasisSpace(BasisSpace):
 
     def make_element_outer_weight_gradient(self):
         cell_outer_weight_gradient = self._basis.make_element_outer_weight_gradient()
-        grad_vec_type = wp.vec(length=self.geometry.dimension, dtype=float)
+        grad_vec_type = wp.vec(length=self.geometry.reference_cell().dimension, dtype=float)
 
         @cache.dynamic_func(suffix=self._basis.name)
         def trace_element_outer_weight_gradient(
@@ -571,7 +571,7 @@ class PointBasisSpace(BasisSpace):
         return element_inner_weight
 
     def make_element_inner_weight_gradient(self):
-        gradient_vec = cache.cached_vec_type(length=self.geometry.dimension, dtype=float)
+        gradient_vec = cache.cached_vec_type(length=self.geometry.reference_cell().dimension, dtype=float)
 
         @cache.dynamic_func(suffix=self.name)
         def element_inner_weight_gradient(

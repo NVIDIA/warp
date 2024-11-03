@@ -214,21 +214,24 @@ def get_integrand_kernel(
     kernel_options: Dict[str, Any] = None,
     code_transformers=None,
 ):
-    if kernel_options is None:
-        kernel_options = {}
+    options = integrand.module.options.copy()
+    options.update(integrand.kernel_options)
+    if kernel_options is not None:
+        options.update(kernel_options)
 
-    key = _make_key(integrand.func, suffix, use_qualified_name=True)
+    kernel_key = _make_key(integrand.func, suffix, use_qualified_name=True)
+    opts_key = "".join([f"{k}:{v}" for k, v in sorted(options.items())])
+    cache_key = kernel_key + opts_key
 
-    if key not in _kernel_cache:
+    if cache_key not in _kernel_cache:
         if kernel_fn is None:
             return None
 
         module = wp.get_module(f"{integrand.module.name}.{integrand.name}")
-        module.options = copy(integrand.module.options)
-        module.options.update(kernel_options)
-
-        _kernel_cache[key] = wp.Kernel(func=kernel_fn, key=key, module=module, code_transformers=code_transformers)
-    return _kernel_cache[key]
+        _kernel_cache[cache_key] = wp.Kernel(
+            func=kernel_fn, key=kernel_key, module=module, code_transformers=code_transformers, options=options
+        )
+    return _kernel_cache[cache_key]
 
 
 def cached_arg_value(func: Callable):
